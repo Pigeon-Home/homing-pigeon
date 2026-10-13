@@ -198,7 +198,7 @@ authenticity and integrity come from HMAC-SHA-384.
 
 # Protocol v2 (proposal): privacy-preserving results
 
-**Paradigm: the runner as an oracle.** In v1 the SI receives full job
+**Paradigm: the runner as the Oracle.** In v1 the SI receives full job
 output (stdout/stderr) by email. v2 inverts this: the runner keeps the
 output on its own (trusted) disk and answers only the questions the
 result policy allows, with HMAC-signed attestations. The SI learns
@@ -207,6 +207,20 @@ permits it. This is the interactive-proof / functional-encryption shape
 applied at the trust boundary, without any zero-knowledge proving
 machinery: the runner is trusted (it's the user's own machine), so
 egress filtering plus signed commitments gives the privacy property.
+
+**The Oracle** (proper noun) is the name for this subsystem taken
+together: result-policy enforcement, the query engine, attestations,
+output retention, and the privacy budget. It is governed by a single
+runner-owner flag:
+
+- `oracle_enabled` in config.json (default `true`).
+- When `false`, the Oracle is fully bypassed: `result_policy` is
+  ignored, results are always v1 `full`, no outputs are retained, and
+  `query` messages are rejected as unsupported. This is the debugging
+  escape hatch — straight stdin/stdout, the dumb pipe, none of the
+  machinery.
+- The flag is config-only. **No job field can disable the Oracle** —
+  otherwise the SI could switch off its own restraints.
 
 ## 9. Result policies
 
@@ -318,7 +332,7 @@ against expired or unknown `job_id`s are rejected and marked seen.
 
 **Threat: adaptive chosen-query extraction.** Each answer leaks a few
 bits. A verifier that chooses each query *after seeing the last answer*
-can binary-search retained output for secrets — an interactive oracle
+can binary-search retained output for secrets — an interactive Oracle
 with unlimited queries is a slow exfiltration channel.
 
 Defenses, in order of importance:
@@ -330,7 +344,7 @@ Defenses, in order of importance:
    the same reason: a fixed proof artifact can't be probed.
 2. **Privacy budget.** `query_budget` bounds *total* leakage per job.
    Each answered or policy-rejected query spends 1; exhaustion silences
-   the oracle for that job. A budget bounds what rate limiting cannot:
+   the Oracle for that job. A budget bounds what rate limiting cannot:
    the total, not just the speed.
 3. **Rate limiting (the IKEv2 cookie analogy).** An IKEv2 responder
    demands a returned cookie before committing expensive DH
