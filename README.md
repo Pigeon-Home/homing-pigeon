@@ -2,10 +2,11 @@
 
 **Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, etc.**
 
-Self-hosted, email-driven agent: the user tells cloud SI to send signed
-jobs via email that execute in your backend: Linux/macOS/FreeBSD/Windows.
-Results are emailed back, so your SI can iterate — adjust, redeploy, and
-go back-and-forth until the job is done.
+Your cloud SI is smart, but it can't touch your computer. Homing Pigeon
+fixes that: tell your SI to send a signed job, it executes on your machine
+(Linux/macOS/FreeBSD/Windows), and the results come back so your SI can
+iterate — run the tests, read the failure, fix, repeat. From your phone,
+from anywhere.
 
 Think "GitHub self-hosted runner, but the control plane is email." Python
 3.9+, standard library only, no dependencies. (Email is just the first
@@ -54,6 +55,47 @@ and operate.
 
 Large inputs don't go through email: your SI uploads them to file hosting
 and the job email carries download URLs (with optional SHA-384).
+
+**Why email?** Because it's the only transport with all five properties
+on day one: reachable from anywhere, outbound-only polling (no inbound
+ports — NAT-proof), authenticated sender, at-least-once delivery, and
+zero infrastructure to operate. And because the protocol doesn't care
+about the pipe: Cloudflare Queues, NATS, MQTT, Redis Streams and friends
+all satisfy the same contract. Email is just Transport #1 —
+see TRANSPORTS.md.
+
+## The Oracle: answers, not output
+
+v1 sends full job output back to the SI. The v2 proposal (spec'd in
+PROTOCOL.md, not yet implemented) flips this: your machine becomes
+**the Oracle** — a black box the SI can question but never inspect.
+
+The SI asks "did the tests pass?" or "does the output contain secrets?"
+and gets back HMAC-signed *attestations*: proofs about the output that
+reveal nothing else. It's the zero-knowledge shape applied at the trust
+boundary — prove things about your data without showing your data. The
+raw output never leaves your disk.
+
+```
+  Cloud SI                                Your machine
+  ────────                                ────────────────────
+  "Did the tests pass?" ──signed──────▶ ┌─────────────┐
+                                        │  The Oracle │
+  "Any secrets in there?" ────────────▶ │             │
+                                        │ output stays│
+   ┌──────────────────────┐             │ on your disk│
+   │ signed attestation   │ ◀──signed── │             │
+   │ { exit_zero: true,   │             │ answers only│
+   │   no_secrets: true } │             │ what policy │
+   └──────────────────────┘             │ allows      │
+                                        └─────────────┘
+   The SI learns answers. Never the raw output.
+```
+
+Queries are declared upfront (no adaptive probing), each job gets a
+privacy budget bounding total leakage, and the disclosure ceiling is
+set by *you* in config — never by the SI. For debugging,
+`oracle_enabled: false` drops back to the plain v1 pipe.
 
 ## Layout
 
@@ -106,7 +148,7 @@ ships an sdist (`.tar.gz`) and a universal wheel (`.whl`) — the easiest
 path on machines where Python is preinstalled, like a Raspberry Pi:
 
 1. Download the `.whl` from the release.
-2. `pip install homing_pigeon-1.0.0-py3-none-any.whl` — this installs
+2. `pip install homing_pigeon-1.0.1-py3-none-any.whl` — this installs
    three commands: `homing-pigeon`, `homing-pigeon-install`, and
    `homing-pigeon-send-job` (the cloud-side helper).
 3. `homing-pigeon-install` copies the runner, writes a default
@@ -172,14 +214,14 @@ to. A Raspberry Pi is the perfect one:
 - **Python's already there.** Skip the frozen binaries entirely:
 
 ```sh
-pip install homing_pigeon-1.0.0-py3-none-any.whl
+pip install homing_pigeon-1.0.1-py3-none-any.whl
 homing-pigeon-install          # registers the boot-start service
 # edit ~/.homing-pigeon/config.json, then test one cycle:
 homing-pigeon --config ~/.homing-pigeon/config.json --once
 ```
 
 Grab the `.whl` (or the `.tar.gz` sdist) from any
-[release](https://github.com/ctf-gooo-003/homing-pigeon/releases).
+[release](https://github.com/Pigeon-Home/homing-pigeon/releases).
 Your SI sends jobs from the cloud; the Pi in the corner executes them.
 That's the whole trick.
 
@@ -250,11 +292,18 @@ End-to-end without your SI:
   stays unseen and will be re-executed next cycle. Make jobs idempotent
   or check the seen behavior accordingly.
 - Hardening ideas for v2: encrypted credentials at rest,
-  per-job encryption, result file upload for large outputs.
+  per-job encryption, result file upload for large outputs — plus the
+  Oracle (spec'd in PROTOCOL.md): result policies, signed attestations,
+  and a query budget, so a cloud SI learns *answers* about your output
+  without ever seeing it. `oracle_enabled: false` disables it anytime.
 
 ## Status
 
-v1. Runner rewritten in cross-platform Python; crypto tested
+v1.0.1. Runner rewritten in cross-platform Python; crypto tested
 (sign/verify roundtrip, tamper rejection, CRLF tolerance); end-to-end
-suite passes against fake mail servers on Linux. Not yet run against a
-live Gmail mailbox on all four platforms — that's the next step.
+suite passes against fake mail servers. Releases ship standalone
+binaries (Windows/macOS/Linux) plus a Python wheel and sdist. The v2
+protocol — the Oracle, privacy-preserving results via signed
+attestations — is spec'd in PROTOCOL.md and awaiting implementation.
+Not yet proven against a live Gmail mailbox on all four platforms —
+that's the next proving ground.
