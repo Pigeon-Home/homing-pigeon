@@ -10,7 +10,7 @@ exact same signature scheme as runner/runner.py:
 The --secret is the shared secret string, used directly (UTF-8) as the
 HMAC-SHA-384 key. In this deployment it is the runner's Gmail app password
 itself (user's explicit choice: dedicated throwaway account). This helper
-is AI-agnostic: anything that can run it and send the resulting email as
+is SI-agnostic: anything that can run it and send the resulting email as
 the runner's Gmail account — Muse, ChatGPT, Grok, a cron job — can drive
 the runner. Keep the secret out of logs and files; pass it only when needed.
 

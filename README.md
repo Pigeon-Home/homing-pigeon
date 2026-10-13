@@ -18,7 +18,8 @@ standard library only, no dependencies.
 
 Homing Pigeon is a personal remote-development agent. The idea is
 simple: the most powerful computer you have access to shouldn't stop
-being useful the moment you walk away from your desk. Send a job from
+being useful the moment you walk away from your desk — and neither
+should your SI assistant. Send a job from
 your phone, let the big machine run the tests, crunch the data, or
 grind through the refactor, and read the results when they land in your
 inbox.
@@ -87,7 +88,7 @@ RHEL 8/9+, Ubuntu 20.04+, and most other modern distros.
    (your explicit choice for this throwaway account). Leave
    `allowed_sender` empty — the runner then only accepts job mail from
    the account it is logged into (hard rule).
-4. When you want an AI to send jobs, paste that same app-password string
+4. When you want an SI to send jobs, paste that same app-password string
    to it in chat. It doubles as the HMAC shared secret.
 
 **From source** (needs Python 3.9+):
@@ -120,7 +121,7 @@ RHEL 8/9+, Ubuntu 20.04+, and most other modern distros.
 For testing — and honestly for everyday use — run the agent inside a
 Linux VM on your own hardware rather than directly on the host:
 
-- **Snapshots beat regret.** About to hand an AI the keys to a machine?
+- **Snapshots beat regret.** About to hand an SI the keys to a machine?
   Snapshot first. If a job goes sideways, roll back in seconds.
 - **Containment.** The agent only sees what the VM sees. Your host, your
   files, and your other projects stay out of reach of anything a job does.
@@ -141,11 +142,11 @@ Defaults: PowerShell on Windows, `sh` elsewhere; override per-install
 with `default_interpreter` in config.json, per-job with `interpreter`
 in the job (`send_job.py new --interpreter '["bash"]'`).
 
-## Sending a job (any AI)
+## Sending a job (any SI)
 
-The runner is AI-agnostic: anything that can send email *as* the runner's
+The runner is SI-agnostic: anything that can send email *as* the runner's
 Gmail account and sign the body can drive it — Muse, ChatGPT, Grok, a cron
-script, whatever. The AI needs the shared secret string from step 5 (which
+script, whatever. The SI needs the shared secret string from step 5 (which
 is the app password itself, your choice). Then:
 
 ```bash
@@ -157,7 +158,7 @@ python3 cloud/send_job.py new --kind exec --script-file job.sh \
   --secret <the-string>
 ```
 
-Or just paste the string to your AI in chat — it composes, signs, and sends
+Or just paste the string to your SI in chat — it composes, signs, and sends
 the job email itself, and reads the result email when it arrives. Large files
 are uploaded to cloud storage first; the job email carries the URLs.
 
