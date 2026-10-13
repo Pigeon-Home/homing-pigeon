@@ -95,6 +95,22 @@ RHEL 8/9+, Ubuntu 20.04+, and most other modern distros.
 4. When you want an SI to send jobs, paste that same app-password string
    to it in chat. It doubles as the HMAC shared secret.
 
+**From the Python packages** (needs Python 3.9+): each release also
+ships an sdist (`.tar.gz`) and a universal wheel (`.whl`) — the easiest
+path on machines where Python is preinstalled, like a Raspberry Pi:
+
+1. Download the `.whl` from the release.
+2. `pip install homing_pigeon-0.1.0-py3-none-any.whl` — this installs
+   three commands: `homing-pigeon`, `homing-pigeon-install`, and
+   `homing-pigeon-send-job` (the cloud-side helper).
+3. `homing-pigeon-install` copies the runner, writes a default
+   `config.json`, and registers the boot-start service.
+4. Edit `config.json` and share the app-password string with your SI,
+   same as above.
+
+See [The $35 pigeon coop](#the-35-pigeon-coop-raspberry-pi) for the full
+Raspberry Pi walkthrough.
+
 **From source** (needs Python 3.9+):
 
 1. Create a **dedicated** Gmail account for the runner, e.g.
@@ -136,6 +152,30 @@ Any hypervisor works — KVM/QEMU, VirtualBox, Hyper-V, VMware. Give the
 VM internet access (NAT is fine) so it can reach Gmail's IMAP/SMTP,
 install the Linux release binary inside the guest, and point your jobs
 at it. The host never needs to know.
+
+## The $35 pigeon coop (Raspberry Pi)
+
+Every homing pigeon needs a coop — a cheap, always-on box to come home
+to. A Raspberry Pi is the perfect one:
+
+- **Always on, barely sipping power.** The runner just polls Gmail on a
+  loop; a Pi idles at a few watts while your laptop sleeps.
+- **A machine you can afford to lose.** This project's whole security
+  posture is "dedicated throwaway account on a box you don't care
+  about." A $35 Pi *is* that box.
+- **Python's already there.** Skip the frozen binaries entirely:
+
+```sh
+pip install homing_pigeon-0.1.0-py3-none-any.whl
+homing-pigeon-install          # registers the boot-start service
+# edit ~/.homing-pigeon/config.json, then test one cycle:
+homing-pigeon --config ~/.homing-pigeon/config.json --once
+```
+
+Grab the `.whl` (or the `.tar.gz` sdist) from any
+[release](https://github.com/ctf-gooo-003/homing-pigeon/releases).
+Your SI sends jobs from the cloud; the Pi in the corner executes them.
+That's the whole trick.
 
 ## How scripts run
 
