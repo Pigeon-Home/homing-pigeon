@@ -17,11 +17,11 @@ standard library only, no dependencies.
 ## What this is for
 
 Homing Pigeon is a personal remote-development agent. The idea is
-simple: the most powerful computer you own sits at home, and there's no
-reason your AI assistant should stop being useful the moment you walk
-away from your desk. Send a job from your phone, let the big machine run
-the tests, crunch the data, or grind through the refactor, and read the
-results when they land in your inbox.
+simple: the most powerful computer you have access to shouldn't stop
+being useful the moment you walk away from your desk. Send a job from
+your phone, let the big machine run the tests, crunch the data, or
+grind through the refactor, and read the results when they land in your
+inbox.
 
 It belongs to the same family as GitHub self-hosted runners, VS Code
 Remote tunnels, and Tailscale — legitimate tools for administering your
@@ -118,7 +118,7 @@ RHEL 8/9+, Ubuntu 20.04+, and most other modern distros.
 ## Run it in a VM
 
 For testing — and honestly for everyday use — run the agent inside a
-Linux VM on your home machine rather than directly on the host:
+Linux VM on your own hardware rather than directly on the host:
 
 - **Snapshots beat regret.** About to hand an AI the keys to a machine?
   Snapshot first. If a job goes sideways, roll back in seconds.
