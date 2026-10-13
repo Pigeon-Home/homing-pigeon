@@ -63,6 +63,8 @@ and the job email carries download URLs (with optional SHA-384).
 - `cloud/send_job.py` — cloud-side helper: builds signed job emails,
   verifies result emails. (Muse uses this logic when dispatching jobs.)
 - `tests/test_runner.py` — end-to-end tests with fake IMAP/SMTP servers.
+- `RUNBOOK.md` — step-by-step instructions (written for a 5-year-old):
+  cloning, pushing, cutting a release, installing, sending a job.
 - `examples/hello-world.json` — unsigned example job payload.
 
 ## Setup

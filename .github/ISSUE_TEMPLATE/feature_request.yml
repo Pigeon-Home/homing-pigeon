@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest an idea for homing-pigeon
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the itch, not the solution yet.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: What should happen instead? API/protocol changes welcome, but note them explicitly.
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Fit check
+      options:
+        - label: This can be done with the standard library only (no new dependencies)
+        - label: This works on Linux, macOS, FreeBSD, and Windows (or explains why it's platform-specific)
+        - label: I have considered the security implications (see PROTOCOL.md §7)

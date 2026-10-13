@@ -1,0 +1,40 @@
+name: Bug report
+description: Something isn't working right
+labels: [bug]
+body:
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: Where does the runner run? (e.g. Windows 11, Ubuntu 24.04, macOS 15, FreeBSD 14)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release binary version (e.g. v1.0.0) or commit hash if built from source
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what actually happened?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste the relevant lines from runner.log. REMOVE any secrets first (never paste app passwords or the shared secret).
+      render: text
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Security check
+      options:
+        - label: I have removed all secrets (app passwords, shared secret strings) from the logs above
+          required: true
+        - label: This is not a security vulnerability (if it is, use private vulnerability reporting per SECURITY.md instead)
+          required: true
