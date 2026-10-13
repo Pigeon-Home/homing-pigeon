@@ -1,10 +1,9 @@
 # Homing Pigeon
 
-**Works with Muse, Grok, ChatGPT, etc.**
+**Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, etc.**
 
-Self-hosted, email-driven agent: the user tells cloud SI (Muse, Grok,
-ChatGPT, etc) to send signed jobs via email that execute in your backend:
-Linux/macOS/FreeBSD/Windows.
+Self-hosted, email-driven agent: the user tells cloud SI to send signed
+jobs via email that execute in your backend: Linux/macOS/FreeBSD/Windows.
 
 Think "GitHub self-hosted runner, but the control plane is email." Python
 3.9+, standard library only, no dependencies.
