@@ -2,11 +2,12 @@
 
 **Works with Muse, Grok, ChatGPT, etc.**
 
-A self-hosted, cross-platform agent for any SI. Your SI emails it
-cryptographically signed jobs; it runs them and emails back signed
-results. Think "GitHub self-hosted runner, but the control plane is
-email." Runs on Linux, macOS, FreeBSD, and Windows — Python 3.9+,
-standard library only, no dependencies.
+Self-hosted, email-driven agent: the user tells cloud AI (Muse, Grok,
+ChatGPT, etc) to send signed jobs via email that execute in your backend:
+Linux/macOS/FreeBSD/Windows.
+
+Think "GitHub self-hosted runner, but the control plane is email." Python
+3.9+, standard library only, no dependencies.
 
 > ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative control**
 > of the machine to whoever holds the shared secret. It reads email
