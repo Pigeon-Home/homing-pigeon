@@ -2,7 +2,7 @@
 
 **Works with Muse, Grok, ChatGPT, etc.**
 
-Self-hosted, email-driven agent: the user tells cloud AI (Muse, Grok,
+Self-hosted, email-driven agent: the user tells cloud SI (Muse, Grok,
 ChatGPT, etc) to send signed jobs via email that execute in your backend:
 Linux/macOS/FreeBSD/Windows.
 
