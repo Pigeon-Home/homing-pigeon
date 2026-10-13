@@ -14,6 +14,24 @@ standard library only, no dependencies.
 > throwaway account on a machine you can afford to lose, and read
 > PROTOCOL.md before you deploy it.
 
+## What this is for
+
+Homing Pigeon is a personal remote-development agent. The idea is
+simple: the most powerful computer you own sits at home, and there's no
+reason your AI assistant should stop being useful the moment you walk
+away from your desk. Send a job from your phone, let the big machine run
+the tests, crunch the data, or grind through the refactor, and read the
+results when they land in your inbox.
+
+It belongs to the same family as GitHub self-hosted runners, VS Code
+Remote tunnels, and Tailscale — legitimate tools for administering your
+own hardware remotely. And like all of those, its power is the point,
+not an accident: whoever holds the shared secret has full control of
+the machine. That's exactly why this project states its threat model
+plainly instead of burying it. Keep the secret like a password, use a
+throwaway account, and only ever install the agent on machines you own
+and operate.
+
 ```
   Muse (cloud)                      Your machine
   ────────────                      ──────────────────
@@ -96,6 +114,23 @@ RHEL 8/9+, Ubuntu 20.04+, and most other modern distros.
 
 `install.py --dir DIR` chooses the install location (default
 `~/.homing-pigeon`); `install.py --uninstall` removes the service.
+
+## Run it in a VM
+
+For testing — and honestly for everyday use — run the agent inside a
+Linux VM on your home machine rather than directly on the host:
+
+- **Snapshots beat regret.** About to hand an AI the keys to a machine?
+  Snapshot first. If a job goes sideways, roll back in seconds.
+- **Containment.** The agent only sees what the VM sees. Your host, your
+  files, and your other projects stay out of reach of anything a job does.
+- **Disposability.** Experiment freely: spin up a fresh VM for a new
+  idea, tear it down when you're done. Nothing lingers on the host.
+
+Any hypervisor works — KVM/QEMU, VirtualBox, Hyper-V, VMware. Give the
+VM internet access (NAT is fine) so it can reach Gmail's IMAP/SMTP,
+install the Linux release binary inside the guest, and point your jobs
+at it. The host never needs to know.
 
 ## How scripts run
 

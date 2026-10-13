@@ -168,6 +168,9 @@ send stays unseen and will be retried (re-executed) on the next cycle.
   jobs. Do not use this setup with an account you care about.
 - Use a dedicated mailbox, never a personal inbox. Use an app password,
   never the account password.
+- Recommended deployment: run the runner inside a Linux VM on the
+  target host. VM snapshots give instant rollback, and the guest
+  boundary contains everything a signed job can reach.
 - IMAP/SMTP over TLS (993/587). File downloads over HTTPS only.
 - Hardening roadmap (v2): encrypted credentials at rest, ack messages,
   per-job encryption, result file upload for large outputs.
