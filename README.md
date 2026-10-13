@@ -100,7 +100,7 @@ ships an sdist (`.tar.gz`) and a universal wheel (`.whl`) — the easiest
 path on machines where Python is preinstalled, like a Raspberry Pi:
 
 1. Download the `.whl` from the release.
-2. `pip install homing_pigeon-0.1.0-py3-none-any.whl` — this installs
+2. `pip install homing_pigeon-1.0.0-py3-none-any.whl` — this installs
    three commands: `homing-pigeon`, `homing-pigeon-install`, and
    `homing-pigeon-send-job` (the cloud-side helper).
 3. `homing-pigeon-install` copies the runner, writes a default
@@ -166,7 +166,7 @@ to. A Raspberry Pi is the perfect one:
 - **Python's already there.** Skip the frozen binaries entirely:
 
 ```sh
-pip install homing_pigeon-0.1.0-py3-none-any.whl
+pip install homing_pigeon-1.0.0-py3-none-any.whl
 homing-pigeon-install          # registers the boot-start service
 # edit ~/.homing-pigeon/config.json, then test one cycle:
 homing-pigeon --config ~/.homing-pigeon/config.json --once
