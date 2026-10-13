@@ -8,7 +8,8 @@ Results are emailed back, so your SI can iterate — adjust, redeploy, and
 go back-and-forth until the job is done.
 
 Think "GitHub self-hosted runner, but the control plane is email." Python
-3.9+, standard library only, no dependencies.
+3.9+, standard library only, no dependencies. (Email is just the first
+transport — the protocol doesn't care about the pipe. See TRANSPORTS.md.)
 
 > ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative control**
 > of the machine to whoever holds the shared secret. It reads email
@@ -58,6 +59,9 @@ and the job email carries download URLs (with optional SHA-384).
 
 - `PROTOCOL.md` — the full wire protocol (message formats, signatures,
   verification rules, security model).
+- `TRANSPORTS.md` — email is just Transport #1. Alternatives that satisfy
+  the transport contract: Cloudflare Queues (the pick), NATS, MQTT,
+  Redis Streams, Postgres, Durable Objects.
 - `runner/runner.py` — the agent. Polls IMAP, verifies, executes,
   replies via SMTP. No dependencies beyond Python 3.9 stdlib.
 - `runner/install.py` — installs it as a boot-start service: systemd
