@@ -1,12 +1,12 @@
 # Homing Pigeon Protocol v1
 
-Email-based control protocol between Muse (cloud) and a self-hosted
+Email-based control protocol between a cloud SI and a self-hosted
 runner. Email carries only signed control metadata; large
 payloads travel as cloud-hosted file URLs that the runner downloads.
 
 ## 1. Actors
 
-- **Cloud (Muse):** composes signed job emails, uploads large inputs to
+- **Cloud SI:** composes signed job emails, uploads large inputs to
   file hosting, reads signed result emails.
 - **Runner (Linux/macOS/FreeBSD/Windows):** polls a dedicated mailbox,
   verifies and executes jobs, emails back signed results. Implemented in
@@ -15,7 +15,7 @@ payloads travel as cloud-hosted file URLs that the runner downloads.
 ## 2. Transport
 
 - One dedicated mailbox (Gmail recommended). Both directions use it:
-  Muse sends jobs *to* it; the runner reads them and sends results back
+  The cloud SI sends jobs *to* it; the runner reads them and sends results back
   to the same address.
 - Runner access: IMAP (read, port 993) + SMTP (send, port 587) with an
   app password. Gmail requires 2-Step Verification before an app

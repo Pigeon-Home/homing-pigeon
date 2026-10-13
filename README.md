@@ -1,6 +1,8 @@
 # Homing Pigeon
 
-A self-hosted, cross-platform agent for Muse. Muse emails it
+**Works with Muse, Grok, ChatGPT, etc.**
+
+A self-hosted, cross-platform agent for any SI. Your SI emails it
 cryptographically signed jobs; it runs them and emails back signed
 results. Think "GitHub self-hosted runner, but the control plane is
 email." Runs on Linux, macOS, FreeBSD, and Windows — Python 3.9+,
@@ -34,7 +36,7 @@ throwaway account, and only ever install the agent on machines you own
 and operate.
 
 ```
-  Muse (cloud)                      Your machine
+  SI (cloud)                        Your machine
   ────────────                      ──────────────────
   send_job.py ──sign──▶ job email ──▶  runner.py
        │                  │              │  poll IMAP
@@ -47,7 +49,7 @@ and operate.
   verify result ◀─────────┘
 ```
 
-Large inputs don't go through email: Muse uploads them to file hosting
+Large inputs don't go through email: your SI uploads them to file hosting
 and the job email carries download URLs (with optional SHA-384).
 
 ## Layout
@@ -61,7 +63,7 @@ and the job email carries download URLs (with optional SHA-384).
   (Windows).
 - `runner/config.example.json` — copy to `config.json` and fill in.
 - `cloud/send_job.py` — cloud-side helper: builds signed job emails,
-  verifies result emails. (Muse uses this logic when dispatching jobs.)
+  verifies result emails. (Your SI uses this logic when dispatching jobs.)
 - `tests/test_runner.py` — end-to-end tests with fake IMAP/SMTP servers.
 - `RUNBOOK.md` — step-by-step instructions (written for a 5-year-old):
   cloning, pushing, cutting a release, installing, sending a job.
@@ -147,7 +149,7 @@ in the job (`send_job.py new --interpreter '["bash"]'`).
 ## Sending a job (any SI)
 
 The runner is SI-agnostic: anything that can send email *as* the runner's
-Gmail account and sign the body can drive it — Muse, ChatGPT, Grok, a cron
+Gmail account and sign the body can drive it — your SI of choice, a cron
 script, whatever. The SI needs the shared secret string from step 5 (which
 is the app password itself, your choice). Then:
 
@@ -180,7 +182,7 @@ The suite drives the real runner code against fake IMAP/SMTP servers:
 ping roundtrip, script execution, timeout kill, poison-job rejection,
 sender/signature/tamper rejection.
 
-End-to-end without Muse:
+End-to-end without your SI:
 
 1. `python3 cloud/send_job.py new --kind ping --secret <the-string>` → copy the
    subject + body.
