@@ -1,0 +1,105 @@
+name: build
+
+# Builds standalone binaries (no Python needed on the target machine) and,
+# on version tags, publishes them as a GitHub Release.
+#
+#   tag and push:  git tag v1.0.0 && git push origin v1.0.0
+#
+# Linux binaries are built inside a manylinux_2_28 container (glibc 2.28),
+# so the single ELF runs on Debian 11+, RHEL 8/9+, Ubuntu 20.04+, etc.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  PYINSTALLER_VERSION: "6.22.3"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -s tests -v
+
+  build-windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
+      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py
+      - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
+      - run: Compress-Archive -Path dist/homing-pigeon.exe,dist/install.exe,runner/config.example.json -DestinationPath homing-pigeon-windows-amd64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: homing-pigeon-windows-amd64
+          path: homing-pigeon-windows-amd64.zip
+
+  build-linux:
+    needs: test
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: build portable ELF in manylinux_2_28 container
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work \
+            quay.io/pypa/manylinux_2_28_x86_64 bash -c '
+            set -e
+            PY=$(ls -d /opt/python/cp312* | head -1)/bin/python
+            "$PY" -m pip install -q pyinstaller==6.22.3
+            "$PY" -m PyInstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py
+            "$PY" -m PyInstaller --onefile --noconfirm --clean --name install runner/install.py
+          '
+      - run: |
+          mkdir -p pkg
+          cp dist/homing-pigeon dist/install runner/config.example.json pkg/
+          tar czf homing-pigeon-linux-amd64.tar.gz -C pkg .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: homing-pigeon-linux-amd64
+          path: homing-pigeon-linux-amd64.tar.gz
+
+  build-macos:
+    needs: test
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
+      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py
+      - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
+      - run: |
+          mkdir -p pkg
+          cp dist/homing-pigeon dist/install runner/config.example.json pkg/
+          tar czf homing-pigeon-macos-arm64.tar.gz -C pkg .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: homing-pigeon-macos-arm64
+          path: homing-pigeon-macos-arm64.tar.gz
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true

@@ -22,6 +22,25 @@ import sys
 SERVICE_NAME = "homing-pigeon"
 FILES = ["runner.py"]
 
+# When frozen with PyInstaller (the release binaries), there is no Python
+# on the target machine: the runner ships as a sibling binary
+# (homing-pigeon / homing-pigeon.exe) and services point at it directly.
+FROZEN = getattr(sys, "frozen", False)
+RUNNER_BIN = "homing-pigeon.exe" if os.name == "nt" else "homing-pigeon"
+
+
+def _src_dir() -> str:
+    if FROZEN:
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def _runner_argv(dst_dir: str):
+    """Argv that starts the installed runner (list, no shell)."""
+    if FROZEN:
+        return [os.path.join(dst_dir, RUNNER_BIN)]
+    return [sys.executable, os.path.join(dst_dir, "runner.py")]
+
 
 def run(cmd, **kw):
     print("+ " + " ".join(str(c) for c in cmd))
@@ -30,8 +49,15 @@ def run(cmd, **kw):
 
 def install_files(src_dir: str, dst_dir: str):
     os.makedirs(dst_dir, exist_ok=True)
-    for name in FILES:
-        shutil.copy2(os.path.join(src_dir, name), os.path.join(dst_dir, name))
+    if FROZEN:
+        src = os.path.join(src_dir, RUNNER_BIN)
+        dst = os.path.join(dst_dir, RUNNER_BIN)
+        shutil.copy2(src, dst)
+        if os.name != "nt":
+            os.chmod(dst, 0o755)
+    else:
+        for name in FILES:
+            shutil.copy2(os.path.join(src_dir, name), os.path.join(dst_dir, name))
     cfg_dst = os.path.join(dst_dir, "config.json")
     if not os.path.exists(cfg_dst):
         shutil.copy2(os.path.join(src_dir, "config.example.json"), cfg_dst)
@@ -40,9 +66,8 @@ def install_files(src_dir: str, dst_dir: str):
 
 
 def install_windows(dst_dir: str, cfg_path: str):
-    py = sys.executable
-    runner = os.path.join(dst_dir, "runner.py")
-    tr = f'"{py}" "{runner}" --config "{cfg_path}"'
+    tr = " ".join(f'"{a}"' for a in _runner_argv(dst_dir)) + \
+        f' --config "{cfg_path}"'
     run(["schtasks", "/Create", "/TN", "HomingPigeon", "/TR", tr,
          "/SC", "ONSTART", "/RU", "SYSTEM", "/RL", "HIGHEST", "/F"])
     run(["schtasks", "/Run", "/TN", "HomingPigeon"])
@@ -54,6 +79,7 @@ def uninstall_windows():
 
 
 def install_linux(dst_dir: str, cfg_path: str, system: bool):
+    exec_start = " ".join(_runner_argv(dst_dir)) + f" --config {cfg_path}"
     unit = f"""[Unit]
 Description=Homing Pigeon runner agent
 After=network-online.target
@@ -61,7 +87,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart={sys.executable} {dst_dir}/runner.py --config {cfg_path}
+ExecStart={exec_start}
 Restart=always
 RestartSec=10
 
@@ -97,6 +123,9 @@ def uninstall_linux(system: bool):
 
 
 def install_macos(dst_dir: str, cfg_path: str):
+    pargs = "\n".join(
+        f"    <string>{a}</string>"
+        for a in (*_runner_argv(dst_dir), "--config", cfg_path))
     plist = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -104,10 +133,7 @@ def install_macos(dst_dir: str, cfg_path: str):
   <key>Label</key><string>com.homing-pigeon.runner</string>
   <key>ProgramArguments</key>
   <array>
-    <string>{sys.executable}</string>
-    <string>{dst_dir}/runner.py</string>
-    <string>--config</string>
-    <string>{cfg_path}</string>
+{pargs}
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
@@ -134,7 +160,7 @@ def uninstall_macos():
 
 
 def install_freebsd(dst_dir: str, cfg_path: str):
-    line = f"@reboot {sys.executable} {dst_dir}/runner.py --config {cfg_path}"
+    line = "@reboot " + " ".join(_runner_argv(dst_dir)) + f" --config {cfg_path}"
     p = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
     existing = p.stdout if p.returncode == 0 else ""
     if "homing-pigeon" in existing:
@@ -168,7 +194,7 @@ def main() -> int:
     args = ap.parse_args()
 
     plat = sys.platform
-    src_dir = os.path.dirname(os.path.abspath(__file__))
+    src_dir = _src_dir()
 
     if args.uninstall:
         if plat == "win32":

@@ -48,21 +48,41 @@ and the job email carries download URLs (with optional SHA-384).
 
 ## Setup
 
+**Easiest: download a release.** No Python needed — each release ships
+standalone binaries built by GitHub Actions:
+
+| Platform | Download |
+|----------|----------|
+| Windows (x64) | `homing-pigeon-windows-amd64.zip` → `homing-pigeon.exe` + `install.exe` |
+| Linux (x64, Debian/RHEL/Ubuntu/…) | `homing-pigeon-linux-amd64.tar.gz` → `homing-pigeon` + `install` |
+| macOS (ARM64) | `homing-pigeon-macos-arm64.tar.gz` → `homing-pigeon` + `install` |
+
+The Linux binary is built against glibc 2.28, so it runs on Debian 11+,
+RHEL 8/9+, Ubuntu 20.04+, and most other modern distros.
+
+1. Extract the archive on the target machine.
+2. Run `install` (or `install.exe` on Windows). It copies the runner
+   binary, writes a default `config.json`, and registers the boot-start
+   service (systemd / launchd / cron @reboot / Scheduled Task).
+3. Edit `config.json`: set `mailbox_user` and `mailbox_password` — your
+   dedicated Gmail address + app password, **in plaintext, on purpose**
+   (your explicit choice for this throwaway account). Leave
+   `allowed_sender` empty — the runner then only accepts job mail from
+   the account it is logged into (hard rule).
+4. When you want an AI to send jobs, paste that same app-password string
+   to it in chat. It doubles as the HMAC shared secret.
+
+**From source** (needs Python 3.9+):
+
 1. Create a **dedicated** Gmail account for the runner, e.g.
    `myname-runner@gmail.com`. Never use a personal inbox.
 2. Enable 2-Step Verification, then create an **app password**
    (Google Account → Security → 2-Step Verification → App passwords).
-3. Copy `runner/` to the target machine and make sure Python 3.9+ is
-   installed.
+3. Copy `runner/` to the target machine.
 4. Copy `config.example.json` to `config.json` and fill in `mailbox_user`
-   and `mailbox_password` — your Gmail address + app password, **in
-   plaintext, on purpose** (your explicit choice for this throwaway
-   account). Leave `allowed_sender` empty — the runner then only accepts
-   job mail from the account it is logged into (hard rule).
-5. When you want an AI to send jobs, paste that same app-password string
-   to it in chat. It doubles as the HMAC shared secret.
-6. Test one cycle: `python3 runner.py --config config.json --once`.
-7. `python3 install.py` registers the boot-start service for your
+   and `mailbox_password` as above.
+5. Test one cycle: `python3 runner.py --config config.json --once`.
+6. `python3 install.py` registers the boot-start service for your
    platform (see below).
 
 ### Per-platform install
