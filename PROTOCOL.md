@@ -216,7 +216,12 @@ The job gains an optional `result_policy` object:
 "result_policy": {
   "view": "summary",
   "redact_patterns": ["aws_key", "private_key", "bearer_token"],
-  "query": true
+  "queries": [
+    {"op": "attest", "predicate": "exit_zero"},
+    {"op": "attest", "predicate": "no_secrets"},
+    {"op": "grep", "pattern": "ERROR", "max_matches": 10}
+  ],
+  "query_budget": 8
 }
 ```
 
@@ -224,8 +229,11 @@ The job gains an optional `result_policy` object:
   Default: `full` (backward compatible).
 - `redact_patterns`: named secret families to scrub in `redacted` view
   (runner ships a built-in set; config may extend it).
-- `query`: whether the SI may send follow-up `query` messages against
-  this job's retained output. Default `false`.
+- `queries`: **all** questions the SI will ever ask about this job's
+  output, declared upfront before any answer is seen (section 10). This
+  is what makes the exchange non-interactive.
+- `query_budget`: maximum queries answerable for this job (default 8;
+  the runner owner's config may only lower it). Bounds total leakage.
 
 **The ceiling is set by the runner owner, not the SI.** `config.json`
 gains `max_result_view` (default `full`). The effective view is the
@@ -270,46 +278,75 @@ Built-in predicates (extensible by runner config):
 Each attestation is covered by the message HMAC (section 4), so a
 predicate answer carries the same authenticity as v1 results.
 
-## 10. The query loop
+## 10. The two-phase query exchange
 
-When `query: true`, the SI may interrogate retained output with signed
-messages. Subject lines:
+Modeled on IKEv2: phase one negotiates *what may be asked*; phase two
+delivers *all answers at once*. The message count is fixed — neither
+party can extend the exchange into an adaptive loop.
 
-- Query: `[HOMING-PIGEON] query <query_id>`
-- Query result: `[HOMING-PIGEON] qresult <query_id>`
+**Phase 1 — negotiation (the job).** The SI declares its complete
+question set in `result_policy.queries[]` (see section 9). The runner
+intersects each query with the owner's disclosure ceiling; anything
+disallowed is answered as `{"rejected": "policy"}` — still signed, still
+counted against the budget so probing the policy itself isn't free.
+
+**Phase 2 — delivery (the result).** The result message carries an
+`answers[]` array with one entry per declared query, in order:
 
 ```json
-{
-  "v": 2,
-  "type": "query",
-  "query_id": "9d8b7c6a-...-uuid",
-  "job_id": "3f9a1c2e-...-uuid",
-  "op": "grep",
-  "pattern": "ERROR",
-  "max_matches": 20,
-  "sig": "<hex hmac>"
-}
+"answers": [
+  {"op": "attest", "predicate": "exit_zero", "value": true},
+  {"op": "grep", "pattern": "ERROR", "matches": ["ERROR: timeout ..."],
+   "truncated": false}
+]
 ```
 
-- `op`: `grep` (regex over retained stdout+stderr, returns matching
-  lines up to `max_matches`), `tail` (`lines`: last N lines), or
-  `attest` (`predicate`: evaluate a named predicate now).
-- Every query passes the section-5 verification (From hard rule,
-  signature, freshness, seen-set on `query_id`).
-- **Policy binds the answers:** a query can never return more than the
-  job's effective view allows. Under `attested`, `grep`/`tail` are
-  rejected — only `attest` ops are answered. Under `redacted`, returned
-  lines are scrubbed first.
-- Outputs are retained per `output_retention_days` (runner config,
-  default 7); queries against expired or unknown `job_id`s are rejected
-  and marked seen.
+Query ops: `attest` (evaluate a named predicate now), `grep` (regex over
+retained stdout+stderr, up to `max_matches` lines), `tail` (`lines`:
+last N lines). Answers obey the job's effective view exactly as
+section 9 requires — under `attested`, `grep`/`tail` are rejected; under
+`redacted`, returned lines are scrubbed first.
 
-## 11. v2 security properties
+The `query` (`[HOMING-PIGEON] query <query_id>`) and `qresult`
+message types exist for exceptional follow-ups only, and every one
+passes the section-5 verification (From hard rule, signature, freshness,
+seen-set on `query_id`) **and** spends budget (section 11). Outputs are
+retained per `output_retention_days` (runner config, default 7); queries
+against expired or unknown `job_id`s are rejected and marked seen.
+
+## 11. Probing resistance
+
+**Threat: adaptive chosen-query extraction.** Each answer leaks a few
+bits. A verifier that chooses each query *after seeing the last answer*
+can binary-search retained output for secrets — an interactive oracle
+with unlimited queries is a slow exfiltration channel.
+
+Defenses, in order of importance:
+
+1. **Non-interactivity (the ZKP lesson).** The two-phase exchange
+   removes adaptivity: with every query declared before any answer is
+   seen, questions are independent — the binary-search amplifier is
+   gone. Zero-knowledge proofs went non-interactive (SNARKs/STARKs) for
+   the same reason: a fixed proof artifact can't be probed.
+2. **Privacy budget.** `query_budget` bounds *total* leakage per job.
+   Each answered or policy-rejected query spends 1; exhaustion silences
+   the oracle for that job. A budget bounds what rate limiting cannot:
+   the total, not just the speed.
+3. **Rate limiting (the IKEv2 cookie analogy).** An IKEv2 responder
+   demands a returned cookie before committing expensive DH
+   computation — proof of seriousness before resource spend. The analog:
+   `max_queries_per_hour` per sender in runner config, on top of the
+   freshness and seen-set checks every query already passes. This slows
+   automated probing; the budget is what stops it.
+
+## 12. v2 security properties
 
 - **Non-escalation:** neither the job's `result_policy` nor any query
   can widen disclosure past the runner owner's `max_result_view`.
 - **Commitment binding:** `output_digest` in every non-`full` view ties
   the hidden output to the signed claims about it.
+- **Bounded extraction:** single-round declaration + privacy budget +
+  rate limiting (section 11).
 - **Same transport trust as v1:** queries are HMAC-signed emails subject
   to the From hard rule; a third party can neither ask nor answer.
 - **Data lifetime:** retained outputs age out per config; nothing about
