@@ -4,6 +4,8 @@
 
 Self-hosted, email-driven agent: the user tells cloud SI to send signed
 jobs via email that execute in your backend: Linux/macOS/FreeBSD/Windows.
+Results are emailed back, so your SI can iterate — adjust, redeploy, and
+go back-and-forth until the job is done.
 
 Think "GitHub self-hosted runner, but the control plane is email." Python
 3.9+, standard library only, no dependencies.
