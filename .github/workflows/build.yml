@@ -55,7 +55,9 @@ jobs:
             quay.io/pypa/manylinux_2_28_x86_64 bash -c '
             set -e
             ls /opt/python/
-            PY=$(ls -d /opt/python/cp3[0-9]* 2>/dev/null | sort -V | tail -1)/bin/python
+            # Prefer a regular CPython (shared library). Skip free-threading *t builds
+            # which lack a shared lib and break PyInstaller.
+            PY=$(ls -d /opt/python/cp3[0-9]* 2>/dev/null | grep -v 't$' | sort -V | tail -1)/bin/python
             echo "using interpreter: $PY"
             "$PY" --version
             "$PY" -m pip install -q pyinstaller==6.22.3
