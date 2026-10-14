@@ -912,3 +912,14 @@ class OAuthAuthTests(unittest.TestCase):
         self.assertFalse(_use_oauth({"auth": "password"}))
         self.assertTrue(_use_oauth({"auth": "oauth"}))
         self.assertTrue(_use_oauth({"auth": "OAuth"}))
+
+
+class ScriptNameTests(unittest.TestCase):
+    def test_script_filename(self):
+        from runner.runner import script_filename
+        self.assertEqual(
+            script_filename(["powershell", "-File"]), "script.ps1")
+        self.assertEqual(
+            script_filename(["pwsh", "-NoProfile", "-File"]), "script.ps1")
+        self.assertEqual(script_filename(["python3"]), "script.py")
+        self.assertEqual(script_filename(["sh"]), "script")

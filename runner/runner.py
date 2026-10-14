@@ -271,6 +271,20 @@ def platform_interpreter():
     return ["sh"]
 
 
+def script_filename(interpreter) -> str:
+    """Name the staged script so the interpreter will accept -File.
+
+    PowerShell refuses -File on a file without a .ps1 extension. That
+    is a permanent failure, not a retry.
+    """
+    joined = " ".join(interpreter).lower()
+    if "powershell" in joined or "pwsh" in joined:
+        return "script.ps1"
+    if "python" in joined:
+        return "script.py"
+    return "script"
+
+
 def kill_tree(proc: subprocess.Popen):
     try:
         if os.name == "nt":
@@ -425,7 +439,14 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
             raise JobRejected(f"SHA384 mismatch for {f['name']}")
 
     # --- stage script
-    script_path = os.path.join(work, "script")
+    # Interpreter is resolved first so the filename matches it.
+    # PowerShell -File requires .ps1; a bare "script" is rejected.
+    interpreter = job.get("interpreter") or cfg.get("default_interpreter") \
+        or platform_interpreter()
+    if not isinstance(interpreter, list) or not interpreter or \
+            not all(isinstance(x, str) for x in interpreter):
+        raise JobRejected("interpreter must be a non-empty list of strings")
+    script_path = os.path.join(work, script_filename(interpreter))
     if script_url:
         log(f"downloading script {script_url}")
         try:
@@ -443,13 +464,6 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     else:
         raise JobRejected("exec job requires script or script_url")
 
-    interpreter = job.get("interpreter") or cfg.get("default_interpreter") \
-        or platform_interpreter()
-    # A bare string is iterated as characters by the * unpack below
-    # ("sh" -> ["s", "h", ...]), which fails and gets retried forever.
-    if not isinstance(interpreter, list) or not interpreter or \
-            not all(isinstance(x, str) for x in interpreter):
-        raise JobRejected("interpreter must be a non-empty list of strings")
     timeout = min(max(timeout, 1), 3600)
     args = [str(a) for a in args]
     env = os.environ.copy()
