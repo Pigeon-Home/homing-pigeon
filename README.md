@@ -429,5 +429,3 @@ Releases ship standalone binaries (Windows/macOS/Linux) plus a Python
 wheel and sdist. The v2 protocol — the Oracle, privacy-preserving
 results via signed
 attestations — is spec'd in PROTOCOL.md and awaiting implementation.
-Not yet proven against a live Gmail mailbox on all four platforms —
-that's the next proving ground.
