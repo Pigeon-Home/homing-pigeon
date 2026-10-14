@@ -27,7 +27,7 @@ Homing Pigeon connector pipeline test. Safe to ignore or delete.
 
 Notes:
 
-- The JSON line alone verifies. The full `body_text` (preamble included) does **not** — `verify_body` signs the whole body. The protocol requires a pure JSON body.
+- The JSON line verifies. As of the body-extraction change, the full `body_text` (preamble included) also verifies: surrounding text is ignored.
 - The subject contains `TEST` between the prefix and `job`, so the runner's subject regex (`[HOMING-PIGEON] job <id>`) would not match. This case proves the connector and the signature, not a full runner cycle.
 
 ## Other cases from the same session

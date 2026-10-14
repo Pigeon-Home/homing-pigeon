@@ -33,7 +33,7 @@ payloads travel as cloud-hosted file URLs that the runner downloads.
 
 ## 3. Message format
 
-- Body is UTF-8 plain text containing a single JSON object.
+- Body is UTF-8 plain text. It must contain one signed JSON object. Surrounding text (a note, a signature block) is ignored; only the object ending in the signature is verified.
 - Every message ends with a `sig` field holding a hex HMAC-SHA-384
   signature (see section 4).
 

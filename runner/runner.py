@@ -62,24 +62,80 @@ def sign_payload(payload: dict, secret: str) -> str:
     return body[:-1] + ',"sig":"' + sig + '"}'
 
 
-def verify_body(body: str, secret: str) -> dict:
-    # Trailing whitespace (final newline from mail transport) is not signed.
-    norm = _normalize(body).rstrip()
+def _extract_signed(norm: str):
+    """Pull the signed JSON object out of a body that may have a preamble
+    or trailer (connector notes, signatures, blank lines).
+
+    The signed form is a single JSON object whose final `}` was replaced
+    by `,"sig":"<96 hex>"}`. We find that tail, then the `{` that opens
+    the object, and return (raw_object_with_closing_brace, sig).
+    """
     marker = ',"sig":"'
     i = norm.rfind(marker)
     if i < 0:
         raise ValueError("no signature marker found")
     tail = norm[i + len(marker):]
-    if not (len(tail) == 98 and tail[:96].strip("0123456789abcdef") == ""
-            and tail[96:] == '"}'):
+    if len(tail) < 98 or tail[96:98] != '"}' or tail[:96].strip("0123456789abcdef") != "":
         raise ValueError("malformed signature tail")
     sig = tail[:96]
-    raw = norm[:i] + "}"
+    start = _object_start(norm, i)
+    return norm[start:i] + "}", sig
+
+
+def _object_start(norm: str, sig_at: int) -> int:
+    """Index of the `{` that opens the object ending at the sig marker."""
+    j = 0
+    candidates = []
+    while True:
+        j = norm.find("{", j, sig_at)
+        if j < 0:
+            break
+        candidates.append(j)
+        j += 1
+    for start in reversed(candidates):
+        if _in_root_object_at(norm, start, sig_at):
+            return start
+    raise ValueError("no JSON object before signature")
+
+
+def _in_root_object_at(norm: str, start: int, sig_at: int) -> bool:
+    depth = 0
+    in_str = False
+    escape = False
+    for k in range(start, sig_at):
+        c = norm[k]
+        if in_str:
+            if escape:
+                escape = False
+            elif c == "\\":
+                escape = True
+            elif c == '"':
+                in_str = False
+            continue
+        if c == '"':
+            in_str = True
+        elif c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                return False
+    return depth == 1 and not in_str
+
+
+def verify_body(body: str, secret: str) -> dict:
+    # Trailing whitespace is not signed. Surrounding text is ignored:
+    # only the JSON object that ends in the signature is checked.
+    norm = _normalize(body).rstrip()
+    raw, sig = _extract_signed(norm)
     expect = hmac.new(secret.encode("utf-8"), raw.encode("utf-8"),
                       hashlib.sha384).hexdigest()
     if not hmac.compare_digest(expect, sig):
         raise ValueError("signature mismatch")
-    return json.loads(raw)
+    job = json.loads(raw)
+    if not isinstance(job, dict):
+        raise ValueError("signed body is not a JSON object")
+    return job
 
 
 class JobRejected(Exception):

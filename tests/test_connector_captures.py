@@ -133,11 +133,22 @@ class ConnectorCaptureTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             verify_body(UPPER_SIG, SECRET)
 
-    def test_preamble_breaks_verification(self):
+    def test_preamble_is_ignored(self):
         # The note we put above the JSON in the real test mail is not
-        # part of the signed content. Full body_text must not verify.
+        # part of the signed content. Extraction must still verify.
+        job = verify_body(HAPPY_PREAMBLE, SECRET)
+        self.assertEqual(job["job_id"], "c142d598-261a-4000-8a41-b8cb7d28bf38")
+
+    def test_preamble_and_trailer_ignored(self):
+        wrapped = "note above\n\n" + HAPPY_PING + "\n-- \nsent from my phone\n"
+        job = verify_body(wrapped, SECRET)
+        self.assertEqual(job["kind"], "ping")
+
+    def test_tampered_inside_wrapper_still_fails(self):
+        bad = HAPPY_PING[:-3] + "00}"
+        wrapped = "note\n" + bad + "\ntrailer\n"
         with self.assertRaises(ValueError):
-            verify_body(HAPPY_PREAMBLE, SECRET)
+            verify_body(wrapped, SECRET)
 
 
 if __name__ == "__main__":
