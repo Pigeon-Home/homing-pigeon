@@ -281,6 +281,29 @@ python3 cloud/send_job.py verify --secret <the-string> result.txt
 
 ## Testing
 
+**Watch before you trust.** The runner is fully inspectable — these flags
+exist so you can audit everything it would do before it does it:
+
+```bash
+python3 runner/runner.py --config config.json --once --dry-run --verbose
+# verifies signatures, prints what each job WOULD do, executes nothing,
+# sends nothing, changes nothing (mail stays unseen)
+```
+
+| Flag | What it does |
+|------|--------------|
+| `--dry-run` | Verify and describe; execute nothing, send nothing |
+| `--verbose` | Debug logging: every accept/reject decision |
+| `--pdb` | Drop into pdb on unhandled exceptions |
+| `--no-send` | Execute, but log results instead of emailing them |
+| `--once` | Single poll cycle, then exit |
+| `--poll-interval SEC`, `--timeout SEC`, `--max-output-bytes N` | Override config |
+| `--no-oracle` | Disable the Oracle safety layer (v2) |
+
+`install.py` accepts the same flags and bakes them into the installed
+service, so the agent on boot runs exactly what you tested:
+`python3 runner/install.py --verbose --poll-interval 30`.
+
 ```bash
 python3 -m pytest tests/   # or: python3 tests/test_runner.py
 ```

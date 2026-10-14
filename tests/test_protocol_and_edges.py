@@ -131,11 +131,12 @@ class ProtocolTests(unittest.TestCase):
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
 
-    def cycle(self, mails, cfg=None, seen=None):
+    def cycle(self, mails, cfg=None, seen=None, opts=None):
         cfg = cfg or self.cfg
         seen = {} if seen is None else seen
         imap, smtp = FakeIMAP(mails), FakeSMTP()
-        poll_once(cfg, self.tmp, seen, self.seen_path, imap=imap, smtp=smtp)
+        poll_once(cfg, self.tmp, seen, self.seen_path, imap=imap, smtp=smtp,
+                  opts=opts)
         return imap, smtp, seen
 
     def test_too_old(self):
@@ -450,6 +451,37 @@ class InstallHelperTests(unittest.TestCase):
             self.assertEqual(pl["ProgramArguments"][-1],
                              os.path.join(dst, "config.json"))
 
+    def test_linux_unit_includes_forwarded_flags(self):
+        import types
+        with tempfile.TemporaryDirectory() as tmp:
+            dst = os.path.join(tmp, "d")
+            udir = os.path.join(tmp, "systemd")
+            fake = types.SimpleNamespace(
+                dry_run=True, no_oracle=False, no_send=True, verbose=True,
+                pdb=False, poll_interval=30, max_output_bytes=None,
+                timeout=None)
+            with patch.object(install_mod, "run", lambda *a, **k: None):
+                with patch("os.path.expanduser", lambda p: udir):
+                    install_mod.install_linux(
+                        dst, os.path.join(dst, "config.json"),
+                        system=False,
+                        extra=install_mod._forwarded_args(fake))
+            with open(os.path.join(udir, "homing-pigeon.service")) as fh:
+                unit = fh.read()
+            self.assertIn("--dry-run", unit)
+            self.assertIn("--no-send", unit)
+            self.assertIn("--verbose", unit)
+            self.assertIn("--poll-interval 30", unit)
+            self.assertNotIn("--no-oracle", unit)
+
+    def test_forwarded_args_empty_by_default(self):
+        import types
+        fake = types.SimpleNamespace(
+            dry_run=False, no_oracle=False, no_send=False, verbose=False,
+            pdb=False, poll_interval=None, max_output_bytes=None,
+            timeout=None)
+        self.assertEqual(install_mod._forwarded_args(fake), [])
+
     def test_linux_unit_quotes_spaced_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
             dst = os.path.join(tmp, "my dir")
@@ -635,11 +667,11 @@ class AdversarialTests(unittest.TestCase):
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
 
-    def cycle(self, mails, seen=None):
+    def cycle(self, mails, seen=None, opts=None):
         imap, smtp = FakeIMAP(mails), FakeSMTP()
         seen = {} if seen is None else seen
         poll_once(self.cfg, self.tmp, seen, self.seen_path,
-                  imap=imap, smtp=smtp)
+                  imap=imap, smtp=smtp, opts=opts)
         return imap, smtp, seen
 
     def assert_rejected(self, payload, needle):
@@ -786,6 +818,40 @@ class AdversarialTests(unittest.TestCase):
         self.assertEqual(len(smtp.sent), 0)
         self.assertIn("1", imap.flagged)
         self.assertNotIn(jid, seen)
+
+    def test_dry_run_verifies_but_changes_nothing(self):
+        import types
+        jid = str(uuid.uuid4())
+        p = base_job(jid, kind="exec", script="echo hi")
+        opts = types.SimpleNamespace(dry_run=True, no_send=False)
+        imap, smtp, seen = self.cycle([job_email(p)], opts=opts)
+        self.assertEqual(len(smtp.sent), 0)   # nothing sent
+        self.assertEqual(seen, {})            # nothing recorded
+        self.assertEqual(imap.flagged, [])    # nothing marked seen
+        # ...but the signature was verified (a bad sig would reject).
+        # No work dir means nothing executed.
+        self.assertFalse(os.path.isdir(os.path.join(self.tmp, "work", jid)))
+
+    def test_dry_run_rejects_without_mutation(self):
+        import types
+        jid = str(uuid.uuid4())
+        p = base_job(jid)
+        raw = job_email(p).replace(b'"sig":"', b'"sig":"0')
+        opts = types.SimpleNamespace(dry_run=True, no_send=False)
+        imap, smtp, seen = self.cycle([raw], opts=opts)
+        # Rejected, but dry-run changes nothing: mail left unseen.
+        self.assertEqual(imap.flagged, [])
+        self.assertEqual(seen, {})
+
+    def test_no_send_executes_without_email(self):
+        import types
+        jid = str(uuid.uuid4())
+        p = base_job(jid, kind="exec", script="echo hi")
+        opts = types.SimpleNamespace(dry_run=False, no_send=True)
+        imap, smtp, seen = self.cycle([job_email(p)], opts=opts)
+        self.assertEqual(len(smtp.sent), 0)   # executed, not emailed
+        self.assertIn(jid, seen)              # processed normally
+        self.assertTrue(os.path.isdir(os.path.join(self.tmp, "work", jid)))
 
 
 if __name__ == "__main__":

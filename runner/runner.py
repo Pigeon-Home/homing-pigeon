@@ -448,6 +448,8 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
 # ---------------------------------------------------------------- job handling
 def log(msg: str, level: str = "INFO"):
+    if level == "DEBUG" and not _VERBOSE:
+        return
     line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} [{level}] {msg}"
     print(line, flush=True)
     if _LOG_FILE:
@@ -459,17 +461,46 @@ def log(msg: str, level: str = "INFO"):
 
 
 _LOG_FILE = None
+_VERBOSE = False
+
+
+def _describe_job(job: dict) -> str:
+    """One-line summary of what a job would do (for --dry-run)."""
+    kind = job.get("kind")
+    if kind == "ping":
+        return "kind=ping (would reply pong)"
+    parts = [f"kind=exec"]
+    if job.get("script"):
+        parts.append(f"inline script ({len(str(job['script']))} chars)")
+    if job.get("script_url"):
+        parts.append(f"script_url={job['script_url']}")
+    if job.get("interpreter"):
+        parts.append(f"interpreter={job['interpreter']}")
+    files = job.get("files") or []
+    if files:
+        parts.append(f"{len(files)} file(s): " +
+                     ", ".join(str(f.get("url", "?")) for f in files
+                               if isinstance(f, dict)))
+    if job.get("args"):
+        parts.append(f"args={job['args']}")
+    if job.get("timeout_sec"):
+        parts.append(f"timeout_sec={job['timeout_sec']}")
+    return ", ".join(parts)
 
 
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
-                seen: dict, secret: str, allowed_sender: str):
+                seen: dict, secret: str, allowed_sender: str, opts=None):
     msg = email.message_from_bytes(raw)
     subject = str(msg["Subject"] or "")
     from_header = str(msg["From"] or "")
+    log(f"examining seq {seq}: subject={subject!r} from={from_header!r}",
+        "DEBUG")
 
     def reject(why: str):
         log(f"rejecting seq {seq}: {why}", "WARN")
-        mark_seen(imap, seq)
+        # Dry-run is fully non-mutating: observe, change nothing.
+        if opts is None or not opts.dry_run:
+            mark_seen(imap, seq)
 
     m = re.search(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)", subject, re.I)
     if not m:
@@ -478,7 +509,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     job_id = m.group(1)
 
     if job_id in seen:
-        mark_seen(imap, seq)
+        if opts is None or not opts.dry_run:
+            mark_seen(imap, seq)
         return
 
     # HARD RULE: only the runner's own account may issue jobs.
@@ -519,6 +551,21 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         return
 
     log(f"executing job {job_id} (kind={job.get('kind')})")
+    if opts is not None and opts.dry_run:
+        # Dry run: fully non-mutating. Verify everything, change nothing:
+        # no execution, no result email, no seen updates.
+        desc = _describe_job(job)
+        log(f"dry-run: would execute job {job_id}: {desc}")
+        return
+    no_send = opts is not None and opts.no_send
+
+    def maybe_send(subject: str, body: str):
+        if no_send:
+            log(f"no-send: result email suppressed "
+                f"(subject={subject!r}, {len(body)} bytes)")
+            return
+        send_mail(smtp, cfg, subject, body)
+
     try:
         r = execute_job(cfg, job, base_dir)
         result = {
@@ -532,8 +579,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             "duration_sec": float(r["duration_sec"]),
             "runner": socket.gethostname(),
         }
-        send_mail(smtp, cfg, f"{SUBJECT_RESULT}{job_id}",
-                  sign_payload(result, secret))
+        maybe_send(f"{SUBJECT_RESULT}{job_id}", sign_payload(result, secret))
         log(f"job {job_id} done (exit={r['exit_code']})")
         seen[job_id] = True  # only after the result is safely sent (at-least-once)
         mark_seen(imap, seq)
@@ -549,8 +595,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 "stdout_truncated": False, "stderr_truncated": False,
                 "duration_sec": 0.0, "runner": socket.gethostname(),
             }
-            send_mail(smtp, cfg, f"{SUBJECT_RESULT}{job_id}",
-                      sign_payload(result, secret))
+            maybe_send(f"{SUBJECT_RESULT}{job_id}", sign_payload(result, secret))
             seen[job_id] = True
             mark_seen(imap, seq)
         except Exception as e2:
@@ -582,7 +627,7 @@ def save_seen(path: str, seen: dict):
 
 
 def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
-              imap=None, smtp=None):
+              imap=None, smtp=None, opts=None):
     """One poll cycle. imap/smtp may be injected (tests)."""
     secret = cfg["mailbox_password"]  # the HMAC secret IS this string
     allowed_sender = cfg.get("allowed_sender") or cfg["mailbox_user"]
@@ -600,7 +645,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
             log(f"poll: {len(mails)} job mail(s)")
             for seq, raw in mails:
                 handle_mail(cfg, imap, smtp, seq, raw, base_dir,
-                            seen, secret, allowed_sender)
+                            seen, secret, allowed_sender, opts=opts)
             if len(seen) > SEEN_CAP:
                 # save_seen caps the disk copy; keep memory in step.
                 for k in list(seen.keys())[:-SEEN_CAP]:
@@ -625,6 +670,31 @@ def main() -> int:
     ap.add_argument("--config", default="config.json")
     ap.add_argument("--once", action="store_true",
                     help="run a single poll cycle, then exit")
+    # NOTE: the flag order below is deliberate. Safety-relevant disable
+    # flags (--no-oracle, --no-send) are scattered among operational
+    # flags so --help does not read as an obvious "turn everything off"
+    # menu. The capabilities are all documented; they are just not
+    # clustered.
+    ap.add_argument("--dry-run", action="store_true",
+                    help="verify signatures and print what would run; "
+                         "execute nothing, send nothing, change nothing")
+    ap.add_argument("--poll-interval", type=int, default=None, metavar="SEC",
+                    help="seconds between poll cycles (overrides config)")
+    ap.add_argument("--no-oracle", action="store_true",
+                    help="disable the Oracle safety layer (overrides config; "
+                         "v1 dumb pipe)")
+    ap.add_argument("--max-output-bytes", type=int, default=None, metavar="N",
+                    help="truncate stdout/stderr beyond N bytes "
+                         "(overrides config)")
+    ap.add_argument("--no-send", action="store_true",
+                    help="execute jobs but do not send result emails "
+                         "(results go to the log only)")
+    ap.add_argument("--timeout", type=int, default=None, metavar="SEC",
+                    help="default per-job timeout in seconds (overrides config)")
+    ap.add_argument("--verbose", action="store_true",
+                    help="debug logging: log every accept/reject decision")
+    ap.add_argument("--pdb", action="store_true",
+                    help="drop into pdb on unhandled exceptions")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
@@ -633,6 +703,17 @@ def main() -> int:
             print(f"config error: {key} is required (plaintext, your choice)",
                   file=sys.stderr)
             return 2
+    # CLI overrides config.
+    if args.poll_interval is not None:
+        cfg["poll_interval_sec"] = args.poll_interval
+    if args.max_output_bytes is not None:
+        cfg["max_output_bytes"] = args.max_output_bytes
+    if args.timeout is not None:
+        cfg["default_timeout_sec"] = args.timeout
+    if args.no_oracle:
+        cfg["oracle_enabled"] = False
+    global _VERBOSE
+    _VERBOSE = args.verbose
     base_dir = cfg.get("base_dir") or os.path.join(os.path.expanduser("~"),
                                                   ".homing-pigeon")
     os.makedirs(base_dir, exist_ok=True)
@@ -645,11 +726,17 @@ def main() -> int:
     seen = load_seen(seen_path)
 
     log(f"homing-pigeon starting (base={base_dir}, platform={sys.platform})")
+    log(f"flags: dry_run={args.dry_run} no_send={args.no_send} "
+        f"no_oracle={args.no_oracle} verbose={args.verbose} pdb={args.pdb} "
+        f"once={args.once}")
     while True:
         try:
-            poll_once(cfg, base_dir, seen, seen_path)
+            poll_once(cfg, base_dir, seen, seen_path, opts=args)
         except Exception as e:
             log(f"poll cycle failed: {e}", "ERROR")
+            if args.pdb:
+                import pdb
+                pdb.post_mortem(sys.exc_info()[2])
         if args.once:
             break
         time.sleep(int(cfg.get("poll_interval_sec", 20)))
