@@ -88,7 +88,7 @@ and the job email carries download URLs (with optional SHA-384).
 
 **Why email?** Because it's the only transport with all five properties
 on day one: reachable from anywhere, outbound-only polling (no inbound
-ports — NAT-proof), authenticated sender, at-least-once delivery, and
+ports — NAT-proof), at-least-once delivery, and
 zero infrastructure to operate. And because the protocol doesn't care
 about the pipe: Cloudflare Queues, NATS, MQTT, Redis Streams and friends
 all satisfy the same contract. Email is just Transport #1 —
@@ -207,9 +207,7 @@ Ubuntu 22.04+, recent Debian, and most current distros. Older systems
      `python runner/oauth.py --config config.json` from source): a browser
      opens, you sign in and grant access, and the refresh token is stored.
      IMAP and SMTP then use XOAUTH2. Tested end to end on Windows 11.
-   (your explicit choice for this throwaway account). Leave
-   `allowed_sender` empty — the runner then only accepts job mail from
-   the account it is logged into (hard rule).
+   (your explicit choice for this throwaway account).
 4. When you want an SI to send jobs, paste that same app-password string
    to it in chat. It doubles as the HMAC shared secret.
 
@@ -234,7 +232,7 @@ plus standalone binaries (below) and a `SHA384SUMS` file so you can
 verify your download:
 
 1. Download the `.whl` from the release.
-2. `pip install pigeon_home-1.3.1-py3-none-any.whl` — same three
+2. `pip install pigeon_home-1.4.0-py3-none-any.whl` — same three
    commands as above.
 3. `homing-pigeon-install` copies the runner, writes a default
    `config.json`, and registers the boot-start service.
@@ -306,7 +304,7 @@ homing-pigeon --config ~/.homing-pigeon/config.json --once
 ```
 
 (If you prefer the file: grab the `.whl` — currently
-`pigeon_home-1.3.1-py3-none-any.whl` — or the `.tar.gz` sdist from any
+`pigeon_home-1.4.0-py3-none-any.whl` — or the `.tar.gz` sdist from any
 [release](https://github.com/Pigeon-Home/homing-pigeon/releases).)
 Your SI sends jobs from the cloud; the Pi in the corner executes them.
 That's the whole trick.
@@ -378,13 +376,13 @@ python3 -m pytest tests/   # or: python3 tests/test_runner.py
 
 The suite drives the real runner code against fake IMAP/SMTP servers:
 ping roundtrip, script execution, timeout kill, poison-job rejection,
-sender/signature/tamper rejection.
+signature/tamper rejection, any-sender acceptance.
 
 End-to-end without your SI:
 
 1. `python3 cloud/send_job.py new --kind ping --secret <the-string>` → copy the
    subject + body.
-2. From your own Gmail (matching `allowed_sender`), send it to the
+2. From any email account, send it to the
    runner mailbox.
 3. On the target machine: `python3 runner.py --config config.json --once`.
 4. A result email with `stdout: "pong"` should arrive in the mailbox.
@@ -396,8 +394,10 @@ End-to-end without your SI:
   **plaintext** in config.json and doubles as the HMAC secret (your explicit
   choice: throwaway account, fresh box). Anyone holding it gets Gmail access
   and job-signing ability. Don't use this setup with an account you care about.
-- Every job is HMAC-SHA-384 signed; sender address, timestamp window, and
-  replay protection (seen-set) are all enforced before anything runs.
+- Every job is HMAC-SHA-384 signed; the signature is the sole
+  authentication gate. Timestamp window and
+  replay protection (seen-set) are enforced before anything runs; the
+  sender address is logged but never trusted.
 - Delivery is at-least-once: if a result email fails to send, the job
   stays unseen and will be re-executed next cycle. Make jobs idempotent
   or check the seen behavior accordingly.
@@ -409,7 +409,10 @@ End-to-end without your SI:
 
 ## Status
 
-v1.3.1. PowerShell jobs stage as `script.ps1` (Windows `-File` requires the
+v1.4.0. The sender address is no longer validated — any sender may submit
+jobs, and the HMAC signature is the sole authentication gate. The sender
+is logged for audit but never trusted. v1.3.1. PowerShell jobs stage as
+`script.ps1` (Windows `-File` requires the
 extension — every exec job failed without it); dead OAuth refresh tokens
 now raise a distinct error and log once to the Windows Event Log instead
 of failing silently. v1.3.0: Thunderbird-style Google sign-in: the runner opens your browser,
