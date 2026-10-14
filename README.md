@@ -97,6 +97,21 @@ privacy budget bounding total leakage, and the disclosure ceiling is
 set by *you* in config — never by the SI. For debugging,
 `oracle_enabled: false` drops back to the plain v1 pipe.
 
+The Oracle also grows two optional capabilities (spec'd, not yet built):
+
+- **Local inference.** Point it at a model running on your own box and
+  the SI can `ask` questions in plain English — *"why did the tests
+  fail?"* — answered locally, with only the answer crossing the
+  boundary. The endpoint must be loopback (fail closed), and every
+  answer is truncated, redacted, and secret-scanned before it's sent.
+  Your data gets intelligent answers without ever leaving the machine.
+- **Execution confinement.** Tell the Oracle the one folder jobs may
+  touch (`workspace_root`) and it *attests* the job stayed inside —
+  `confined_to_workspace`, signed like everything else. Today's
+  enforcement is attested; OS-level sandboxing is the stronger future.
+
+Full spec in PROTOCOL.md (sections 9–12).
+
 ## Layout
 
 - `PROTOCOL.md` — the full wire protocol (message formats, signatures,
@@ -104,6 +119,9 @@ set by *you* in config — never by the SI. For debugging,
 - `TRANSPORTS.md` — email is just Transport #1. Alternatives that satisfy
   the transport contract: Cloudflare Queues (the pick), NATS, MQTT,
   Redis Streams, Postgres, Durable Objects.
+- `SAFEGUARDS.md` — how to run this without getting burned: the
+  non-negotiables, containment, the Oracle as a safeguard, and what
+  to do when something goes wrong.
 - `runner/runner.py` — the agent. Polls IMAP, verifies, executes,
   replies via SMTP. No dependencies beyond Python 3.9 stdlib.
 - `runner/install.py` — installs it as a boot-start service: systemd
@@ -124,8 +142,8 @@ standalone binaries built by GitHub Actions:
 
 | Platform | Download |
 |----------|----------|
-| Windows (x64) | `homing-pigeon-windows-x86_64.zip` → `homing-pigeon.exe` + `install.exe` |
-| Linux (x64, Debian/RHEL/Ubuntu/…) | `homing-pigeon-linux-x86_64.tar.gz` → `homing-pigeon` + `install` |
+| Windows (x64) | `homing-pigeon-windows-amd64.zip` → `homing-pigeon.exe` + `install.exe` |
+| Linux (x64, Debian/RHEL/Ubuntu/…) | `homing-pigeon-linux-amd64.tar.gz` → `homing-pigeon` + `install` |
 | macOS (ARM64) | `homing-pigeon-macos-arm64.tar.gz` → `homing-pigeon` + `install` |
 
 The Linux binary is built on ubuntu-22.04 (glibc ~2.35). It runs on
@@ -149,7 +167,7 @@ ships an sdist (`.tar.gz`) and a universal wheel (`.whl`) — the easiest
 path on machines where Python is preinstalled, like a Raspberry Pi:
 
 1. Download the `.whl` from the release.
-2. `pip install homing_pigeon-1.1.0-py3-none-any.whl` — this installs
+2. `pip install homing_pigeon-1.0.1-py3-none-any.whl` — this installs
    three commands: `homing-pigeon`, `homing-pigeon-install`, and
    `homing-pigeon-send-job` (the cloud-side helper).
 3. `homing-pigeon-install` copies the runner, writes a default
@@ -215,7 +233,7 @@ to. A Raspberry Pi is the perfect one:
 - **Python's already there.** Skip the frozen binaries entirely:
 
 ```sh
-pip install homing_pigeon-1.1.0-py3-none-any.whl
+pip install homing_pigeon-1.0.1-py3-none-any.whl
 homing-pigeon-install          # registers the boot-start service
 # edit ~/.homing-pigeon/config.json, then test one cycle:
 homing-pigeon --config ~/.homing-pigeon/config.json --once
@@ -300,7 +318,7 @@ End-to-end without your SI:
 
 ## Status
 
-v1.1.0. Install hardened across all platforms; runner rejects malformed jobs (naive issued_at, string interpreter, path-escaping job_id) and caps downloads; 68 unit tests. Runner rewritten in cross-platform Python; crypto tested
+v1.0.1. Runner rewritten in cross-platform Python; crypto tested
 (sign/verify roundtrip, tamper rejection, CRLF tolerance); end-to-end
 suite passes against fake mail servers. Releases ship standalone
 binaries (Windows/macOS/Linux) plus a Python wheel and sdist. The v2

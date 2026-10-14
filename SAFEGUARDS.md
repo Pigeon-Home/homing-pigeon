@@ -1,0 +1,130 @@
+# Safeguards
+
+How to run homing-pigeon without getting burned. This is the
+*operational* companion to [SECURITY.md](SECURITY.md): that document
+covers the threat model and how to report vulnerabilities; this one
+covers what **you** do, step by step, to keep a deployment safe.
+
+## 1. Know what you're holding
+
+- The runner executes **arbitrary code** as the user it was installed
+  as. There is no sandbox, no allowlist, no confirmation prompt.
+- The shared secret (the Gmail app password, by your explicit choice)
+  **is root on that box**. Anyone who can sign a job email owns the
+  machine: install software, read files, add users, pivot to your
+  network.
+- Email is the control plane. Whoever can send mail *as* the runner's
+  account and sign it is the operator. There is no second factor on
+  a job.
+
+If any of that makes you uncomfortable, good — that feeling is the
+whole point of this document. Set it up right and the risk is
+contained; set it up casually and it isn't.
+
+## 2. The non-negotiables
+
+Do all of these before the first job:
+
+1. **Dedicated Gmail account.** `you-runner@gmail.com`, never your
+   personal inbox. Nothing personal should ever be reachable from
+   this mailbox.
+2. **2-Step Verification + app password.** The app password is the
+   only credential the runner ever sees. Never the account password.
+3. **Disposable machine.** A Raspberry Pi, a VM, a cloud instance you
+   can delete — something you can afford to lose completely. See
+   "Containment" below.
+4. **Guard the secret like a password.** It lives in plaintext in
+   `config.json` (your explicit choice for the throwaway account).
+   When you share it with your SI, paste it in chat and nothing else —
+   never commit it, never put it in a file that syncs anywhere, never
+   screenshot it. Remember: anyone who can read your SI chat history
+   can read the secret.
+5. **Leave `allowed_sender` empty.** It then defaults to the account
+   the runner is logged into — the hard rule that the runner only
+   obeys its own mailbox. Only override it if you understand exactly
+   what you're widening.
+
+## 3. Containment
+
+Defense in depth, cheapest first:
+
+- **Run it in a VM.** Snapshot before you hand an SI the keys. If a
+  job goes sideways, roll back in seconds. The guest boundary
+  contains everything a signed job can reach; your host and your
+  other projects stay out of reach.
+- **Don't run as root unless you mean it.** On Linux/macOS the
+  installer uses a user-level service. Note the exception: on
+  **Windows the Scheduled Task runs as SYSTEM** — that's full
+  machine privilege by default. Prefer a VM there, or at minimum a
+  dedicated user account.
+- **Execution confinement (v2, spec'd).** The Oracle can restrict jobs
+  to a single `workspace_root` folder and *attest* that the job
+  stayed inside it. Not a sandbox — an attested boundary. See
+  PROTOCOL.md §9.3.
+
+## 4. The Oracle as a safeguard (v2, spec'd)
+
+v1 sends full job output back to your (cloud, third-party) SI. If
+your jobs touch anything sensitive, that's the leak surface. The
+Oracle — spec'd in PROTOCOL.md, not yet implemented — is the
+mitigation:
+
+- **Result policies.** `full` / `redacted` / `summary` / `attested`.
+  The SI gets answers, not raw output.
+- **The ceiling is yours.** `max_result_view` lives in *your*
+  config. No job can widen disclosure past it — the SI cannot vote
+  itself more access.
+- **Privacy budget.** Each job gets a fixed number of questions;
+  exhaustion silences the Oracle for that job. Rate limiting slows
+  probing; the budget stops it.
+- **Kill switch.** `oracle_enabled: false` in config drops back to
+  the plain v1 pipe for debugging. Config-only — no job can disable
+  the Oracle.
+
+## 5. Operational hygiene
+
+- **Read the logs.** `runner.log` in the install dir shows every job
+  received, executed, and rejected. A job you didn't send is a
+  five-alarm fire (see §7).
+- **Keep the runner updated.** New releases fix real bugs — including
+  security-relevant ones. Check the releases page when you think of
+  it.
+- **Rotate the secret periodically.** New app password in Google
+  Account settings → update `config.json` → paste the new string to
+  your SI. Two minutes, and it invalidates every copy of the old
+  one floating around in chat histories.
+- **Prune the mailbox.** The runner marks processed mail seen, but
+  the job emails remain. Delete them periodically — they're signed,
+  but they still describe what you asked your machine to do.
+
+## 6. Don't do this
+
+- Don't point the runner at a mailbox anyone else can access
+  (shared inboxes, delegated accounts).
+- Don't reuse the runner's Gmail for anything else. It's not an
+  email account; it's a control channel wearing an email costume.
+- Don't run jobs you don't understand on machines you care about.
+  The SI writes the script; you own the consequences.
+- Don't assume TLS means private. Email content is encrypted in
+  transit, but the *mailbox itself* (Gmail) sees everything. The
+  Oracle (§4) exists precisely because "the SI" and "the
+  infrastructure" are both third parties.
+
+## 7. If something goes wrong
+
+**Secret leaked or suspected leaked:**
+1. Revoke the app password *now* (Google Account → Security → App
+   passwords). This instantly deauthorizes every job signer.
+2. Generate a fresh app password, update `config.json`.
+3. Paste the new string to your SI.
+4. Check `runner.log` and the mailbox for jobs you didn't send.
+
+**Machine compromised or suspected:**
+1. Stop the runner (uninstall the service).
+2. Revert the VM snapshot — or wipe and rebuild the machine.
+3. Rotate the secret as above (assume it was read off the disk).
+4. Review what the jobs touched before you revert.
+
+**You see a job you didn't send in the logs:**
+Treat it as a full compromise and follow both playbooks above.
+Then figure out how the secret leaked — that's the actual bug.

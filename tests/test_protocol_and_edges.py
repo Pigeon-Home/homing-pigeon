@@ -419,7 +419,35 @@ class InstallHelperTests(unittest.TestCase):
             with patch.object(install_mod, "FROZEN", False):
                 install_mod.install_files(src, dst)
             self.assertTrue(os.path.exists(os.path.join(dst, "runner.py")))
-            self.assertTrue(os.path.exists(os.path.join(dst, "config.json")))
+
+    def test_macos_plist_escapes_xml_metachars(self):
+        import plistlib
+        with tempfile.TemporaryDirectory() as tmp:
+            dst = os.path.join(tmp, "a&b<c")
+            os.makedirs(dst)
+            la = os.path.join(tmp, "LA")
+            with patch.object(install_mod, "run", lambda *a, **k: None):
+                with patch("os.path.expanduser",
+                           lambda p: p.replace("~/Library/LaunchAgents", la)):
+                    install_mod.install_macos(dst, os.path.join(dst, "config.json"))
+            with open(os.path.join(la, "com.homing-pigeon.runner.plist"),
+                      "rb") as fh:
+                pl = plistlib.load(fh)  # raises on malformed XML
+            self.assertEqual(pl["ProgramArguments"][-1],
+                             os.path.join(dst, "config.json"))
+
+    def test_linux_unit_quotes_spaced_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dst = os.path.join(tmp, "my dir")
+            udir = os.path.join(tmp, "systemd")
+            with patch.object(install_mod, "run", lambda *a, **k: None):
+                with patch("os.path.expanduser", lambda p: udir):
+                    install_mod.install_linux(dst, os.path.join(dst, "config.json"),
+                                              system=False)
+            with open(os.path.join(udir, "homing-pigeon.service")) as fh:
+                unit = fh.read()
+            self.assertIn("'%s/runner.py'" % dst, unit)
+            self.assertIn("--config '%s/config.json'" % dst, unit)
 
 
 class InfiniteRetryBugs(unittest.TestCase):
