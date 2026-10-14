@@ -152,11 +152,11 @@ It never travels in email; only job signatures do.
 
 ## 5. Runner verification (all must pass, in order)
 
-1. **Hard rule:** the `From` address must exactly match the account the
-   runner is logged into (or the explicit `allowed_sender` override,
-   which defaults to the login account). Anything else is rejected
-   before signature verification. The runner never obeys a third party,
-   signed or not.
+1. **Signature valid:** the body HMAC-SHA-384 must verify against the
+   shared secret. This is the sole authentication gate. The `From`
+   address is not validated — any sender may submit jobs, and only a
+   valid signature authorizes execution. The sender address is logged
+   for audit but never trusted.
 2. Subject matches `[HOMING-PIGEON] job <job_id>`; body signature valid.
 3. `v == 1` and `type == "job"`.
 4. `issued_at` parses and is within `max_job_age_sec` (default 3600) of

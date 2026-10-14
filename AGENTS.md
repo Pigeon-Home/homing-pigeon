@@ -24,7 +24,6 @@ The runner is a different process on a different machine. It polls with IMAP. It
 
 - a dedicated mailbox (never a personal inbox)
 - an app password in `config.json` on that host
-- `allowed_sender` set to the address the connector sends from (or left empty so it only accepts mail from the account it is logged into)
 
 Those values live on the runner host. They do not travel through the SI chat.
 
@@ -79,4 +78,4 @@ The connector is attached to a personal Gmail account that holds legal and other
 
 ## Current connector
 
-The connected send-as address is the primary Gmail account on the connector. Jobs the SI sends come from that address. The runner, when it exists, must use a different dedicated mailbox and set `allowed_sender` to the connector address.
+The connected send-as address is the primary Gmail account on the connector. Jobs the SI sends come from that address. The runner accepts signed jobs from any sender; the signature is the only gate.
