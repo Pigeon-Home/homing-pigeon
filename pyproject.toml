@@ -3,7 +3,7 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "homing-pigeon"
+name = "pigeon-home"
 version = "1.2.0"
 description = "Self-hosted, email-driven agent: tell your cloud SI to send signed jobs via email that execute on your machine."
 readme = "README.md"
