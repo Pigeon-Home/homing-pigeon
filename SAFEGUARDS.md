@@ -39,10 +39,6 @@ Do all of these before the first job:
    never commit it, never put it in a file that syncs anywhere, never
    screenshot it. Remember: anyone who can read your SI chat history
    can read the secret.
-5. **Leave `allowed_sender` empty.** It then defaults to the account
-   the runner is logged into — the hard rule that the runner only
-   obeys its own mailbox. Only override it if you understand exactly
-   what you're widening.
 
 ## 3. Containment
 
