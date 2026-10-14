@@ -432,6 +432,7 @@ class InstallHelperTests(unittest.TestCase):
             # minimal source layout
             open(os.path.join(src, "runner.py"), "w").write("# stub\n")
             open(os.path.join(src, "oauth.py"), "w").write("# stub\n")
+            open(os.path.join(src, "winlog.py"), "w").write("# stub\n")
             open(os.path.join(src, "config.example.json"), "w").write("{}\n")
             with patch.object(install_mod, "FROZEN", False):
                 install_mod.install_files(src, dst)
@@ -923,3 +924,46 @@ class ScriptNameTests(unittest.TestCase):
             script_filename(["pwsh", "-NoProfile", "-File"]), "script.ps1")
         self.assertEqual(script_filename(["python3"]), "script.py")
         self.assertEqual(script_filename(["sh"]), "script")
+
+
+class OAuthRefreshErrorTests(unittest.TestCase):
+    def test_refresh_rejection_raises_distinct_error(self):
+        import io
+        import urllib.error
+        from unittest import mock
+        from runner.oauth import refresh_access_token, OAuthRefreshError
+
+        err_body = json.dumps({"error": "invalid_grant",
+                               "error_description": "Token has been revoked"}).encode()
+        http_err = urllib.error.HTTPError(
+            "https://oauth2.googleapis.com/token", 400, "Bad Request",
+            {}, io.BytesIO(err_body))
+        cfg = {"oauth_client_id": "x", "oauth_client_secret": "y",
+               "oauth_refresh_token": "dead"}
+        with mock.patch("urllib.request.urlopen", side_effect=http_err):
+            with self.assertRaises(OAuthRefreshError) as cm:
+                refresh_access_token(cfg)
+        self.assertIn("invalid_grant", str(cm.exception))
+        self.assertIn("browser login", str(cm.exception))
+
+    def test_refresh_error_is_a_runtime_error(self):
+        from runner.oauth import OAuthRefreshError
+        self.assertTrue(issubclass(OAuthRefreshError, RuntimeError))
+
+
+class WinlogTests(unittest.TestCase):
+    def test_report_event_is_noop_off_windows(self):
+        # We're on Linux here; must not raise and must do nothing.
+        from runner import winlog
+        self.assertFalse(winlog._reported_ok)
+        winlog.report_event("test message")  # must not raise
+        winlog.report_event("test message", level="WARN")
+        self.assertFalse(winlog._reported_ok)  # still untouched
+
+    def test_report_event_never_raises(self):
+        # Even if ctypes/winreg blow up, the runner must survive.
+        import sys
+        from unittest import mock
+        from runner import winlog
+        with mock.patch.dict(sys.modules, {"ctypes": None}):
+            winlog.report_event("test")  # must not raise

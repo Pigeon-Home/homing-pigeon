@@ -50,6 +50,24 @@ from email.utils import parseaddr
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+try:
+    from runner.oauth import OAuthRefreshError
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        from oauth import OAuthRefreshError
+    except ImportError:
+        class OAuthRefreshError(RuntimeError):
+            """Fallback when oauth.py is unavailable; never raised."""
+
+try:
+    from runner.winlog import report_event
+except ImportError:
+    try:
+        from winlog import report_event
+    except ImportError:
+        def report_event(message: str, level: str = "ERROR") -> None:
+            pass
+
 SUBJECT_JOB = "[HOMING-PIGEON] job "
 SUBJECT_RESULT = "[HOMING-PIGEON] result "
 PROTOCOL_VERSION = 1
@@ -869,9 +887,26 @@ def main() -> int:
     log(f"flags: dry_run={args.dry_run} no_send={args.no_send} "
         f"no_oracle={args.no_oracle} verbose={args.verbose} pdb={args.pdb} "
         f"once={args.once} workers={_worker_count(cfg, args)}")
+    auth_failed = False  # latch: report auth death once, not every 20s
     while True:
         try:
             poll_once(cfg, base_dir, seen, seen_path, opts=args)
+            if auth_failed:
+                auth_failed = False
+                log("gmail authentication recovered")
+        except OAuthRefreshError as e:
+            # The refresh token is dead; only a human browser login fixes
+            # it. Log locally every cycle, but shout to the Event Log once.
+            log(f"poll cycle failed: {e}", "ERROR")
+            if not auth_failed:
+                auth_failed = True
+                report_event(
+                    f"Homing Pigeon: Gmail sign-in failed ({e}). "
+                    f"The runner cannot fetch or send mail until someone "
+                    f"re-runs the OAuth browser login on this machine.")
+            if args.pdb:
+                import pdb
+                pdb.post_mortem(sys.exc_info()[2])
         except Exception as e:
             log(f"poll cycle failed: {e}", "ERROR")
             if args.pdb:

@@ -204,7 +204,7 @@ plus standalone binaries (below) and a `SHA384SUMS` file so you can
 verify your download:
 
 1. Download the `.whl` from the release.
-2. `pip install pigeon_home-1.3.0-py3-none-any.whl` — same three
+2. `pip install pigeon_home-1.3.1-py3-none-any.whl` — same three
    commands as above.
 3. `homing-pigeon-install` copies the runner, writes a default
    `config.json`, and registers the boot-start service.
@@ -276,7 +276,7 @@ homing-pigeon --config ~/.homing-pigeon/config.json --once
 ```
 
 (If you prefer the file: grab the `.whl` — currently
-`pigeon_home-1.3.0-py3-none-any.whl` — or the `.tar.gz` sdist from any
+`pigeon_home-1.3.1-py3-none-any.whl` — or the `.tar.gz` sdist from any
 [release](https://github.com/Pigeon-Home/homing-pigeon/releases).)
 Your SI sends jobs from the cloud; the Pi in the corner executes them.
 That's the whole trick.
@@ -379,7 +379,10 @@ End-to-end without your SI:
 
 ## Status
 
-v1.3.0. Thunderbird-style Google sign-in: the runner opens your browser,
+v1.3.1. PowerShell jobs stage as `script.ps1` (Windows `-File` requires the
+extension — every exec job failed without it); dead OAuth refresh tokens
+now raise a distinct error and log once to the Windows Event Log instead
+of failing silently. v1.3.0: Thunderbird-style Google sign-in: the runner opens your browser,
 you sign in like adding Gmail on your phone, and IMAP/SMTP use XOAUTH2
 from then on — no app password. Tested end to end on Windows 11: browser
 login, job sent, runner polled and executed it, result emailed back, all

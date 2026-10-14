@@ -22,7 +22,7 @@ import sys
 from xml.sax.saxutils import escape
 
 SERVICE_NAME = "homing-pigeon"
-FILES = ["runner.py", "oauth.py"]
+FILES = ["runner.py", "oauth.py", "winlog.py"]
 
 # When frozen with PyInstaller (the release binaries), there is no Python
 # on the target machine: the runner ships as a sibling binary

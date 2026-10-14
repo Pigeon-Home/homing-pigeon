@@ -28,6 +28,7 @@ import os
 import secrets
 import sys
 import threading
+import urllib.error
 import urllib.parse
 import urllib.request
 import webbrowser
@@ -35,6 +36,15 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
+
+
+class OAuthRefreshError(RuntimeError):
+    """Google rejected the refresh token (invalid_grant, etc.).
+
+    The stored credential is dead; only a human browser login can fix
+    it. Distinct from transient network failures so the caller can
+    escalate instead of just retrying.
+    """
 SCOPE = "https://mail.google.com/"
 REDIRECT_PORT = 8765
 REDIRECT_URI = f"http://127.0.0.1:{REDIRECT_PORT}/"
@@ -57,7 +67,12 @@ def _pkce() -> tuple:
 
 
 def refresh_access_token(cfg: dict) -> str:
-    """Trade the stored refresh token for a short-lived access token."""
+    """Trade the stored refresh token for a short-lived access token.
+
+    Raises OAuthRefreshError (not plain RuntimeError) when Google rejects
+    the refresh — the caller's signal that human re-authentication is
+    needed, as opposed to a transient failure.
+    """
     form = {
         "client_id": cfg["oauth_client_id"],
         "refresh_token": cfg["oauth_refresh_token"],
@@ -68,11 +83,25 @@ def refresh_access_token(cfg: dict) -> str:
         form["client_secret"] = secret
     data = urllib.parse.urlencode(form).encode("ascii")
     req = urllib.request.Request(TOKEN_URL, data=data)
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        body = json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        try:
+            err_body = json.loads(e.read().decode("utf-8"))
+        except Exception:
+            err_body = {"raw": "unparseable error body"}
+        raise OAuthRefreshError(
+            f"Google rejected the refresh token "
+            f"(HTTP {e.code}: {err_body.get('error')}). "
+            f"Re-run the browser login to restore the runner."
+        ) from e
     token = body.get("access_token")
     if not token:
-        raise RuntimeError(f"token refresh returned no access_token: {body}")
+        raise OAuthRefreshError(
+            f"token refresh returned no access_token: {body}. "
+            f"Re-run the browser login to restore the runner."
+        )
     return token
 
 
