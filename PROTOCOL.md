@@ -20,6 +20,13 @@ pull from it, do the work, and send results back. Nothing in the
 message format, signatures, or verification changes. It's really just
 a question of where the work board lives.
 
+There's an old chess hustle that runs on the same principle: play two
+grandmasters at once, relay each one's moves to the other, and you're
+guaranteed to win a game — without knowing a thing about chess. The
+middleman wins by contributing nothing but the connection. Same here:
+relay project specs one way and finished work the other, and the work
+gets done without you knowing how any of it works.
+
 ## 2. Transport
 
 - One dedicated mailbox (Gmail recommended). Both directions use it:
