@@ -112,6 +112,10 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+      - run: |
+          cd artifacts
+          sha384sum * > SHA384SUMS
+          cat SHA384SUMS
       - uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*

@@ -52,3 +52,27 @@ A vulnerability is something that breaks the documented guarantees:
 signature forgery, sender spoofing, a job executing without a valid
 signature, sandbox/workdir escape, or secret leakage through logs,
 emails, or error messages.
+
+## Dual-use: yes, this looks like email-C2
+
+Saying it plainly: a program that polls an inbox and executes signed
+messages is the same *shape* as email-based command-and-control malware.
+The difference is not the mechanism — it is consent, control, and
+auditability:
+
+- **Consent:** you install it on your own machine, on purpose, to run
+  your own jobs. It does nothing you did not ask it to do.
+- **Control:** the shared secret is yours, the mailbox is yours, and
+  revoking the app password bricks the agent remotely in seconds.
+- **Auditability:** the runner is inspectable by design. `--dry-run`
+  verifies signatures and prints exactly what a job *would* do without
+  executing anything; `--verbose` logs every accept/reject decision;
+  `--pdb` drops into the Python debugger on errors. Malware hides.
+  This tool is built to be watched.
+
+It belongs to the same family as GitHub self-hosted runners, VS Code
+Remote tunnels, and Tailscale: legitimate remote-administration tools
+whose power is the point. If your antivirus flags the prebuilt
+binaries, that is a known PyInstaller false-positive pattern — verify
+the `SHA384SUMS` file attached to the release, or build from source
+(`pip install` the wheel, or run `runner/runner.py` directly).

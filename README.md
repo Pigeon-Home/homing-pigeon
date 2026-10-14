@@ -167,7 +167,7 @@ ships an sdist (`.tar.gz`) and a universal wheel (`.whl`) — the easiest
 path on machines where Python is preinstalled, like a Raspberry Pi:
 
 1. Download the `.whl` from the release.
-2. `pip install homing_pigeon-1.0.1-py3-none-any.whl` — this installs
+2. `pip install homing_pigeon-1.2.0-py3-none-any.whl` — this installs
    three commands: `homing-pigeon`, `homing-pigeon-install`, and
    `homing-pigeon-send-job` (the cloud-side helper).
 3. `homing-pigeon-install` copies the runner, writes a default
@@ -233,7 +233,7 @@ to. A Raspberry Pi is the perfect one:
 - **Python's already there.** Skip the frozen binaries entirely:
 
 ```sh
-pip install homing_pigeon-1.0.1-py3-none-any.whl
+pip install homing_pigeon-1.2.0-py3-none-any.whl
 homing-pigeon-install          # registers the boot-start service
 # edit ~/.homing-pigeon/config.json, then test one cycle:
 homing-pigeon --config ~/.homing-pigeon/config.json --once
@@ -342,9 +342,11 @@ End-to-end without your SI:
 
 ## Status
 
-v1.0.1. Runner rewritten in cross-platform Python; crypto tested
+v1.2.0. Runner rewritten in cross-platform Python; crypto tested
 (sign/verify roundtrip, tamper rejection, CRLF tolerance); end-to-end
-suite passes against fake mail servers. Releases ship standalone
+suite passes against fake mail servers (103 tests). Debug/audit flags
+(`--dry-run`, `--verbose`, `--pdb`, `--no-send`), concurrent job
+execution (`--workers`), and SHA-384 release hashes. Releases ship standalone
 binaries (Windows/macOS/Linux) plus a Python wheel and sdist. The v2
 protocol — the Oracle, privacy-preserving results via signed
 attestations — is spec'd in PROTOCOL.md and awaiting implementation.
