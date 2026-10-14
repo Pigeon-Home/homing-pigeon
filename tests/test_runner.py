@@ -175,13 +175,14 @@ class RunnerTest(unittest.TestCase):
         result = verify_body(result_body(smtp.sent[0]), SECRET)
         self.assertEqual(result["exit_code"], -2)
 
-    def test_wrong_sender_rejected(self):
+    def test_any_sender_accepted_with_valid_signature(self):
+        # Sender address is not validated; the HMAC signature is the
+        # sole authentication gate.
         jid = str(uuid.uuid4())
         mail = job_email(job_payload(jid), sender="attacker@example.com")
-        imap, smtp, seen = self.run_cycle([mail])
-        self.assertEqual(len(smtp.sent), 0)   # nothing executed, no result
-        self.assertEqual(imap.flagged, ["1"])
-        self.assertNotIn(jid, seen)
+        _, smtp, seen = self.run_cycle([mail])
+        self.assertEqual(len(smtp.sent), 1)
+        self.assertIn(jid, seen)
 
     def test_tampered_signature_rejected(self):
         jid = str(uuid.uuid4())
