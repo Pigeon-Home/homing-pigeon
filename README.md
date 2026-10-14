@@ -3,10 +3,10 @@
 **Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, etc.**
 
 Your cloud SI is smart, but it can't touch your computer. Homing Pigeon
-fixes that: tell your SI to send a signed job, it executes on your machine
-(Linux/macOS/FreeBSD/Windows), and the results come back so your SI can
-iterate — run the tests, read the failure, fix, repeat. From your phone,
-from anywhere.
+fixes that: tell your SI to complete a task and it will do it on your
+machine (Linux/macOS/FreeBSD/Windows). The results return so that your
+SI can iterate — run the tests, read the failure, fix, repeat. From your
+phone, so from anywhere.
 
 Think "GitHub self-hosted runner, but the control plane is email." Python
 3.9+, standard library only, no dependencies. (Email is just the first
