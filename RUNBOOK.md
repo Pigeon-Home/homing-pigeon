@@ -115,8 +115,14 @@ you. You start them by making a **release**. All point and click:
    - `homing-pigeon-linux-x86_64.tar.gz` — for Linux computers
    - `homing-pigeon-macos-arm64.tar.gz` — for Mac computers
 
-For the next version, do the same thing with `v1.0.1`, then `v1.0.2`,
+For the next version, do the same thing with `v1.2.1`, then `v1.2.2`,
 and so on. Bigger number = newer.
+
+After the robots finish, the Python packages go to PyPI too: the
+release engineer builds the wheel and sdist (`python -m build`) and
+uploads them (`twine upload`), so `pip install pigeon-home` gets the
+new version. (The project page is
+https://pypi.org/project/pigeon-home/.)
 
 ---
 

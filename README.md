@@ -162,14 +162,29 @@ Ubuntu 22.04+, recent Debian, and most current distros. Older systems
 4. When you want an SI to send jobs, paste that same app-password string
    to it in chat. It doubles as the HMAC shared secret.
 
-**From the Python packages** (needs Python 3.9+): each release also
-ships an sdist (`.tar.gz`) and a universal wheel (`.whl`) — the easiest
-path on machines where Python is preinstalled, like a Raspberry Pi:
+**From PyPI** (needs Python 3.9+) — the easiest path on machines where
+Python is preinstalled, like a Raspberry Pi:
+
+```sh
+pip install pigeon-home
+```
+
+This installs three commands: `homing-pigeon`, `homing-pigeon-install`,
+and `homing-pigeon-send-job` (the cloud-side helper). Then:
+
+1. `homing-pigeon-install` copies the runner, writes a default
+   `config.json`, and registers the boot-start service.
+2. Edit `config.json` and share the app-password string with your SI,
+   same as above.
+
+**From the release files** (same Python requirement): each GitHub
+release also ships an sdist (`.tar.gz`) and a universal wheel (`.whl`),
+plus standalone binaries (below) and a `SHA384SUMS` file so you can
+verify your download:
 
 1. Download the `.whl` from the release.
-2. `pip install pigeon_home-1.2.0-py3-none-any.whl` — this installs
-   three commands: `homing-pigeon`, `homing-pigeon-install`, and
-   `homing-pigeon-send-job` (the cloud-side helper).
+2. `pip install pigeon_home-1.2.1-py3-none-any.whl` — same three
+   commands as above.
 3. `homing-pigeon-install` copies the runner, writes a default
    `config.json`, and registers the boot-start service.
 4. Edit `config.json` and share the app-password string with your SI,
@@ -233,14 +248,15 @@ to. A Raspberry Pi is the perfect one:
 - **Python's already there.** Skip the frozen binaries entirely:
 
 ```sh
-pip install pigeon_home-1.2.0-py3-none-any.whl
+pip install pigeon-home            # from PyPI — easiest
 homing-pigeon-install          # registers the boot-start service
 # edit ~/.homing-pigeon/config.json, then test one cycle:
 homing-pigeon --config ~/.homing-pigeon/config.json --once
 ```
 
-Grab the `.whl` (or the `.tar.gz` sdist) from any
-[release](https://github.com/Pigeon-Home/homing-pigeon/releases).
+(If you prefer the file: grab the `.whl` — currently
+`pigeon_home-1.2.1-py3-none-any.whl` — or the `.tar.gz` sdist from any
+[release](https://github.com/Pigeon-Home/homing-pigeon/releases).)
 Your SI sends jobs from the cloud; the Pi in the corner executes them.
 That's the whole trick.
 
@@ -342,11 +358,12 @@ End-to-end without your SI:
 
 ## Status
 
-v1.2.0. Runner rewritten in cross-platform Python; crypto tested
+v1.2.1. Runner rewritten in cross-platform Python; crypto tested
 (sign/verify roundtrip, tamper rejection, CRLF tolerance); end-to-end
 suite passes against fake mail servers (103 tests). Debug/audit flags
 (`--dry-run`, `--verbose`, `--pdb`, `--no-send`), concurrent job
-execution (`--workers`), and SHA-384 release hashes. Releases ship standalone
+execution (`--workers`), SHA-384 release hashes, and PyPI distribution
+(`pip install pigeon-home`). Releases ship standalone
 binaries (Windows/macOS/Linux) plus a Python wheel and sdist. The v2
 protocol — the Oracle, privacy-preserving results via signed
 attestations — is spec'd in PROTOCOL.md and awaiting implementation.
