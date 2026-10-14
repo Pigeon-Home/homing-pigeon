@@ -3,12 +3,7 @@
 Three ways, simplest first. Each has two phases: **install** (get the
 files on the box) and **run** (start the runner). Don't mix them.
 
-> **Tested:** the Windows binary path (option 3) has been verified
-> end to end — install, OAuth login, job execution, result delivery.
-> Docker and pip paths are documented but not yet verified on a live
-> box. If you try one, let us know how it goes.
-
-## 1. Docker ⚠️ untested
+## 1. Docker
 
 **Install:** pull the image.
 
@@ -29,7 +24,7 @@ docker run -d --name pigeon --restart unless-stopped \
 No Python, no git, nothing else. See [DOCKER.md](DOCKER.md) for
 dry-run mode, config options, and updating.
 
-## 2. pip (best for Raspberry Pi) ⚠️ untested
+## 2. pip (best for Raspberry Pi)
 
 **Install:**
 
@@ -45,7 +40,7 @@ homing-pigeon-install
 homing-pigeon --config ~/.homing-pigeon/config.json --once
 ```
 
-## 3. Release binary ✅ verified (Windows)
+## 3. Release binary
 
 **Install:** download and extract. Every default OS ships a
 downloader — no extra tools needed.
