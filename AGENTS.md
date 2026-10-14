@@ -60,6 +60,8 @@ object. Prefer the body `send_job.py` prints.
 | Uppercase hex signature | Accepted (hex is case-insensitive) |
 | Subject with extra words (`TEST`, `Re:`) | Accepted |
 | Signature that does not match | Rejected |
+| `file:` or other non-HTTP url | Rejected |
+| Download host that does not resolve, or HTTP 4xx | Rejected |
 
 `send_job.py` already emits lowercase hex, a `Z` timestamp, and a UUID.
 Use it.
