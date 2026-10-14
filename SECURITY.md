@@ -53,6 +53,17 @@ signature forgery, sender spoofing, a job executing without a valid
 signature, sandbox/workdir escape, or secret leakage through logs,
 emails, or error messages.
 
+**What the signature proves, and what it does not.** The HMAC signature
+answers two questions: was this job sent by someone holding the shared
+secret, and has it been tampered with in transit? It does not answer a
+third question: is this job safe to execute? A compromised SI, a
+prompt-injected SI, or a careless human with the secret can sign a
+perfectly valid, perfectly destructive job, and the runner will run it.
+Authentication is not authorization to be safe. That is why the
+deployment model matters more than the cryptography: throwaway account,
+disposable machine, secret kept like a password. The crypto keeps
+strangers out. Only your own judgment keeps bad jobs out.
+
 ## Dual-use: yes, this looks like email-C2
 
 Saying it plainly: a program that polls an inbox and executes signed

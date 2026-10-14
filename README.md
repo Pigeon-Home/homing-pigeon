@@ -22,13 +22,32 @@ transport — the protocol doesn't care about the pipe. See TRANSPORTS.md.)
 
 ## What this is for
 
-Homing Pigeon is a personal remote-development agent. The idea is
-simple: the most powerful computer you have access to shouldn't stop
-being useful the moment you walk away from your desk — and neither
-should your SI assistant. Send a job from
-your phone, let the big machine run the tests, crunch the data, or
-grind through the refactor, and read the results when they land in your
-inbox.
+Homing Pigeon is a personal remote-development agent. The point is not
+that the SI becomes smarter. It is that the SI gets a way to delegate
+work to a computer it could not otherwise reach. The most powerful
+computer you have access to should not stop being useful the moment you
+walk away from your desk, and neither should your SI assistant.
+
+Concrete uses:
+
+- **Remote test runs.** Ask your SI to run the suite, read the
+  failures, patch the code, rerun, and report back, all while you are
+  away from the machine.
+- **Your hardware as a worker.** Long builds, data crunching, batch
+  jobs, on the workstation you own, without a remote-desktop session
+  open.
+- **Scheduled-style automation.** Maintenance scripts, reports, and
+  repetitive technical tasks, dispatched from your phone.
+- **Cloud SI, local resources.** Your files, your dev environment,
+  your GPU, reachable by an assistant that lives in the cloud.
+- **Physical peripherals.** Plug a sensor or servo board into a
+  Raspberry Pi, point your SI at it, and let it write the control
+  code and debug the hardware into motion. You do the soldering,
+  it does the head-scratching. Let SI build a robot.
+
+Send a job from your phone, let the big machine run the tests, crunch
+the data, or grind through the refactor, and read the results when they
+land in your inbox.
 
 It belongs to the same family as GitHub self-hosted runners, VS Code
 Remote tunnels, and Tailscale — legitimate tools for administering your

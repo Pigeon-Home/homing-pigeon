@@ -178,6 +178,10 @@ send stays unseen and will be retried (re-executed) on the next cycle.
   environment, and the work dir as cwd.
 - On timeout the whole process tree is killed (POSIX process group;
   `taskkill /T` on Windows).
+- **Jobs must be idempotent.** If the result email fails to send, the
+  job may be executed again on a later poll. Write jobs that are safe
+  to repeat: check before creating, use unique names, prefer
+  upserts over blind inserts.
 
 ## 7. Security model
 

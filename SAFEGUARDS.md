@@ -55,8 +55,11 @@ Defense in depth, cheapest first:
 - **Don't run as root unless you mean it.** On Linux/macOS the
   installer uses a user-level service. Note the exception: on
   **Windows the Scheduled Task runs as SYSTEM** — that's full
-  machine privilege by default. Prefer a VM there, or at minimum a
-  dedicated user account.
+  machine privilege by default, so every job executes as SYSTEM.
+  If the machine matters to you, prefer a VM there, or create a
+  dedicated low-privilege user account and point the task at it
+  instead. The installer takes the convenient path; the safe path
+  is one extra step and worth it on any machine you care about.
 - **Execution confinement (v2, spec'd).** The Oracle can restrict jobs
   to a single `workspace_root` folder and *attest* that the job
   stayed inside it. Not a sandbox — an attested boundary. See
