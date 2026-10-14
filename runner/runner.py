@@ -177,10 +177,23 @@ def kill_tree(proc: subprocess.Popen):
             pass
 
 
-def download(url: str, dest: str):
+MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024  # 100 MiB
+
+
+def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
     req = Request(url, headers={"User-Agent": "homing-pigeon/1"})
     with urlopen(req, timeout=120) as r, open(dest, "wb") as f:
-        shutil.copyfileobj(r, f)
+        total = 0
+        while True:
+            chunk = r.read(65536)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > max_bytes:
+                raise RuntimeError(
+                    f"download exceeded {max_bytes} bytes"
+                )
+            f.write(chunk)
 
 
 def sha384_of(path: str) -> str:
@@ -191,8 +204,22 @@ def sha384_of(path: str) -> str:
     return h.hexdigest()
 
 
+_SAFE_JOB_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+
+
+def _safe_job_id(job_id: str) -> str:
+    """Reject job_ids that could escape the work directory."""
+    if not isinstance(job_id, str) or not _SAFE_JOB_ID.match(job_id):
+        raise JobRejected(
+            "job_id must be 1-128 chars of [A-Za-z0-9._-] "
+            "(no slashes or absolute paths)"
+        )
+    return job_id
+
+
 def execute_job(cfg, job: dict, base_dir: str) -> dict:
-    work = os.path.join(base_dir, "work", job["job_id"])
+    job_id = _safe_job_id(job.get("job_id", ""))
+    work = os.path.join(base_dir, "work", job_id)
     os.makedirs(work, exist_ok=True)
     kind = job.get("kind")
 
