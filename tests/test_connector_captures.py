@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Replay bodies captured from the Gmail connector round-trip.
+"""Replay bodies captured from the live Gmail round-trip.
 
 These are the real payloads from docs/connector-roundtrip.md. They lock
 in: a happy-path ping verifies and runs, a signature marker inside a
-script field does not confuse the verifier, and a preamble (the note we
-put above the JSON in the test mail) makes verification fail.
+script field does not confuse the verifier, preambles/trailers around
+the signed object are ignored, and tampering is rejected. The
+test_mutation_* cases perturb the captures to probe the verifier's
+edges (decoy markers, truncated/non-hex/mixed-case signatures, CRLF,
+empty bodies).
 """
 
 import os
@@ -152,6 +155,52 @@ class ConnectorCaptureTests(unittest.TestCase):
         wrapped = "note\n" + bad + "\ntrailer\n"
         with self.assertRaises(ValueError):
             verify_body(wrapped, SECRET)
+
+    # --- Mutations on the captured inputs: perturb the real payloads
+    # to probe the verifier's edges. ---
+
+    def test_preamble_with_braces_still_finds_object(self):
+        # The object scanner must skip over brace-heavy preamble text
+        # (and a whole closed JSON object) to find the signed root.
+        preamble = 'if (x) { run(); } note: {"a": 1, "b": {"c": 2}}\n\n'
+        job = verify_body(preamble + HAPPY_PING, SECRET)
+        self.assertEqual(job["job_id"], "c142d598-261a-4000-8a41-b8cb7d28bf38")
+
+    def test_fake_sig_marker_in_preamble_ignored(self):
+        # rfind takes the LAST marker; an early decoy must not win.
+        decoy = ',"sig":"' + "a" * 96 + '"}'
+        body = "decoy: " + decoy + "\n\n" + HAPPY_PING
+        job = verify_body(body, SECRET)
+        self.assertEqual(job["kind"], "ping")
+
+    def test_truncated_signature_rejected_cleanly(self):
+        with self.assertRaises(ValueError):
+            verify_body(HAPPY_PING[:-10], SECRET)
+
+    def test_non_hex_signature_rejected(self):
+        bad = HAPPY_PING.replace('"sig":"3e17', '"sig":"3ezz')
+        with self.assertRaises(ValueError):
+            verify_body(bad, SECRET)
+
+    def test_mixed_case_signature_accepted(self):
+        mixed = HAPPY_PING.replace('"sig":"3e175d60', '"sig":"3E175D60')
+        job = verify_body(mixed, SECRET)
+        self.assertEqual(job["kind"], "ping")
+
+    def test_crlf_body_verifies(self):
+        crlf = HAPPY_PING.replace("\n", "\r\n")
+        job = verify_body(crlf, SECRET)
+        self.assertEqual(job["job_id"], "c142d598-261a-4000-8a41-b8cb7d28bf38")
+
+    def test_empty_body_rejected(self):
+        with self.assertRaises(ValueError):
+            verify_body("", SECRET)
+        with self.assertRaises(ValueError):
+            verify_body("no json here", SECRET)
+
+    def test_marker_without_object_rejected(self):
+        with self.assertRaises(ValueError):
+            verify_body(',"sig":"' + "b" * 96 + '"}', SECRET)
 
 
 if __name__ == "__main__":

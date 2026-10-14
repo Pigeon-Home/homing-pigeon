@@ -123,13 +123,10 @@ Verification:
 4. Recompute `HEX(HMAC_SHA384(secret, raw))` and compare with the
    presented signature using a constant-time comparison.
 
-The shared secret is a dedicated HMAC secret string, separate from the
-Gmail app password. Both sides use its UTF-8 bytes directly as the
-HMAC-SHA-384 key. The user puts it in the runner's `config.json`
-(`hmac_secret`) and gives the same string to the cloud side (the SI)
-when they want jobs sent. It never travels in email; only job
-signatures do. The SI never sees the mailbox app password — cloud-side
-mail goes through the Gmail connector.
+The shared secret is the Gmail app password string itself (user's explicit
+choice). Both sides use its UTF-8 bytes directly as the HMAC-SHA-384 key.
+The user gives the same string to the cloud side when they want jobs sent.
+It never travels in email; only job signatures do.
 
 ## 5. Runner verification (all must pass, in order)
 
@@ -164,14 +161,11 @@ send stays unseen and will be retried (re-executed) on the next cycle.
 
 - The runner host is a **full-trust execution environment**: anyone who
   can produce a valid signed job email owns the box.
-- This deployment deliberately stores two secrets in **plaintext** in
-  config.json (user's explicit choice: dedicated throwaway account on a
-  fresh machine with nothing personal): the Gmail app password (Gmail
-  access for the runner's IMAP/SMTP polling) and a separate `hmac_secret`
-  (job-signing ability). Anyone holding the app password gets Gmail
-  access; anyone holding the HMAC secret can sign jobs. The SI only ever
-  holds the HMAC secret — never the app password. Do not use this setup
-  with an account you care about.
+- This deployment deliberately stores the Gmail app password in
+  **plaintext** in config.json (user's explicit choice: dedicated
+  throwaway account on a fresh machine with nothing personal). Anyone
+  holding the password gets both Gmail access and the ability to sign
+  jobs. Do not use this setup with an account you care about.
 - Use a dedicated mailbox, never a personal inbox. Use an app password,
   never the account password.
 - Recommended deployment: run the runner inside a Linux VM on the
@@ -228,33 +222,6 @@ It is governed by a single runner-owner flag:
   machinery.
 - The flag is config-only. **No job field can disable the Oracle** —
   otherwise the SI could switch off its own restraints.
-
-### Where this comes from
-
-The Oracle is a reference monitor in the Orange Book sense: every
-result crosses it, the subject cannot disable it, and it is small
-enough to check. The confidentiality rule is Bell-LaPadula. Raw
-output is the high label; the SI is low. No read up — under
-`attested`, the SI gets predicates, not the output. The `view`
-ladder (`full` > `redacted` > `summary` > `attested`) is the
-lattice. The owner's config is the ceiling; a job may only request
-at or below it.
-
-No write down is why the exchange is non-adaptive. If the SI could
-ask, see the answer, and ask again, that is a channel from high to
-low. Declaring every query up front and answering them all at once,
-with rejections still charged against the budget, closes it.
-
-The HMAC-signed attestation is the trusted path: the answer came
-from the monitor, not from the job. The owner/SI split is
-separation of duty — the owner sets the ceiling, the SI composes
-the job, and neither both writes the policy and receives the data.
-
-Type enforcement, the part SELinux actually added, is the open
-piece. `workspace_root` confinement (section 9.3) is the start: the
-job domain may touch one type, the Oracle domain reads the retained
-output, and the job domain may not. A full lattice beyond the four
-views is not worth building for one owner and one SI.
 
 ## 9. Result policies
 
@@ -354,31 +321,6 @@ confinement**: it snapshots file metadata (path, size, mtime) outside
 
 Like everything the Oracle does, the ceiling is the runner owner's:
 no job field can widen or disable confinement.
-
-Hard enforcement, when it arrives, uses what each platform actually
-has. None of these is SELinux. Each covers a different slice of the
-same idea.
-
-- **Linux.** Namespaces and a landlock or seccomp filter are the
-  practical tools. AppArmor is path-based type enforcement and is
-  the closest everyday equivalent. SELinux is the full version and
-  is not required.
-- **FreeBSD.** The direct relative. TrustedBSD MAC is the framework
-  SELinux's ideas sit next to, and `jail` is the tool: the workspace
-  as the only mount, nothing else visible. This is the cleanest hard
-  confinement of the four.
-- **macOS.** Seatbelt profiles (`sandbox-exec`, now mostly private)
-  are the per-job sandbox. SIP protects the system, not the job.
-  TCC is a consent prompt and is useless to a headless runner. The
-  lineage is TrustedBSD MAC, same family as FreeBSD.
-- **Windows.** No type enforcement. Mandatory Integrity Control is
-  the label system, and it is Biba rather than Bell-LaPadula: a Low
-  job cannot write up to Medium. An AppContainer is the domain.
-  A restricted token plus a Job Object is the realistic hard
-  confinement for a runner that is not a packaged app.
-
-The attestation does not change between these. `confined_to_workspace`
-stays the predicate; only the checker behind it gets stronger.
 
 ## 10. The two-phase query exchange
 
