@@ -49,9 +49,11 @@ This project is explicit that the runner is a **full-trust execution
 environment**. Reports along the lines of "anyone with the secret can
 run arbitrary code" describe the intended design, not a vulnerability.
 A vulnerability is something that breaks the documented guarantees:
-signature forgery, sender spoofing, a job executing without a valid
+signature forgery, a job executing without a valid
 signature, sandbox/workdir escape, or secret leakage through logs,
-emails, or error messages.
+emails, or error messages. Sender spoofing is not in scope: the sender
+address is not validated, so there is nothing to spoof — the signature
+is the only thing the runner trusts.
 
 **What the signature proves, and what it does not.** The HMAC signature
 answers two questions: was this job sent by someone holding the shared
