@@ -355,6 +355,31 @@ confinement**: it snapshots file metadata (path, size, mtime) outside
 Like everything the Oracle does, the ceiling is the runner owner's:
 no job field can widen or disable confinement.
 
+Hard enforcement, when it arrives, uses what each platform actually
+has. None of these is SELinux. Each covers a different slice of the
+same idea.
+
+- **Linux.** Namespaces and a landlock or seccomp filter are the
+  practical tools. AppArmor is path-based type enforcement and is
+  the closest everyday equivalent. SELinux is the full version and
+  is not required.
+- **FreeBSD.** The direct relative. TrustedBSD MAC is the framework
+  SELinux's ideas sit next to, and `jail` is the tool: the workspace
+  as the only mount, nothing else visible. This is the cleanest hard
+  confinement of the four.
+- **macOS.** Seatbelt profiles (`sandbox-exec`, now mostly private)
+  are the per-job sandbox. SIP protects the system, not the job.
+  TCC is a consent prompt and is useless to a headless runner. The
+  lineage is TrustedBSD MAC, same family as FreeBSD.
+- **Windows.** No type enforcement. Mandatory Integrity Control is
+  the label system, and it is Biba rather than Bell-LaPadula: a Low
+  job cannot write up to Medium. An AppContainer is the domain.
+  A restricted token plus a Job Object is the realistic hard
+  confinement for a runner that is not a packaged app.
+
+The attestation does not change between these. `confined_to_workspace`
+stays the predicate; only the checker behind it gets stronger.
+
 ## 10. The two-phase query exchange
 
 Modeled on IKEv2: phase one negotiates *what may be asked*; phase two
