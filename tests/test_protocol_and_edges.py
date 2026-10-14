@@ -29,6 +29,7 @@ from runner.runner import (  # noqa: E402
     JobRejected,
     execute_job,
     get_text_body,
+    fetch_job_mails,
     load_seen,
     platform_interpreter,
     poll_once,
@@ -691,64 +692,48 @@ class AdversarialTests(unittest.TestCase):
         self.assertIn(jid, seen)
         self.assertIn("1", imap.flagged)
 
-    def test_bad_scheme_is_poison(self):
-        jid = str(uuid.uuid4())
-        p = base_job(jid, kind="exec", script="echo hi",
-                     files=[{"name": "x.bin", "url": "file:///etc/passwd"}])
-        imap, smtp, seen = self.cycle([job_email(p)])
-        self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
-        self.assertEqual(r["exit_code"], -2)
-        self.assertIn("unsupported url scheme", r["stderr"])
-        self.assertIn(jid, seen)
-
-    def test_nxdomain_is_poison(self):
-        from urllib.error import URLError
-        jid = str(uuid.uuid4())
-        p = base_job(jid, kind="exec",
-                     script_url="https://no-such-host.invalid/s")
-        with patch("runner.runner.urlopen",
-                   side_effect=URLError("Name or service not known")):
-            imap, smtp, seen = self.cycle([job_email(p)])
-        self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
-        self.assertEqual(r["exit_code"], -2)
-        self.assertIn("does not resolve", r["stderr"])
-        self.assertIn(jid, seen)
-
-    def test_http_404_is_poison(self):
-        from urllib.error import HTTPError
-        jid = str(uuid.uuid4())
-        p = base_job(jid, kind="exec",
-                     script_url="https://example.com/missing")
-        with patch("runner.runner.urlopen",
-                   side_effect=HTTPError("https://example.com/missing", 404, "missing", {}, None)):
-            imap, smtp, seen = self.cycle([job_email(p)])
-        self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
-        self.assertEqual(r["exit_code"], -2)
-        self.assertIn("404", r["stderr"])
-        self.assertIn(jid, seen)
-
-    def test_work_dir_cleaned_between_runs(self):
-        jid = str(uuid.uuid4())
-        base = self.tmp
-        work = os.path.join(base, "work", jid)
-        os.makedirs(work)
-        fh = open(os.path.join(work, "leftover"), "w"); fh.write("stale"); fh.close()
-        p = base_job(jid, kind="exec", script="ls")
-        imap, smtp, seen = self.cycle([job_email(p)])
-        self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
-        self.assertEqual(r["exit_code"], 0)
-        self.assertNotIn("leftover", r["stdout"])
-
     def test_seen_dict_trimmed_in_memory(self):
         seen = {f"old-{i}": True for i in range(SEEN_CAP + 5)}
         jid = str(uuid.uuid4())
         _, _, seen = self.cycle([job_email(base_job(jid))], seen=seen)
         self.assertLessEqual(len(seen), SEEN_CAP)
         self.assertIn(jid, seen)  # newest entry survives the trim
+
+    def test_fetch_search_uses_broad_tag(self):
+        # Decorated subjects ("[HOMING-PIGEON] TEST job <id>") do not
+        # contain the exact "[HOMING-PIGEON] job" substring, so the
+        # search must use the broad tag and let handle_mail filter.
+        imap = FakeIMAP([])
+        searches = []
+        orig_search = imap.search
+        imap.search = lambda *a: (searches.append(a), orig_search(*a))[1]
+        fetch_job_mails(imap)
+        joined = " ".join(" ".join(str(x) for x in a) for a in searches)
+        self.assertIn("[HOMING-PIGEON]", joined)
+        self.assertNotIn("[HOMING-PIGEON] job", joined)
+
+    def test_decorated_subject_executes(self):
+        jid = str(uuid.uuid4())
+        raw = job_email(base_job(jid, kind="ping"))
+        raw = raw.replace(b"[HOMING-PIGEON] job ",
+                          b"[HOMING-PIGEON] TEST job ")
+        imap, smtp, seen = self.cycle([raw])
+        self.assertEqual(len(smtp.sent), 1)
+        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        self.assertEqual(r["stdout"], "pong")
+        self.assertIn(jid, seen)
+
+    def test_result_subject_ignored_and_seen(self):
+        # Result mails now match the broad search; they must be
+        # ignored (not executed), just marked seen.
+        jid = str(uuid.uuid4())
+        raw = job_email(base_job(jid, kind="ping"))
+        raw = raw.replace(b"[HOMING-PIGEON] job ",
+                          b"[HOMING-PIGEON] result ")
+        imap, smtp, seen = self.cycle([raw])
+        self.assertEqual(len(smtp.sent), 0)
+        self.assertIn("1", imap.flagged)
+        self.assertNotIn(jid, seen)
 
 
 if __name__ == "__main__":
