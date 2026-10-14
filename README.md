@@ -1,5 +1,7 @@
 # Homing Pigeon
 
+**Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, etc.**
+
 Your cloud SI is smart, but it can't touch your computer. Homing Pigeon
 fixes that: tell your SI to send a signed job, it executes on your machine
 (Linux/macOS/FreeBSD/Windows), and the results come back so your SI can
@@ -154,14 +156,11 @@ Ubuntu 22.04+, recent Debian, and most current distros. Older systems
    service (systemd / launchd / cron @reboot / Scheduled Task).
 3. Edit `config.json`: set `mailbox_user` and `mailbox_password` — your
    dedicated Gmail address + app password, **in plaintext, on purpose**
-   (your explicit choice for this throwaway account). Also set
-   `hmac_secret` to a separate random string — this is the job-signing
-   secret, not the app password. Leave `allowed_sender` empty — the
-   runner then only accepts job mail from the account it is logged into
-   (hard rule).
-4. When you want an SI to send jobs, give it the `hmac_secret` string.
-   The SI sends through the Gmail connector and never sees your app
-   password.
+   (your explicit choice for this throwaway account). Leave
+   `allowed_sender` empty — the runner then only accepts job mail from
+   the account it is logged into (hard rule).
+4. When you want an SI to send jobs, paste that same app-password string
+   to it in chat. It doubles as the HMAC shared secret.
 
 **From the Python packages** (needs Python 3.9+): each release also
 ships an sdist (`.tar.gz`) and a universal wheel (`.whl`) — the easiest
@@ -258,8 +257,8 @@ in the job (`send_job.py new --interpreter '["bash"]'`).
 
 The runner is SI-agnostic: anything that can send email *as* the runner's
 Gmail account and sign the body can drive it — your SI of choice, a cron
-script, whatever. The SI needs the `hmac_secret` string from step 3 (a
-separate secret, not the app password). Then:
+script, whatever. The SI needs the shared secret string from step 5 (which
+is the app password itself, your choice). Then:
 
 ```bash
 python3 cloud/send_job.py new --kind ping --secret <the-string>
@@ -302,11 +301,10 @@ End-to-end without your SI:
 ## Security notes
 
 - The runner is a **full-trust execution environment**: a valid signed
-  job email means arbitrary code as a privileged user. Two secrets sit in
-  **plaintext** in config.json (your explicit choice: throwaway account,
-  fresh box): the app password (Gmail access) and a separate `hmac_secret`
-  (job-signing ability). Anyone holding the HMAC secret can sign jobs.
-  Don't use this setup with an account you care about.
+  job email means arbitrary code as a privileged user. The app password sits in
+  **plaintext** in config.json and doubles as the HMAC secret (your explicit
+  choice: throwaway account, fresh box). Anyone holding it gets Gmail access
+  and job-signing ability. Don't use this setup with an account you care about.
 - Every job is HMAC-SHA-384 signed; sender address, timestamp window, and
   replay protection (seen-set) are all enforced before anything runs.
 - Delivery is at-least-once: if a result email fails to send, the job

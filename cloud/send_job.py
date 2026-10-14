@@ -7,11 +7,12 @@ exact same signature scheme as runner/runner.py:
     sig = HEX(HMAC_SHA384(secret, payload_json_with_LF_line_endings))
     body = payload_json with the trailing "}" replaced by ',"sig":"<sig>"}'
 
-The --secret is the shared HMAC secret, used directly (UTF-8) as the
-HMAC-SHA-384 key. It is not a mailbox password and not a connector
-token. Keep it out of logs and files; pass it only when needed.
-This helper is SI-agnostic: anything that can run it and send the
-resulting email can drive the runner.
+The --secret is the shared secret string, used directly (UTF-8) as the
+HMAC-SHA-384 key. In this deployment it is the runner's Gmail app password
+itself (user's explicit choice: dedicated throwaway account). This helper
+is SI-agnostic: anything that can run it and send the resulting email as
+the runner's Gmail account — any SI, a cron job — can drive
+the runner. Keep the secret out of logs and files; pass it only when needed.
 
 Usage:
     python3 send_job.py new --kind ping --secret <hex-or-text-secret>
