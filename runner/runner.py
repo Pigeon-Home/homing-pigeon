@@ -22,9 +22,9 @@ Usage:
 #     (the original model). When auth is oauth it is the separate
 #     shared_secret field. Both sides use its UTF-8 bytes as the
 #     HMAC-SHA-384 key. The user hands that string to the cloud side.
-#  3. The runner ONLY obeys job mail whose From address is the account it is
-#     logged into (or the explicit allowed_sender override). Anything else
-#     is rejected before signature verification.
+#  3. The runner obeys any job mail bearing a valid HMAC signature,
+#     regardless of sender. The signature is the sole authentication
+#     gate; the sender address is logged for audit but never trusted.
 
 import argparse
 import base64
@@ -579,7 +579,7 @@ def _describe_job(job: dict) -> str:
 
 
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
-                seen: dict, secret: str, allowed_sender: str, opts=None):
+                seen: dict, secret: str, opts=None):
     msg = email.message_from_bytes(raw)
     subject = str(msg["Subject"] or "")
     from_header = str(msg["From"] or "")
@@ -603,11 +603,12 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             mark_seen(imap, seq)
         return
 
-    # HARD RULE: only the runner's own account may issue jobs.
+    # The HMAC signature is the sole authentication gate. Any sender
+    # may submit jobs; only a valid signature authorizes execution.
+    # The sender address is logged for audit but never trusted.
     from_addr = parseaddr(from_header)[1].strip()
-    if not from_addr or from_addr.lower() != allowed_sender.lower():
-        reject(f"sender not allowed (must be {allowed_sender}): {from_header}")
-        return
+    log(f"seq {seq}: job {job_id} submitted by {from_addr or '(no sender)'}",
+        "DEBUG")
 
     try:
         job = verify_body(get_text_body(msg), secret)
@@ -758,9 +759,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
             raise RuntimeError("config error: shared_secret is required when auth=oauth")
     else:
         secret = cfg["mailbox_password"]
-    allowed_sender = cfg.get("allowed_sender") or cfg["mailbox_user"]
-    log(f"runner identity: {cfg['mailbox_user']} "
-        f"-- accepting jobs only from {allowed_sender}")
+    log(f"runner identity: {cfg['mailbox_user']} -- accepting signed jobs from any sender")
     own_imap = imap is None
     own_smtp = smtp is None
     try:
@@ -776,7 +775,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
                 log(f"executing with {workers} workers", "DEBUG")
             with ThreadPoolExecutor(max_workers=workers) as ex:
                 futs = [ex.submit(handle_mail, cfg, imap, smtp, seq, raw,
-                                  base_dir, seen, secret, allowed_sender, opts)
+                                  base_dir, seen, secret, opts)
                         for seq, raw in mails]
                 first_exc = None
                 for f in as_completed(futs):
