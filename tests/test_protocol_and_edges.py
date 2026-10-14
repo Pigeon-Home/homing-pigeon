@@ -1,0 +1,423 @@
+#!/usr/bin/env python3
+"""Expanded unit and integration tests for homing-pigeon.
+
+Covers protocol validation (age, version, job_id, sender), execution
+edges (env, args, truncation, missing script, SHA mismatch via mock),
+seen-set capping, multipart bodies, crypto edge cases, and install
+helpers that do not touch the real system.
+"""
+
+import json
+import os
+import sys
+import tempfile
+import unittest
+import uuid
+from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from unittest.mock import patch
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO)
+sys.path.insert(0, os.path.join(REPO, "cloud"))
+
+from runner.runner import (  # noqa: E402
+    JobRejected,
+    execute_job,
+    get_text_body,
+    load_seen,
+    platform_interpreter,
+    poll_once,
+    save_seen,
+    sha384_of,
+    sign_payload,
+    verify_body,
+)
+from runner import install as install_mod  # noqa: E402
+from send_job import sign_payload as cloud_sign  # noqa: E402
+
+SECRET = "edge-test-secret"
+SENDER = "runner@example.com"
+
+
+class FakeIMAP:
+    def __init__(self, mails):
+        self.mails = list(mails)
+        self.flagged = []
+
+    def login(self, u, p):
+        return ("OK", [])
+
+    def select(self, box):
+        return ("OK", [])
+
+    def search(self, *args):
+        nums = b" ".join(str(i + 1).encode() for i in range(len(self.mails)))
+        return ("OK", [nums])
+
+    def fetch(self, num, _spec):
+        raw = self.mails[int(num) - 1]
+        head = f"{num.decode()} (RFC822 {{{len(raw)}}}".encode()
+        return ("OK", [(head, raw), b")"])
+
+    def store(self, seq, _op, _flags):
+        self.flagged.append(seq)
+        return ("OK", [])
+
+    def logout(self):
+        return ("OK", [])
+
+
+class FakeSMTP:
+    def __init__(self):
+        self.sent = []
+
+    def starttls(self):
+        pass
+
+    def login(self, u, p):
+        pass
+
+    def send_message(self, msg):
+        self.sent.append(msg)
+
+    def quit(self):
+        pass
+
+
+def now_iso(delta=None):
+    dt = datetime.now(timezone.utc)
+    if delta:
+        dt = dt + delta
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def job_email(payload, secret=SECRET, sender=SENDER, subject_id=None):
+    jid = subject_id or payload.get("job_id", "x")
+    msg = EmailMessage()
+    msg["From"] = sender
+    msg["To"] = sender
+    msg["Subject"] = f"[HOMING-PIGEON] job {jid}"
+    msg.set_content(sign_payload(payload, secret))
+    return msg.as_bytes()
+
+
+def base_job(jid, **kw):
+    p = {
+        "v": 1, "type": "job", "job_id": jid,
+        "issued_at": now_iso(), "kind": "ping",
+    }
+    p.update(kw)
+    return p
+
+
+class ProtocolTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-edge-")
+        self.cfg = {
+            "mailbox_user": SENDER,
+            "mailbox_password": SECRET,
+            "imap_host": "fake", "imap_port": 993,
+            "smtp_host": "fake", "smtp_port": 587,
+            "max_job_age_sec": 3600,
+            "max_output_bytes": 40,
+            "default_timeout_sec": 300,
+        }
+        self.seen_path = os.path.join(self.tmp, "seen.json")
+
+    def cycle(self, mails, cfg=None, seen=None):
+        cfg = cfg or self.cfg
+        seen = {} if seen is None else seen
+        imap, smtp = FakeIMAP(mails), FakeSMTP()
+        poll_once(cfg, self.tmp, seen, self.seen_path, imap=imap, smtp=smtp)
+        return imap, smtp, seen
+
+    def test_too_old(self):
+        jid = str(uuid.uuid4())
+        p = base_job(jid, issued_at=now_iso(timedelta(hours=-3)))
+        imap, smtp, seen = self.cycle([job_email(p)])
+        self.assertEqual(len(smtp.sent), 0)
+        self.assertIn("1", imap.flagged)
+        self.assertNotIn(jid, seen)
+
+    def test_future_beyond_skew(self):
+        jid = str(uuid.uuid4())
+        p = base_job(jid, issued_at=now_iso(timedelta(minutes=10)))
+        _, smtp, _ = self.cycle([job_email(p)])
+        self.assertEqual(len(smtp.sent), 0)
+
+    def test_within_skew_accepted(self):
+        jid = str(uuid.uuid4())
+        p = base_job(jid, issued_at=now_iso(timedelta(seconds=-30)))
+        _, smtp, seen = self.cycle([job_email(p)])
+        self.assertEqual(len(smtp.sent), 1)
+        self.assertIn(jid, seen)
+
+    def test_unparseable_issued_at(self):
+        jid = str(uuid.uuid4())
+        p = base_job(jid, issued_at="yesterday")
+        _, smtp, _ = self.cycle([job_email(p)])
+        self.assertEqual(len(smtp.sent), 0)
+
+    def test_job_id_mismatch(self):
+        body_id = str(uuid.uuid4())
+        subj_id = str(uuid.uuid4())
+        p = base_job(body_id)
+        _, smtp, _ = self.cycle([job_email(p, subject_id=subj_id)])
+        self.assertEqual(len(smtp.sent), 0)
+
+    def test_wrong_version(self):
+        jid = str(uuid.uuid4())
+        p = base_job(jid, v=2)
+        _, smtp, _ = self.cycle([job_email(p)])
+        self.assertEqual(len(smtp.sent), 0)
+
+    def test_wrong_type(self):
+        jid = str(uuid.uuid4())
+        p = base_job(jid, type="result")
+        _, smtp, _ = self.cycle([job_email(p)])
+        self.assertEqual(len(smtp.sent), 0)
+
+    def test_allowed_sender_override_accepts(self):
+        jid = str(uuid.uuid4())
+        cfg = dict(self.cfg, allowed_sender="other@example.com")
+        _, smtp, seen = self.cycle(
+            [job_email(base_job(jid), sender="other@example.com")], cfg=cfg)
+        self.assertEqual(len(smtp.sent), 1)
+        self.assertIn(jid, seen)
+
+    def test_allowed_sender_override_rejects_mailbox(self):
+        jid = str(uuid.uuid4())
+        cfg = dict(self.cfg, allowed_sender="other@example.com")
+        _, smtp, _ = self.cycle([job_email(base_job(jid))], cfg=cfg)
+        self.assertEqual(len(smtp.sent), 0)
+
+    def test_subject_pattern_mismatch(self):
+        jid = str(uuid.uuid4())
+        msg = EmailMessage()
+        msg["From"] = SENDER
+        msg["To"] = SENDER
+        msg["Subject"] = "just a normal email"
+        msg.set_content(sign_payload(base_job(jid), SECRET))
+        imap, smtp, _ = self.cycle([msg.as_bytes()])
+        self.assertEqual(len(smtp.sent), 0)
+        self.assertIn("1", imap.flagged)
+
+
+class ExecutionEdgeTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-exec-")
+        self.cfg = {
+            "mailbox_user": SENDER,
+            "mailbox_password": SECRET,
+            "max_output_bytes": 30,
+            "default_timeout_sec": 300,
+        }
+        self.seen_path = os.path.join(self.tmp, "seen.json")
+
+    def cycle(self, mails, cfg=None):
+        cfg = cfg or self.cfg
+        imap, smtp, seen = FakeIMAP(mails), FakeSMTP(), {}
+        poll_once(cfg, self.tmp, seen, self.seen_path, imap=imap, smtp=smtp)
+        return imap, smtp, seen
+
+    def test_missing_script_or_url(self):
+        jid = str(uuid.uuid4())
+        p = base_job(jid, kind="exec")
+        _, smtp, seen = self.cycle([job_email(p)])
+        self.assertEqual(len(smtp.sent), 1)
+        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        self.assertEqual(r["exit_code"], -2)
+        self.assertIn("requires script", r["stderr"])
+        self.assertIn(jid, seen)
+
+    def test_env_and_args(self):
+        jid = str(uuid.uuid4())
+        script = 'echo "A=$1 E=$MYE"'
+        p = base_job(jid, kind="exec", script=script, interpreter=["sh"],
+                     args=["zz"], env={"MYE": "yy"})
+        _, smtp, _ = self.cycle([job_email(p)])
+        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        self.assertEqual(r["exit_code"], 0)
+        self.assertIn("A=zz", r["stdout"])
+        self.assertIn("E=yy", r["stdout"])
+
+    def test_stdout_truncation_flag(self):
+        jid = str(uuid.uuid4())
+        p = base_job(jid, kind="exec",
+                     script="printf '%s' 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'",
+                     interpreter=["sh"])
+        _, smtp, _ = self.cycle([job_email(p)])
+        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        self.assertTrue(r["stdout_truncated"])
+        self.assertLessEqual(len(r["stdout"]), 30)
+
+    def test_timeout_capped(self):
+        job = {
+            "job_id": "cap",
+            "kind": "exec",
+            "script": "echo capped",
+            "interpreter": ["sh"],
+            "timeout_sec": 999999,
+        }
+        r = execute_job(self.cfg, job, self.tmp)
+        self.assertEqual(r["exit_code"], 0)
+        self.assertIn("capped", r["stdout"])
+
+    def test_unknown_kind_direct(self):
+        with self.assertRaises(JobRejected):
+            execute_job(self.cfg, {"job_id": "k", "kind": "nope"}, self.tmp)
+
+    def test_path_traversal_direct(self):
+        job = {
+            "job_id": "t",
+            "kind": "exec",
+            "script": "echo",
+            "files": [{"name": "../escape", "url": "http://invalid"}],
+        }
+        with self.assertRaises(JobRejected):
+            execute_job(self.cfg, job, self.tmp)
+
+    def test_sha384_mismatch_mocked(self):
+        job = {
+            "job_id": "sha",
+            "kind": "exec",
+            "script": "echo",
+            "files": [{"name": "f.txt", "url": "http://x", "sha384": "deadbeef"}],
+        }
+        with patch("runner.runner.download", lambda u, d: open(d, "w").write("data")):
+            with self.assertRaises(JobRejected) as cm:
+                execute_job(self.cfg, job, self.tmp)
+            self.assertIn("SHA384 mismatch", str(cm.exception))
+
+    def test_sha384_match_mocked(self):
+        content = b"hello-file"
+        job = {
+            "job_id": "shaok",
+            "kind": "exec",
+            "script": "cat f.txt",
+            "interpreter": ["sh"],
+            "files": [{"name": "f.txt", "url": "http://x", "sha384": "PLACEHOLDER"}],
+        }
+
+        def fake_dl(url, dest):
+            with open(dest, "wb") as f:
+                f.write(content)
+
+        with patch("runner.runner.download", fake_dl):
+            import hashlib
+            h = hashlib.sha384(content).hexdigest()
+            job["files"][0]["sha384"] = h
+            r = execute_job(self.cfg, job, self.tmp)
+            self.assertEqual(r["exit_code"], 0)
+            self.assertIn("hello-file", r["stdout"])
+
+
+class SeenAndHelpersTests(unittest.TestCase):
+    def test_seen_cap_keeps_newest(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "seen.json")
+            seen = {f"id-{i:04d}": True for i in range(2500)}
+            save_seen(path, seen)
+            loaded = load_seen(path)
+            self.assertEqual(len(loaded), 2000)
+            self.assertIn("id-2499", loaded)
+            self.assertNotIn("id-0000", loaded)
+
+    def test_load_seen_missing(self):
+        self.assertEqual(load_seen("/no/such/seen.json"), {})
+
+    def test_load_seen_corrupt(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "bad.json")
+            with open(path, "w") as f:
+                f.write("{broken")
+            self.assertEqual(load_seen(path), {})
+
+    def test_load_seen_not_list(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "obj.json")
+            with open(path, "w") as f:
+                json.dump({"a": 1}, f)
+            self.assertEqual(load_seen(path), {})
+
+    def test_get_text_body_plain(self):
+        m = EmailMessage()
+        m.set_content("plain body")
+        self.assertIn("plain body", get_text_body(m))
+
+    def test_multipart_prefers_plain(self):
+        jid = str(uuid.uuid4())
+        signed = sign_payload(base_job(jid), SECRET)
+        msg = MIMEMultipart()
+        msg["From"] = SENDER
+        msg["To"] = SENDER
+        msg["Subject"] = f"[HOMING-PIGEON] job {jid}"
+        msg.attach(MIMEText("<b>html</b>", "html"))
+        msg.attach(MIMEText(signed, "plain"))
+        with tempfile.TemporaryDirectory() as d:
+            cfg = {
+                "mailbox_user": SENDER,
+                "mailbox_password": SECRET,
+                "max_job_age_sec": 3600,
+            }
+            imap, smtp, seen = FakeIMAP([msg.as_bytes()]), FakeSMTP(), {}
+            poll_once(cfg, d, seen, os.path.join(d, "s.json"),
+                      imap=imap, smtp=smtp)
+            self.assertEqual(len(smtp.sent), 1)
+            self.assertIn(jid, seen)
+
+    def test_platform_interpreter(self):
+        interp = platform_interpreter()
+        self.assertIsInstance(interp, list)
+        self.assertTrue(len(interp) >= 1)
+        if os.name == "nt":
+            self.assertEqual(interp[0], "powershell")
+        else:
+            self.assertEqual(interp, ["sh"])
+
+    def test_cloud_runner_sign_compatible(self):
+        p = {"v": 1, "type": "job", "job_id": "c", "kind": "ping"}
+        self.assertEqual(sign_payload(p, SECRET), cloud_sign(p, SECRET))
+        self.assertEqual(verify_body(cloud_sign(p, SECRET), SECRET)["job_id"], "c")
+
+    def test_sha384_of_known(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "f")
+            with open(path, "wb") as f:
+                f.write(b"abc")
+            # SHA-384 of "abc"
+            self.assertEqual(
+                sha384_of(path),
+                "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed"
+                "8086072ba1e7cc2358baeca134c825a7",
+            )
+
+
+class InstallHelperTests(unittest.TestCase):
+    def test_src_dir_not_frozen(self):
+        # When not frozen, _src_dir points at the runner package directory
+        d = install_mod._src_dir()
+        self.assertTrue(os.path.isdir(d))
+        self.assertTrue(os.path.exists(os.path.join(d, "runner.py")))
+
+    def test_runner_argv_not_frozen(self):
+        argv = install_mod._runner_argv("/tmp/dst")
+        self.assertIn("runner.py", argv[-1])
+        self.assertTrue(argv[-1].endswith("runner.py"))
+
+    def test_install_files_copies_and_config(self):
+        with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
+            # minimal source layout
+            open(os.path.join(src, "runner.py"), "w").write("# stub\n")
+            open(os.path.join(src, "config.example.json"), "w").write("{}\n")
+            with patch.object(install_mod, "FROZEN", False):
+                install_mod.install_files(src, dst)
+            self.assertTrue(os.path.exists(os.path.join(dst, "runner.py")))
+            self.assertTrue(os.path.exists(os.path.join(dst, "config.json")))
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
