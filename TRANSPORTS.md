@@ -225,3 +225,19 @@ The blob never changes. The signatures never change. The Oracle
 never knows the difference. If you can implement those three
 functions against your favorite pipe, homing-pigeon runs on it —
 and we'd love the PR.
+
+## Bootstrapping: switching transports by email
+
+You don't need to know how any of this works to get a better
+transport. Email is the bootstrap: get that running (it's just a
+Gmail account), then tell your SI "get me on Cloudflare Queues"
+or NATS or whatever. The SI writes a runbook — install the
+dependency, write the config, flip the transport setting, verify
+with a test job — and sends it as jobs through the email channel
+you already have. The runner reconfigures its own plumbing and
+reports back. The project swaps its transport using the transport.
+
+This is the point of the runbook model: the user needs almost no
+technical knowledge, because the SI does the knowing and the
+runbook does the proving. Each step checks its own work, so a
+failed migration is a report, not a bricked machine.

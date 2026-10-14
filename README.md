@@ -64,6 +64,15 @@ about the pipe: Cloudflare Queues, NATS, MQTT, Redis Streams and friends
 all satisfy the same contract. Email is just Transport #1 —
 see TRANSPORTS.md.
 
+**Runbooks, not prompts.** The SI doesn't chat about the task — it ships
+a runbook: deterministic steps, each with a check that proves the step
+worked. The runner executes it and reports back what actually happened,
+and that feedback goes into the next runbook. Each cycle is a little
+smarter than the last, because the failures are data. If you've ever
+debugged something by running it, reading the output, and trying again
+with what you learned — that's the whole product. The SI is just the
+part that writes the next attempt.
+
 ## The Oracle: answers, not output
 
 v1 sends full job output back to the SI. The v2 proposal (spec'd in
