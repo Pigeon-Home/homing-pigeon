@@ -36,6 +36,14 @@ Those values live on the runner host. They do not travel through the SI chat.
 4. If a live round-trip is required, send the signed job with the connector to the runner's dedicated address, then poll for the result with the connector. Do not log into the runner's mailbox.
 5. If the connector is not connected, ask the user to connect Gmail. Do not fall back to asking for a password.
 
+## Personal account is not the runner
+
+The connector is attached to a personal Gmail account that holds legal and other private mail. Rules:
+
+- **Allowed:** send a clearly marked test email to that same address, read it back, verify the signature, exercise the cloud pipeline.
+- **Not allowed:** point the runner at that account, poll it with IMAP, or use it as the job mailbox for end-to-end execution tests.
+- End-to-end execution tests need a dedicated throwaway mailbox. The personal connector account is only the easy path for the SI side.
+
 ## Current connector
 
-The connected send-as address is the primary Gmail account on the connector. Jobs the SI sends come from that address. Set the runner's `allowed_sender` to it, or run the runner on a mailbox that is the same account (not recommended — use a throwaway).
+The connected send-as address is the primary Gmail account on the connector. Jobs the SI sends come from that address. The runner, when it exists, must use a different dedicated mailbox and set `allowed_sender` to the connector address.
