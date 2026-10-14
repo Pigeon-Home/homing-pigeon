@@ -443,7 +443,9 @@ class InstallHelperTests(unittest.TestCase):
     def test_macos_plist_escapes_xml_metachars(self):
         import plistlib
         with tempfile.TemporaryDirectory() as tmp:
-            dst = os.path.join(tmp, "a&b<c")
+            # & needs XML escaping but is a valid filename on all platforms
+            # (< and > would also test escaping but are illegal on Windows)
+            dst = os.path.join(tmp, "a&b")
             os.makedirs(dst)
             la = os.path.join(tmp, "LA")
             with patch.object(install_mod, "run", lambda *a, **k: None):
@@ -488,6 +490,7 @@ class InstallHelperTests(unittest.TestCase):
         self.assertEqual(install_mod._forwarded_args(fake), [])
 
     def test_linux_unit_quotes_spaced_paths(self):
+        import shlex
         with tempfile.TemporaryDirectory() as tmp:
             dst = os.path.join(tmp, "my dir")
             udir = os.path.join(tmp, "systemd")
@@ -497,8 +500,9 @@ class InstallHelperTests(unittest.TestCase):
                                               system=False)
             with open(os.path.join(udir, "homing-pigeon.service")) as fh:
                 unit = fh.read()
-            self.assertIn("'%s/runner.py'" % dst, unit)
-            self.assertIn("--config '%s/config.json'" % dst, unit)
+            self.assertIn(shlex.quote(os.path.join(dst, "runner.py")), unit)
+            self.assertIn("--config " + shlex.quote(os.path.join(dst, "config.json")),
+                          unit)
 
 
 class InfiniteRetryBugs(unittest.TestCase):
