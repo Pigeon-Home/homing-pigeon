@@ -28,6 +28,27 @@ FILES = ["runner.py"]
 # (homing-pigeon / homing-pigeon.exe) and services point at it directly.
 FROZEN = getattr(sys, "frozen", False)
 RUNNER_BIN = "homing-pigeon.exe" if os.name == "nt" else "homing-pigeon"
+IN_VENV = sys.prefix != getattr(sys, "base_prefix", sys.prefix)
+
+
+def _xml_escape(s: str) -> str:
+    amp = "&" + "amp;"
+    lt = "&" + "lt;"
+    gt = "&" + "gt;"
+    quot = "&" + "quot;"
+    return (s.replace("&", amp).replace("<", lt)
+            .replace(">", gt).replace('"', quot))
+
+
+def run(cmd, **kw):
+    print("+ " + " ".join(str(c) for c in cmd))
+    return subprocess.run(cmd, **kw)
+
+
+def run_ok(cmd, **kw):
+    """Run and return True on success, False on failure (no raise)."""
+    r = run(cmd, **kw)
+    return r.returncode == 0
 
 
 def _src_dir() -> str:
@@ -43,11 +64,6 @@ def _runner_argv(dst_dir: str):
     return [sys.executable, os.path.join(dst_dir, "runner.py")]
 
 
-def run(cmd, **kw):
-    print("+ " + " ".join(str(c) for c in cmd))
-    subprocess.run(cmd, check=True, **kw)
-
-
 def install_files(src_dir: str, dst_dir: str):
     os.makedirs(dst_dir, exist_ok=True)
     if FROZEN:
@@ -61,107 +77,153 @@ def install_files(src_dir: str, dst_dir: str):
             shutil.copy2(os.path.join(src_dir, name), os.path.join(dst_dir, name))
     cfg_dst = os.path.join(dst_dir, "config.json")
     if not os.path.exists(cfg_dst):
-        shutil.copy2(os.path.join(src_dir, "config.example.json"), cfg_dst)
+        example = os.path.join(src_dir, "config.example.json")
+        if os.path.exists(example):
+            shutil.copy2(example, cfg_dst)
+        else:
+            with open(cfg_dst, "w") as fh:
+                fh.write('{"mailbox_user":"","mailbox_password":""}\n')
         print(f"wrote {cfg_dst} -- EDIT IT before starting "
               "(mailbox_user, mailbox_password)")
+    if IN_VENV and not FROZEN:
+        print("note: installed from a virtualenv; the service will use "
+              f"{sys.executable}. Keep that venv installed.")
 
 
 def install_windows(dst_dir: str, cfg_path: str):
     tr = " ".join(f'"{a}"' for a in _runner_argv(dst_dir)) + \
         f' --config "{cfg_path}"'
-    run(["schtasks", "/Create", "/TN", "HomingPigeon", "/TR", tr,
-         "/SC", "ONSTART", "/RU", "SYSTEM", "/RL", "HIGHEST", "/F"])
-    run(["schtasks", "/Run", "/TN", "HomingPigeon"])
-    print("installed: Scheduled Task 'HomingPigeon' (runs at boot as SYSTEM)")
+    # Prefer SYSTEM; fall back to the current user if not elevated.
+    if not run_ok(["schtasks", "/Create", "/TN", "HomingPigeon", "/TR", tr,
+                   "/SC", "ONSTART", "/RU", "SYSTEM", "/RL", "HIGHEST", "/F"]):
+        print("SYSTEM task failed (not elevated?); installing for current user")
+        run(["schtasks", "/Create", "/TN", "HomingPigeon", "/TR", tr,
+             "/SC", "ONLOGON", "/F"], check=True)
+    # First run may fail if config is still the example. Do not abort install.
+    if not run_ok(["schtasks", "/Run", "/TN", "HomingPigeon"]):
+        print("note: immediate start failed (edit config.json, then start the task)")
+    print("installed: Scheduled Task 'HomingPigeon'")
 
 
 def uninstall_windows():
-    run(["schtasks", "/Delete", "/TN", "HomingPigeon", "/F"])
+    run_ok(["schtasks", "/Delete", "/TN", "HomingPigeon", "/F"])
+
+
+def _linux_unit(dst_dir: str, cfg_path: str, system: bool) -> str:
+    exec_start = (" ".join(shlex.quote(a) for a in _runner_argv(dst_dir))
+                  + " --config " + shlex.quote(cfg_path))
+    wanted = "multi-user.target" if system else "default.target"
+    return (
+        "[Unit]\n"
+        "Description=Homing Pigeon runner agent\n"
+        "After=network-online.target\n"
+        "Wants=network-online.target\n"
+        "\n"
+        "[Service]\n"
+        "Type=simple\n"
+        f"WorkingDirectory={shlex.quote(dst_dir)}\n"
+        f"ExecStart={exec_start}\n"
+        "Restart=always\n"
+        "RestartSec=10\n"
+        "\n"
+        "[Install]\n"
+        f"WantedBy={wanted}\n"
+    )
 
 
 def install_linux(dst_dir: str, cfg_path: str, system: bool):
-    exec_start = " ".join(shlex.quote(a) for a in _runner_argv(dst_dir)) + " --config " + shlex.quote(cfg_path)
-    unit = f"""[Unit]
-Description=Homing Pigeon runner agent
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-ExecStart={exec_start}
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy={"multi-user.target" if system else "default.target"}
-"""
+    unit = _linux_unit(dst_dir, cfg_path, system)
     if system:
         path = "/etc/systemd/system/homing-pigeon.service"
         with open(path, "w") as fh:
             fh.write(unit)
-        run(["systemctl", "daemon-reload"])
-        run(["systemctl", "enable", "--now", "homing-pigeon.service"])
+        run_ok(["systemctl", "daemon-reload"])
+        if not run_ok(["systemctl", "enable", "--now", "homing-pigeon.service"]):
+            print("note: enable failed (need root? edit config then start manually)")
     else:
         udir = os.path.expanduser("~/.config/systemd/user")
         os.makedirs(udir, exist_ok=True)
         path = os.path.join(udir, "homing-pigeon.service")
         with open(path, "w") as fh:
             fh.write(unit)
-        run(["systemctl", "--user", "daemon-reload"])
-        run(["systemctl", "--user", "enable", "--now", "homing-pigeon.service"])
+        # Linger so the user unit starts at boot even without a login session.
+        run_ok(["loginctl", "enable-linger", os.environ.get("USER", "")])
+        run_ok(["systemctl", "--user", "daemon-reload"])
+        if not run_ok(["systemctl", "--user", "enable", "--now",
+                       "homing-pigeon.service"]):
+            print("note: user unit enable failed (no user session?). "
+                  "Unit file is written; start it after login or enable linger.")
     print(f"installed: systemd unit at {path}")
 
 
 def uninstall_linux(system: bool):
     if system:
-        run(["systemctl", "disable", "--now", "homing-pigeon.service"])
-        os.remove("/etc/systemd/system/homing-pigeon.service")
-        run(["systemctl", "daemon-reload"])
+        run_ok(["systemctl", "disable", "--now", "homing-pigeon.service"])
+        try:
+            os.remove("/etc/systemd/system/homing-pigeon.service")
+        except FileNotFoundError:
+            pass
+        run_ok(["systemctl", "daemon-reload"])
     else:
-        run(["systemctl", "--user", "disable", "--now", "homing-pigeon.service"])
-        os.remove(os.path.expanduser("~/.config/systemd/user/homing-pigeon.service"))
-        run(["systemctl", "--user", "daemon-reload"])
+        run_ok(["systemctl", "--user", "disable", "--now",
+                "homing-pigeon.service"])
+        try:
+            os.remove(os.path.expanduser(
+                "~/.config/systemd/user/homing-pigeon.service"))
+        except FileNotFoundError:
+            pass
+        run_ok(["systemctl", "--user", "daemon-reload"])
 
 
 def install_macos(dst_dir: str, cfg_path: str):
     pargs = "\n".join(
-        f"    <string>{a}</string>"
+        f"    <string>{_xml_escape(a)}</string>"
         for a in (*_runner_argv(dst_dir), "--config", cfg_path))
-    plist = f"""<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key><string>com.homing-pigeon.runner</string>
-  <key>ProgramArguments</key>
-  <array>
-{pargs}
-  </array>
-  <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><true/>
-  <key>StandardOutPath</key><string>{dst_dir}/runner.log</string>
-  <key>StandardErrorPath</key><string>{dst_dir}/runner.log</string>
-</dict>
-</plist>
-"""
+    log = _xml_escape(os.path.join(dst_dir, "runner.log"))
+    plist = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
+        '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+        '<plist version="1.0">\n'
+        '<dict>\n'
+        '  <key>Label</key><string>com.homing-pigeon.runner</string>\n'
+        '  <key>ProgramArguments</key>\n'
+        '  <array>\n'
+        f'{pargs}\n'
+        '  </array>\n'
+        '  <key>RunAtLoad</key><true/>\n'
+        '  <key>KeepAlive</key><true/>\n'
+        f'  <key>StandardOutPath</key><string>{log}</string>\n'
+        f'  <key>StandardErrorPath</key><string>{log}</string>\n'
+        '</dict>\n'
+        '</plist>\n'
+    )
     adir = os.path.expanduser("~/Library/LaunchAgents")
     os.makedirs(adir, exist_ok=True)
     path = os.path.join(adir, "com.homing-pigeon.runner.plist")
     with open(path, "w") as fh:
         fh.write(plist)
     uid = os.getuid()
-    run(["launchctl", "bootstrap", f"gui/{uid}", path])
+    # Unload first so a re-install does not fail with "already loaded".
+    run_ok(["launchctl", "bootout", f"gui/{uid}", path])
+    if not run_ok(["launchctl", "bootstrap", f"gui/{uid}", path]):
+        print("note: launchctl bootstrap failed; plist is written, load it manually")
     print(f"installed: launchd agent at {path}")
 
 
 def uninstall_macos():
     path = os.path.expanduser("~/Library/LaunchAgents/com.homing-pigeon.runner.plist")
     uid = os.getuid()
-    run(["launchctl", "bootout", f"gui/{uid}", path])
-    os.remove(path)
+    run_ok(["launchctl", "bootout", f"gui/{uid}", path])
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
 
 
 def install_freebsd(dst_dir: str, cfg_path: str):
-    line = "@reboot " + " ".join(shlex.quote(a) for a in _runner_argv(dst_dir)) + " --config " + shlex.quote(cfg_path)
+    line = ("@reboot " + " ".join(shlex.quote(a) for a in _runner_argv(dst_dir))
+            + " --config " + shlex.quote(cfg_path))
     p = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
     existing = p.stdout if p.returncode == 0 else ""
     if "homing-pigeon" in existing:
@@ -169,7 +231,10 @@ def install_freebsd(dst_dir: str, cfg_path: str):
         return
     new = (existing.rstrip("\n") + "\n" if existing.strip() else "") + line + "\n"
     p2 = subprocess.run(["crontab", "-"], input=new, text=True)
-    p2.check_returncode()
+    if p2.returncode != 0:
+        print("note: crontab install failed; add this line manually:")
+        print(line)
+        return
     print("installed: cron @reboot entry")
     print("note: for a native rc.d service instead, wrap the same command in "
           "/usr/local/etc/rc.d/homing_pigeon (requires root)")
@@ -179,8 +244,7 @@ def uninstall_freebsd():
     p = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
     lines = [l for l in (p.stdout if p.returncode == 0 else "").splitlines()
              if "homing-pigeon" not in l]
-    subprocess.run(["crontab", "-"], input="\n".join(lines) + "\n", text=True,
-                   check=True)
+    subprocess.run(["crontab", "-"], input="\n".join(lines) + "\n", text=True)
 
 
 def main() -> int:
