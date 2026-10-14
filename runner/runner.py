@@ -197,12 +197,15 @@ def mark_seen(imap, seq):
 
 
 def send_mail(smtp, cfg, subject: str, body: str):
+    # SMTP connections are not thread-safe. Always serialize, even if
+    # the caller already holds the lock (it is an RLock).
     msg = EmailMessage()
     msg["From"] = cfg["mailbox_user"]
     msg["To"] = cfg["mailbox_user"]
     msg["Subject"] = subject
     msg.set_content(body)
-    smtp.send_message(msg)
+    with _MAIL_LOCK:
+        smtp.send_message(msg)
 
 
 def get_text_body(msg) -> str:
