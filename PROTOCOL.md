@@ -229,6 +229,33 @@ It is governed by a single runner-owner flag:
 - The flag is config-only. **No job field can disable the Oracle** —
   otherwise the SI could switch off its own restraints.
 
+### Where this comes from
+
+The Oracle is a reference monitor in the Orange Book sense: every
+result crosses it, the subject cannot disable it, and it is small
+enough to check. The confidentiality rule is Bell-LaPadula. Raw
+output is the high label; the SI is low. No read up — under
+`attested`, the SI gets predicates, not the output. The `view`
+ladder (`full` > `redacted` > `summary` > `attested`) is the
+lattice. The owner's config is the ceiling; a job may only request
+at or below it.
+
+No write down is why the exchange is non-adaptive. If the SI could
+ask, see the answer, and ask again, that is a channel from high to
+low. Declaring every query up front and answering them all at once,
+with rejections still charged against the budget, closes it.
+
+The HMAC-signed attestation is the trusted path: the answer came
+from the monitor, not from the job. The owner/SI split is
+separation of duty — the owner sets the ceiling, the SI composes
+the job, and neither both writes the policy and receives the data.
+
+Type enforcement, the part SELinux actually added, is the open
+piece. `workspace_root` confinement (section 9.3) is the start: the
+job domain may touch one type, the Oracle domain reads the retained
+output, and the job domain may not. A full lattice beyond the four
+views is not worth building for one owner and one SI.
+
 ## 9. Result policies
 
 The job gains an optional `result_policy` object:
