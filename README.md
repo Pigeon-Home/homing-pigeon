@@ -232,7 +232,7 @@ plus standalone binaries (below) and a `SHA384SUMS` file so you can
 verify your download:
 
 1. Download the `.whl` from the release.
-2. `pip install pigeon_home-1.4.0-py3-none-any.whl` — same three
+2. `pip install pigeon_home-1.4.1-py3-none-any.whl` — same three
    commands as above.
 3. `homing-pigeon-install` copies the runner, writes a default
    `config.json`, and registers the boot-start service.
@@ -304,7 +304,7 @@ homing-pigeon --config ~/.homing-pigeon/config.json --once
 ```
 
 (If you prefer the file: grab the `.whl` — currently
-`pigeon_home-1.4.0-py3-none-any.whl` — or the `.tar.gz` sdist from any
+`pigeon_home-1.4.1-py3-none-any.whl` — or the `.tar.gz` sdist from any
 [release](https://github.com/Pigeon-Home/homing-pigeon/releases).)
 Your SI sends jobs from the cloud; the Pi in the corner executes them.
 That's the whole trick.
@@ -409,7 +409,9 @@ End-to-end without your SI:
 
 ## Status
 
-v1.4.0. The sender address is no longer validated — any sender may submit
+v1.4.1. Release binaries now carry Sigstore build provenance attestations
+— verifiable proof they were built by this repo's CI. v1.4.0. The sender
+address is no longer validated — any sender may submit
 jobs, and the HMAC signature is the sole authentication gate. The sender
 is logged for audit but never trusted. v1.3.1. PowerShell jobs stage as
 `script.ps1` (Windows `-File` requires the
