@@ -247,7 +247,7 @@ plus standalone binaries (below) and a `SHA384SUMS` file so you can
 verify your download:
 
 1. Download the `.whl` from the release.
-2. `pip install pigeon_home-1.4.2-py3-none-any.whl` — same three
+2. `pip install pigeon_home-1.4.3-py3-none-any.whl` — same three
    commands as above.
 3. `homing-pigeon-install` copies the runner, writes a default
    `config.json`, and registers the boot-start service.
@@ -396,7 +396,7 @@ End-to-end without your SI:
 
 ## Status
 
-v1.4.2. The runner now hot-reloads `config.json` — edit poll interval,
+v1.4.3. The runner now hot-reloads `config.json` — edit poll interval,
 workers, timeouts, or output limits and they take effect within one
 poll cycle, no restart needed. Includes Grok's doc fix dropping the
 last leftover "From hard rule" references. v1.4.1. Release binaries now
