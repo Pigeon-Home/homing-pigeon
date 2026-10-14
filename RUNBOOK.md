@@ -33,7 +33,7 @@ press Enter. If it prints a version number, you did it.
 2. Type this exactly, then press Enter:
 
 ```
-git clone https://github.com/ctf-gooo-003/homing-pigeon.git
+git clone https://github.com/Pigeon-Home/homing-pigeon.git
 ```
 
 3. Wait until it finishes. It makes a new folder called
@@ -100,7 +100,7 @@ Your computer remembers it after the first time.
 GitHub has robots that build the Windows/Mac/Linux install files for
 you. You start them by making a **release**. All point and click:
 
-1. Go to **github.com/ctf-gooo-003/homing-pigeon**.
+1. Go to **github.com/Pigeon-Home/homing-pigeon**.
 2. On the right side, click **Releases**.
 3. Click the **Draft a new release** button.
 4. Click **Choose a tag**, then type `v1.0.0` and click

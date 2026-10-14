@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "homing-pigeon"
-version = "1.0.1"
+version = "1.1.0"
 description = "Self-hosted, email-driven agent: tell your cloud SI to send signed jobs via email that execute on your machine."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -27,7 +27,7 @@ homing-pigeon-install = "runner.install:main"
 homing-pigeon-send-job = "cloud.send_job:main"
 
 [project.urls]
-Homepage = "https://github.com/ctf-gooo-003/homing-pigeon"
+Homepage = "https://github.com/Pigeon-Home/homing-pigeon"
 
 [tool.setuptools.packages.find]
 include = ["runner*", "cloud*"]
