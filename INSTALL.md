@@ -1,9 +1,17 @@
 # INSTALL.md — Get the runner going
 
-Three ways, simplest first. All of them end with the same thing: a
-machine polling your inbox for signed jobs.
+Three ways, simplest first. Each has two phases: **install** (get the
+files on the box) and **run** (start the runner). Don't mix them.
 
-## 1. Docker (fastest)
+## 1. Docker
+
+**Install:** pull the image.
+
+```bash
+docker pull ghcr.io/pigeon-home/homing-pigeon:latest
+```
+
+**Run:**
 
 ```bash
 docker run -d --name pigeon --restart unless-stopped \
@@ -13,36 +21,61 @@ docker run -d --name pigeon --restart unless-stopped \
   ghcr.io/pigeon-home/homing-pigeon:latest
 ```
 
-No Python, no git, no service setup. See [DOCKER.md](DOCKER.md) for
+No Python, no git, nothing else. See [DOCKER.md](DOCKER.md) for
 dry-run mode, config options, and updating.
 
 ## 2. pip (best for Raspberry Pi)
 
+**Install:**
+
 ```bash
 pip install pigeon-home
-homing-pigeon-install
 ```
 
-Edit the `config.json` it writes (add your Gmail + app password),
-then test one cycle:
+**Run:** register the boot service, configure, test.
 
 ```bash
+homing-pigeon-install
+# edit ~/.homing-pigeon/config.json — add your Gmail + app password
 homing-pigeon --config ~/.homing-pigeon/config.json --once
 ```
 
-## 3. Release binary (Windows / macOS / Linux)
+## 3. Release binary
 
-Grab the zip/tarball from
-[releases](https://github.com/Pigeon-Home/homing-pigeon/releases),
-extract it, and run the installer:
+**Install:** download and extract. Every default OS ships a
+downloader — no extra tools needed.
 
-- **Windows:** `install.exe` (installs a Scheduled Task)
-- **Linux/macOS:** `python3 install.py` (systemd / launchd / cron)
+Linux (curl is always there):
+```bash
+curl -sL -o pigeon.tar.gz https://github.com/Pigeon-Home/homing-pigeon/releases/latest/download/homing-pigeon-linux-x86_64.tar.gz
+tar xzf pigeon.tar.gz
+```
 
-Then edit `config.json` the same way.
+macOS (same):
+```bash
+curl -sL -o pigeon.tar.gz https://github.com/Pigeon-Home/homing-pigeon/releases/latest/download/homing-pigeon-macos-arm64.tar.gz
+tar xzf pigeon.tar.gz
+```
+
+Windows 11 (PowerShell has Invoke-WebRequest built in):
+```powershell
+Invoke-WebRequest -Uri https://github.com/Pigeon-Home/homing-pigeon/releases/latest/download/homing-pigeon-windows-x86_64.zip -OutFile pigeon.zip
+Expand-Archive pigeon.zip .
+```
+
+**Run:** start the service.
+
+- **Windows:** run `install.exe` — registers a Scheduled Task that
+  starts at boot.
+- **Linux:** run `python3 install.py` — registers a systemd service
+  (or cron `@reboot` fallback).
+- **macOS:** run `python3 install.py` — registers a launchd agent.
+
+Then edit `config.json` (add your Gmail + app password) and send the
+clock check below.
 
 ---
 
-Whichever path you pick, the next step is the same: send it the
-clock-check from [RUNBOOK.md](RUNBOOK.md) Job 7. If it replies with
-the time, you're live.
+Whichever path you pick, **verify** with the clock check from
+[RUNBOOK.md](RUNBOOK.md) Job 7. If the runner replies with the time,
+you're live.
