@@ -80,10 +80,8 @@ Whichever path you pick, **verify** with the clock check from
 [RUNBOOK.md](RUNBOOK.md) Job 7. If the runner replies with the time,
 you're live.
 
-> **Note:** the runner reads `config.json` once at startup. If you
-> edit it while the runner is going, restart the service for the
-> changes to take effect:
-> - **Docker:** `docker restart pigeon`
-> - **systemd:** `sudo systemctl restart homing-pigeon`
-> - **Windows:** restart the `HomingPigeon` scheduled task
-> - **macOS:** `launchctl kickstart -k gui/$UID/homing-pigeon`
+> **Note:** the runner re-reads `config.json` every poll cycle and
+> picks up changes to `poll_interval_sec`, `workers`,
+> `default_timeout_sec`, `max_output_bytes`, and `max_job_age_sec`
+> automatically — no restart needed. Changing the mailbox credentials
+> still requires a restart.
