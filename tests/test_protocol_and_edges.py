@@ -448,10 +448,11 @@ class InstallHelperTests(unittest.TestCase):
             dst = os.path.join(tmp, "a&b")
             os.makedirs(dst)
             la = os.path.join(tmp, "LA")
-            with patch.object(install_mod, "run", lambda *a, **k: None):
-                with patch("os.path.expanduser",
-                           lambda p: p.replace("~/Library/LaunchAgents", la)):
-                    install_mod.install_macos(dst, os.path.join(dst, "config.json"))
+            with patch.object(install_mod, "run", lambda *a, **k: None), \
+                 patch("os.getuid", lambda: 501, create=True), \
+                 patch("os.path.expanduser",
+                       lambda p: p.replace("~/Library/LaunchAgents", la)):
+                install_mod.install_macos(dst, os.path.join(dst, "config.json"))
             with open(os.path.join(la, "com.homing-pigeon.runner.plist"),
                       "rb") as fh:
                 pl = plistlib.load(fh)  # raises on malformed XML
