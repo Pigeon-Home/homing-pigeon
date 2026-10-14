@@ -1,7 +1,5 @@
 # Homing Pigeon
 
-**Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, etc.**
-
 Your cloud SI is smart, but it can't touch your computer. Homing Pigeon
 fixes that: tell your SI to send a signed job, it executes on your machine
 (Linux/macOS/FreeBSD/Windows), and the results come back so your SI can
