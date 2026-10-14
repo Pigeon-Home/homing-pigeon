@@ -17,15 +17,22 @@ payloads travel as cloud-hosted file URLs that the runner downloads.
 - One dedicated mailbox (Gmail recommended). Both directions use it:
   The cloud SI sends jobs *to* it; the runner reads them and sends results back
   to the same address.
-- Runner access: IMAP (read, port 993) + SMTP (send, port 587) with an
-  app password. Gmail requires 2-Step Verification before an app
-  password can be created.
-- The runner reads the Gmail username + app password from `config.json`
-  **in plaintext** — the user's explicit choice (dedicated throwaway
-  account, fresh machine, nothing personal). They are never written to
-  the log or into any email, but they ARE on disk: do not use this setup
-  with an account you care about. The runner exits with an error if
-  `mailbox_user` or `mailbox_password` is missing from config.
+- Runner access: IMAP (read, port 993) + SMTP (send, port 587). Two
+  authentication methods, both transport-level — the protocol (message
+  format, signatures, verification) is identical either way:
+  - **Password** (default): Gmail username + app password from `config.json`
+    **in plaintext** — the user's explicit choice (dedicated throwaway
+    account, fresh machine, nothing personal). They are never written to
+    the log or into any email, but they ARE on disk: do not use this setup
+    with an account you care about. The runner exits with an error if
+    `mailbox_user` or `mailbox_password` is missing from config. Gmail
+    requires 2-Step Verification before an app password can be created.
+  - **OAuth** (`"auth": "oauth"`): Thunderbird-style browser sign-in
+    (PKCE + loopback redirect, `homing-pigeon-auth`). The runner stores a
+    refresh token and uses XOAUTH2 for IMAP and SMTP. The Google password
+    never touches the command line or config. The HMAC key is a separate
+    `shared_secret` in config (not the Google credential). Requires a
+    Desktop OAuth client id created by the user in Google Cloud Console.
 - Subject lines (exact prefixes):
   - Job: contains `[HOMING-PIGEON]` then `job <job_id>` (a word like `TEST` or a `Re:` prefix is fine)
   - Result: `[HOMING-PIGEON] result <job_id>`
@@ -166,6 +173,9 @@ send stays unseen and will be retried (re-executed) on the next cycle.
   throwaway account on a fresh machine with nothing personal). Anyone
   holding the password gets both Gmail access and the ability to sign
   jobs. Do not use this setup with an account you care about.
+  (With `"auth": "oauth"` there is no password on disk — only a refresh
+  token — but the token still grants Gmail access, and `shared_secret`
+  still signs jobs. Same caution applies.)
 - Use a dedicated mailbox, never a personal inbox. Use an app password,
   never the account password.
 - Recommended deployment: run the runner inside a Linux VM on the

@@ -157,12 +157,17 @@ Ubuntu 22.04+, recent Debian, and most current distros. Older systems
 3. Edit `config.json`. Two ways to sign in:
    - **Password** (default): `mailbox_user` + `mailbox_password` (Gmail app
      password, plaintext, on purpose). The HMAC secret is that password.
-   - **Browser, like Thunderbird** (Windows and the others): set
-     `"auth": "oauth"`, put your Desktop OAuth client id in
-     `oauth_client_id`, set `shared_secret` to the HMAC key, then run
-     `homing-pigeon-auth`. A browser opens. The Google password never
-     touches the command line. Redirect URI to register:
-     `http://127.0.0.1:8765/`.
+   - **Browser, like Thunderbird**: no Google password anywhere. Create a
+     Desktop OAuth client in [Google Cloud
+     Console](https://console.cloud.google.com/) (APIs & Services →
+     Credentials → Create OAuth client ID → Desktop app), then in
+     `config.json` set `"auth": "oauth"`, put the client id in
+     `oauth_client_id` (and `oauth_client_secret` if Google gave you one),
+     and set `shared_secret` to a random string — that's the HMAC key your
+     SI uses to sign jobs. Then run `homing-pigeon-auth` (or
+     `python runner/oauth.py --config config.json` from source): a browser
+     opens, you sign in and grant access, and the refresh token is stored.
+     IMAP and SMTP then use XOAUTH2. Tested end to end on Windows 11.
    (your explicit choice for this throwaway account). Leave
    `allowed_sender` empty — the runner then only accepts job mail from
    the account it is logged into (hard rule).
@@ -190,7 +195,7 @@ plus standalone binaries (below) and a `SHA384SUMS` file so you can
 verify your download:
 
 1. Download the `.whl` from the release.
-2. `pip install pigeon_home-1.2.1-py3-none-any.whl` — same three
+2. `pip install pigeon_home-1.3.0-py3-none-any.whl` — same three
    commands as above.
 3. `homing-pigeon-install` copies the runner, writes a default
    `config.json`, and registers the boot-start service.
@@ -262,7 +267,7 @@ homing-pigeon --config ~/.homing-pigeon/config.json --once
 ```
 
 (If you prefer the file: grab the `.whl` — currently
-`pigeon_home-1.2.1-py3-none-any.whl` — or the `.tar.gz` sdist from any
+`pigeon_home-1.3.0-py3-none-any.whl` — or the `.tar.gz` sdist from any
 [release](https://github.com/Pigeon-Home/homing-pigeon/releases).)
 Your SI sends jobs from the cloud; the Pi in the corner executes them.
 That's the whole trick.
@@ -365,14 +370,19 @@ End-to-end without your SI:
 
 ## Status
 
-v1.2.1. Runner rewritten in cross-platform Python; crypto tested
-(sign/verify roundtrip, tamper rejection, CRLF tolerance); end-to-end
-suite passes against fake mail servers (103 tests). Debug/audit flags
-(`--dry-run`, `--verbose`, `--pdb`, `--no-send`), concurrent job
-execution (`--workers`), SHA-384 release hashes, and PyPI distribution
-(`pip install pigeon-home`). Releases ship standalone
-binaries (Windows/macOS/Linux) plus a Python wheel and sdist. The v2
-protocol — the Oracle, privacy-preserving results via signed
+v1.3.0. Thunderbird-style Google sign-in: the runner opens your browser,
+you sign in like adding Gmail on your phone, and IMAP/SMTP use XOAUTH2
+from then on — no app password. Tested end to end on Windows 11: browser
+login, job sent, runner polled and executed it, result emailed back, all
+over OAuth. Password auth stays the default and is untouched. Runner
+rewritten in cross-platform Python; crypto tested (sign/verify roundtrip,
+tamper rejection, CRLF tolerance); end-to-end suite passes against fake
+mail servers (103 tests). Debug/audit flags (`--dry-run`, `--verbose`,
+`--pdb`, `--no-send`), concurrent job execution (`--workers`), SHA-384
+release hashes, and PyPI distribution (`pip install pigeon-home`).
+Releases ship standalone binaries (Windows/macOS/Linux) plus a Python
+wheel and sdist. The v2 protocol — the Oracle, privacy-preserving
+results via signed
 attestations — is spec'd in PROTOCOL.md and awaiting implementation.
 Not yet proven against a live Gmail mailbox on all four platforms —
 that's the next proving ground.
