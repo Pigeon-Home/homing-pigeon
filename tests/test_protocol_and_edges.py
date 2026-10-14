@@ -419,5 +419,44 @@ class InstallHelperTests(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(dst, "config.json")))
 
 
+class InfiniteRetryBugs(unittest.TestCase):
+    """Lock in the two bugs that previously caused permanent retries."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-retry-")
+        self.cfg = {
+            "mailbox_user": SENDER,
+            "mailbox_password": SECRET,
+            "max_job_age_sec": 3600,
+        }
+        self.seen_path = os.path.join(self.tmp, "seen.json")
+
+    def cycle(self, mails):
+        imap, smtp, seen = FakeIMAP(mails), FakeSMTP(), {}
+        poll_once(self.cfg, self.tmp, seen, self.seen_path,
+                  imap=imap, smtp=smtp)
+        return imap, smtp, seen
+
+    def test_naive_issued_at_rejected_not_retried(self):
+        jid = str(uuid.uuid4())
+        # No Z, no offset -> naive datetime. Previously TypeError -> infinite retry.
+        p = base_job(jid, issued_at="2026-10-13T17:00:00")
+        imap, smtp, seen = self.cycle([job_email(p)])
+        self.assertEqual(len(smtp.sent), 0)
+        self.assertIn("1", imap.flagged)   # marked seen
+        self.assertNotIn(jid, seen)
+
+    def test_string_interpreter_rejected_not_retried(self):
+        jid = str(uuid.uuid4())
+        p = base_job(jid, kind="exec", script="echo hi", interpreter="sh")
+        imap, smtp, seen = self.cycle([job_email(p)])
+        self.assertEqual(len(smtp.sent), 1)
+        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        self.assertEqual(r["exit_code"], -2)
+        self.assertIn("interpreter must be", r["stderr"])
+        self.assertIn("1", imap.flagged)
+        self.assertIn(jid, seen)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
