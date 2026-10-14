@@ -15,6 +15,7 @@ Usage:
 import argparse
 import os
 import platform
+import shlex
 import shutil
 import subprocess
 import sys
@@ -79,7 +80,7 @@ def uninstall_windows():
 
 
 def install_linux(dst_dir: str, cfg_path: str, system: bool):
-    exec_start = " ".join(_runner_argv(dst_dir)) + f" --config {cfg_path}"
+    exec_start = " ".join(shlex.quote(a) for a in _runner_argv(dst_dir)) + " --config " + shlex.quote(cfg_path)
     unit = f"""[Unit]
 Description=Homing Pigeon runner agent
 After=network-online.target
@@ -160,7 +161,7 @@ def uninstall_macos():
 
 
 def install_freebsd(dst_dir: str, cfg_path: str):
-    line = "@reboot " + " ".join(_runner_argv(dst_dir)) + f" --config {cfg_path}"
+    line = "@reboot " + " ".join(shlex.quote(a) for a in _runner_argv(dst_dir)) + " --config " + shlex.quote(cfg_path)
     p = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
     existing = p.stdout if p.returncode == 0 else ""
     if "homing-pigeon" in existing:
