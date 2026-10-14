@@ -31,6 +31,7 @@ from runner.runner import (  # noqa: E402
     fetch_job_mails,
     get_text_body,
     load_seen,
+    _worker_count,
     platform_interpreter,
     poll_once,
     save_seen,
@@ -852,6 +853,39 @@ class AdversarialTests(unittest.TestCase):
         self.assertEqual(len(smtp.sent), 0)   # executed, not emailed
         self.assertIn(jid, seen)              # processed normally
         self.assertTrue(os.path.isdir(os.path.join(self.tmp, "work", jid)))
+
+    def test_concurrent_two_jobs(self):
+        import types
+        jids = [str(uuid.uuid4()) for _ in range(2)]
+        mails = [job_email(base_job(j, kind="ping")) for j in jids]
+        opts = types.SimpleNamespace(dry_run=False, no_send=False, workers=2)
+        imap, smtp, seen = self.cycle(mails, opts=opts)
+        self.assertEqual(len(smtp.sent), 2)
+        for j in jids:
+            self.assertIn(j, seen)
+
+    def test_duplicate_job_id_executes_once(self):
+        # Same job_id delivered twice in one cycle: the in-flight claim
+        # must prevent double execution, whichever thread wins.
+        import types
+        jid = str(uuid.uuid4())
+        mails = [job_email(base_job(jid, kind="ping")) for _ in range(2)]
+        opts = types.SimpleNamespace(dry_run=False, no_send=False, workers=4)
+        imap, smtp, seen = self.cycle(mails, opts=opts)
+        self.assertEqual(len(smtp.sent), 1)
+        self.assertIn(jid, seen)
+        self.assertEqual(sorted(imap.flagged), ["1", "2"])
+
+    def test_worker_count_resolution(self):
+        import types
+        # CLI beats config; garbage falls back to 1; default is 1.
+        self.assertEqual(_worker_count({}, None), 1)
+        self.assertEqual(_worker_count({"workers": 3}, None), 3)
+        self.assertEqual(_worker_count({"workers": "bogus"}, None), 1)
+        opts = types.SimpleNamespace(workers=5)
+        self.assertEqual(_worker_count({"workers": 3}, opts), 5)
+        opts = types.SimpleNamespace(workers=None)
+        self.assertEqual(_worker_count({"workers": 3}, opts), 3)
 
 
 if __name__ == "__main__":

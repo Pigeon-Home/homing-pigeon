@@ -50,7 +50,7 @@ def _forwarded_args(args) -> list:
     for name in ("dry_run", "no_oracle", "no_send", "verbose", "pdb"):
         if getattr(args, name, False):
             out.append("--" + name.replace("_", "-"))
-    for name in ("poll_interval", "max_output_bytes", "timeout"):
+    for name in ("poll_interval", "max_output_bytes", "timeout", "workers"):
         v = getattr(args, name, None)
         if v is not None:
             out.extend(["--" + name.replace("_", "-"), str(v)])
@@ -214,6 +214,8 @@ def main() -> int:
     # installed agent runs with exactly the flags you tested with.
     ap.add_argument("--dry-run", action="store_true",
                     help="install with --dry-run baked into the service")
+    ap.add_argument("--workers", type=int, default=None, metavar="N",
+                    help="concurrent job executions")
     ap.add_argument("--poll-interval", type=int, default=None, metavar="SEC")
     ap.add_argument("--no-oracle", action="store_true")
     ap.add_argument("--max-output-bytes", type=int, default=None, metavar="N")

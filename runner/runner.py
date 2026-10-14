@@ -36,7 +36,9 @@ import smtplib
 import socket
 import subprocess
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from email.utils import parseaddr
@@ -186,10 +188,12 @@ def fetch_job_mails(imap):
 
 
 def mark_seen(imap, seq):
-    try:
-        imap.store(seq, "+FLAGS", "\\Seen")
-    except Exception as e:
-        log(f"STORE \\Seen failed for {seq}: {e}", "WARN")
+    # IMAP connections are not thread-safe; serialize STORE.
+    with _MAIL_LOCK:
+        try:
+            imap.store(seq, "+FLAGS", "\\Seen")
+        except Exception as e:
+            log(f"STORE \\Seen failed for {seq}: {e}", "WARN")
 
 
 def send_mail(smtp, cfg, subject: str, body: str):
@@ -451,17 +455,27 @@ def log(msg: str, level: str = "INFO"):
     if level == "DEBUG" and not _VERBOSE:
         return
     line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} [{level}] {msg}"
-    print(line, flush=True)
-    if _LOG_FILE:
-        try:
-            with open(_LOG_FILE, "a", encoding="utf-8") as fh:
-                fh.write(line + "\n")
-        except Exception:
-            pass
+    # The mail lock also serializes log lines across worker threads.
+    with _MAIL_LOCK:
+        print(line, flush=True)
+        if _LOG_FILE:
+            try:
+                with open(_LOG_FILE, "a", encoding="utf-8") as fh:
+                    fh.write(line + "\n")
+            except Exception:
+                pass
 
 
 _LOG_FILE = None
 _VERBOSE = False
+
+# Concurrency: IMAP/SMTP connections and the seen-set are not
+# thread-safe. Worker threads run handle_mail, but every touch of shared
+# state goes through _MAIL_LOCK. Only execute_job (subprocess + per-job
+# work dirs) actually runs in parallel. _IN_FLIGHT stops two threads
+# from executing the same job_id concurrently (duplicate delivery).
+_MAIL_LOCK = threading.RLock()
+_IN_FLIGHT: set = set()
 
 
 def _describe_job(job: dict) -> str:
@@ -559,50 +573,65 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         return
     no_send = opts is not None and opts.no_send
 
-    def maybe_send(subject: str, body: str):
-        if no_send:
-            log(f"no-send: result email suppressed "
-                f"(subject={subject!r}, {len(body)} bytes)")
+    # Claim the job_id so a duplicate delivery on another worker thread
+    # cannot double-execute it. The check-and-add is atomic under the lock.
+    with _MAIL_LOCK:
+        if job_id in seen or job_id in _IN_FLIGHT:
+            mark_seen(imap, seq)
             return
-        send_mail(smtp, cfg, subject, body)
-
+        _IN_FLIGHT.add(job_id)
     try:
-        r = execute_job(cfg, job, base_dir)
-        result = {
-            "v": PROTOCOL_VERSION, "type": "result", "job_id": job_id,
-            "kind": job.get("kind"),
-            "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "exit_code": int(r["exit_code"]), "timed_out": bool(r["timed_out"]),
-            "stdout": str(r["stdout"]), "stderr": str(r["stderr"]),
-            "stdout_truncated": bool(r["stdout_truncated"]),
-            "stderr_truncated": bool(r["stderr_truncated"]),
-            "duration_sec": float(r["duration_sec"]),
-            "runner": socket.gethostname(),
-        }
-        maybe_send(f"{SUBJECT_RESULT}{job_id}", sign_payload(result, secret))
-        log(f"job {job_id} done (exit={r['exit_code']})")
-        seen[job_id] = True  # only after the result is safely sent (at-least-once)
-        mark_seen(imap, seq)
-    except JobRejected as e:
-        log(f"job {job_id} rejected: {e}", "WARN")
+        def maybe_send(subject: str, body: str):
+            if no_send:
+                log(f"no-send: result email suppressed "
+                    f"(subject={subject!r}, {len(body)} bytes)")
+                return
+            send_mail(smtp, cfg, subject, body)
+
         try:
+            r = execute_job(cfg, job, base_dir)
             result = {
                 "v": PROTOCOL_VERSION, "type": "result", "job_id": job_id,
                 "kind": job.get("kind"),
                 "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "exit_code": -2, "timed_out": False,
-                "stdout": "", "stderr": f"job rejected: {e}",
-                "stdout_truncated": False, "stderr_truncated": False,
-                "duration_sec": 0.0, "runner": socket.gethostname(),
+                "exit_code": int(r["exit_code"]), "timed_out": bool(r["timed_out"]),
+                "stdout": str(r["stdout"]), "stderr": str(r["stderr"]),
+                "stdout_truncated": bool(r["stdout_truncated"]),
+                "stderr_truncated": bool(r["stderr_truncated"]),
+                "duration_sec": float(r["duration_sec"]),
+                "runner": socket.gethostname(),
             }
-            maybe_send(f"{SUBJECT_RESULT}{job_id}", sign_payload(result, secret))
-            seen[job_id] = True
-            mark_seen(imap, seq)
-        except Exception as e2:
-            log(f"could not send rejection result: {e2}", "ERROR")
-    except Exception as e:
-        # Transient (network, SMTP, ...): leave unseen -> retried next cycle.
-        log(f"job {job_id} failed, will retry: {e}", "ERROR")
+            with _MAIL_LOCK:
+                maybe_send(f"{SUBJECT_RESULT}{job_id}",
+                          sign_payload(result, secret))
+                log(f"job {job_id} done (exit={r['exit_code']})")
+                seen[job_id] = True  # only after the result is safely sent (at-least-once)
+                mark_seen(imap, seq)
+        except JobRejected as e:
+            log(f"job {job_id} rejected: {e}", "WARN")
+            try:
+                result = {
+                    "v": PROTOCOL_VERSION, "type": "result", "job_id": job_id,
+                    "kind": job.get("kind"),
+                    "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "exit_code": -2, "timed_out": False,
+                    "stdout": "", "stderr": f"job rejected: {e}",
+                    "stdout_truncated": False, "stderr_truncated": False,
+                    "duration_sec": 0.0, "runner": socket.gethostname(),
+                }
+                with _MAIL_LOCK:
+                    maybe_send(f"{SUBJECT_RESULT}{job_id}",
+                              sign_payload(result, secret))
+                    seen[job_id] = True
+                    mark_seen(imap, seq)
+            except Exception as e2:
+                log(f"could not send rejection result: {e2}", "ERROR")
+        except Exception as e:
+            # Transient (network, SMTP, ...): leave unseen -> retried next cycle.
+            log(f"job {job_id} failed, will retry: {e}", "ERROR")
+    finally:
+        with _MAIL_LOCK:
+            _IN_FLIGHT.discard(job_id)
 
 
 # ---------------------------------------------------------------- main
@@ -626,6 +655,22 @@ def save_seen(path: str, seen: dict):
         json.dump(keys, fh)
 
 
+def _worker_count(cfg, opts) -> int:
+    """Concurrent job executions. CLI overrides config; default 1."""
+    raw = None
+    if opts is not None and getattr(opts, "workers", None) is not None:
+        raw = opts.workers
+    elif cfg.get("workers") is not None:
+        raw = cfg.get("workers")
+    if raw is None:
+        return 1
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        return 1
+    return max(1, n)
+
+
 def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
               imap=None, smtp=None, opts=None):
     """One poll cycle. imap/smtp may be injected (tests)."""
@@ -643,14 +688,29 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
         try:
             mails = fetch_job_mails(imap)
             log(f"poll: {len(mails)} job mail(s)")
-            for seq, raw in mails:
-                handle_mail(cfg, imap, smtp, seq, raw, base_dir,
-                            seen, secret, allowed_sender, opts=opts)
+            workers = _worker_count(cfg, opts)
+            if workers > 1:
+                log(f"executing with {workers} workers", "DEBUG")
+            with ThreadPoolExecutor(max_workers=workers) as ex:
+                futs = [ex.submit(handle_mail, cfg, imap, smtp, seq, raw,
+                                  base_dir, seen, secret, allowed_sender, opts)
+                        for seq, raw in mails]
+                first_exc = None
+                for f in as_completed(futs):
+                    exc = f.exception()
+                    # handle_mail already deals with expected failures
+                    # (rejects, transient retries). A worker raising here
+                    # is a bug; surface it like the sequential path did.
+                    if exc is not None and first_exc is None:
+                        first_exc = exc
+                        log(f"worker raised: {exc!r}", "ERROR")
             if len(seen) > SEEN_CAP:
                 # save_seen caps the disk copy; keep memory in step.
                 for k in list(seen.keys())[:-SEEN_CAP]:
                     del seen[k]
             save_seen(seen_path, seen)
+            if first_exc is not None:
+                raise first_exc
         finally:
             if own_imap:
                 try:
@@ -678,6 +738,8 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true",
                     help="verify signatures and print what would run; "
                          "execute nothing, send nothing, change nothing")
+    ap.add_argument("--workers", type=int, default=None, metavar="N",
+                    help="concurrent job executions (default 1; overrides config)")
     ap.add_argument("--poll-interval", type=int, default=None, metavar="SEC",
                     help="seconds between poll cycles (overrides config)")
     ap.add_argument("--no-oracle", action="store_true",
@@ -696,6 +758,10 @@ def main() -> int:
     ap.add_argument("--pdb", action="store_true",
                     help="drop into pdb on unhandled exceptions")
     args = ap.parse_args()
+
+    if args.workers is not None and args.workers < 1:
+        print("error: --workers must be >= 1", file=sys.stderr)
+        return 2
 
     cfg = load_config(args.config)
     for key in ("mailbox_user", "mailbox_password"):
@@ -728,7 +794,7 @@ def main() -> int:
     log(f"homing-pigeon starting (base={base_dir}, platform={sys.platform})")
     log(f"flags: dry_run={args.dry_run} no_send={args.no_send} "
         f"no_oracle={args.no_oracle} verbose={args.verbose} pdb={args.pdb} "
-        f"once={args.once}")
+        f"once={args.once} workers={_worker_count(cfg, args)}")
     while True:
         try:
             poll_once(cfg, base_dir, seen, seen_path, opts=args)

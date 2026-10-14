@@ -293,6 +293,7 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | Flag | What it does |
 |------|--------------|
 | `--dry-run` | Verify and describe; execute nothing, send nothing |
+| `--workers N` | Concurrent job executions (default 1) |
 | `--verbose` | Debug logging: every accept/reject decision |
 | `--pdb` | Drop into pdb on unhandled exceptions |
 | `--no-send` | Execute, but log results instead of emailing them |
