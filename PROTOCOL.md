@@ -27,7 +27,7 @@ payloads travel as cloud-hosted file URLs that the runner downloads.
   with an account you care about. The runner exits with an error if
   `mailbox_user` or `mailbox_password` is missing from config.
 - Subject lines (exact prefixes):
-  - Job: `[HOMING-PIGEON] job <job_id>`
+  - Job: contains `[HOMING-PIGEON]` then `job <job_id>` (a word like `TEST` or a `Re:` prefix is fine)
   - Result: `[HOMING-PIGEON] result <job_id>`
   - `<job_id>` is a UUID (no spaces).
 

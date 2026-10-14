@@ -42,8 +42,9 @@ Those values live on the runner host. They do not travel through the SI chat.
 Use `cloud/send_job.py`. Do not hand-roll the signature. The shapes below
 were real failures from the test suite.
 
-**Subject.** Exact: `[HOMING-PIGEON] job <job_id>`. No `TEST`, no `Re:`,
-no decoration. The runner's regex does not match anything else.
+**Subject.** Must contain `[HOMING-PIGEON]` and then `job <job_id>`.
+A word in between (`TEST`) or a `Re:` prefix is fine. The `job_id`
+token is what gets matched against the body.
 
 **Body.** A note above or below the JSON is fine. Do not alter the JSON
 object. Prefer the body `send_job.py` prints.
@@ -57,7 +58,7 @@ object. Prefer the body `send_job.py` prints.
 | `interpreter` pointing at a missing binary | Rejected |
 | `job_id` of `../evil`, `.`, `..`, or anything outside `[A-Za-z0-9._-]{1,128}` | Rejected |
 | Uppercase hex signature | Accepted (hex is case-insensitive) |
-| Subject with extra words | Ignored |
+| Subject with extra words (`TEST`, `Re:`) | Accepted |
 | Signature that does not match | Rejected |
 
 `send_job.py` already emits lowercase hex, a `Z` timestamp, and a UUID.

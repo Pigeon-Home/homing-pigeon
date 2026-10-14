@@ -208,6 +208,19 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(len(smtp.sent), 0)
         self.assertIn("1", imap.flagged)
 
+    def test_subject_allows_test_word_and_re(self):
+        # The connector happy-path used "[HOMING-PIGEON] TEST job <id>".
+        for prefix in ("[HOMING-PIGEON] TEST job ", "Re: [HOMING-PIGEON] job "):
+            jid = str(uuid.uuid4())
+            msg = EmailMessage()
+            msg["From"] = SENDER
+            msg["To"] = SENDER
+            msg["Subject"] = prefix + jid
+            msg.set_content(sign_payload(base_job(jid), SECRET))
+            imap, smtp, seen = self.cycle([msg.as_bytes()])
+            self.assertEqual(len(smtp.sent), 1, prefix)
+            self.assertIn(jid, seen)
+
 
 class ExecutionEdgeTests(unittest.TestCase):
     def setUp(self):

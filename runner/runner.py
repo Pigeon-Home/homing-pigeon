@@ -444,7 +444,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         log(f"rejecting seq {seq}: {why}", "WARN")
         mark_seen(imap, seq)
 
-    m = re.search(r"\[HOMING-PIGEON\] job (\S+)", subject)
+    m = re.search(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)", subject, re.I)
     if not m:
         reject("subject does not match job pattern")
         return
