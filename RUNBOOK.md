@@ -111,8 +111,8 @@ you. You start them by making a **release**. All point and click:
    working. It takes about 10 minutes.
 8. When they finish, go back to **Releases**. Your version is there
    with files to download:
-   - `homing-pigeon-windows-amd64.zip` — for Windows computers
-   - `homing-pigeon-linux-amd64.tar.gz` — for Linux computers
+   - `homing-pigeon-windows-x86_64.zip` — for Windows computers
+   - `homing-pigeon-linux-x86_64.tar.gz` — for Linux computers
    - `homing-pigeon-macos-arm64.tar.gz` — for Mac computers
 
 For the next version, do the same thing with `v1.0.1`, then `v1.0.2`,

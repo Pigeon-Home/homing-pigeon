@@ -124,8 +124,8 @@ standalone binaries built by GitHub Actions:
 
 | Platform | Download |
 |----------|----------|
-| Windows (x64) | `homing-pigeon-windows-amd64.zip` → `homing-pigeon.exe` + `install.exe` |
-| Linux (x64, Debian/RHEL/Ubuntu/…) | `homing-pigeon-linux-amd64.tar.gz` → `homing-pigeon` + `install` |
+| Windows (x64) | `homing-pigeon-windows-x86_64.zip` → `homing-pigeon.exe` + `install.exe` |
+| Linux (x64, Debian/RHEL/Ubuntu/…) | `homing-pigeon-linux-x86_64.tar.gz` → `homing-pigeon` + `install` |
 | macOS (ARM64) | `homing-pigeon-macos-arm64.tar.gz` → `homing-pigeon` + `install` |
 
 The Linux binary is built on ubuntu-22.04 (glibc ~2.35). It runs on

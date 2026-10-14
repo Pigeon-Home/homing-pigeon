@@ -40,11 +40,11 @@ jobs:
       - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
-      - run: Compress-Archive -Path dist/homing-pigeon.exe,dist/install.exe,runner/config.example.json -DestinationPath homing-pigeon-windows-amd64.zip
+      - run: Compress-Archive -Path dist/homing-pigeon.exe,dist/install.exe,runner/config.example.json -DestinationPath homing-pigeon-windows-x86_64.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: homing-pigeon-windows-amd64
-          path: homing-pigeon-windows-amd64.zip
+          name: homing-pigeon-windows-x86_64
+          path: homing-pigeon-windows-x86_64.zip
 
   build-linux:
     needs: test
@@ -60,11 +60,11 @@ jobs:
       - run: |
           mkdir -p pkg
           cp dist/homing-pigeon dist/install runner/config.example.json pkg/
-          tar czf homing-pigeon-linux-amd64.tar.gz -C pkg .
+          tar czf homing-pigeon-linux-x86_64.tar.gz -C pkg .
       - uses: actions/upload-artifact@v4
         with:
-          name: homing-pigeon-linux-amd64
-          path: homing-pigeon-linux-amd64.tar.gz
+          name: homing-pigeon-linux-x86_64
+          path: homing-pigeon-linux-x86_64.tar.gz
 
   build-macos:
     needs: test
