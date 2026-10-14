@@ -462,8 +462,10 @@ class InfiniteRetryBugs(unittest.TestCase):
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
 
-    def cycle(self, mails):
-        imap, smtp, seen = FakeIMAP(mails), FakeSMTP(), {}
+    def cycle(self, mails, seen=None):
+        imap, smtp = FakeIMAP(mails), FakeSMTP()
+        if seen is None:
+            seen = {}
         poll_once(self.cfg, self.tmp, seen, self.seen_path,
                   imap=imap, smtp=smtp)
         return imap, smtp, seen
@@ -488,6 +490,23 @@ class InfiniteRetryBugs(unittest.TestCase):
         self.assertIn("1", imap.flagged)
         self.assertIn(jid, seen)
 
+
+
+    def test_missing_interpreter_is_poison_not_retried(self):
+        jid = str(uuid.uuid4())
+        p = base_job(jid, kind="exec", script="echo hi",
+                     interpreter=["/no/such/homing-pigeon-binary"])
+        imap, smtp, seen = self.cycle([job_email(p)])
+        self.assertEqual(len(smtp.sent), 1)
+        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        self.assertEqual(r["exit_code"], -2)
+        self.assertIn("cannot start interpreter", r["stderr"])
+        self.assertIn(jid, seen)
+        self.assertIn("1", imap.flagged)
+        # second cycle must not re-execute
+        imap2, smtp2, seen2 = self.cycle([job_email(p)], seen=seen)
+        self.assertEqual(len(smtp2.sent), 0)
+        self.assertIn(jid, seen2)
 
 class PoisonShapeTests(unittest.TestCase):
     """Malformed-but-signed jobs are poison: rejected (exit -2), never retried."""

@@ -327,11 +327,17 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
     max_out = int(cfg.get("max_output_bytes", 100000))
     t0 = time.monotonic()
-    proc = subprocess.Popen(
-        [*interpreter, script_path, *args],
-        cwd=work, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        env=env, start_new_session=(os.name != "nt"),
-    )
+    try:
+        proc = subprocess.Popen(
+            [*interpreter, script_path, *args],
+            cwd=work, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=env, start_new_session=(os.name != "nt"),
+        )
+    except OSError as e:
+        # Missing binary or an unusable interpreter fails the same way
+        # every cycle. Treat it as poison so the mail is marked seen
+        # instead of retried forever.
+        raise JobRejected(f"cannot start interpreter: {e}")
     try:
         outs, errs = proc.communicate(timeout=timeout)
         timed_out = False
