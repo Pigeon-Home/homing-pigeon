@@ -143,7 +143,7 @@ The Oracle also grows two optional capabilities (spec'd, not yet built):
   fail?"* — answered locally, with only the answer crossing the
   boundary. The endpoint must be loopback (fail closed), and every
   answer is truncated, redacted, and secret-scanned before it's sent.
-  Your data gets intelligent answers without ever leaving the machine.
+  The SI gets useful answers, and your raw data never leaves the machine.
 - **Execution confinement.** Tell the Oracle the one folder jobs may
   touch (`workspace_root`) and it *attests* the job stayed inside —
   `confined_to_workspace`, signed like everything else. Today's
