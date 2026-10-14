@@ -206,6 +206,31 @@ Same steps: copy what it prints, paste into an email, send.
 
 ---
 
+## Job 7: Test a new cloud SI with the clock check
+
+When a new SI comes out and you want to know if it can actually
+*operate* the runner (not just talk about it), give it this prompt.
+If it can read the clock, the whole chain works: the SI read the
+protocol, signed a valid job, sent it, and read the result.
+
+Copy this, fill in your own email and secret, and paste it to the
+new SI:
+
+```
+project: https://github.com/Pigeon-Home/homing-pigeon
+Use my email connector to send emails.
+Send emails to YOUR_RUNNER_EMAIL@gmail.com
+The shared secret for authentication in the protocol is "YOUR_SECRET_STRING"
+Do a test routine to see if this all works, execute a runbook with the job of displaying the value of the system clock and show me the value here.
+```
+
+If it replies with the correct date and time from the runner's
+machine, it passed. If nothing comes back, the SI failed somewhere:
+wrong signature, wrong subject, wrong address. The clock does not
+lie.
+
+---
+
 ## If something goes wrong
 
 - **"command not found"** — you are probably not in the project

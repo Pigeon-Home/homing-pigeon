@@ -55,6 +55,11 @@ it a signed channel, and let it do tasks from start to finish. The
 upside is an assistant that operates, not just advises. If the
 capability is real, there is very little downside to exercising it.
 
+A new model claims to be good at something — robotics, automation,
+data work? Point it at a box and find out. The clock check in the
+RUNBOOK is the hello world; the ceiling is wherever your hardware
+goes. See Job 7.
+
 It belongs to the same family as GitHub self-hosted runners, VS Code
 Remote tunnels, and Tailscale — legitimate tools for administering your
 own hardware remotely. And like all of those, its power is the point,
