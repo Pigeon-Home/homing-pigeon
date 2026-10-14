@@ -186,18 +186,20 @@ class ProtocolTests(unittest.TestCase):
         _, smtp, _ = self.cycle([job_email(p)])
         self.assertEqual(len(smtp.sent), 0)
 
-    def test_allowed_sender_override_accepts(self):
+    def test_any_sender_accepted_with_valid_signature(self):
+        # Sender address is not validated; the HMAC signature is the
+        # sole authentication gate.
         jid = str(uuid.uuid4())
-        cfg = dict(self.cfg, allowed_sender="other@example.com")
         _, smtp, seen = self.cycle(
-            [job_email(base_job(jid), sender="other@example.com")], cfg=cfg)
+            [job_email(base_job(jid), sender="stranger@example.com")])
         self.assertEqual(len(smtp.sent), 1)
         self.assertIn(jid, seen)
 
-    def test_allowed_sender_override_rejects_mailbox(self):
+    def test_any_sender_rejected_with_bad_signature(self):
         jid = str(uuid.uuid4())
-        cfg = dict(self.cfg, allowed_sender="other@example.com")
-        _, smtp, _ = self.cycle([job_email(base_job(jid))], cfg=cfg)
+        _, smtp, _ = self.cycle(
+            [job_email(base_job(jid), secret="wrong-secret",
+                       sender="stranger@example.com")])
         self.assertEqual(len(smtp.sent), 0)
 
     def test_subject_pattern_mismatch(self):
