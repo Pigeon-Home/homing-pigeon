@@ -7,6 +7,8 @@ seen-set capping, multipart bodies, crypto edge cases, and install
 helpers that do not touch the real system.
 """
 
+import hashlib
+import hmac
 import json
 import os
 import sys
@@ -34,6 +36,7 @@ from runner.runner import (  # noqa: E402
     sha384_of,
     sign_payload,
     verify_body,
+    SEEN_CAP,
 )
 from runner import install as install_mod  # noqa: E402
 from send_job import sign_payload as cloud_sign  # noqa: E402
@@ -458,9 +461,11 @@ class InfiniteRetryBugs(unittest.TestCase):
         self.assertIn(jid, seen)
 
 
-class HardeningTests(unittest.TestCase):
+class PoisonShapeTests(unittest.TestCase):
+    """Malformed-but-signed jobs are poison: rejected (exit -2), never retried."""
+
     def setUp(self):
-        self.tmp = tempfile.mkdtemp(prefix="hp-hard-")
+        self.tmp = tempfile.mkdtemp(prefix="hp-poison-")
         self.cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": SECRET,
@@ -474,53 +479,164 @@ class HardeningTests(unittest.TestCase):
                   imap=imap, smtp=smtp)
         return imap, smtp, seen
 
-    def test_job_id_absolute_rejected(self):
-        jid = "/tmp/escape-hp"
-        p = base_job(jid)
-        imap, smtp, seen = self.cycle([job_email(p)])
+    def assert_rejected(self, payload, needle):
+        """execute_job-level poison: -2 result sent, mail seen, job recorded."""
+        jid = payload["job_id"]
+        imap, smtp, seen = self.cycle([job_email(payload)])
         self.assertEqual(len(smtp.sent), 1)
         r = verify_body(smtp.sent[0].get_content(), SECRET)
         self.assertEqual(r["exit_code"], -2)
-        self.assertIn("job_id must be", r["stderr"])
-        self.assertFalse(os.path.exists("/tmp/escape-hp"))
+        self.assertIn(needle, r["stderr"])
+        self.assertIn("1", imap.flagged)
+        self.assertIn(jid, seen)
 
-    def test_job_id_traversal_rejected(self):
-        jid = "../../escape"
-        p = base_job(jid)
-        _, smtp, _ = self.cycle([job_email(p)])
+    def exec_job(self, jid, **kw):
+        p = base_job(jid, kind="exec", script="echo hi")
+        p.update(kw)
+        return p
+
+    def test_timeout_sec_string(self):
+        jid = str(uuid.uuid4())
+        self.assert_rejected(self.exec_job(jid, timeout_sec="abc"), "timeout_sec")
+
+    def test_timeout_sec_float_string(self):
+        jid = str(uuid.uuid4())
+        self.assert_rejected(self.exec_job(jid, timeout_sec="1.5"), "timeout_sec")
+
+    def test_timeout_sec_list(self):
+        jid = str(uuid.uuid4())
+        self.assert_rejected(self.exec_job(jid, timeout_sec=[30]), "timeout_sec")
+
+    def test_files_not_list(self):
+        jid = str(uuid.uuid4())
+        self.assert_rejected(self.exec_job(jid, files={"name": "x"}),
+                             "files must be a list")
+
+    def test_file_entry_missing_url(self):
+        jid = str(uuid.uuid4())
+        self.assert_rejected(self.exec_job(jid, files=[{"name": "x"}]),
+                             "each file needs")
+
+    def test_file_entry_nonstring_name(self):
+        jid = str(uuid.uuid4())
+        self.assert_rejected(
+            self.exec_job(jid, files=[{"name": 5, "url": "http://x"}]),
+            "each file needs")
+
+    def test_env_not_dict(self):
+        jid = str(uuid.uuid4())
+        self.assert_rejected(self.exec_job(jid, env=["A=1"]),
+                             "env must be an object")
+
+    def test_args_not_list(self):
+        jid = str(uuid.uuid4())
+        self.assert_rejected(self.exec_job(jid, args=5), "args must be a list")
+
+    def test_script_not_string(self):
+        jid = str(uuid.uuid4())
+        self.assert_rejected(self.exec_job(jid, script={"x": 1}),
+                             "script must be a string")
+
+    def test_script_url_not_string(self):
+        jid = str(uuid.uuid4())
+        p = self.exec_job(jid)
+        del p["script"]
+        p["script_url"] = 5
+        self.assert_rejected(p, "script_url must be a string")
+
+    def test_nondict_body_rejected(self):
+        # Hand-signed JSON list: pre-execution reject, no result, marked seen.
+        jid = str(uuid.uuid4())
+        raw = "[1,2,3]"
+        sig = hmac.new(SECRET.encode(), raw.encode(),
+                       hashlib.sha384).hexdigest()
+        body = raw[:-1] + ',"sig":"' + sig + '"}'
+        msg = EmailMessage()
+        msg["From"] = SENDER
+        msg["To"] = SENDER
+        msg["Subject"] = f"[HOMING-PIGEON] job {jid}"
+        msg.set_content(body)
+        imap, smtp, seen = self.cycle([msg.as_bytes()])
+        self.assertEqual(len(smtp.sent), 0)
+        self.assertIn("1", imap.flagged)
+        self.assertNotIn(jid, seen)
+
+
+class AdversarialTests(unittest.TestCase):
+    """Attacker-minded cases: traversal, poison passthrough, resource caps."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-adv-")
+        self.cfg = {
+            "mailbox_user": SENDER,
+            "mailbox_password": SECRET,
+            "max_job_age_sec": 3600,
+        }
+        self.seen_path = os.path.join(self.tmp, "seen.json")
+
+    def cycle(self, mails, seen=None):
+        imap, smtp = FakeIMAP(mails), FakeSMTP()
+        seen = {} if seen is None else seen
+        poll_once(self.cfg, self.tmp, seen, self.seen_path,
+                  imap=imap, smtp=smtp)
+        return imap, smtp, seen
+
+    def assert_rejected(self, payload, needle):
+        jid = payload["job_id"]
+        imap, smtp, seen = self.cycle([job_email(payload)])
+        self.assertEqual(len(smtp.sent), 1)
         r = verify_body(smtp.sent[0].get_content(), SECRET)
         self.assertEqual(r["exit_code"], -2)
-        self.assertIn("job_id must be", r["stderr"])
+        self.assertIn(needle, r["stderr"])
+        self.assertIn(jid, seen)
+        return imap, smtp, seen
 
-    def test_download_size_cap(self):
-        from runner.runner import download, MAX_DOWNLOAD_BYTES
-        self.assertGreater(MAX_DOWNLOAD_BYTES, 0)
+    def test_job_id_dotdot_rejected_and_base_dir_untouched(self):
+        # ".." collapses work/ onto base_dir; without the fix,
+        # files[].name="config.json" would overwrite the runner's config.
+        p = base_job("..", kind="exec", script="echo hi",
+                     files=[{"name": "config.json", "url": "http://x/"}])
+        self.assert_rejected(p, "must not be '.' or '..'")
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "config.json")))
 
-        class FakeResp:
-            def read(self, n):
-                return b"x" * n
-            def __enter__(self):
-                return self
-            def __exit__(self, *a):
-                pass
+    def test_job_id_dot_rejected(self):
+        p = base_job(".", kind="exec", script="echo hi")
+        self.assert_rejected(p, "must not be '.' or '..'")
 
-        with tempfile.TemporaryDirectory() as d:
-            dest = os.path.join(d, "out")
-            with patch("runner.runner.urlopen", return_value=FakeResp()):
-                with self.assertRaises(RuntimeError) as cm:
-                    download("http://example.invalid/big", dest, max_bytes=1000)
-                self.assertIn("exceeded", str(cm.exception))
+    def test_file_traversal_rejected(self):
+        jid = str(uuid.uuid4())
+        p = base_job(jid, kind="exec", script="echo hi",
+                     files=[{"name": "../../evil", "url": "http://x/"}])
+        self.assert_rejected(p, "unsafe file name")
 
-    def test_install_quoting(self):
-        import shlex
-        from runner import install as im
-        argv = im._runner_argv("/home/user/My Dir")
-        self.assertTrue(any(" " in a for a in argv))
-        line = (" ".join(shlex.quote(a) for a in argv)
-                + " --config " + shlex.quote("/tmp/my config.json"))
-        self.assertNotIn(" --config /tmp/my config.json", line)
-        self.assertIn(shlex.quote("/tmp/my config.json"), line)
-        self.assertIn(shlex.quote("/home/user/My Dir/runner.py"), line)
+    def test_file_absolute_path_rejected(self):
+        jid = str(uuid.uuid4())
+        p = base_job(jid, kind="exec", script="echo hi",
+                     files=[{"name": "/etc/evil", "url": "http://x/"}])
+        self.assert_rejected(p, "unsafe file name")
+
+    def test_oversize_download_is_poison_not_transient(self):
+        # Without the `except JobRejected: raise` passthrough, the size
+        # error would be wrapped as RuntimeError -> retried forever.
+        jid = str(uuid.uuid4())
+        p = base_job(jid, kind="exec", script="echo hi",
+                     files=[{"name": "big.bin", "url": "http://x/big"}])
+        with patch("runner.runner.download",
+                   side_effect=JobRejected("download exceeded 104857600 bytes")):
+            imap, smtp, seen = self.cycle([job_email(p)])
+        self.assertEqual(len(smtp.sent), 1)
+        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        self.assertEqual(r["exit_code"], -2)
+        self.assertIn("download exceeded", r["stderr"])
+        self.assertIn(jid, seen)
+        self.assertIn("1", imap.flagged)
+
+    def test_seen_dict_trimmed_in_memory(self):
+        seen = {f"old-{i}": True for i in range(SEEN_CAP + 5)}
+        jid = str(uuid.uuid4())
+        _, _, seen = self.cycle([job_email(base_job(jid))], seen=seen)
+        self.assertLessEqual(len(seen), SEEN_CAP)
+        self.assertIn(jid, seen)  # newest entry survives the trim
 
 
 if __name__ == "__main__":

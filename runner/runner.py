@@ -190,7 +190,9 @@ def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
                 break
             total += len(chunk)
             if total > max_bytes:
-                raise RuntimeError(
+                # Poison, not transient: an over-cap download fails
+                # identically on every retry, burning bandwidth each cycle.
+                raise JobRejected(
                     f"download exceeded {max_bytes} bytes"
                 )
             f.write(chunk)
@@ -214,13 +216,23 @@ def _safe_job_id(job_id: str) -> str:
             "job_id must be 1-128 chars of [A-Za-z0-9._-] "
             "(no slashes or absolute paths)"
         )
+    if job_id in (".", ".."):
+        # The charset allows dots: ".." collapses work/ to base_dir itself,
+        # and then files[].name="config.json" passes the traversal check and
+        # overwrites the runner's own config.
+        raise JobRejected("job_id must not be '.' or '..'")
     return job_id
 
 
 def execute_job(cfg, job: dict, base_dir: str) -> dict:
     job_id = _safe_job_id(job.get("job_id", ""))
     work = os.path.join(base_dir, "work", job_id)
-    os.makedirs(work, exist_ok=True)
+    try:
+        os.makedirs(work, exist_ok=True)
+    except OSError as e:
+        # e.g. Windows reserved names (CON, NUL, ...) or work path blocked
+        # by a file: poison, not transient.
+        raise JobRejected(f"cannot create work dir: {e}")
     kind = job.get("kind")
 
     if kind == "ping":
@@ -231,8 +243,42 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     if kind != "exec":
         raise JobRejected(f"unknown kind: {kind}")
 
+    # --- validate job shape. Anything malformed here is poison (it can
+    # never succeed), so reject it instead of letting a TypeError/KeyError
+    # escape as transient and retry forever.
+    files = job.get("files") or []
+    if not isinstance(files, list):
+        raise JobRejected("files must be a list")
+    for f in files:
+        if not isinstance(f, dict) or not isinstance(f.get("name"), str) \
+                or not isinstance(f.get("url"), str):
+            raise JobRejected("each file needs string 'name' and 'url'")
+        if "sha384" in f and not isinstance(f["sha384"], str):
+            raise JobRejected("file 'sha384' must be a string")
+    args = job.get("args") or []
+    if not isinstance(args, list):
+        raise JobRejected("args must be a list")
+    env_in = job.get("env") or {}
+    if not isinstance(env_in, dict):
+        raise JobRejected("env must be an object")
+    script = job.get("script")
+    script_url = job.get("script_url")
+    if script is not None and not isinstance(script, str):
+        raise JobRejected("script must be a string")
+    if script_url is not None and not isinstance(script_url, str):
+        raise JobRejected("script_url must be a string")
+    if job.get("script_sha384") is not None \
+            and not isinstance(job["script_sha384"], str):
+        raise JobRejected("script_sha384 must be a string")
+    try:
+        timeout = int(job.get("timeout_sec")
+                      or cfg.get("default_timeout_sec", 300))
+    except (TypeError, ValueError):
+        raise JobRejected("timeout_sec must be a number")
+    timeout = min(max(timeout, 1), 3600)
+
     # --- stage input files
-    for f in job.get("files") or []:
+    for f in files:
         dest = os.path.realpath(os.path.join(work, f["name"]))
         prefix = os.path.realpath(work) + os.sep
         if not dest.startswith(prefix):
@@ -240,6 +286,8 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         log(f"downloading {f['url']}")
         try:
             download(f["url"], dest)
+        except JobRejected:
+            raise  # oversize is poison, not transient
         except Exception as e:
             raise RuntimeError(f"download failed for {f['name']}: {e}")
         if f.get("sha384") and sha384_of(dest).lower() != f["sha384"].lower():
@@ -247,18 +295,20 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
     # --- stage script
     script_path = os.path.join(work, "script")
-    if job.get("script_url"):
-        log(f"downloading script {job['script_url']}")
+    if script_url:
+        log(f"downloading script {script_url}")
         try:
-            download(job["script_url"], script_path)
+            download(script_url, script_path)
+        except JobRejected:
+            raise  # oversize is poison, not transient
         except Exception as e:
             raise RuntimeError(f"script download failed: {e}")
         if job.get("script_sha384") and \
                 sha384_of(script_path).lower() != job["script_sha384"].lower():
             raise JobRejected("script SHA384 mismatch")
-    elif job.get("script"):
+    elif script:
         with open(script_path, "w", encoding="utf-8") as fh:
-            fh.write(job["script"])
+            fh.write(script)
     else:
         raise JobRejected("exec job requires script or script_url")
 
@@ -269,10 +319,10 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     if not isinstance(interpreter, list) or not interpreter or \
             not all(isinstance(x, str) for x in interpreter):
         raise JobRejected("interpreter must be a non-empty list of strings")
-    timeout = min(int(job.get("timeout_sec") or cfg.get("default_timeout_sec", 300)), 3600)
-    args = [str(a) for a in job.get("args") or []]
+    timeout = min(max(timeout, 1), 3600)
+    args = [str(a) for a in args]
     env = os.environ.copy()
-    for k, v in (job.get("env") or {}).items():
+    for k, v in env_in.items():
         env[str(k)] = str(v)
 
     max_out = int(cfg.get("max_output_bytes", 100000))
@@ -352,6 +402,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         job = verify_body(get_text_body(msg), secret)
     except ValueError:
         reject("bad signature")
+        return
+    if not isinstance(job, dict):
+        # verify_body can return any JSON value if the signer hand-crafts
+        # one; job.get below would raise AttributeError -> transient retry.
+        reject("job body must be a JSON object")
         return
     if job.get("v") != PROTOCOL_VERSION or job.get("type") != "job":
         reject("unsupported version/type")
@@ -457,6 +512,10 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
             for seq, raw in mails:
                 handle_mail(cfg, imap, smtp, seq, raw, base_dir,
                             seen, secret, allowed_sender)
+            if len(seen) > SEEN_CAP:
+                # save_seen caps the disk copy; keep memory in step.
+                for k in list(seen.keys())[:-SEEN_CAP]:
+                    del seen[k]
             save_seen(seen_path, seen)
         finally:
             if own_imap:
