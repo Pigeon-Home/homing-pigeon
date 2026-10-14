@@ -40,6 +40,7 @@ import time
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from email.utils import parseaddr
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 SUBJECT_JOB = "[HOMING-PIGEON] job "
@@ -240,11 +241,31 @@ MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024  # 100 MiB
 
 
 def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
+    # Non-HTTP schemes (file:, ftp:) fail the same way every cycle and
+    # can read the local machine. Reject them as poison.
+    if not isinstance(url, str) or not url.lower().startswith(("http://", "https://")):
+        raise JobRejected(f"unsupported url scheme: {url}")
     req = Request(url, headers={"User-Agent": "homing-pigeon/1"})
-    with urlopen(req, timeout=120) as r, open(dest, "wb") as f:
+    try:
+        resp = urlopen(req, timeout=120)
+    except HTTPError as e:
+        # 4xx will not succeed on retry. 5xx may.
+        if 400 <= e.code < 500:
+            raise JobRejected(f"download rejected by server ({e.code}): {url}")
+        raise
+    except URLError as e:
+        reason = str(e.reason).lower()
+        # NXDOMAIN and "no address" never recover. Timeouts and refused
+        # connections still propagate as transient.
+        permanent = ("name or service not known", "nodename nor servname",
+                     "no address associated", "name resolution")
+        if any(s in reason for s in permanent):
+            raise JobRejected(f"download host does not resolve: {url}")
+        raise
+    with resp, open(dest, "wb") as f:
         total = 0
         while True:
-            chunk = r.read(65536)
+            chunk = resp.read(65536)
             if not chunk:
                 break
             total += len(chunk)
@@ -287,7 +308,10 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     job_id = _safe_job_id(job.get("job_id", ""))
     work = os.path.join(base_dir, "work", job_id)
     try:
-        os.makedirs(work, exist_ok=True)
+        # A retry must not see files left by a previous attempt.
+        if os.path.isdir(work):
+            shutil.rmtree(work)
+        os.makedirs(work)
     except OSError as e:
         # e.g. Windows reserved names (CON, NUL, ...) or work path blocked
         # by a file: poison, not transient.
