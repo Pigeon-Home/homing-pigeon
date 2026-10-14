@@ -40,9 +40,13 @@ REDIRECT_PORT = 8765
 REDIRECT_URI = f"http://127.0.0.1:{REDIRECT_PORT}/"
 
 
-def xoauth2_bytes(user: str, access_token: str) -> bytes:
-    """SASL XOAUTH2 initial response. imaplib/smtplib base64 it themselves."""
-    return f"user={user}\x01auth=Bearer {access_token}\x01\x01".encode("ascii")
+def xoauth2_raw(user: str, access_token: str) -> str:
+    """SASL XOAUTH2 initial response, unencoded.
+
+    Both libraries base64 this themselves. Pre-encoding it is the bug:
+    the server then sees a blob of a blob and rejects it.
+    """
+    return f"user={user}\x01auth=Bearer {access_token}\x01\x01"
 
 
 def _pkce() -> tuple:

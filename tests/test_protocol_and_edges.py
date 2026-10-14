@@ -895,12 +895,16 @@ if __name__ == "__main__":
 
 class OAuthAuthTests(unittest.TestCase):
     def test_xoauth2_string_shape(self):
-        from runner.oauth import xoauth2_bytes
-        raw = xoauth2_bytes("a@b.com", "ya29.token")
+        from runner.oauth import xoauth2_raw
+        raw = xoauth2_raw("a@b.com", "ya29.token")
         self.assertEqual(
             raw,
-            b"user=a@b.com\x01auth=Bearer ya29.token\x01\x01",
+            "user=a@b.com\x01auth=Bearer ya29.token\x01\x01",
         )
+        # The wire form is this string, base64'd once. Not twice.
+        import base64
+        blob = base64.b64encode(raw.encode("ascii"))
+        self.assertTrue(blob.startswith(b"dXNlcj"))
 
     def test_password_auth_is_the_default(self):
         from runner.runner import _use_oauth

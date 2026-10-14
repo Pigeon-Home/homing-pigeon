@@ -27,6 +27,7 @@ Usage:
 #     is rejected before signature verification.
 
 import argparse
+import base64
 import email
 import hashlib
 import hmac
@@ -154,20 +155,32 @@ def _use_oauth(cfg) -> bool:
     return str(cfg.get("auth") or "password").lower() == "oauth"
 
 
-def _xoauth2(cfg) -> bytes:
+def _xoauth2_raw(cfg) -> str:
     try:
-        from runner.oauth import refresh_access_token, xoauth2_bytes
+        from runner.oauth import refresh_access_token, xoauth2_raw
     except ImportError:
-        from oauth import refresh_access_token, xoauth2_bytes
-    token = refresh_access_token(cfg)
-    return xoauth2_bytes(cfg["mailbox_user"], token)
+        from oauth import refresh_access_token, xoauth2_raw
+    return xoauth2_raw(cfg["mailbox_user"], refresh_access_token(cfg))
+
+
+def _imap_xoauth2(conn, user: str, raw: str) -> None:
+    # Gmail requires the SASL initial response on the AUTHENTICATE line.
+    # imaplib.authenticate() sends a bare AUTHENTICATE and waits for a
+    # challenge; Gmail answers BAD "Invalid SASL argument". Send it ourselves.
+    blob = base64.b64encode(raw.encode("ascii"))
+    tag = conn._new_tag()
+    conn.send(tag + b" AUTHENTICATE XOAUTH2 " + blob + b"\r\n")
+    typ, dat = conn._get_tagged_response(tag)
+    if typ != "OK":
+        raise imaplib.IMAP4.error("IMAP XOAUTH2 failed: %s %s" % (typ, dat))
+    # Bypassed authenticate(), so the state machine still says NONAUTH.
+    conn.state = "AUTH"
 
 
 def connect_imap(cfg) -> imaplib.IMAP4_SSL:
     conn = imaplib.IMAP4_SSL(cfg["imap_host"], int(cfg["imap_port"]), timeout=30)
     if _use_oauth(cfg):
-        # Thunderbird path: SASL XOAUTH2, no password on the wire.
-        conn.authenticate("XOAUTH2", lambda _c: _xoauth2(cfg))
+        _imap_xoauth2(conn, cfg["mailbox_user"], _xoauth2_raw(cfg))
     else:
         # Password travels inside LOGIN, but only over the TLS session.
         # It is never logged or written anywhere.
@@ -182,7 +195,11 @@ def connect_smtp(cfg) -> smtplib.SMTP:
     smtp = smtplib.SMTP(cfg["smtp_host"], int(cfg["smtp_port"]), timeout=30)
     smtp.starttls()
     if _use_oauth(cfg):
-        smtp.auth("XOAUTH2", lambda _c: _xoauth2(cfg))
+        # smtplib.auth base64-encodes the return value, and calls the
+        # callback with no args for the initial response. Return the raw
+        # string. A lambda that requires an argument crashes here.
+        raw = _xoauth2_raw(cfg)
+        smtp.auth("XOAUTH2", lambda challenge=None: raw)
     else:
         smtp.login(cfg["mailbox_user"], cfg["mailbox_password"])
     return smtp
