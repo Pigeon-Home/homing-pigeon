@@ -887,7 +887,32 @@ def main() -> int:
         f"no_oracle={args.no_oracle} verbose={args.verbose} pdb={args.pdb} "
         f"once={args.once} workers={_worker_count(cfg, args)}")
     auth_failed = False  # latch: report auth death once, not every 20s
+    # Hot-reloadable config keys: safe to change while running, no
+    # restart needed. Connection credentials (mailbox_user/password,
+    # oauth_*) are NOT here — those still need a restart.
+    HOT_KEYS = ("poll_interval_sec", "workers", "default_timeout_sec",
+                "max_output_bytes", "max_job_age_sec")
+    config_mtime = os.path.getmtime(args.config)
     while True:
+        # Re-read config if the file changed. Edit config.json all you
+        # want — the runner picks it up within one poll interval.
+        try:
+            mtime = os.path.getmtime(args.config)
+            if mtime != config_mtime:
+                config_mtime = mtime
+                fresh = load_config(args.config)
+                changed = [k for k in HOT_KEYS if fresh.get(k) != cfg.get(k)]
+                for k in HOT_KEYS:
+                    if k in fresh:
+                        cfg[k] = fresh[k]
+                if changed:
+                    log(f"config reloaded: {', '.join(changed)} updated, "
+                        f"no restart needed")
+                else:
+                    log("config reloaded: no hot-reloadable changes",
+                        "DEBUG")
+        except Exception as e:
+            log(f"config reload failed (keeping old values): {e}", "WARN")
         try:
             poll_once(cfg, base_dir, seen, seen_path, opts=args)
             if auth_failed:

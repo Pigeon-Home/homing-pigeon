@@ -247,7 +247,7 @@ plus standalone binaries (below) and a `SHA384SUMS` file so you can
 verify your download:
 
 1. Download the `.whl` from the release.
-2. `pip install pigeon_home-1.4.1-py3-none-any.whl` — same three
+2. `pip install pigeon_home-1.4.2-py3-none-any.whl` — same three
    commands as above.
 3. `homing-pigeon-install` copies the runner, writes a default
    `config.json`, and registers the boot-start service.
@@ -396,7 +396,10 @@ End-to-end without your SI:
 
 ## Status
 
-v1.4.1. Release binaries now carry Sigstore build provenance attestations
+v1.4.2. The runner now hot-reloads `config.json` — edit poll interval,
+workers, timeouts, or output limits and they take effect within one
+poll cycle, no restart needed. v1.4.1. Release binaries now carry
+Sigstore build provenance attestations
 — verifiable proof they were built by this repo's CI. v1.4.0. The sender
 address is no longer validated — any sender may submit
 jobs, and the HMAC signature is the sole authentication gate. The sender
