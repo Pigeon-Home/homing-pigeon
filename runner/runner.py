@@ -75,7 +75,7 @@ def _extract_signed(norm: str):
     if i < 0:
         raise ValueError("no signature marker found")
     tail = norm[i + len(marker):]
-    if len(tail) < 98 or tail[96:98] != '"}' or tail[:96].strip("0123456789abcdef") != "":
+    if len(tail) < 98 or tail[96:98] != '"}' or tail[:96].lower().strip("0123456789abcdef") != "":
         raise ValueError("malformed signature tail")
     sig = tail[:96]
     start = _object_start(norm, i)
@@ -130,7 +130,7 @@ def verify_body(body: str, secret: str) -> dict:
     raw, sig = _extract_signed(norm)
     expect = hmac.new(secret.encode("utf-8"), raw.encode("utf-8"),
                       hashlib.sha384).hexdigest()
-    if not hmac.compare_digest(expect, sig):
+    if not hmac.compare_digest(expect, sig.lower()):
         raise ValueError("signature mismatch")
     job = json.loads(raw)
     if not isinstance(job, dict):

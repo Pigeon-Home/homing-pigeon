@@ -36,6 +36,36 @@ Those values live on the runner host. They do not travel through the SI chat.
 4. If a live round-trip is required, send the signed job with the connector to the runner's dedicated address, then poll for the result with the connector. Do not log into the runner's mailbox.
 5. If the connector is not connected, ask the user to connect Gmail. Do not fall back to asking for a password.
 
+
+## Sending a job
+
+Use `cloud/send_job.py`. Do not hand-roll the signature. The shapes below
+were real failures from the test suite.
+
+**Subject.** Exact: `[HOMING-PIGEON] job <job_id>`. No `TEST`, no `Re:`,
+no decoration. The runner's regex does not match anything else.
+
+**Body.** A note above or below the JSON is fine. Do not alter the JSON
+object. Prefer the body `send_job.py` prints.
+
+**Do not emit**
+
+| Shape | Result |
+|-------|--------|
+| `issued_at` without `Z` or an offset | Rejected |
+| `interpreter` as a string (`"sh"`) | Rejected. Use `["sh"]` |
+| `interpreter` pointing at a missing binary | Rejected |
+| `job_id` of `../evil`, `.`, `..`, or anything outside `[A-Za-z0-9._-]{1,128}` | Rejected |
+| Uppercase hex signature | Accepted (hex is case-insensitive) |
+| Subject with extra words | Ignored |
+| Signature that does not match | Rejected |
+
+`send_job.py` already emits lowercase hex, a `Z` timestamp, and a UUID.
+Use it.
+
+**Result.** Search the connector for subject `[HOMING-PIGEON] result <job_id>`,
+then verify the body. Do not log into the runner's mailbox.
+
 ## Personal account is not the runner
 
 The connector is attached to a personal Gmail account that holds legal and other private mail. Rules:

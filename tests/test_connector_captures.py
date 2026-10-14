@@ -129,9 +129,12 @@ class ConnectorCaptureTests(unittest.TestCase):
         self.assertEqual(job["job_id"], "f62b9568-47fe-403e-8124-f9e06d5baed2")
         self.assertIn("sig", job["script"])
 
-    def test_uppercase_sig_rejected(self):
-        with self.assertRaises(ValueError):
-            verify_body(UPPER_SIG, SECRET)
+    def test_uppercase_sig_accepted(self):
+        # HMAC hex is case-insensitive. A sender that emits uppercase
+        # must still verify.
+        job = verify_body(UPPER_SIG, SECRET)
+        self.assertEqual(job["job_id"], "4653829a-a53a-44ba-85d5-90d52a73b980")
+        self.assertEqual(job["kind"], "ping")
 
     def test_preamble_is_ignored(self):
         # The note we put above the JSON in the real test mail is not

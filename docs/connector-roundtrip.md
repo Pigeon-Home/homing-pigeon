@@ -37,7 +37,7 @@ These were sent the same way. Outcomes are from running the returned body throug
 | Subject | Message | What it probed | Outcome |
 |---------|---------|----------------|---------|
 | `NEG-sigin` | `1a1380e84018aa6a` | `,"sig":"` inside the script string | Verified (last marker wins) and executed |
-| `NEG-upper` | `1a1380e8aa70b40a` | Uppercase hex signature | Rejected: malformed signature tail |
+| `NEG-upper` | `1a1380e8aa70b40a` | Uppercase hex signature | Accepted (hex is case-insensitive) |
 | `NEG-path` | `1a1380e91cf58eef` | `job_id` `../evil` | Signature OK; `_safe_job_id` rejects |
 | `NEG-naive` | `1a1380e97ac687a9` | `issued_at` with no timezone | Signature OK; `handle_mail` rejects |
 | `NEG-strint` | `1a1380e9d9d74822` | `interpreter` as a string | Signature OK; rejected as poison |
