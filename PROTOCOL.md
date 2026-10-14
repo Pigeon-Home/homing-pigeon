@@ -434,7 +434,7 @@ after.
 
 The `query` (`[HOMING-PIGEON] query <query_id>`) and `qresult`
 message types exist for exceptional follow-ups only, and every one
-passes the section-5 verification (From hard rule, signature, freshness,
+passes the section-5 verification (signature, freshness,
 seen-set on `query_id`) **and** spends budget (section 11). Outputs are
 retained per `output_retention_days` (runner config, default 7); queries
 against expired or unknown `job_id`s are rejected and marked seen.
@@ -473,7 +473,7 @@ Defenses, in order of importance:
 - **Bounded extraction:** single-round declaration + privacy budget +
   rate limiting (section 11).
 - **Same transport trust as v1:** queries are HMAC-signed emails subject
-  to the From hard rule; a third party can neither ask nor answer.
+  to the signature; a third party without the secret can neither ask nor answer.
 - **Data lifetime:** retained outputs age out per config; nothing about
   v2 weakens the v1 rule that the runner host itself is fully trusted —
   v2 protects data *from the SI*, not from the machine's owner.
