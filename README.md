@@ -50,7 +50,7 @@ and operate.
        │                  │              │
        │               result email ◀──┘ sign
        ▼                  │
-  verify result ◀─────────┘
+  verify result ◀──────────┘
 ```
 
 Large inputs don't go through email: your SI uploads them to file hosting
@@ -83,12 +83,12 @@ raw output never leaves your disk.
                                         │  The Oracle │
   "Any secrets in there?" ────────────▶ │             │
                                         │ output stays│
-   ┌──────────────────────┐             │ on your disk│
+   ┌─────────────────────┐             │ on your disk│
    │ signed attestation   │ ◀──signed── │             │
    │ { exit_zero: true,   │             │ answers only│
    │   no_secrets: true } │             │ what policy │
-   └──────────────────────┘             │ allows      │
-                                        └─────────────┘
+   └─────────────────────┘             │ allows      │
+                                        └────────────┘
    The SI learns answers. Never the raw output.
 ```
 
@@ -128,8 +128,9 @@ standalone binaries built by GitHub Actions:
 | Linux (x64, Debian/RHEL/Ubuntu/…) | `homing-pigeon-linux-amd64.tar.gz` → `homing-pigeon` + `install` |
 | macOS (ARM64) | `homing-pigeon-macos-arm64.tar.gz` → `homing-pigeon` + `install` |
 
-The Linux binary is built against glibc 2.28, so it runs on Debian 11+,
-RHEL 8/9+, Ubuntu 20.04+, and most other modern distros.
+The Linux binary is built on ubuntu-22.04 (glibc ~2.35). It runs on
+Ubuntu 22.04+, recent Debian, and most current distros. Older systems
+(Debian 11, Ubuntu 20.04, RHEL 8) are not supported.
 
 1. Extract the archive on the target machine.
 2. Run `install` (or `install.exe` on Windows). It copies the runner
