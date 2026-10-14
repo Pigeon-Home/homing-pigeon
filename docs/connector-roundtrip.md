@@ -1,11 +1,12 @@
-# Connector round-trip cases
+# Live Gmail round-trip cases
 
-Captured from the Gmail connector on 2026-10-13. The connected account is
-a personal inbox and is **not** the runner mailbox. These messages only
-exercise the cloud side: sign, send through the connector, read back,
-verify. No IMAP login, no job execution on a host.
+Captured from a live Gmail round-trip on 2026-10-13. These messages
+exercise the cloud side: sign, send, read back, verify. No IMAP login,
+no job execution on a host. The captures are replayed by
+`tests/test_connector_captures.py` to validate `verify_body` against
+real-world mail (preambles, trailers, line wrapping).
 
-All messages are from `slutsky@gmail.com` to itself. Safe to delete.
+All messages are from the test address to itself. Safe to delete.
 
 ## Happy path
 
@@ -28,7 +29,9 @@ Homing Pigeon connector pipeline test. Safe to ignore or delete.
 Notes:
 
 - The JSON line verifies. As of the body-extraction change, the full `body_text` (preamble included) also verifies: surrounding text is ignored.
-- The subject contains `TEST` between the prefix and `job`, so the runner's subject regex (`[HOMING-PIGEON] job <id>`) would not match. This case proves the connector and the signature, not a full runner cycle.
+- The subject contains `TEST` between the prefix and `job`; the runner's
+  subject regex accepts this decorated form, and the IMAP search uses the
+  broad `[HOMING-PIGEON]` tag so such mails are fetched.
 
 ## Other cases from the same session
 
