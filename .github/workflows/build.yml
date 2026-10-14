@@ -37,6 +37,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - run: python -m unittest discover -s tests
       - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
