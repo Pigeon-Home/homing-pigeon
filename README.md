@@ -211,8 +211,23 @@ Ubuntu 22.04+, recent Debian, and most current distros. Older systems
 4. When you want an SI to send jobs, paste that same app-password string
    to it in chat. It doubles as the HMAC shared secret.
 
+**From Docker** — the fastest path, no Python or git needed:
+
+```sh
+docker run -d --name pigeon --restart unless-stopped \
+  -e PIGEON_MAILBOX_USER="your-runner@gmail.com" \
+  -e PIGEON_MAILBOX_PASSWORD="your-app-password" \
+  -v pigeon-data:/data \
+  ghcr.io/pigeon-home/homing-pigeon:latest
+```
+
+See [DOCKER.md](DOCKER.md) for the full guide — dry-run mode, config
+file mounting, updating, and security notes.
+
 **From PyPI** (needs Python 3.9+) — the easiest path on machines where
-Python is preinstalled, like a Raspberry Pi:
+Python is preinstalled, like a Raspberry Pi. A Pi is the ideal box
+for this: always on, sips power, and a machine you can afford to lose
+— which is this project's whole security posture:
 
 ```sh
 pip install pigeon-home
@@ -238,9 +253,6 @@ verify your download:
    `config.json`, and registers the boot-start service.
 4. Edit `config.json` and share the app-password string with your SI,
    same as above.
-
-See [The $35 pigeon coop](#the-35-pigeon-coop-raspberry-pi) for the full
-Raspberry Pi walkthrough.
 
 **From source** (needs Python 3.9+):
 
@@ -283,31 +295,6 @@ Any hypervisor works — KVM/QEMU, VirtualBox, Hyper-V, VMware. Give the
 VM internet access (NAT is fine) so it can reach Gmail's IMAP/SMTP,
 install the Linux release binary inside the guest, and point your jobs
 at it. The host never needs to know.
-
-## The $35 pigeon coop (Raspberry Pi)
-
-Every homing pigeon needs a coop — a cheap, always-on box to come home
-to. A Raspberry Pi is the perfect one:
-
-- **Always on, barely sipping power.** The runner just polls Gmail on a
-  loop; a Pi idles at a few watts while your laptop sleeps.
-- **A machine you can afford to lose.** This project's whole security
-  posture is "dedicated throwaway account on a box you don't care
-  about." A $35 Pi *is* that box.
-- **Python's already there.** Skip the frozen binaries entirely:
-
-```sh
-pip install pigeon-home            # from PyPI — easiest
-homing-pigeon-install          # registers the boot-start service
-# edit ~/.homing-pigeon/config.json, then test one cycle:
-homing-pigeon --config ~/.homing-pigeon/config.json --once
-```
-
-(If you prefer the file: grab the `.whl` — currently
-`pigeon_home-1.4.1-py3-none-any.whl` — or the `.tar.gz` sdist from any
-[release](https://github.com/Pigeon-Home/homing-pigeon/releases).)
-Your SI sends jobs from the cloud; the Pi in the corner executes them.
-That's the whole trick.
 
 ## How scripts run
 
