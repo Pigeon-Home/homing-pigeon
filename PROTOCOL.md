@@ -123,10 +123,13 @@ Verification:
 4. Recompute `HEX(HMAC_SHA384(secret, raw))` and compare with the
    presented signature using a constant-time comparison.
 
-The shared secret is the Gmail app password string itself (user's explicit
-choice). Both sides use its UTF-8 bytes directly as the HMAC-SHA-384 key.
-The user gives the same string to the cloud side when they want jobs sent.
-It never travels in email; only job signatures do.
+The shared secret is a dedicated HMAC secret string, separate from the
+Gmail app password. Both sides use its UTF-8 bytes directly as the
+HMAC-SHA-384 key. The user puts it in the runner's `config.json`
+(`hmac_secret`) and gives the same string to the cloud side (the SI)
+when they want jobs sent. It never travels in email; only job
+signatures do. The SI never sees the mailbox app password — cloud-side
+mail goes through the Gmail connector.
 
 ## 5. Runner verification (all must pass, in order)
 
@@ -161,11 +164,14 @@ send stays unseen and will be retried (re-executed) on the next cycle.
 
 - The runner host is a **full-trust execution environment**: anyone who
   can produce a valid signed job email owns the box.
-- This deployment deliberately stores the Gmail app password in
-  **plaintext** in config.json (user's explicit choice: dedicated
-  throwaway account on a fresh machine with nothing personal). Anyone
-  holding the password gets both Gmail access and the ability to sign
-  jobs. Do not use this setup with an account you care about.
+- This deployment deliberately stores two secrets in **plaintext** in
+  config.json (user's explicit choice: dedicated throwaway account on a
+  fresh machine with nothing personal): the Gmail app password (Gmail
+  access for the runner's IMAP/SMTP polling) and a separate `hmac_secret`
+  (job-signing ability). Anyone holding the app password gets Gmail
+  access; anyone holding the HMAC secret can sign jobs. The SI only ever
+  holds the HMAC secret — never the app password. Do not use this setup
+  with an account you care about.
 - Use a dedicated mailbox, never a personal inbox. Use an app password,
   never the account password.
 - Recommended deployment: run the runner inside a Linux VM on the
