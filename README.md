@@ -154,8 +154,15 @@ Ubuntu 22.04+, recent Debian, and most current distros. Older systems
 2. Run `install` (or `install.exe` on Windows). It copies the runner
    binary, writes a default `config.json`, and registers the boot-start
    service (systemd / launchd / cron @reboot / Scheduled Task).
-3. Edit `config.json`: set `mailbox_user` and `mailbox_password` — your
-   dedicated Gmail address + app password, **in plaintext, on purpose**
+3. Edit `config.json`. Two ways to sign in:
+   - **Password** (default): `mailbox_user` + `mailbox_password` (Gmail app
+     password, plaintext, on purpose). The HMAC secret is that password.
+   - **Browser, like Thunderbird** (Windows and the others): set
+     `"auth": "oauth"`, put your Desktop OAuth client id in
+     `oauth_client_id`, set `shared_secret` to the HMAC key, then run
+     `homing-pigeon-auth`. A browser opens. The Google password never
+     touches the command line. Redirect URI to register:
+     `http://127.0.0.1:8765/`.
    (your explicit choice for this throwaway account). Leave
    `allowed_sender` empty — the runner then only accepts job mail from
    the account it is logged into (hard rule).

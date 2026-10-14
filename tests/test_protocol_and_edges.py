@@ -431,6 +431,7 @@ class InstallHelperTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
             # minimal source layout
             open(os.path.join(src, "runner.py"), "w").write("# stub\n")
+            open(os.path.join(src, "oauth.py"), "w").write("# stub\n")
             open(os.path.join(src, "config.example.json"), "w").write("{}\n")
             with patch.object(install_mod, "FROZEN", False):
                 install_mod.install_files(src, dst)
@@ -890,3 +891,20 @@ class AdversarialTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class OAuthAuthTests(unittest.TestCase):
+    def test_xoauth2_string_shape(self):
+        from runner.oauth import xoauth2_bytes
+        raw = xoauth2_bytes("a@b.com", "ya29.token")
+        self.assertEqual(
+            raw,
+            b"user=a@b.com\x01auth=Bearer ya29.token\x01\x01",
+        )
+
+    def test_password_auth_is_the_default(self):
+        from runner.runner import _use_oauth
+        self.assertFalse(_use_oauth({}))
+        self.assertFalse(_use_oauth({"auth": "password"}))
+        self.assertTrue(_use_oauth({"auth": "oauth"}))
+        self.assertTrue(_use_oauth({"auth": "OAuth"}))

@@ -25,6 +25,7 @@ classifiers = [
 homing-pigeon = "runner.runner:main"
 homing-pigeon-install = "runner.install:main"
 homing-pigeon-send-job = "cloud.send_job:main"
+homing-pigeon-auth = "runner.oauth:main"
 
 [project.urls]
 Homepage = "https://github.com/Pigeon-Home/homing-pigeon"

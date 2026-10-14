@@ -11,13 +11,17 @@ Usage:
 """
 
 # HARD SECURITY RULES (read before changing):
-#  1. The Gmail app password lives in PLAINTEXT in config.json -- the user's
-#     explicit choice (dedicated throwaway account, fresh box, nothing
-#     personal). It is never logged and never put in email bodies, but it IS
-#     on disk. Do not use this setup with an account you care about.
-#  2. The HMAC shared secret IS that same password string. Both sides use
-#     its UTF-8 bytes directly as the HMAC-SHA-384 key. The user hands the
-#     string to the cloud side separately when they want jobs sent.
+#  1. Mailbox auth is one of two things, chosen by "auth" in config.json.
+#     "password": a Gmail app password in plaintext. Dedicated throwaway
+#     account, fresh box, nothing personal. It is never logged and never
+#     put in email bodies, but it IS on disk.
+#     "oauth": Thunderbird-style. A browser window signs you in. config.json
+#     holds a refresh token, never the Google password. Run
+#     homing-pigeon-auth once to get the token.
+#  2. The HMAC shared secret is mailbox_password when auth is password
+#     (the original model). When auth is oauth it is the separate
+#     shared_secret field. Both sides use its UTF-8 bytes as the
+#     HMAC-SHA-384 key. The user hands that string to the cloud side.
 #  3. The runner ONLY obeys job mail whose From address is the account it is
 #     logged into (or the explicit allowed_sender override). Anything else
 #     is rejected before signature verification.
@@ -146,11 +150,28 @@ class JobRejected(Exception):
 
 
 # ---------------------------------------------------------------- mail
+def _use_oauth(cfg) -> bool:
+    return str(cfg.get("auth") or "password").lower() == "oauth"
+
+
+def _xoauth2(cfg) -> bytes:
+    try:
+        from runner.oauth import refresh_access_token, xoauth2_bytes
+    except ImportError:
+        from oauth import refresh_access_token, xoauth2_bytes
+    token = refresh_access_token(cfg)
+    return xoauth2_bytes(cfg["mailbox_user"], token)
+
+
 def connect_imap(cfg) -> imaplib.IMAP4_SSL:
-    # NOTE: the password travels inside the LOGIN command, but only over the
-    # TLS session below. It is never logged or written anywhere.
     conn = imaplib.IMAP4_SSL(cfg["imap_host"], int(cfg["imap_port"]), timeout=30)
-    conn.login(cfg["mailbox_user"], cfg["mailbox_password"])
+    if _use_oauth(cfg):
+        # Thunderbird path: SASL XOAUTH2, no password on the wire.
+        conn.authenticate("XOAUTH2", lambda _c: _xoauth2(cfg))
+    else:
+        # Password travels inside LOGIN, but only over the TLS session.
+        # It is never logged or written anywhere.
+        conn.login(cfg["mailbox_user"], cfg["mailbox_password"])
     typ, _ = conn.select("INBOX")
     if typ != "OK":
         raise RuntimeError("IMAP SELECT INBOX failed")
@@ -160,7 +181,10 @@ def connect_imap(cfg) -> imaplib.IMAP4_SSL:
 def connect_smtp(cfg) -> smtplib.SMTP:
     smtp = smtplib.SMTP(cfg["smtp_host"], int(cfg["smtp_port"]), timeout=30)
     smtp.starttls()
-    smtp.login(cfg["mailbox_user"], cfg["mailbox_password"])
+    if _use_oauth(cfg):
+        smtp.auth("XOAUTH2", lambda _c: _xoauth2(cfg))
+    else:
+        smtp.login(cfg["mailbox_user"], cfg["mailbox_password"])
     return smtp
 
 
@@ -677,7 +701,14 @@ def _worker_count(cfg, opts) -> int:
 def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
               imap=None, smtp=None, opts=None):
     """One poll cycle. imap/smtp may be injected (tests)."""
-    secret = cfg["mailbox_password"]  # the HMAC secret IS this string
+    # Password auth: the HMAC secret is the mailbox password (original model).
+    # OAuth auth: the Google password is gone, so the secret is its own field.
+    if _use_oauth(cfg):
+        secret = cfg.get("shared_secret") or ""
+        if not secret:
+            raise RuntimeError("config error: shared_secret is required when auth=oauth")
+    else:
+        secret = cfg["mailbox_password"]
     allowed_sender = cfg.get("allowed_sender") or cfg["mailbox_user"]
     log(f"runner identity: {cfg['mailbox_user']} "
         f"-- accepting jobs only from {allowed_sender}")
@@ -767,11 +798,20 @@ def main() -> int:
         return 2
 
     cfg = load_config(args.config)
-    for key in ("mailbox_user", "mailbox_password"):
-        if not cfg.get(key):
-            print(f"config error: {key} is required (plaintext, your choice)",
-                  file=sys.stderr)
-            return 2
+    if not cfg.get("mailbox_user"):
+        print("config error: mailbox_user is required", file=sys.stderr)
+        return 2
+    if _use_oauth(cfg):
+        for key in ("oauth_client_id", "oauth_refresh_token", "shared_secret"):
+            if not cfg.get(key):
+                print(f"config error: {key} is required when auth=oauth "
+                      f"(run homing-pigeon-auth to get the refresh token)",
+                      file=sys.stderr)
+                return 2
+    elif not cfg.get("mailbox_password"):
+        print("config error: mailbox_password is required when auth=password",
+              file=sys.stderr)
+        return 2
     # CLI overrides config.
     if args.poll_interval is not None:
         cfg["poll_interval_sec"] = args.poll_interval
