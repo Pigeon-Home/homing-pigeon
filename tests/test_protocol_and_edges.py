@@ -458,5 +458,70 @@ class InfiniteRetryBugs(unittest.TestCase):
         self.assertIn(jid, seen)
 
 
+class HardeningTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-hard-")
+        self.cfg = {
+            "mailbox_user": SENDER,
+            "mailbox_password": SECRET,
+            "max_job_age_sec": 3600,
+        }
+        self.seen_path = os.path.join(self.tmp, "seen.json")
+
+    def cycle(self, mails):
+        imap, smtp, seen = FakeIMAP(mails), FakeSMTP(), {}
+        poll_once(self.cfg, self.tmp, seen, self.seen_path,
+                  imap=imap, smtp=smtp)
+        return imap, smtp, seen
+
+    def test_job_id_absolute_rejected(self):
+        jid = "/tmp/escape-hp"
+        p = base_job(jid)
+        imap, smtp, seen = self.cycle([job_email(p)])
+        self.assertEqual(len(smtp.sent), 1)
+        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        self.assertEqual(r["exit_code"], -2)
+        self.assertIn("job_id must be", r["stderr"])
+        self.assertFalse(os.path.exists("/tmp/escape-hp"))
+
+    def test_job_id_traversal_rejected(self):
+        jid = "../../escape"
+        p = base_job(jid)
+        _, smtp, _ = self.cycle([job_email(p)])
+        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        self.assertEqual(r["exit_code"], -2)
+        self.assertIn("job_id must be", r["stderr"])
+
+    def test_download_size_cap(self):
+        from runner.runner import download, MAX_DOWNLOAD_BYTES
+        self.assertGreater(MAX_DOWNLOAD_BYTES, 0)
+
+        class FakeResp:
+            def read(self, n):
+                return b"x" * n
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                pass
+
+        with tempfile.TemporaryDirectory() as d:
+            dest = os.path.join(d, "out")
+            with patch("runner.runner.urlopen", return_value=FakeResp()):
+                with self.assertRaises(RuntimeError) as cm:
+                    download("http://example.invalid/big", dest, max_bytes=1000)
+                self.assertIn("exceeded", str(cm.exception))
+
+    def test_install_quoting(self):
+        import shlex
+        from runner import install as im
+        argv = im._runner_argv("/home/user/My Dir")
+        self.assertTrue(any(" " in a for a in argv))
+        line = (" ".join(shlex.quote(a) for a in argv)
+                + " --config " + shlex.quote("/tmp/my config.json"))
+        self.assertNotIn(" --config /tmp/my config.json", line)
+        self.assertIn(shlex.quote("/tmp/my config.json"), line)
+        self.assertIn(shlex.quote("/home/user/My Dir/runner.py"), line)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
