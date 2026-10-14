@@ -969,3 +969,110 @@ class WinlogTests(unittest.TestCase):
         from runner import winlog
         with mock.patch.dict(sys.modules, {"ctypes": None}):
             winlog.report_event("test")  # must not raise
+
+
+class HotReloadTests(unittest.TestCase):
+    def _cfg(self, **over):
+        base = {
+            "poll_interval_sec": 20,
+            "workers": 1,
+            "default_timeout_sec": 300,
+            "max_output_bytes": 100000,
+            "max_job_age_sec": 3600,
+            "mailbox_password": "secret",
+        }
+        base.update(over)
+        return base
+
+    def _write(self, path, cfg, mtime):
+        import json
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(cfg, fh)
+        os.utime(path, (mtime, mtime))
+
+    def test_no_change_when_mtime_same(self):
+        from runner.runner import reload_hot_config
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            cfg = self._cfg()
+            self._write(path, cfg, 1000)
+            state = {"mtime": 1000}
+            self.assertEqual(reload_hot_config(cfg, path, state), [])
+            self.assertEqual(cfg["poll_interval_sec"], 20)
+
+    def test_applies_hot_keys(self):
+        from runner.runner import reload_hot_config
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            cfg = self._cfg()
+            self._write(path, self._cfg(poll_interval_sec=5, workers=4), 2000)
+            state = {"mtime": 1000}
+            changed = reload_hot_config(cfg, path, state)
+            self.assertEqual(changed, ["poll_interval_sec", "workers"])
+            self.assertEqual(cfg["poll_interval_sec"], 5)
+            self.assertEqual(cfg["workers"], 4)
+            self.assertEqual(state["mtime"], 2000)
+
+    def test_does_not_touch_credentials(self):
+        from runner.runner import reload_hot_config
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            cfg = self._cfg()
+            fresh = self._cfg(mailbox_password="stolen",
+                              oauth_refresh_token="nope")
+            self._write(path, fresh, 2000)
+            state = {"mtime": 1000}
+            self.assertEqual(reload_hot_config(cfg, path, state), [])
+            self.assertEqual(cfg["mailbox_password"], "secret")
+            self.assertNotIn("oauth_refresh_token", cfg)
+
+    def test_bad_file_does_not_advance_mtime(self):
+        from runner.runner import reload_hot_config
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            cfg = self._cfg()
+            with open(path, "w") as fh:
+                fh.write("{not json")
+            os.utime(path, (2000, 2000))
+            state = {"mtime": 1000}
+            with self.assertRaises(Exception):
+                reload_hot_config(cfg, path, state)
+            self.assertEqual(state["mtime"], 1000)
+            self.assertEqual(cfg["poll_interval_sec"], 20)
+            # A later good write with a new mtime still applies.
+            self._write(path, self._cfg(poll_interval_sec=9), 3000)
+            changed = reload_hot_config(cfg, path, state)
+            self.assertEqual(changed, ["poll_interval_sec"])
+            self.assertEqual(cfg["poll_interval_sec"], 9)
+
+    def test_pinned_cli_keys_are_not_overwritten(self):
+        from runner.runner import reload_hot_config
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            cfg = self._cfg(poll_interval_sec=5)  # CLI said 5
+            self._write(path, self._cfg(poll_interval_sec=99, workers=3), 2000)
+            state = {"mtime": 1000}
+            changed = reload_hot_config(
+                cfg, path, state, pinned={"poll_interval_sec"})
+            self.assertEqual(changed, ["workers"])
+            self.assertEqual(cfg["poll_interval_sec"], 5)
+            self.assertEqual(cfg["workers"], 3)
+
+    def test_invalid_values_are_rejected(self):
+        from runner.runner import reload_hot_config
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            cfg = self._cfg()
+            fresh = self._cfg(poll_interval_sec=-1, workers=0,
+                              max_output_bytes="lots",
+                              default_timeout_sec=30)
+            self._write(path, fresh, 2000)
+            state = {"mtime": 1000}
+            changed = reload_hot_config(cfg, path, state)
+            self.assertEqual(changed, ["default_timeout_sec"])
+            self.assertEqual(cfg["poll_interval_sec"], 20)
+            self.assertEqual(cfg["workers"], 1)
+            self.assertEqual(cfg["max_output_bytes"], 100000)
+            self.assertEqual(cfg["default_timeout_sec"], 30)
+            # mtime still advances: the file was readable, bad keys skipped
+            self.assertEqual(state["mtime"], 2000)

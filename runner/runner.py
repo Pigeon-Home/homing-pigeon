@@ -732,6 +732,53 @@ def save_seen(path: str, seen: dict):
         json.dump(keys, fh)
 
 
+HOT_KEYS = ("poll_interval_sec", "workers", "default_timeout_sec",
+            "max_output_bytes", "max_job_age_sec")
+
+
+def _valid_hot(key: str, value):
+    """Return the int to store, or None if the value must be rejected."""
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return None
+    if n < 1:
+        return None
+    return n
+
+
+def reload_hot_config(cfg: dict, path: str, state: dict,
+                      pinned=None) -> list:
+    """Apply hot keys from path if its mtime changed.
+
+    state holds {"mtime": float}. pinned keys (set by CLI flags) are
+    left alone. On a bad file, state is not advanced, so the next cycle
+    retries the same mtime. Returns the keys that actually changed.
+    """
+    pinned = set(pinned or ())
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return []
+    if mtime == state.get("mtime"):
+        return []
+    fresh = load_config(path)  # raises: caller keeps old cfg and mtime
+    changed = []
+    for key in HOT_KEYS:
+        if key in pinned or key not in fresh:
+            continue
+        val = _valid_hot(key, fresh[key])
+        if val is None:
+            log(f"config reload: ignoring invalid {key}={fresh[key]!r}",
+                "WARN")
+            continue
+        if val != cfg.get(key):
+            cfg[key] = val
+            changed.append(key)
+    state["mtime"] = mtime
+    return changed
+
+
 def _worker_count(cfg, opts) -> int:
     """Concurrent job executions. CLI overrides config; default 1."""
     raw = None
@@ -887,30 +934,28 @@ def main() -> int:
         f"no_oracle={args.no_oracle} verbose={args.verbose} pdb={args.pdb} "
         f"once={args.once} workers={_worker_count(cfg, args)}")
     auth_failed = False  # latch: report auth death once, not every 20s
-    # Hot-reloadable config keys: safe to change while running, no
-    # restart needed. Connection credentials (mailbox_user/password,
-    # oauth_*) are NOT here — those still need a restart.
-    HOT_KEYS = ("poll_interval_sec", "workers", "default_timeout_sec",
-                "max_output_bytes", "max_job_age_sec")
-    config_mtime = os.path.getmtime(args.config)
+    # Connection credentials (mailbox_user/password, oauth_*) are not
+    # hot. Those still need a restart. CLI flags pin their key so a
+    # later edit of config.json cannot silently undo them.
+    pinned = set()
+    if args.poll_interval is not None:
+        pinned.add("poll_interval_sec")
+    if args.max_output_bytes is not None:
+        pinned.add("max_output_bytes")
+    if args.timeout is not None:
+        pinned.add("default_timeout_sec")
+    if args.workers is not None:
+        pinned.add("workers")
+    reload_state = {"mtime": os.path.getmtime(args.config)}
     while True:
         # Re-read config if the file changed. Edit config.json all you
         # want — the runner picks it up within one poll interval.
         try:
-            mtime = os.path.getmtime(args.config)
-            if mtime != config_mtime:
-                config_mtime = mtime
-                fresh = load_config(args.config)
-                changed = [k for k in HOT_KEYS if fresh.get(k) != cfg.get(k)]
-                for k in HOT_KEYS:
-                    if k in fresh:
-                        cfg[k] = fresh[k]
-                if changed:
-                    log(f"config reloaded: {', '.join(changed)} updated, "
-                        f"no restart needed")
-                else:
-                    log("config reloaded: no hot-reloadable changes",
-                        "DEBUG")
+            changed = reload_hot_config(cfg, args.config, reload_state,
+                                        pinned)
+            if changed:
+                log(f"config reloaded: {', '.join(changed)} updated, "
+                    f"no restart needed")
         except Exception as e:
             log(f"config reload failed (keeping old values): {e}", "WARN")
         try:
