@@ -49,6 +49,12 @@ Send a job from your phone, let the big machine run the tests, crunch
 the data, or grind through the refactor, and read the results when they
 land in your inbox.
 
+The SI systems are brilliant, but they are kept fenced off from our
+real machines. So instead we will point one at a disposable box, give
+it a signed channel, and let it do tasks from start to finish. The
+upside is an assistant that operates, not just advises. If the
+capability is real, there is very little downside to exercising it.
+
 It belongs to the same family as GitHub self-hosted runners, VS Code
 Remote tunnels, and Tailscale — legitimate tools for administering your
 own hardware remotely. And like all of those, its power is the point,
@@ -415,3 +421,5 @@ Releases ship standalone binaries (Windows/macOS/Linux) plus a Python
 wheel and sdist. The v2 protocol — the Oracle, privacy-preserving
 results via signed
 attestations — is spec'd in PROTOCOL.md and awaiting implementation.
+Not yet proven against a live Gmail mailbox on all four platforms —
+that's the next proving ground.
