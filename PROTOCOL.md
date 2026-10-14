@@ -12,6 +12,14 @@ payloads travel as cloud-hosted file URLs that the runner downloads.
   verifies and executes jobs, emails back signed results. Implemented in
   Python 3.9+ using only the standard library.
 
+The roles are a convention, not a requirement. The protocol is
+symmetric — a signed blob with instructions doesn't care which side is
+"smart." Flip it: the local machine holds a queue of project
+descriptions (a folder, or even an email), and one or more cloud SIs
+pull from it, do the work, and send results back. Nothing in the
+message format, signatures, or verification changes. It's really just
+a question of where the work board lives.
+
 ## 2. Transport
 
 - One dedicated mailbox (Gmail recommended). Both directions use it:
