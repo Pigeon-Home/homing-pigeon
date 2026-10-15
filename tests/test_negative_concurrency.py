@@ -3251,3 +3251,58 @@ class FusedSensorKeyTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-sensor", seen)
+
+
+class AttestBoomPredicatePoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation):
+
+    build_attestations did pred == "exit_zero". A predicate whose
+    __eq__ raises stopped the attestation. No attestations returned.
+
+    A predicate whose equality raises is unknown. Processing continues.
+    """
+
+    def test_boom_predicate_does_not_raise(self):
+        from runner.runner import build_attestations
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+            def __eq__(self, other):
+                raise RuntimeError("eq")
+
+        atts = build_attestations(
+            [{"op": "attest", "predicate": Boom()}], {},
+        )
+        self.assertEqual(len(atts), 1)
+        self.assertEqual(atts[0].get("reason"), "unknown")
+
+    def test_concurrent_boom_predicate_does_not_raise(self):
+        import threading
+        from runner.runner import build_attestations
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+            def __eq__(self, other):
+                raise RuntimeError("eq")
+
+        errors = []
+
+        def hammer():
+            for _ in range(10):
+                try:
+                    build_attestations(
+                        [{"op": "attest", "predicate": Boom()}],
+                        {"patterns": {"x": Boom()}},
+                    )
+                except Exception as e:
+                    errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
