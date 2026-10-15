@@ -236,6 +236,14 @@ machine, it passed. If nothing comes back, the SI failed somewhere:
 wrong signature, wrong subject, wrong address. The clock does not
 lie.
 
+Keep that whole check in the one prompt, shared secret included.
+A connector token (GitHub, email, or any other short-lived credential
+the SI was given) is credential-bearing. A follow-up prompt, or a
+long runbook the SI writes and then executes as its own step, is a
+new context. Those tokens are not guaranteed to still be present
+there. Putting the secret, the mailbox, and the clock job in the
+same prompt avoids that gap.
+
 ---
 
 ## If something goes wrong
