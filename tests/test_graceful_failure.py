@@ -1435,5 +1435,37 @@ class SenseProfileGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class BaseDirGracefulTest(unittest.TestCase):
+    """Finding: senses, resources, and retained all take a base_dir.
+    A bad one must not crash the poll.
+    """
+
+    def test_senses_bad_base(self):
+        for base in ("", "/no/such/base", None):
+            try:
+                senses.load_alerts(base if isinstance(base, str) else "")
+            except Exception as e:
+                self.fail(f"senses load crashed on {base!r}: {e}")
+
+    def test_resources_bad_base(self):
+        for base in ("", "/no/such/base"):
+            try:
+                resources.check_resources({}, base)
+            except Exception as e:
+                self.fail(f"resources crashed on {base!r}: {e}")
+
+    def test_retained_bad_base(self):
+        from runner.runner import prune_retained, save_retained
+        for base in ("", "/no/such/base"):
+            try:
+                prune_retained(base, 7)
+            except Exception as e:
+                self.fail(f"prune crashed on {base!r}: {e}")
+        try:
+            save_retained("/no/such/base", "job", {"stdout": "x"})
+        except Exception as e:
+            self.fail(f"save_retained crashed on missing base: {e}")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
