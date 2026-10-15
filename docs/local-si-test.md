@@ -87,28 +87,15 @@ The mock SI reads the same `config.json` as the runner.
   (`smtp_host`, `smtp_port`, `mailbox_user`, password or OAuth). The
   runner must be polling that mailbox to pick it up. This is the real
   Transport #1 path.
-- **Local socket** — a loopback TCP listener on `127.0.0.1:8766`.
-  Length-prefixed signed blobs, one question per connection. No
-  broker, no mailbox. This is the high-throughput local option: many
-  asks per second on one machine, still two model instances.
 
-Other transports in TRANSPORTS.md (Cloudflare Queues, NATS, MQTT,
-Redis, Postgres) are not wired into this harness. The socket path is
-the local stand-in when you want volume without a queue service.
+A loopback-socket option (`127.0.0.1:8766`) was specified in an
+earlier revision but never implemented; it was cut with the other
+broker transports. In-process and email are the two working paths.
 
-## High-throughput local transport
+## High-throughput local transport — cut
 
-Email is the wrong tool for a tight local loop. A mailbox poll is
-seconds; a socket round trip is milliseconds.
-
-The harness speaks a tiny framing: 4-byte big-endian length, then the
-UTF-8 question. The listener runs the question through the Oracle
-path and writes the answer back the same way. Bind is `127.0.0.1`
-only.
-
-Why sockets and not a Unix domain socket: Windows (a supported
-platform) does not have the same Unix-socket story, and a loopback
-TCP port works everywhere the runner runs. Why not HTTP for this
-path: the browser page is already HTTP; the socket path is for
-scripted volume, not for a person clicking. See TRANSPORTS.md for
-the broker options when the SI is not on the same machine.
+An earlier revision specified a loopback-TCP framing here (4-byte
+big-endian length, UTF-8 question, answer back the same way,
+`127.0.0.1` only). It was never implemented and was cut with the
+other broker transports. For volume testing today, use the in-process
+path or the real email transport.

@@ -21,7 +21,17 @@
   "key_policies": {},
   "max_result_view": "full",
   "max_query_budget": 8,
+  "max_queries_per_hour": 0,
   "output_retention_days": 7,
+  "workspace_root": "",
+  "owner_instructions": "",
+  "redact_patterns_extra": {},
+  "inference": {
+    "endpoint": "",
+    "model": "",
+    "max_answer_chars": 2000,
+    "timeout_sec": 60
+  },
   "judge": "off",
   "dag_mode": "off",
   "task_timeout": 86400,

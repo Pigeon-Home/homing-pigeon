@@ -1,5 +1,11 @@
 # Transports: beyond email
 
+> **Status.** Only email is implemented, in `runner/runner.py` directly.
+> Cloudflare Queues is the planned second transport (not yet attempted).
+> NATS, MQTT, Redis, Postgres, Durable Objects, and the local-socket
+> test transport were cut from the code — the sections below are kept
+> as design notes, not implementation.
+
 ## Yes, email. We know.
 
 Let's get it out of the way: the words "email-driven agent" make a
@@ -241,17 +247,11 @@ technical knowledge, because the SI does the knowing and the
 runbook does the proving. Each step checks its own work, so a
 failed migration is a report, not a bricked machine.
 
-## Local socket — the test-harness pick
+## Local socket — cut
 
-For a mock SI on the same machine that needs volume, email is too
-slow and a broker is too much. The local SI harness
-(`--local-test --browser`) speaks a length-prefixed protocol over
-loopback TCP (`127.0.0.1:8766`):
-
-- 4-byte big-endian length, then the question bytes
-- the listener runs it through the Oracle path
-- the answer comes back the same way
-
-Loopback TCP rather than a Unix socket so Windows works. This is a
-test transport, not a deployment transport. When the SI is remote,
-use one of the brokers above.
+An earlier revision specified a loopback-TCP test transport
+(`127.0.0.1:8766`, length-prefixed blobs) for the local SI harness.
+It was cut along with the other broker transports: it was never
+implemented, and the harness tests through the in-process Oracle
+path and the real email transport instead. This section is kept as
+a record of the cut, not a spec.

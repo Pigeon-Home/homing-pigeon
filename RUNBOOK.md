@@ -247,8 +247,10 @@ lie.
 - **The runner says "bad signature"** — the secret string has a typo.
   Copy it again, carefully.
 - **Nothing happens after sending a job message** — check that the
-  runner computer is turned on, and that the email was sent from
-  the runner's own Gmail address (not your personal one).
+  runner computer is turned on, and that the job was signed with the
+  right secret. Any sender address works (the HMAC signature is the
+  sole gate since v1.4.0); a "bad signature" rejection means the
+  secret didn't match.
 - **The robots (Actions) show a red X** — click the X, click the
   failed job, read the red text at the bottom. It usually says
   exactly what went wrong.

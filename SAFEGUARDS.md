@@ -56,7 +56,7 @@ Defense in depth, cheapest first:
   dedicated low-privilege user account and point the task at it
   instead. The installer takes the convenient path; the safe path
   is one extra step and worth it on any machine you care about.
-- **Execution confinement (v2, spec'd).** The Oracle can restrict jobs
+- **Execution confinement (shipped).** The Oracle can restrict jobs
   to a single `workspace_root` folder and *attest* that the job
   stayed inside it. Not a sandbox — an attested boundary. See
   PROTOCOL.md §9.4.

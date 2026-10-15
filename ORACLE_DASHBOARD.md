@@ -53,7 +53,7 @@ A reverse-chronological list of jobs. Each entry shows, at a glance:
 
 A job that burned its entire privacy budget is visually loud —
 budget exhaustion is a tripwire (§11), and the timeline is where
-the human sees it. Jobs with `ask` answers (v3.1) show the plain-
+the human sees it. Jobs with `ask` answers (v3.0) show the plain-
 language answer inline on the card.
 
 ### 3.2 Job detail

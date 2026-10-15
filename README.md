@@ -134,7 +134,7 @@ Queries are declared upfront (no adaptive probing), each job gets a
 privacy budget bounding total leakage, and the disclosure ceiling is
 set by *you* in config — never by the SI.
 
-The Oracle also grows two optional capabilities (spec'd, not yet built):
+The Oracle ships two confinement capabilities:
 
 - **Local inference.** Point it at a model running on your own box and
   the SI can `ask` questions in plain English — *"why did the tests
@@ -451,4 +451,4 @@ release hashes, and PyPI distribution (`pip install pigeon-home-runner`).
 Releases ship standalone binaries (Windows/macOS/Linux) plus a Python
 wheel and sdist. The v3 protocol — the Oracle, privacy-preserving
 results via signed
-attestations — is spec'd in PROTOCOL.md and awaiting implementation.
+attestations — shipped as 3.0.0, spec in PROTOCOL.md (sections 9–12).
