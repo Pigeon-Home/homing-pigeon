@@ -118,8 +118,10 @@ def parse_sensors(cfg) -> dict:
 
 def sensor_for_key(sensors: dict, key_id: str):
     """Return the sensor name bound to key_id, or None."""
+    if not isinstance(sensors, dict):
+        return None
     for name, scfg in sensors.items():
-        if scfg["key_id"] == key_id:
+        if isinstance(scfg, dict) and scfg.get("key_id") == key_id:
             return name
     return None
 

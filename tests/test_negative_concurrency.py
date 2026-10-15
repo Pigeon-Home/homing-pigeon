@@ -2013,6 +2013,83 @@ class NonSerializablePoisonTest(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class SensorKeyAndFusedScoreTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, senses and DRI, no poll):
+
+    sensor_for_key indexed a sensor config that was a string, and
+    keyed a config that had no key_id. A map that was None or a list
+    had no .items. Six threads raised. evaluate_page_triggers
+    subtracted a word clock from an alert timestamp, and indexed
+    window_sec on a fused-score value that was the string "high".
+
+    A bad map returns None. A word clock is the current time. A
+    fused-score value that is not an object, or whose window is not
+    a number, is skipped. Evaluation still returns a list.
+    """
+
+    def test_bad_sensor_map_and_fused_score_do_not_raise(self):
+        from runner import dri, senses
+        self.assertIsNone(senses.sensor_for_key({"door": "nope"}, "k"))
+        self.assertIsNone(senses.sensor_for_key({"door": {}}, "k"))
+        self.assertIsNone(senses.sensor_for_key(None, "k"))
+        self.assertIsNone(senses.sensor_for_key(["door"], "k"))
+        self.assertEqual(senses.sensor_for_key({"door": {"key_id": "k"}}, "k"), "door")
+        with tempfile.TemporaryDirectory() as d:
+            senses.store_alert(d, {
+                "sensor": "door", "severity": "high", "title": "t",
+                "received_at": _now(), "weight": 1,
+            })
+            events = dri.evaluate_page_triggers(
+                {"triggers": {"sensor_fused_score": {
+                    "window_sec": 3600, "threshold": 0.1}}},
+                d, 0, now="soon",
+            )
+            self.assertIsInstance(events, list)
+            self.assertEqual(dri.evaluate_page_triggers(
+                {"triggers": {"sensor_fused_score": "high"}}, d, 0, now="soon",
+            ), [])
+            self.assertIsInstance(dri.maybe_page(
+                {"dri": {"enabled": True, "triggers": {
+                    "sensor_fused_score": {"window_sec": "wide", "threshold": 1}}}},
+                d, now="soon",
+            ), int)
+
+    def test_concurrent_sensor_and_fused_score_do_not_raise(self):
+        import threading
+        from runner import dri, senses
+        errors = []
+
+        def hammer():
+            try:
+                senses.sensor_for_key({"a": "x", "b": {}}, "k")
+                with tempfile.TemporaryDirectory() as d:
+                    dri.evaluate_page_triggers(
+                        {"triggers": {"sensor_fused_score": "high"}},
+                        d, 0, "soon",
+                    )
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_fused_score(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-fused",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-fused", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-fused", seen)
+
 
 class DriWindowPoisonTest(unittest.TestCase):
     """Finding (2026-10-15 simulation):

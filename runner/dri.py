@@ -204,6 +204,10 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
     Pure evaluation: no sending, no state writes.
     """
     now = time.time() if now is None else now
+    try:
+        now = float(now)
+    except (TypeError, ValueError):
+        now = time.time()
     if not isinstance(dcfg, dict):
         return []
     events = []
@@ -213,12 +217,20 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
 
     # Fused sensor score per sensor over the window.
     sfs = trig.get("sensor_fused_score")
-    if sfs and _senses is not None:
-        recs = _senses.load_alerts(base_dir, limit=5000)
+    if isinstance(sfs, dict) and _senses is not None:
+        try:
+            window = float(sfs.get("window_sec"))
+            threshold = float(sfs.get("threshold"))
+        except (TypeError, ValueError):
+            window = None
+            threshold = None
+        recs = _senses.load_alerts(base_dir, limit=5000) if window is not None else []
         by_sensor = {}
         for rec in recs:
+            if not isinstance(rec, dict):
+                continue
             ts = _to_ts(rec.get("observed_at") or rec.get("received_at"))
-            if ts is None or now - ts > sfs["window_sec"]:
+            if ts is None or now - ts > window:
                 continue
             by_sensor.setdefault(rec.get("sensor"), []).append(rec)
         for sensor, recs in by_sensor.items():
@@ -228,7 +240,7 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
                     total += _senses.alert_score(rec, rec.get("weight", 1.0))
                 except (TypeError, ValueError):
                     continue
-            if total >= sfs["threshold"]:
+            if threshold is not None and total >= threshold:
                 def _one(rec):
                     try:
                         return _senses.alert_score(rec, rec.get("weight", 1.0))
@@ -239,9 +251,9 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
                     "trigger": "sensor_fused_score",
                     "at": _now_iso(),
                     "title": f"sensor fused score {total:.1f} "
-                             f"on {sensor} (threshold {sfs['threshold']:.1f})",
+                             f"on {sensor} (threshold {threshold:.1f})",
                     "detail": f"{len(recs)} alerts in "
-                              f"{sfs['window_sec']:.0f}s window",
+                              f"{window:.0f}s window",
                     "signals": [
                         f"{r.get('sensor')}/{r.get('severity')}: "
                         f"{r.get('title')}" for r in top],
@@ -371,6 +383,10 @@ def _as_float(value, default):
 def maybe_page(cfg, base_dir, now=None):
     """Evaluate triggers; page per cooldown/digest. Returns sent count."""
     now = time.time() if now is None else now
+    try:
+        now = float(now)
+    except (TypeError, ValueError):
+        now = time.time()
     if not isinstance(cfg, dict):
         return 0
     try:
