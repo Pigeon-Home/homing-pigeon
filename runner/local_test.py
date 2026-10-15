@@ -198,16 +198,18 @@ button { font: inherit; padding: .4rem 1rem; }
 .si { color: #06c; }
 .oracle { color: #080; }
 </style>
-<h1>Two instances</h1>
-<p>The browser talks to the <b>SI</b> model (port 11435).
-The <b>Oracle</b> is a separate model (its own port and context).
-Chat with the SI, then send a question to the Oracle.</p>
+<h1>Tell the cloud SI to do some work</h1>
+<p>You are talking to a cloud SI agent. It is a separate model from the
+Oracle that runs on this box. Describe the work. The SI will send it
+to the Oracle as an email (or whatever transport is configured).
+The Oracle does the work and answers. You never talk to the mailbox
+yourself.</p>
 <div id="log"></div>
 <form id="f">
-  <input id="q" autofocus placeholder="say something">
-  <button name="to" value="email">send email (the test)</button>
-  <button name="to" value="si">talk to SI</button>
-  <button name="to" value="oracle">ask the Oracle</button>
+  <input id="q" autofocus placeholder="tell the SI what to do">
+  <button name="to" value="email">have the SI send it</button>
+  <button name="to" value="si">just talk to the SI</button>
+  <button name="to" value="oracle">ask the Oracle directly</button>
 </form>
 <script>
 const log = document.getElementById('log');
