@@ -1049,8 +1049,9 @@ class HotReloadTests(unittest.TestCase):
                 fh.write("{not json")
             os.utime(path, (2000, 2000))
             state = {"mtime": 1000}
-            with self.assertRaises(Exception):
-                reload_hot_config(cfg, path, state)
+            # Finding, fixed: a bad file used to raise. It now returns
+            # [] and leaves mtime alone so the next cycle retries.
+            self.assertEqual(reload_hot_config(cfg, path, state), [])
             self.assertEqual(state["mtime"], 1000)
             self.assertEqual(cfg["poll_interval_sec"], 20)
             # A later good write with a new mtime still applies.
