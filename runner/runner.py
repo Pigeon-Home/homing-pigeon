@@ -189,6 +189,10 @@ def _json_safe(value):
 
 
 def sign_payload(payload: dict, secret: str) -> str:
+    if not isinstance(secret, str):
+        raise ValueError("secret must be a string")
+    if not isinstance(payload, dict):
+        raise ValueError("payload must be an object")
     body = _normalize(json.dumps(_json_safe(payload), separators=(",", ":"),
                                  ensure_ascii=False, allow_nan=False))
     if not body.endswith("}"):
@@ -2029,6 +2033,8 @@ _IN_FLIGHT: set = set()
 
 def _describe_job(job: dict) -> str:
     """One-line summary of what a job would do (for --dry-run)."""
+    if not isinstance(job, dict):
+        return "invalid job"
     kind = job.get("kind")
     if kind == "ping":
         return "kind=ping (would reply pong)"
@@ -2040,7 +2046,7 @@ def _describe_job(job: dict) -> str:
     if job.get("interpreter"):
         parts.append(f"interpreter={job['interpreter']}")
     files = job.get("files") or []
-    if files:
+    if isinstance(files, list) and files:
         parts.append(f"{len(files)} file(s): " +
                      ", ".join(str(f.get("url", "?")) for f in files
                                if isinstance(f, dict)))
@@ -2649,6 +2655,10 @@ def reload_hot_config(cfg: dict, path: str, state: dict,
     left alone. On a bad file, state is not advanced, so the next cycle
     retries the same mtime. Returns the keys that actually changed.
     """
+    if not isinstance(cfg, dict) or not isinstance(path, str) or not path:
+        return []
+    if not isinstance(state, dict):
+        state = {}
     pinned = set(pinned or ())
     try:
         mtime = os.path.getmtime(path)
@@ -2688,6 +2698,8 @@ def reload_hot_config(cfg: dict, path: str, state: dict,
 
 def _worker_count(cfg, opts) -> int:
     """Concurrent job executions. CLI overrides config; default 1."""
+    if not isinstance(cfg, dict):
+        cfg = {}
     raw = None
     if opts is not None and getattr(opts, "workers", None) is not None:
         raw = opts.workers
@@ -2714,6 +2726,8 @@ def _scrub_env(env: dict) -> dict:
     Windows env keys are case-insensitive, so pigeon_secret is the
     same variable as PIGEON_SECRET. Match the prefix either way.
     """
+    if not isinstance(env, dict):
+        return {}
     prefixes = tuple(p.lower() for p in _SENSITIVE_ENV_PREFIXES)
     return {k: v for k, v in env.items()
             if not str(k).lower().startswith(prefixes)}
@@ -2721,7 +2735,7 @@ def _scrub_env(env: dict) -> dict:
 
 def _estimate_secret_entropy(secret: str) -> float:
     """Rough entropy estimate in bits: length × log2(alphabet size)."""
-    if not secret:
+    if not isinstance(secret, str) or not secret:
         return 0.0
     alphabet = len(set(secret))
     if alphabet <= 1:
@@ -2737,6 +2751,8 @@ def _secret_pattern_reason(secret: str) -> str | None:
     negligible real entropy. Randomly generated secrets (token_hex,
     token_urlsafe) never trigger this.
     """
+    if not isinstance(secret, str):
+        return "secret must be a string"
     low = secret.lower()
     placeholders = ("generate", "changeme", "example", "placeholder",
                     "your-secret", "your_secret", "todo", "xxx")
@@ -3043,6 +3059,8 @@ def oracle_context(base_dir, limit=6, max_chars=4000) -> str:
     Only safe job ids. Bounded. This is data for the model, not a
     dashboard, and it is not written back to the page.
     """
+    if not isinstance(base_dir, str):
+        return ""
     d = os.path.join(base_dir or "", "retained")
     if not os.path.isdir(d):
         return "(no job output retained yet)"

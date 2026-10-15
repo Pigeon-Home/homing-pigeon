@@ -859,3 +859,71 @@ class VerifySeenLogPoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class SignScrubDescribePoisonTest(unittest.TestCase):
+    """Findings (2026-10-15 simulation):
+
+    1. sign_payload assumed secret was a string and payload a dict.
+       None secret raised AttributeError on .encode.
+    2. _scrub_env assumed env was a dict. None/str raised AttributeError
+       on .items. Called when building a job environment.
+    3. _estimate_secret_entropy and _secret_pattern_reason assumed
+       secret was a string. None/int raised AttributeError/TypeError.
+    4. _describe_job assumed job was a dict and files a list. None job
+       raised AttributeError; files=5 raised TypeError on len.
+    5. _worker_count assumed cfg was a dict. None raised AttributeError.
+    6. reload_hot_config assumed path was a string. None raised TypeError.
+    7. oracle_context assumed base_dir was a string. An int raised TypeError.
+
+    All hardened. Poison inputs return safe defaults or raise ValueError
+    and do not stop processing.
+    """
+
+    def test_sign_scrub_describe_tolerate_poison(self):
+        from runner.runner import (
+            sign_payload, _scrub_env, _estimate_secret_entropy,
+            _secret_pattern_reason, _describe_job, _worker_count,
+            reload_hot_config, oracle_context,
+        )
+        with self.assertRaises(ValueError):
+            sign_payload({}, None)
+        with self.assertRaises(ValueError):
+            sign_payload(None, SECRET)
+        self.assertEqual(_scrub_env(None), {})
+        self.assertEqual(_scrub_env("bad"), {})
+        self.assertEqual(_estimate_secret_entropy(None), 0.0)
+        self.assertEqual(_estimate_secret_entropy(5), 0.0)
+        self.assertIsInstance(_secret_pattern_reason(None), str)
+        self.assertEqual(_describe_job(None), "invalid job")
+        self.assertIsInstance(_describe_job({"files": 5, "kind": "exec"}), str)
+        self.assertEqual(_worker_count(None, None), 1)
+        self.assertEqual(reload_hot_config(None, None, None), [])
+        self.assertEqual(oracle_context(5), "")
+        self.assertEqual(oracle_context(None), "")
+
+    def test_concurrent_scrub_and_describe_do_not_raise(self):
+        import threading
+        from runner.runner import (
+            _scrub_env, _describe_job, _worker_count, oracle_context,
+            _estimate_secret_entropy,
+        )
+        errors = []
+
+        def hammer():
+            for _ in range(15):
+                try:
+                    _scrub_env(None)
+                    _describe_job({"files": "bad"})
+                    _worker_count(None, None)
+                    oracle_context(5)
+                    _estimate_secret_entropy(None)
+                except Exception as e:
+                    errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
