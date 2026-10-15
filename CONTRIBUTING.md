@@ -60,6 +60,14 @@ a public issue — see SECURITY.md.
 
 ## Maintainer notes: the `--oracle` flag
 
+### Tagging: bump `pyproject.toml` first
+
+The PyPI publish job uploads `pigeon-home-runner-<version>` taken from
+`pyproject.toml`, not from the git tag. v3.4.0 and v3.5.0 both shipped
+with the version still at 3.3.0, so both tag builds failed in
+`pypi-publish` with "400 File already exists". Before pushing a tag,
+bump `version` in `pyproject.toml` to match, commit, then tag.
+
 The section below is history that bites. It is for the next person
 or bot that touches the runner, the installer, or the v3 docs.
 
