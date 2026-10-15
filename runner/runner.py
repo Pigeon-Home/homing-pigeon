@@ -212,6 +212,158 @@ def verify_body_keyed(body_text: str, secrets: dict):
     return payload, key_id
 
 
+
+# ---------------------------------------------------------------- board (v3 §13)
+_BOARD_LOCK = threading.RLock()
+
+class Board:
+    """Task board: open -> claimed -> done (plus pending_review)."""
+
+    def __init__(self, path):
+        self.path = path
+        self.tasks = {}
+        self.load()
+
+    def load(self):
+        if os.path.exists(self.path):
+            try:
+                with open(self.path, encoding="utf-8") as f:
+                    self.tasks = json.load(f)
+            except Exception:
+                self.tasks = {}
+        else:
+            self.tasks = {}
+
+    def save(self):
+        tmp = self.path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(self.tasks, f, indent=2)
+        os.replace(tmp, self.path)
+
+    def submit(self, task):
+        tid = task.get("task_id") or ""
+        if not re.fullmatch(r"[A-Za-z0-9._-]{1,128}", tid):
+            return False, "invalid task_id"
+        if tid in self.tasks:
+            return False, "duplicate task_id"
+        for field in ("requires", "capabilities", "compartments"):
+            v = task.get(field)
+            if v is not None and not (isinstance(v, list) and all(isinstance(x, str) for x in v)):
+                return False, f"{field} must be a list of strings"
+        if "priority" in task and not isinstance(task["priority"], (int, float)):
+            return False, "priority must be numeric"
+        self.tasks[tid] = {
+            "task_id": tid,
+            "state": "open",
+            "submitted_at": datetime.now(timezone.utc).isoformat(),
+            "priority": task.get("priority", 0),
+            "requires": task.get("requires") or [],
+            "capabilities": task.get("capabilities") or [],
+            "compartments": task.get("compartments") or [],
+            "payload": task.get("payload"),
+        }
+        self.save()
+        return True, "ok"
+
+    def offer(self, worker_id, capabilities, key_id="", cfg=None):
+        cfg = cfg or {}
+        allow = cfg.get("worker_allowlist") or []
+        if allow and worker_id not in allow:
+            return None
+        # re-offer outstanding claim
+        for t in self.tasks.values():
+            if t.get("state") == "claimed" and t.get("claimed_by") == worker_id:
+                return t
+        compartments = (cfg.get("worker_compartments") or {}).get(worker_id)
+        candidates = []
+        for t in self.tasks.values():
+            if t.get("state") != "open":
+                continue
+            # compartment visibility
+            tcomps = t.get("compartments") or []
+            if tcomps:
+                if compartments is None:
+                    pass  # no config = visible
+                elif not set(tcomps) & set(compartments):
+                    continue
+            # capability filter
+            need = set(t.get("capabilities") or [])
+            if need and not need <= set(capabilities or []):
+                continue
+            # DAG
+            if cfg.get("dag_mode") == "enforce":
+                if any(self.tasks.get(r, {}).get("state") != "done" for r in (t.get("requires") or [])):
+                    continue
+            candidates.append(t)
+        if not candidates:
+            return None
+        candidates.sort(key=lambda x: (-x.get("priority", 0), x.get("submitted_at", "")))
+        chosen = candidates[0]
+        chosen["state"] = "claimed"
+        chosen["claimed_by"] = worker_id
+        chosen["claimed_at"] = datetime.now(timezone.utc).isoformat()
+        chosen["claimed_key_id"] = key_id
+        self.save()
+        return chosen
+
+    def complete(self, task_id, result, require_review=False):
+        t = self.tasks.get(task_id)
+        if not t:
+            return "not_found", "not found"
+        if t.get("state") == "done":
+            return "duplicate", "already done"
+        if t.get("state") != "claimed":
+            return "not_claimed", "not claimed"
+        if require_review:
+            t["state"] = "pending_review"
+            t["result"] = result
+            self.save()
+            return "pending_review", "awaiting review"
+        t["state"] = "done"
+        t["result"] = result
+        t["completed_at"] = datetime.now(timezone.utc).isoformat()
+        self.save()
+        return "done", "ok"
+
+    def approve(self, task_id):
+        t = self.tasks.get(task_id)
+        if not t:
+            return False, "not found"
+        if t.get("state") != "pending_review":
+            return False, "not pending_review"
+        t["state"] = "done"
+        t["completed_at"] = datetime.now(timezone.utc).isoformat()
+        self.save()
+        return True, "ok"
+
+    def reoffer_expired(self, task_timeout=86400):
+        now = datetime.now(timezone.utc)
+        count = 0
+        for t in self.tasks.values():
+            if t.get("state") == "claimed" and t.get("claimed_at"):
+                try:
+                    claimed = datetime.fromisoformat(t["claimed_at"])
+                    if (now - claimed).total_seconds() > task_timeout:
+                        t["state"] = "open"
+                        t.pop("claimed_by", None)
+                        t.pop("claimed_at", None)
+                        t.pop("claimed_key_id", None)
+                        count += 1
+                except Exception:
+                    pass
+        if count:
+            self.save()
+        return count
+
+    def counts(self):
+        c = {"open": 0, "claimed": 0, "done": 0, "pending_review": 0}
+        for t in self.tasks.values():
+            s = t.get("state")
+            if s in c:
+                c[s] += 1
+        return c
+
+
 class JobRejected(Exception):
     """Validly signed job that can never succeed (poison)."""
 
@@ -627,6 +779,60 @@ def _describe_job(job: dict) -> str:
     return ", ".join(parts)
 
 
+
+def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, base_dir):
+    """Handle task_submit / task_request / task_result / task_approve. Returns True if handled."""
+    if not cfg.get("oracle_enabled", True):
+        return False
+    m = re.search(r"\[HOMING-PIGEON\].*?(task_submit|task_request|task_result|task_approve)\s+(\S+)", subject, re.I)
+    if not m:
+        return False
+    kind, ident = m.group(1).lower(), m.group(2)
+    def reject(why):
+        log(f"board reject seq {seq}: {why}", "WARN")
+        if opts is None or not opts.dry_run:
+            mark_seen(imap, seq)
+    try:
+        body = get_text_body(email.message_from_bytes(raw))
+        payload, key_id = verify_body_keyed(body, secrets)
+        secret = secrets[key_id]
+    except Exception as e:
+        reject(f"bad signature: {e}")
+        return True
+    with _BOARD_LOCK:
+        board.reoffer_expired(cfg.get("task_timeout", 86400))
+        if kind == "task_submit":
+            ok, reason = board.submit(payload)
+            reply_subj = f"[HOMING-PIGEON] task_ack {ident}"
+            reply_body = {"v": 1, "type": "task_ack", "task_id": ident, "ok": ok, "reason": reason}
+        elif kind == "task_request":
+            caps = payload.get("capabilities") or []
+            offered = board.offer(ident, caps, key_id, cfg)
+            if offered:
+                reply_subj = f"[HOMING-PIGEON] task_offer {offered['task_id']}"
+                reply_body = {"v": 1, "type": "task_offer", "task": offered}
+            else:
+                reply_subj = "[HOMING-PIGEON] task_offer empty"
+                reply_body = {"v": 1, "type": "task_offer", "empty": True}
+        elif kind == "task_result":
+            require_review = cfg.get("require_review", False)
+            status, reason = board.complete(ident, payload.get("result"), require_review)
+            reply_subj = f"[HOMING-PIGEON] task_ack {ident}"
+            reply_body = {"v": 1, "type": "task_ack", "task_id": ident, "status": status, "reason": reason}
+        elif kind == "task_approve":
+            ok, reason = board.approve(ident)
+            reply_subj = f"[HOMING-PIGEON] task_ack {ident}"
+            reply_body = {"v": 1, "type": "task_ack", "task_id": ident, "ok": ok, "reason": reason}
+        else:
+            reject("unknown board kind")
+            return True
+    if opts is None or not getattr(opts, "no_send", False):
+        send_mail(smtp, cfg, reply_subj, sign_payload(reply_body, secret))
+    if opts is None or not opts.dry_run:
+        mark_seen(imap, seq)
+    return True
+
+
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 seen: dict, secrets: dict, opts=None):
     msg = email.message_from_bytes(raw)
@@ -641,6 +847,10 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         if opts is None or not opts.dry_run:
             mark_seen(imap, seq)
 
+    # Board messages take precedence when oracle is enabled.
+    if "board" in cfg and cfg["board"] is not None:
+        if handle_board_mail(cfg, imap, smtp, seq, raw, subject, cfg["board"], secrets, opts, base_dir):
+            return
     m = re.search(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)", subject, re.I)
     if not m:
         # Result emails and other non-job mail share the [HOMING-PIGEON]
@@ -902,6 +1112,9 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     # as the HMAC-SHA-384 key. No hashing or derivation — the SI uses it
     # as-is.
     secrets = build_secrets(cfg)
+    cfg.setdefault("oracle_enabled", True)
+    board = Board(os.path.join(base_dir, "board.json"))
+    cfg["board"] = board
     log(f"runner identity: {cfg['mailbox_user']} -- accepting signed jobs from any sender")
     own_imap = imap is None
     own_smtp = smtp is None
