@@ -578,5 +578,59 @@ class KeyPolicyGracefulTest(unittest.TestCase):
             except Exception as e:
                 self.fail(f"build_key_policies crashed on {cfg}: {e}")
 
+
+class InferenceGracefulTest(unittest.TestCase):
+    """Finding: ask_model runs when a job declares an ask query.
+    A bad endpoint, a crashing opener, or a weird reply must reject
+    cleanly, not crash the worker.
+    """
+
+    def test_inference_config_odd(self):
+        from runner.runner import inference_config
+        cases = [
+            {},
+            {"inference": None},
+            {"inference": "nope"},
+            {"inference": {"endpoint": "http://evil.example/v1", "model": "m"}},
+            {"inference": {"endpoint": "http://127.0.0.1:11434/v1"}},
+        ]
+        for cfg in cases:
+            try:
+                inference_config(cfg)
+            except Exception as e:
+                self.fail(f"inference_config crashed on {cfg}: {e}")
+
+    def test_ask_model_opener_raises(self):
+        from runner.runner import ask_model
+        inf = {"endpoint": "http://127.0.0.1:11434/v1", "model": "m"}
+
+        def boom(req, timeout=60):
+            raise OSError("down")
+
+        try:
+            got = ask_model(inf, "why?", "out", 100, opener=boom)
+        except Exception as e:
+            self.fail(f"ask_model let the opener raise out: {e}")
+        self.assertEqual(got.get("rejected"), "inference_error")
+
+    def test_ask_model_weird_reply(self):
+        from runner.runner import ask_model
+        import json
+
+        class Resp:
+            def read(self, n):
+                return b"not json"
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return False
+
+        inf = {"endpoint": "http://127.0.0.1:11434/v1", "model": "m"}
+        try:
+            got = ask_model(inf, "q", "out", 100, opener=lambda req, timeout=60: Resp())
+        except Exception as e:
+            self.fail(f"weird reply crashed ask_model: {e}")
+        self.assertIn("rejected", got)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
