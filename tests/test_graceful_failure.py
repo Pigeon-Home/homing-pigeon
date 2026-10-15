@@ -2616,5 +2616,56 @@ class IssuedAtGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class ViewEqualityGracefulTest(unittest.TestCase):
+    """Finding: a view whose equality check raises must not stop
+    queries.
+    """
+
+    def test_view_equality_raises(self):
+        from runner.runner import _raw_lines_allowed, apply_result_policy
+
+        class Bad:
+            def __eq__(self, other):
+                raise RuntimeError("nope")
+
+        try:
+            got = _raw_lines_allowed(Bad())
+        except Exception as e:
+            self.fail(f"raw lines crashed on raising view: {e}")
+        self.assertIsInstance(got, bool)
+        try:
+            apply_result_policy(
+                {"max_result_view": Bad()},
+                {"result_policy": {"view": Bad()}},
+                {"stdout": "hi", "stderr": ""},
+                {},
+                True,
+            )
+        except Exception as e:
+            self.fail(f"policy crashed on raising view: {e}")
+
+    def test_concurrent_raising_view(self):
+        from runner.runner import _raw_lines_allowed
+
+        class Bad:
+            def __eq__(self, other):
+                raise RuntimeError("nope")
+
+        errors = []
+
+        def one():
+            try:
+                _raw_lines_allowed(Bad())
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
