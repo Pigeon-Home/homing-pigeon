@@ -1608,3 +1608,52 @@ class WorkerCapFaultTest(unittest.TestCase):
         from runner.runner import _preview
         self.assertEqual(_preview(5), "5")
         self.assertEqual(_preview(None), "")
+
+
+class BoardCountAndHostFaultTest(unittest.TestCase):
+    """Finding: counts() walked the task dict with no lock.
+
+    A submit on another thread raised RuntimeError: dictionary
+    changed size during iteration. counts copies under the lock.
+    A missing host is a config error, not a KeyError.
+    """
+
+    def test_concurrent_counts_during_submit(self):
+        from runner.runner import Board
+        import threading
+        with tempfile.TemporaryDirectory() as d:
+            board = Board(os.path.join(d, "board.json"))
+            errors = []
+
+            def submit(i):
+                try:
+                    board.submit({
+                        "task_id": f"t-{i}", "priority": 1,
+                        "capabilities": [], "compartments": [],
+                    })
+                except Exception as e:
+                    errors.append(e)
+
+            def count():
+                try:
+                    for _ in range(30):
+                        board.counts()
+                except Exception as e:
+                    errors.append(e)
+
+            threads = [threading.Thread(target=count) for _ in range(4)]
+            threads += [threading.Thread(target=submit, args=(i,)) for i in range(40)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            self.assertEqual(errors, [])
+
+    def test_missing_host_is_a_config_error(self):
+        from runner.runner import _host
+        with self.assertRaises(RuntimeError):
+            _host({}, "imap_host")
+        with self.assertRaises(RuntimeError):
+            _host({"smtp_host": 5}, "smtp_host")
+        self.assertEqual(_host({"imap_host": " imap.gmail.com "}, "imap_host"),
+                         "imap.gmail.com")

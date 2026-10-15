@@ -1554,7 +1554,11 @@ class Board:
 
     def counts(self):
         c = {"open": 0, "claimed": 0, "done": 0, "pending_review": 0}
-        for t in self.tasks.values():
+        with _BOARD_LOCK:
+            tasks = list(self.tasks.values())
+        for t in tasks:
+            if not isinstance(t, dict):
+                continue
             s = t.get("state")
             if s in c:
                 c[s] += 1
@@ -1602,8 +1606,18 @@ def _port(cfg, key, default):
         raise RuntimeError("config error: " + key + " must be a number")
 
 
+def _host(cfg, key):
+    """A missing or non-string host is a config error, not a KeyError."""
+    if not isinstance(cfg, dict):
+        raise RuntimeError("config error: config is not an object")
+    host = cfg.get(key)
+    if not isinstance(host, str) or not host.strip():
+        raise RuntimeError("config error: " + key + " must be a host name")
+    return host.strip()
+
+
 def connect_imap(cfg) -> imaplib.IMAP4_SSL:
-    conn = imaplib.IMAP4_SSL(cfg["imap_host"], _port(cfg, "imap_port", 993), timeout=30)
+    conn = imaplib.IMAP4_SSL(_host(cfg, "imap_host"), _port(cfg, "imap_port", 993), timeout=30)
     if _use_oauth(cfg):
         _imap_xoauth2(conn, cfg["mailbox_user"], _xoauth2_raw(cfg))
     else:
@@ -1617,7 +1631,7 @@ def connect_imap(cfg) -> imaplib.IMAP4_SSL:
 
 
 def connect_smtp(cfg) -> smtplib.SMTP:
-    smtp = smtplib.SMTP(cfg["smtp_host"], _port(cfg, "smtp_port", 587), timeout=30)
+    smtp = smtplib.SMTP(_host(cfg, "smtp_host"), _port(cfg, "smtp_port", 587), timeout=30)
     smtp.starttls()
     if _use_oauth(cfg):
         # smtplib.auth base64-encodes the return value, and calls the
