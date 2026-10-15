@@ -70,7 +70,7 @@ then verify the body. Do not log into the runner's mailbox.
 
 ## Personal account is not the runner
 
-The connector is attached to a personal Gmail account that holds legal and other private mail. Rules:
+The connector is attached to a personal Gmail account. Rules:
 
 - **Allowed:** send a clearly marked test email to that same address, read it back, verify the signature, exercise the cloud pipeline.
 - **Not allowed:** point the runner at that account, poll it with IMAP, or use it as the job mailbox for end-to-end execution tests.
