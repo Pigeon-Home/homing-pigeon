@@ -230,9 +230,10 @@ authenticity and integrity come from HMAC-SHA-384.
 **Paradigm: the runner as the Oracle.** In v1 the SI receives full job
 output (stdout/stderr) by email. v2 inverts this: the runner keeps the
 output on its own (trusted) disk and answers only the questions the
-result policy allows, with HMAC-signed attestations. The SI learns
-predicates about the output — never the output itself unless the policy
-permits it. This is the interactive-proof / functional-encryption shape
+result policy allows, with HMAC-signed attestations.
+
+The SI learns predicates about the output — never the output itself
+unless the policy permits it. This is the interactive-proof shape
 applied at the trust boundary, without any zero-knowledge proving
 machinery: the runner is trusted (it's the user's own machine), so
 egress filtering plus signed commitments gives the privacy property.
@@ -339,11 +340,13 @@ predicate answer carries the same authenticity as v1 results.
 
 Before anything runs, the Oracle reads the job — its code, its
 declared intent, its interpreters and paths — and renders a verdict:
-does this look like it will do what it claims? With a local model
-configured (section 10.1), the verdict is semantic ("this script
-deletes files outside its workspace"; "this matches its description").
-Without one, the Oracle still applies deterministic checks against
-the job text (writes outside the workspace, known-dangerous patterns).
+does this look like it will do what it claims?
+
+With a local model configured (section 10.1), the verdict is semantic
+("this script deletes files outside its workspace"; "this matches its
+description"). Without one, the Oracle still applies deterministic
+checks against the job text (writes outside the workspace,
+known-dangerous patterns).
 
 A verdict is a judgment, not a proof. It can miss malicious code and
 flag benign code, so the runner owner sets the policy — config-only,
@@ -364,11 +367,13 @@ what its results may reveal. Config:
   confines the job to that subtree.
 
 Enforcement is honest about its limits: a stdlib-only runner cannot
-hard-sandbox an arbitrary subprocess — true containment needs
-OS machinery (containers, namespaces, sandbox-exec) and is the
-stronger future option. What the Oracle provides today is **attested
-confinement**: it snapshots file metadata (path, size, mtime) outside
-`workspace_root` before and after execution, and attests the result:
+hard-sandbox an arbitrary subprocess. True containment needs
+OS machinery (containers, namespaces, sandbox-exec) — the stronger
+future option.
+
+What the Oracle provides today is **attested confinement**: it
+snapshots file metadata (path, size, mtime) outside `workspace_root`
+before and after execution, and attests the result:
 
 - `confined_to_workspace`: no file outside `workspace_root` was
   created or modified during the job. Best-effort (it cannot catch a
@@ -429,12 +434,13 @@ are semantic instead of regex-shaped. Config (all under an
 loopback via Ollama (`http://127.0.0.1:11434/v1`). Any
 OpenAI-compatible server bound to loopback works — LM Studio and vLLM
 are equivalents — but Llama is what the Oracle is tested against. The
-Oracle refuses non-loopback endpoints. A general-purpose local agent
-such as OpenClaw may share the same model server for other tasks on
-the box, but the Oracle's `ask` calls the model endpoint directly
-under the Oracle's own instructions, so answers stay constrained and
-non-adaptive — the agent's autonomy is not in the result path, only
-the Oracle's instructions are.
+Oracle refuses non-loopback endpoints.
+
+A general-purpose local agent such as OpenClaw may share the same
+model server for other tasks on the box, but the Oracle's `ask` calls
+the model endpoint directly under the Oracle's own instructions, so
+answers stay constrained and non-adaptive — the agent's autonomy is
+not in the result path, only the Oracle's instructions are.
 
 The `ask` op is declared upfront in `queries[]` like everything else,
 so non-interactivity is preserved:
@@ -464,11 +470,13 @@ everything else — the answer is scanned before it is emailed, never
 after.
 
 The `query` (`[HOMING-PIGEON] query <query_id>`) and `qresult`
-message types exist for exceptional follow-ups only, and every one
+message types exist for exceptional follow-ups only. Every one
 passes the section-5 verification (signature, freshness,
-seen-set on `query_id`) **and** spends budget (section 11). Outputs are
-retained per `output_retention_days` (runner config, default 7); queries
-against expired or unknown `job_id`s are rejected and marked seen.
+seen-set on `query_id`) **and** spends budget (section 11).
+
+Outputs are retained per `output_retention_days` (runner config,
+default 7); queries against expired or unknown `job_id`s are
+rejected and marked seen.
 
 ## 11. Probing resistance
 
