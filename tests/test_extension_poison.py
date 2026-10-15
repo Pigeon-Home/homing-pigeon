@@ -1073,3 +1073,69 @@ class RedactAndSeenFaultTest(unittest.TestCase):
         )
         self.assertTrue(atts)
         self.assertNotIn(FLAG, json.dumps(atts))
+
+
+class PatternAndRateFaultTest(unittest.TestCase):
+    """Finding: redact and the secret scan only caught re.error.
+
+    A pattern that is a number raises TypeError from re.search.
+    That crashed a no_secrets attestation and a redacted view.
+    Any exception is skipped now. A query whose answering raises
+    is rejected; the poll continues.
+    """
+
+    def test_numeric_pattern_does_not_crash_redact_or_scan(self):
+        from runner.runner import redact_text, secret_scan, build_attestations
+        text, families = redact_text(FLAG, {"bad": 5, "ok": "FLAG"})
+        self.assertNotIn(FLAG, text)
+        self.assertIn("ok", families)
+        hits = secret_scan(FLAG, {"bad": 5})
+        self.assertIsInstance(hits, list)
+        atts = build_attestations(
+            [{"op": "attest", "predicate": "no_secrets"}],
+            {"text": FLAG, "patterns": {"bad": 5}, "exit_code": 0},
+        )
+        self.assertTrue(atts)
+        self.assertNotIn(FLAG, json.dumps(atts))
+
+    def test_concurrent_rate_limit_does_not_crash(self):
+        from runner.runner import check_rate_limit
+        import threading
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "query_times.json")
+            cfg = {"max_queries_per_hour": 5}
+            errors = []
+
+            def hit():
+                try:
+                    check_rate_limit("k", cfg, path)
+                except Exception as e:
+                    errors.append(e)
+
+            threads = [threading.Thread(target=hit) for _ in range(20)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            self.assertEqual(errors, [])
+
+    def test_raising_query_is_rejected_not_retried(self):
+        with tempfile.TemporaryDirectory() as d:
+            retained = os.path.join(d, "retained")
+            os.makedirs(retained)
+            with open(os.path.join(retained, "job-1.json"), "w", encoding="utf-8") as fh:
+                json.dump({"stdout": "ok", "budget": 8, "spent": 0,
+                           "saved_at": time.time()}, fh)
+            body = sign_payload({
+                "v": 1, "type": "query", "job_id": "job-1",
+                "issued_at": _now(), "queries": [{"op": "attest"}],
+            }, SECRET)
+            raw = _mail("[HOMING-PIGEON] query q-1", body)
+            cfg = {"mailbox_user": "pigeon-test@example.com",
+                   "shared_secret": SECRET, "base_dir": d}
+            with mock.patch("runner.runner.answer_queries",
+                            side_effect=RuntimeError("query on fire")):
+                poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                          imap=_IMAP(raw), smtp=_SMTP(), opts=_Opts())
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                self.assertIn("query:q-1", json.load(fh))

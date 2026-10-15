@@ -745,7 +745,7 @@ def redact_text(text, patterns):
             if re.search(pat, out):
                 out = re.sub(pat, f"[REDACTED:{name}]", out)
                 families.append(name)
-        except re.error:
+        except Exception:
             continue
     return out, families
 
@@ -761,7 +761,7 @@ def secret_scan(text, patterns):
         try:
             if re.search(pat, text or ""):
                 hits.append(name)
-        except re.error:
+        except Exception:
             continue
     return hits
 
@@ -1033,10 +1033,8 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
 
 
 _QUERY_TIMES = {}  # key_id -> list of timestamps
-
-
 def _write_json(path, obj):
-    tmp = path + ".tmp"
+    tmp = f"{path}.tmp.{threading.get_ident()}"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(obj, f)
     os.replace(tmp, path)
@@ -2067,20 +2065,32 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
                 "confined": retained.get("confined"),
                 "digest": retained.get("digest"),
             }
-            answers, spent = answer_queries(
-                queries, exec_result, patterns, budget,
-                cfg=cfg, view=view, already_spent=already, base_dir=base_dir,
-            )
-            retained["spent"] = spent
-            retained["saved_at"] = retained.get("saved_at") or time.time()
-            save_retained(base_dir, job_id, retained)
-            remaining = budget - spent
-            if remaining < 0:
-                remaining = 0
-            reply = {
-                "v": 1, "type": "qresult", "query_id": query_id, "job_id": job_id,
-                "answers": answers, "budget_remaining": remaining,
-            }
+            try:
+                answers, spent = answer_queries(
+                    queries, exec_result, patterns, budget,
+                    cfg=cfg, view=view, already_spent=already, base_dir=base_dir,
+                )
+            except Exception as e:
+                # A bad query or a bad extension record rejects this
+                # query. It does not retry forever and it does not
+                # stop the poll.
+                log(f"query failed: {e}", "WARN")
+                reply = {
+                    "v": 1, "type": "qresult", "query_id": query_id,
+                    "job_id": job_id, "rejected": "query_error", "answers": [],
+                }
+            else:
+                retained["spent"] = spent
+                retained["saved_at"] = retained.get("saved_at") or time.time()
+                save_retained(base_dir, job_id, retained)
+                remaining = budget - spent
+                if remaining < 0:
+                    remaining = 0
+                reply = {
+                    "v": 1, "type": "qresult", "query_id": query_id,
+                    "job_id": job_id, "answers": answers,
+                    "budget_remaining": remaining,
+                }
     finish(reply, secret)
     return True
 
