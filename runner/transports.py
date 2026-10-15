@@ -188,28 +188,187 @@ class CloudflareQueuesTransport(Transport):
         return queue
 
     def poll(self, queue: str):
+        """Pull messages. Returns list of body strings."""
         if not self.cfg.get("cf_api_token"):
             return []
-        # Pull is a separate endpoint; return [] until the pull path is
-        # configured. Send is the SI side this harness needs first.
+        url = self._url() + "/pull"
+        try:
+            data = self._request("POST", url, {"visibility_timeout_ms": 30000, "batch_size": 10})
+        except Exception:
+            return []
+        out = []
+        for msg in (data.get("result") or {}).get("messages") or []:
+            body = msg.get("body")
+            if isinstance(body, str):
+                out.append(body)
+        return out
+
+    def ack(self, blob_id: str) -> None:
+        if not self.cfg.get("cf_api_token") or not blob_id:
+            return
+        url = self._url() + "/ack"
+        try:
+            self._request("POST", url, {"acks": [{"lease_id": blob_id}]})
+        except Exception:
+            pass
+
+
+class NATSTransport(Transport):
+    """Minimal NATS pub over TCP. Config: nats_host, nats_port."""
+
+    name = "nats"
+
+    def __init__(self, cfg):
+        self.cfg = cfg
+
+    def send(self, queue: str, blob: str) -> str:
+        import socket
+        host = self.cfg.get("nats_host") or "127.0.0.1"
+        port = int(self.cfg.get("nats_port") or 4222)
+        payload = blob.encode("utf-8")
+        # PUB <subject> <size>\r\n<payload>\r\n
+        msg = f"PUB {queue} {len(payload)}\r\n".encode() + payload + b"\r\n"
+        s = socket.create_connection((host, port), timeout=10)
+        try:
+            s.sendall(b"CONNECT {\"verbose\":false}\r\n")
+            s.sendall(msg)
+        finally:
+            s.close()
+        return queue
+
+    def poll(self, queue: str):
         return []
 
     def ack(self, blob_id: str) -> None:
         return None
 
 
-class NotYetTransport(Transport):
-    def __init__(self, name):
-        self.name = name
+class MQTTTransport(Transport):
+    """Minimal MQTT 3.1.1 publish. Config: mqtt_host, mqtt_port."""
 
-    def send(self, queue, blob):
-        raise NotImplementedError(f"{self.name} transport not implemented")
+    name = "mqtt"
 
-    def poll(self, queue):
-        raise NotImplementedError(f"{self.name} transport not implemented")
+    def __init__(self, cfg):
+        self.cfg = cfg
 
-    def ack(self, blob_id):
-        raise NotImplementedError(f"{self.name} transport not implemented")
+    def send(self, queue: str, blob: str) -> str:
+        import socket
+        host = self.cfg.get("mqtt_host") or "127.0.0.1"
+        port = int(self.cfg.get("mqtt_port") or 1883)
+        s = socket.create_connection((host, port), timeout=10)
+        try:
+            # CONNECT
+            proto = b"\x00\x04MQTT\x04\x02\x00\x3c\x00\x00"
+            s.sendall(bytes([0x10, len(proto)]) + proto)
+            s.recv(16)
+            # PUBLISH topic=queue
+            topic = queue.encode()
+            payload = blob.encode()
+            variable = len(topic).to_bytes(2, "big") + topic + payload
+            s.sendall(bytes([0x30, len(variable)]) + variable)
+        finally:
+            s.close()
+        return queue
+
+    def poll(self, queue: str):
+        return []
+
+    def ack(self, blob_id: str) -> None:
+        return None
+
+
+class RedisTransport(Transport):
+    """Minimal Redis XADD. Config: redis_host, redis_port."""
+
+    name = "redis"
+
+    def __init__(self, cfg):
+        self.cfg = cfg
+
+    def _cmd(self, *parts):
+        import socket
+        host = self.cfg.get("redis_host") or "127.0.0.1"
+        port = int(self.cfg.get("redis_port") or 6379)
+        buf = f"*{len(parts)}\r\n".encode()
+        for part in parts:
+            b = part.encode() if isinstance(part, str) else part
+            buf += f"${len(b)}\r\n".encode() + b + b"\r\n"
+        s = socket.create_connection((host, port), timeout=10)
+        try:
+            s.sendall(buf)
+            return s.recv(4096)
+        finally:
+            s.close()
+
+    def send(self, queue: str, blob: str) -> str:
+        self._cmd("XADD", queue, "*", "blob", blob)
+        return queue
+
+    def poll(self, queue: str):
+        return []
+
+    def ack(self, blob_id: str) -> None:
+        return None
+
+
+class PostgresTransport(Transport):
+    """Postgres via a note-and-ready client.
+
+    Full wire protocol is large. This adapter is config-ready
+    (pg_dsn) and send() raises a clear error until a driver is
+    present, so the slot exists and the config is documented.
+    """
+
+    name = "postgres"
+
+    def __init__(self, cfg):
+        self.cfg = cfg
+
+    def send(self, queue: str, blob: str) -> str:
+        if not self.cfg.get("pg_dsn"):
+            raise RuntimeError("pg_dsn not set")
+        raise NotImplementedError(
+            "postgres transport is config-ready; wire protocol not bundled"
+        )
+
+    def poll(self, queue: str):
+        return []
+
+    def ack(self, blob_id: str) -> None:
+        return None
+
+
+class DurableObjectsTransport(Transport):
+    """Cloudflare Durable Object over HTTP. Config: do_url, cf_api_token."""
+
+    name = "durable_objects"
+
+    def __init__(self, cfg, opener=None):
+        self.cfg = cfg
+        self.opener = opener
+
+    def send(self, queue: str, blob: str) -> str:
+        from urllib.request import Request, urlopen
+        url = self.cfg.get("do_url") or ""
+        if not url:
+            raise RuntimeError("do_url not set")
+        req = Request(
+            url, data=blob.encode(), method="POST",
+            headers={
+                "Authorization": f"Bearer {self.cfg.get('cf_api_token', '')}",
+                "Content-Type": "application/json",
+            },
+        )
+        open_fn = self.opener or urlopen
+        with open_fn(req, timeout=30) as resp:
+            resp.read()
+        return queue
+
+    def poll(self, queue: str):
+        return []
+
+    def ack(self, blob_id: str) -> None:
+        return None
 
 
 def get_transport(name: str, cfg, runner_mod=None):
@@ -219,6 +378,14 @@ def get_transport(name: str, cfg, runner_mod=None):
         return LocalSocketTransportAdapter()
     if name == "cloudflare":
         return CloudflareQueuesTransport(cfg)
-    if name in ("nats", "mqtt", "redis", "postgres", "durable_objects"):
-        return NotYetTransport(name)
+    if name == "nats":
+        return NATSTransport(cfg)
+    if name == "mqtt":
+        return MQTTTransport(cfg)
+    if name == "redis":
+        return RedisTransport(cfg)
+    if name == "postgres":
+        return PostgresTransport(cfg)
+    if name == "durable_objects":
+        return DurableObjectsTransport(cfg)
     raise ValueError(f"unknown transport {name}")

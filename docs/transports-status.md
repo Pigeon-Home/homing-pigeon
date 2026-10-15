@@ -1,21 +1,19 @@
 # Transport implementation status
 
-The contract is in TRANSPORTS.md: `send`, `poll`, `ack`. Blobs are
-opaque signed JSON.
-
-| Transport | Status | Notes |
-|-----------|--------|-------|
-| email | implemented | SMTP send via the runner helpers. Poll is the runner's IMAP loop. |
-| local_socket | implemented | Loopback TCP, length-prefixed. Test harness only. Not for deployment. |
-| cloudflare | send implemented | HTTP API, stdlib. Needs `cf_account_id`, `cf_api_token`, `cf_queue_id`. Pull/ack next. |
-| nats | interface only | NotYetTransport |
-| mqtt | interface only | NotYetTransport |
-| redis | interface only | NotYetTransport |
-| postgres | interface only | NotYetTransport |
-| durable_objects | interface only | NotYetTransport |
-
-The mock SI (`--local-test`) can send through email and the local
-socket today. Cloudflare send is available to anything that calls
-`get_transport("cloudflare", cfg)`.
-
+Contract: `send`, `poll`, `ack`. Blobs are opaque signed JSON.
 Code: `runner/transports.py`.
+
+| Transport | send | poll | ack | Config |
+|-----------|------|------|-----|--------|
+| email | yes | runner IMAP loop | runner marks seen | smtp_*, mailbox_* |
+| local_socket | yes | yes | n/a | port 8766, test only |
+| cloudflare | yes | yes | yes | cf_account_id, cf_api_token, cf_queue_id |
+| nats | yes | later | later | nats_host, nats_port |
+| mqtt | yes | later | later | mqtt_host, mqtt_port |
+| redis | yes | later | later | redis_host, redis_port |
+| postgres | config-ready | later | later | pg_dsn (wire protocol not bundled) |
+| durable_objects | yes | later | later | do_url, cf_api_token |
+
+Testing plan: email is what we exercise. Cloudflare is ready for a
+live try. The others are wired so a configured box can send; poll
+paths land as each one is exercised.

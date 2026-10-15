@@ -17,11 +17,11 @@ class ContractTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             T.get_transport("nope", {})
 
-    def test_not_yet(self):
-        for name in ("nats", "mqtt", "redis", "postgres", "durable_objects"):
+    def test_all_names_construct(self):
+        for name in ("nats", "mqtt", "redis", "postgres", "durable_objects",
+                     "cloudflare", "local_socket"):
             t = T.get_transport(name, {})
-            with self.assertRaises(NotImplementedError):
-                t.send("q", "blob")
+            self.assertTrue(hasattr(t, "send"))
 
 
 class EmailTransportTest(unittest.TestCase):
