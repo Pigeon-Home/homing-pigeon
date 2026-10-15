@@ -1984,8 +1984,8 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         timed_out = True
     duration = round(time.monotonic() - t0, 3)
 
-    stdout = outs.decode("utf-8", errors="replace")
-    stderr = errs.decode("utf-8", errors="replace")
+    stdout = outs.decode("utf-8", errors="replace") if isinstance(outs, (bytes, bytearray)) else ""
+    stderr = errs.decode("utf-8", errors="replace") if isinstance(errs, (bytes, bytearray)) else ""
     shown, _families = redact_text(stdout, _redact_patterns(cfg))
     log(f"job {job['job_id']} process finished exit={proc.returncode} "
         f"stdout={_preview(shown)!r}")
@@ -2714,9 +2714,11 @@ def save_seen(path: str, seen: dict):
     if not isinstance(seen, dict):
         seen = {}
     keys = list(seen.keys())[-SEEN_CAP:]
+    tmp = path + ".tmp." + str(threading.get_ident())
     try:
-        with open(path, "w", encoding="utf-8") as fh:
+        with open(tmp, "w", encoding="utf-8") as fh:
             json.dump(keys, fh)
+        os.replace(tmp, path)
     except OSError:
         pass
 

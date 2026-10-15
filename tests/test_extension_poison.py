@@ -1536,3 +1536,34 @@ class NullArgFaultTest(unittest.TestCase):
                       smtp=_SMTP(), opts=_Opts())
             with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
                 self.assertIn("arg-1", json.load(fh))
+
+
+class SeenWriteFaultTest(unittest.TestCase):
+    """Finding: save_seen wrote the file in place.
+
+    Two writers could tear it. The next load then saw nothing and
+    re-ran every job. The write is atomic now. A missing process
+    output is an empty string, not a crash.
+    """
+
+    def test_concurrent_seen_writes_stay_readable(self):
+        from runner.runner import save_seen, load_seen
+        import threading
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "seen.json")
+            errors = []
+
+            def write(i):
+                try:
+                    save_seen(path, {f"id-{i}-{n}": True for n in range(50)})
+                except Exception as e:
+                    errors.append(e)
+
+            threads = [threading.Thread(target=write, args=(i,)) for i in range(12)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            self.assertEqual(errors, [])
+            seen = load_seen(path)
+            self.assertTrue(seen)
