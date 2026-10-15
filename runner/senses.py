@@ -318,7 +318,7 @@ def load_alerts(base_dir: str, sensor=None, severity_floor=None,
     if limit is not None:
         try:
             n = int(limit)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             n = 50
         if n < 0:
             n = 0
