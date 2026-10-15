@@ -140,5 +140,80 @@ class WindowsDRITest(unittest.TestCase):
             self.fail(f"empty telegram crashed: {e}")
 
 
+
+class WindowsSetupAndWinlogTest(unittest.TestCase):
+    def test_winlog_missing_does_not_crash_report(self):
+        from runner.runner import report_event
+        # On a non-Windows box, or with winlog absent, reporting must not raise.
+        try:
+            report_event("negative test event", level="ERROR")
+        except Exception as e:
+            self.fail(f"report_event crashed: {e}")
+
+    def test_setup_parse_with_windows_paths(self):
+        try:
+            from runner import setup
+        except ImportError:
+            self.skipTest("setup module not importable")
+        cfg = {"base_dir": r"C:\Users\me\.homing-pigeon", "workspace_root": r"D:\work"}
+        for name in ("parse_setup", "apply_setup", "setup_status"):
+            fn = getattr(setup, name, None)
+            if fn is None:
+                continue
+            try:
+                fn(cfg) if name != "apply_setup" else None
+            except TypeError:
+                pass
+            except Exception as e:
+                self.fail(f"{name} crashed: {e}")
+
+
+class WindowsOAuthShapeTest(unittest.TestCase):
+    def test_empty_oauth_config_does_not_crash_check(self):
+        from runner.runner import _use_oauth
+        for cfg in ({}, {"auth": "oauth"}, {"auth": "password"}, {"auth": None}):
+            try:
+                _use_oauth(cfg)
+            except Exception as e:
+                self.fail(f"_use_oauth crashed on {cfg}: {e}")
+
+
+class WindowsBoardShapeTest(unittest.TestCase):
+    def test_board_with_windows_task_ids(self):
+        from runner.runner import Board
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "board.json")
+        b = Board(path)
+        try:
+            b.submit({"task_id": r"job\windows\1", "kind": "ping", "requires": []})
+            b.offer("worker-1", ["ping"])
+        except Exception as e:
+            self.fail(f"windows-shaped task id crashed board: {e}")
+
+    def test_board_file_is_a_windows_crlf_object(self):
+        from runner.runner import Board
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "board.json")
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            f.write('{\r\n  "tasks": {}\r\n}\r\n')
+        try:
+            Board(path)
+        except Exception as e:
+            self.fail(f"CRLF board crashed: {e}")
+
+
+class WindowsRetentionNegativeTest(unittest.TestCase):
+    def test_prune_with_locked_looking_name(self):
+        from runner.runner import prune_retained
+        tmp = tempfile.mkdtemp()
+        retained = os.path.join(tmp, "retained")
+        os.makedirs(retained)
+        # A name Windows would choke on if we were careless.
+        open(os.path.join(retained, "job id with spaces.json"), "w").close()
+        try:
+            prune_retained(tmp, 0)
+        except Exception as e:
+            self.fail(f"prune crashed on spaced name: {e}")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
