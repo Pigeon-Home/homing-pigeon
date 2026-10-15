@@ -1451,6 +1451,41 @@ def _preview(text, n=80) -> str:
     return line
 
 
+def append_bounded_log(path, text, max_bytes=2_097_152):
+    """Append one record. Roll to path.1 once the file would pass max_bytes.
+
+    One backup, then the old backup is replaced. A chatty process cannot
+    fill the disk. Failures are swallowed: logging must not kill the runner.
+    """
+    if not path or not text:
+        return
+    data = text if text.endswith("\n") else text + "\n"
+    raw = data.encode("utf-8")
+    if len(raw) > max_bytes:
+        raw = raw[:max_bytes]
+    folder = os.path.dirname(path)
+    try:
+        if folder:
+            os.makedirs(folder, exist_ok=True)
+        with _LOG_WRITE_LOCK:
+            try:
+                size = os.path.getsize(path)
+            except OSError:
+                size = 0
+            if size and size + len(raw) > max_bytes:
+                try:
+                    os.replace(path, path + ".1")
+                except OSError:
+                    pass
+            fd = os.open(path, os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600)
+            try:
+                os.write(fd, raw)
+            finally:
+                os.close(fd)
+    except Exception:
+        pass
+
+
 def log(msg: str, level: str = "INFO"):
     if level == "DEBUG" and not _VERBOSE:
         return
@@ -1467,11 +1502,7 @@ def log(msg: str, level: str = "INFO"):
                           f"this minute")
                 print(notice, flush=True)
                 if _LOG_FILE:
-                    try:
-                        with open(_LOG_FILE, "a", encoding="utf-8") as fh:
-                            fh.write(notice + "\n")
-                    except Exception:
-                        pass
+                    append_bounded_log(_LOG_FILE, notice)
             _LOG_MINUTE = now
             _LOG_COUNT = 0
             _LOG_DROPPED = 0
@@ -1483,11 +1514,7 @@ def log(msg: str, level: str = "INFO"):
         line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} [{level}] {msg}"
         print(line, flush=True)
         if _LOG_FILE:
-            try:
-                with open(_LOG_FILE, "a", encoding="utf-8") as fh:
-                    fh.write(line + "\n")
-            except Exception:
-                pass
+            append_bounded_log(_LOG_FILE, line)
 
 
 _LOG_FILE = None
@@ -1495,6 +1522,7 @@ _VERBOSE = False
 _LOG_MINUTE = 0.0
 _LOG_COUNT = 0
 _LOG_DROPPED = 0
+_LOG_WRITE_LOCK = threading.Lock()
 
 # Concurrency: IMAP/SMTP connections and the seen-set are not
 # thread-safe. Worker threads run handle_mail, but every touch of shared
@@ -2469,6 +2497,29 @@ _ORACLE_REJECTS = {
 }
 
 
+_ORACLE_CHAT_MAX = 1_048_576
+
+
+def record_oracle_turn(base_dir, cfg, question, ans, event="ask"):
+    """One chat line on disk. Secrets are redacted. The file rolls at 1 MiB."""
+    if not base_dir:
+        return
+    patterns = _redact_patterns(cfg or {})
+    question, _q = redact_text(question or "", patterns)
+    answer, _a = redact_text((ans or {}).get("answer") or "", patterns)
+    rec = {
+        "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "event": event,
+        "question": question[:2000],
+        "answer": answer[:4000],
+        "rejected": (ans or {}).get("rejected") or "",
+        "model": (ans or {}).get("model") or "",
+    }
+    path = os.path.join(base_dir, "oracle-chat.jsonl")
+    append_bounded_log(path, json.dumps(rec, ensure_ascii=False),
+                       max_bytes=_ORACLE_CHAT_MAX)
+
+
 def _oracle_host_ok(handler) -> bool:
     peer = handler.client_address[0] if handler.client_address else ""
     if not _is_loopback_ip(peer):
@@ -2567,6 +2618,7 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436):
                 why = ans.get("rejected") or "inference_error"
                 payload = {"rejected": why,
                            "detail": _ORACLE_REJECTS.get(why, "The Oracle did not answer.")}
+            record_oracle_turn(base, cfg, question, ans)
             self._send(200, json.dumps(payload), "application/json")
 
     bind_host = "127.0.0.1" if host == "localhost" else host
@@ -2589,6 +2641,10 @@ def oracle_window(cfg, port=11436, open_browser=True) -> int:
     if port < 0 or port > 65535:
         print("error: --oracle-port is out of range", file=sys.stderr)
         return 2
+    base = cfg.get("base_dir") or os.path.join(os.path.expanduser("~"),
+                                               ".homing-pigeon")
+    global _LOG_FILE
+    _LOG_FILE = os.path.join(base, "runner.log")
     try:
         httpd = make_oracle_server(cfg, "127.0.0.1", port)
     except OSError as e:
@@ -2600,7 +2656,9 @@ def oracle_window(cfg, port=11436, open_browser=True) -> int:
     bound = httpd.socket.getsockname()[1]
     url = f"http://127.0.0.1:{bound}/"
     print(f"Oracle chat on {url}")
+    print(f"Chat log: {os.path.join(base, 'oracle-chat.jsonl')}")
     print("Loopback only. Leave this process running. Ctrl+C closes it.")
+    record_oracle_turn(base, cfg, "", {}, event="open")
     if open_browser:
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()
     try:
@@ -2608,6 +2666,7 @@ def oracle_window(cfg, port=11436, open_browser=True) -> int:
     except KeyboardInterrupt:
         pass
     finally:
+        record_oracle_turn(base, cfg, "", {}, event="close")
         httpd.server_close()
     return 0
 

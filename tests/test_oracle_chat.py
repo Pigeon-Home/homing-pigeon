@@ -133,12 +133,40 @@ class OracleChatTest(unittest.TestCase):
                                  "a job finished at noon")
                 self.assertIn("clock is noon", seen["output"])
                 self.assertIn("password", seen["instructions"])
+                chat_path = os.path.join(d, "oracle-chat.jsonl")
+                with open(chat_path, encoding="utf-8") as fh:
+                    saved = fh.read()
+                self.assertIn("what happened?", saved)
+                self.assertIn("a job finished at noon", saved)
 
                 code, body = post({"question": FLAG}, good)
                 self.assertEqual(code, 200)
                 parsed = json.loads(body)
                 self.assertEqual(parsed.get("rejected"), "sanitization")
                 self.assertNotIn(FLAG, body)
+                with open(chat_path, encoding="utf-8") as fh:
+                    saved = fh.read()
+                self.assertNotIn(FLAG, saved)
+                self.assertIn("[REDACTED:desktop_flag]", saved)
+
+    def test_chat_log_rolls_before_it_can_fill_the_disk(self):
+        from runner.runner import append_bounded_log, record_oracle_turn
+        with tempfile.TemporaryDirectory() as d:
+            record_oracle_turn(
+                d, _cfg(d), "see " + FLAG,
+                {"answer": "a credential was present", "model": "m"})
+            with open(os.path.join(d, "oracle-chat.jsonl"),
+                      encoding="utf-8") as fh:
+                text = fh.read()
+            self.assertNotIn(FLAG, text)
+            self.assertIn("[REDACTED:desktop_flag]", text)
+            self.assertIn("a credential was present", text)
+            path = os.path.join(d, "roll.txt")
+            append_bounded_log(path, "a" * 80, max_bytes=100)
+            append_bounded_log(path, "b" * 80, max_bytes=100)
+            self.assertTrue(os.path.isfile(path + ".1"))
+            self.assertLess(
+                os.path.getsize(path) + os.path.getsize(path + ".1"), 400)
 
     def test_oracle_flag_does_not_need_a_mailbox(self):
         with tempfile.TemporaryDirectory() as d:
