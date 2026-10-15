@@ -1360,3 +1360,30 @@ class OAuthShapeFaultTest(unittest.TestCase):
         from runner.oauth import xoauth2_raw, OAuthRefreshError
         with self.assertRaises(OAuthRefreshError):
             xoauth2_raw("a@b.c", "tok\u2603")
+
+
+class ConfigShapeFaultTest(unittest.TestCase):
+    """Finding: a config file that is a JSON list crashed startup.
+
+    load_config returned the list. The next cfg.get raised
+    AttributeError and the process died with a traceback. A
+    non-object is a config error now. The process exits 2.
+    """
+
+    def test_list_config_is_rejected(self):
+        from runner.runner import load_config
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("[1, 2, 3]")
+            with self.assertRaises(RuntimeError):
+                load_config(path)
+
+    def test_string_config_is_rejected(self):
+        from runner.runner import load_config
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write('"just a string"')
+            with self.assertRaises(RuntimeError):
+                load_config(path)

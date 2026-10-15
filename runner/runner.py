@@ -2621,7 +2621,10 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
 # ---------------------------------------------------------------- main
 def load_config(path: str) -> dict:
     with open(path, encoding="utf-8") as fh:
-        return json.load(fh)
+        data = json.load(fh)
+    if not isinstance(data, dict):
+        raise RuntimeError("config error: config file must be a JSON object")
+    return data
 
 
 def load_seen(path: str) -> dict:
@@ -3484,7 +3487,11 @@ def main() -> int:
                   f"(run with --setup)", file=sys.stderr)
             return 2
     else:
-        cfg = load_config(cfg_path)
+        try:
+            cfg = load_config(cfg_path)
+        except Exception as e:
+            print(f"config error: {e}", file=sys.stderr)
+            return 2
     if args.inspect:
         return run_inspect(cfg, args)
     # Mailbox auth gate, before any model work. On a TTY the runner
