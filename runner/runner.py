@@ -1023,7 +1023,12 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
         budget = 0
     text = _output_blob(exec_result)
     inf = inference_config(cfg) if cfg else None
-    for q in queries or []:
+    # A non-list (int, bool, set, custom object, etc.) from a poisoned
+    # extension or bad retained policy must not raise TypeError and
+    # stop the Oracle answer path. Treat as no queries.
+    if not isinstance(queries, list):
+        queries = []
+    for q in queries:
         if spent >= budget or not isinstance(q, dict):
             if isinstance(q, dict):
                 log(f"query op={q.get('op')} rejected: budget", "DEBUG")
