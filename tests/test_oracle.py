@@ -48,3 +48,22 @@ class OracleTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class JudgmentTest(unittest.TestCase):
+    def test_judge_off_by_default(self):
+        from runner.runner import judge_job
+        v, r = judge_job({}, {"script": "rm -rf /"})
+        self.assertEqual(v, "ok")
+        self.assertEqual(r, [])
+
+    def test_judge_detects_denylist(self):
+        from runner.runner import judge_job
+        v, r = judge_job({"judge": "enforce"}, {"script": "rm -rf /"})
+        self.assertEqual(v, "block")
+        self.assertTrue(any("denylist" in x for x in r))
+
+    def test_query_budget_min(self):
+        from runner.runner import query_budget
+        b = query_budget({"max_query_budget": 4}, {"result_policy": {"query_budget": 8}})
+        self.assertEqual(b, 4)

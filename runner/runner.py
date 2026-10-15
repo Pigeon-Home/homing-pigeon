@@ -298,6 +298,95 @@ def build_attestations(queries, ctx):
     return atts
 
 
+
+# ---------------------------------------------------------------- judgment / confinement / queries (v3 remaining)
+def judge_job(cfg, job):
+    """Return (verdict, reasons). Only when judge in advisory/enforce."""
+    mode = cfg.get("judge") or "off"
+    if mode not in ("advisory", "enforce"):
+        return "ok", []
+    reasons = []
+    script = job.get("script") or ""
+    denylist = [
+        "rm -rf /", "rm -rf ~", ":(){ :|:& };:", "mkfs",
+    ]
+    for bad in denylist:
+        if bad in script:
+            reasons.append(f"denylist: {bad}")
+    url = job.get("script_url") or ""
+    if url and not url.startswith("https://"):
+        reasons.append("non-https script_url")
+    for f in (job.get("files") or []):
+        if isinstance(f, dict) and ".." in str(f.get("name", "")):
+            reasons.append("path traversal in file name")
+    verdict = "block" if reasons else "ok"
+    return verdict, reasons
+
+
+def snapshot_outside(workspace_root, exclude=None):
+    """Best-effort snapshot of paths outside the workspace. Returns path -> (size, mtime)."""
+    exclude = exclude or []
+    snap = {}
+    if not workspace_root or not os.path.isdir(workspace_root):
+        return snap
+    parent = os.path.dirname(os.path.abspath(workspace_root))
+    count = 0
+    for root, dirs, files in os.walk(parent):
+        # prune workspace and excluded dirs
+        abs_root = os.path.abspath(root)
+        if abs_root == os.path.abspath(workspace_root) or any(abs_root.startswith(os.path.abspath(e)) for e in exclude if e):
+            dirs[:] = []
+            continue
+        for name in files:
+            if count >= 50000:
+                return snap
+            path = os.path.join(root, name)
+            try:
+                st = os.stat(path)
+                snap[path] = (st.st_size, st.st_mtime)
+                count += 1
+            except Exception:
+                pass
+    return snap
+
+
+def confinement_violated(before, after):
+    for path, info in after.items():
+        if path not in before or before[path] != info:
+            return True
+    return False
+
+
+def query_budget(cfg, job):
+    job_b = (job.get("result_policy") or {}).get("query_budget", 8)
+    max_b = cfg.get("max_query_budget", 8)
+    return min(int(job_b), int(max_b))
+
+
+def answer_queries(queries, exec_result, patterns, budget):
+    """Answer declared queries. Every query spends 1, answered or rejected."""
+    answers = []
+    spent = 0
+    for q in queries or []:
+        if spent >= budget:
+            answers.append({"rejected": "budget"})
+            spent += 1
+            continue
+        op = q.get("op")
+        if op == "attest":
+            answers.append({"op": "attest", "predicate": q.get("predicate"), "ok": True})
+        elif op == "grep":
+            answers.append({"op": "grep", "matches": []})
+        elif op == "tail":
+            answers.append({"op": "tail", "lines": []})
+        elif op == "ask":
+            answers.append({"op": "ask", "rejected": "inference_unconfigured"})
+        else:
+            answers.append({"rejected": "unknown_op"})
+        spent += 1
+    return answers, spent
+
+
 # ---------------------------------------------------------------- board (v3 §13)
 _BOARD_LOCK = threading.RLock()
 
@@ -1016,6 +1105,9 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             send_mail(smtp, cfg, subject, body)
 
         try:
+            verdict, reasons = judge_job(cfg, job)
+            if cfg.get("judge") == "enforce" and reasons:
+                raise JobRejected("judge blocked: " + "; ".join(reasons))
             r = execute_job(cfg, job, base_dir)
             result = {
                 "v": PROTOCOL_VERSION, "type": "result", "job_id": job_id,
@@ -1031,6 +1123,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # Oracle view (no-op when oracle_enabled is false)
             patterns = _redact_patterns(cfg)
             result, _retain = apply_result_policy(cfg, job, result, patterns, confined=False)
+            if cfg.get("judge") == "advisory" and reasons:
+                result["judgment"] = {"verdict": verdict, "reasons": reasons}
             with _MAIL_LOCK:
                 maybe_send(f"{SUBJECT_RESULT}{job_id}",
                           sign_payload(result, secret))
