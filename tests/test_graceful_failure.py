@@ -2667,5 +2667,59 @@ class ViewEqualityGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class OraclePageGracefulTest(unittest.TestCase):
+    """Finding: oracle_context and oracle_page run on the local SI
+    path. Odd inputs must not crash.
+    """
+
+    def test_context_odd_base(self):
+        from runner.runner import oracle_context
+        for base in ("", "/no/such", None):
+            try:
+                got = oracle_context(base if isinstance(base, str) else "")
+            except Exception as e:
+                self.fail(f"oracle_context crashed on {base!r}: {e}")
+            self.assertIsInstance(got, str)
+
+    def test_context_odd_limit(self):
+        from runner.runner import oracle_context
+        tmp = tempfile.mkdtemp()
+        for limit in (None, "nope", -1, 0, 1000):
+            try:
+                oracle_context(tmp, limit=limit if isinstance(limit, int) else 6)
+            except Exception as e:
+                self.fail(f"limit {limit!r} crashed: {e}")
+
+    def test_page_odd(self):
+        from runner.runner import oracle_page
+        for token, model, ready in (("", "", False), (None, None, None),
+                                    ("t", "m", True), (42, 42, "yes")):
+            try:
+                page = oracle_page(token if isinstance(token, str) else "",
+                                   model if isinstance(model, str) else "",
+                                   bool(ready))
+            except Exception as e:
+                self.fail(f"oracle_page crashed: {e}")
+            self.assertIsInstance(page, str)
+
+    def test_concurrent_context(self):
+        from runner.runner import oracle_context
+        tmp = tempfile.mkdtemp()
+        errors = []
+
+        def one():
+            try:
+                oracle_context(tmp)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
