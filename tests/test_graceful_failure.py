@@ -1395,5 +1395,45 @@ class FilesAndTimeoutGracefulTest(unittest.TestCase):
             except Exception as e:
                 self.fail(f"reoffer crashed on {timeout!r}: {e}")
 
+
+class SenseProfileGracefulTest(unittest.TestCase):
+    """Finding: gate_alert runs on every sensor alert. A bad profile
+    or a raced hourly cap must not raise.
+    """
+
+    def test_gate_bad_profile(self):
+        alert = {"sensor": "door", "severity": "high", "title": "open"}
+        for scfg in ({}, {"enabled": True}, {"enabled": True, "cooldown_sec": "nope"},
+                     {"enabled": True, "hourly_cap": None}, None):
+            try:
+                senses.gate_alert(scfg if isinstance(scfg, dict) else {}, alert, [])
+            except Exception as e:
+                self.fail(f"gate crashed on {scfg}: {e}")
+
+    def test_gate_bad_recent(self):
+        alert = {"sensor": "door", "severity": "low", "title": "x"}
+        for recent in (None, "nope", [None], [{"severity": None}]):
+            try:
+                senses.gate_alert({"enabled": True}, alert, recent if isinstance(recent, list) else [])
+            except Exception as e:
+                self.fail(f"gate crashed on recent {recent!r}: {e}")
+
+    def test_concurrent_gate(self):
+        errors = []
+        alert = {"sensor": "s", "severity": "low", "title": "t"}
+
+        def one():
+            try:
+                senses.gate_alert({"enabled": True, "hourly_cap": 2}, alert, [])
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
