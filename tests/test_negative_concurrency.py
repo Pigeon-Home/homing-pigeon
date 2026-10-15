@@ -1659,3 +1659,58 @@ class SenseGateAndPageTextTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-sense", seen)
+
+
+class BadBaseDirPoisonTest(unittest.TestCase):
+    """Findings (2026-10-15 simulation):
+
+    1. resources._save_state assumed base_dir was a path. None or an
+       int raised TypeError on join.
+    2. senses.store_alert and load_alerts assumed base_dir was a path.
+       None or an int raised TypeError.
+    3. save_retained and load_retained assumed base_dir was a path.
+       None or an int raised TypeError.
+
+    All hardened. A bad base_dir returns immediately (None or []).
+    Processing does not stop.
+    """
+
+    def test_bad_base_dir_does_not_raise(self):
+        from runner.runner import save_retained, load_retained
+        from runner import senses, resources
+        resources._save_state(None, {"x": 1})
+        resources._save_state(5, {"x": 1})
+        resources._save_state("", {"x": 1})
+        senses.store_alert(None, {"sensor": "x", "title": "t"})
+        senses.store_alert(5, {"sensor": "x"})
+        self.assertEqual(senses.load_alerts(None), [])
+        self.assertEqual(senses.load_alerts(5), [])
+        save_retained(None, "j", {"stdout": "x"})
+        save_retained(5, "j", {"stdout": "x"})
+        self.assertIsNone(load_retained(None, "j"))
+        self.assertIsNone(load_retained(5, "j"))
+
+    def test_concurrent_bad_base_does_not_raise(self):
+        import threading
+        from runner.runner import save_retained, load_retained
+        from runner import senses, resources
+        errors = []
+
+        def hammer():
+            for _ in range(10):
+                try:
+                    resources._save_state(None, {"x": 1})
+                    senses.store_alert(5, {"sensor": "x"})
+                    senses.load_alerts(None)
+                    save_retained(None, "j", {"stdout": "x"})
+                    load_retained(5, "j")
+                except Exception as e:
+                    errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+

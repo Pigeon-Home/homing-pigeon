@@ -1281,6 +1281,8 @@ _RETAINED_LOCK = threading.RLock()
 
 def save_retained(base_dir, job_id, payload):
     """Persist output for later queries. Unsafe ids are dropped, not written."""
+    if not isinstance(base_dir, str) or not base_dir:
+        return
     if not isinstance(job_id, str) or not _SAFE_JOB_ID.match(job_id) or job_id in (".", ".."):
         return
     d = os.path.join(base_dir, "retained")
@@ -1295,6 +1297,8 @@ def save_retained(base_dir, job_id, payload):
 
 def load_retained(base_dir, job_id):
     """Load retained/<job_id>.json. Unsafe or missing ids return None."""
+    if not isinstance(base_dir, str) or not base_dir:
+        return None
     if not isinstance(job_id, str) or not _SAFE_JOB_ID.match(job_id):
         return None
     path = os.path.join(base_dir, "retained", f"{job_id}.json")

@@ -248,6 +248,8 @@ def store_alert(base_dir: str, record: dict) -> None:
 
     Concurrent senses must not tear a line or drop each other's alerts.
     """
+    if not isinstance(base_dir, str) or not base_dir:
+        return
     if not isinstance(record, dict):
         return
     try:
@@ -271,6 +273,8 @@ def store_alert(base_dir: str, record: dict) -> None:
 def load_alerts(base_dir: str, sensor=None, severity_floor=None,
                 since=None, until=None, limit=50):
     """Read stored alerts, oldest first, with optional filters."""
+    if not isinstance(base_dir, str) or not base_dir:
+        return []
     path = _path(base_dir)
     with _STORE_LOCK:
         try:
