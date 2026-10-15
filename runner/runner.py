@@ -2710,6 +2710,11 @@ def main() -> int:
                     help="open a loopback chat with the Oracle in your browser")
     ap.add_argument("--oracle-port", type=int, default=11436, metavar="PORT",
                     help="port for --oracle (default 11436, 127.0.0.1 only)")
+    ap.add_argument("--local-test", action="store_true",
+                    help="run the local SI test harness (no mailbox needed)")
+    ap.add_argument("--browser", action="store_true",
+                    help="with --local-test: chat via Open WebUI "
+                         "instead of the terminal")
     ap.add_argument("--job-id", default=None,
                     help="job id for --inspect job")
     args = ap.parse_args()
@@ -2726,6 +2731,12 @@ def main() -> int:
     update_llama_from_config(cfg)
     if args.oracle:
         return oracle_window(cfg, args.oracle_port)
+    if args.local_test:
+        try:
+            from runner import local_test as _lt
+        except ImportError:  # running from inside runner/ as __main__
+            import local_test as _lt
+        return _lt.main(cfg, browser=args.browser)
     if not cfg.get("mailbox_user"):
         print("config error: mailbox_user is required", file=sys.stderr)
         return 2
@@ -2748,10 +2759,6 @@ def main() -> int:
         print("config error: mailbox_password is required when auth=password",
               file=sys.stderr)
         return 2
-    if getattr(args, "local_test", False):
-        import local_test
-        return local_test.main(cfg, browser=getattr(args, "browser", False))
-
     # CLI overrides config.
     if args.poll_interval is not None:
         cfg["poll_interval_sec"] = args.poll_interval
