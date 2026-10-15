@@ -171,10 +171,17 @@ def gate_alert(sensor_cfg: dict, alert: dict, recent: list, now: float = None):
     if not isinstance(profile, dict):
         profile = {}
     floor = profile.get("severity_floor", "info")
-    if floor not in SEVERITY_SCORES:
+    # A floor or severity that cannot be hashed is not a known level.
+    try:
+        if floor not in SEVERITY_SCORES:
+            floor = "info"
+    except Exception:
         floor = "info"
     sev = alert.get("severity", "info")
-    if sev not in SEVERITY_SCORES:
+    try:
+        if sev not in SEVERITY_SCORES:
+            sev = "info"
+    except Exception:
         sev = "info"
     if SEVERITY_SCORES[sev] < SEVERITY_SCORES[floor]:
         return f"below severity_floor {floor}"
@@ -311,9 +318,13 @@ def load_alerts(base_dir: str, sensor=None, severity_floor=None,
                 same = False
             if not same:
                 continue
-        if severity_floor and SEVERITY_SCORES.get(rec.get("severity"), 0) < \
-                SEVERITY_SCORES.get(severity_floor, 0):
-            continue
+        if severity_floor is not None:
+            try:
+                if SEVERITY_SCORES.get(rec.get("severity"), 0) < \
+                        SEVERITY_SCORES.get(severity_floor, 0):
+                    continue
+            except Exception:
+                continue
         ts = _parse_ts(rec.get("observed_at") or rec.get("received_at"))
         if since_dt and (ts is None or ts < since_dt):
             continue

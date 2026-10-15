@@ -2977,3 +2977,60 @@ class ExecTextPoisonTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-arg", seen)
+
+
+class SensesLoadBoomFilterPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation):
+
+    load_alerts did rec.get("sensor") != sensor. A filter whose __eq__
+    raises stopped the load. Alerts could not be read. gate_alert did
+    floor not in SEVERITY_SCORES. An unhashable floor raised TypeError.
+
+    A comparison that raises skips the record. An unhashable floor or
+    severity is treated as info. Processing continues.
+    """
+
+    def test_boom_filter_does_not_raise(self):
+        from runner import senses
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+            def __eq__(self, other):
+                raise RuntimeError("eq")
+
+        with tempfile.TemporaryDirectory() as d:
+            senses.store_alert(d, {"sensor": "x", "title": "t"})
+            self.assertEqual(senses.load_alerts(d, sensor=Boom()), [])
+            self.assertEqual(senses.load_alerts(d, severity_floor=Boom()), [])
+            self.assertTrue(senses.load_alerts(d))
+
+    def test_concurrent_boom_filter_does_not_raise(self):
+        import threading
+        from runner import senses
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+            def __eq__(self, other):
+                raise RuntimeError("eq")
+
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                for _ in range(10):
+                    try:
+                        senses.store_alert(d, {"sensor": Boom(), "title": Boom()})
+                        senses.load_alerts(d, sensor=Boom(), severity_floor=Boom())
+                        senses.gate_alert({"profile": {"severity_floor": Boom()}}, {"severity": Boom()}, [])
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
