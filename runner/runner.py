@@ -2093,6 +2093,48 @@ def run_inspect(cfg, args) -> int:
     return 0
 
 
+def log_startup(cfg, args, base_dir):
+    """One block: what is configured, what is running, what it expects.
+
+    Never prints a secret. Prints the absence of one.
+    """
+    auth = "oauth" if _use_oauth(cfg) else "password"
+    oracle = cfg.get("oracle_enabled", True)
+    inf = inference_config(cfg)
+    keys = sorted((cfg.get("additional_secrets") or {}).keys())
+    log(f"homing-pigeon starting (base={base_dir}, platform={sys.platform})")
+    log(f"auth={auth} mailbox={cfg.get('mailbox_user')} "
+        f"poll={cfg.get('poll_interval_sec', 20)}s "
+        f"workers={_worker_count(cfg, args)} "
+        f"timeout={cfg.get('default_timeout_sec', 300)}s")
+    log(f"oracle={'on' if oracle else 'off'} "
+        f"judge={cfg.get('judge') or 'off'} "
+        f"ceiling={cfg.get('max_result_view') or 'full'} "
+        f"workspace={cfg.get('workspace_root') or '(none)'}")
+    if inf:
+        log(f"ask=on model={inf.get('model')} endpoint={inf.get('endpoint')}")
+    else:
+        log("ask=off; no loopback model in config. "
+            "Installer sets this unless --no-inference was passed.")
+    if keys:
+        log(f"additional secrets: {', '.join(keys)}")
+    flags = []
+    if args.dry_run:
+        flags.append("dry-run (will not execute)")
+    if args.no_send:
+        flags.append("no-send (will not mail results)")
+    if args.once:
+        flags.append("once")
+    if args.verbose:
+        flags.append("verbose")
+    if flags:
+        log("flags: " + ", ".join(flags))
+    log("expects: signed [HOMING-PIGEON] job mail. "
+        "Signature is the only gate. Results return to this mailbox.")
+    if oracle and not cfg.get("workspace_root"):
+        log("confinement is off; workspace_root is not set", "WARN")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Homing Pigeon runner agent")
     ap.add_argument("--config", default="config.json")
@@ -2185,12 +2227,7 @@ def main() -> int:
     seen_path = os.path.join(base_dir, "seen.json")
     seen = load_seen(seen_path)
 
-    log(f"homing-pigeon starting (base={base_dir}, platform={sys.platform})")
-    if not inference_config(cfg):
-        log("ask is off; no loopback model configured")
-    log(f"flags: dry_run={args.dry_run} no_send={args.no_send} "
-        f"no_oracle={args.no_oracle} verbose={args.verbose} pdb={args.pdb} "
-        f"once={args.once} workers={_worker_count(cfg, args)}")
+    log_startup(cfg, args, base_dir)
     auth_failed = False  # latch: report auth death once, not every 20s
     # Connection credentials (mailbox_user/password, oauth_*) are not
     # hot. Those still need a restart. CLI flags pin their key so a
