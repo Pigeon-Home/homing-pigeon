@@ -169,6 +169,8 @@ def _write_config(cfg_path: str, cfg: dict) -> None:
 
 
 def _secret_is_real(secret: str) -> bool:
+    if not isinstance(secret, str):
+        return False
     if not secret:
         return False
     if _placeholder and _placeholder(secret):
@@ -227,11 +229,12 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
     print("Thunderbird-style sign-in: a browser window, no password on")
     print("the command line. The Google password never lands in config.")
 
-    # 1. The dedicated mailbox address.
-    while not (cfg.get("mailbox_user") or "").strip():
+    # 1. The dedicated mailbox address. Coerced to str: a poisoned
+    # config may hold a non-string here, which must not crash .strip().
+    while not str(cfg.get("mailbox_user") or "").strip():
         cfg["mailbox_user"] = _ask(
             "Gmail address for the runner's dedicated mailbox: ")
-    user = cfg["mailbox_user"].strip()
+    user = str(cfg["mailbox_user"]).strip()
     cfg["mailbox_user"] = user
 
     # 2. Auth. Already working? Offer a re-login, nothing else.
@@ -258,7 +261,7 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
                 print("One-time: Google Cloud Console -> APIs & Services ->")
                 print("Credentials -> Create OAuth client ID -> Desktop app,")
                 print("then add http://127.0.0.1:8765/ as a redirect URI.")
-                while not (cfg.get("oauth_client_id") or "").strip():
+                while not str(cfg.get("oauth_client_id") or "").strip():
                     cfg["oauth_client_id"] = _ask("OAuth client ID: ")
             cfg["oauth_refresh_token"] = _browser_login_loop(cfg)
             # The token belongs to whoever just signed in; make sure the

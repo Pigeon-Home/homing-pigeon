@@ -73,6 +73,8 @@ def run(cmd, **kw):
 def _looks_like_placeholder(secret: str) -> bool:
     """Mirror of the runner's placeholder check (install.py is standalone,
     so the logic is duplicated here rather than imported)."""
+    if not isinstance(secret, str):
+        return False
     low = secret.lower()
     return any(p in low for p in ("generate", "changeme", "example",
                                   "placeholder", "your-secret", "your_secret",
@@ -81,6 +83,8 @@ def _looks_like_placeholder(secret: str) -> bool:
 
 def _looks_patterned(secret: str) -> bool:
     """Mirror of the runner's periodic-pattern check (see _looks_like_placeholder)."""
+    if not isinstance(secret, str):
+        return False
     n = len(secret)
     for period in range(1, n // 2 + 1):
         unit = secret[:period]
