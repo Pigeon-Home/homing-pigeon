@@ -438,3 +438,78 @@ class WindowsExtensionTest(unittest.TestCase):
                 }
                 poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
                           imap=_IMAP(raw), smtp=_SMTP(), opts=_Opts())
+
+
+class WindowsReservedNameTest(unittest.TestCase):
+    """Windows device names and a DRI page, on a simulated nt box.
+
+    CON, NUL, and a trailing dot are reserved or rewritten on Windows.
+    A pager that fires from a poisoned event log must not crash, and
+    must not be the thing that runs a job.
+    """
+
+    def test_reserved_names_do_not_escape_or_crash(self):
+        from runner.runner import execute_job
+        with tempfile.TemporaryDirectory() as d:
+            job = {
+                "v": 1, "type": "job", "kind": "exec", "job_id": "win-names",
+                "script": FLAG,
+                "interpreter": ["powershell", "-NoProfile", "-File"],
+                "files": [
+                    {"name": "CON", "url": "https://example.invalid/con"},
+                    {"name": "NUL", "url": "https://example.invalid/nul"},
+                    {"name": "..\\\\..\\\\Windows\\\\System32\\\\x", "url": "https://example.invalid/x"},
+                    {"name": "note.txt.", "url": "https://example.invalid/dot"},
+                ],
+            }
+            cfg = {"base_dir": d, "default_timeout_sec": 5}
+            with mock.patch("runner.runner.os.name", "nt"), \
+                 mock.patch("runner.runner.download", side_effect=RuntimeError("no net")), \
+                 mock.patch("runner.runner.subprocess.Popen") as popen:
+                try:
+                    execute_job(cfg, job, d)
+                except Exception as e:
+                    self.assertNotIsInstance(e, (SystemExit, KeyboardInterrupt))
+                popen.assert_not_called()
+            work = os.path.join(d, "work")
+            if os.path.isdir(work):
+                for root, dirs, files in os.walk(work):
+                    for name in files:
+                        self.assertNotIn(FLAG, open(os.path.join(root, name),
+                                                    encoding="utf-8", errors="replace").read())
+
+    def test_dri_page_from_a_poisoned_event_does_not_crash(self):
+        with tempfile.TemporaryDirectory() as d:
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            with open(os.path.join(d, "security-events.jsonl"), "w", encoding="utf-8") as fh:
+                fh.write(json.dumps({
+                    "type": "confinement_violation", "at": now,
+                    "detail": FLAG, "title": "CON",
+                }) + "\n")
+                fh.write("not-json\n")
+                fh.write("null\n")
+            cfg = {"dri": {
+                "enabled": True, "channel": "telegram",
+                "telegram_bot_token": "t", "telegram_chat_id": "1",
+                "triggers": {"confinement_violation": {"enabled": True}},
+                "cooldown_sec": 0,
+            }}
+            sent = {}
+
+            def grab(token, chat, text):
+                sent["text"] = text
+                return True
+
+            with mock.patch("runner.runner.os.name", "nt"), \
+                 mock.patch("runner.dri.send_telegram", side_effect=grab):
+                dri.maybe_page(cfg, d)
+            self.assertNotIn("Traceback", sent.get("text", ""))
+
+    def test_kill_tree_on_windows_survives_a_dead_pid(self):
+        from runner.runner import kill_tree
+        proc = mock.Mock()
+        proc.pid = -1
+        proc.kill.side_effect = OSError("already dead")
+        with mock.patch("runner.runner.os.name", "nt"), \
+             mock.patch("runner.runner.subprocess.run", side_effect=FileNotFoundError("taskkill")):
+            kill_tree(proc)
