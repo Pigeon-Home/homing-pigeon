@@ -129,7 +129,8 @@ class LogRedactionTest(unittest.TestCase):
             )
         self.assertEqual(answer.get("rejected"), "sanitization")
         self.assertNotIn("AKIAIOSFODNN7EXAMPLE", buf.getvalue())
-        self.assertIn("[REDACTED:aws_key]", buf.getvalue())
+        self.assertIn("rejected: sanitization", buf.getvalue())
+        self.assertNotIn("[REDACTED:aws_key]", buf.getvalue())
 
     def test_empty_default(self):
         from runner.runner import check_protected_paths
