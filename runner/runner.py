@@ -984,10 +984,10 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
         return {"op": "ask", "rejected": "inference_unconfigured"}
     try:
         cap = int(max_chars)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         try:
             cap = int(cfg.get("max_answer_chars") or 2000)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             cap = 2000
     if cap < 0:
         cap = 0
