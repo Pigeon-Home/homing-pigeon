@@ -399,6 +399,17 @@ End-to-end without your SI:
   and a query budget, so a cloud SI learns *answers* about your output
   without ever seeing it. `oracle_enabled: false` disables it anytime.
 
+## Roadmap
+
+- v2 = who signs (shipped)
+- v3 = what comes back — the Oracle: result policies, attestations, task dispatch, multi-secret (implemented, in review)
+- v3.1 = the Oracle gets smart — the ask op via local inference (spec'd in PROTOCOL 10.1, currently stubbed)
+- v4 = watch the Oracle think — the loopback dashboard (spec in ORACLE_DASHBOARD.md)
+
+Later:
+- Cloudflare Queues as Transport #2
+- Thunderbird-grade OAuth decision for future users
+
 ## Status
 
 v1.4.4. Grok hardened the config hot-reload: bad files don't poison

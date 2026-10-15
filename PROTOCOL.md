@@ -396,6 +396,19 @@ before and after execution, and attests the result:
 Like everything the Oracle does, the ceiling is the runner owner's:
 no job field can widen or disable confinement.
 
+#### Protected paths
+
+`protected_paths` is an optional list of absolute paths the confinement
+snapshot watches closely. Paths listed here are checked first; any
+creation, modification, or deletion under them is always reported in
+the confinement attestation detail, even if the overall
+`confined_to_workspace` verdict logic is unchanged. Default is an empty
+list (least restrictive).
+
+```json
+"protected_paths": ["/home/user/docs/manuals"]
+```
+
 ## 10. The two-phase query exchange
 
 Two phases: first the SI declares *what may be asked*; then the runner
