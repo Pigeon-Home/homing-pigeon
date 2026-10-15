@@ -386,7 +386,7 @@ no job field can widen or disable confinement.
 
 ## 10. The two-phase query exchange
 
-Modeled on IKEv2: phase one negotiates *what may be asked*; phase two
+Two phases: first the SI declares *what may be asked*; then the runner
 delivers *all answers at once*. The message count is fixed — neither
 party can extend the exchange into an adaptive loop.
 
@@ -496,12 +496,11 @@ Defenses, in order of importance:
    Each answered or policy-rejected query spends 1; exhaustion silences
    the Oracle for that job. A budget bounds what rate limiting cannot:
    the total, not just the speed.
-3. **Rate limiting (the IKEv2 cookie analogy).** An IKEv2 responder
-   demands a returned cookie before committing expensive DH
-   computation — proof of seriousness before resource spend. The analog:
-   `max_queries_per_hour` per sender in runner config, on top of the
-   freshness and seen-set checks every query already passes. This slows
-   automated probing; the budget is what stops it.
+3. **Rate limiting.** Before committing expensive work, demand proof
+   of seriousness — the challenge-cookie pattern: `max_queries_per_hour`
+   per sender in runner config, on top of the freshness and seen-set
+   checks every query already passes. This slows automated probing;
+   the budget is what stops it.
 
 ## 12. v2 security properties
 
