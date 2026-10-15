@@ -176,6 +176,8 @@ Full spec in PROTOCOL.md (sections 9–12).
 
 ## Setup
 
+By default the installer also sets up local inference for the Oracle `ask` op: it installs Ollama (if missing) and pulls a model (`llama3.2:3b` by default). Pass `--no-inference` to skip that. The runner itself never bundles the model; Ollama runs separately on loopback.
+
 **Easiest: download a release.** No Python needed — each release ships
 standalone binaries built by GitHub Actions:
 
