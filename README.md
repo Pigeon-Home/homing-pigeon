@@ -72,19 +72,19 @@ and operate.
 ```
   SI (cloud)                        Your machine
   ────────────                      ──────────────────
-  send_job.py ──sign──▶ job email ──▶  runner.py
+  send_job.py ──sign──▶ job message ──▶  runner.py
        │                  │              │  poll IMAP
        │                  │              │  verify HMAC
        │                  │              ▼
        │                  │           run script
        │                  │              │
-       │               result email ◀──┘ sign
+       │             result message ◀──┘ sign
        ▼                  │
   verify result ◀──────────┘
 ```
 
 Large inputs don't go through email: your SI uploads them to file hosting
-and the job email carries download URLs (with optional SHA-384).
+and the job message carries download URLs (with optional SHA-384).
 
 **Why email?** Because it's the only transport with all five properties
 on day one: reachable from anywhere, outbound-only polling (no inbound
@@ -166,8 +166,8 @@ Full spec in PROTOCOL.md (sections 9–12).
   (Linux), launchd (macOS), cron @reboot (FreeBSD), Scheduled Task
   (Windows).
 - `runner/config.example.json` — copy to `config.json` and fill in.
-- `cloud/send_job.py` — cloud-side helper: builds signed job emails,
-  verifies result emails. (Your SI uses this logic when dispatching jobs.)
+- `cloud/send_job.py` — cloud-side helper: builds signed job messages,
+  verifies result messages. (Your SI uses this logic when dispatching jobs.)
 - `tests/test_runner.py` — end-to-end tests with fake IMAP/SMTP servers.
 - `RUNBOOK.md` — step-by-step instructions (written for a 5-year-old):
   cloning, pushing, cutting a release, installing, sending a job.
@@ -327,8 +327,8 @@ python3 cloud/send_job.py new --kind exec --script-file job.sh \
 ```
 
 Or just paste the string to your SI in chat — it composes, signs, and sends
-the job email itself, and reads the result email when it arrives. Large files
-are uploaded to cloud storage first; the job email carries the URLs.
+the job message itself, and reads the result message when it arrives. Large files
+are uploaded to cloud storage first; the job message carries the URLs.
 
 Verify a result body:
 
@@ -377,12 +377,12 @@ End-to-end without your SI:
 2. From any email account, send it to the
    runner mailbox.
 3. On the target machine: `python3 runner.py --config config.json --once`.
-4. A result email with `stdout: "pong"` should arrive in the mailbox.
+4. A result message with `stdout: "pong"` should arrive in the mailbox.
 
 ## Security notes
 
 - The runner is a **full-trust execution environment**: a valid signed
-  job email means arbitrary code as a privileged user. The app password sits in
+  job message means arbitrary code as a privileged user. The app password sits in
   **plaintext** in config.json (your explicit
   choice: throwaway account, fresh box). Anyone holding it gets Gmail access.
   The HMAC shared secret is a separate value — anyone holding *it* can sign jobs.
@@ -431,7 +431,7 @@ now raise a distinct error and log once to the Windows Event Log instead
 of failing silently. v1.3.0: Thunderbird-style Google sign-in: the runner opens your browser,
 you sign in like adding Gmail on your phone, and IMAP/SMTP use XOAUTH2
 from then on — no app password. Tested end to end on Windows 11: browser
-login, job sent, runner polled and executed it, result emailed back, all
+login, job sent, runner polled and executed it, result sent back, all
 over OAuth. Password auth stays the default and is untouched. Runner
 rewritten in cross-platform Python; crypto tested (sign/verify roundtrip,
 tamper rejection, CRLF tolerance); end-to-end suite passes against fake

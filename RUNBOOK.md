@@ -246,7 +246,7 @@ lie.
   token, not your real password.
 - **The runner says "bad signature"** — the secret string has a typo.
   Copy it again, carefully.
-- **Nothing happens after sending a job email** — check that the
+- **Nothing happens after sending a job message** — check that the
   runner computer is turned on, and that the email was sent from
   the runner's own Gmail address (not your personal one).
 - **The robots (Actions) show a red X** — click the X, click the
@@ -263,7 +263,7 @@ lie.
 ### Where results go
 
 Result emails are sent **to the runner's own mailbox** (the account in `mailbox_user`). They do not automatically appear in the cloud SI's connected Gmail account. To see them from the SI side you must either:
-- forward the result email to the connected account, or
+- forward the result message to the connected account, or
 - have the runner configured so results are delivered somewhere the SI can read, or
 - check the runner's console/logs for the outbound result.
 

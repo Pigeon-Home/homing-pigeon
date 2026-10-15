@@ -10,7 +10,7 @@ covers what **you** do, step by step, to keep a deployment safe.
 - The runner executes **arbitrary code** as the user it was installed
   as. There is no sandbox, no allowlist, no confirmation prompt.
 - The shared secret (a dedicated high-entropy string, by your explicit choice)
-  **is root on that box**. Anyone who can sign a job email owns the
+  **is root on that box**. Anyone who can sign a job message owns the
   machine: install software, read files, add users, pivot to your
   network.
 - Email is the control plane. Whoever can send mail *as* the runner's
@@ -94,7 +94,7 @@ mitigation:
   copy of the old
   one floating around in chat histories.
 - **Prune the mailbox.** The runner marks processed mail seen, but
-  the job emails remain. Delete them periodically — they're signed,
+  the job messages remain. Delete them periodically — they're signed,
   but they still describe what you asked your machine to do.
 
 ## 6. Don't do this

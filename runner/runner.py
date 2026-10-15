@@ -2,7 +2,7 @@
 """
 Homing Pigeon — cross-platform runner agent.
 
-Polls a dedicated mailbox for HMAC-signed job emails, executes them, and
+Polls a dedicated mailbox for HMAC-signed job messages, executes them, and
 emails back signed results. Runs on Linux, macOS, FreeBSD, and Windows.
 Python 3.9+, standard library only. See PROTOCOL.md.
 
@@ -25,7 +25,7 @@ Usage:
 #     as-is. The user hands that string to the cloud side. The runner
 #     refuses to start if the secret is missing or too weak (it must
 #     resist offline brute force against captured signed messages).
-#  3. The runner obeys any job mail bearing a valid HMAC signature,
+#  3. The runner obeys any job message bearing a valid HMAC signature,
 #     regardless of sender. The signature is the sole authentication
 #     gate; the sender address is logged for audit but never trusted.
 

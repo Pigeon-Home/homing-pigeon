@@ -6,10 +6,10 @@ payloads travel as cloud-hosted file URLs that the runner downloads.
 
 ## 1. Actors
 
-- **Cloud SI:** composes signed job emails, uploads large inputs to
-  file hosting, reads signed result emails.
+- **Cloud SI:** composes signed job messages, uploads large inputs to
+  file hosting, reads signed result messages.
 - **Runner (Linux/macOS/FreeBSD/Windows):** polls a dedicated mailbox,
-  verifies and executes jobs, emails back signed results. Implemented in
+  verifies and executes jobs, sends back signed results. Implemented in
   Python 3.9+ using only the standard library.
 
 The roles are a convention, not a requirement. The protocol is
@@ -190,7 +190,7 @@ send stays unseen and will be retried (re-executed) on the next cycle.
 ## 7. Security model
 
 - The runner host is a **full-trust execution environment**: anyone who
-  can produce a valid signed job email owns the box.
+  can produce a valid signed job message owns the box.
 - This deployment deliberately stores the Gmail app password in
   **plaintext** in config.json (user's explicit choice: dedicated
   throwaway account on a fresh machine with nothing personal). Anyone
