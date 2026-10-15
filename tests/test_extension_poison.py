@@ -1257,3 +1257,47 @@ class PartialResultFaultTest(unittest.TestCase):
                     smtp=_SMTP(), opts=_Opts())
             with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
                 self.assertIn("partial-1", json.load(fh))
+
+
+class NanAndDirectoryFaultTest(unittest.TestCase):
+    """Finding: json.dumps emits NaN, which is not JSON.
+
+    A duration of nan signed a result the other side could not
+    parse, and the job was marked seen. NaN and Infinity become
+    null before signing. A senses store or a board that is a
+    directory does not stop the poll.
+    """
+
+    def test_nan_duration_still_signs(self):
+        from runner.runner import sign_payload, verify_body
+        body = sign_payload({
+            "v": 1, "type": "result", "duration_sec": float("nan"),
+            "score": float("inf"), "note": "ok",
+        }, SECRET)
+        self.assertNotIn("NaN", body)
+        self.assertNotIn("Infinity", body)
+        parsed = verify_body(body, SECRET)
+        self.assertIsNone(parsed["duration_sec"])
+        self.assertEqual(parsed["note"], "ok")
+
+    def test_directory_stores_do_not_stop_the_poll(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "senses.jsonl"))
+            os.makedirs(os.path.join(d, "board.json"))
+            os.makedirs(os.path.join(d, "dri-state.json"))
+            body = sign_payload({
+                "v": 1, "type": "job", "kind": "ping",
+                "job_id": "dir-1", "issued_at": _now(),
+                "result_policy": {"queries": [{"op": "senses"}]},
+            }, SECRET)
+            cfg = {
+                "mailbox_user": "pigeon-test@example.com",
+                "shared_secret": SECRET, "base_dir": d,
+                "dri": {"enabled": True, "triggers": {
+                    "sensor_fused_score": {"threshold": "hot"}}},
+            }
+            poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                      imap=_IMAP(_mail("[HOMING-PIGEON] job dir-1", body)),
+                      smtp=_SMTP(), opts=_Opts())
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                self.assertIn("dir-1", json.load(fh))

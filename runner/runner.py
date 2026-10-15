@@ -175,8 +175,22 @@ def _normalize(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
+def _json_safe(value):
+    """Replace NaN and Infinity. json.dumps emits them, and they are not JSON."""
+    if isinstance(value, float):
+        if value != value or value in (float("inf"), float("-inf")):
+            return None
+        return value
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    return value
+
+
 def sign_payload(payload: dict, secret: str) -> str:
-    body = _normalize(json.dumps(payload, separators=(",", ":"), ensure_ascii=False))
+    body = _normalize(json.dumps(_json_safe(payload), separators=(",", ":"),
+                                 ensure_ascii=False, allow_nan=False))
     if not body.endswith("}"):
         raise ValueError("payload must serialize to a JSON object")
     sig = hmac.new(secret.encode("utf-8"), body.encode("utf-8"),
@@ -1909,9 +1923,12 @@ def _as_int(value, default):
 
 def _as_float(value, default):
     try:
-        return float(value)
+        n = float(value)
     except (TypeError, ValueError):
         return default
+    if n != n or n in (float("inf"), float("-inf")):
+        return default
+    return n
 
 
 def _preview(text, n=80) -> str:
