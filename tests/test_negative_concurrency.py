@@ -2459,3 +2459,85 @@ class UnprintableKeyTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-key", seen)
+
+
+class StateSavePoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, DRI and resources, no poll):
+
+    dri._save_state caught a value json.dumps could not store, then
+    called str() on it. A value whose text form raises escaped that
+    handler. Six threads raised RuntimeError, so the page state was
+    not saved. resources._save_state only caught OSError. A Boom
+    value, a set, and a key that was not a string each raised
+    TypeError and the sample state was not written. The state-save
+    change on main also deleted every DRI function after _save_state,
+    so evaluate_page_triggers and maybe_page were gone and the page
+    path could not run.
+
+    A value that cannot be printed is dropped. A set is stored as
+    its text. A key that cannot be printed is skipped. The other
+    fields are still saved. The page functions are restored.
+    """
+
+    def test_bad_state_does_not_raise(self):
+        from runner import dri, resources
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        with tempfile.TemporaryDirectory() as d:
+            dri._save_state(d, {"last_check": Boom(), "ok": 1})
+            with open(os.path.join(d, "dri-state.json"), encoding="utf-8") as fh:
+                saved = json.load(fh)
+            self.assertEqual(saved.get("ok"), 1)
+            self.assertNotIn("last_check", saved)
+            dri._save_state(d, {"pending": {1}})
+            resources._save_state(d, {"cpu_prev": Boom(), "kept": 2})
+            resources._save_state(d, {"last_alert": {1}, "kept": 3})
+            resources._save_state(d, {Boom(): 1, "kept": 4})
+            with open(os.path.join(d, "resources.json"), encoding="utf-8") as fh:
+                disk = json.load(fh)
+            self.assertEqual(disk.get("kept"), 4)
+            self.assertNotIn("cpu_prev", disk)
+            self.assertIsInstance(dri.evaluate_page_triggers(
+                {"triggers": {"sensor_fused_score": "high"}}, d, 0, "soon"), list)
+            self.assertIsInstance(dri.maybe_page({"dri": "nope"}, d, now="soon"), int)
+
+    def test_concurrent_state_saves_do_not_raise(self):
+        import threading
+        from runner import dri, resources
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        errors = []
+
+        def hammer():
+            try:
+                with tempfile.TemporaryDirectory() as d:
+                    dri._save_state(d, {"last_check": Boom(), "ok": 1})
+                    resources._save_state(d, {"cpu": {1, 2}})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_state_save(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-state",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-state", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-state", seen)

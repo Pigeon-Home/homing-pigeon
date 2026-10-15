@@ -147,7 +147,10 @@ def _save_state(base_dir, state):
             json.dumps(v)
             clean[k] = v
         except (TypeError, ValueError):
-            clean[k] = str(v)
+            try:
+                clean[k] = str(v)
+            except Exception:
+                continue
     tmp = os.path.join(base_dir, STATE_FILE + ".tmp." + str(threading.get_ident()))
     try:
         with _STATE_LOCK:

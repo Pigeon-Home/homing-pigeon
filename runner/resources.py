@@ -133,13 +133,29 @@ def _save_state(base_dir, state):
         return
     if not isinstance(state, dict):
         state = {}
+    # A set, a bad key, or a value whose text form raises must not
+    # stop the sample. Drop what cannot be stored. Keep the rest.
+    clean = {}
+    for k, v in state.items():
+        try:
+            key = k if isinstance(k, str) else str(k)
+        except Exception:
+            continue
+        try:
+            json.dumps(v)
+            clean[key] = v
+        except (TypeError, ValueError):
+            try:
+                clean[key] = str(v)
+            except Exception:
+                continue
     tmp = os.path.join(base_dir, STATE_FILE + ".tmp." + str(threading.get_ident()))
     try:
         with _STATE_LOCK:
             with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(state, f)
+                json.dump(clean, f)
             os.replace(tmp, os.path.join(base_dir, STATE_FILE))
-    except OSError:
+    except (OSError, TypeError, ValueError):
         pass
 
 
