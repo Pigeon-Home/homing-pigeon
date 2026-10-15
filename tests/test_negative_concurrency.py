@@ -1184,3 +1184,43 @@ class AttestStoreResourcesBoardPoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class DiskFractionPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation):
+
+    resources._disk_fraction assumed path was a path. None raised
+    TypeError on statvfs and stopped the resource check when called
+    with a bad base_dir.
+
+    Non-path values now return None. The resource monitor does not
+    crash.
+    """
+
+    def test_bad_path_returns_none(self):
+        from runner import resources
+        self.assertIsNone(resources._disk_fraction(None))
+        self.assertIsNone(resources._disk_fraction(5))
+        self.assertIsNone(resources._disk_fraction([]))
+        self.assertIsInstance(resources._disk_fraction("/tmp"), (float, type(None)))
+
+    def test_concurrent_disk_fraction_does_not_raise(self):
+        import threading
+        from runner import resources
+        errors = []
+
+        def hammer():
+            for _ in range(15):
+                try:
+                    resources._disk_fraction(None)
+                    resources._disk_fraction(5)
+                    resources.check_resources({"resources": {"enabled": True}}, None)
+                except Exception as e:
+                    errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])

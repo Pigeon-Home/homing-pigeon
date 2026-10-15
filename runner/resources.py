@@ -101,6 +101,8 @@ def _mem_fraction():
 
 
 def _disk_fraction(path):
+    if not isinstance(path, (str, bytes, os.PathLike)):
+        return None
     try:
         u = shutil.disk_usage(path)
         if u.total <= 0:
