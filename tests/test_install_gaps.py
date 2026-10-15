@@ -35,6 +35,14 @@ def _mode(path):
     return stat.S_IMODE(os.stat(path).st_mode)
 
 
+def _assert_mode(tc, path, expected):
+    # Windows has no Unix permission bits; os.chmod is a no-op for them
+    # and stat reports 0o666. The assertion is POSIX-only.
+    if os.name == "nt":
+        return
+    tc.assertEqual(_mode(path), expected)
+
+
 class ProfileSelectionTest(unittest.TestCase):
     def test_flags(self):
         self.assertIsNone(chosen_profile("raspberry-pi-home", True))
@@ -87,7 +95,7 @@ class ProfileMergeTest(unittest.TestCase):
         self.assertIn("/home/pi/docs/manuals", cfg["protected_paths"])
         self.assertIn("vscode_token", cfg["redact_patterns_extra"])
         self.assertIn("shadow_hash", cfg["redact_patterns_extra"])
-        self.assertEqual(_mode(self.path), 0o600)
+        _assert_mode(self, self.path, 0o600)
         self.assertFalse(os.path.exists(self.path + ".tmp"))
 
     def test_file_cannot_overwrite_secrets(self):
@@ -113,7 +121,7 @@ class ProfileMergeTest(unittest.TestCase):
         self.assertEqual(cfg["profile"], "hostile")
         self.assertIn("vscode_token", cfg["redact_patterns_extra"])
         self.assertIn("from_file", cfg["redact_patterns_extra"])
-        self.assertEqual(_mode(self.path), 0o600)
+        _assert_mode(self, self.path, 0o600)
 
     def test_unknown_name_does_not_write(self):
         with open(self.path, "rb") as fh:
@@ -124,7 +132,7 @@ class ProfileMergeTest(unittest.TestCase):
         with open(self.path, "rb") as fh:
             self.assertEqual(fh.read(), before)
         self.assertIn("unknown", buf.getvalue())
-        self.assertEqual(_mode(self.path), 0o640)
+        _assert_mode(self, self.path, 0o640)
 
 
 class InstallOllamaTest(unittest.TestCase):
@@ -143,7 +151,7 @@ class InstallOllamaTest(unittest.TestCase):
         with open(self.path, "rb") as fh:
             self.assertEqual(fh.read(), before)
         self.assertIn("skipped", buf.getvalue())
-        self.assertEqual(_mode(self.path), 0o640)
+        _assert_mode(self, self.path, 0o640)
 
     def test_present_ollama_pulls_without_curl_and_locks_mode(self):
         with mock.patch("install._which", return_value="/usr/bin/ollama"), \
@@ -157,7 +165,7 @@ class InstallOllamaTest(unittest.TestCase):
         self.assertEqual(cfg["shared_secret"], "keep-secret")
         self.assertEqual(cfg["inference"]["endpoint"], "http://127.0.0.1:11434/v1")
         self.assertEqual(cfg["inference"]["model"], "llama3.2:3b; touch /tmp/nope")
-        self.assertEqual(_mode(self.path), 0o600)
+        _assert_mode(self, self.path, 0o600)
         joined = " ".join(run.call_args[0][0])
         self.assertNotIn("curl", joined)
         self.assertNotIn("|", joined)
