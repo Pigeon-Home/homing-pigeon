@@ -54,8 +54,19 @@ def xoauth2_raw(user: str, access_token: str) -> str:
     """SASL XOAUTH2 initial response, unencoded.
 
     Both libraries base64 this themselves. Pre-encoding it is the bug:
-    the server then sees a blob of a blob and rejects it.
+    the server then sees a blob of a blob and rejects it. A non-ASCII
+    user or token cannot be a SASL response; fail here instead of
+    UnicodeEncodeError mid-poll.
     """
+    user = user if isinstance(user, str) else ""
+    access_token = access_token if isinstance(access_token, str) else ""
+    try:
+        user.encode("ascii")
+        access_token.encode("ascii")
+    except UnicodeEncodeError as e:
+        raise OAuthRefreshError(
+            "mailbox user or access token is not ASCII. "
+            "Re-run the browser login.") from e
     return f"user={user}\x01auth=Bearer {access_token}\x01\x01"
 
 
@@ -96,8 +107,12 @@ def refresh_access_token(cfg: dict) -> str:
             f"(HTTP {e.code}: {err_body.get('error')}). "
             f"Re-run the browser login to restore the runner."
         ) from e
+    if not isinstance(body, dict):
+        raise OAuthRefreshError(
+            "token refresh returned a non-object. "
+            "Re-run the browser login to restore the runner.")
     token = body.get("access_token")
-    if not token:
+    if not isinstance(token, str) or not token:
         raise OAuthRefreshError(
             f"token refresh returned no access_token: {body}. "
             f"Re-run the browser login to restore the runner."

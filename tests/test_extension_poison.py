@@ -1329,3 +1329,34 @@ class SnapshotAndSubjectFaultTest(unittest.TestCase):
                   "result\r\nbad", "body")
         self.assertNotIn("\n", sent["subject"])
         self.assertNotIn("\r", sent["subject"])
+
+
+class OAuthShapeFaultTest(unittest.TestCase):
+    """Finding: a non-object token response crashed the refresh.
+
+    body.get on a list raises AttributeError. That is not
+    OAuthRefreshError, so the poll treated a dead token as
+    transient and retried every cycle. A non-object is now the
+    auth-dead error. A non-ASCII token fails the same way
+    instead of UnicodeEncodeError mid-poll.
+    """
+
+    def test_list_token_response_is_auth_dead(self):
+        from runner.oauth import refresh_access_token, OAuthRefreshError
+        import io
+        class R:
+            def read(self):
+                return b"[1, 2, 3]"
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return False
+        with mock.patch("urllib.request.urlopen", return_value=R()):
+            with self.assertRaises(OAuthRefreshError):
+                refresh_access_token({
+                    "oauth_client_id": "c", "oauth_refresh_token": "r"})
+
+    def test_non_ascii_token_is_auth_dead(self):
+        from runner.oauth import xoauth2_raw, OAuthRefreshError
+        with self.assertRaises(OAuthRefreshError):
+            xoauth2_raw("a@b.c", "tok\u2603")
