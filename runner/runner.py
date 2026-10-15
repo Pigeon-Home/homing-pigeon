@@ -2271,6 +2271,10 @@ def main() -> int:
         print("config error: mailbox_password is required when auth=password",
               file=sys.stderr)
         return 2
+    if getattr(args, "local_test", False):
+        import local_test
+        return local_test.main(cfg, browser=getattr(args, "browser", False))
+
     # CLI overrides config.
     if args.poll_interval is not None:
         cfg["poll_interval_sec"] = args.poll_interval
