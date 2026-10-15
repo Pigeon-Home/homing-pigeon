@@ -1,8 +1,6 @@
 # Threat model — an honest review
 
-*Adapted from an external review (Claude, 2026-10-15). Kept here
-because it is right, and because the optimistic version would be a
-lie.*
+*Adapted from an external "review" by Claude.*
 
 Homing Pigeon lets a cloud SI run code on your machine easily, which
 is both its whole appeal and its whole problem. Anyone holding the
