@@ -746,5 +746,34 @@ class EventAndCompartmentGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class InstructionsGracefulTest(unittest.TestCase):
+    """Finding: owner_instructions is spliced into the ask prompt.
+    A non-string value must not crash ask_model.
+    """
+
+    def test_non_string_instructions(self):
+        from runner.runner import ask_model
+        inf = {"endpoint": "http://127.0.0.1:11434/v1", "model": "m"}
+
+        def boom(req, timeout=60):
+            raise OSError("down")
+
+        for instructions in (None, 42, ["list"], {"k": "v"}):
+            try:
+                got = ask_model(inf, "q", "out", 50, opener=boom, instructions=instructions)
+            except Exception as e:
+                self.fail(f"instructions {instructions!r} crashed ask: {e}")
+            self.assertEqual(got.get("rejected"), "inference_error")
+
+    def test_record_oracle_turn_odd_ans(self):
+        from runner.runner import record_oracle_turn
+        tmp = tempfile.mkdtemp()
+        for ans in ({}, None, "string", {"answer": None}, {"rejected": 12}):
+            try:
+                record_oracle_turn(tmp, {}, "q", ans if isinstance(ans, dict) else {})
+            except Exception as e:
+                self.fail(f"record_oracle_turn crashed on {ans!r}: {e}")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
