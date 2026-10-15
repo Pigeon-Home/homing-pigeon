@@ -170,6 +170,8 @@ SEEN_CAP = 2000
 
 # ---------------------------------------------------------------- crypto
 def _normalize(text: str) -> str:
+    if not isinstance(text, str):
+        return ""
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
@@ -415,6 +417,10 @@ def check_key_policy(policies: dict, key_id: str, cfg, job):
 
 def verify_body_keyed(body_text: str, secrets: dict):
     """Return (payload, key_id). Unknown key_id raises before any crypto."""
+    if not isinstance(body_text, str):
+        raise ValueError("body must be a string")
+    if not isinstance(secrets, dict):
+        raise ValueError("secrets must be an object")
     norm = _normalize(body_text).rstrip()
     raw, sig = _extract_signed(norm)
     try:
@@ -1922,8 +1928,14 @@ def append_bounded_log(path, text, max_bytes=2_097_152):
     One backup, then the old backup is replaced. A chatty process cannot
     fill the disk. Failures are swallowed: logging must not kill the runner.
     """
-    if not path or not text:
+    if not path or not isinstance(text, str) or not text:
         return
+    try:
+        max_bytes = int(max_bytes)
+    except (TypeError, ValueError):
+        max_bytes = 2_097_152
+    if max_bytes < 1:
+        max_bytes = 2_097_152
     data = text if text.endswith("\n") else text + "\n"
     raw = data.encode("utf-8")
     if len(raw) > max_bytes:
@@ -2582,9 +2594,16 @@ def load_seen(path: str) -> dict:
 
 
 def save_seen(path: str, seen: dict):
+    if not isinstance(path, str) or not path:
+        return
+    if not isinstance(seen, dict):
+        seen = {}
     keys = list(seen.keys())[-SEEN_CAP:]
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump(keys, fh)
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(keys, fh)
+    except OSError:
+        pass
 
 
 HOT_KEYS = ("poll_interval_sec", "workers", "default_timeout_sec",

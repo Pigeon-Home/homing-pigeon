@@ -799,3 +799,63 @@ class ConfigAndJobShapePoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class VerifySeenLogPoisonTest(unittest.TestCase):
+    """Findings (2026-10-15 simulation):
+
+    1. verify_body_keyed assumed body was a string. None/int/bytes
+       raised AttributeError or TypeError instead of ValueError.
+    2. save_seen assumed path was a path and seen was a dict. None path
+       raised TypeError; None seen raised AttributeError on .keys.
+    3. append_bounded_log assumed text was a string and max_bytes was
+       an int. An int text raised AttributeError; max_bytes="bad"
+       raised TypeError. Logging must not kill the runner.
+
+    All hardened. Poison inputs return or raise ValueError cleanly
+    and do not stop processing.
+    """
+
+    def test_verify_seen_log_tolerate_poison(self):
+        from runner.runner import verify_body_keyed, save_seen, append_bounded_log, load_seen
+        for body in (None, 5, b"bytes", []):
+            with self.assertRaises(ValueError):
+                verify_body_keyed(body, {"": SECRET})
+        with self.assertRaises(ValueError):
+            verify_body_keyed("{}", None)
+        with tempfile.TemporaryDirectory() as d:
+            save_seen(None, {"a": True})
+            path = os.path.join(d, "seen.json")
+            save_seen(path, None)
+            self.assertEqual(load_seen(path), {})
+            save_seen(path, "bad")
+            self.assertEqual(load_seen(path), {})
+            append_bounded_log(os.path.join(d, "l"), None)
+            append_bounded_log(os.path.join(d, "l"), 5)
+            append_bounded_log(os.path.join(d, "l"), "hello", "bad")
+            append_bounded_log(None, "hello")
+
+    def test_concurrent_seen_and_log_do_not_raise(self):
+        import threading
+        from runner.runner import save_seen, append_bounded_log, verify_body_keyed
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                for _ in range(10):
+                    try:
+                        try:
+                            verify_body_keyed(None, {"": SECRET})
+                        except ValueError:
+                            pass
+                        save_seen(os.path.join(d, "s.json"), None)
+                        append_bounded_log(os.path.join(d, "l"), 5, "bad")
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
