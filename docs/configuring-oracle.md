@@ -21,7 +21,7 @@ Everything the dashboard configures must be expressible in `config.json`, and ev
 - `dag_mode` — `off` (default) or `enforce`. When enforce, a task is offered only after all of its `requires` are done.
 - `task_timeout` — seconds before a claimed task is returned to open. Default 86400.
 - `require_review` — when true, completed tasks go to `pending_review` instead of `done` until approved.
-- `inference` — endpoint and model for the `ask` op (v3.1). The endpoint must be loopback or the op stays off. A non-loopback host is refused and `ask` stays disabled. The installer sets this up by default (Ollama + a model); pass `--no-inference` to skip.
+- `inference` — endpoint and model for the `ask` op (v3.1). The endpoint must be loopback or the op stays off. A non-loopback host is refused and `ask` stays disabled. The installer sets this up by default (Ollama + a model); pass `--no-inference` to skip. The default model is `llama3.2:3b`. The `raspberry-pi-home` profile uses `llama3.2:1b`, the lighter Llama that fits a Pi. `--inference-model` overrides either default.
 
 ## Deployment profiles
 
@@ -59,8 +59,8 @@ homing-pigeon-install --profile ./my-box.json
 
 Built-in profiles:
 
-- `password-only` — treats password hashes and `password=` style assignments as secrets, watches `/etc/shadow`, sets `max_result_view` to `attested`.
-- `raspberry-pi-home` — same password-hash watch, plus `/home/pi/docs/manuals` as a protected path.
+- `password-only` — treats password hashes and `password=` style assignments as secrets, watches `/etc/shadow`, sets `max_result_view` to `attested`. Inference stays on `llama3.2:3b`.
+- `raspberry-pi-home` — same password-hash watch, plus `/home/pi/docs/manuals` as a protected path. This is the Pi-specific install: the device tree or `/proc/cpuinfo` selects it automatically, and it pulls `llama3.2:1b` instead of the 3B model. `--inference-model` still wins if you name a tag.
 
 A profile JSON file uses the same keys. Extra redact patterns and worker compartments are merged with what is already in the file. A profile entry wins when the name clashes. Other profile keys replace the previous value. Mailbox credentials and `shared_secret` are never written by a profile. The runner already honors `redact_patterns_extra`, `protected_paths`, and `max_result_view` from `config.json`, so the profile takes effect on the next start. `owner_instructions` and `inference` are re-read when the file changes, without a restart.
 

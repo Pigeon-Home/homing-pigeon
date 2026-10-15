@@ -312,6 +312,8 @@ BUILTIN_PROFILES = {
         "protected_paths": ["/etc/shadow", "/home/pi/docs/manuals"],
         "max_result_view": "attested",
         "judge": "advisory",
+        # 1B fits a Pi. The 3B default is for machines with more RAM.
+        "inference_model": "llama3.2:1b",
     },
     "password-only": {
         "description": "Only the password hash matters on this box",
@@ -324,6 +326,34 @@ BUILTIN_PROFILES = {
         "judge": "advisory",
     },
 }
+
+
+DEFAULT_INFERENCE_MODEL = "llama3.2:3b"
+
+
+def inference_model_for(profile, explicit=None) -> str:
+    """Which Ollama tag to pull.
+
+    An explicit --inference-model always wins. The raspberry-pi-home
+    profile, whether detected or passed with --profile, pulls the
+    lighter Llama. Every other install keeps the 3B default.
+    """
+    if isinstance(explicit, str) and explicit.strip():
+        return explicit.strip()
+    name = profile or ""
+    if name and os.path.isfile(name):
+        try:
+            with open(name, encoding="utf-8") as fh:
+                data = json.load(fh)
+            if isinstance(data, dict) and isinstance(data.get("profile"), str):
+                name = data["profile"]
+        except Exception:
+            name = ""
+    spec = BUILTIN_PROFILES.get(name) or {}
+    model = spec.get("inference_model")
+    if isinstance(model, str) and model.strip():
+        return model.strip()
+    return DEFAULT_INFERENCE_MODEL
 
 
 
@@ -607,8 +637,10 @@ def main() -> int:
                          "If omitted, a profile is chosen automatically.")
     ap.add_argument("--no-profile", action="store_true",
                     help="do not apply any deployment profile")
-    ap.add_argument("--inference-model", default="llama3.2:3b",
-                    help="Ollama model to pull when inference is enabled (default llama3.2:3b)")
+    ap.add_argument("--inference-model", default=None,
+                    help="Ollama model to pull when inference is enabled "
+                         "(default llama3.2:3b, or llama3.2:1b with "
+                         "the raspberry-pi-home profile)")
     ap.add_argument("--additional-secret", action="append", default=[],
                     help="KEY_ID (generates 256-bit secret, never printed)")
     ap.add_argument("--max-output-bytes", type=int, default=None, metavar="N")
@@ -644,8 +676,9 @@ def main() -> int:
     ensure_shared_secret(cfg_path, args.shared_secret)
     for kid in args.additional_secret:
         store_additional_secret(cfg_path, kid)
-    install_ollama_and_model(cfg_path, args.inference_model, args.no_inference)
     profile = chosen_profile(args.profile, args.no_profile)
+    model = inference_model_for(profile, args.inference_model)
+    install_ollama_and_model(cfg_path, model, args.no_inference)
     if profile:
         apply_profile(cfg_path, profile)
     apply_instruction_flags(cfg_path, args.instructions, args.instructions_add)

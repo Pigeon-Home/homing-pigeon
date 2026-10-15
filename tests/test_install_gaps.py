@@ -23,6 +23,7 @@ from install import (  # noqa: E402
     chosen_profile,
     daemon_popen_kwargs,
     detect_default_profile,
+    inference_model_for,
     install_ollama_and_model,
     windows_task_command,
 )
@@ -79,6 +80,22 @@ class ProfileSelectionTest(unittest.TestCase):
         with mock.patch("builtins.open", side_effect=open_other):
             self.assertEqual(detect_default_profile(), "password-only")
 
+    def test_pi_profile_pulls_the_lighter_llama(self):
+        self.assertEqual(inference_model_for("raspberry-pi-home", None),
+                         "llama3.2:1b")
+        self.assertEqual(inference_model_for("password-only", None),
+                         "llama3.2:3b")
+        self.assertEqual(inference_model_for(None, None), "llama3.2:3b")
+        self.assertEqual(
+            inference_model_for("raspberry-pi-home", "llama3.2:3b"),
+            "llama3.2:3b")
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "box.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"profile": "raspberry-pi-home"}, fh)
+            self.assertEqual(inference_model_for(path, None), "llama3.2:1b")
+            self.assertEqual(inference_model_for(path, "other:1b"), "other:1b")
+
 
 class ProfileMergeTest(unittest.TestCase):
     def setUp(self):
@@ -104,6 +121,7 @@ class ProfileMergeTest(unittest.TestCase):
         self.assertIn("/home/pi/docs/manuals", cfg["protected_paths"])
         self.assertIn("vscode_token", cfg["redact_patterns_extra"])
         self.assertIn("shadow_hash", cfg["redact_patterns_extra"])
+        self.assertNotIn("inference_model", cfg)
         _assert_mode(self, self.path, 0o600)
         self.assertFalse(os.path.exists(self.path + ".tmp"))
 
