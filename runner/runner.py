@@ -69,6 +69,14 @@ except ImportError:  # running from inside runner/ as __main__
             """Fallback when oauth.py is unavailable; never raised."""
 
 try:
+    from runner import senses as _senses
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        import senses as _senses
+    except ImportError:
+        _senses = None
+
+try:
     from runner.winlog import report_event
 except ImportError:
     try:
@@ -695,7 +703,7 @@ def _raw_lines_allowed(view):
 
 
 def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full",
-                   already_spent=0):
+                   already_spent=0, base_dir=None):
     """Answer declared queries. Every query spends 1, answered or rejected."""
     answers = []
     spent = int(already_spent or 0)
@@ -786,6 +794,54 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                     inf, q.get("question") or "", text, max_chars, patterns,
                     instructions=(cfg or {}).get("owner_instructions"),
                 ))
+        elif op == "senses":
+            if _senses is None or base_dir is None:
+                answers.append({"op": "senses", "rejected": "senses_unavailable"})
+            else:
+                try:
+                    sensors = _senses.parse_sensors(cfg or {})
+                except RuntimeError:
+                    sensors = {}
+                recs = _senses.load_alerts(
+                    base_dir,
+                    sensor=q.get("sensor") if isinstance(q.get("sensor"), str) else None,
+                    severity_floor=q.get("severity_floor") if isinstance(q.get("severity_floor"), str) else None,
+                    since=q.get("since") if isinstance(q.get("since"), str) else None,
+                    until=q.get("until") if isinstance(q.get("until"), str) else None,
+                    limit=q.get("limit") if isinstance(q.get("limit"), int) else 20,
+                )
+                items = []
+                for rec in recs:
+                    weight = (sensors.get(rec.get("sensor")) or {}).get(
+                        "weight", rec.get("weight", 1.0))
+                    try:
+                        weight = float(weight)
+                    except (TypeError, ValueError):
+                        weight = 1.0
+                    title, _ = redact_text(rec.get("title") or "", patterns)
+                    detail = rec.get("detail") or {}
+                    if isinstance(detail, dict):
+                        clean_detail = {}
+                        for k, v in detail.items():
+                            if isinstance(v, str):
+                                v, _ = redact_text(v, patterns)
+                            clean_detail[k] = v
+                    else:
+                        clean_detail = detail
+                    items.append({
+                        "sensor": rec.get("sensor"),
+                        "severity": rec.get("severity"),
+                        "title": title,
+                        "detail": clean_detail,
+                        "observed_at": rec.get("observed_at"),
+                        "received_at": rec.get("received_at"),
+                        "job_id_hint": rec.get("job_id_hint"),
+                        "weight": weight,
+                        "score": _senses.alert_score(rec, weight),
+                    })
+                items.sort(key=lambda a: a["score"], reverse=True)
+                answers.append({"op": "senses", "alerts": items,
+                                "count": len(items)})
         else:
             answers.append({"rejected": "unknown_op"})
         spent += 1
@@ -1674,7 +1730,7 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     }
     answers, spent = answer_queries(
         queries, exec_result, patterns, budget,
-        cfg=cfg, view=view, already_spent=already,
+        cfg=cfg, view=view, already_spent=already, base_dir=base_dir,
     )
     retained["spent"] = spent
     retained["saved_at"] = retained.get("saved_at") or time.time()
@@ -1737,6 +1793,88 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
     if opts is None or not opts.dry_run:
         mark_seen(imap, seq)
     return True
+
+
+def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
+                         secrets, opts, base_dir, seen):
+    """File a signed sensor alert. Alerts are stored, never executed.
+
+    The signing key must be bound to the sensor it files for
+    (sensors.<name>.key_id), and the key's key_policies entry should
+    allow only kind "sensor_alert". The sense profile gates what is
+    kept; drops are logged, not errors.
+    """
+    dry = opts is not None and opts.dry_run
+
+    def done(why):
+        log(f"sensor alert {job_id}: {why}")
+        if not dry:
+            with _MAIL_LOCK:
+                seen[job_id] = True
+                mark_seen(imap, seq)
+
+    if _senses is None:
+        done("rejected: senses module unavailable")
+        return
+    try:
+        sensors = _senses.parse_sensors(cfg)
+    except RuntimeError as e:
+        log(f"sensor alert {job_id}: rejected: {e}", "ERROR")
+        if not dry:
+            with _MAIL_LOCK:
+                seen[job_id] = True
+                mark_seen(imap, seq)
+        return
+    bad = _senses.validate_sensor_alert(job)
+    if bad:
+        done(f"rejected: {bad}")
+        return
+    name = job["sensor"]
+    scfg = sensors.get(name)
+    if scfg is None:
+        done(f"rejected: unknown sensor {name!r}")
+        return
+    if not scfg["enabled"]:
+        done(f"rejected: sensor {name!r} is not enabled")
+        return
+    bound = _senses.sensor_for_key(sensors, key_id)
+    if bound != name:
+        done(f"rejected: key {key_id!r} is not bound to sensor {name!r}")
+        return
+    if dry:
+        log(f"dry-run: would ingest sensor alert {job_id} "
+            f"({name}/{job.get('severity', 'info')}: {job.get('title')})")
+        return
+    recent = _senses.load_alerts(base_dir, sensor=name, limit=500)
+    alert = {
+        "sensor": name,
+        "severity": job.get("severity") or "info",
+        "title": job["title"],
+        "detail": job.get("detail") or {},
+        "observed_at": job.get("observed_at"),
+        "job_id_hint": job.get("job_id_hint"),
+    }
+    drop = _senses.gate_alert(scfg, alert, recent)
+    if drop:
+        done(f"dropped by profile: {drop} "
+             f"({name}/{alert['severity']}: {alert['title']})")
+        return
+    record = dict(alert)
+    record.update({
+        "received_at": _senses._now_iso(),
+        "key_id": key_id,
+        "weight": scfg["weight"],
+    })
+    try:
+        _senses.store_alert(base_dir, record)
+    except OSError as e:
+        log(f"sensor alert {job_id}: could not store: {e}", "ERROR")
+        if not dry:
+            with _MAIL_LOCK:
+                seen[job_id] = True
+                mark_seen(imap, seq)
+        return
+    done(f"stored ({name}/{alert['severity']}: {alert['title']})")
 
 
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
@@ -1816,6 +1954,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject(f"key policy: {violation}")
         return
 
+    if job.get("kind") == "sensor_alert":
+        _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
+                             secrets, opts, base_dir, seen)
+        return
+
     log(f"executing job {job_id} (kind={job.get('kind')})")
     if opts is not None and opts.dry_run:
         # Dry run: fully non-mutating. Verify everything, change nothing:
@@ -1883,6 +2026,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                      "exit_code": int(r["exit_code"]), "confined": confined,
                      "digest": digest},
                     patterns, query_budget(cfg, job), cfg=cfg, view=view,
+                    base_dir=base_dir,
                 )
                 result["answers"] = answers
             if retain_view or declared:

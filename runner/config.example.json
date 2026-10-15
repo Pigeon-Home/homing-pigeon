@@ -18,7 +18,10 @@
   "oauth_refresh_token": "",
   "shared_secret": "generate-with-openssl-rand-hex-32",
   "additional_secrets": {},
-  "key_policies": {},
+  "key_policies": {
+    "ids-daemon": {"allowed_kinds": ["sensor_alert"]},
+    "netmon-daemon": {"allowed_kinds": ["sensor_alert"]}
+  },
   "max_result_view": "full",
   "max_query_budget": 8,
   "output_retention_days": 7,
@@ -28,5 +31,27 @@
   "require_review": false,
   "worker_allowlist": [],
   "worker_compartments": {},
-  "protected_paths": []
+  "protected_paths": [],
+  "sensors": {
+    "host_ids": {
+      "enabled": false,
+      "key_id": "ids-daemon",
+      "weight": 1.0,
+      "profile": {
+        "severity_floor": "low",
+        "cooldown_sec": 300,
+        "max_per_hour": 60
+      }
+    },
+    "netmon": {
+      "enabled": false,
+      "key_id": "netmon-daemon",
+      "weight": 0.7,
+      "profile": {
+        "severity_floor": "medium",
+        "cooldown_sec": 600,
+        "max_per_hour": 30
+      }
+    }
+  }
 }
