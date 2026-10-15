@@ -555,6 +555,7 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
     )
     open_fn = opener or _default_inference_open
     timeout = int(cfg.get("timeout_sec") or 60)
+    log(f"ask: calling model {model}")
     try:
         with open_fn(req, timeout=timeout) as resp:
             raw = resp.read(1_000_000)
@@ -565,6 +566,7 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
         return {"op": "ask", "rejected": "inference_error"}
     if not isinstance(reply, str):
         reply = str(reply)
+    log(f"ask: reply {_preview(reply)!r}")
     reply = reply[:cap]
     # Scan the truncated reply before redaction so a secret is rejected,
     # not rewritten and mailed.
@@ -898,6 +900,7 @@ class Board:
         chosen = candidates[0]
         chosen["state"] = "claimed"
         chosen["claimed_by"] = worker_id
+        log(f"board: {worker_id} claimed {chosen.get('task_id')}")
         chosen["claimed_at"] = datetime.now(timezone.utc).isoformat()
         chosen["claimed_key_id"] = key_id
         self.save()
@@ -1294,6 +1297,8 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
             cwd=work, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             env=env, start_new_session=(os.name != "nt"),
         )
+        log(f"job {job['job_id']} process started pid={proc.pid} "
+            f"interpreter={interpreter[0]}")
     except OSError as e:
         # Missing binary or an unusable interpreter fails the same way
         # every cycle. Treat it as poison so the mail is marked seen
@@ -1311,6 +1316,8 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
     stdout = outs.decode("utf-8", errors="replace")
     stderr = errs.decode("utf-8", errors="replace")
+    log(f"job {job['job_id']} process finished exit={proc.returncode} "
+        f"stdout={_preview(stdout)!r}")
     trunc_out, trunc_err = False, False
     if len(stdout) > max_out:
         stdout, trunc_out = stdout[:max_out], True
@@ -1325,6 +1332,14 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
 
 # ---------------------------------------------------------------- job handling
+def _preview(text, n=80) -> str:
+    """One line, capped. For the runner log, not for email."""
+    line = (text or "").replace("\r", " ").replace("\n", " ").strip()
+    if len(line) > n:
+        line = line[:n] + "..."
+    return line
+
+
 def log(msg: str, level: str = "INFO"):
     if level == "DEBUG" and not _VERBOSE:
         return
@@ -1942,7 +1957,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
             log(f"poll: {len(mails)} job mail(s)")
             workers = _worker_count(cfg, opts)
             if workers > 1:
-                log(f"executing with {workers} workers", "DEBUG")
+                log(f"poll: {workers} workers")
             with ThreadPoolExecutor(max_workers=workers) as ex:
                 futs = [ex.submit(handle_mail, cfg, imap, smtp, seq, raw,
                                   base_dir, seen, secrets, opts)
