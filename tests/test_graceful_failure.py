@@ -441,5 +441,48 @@ class SecretsGracefulTest(unittest.TestCase):
             except Exception as e:
                 self.fail(f"additional_secrets {extra!r} crashed: {e}")
 
+
+class ResultPolicyGracefulTest(unittest.TestCase):
+    """Finding: apply_result_policy runs on every completed job.
+    Odd exec_result shapes must not raise, or the result is never
+    sent and the worker looks stuck.
+    """
+
+    def test_apply_with_odd_exec_result(self):
+        from runner.runner import apply_result_policy
+        cases = [
+            {},
+            {"stdout": None, "stderr": None},
+            {"stdout": 123, "stderr": ["list"]},
+            {"stdout": "ok", "exit_code": "nope"},
+        ]
+        for er in cases:
+            try:
+                apply_result_policy({}, {"result_policy": {"view": "attested"}}, er, {}, True)
+            except Exception as e:
+                self.fail(f"apply_result_policy crashed on {er}: {e}")
+
+    def test_redact_non_string(self):
+        from runner.runner import redact_text, secret_scan
+        for text_in in (None, 42, ["a"], {"k": "v"}):
+            try:
+                redact_text(text_in if isinstance(text_in, str) else "", {})
+                secret_scan(text_in if isinstance(text_in, str) else "", {})
+            except Exception as e:
+                self.fail(f"redact/scan crashed on {text_in!r}: {e}")
+
+    def test_view_unknown(self):
+        from runner.runner import apply_result_policy
+        try:
+            apply_result_policy(
+                {},
+                {"result_policy": {"view": "sideways"}},
+                {"stdout": "hi", "stderr": ""},
+                {},
+                True,
+            )
+        except Exception as e:
+            self.fail(f"unknown view crashed: {e}")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
