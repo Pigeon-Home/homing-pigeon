@@ -305,15 +305,25 @@ BUILTIN_PROFILES = {
 _INSTRUCTIONS_LOCK = threading.Lock()
 
 
+def _write_json(path: str, cfg: dict) -> None:
+    """Atomic config write. The replacement must stay owner-only."""
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, path)
+    os.chmod(path, 0o600)
+
+
 def set_instructions(cfg_path: str, text_in: str, append: bool) -> None:
     """Store a human-readable instruction string in config.json.
 
     --instructions replaces. --instructions-add appends a new paragraph.
-    The value is a plain string, not a profile. Serialized so concurrent
-    callers cannot tear the file.
+    The value is a plain string, not a profile. Blank text is a no-op.
+    Serialized so concurrent callers cannot tear the file.
     """
-    import json
-    if not text_in:
+    text = (text_in or "").strip()
+    if not text:
         return
     with _INSTRUCTIONS_LOCK:
         cfg = {}
@@ -321,17 +331,35 @@ def set_instructions(cfg_path: str, text_in: str, append: bool) -> None:
             with open(cfg_path, encoding="utf-8") as f:
                 cfg = json.load(f)
         current = cfg.get("owner_instructions") or ""
-        if append and current:
-            cfg["owner_instructions"] = current.rstrip() + "\n\n" + text_in.strip()
+        if not isinstance(current, str):
+            current = ""
+        if append and current.strip():
+            cfg["owner_instructions"] = current.rstrip() + "\n\n" + text
         else:
-            cfg["owner_instructions"] = text_in.strip()
-        tmp = cfg_path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(cfg, f, indent=2)
-            f.write("\n")
-        os.replace(tmp, cfg_path)
-        action = "appended" if append else "replaced"
+            cfg["owner_instructions"] = text
+        _write_json(cfg_path, cfg)
+        action = "appended" if append and current.strip() else "replaced"
         print(f"instructions: {action} ({len(cfg['owner_instructions'])} chars)")
+
+
+def apply_instruction_flags(cfg_path: str, replace, add) -> None:
+    """Apply installer instruction flags. --instructions-add wins if both are set."""
+    if add:
+        set_instructions(cfg_path, add, append=True)
+    elif replace:
+        set_instructions(cfg_path, replace, append=False)
+
+
+def chosen_profile(explicit, skip: bool):
+    """Profile name or path to apply. None when --no-profile is set.
+
+    An explicit --profile wins. Otherwise detect_default_profile() picks.
+    """
+    if skip:
+        return None
+    if explicit:
+        return explicit
+    return detect_default_profile()
 
 
 def detect_default_profile() -> str:
@@ -376,19 +404,22 @@ def apply_profile(cfg_path: str, profile: str) -> None:
     if os.path.exists(cfg_path):
         with open(cfg_path, encoding="utf-8") as f:
             cfg = json.load(f)
-    # Merge only Oracle-relevant keys. Never touch secrets or mailbox auth.
-    for key in ("redact_patterns_extra", "protected_paths", "max_result_view",
-                "judge", "workspace_root", "max_query_budget",
-                "output_retention_days", "worker_allowlist",
-                "worker_compartments", "dag_mode", "require_review"):
+    # Dict keys merge so a profile cannot wipe patterns the owner already set.
+    # A profile entry wins when the name clashes. Lists and scalars replace.
+    for key in ("redact_patterns_extra", "worker_compartments"):
+        if key not in data or not isinstance(data[key], dict):
+            continue
+        current = cfg.get(key)
+        merged = dict(current) if isinstance(current, dict) else {}
+        merged.update(data[key])
+        cfg[key] = merged
+    for key in ("protected_paths", "max_result_view", "judge", "workspace_root",
+                "max_query_budget", "output_retention_days", "worker_allowlist",
+                "dag_mode", "require_review"):
         if key in data:
             cfg[key] = data[key]
     cfg["profile"] = name
-    tmp = cfg_path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2)
-        f.write("\n")
-    os.replace(tmp, cfg_path)
+    _write_json(cfg_path, cfg)
     print(f"profile: applied {name}")
 
 
@@ -488,11 +519,7 @@ def install_ollama_and_model(cfg_path: str, model: str, skip: bool) -> None:
             "max_answer_chars": 2000,
             "timeout_sec": 60,
         }
-        tmp = cfg_path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(cfg, f, indent=2)
-            f.write("\n")
-        os.replace(tmp, cfg_path)
+        _write_json(cfg_path, cfg)
         print(f"inference: configured endpoint http://127.0.0.1:11434/v1 model {model}")
     except Exception as e:
         print(f"inference: could not write config ({e})")
@@ -566,12 +593,10 @@ def main() -> int:
     for kid in args.additional_secret:
         store_additional_secret(cfg_path, kid)
     install_ollama_and_model(cfg_path, args.inference_model, args.no_inference)
-    if args.profile and not args.no_profile:
-        apply_profile(cfg_path, args.profile)
-    if args.instructions_add:
-        set_instructions(cfg_path, args.instructions_add, append=True)
-    elif args.instructions:
-        set_instructions(cfg_path, args.instructions, append=False)
+    profile = chosen_profile(args.profile, args.no_profile)
+    if profile:
+        apply_profile(cfg_path, profile)
+    apply_instruction_flags(cfg_path, args.instructions, args.instructions_add)
     extra = _forwarded_args(args)
     if extra:
         print(f"forwarding runner flags into service: {' '.join(extra)}")

@@ -1779,6 +1779,9 @@ def save_seen(path: str, seen: dict):
 
 HOT_KEYS = ("poll_interval_sec", "workers", "default_timeout_sec",
             "max_output_bytes", "max_job_age_sec")
+# Strings and objects the Oracle reads live. Not integers, so they do not
+# go through _valid_hot. Credentials stay out of this list.
+LIVE_KEYS = ("owner_instructions", "inference")
 
 
 def _valid_hot(key: str, value):
@@ -1816,6 +1819,19 @@ def reload_hot_config(cfg: dict, path: str, state: dict,
         if val is None:
             log(f"config reload: ignoring invalid {key}={fresh[key]!r}",
                 "WARN")
+            continue
+        if val != cfg.get(key):
+            cfg[key] = val
+            changed.append(key)
+    for key in LIVE_KEYS:
+        if key in pinned or key not in fresh:
+            continue
+        val = fresh[key]
+        if key == "owner_instructions" and not isinstance(val, str):
+            log(f"config reload: ignoring invalid {key}", "WARN")
+            continue
+        if key == "inference" and not isinstance(val, dict):
+            log(f"config reload: ignoring invalid {key}", "WARN")
             continue
         if val != cfg.get(key):
             cfg[key] = val
@@ -1977,23 +1993,24 @@ def update_llama_from_config(cfg, previous=None):
 
 
 def ensure_inference_ready(cfg):
-    """If inference is configured, make sure the loopback daemon is up."""
+    """If inference is configured, make sure the loopback daemon is up.
+
+    Dials the host and port from the endpoint, including ::1 and a
+    non-default port. A daemon that is already listening is left alone.
+    """
     inf = inference_config(cfg)
     if not inf:
         return
-    endpoint = inf.get("endpoint") or ""
-    if "127.0.0.1" not in endpoint and "localhost" not in endpoint:
+    parsed = urlparse(inf["endpoint"])
+    host = parsed.hostname
+    if not host:
         return
-    import socket
-    s = socket.socket()
-    s.settimeout(1)
+    port = parsed.port or 11434
     try:
-        s.connect(("127.0.0.1", 11434))
+        socket.create_connection((host, port), timeout=1).close()
         return
     except Exception:
         pass
-    finally:
-        s.close()
     import shutil
     import subprocess
     if not shutil.which("ollama"):
@@ -2090,6 +2107,7 @@ def main() -> int:
     if args.inspect:
         return run_inspect(cfg, args)
     ensure_inference_ready(cfg)
+    # First start has no previous model id, so this pulls once.
     update_llama_from_config(cfg)
     if not cfg.get("mailbox_user"):
         print("config error: mailbox_user is required", file=sys.stderr)
@@ -2157,12 +2175,16 @@ def main() -> int:
         # Re-read config if the file changed. Edit config.json all you
         # want — the runner picks it up within one poll interval.
         try:
+            previous = {"inference": cfg.get("inference")}
             changed = reload_hot_config(cfg, args.config, reload_state,
                                         pinned)
             if changed:
                 log(f"config reloaded: {', '.join(changed)} updated, "
                     f"no restart needed")
-                update_llama_from_config(cfg, previous=None)
+                # Pull only when the model id changed. A poll-interval
+                # edit must not re-download the model.
+                if "inference" in changed:
+                    update_llama_from_config(cfg, previous=previous)
         except Exception as e:
             log(f"config reload failed (keeping old values): {e}", "WARN")
         try:

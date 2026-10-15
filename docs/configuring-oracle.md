@@ -62,7 +62,7 @@ Built-in profiles:
 - `password-only` — treats password hashes and `password=` style assignments as secrets, watches `/etc/shadow`, sets `max_result_view` to `attested`.
 - `raspberry-pi-home` — same password-hash watch, plus `/home/pi/docs/manuals` as a protected path.
 
-A profile JSON file uses the same keys. Mailbox credentials and `shared_secret` are never overwritten. The runner already honors `redact_patterns_extra`, `protected_paths`, and `max_result_view` from `config.json`, so the profile takes effect on the next start.
+A profile JSON file uses the same keys. Extra redact patterns and worker compartments are merged with what is already in the file. A profile entry wins when the name clashes. Other profile keys replace the previous value. Mailbox credentials and `shared_secret` are never written by a profile. The runner already honors `redact_patterns_extra`, `protected_paths`, and `max_result_view` from `config.json`, so the profile takes effect on the next start. `owner_instructions` and `inference` are re-read when the file changes, without a restart.
 
 ## Owner instructions
 
