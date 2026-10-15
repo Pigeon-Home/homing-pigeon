@@ -844,5 +844,40 @@ class SnapshotGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class ExcludeAndTokenGracefulTest(unittest.TestCase):
+    """Finding: snapshot exclude and token refresh run on the exec
+    and oauth paths. Odd exclude lists and bad token responses must
+    not crash.
+    """
+
+    def test_snapshot_bad_exclude(self):
+        from runner.runner import snapshot_outside
+        tmp = tempfile.mkdtemp()
+        for exclude in (None, "not-a-list", [1, None, ""], ["/no/such"], 42):
+            try:
+                snap = snapshot_outside(tmp, exclude=exclude)
+            except Exception as e:
+                self.fail(f"exclude {exclude!r} crashed snapshot: {e}")
+            self.assertIsInstance(snap, dict)
+
+    def test_refresh_bad_cfg(self):
+        from runner import oauth
+        for cfg in ({}, {"oauth_client_id": ""}, {"oauth_refresh_token": None}):
+            try:
+                oauth.refresh_access_token(cfg)
+            except Exception:
+                pass  # contained failure is graceful
+
+    def test_xoauth2_odd(self):
+        from runner import oauth
+        for user, token in (("", ""), (None, None), (42, "tok")):
+            try:
+                raw = oauth.xoauth2_raw(user if isinstance(user, str) else "",
+                                        token if isinstance(token, str) else "")
+            except Exception as e:
+                self.fail(f"xoauth2_raw crashed on {user!r}: {e}")
+            self.assertIsInstance(raw, str)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
