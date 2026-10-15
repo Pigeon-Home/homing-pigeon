@@ -17,6 +17,7 @@ This module imports senses (pure); the runner imports this module.
 """
 import json
 import os
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -130,6 +131,9 @@ def _load_state(base_dir):
         return {}
 
 
+_STATE_LOCK = threading.Lock()
+
+
 def _save_state(base_dir, state):
     if not isinstance(base_dir, str) or not base_dir:
         return
@@ -145,10 +149,12 @@ def _save_state(base_dir, state):
             clean[k] = v
         except (TypeError, ValueError):
             clean[k] = str(v)
+    tmp = os.path.join(base_dir, STATE_FILE + ".tmp." + str(threading.get_ident()))
     try:
-        tmp = os.path.join(base_dir, STATE_FILE + ".tmp")
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(clean, f)
-        os.replace(tmp, os.path.join(base_dir, STATE_FILE))
+        with _STATE_LOCK:
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(clean, f)
+            os.replace(tmp, os.path.join(base_dir, STATE_FILE))
     except (OSError, TypeError, ValueError):
+        pass
         pass

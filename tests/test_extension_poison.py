@@ -1845,3 +1845,55 @@ class BaseDirFaultTest(unittest.TestCase):
         with self.assertRaises(JobRejected):
             execute_job({"shared_secret": SECRET},
                         {"kind": "ping", "job_id": "ok"}, None)
+
+
+class StateWriteFaultTest(unittest.TestCase):
+    """Finding: resource and DRI state used one shared temp name.
+
+    Two writers could tear the file. The next load then saw
+    nothing and re-paged. Each writer has its own temp and a
+    lock. Concurrent writes stay readable.
+    """
+
+    def test_concurrent_resource_state_writes(self):
+        from runner import resources
+        import threading
+        with tempfile.TemporaryDirectory() as d:
+            errors = []
+
+            def write(i):
+                try:
+                    resources._save_state(d, {"n": i, "cpu_prev": [1, 2]})
+                except Exception as e:
+                    errors.append(e)
+
+            threads = [threading.Thread(target=write, args=(i,)) for i in range(12)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            self.assertEqual(errors, [])
+            state = resources._load_state(d)
+            self.assertIsInstance(state, dict)
+            self.assertIn("n", state)
+
+    def test_concurrent_dri_state_writes(self):
+        from runner import dri
+        import threading
+        with tempfile.TemporaryDirectory() as d:
+            errors = []
+
+            def write(i):
+                try:
+                    dri._save_state(d, {"last": {"sensor_fused_score": i}})
+                except Exception as e:
+                    errors.append(e)
+
+            threads = [threading.Thread(target=write, args=(i,)) for i in range(12)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            self.assertEqual(errors, [])
+            state = dri._load_state(d)
+            self.assertIsInstance(state, dict)
