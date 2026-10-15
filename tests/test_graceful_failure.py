@@ -1101,5 +1101,45 @@ class AlertSerializationGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class DiskFractionGracefulTest(unittest.TestCase):
+    """Finding: disk checks run on the resource monitor. A bad path
+    must not crash the poll.
+    """
+
+    def test_disk_fraction_bad_paths(self):
+        for path in ("", "/no/such/path", None, 42, "C:\\nope"):
+            try:
+                resources._disk_fraction(path if isinstance(path, str) else "/")
+            except Exception as e:
+                self.fail(f"disk fraction crashed on {path!r}: {e}")
+
+    def test_check_resources_odd_disk_path(self):
+        tmp = tempfile.mkdtemp()
+        for cfg in ({}, {"resources": {"disk_path": None}},
+                    {"resources": {"disk_path": "/no/such"}},
+                    {"resources": "not-a-dict"}):
+            try:
+                resources.check_resources(cfg, tmp)
+            except Exception as e:
+                self.fail(f"check_resources crashed on {cfg}: {e}")
+
+    def test_concurrent_disk_checks(self):
+        tmp = tempfile.mkdtemp()
+        errors = []
+
+        def one():
+            try:
+                resources.check_resources({"resources": {"disk_path": tmp}}, tmp)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
