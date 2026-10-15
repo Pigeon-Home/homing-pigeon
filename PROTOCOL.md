@@ -207,7 +207,7 @@ send stays unseen and will be retried (re-executed) on the next cycle.
 - IMAP/SMTP over TLS (993/587). File downloads over HTTPS only.
 - Hardening roadmap (v2): encrypted credentials at rest, ack messages,
   per-job encryption, result file upload for large outputs,
-  privacy-preserving result policies (specified in the v2 proposal below).
+  privacy-preserving result policies (specified in the v3 proposal below).
 
 ## 8. Cryptography — Suite B alignment (384-bit tier)
 
@@ -229,10 +229,10 @@ authenticity and integrity come from HMAC-SHA-384.
 
 ---
 
-# Protocol v2 (proposal): privacy-preserving results
+# Protocol v3 (proposal): privacy-preserving results
 
 **Paradigm: the runner as the Oracle.** In v1 the SI receives full job
-output (stdout/stderr) by email. v2 inverts this: the runner keeps the
+output (stdout/stderr) by email. v3 inverts this: the runner keeps the
 output on its own (trusted) disk and answers only the questions the
 result policy allows, with HMAC-signed attestations.
 
@@ -540,7 +540,7 @@ their first failed job gets:
 None of this replaces reading the output. It tells you *where to
 look* — which, for most debugging sessions, is the expensive part.
 
-## 12. v2 security properties
+## 12. v3 security properties
 
 - **Non-escalation:** neither the job's `result_policy` nor any query
   can widen disclosure past the runner owner's `max_result_view`.
@@ -551,8 +551,8 @@ look* — which, for most debugging sessions, is the expensive part.
 - **Same transport trust as v1:** queries are HMAC-signed emails subject
   to the signature; a third party without the secret can neither ask nor answer.
 - **Data lifetime:** retained outputs age out per config; nothing about
-  v2 weakens the v1 rule that the runner host itself is fully trusted —
-  v2 protects data *from the SI*, not from the machine's owner.
+  v3 weakens the v1 rule that the runner host itself is fully trusted —
+  v3 protects data *from the SI*, not from the machine's owner.
 
-*Status: proposal. v1 remains the implemented protocol; v2 message types
+*Status: proposal. v1 remains the implemented protocol; v3 message types
 are not yet accepted by the runner.*

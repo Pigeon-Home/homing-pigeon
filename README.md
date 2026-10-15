@@ -105,7 +105,7 @@ part that writes the next attempt.
 
 ## The Oracle: answers, not output
 
-v1 sends full job output back to the SI. The v2 proposal (spec'd in
+v1 sends full job output back to the SI. The v3 proposal (spec'd in
 PROTOCOL.md, not yet implemented) flips this: your machine becomes
 **the Oracle** — a black box the SI can question but never inspect.
 
@@ -355,7 +355,7 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | `--no-send` | Execute, but log results instead of emailing them |
 | `--once` | Single poll cycle, then exit |
 | `--poll-interval SEC`, `--timeout SEC`, `--max-output-bytes N` | Override config |
-| `--no-oracle` | Disable the Oracle safety layer (v2) |
+| `--no-oracle` | Disable the Oracle safety layer (v3) |
 
 `install.py` accepts the same flags and bakes them into the installed
 service, so the agent on boot runs exactly what you tested:
@@ -428,6 +428,6 @@ mail servers (103 tests). Debug/audit flags (`--dry-run`, `--verbose`,
 `--pdb`, `--no-send`), concurrent job execution (`--workers`), SHA-384
 release hashes, and PyPI distribution (`pip install pigeon-home-runner`).
 Releases ship standalone binaries (Windows/macOS/Linux) plus a Python
-wheel and sdist. The v2 protocol — the Oracle, privacy-preserving
+wheel and sdist. The v3 protocol — the Oracle, privacy-preserving
 results via signed
 attestations — is spec'd in PROTOCOL.md and awaiting implementation.
