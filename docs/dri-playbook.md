@@ -127,6 +127,8 @@ you, not in this repo. Template for when the time comes:
 
 1. Ack the page (so the cooldown logic knows a human saw it).
 2. Open the dashboard / pull the `senses` window around the event.
+   VR operators: suit up, put on the headset, take the seat — the
+   page deep-links straight into the 3D job room.
 3. Correlate: which job, which sensor, fused score, confinement state.
 4. Decide: benign (tune the profile/weight), suspicious (rotate the
    sensor key, quarantine the job's outputs), hostile (rotate all
@@ -139,3 +141,5 @@ The dashboard (v4) is the natural home for page history and ack:
 a page deep-links to the relevant sense window and job, and acking
 happens there instead of by reply keyword. The spec's message
 format already reserves the "open the dashboard" line for it.
+v5 (VR Oracle) is expected before v4; when it lands, the page
+deep-links into the job room instead, and the DRI sits in the seat.

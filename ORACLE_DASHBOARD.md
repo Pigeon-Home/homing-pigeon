@@ -181,3 +181,14 @@ pipe carries ciphertext.
 2. Timeline retention follows `output_retention_days`. The timeline
    is a view of `retained/`, not a second store.
 3. Profiles are local. They are not shareable or publishable.
+
+## 8. VR interface
+
+Status: on track. Expected before §1–§7.
+
+The VR Oracle renders each job as a room you walk through. The
+verdict is the lighting. Attestations hang on the walls. Budget
+burn is a meter on your wrist. Typing a task id to approve it
+(§2, mutation 1) is done by pointing. The flat dashboard described
+above remains the fallback for operators without a headset, and
+will follow when ready.
