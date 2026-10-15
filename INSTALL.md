@@ -108,6 +108,30 @@ written. No hand-edited JSON needed. If you'd rather wire it by hand,
 edit `config.json` (add your Gmail + app password) instead, then send
 the clock check below.
 
+### Working scenario
+
+Checked against a working simulation (Windows-shaped profile, no live
+Gmail, no live model). The same steps are locked in
+`tests/test_first_run_scenario.py`. The strings there are the ones
+the simulation used.
+
+1. First launch with no `config.json`, and no console, exits 2 and
+   tells you to run `--setup`. There is no traceback.
+2. `homing-pigeon --setup`. Choice `[1]` opens the browser sign-in.
+   Choice `[2]` asks for a Gmail app password. Either way the written
+   config has `imap.gmail.com:993` and `smtp.gmail.com:587`, even
+   when the example file was not next to the binary. A failed mailbox
+   probe prints a warning and still saves the file. Closing the
+   window mid-prompt exits with "setup needs a console".
+3. Put `flag.txt` on the Desktop. Tell the Oracle it is a password:
+   `owner_instructions`, `protected_paths` pointing at that Desktop,
+   and a `redact_patterns_extra` entry for the flag text. Set
+   `max_result_view` to `redacted`.
+4. `homing-pigeon --config config.json --inspect redact` with the
+   flag on stdin prints `[REDACTED:flag]` and not the flag.
+   `--once --dry-run` exits 0. A closed mail port is a logged poll
+   failure, not a traceback, and the shared secret is not printed.
+
 ---
 
 Whichever path you pick, **verify** with the clock check from
