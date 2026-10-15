@@ -118,11 +118,10 @@ you. You start them by making a **release**. All point and click:
 For the next version, do the same thing with `v1.2.1`, then `v1.2.2`,
 and so on. Bigger number = newer.
 
-After the robots finish, the Python packages go to PyPI too: the
-release engineer builds the wheel and sdist (`python -m build`) and
-uploads them (`twine upload`), so `pip install pigeon-home` gets the
-new version. (The project page is
-https://pypi.org/project/pigeon-home/.)
+After the robots finish, the Python packages go to PyPI automatically:
+the release workflow publishes them via trusted publishing (no tokens),
+so `pip install pigeon-home-runner` gets the new version. (The project
+page is https://pypi.org/project/pigeon-home-runner/.)
 
 ---
 
