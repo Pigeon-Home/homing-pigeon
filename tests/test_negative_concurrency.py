@@ -1467,3 +1467,52 @@ class AskAndPageShapeTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-ask", seen)
+
+
+class ReloadHotConfigPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation):
+
+    reload_hot_config called load_config and let JSONDecodeError
+    escape. A half-written or poisoned config.json raised and, if
+    the caller did not catch it, stopped the cycle. The main loop
+    caught it, but the function itself was not graceful.
+
+    A bad file now returns [] and leaves mtime alone, so the next
+    poll retries. Processing does not stop.
+    """
+
+    def test_bad_config_file_returns_empty(self):
+        from runner.runner import reload_hot_config
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            open(path, "w").write("not json")
+            state = {}
+            self.assertEqual(reload_hot_config({"poll_interval_sec": 1}, path, state), [])
+            self.assertNotIn("mtime", state)
+            open(path, "w").write('{"poll_interval_sec": 5}')
+            changed = reload_hot_config({"poll_interval_sec": 1}, path, state)
+            self.assertIn("poll_interval_sec", changed)
+
+    def test_concurrent_bad_reload_does_not_raise(self):
+        import threading
+        from runner.runner import reload_hot_config
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                path = os.path.join(d, "config.json")
+                open(path, "w").write("not json")
+                for _ in range(10):
+                    try:
+                        reload_hot_config({"poll_interval_sec": 1}, path, {})
+                        reload_hot_config(None, path, None)
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+

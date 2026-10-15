@@ -2755,7 +2755,12 @@ def reload_hot_config(cfg: dict, path: str, state: dict,
         return []
     if mtime == state.get("mtime"):
         return []
-    fresh = load_config(path)  # raises: caller keeps old cfg and mtime
+    # A bad file must not stop the cycle. Leave mtime alone so the
+    # next poll retries the same file.
+    try:
+        fresh = load_config(path)
+    except Exception:
+        return []
     changed = []
     for key in HOT_KEYS:
         if key in pinned or key not in fresh:
