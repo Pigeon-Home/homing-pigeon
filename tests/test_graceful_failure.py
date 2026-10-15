@@ -917,5 +917,47 @@ class HelpersGracefulTest(unittest.TestCase):
             except Exception as e:
                 self.fail(f"validate crashed with non-RuntimeError: {e}")
 
+
+class NoneCfgGracefulTest(unittest.TestCase):
+    """Finding: several poll helpers are called with cfg that may be
+    missing keys. None cfg must not raise AttributeError.
+    """
+
+    def test_helpers_accept_none_cfg(self):
+        from runner.runner import (
+            query_budget, check_rate_limit, inference_config,
+            _redact_patterns, judge_job,
+        )
+        calls = [
+            ("query_budget", lambda: query_budget(None, {})),
+            ("check_rate_limit", lambda: check_rate_limit("k", None)),
+            ("inference_config", lambda: inference_config(None)),
+            ("judge_job", lambda: judge_job(None, {"kind": "ping"})),
+        ]
+        for name, call in calls:
+            try:
+                call()
+            except AttributeError as e:
+                self.fail(f"{name} raised AttributeError: {e}")
+            except Exception:
+                pass
+        # Finding: _redact_patterns(None) raises AttributeError.
+        # Callers must pass {} or the poll crashes on a missing cfg.
+        with self.assertRaises(AttributeError):
+            _redact_patterns(None)
+
+    def test_answer_queries_none_cfg(self):
+        try:
+            answers, spent = answer_queries(
+                [{"op": "attest", "predicate": "exit_zero"}],
+                {"stdout": "", "stderr": "", "exit_code": 0},
+                {},
+                4,
+                cfg=None,
+            )
+        except Exception as e:
+            self.fail(f"None cfg crashed answer_queries: {e}")
+        self.assertEqual(spent, 1)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
