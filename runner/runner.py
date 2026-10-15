@@ -1930,7 +1930,12 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     args = [str(a) for a in args]
     env = _scrub_env(os.environ.copy())
     for k, v in env_in.items():
-        env[str(k)] = str(v)
+        key = str(k)
+        # Popen raises ValueError on a null or an '=' in a name.
+        # That is not transient. Reject it.
+        if not key or "\x00" in key or "=" in key:
+            raise JobRejected(f"unsafe env name: {key!r}")
+        env[key] = str(v)
     env = _scrub_env(env)  # job must not smuggle the runner's credentials back in
 
     try:
