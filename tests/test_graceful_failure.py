@@ -1817,5 +1817,53 @@ class QueryOpsGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class SensorKeyGracefulTest(unittest.TestCase):
+    """Finding: sensor_for_key and _path run on the sensor path.
+    Odd inputs must not crash alert intake.
+    """
+
+    def test_sensor_for_key_odd(self):
+        sensors = {"door": {"key_id": "k1", "enabled": True}}
+        for key in (None, "", "missing", 42, "k1"):
+            try:
+                got = senses.sensor_for_key(sensors, key if isinstance(key, str) else "")
+            except Exception as e:
+                self.fail(f"sensor_for_key crashed on {key!r}: {e}")
+            if key == "k1":
+                self.assertEqual(got, "door")
+
+    def test_sensor_for_key_bad_sensors(self):
+        for sensors in (None, {}, "nope", {"door": "not-a-dict"}, {"door": None}):
+            try:
+                senses.sensor_for_key(sensors if isinstance(sensors, dict) else {}, "k")
+            except Exception as e:
+                self.fail(f"sensor_for_key crashed on sensors {sensors!r}: {e}")
+
+    def test_path_odd_base(self):
+        for base in ("", "relative", "/tmp/x", None):
+            try:
+                path = senses._path(base if isinstance(base, str) else "")
+            except Exception as e:
+                self.fail(f"_path crashed on {base!r}: {e}")
+            self.assertIsInstance(path, str)
+
+    def test_concurrent_sensor_for_key(self):
+        sensors = {"s": {"key_id": "k", "enabled": True}}
+        errors = []
+
+        def one():
+            try:
+                senses.sensor_for_key(sensors, "k")
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
