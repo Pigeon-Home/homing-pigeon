@@ -1008,7 +1008,11 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
         budget = 0
     text = _output_blob(exec_result)
     inf = inference_config(cfg) if cfg else None
-    for q in queries or []:
+    # A non-list (or non-iterable) from a poisoned job/extension must
+    # not raise. Treat it as no queries.
+    if not isinstance(queries, list):
+        queries = []
+    for q in queries:
         if spent >= budget or not isinstance(q, dict):
             if isinstance(q, dict):
                 log(f"query op={q.get('op')} rejected: budget", "DEBUG")
