@@ -1,19 +1,15 @@
 # Transport implementation status
 
-Contract: `send`, `poll`, `ack`. Blobs are opaque signed JSON.
-Code: `runner/transports.py`.
+Email is implemented directly in `runner/runner.py` (SMTP send, IMAP
+poll, seen-marking ack). There is no transport adapter module: the
+`runner/transports.py` experiment was removed as dead code — the
+runner was never wired to it, and its Cloudflare Queues sketch
+targeted an API we have not tried yet.
 
-| Transport | send | poll | ack | Config |
-|-----------|------|------|-----|--------|
-| email | yes | runner IMAP loop | runner marks seen | smtp_*, mailbox_* |
-| local_socket | yes | yes | n/a | port 8766, test only |
-| cloudflare | yes | yes | yes | cf_account_id, cf_api_token, cf_queue_id |
-| nats | yes | later | later | nats_host, nats_port |
-| mqtt | yes | later | later | mqtt_host, mqtt_port |
-| redis | yes | later | later | redis_host, redis_port |
-| postgres | config-ready | later | later | pg_dsn (wire protocol not bundled) |
-| durable_objects | yes | later | later | do_url, cf_api_token |
+| Transport | State |
+|-----------|-------|
+| email | implemented, this is what we test |
+| cloudflare | later item; Cloudflare Queues not yet attempted |
 
-Testing plan: email is what we exercise. Cloudflare is ready for a
-live try. The others are wired so a configured box can send; poll
-paths land as each one is exercised.
+The send/poll/ack contract is described in TRANSPORTS.md. Do not add
+transports unless asked; NATS/MQTT/Redis/etc. were cut on purpose.

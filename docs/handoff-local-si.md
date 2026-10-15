@@ -51,7 +51,8 @@ tests unless asked. Email is the one under test.
 
 ## Transports (ready, not all tested)
 
-Code: `runner/transports.py`. Contract: `send`, `poll`, `ack`.
+Code: was `runner/transports.py` (contract: `send`, `poll`, `ack`);
+the module was removed as dead code — the runner was never wired to it.
 Status: `docs/transports-status.md`.
 
 | Transport | State |
@@ -87,12 +88,12 @@ Not part of this branch's unique commits, but context:
 ## Files
 
 - `runner/local_test.py` — the harness
-- `runner/transports.py` — transport adapters
+- `runner/transports.py` — transport adapters (removed; dead code)
 - `docs/local-si-test.md` — how to run it
 - `docs/transports-status.md` — transport table
 - `docs/handoff-local-si.md` — this file
 - `tests/test_local_si.py`, `tests/test_local_si_blast.py`,
-  `tests/test_local_si_transport.py`, `tests/test_transports.py`
+  `tests/test_local_si_transport.py`
 
 ## Open items for the next chat
 

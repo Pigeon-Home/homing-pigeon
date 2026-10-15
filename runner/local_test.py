@@ -23,7 +23,6 @@ import threading
 import uuid
 import webbrowser
 from datetime import datetime, timezone
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # Works both as a package module (CI) and as a sibling script.
 try:
@@ -135,16 +134,45 @@ def build_ask_job(question: str, secret: str, job_id=None) -> dict:
     return json.loads(signed)
 
 
-def answer_as_oracle(cfg, question: str, output_text: str = "") -> dict:
-    """Run one ask through the Oracle path and return the answer dict."""
+def answer_as_oracle(cfg, question: str) -> dict:
+    """Run one ask through the Oracle path and return the first answer dict.
+
+    Builds the signed ask job the SI would send, verifies it exactly as
+    the runner verifies an incoming job, then runs the declared queries
+    through the result policy and the query machinery (budget, op policy,
+    redaction). Nothing is emailed; this is the local equivalent of the
+    SI -> signed job -> Oracle loop.
+    """
     inf = R.inference_config(cfg)
     if not inf:
         return {"rejected": "inference_unconfigured"}
+    secret = cfg.get("shared_secret") or ""
+    if not secret:
+        return {"rejected": "no shared_secret in config"}
+    job = build_ask_job(question, secret)
+    payload = {k: v for k, v in job.items() if k != "sig"}
+    try:
+        verified = R.verify_body(R.sign_payload(payload, secret), secret)
+    except Exception as e:
+        return {"rejected": f"signature: {e}"}
     patterns = R._redact_patterns(cfg)
-    return R.ask_model(
-        inf, question, output_text, 500, patterns,
-        instructions=cfg.get("owner_instructions"),
+    exec_result = {
+        "stdout": "", "stderr": "", "exit_code": 0, "timed_out": False,
+        "duration_sec": 0.0, "confined": True,
+    }
+    result, _retain = R.apply_result_policy(
+        cfg, verified, exec_result, patterns, confined=True)
+    declared = (verified.get("result_policy") or {}).get("queries") or []
+    if not isinstance(declared, list):
+        declared = []
+    view = result.get("view") or "full"
+    answers, _spent = R.answer_queries(
+        declared, exec_result, patterns, R.query_budget(cfg, verified),
+        cfg=cfg, view=view,
     )
+    if not answers:
+        return {"rejected": "no_queries"}
+    return answers[0]
 
 
 def repl(cfg) -> int:
@@ -168,86 +196,6 @@ def repl(cfg) -> int:
             print(f"Oracle> {ans['answer']}")
         else:
             print(f"Oracle> rejected: {ans.get('rejected', ans)}")
-
-
-class _ChatHandler(BaseHTTPRequestHandler):
-    cfg = None
-
-    def log_message(self, fmt, *args):
-        return
-
-    def _send(self, code, body, content_type="text/html; charset=utf-8"):
-        data = body.encode("utf-8")
-        self.send_response(code)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
-
-    def do_GET(self):
-        if self.path != "/":
-            self._send(404, "not found", "text/plain")
-            return
-        page = """<!doctype html>
-<meta charset="utf-8">
-<title>SI and Oracle</title>
-<style>
-body { font: 16px/1.4 system-ui; max-width: 46rem; margin: 2rem auto; }
-#log { white-space: pre-wrap; border: 1px solid #ccc; padding: 1rem; min-height: 14rem; }
-form { display: flex; gap: .5rem; margin-top: 1rem; }
-input { flex: 1; font: inherit; padding: .4rem; }
-button { font: inherit; padding: .4rem 1rem; }
-.you { color: #333; }
-.si { color: #06c; }
-.oracle { color: #080; }
-</style>
-<h1>Cloud SI</h1>
-<p>Tell the SI what to do. It sends the work to the Oracle on this box
-and brings the answer back.</p>
-<div id="log"></div>
-<form id="f">
-  <input id="q" autofocus placeholder="tell the SI what to do">
-  <button>send</button>
-</form>
-<script>
-const log = document.getElementById('log');
-const q = document.getElementById('q');
-document.getElementById('f').onsubmit = async (e) => {
-  e.preventDefault();
-  const text = q.value.trim();
-  if (!text) return;
-  log.innerHTML += '<div class="you">you> ' + text + '</div>';
-  q.value = '';
-  const r = await fetch('/send', {method:'POST', body: text});
-  const t = await r.text();
-  log.innerHTML += '<div class="si">SI> ' + t + '</div>';
-};
-</script>
-"""
-        self._send(200, page)
-
-    def do_POST(self):
-        n = int(self.headers.get("Content-Length") or 0)
-        question = self.rfile.read(n).decode("utf-8", "replace").strip()
-        model = (self.cfg.get("inference") or {}).get("model") or "llama3.2:3b"
-        if self.path == "/si":
-            try:
-                reply = ask_si(model, [], question)
-            except Exception as e:
-                self._send(200, f"SI error: {e}", "text/plain; charset=utf-8")
-                return
-            self._send(200, reply, "text/plain; charset=utf-8")
-            return
-        if self.path == "/send":
-            try:
-                si_text = ask_si(model, [], question)
-            except Exception:
-                si_text = question
-            status = send_via_email(self.cfg, si_text)
-            self._send(200, si_text + "\n(" + status + ")", "text/plain; charset=utf-8")
-            return
-        self._send(404, "not found", "text/plain")
-
 
 
 def _open_webui_available() -> bool:
