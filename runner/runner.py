@@ -1167,12 +1167,25 @@ class Board:
         }
 
     def save(self):
-        tmp = self.path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(self.tasks, f, indent=2)
-        os.replace(tmp, self.path)
+        # Unique tmp so concurrent callers cannot clobber each other's rename.
+        # Callers that mutate tasks must still hold _BOARD_LOCK.
+        import uuid
+        tmp = self.path + ".tmp." + uuid.uuid4().hex
+        try:
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(self.tasks, f, indent=2)
+            os.replace(tmp, self.path)
+        finally:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
 
     def submit(self, task):
+        with _BOARD_LOCK:
+            return self._submit_unlocked(task)
+
+    def _submit_unlocked(self, task):
         if not isinstance(task, dict):
             return False, "invalid task"
         tid = task.get("task_id")
@@ -1278,6 +1291,10 @@ class Board:
         return chosen
 
     def complete(self, task_id, result, require_review=False):
+        with _BOARD_LOCK:
+            return self._complete_unlocked(task_id, result, require_review)
+
+    def _complete_unlocked(self, task_id, result, require_review=False):
         t = self.tasks.get(task_id)
         if not t:
             return "not_found", "not found"
@@ -1297,6 +1314,10 @@ class Board:
         return "done", "ok"
 
     def approve(self, task_id):
+        with _BOARD_LOCK:
+            return self._approve_unlocked(task_id)
+
+    def _approve_unlocked(self, task_id):
         t = self.tasks.get(task_id)
         if not t:
             return False, "not found"
@@ -1308,6 +1329,10 @@ class Board:
         return True, "ok"
 
     def reoffer_expired(self, task_timeout=86400):
+        with _BOARD_LOCK:
+            return self._reoffer_expired_unlocked(task_timeout)
+
+    def _reoffer_expired_unlocked(self, task_timeout=86400):
         now = datetime.now(timezone.utc)
         count = 0
         for t in self.tasks.values():

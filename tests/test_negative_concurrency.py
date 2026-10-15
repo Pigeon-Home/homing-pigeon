@@ -178,3 +178,40 @@ class PoisonedStateConcurrencyTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BoardConcurrencyRaceTest(unittest.TestCase):
+    """Finding: concurrent Board.submit/complete/offer used to raise
+    FileNotFoundError on the shared .tmp rename (submit/complete did not
+    hold _BOARD_LOCK). After the fix, mutations hold the lock and save()
+    uses a unique tmp name. This must not raise.
+    """
+
+    def test_concurrent_submit_offer_complete_does_not_raise(self):
+        import concurrent.futures
+        from runner.runner import Board
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "board.json")
+            with open(path, "w") as f:
+                f.write('{"poison": "not a task"}')
+            board = Board(path)
+            errors = []
+
+            def worker(i):
+                try:
+                    board.submit({
+                        "task_id": f"t{i}",
+                        "requires": ["cpu"],
+                        "capabilities": ["run"],
+                        "priority": i,
+                    })
+                    board.offer(f"w{i}", ["run"], key_id="k")
+                    board.complete(f"t{i}", {"exit": 0})
+                except Exception as e:
+                    errors.append((i, type(e).__name__, str(e)))
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:
+                list(ex.map(worker, range(40)))
+            self.assertEqual(errors, [], f"concurrent board mutations raised: {errors}")
+            reloaded = Board(path)
+            self.assertGreaterEqual(len(reloaded.tasks), 1)
