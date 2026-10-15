@@ -807,5 +807,42 @@ class LogAndBodyGracefulTest(unittest.TestCase):
             self.fail(f"empty message crashed get_text_body: {e}")
         self.assertIsInstance(body, str)
 
+
+class SnapshotGracefulTest(unittest.TestCase):
+    """Finding: snapshot_outside walks the parent of the workspace.
+    A root, empty, or non-string workspace must return fast and
+    not walk the disk.
+    """
+
+    def test_root_and_empty_do_not_walk(self):
+        from runner.runner import snapshot_outside
+        import time
+        for root in ("/", "", None, 42, "/no/such/workspace"):
+            start = time.time()
+            try:
+                snap = snapshot_outside(root)
+            except Exception as e:
+                self.fail(f"snapshot crashed on {root!r}: {e}")
+            self.assertIsInstance(snap, dict)
+            self.assertLess(time.time() - start, 1.0)
+
+    def test_concurrent_snapshots(self):
+        from runner.runner import snapshot_outside
+        tmp = tempfile.mkdtemp()
+        errors = []
+
+        def one():
+            try:
+                snapshot_outside(tmp)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
