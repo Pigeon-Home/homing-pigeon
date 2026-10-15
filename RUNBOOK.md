@@ -123,6 +123,11 @@ the release workflow publishes them via trusted publishing (no tokens),
 so `pip install pigeon-home-runner` gets the new version. (The project
 page is https://pypi.org/project/pigeon-home-runner/.)
 
+The Docker image goes up automatically too: every version tag builds
+and pushes `ghcr.io/pigeon-home/homing-pigeon` with the version tag
+and `latest`. You can also trigger a manual build from the Actions tab
+("Publish Docker image") any time.
+
 ---
 
 ## Job 5: Put the runner on a computer
