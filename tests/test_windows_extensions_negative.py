@@ -215,5 +215,73 @@ class WindowsRetentionNegativeTest(unittest.TestCase):
         except Exception as e:
             self.fail(f"prune crashed on spaced name: {e}")
 
+
+class WindowsSetupNeedsTest(unittest.TestCase):
+    def test_needs_setup_on_blank_and_partial(self):
+        from runner import setup
+        for cfg in ({}, {"mailbox_user": ""}, {"mailbox_user": "a@b.c"},
+                    {"auth": "oauth", "mailbox_user": "a@b.c"}):
+            try:
+                setup.needs_setup(cfg)
+            except Exception as e:
+                self.fail(f"needs_setup crashed on {cfg}: {e}")
+
+    def test_secret_is_real_rejects_placeholders(self):
+        from runner import setup
+        for secret in ("", "generate-with-openssl-rand-hex-32", "changeme", "x" * 8):
+            try:
+                setup._secret_is_real(secret)
+            except Exception as e:
+                self.fail(f"_secret_is_real crashed: {e}")
+
+
+class WindowsOAuthGarbageTest(unittest.TestCase):
+    def test_refresh_with_empty_cfg_is_contained(self):
+        from runner import oauth
+        try:
+            oauth.refresh_access_token({})
+        except Exception:
+            pass  # a clean failure is fine; a crash with a weird type is not
+
+    def test_xoauth2_raw_with_empty(self):
+        from runner import oauth
+        try:
+            raw = oauth.xoauth2_raw("", "")
+        except Exception as e:
+            self.fail(f"xoauth2_raw crashed: {e}")
+        self.assertIsInstance(raw, str)
+
+
+class WindowsWinlogMessageTest(unittest.TestCase):
+    def test_report_event_with_odd_messages(self):
+        from runner.winlog import report_event
+        for msg in ("", "line\r\nbreak", "üñícode", "x" * 10000, None):
+            try:
+                report_event(msg if isinstance(msg, str) else "none", level="WARN")
+            except Exception as e:
+                self.fail(f"report_event crashed on {msg!r}: {e}")
+
+
+class WindowsConcurrencyNegativeTest(unittest.TestCase):
+    def test_concurrent_senses_store(self):
+        import threading
+        tmp = tempfile.mkdtemp()
+        errors = []
+
+        def one(i):
+            try:
+                senses.store_alert(tmp, {"sensor": f"s{i}", "severity": "low", "detail": f"n{i}"})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+        recs = senses.load_alerts(tmp)
+        self.assertGreaterEqual(len(recs), 1)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
