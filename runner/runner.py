@@ -1061,8 +1061,15 @@ def _output_blob(exec_result):
 
 
 def _raw_lines_allowed(view):
-    """grep/tail leak raw lines. Only full and redacted views may return them."""
-    return view in ("full", "redacted", None, "")
+    """grep/tail leak raw lines. Only full and redacted views may return them.
+
+    A view whose equality check raises is not full or redacted.
+    """
+    if view is None:
+        return True
+    if not isinstance(view, str):
+        return False
+    return view in ("full", "redacted", "")
 
 
 def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full",

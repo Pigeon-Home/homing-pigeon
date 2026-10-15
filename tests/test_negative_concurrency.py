@@ -2828,3 +2828,62 @@ class OracleContextDotPoisonTest(unittest.TestCase):
             self.assertNotIn("job .", ctx)
             self.assertNotIn("job ..", ctx)
             self.assertIn("job ok", ctx)
+
+
+class RawLinesViewBoomPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation):
+
+    _raw_lines_allowed did view in (...). A view whose __eq__ raises
+    stopped answer_queries. grep/tail could not be answered.
+
+    A non-string view is not full or redacted. Processing continues.
+    """
+
+    def test_boom_view_does_not_raise(self):
+        from runner.runner import answer_queries
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+            def __eq__(self, other):
+                raise RuntimeError("eq")
+
+        answers, spent = answer_queries(
+            [{"op": "grep", "pattern": "x"}],
+            {"stdout": "hi", "stderr": ""},
+            {},
+            8, view=Boom(),
+        )
+        self.assertIsInstance(answers, list)
+        self.assertEqual(spent, 1)
+
+    def test_concurrent_boom_view_does_not_raise(self):
+        import threading
+        from runner.runner import answer_queries
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+            def __eq__(self, other):
+                raise RuntimeError("eq")
+
+        errors = []
+
+        def hammer():
+            for _ in range(10):
+                try:
+                    answer_queries(
+                        [{"op": "grep", "pattern": Boom()}, {"op": "tail", "lines": Boom()}],
+                        {"stdout": Boom()},
+                        {"ok": Boom()},
+                        budget=Boom(), view=Boom(),
+                    )
+                except Exception as e:
+                    errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
