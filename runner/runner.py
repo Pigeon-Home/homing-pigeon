@@ -1474,6 +1474,25 @@ def script_filename(interpreter) -> str:
     return "script"
 
 
+_WIN_DEVICES = (
+    {"CON", "PRN", "AUX", "NUL"}
+    | {f"COM{i}" for i in range(1, 10)}
+    | {f"LPT{i}" for i in range(1, 10)}
+)
+
+
+def windows_reserved_name(name: str) -> bool:
+    """True for CON, NUL, COM1, a trailing dot, and the same with an extension.
+
+    Windows opens these as devices, or rewrites the trailing dot, no
+    matter which directory they are joined onto.
+    """
+    leaf = name.replace("/", "\\").rsplit("\\", 1)[-1]
+    if not leaf or leaf.endswith(".") or leaf.endswith(" ") or ":" in leaf:
+        return True
+    return leaf.split(".", 1)[0].upper() in _WIN_DEVICES
+
+
 def kill_tree(proc: subprocess.Popen):
     try:
         if os.name == "nt":
@@ -1589,6 +1608,8 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
             raise JobRejected("each file needs string 'name' and 'url'")
         if "sha384" in f and not isinstance(f["sha384"], str):
             raise JobRejected("file 'sha384' must be a string")
+        if os.name == "nt" and windows_reserved_name(f["name"]):
+            raise JobRejected(f"unsafe file name: {f['name']}")
     args = job.get("args") or []
     if not isinstance(args, list):
         raise JobRejected("args must be a list")
@@ -1660,7 +1681,12 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         env[str(k)] = str(v)
     env = _scrub_env(env)  # job must not smuggle the runner's credentials back in
 
-    max_out = int(cfg.get("max_output_bytes", 100000))
+    try:
+        max_out = int(cfg.get("max_output_bytes", 100000))
+    except (TypeError, ValueError):
+        max_out = 100000
+    if max_out < 1:
+        max_out = 100000
     t0 = time.monotonic()
     try:
         proc = subprocess.Popen(

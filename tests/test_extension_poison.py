@@ -625,3 +625,122 @@ class WindowsEnvAndReviewTest(unittest.TestCase):
             with mock.patch("runner.runner.os.name", "nt"):
                 resources.check_resources(
                     {"resources": {"enabled": True, "disk_path": "CON"}}, d)
+
+
+class WindowsPathAndCapTest(unittest.TestCase):
+    """Windows path rules and a bad output cap, from a simulation.
+
+    os.path is ntpath. A Desktop flag path and a parent traversal are
+    absolute once joined, so they must be rejected before any download.
+    CON is a device name. max_output_bytes of "1MB" used to raise
+    ValueError after the script was staged, which retried the job.
+    """
+
+    def _nt_patches(self):
+        import ntpath
+        return [
+            mock.patch("runner.runner.os.name", "nt"),
+            mock.patch("runner.runner.os.sep", "\\"),
+            mock.patch("runner.runner.os.path.join", ntpath.join),
+            mock.patch("runner.runner.os.path.realpath", ntpath.normpath),
+            mock.patch("runner.runner.os.path.isdir", lambda p: True),
+            mock.patch("runner.runner.os.makedirs"),
+            mock.patch("runner.runner.shutil.rmtree"),
+        ]
+
+    def test_drive_and_traversal_never_download(self):
+        from contextlib import ExitStack
+        from runner.runner import JobRejected, execute_job
+        job = {
+            "kind": "exec", "job_id": "win-path",
+            "script": "Write-Output 'hello'",
+            "interpreter": ["powershell", "-NoProfile", "-File"],
+            "files": [{
+                "name": r"C:\Users\Tester\Desktop\flag.txt",
+                "url": "https://example.invalid/flag",
+            }],
+        }
+        with ExitStack() as stack:
+            for p in self._nt_patches():
+                stack.enter_context(p)
+            download = stack.enter_context(mock.patch(
+                "runner.runner.download", side_effect=AssertionError("download")))
+            popen = stack.enter_context(mock.patch("runner.runner.subprocess.Popen"))
+            with self.assertRaises(JobRejected) as caught:
+                execute_job({"max_output_bytes": "1MB"}, job,
+                            r"C:\Users\Tester\AppData\homing-pigeon")
+        self.assertIn("flag.txt", str(caught.exception))
+        download.assert_not_called()
+        popen.assert_not_called()
+
+        job["files"] = [{
+            "name": r"..\..\Desktop\flag.txt",
+            "url": "https://example.invalid/up",
+        }]
+        with ExitStack() as stack:
+            for p in self._nt_patches():
+                stack.enter_context(p)
+            download = stack.enter_context(mock.patch(
+                "runner.runner.download", side_effect=AssertionError("download")))
+            with self.assertRaises(JobRejected):
+                execute_job({}, job, r"C:\Users\Tester\AppData\homing-pigeon")
+        download.assert_not_called()
+
+    def test_device_name_is_rejected_before_download(self):
+        from runner.runner import JobRejected, execute_job
+        job = {
+            "kind": "exec", "job_id": "win-con",
+            "script": "Write-Output 'hello'",
+            "interpreter": ["powershell", "-NoProfile", "-File"],
+            "files": [
+                {"name": "CON", "url": "https://example.invalid/con"},
+                {"name": "notes.ps1.", "url": "https://example.invalid/dot"},
+            ],
+        }
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch("runner.runner.os.name", "nt"), \
+                 mock.patch("runner.runner.download",
+                            side_effect=AssertionError("download")) as download, \
+                 mock.patch("runner.runner.subprocess.Popen") as popen:
+                with self.assertRaises(JobRejected) as caught:
+                    execute_job({"max_output_bytes": "1MB"}, job, d)
+        self.assertIn("CON", str(caught.exception))
+        download.assert_not_called()
+        popen.assert_not_called()
+
+        job["files"] = [{
+            "name": "report.ps1:hidden",
+            "url": "https://example.invalid/ads",
+        }]
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch("runner.runner.os.name", "nt"), \
+                 mock.patch("runner.runner.download",
+                            side_effect=AssertionError("download")) as download:
+                with self.assertRaises(JobRejected) as caught:
+                    execute_job({}, job, d)
+        self.assertIn("report.ps1:hidden", str(caught.exception))
+        download.assert_not_called()
+
+    def test_bad_output_cap_does_not_raise(self):
+        from runner.runner import execute_job
+        with tempfile.TemporaryDirectory() as d:
+            job = {
+                "kind": "exec", "job_id": "win-cap",
+                "script": "Write-Output 'hello'",
+                "interpreter": ["powershell", "-NoProfile", "-File"],
+            }
+            proc = mock.Mock()
+            proc.pid = 4
+            proc.returncode = 0
+            proc.communicate.return_value = (b"hello\n", b"")
+            with mock.patch("runner.runner.os.name", "nt"), \
+                 mock.patch("runner.runner.subprocess.Popen", return_value=proc) as popen:
+                result = execute_job(
+                    {"max_output_bytes": "1MB", "default_timeout_sec": 5},
+                    job, d)
+            popen.assert_called_once()
+            argv = popen.call_args.args[0]
+            self.assertEqual(argv[0], "powershell")
+            self.assertTrue(argv[-1].endswith("script.ps1"))
+            self.assertEqual(result["stdout"], "hello\n")
+            self.assertEqual(result["exit_code"], 0)
