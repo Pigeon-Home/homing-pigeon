@@ -268,6 +268,77 @@ def uninstall_freebsd():
                    check=True)
 
 
+
+def _which(cmd):
+    from shutil import which
+    return which(cmd)
+
+
+def install_ollama_and_model(cfg_path: str, model: str, skip: bool) -> None:
+    """Install Ollama and pull a model so the Oracle ask op works out of the box.
+
+    Skipped entirely when skip is True (--no-inference). Failures are
+    non-fatal: the runner still installs; ask stays off until the owner
+    sets a loopback endpoint.
+    """
+    if skip:
+        print("inference: skipped (--no-inference)")
+        return
+    plat = sys.platform
+    if _which("ollama"):
+        print("inference: ollama already present")
+    else:
+        print("inference: installing ollama (this may take a few minutes)...")
+        try:
+            if plat.startswith("linux"):
+                run(["sh", "-c", "curl -fsSL https://ollama.com/install.sh | sh"])
+            elif plat == "darwin":
+                if _which("brew"):
+                    run(["brew", "install", "ollama"])
+                else:
+                    print("inference: Homebrew not found; install Ollama from https://ollama.com and re-run, or pass --no-inference")
+                    return
+            elif plat == "win32":
+                if _which("winget"):
+                    run(["winget", "install", "--id", "Ollama.Ollama", "-e", "--accept-source-agreements", "--accept-package-agreements"])
+                else:
+                    print("inference: winget not found; install Ollama from https://ollama.com and re-run, or pass --no-inference")
+                    return
+            else:
+                print(f"inference: no automatic Ollama install for {plat}; pass --no-inference or install manually")
+                return
+        except Exception as e:
+            print(f"inference: Ollama install failed ({e}); continuing without it. Pass --no-inference to silence this.")
+            return
+    # Ensure the daemon is reachable, then pull the model.
+    try:
+        run(["ollama", "pull", model])
+    except Exception as e:
+        print(f"inference: model pull failed ({e}); ask will stay off until a loopback endpoint is configured")
+        return
+    # Point config at the local server.
+    try:
+        import json
+        cfg = {}
+        if os.path.exists(cfg_path):
+            with open(cfg_path, encoding="utf-8") as f:
+                cfg = json.load(f)
+        cfg["inference"] = {
+            "endpoint": "http://127.0.0.1:11434/v1",
+            "model": model,
+            "max_answer_chars": 2000,
+            "timeout_sec": 60,
+        }
+        tmp = cfg_path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2)
+            f.write("\n")
+        os.replace(tmp, cfg_path)
+        print(f"inference: configured endpoint http://127.0.0.1:11434/v1 model {model}")
+    except Exception as e:
+        print(f"inference: could not write config ({e})")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Install homing-pigeon as a service")
     ap.add_argument("--dir", default=os.path.expanduser("~/.homing-pigeon"),
@@ -288,6 +359,10 @@ def main() -> int:
                     help="concurrent job executions")
     ap.add_argument("--poll-interval", type=int, default=None, metavar="SEC")
     ap.add_argument("--no-oracle", action="store_true")
+    ap.add_argument("--no-inference", action="store_true",
+                    help="do not install Ollama or pull a model (ask stays off)")
+    ap.add_argument("--inference-model", default="llama3.2:3b",
+                    help="Ollama model to pull when inference is enabled (default llama3.2:3b)")
     ap.add_argument("--additional-secret", action="append", default=[],
                     help="KEY_ID (generates 256-bit secret, never printed)")
     ap.add_argument("--max-output-bytes", type=int, default=None, metavar="N")
@@ -322,6 +397,7 @@ def main() -> int:
     ensure_shared_secret(cfg_path, args.shared_secret)
     for kid in args.additional_secret:
         store_additional_secret(cfg_path, kid)
+    install_ollama_and_model(cfg_path, args.inference_model, args.no_inference)
     extra = _forwarded_args(args)
     if extra:
         print(f"forwarding runner flags into service: {' '.join(extra)}")
