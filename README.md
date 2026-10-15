@@ -414,7 +414,7 @@ End-to-end without your SI:
 
 - v2 = who signs (shipped)
 - v3 = what comes back — the Oracle: result policies, attestations, task dispatch, multi-secret, and the ask op (shipped as 3.0.0). The ask endpoint must be loopback or the op stays off.
-- v4 = watch the Oracle think — the loopback dashboard (spec in ORACLE_DASHBOARD.md, not started)
+- v4 = watch the Oracle think — the loopback dashboard, and confidentiality for transport messages (spec in ORACLE_DASHBOARD.md, not started)
 
 Later:
 - Cloudflare Queues as Transport #2

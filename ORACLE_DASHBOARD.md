@@ -145,12 +145,33 @@ published.
 
 **In v4:** dashboard server, the five views above, profiles,
 "Configuring the Oracle" documentation (GUI-or-CLI parity,
-per-deployment profiles, worked Pi example).
+per-deployment profiles, worked Pi example), and confidentiality
+for transport messages.
 
 **Out of v4:** new transports, any native GUI toolkit, multi-user
 or remote access (the dashboard is single-owner, loopback-only, by
 design). The `ask` op is v3.1 and is already implemented; the
 timeline shows its answers.
+
+### 6.1 Confidentiality for transport messages
+
+TLS protects the pipe. It does not protect the message from the
+transport operator. A mailbox provider, or a queue operator, can
+read the signed JSON today. v4 encrypts the message body so the
+pipe carries ciphertext.
+
+- Cipher: AES-256-GCM, as named in PROTOCOL section 8.
+- Key: derived from the shared secret already used for HMAC. No
+  second secret. `key_id` selects which secret, the same way it
+  selects the HMAC key.
+- What is encrypted: the signed JSON body. The subject stays
+  plaintext so the runner can still find `[HOMING-PIGEON]`
+  messages by poll. The signature is inside the ciphertext.
+- What is not: TLS stays. This is confidentiality of the message
+  at rest on the transport, not a replacement for TLS.
+- Fail closed: a message that claims to be encrypted and does not
+  decrypt is rejected. A deployment that has not turned this on
+  still accepts plaintext, so v3 keep working.
 
 ## 7. Decisions
 

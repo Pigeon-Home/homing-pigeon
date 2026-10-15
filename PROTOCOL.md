@@ -220,9 +220,10 @@ transitioned to CNSA; the symmetric/hash primitives carry over unchanged):
   384-bit tier).
 - **Transport:** TLS 1.2+ enforced for IMAP, SMTP, and file downloads
   (Suite B requires TLS 1.2 with Suite B cipher suites).
-- **Future payload encryption:** AES-256 (GCM where available) is the
-  designated cipher if confidentiality beyond TLS is ever needed. No
-  payload encryption in v1.
+- **Payload encryption:** AES-256-GCM is the designated cipher for
+  confidentiality beyond TLS. Not in v1, v2, or v3. Specified for v4
+  in ORACLE_DASHBOARD.md section 6.1: the message body is encrypted
+  under the shared secret, the subject stays plaintext.
 
 v1 does not encrypt payloads: confidentiality in transit comes from TLS;
 authenticity and integrity come from HMAC-SHA-384.
