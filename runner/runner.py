@@ -325,18 +325,22 @@ def judge_job(cfg, job):
     if mode not in ("advisory", "enforce"):
         return "pass", []
     reasons = []
-    script = job.get("script") or ""
+    script = job.get("script")
+    if not isinstance(script, str):
+        script = ""
     for bad in ("rm -rf /", "rm -rf ~", ":(){ :|:& };:", "mkfs"):
         if bad in script:
             reasons.append(f"denylist: {bad}")
     if re.search(r"(?i)\bdd\b[\s\S]{0,200}\bof=/dev/", script):
         reasons.append("denylist: dd of=/dev/")
-    url = job.get("script_url") or ""
-    if url and not url.startswith("https://"):
+    url = job.get("script_url")
+    if isinstance(url, str) and url and not url.startswith("https://"):
         reasons.append("non-https script_url")
-    for f in (job.get("files") or []):
-        if isinstance(f, dict) and ".." in str(f.get("name", "")):
-            reasons.append("path traversal in file name")
+    files = job.get("files")
+    if isinstance(files, list):
+        for f in files:
+            if isinstance(f, dict) and ".." in str(f.get("name", "")):
+                reasons.append("path traversal in file name")
     verdict = "fail" if reasons else "pass"
     return verdict, reasons
 
@@ -566,7 +570,8 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
         return {"op": "ask", "rejected": "inference_error"}
     if not isinstance(reply, str):
         reply = str(reply)
-    log(f"ask: reply {_preview(reply)!r}")
+    shown, _families = redact_text(reply, patterns)
+    log(f"ask: reply {_preview(shown)!r}")
     reply = reply[:cap]
     # Scan the truncated reply before redaction so a secret is rejected,
     # not rewritten and mailed.
@@ -1319,8 +1324,9 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
     stdout = outs.decode("utf-8", errors="replace")
     stderr = errs.decode("utf-8", errors="replace")
+    shown, _families = redact_text(stdout, _redact_patterns(cfg))
     log(f"job {job['job_id']} process finished exit={proc.returncode} "
-        f"stdout={_preview(stdout)!r}")
+        f"stdout={_preview(shown)!r}")
     trunc_out, trunc_err = False, False
     if len(stdout) > max_out:
         stdout, trunc_out = stdout[:max_out], True

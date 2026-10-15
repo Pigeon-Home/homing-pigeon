@@ -2,7 +2,10 @@
 """Oracle privacy result tests (v3 Piece 3)."""
 import os
 import sys
+import tempfile
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
@@ -63,6 +66,15 @@ class JudgmentTest(unittest.TestCase):
         self.assertEqual(v, "fail")
         self.assertTrue(any("denylist" in x for x in r))
 
+    def test_judge_non_string_fields_do_not_raise(self):
+        from runner.runner import judge_job
+        v, r = judge_job(
+            {"judge": "enforce"},
+            {"script": 5, "script_url": 9, "files": "not-a-list"},
+        )
+        self.assertEqual(v, "pass")
+        self.assertEqual(r, [])
+
     def test_query_budget_min(self):
         from runner.runner import query_budget
         b = query_budget({"max_query_budget": 4}, {"result_policy": {"query_budget": 8}})
@@ -77,6 +89,45 @@ class ProtectedPathsTest(unittest.TestCase):
         changed = check_protected_paths(before, after, ["/home/user/docs/manuals"])
         self.assertIn("/home/user/docs/manuals/a.txt", changed)
         self.assertNotIn("/tmp/other", changed)
+
+
+class LogRedactionTest(unittest.TestCase):
+    def test_process_log_redacts_before_printing(self):
+        from runner.runner import execute_job
+        buf = StringIO()
+        with tempfile.TemporaryDirectory() as d:
+            with redirect_stdout(buf):
+                execute_job(
+                    {"max_output_bytes": 1000},
+                    {"job_id": "log-1", "kind": "exec",
+                     "script": "echo AKIAIOSFODNN7EXAMPLE\n"},
+                    d,
+                )
+        text = buf.getvalue()
+        self.assertNotIn("AKIAIOSFODNN7EXAMPLE", text)
+        self.assertIn("[REDACTED:aws_key]", text)
+
+    def test_ask_log_redacts_before_printing(self):
+        from runner.runner import ask_model
+
+        class FakeResp:
+            def read(self, n):
+                return b'{"choices":[{"message":{"content":"key AKIAIOSFODNN7EXAMPLE"}}]}'
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return False
+
+        buf = StringIO()
+        with redirect_stdout(buf):
+            answer = ask_model(
+                {"endpoint": "http://127.0.0.1:9/v1", "model": "m",
+                 "timeout_sec": 1, "max_answer_chars": 100},
+                "what key?", "out", 100, opener=lambda req, timeout=60: FakeResp(),
+            )
+        self.assertEqual(answer.get("rejected"), "sanitization")
+        self.assertNotIn("AKIAIOSFODNN7EXAMPLE", buf.getvalue())
+        self.assertIn("[REDACTED:aws_key]", buf.getvalue())
 
     def test_empty_default(self):
         from runner.runner import check_protected_paths
