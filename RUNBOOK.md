@@ -103,9 +103,9 @@ you. You start them by making a **release**. All point and click:
 1. Go to **github.com/Pigeon-Home/homing-pigeon**.
 2. On the right side, click **Releases**.
 3. Click the **Draft a new release** button.
-4. Click **Choose a tag**, then type `v1.0.0` and click
-   **Create new tag: v1.0.0**.
-5. Type a title like `Version 1.0.0`.
+4. Click **Choose a tag**, then type `v3.4.0` and click
+   **Create new tag: v3.4.0**.
+5. Type a title like `Version 3.4.0`.
 6. Click the big green **Publish release** button.
 7. Now click the **Actions** tab at the top. You will see the robots
    working. It takes about 10 minutes.
@@ -115,7 +115,7 @@ you. You start them by making a **release**. All point and click:
    - `homing-pigeon-linux-x86_64.tar.gz` — for Linux computers
    - `homing-pigeon-macos-arm64.tar.gz` — for Mac computers
 
-For the next version, do the same thing with `v1.2.1`, then `v1.2.2`,
+For the next version, do the same thing with `v3.4.1`, then `v3.4.2`,
 and so on. Bigger number = newer.
 
 After the robots finish, the Python packages go to PyPI automatically:

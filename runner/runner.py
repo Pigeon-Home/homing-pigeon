@@ -77,6 +77,45 @@ except ImportError:  # running from inside runner/ as __main__
         _senses = None
 
 try:
+    from runner import review as _review
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        import review as _review
+    except ImportError:
+        _review = None
+
+try:
+    from runner import resources as _resources
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        import resources as _resources
+    except ImportError:
+        _resources = None
+
+try:
+    from runner import dri as _dri
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        import dri as _dri
+    except ImportError:
+        _dri = None
+
+
+def _append_security_event(base_dir: str, event: dict) -> None:
+    """Append one event to security-events.jsonl (capped). Best effort."""
+    path = os.path.join(base_dir, "security-events.jsonl")
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        if len(lines) > 5000:
+            with open(path, "w", encoding="utf-8") as f:
+                f.writelines(lines[-5000:])
+    except OSError:
+        pass
+
+try:
     from runner.winlog import report_event
 except ImportError:
     try:
@@ -1760,6 +1799,11 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
         secret = secrets[key_id]
     except Exception as e:
         reject(f"bad signature: {e}")
+        _append_security_event(base_dir, {
+            "type": "auth_rejection",
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "reason": "bad_signature",
+        })
         return True
     with _BOARD_LOCK:
         board.reoffer_expired(cfg.get("task_timeout", 86400))
@@ -1922,6 +1966,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         secret = secrets[key_id]
     except ValueError as e:
         reject(f"bad signature: {e}")
+        _append_security_event(base_dir, {
+            "type": "auth_rejection",
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "reason": "bad_signature",
+        })
         return
     if not isinstance(job, dict):
         # verify_body can return any JSON value if the signer hand-crafts
@@ -1952,12 +2001,22 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     violation = check_key_policy(key_policies or {}, key_id, cfg, job)
     if violation:
         reject(f"key policy: {violation}")
+        _append_security_event(base_dir, {
+            "type": "auth_rejection",
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "reason": "key_policy",
+        })
         return
 
     if job.get("kind") == "sensor_alert":
         _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
                              secrets, opts, base_dir, seen)
         return
+
+    # Advisory pre-execution review. The Oracle looks at the job and
+    # attaches notes about likely failures. It never blocks: the job
+    # runs regardless, because the Oracle can be wrong.
+    review = _review.review_job(cfg, job) if _review else None
 
     log(f"executing job {job_id} (kind={job.get('kind')})")
     if opts is not None and opts.dry_run:
@@ -2008,6 +2067,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 "stderr_truncated": bool(r["stderr_truncated"]),
                 "duration_sec": float(r["duration_sec"]),
                 "runner": socket.gethostname(),
+                "review": review,
             }
             # Oracle view
             patterns = _redact_patterns(cfg)
@@ -2067,6 +2127,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     "stdout": "", "stderr": f"job rejected: {e}",
                     "stdout_truncated": False, "stderr_truncated": False,
                     "duration_sec": 0.0, "runner": socket.gethostname(),
+                    "review": review,
                 }
                 with _MAIL_LOCK:
                     maybe_send(f"{SUBJECT_RESULT}{job_id}",
@@ -2264,6 +2325,26 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     secrets = build_secrets(cfg)
     key_policies = build_key_policies(cfg)
     prune_retained(base_dir, int(cfg.get("output_retention_days") or 7))
+    # Built-in resource monitor: on by default. Threshold crossings
+    # become security events for the DRI trigger evaluation.
+    if _resources is not None:
+        try:
+            event = _resources.check_resources(cfg, base_dir)
+        except Exception:
+            event = None
+        if event:
+            _append_security_event(base_dir, event)
+            over = ", ".join(f"{k}={v:.0%}"
+                             for k, v in event["resources"].items())
+            log(f"resource pressure over threshold "
+                f"({event['threshold']:.0%}): {over}", "WARN")
+    # DRI playbook: evaluate page triggers once per cycle. Disabled
+    # by default; needs a configured channel to actually send.
+    if _dri is not None:
+        try:
+            _dri.maybe_page(cfg, base_dir)
+        except Exception as e:
+            log(f"DRI evaluation failed: {e}", "WARN")
     board = Board(os.path.join(base_dir, "board.json"))
     cfg["board"] = board
     if not getattr(log, "identity_logged", False):

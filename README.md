@@ -71,16 +71,16 @@ and operate.
 
 ```
   SI (cloud)                        Your machine
-  ────────────                      ──────────────────
-  send_job.py ──sign──▶ job message ──▶  runner.py
-       │                  │              │  poll IMAP
-       │                  │              │  verify HMAC
-       │                  │              ▼
-       │                  │           run script
-       │                  │              │
-       │             result message ◀──┘ sign
-       ▼                  │
-  verify result ◀──────────┘
+  ------------                      ------------------
+  send_job.py --sign--> job message -->  runner.py
+       |                  |              |  poll IMAP
+       |                  |              |  verify HMAC
+       |                  |              v
+       |                  |           run script
+       |                  |              |
+       |             result message <--+ sign
+       v                  |
+  verify result <----------+
 ```
 
 Large inputs don't go through email: your SI uploads them to file hosting
@@ -116,23 +116,71 @@ raw output never leaves your disk.
 
 ```
   Cloud SI                                Your machine
-  ────────                                ────────────────────
-  "Did the tests pass?" ──signed──────▶ ┌─────────────┐
-                                        │  The Oracle │
-  "Any secrets in there?" ────────────▶ │             │
-                                        │ output stays│
-   ┌─────────────────────┐             │ on your disk│
-   │ signed attestation   │ ◀──signed── │             │
-   │ { exit_zero: true,   │             │ answers only│
-   │   no_secrets: true } │             │ what policy │
-   └─────────────────────┘             │ allows      │
-                                        └────────────┘
+  --------                                --------------------
+  "Did the tests pass?" --signed------> +-------------+
+                                        |  The Oracle |
+  "Any secrets in there?" ------------> |             |
+                                        | output stays|
+   +---------------------+             | on your disk|
+   | signed attestation   | <--signed-- |             |
+   | { exit_zero: true,   |             | answers only|
+   |   no_secrets: true } |             | what policy |
+   +---------------------+             | allows      |
+                                        +------------+
    The SI learns answers. Never the raw output.
 ```
 
 Queries are declared upfront (no adaptive probing), each job gets a
 privacy budget bounding total leakage, and the disclosure ceiling is
 set by *you* in config — never by the SI.
+
+Your machine runs two roles in one box:
+
+```
++-----------------------------+-----------------------------+
+| RUNNER (faces the SI)        | ORACLE (faces you)           |
++-----------------------------+-----------------------------+
+| polls the mailbox            | reviews every job            |
+| verifies HMAC + key policy   | before it runs               |
+| judge: the policy gate      | fuses sensor alerts          |
+| executes jobs, confined     | watches resources            |
+| answers queries with        | pages you when a             |
+| attestations -- never       | threshold trips              |
+| raw output                  | never remediates             |
++-----------------------------+-----------------------------+
+```
+
+The runner does what the SI asks. The Oracle watches what happens
+and tells you about it.
+
+### Operating modes
+
+Five knobs set the posture. They are independent — these are three
+coherent postures, not the only combinations.
+
+```
+  knob                  just run it  eyes open    lockdown
+  ------------------    -----------  ---------    --------
+  judge                 off          advisory     enforce
+  sensors               off          on           on
+  resources             on           on           on
+  dri                   off          on           on
+  max_result_view       full         attested     attested
+```
+
+**just run it** (the defaults). Runner: executes any signed job,
+answers queries with full output. Oracle: reviews every job anyway
+(notes ride in the result), logs resource pressure. Quiet — nothing
+pages, nothing blocks.
+
+**eyes open** (recommended). Runner: executes, attaches the policy
+verdict to each result, answers queries with attestations only.
+Oracle: reviews, fuses sensor alerts, pages you when a trigger
+trips. Still takes no action itself.
+
+**lockdown**. Runner: refuses anything the policy rejects; the SI
+gets attestations. Oracle: same as eyes-open, and every refusal is
+page-worthy. Nothing moves unless the policy allows it.
 
 The Oracle ships two confinement capabilities:
 
@@ -365,6 +413,7 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | `--pdb` | Drop into pdb on unhandled exceptions |
 | `--no-send` | Execute, but log results instead of emailing them |
 | `--once` | Single poll cycle, then exit |
+| `--inspect {board,budget,job,redact}` | Read local Oracle state and exit; no mailbox |
 | `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. Turns are appended to `oracle-chat.jsonl` in the base dir (1 MiB, then one backup). See `docs/oracle-flag.md`. |
 | `--poll-interval SEC`, `--timeout SEC`, `--max-output-bytes N` | Override config |
 

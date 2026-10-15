@@ -8,8 +8,9 @@ which job was running, what the job was supposed to do, whether it
 stayed confined — and that fusion is what makes the signal useful.
 
 Alerts are advisory. Nothing in this path executes, pages, or
-blocks. (Outbound reach to the owner is a separate, spec-only
-extension: `docs/dri-playbook.md`.)
+blocks. (Outbound reach to the owner — the DRI playbook — is a
+separate extension: `docs/dri-playbook.md`. It consumes these
+alerts through the fused-score trigger.)
 
 ## Why this shape
 
@@ -24,6 +25,20 @@ traffic. So everything is adjustable from the beginning:
   runner enforces three known knobs today; unknown keys are accepted
   and carried through, so tomorrow's heuristics get tuned in config,
   not in code.
+
+## The three senses
+
+- `host_ids` — host intrusion detection (file integrity, suspicious
+  syscalls, privilege changes). Collector: Falco, Wazuh agent, AIDE.
+- `netmon` — network monitoring (flows, DNS, anomalous outbound).
+  Collector: Suricata, Zeek, softflowd.
+- `sysmon` — system internals telemetry (process tree, CPU/memory,
+  open sockets/handles, file-touch events). This is the signal that
+  lets the Oracle spot *behavioral* anomalies: a new unknown process
+  plus an anomalous outbound connection plus file touches outside
+  the workspace, all inside one time window, is one incident, not
+  three alerts. Collector: osquery (cross-platform), Sysmon
+  (Windows), `/proc` + `lsof`/`ss` scraping (Linux).
 
 ## Config
 

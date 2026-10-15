@@ -1,4 +1,12 @@
-# DRI playbook ("presence of mind") — SPEC
+# DRI playbook ("presence of mind")
+
+> **Status: implemented (v3.x).** `runner/dri.py` evaluates triggers
+> every poll cycle (`maybe_page`), with per-trigger cooldown and
+> digest batching in `dri-state.json`. Telegram channel implemented
+> (`send_telegram`, Bot API over HTTPS). Signal and WhatsApp remain
+> spec-only. Auth rejections (bad signature, key policy) and
+> resource-pressure crossings are recorded to
+> `security-events.jsonl` for the triggers to consume. — SPEC
 
 Status: spec only. Nothing here is implemented.
 
