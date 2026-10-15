@@ -2878,5 +2878,50 @@ class EnvTextGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class FusedScoreGracefulTest(unittest.TestCase):
+    """Finding: a list or dict sensor must not stop the fused-score
+    page.
+    """
+
+    def test_list_and_dict_sensor(self):
+        tmp = tempfile.mkdtemp()
+        senses.store_alert(tmp, {"sensor": ["a", "b"], "severity": "high"})
+        senses.store_alert(tmp, {"sensor": {"name": "door"}, "severity": "high"})
+        dcfg = {"enabled": True, "sensor_fused_score": {"threshold": 1, "window_sec": 60}}
+        try:
+            dri.evaluate_page_triggers(dcfg, tmp, 0)
+        except Exception as e:
+            self.fail(f"list/dict sensor crashed evaluate: {e}")
+
+    def test_odd_sensor_shapes(self):
+        tmp = tempfile.mkdtemp()
+        for sensor in (None, 42, True, ("tuple",)):
+            senses.store_alert(tmp, {"sensor": sensor if isinstance(sensor, str) else "s",
+                                     "severity": "low"})
+        try:
+            dri.evaluate_page_triggers({"enabled": True}, tmp, 0)
+        except Exception as e:
+            self.fail(f"odd sensor crashed: {e}")
+
+    def test_concurrent_fused(self):
+        tmp = tempfile.mkdtemp()
+        errors = []
+
+        def one():
+            try:
+                dri.evaluate_page_triggers(
+                    {"enabled": True, "sensor_fused_score":
+                     {"threshold": 1, "window_sec": 60}}, tmp, 0)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
