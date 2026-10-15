@@ -1383,7 +1383,10 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
         if seen is not None and (opts is None or not opts.dry_run):
             seen[seen_key] = True
         return True
-    if not check_rate_limit(key_id or query_id, cfg):
+    # "" is the default secret. Do not replace it with query_id or each
+    # query gets its own bucket and the cap never trips. PROTOCOL section 11
+    # is per sender.
+    if not check_rate_limit(key_id, cfg):
         log(f"query rate limit exceeded seq {seq}", "WARN")
         finish({
             "v": 1, "type": "qresult", "query_id": query_id,
