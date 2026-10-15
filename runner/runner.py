@@ -1513,6 +1513,9 @@ class Board:
         raw_comp = cfg.get("worker_compartments") or {}
         if not isinstance(raw_comp, dict):
             raw_comp = {}
+        # A dict worker id raises TypeError on get. That stopped the offer.
+        if not isinstance(worker_id, str):
+            return None
         compartments = raw_comp.get(worker_id)
         if not isinstance(compartments, list) or not all(
                 isinstance(x, str) for x in compartments):

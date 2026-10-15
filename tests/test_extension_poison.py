@@ -2050,3 +2050,21 @@ class RequiresShapeFaultTest(unittest.TestCase):
             board = Board(path)
             chosen = board.offer("w", [], "", {"dag_mode": "enforce"})
             self.assertIsNone(chosen)
+
+
+class WorkerIdFaultTest(unittest.TestCase):
+    """Finding: a dict worker id crashed offer.
+
+    worker_compartments.get on a dict raises TypeError. The
+    offer stopped. A non-string worker id is no match. The
+    offer continues.
+    """
+
+    def test_dict_worker_id_does_not_crash_offer(self):
+        from runner.runner import Board
+        with tempfile.TemporaryDirectory() as d:
+            board = Board(os.path.join(d, "board.json"))
+            board.submit({"task_id": "t", "capabilities": []})
+            chosen = board.offer({"not": "a string"}, [], "",
+                                 {"worker_compartments": {"w": ["a"]}})
+            self.assertIsNone(chosen)
