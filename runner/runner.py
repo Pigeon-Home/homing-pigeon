@@ -40,6 +40,7 @@ import json
 import math
 import os
 import re
+import secrets
 import shutil
 import signal
 import smtplib
@@ -48,10 +49,12 @@ import subprocess
 import sys
 import threading
 import time
+import webbrowser
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from email.utils import parseaddr
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
@@ -2311,6 +2314,304 @@ def log_startup(cfg, args, base_dir):
             "Empty polls are silent. Cap is 200 lines a minute.")
 
 
+def _is_loopback_ip(host: str) -> bool:
+    host = (host or "").split("%", 1)[0].strip("[]")
+    if host.lower().startswith("::ffff:"):
+        host = host[7:]
+    try:
+        return bool(ipaddress.ip_address(host).is_loopback)
+    except ValueError:
+        return False
+
+
+def oracle_context(base_dir, limit=6, max_chars=4000) -> str:
+    """Recent retained job output for a local Oracle question.
+
+    Only safe job ids. Bounded. This is data for the model, not a
+    dashboard, and it is not written back to the page.
+    """
+    d = os.path.join(base_dir or "", "retained")
+    if not os.path.isdir(d):
+        return "(no job output retained yet)"
+    rows = []
+    for name in os.listdir(d):
+        if not name.endswith(".json"):
+            continue
+        job_id = name[:-5]
+        if not _SAFE_JOB_ID.match(job_id):
+            continue
+        path = os.path.join(d, name)
+        try:
+            rows.append((os.path.getmtime(path), path, job_id))
+        except OSError:
+            continue
+    rows.sort(reverse=True)
+    parts = []
+    for _mtime, path, job_id in rows[:limit]:
+        try:
+            with open(path, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except Exception:
+            continue
+        if not isinstance(data, dict):
+            continue
+        text = ((data.get("stdout") or "") + (data.get("stderr") or "")).strip()
+        if len(text) > 800:
+            text = text[:800] + "\n..."
+        kind = data.get("kind") if isinstance(data.get("kind"), str) else ""
+        parts.append(f"job {job_id} kind={kind}\n{text}")
+    blob = "\n\n".join(parts).strip()
+    if not blob:
+        return "(no job output retained yet)"
+    return blob[:max_chars]
+
+
+def oracle_page(token: str, model: str, ready: bool) -> str:
+    """One chat page. No remote assets. The token never goes in the URL."""
+    payload = json.dumps(
+        {"token": token, "model": model or "", "ready": bool(ready)}
+    ).replace("<", "\\u003c")
+    return """<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oracle</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; min-height: 100vh; background: #14160f; color: #ebe4d6;
+         font: 17px/1.45 Georgia, "Iowan Old Style", Palatino, serif; }
+  main { max-width: 40rem; margin: 0 auto; padding: 2.4rem 1.2rem 7rem; }
+  h1 { font-weight: 500; font-size: 1.35rem; letter-spacing: 0.08em;
+       text-transform: uppercase; margin: 0 0 0.4rem; }
+  .note { color: #9c9486; font: 13px/1.45 ui-sans-serif, system-ui, sans-serif;
+          margin: 0 0 1.6rem; }
+  #log { display: flex; flex-direction: column; gap: 1rem; min-height: 12rem; }
+  .bubble { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .who { display: block; font: 11px/1 ui-sans-serif, system-ui, sans-serif;
+         letter-spacing: 0.16em; text-transform: uppercase; color: #8d8678;
+         margin-bottom: 0.3rem; }
+  .you { color: #e4c99a; }
+  form { position: sticky; bottom: 0; display: flex; gap: 0.55rem;
+         padding: 1rem 0 1.3rem;
+         background: linear-gradient(#14160f00, #14160f 28%); }
+  textarea { flex: 1; resize: none; min-height: 3.1rem; max-height: 8rem;
+             font: 16px/1.4 ui-sans-serif, system-ui, sans-serif;
+             background: #1e2218; color: inherit; border: 1px solid #3c4034;
+             border-radius: 0.7rem; padding: 0.7rem 0.85rem; }
+  button { font: 15px ui-sans-serif, system-ui, sans-serif; background: #ebe4d6;
+           color: #14160f; border: 0; border-radius: 0.7rem; padding: 0 1.15rem; }
+  button:disabled { opacity: 0.45; }
+</style>
+<main>
+  <h1>Oracle</h1>
+  <p class="note" id="note"></p>
+  <div id="log"></div>
+  <form id="f">
+    <textarea id="q" rows="2" autofocus placeholder="Ask what it thinks is going on"></textarea>
+    <button id="send" type="submit">Send</button>
+  </form>
+</main>
+<script>
+const boot = __BOOT__;
+const note = document.getElementById("note");
+note.textContent = boot.ready
+  ? ("Local model " + boot.model + ". This window stays on this machine. "
+     + "The Oracle answers from retained job output and the instructions for this box.")
+  : "No loopback model is configured. Ask stays off until inference.endpoint is loopback.";
+const log = document.getElementById("log");
+const q = document.getElementById("q");
+const send = document.getElementById("send");
+function add(who, text, cls) {
+  const wrap = document.createElement("div");
+  wrap.className = "bubble " + cls;
+  const label = document.createElement("span");
+  label.className = "who";
+  label.textContent = who;
+  wrap.appendChild(label);
+  wrap.appendChild(document.createTextNode(text));
+  log.appendChild(wrap);
+  wrap.scrollIntoView({block: "nearest"});
+}
+document.getElementById("f").onsubmit = async (e) => {
+  e.preventDefault();
+  const text = q.value.trim();
+  if (!text || send.disabled) return;
+  add("You", text, "you");
+  q.value = "";
+  send.disabled = true;
+  try {
+    const r = await fetch("/ask", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Oracle-Token": boot.token
+      },
+      body: JSON.stringify({question: text})
+    });
+    const data = await r.json();
+    if (data.answer) add("Oracle", data.answer, "oracle");
+    else add("Oracle", data.detail || "The Oracle did not answer.", "oracle");
+  } catch (err) {
+    add("Oracle", "The page could not reach the local Oracle.", "oracle");
+  }
+  send.disabled = false;
+  q.focus();
+};
+</script>
+</html>
+""".replace("__BOOT__", payload)
+
+
+_ORACLE_REJECTS = {
+    "inference_unconfigured": "No loopback model is configured.",
+    "inference_error": "The local model did not answer.",
+    "sanitization": "The reply was dropped because it repeated protected material.",
+}
+
+
+def _oracle_host_ok(handler) -> bool:
+    peer = handler.client_address[0] if handler.client_address else ""
+    if not _is_loopback_ip(peer):
+        return False
+    host = (handler.headers.get("Host") or "").split(",")[0].strip()
+    hostname = host.rsplit(":", 1)[0].strip("[]").lower()
+    if hostname not in ("127.0.0.1", "localhost", "::1"):
+        return False
+    origin = (handler.headers.get("Origin") or "").strip()
+    if not origin:
+        return True
+    try:
+        parsed = urlparse(origin)
+    except Exception:
+        return False
+    return parsed.scheme == "http" and (parsed.hostname or "").lower() in (
+        "127.0.0.1", "localhost", "::1")
+
+
+def make_oracle_server(cfg, host="127.0.0.1", port=11436):
+    """Loopback chat server. Refuses any other bind."""
+    if host not in ("127.0.0.1", "::1", "localhost"):
+        raise ValueError("oracle chat refuses a non-loopback bind")
+    token = secrets.token_urlsafe(24)
+    base = cfg.get("base_dir") or os.path.join(os.path.expanduser("~"),
+                                               ".homing-pigeon")
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, fmt, *args):
+            return
+
+        def _send(self, code, body, content_type):
+            if isinstance(body, str):
+                body = body.encode("utf-8")
+            self.send_response(code)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Referrer-Policy", "no-referrer")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            if self.path.split("?", 1)[0] != "/":
+                self._send(404, "not found", "text/plain; charset=utf-8")
+                return
+            if not _oracle_host_ok(self):
+                self._send(403, "forbidden", "text/plain; charset=utf-8")
+                return
+            inf = inference_config(cfg) or {}
+            page = oracle_page(token, inf.get("model") or "", bool(inf))
+            self._send(200, page, "text/html; charset=utf-8")
+
+        def do_POST(self):
+            if self.path.split("?", 1)[0] != "/ask":
+                self._send(404, "not found", "text/plain; charset=utf-8")
+                return
+            if not _oracle_host_ok(self) or not (self.headers.get("Origin") or "").strip():
+                self._send(403, "forbidden", "text/plain; charset=utf-8")
+                return
+            got = self.headers.get("X-Oracle-Token") or ""
+            if not hmac.compare_digest(got, token):
+                self._send(403, "forbidden", "text/plain; charset=utf-8")
+                return
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                n = 0
+            if n < 0 or n > 8000:
+                self._send(400, "bad request", "text/plain; charset=utf-8")
+                return
+            raw = self.rfile.read(n)
+            try:
+                body = json.loads(raw.decode("utf-8"))
+                question = body.get("question") if isinstance(body, dict) else ""
+            except Exception:
+                question = ""
+            if not isinstance(question, str):
+                question = ""
+            question = question.strip()[:4000]
+            if not question:
+                self._send(200, json.dumps({"detail": "Ask something first."}),
+                           "application/json")
+                return
+            inf = inference_config(cfg)
+            ans = ask_model(
+                inf, question, oracle_context(base),
+                (inf or {}).get("max_answer_chars") or 2000,
+                _redact_patterns(cfg),
+                instructions=cfg.get("owner_instructions"),
+            )
+            if ans.get("answer"):
+                payload = {"answer": ans["answer"]}
+            else:
+                why = ans.get("rejected") or "inference_error"
+                payload = {"rejected": why,
+                           "detail": _ORACLE_REJECTS.get(why, "The Oracle did not answer.")}
+            self._send(200, json.dumps(payload), "application/json")
+
+    bind_host = "127.0.0.1" if host == "localhost" else host
+    httpd = ThreadingHTTPServer((bind_host, int(port)), Handler)
+    bound = httpd.socket.getsockname()[0]
+    if not _is_loopback_ip(bound):
+        httpd.server_close()
+        raise ValueError("oracle chat bound a non-loopback address")
+    httpd.oracle_token = token
+    return httpd
+
+
+def oracle_window(cfg, port=11436, open_browser=True) -> int:
+    """Open the Oracle chat and wait. Does not poll the mailbox."""
+    try:
+        port = int(port)
+    except (TypeError, ValueError):
+        print("error: --oracle-port must be an integer", file=sys.stderr)
+        return 2
+    if port < 0 or port > 65535:
+        print("error: --oracle-port is out of range", file=sys.stderr)
+        return 2
+    try:
+        httpd = make_oracle_server(cfg, "127.0.0.1", port)
+    except OSError as e:
+        print(f"oracle chat could not listen: {e}", file=sys.stderr)
+        return 1
+    except ValueError as e:
+        print(str(e), file=sys.stderr)
+        return 2
+    bound = httpd.socket.getsockname()[1]
+    url = f"http://127.0.0.1:{bound}/"
+    print(f"Oracle chat on {url}")
+    print("Loopback only. Leave this process running. Ctrl+C closes it.")
+    if open_browser:
+        threading.Timer(0.4, lambda: webbrowser.open(url)).start()
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        httpd.server_close()
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Homing Pigeon runner agent")
     ap.add_argument("--config", default="config.json")
@@ -2346,6 +2647,10 @@ def main() -> int:
                     help="drop into pdb on unhandled exceptions")
     ap.add_argument("--inspect", choices=["board", "budget", "job", "redact"],
                     help="read local Oracle state and exit; no mailbox")
+    ap.add_argument("--oracle", action="store_true",
+                    help="open a loopback chat with the Oracle in your browser")
+    ap.add_argument("--oracle-port", type=int, default=11436, metavar="PORT",
+                    help="port for --oracle (default 11436, 127.0.0.1 only)")
     ap.add_argument("--job-id", default=None,
                     help="job id for --inspect job")
     args = ap.parse_args()
@@ -2360,6 +2665,8 @@ def main() -> int:
     ensure_inference_ready(cfg)
     # First start has no previous model id, so this pulls once.
     update_llama_from_config(cfg)
+    if args.oracle:
+        return oracle_window(cfg, args.oracle_port)
     if not cfg.get("mailbox_user"):
         print("config error: mailbox_user is required", file=sys.stderr)
         return 2

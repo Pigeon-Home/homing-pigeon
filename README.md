@@ -365,6 +365,7 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | `--pdb` | Drop into pdb on unhandled exceptions |
 | `--no-send` | Execute, but log results instead of emailing them |
 | `--once` | Single poll cycle, then exit |
+| `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. |
 | `--poll-interval SEC`, `--timeout SEC`, `--max-output-bytes N` | Override config |
 | `--no-oracle` | Disable the Oracle safety layer (v3) |
 

@@ -58,7 +58,7 @@ jobs:
           cfg = {
             'mailbox_user': 'pigeon-test@example.com',
             'mailbox_password': 'not-a-real-mailbox-password',
-            'shared_secret': '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+            'shared_secret': '9f2c7ab1e84d3065c1a7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d',
             'imap_host': '127.0.0.1',
             'imap_port': 1,
             'smtp_host': '127.0.0.1',
