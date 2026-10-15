@@ -2783,7 +2783,7 @@ def oracle_context(base_dir, limit=6, max_chars=4000) -> str:
             continue
         if not isinstance(data, dict):
             continue
-        text = ((data.get("stdout") or "") + (data.get("stderr") or "")).strip()
+        text = _output_blob(data).strip()
         if len(text) > 800:
             text = text[:800] + "\n..."
         kind = data.get("kind") if isinstance(data.get("kind"), str) else ""

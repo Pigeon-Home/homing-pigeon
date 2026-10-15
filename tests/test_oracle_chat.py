@@ -63,6 +63,50 @@ class OracleChatTest(unittest.TestCase):
         self.assertIn("clock is noon", text)
         self.assertNotIn("evil", text)
 
+    def test_numeric_retained_output_does_not_crash_the_chat(self):
+        # From a simulation: one retained job stored stdout as a number
+        # and another stored it as a list. Building the Oracle's context
+        # used to raise TypeError before the model was asked.
+        with tempfile.TemporaryDirectory() as d:
+            kept = os.path.join(d, "retained")
+            os.makedirs(kept)
+            with open(os.path.join(kept, "job-num.json"), "w", encoding="utf-8") as fh:
+                json.dump({"stdout": 5, "stderr": None, "kind": {"nope": True}}, fh)
+            with open(os.path.join(kept, "job-list.json"), "w", encoding="utf-8") as fh:
+                json.dump({"stdout": ["a", FLAG], "stderr": {"x": 1}}, fh)
+            text = oracle_context(d)
+            self.assertIn("job-num", text)
+            self.assertIn("5", text)
+            self.assertIn(FLAG, text)
+
+            httpd = make_oracle_server(_cfg(d), "127.0.0.1", 0)
+            port = httpd.socket.getsockname()[1]
+            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+            thread.start()
+            self.addCleanup(httpd.shutdown)
+            self.addCleanup(httpd.server_close)
+
+            def fake_ask(inf, question, output_text, max_chars, patterns=None,
+                         opener=None, instructions=None):
+                self.assertIn("5", output_text)
+                return {"op": "ask", "rejected": "sanitization"}
+
+            with mock.patch("runner.runner.ask_model", side_effect=fake_ask):
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/ask",
+                    data=json.dumps({"question": "what happened?"}).encode(),
+                    headers={
+                        "Origin": f"http://127.0.0.1:{port}",
+                        "Content-Type": "application/json",
+                        "X-Oracle-Token": httpd.oracle_token,
+                    },
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    body = json.loads(resp.read().decode())
+            self.assertEqual(body.get("rejected"), "sanitization")
+            self.assertNotIn(FLAG, json.dumps(body))
+
     def test_page_has_no_secret_and_no_html_injection(self):
         page = oracle_page("tok", "llama3.2:3b", True)
         self.assertNotIn("mailbox-secret", page)
