@@ -1434,3 +1434,28 @@ class RedactAndPortFaultTest(unittest.TestCase):
             _port({"imap_port": "abc"}, "imap_port", 993)
         self.assertEqual(_port({}, "imap_port", 993), 993)
         self.assertEqual(_port({"smtp_port": "587"}, "smtp_port", 25), 587)
+
+
+class ScriptShapeFaultTest(unittest.TestCase):
+    """Finding: a numeric script retried the job forever.
+
+    An int is truthy. fh.write(5) raises TypeError, which the
+    job path treats as transient. A script that is not a string
+    is rejected. The job is marked seen.
+    """
+
+    def test_numeric_script_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            body = sign_payload({
+                "v": 1, "type": "job", "kind": "exec",
+                "job_id": "script-1", "issued_at": _now(),
+                "script": 5,
+                "interpreter": ["sh"],
+            }, SECRET)
+            cfg = {"mailbox_user": "pigeon-test@example.com",
+                   "shared_secret": SECRET, "base_dir": d}
+            poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                      imap=_IMAP(_mail("[HOMING-PIGEON] job script-1", body)),
+                      smtp=_SMTP(), opts=_Opts())
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                self.assertIn("script-1", json.load(fh))

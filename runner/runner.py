@@ -1901,6 +1901,10 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
                 sha384_of(script_path).lower() != job["script_sha384"].lower():
             raise JobRejected("script SHA384 mismatch")
     elif script:
+        # A number is truthy. write() raises TypeError and the job
+        # retried forever. A script that is not a string can never run.
+        if not isinstance(script, str):
+            raise JobRejected("script must be a string")
         with open(script_path, "w", encoding="utf-8") as fh:
             fh.write(script)
     else:
