@@ -3120,3 +3120,58 @@ class AttestKeyPoisonTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-attest", seen)
+
+
+class ScrubEnvBoomKeyPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation):
+
+    _scrub_env did str(k).lower() on every env key. A key whose text
+    form raises stopped the scrub. Sensitive prefixes could not be
+    removed.
+
+    A key that cannot be printed is skipped. Processing continues.
+    """
+
+    def test_boom_key_does_not_raise(self):
+        from runner.runner import _scrub_env
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+            def __eq__(self, other):
+                return False
+            def __hash__(self):
+                return 1
+
+        out = _scrub_env({Boom(): "x", "PATH": "/bin", "PIGEON_SECRET": "nope"})
+        self.assertIn("PATH", out)
+        self.assertNotIn("PIGEON_SECRET", out)
+
+    def test_concurrent_boom_key_does_not_raise(self):
+        import threading
+        from runner.runner import _scrub_env
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+            def __eq__(self, other):
+                return False
+            def __hash__(self):
+                return 1
+
+        errors = []
+
+        def hammer():
+            for _ in range(10):
+                try:
+                    _scrub_env({Boom(): Boom(), "PATH": Boom()})
+                except Exception as e:
+                    errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
