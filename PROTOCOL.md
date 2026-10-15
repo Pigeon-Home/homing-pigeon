@@ -728,5 +728,61 @@ and privacy budgets (section 11) are tracked per key ID, so one chatty
 worker cannot spend another worker's budget. Rotation is a config edit:
 add a new key ID, hand it out, retire the old one. No flag day.
 
+## 15. Rollout plan
+
+This section is a work plan, not protocol. It lists what must be built
+and what must be written before v3 ships. v3 stays a proposal until
+every box is checked.
+
+### Implementation
+
+- `additional_secrets` config: parse, entropy-gate every secret at
+  startup, refuse weak ones like `shared_secret`.
+- `key_id` verification: every signed message type (job, query,
+  task_request, task_result) resolves its secret by key ID, defaulting
+  to `shared_secret`. Unknown key IDs rejected before crypto.
+- Task board: persistent task states (open, claimed, done) on the
+  runner host. Survives restarts; a crashed Oracle re-offers claimed
+  tasks whose leases lapsed while it was down.
+- `task_request` / `task_offer` / `empty` handling per section 13.2,
+  with claim leases per 13.6.
+- `task_result` intake with dedup per 13.6.
+- `dag_mode` (off/advisory/enforce), `worker_allowlist`,
+  `compartments` / `worker_compartments`, `require_review`,
+  `task_timeout`: config parsing and enforcement.
+- Per-key-ID rate limits and privacy budgets (section 11).
+- `install.py`: generate and print additional secrets on request
+  (`--additional-secret <key-id>`), same 256-bit generation as the
+  primary secret.
+- Tests: multi-secret verification, key_id fallback, claim exclusivity
+  under concurrent pulls, lease expiry re-offer, result dedup, DAG
+  modes, allowlist, compartment filtering.
+
+### Documentation
+
+- README.md: Oracle section rewritten from "proposal" to real;
+  dispatcher described in plain language; multi-secret setup.
+- INSTALL.md / RUNBOOK.md: `additional_secrets` config walkthrough;
+  worker enrollment (shared secret plus key ID handoff); task board
+  usage.
+- AGENTS.md: how a worker SI pulls tasks, claims capabilities,
+  submits results; key_id handling for cloud SIs.
+- SECURITY.md: multi-secret threat notes (key ID is a label, not a
+  secret; rotation procedure); dispatcher trust model (review as the
+  correctness anchor).
+- SAFEGUARDS.md: operational guidance for running a board (timeouts,
+  allowlists, when to tighten from least-restrictive defaults).
+- PROTOCOL.md: flip the status line when the runner accepts v3 message
+  types; mark implemented sections.
+- DOCKER.md: env vars for additional secrets, if supported.
+
+### Order
+
+Config and verification first. Section 14 is the smallest
+backward-compatible piece and unblocks everything else. Then the task
+board and dispatch (section 13). Then the privacy-preserving results
+(sections 9-12), the largest and most security-sensitive piece. Docs
+ship with each piece, not after.
+
 *Status: proposal. v1 remains the implemented protocol; v3 message types
 are not yet accepted by the runner.*
