@@ -61,11 +61,11 @@ Defense in depth, cheapest first:
   stayed inside it. Not a sandbox — an attested boundary. See
   PROTOCOL.md §9.4.
 
-## 4. The Oracle as a safeguard (v2, spec'd)
+## 4. The Oracle as a safeguard
 
 v1 sends full job output back to your (cloud, third-party) SI. If
 your jobs touch anything sensitive, that's the leak surface. The
-Oracle — spec'd in PROTOCOL.md, not yet implemented — is the
+Oracle — implemented, specified in PROTOCOL.md — is the
 mitigation:
 
 - **Result policies.** `full` / `redacted` / `summary` / `attested`.

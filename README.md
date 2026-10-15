@@ -105,8 +105,7 @@ part that writes the next attempt.
 
 ## The Oracle: answers, not output
 
-v1 sends full job output back to the SI. The v3 proposal (spec'd in
-PROTOCOL.md, not yet implemented) flips this: your machine becomes
+v1 sends full job output back to the SI. v3 flips this: your machine becomes
 **the Oracle** — a black box the SI can question but never inspect.
 
 The SI asks "did the tests pass?" or "does the output contain secrets?"
@@ -395,9 +394,9 @@ End-to-end without your SI:
 - Delivery is at-least-once: if a result email fails to send, the job
   stays unseen and will be re-executed next cycle. Make jobs idempotent
   or check the seen behavior accordingly.
-- Hardening ideas for v2: encrypted credentials at rest,
-  per-job encryption, result file upload for large outputs — plus the
-  Oracle (spec'd in PROTOCOL.md): result policies, signed attestations,
+- Hardening ideas still open: encrypted credentials at rest,
+  per-job encryption, result file upload for large outputs. The
+  Oracle is implemented: result policies, signed attestations,
   and a query budget, so a cloud SI learns *answers* about your output
   without ever seeing it. `oracle_enabled: false` disables it anytime.
 

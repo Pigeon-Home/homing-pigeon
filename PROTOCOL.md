@@ -207,7 +207,7 @@ send stays unseen and will be retried (re-executed) on the next cycle.
 - IMAP/SMTP over TLS (993/587). File downloads over HTTPS only.
 - Hardening roadmap (v2): encrypted credentials at rest, ack messages,
   per-job encryption, result file upload for large outputs,
-  privacy-preserving result policies (specified in the v3 proposal below).
+  privacy-preserving result policies (implemented in v3 below).
 
 ## 8. Cryptography — Suite B alignment (384-bit tier)
 
@@ -229,7 +229,7 @@ authenticity and integrity come from HMAC-SHA-384.
 
 ---
 
-# Protocol v3 (proposal): the Oracle
+# Protocol v3: the Oracle
 
 **Paradigm: the runner as the Oracle.** In v1 the SI receives full job
 output (stdout/stderr) by email. v3 inverts this: the runner keeps the
@@ -743,9 +743,8 @@ add a new key ID, hand it out, retire the old one. No flag day.
 
 ## 15. Rollout plan
 
-This section is a work plan, not protocol. It lists what must be built
-and what must be written before v3 ships. v3 stays a proposal until
-every box is checked.
+This section was the work plan. The boxes below shipped. It is kept
+as the record of what v3 required. It is not a proposal.
 
 ### Implementation
 
@@ -797,5 +796,5 @@ board and dispatch (section 13). Then the privacy-preserving results
 (sections 9-12), the largest and most security-sensitive piece. Docs
 ship with each piece, not after.
 
-*Status: proposal. v1 remains the implemented protocol; v3 message types
-are not yet accepted by the runner.*
+*Status: implemented. The runner accepts v3 message types. v1 jobs
+still work unchanged.*
