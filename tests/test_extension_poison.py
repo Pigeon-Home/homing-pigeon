@@ -8,11 +8,14 @@ capability list, a DRI cursor that was a word, a resource sample that
 was a string, a sense record whose detail was the desktop flag) and
 the poll raised. These tests are those inputs.
 """
+import io
 import json
 import os
 import sys
 import tempfile
+import time
 import unittest
+from contextlib import redirect_stdout
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from unittest import mock
@@ -26,6 +29,7 @@ from runner.runner import (  # noqa: E402
     answer_queries,
     poll_once,
     query_budget,
+    run_inspect,
     sign_payload,
 )
 
@@ -214,6 +218,74 @@ class MistypedConfigTest(unittest.TestCase):
                       imap=_IMAP(raw), smtp=_SMTP(), opts=_Opts())
             self.assertIn("job-shape", seen)
             self.assertEqual(query_budget(cfg, {"result_policy": "attested"}), 8)
+
+
+class PoisonedQueryTest(unittest.TestCase):
+    """Third simulation: a follow-up query, not a question to the Oracle.
+
+    The rate-limit file was a JSON list. The cap was the word "lots".
+    The retained job had stdout 5, stderr null, a budget of "eight",
+    and a view of 3. The query body mixed a string, a bad grep, a
+    tail, and a senses op whose sensor was a number.
+    """
+
+    def _query(self, d):
+        os.makedirs(os.path.join(d, "retained"))
+        with open(os.path.join(d, "query_times.json"), "w", encoding="utf-8") as fh:
+            json.dump([1, 2, "nope"], fh)
+        with open(os.path.join(d, "retained", "job-q.json"), "w", encoding="utf-8") as fh:
+            json.dump({
+                "stdout": 5, "stderr": None, "spent": "many",
+                "budget": "eight", "patterns": ["not", "a", "dict"],
+                "view": 3, "saved_at": time.time(),
+            }, fh)
+        body = sign_payload({
+            "v": 1, "type": "query", "query_id": "q1", "job_id": "job-q",
+            "issued_at": _now(),
+            "queries": [
+                "not-an-object",
+                {"op": "grep", "pattern": "("},
+                {"op": "tail"},
+                {"op": "senses", "sensor": 1},
+            ],
+        }, SECRET)
+        return _mail("[HOMING-PIGEON] query q1", body)
+
+    def test_word_cap_and_list_store_do_not_crash(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = {
+                "mailbox_user": "pigeon-test@example.com",
+                "shared_secret": SECRET,
+                "max_queries_per_hour": "lots",
+                "max_query_budget": "eight",
+                "base_dir": d,
+            }
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_IMAP(self._query(d)), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("query:q1", seen)
+
+            class Args:
+                inspect = "budget"
+                job_id = None
+
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                self.assertEqual(run_inspect(cfg, Args()), 0)
+            self.assertNotIn("Traceback", buf.getvalue())
+
+    def test_poisoned_retained_output_still_answers(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = {
+                "mailbox_user": "pigeon-test@example.com",
+                "shared_secret": SECRET,
+                "max_queries_per_hour": 0,
+                "max_query_budget": "eight",
+            }
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_IMAP(self._query(d)), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("query:q1", seen)
 
 
 if __name__ == "__main__":

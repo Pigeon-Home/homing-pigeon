@@ -816,7 +816,13 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
 
 
 def _output_blob(exec_result):
-    return (exec_result.get("stdout") or "") + (exec_result.get("stderr") or "")
+    out = exec_result.get("stdout") if isinstance(exec_result, dict) else ""
+    err = exec_result.get("stderr") if isinstance(exec_result, dict) else ""
+    if not isinstance(out, str):
+        out = "" if out is None else str(out)
+    if not isinstance(err, str):
+        err = "" if err is None else str(err)
+    return out + err
 
 
 def _raw_lines_allowed(view):
@@ -832,13 +838,12 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
     text = _output_blob(exec_result)
     inf = inference_config(cfg) if cfg else None
     for q in queries or []:
-        if spent >= budget:
-            log(f"query op={q.get('op')} rejected: budget", "DEBUG")
-            answers.append({"rejected": "budget"})
-            spent += 1
-            continue
-        if not isinstance(q, dict):
-            answers.append({"rejected": "unknown_op"})
+        if spent >= budget or not isinstance(q, dict):
+            if isinstance(q, dict):
+                log(f"query op={q.get('op')} rejected: budget", "DEBUG")
+                answers.append({"rejected": "budget"})
+            else:
+                answers.append({"rejected": "unknown_op"})
             spent += 1
             continue
         op = q.get("op")
@@ -985,13 +990,44 @@ def _write_json(path, obj):
     os.replace(tmp, path)
 
 
+def _query_limit(cfg):
+    """Queries allowed per hour. 0 means unlimited.
+
+    A value that is present but not a number is -1: the cap was
+    intended and cannot be read, so the caller must refuse the query
+    instead of treating the typo as unlimited.
+    """
+    raw = (cfg or {}).get("max_queries_per_hour", 0)
+    if raw in (None, "", 0, False):
+        return 0
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return -1
+
+
+def _live_times(times, now):
+    if not isinstance(times, list):
+        return []
+    live = []
+    for t in times:
+        try:
+            if now - float(t) < 3600:
+                live.append(float(t))
+        except (TypeError, ValueError):
+            continue
+    return live
+
+
 def check_rate_limit(key_id, cfg, path=None):
     """Return True if under max_queries_per_hour. Zero means unlimited.
 
     When path is set, the window is on disk so it survives a restart
     and can be read without the runner running.
     """
-    limit = int(cfg.get("max_queries_per_hour") or 0)
+    limit = _query_limit(cfg)
+    if limit < 0:
+        return False
     if limit <= 0:
         return True
     now = time.time()
@@ -1005,7 +1041,9 @@ def check_rate_limit(key_id, cfg, path=None):
         store = {}
     else:
         store = _QUERY_TIMES
-    window = [t for t in store.get(key_id, []) if now - float(t) < 3600]
+    if not isinstance(store, dict):
+        store = {}
+    window = _live_times(store.get(key_id, []), now)
     if len(window) >= limit:
         store[key_id] = window
         if path:
@@ -1020,18 +1058,19 @@ def check_rate_limit(key_id, cfg, path=None):
 
 def budget_status(path, cfg):
     """Per-key spend in the current hour, for the owner to read."""
-    limit = int(cfg.get("max_queries_per_hour") or 0)
+    limit = _query_limit(cfg)
     store = {}
     if path and os.path.exists(path):
         try:
             with open(path, encoding="utf-8") as f:
-                store = json.load(f)
+                loaded = json.load(f)
+            store = loaded if isinstance(loaded, dict) else {}
         except Exception:
             store = {}
     now = time.time()
     out = []
     for key, times in store.items():
-        live = [t for t in times if now - float(t) < 3600]
+        live = _live_times(times, now)
         out.append({"key_id": key, "spent": len(live), "limit": limit})
     return out
 
@@ -1871,7 +1910,10 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     try:
         budget = int(retained.get("budget"))
     except (TypeError, ValueError):
-        budget = int(cfg.get("max_query_budget", 8))
+        try:
+            budget = int(cfg.get("max_query_budget", 8))
+        except (TypeError, ValueError):
+            budget = 8
     try:
         already = int(retained.get("spent") or 0)
     except (TypeError, ValueError):
@@ -2624,8 +2666,8 @@ def run_inspect(cfg, args) -> int:
         return 0
     if args.inspect == "budget":
         path = os.path.join(base, "query_times.json")
-        print(json.dumps({"max_queries_per_hour":
-                          int(cfg.get("max_queries_per_hour") or 0),
+        limit = _query_limit(cfg)
+        print(json.dumps({"max_queries_per_hour": None if limit < 0 else limit,
                           "keys": budget_status(path, cfg)}, indent=2))
         return 0
     if args.inspect == "job":
