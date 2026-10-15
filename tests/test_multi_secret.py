@@ -2,6 +2,7 @@
 """Multi-secret key_id tests (v3 Piece 1)."""
 import os
 import sys
+import hashlib
 import tempfile
 import unittest
 import uuid
@@ -12,7 +13,9 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "cloud"))
 
-from runner.runner import build_secrets, verify_body_keyed, poll_once, validate_shared_secret
+from runner.runner import (build_secrets, verify_body_keyed, poll_once,
+                           validate_shared_secret, build_key_policies,
+                           check_key_policy)
 from send_job import sign_payload, verify_body
 
 SECRET = "2d2d42b99b668d4bcc0120c172c09e1059cdf4dd94d3422524519e3708937be4"
@@ -61,6 +64,123 @@ class MultiSecretTest(unittest.TestCase):
         body = sign_payload(payload, SECRET).replace('"ping"', '"p1ng"')
         with self.assertRaises(ValueError):
             verify_body_keyed(body, {"": SECRET})
+
+
+class KeyPolicyTest(unittest.TestCase):
+    """Per-key policies are opt-in: no entry means unrestricted."""
+
+    def test_no_policy_unrestricted(self):
+        cfg = {}
+        job = {"kind": "exec", "script": "rm -rf /",
+               "interpreter": ["bash"], "timeout_sec": 3600}
+        self.assertIsNone(check_key_policy({}, "worker1", cfg, job))
+        self.assertIsNone(check_key_policy({}, "", cfg, job))
+
+    def test_allowed_kinds(self):
+        pol = build_key_policies(
+            {"key_policies": {"w": {"allowed_kinds": ["ping"]}}})["w"]
+        cfg = {}
+        self.assertIsNone(
+            check_key_policy({"w": pol}, "w", cfg, {"kind": "ping"}))
+        self.assertIsNotNone(
+            check_key_policy({"w": pol}, "w", cfg,
+                             {"kind": "exec", "script": "echo hi"}))
+
+    def test_allowed_interpreters(self):
+        pol = build_key_policies(
+            {"key_policies": {"w": {"allowed_interpreters": [["bash"]]}}})["w"]
+        cfg = {}
+        ok = {"kind": "exec", "script": "echo hi", "interpreter": ["bash"]}
+        bad = {"kind": "exec", "script": "echo hi",
+               "interpreter": ["python3"]}
+        self.assertIsNone(check_key_policy({"w": pol}, "w", cfg, ok))
+        self.assertIsNotNone(check_key_policy({"w": pol}, "w", cfg, bad))
+
+    def test_interpreter_falls_back_to_config_default(self):
+        pol = build_key_policies(
+            {"key_policies": {"w": {"allowed_interpreters": [["bash"]]}}})["w"]
+        cfg = {"default_interpreter": ["bash"]}
+        job = {"kind": "exec", "script": "echo hi"}  # no interpreter field
+        self.assertIsNone(check_key_policy({"w": pol}, "w", cfg, job))
+        cfg2 = {"default_interpreter": ["python3"]}
+        self.assertIsNotNone(check_key_policy({"w": pol}, "w", cfg2, job))
+
+    def test_max_timeout(self):
+        pol = build_key_policies(
+            {"key_policies": {"w": {"max_timeout_sec": 60}}})["w"]
+        cfg = {}
+        self.assertIsNone(check_key_policy(
+            {"w": pol}, "w", cfg, {"kind": "ping", "timeout_sec": 60}))
+        self.assertIsNotNone(check_key_policy(
+            {"w": pol}, "w", cfg, {"kind": "ping", "timeout_sec": 61}))
+
+    def test_script_allowlist(self):
+        script = "pytest -q"
+        digest = hashlib.sha384(script.encode()).hexdigest()
+        pol = build_key_policies(
+            {"key_policies": {"w": {"allowed_script_sha384": [digest]}}})["w"]
+        cfg = {}
+        good = {"kind": "exec", "script": script, "interpreter": ["bash"]}
+        evil = {"kind": "exec", "script": "rm -rf /",
+                "interpreter": ["bash"]}
+        url = {"kind": "exec", "script_url": "https://x/y.sh",
+               "interpreter": ["bash"]}
+        ping = {"kind": "ping"}
+        self.assertIsNone(check_key_policy({"w": pol}, "w", cfg, good))
+        self.assertIsNotNone(check_key_policy({"w": pol}, "w", cfg, evil))
+        self.assertIsNotNone(check_key_policy({"w": pol}, "w", cfg, url))
+        # ping has no script; governed by allowed_kinds only
+        self.assertIsNone(check_key_policy({"w": pol}, "w", cfg, ping))
+
+    def test_policy_on_default_key(self):
+        pol = build_key_policies(
+            {"key_policies": {"": {"allowed_kinds": ["ping"]}}})[""]
+        cfg = {}
+        self.assertIsNone(check_key_policy({"": pol}, "", cfg,
+                                            {"kind": "ping"}))
+        self.assertIsNotNone(check_key_policy(
+            {"": pol}, "", cfg, {"kind": "exec", "script": "x"}))
+
+    def test_policy_enforced_end_to_end(self):
+        from tests.test_runner import FakeIMAP, FakeSMTP, job_email
+        tmp = tempfile.mkdtemp(prefix="hp-pol-")
+        cfg = {
+            "mailbox_user": SENDER,
+            "mailbox_password": SECRET,
+            "shared_secret": SECRET,
+            "additional_secrets": {"w": OTHER},
+            "key_policies": {"w": {"allowed_kinds": ["ping"]}},
+            "base_dir": tmp,
+            "workers": 1,
+        }
+        payload = {
+            "v": 1, "type": "job", "job_id": "j-pol",
+            "kind": "exec", "script": "echo hello",
+            "interpreter": ["bash"],
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "key_id": "w",
+        }
+        imap = FakeIMAP([job_email(payload, secret=OTHER)])
+        smtp = FakeSMTP()
+        poll_once(cfg, tmp, {}, os.path.join(tmp, "seen.json"),
+                  imap=imap, smtp=smtp)
+        # policy violation: rejected, nothing executed, no result mailed
+        self.assertEqual(smtp.sent, [])
+        self.assertIn("1", imap.flagged)
+
+    def test_malformed_policies_rejected(self):
+        for bad in ({"w": {"allowed_kinds": "ping"}},
+                    {"w": {"allowed_kinds": []}},
+                    {"w": {"allowed_interpreters": ["bash"]}},
+                    {"w": {"max_timeout_sec": 0}},
+                    {"w": {"max_timeout_sec": "lots"}},
+                    {"w": {"allowed_script_sha384": []}},
+                    {"w": "just-a-string"}):
+            with self.assertRaises(RuntimeError, msg=str(bad)):
+                build_key_policies({"key_policies": bad})
+        with self.assertRaises(RuntimeError):
+            build_key_policies({"key_policies": ["not", "a", "dict"]})
 
 
 if __name__ == "__main__":

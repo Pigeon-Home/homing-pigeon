@@ -743,6 +743,41 @@ and privacy budgets (section 11) are tracked per key ID, so one chatty
 worker cannot spend another worker's budget. Rotation is a config edit:
 add a new key ID, hand it out, retire the old one. No flag day.
 
+### 14.1 Per-key policies (opt-in)
+
+Keys are unrestricted by default: any valid key can submit any job.
+An optional `key_policies` object constrains what a key may do, turning
+a key ID from a label into a privilege boundary. This matters most when
+the signer is an SI that could be prompt-injected: a key issued to run
+the test suite cannot be repurposed to run arbitrary shell.
+
+```json
+"key_policies": {
+  "test-runner": {
+    "allowed_kinds": ["exec"],
+    "allowed_interpreters": [["bash"]],
+    "max_timeout_sec": 600,
+    "allowed_script_sha384": ["<sha384 of the exact test script>"]
+  }
+}
+```
+
+Every field is optional; every specified constraint must hold:
+
+- `allowed_kinds`: the job's `kind` must be listed.
+- `allowed_interpreters`: the job's effective interpreter (its own, or
+  the configured default) must exactly match one of the listed lists.
+- `max_timeout_sec`: the job's effective timeout must not exceed it.
+- `allowed_script_sha384`: for `exec` jobs, the inline `script`'s SHA-384
+  must be listed. `script_url` jobs are rejected under such a policy
+  (the content cannot be checked before download); `ping` jobs have no
+  script and are governed by `allowed_kinds` alone.
+
+A policy may also be attached to the default key under the empty-string
+key ID (`"": {...}`). Violations are rejected like any other bad job:
+logged, marked seen, never retried. Keys without a policy entry behave
+exactly as before.
+
 ## 15. Rollout plan
 
 This section was the work plan. The boxes below shipped. It is kept

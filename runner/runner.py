@@ -192,6 +192,107 @@ def build_secrets(cfg) -> dict:
     return secrets
 
 
+def build_key_policies(cfg) -> dict:
+    """key_id -> policy dict. Keys without an entry are unrestricted.
+
+    A policy is opt-in least privilege for a key: allowed_kinds,
+    allowed_interpreters, max_timeout_sec, allowed_script_sha384.
+    Malformed policies fail closed at startup.
+    """
+    raw = cfg.get("key_policies") or {}
+    if not isinstance(raw, dict):
+        raise RuntimeError("config error: key_policies must be an object")
+    policies = {}
+    for kid, pol in raw.items():
+        if not isinstance(kid, str):
+            raise RuntimeError("config error: key_policies keys must be strings")
+        if not isinstance(pol, dict):
+            raise RuntimeError(
+                f"config error: key_policies[{kid!r}] must be an object")
+        clean = {}
+        if "allowed_kinds" in pol:
+            kinds = pol["allowed_kinds"]
+            if not isinstance(kinds, list) or not kinds or \
+                    not all(isinstance(k, str) for k in kinds):
+                raise RuntimeError(
+                    f"config error: key_policies[{kid!r}].allowed_kinds "
+                    "must be a non-empty list of strings")
+            clean["allowed_kinds"] = kinds
+        if "allowed_interpreters" in pol:
+            interps = pol["allowed_interpreters"]
+            if not isinstance(interps, list) or not interps or not all(
+                    isinstance(i, list) and i
+                    and all(isinstance(x, str) for x in i)
+                    for i in interps):
+                raise RuntimeError(
+                    f"config error: key_policies[{kid!r}].allowed_interpreters "
+                    "must be a non-empty list of string lists")
+            clean["allowed_interpreters"] = interps
+        if "max_timeout_sec" in pol:
+            try:
+                mt = int(pol["max_timeout_sec"])
+            except (TypeError, ValueError):
+                raise RuntimeError(
+                    f"config error: key_policies[{kid!r}].max_timeout_sec "
+                    "must be a number")
+            if mt < 1:
+                raise RuntimeError(
+                    f"config error: key_policies[{kid!r}].max_timeout_sec "
+                    "must be >= 1")
+            clean["max_timeout_sec"] = mt
+        if "allowed_script_sha384" in pol:
+            hashes = pol["allowed_script_sha384"]
+            if not isinstance(hashes, list) or not hashes or \
+                    not all(isinstance(h, str) for h in hashes):
+                raise RuntimeError(
+                    f"config error: key_policies[{kid!r}].allowed_script_sha384 "
+                    "must be a non-empty list of strings")
+            clean["allowed_script_sha384"] = [h.lower() for h in hashes]
+        policies[kid] = clean
+    return policies
+
+
+def check_key_policy(policies: dict, key_id: str, cfg, job):
+    """Return None if the key's policy allows the job, else a reason string.
+
+    Keys without a policy entry are unrestricted. Every specified
+    constraint must hold; the check runs on the effective interpreter
+    and timeout (job value or configured default), mirroring execute_job.
+    """
+    pol = policies.get(key_id)
+    if not pol:
+        return None
+    kind = job.get("kind")
+    if "allowed_kinds" in pol and kind not in pol["allowed_kinds"]:
+        return f"job kind {kind!r} is not allowed for this key"
+    interpreter = job.get("interpreter") or cfg.get("default_interpreter") \
+        or platform_interpreter()
+    if "allowed_interpreters" in pol:
+        if not isinstance(interpreter, list) \
+                or interpreter not in pol["allowed_interpreters"]:
+            return f"interpreter {interpreter!r} is not allowed for this key"
+    if "max_timeout_sec" in pol:
+        try:
+            timeout = int(job.get("timeout_sec")
+                          or cfg.get("default_timeout_sec", 300))
+        except (TypeError, ValueError):
+            return "timeout_sec must be a number"
+        if timeout > pol["max_timeout_sec"]:
+            return (f"timeout {timeout}s exceeds this key's limit "
+                    f"of {pol['max_timeout_sec']}s")
+    if "allowed_script_sha384" in pol and kind == "exec":
+        # The allowlist pins exact scripts. script_url cannot be checked
+        # before download, so it is not permitted under such a policy.
+        script = job.get("script")
+        if not isinstance(script, str):
+            return ("this key may only run allowlisted scripts "
+                    "(inline script required, script_url not permitted)")
+        digest = hashlib.sha384(script.encode("utf-8")).hexdigest()
+        if digest not in pol["allowed_script_sha384"]:
+            return "script is not in this key's allowlist"
+    return None
+
+
 def verify_body_keyed(body_text: str, secrets: dict):
     """Return (payload, key_id). Unknown key_id raises before any crypto."""
     norm = _normalize(body_text).rstrip()
@@ -1608,7 +1709,7 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
 
 
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
-                seen: dict, secrets: dict, opts=None):
+                seen: dict, secrets: dict, opts=None, key_policies=None):
     msg = email.message_from_bytes(raw)
     subject = str(msg["Subject"] or "")
     from_header = str(msg["From"] or "")
@@ -1677,6 +1778,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     age = (datetime.now(timezone.utc) - issued).total_seconds()
     if age < -300 or age > int(cfg.get("max_job_age_sec", 3600)):
         reject(f"issued_at outside allowed window (age {age:.0f}s)")
+        return
+
+    violation = check_key_policy(key_policies or {}, key_id, cfg, job)
+    if violation:
+        reject(f"key policy: {violation}")
         return
 
     log(f"executing job {job_id} (kind={job.get('kind')})")
@@ -1981,6 +2087,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     # as the HMAC-SHA-384 key. No hashing or derivation — the SI uses it
     # as-is.
     secrets = build_secrets(cfg)
+    key_policies = build_key_policies(cfg)
     prune_retained(base_dir, int(cfg.get("output_retention_days") or 7))
     board = Board(os.path.join(base_dir, "board.json"))
     cfg["board"] = board
@@ -2005,7 +2112,8 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
                 workers = _worker_count(cfg, opts)
             with ThreadPoolExecutor(max_workers=workers) as ex:
                 futs = [ex.submit(handle_mail, cfg, imap, smtp, seq, raw,
-                                  base_dir, seen, secrets, opts)
+                                  base_dir, seen, secrets, opts,
+                                  key_policies)
                         for seq, raw in mails]
                 first_exc = None
                 for f in as_completed(futs):
