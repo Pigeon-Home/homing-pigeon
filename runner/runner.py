@@ -1652,14 +1652,28 @@ def _host(cfg, key):
     return host
 
 
+def _mailbox(cfg):
+    """A missing user is a config error, not a KeyError mid-poll."""
+    if not isinstance(cfg, dict):
+        raise RuntimeError("config error: config is not an object")
+    user = cfg.get("mailbox_user")
+    if not isinstance(user, str) or not user.strip():
+        raise RuntimeError("config error: mailbox_user must be set")
+    return user.strip()
+
+
 def connect_imap(cfg) -> imaplib.IMAP4_SSL:
     conn = imaplib.IMAP4_SSL(_host(cfg, "imap_host"), _port(cfg, "imap_port", 993), timeout=30)
+    user = _mailbox(cfg)
     if _use_oauth(cfg):
-        _imap_xoauth2(conn, cfg["mailbox_user"], _xoauth2_raw(cfg))
+        _imap_xoauth2(conn, user, _xoauth2_raw(cfg))
     else:
         # Password travels inside LOGIN, but only over the TLS session.
         # It is never logged or written anywhere.
-        conn.login(cfg["mailbox_user"], cfg["mailbox_password"])
+        password = cfg.get("mailbox_password")
+        if not isinstance(password, str):
+            raise RuntimeError("config error: mailbox_password must be a string")
+        conn.login(user, password)
     typ, _ = conn.select("INBOX")
     if typ != "OK":
         raise RuntimeError("IMAP SELECT INBOX failed")
@@ -1676,7 +1690,10 @@ def connect_smtp(cfg) -> smtplib.SMTP:
         raw = _xoauth2_raw(cfg)
         smtp.auth("XOAUTH2", lambda challenge=None: raw)
     else:
-        smtp.login(cfg["mailbox_user"], cfg["mailbox_password"])
+        password = cfg.get("mailbox_password")
+        if not isinstance(password, str):
+            raise RuntimeError("config error: mailbox_password must be a string")
+        smtp.login(_mailbox(cfg), password)
     return smtp
 
 
@@ -3016,7 +3033,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     board = Board(os.path.join(base_dir, "board.json"))
     cfg["board"] = board
     if not getattr(log, "identity_logged", False):
-        log(f"runner identity: {cfg['mailbox_user']} -- accepting signed jobs from any sender")
+        log(f"runner identity: {cfg.get('mailbox_user') or '(unset)'} -- accepting signed jobs from any sender")
         log.identity_logged = True
     own_imap = imap is None
     own_smtp = smtp is None

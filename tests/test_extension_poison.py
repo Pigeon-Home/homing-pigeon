@@ -1789,3 +1789,35 @@ class HostAndResultFaultTest(unittest.TestCase):
             with open(os.path.join(d, "board.json"), encoding="utf-8") as fh:
                 tasks = json.load(fh)
             self.assertEqual(tasks["t-1"]["state"], "done")
+
+
+class MailboxFaultTest(unittest.TestCase):
+    """Finding: a missing mailbox_user was a KeyError mid-poll.
+
+    The identity log and the login indexed it. A missing user is
+    a config error now. A password that is not a string is too.
+    """
+
+    def test_missing_user_is_a_config_error(self):
+        from runner.runner import _mailbox
+        with self.assertRaises(RuntimeError):
+            _mailbox({})
+        with self.assertRaises(RuntimeError):
+            _mailbox({"mailbox_user": 5})
+        self.assertEqual(_mailbox({"mailbox_user": " a@b.c "}), "a@b.c")
+
+    def test_missing_user_does_not_crash_the_identity_log(self):
+        with tempfile.TemporaryDirectory() as d:
+            body = sign_payload({
+                "v": 1, "type": "job", "kind": "ping",
+                "job_id": "user-1", "issued_at": _now(),
+            }, SECRET)
+            # No mailbox_user. The identity log must not raise.
+            # The connect is not reached because imap is injected.
+            poll_once(
+                {"shared_secret": SECRET, "base_dir": d},
+                d, {}, os.path.join(d, "seen.json"),
+                imap=_IMAP(_mail("[HOMING-PIGEON] job user-1", body)),
+                smtp=_SMTP(), opts=_Opts())
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                self.assertIn("user-1", json.load(fh))
