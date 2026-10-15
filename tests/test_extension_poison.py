@@ -1821,3 +1821,27 @@ class MailboxFaultTest(unittest.TestCase):
                 smtp=_SMTP(), opts=_Opts())
             with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
                 self.assertIn("user-1", json.load(fh))
+
+
+class BaseDirFaultTest(unittest.TestCase):
+    """Finding: a null in base_dir retried the job forever.
+
+    os.makedirs raises ValueError on an embedded null. That is
+    not OSError, so the job path treated it as transient. It is
+    poison. The job is rejected.
+    """
+
+    def test_null_in_base_dir_is_rejected(self):
+        from runner.runner import execute_job, JobRejected
+        with self.assertRaises(JobRejected):
+            execute_job(
+                {"shared_secret": SECRET},
+                {"kind": "ping", "job_id": "ok"},
+                "base\x00dir",
+            )
+
+    def test_non_string_base_dir_is_rejected(self):
+        from runner.runner import execute_job, JobRejected
+        with self.assertRaises(JobRejected):
+            execute_job({"shared_secret": SECRET},
+                        {"kind": "ping", "job_id": "ok"}, None)

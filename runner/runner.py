@@ -1932,15 +1932,17 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     if not isinstance(cfg, dict):
         cfg = {}
     job_id = _safe_job_id(job.get("job_id", ""))
+    if not isinstance(base_dir, str) or not base_dir or "\x00" in base_dir:
+        raise JobRejected("base_dir must be a path without a null byte")
     work = os.path.join(base_dir, "work", job_id)
     try:
         # A retry must not see files left by a previous attempt.
         if os.path.isdir(work):
             shutil.rmtree(work)
         os.makedirs(work)
-    except OSError as e:
+    except (OSError, ValueError) as e:
         # e.g. Windows reserved names (CON, NUL, ...) or work path blocked
-        # by a file: poison, not transient.
+        # by a file, or a null in the path: poison, not transient.
         raise JobRejected(f"cannot create work dir: {e}")
     kind = job.get("kind")
 
