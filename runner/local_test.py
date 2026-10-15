@@ -246,6 +246,39 @@ document.getElementById('f').onsubmit = async (e) => {
         self._send(404, "not found", "text/plain")
 
 
+
+def browser_chat(cfg, port=8765) -> int:
+    """Serve a loopback chat page that talks to the SI instance.
+
+    The SI is a second Ollama process on port 11435. The Oracle stays
+    on its configured endpoint. The page has two actions: chat with
+    the SI, and send a question from the SI to the Oracle.
+    """
+    if not start_si_instance():
+        return 2
+    host = "127.0.0.1"
+    _ChatHandler.cfg = cfg
+    try:
+        httpd = ThreadingHTTPServer((host, port), _ChatHandler)
+    except OSError as e:
+        print(f"could not bind {host}:{port}: {e}")
+        return 1
+    bound = httpd.server_address[0]
+    if bound not in ("127.0.0.1", "::1"):
+        print(f"refusing non-loopback bind {bound}")
+        return 1
+    url = f"http://{host}:{port}/"
+    print(f"local SI chat at {url}  (Ctrl-C to stop)")
+    threading.Timer(0.4, lambda: webbrowser.open(url)).start()
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print()
+    finally:
+        httpd.shutdown()
+    return 0
+
+
 def main(cfg, browser=False) -> int:
     R.ensure_inference_ready(cfg)
     R.update_llama_from_config(cfg)
