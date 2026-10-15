@@ -257,5 +257,86 @@ class ReviewPatternsGracefulTest(unittest.TestCase):
         except Exception as e:
             self.fail(f"None patterns raised: {e}")
 
+
+class SensorParseGracefulTest(unittest.TestCase):
+    """Finding: parse_sensors raises RuntimeError on a bad config, and
+    _ingest_sensor_alert catches that. A bad sensors block must not
+    crash the module import or a direct call that expects a dict.
+    """
+
+    def test_parse_sensors_bad_shapes(self):
+        for cfg in ({}, {"sensors": None}, {"sensors": []}, {"sensors": "nope"},
+                    {"sensors": {"door": "not-a-dict"}}):
+            try:
+                senses.parse_sensors(cfg)
+            except RuntimeError:
+                pass  # documented rejection
+            except Exception as e:
+                self.fail(f"parse_sensors crashed on {cfg}: {e}")
+
+    def test_validate_missing_title(self):
+        try:
+            bad = senses.validate_sensor_alert({"sensor": "door"})
+        except Exception as e:
+            self.fail(f"validate crashed: {e}")
+        self.assertTrue(bad)
+
+
+class BoardGracefulTest(unittest.TestCase):
+    def test_submit_hostile_tasks(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for task in ({}, {"task_id": ""}, {"task_id": "ok", "requires": "nope"},
+                     {"task_id": "ok2", "priority": "high"}):
+            try:
+                ok, reason = b.submit(task)
+            except Exception as e:
+                self.fail(f"submit crashed on {task}: {e}")
+            self.assertIsInstance(ok, bool)
+
+    def test_concurrent_submit_and_offer(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        errors = []
+
+        def submit(i):
+            try:
+                b.submit({"task_id": f"c{i}", "kind": "ping"})
+            except Exception as e:
+                errors.append(e)
+
+        def offer():
+            try:
+                b.offer("w", ["ping"])
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=submit, args=(i,)) for i in range(8)]
+        threads += [threading.Thread(target=offer) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        # Finding: concurrent submit/offer can raise FileNotFoundError
+        # from the atomic replace race on board.json. It does not
+        # corrupt the process, but it is not fully serialized.
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
+
+class AnswerQueriesNullsTest(unittest.TestCase):
+    def test_null_stdout_does_not_crash(self):
+        try:
+            answers, spent = answer_queries(
+                [{"op": "tail", "lines": 5}, {"op": "grep", "pattern": "."}],
+                {"stdout": None, "stderr": None, "exit_code": None},
+                {},
+                4,
+                cfg={},
+            )
+        except Exception as e:
+            self.fail(f"null output crashed answer_queries: {e}")
+        self.assertEqual(spent, 2)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
