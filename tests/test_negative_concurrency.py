@@ -2252,3 +2252,52 @@ class SensesPathPoisonTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+
+class BudgetAndAllowlistPoisonTest(unittest.TestCase):
+    """Findings (2026-10-15 simulation):
+
+    1. budget_status assumed path was a path. An object raised
+       TypeError on stat and stopped the budget report.
+    2. Board.offer did worker_id not in allow. An object allowlist
+       raised TypeError ("argument of type 'object' is not iterable")
+       and stopped the offer.
+
+    Non-path budget paths return []. A non-list allowlist is treated
+    as empty. Processing does not stop.
+    """
+
+    def test_bad_path_and_allowlist_do_not_raise(self):
+        from runner.runner import budget_status, Board
+        self.assertEqual(budget_status(object(), {}), [])
+        self.assertEqual(budget_status(None, {}), [])
+        self.assertEqual(budget_status(5, {}), [])
+        with tempfile.TemporaryDirectory() as d:
+            board = Board(os.path.join(d, "board.json"))
+            self.assertIsNone(board.offer("w", [], cfg={"worker_allowlist": object()}))
+            self.assertIsNone(board.offer(object(), object(), cfg=object()))
+            board.submit({"task_id": "t1"})
+            self.assertIsNotNone(board.offer("w", []))
+
+    def test_concurrent_budget_and_offer_do_not_raise(self):
+        import threading
+        from runner.runner import budget_status, Board
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                board = Board(os.path.join(d, "board.json"))
+                for _ in range(10):
+                    try:
+                        budget_status(object(), object())
+                        board.offer("w", [], cfg={"worker_allowlist": object()})
+                        board.offer(object(), object(), cfg=object())
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])

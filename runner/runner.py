@@ -1270,6 +1270,8 @@ def check_rate_limit(key_id, cfg, path=None):
 
 
 def budget_status(path, cfg):
+    if not isinstance(path, (str, bytes, os.PathLike)) or not path:
+        return []
     """Per-key spend in the current hour, for the owner to read."""
     limit = _query_limit(cfg)
     store = {}
@@ -1456,6 +1458,8 @@ class Board:
         if not isinstance(cfg, dict):
             cfg = {}
         allow = cfg.get("worker_allowlist") or []
+        if not isinstance(allow, list):
+            allow = []
         if allow and worker_id not in allow:
             return None
         raw_caps = capabilities if isinstance(capabilities, list) else []
