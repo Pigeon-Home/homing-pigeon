@@ -299,6 +299,26 @@ BUILTIN_PROFILES = {
 }
 
 
+
+def detect_default_profile() -> str:
+    """Pick a profile automatically when the user did not name one.
+
+    Raspberry Pi gets the password-focused Pi profile. Everything else
+    gets password-only so the common case (only the password matters)
+    is the default. --no-profile disables this.
+    """
+    # Pi detection: device-tree model or the classic cpuinfo hardware line.
+    for path in ("/proc/device-tree/model", "/proc/cpuinfo"):
+        try:
+            with open(path, encoding="utf-8", errors="ignore") as f:
+                blob = f.read().lower()
+            if "raspberry pi" in blob:
+                return "raspberry-pi-home"
+        except Exception:
+            pass
+    return "password-only"
+
+
 def apply_profile(cfg_path: str, profile: str) -> None:
     """Merge a named built-in profile or a JSON file into config.json.
 
@@ -467,7 +487,10 @@ def main() -> int:
     ap.add_argument("--no-inference", action="store_true",
                     help="do not install Ollama or pull a model (ask stays off)")
     ap.add_argument("--profile", default=None, metavar="NAME_OR_PATH",
-                    help="apply a deployment profile (raspberry-pi-home, password-only, or a JSON file)")
+                    help="apply a deployment profile (raspberry-pi-home, password-only, or a JSON file). "
+                         "If omitted, a profile is chosen automatically.")
+    ap.add_argument("--no-profile", action="store_true",
+                    help="do not apply any deployment profile")
     ap.add_argument("--inference-model", default="llama3.2:3b",
                     help="Ollama model to pull when inference is enabled (default llama3.2:3b)")
     ap.add_argument("--additional-secret", action="append", default=[],
@@ -505,7 +528,10 @@ def main() -> int:
     for kid in args.additional_secret:
         store_additional_secret(cfg_path, kid)
     install_ollama_and_model(cfg_path, args.inference_model, args.no_inference)
-    apply_profile(cfg_path, args.profile)
+    chosen = None if args.no_profile else (args.profile or detect_default_profile())
+    if chosen:
+        print(f"profile: auto-selected {chosen}" if not args.profile else f"profile: using {chosen}")
+        apply_profile(cfg_path, chosen)
     extra = _forwarded_args(args)
     if extra:
         print(f"forwarding runner flags into service: {' '.join(extra)}")

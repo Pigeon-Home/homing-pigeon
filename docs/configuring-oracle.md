@@ -47,7 +47,9 @@ The result is a normal config file. It can be edited by hand or loaded through t
 
 ## Applying a profile
 
-The installer can apply a profile so the runner watches what you said matters:
+The installer applies a profile automatically. On a Raspberry Pi it selects `raspberry-pi-home`; everywhere else it selects `password-only` (watch the password hash, attested view). Pass `--profile NAME` to override, or `--no-profile` to skip.
+
+You can still name one explicitly:
 
 ```
 homing-pigeon-install --profile password-only
