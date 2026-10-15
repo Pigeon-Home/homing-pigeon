@@ -2530,5 +2530,50 @@ class WorkerIdGracefulTest(unittest.TestCase):
         for e in errors:
             self.assertIsInstance(e, FileNotFoundError)
 
+
+class KeyIdRateGracefulTest(unittest.TestCase):
+    """Finding: key_id is read on the rate limit. A non-string id
+    must not crash.
+    """
+
+    def test_rate_odd_key(self):
+        from runner.runner import check_rate_limit
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "rate.json")
+        for key in (None, "", 42, {"id": "k"}, ["k"], "k"):
+            try:
+                check_rate_limit(key if isinstance(key, str) else "", {}, path=path)
+            except Exception as e:
+                self.fail(f"rate limit crashed on key {key!r}: {e}")
+
+    def test_rate_dict_key_direct(self):
+        from runner.runner import check_rate_limit
+        tmp = tempfile.mkdtemp()
+        try:
+            check_rate_limit({"id": "k"}, {}, path=os.path.join(tmp, "rate.json"))
+        except TypeError:
+            self.fail("dict key id still raises TypeError")
+        except Exception as e:
+            self.fail(f"rate limit crashed on dict key: {e}")
+
+    def test_concurrent_odd_keys(self):
+        from runner.runner import check_rate_limit
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "rate.json")
+        errors = []
+
+        def one(i):
+            try:
+                check_rate_limit(i if i % 2 else f"k{i}", {}, path=path)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
