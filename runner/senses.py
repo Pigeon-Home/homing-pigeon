@@ -124,6 +124,8 @@ def sensor_for_key(sensors: dict, key_id: str):
 
 def validate_sensor_alert(job: dict):
     """Shape-check a kind=sensor_alert job. Returns None or a reason."""
+    if not isinstance(job, dict):
+        return "job must be an object"
     sensor = job.get("sensor")
     if not isinstance(sensor, str) or not sensor:
         return "sensor must be a non-empty string"
@@ -152,6 +154,12 @@ def gate_alert(sensor_cfg: dict, alert: dict, recent: list, now: float = None):
     cooldown and hourly cap.
     """
     now = time.time() if now is None else now
+    if not isinstance(sensor_cfg, dict):
+        return "bad sensor config"
+    if not isinstance(alert, dict):
+        return "bad alert"
+    if not isinstance(recent, list):
+        recent = []
     profile = sensor_cfg.get("profile") or {}
     floor = profile.get("severity_floor", "info")
     if floor not in SEVERITY_SCORES:
@@ -201,6 +209,8 @@ def store_alert(base_dir: str, record: dict) -> None:
 
     Concurrent senses must not tear a line or drop each other's alerts.
     """
+    if not isinstance(record, dict):
+        return
     path = _path(base_dir)
     line = json.dumps(record, ensure_ascii=False) + "\n"
     with _STORE_LOCK:

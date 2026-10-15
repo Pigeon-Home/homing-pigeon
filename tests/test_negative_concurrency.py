@@ -591,3 +591,75 @@ class OraclePolicyPoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class ExtensionBudgetAndPrunePoisonTest(unittest.TestCase):
+    """Findings (2026-10-15 simulation):
+
+    1. answer_queries compared spent >= budget without coercing budget.
+       budget="lots" raised TypeError and stopped the Oracle.
+    2. prune_retained did days <= 0 without coercing. days="bad" raised
+       TypeError.
+    3. senses.validate_sensor_alert assumed job was a dict. None raised
+       AttributeError.
+    4. senses.gate_alert assumed sensor_cfg was a dict. A string raised
+       AttributeError.
+    5. senses.store_alert json.dumps'd a non-dict record without a guard.
+    6. dri.maybe_page called parse_dri which did cfg.get. None cfg raised
+       AttributeError (only RuntimeError was caught).
+
+    All hardened. Poison inputs return safe defaults and do not stop
+    processing. Concurrent hammers also pass.
+    """
+
+    def test_budget_prune_senses_dri_tolerate_poison(self):
+        from runner.runner import answer_queries, prune_retained
+        from runner import senses, dri
+        answers, spent = answer_queries(
+            [{"op": "grep", "pattern": "x"}],
+            {"stdout": "hello"}, {}, budget="lots",
+        )
+        self.assertIsInstance(answers, list)
+        self.assertIsInstance(spent, int)
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(prune_retained(d, "bad"), 0)
+            self.assertEqual(prune_retained(d, None), 0)
+            self.assertEqual(prune_retained(d, -1), 0)
+            self.assertEqual(senses.validate_sensor_alert(None), "job must be an object")
+            self.assertEqual(senses.validate_sensor_alert("bad"), "job must be an object")
+            self.assertIsInstance(senses.gate_alert("bad", {}, []), str)
+            self.assertIsInstance(senses.gate_alert({}, "bad", []), str)
+            senses.store_alert(d, None)
+            senses.store_alert(d, "bad")
+            self.assertEqual(dri.maybe_page(None, d), 0)
+            self.assertEqual(dri.maybe_page({"dri": "bad"}, d), 0)
+            self.assertEqual(dri.maybe_page({"dri": {"enabled": "yes"}}, d), 0)
+
+    def test_concurrent_budget_and_senses_do_not_raise(self):
+        import threading
+        from runner.runner import answer_queries, prune_retained
+        from runner import senses, dri
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                for _ in range(10):
+                    try:
+                        answer_queries(
+                            [None, {"op": "grep", "pattern": None}],
+                            {"stdout": None}, {"bad": None}, budget="lots",
+                        )
+                        prune_retained(d, "bad")
+                        senses.validate_sensor_alert(None)
+                        senses.gate_alert("bad", {}, [])
+                        senses.store_alert(d, None)
+                        dri.maybe_page(None, d)
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])

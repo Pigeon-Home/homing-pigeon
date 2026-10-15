@@ -909,7 +909,16 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                    already_spent=0, base_dir=None):
     """Answer declared queries. Every query spends 1, answered or rejected."""
     answers = []
-    spent = int(already_spent or 0)
+    try:
+        spent = int(already_spent or 0)
+    except (TypeError, ValueError):
+        spent = 0
+    try:
+        budget = int(budget)
+    except (TypeError, ValueError):
+        budget = 8
+    if budget < 0:
+        budget = 0
     text = _output_blob(exec_result)
     inf = inference_config(cfg) if cfg else None
     for q in queries or []:
@@ -1155,7 +1164,11 @@ def budget_status(path, cfg):
 
 def prune_retained(base_dir, days):
     """Delete retained outputs older than output_retention_days."""
-    if not days or days <= 0:
+    try:
+        days = int(days)
+    except (TypeError, ValueError):
+        return 0
+    if days <= 0:
         return 0
     d = os.path.join(base_dir, "retained")
     if not os.path.isdir(d):

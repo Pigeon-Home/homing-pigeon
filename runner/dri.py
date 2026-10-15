@@ -335,9 +335,11 @@ def _as_float(value, default):
 def maybe_page(cfg, base_dir, now=None):
     """Evaluate triggers; page per cooldown/digest. Returns sent count."""
     now = time.time() if now is None else now
+    if not isinstance(cfg, dict):
+        return 0
     try:
         dcfg = parse_dri(cfg)
-    except RuntimeError:
+    except (RuntimeError, AttributeError, TypeError):
         return 0
     if not dcfg["enabled"]:
         return 0
