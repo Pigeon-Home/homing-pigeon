@@ -2435,5 +2435,53 @@ class TaskIdGracefulTest(unittest.TestCase):
         for e in errors:
             self.assertIsInstance(e, FileNotFoundError)
 
+
+class RequiresDictGracefulTest(unittest.TestCase):
+    """Finding: a dict in requires used to crash offer. It must
+    reject or skip, not raise.
+    """
+
+    def test_submit_dict_in_requires(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for reqs in ([{"a": 1}], ["ok", {"b": 2}], [1, "ok"]):
+            try:
+                ok, reason = b.submit({"task_id": f"r{id(reqs)}", "requires": reqs})
+            except Exception as e:
+                self.fail(f"submit crashed on requires {reqs!r}: {e}")
+            self.assertIsInstance(ok, bool)
+
+    def test_offer_dict_requires(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        # Force a task with a dict require past submit if it accepts it.
+        b.tasks["t"] = {"task_id": "t", "state": "open", "requires": [{"a": 1}],
+                        "capabilities": [], "compartments": [], "priority": 0}
+        try:
+            b.offer("w", ["ping"])
+        except TypeError:
+            self.fail("dict in requires still raises TypeError on offer")
+        except Exception as e:
+            self.fail(f"offer crashed: {e}")
+
+    def test_concurrent_dict_requires(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        errors = []
+
+        def one(i):
+            try:
+                b.submit({"task_id": f"d{i}", "requires": [{"i": i}]})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
