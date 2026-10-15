@@ -33,9 +33,10 @@ Terminal chat. Type a question. `quit` exits.
 python3 runner/runner.py --config config.json --local-test --browser
 ```
 
-Opens a loopback page (`http://127.0.0.1:8765/`) so the chat is in a
-browser window. The server binds `127.0.0.1` only and refuses to start
-if the bind is not loopback.
+Opens **Open WebUI**, the chat interface people use with a self-hosted
+Llama. It is pointed at the SI Ollama instance (port 11435), not the
+Oracle. Install it once with `pip install open-webui`. The page is a
+normal chat: one text box, one send button, conversation history.
 
 ## What it needs
 

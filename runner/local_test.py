@@ -250,38 +250,46 @@ document.getElementById('f').onsubmit = async (e) => {
 
 
 
-def browser_chat(cfg, port=8765) -> int:
-    """Serve a loopback chat page that talks to the SI instance.
+def _open_webui_available() -> bool:
+    import shutil
+    return bool(shutil.which("open-webui"))
 
-    The SI is a second Ollama process on port 11435. The Oracle stays
-    on its configured endpoint. The page has two actions: chat with
-    the SI, and send a question from the SI to the Oracle.
+
+def browser_chat(cfg, port=8080) -> int:
+    """Open the SI in Open WebUI, the chat interface people already use.
+
+    Open WebUI is pointed at the SI Ollama instance (port 11435), not
+    the Oracle. If open-webui is not installed, print how to get it
+    and do not start a homemade page.
     """
     if not start_si_instance():
         return 2
-    transport = LocalSocketTransport(cfg)
-    transport.start()
-    host = "127.0.0.1"
-    _ChatHandler.cfg = cfg
-    _ChatHandler.socket_transport = transport
+    if not _open_webui_available():
+        print("Open WebUI is not installed.")
+        print("Install it with: pip install open-webui")
+        print("Then re-run with --local-test --browser.")
+        print(f"It should talk to the SI at http://127.0.0.1:{SI_PORT}")
+        return 2
+    import subprocess
+    env = os.environ.copy()
+    # Point Open WebUI at the SI instance, not the Oracle.
+    env["OLLAMA_BASE_URL"] = f"http://127.0.0.1:{SI_PORT}"
+    env["OPEN_WEBUI_PORT"] = str(port)
+    print(f"starting Open WebUI on http://127.0.0.1:{port}")
+    print(f"SI model is on port {SI_PORT}. The Oracle is separate.")
     try:
-        httpd = ThreadingHTTPServer((host, port), _ChatHandler)
-    except OSError as e:
-        print(f"could not bind {host}:{port}: {e}")
+        proc = subprocess.Popen(
+            ["open-webui", "serve", "--host", "127.0.0.1", "--port", str(port)],
+            env=env,
+        )
+    except Exception as e:
+        print(f"could not start Open WebUI: {e}")
         return 1
-    bound = httpd.server_address[0]
-    if bound not in ("127.0.0.1", "::1"):
-        print(f"refusing non-loopback bind {bound}")
-        return 1
-    url = f"http://{host}:{port}/"
-    print(f"local SI chat at {url}  (Ctrl-C to stop)")
-    threading.Timer(0.4, lambda: webbrowser.open(url)).start()
+    threading.Timer(1.5, lambda: webbrowser.open(f"http://127.0.0.1:{port}/")).start()
     try:
-        httpd.serve_forever()
+        proc.wait()
     except KeyboardInterrupt:
-        print()
-    finally:
-        httpd.shutdown()
+        proc.terminate()
     return 0
 
 
