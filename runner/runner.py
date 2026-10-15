@@ -1346,9 +1346,33 @@ def _preview(text, n=80) -> str:
 def log(msg: str, level: str = "INFO"):
     if level == "DEBUG" and not _VERBOSE:
         return
-    line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} [{level}] {msg}"
-    # The mail lock also serializes log lines across worker threads.
+    # A minute budget so a busy inbox cannot flood the console.
+    # Verbose is for a person watching: 200/min. Quiet is a service: 50/min.
+    # WARN and ERROR always pass. Five jobs a minute is the design point.
+    global _LOG_MINUTE, _LOG_COUNT, _LOG_DROPPED
+    now = time.time()
     with _MAIL_LOCK:
+        if now - _LOG_MINUTE >= 60:
+            if _LOG_DROPPED:
+                notice = (f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} "
+                          f"[INFO] log: {_LOG_DROPPED} line(s) suppressed "
+                          f"this minute")
+                print(notice, flush=True)
+                if _LOG_FILE:
+                    try:
+                        with open(_LOG_FILE, "a", encoding="utf-8") as fh:
+                            fh.write(notice + "\n")
+                    except Exception:
+                        pass
+            _LOG_MINUTE = now
+            _LOG_COUNT = 0
+            _LOG_DROPPED = 0
+        cap = 200 if _VERBOSE else 50
+        if level not in ("WARN", "ERROR") and _LOG_COUNT >= cap:
+            _LOG_DROPPED += 1
+            return
+        _LOG_COUNT += 1
+        line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} [{level}] {msg}"
         print(line, flush=True)
         if _LOG_FILE:
             try:
@@ -1360,6 +1384,9 @@ def log(msg: str, level: str = "INFO"):
 
 _LOG_FILE = None
 _VERBOSE = False
+_LOG_MINUTE = 0.0
+_LOG_COUNT = 0
+_LOG_DROPPED = 0
 
 # Concurrency: IMAP/SMTP connections and the seen-set are not
 # thread-safe. Worker threads run handle_mail, but every touch of shared
@@ -1594,9 +1621,6 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     msg = email.message_from_bytes(raw)
     subject = str(msg["Subject"] or "")
     from_header = str(msg["From"] or "")
-    log(f"examining seq {seq}: subject={subject!r} from={from_header!r}",
-        "DEBUG")
-
     def reject(why: str):
         log(f"rejecting seq {seq}: {why}", "WARN")
         # Dry-run is fully non-mutating: observe, change nothing.
@@ -1615,7 +1639,6 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         # Result emails and other non-job mail share the [HOMING-PIGEON]
         # prefix. Mark them seen quietly so the console is not spammed
         # with "subject does not match job pattern" on every poll.
-        log(f"skipping seq {seq}: subject does not match job pattern", "DEBUG")
         if opts is None or not opts.dry_run:
             mark_seen(imap, seq)
         return
@@ -1630,8 +1653,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # may submit jobs; only a valid signature authorizes execution.
     # The sender address is logged for audit but never trusted.
     from_addr = parseaddr(from_header)[1].strip()
-    log(f"seq {seq}: job {job_id} submitted by {from_addr or '(no sender)'}",
-        "DEBUG")
+    log(f"seq {seq}: job {job_id} submitted by {from_addr or '(no sender)'} "
+        f"subject={subject!r}")
 
     try:
         job, key_id = verify_body_keyed(get_text_body(msg), secrets)
@@ -1947,7 +1970,9 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     prune_retained(base_dir, int(cfg.get("output_retention_days") or 7))
     board = Board(os.path.join(base_dir, "board.json"))
     cfg["board"] = board
-    log(f"runner identity: {cfg['mailbox_user']} -- accepting signed jobs from any sender")
+    if not getattr(log, "identity_logged", False):
+        log(f"runner identity: {cfg['mailbox_user']} -- accepting signed jobs from any sender")
+        log.identity_logged = True
     own_imap = imap is None
     own_smtp = smtp is None
     try:
@@ -1957,10 +1982,13 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
             smtp = connect_smtp(cfg)
         try:
             mails = fetch_job_mails(imap)
-            log(f"poll: {len(mails)} job mail(s)")
-            workers = _worker_count(cfg, opts)
-            if workers > 1:
-                log(f"poll: {workers} workers")
+            if mails:
+                log(f"poll: {len(mails)} mail(s)")
+                workers = _worker_count(cfg, opts)
+                if workers > 1:
+                    log(f"poll: {workers} workers")
+            else:
+                workers = _worker_count(cfg, opts)
             with ThreadPoolExecutor(max_workers=workers) as ex:
                 futs = [ex.submit(handle_mail, cfg, imap, smtp, seq, raw,
                                   base_dir, seen, secrets, opts)
@@ -2145,8 +2173,8 @@ def log_startup(cfg, args, base_dir):
             "protected_paths", "oracle_enabled", "dag_mode",
             "require_review", "worker_allowlist")}
         log(f"config: {json.dumps(safe, default=str)}")
-        log("verbose: will log each mail examined, each reject reason, "
-            "and each query op")
+        log("verbose: job lines, reject reasons, and query ops. "
+            "Empty polls are silent. Cap is 200 lines a minute.")
 
 
 def main() -> int:
@@ -2178,10 +2206,11 @@ def main() -> int:
     ap.add_argument("--timeout", type=int, default=None, metavar="SEC",
                     help="default per-job timeout in seconds (overrides config)")
     ap.add_argument("--verbose", action="store_true", default=True,
-                    help="log each mail, each reject reason, each query "
-                         "op, and the non-secret config (default)")
+                    help="job lines, reject reasons, query ops, and the "
+                         "non-secret config (default; cap 200 lines/min)")
     ap.add_argument("--quiet", action="store_false", dest="verbose",
-                    help="startup block only; skip per-mail detail")
+                    help="startup block and job results only "
+                         "(cap 50 lines/min)")
     ap.add_argument("--pdb", action="store_true",
                     help="drop into pdb on unhandled exceptions")
     ap.add_argument("--inspect", choices=["board", "budget", "job", "redact"],
