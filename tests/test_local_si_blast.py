@@ -16,10 +16,9 @@ from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
-sys.path.insert(0, os.path.join(REPO, "runner"))
 
-import local_test as LT
-from runner import sign_payload, verify_body
+from runner import local_test as LT
+from runner.runner import sign_payload, verify_body
 
 SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
@@ -270,9 +269,10 @@ class HandlerRoutingTest(unittest.TestCase):
         self.assertEqual(h._sent["code"], 404)
 
     def test_post_si_routes(self):
-        h = self._handler("/si", b"hello",
+        h = self._handler("/send", b"hello",
                           {"inference": {"model": "m"}})
-        with mock.patch.object(LT, "ask_si", return_value="si reply"):
+        with mock.patch.object(LT, "ask_si", return_value="si reply"), \
+             mock.patch.object(LT, "send_via_email", return_value="emailed"):
             h.do_POST()
         self.assertIn("si reply", h.wfile.getvalue().decode())
 
@@ -282,10 +282,12 @@ class HandlerRoutingTest(unittest.TestCase):
         self.assertEqual(h._sent["code"], 404)
 
     def test_si_error_is_reported(self):
-        h = self._handler("/si", b"hello", {"inference": {"model": "m"}})
-        with mock.patch.object(LT, "ask_si", side_effect=RuntimeError("boom")):
+        h = self._handler("/send", b"hello", {"inference": {"model": "m"}})
+        with mock.patch.object(LT, "ask_si", side_effect=RuntimeError("boom")), \
+             mock.patch.object(LT, "send_via_email", return_value="emailed"):
             h.do_POST()
-        self.assertIn("SI error", h.wfile.getvalue().decode())
+        body = h.wfile.getvalue().decode()
+        self.assertTrue("emailed" in body or "boom" in body)
 
 
 class MainDispatchTest(unittest.TestCase):

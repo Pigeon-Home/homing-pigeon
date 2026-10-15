@@ -6,9 +6,8 @@ import unittest
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
-sys.path.insert(0, os.path.join(REPO, 'runner'))
-from local_test import answer_as_oracle, build_ask_job
-from runner import verify_body
+from runner.local_test import answer_as_oracle, build_ask_job
+from runner.runner import verify_body
 
 
 SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -22,7 +21,7 @@ class LocalSITest(unittest.TestCase):
         # Round-trips through verify.
         body = __import__("json").dumps(job)
         # build returns the parsed signed object; re-verify via the body form
-        from runner import sign_payload
+        from runner.runner import sign_payload
         signed = sign_payload(
             {k: v for k, v in job.items() if k != "sig"}, SECRET
         )

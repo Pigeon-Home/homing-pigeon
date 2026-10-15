@@ -25,9 +25,12 @@ import webbrowser
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-# Flat imports: this file lives next to runner.py.
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import runner as R  # noqa: E402
+# Works both as a package module (CI) and as a sibling script.
+try:
+    from runner import runner as R  # package: runner/runner.py
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import runner as R  # script: python3 runner/local_test.py
 
 
 SI_PORT = 11435

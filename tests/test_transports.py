@@ -7,9 +7,8 @@ from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
-sys.path.insert(0, os.path.join(REPO, "runner"))
 
-import transports as T
+from runner import transports as T
 
 
 class ContractTest(unittest.TestCase):
