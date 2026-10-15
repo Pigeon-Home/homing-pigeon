@@ -564,3 +564,64 @@ class WindowsReservedNameTest(unittest.TestCase):
         with mock.patch("runner.runner.os.name", "nt"), \
              mock.patch("runner.runner.subprocess.run", side_effect=FileNotFoundError("taskkill")):
             kill_tree(proc)
+
+
+class WindowsEnvAndReviewTest(unittest.TestCase):
+    """Windows folds env keys and ignores shebangs.
+
+    A job that smuggles pigeon_secret must lose it. A bash shebang
+    reviewed on nt must be noted, not crash. The resource monitor
+    has no /proc on Windows and must still return.
+    """
+
+    def test_env_scrub_is_case_insensitive(self):
+        from runner.runner import _scrub_env
+        env = {
+            "PIGEON_SECRET": FLAG,
+            "pigeon_secret": FLAG,
+            "Pigeon_Token": FLAG,
+            "PATH": "C:\\\\Windows\\\\System32",
+        }
+        with mock.patch("runner.runner.os.name", "nt"):
+            clean = _scrub_env(env)
+        self.assertNotIn("PIGEON_SECRET", clean)
+        self.assertNotIn("pigeon_secret", clean)
+        self.assertNotIn("Pigeon_Token", clean)
+        self.assertIn("PATH", clean)
+        self.assertNotIn(FLAG, json.dumps(clean))
+
+    def test_ads_name_and_bash_shebang_do_not_crash(self):
+        from runner.runner import execute_job
+        with tempfile.TemporaryDirectory() as d:
+            job = {
+                "kind": "exec", "job_id": "ads-1",
+                "script": "#!/bin/bash\\n" + FLAG,
+                "interpreter": ["powershell", "-NoProfile", "-File"],
+                "files": [{"name": "report.ps1:hidden", "url": "https://example.invalid/ads"}],
+            }
+            with mock.patch("runner.runner.os.name", "nt"), \
+                 mock.patch("runner.runner.download", side_effect=RuntimeError("no net")), \
+                 mock.patch("runner.runner.subprocess.Popen") as popen:
+                try:
+                    execute_job({"base_dir": d}, job, d)
+                except Exception as e:
+                    self.assertNotIsInstance(e, (SystemExit, KeyboardInterrupt))
+                popen.assert_not_called()
+            notes = review.review_job({}, {
+                "kind": "exec", "script": "#!/bin/bash\\necho hi",
+                "interpreter": ["powershell", "-File"],
+            })
+            with mock.patch("runner.review.os.name", "nt"):
+                notes = review.review_job({}, {
+                    "kind": "exec", "script": "#!/bin/bash\\necho hi",
+                })
+            ids = [n.get("id") for n in notes.get("notes", [])]
+            self.assertIn("shebang_platform_mismatch", ids)
+
+    def test_resources_on_windows_with_a_poisoned_state(self):
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "resources-state.json"), "w", encoding="utf-8") as fh:
+                fh.write('{"prev": "not-a-sample", "cpu": "hot"}')
+            with mock.patch("runner.runner.os.name", "nt"):
+                resources.check_resources(
+                    {"resources": {"enabled": True, "disk_path": "CON"}}, d)

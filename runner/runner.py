@@ -2425,9 +2425,14 @@ _SENSITIVE_ENV_PREFIXES = ("PIGEON_",)
 
 
 def _scrub_env(env: dict) -> dict:
-    """Remove the runner's own credential vars from a job's environment."""
+    """Remove the runner's own credential vars from a job's environment.
+
+    Windows env keys are case-insensitive, so pigeon_secret is the
+    same variable as PIGEON_SECRET. Match the prefix either way.
+    """
+    prefixes = tuple(p.lower() for p in _SENSITIVE_ENV_PREFIXES)
     return {k: v for k, v in env.items()
-            if not k.startswith(_SENSITIVE_ENV_PREFIXES)}
+            if not str(k).lower().startswith(prefixes)}
 
 
 def _estimate_secret_entropy(secret: str) -> float:
