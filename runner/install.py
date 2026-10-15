@@ -70,6 +70,25 @@ def run(cmd, **kw):
     subprocess.run(cmd, check=True, **kw)
 
 
+def _looks_like_placeholder(secret: str) -> bool:
+    """Mirror of the runner's placeholder check (install.py is standalone,
+    so the logic is duplicated here rather than imported)."""
+    low = secret.lower()
+    return any(p in low for p in ("generate", "changeme", "example",
+                                  "placeholder", "your-secret", "your_secret",
+                                  "todo", "xxx"))
+
+
+def _looks_patterned(secret: str) -> bool:
+    """Mirror of the runner's periodic-pattern check (see _looks_like_placeholder)."""
+    n = len(secret)
+    for period in range(1, n // 2 + 1):
+        unit = secret[:period]
+        if secret == (unit * ((n // period) + 1))[:n]:
+            return True
+    return False
+
+
 def ensure_shared_secret(cfg_path: str, provided: str | None) -> None:
     """Write a shared_secret into config.json.
 
@@ -81,15 +100,18 @@ def ensure_shared_secret(cfg_path: str, provided: str | None) -> None:
     """
     with open(cfg_path) as f:
         cfg = json.load(f)
-    if cfg.get("shared_secret") and not provided:
-        return  # already set by the user; leave it alone
+    current = cfg.get("shared_secret") or ""
+    if current and not provided and not _looks_like_placeholder(current):
+        return  # user-set real secret; leave it alone
+    # Missing, empty, or still the example placeholder: (re)generate.
     secret = provided or secrets.token_hex(32)
     # Light entropy gate (the runner does the full check at startup).
     alphabet = len(set(secret))
     bits = len(secret) * (alphabet.bit_length() - 1) if alphabet > 1 else 0
-    if bits < 128:
-        print(f"error: --shared-secret is too weak (~{bits} bits estimated, "
-              f"need at least 128)", file=sys.stderr)
+    if bits < 128 or _looks_like_placeholder(secret) or _looks_patterned(secret):
+        print("error: --shared-secret is too weak (needs 128+ bits of real "
+              "entropy, not a placeholder or repeating pattern)",
+              file=sys.stderr)
         sys.exit(2)
     cfg["shared_secret"] = secret
     with open(cfg_path, "w") as f:

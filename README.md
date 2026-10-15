@@ -243,8 +243,11 @@ and `homing-pigeon-send-job` (the cloud-side helper). Then:
 
 1. `homing-pigeon-install` copies the runner, writes a default
    `config.json`, and registers the boot-start service.
-2. Edit `config.json` and share the app-password string with your SI,
-   same as above.
+2. The installer generates a random `shared_secret` and stores it in
+   `config.json` (or pass your own with `--shared-secret`). Copy that
+   string out of `config.json` and give it to your SI — it is the HMAC
+   key the SI signs jobs with, and it is separate from the Gmail app
+   password.
 
 **From the release files** (same Python requirement): each GitHub
 release also ships an sdist (`.tar.gz`) and a universal wheel (`.whl`),
@@ -256,8 +259,11 @@ verify your download:
    commands as above.
 3. `homing-pigeon-install` copies the runner, writes a default
    `config.json`, and registers the boot-start service.
-4. Edit `config.json` and share the app-password string with your SI,
-   same as above.
+4. The installer generates a random `shared_secret` and stores it in
+   `config.json` (or pass your own with `--shared-secret`). Copy that
+   string out of `config.json` and give it to your SI — it is the HMAC
+   key the SI signs jobs with, and it is separate from the Gmail app
+   password.
 
 **From source** (needs Python 3.9+):
 
@@ -267,7 +273,11 @@ verify your download:
    (Google Account → Security → 2-Step Verification → App passwords).
 3. Copy `runner/` to the target machine.
 4. Copy `config.example.json` to `config.json` and fill in `mailbox_user`
-   and `mailbox_password` as above.
+   and `mailbox_password` as above. Replace the `shared_secret`
+   placeholder with a generated secret (`openssl rand -hex 32`) — this is
+   the HMAC key your SI signs jobs with, separate from the mailbox
+   password. (`python3 install.py` generates one for you if the
+   placeholder is still there.)
 5. Test one cycle: `python3 runner.py --config config.json --once`.
 6. `python3 install.py` registers the boot-start service for your
    platform (see below).
@@ -314,8 +324,9 @@ in the job (`send_job.py new --interpreter '["bash"]'`).
 
 The runner is SI-agnostic: anything that can send email *as* the runner's
 Gmail account and sign the body can drive it — your SI of choice, a cron
-script, whatever. The SI needs the shared secret string from step 5 (which
-is the app password itself, your choice). Then:
+script, whatever. The SI needs the `shared_secret` string from your
+`config.json` — the random value the installer generated, not the
+mailbox password. Then:
 
 ```bash
 python3 cloud/send_job.py new --kind ping --secret <the-string>

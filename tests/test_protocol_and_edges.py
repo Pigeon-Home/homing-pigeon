@@ -45,7 +45,7 @@ from runner.runner import (  # noqa: E402
 from runner import install as install_mod  # noqa: E402
 from send_job import sign_payload as cloud_sign  # noqa: E402
 
-SECRET = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+SECRET = "f293c686da58b28fc08f44e13d722e6c0533a94e08c0ae6cb20f2aa1be1a74bf"
 SENDER = "runner@example.com"
 
 

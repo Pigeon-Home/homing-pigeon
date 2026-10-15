@@ -15,8 +15,8 @@ sys.path.insert(0, os.path.join(REPO, "cloud"))
 from runner.runner import build_secrets, verify_body_keyed, poll_once, validate_shared_secret
 from send_job import sign_payload, verify_body
 
-SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-OTHER = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+SECRET = "2d2d42b99b668d4bcc0120c172c09e1059cdf4dd94d3422524519e3708937be4"
+OTHER = "f293c686da58b28fc08f44e13d722e6c0533a94e08c0ae6cb20f2aa1be1a74bf"
 SENDER = "runner@example.com"
 
 

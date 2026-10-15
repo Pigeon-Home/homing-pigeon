@@ -11,6 +11,7 @@ empty bodies).
 """
 
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -25,28 +26,28 @@ from runner.runner import (  # noqa: E402
     verify_body,
 )
 
-SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+SECRET = "2d2d42b99b668d4bcc0120c172c09e1059cdf4dd94d3422524519e3708937be4"
 
-# Exact JSON line from message 1a1380ce30ccfbfb.
+# Payload shape from message 1a1380ce30ccfbfb; sig re-computed with the test secret.
 HAPPY_PING = (
     '{"v":1,"type":"job","job_id":"c142d598-261a-4000-8a41-b8cb7d28bf38",'
     '"issued_at":"2026-10-14T01:35:25Z","kind":"ping",'
-    '"sig":"06edce804aba4033ee3ad644adcbbca92e90be6411ae48babbeeaaa9ddd11444051be3781410b524b2e6dc452b6371dc"}'
+    '"sig":"f30e8c12cefef51f936906f1a76ffbcdd104ebbb93b29cd20f3fa87c8357d075f2376187a37b0249afe0a075e2e115b0"}'
 )
 
-# Exact JSON line from message 1a1380e84018aa6a (sig marker inside script).
+# Payload shape from message 1a1380e84018aa6a (sig marker inside script); sig re-computed.
 SIG_IN_SCRIPT = (
     '{"v":1,"type":"job","job_id":"f62b9568-47fe-403e-8124-f9e06d5baed2",'
     '"issued_at":"2026-10-14T01:36:50Z","kind":"exec",'
     '"script":"echo \\",\\"sig\\":\\"deadbeef",'
-    '"sig":"b4f527e2af6ca1e672d0389639e303a58bef2ea300cbbb9639ae1c6ce38bd06d8c23c48aa7cc7a3f817a5f3771461049"}'
+    '"sig":"5027538989855f5d3866a30de3a4d7638779cff981b73d2dba1d42cb81674621b8389174b33b3d51f62fae0b34230be6"}'
 )
 
-# Exact JSON line from message 1a1380e8aa70b40a (uppercase hex).
+# Payload shape from message 1a1380e8aa70b40a; sig re-computed and uppercased.
 UPPER_SIG = (
     '{"v":1,"type":"job","job_id":"4653829a-a53a-44ba-85d5-90d52a73b980",'
     '"issued_at":"2026-10-14T01:36:50Z","kind":"ping",'
-    '"sig":"131AA38F6992783204D2C92D41680EF5811B4FC51A3F384A9B1376F6BC28FE9B46C4C0D169C7699544A64B760A60B68E"}'
+    '"sig":"77BF00AB0C36DF5E9EB481F245DFBCF79848E19F8E83F408455564C66F22A20C157BB7EFA0D0AE7B290FE2A266373542"}'
 )
 
 HAPPY_PREAMBLE = (
@@ -178,13 +179,21 @@ class ConnectorCaptureTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             verify_body(HAPPY_PING[:-10], SECRET)
 
+    def _sig_prefix(self, n=8):
+        m = re.search(r'"sig":"([0-9a-fA-F]{%d})' % n, HAPPY_PING)
+        return m.group(1)
+
     def test_non_hex_signature_rejected(self):
-        bad = HAPPY_PING.replace('"sig":"06ed', '"sig":"06zz')
+        bad = HAPPY_PING.replace('"sig":"' + self._sig_prefix(4),
+                                 '"sig":"zzzz', 1)
         with self.assertRaises(ValueError):
             verify_body(bad, SECRET)
 
     def test_mixed_case_signature_accepted(self):
-        mixed = HAPPY_PING.replace('"sig":"06edce80', '"sig":"06EDCE80')
+        prefix = self._sig_prefix()
+        mixed = HAPPY_PING.replace('"sig":"' + prefix,
+                                   '"sig":"' + prefix.upper(), 1)
+        assert mixed != HAPPY_PING  # the replacement actually changed something
         job = verify_body(mixed, SECRET)
         self.assertEqual(job["kind"], "ping")
 

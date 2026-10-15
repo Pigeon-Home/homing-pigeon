@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(REPO, "cloud"))
 from runner.runner import poll_once, validate_shared_secret  # noqa: E402
 from send_job import sign_payload, verify_body  # noqa: E402
 
-SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+SECRET = "2d2d42b99b668d4bcc0120c172c09e1059cdf4dd94d3422524519e3708937be4"
 SENDER = "runner@example.com"
 
 
@@ -207,10 +207,25 @@ class RunnerTest(unittest.TestCase):
 class SharedSecretTest(unittest.TestCase):
     def test_accepts_64_hex(self):
         validate_shared_secret(
-            "0123456789abcdef" * 4)  # 64 hex chars = 256 bits
+            "2d2d42b99b668d4bcc0120c172c09e1059cdf4dd94d3422524519e3708937be4"
+        )  # 64 hex chars = 256 bits
 
     def test_accepts_long_hex(self):
-        validate_shared_secret("ab12" * 20)  # 80 hex chars
+        validate_shared_secret(
+            "f293c686da58b28fc08f44e13d722e6c0533a94e08c0ae6cb20f2aa1be1a74bf"
+            "9d3f8a1b2c4d5e6f"
+        )  # 80 hex chars
+
+    def test_rejects_repeating_pattern(self):
+        # High estimated bits, negligible real entropy.
+        with self.assertRaises(RuntimeError):
+            validate_shared_secret("0123456789abcdef" * 4)
+        with self.assertRaises(RuntimeError):
+            validate_shared_secret("ab12" * 20)
+
+    def test_rejects_placeholder(self):
+        with self.assertRaises(RuntimeError):
+            validate_shared_secret("generate-with-openssl-rand-hex-32")
 
     def test_accepts_high_entropy_string(self):
         # 32 chars from a large alphabet: ~190 bits
