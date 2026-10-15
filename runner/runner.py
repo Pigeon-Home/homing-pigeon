@@ -111,6 +111,8 @@ except ImportError:  # running from inside runner/ as __main__
 
 def _append_security_event(base_dir: str, event: dict) -> None:
     """Append one event to security-events.jsonl (capped). Best effort."""
+    if not isinstance(base_dir, str) or not base_dir:
+        return
     path = os.path.join(base_dir, "security-events.jsonl")
     try:
         with open(path, "a", encoding="utf-8") as f:
@@ -1255,6 +1257,8 @@ def budget_status(path, cfg):
 
 def prune_retained(base_dir, days):
     """Delete retained outputs older than output_retention_days."""
+    if not isinstance(base_dir, str) or not base_dir:
+        return 0
     try:
         days = int(days)
     except (TypeError, ValueError):

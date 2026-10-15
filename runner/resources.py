@@ -113,6 +113,8 @@ def _disk_fraction(path):
 
 
 def _load_state(base_dir):
+    if not isinstance(base_dir, str) or not base_dir:
+        return {}
     try:
         with open(os.path.join(base_dir, STATE_FILE), "r",
                   encoding="utf-8") as f:

@@ -1714,3 +1714,57 @@ class BadBaseDirPoisonTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+
+class MoreBadBasePoisonTest(unittest.TestCase):
+    """Findings (2026-10-15 simulation):
+
+    1. prune_retained assumed base_dir was a path. None or an int
+       raised TypeError on isdir.
+    2. _append_security_event assumed base_dir was a path. None or an
+       int raised TypeError on join.
+    3. dri._load_state assumed base_dir was a path. None or an int
+       raised TypeError.
+    4. resources._load_state assumed base_dir was a path. None or an
+       int raised TypeError.
+
+    All hardened. A bad base_dir returns 0 or {}. Processing does not
+    stop.
+    """
+
+    def test_more_bad_base_does_not_raise(self):
+        from runner.runner import prune_retained, _append_security_event
+        from runner import dri, resources
+        self.assertEqual(prune_retained(None, 7), 0)
+        self.assertEqual(prune_retained(5, "bad"), 0)
+        self.assertEqual(prune_retained("", -1), 0)
+        _append_security_event(None, {"type": "x"})
+        _append_security_event(5, {"type": "x"})
+        _append_security_event("", None)
+        self.assertEqual(dri._load_state(None), {})
+        self.assertEqual(dri._load_state(5), {})
+        self.assertEqual(resources._load_state(None), {})
+        self.assertEqual(resources._load_state(5), {})
+
+    def test_concurrent_more_bad_base_does_not_raise(self):
+        import threading
+        from runner.runner import prune_retained, _append_security_event
+        from runner import dri, resources
+        errors = []
+
+        def hammer():
+            for _ in range(10):
+                try:
+                    prune_retained(None, 7)
+                    _append_security_event(5, {"type": "x"})
+                    dri._load_state(None)
+                    resources._load_state(5)
+                except Exception as e:
+                    errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
