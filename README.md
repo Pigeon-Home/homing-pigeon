@@ -186,8 +186,10 @@ standalone binaries built by GitHub Actions:
 | macOS (ARM64) | `homing-pigeon-macos-arm64.tar.gz` → `homing-pigeon` + `install` |
 
 The Linux binary is built on ubuntu-22.04 (glibc ~2.35). It runs on
-Ubuntu 22.04+, recent Debian, and most current distros. Older systems
-(Debian 11, Ubuntu 20.04, RHEL 8) are not supported.
+Ubuntu 22.04+, recent Debian, and most current distros. We don't ship
+binaries for older systems (Debian 11, Ubuntu 20.04, RHEL 8) because of
+their older glibc, but the runner itself is stdlib-only Python and runs
+fine there: use `pip install pigeon-home-runner` or build from source.
 
 1. Extract the archive on the target machine.
 2. Run `install` (or `install.exe` on Windows). It copies the runner
