@@ -461,7 +461,11 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
     requested = policy.get("view") or "full"
     ceiling = cfg.get("max_result_view") or "full"
     effective = requested if VIEW_ORDER.get(requested, 3) <= VIEW_ORDER.get(ceiling, 3) else ceiling
-    full_out = (exec_result.get("stdout") or "") + (exec_result.get("stderr") or "")
+    # Coerce: a poisoned or extension-supplied result may carry non-strings.
+    # int + str used to raise and stop the poll.
+    stdout = exec_result.get("stdout")
+    stderr = exec_result.get("stderr")
+    full_out = ("" if stdout is None else str(stdout)) + ("" if stderr is None else str(stderr))
     digest = hashlib.sha384(full_out.encode("utf-8")).hexdigest()
     base = {
         "v": 1, "type": "result", "job_id": job.get("job_id"),
@@ -488,15 +492,15 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
         base.update({"stdout": out, "stderr": "", "redacted_families": families})
     elif effective == "summary":
         base.update({
-            "stdout_bytes": len(exec_result.get("stdout") or ""),
-            "stderr_bytes": len(exec_result.get("stderr") or ""),
+            "stdout_bytes": len(str(exec_result.get("stdout") or "")),
+            "stderr_bytes": len(str(exec_result.get("stderr") or "")),
             "result_class": "ok" if exec_result.get("exit_code") == 0 else "fail",
         })
     else:  # attested
         base["attestations"] = build_attestations(
             (policy.get("queries") or []),
             {"exit_code": exec_result.get("exit_code"), "digest": digest, "confined": confined, "patterns": patterns,
-             "text": (exec_result.get("stdout") or "") + (exec_result.get("stderr") or "")},
+             "text": full_out},
         )
         base["stdout"] = ""
         base["stderr"] = ""

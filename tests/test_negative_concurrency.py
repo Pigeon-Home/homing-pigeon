@@ -402,3 +402,36 @@ class ExtremeExtensionStateTest(unittest.TestCase):
             poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([_mail("[HOMING-PIGEON] job after-extreme", body)]),
                       smtp=_SMTP(), opts=_Opts())
+
+
+class ResultPolicyPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15): apply_result_policy crashed on non-string
+    stdout/stderr (int + str). A poisoned or extension-supplied result
+    dict with numeric stdout stopped the poll. Coercion to str makes
+    it fail gracefully; the digest is still computed and the view is
+    applied.
+    """
+
+    def test_non_string_stdout_stderr_do_not_raise(self):
+        from runner.runner import apply_result_policy
+        cases = [
+            {"stdout": 42, "stderr": None, "exit_code": 0},
+            {"stdout": None, "stderr": 99, "exit_code": 1},
+            {"stdout": ["a"], "stderr": {"b": 1}, "exit_code": "x"},
+            {"stdout": True, "stderr": False, "exit_code": 0},
+        ]
+        for er in cases:
+            out, retain = apply_result_policy(
+                {}, {"job_id": "p", "kind": "exec", "result_policy": {"view": "summary"}},
+                er, {}, confined=None,
+            )
+            self.assertIsInstance(out, dict)
+            self.assertIn("output_digest", out)
+            self.assertIn("view", out)
+            # full view path also must not raise
+            out2, _ = apply_result_policy(
+                {}, {"job_id": "p", "kind": "exec"},
+                er, {}, confined=None,
+            )
+            self.assertIsInstance(out2, dict)
+            self.assertIn("output_digest", out2)
