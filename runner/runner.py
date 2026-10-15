@@ -1889,6 +1889,37 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
 
 
 
+
+def update_llama_from_config(cfg, previous=None):
+    """When config changes, keep the local model in sync.
+
+    If the inference model id changed, pull it. Always ensure the
+    daemon is up when inference is configured. Owner instructions are
+    read live from cfg on the next ask, so a string edit needs no
+    extra step here.
+    """
+    inf = inference_config(cfg)
+    if not inf:
+        return
+    ensure_inference_ready(cfg)
+    model = inf.get("model") or ""
+    prev_model = ""
+    if previous:
+        prev = inference_config(previous) or {}
+        prev_model = prev.get("model") or ""
+    if model and model != prev_model:
+        import shutil
+        import subprocess
+        if shutil.which("ollama"):
+            log(f"inference: pulling model {model}")
+            try:
+                subprocess.run(["ollama", "pull", model], check=False,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                log(f"inference: model {model} updated")
+            except Exception as e:
+                log(f"inference: model pull failed: {e}", "WARN")
+
+
 def ensure_inference_ready(cfg):
     """If inference is configured, make sure the loopback daemon is up."""
     inf = inference_config(cfg)
@@ -1964,6 +1995,7 @@ def main() -> int:
 
     cfg = load_config(args.config)
     ensure_inference_ready(cfg)
+    update_llama_from_config(cfg)
     if not cfg.get("mailbox_user"):
         print("config error: mailbox_user is required", file=sys.stderr)
         return 2
@@ -2035,6 +2067,7 @@ def main() -> int:
             if changed:
                 log(f"config reloaded: {', '.join(changed)} updated, "
                     f"no restart needed")
+                update_llama_from_config(cfg, previous=None)
         except Exception as e:
             log(f"config reload failed (keeping old values): {e}", "WARN")
         try:
