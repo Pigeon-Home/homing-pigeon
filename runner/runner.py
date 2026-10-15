@@ -1896,6 +1896,8 @@ def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
     # can read the local machine. Reject them as poison.
     if not isinstance(url, str) or not url.lower().startswith(("http://", "https://")):
         raise JobRejected(f"unsupported url scheme: {url}")
+    if not isinstance(dest, str) or not dest:
+        raise JobRejected("download destination is not a path")
     try:
         max_bytes = int(max_bytes)
     except (TypeError, ValueError):
@@ -1941,12 +1943,21 @@ def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
 
 def sha384_of(path: str) -> str:
     """Hash a file. A missing or unreadable file is empty, not a crash."""
+    if isinstance(path, os.PathLike):
+        try:
+            path = os.fspath(path)
+        except Exception:
+            return ""
+    if isinstance(path, bytes):
+        path = os.fsdecode(path)
+    if not isinstance(path, str) or not path:
+        return ""
     h = hashlib.sha384()
     try:
         with open(path, "rb") as f:
             for chunk in iter(lambda: f.read(65536), b""):
                 h.update(chunk)
-    except OSError:
+    except (OSError, TypeError, ValueError):
         return ""
     return h.hexdigest()
 

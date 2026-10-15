@@ -343,6 +343,18 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
     return events
 
 
+def _page_text(value):
+    """Text for a page line. A value that cannot be printed is empty."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    try:
+        return str(value)
+    except Exception:
+        return ""
+
+
 def format_page(events):
     """Render page events as one plain-text message."""
     if not isinstance(events, list):
@@ -351,14 +363,16 @@ def format_page(events):
     for ev in events:
         if not isinstance(ev, dict):
             continue
-        lines.append("homing-pigeon: " + str(ev.get("title") or ev.get("trigger") or "page"))
-        if ev.get("detail"):
-            lines.append(str(ev["detail"]))
+        title = _page_text(ev.get("title") or ev.get("trigger") or "page") or "page"
+        lines.append("homing-pigeon: " + title)
+        detail = _page_text(ev.get("detail"))
+        if detail:
+            lines.append(detail)
         sigs = ev.get("signals")
         if not isinstance(sigs, list):
             sigs = []
         for sig in sigs:
-            lines.append(f"  - {sig}")
+            lines.append("  - " + (_page_text(sig) or "?"))
         lines.append("")
     lines.append("the Oracle took no action.")
     lines.append("ack by investigating; open the dashboard for the "
@@ -371,7 +385,21 @@ def send_telegram(bot_token, chat_id, text):
     from urllib.request import Request, urlopen
     if not bot_token or not chat_id:
         return False
-    payload = json.dumps({"chat_id": chat_id, "text": text}).encode()
+    body = {
+        "chat_id": chat_id,
+        "text": text if isinstance(text, str) else _page_text(text),
+    }
+    try:
+        payload = json.dumps(body).encode()
+    except (TypeError, ValueError):
+        body["chat_id"] = _page_text(chat_id)
+        body["text"] = _page_text(body["text"])
+        if not body["chat_id"]:
+            return False
+        try:
+            payload = json.dumps(body).encode()
+        except (TypeError, ValueError):
+            return False
     req = Request(f"https://api.telegram.org/bot{bot_token}/sendMessage",
                   data=payload,
                   headers={"Content-Type": "application/json"},
@@ -384,10 +412,10 @@ def send_telegram(bot_token, chat_id, text):
 
 
 def _send(dcfg, text):
-    if dcfg["channel"] == "telegram":
-        return send_telegram(dcfg["telegram_bot_token"],
-                             dcfg["telegram_chat_id"], text)
-    return False
+    if not isinstance(dcfg, dict) or dcfg.get("channel") != "telegram":
+        return False
+    return send_telegram(dcfg.get("telegram_bot_token"),
+                         dcfg.get("telegram_chat_id"), text)
 
 
 def _as_float(value, default):

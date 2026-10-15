@@ -2541,3 +2541,79 @@ class StateSavePoisonTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-state", seen)
+
+
+class PageAndHashPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, page text and downloads, no poll):
+
+    format_page called str() on a title, a detail, and a signal. A
+    value whose text form raises stopped the page. Six threads all
+    raised. send_telegram json.dumps'd a set and a Boom outside the
+    request, so the send raised instead of returning False. _send
+    indexed a list and None. sha384_of(None) and download(..., None)
+    raised TypeError, so a bad path retried instead of finishing.
+
+    Unprintable page text is empty. A send that cannot be encoded
+    returns False. A hash of a non-path is empty. A destination that
+    is not a path is a permanent rejection.
+    """
+
+    def test_bad_page_and_path_do_not_raise(self):
+        from runner.runner import JobRejected, download, sha384_of
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        text = dri.format_page([{
+            "title": Boom(), "detail": Boom(), "signals": [Boom()],
+        }])
+        self.assertIn("homing-pigeon:", text)
+        self.assertIn("the Oracle took no action.", text)
+        self.assertFalse(dri._send(["telegram"], "hi"))
+        self.assertFalse(dri._send(None, "hi"))
+        with mock.patch("urllib.request.urlopen", side_effect=OSError("no")):
+            self.assertIs(dri.send_telegram("tok", "chat", {1, 2}), False)
+            self.assertIs(dri.send_telegram("tok", "1", Boom()), False)
+        self.assertEqual(sha384_of(None), "")
+        self.assertEqual(sha384_of(5), "")
+        with self.assertRaises(JobRejected):
+            download("https://example.com", None)
+
+    def test_concurrent_page_text_does_not_raise(self):
+        import threading
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        errors = []
+
+        def hammer():
+            try:
+                dri.format_page([{
+                    "title": Boom(), "signals": [Boom()], "detail": Boom(),
+                }])
+                dri._send(None, Boom())
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_page(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-page",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-page", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-page", seen)
