@@ -2209,3 +2209,46 @@ class KeyPolicyShapeTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-policy", seen)
+
+
+class SensesPathPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation):
+
+    senses._path assumed base_dir was a path. None or an int raised
+    TypeError on join. Callers guard, but a direct call (or a future
+    caller that forgets) crashed.
+
+    Non-path base_dir now returns "". Processing does not stop.
+    """
+
+    def test_bad_base_returns_empty(self):
+        from runner import senses
+        self.assertEqual(senses._path(None), "")
+        self.assertEqual(senses._path(5), "")
+        self.assertEqual(senses._path(""), "")
+        self.assertEqual(senses._path(object()), "")
+        with tempfile.TemporaryDirectory() as d:
+            self.assertTrue(senses._path(d).endswith("senses.jsonl"))
+
+    def test_concurrent_path_does_not_raise(self):
+        import threading
+        from runner import senses
+        errors = []
+
+        def hammer():
+            for _ in range(15):
+                try:
+                    senses._path(None)
+                    senses._path(5)
+                    senses.store_alert(None, {"sensor": "x"})
+                    senses.load_alerts(5)
+                except Exception as e:
+                    errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+

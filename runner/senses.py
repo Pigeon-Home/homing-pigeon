@@ -239,6 +239,8 @@ def file_sensor_alert(base_dir, sensor_cfg, record):
 
 
 def _path(base_dir: str) -> str:
+    if not isinstance(base_dir, str) or not base_dir:
+        return ""
     return os.path.join(base_dir, SENSES_FILE)
 
 
