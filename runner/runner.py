@@ -123,6 +123,36 @@ def _append_security_event(base_dir: str, event: dict) -> None:
     except OSError:
         pass
 
+
+def _note_resource_event(base_dir, event):
+    """Record a resource event. A bad shape is ignored, not fatal.
+
+    The monitor is an extension. A string, a missing resources map,
+    or a value that is not a fraction must not skip the mail poll.
+    """
+    if not event:
+        return
+    if not isinstance(event, dict) or not isinstance(event.get("resources"), dict):
+        log("resource monitor returned an unusable event; ignoring", "WARN")
+        return
+    bits = []
+    for key, val in event["resources"].items():
+        try:
+            bits.append(f"{key}={float(val):.0%}")
+        except (TypeError, ValueError):
+            bits.append(f"{key}=?")
+    try:
+        thr = f"{float(event.get('threshold')):.0%}"
+    except (TypeError, ValueError):
+        thr = "?"
+    try:
+        _append_security_event(base_dir, event)
+    except Exception as e:
+        log(f"resource event was not stored: {e}", "WARN")
+    if bits:
+        log(f"resource pressure over threshold ({thr}): {', '.join(bits)}", "WARN")
+
+
 try:
     from runner.winlog import report_event
 except ImportError:
@@ -2539,14 +2569,9 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     if _resources is not None:
         try:
             event = _resources.check_resources(cfg, base_dir)
-        except Exception:
-            event = None
-        if event:
-            _append_security_event(base_dir, event)
-            over = ", ".join(f"{k}={v:.0%}"
-                             for k, v in event["resources"].items())
-            log(f"resource pressure over threshold "
-                f"({event['threshold']:.0%}): {over}", "WARN")
+            _note_resource_event(base_dir, event)
+        except Exception as e:
+            log(f"resource monitor failed: {e}", "WARN")
     # DRI playbook: evaluate page triggers once per cycle. Disabled
     # by default; needs a configured channel to actually send.
     if _dri is not None:
@@ -2580,22 +2605,17 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
                                   base_dir, seen, secrets, opts,
                                   key_policies)
                         for seq, raw in mails]
-                first_exc = None
                 for f in as_completed(futs):
                     exc = f.exception()
-                    # handle_mail already deals with expected failures
-                    # (rejects, transient retries). A worker raising here
-                    # is a bug; surface it like the sequential path did.
-                    if exc is not None and first_exc is None:
-                        first_exc = exc
+                    # One worker blowing up must not fail the cycle or
+                    # throw away the messages the other workers finished.
+                    if exc is not None:
                         log(f"worker raised: {exc!r}", "ERROR")
             if len(seen) > SEEN_CAP:
                 # save_seen caps the disk copy; keep memory in step.
                 for k in list(seen.keys())[:-SEEN_CAP]:
                     del seen[k]
             save_seen(seen_path, seen)
-            if first_exc is not None:
-                raise first_exc
         finally:
             if own_imap:
                 try:
@@ -2942,8 +2962,11 @@ def record_oracle_turn(base_dir, cfg, question, ans, event="ask"):
     if not base_dir:
         return
     patterns = _redact_patterns(cfg or {})
-    question, _q = redact_text(question or "", patterns)
-    answer, _a = redact_text((ans or {}).get("answer") or "", patterns)
+    question, _q = redact_text(question if isinstance(question, str) else "", patterns)
+    raw_answer = (ans or {}).get("answer") if isinstance(ans, dict) else ""
+    if not isinstance(raw_answer, str):
+        raw_answer = ""
+    answer, _a = redact_text(raw_answer, patterns)
     rec = {
         "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "event": event,
@@ -3043,19 +3066,29 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436):
                            "application/json")
                 return
             inf = inference_config(cfg)
-            ans = ask_model(
-                inf, question, oracle_context(base),
-                (inf or {}).get("max_answer_chars") or 2000,
-                _redact_patterns(cfg),
-                instructions=cfg.get("owner_instructions"),
-            )
-            if ans.get("answer"):
+            try:
+                ans = ask_model(
+                    inf, question, oracle_context(base),
+                    (inf or {}).get("max_answer_chars") or 2000,
+                    _redact_patterns(cfg),
+                    instructions=cfg.get("owner_instructions"),
+                )
+            except Exception as e:
+                log(f"oracle ask failed: {e}", "WARN")
+                ans = None
+            if not isinstance(ans, dict):
+                ans = {"rejected": "inference_error"}
+            if isinstance(ans.get("answer"), str) and ans.get("answer"):
                 payload = {"answer": ans["answer"]}
             else:
-                why = ans.get("rejected") or "inference_error"
+                why = ans.get("rejected") if isinstance(ans.get("rejected"), str) else ""
+                why = why or "inference_error"
                 payload = {"rejected": why,
                            "detail": _ORACLE_REJECTS.get(why, "The Oracle did not answer.")}
-            record_oracle_turn(base, cfg, question, ans)
+            try:
+                record_oracle_turn(base, cfg, question, ans)
+            except Exception as e:
+                log(f"oracle chat log failed: {e}", "WARN")
             self._send(200, json.dumps(payload), "application/json")
 
     bind_host = "127.0.0.1" if host == "localhost" else host

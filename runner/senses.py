@@ -19,6 +19,7 @@ mail flow stay in runner.py, which calls in here.
 """
 import json
 import os
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -184,31 +185,39 @@ def _path(base_dir: str) -> str:
     return os.path.join(base_dir, SENSES_FILE)
 
 
+_STORE_LOCK = threading.Lock()
+
+
 def store_alert(base_dir: str, record: dict) -> None:
-    """Append one alert record; keep the file capped at MAX_STORED lines."""
+    """Append one alert record; keep the file capped at MAX_STORED lines.
+
+    Concurrent senses must not tear a line or drop each other's alerts.
+    """
     path = _path(base_dir)
-    line = json.dumps(record, ensure_ascii=False)
-    with open(path, "a", encoding="utf-8") as f:
-        f.write(line + "\n")
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-    except OSError:
-        return
-    if len(lines) > MAX_STORED:
-        with open(path, "w", encoding="utf-8") as f:
-            f.writelines(lines[-MAX_STORED:])
+    line = json.dumps(record, ensure_ascii=False) + "\n"
+    with _STORE_LOCK:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(line)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+        except OSError:
+            return
+        if len(lines) > MAX_STORED:
+            with open(path, "w", encoding="utf-8") as f:
+                f.writelines(lines[-MAX_STORED:])
 
 
 def load_alerts(base_dir: str, sensor=None, severity_floor=None,
                 since=None, until=None, limit=50):
     """Read stored alerts, oldest first, with optional filters."""
     path = _path(base_dir)
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-    except OSError:
-        return []
+    with _STORE_LOCK:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+        except OSError:
+            return []
     since_dt = _parse_ts(since) if since else None
     until_dt = _parse_ts(until) if until else None
     out = []
