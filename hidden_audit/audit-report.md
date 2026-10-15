@@ -1,0 +1,245 @@
+# Documentation audit — homing-pigeon @ v3.2.0
+
+**Baseline:** committed `main` at `39124d9` (v3.2.0 tag). Read-only audit; no docs or code were edited.
+**Date:** 2026-10-15. **Scope:** all 18 markdown docs (root + `docs/`), checked against `runner/`, `cloud/`, `docker/`, `.github/workflows/`.
+
+> **Working-tree note:** during the audit, uncommitted changes appeared in the
+> working tree: `runner/transports.py` and `tests/test_transports.py` deleted,
+> `runner/local_test.py` and `tests/test_local_si_blast.py` trimmed (146 lines
+> removed). This looks like in-progress dead-code cleanup. Findings below are
+> against the committed v3.2.0 baseline; where the working-tree changes intersect
+> a finding, it is noted.
+
+---
+
+## (a) False "implemented" claims
+
+### A1. `docs/transports-status.md` — cut transports listed as "send ready"
+- **Lines 8–14:** table claims `nats`, `mqtt`, `redis`, `durable_objects` are
+  `send = yes`, `postgres` is "config-ready".
+- **Code:** commit `711c590` ("keep only email and Cloudflare Queues on the
+  transport path") removed all of them. At v3.2.0 `runner/transports.py`
+  contains only `EmailTransport` and `CloudflareQueuesTransport`
+  (`git show HEAD:runner/transports.py`, classes at lines 30/60).
+- **Also lines 17–18:** "The others are wired so a configured box can send" —
+  false twice over: the others don't exist, and nothing in `transports.py` is
+  wired into the runner (`get_transport` is called only from
+  `tests/test_transports.py`).
+- **Fix (doc edit):** rewrite the table to email + Cloudflare only, with an
+  explicit "not wired into the runner's poll loop" status line.
+
+### A2. `docs/local-si-test.md` — local-socket transport described as real
+- **Lines 9–10:** "The local socket and the other brokers exist in the tree
+  for later" — false; removed in `711c590`.
+- **"Transports the mock SI can use" section:** "Local socket — a loopback TCP
+  listener on `127.0.0.1:8766`… This is the high-throughput local option."
+  The only `socket` use in `runner/local_test.py` (lines 53–54) is a
+  port-availability probe, not a listener. The entire "High-throughput local
+  transport" section (length-prefixed framing, "Bind is `127.0.0.1` only")
+  describes code that does not exist.
+- **`TRANSPORTS.md:248`:** "`(--local-test --browser)` speaks a
+  length-prefixed protocol over [socket]" — same stale claim.
+- **Fix (doc edit):** delete the local-socket sections; the harness's real
+  options are in-process (default) and email.
+
+### A3. `--local-test` / `--browser` flags documented but not in argparse
+- **Docs:** `docs/local-si-test.md` (lines 29, 35, 55), `docs/handoff-local-si.md`
+  (lines 18, 21), `docs/security-test-plan.md` (lines 31, 321),
+  `TRANSPORTS.md:248`, and `runner/local_test.py`'s own docstring (lines 12–13)
+  all give `python3 runner/runner.py --config config.json --local-test [--browser]`.
+- **Code:** `runner/runner.py`'s `ArgumentParser` (lines 2675+) defines no
+  `--local-test` or `--browser`. Running it prints usage and exits
+  (verified: `error: unrecognized arguments`). The `getattr(args, "local_test",
+  False)` branch at line 2751 is unreachable dead code.
+- **Fix:** this is a **code bug**, not just a doc bug — either add the two
+  flags to argparse (they're referenced and the harness exists) or remove the
+  documented invocation from all five docs. Adding the flags is the smaller,
+  intent-matching fix.
+- Note: `docs/security-test-plan.md` lab setup (step 4) depends on these flags,
+  so the plan is currently unexecutable as written.
+
+---
+
+## (b) False "not yet" claims (shipped features still labeled future)
+
+### B1. `README.md` — "spec'd, not yet built" (lines ~137–148)
+> "The Oracle also grows two optional capabilities (spec'd, not yet built):
+> **Local inference**… the SI can `ask` questions in plain English…
+> **Execution confinement**… snapshots file metadata…"
+
+Both shipped:
+- Local inference: `ask_model` (`runner.py:630`), `inference_config`
+  (`runner.py:564`), the `ask` query op (`runner.py:777`), and the v3.2.0
+  `--oracle` loopback chat.
+- Execution confinement: `confined_to_workspace` attestation (`runner.py:407`),
+  `snapshot_outside` with the documented 50,000-file cap (`runner.py:450`).
+  (The "walk stops at 50000 files" sentence in the same paragraph is accurate —
+  only the "not yet built" framing is wrong.)
+- **Fix (doc edit):** rewrite as shipped features with config pointers
+  (`inference.*`, `workspace_root`).
+
+### B2. `SAFEGUARDS.md` §3 — "Execution confinement (v2, spec'd)"
+> "The Oracle can restrict jobs to a single `workspace_root` folder and
+> *attest* that the job stayed inside it."
+
+Implemented (see B1). The "(v2, spec'd)" label is doubly stale — it's v3 and
+it's built.
+- **Fix (doc edit):** change to implemented, point at `workspace_root` /
+  `protected_paths` config.
+
+### B3. `README.md` "Status" section — v3 "awaiting implementation"
+The trailing Status paragraph says "v1.4.4… The v3 protocol — the Oracle,
+privacy-preserving results via signed attestations — is spec'd in PROTOCOL.md
+and awaiting implementation." This directly contradicts the Roadmap two
+screens up ("v3 … shipped as 3.0.0") and reality (tags v3.0.0, v3.1.0, v3.2.0
+on origin).
+- **Fix (doc edit):** the Status section is a stale changelog; either delete
+  it or rewrite it at v3.2.0.
+
+---
+
+## (c) Config / flag drift
+
+### C1. `runner/config.example.json` omits 7 keys the code reads
+Missing: `workspace_root`, `inference` (dict), `max_queries_per_hour`,
+`owner_instructions`, `redact_patterns_extra` (+ `inference` sub-keys
+`max_answer_chars`, `timeout_sec`). All are real (`runner.py` lines
+564–590, 808, 785, 334, 2330) and all are documented in
+`docs/configuring-oracle.md` — but the example file is what a new user
+copies, and it shows none of the Oracle tuning surface.
+- **Fix (doc edit):** add the missing keys (commented or defaulted) to
+  `config.example.json`. Verified: all 31 keys currently in the example are
+  referenced in code, so this is purely additive.
+
+### C2. `inference` sub-keys undocumented
+`inference.endpoint` / `inference.model` are mentioned in prose in
+`docs/configuring-oracle.md`; `max_answer_chars` and `timeout_sec` appear
+only in code (`runner.py:578–579`). No doc lists the full sub-key set or
+defaults (2000 chars, 60 s).
+- **Fix (doc edit):** document the four sub-keys in `docs/configuring-oracle.md`.
+
+### C3. `--inspect` choices undocumented
+`--inspect {board,budget,job,redact}` exists in argparse (`runner.py`) and is
+mentioned once in passing in `docs/oracle-flag.md:83`, but the README flag
+table doesn't list `--inspect` at all.
+- **Fix (doc edit):** add a row to the README "Testing" flag table.
+
+### C4. Dead `--no-oracle` / `oracle_enabled` references — OK
+`docs/verify-v31.md` is properly bannered historical ("those checks no longer
+apply"), and `docs/oracle-flag.md` documents the removal accurately,
+including the dangling-`oracle`-variable bug and its fix. No action needed.
+
+---
+
+## (d) Cross-doc contradictions
+
+### D1. Sender-address rules: RUNBOOK vs README/SECURITY
+- `RUNBOOK.md` troubleshooting: "check … that the email was sent from the
+  runner's own Gmail address (not your personal one)."
+- `README.md` (v1.4.0 note), `SECURITY.md` ("the sender address is not
+  validated… the signature is the only thing the runner trusts"): **any**
+  sender may submit; the HMAC signature is the sole gate.
+- A validly-signed job from a personal account works fine, so the RUNBOOK
+  advice misdirects debugging.
+- **Fix (doc edit):** reword to "check the signature/secret" rather than the
+  sender address. Related: `SAFEGUARDS.md` §1 "Whoever can send mail *as* the
+  runner's account **and** sign it is the operator" implies both are needed;
+  only the signature matters.
+
+### D2. Cloudflare transport status is three different stories
+- `README.md` Roadmap "Later: Cloudflare Queues as Transport #2" (matches the
+  user's stated roadmap).
+- `docs/transports-status.md:17`: "Cloudflare is ready for a live try."
+- Code at v3.2.0: a complete `CloudflareQueuesTransport` (send/poll/ack)
+  exists in `transports.py` but is **not wired into the runner**.
+- These are reconcilable ("adapter written and tested, runner wiring is
+  later"), but no doc says that sentence. A reader gets "later" / "ready for
+  a live try" / working code with no wiring, and has to guess.
+- **Fix (doc edit):** one status line, ideally in `docs/transports-status.md`:
+  adapter implemented + unit-tested, not yet on the runner's poll path;
+  wiring is post-v4 roadmap.
+
+### D3. `TRANSPORTS.md` has no status disclaimer
+The whole doc is aspirational bench prose (NATS/MQTT/Redis/Postgres/DO "picks").
+After the `711c590` cut it reads as a menu of options, with no note that only
+email (+ an unwired Cloudflare adapter) exists in code. The comparison table
+(line 202) doesn't distinguish "design sketch" from "implemented".
+- **Fix (doc edit):** add a status banner at the top: email is Transport #1
+  and the only wired transport; the rest are design notes, not code.
+
+---
+
+## (e) Minor prose staleness
+
+- **E1.** `docs/configuring-oracle.md:14` ("`inference` — endpoint and model
+  for the `ask` op (v3.1)") and `ORACLE_DASHBOARD.md` §3.1/§6 ("Jobs with
+  `ask` answers (v3.1)", "The `ask` op is v3.1 and is already implemented"):
+  the `ask` op shipped in **v3.0.0** (`git grep 'op == "ask"' v3.0.0` →
+  `runner.py:664`; installer inference setup also present at v3.0.0). Relabel
+  to v3.0.
+- **E2.** `docs/connector-roundtrip.md`: "Captured from a live Gmail
+  round-trip on 2026-10-13" but the happy-path message shows
+  `"issued_at": "2026-10-14T01:35:25Z"`. One of the two dates is wrong.
+- **E3.** `RUNBOOK.md` Job 4: release-tag example says `v1.0.0` (then
+  `v1.2.1`, `v1.2.2`). Cosmetic; bump to a 3.x example.
+
+---
+
+## Verified accurate (coverage note)
+
+These were checked claim-by-claim against code and hold:
+
+- **`PROTOCOL.md`**: message types and dispatch — `job`/`result` (§3),
+  `query` with ops `attest`/`grep`/`tail`/`ask` (§9–10, `runner.py:720–790`),
+  `task_submit`→`task_ack`, `task_request`→`task_offer`/`empty`,
+  `task_result`→`task_ack`, `task_approve`→`task_ack` (§13,
+  `runner.py:1710–1732`). All four attest predicates documented (§9.2) match
+  `build_attestations`. Crypto claims (HMAC-SHA-384, §8) match code.
+  §15 rollout reads as a record of what shipped, not a proposal. The
+  implementation note that the judge's **semantic** path is "spec'd but not
+  yet wired up" is still true — `judge_job` (`runner.py:424`) is deterministic
+  denylist checks only; `inference` is never consulted by the judge.
+- **`docs/oracle-flag.md`**: accurate on the removed `--no-oracle` /
+  `oracle_enabled` and the new `--oracle` (verified `--oracle-port` default
+  11436, loopback bind, `oracle-chat.jsonl` 1 MiB cap at `runner.py:2500`).
+- **`docs/verify-v31.md`**: correctly bannered historical.
+- **`docs/configuring-oracle.md`**: every listed key verified in code
+  (`max_result_view`, `max_query_budget`, `max_queries_per_hour` with
+  zero=unlimited at `runner.py:808`, `output_retention_days`, `judge`,
+  `workspace_root`, `protected_paths`, `redact_patterns_extra`,
+  `worker_allowlist`, `worker_compartments`, `dag_mode`, `task_timeout`
+  default 86400, `require_review`, `inference`, `owner_instructions`,
+  profiles).
+- **`INSTALL.md`**: hot-reload key list matches `HOT_KEYS`
+  (`poll_interval_sec`, `workers`, `default_timeout_sec`, `max_output_bytes`,
+  `max_job_age_sec`) + `LIVE_KEYS` (`owner_instructions`, `inference`).
+  Ollama/model defaults correct (`llama3.2:3b`, Pi `llama3.2:1b`).
+- **`DOCKER.md`**: `PIGEON_*` env table matches `docker/entrypoint.sh`
+  exactly, including defaults.
+- **`README.md`**: `--oracle` flag-table row accurate; Setup model defaults
+  accurate; "any sender" v1.4.0 note accurate.
+- **`SECURITY.md`, `CONTRIBUTING.md`, `AGENTS.md`**: no implementation claims
+  found to be false.
+- **`ORACLE_DASHBOARD.md`**: clearly labeled "v4 Spec (draft) … Not started";
+  correctly a spec, not a status claim.
+- **`docs/security-test-plan.md`**: marked "draft for execution"; no false
+  implementation claims (but its lab setup depends on the broken `--local-test`
+  flag — see A3).
+- **`docs/handoff-local-si.md`**: accurate except the transport table (A1) and
+  `--local-test` invocation (A3); the "What was removed on purpose" section
+  matches code.
+
+---
+
+## Suggested fix priority
+
+1. **A3** (`--local-test`/`--browser` not in argparse) — user-facing breakage;
+   likely a code fix (add the flags), not just docs.
+2. **A1/A2** (cut transports still documented) — actively misleading to anyone
+   evaluating transport options. Note the working tree already deletes
+   `transports.py`, which changes the shape of this fix.
+3. **B1/B2/B3** (shipped features labeled "not yet") — the README/SAFEGUARDS
+   undersell the product; B3's Status section contradicts the Roadmap.
+4. **D1** (sender-address troubleshooting) — will misdirect real debugging.
+5. **C1/C2** (example config + inference sub-keys) — discoverability gap.
+6. **D2/D3/E1/E2/E3** — polish.
