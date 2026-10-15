@@ -591,10 +591,14 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
                 continue
         base.update({"stdout": out, "stderr": "", "redacted_families": families})
     elif effective == "summary":
+        try:
+            ok_exit = exec_result.get("exit_code") == 0
+        except Exception:
+            ok_exit = False
         base.update({
             "stdout_bytes": len(_as_text(exec_result.get("stdout"))),
             "stderr_bytes": len(_as_text(exec_result.get("stderr"))),
-            "result_class": "ok" if exec_result.get("exit_code") == 0 else "fail",
+            "result_class": "ok" if ok_exit else "fail",
         })
     else:  # attested
         base["attestations"] = build_attestations(

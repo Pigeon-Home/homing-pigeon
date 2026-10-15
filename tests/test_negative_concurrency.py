@@ -3474,3 +3474,73 @@ class AttestComparePoisonTest(unittest.TestCase):
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-compare", seen)
 
+
+class SummaryExitPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, summary view, no poll):
+
+    apply_result_policy compared the exit code with == when the view
+    was summary. An exit code whose equality check raises stopped
+    the result. Six threads all raised, so the job retried.
+
+    A comparison that raises is a fail, not a crash. A normal zero
+    exit is still ok.
+    """
+
+    def test_bad_summary_exit_does_not_raise(self):
+        from runner.runner import apply_result_policy
+
+        class Eq:
+            def __eq__(self, other):
+                raise RuntimeError("eq")
+
+        job = {"kind": "ping", "job_id": "j",
+               "result_policy": {"view": "summary"}}
+        result, retain = apply_result_policy(
+            {}, job, {"stdout": "a", "stderr": "", "exit_code": Eq()}, {}, None)
+        self.assertEqual(result.get("result_class"), "fail")
+        self.assertEqual(result.get("view"), "summary")
+        self.assertIsInstance(retain, bool)
+        result, retain = apply_result_policy(
+            {}, job, {"stdout": "a", "stderr": "", "exit_code": 0}, {}, None)
+        self.assertEqual(result.get("result_class"), "ok")
+
+    def test_concurrent_bad_summary_exits_do_not_raise(self):
+        import threading
+        from runner.runner import apply_result_policy
+
+        class Eq:
+            def __eq__(self, other):
+                raise RuntimeError("eq")
+
+        job = {"kind": "ping", "job_id": "j",
+               "result_policy": {"view": "summary"}}
+        errors = []
+
+        def hammer():
+            try:
+                apply_result_policy(
+                    {}, job, {"stdout": "a", "stderr": "", "exit_code": Eq()},
+                    {}, None)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_summary(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-summary",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-summary", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-summary", seen)
+
