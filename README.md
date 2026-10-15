@@ -230,7 +230,7 @@ for this: always on, sips power, and a machine you can afford to lose
 — which is this project's whole security posture:
 
 ```sh
-pip install pigeon-home
+pip install pigeon-home-runner
 ```
 
 This installs three commands: `homing-pigeon`, `homing-pigeon-install`,
@@ -421,7 +421,7 @@ rewritten in cross-platform Python; crypto tested (sign/verify roundtrip,
 tamper rejection, CRLF tolerance); end-to-end suite passes against fake
 mail servers (103 tests). Debug/audit flags (`--dry-run`, `--verbose`,
 `--pdb`, `--no-send`), concurrent job execution (`--workers`), SHA-384
-release hashes, and PyPI distribution (`pip install pigeon-home`).
+release hashes, and PyPI distribution (`pip install pigeon-home-runner`).
 Releases ship standalone binaries (Windows/macOS/Linux) plus a Python
 wheel and sdist. The v2 protocol — the Oracle, privacy-preserving
 results via signed

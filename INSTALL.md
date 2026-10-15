@@ -29,7 +29,7 @@ dry-run mode, config options, and updating.
 **Install:**
 
 ```bash
-pip install pigeon-home
+pip install pigeon-home-runner
 ```
 
 **Run:** register the boot service, configure, test.
