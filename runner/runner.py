@@ -1234,10 +1234,16 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
 
 _QUERY_TIMES = {}  # key_id -> list of timestamps
 def _write_json(path, obj):
+    """Atomic. A bad path or a bad object must not crash the caller."""
+    if not isinstance(path, str) or not path:
+        return
     tmp = f"{path}.tmp.{threading.get_ident()}"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(obj, f)
-    os.replace(tmp, path)
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(_json_safe(obj), f, allow_nan=False)
+        os.replace(tmp, path)
+    except (OSError, TypeError, ValueError) as e:
+        log(f"json not written to {path}: {e}", "WARN")
 
 
 def _query_limit(cfg):
@@ -1644,7 +1650,9 @@ class Board:
     def reoffer_expired(self, task_timeout=86400):
         now = datetime.now(timezone.utc)
         count = 0
-        for t in self.tasks.values():
+        with _BOARD_LOCK:
+            tasks = list(self.tasks.values())
+        for t in tasks:
             if not isinstance(t, dict):
                 continue
             if t.get("state") == "claimed" and t.get("claimed_at"):

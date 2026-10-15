@@ -2082,3 +2082,45 @@ class RateKeyFaultTest(unittest.TestCase):
         self.assertTrue(check_rate_limit({"not": "a string"},
                                          {"max_queries_per_hour": 5}))
         self.assertTrue(check_rate_limit(None, {"max_queries_per_hour": 5}))
+
+
+class ReofferAndWriteFaultTest(unittest.TestCase):
+    """Finding: reoffer walked the task dict with no lock.
+
+    A submit on another thread raised RuntimeError. reoffer
+    copies under the lock. A write to a directory is logged,
+    not raised.
+    """
+
+    def test_concurrent_reoffer_during_submit(self):
+        from runner.runner import Board
+        import threading
+        with tempfile.TemporaryDirectory() as d:
+            board = Board(os.path.join(d, "board.json"))
+            errors = []
+
+            def submit(i):
+                try:
+                    board.submit({"task_id": f"t-{i}", "capabilities": []})
+                except Exception as e:
+                    errors.append(e)
+
+            def reoffer():
+                try:
+                    for _ in range(20):
+                        board.reoffer_expired(0)
+                except Exception as e:
+                    errors.append(e)
+
+            threads = [threading.Thread(target=reoffer) for _ in range(4)]
+            threads += [threading.Thread(target=submit, args=(i,)) for i in range(30)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            self.assertEqual(errors, [])
+
+    def test_write_to_a_directory_does_not_raise(self):
+        from runner.runner import _write_json
+        with tempfile.TemporaryDirectory() as d:
+            _write_json(d, {"a": 1})
