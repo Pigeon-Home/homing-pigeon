@@ -1761,3 +1761,31 @@ class SeenLockFaultTest(unittest.TestCase):
                 d, None, os.path.join(d, "seen.json"),
                 imap=_IMAP(_mail("[HOMING-PIGEON] job seen-1", body)),
                 smtp=_SMTP(), opts=_Opts())
+
+
+class HostAndResultFaultTest(unittest.TestCase):
+    """Finding: a newline in a host reached the socket.
+
+    And a set in a board result made json.dump raise, which
+    rejected the message. The host is rejected. The result is
+    stored JSON-safe.
+    """
+
+    def test_newline_host_is_rejected(self):
+        from runner.runner import _host
+        with self.assertRaises(RuntimeError):
+            _host({"imap_host": "imap.gmail.com\ninjected"}, "imap_host")
+        self.assertEqual(_host({"smtp_host": "smtp.gmail.com"}, "smtp_host"),
+                         "smtp.gmail.com")
+
+    def test_set_result_does_not_crash_complete(self):
+        from runner.runner import Board
+        with tempfile.TemporaryDirectory() as d:
+            board = Board(os.path.join(d, "board.json"))
+            board.submit({"task_id": "t-1", "capabilities": []})
+            board.offer("w", [], "", {})
+            status, _why = board.complete("t-1", {"detail": {1, 2}})
+            self.assertEqual(status, "done")
+            with open(os.path.join(d, "board.json"), encoding="utf-8") as fh:
+                tasks = json.load(fh)
+            self.assertEqual(tasks["t-1"]["state"], "done")

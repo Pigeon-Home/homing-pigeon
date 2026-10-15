@@ -1544,11 +1544,13 @@ class Board:
             return "not_claimed", "not claimed"
         if require_review:
             t["state"] = "pending_review"
-            t["result"] = result
+            t["result"] = _json_safe(result)
             self.save()
             return "pending_review", "awaiting review"
         t["state"] = "done"
-        t["result"] = result
+        # A set in the result made json.dump raise and rejected the
+        # message. Store a JSON-safe copy.
+        t["result"] = _json_safe(result)
         t["completed_at"] = datetime.now(timezone.utc).isoformat()
         self.save()
         return "done", "ok"
@@ -1644,7 +1646,10 @@ def _host(cfg, key):
     host = cfg.get(key)
     if not isinstance(host, str) or not host.strip():
         raise RuntimeError("config error: " + key + " must be a host name")
-    return host.strip()
+    host = host.strip()
+    if any(c.isspace() or c == "\x00" for c in host):
+        raise RuntimeError("config error: " + key + " must not contain whitespace")
+    return host
 
 
 def connect_imap(cfg) -> imaplib.IMAP4_SSL:
