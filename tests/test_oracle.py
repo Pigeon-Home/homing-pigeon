@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Oracle privacy result tests (v3 Piece 3)."""
+import json
 import os
 import sys
 import tempfile
@@ -141,6 +142,125 @@ class LogRedactionTest(unittest.TestCase):
     def test_empty_default(self):
         from runner.runner import check_protected_paths
         self.assertEqual(check_protected_paths({}, {}, []), [])
+
+
+class DesktopCredentialTest(unittest.TestCase):
+    """A Desktop flag.txt treated as a password.
+
+    The job may ask for a full view. The ceiling is redacted. The
+    token and a password= assignment must not appear in the result
+    or the process log. A change to the file is reported as a path.
+    """
+
+    FLAG = "FLAG-CRED-9f3c2a7e1b"
+    PASSWORD = "password=SuperSecretDesktop1"
+
+    def _cfg(self, desktop):
+        return {
+            "oracle_enabled": True,
+            "max_result_view": "redacted",
+            "max_output_bytes": 1000,
+            "protected_paths": [desktop],
+            "redact_patterns_extra": {
+                "desktop_flag": r"FLAG-CRED-[0-9a-f]{10}",
+                "password_assignment": r"(?i)(password|passwd|pwd)\s*[=:]\s*\S+",
+            },
+        }
+
+    def _reset_log(self):
+        from runner import runner as rr
+        rr._LOG_COUNT = 0
+        rr._LOG_DROPPED = 0
+        rr._LOG_MINUTE = 0.0
+        rr._VERBOSE = True
+
+    def test_full_view_request_still_hides_the_desktop_flag(self):
+        from runner.runner import apply_result_policy, _redact_patterns
+        cfg = self._cfg("/tmp/desk")
+        job = {"job_id": "read-flag", "kind": "exec",
+               "result_policy": {"view": "full"}}
+        raw = {
+            "exit_code": 0, "timed_out": False, "duration_sec": 0.1,
+            "stdout": self.FLAG + "\n" + self.PASSWORD + "\nhello\n",
+            "stderr": "",
+        }
+        result, retain = apply_result_policy(
+            cfg, job, raw, _redact_patterns(cfg), False)
+        blob = json.dumps(result)
+        self.assertTrue(retain)
+        self.assertEqual(result["view"], "redacted")
+        self.assertNotIn(self.FLAG, blob)
+        self.assertNotIn("SuperSecretDesktop1", blob)
+        self.assertIn("hello", result["stdout"])
+        self.assertIn("desktop_flag", result["redacted_families"])
+        self.assertIn("password_assignment", result["redacted_families"])
+
+    def test_process_log_hides_the_desktop_flag(self):
+        from runner.runner import execute_job
+        self._reset_log()
+        cfg = self._cfg("/tmp/desk")
+        buf = StringIO()
+        script = "printf '%s\\n' " + self.FLAG + " " + self.PASSWORD + "\n"
+        with tempfile.TemporaryDirectory() as d:
+            with redirect_stdout(buf):
+                execute_job(
+                    cfg,
+                    {"job_id": "read-flag", "kind": "exec", "script": script},
+                    d,
+                )
+        text = buf.getvalue()
+        self.assertNotIn(self.FLAG, text)
+        self.assertNotIn("SuperSecretDesktop1", text)
+        self.assertIn("[REDACTED:desktop_flag]", text)
+        self.assertIn("[REDACTED:password_assignment]", text)
+
+    def test_desktop_tamper_reports_the_path_not_the_secret(self):
+        from runner.runner import check_protected_paths, snapshot_outside
+        with tempfile.TemporaryDirectory() as d:
+            desktop = os.path.join(d, "Desktop")
+            workspace = os.path.join(d, "workspace")
+            os.makedirs(desktop)
+            os.makedirs(workspace)
+            flag = os.path.join(desktop, "flag.txt")
+            with open(flag, "w", encoding="utf-8") as fh:
+                fh.write(self.FLAG + "\n")
+            before = snapshot_outside(workspace)
+            with open(flag, "a", encoding="utf-8") as fh:
+                fh.write("touched\n")
+            after = snapshot_outside(workspace)
+            changed = check_protected_paths(before, after, [desktop])
+        blob = json.dumps(changed)
+        self.assertTrue(any(p.endswith("flag.txt") for p in changed))
+        self.assertNotIn(self.FLAG, blob)
+
+    def test_ask_drops_a_reply_that_repeats_the_desktop_flag(self):
+        from runner.runner import ask_model, _redact_patterns
+        self._reset_log()
+
+        class FakeResp:
+            def read(self, n):
+                body = json.dumps({
+                    "choices": [{"message": {"content": DesktopCredentialTest.FLAG}}]
+                })
+                return body.encode()
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return False
+
+        buf = StringIO()
+        with redirect_stdout(buf):
+            answer = ask_model(
+                {"endpoint": "http://127.0.0.1:9/v1", "model": "m",
+                 "timeout_sec": 1, "max_answer_chars": 100},
+                "quote it", self.FLAG + "\n", 100,
+                _redact_patterns(self._cfg("/tmp/desk")),
+                opener=lambda req, timeout=60: FakeResp(),
+                instructions="Desktop/flag.txt is a password. Do not quote it.",
+            )
+        self.assertEqual(answer.get("rejected"), "sanitization")
+        self.assertNotIn("answer", answer)
+        self.assertNotIn(self.FLAG, buf.getvalue())
 
 
 class AttestationFixTest(unittest.TestCase):
