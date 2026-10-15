@@ -3309,3 +3309,72 @@ class AttestBoomPredicatePoisonTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+class ResultAndRedirectPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, queries and redirects, no poll):
+
+    answer_queries called .get on the execution result. None is not
+    an object, so an attest query raised AttributeError and the
+    Oracle did not answer. Six threads were aimed at a non-object
+    result. A download redirect built its rejection with str() on
+    the new URL. A URL whose text form raises was a RuntimeError,
+    so the download retried instead of being rejected.
+
+    A result that is not an object is empty, and the query still
+    answers. A redirect that is not http or https is a permanent
+    rejection, including a URL that cannot be printed.
+    """
+
+    def test_bad_result_and_redirect_do_not_raise(self):
+        from runner.runner import (
+            JobRejected, _NoForeignRedirect, answer_queries,
+        )
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        answers, spent = answer_queries(
+            [{"op": "attest", "predicate": "exit_zero"}], None, {}, 4)
+        self.assertEqual(spent, 1)
+        self.assertEqual(answers[0].get("op"), "attest")
+        answers, spent = answer_queries(
+            [{"op": "tail", "lines": 1}], ["not", "a", "dict"], {}, 4)
+        self.assertEqual(answers[0].get("op"), "tail")
+        handler = _NoForeignRedirect()
+        with self.assertRaises(JobRejected):
+            handler.redirect_request(None, None, 302, "x", {}, Boom())
+        with self.assertRaises(JobRejected):
+            handler.redirect_request(None, None, 302, "x", {}, "file:///etc/passwd")
+
+    def test_concurrent_non_object_results_do_not_raise(self):
+        import threading
+        from runner.runner import answer_queries
+
+        errors = []
+
+        def hammer():
+            try:
+                answer_queries(
+                    [{"op": "attest", "predicate": "exit_zero"}], None, {}, 4)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_result(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-result",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-result", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-result", seen)

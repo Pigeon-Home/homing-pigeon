@@ -1110,6 +1110,8 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
         budget = 8
     if budget < 0:
         budget = 0
+    if not isinstance(exec_result, dict):
+        exec_result = {}
     text = _output_blob(exec_result)
     inf = inference_config(cfg) if cfg else None
     # A non-list (or non-iterable) from a poisoned job/extension must
@@ -1975,6 +1977,22 @@ def kill_tree(proc: subprocess.Popen):
 MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024  # 100 MiB
 
 
+class _NoForeignRedirect(HTTPRedirectHandler):
+    """A redirect off http or https is poison. A URL that cannot be
+    printed is still a rejection, not a retry."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not isinstance(newurl, str) or not newurl.lower().startswith(
+                ("http://", "https://")):
+            shown = _as_text(newurl) or "url"
+            raise JobRejected("download redirected off http: " + shown)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _open_download(req, timeout):
+    return build_opener(_NoForeignRedirect).open(req, timeout=timeout)
+
+
 def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
     # Non-HTTP schemes (file:, ftp:) fail the same way every cycle and
     # can read the local machine. Reject them as poison.
@@ -1988,22 +2006,16 @@ def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
         max_bytes = MAX_DOWNLOAD_BYTES
     if max_bytes < 1:
         max_bytes = MAX_DOWNLOAD_BYTES
-    class _NoForeignRedirect(HTTPRedirectHandler):
-        def redirect_request(self, req, fp, code, msg, headers, newurl):
-            if not isinstance(newurl, str) or not newurl.lower().startswith(("http://", "https://")):
-                raise JobRejected("download redirected off http: " + str(newurl))
-            return super().redirect_request(req, fp, code, msg, headers, newurl)
-
     try:
         req = Request(url, headers={"User-Agent": "homing-pigeon/1"})
-        resp = build_opener(_NoForeignRedirect).open(req, timeout=120)
+        resp = _open_download(req, 120)
     except HTTPError as e:
         # 4xx will not succeed on retry. 5xx may.
         if 400 <= e.code < 500:
             raise JobRejected(f"download rejected by server ({e.code}): {url}")
         raise
     except URLError as e:
-        reason = str(e.reason).lower()
+        reason = _as_text(getattr(e, "reason", "")).lower()
         # NXDOMAIN and "no address" never recover. Timeouts and refused
         # connections still propagate as transient.
         permanent = ("name or service not known", "nodename nor servname",

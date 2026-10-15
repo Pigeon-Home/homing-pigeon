@@ -759,7 +759,7 @@ class AdversarialTests(unittest.TestCase):
         jid = str(uuid.uuid4())
         p = base_job(jid, kind="exec",
                      script_url="https://no-such-host.invalid/s")
-        with patch("runner.runner.urlopen",
+        with patch("runner.runner._open_download",
                    side_effect=URLError("Name or service not known")):
             imap, smtp, seen = self.cycle([job_email(p)])
         self.assertEqual(len(smtp.sent), 1)
@@ -773,7 +773,7 @@ class AdversarialTests(unittest.TestCase):
         jid = str(uuid.uuid4())
         p = base_job(jid, kind="exec",
                      script_url="https://example.com/missing")
-        with patch("runner.runner.urlopen",
+        with patch("runner.runner._open_download",
                    side_effect=HTTPError("https://example.com/missing", 404, "missing", {}, None)):
             imap, smtp, seen = self.cycle([job_email(p)])
         self.assertEqual(len(smtp.sent), 1)
