@@ -67,3 +67,17 @@ class JudgmentTest(unittest.TestCase):
         from runner.runner import query_budget
         b = query_budget({"max_query_budget": 4}, {"result_policy": {"query_budget": 8}})
         self.assertEqual(b, 4)
+
+
+class ProtectedPathsTest(unittest.TestCase):
+    def test_reports_changes_under_protected(self):
+        from runner.runner import check_protected_paths
+        before = {"/home/user/docs/manuals/a.txt": (10, 1.0)}
+        after = {"/home/user/docs/manuals/a.txt": (20, 2.0), "/tmp/other": (5, 1.0)}
+        changed = check_protected_paths(before, after, ["/home/user/docs/manuals"])
+        self.assertIn("/home/user/docs/manuals/a.txt", changed)
+        self.assertNotIn("/tmp/other", changed)
+
+    def test_empty_default(self):
+        from runner.runner import check_protected_paths
+        self.assertEqual(check_protected_paths({}, {}, []), [])

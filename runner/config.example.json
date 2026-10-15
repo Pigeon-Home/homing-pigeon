@@ -27,5 +27,6 @@
   "task_timeout": 86400,
   "require_review": false,
   "worker_allowlist": [],
-  "worker_compartments": {}
+  "worker_compartments": {},
+  "protected_paths": []
 }

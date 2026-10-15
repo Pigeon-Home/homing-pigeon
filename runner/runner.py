@@ -355,6 +355,21 @@ def snapshot_outside(workspace_root, exclude=None):
     return snap
 
 
+
+def check_protected_paths(before, after, protected):
+    """Return list of paths under protected_paths that changed. Always reported."""
+    if not protected:
+        return []
+    changed = []
+    abs_protected = [os.path.abspath(p) for p in protected if p]
+    all_paths = set(before) | set(after)
+    for path in all_paths:
+        ap = os.path.abspath(path)
+        if any(ap == pp or ap.startswith(pp + os.sep) for pp in abs_protected):
+            if before.get(path) != after.get(path):
+                changed.append(path)
+    return changed
+
 def confinement_violated(before, after):
     for path, info in after.items():
         if path not in before or before[path] != info:
@@ -1172,6 +1187,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             r = execute_job(cfg, job, base_dir)
             after = snapshot_outside(ws, exclude=[base_dir]) if ws else {}
             confined = not confinement_violated(before, after) if ws else False
+            protected = cfg.get("protected_paths") or []
+            protected_changed = check_protected_paths(before, after, protected)
             result = {
                 "v": PROTOCOL_VERSION, "type": "result", "job_id": job_id,
                 "kind": job.get("kind"),
@@ -1186,6 +1203,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # Oracle view (no-op when oracle_enabled is false)
             patterns = _redact_patterns(cfg)
             result, _retain = apply_result_policy(cfg, job, result, patterns, confined=confined)
+            if protected_changed:
+                result.setdefault("confinement_detail", {})["protected_paths_changed"] = protected_changed
             if cfg.get("judge") == "advisory" and reasons:
                 result["judgment"] = {"verdict": verdict, "reasons": reasons}
             with _MAIL_LOCK:
