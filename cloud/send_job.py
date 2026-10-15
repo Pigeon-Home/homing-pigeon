@@ -181,6 +181,25 @@ def cmd_verify(args) -> int:
     return 0
 
 
+
+def cmd_task_submit(args) -> int:
+    payload = {"v": 1, "type": "task", "task_id": args.task_id, "priority": args.priority}
+    body = sign_payload(payload, args.secret)
+    print(f"[HOMING-PIGEON] task_submit {args.task_id}")
+    print()
+    print(body)
+    return 0
+
+
+def cmd_task_request(args) -> int:
+    payload = {"v": 1, "type": "task_request", "worker_id": args.worker_id, "capabilities": []}
+    body = sign_payload(payload, args.secret)
+    print(f"[HOMING-PIGEON] task_request {args.worker_id}")
+    print()
+    print(body)
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="homing-pigeon cloud-side helper")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -205,6 +224,17 @@ def main() -> int:
     n.add_argument("--secret", required=True)
     n.set_defaults(func=cmd_new)
 
+
+    ts = sub.add_parser("task-submit", help="build a signed task_submit email")
+    ts.add_argument("--task-id", required=True)
+    ts.add_argument("--priority", type=int, default=0)
+    ts.add_argument("--secret", required=True)
+    ts.set_defaults(func=cmd_task_submit)
+
+    tr = sub.add_parser("task-request", help="build a signed task_request email")
+    tr.add_argument("--worker-id", required=True)
+    tr.add_argument("--secret", required=True)
+    tr.set_defaults(func=cmd_task_request)
     v = sub.add_parser("verify", help="verify a signed result body")
     v.add_argument("--secret", required=True)
     v.add_argument("file", nargs="?", default=None)

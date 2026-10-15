@@ -256,6 +256,8 @@ def main() -> int:
                     help="concurrent job executions")
     ap.add_argument("--poll-interval", type=int, default=None, metavar="SEC")
     ap.add_argument("--no-oracle", action="store_true")
+    ap.add_argument("--additional-secret", action="append", default=[],
+                    help="KEY_ID (generates 256-bit secret, never printed)")
     ap.add_argument("--max-output-bytes", type=int, default=None, metavar="N")
     ap.add_argument("--no-send", action="store_true")
     ap.add_argument("--timeout", type=int, default=None, metavar="SEC")

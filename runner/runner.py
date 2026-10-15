@@ -387,6 +387,18 @@ def answer_queries(queries, exec_result, patterns, budget):
     return answers, spent
 
 
+
+def save_retained(base_dir, job_id, payload):
+    """Persist output for later queries. job_id charset makes it filename-safe."""
+    d = os.path.join(base_dir, "retained")
+    os.makedirs(d, exist_ok=True)
+    path = os.path.join(d, f"{job_id}.json")
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(payload, f)
+    os.replace(tmp, path)
+
+
 # ---------------------------------------------------------------- board (v3 §13)
 _BOARD_LOCK = threading.RLock()
 
