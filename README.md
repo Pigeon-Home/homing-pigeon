@@ -265,6 +265,11 @@ fine there: use `pip install pigeon-home-runner` or build from source.
      `python runner/oauth.py --config config.json` from source): a browser
      opens, you sign in and grant access, and the refresh token is stored.
      IMAP and SMTP then use XOAUTH2. Tested end to end on Windows 11.
+     One gotcha: in the Cloud Console, set the OAuth consent screen to
+     "Publish app" (status "In production"). Left in "Testing", Google
+     expires the refresh token after 7 days and the runner dies weekly.
+     No verification needed — the app stays unverified with the usual
+     first-consent warning.
    (your explicit choice for this throwaway account).
 5. When you want an SI to send jobs, make sure `shared_secret` in
    config.json matches the string you pasted to the SI in chat
