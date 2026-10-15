@@ -1387,3 +1387,29 @@ class ConfigShapeFaultTest(unittest.TestCase):
                 fh.write('"just a string"')
             with self.assertRaises(RuntimeError):
                 load_config(path)
+
+
+class ViewShapeFaultTest(unittest.TestCase):
+    """Finding: a view that is not a string crashed the result policy.
+
+    VIEW_ORDER.get on a dict raises TypeError. The job retried
+    forever. A non-string view is full. The job completes.
+    """
+
+    def test_dict_view_does_not_stop_the_job(self):
+        with tempfile.TemporaryDirectory() as d:
+            body = sign_payload({
+                "v": 1, "type": "job", "kind": "ping",
+                "job_id": "view-1", "issued_at": _now(),
+                "result_policy": {"view": {"not": "a string"}},
+            }, SECRET)
+            cfg = {
+                "mailbox_user": "pigeon-test@example.com",
+                "shared_secret": SECRET, "base_dir": d,
+                "max_result_view": ["also", "bad"],
+            }
+            poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                      imap=_IMAP(_mail("[HOMING-PIGEON] job view-1", body)),
+                      smtp=_SMTP(), opts=_Opts())
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                self.assertIn("view-1", json.load(fh))

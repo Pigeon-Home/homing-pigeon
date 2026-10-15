@@ -500,6 +500,12 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
         policy = {}
     requested = policy.get("view") or "full"
     ceiling = cfg.get("max_result_view") or "full"
+    # A non-string view is bad data. .get on a dict key raises TypeError
+    # and the job retried forever.
+    if not isinstance(requested, str):
+        requested = "full"
+    if not isinstance(ceiling, str):
+        ceiling = "full"
     effective = requested if VIEW_ORDER.get(requested, 3) <= VIEW_ORDER.get(ceiling, 3) else ceiling
     stdout = exec_result.get("stdout")
     stderr = exec_result.get("stderr")
