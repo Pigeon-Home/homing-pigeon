@@ -2390,5 +2390,50 @@ class PageFormatGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class TaskIdGracefulTest(unittest.TestCase):
+    """Finding: task_id is read on submit and complete. A non-string
+    id must reject cleanly, not crash.
+    """
+
+    def test_submit_odd_task_id(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for tid in (None, "", 42, {"id": "x"}, ["a"], "ok"):
+            try:
+                ok, reason = b.submit({"task_id": tid, "kind": "ping"})
+            except Exception as e:
+                self.fail(f"submit crashed on task_id {tid!r}: {e}")
+            self.assertIsInstance(ok, bool)
+
+    def test_complete_odd_task_id(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for tid in (None, "", 42, {"id": "x"}, "missing"):
+            try:
+                status, reason = b.complete(tid if isinstance(tid, str) else "", {})
+            except Exception as e:
+                self.fail(f"complete crashed on {tid!r}: {e}")
+            self.assertIsInstance(status, str)
+
+    def test_concurrent_odd_ids(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        errors = []
+
+        def one(i):
+            try:
+                b.submit({"task_id": i if i % 2 else f"t{i}"})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
