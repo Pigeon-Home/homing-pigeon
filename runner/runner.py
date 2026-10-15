@@ -1887,6 +1887,42 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
                 pass
 
 
+
+def ensure_inference_ready(cfg):
+    """If inference is configured, make sure the loopback daemon is up."""
+    inf = inference_config(cfg)
+    if not inf:
+        return
+    endpoint = inf.get("endpoint") or ""
+    if "127.0.0.1" not in endpoint and "localhost" not in endpoint:
+        return
+    import socket
+    s = socket.socket()
+    s.settimeout(1)
+    try:
+        s.connect(("127.0.0.1", 11434))
+        return
+    except Exception:
+        pass
+    finally:
+        s.close()
+    import shutil
+    import subprocess
+    if not shutil.which("ollama"):
+        log("inference configured but ollama not found", "WARN")
+        return
+    try:
+        subprocess.Popen(
+            ["ollama", "serve"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        log("started ollama daemon for inference")
+    except Exception as e:
+        log(f"could not start ollama: {e}", "WARN")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Homing Pigeon runner agent")
     ap.add_argument("--config", default="config.json")
@@ -1926,6 +1962,7 @@ def main() -> int:
         return 2
 
     cfg = load_config(args.config)
+    ensure_inference_ready(cfg)
     if not cfg.get("mailbox_user"):
         print("config error: mailbox_user is required", file=sys.stderr)
         return 2

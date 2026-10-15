@@ -22,6 +22,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 from xml.sax.saxutils import escape
 
 SERVICE_NAME = "homing-pigeon"
@@ -337,6 +338,46 @@ def apply_profile(cfg_path: str, profile: str) -> None:
     print(f"profile: applied {name}")
 
 
+
+def _ollama_up(port=11434) -> bool:
+    import socket
+    s = socket.socket()
+    s.settimeout(1)
+    try:
+        s.connect(("127.0.0.1", port))
+        return True
+    except Exception:
+        return False
+    finally:
+        s.close()
+
+
+def ensure_ollama_running() -> bool:
+    """Start the Ollama daemon if it is not already listening on loopback."""
+    if _ollama_up():
+        return True
+    if not _which("ollama"):
+        return False
+    import subprocess
+    try:
+        subprocess.Popen(
+            ["ollama", "serve"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except Exception as e:
+        print(f"inference: could not start ollama serve ({e})")
+        return False
+    for _ in range(20):
+        if _ollama_up():
+            print("inference: ollama daemon started")
+            return True
+        time.sleep(0.5)
+    print("inference: ollama daemon did not become ready")
+    return False
+
+
 def install_ollama_and_model(cfg_path: str, model: str, skip: bool) -> None:
     """Install Ollama and pull a model so the Oracle ask op works out of the box.
 
@@ -374,6 +415,7 @@ def install_ollama_and_model(cfg_path: str, model: str, skip: bool) -> None:
             print(f"inference: Ollama install failed ({e}); continuing without it. Pass --no-inference to silence this.")
             return
     # Ensure the daemon is reachable, then pull the model.
+    ensure_ollama_running()
     try:
         run(["ollama", "pull", model])
     except Exception as e:
