@@ -360,6 +360,10 @@ description"). Without one, the Oracle still applies deterministic
 checks against the job text (writes outside the workspace,
 known-dangerous patterns).
 
+*Implementation note: the runner currently ships the deterministic
+checks only. The semantic path — asking the local model for a verdict
+before execution — is spec'd but not yet wired up.*
+
 A verdict is a judgment, not a proof. It can miss malicious code and
 flag benign code, so the runner owner sets the policy — config-only,
 like everything the Oracle does. No job field can soften or disable
