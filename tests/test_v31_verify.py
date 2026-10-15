@@ -398,7 +398,6 @@ class QueryMailVerifyTest(unittest.TestCase):
             "max_output_bytes": 100000,
             "base_dir": self.tmp,
             "default_timeout_sec": 300,
-            "oracle_enabled": True,
             "max_query_budget": 8,
             "output_retention_days": 7,
             "workers": 1,
@@ -677,7 +676,6 @@ class JudgeOffPathTest(unittest.TestCase):
             "base_dir": tmp,
             "judge": "off",
             "workers": 1,
-            "oracle_enabled": True,
         }
         jid = str(uuid.uuid4())
         smtp = FakeSMTP()
@@ -701,7 +699,6 @@ class BoardVerifyTest(unittest.TestCase):
             "mailbox_password": "test-gmail-password",
             "shared_secret": SECRET,
             "base_dir": self.tmp,
-            "oracle_enabled": True,
             "workers": 1,
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")

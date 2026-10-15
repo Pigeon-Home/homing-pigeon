@@ -167,7 +167,6 @@ class QueryFollowupTest(unittest.TestCase):
             "max_output_bytes": 100000,
             "base_dir": self.tmp,
             "default_timeout_sec": 300,
-            "oracle_enabled": True,
             "max_query_budget": 8,
             "output_retention_days": 7,
             "workers": 1,
@@ -256,35 +255,6 @@ class QueryFollowupTest(unittest.TestCase):
         self.assertEqual(load_retained(self.tmp, "job2")["spent"], 2)
         self.assertEqual(body["budget_remaining"], 0)
 
-    def test_oracle_disabled_rejects_query(self):
-        self.cfg["oracle_enabled"] = False
-        payload = {
-            "v": 1, "type": "query", "query_id": "q-off",
-            "job_id": "job1", "issued_at": _now(),
-            "queries": [{"op": "grep", "pattern": "x"}],
-        }
-        imap, smtp, _ = self.cycle([
-            _signed("[HOMING-PIGEON] query q-off", payload),
-        ])
-        self.assertIn("1", imap.flagged)
-        body = verify_body(smtp.sent[0].get_content(), SECRET)
-        self.assertEqual(body["rejected"], "unsupported")
-
-    def test_oracle_disabled_leaves_v1_result(self):
-        self.cfg["oracle_enabled"] = False
-        jid = str(uuid.uuid4())
-        payload = job_payload(jid, result_policy={
-            "view": "attested",
-            "queries": [{"op": "grep", "pattern": "pong"}],
-        })
-        _, smtp, _ = self.cycle([job_email(payload)])
-        result = verify_body(smtp.sent[0].get_content(), SECRET)
-        self.assertEqual(result["stdout"], "pong")
-        self.assertNotIn("answers", result)
-        self.assertNotIn("view", result)
-        self.assertFalse(os.path.exists(
-            os.path.join(self.tmp, "retained", jid + ".json")))
-
 
 class JudgmentDenylistTest(unittest.TestCase):
     def test_denylist_patterns_do_not_execute(self):
@@ -322,7 +292,6 @@ class JudgmentDenylistTest(unittest.TestCase):
             "base_dir": tmp,
             "judge": "enforce",
             "workers": 1,
-            "oracle_enabled": True,
         }
         jid = str(uuid.uuid4())
         # kind=ping: judge reads script, execute_job never runs it.
@@ -346,7 +315,6 @@ class JudgmentDenylistTest(unittest.TestCase):
             "base_dir": tmp,
             "judge": "advisory",
             "workers": 1,
-            "oracle_enabled": True,
         }
         jid = str(uuid.uuid4())
         mail = job_email(job_payload(jid, script="mkfs"))

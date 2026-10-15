@@ -76,9 +76,6 @@ mitigation:
 - **Privacy budget.** Each job gets a fixed number of questions;
   exhaustion silences the Oracle for that job. Rate limiting slows
   probing; the budget stops it.
-- **Kill switch.** `oracle_enabled: false` in config drops back to
-  the plain v1 pipe for debugging. Config-only — no job can disable
-  the Oracle.
 
 ## 5. Operational hygiene
 

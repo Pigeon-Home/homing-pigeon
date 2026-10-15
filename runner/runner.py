@@ -239,8 +239,6 @@ def _redact_patterns(cfg):
 
 def apply_result_policy(cfg, job, exec_result, patterns, confined):
     """Return (result_dict, retain_bool). Job can never widen past owner ceiling."""
-    if not cfg.get("oracle_enabled", True):
-        return exec_result, False
     policy = job.get("result_policy") or {}
     requested = policy.get("view") or "full"
     ceiling = cfg.get("max_result_view") or "full"
@@ -1483,14 +1481,6 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
         _mark(imap, seq, opts)
         return True
 
-    if not cfg.get("oracle_enabled", True):
-        log(f"query rejected (unsupported, oracle disabled) seq {seq}", "WARN")
-        finish({
-            "v": 1, "type": "qresult", "query_id": query_id,
-            "rejected": "unsupported", "answers": [],
-        }, secret)
-        return True
-
     if payload.get("v") != PROTOCOL_VERSION or payload.get("type") != "query":
         log(f"query rejected (bad type) seq {seq}", "WARN")
         finish({
@@ -1571,11 +1561,6 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
     m = re.search(r"\[HOMING-PIGEON\].*?(task_submit|task_request|task_result|task_approve)\s+(\S+)", subject, re.I)
     if not m:
         return False
-    if not cfg.get("oracle_enabled", True):
-        log(f"board message rejected (unsupported, oracle disabled) seq {seq}", "WARN")
-        if opts is None or not opts.dry_run:
-            mark_seen(imap, seq)
-        return True
     kind, ident = m.group(1).lower(), m.group(2)
     def reject(why):
         log(f"board reject seq {seq}: {why}", "WARN")
@@ -1744,19 +1729,16 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 "duration_sec": float(r["duration_sec"]),
                 "runner": socket.gethostname(),
             }
-            # Oracle view (no-op when oracle_enabled is false)
+            # Oracle view
             patterns = _redact_patterns(cfg)
             result, retain_view = apply_result_policy(cfg, job, result, patterns, confined=confined)
-            oracle_on = bool(cfg.get("oracle_enabled", True))
-            declared = []
-            if oracle_on:
-                declared = (job.get("result_policy") or {}).get("queries") or []
-                if not isinstance(declared, list):
-                    declared = []
+            declared = (job.get("result_policy") or {}).get("queries") or []
+            if not isinstance(declared, list):
+                declared = []
             spent = 0
             digest = hashlib.sha384(
                 (str(r["stdout"]) + str(r["stderr"])).encode("utf-8")).hexdigest()
-            if oracle_on and declared:
+            if declared:
                 view = result.get("view") or "full"
                 answers, spent = answer_queries(
                     declared,
@@ -1766,7 +1748,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     patterns, query_budget(cfg, job), cfg=cfg, view=view,
                 )
                 result["answers"] = answers
-            if oracle_on and (retain_view or declared):
+            if retain_view or declared:
                 save_retained(base_dir, job_id, {
                     "job_id": job_id,
                     "stdout": str(r["stdout"]),
@@ -1999,7 +1981,6 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     # as the HMAC-SHA-384 key. No hashing or derivation — the SI uses it
     # as-is.
     secrets = build_secrets(cfg)
-    cfg.setdefault("oracle_enabled", True)
     prune_retained(base_dir, int(cfg.get("output_retention_days") or 7))
     board = Board(os.path.join(base_dir, "board.json"))
     cfg["board"] = board
@@ -2177,7 +2158,6 @@ def log_startup(cfg, args, base_dir):
     Never prints a secret. Prints the absence of one.
     """
     auth = "oauth" if _use_oauth(cfg) else "password"
-    oracle = cfg.get("oracle_enabled", True)
     inf = inference_config(cfg)
     keys = sorted((cfg.get("additional_secrets") or {}).keys())
     log(f"homing-pigeon starting (base={base_dir}, platform={sys.platform})")
@@ -2185,8 +2165,7 @@ def log_startup(cfg, args, base_dir):
         f"poll={cfg.get('poll_interval_sec', 20)}s "
         f"workers={_worker_count(cfg, args)} "
         f"timeout={cfg.get('default_timeout_sec', 300)}s")
-    log(f"oracle={'on' if oracle else 'off'} "
-        f"judge={cfg.get('judge') or 'off'} "
+    log(f"judge={cfg.get('judge') or 'off'} "
         f"ceiling={cfg.get('max_result_view') or 'full'} "
         f"workspace={cfg.get('workspace_root') or '(none)'}")
     if inf:
@@ -2217,7 +2196,7 @@ def log_startup(cfg, args, base_dir):
             "max_output_bytes", "max_job_age_sec", "max_result_view",
             "max_query_budget", "max_queries_per_hour",
             "output_retention_days", "judge", "workspace_root",
-            "protected_paths", "oracle_enabled", "dag_mode",
+            "protected_paths", "dag_mode",
             "require_review", "worker_allowlist")}
         log(f"config: {json.dumps(safe, default=str)}")
         log("verbose: job lines, reject reasons, and query ops. "
@@ -2229,9 +2208,9 @@ def main() -> int:
     ap.add_argument("--config", default="config.json")
     ap.add_argument("--once", action="store_true",
                     help="run a single poll cycle, then exit")
-    # NOTE: the flag order below is deliberate. Safety-relevant disable
-    # flags (--no-oracle, --no-send) are scattered among operational
-    # flags so --help does not read as an obvious "turn everything off"
+    # NOTE: the flag order below is deliberate. The safety-relevant
+    # disable flag (--no-send) is scattered among operational flags
+    # so --help does not read as an obvious "turn everything off"
     # menu. The capabilities are all documented; they are just not
     # clustered.
     ap.add_argument("--dry-run", action="store_true",
@@ -2241,9 +2220,6 @@ def main() -> int:
                     help="concurrent job executions (default 1; overrides config)")
     ap.add_argument("--poll-interval", type=int, default=None, metavar="SEC",
                     help="seconds between poll cycles (overrides config)")
-    ap.add_argument("--no-oracle", action="store_true",
-                    help="disable the Oracle safety layer (overrides config; "
-                         "v1 dumb pipe)")
     ap.add_argument("--max-output-bytes", type=int, default=None, metavar="N",
                     help="truncate stdout/stderr beyond N bytes "
                          "(overrides config)")
@@ -2305,8 +2281,6 @@ def main() -> int:
         cfg["max_output_bytes"] = args.max_output_bytes
     if args.timeout is not None:
         cfg["default_timeout_sec"] = args.timeout
-    if args.no_oracle:
-        cfg["oracle_enabled"] = False
     global _VERBOSE
     _VERBOSE = args.verbose
     base_dir = cfg.get("base_dir") or os.path.join(os.path.expanduser("~"),

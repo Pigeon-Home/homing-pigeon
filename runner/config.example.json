@@ -18,7 +18,6 @@
   "oauth_refresh_token": "",
   "shared_secret": "generate-with-openssl-rand-hex-32",
   "additional_secrets": {},
-  "oracle_enabled": true,
   "max_result_view": "full",
   "max_query_budget": 8,
   "output_retention_days": 7,

@@ -132,8 +132,7 @@ raw output never leaves your disk.
 
 Queries are declared upfront (no adaptive probing), each job gets a
 privacy budget bounding total leakage, and the disclosure ceiling is
-set by *you* in config — never by the SI. For debugging,
-`oracle_enabled: false` drops back to the plain v1 pipe.
+set by *you* in config — never by the SI.
 
 The Oracle also grows two optional capabilities (spec'd, not yet built):
 
@@ -409,7 +408,7 @@ End-to-end without your SI:
   per-job encryption, result file upload for large outputs. The
   Oracle is implemented: result policies, signed attestations,
   and a query budget, so a cloud SI learns *answers* about your output
-  without ever seeing it. `oracle_enabled: false` disables it anytime.
+  without ever seeing it.
 
 ## Roadmap
 

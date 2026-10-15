@@ -263,14 +263,10 @@ v3 adds a second direction without removing the first. In v1 the SI pushes jobs 
 It is governed by runner-owner flags. They are config-only, never job
 fields — no job field can disable the Oracle, otherwise the SI could
 switch off its own restraints. Section 13 adds dispatch-specific flags
-under the same rule. The master flag:
-
-- `oracle_enabled` in config.json (default `true`).
-- When `false`, the Oracle is fully bypassed: `result_policy` is
-  ignored, results are always v1 `full`, no outputs are retained, and
-  `query` messages are rejected as unsupported. This is the debugging
-  escape hatch — straight stdin/stdout, the dumb pipe, none of the
-  machinery.
+under the same rule. In v3 the Oracle is unconditional: there is no
+flag to disable it. `result_policy` is always honored, results are
+shaped by the owner-configured ceiling, and `query` messages are
+always accepted.
 
 ## 9. Result policies
 
@@ -594,10 +590,8 @@ look* — which, for most debugging sessions, is the expensive part.
 This section adds a direction; it removes none. v3 does everything v2
 does: push a signed job, the runner verifies and executes, results come
 back. Identical wire behavior, identical auth. The Oracle, dispatch
-included, is purely additive and gated behind `oracle_enabled`. When the
-Oracle is on, it can additionally deal tasks from its board at the
-request of anyone holding the shared secret. When it is off, the runner
-is a v2 runner, full stop.
+included, is purely additive. It can additionally deal tasks from its
+board at the request of anyone holding the shared secret.
 
 The default posture is least restrictive, like everything else here.
 Any holder of the shared secret can pull tasks and see full task

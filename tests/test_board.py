@@ -107,7 +107,6 @@ class BoardE2ETest(unittest.TestCase):
             "mailbox_password": "test-gmail-password",
             "shared_secret": SECRET,
             "base_dir": self.tmp,
-            "oracle_enabled": True,
             "workers": 1,
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
@@ -138,17 +137,3 @@ class BoardE2ETest(unittest.TestCase):
         subjects = [m["Subject"] for m in smtp.sent]
         self.assertTrue(any("task_ack t-e2e" in s for s in subjects))
         self.assertTrue(any("task_offer t-e2e" in s for s in subjects))
-
-    def test_oracle_disabled_rejects_board(self):
-        self.cfg["oracle_enabled"] = False
-        issued = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        mail = _board_mail("[HOMING-PIGEON] task_submit t-off", {
-            "v": 1, "type": "task_submit", "task_id": "t-off",
-            "issued_at": issued,
-        })
-        imap = FakeIMAP([mail])
-        smtp = FakeSMTP()
-        poll_once(self.cfg, self.tmp, {}, self.seen_path, imap=imap, smtp=smtp)
-        self.assertIn("1", imap.flagged)
-        self.assertEqual(smtp.sent, [])
-        self.assertFalse(os.path.exists(os.path.join(self.tmp, "board.json")))

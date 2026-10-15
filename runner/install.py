@@ -52,7 +52,7 @@ def _runner_argv(dst_dir: str):
 def _forwarded_args(args) -> list:
     """Runner CLI flags to bake into the installed service command."""
     out = []
-    for name in ("dry_run", "no_oracle", "no_send", "pdb"):
+    for name in ("dry_run", "no_send", "pdb"):
         if getattr(args, name, False):
             out.append("--" + name.replace("_", "-"))
     # verbose is the runner default. Only bake the off switch.
@@ -596,7 +596,6 @@ def main() -> int:
     ap.add_argument("--workers", type=int, default=None, metavar="N",
                     help="concurrent job executions")
     ap.add_argument("--poll-interval", type=int, default=None, metavar="SEC")
-    ap.add_argument("--no-oracle", action="store_true")
     ap.add_argument("--no-inference", action="store_true",
                     help="do not install Ollama or pull a model (ask stays off)")
     ap.add_argument("--instructions", default=None, metavar="TEXT",
