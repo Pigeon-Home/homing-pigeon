@@ -364,3 +364,77 @@ class SensorCostumeTest(unittest.TestCase):
             dri.maybe_page(
                 {"dri": {"enabled": True, "bot_token": FLAG, "chat_id": 5}}, d)
             self.assertFalse(os.path.exists(os.path.join(d, "work")))
+
+
+class WindowsExtensionTest(unittest.TestCase):
+    """Same poison, on a simulated Windows box.
+
+    os.name is nt. The interpreter is PowerShell. Paths use
+    backslashes. winlog is the extension that only exists here.
+    None of it may crash the Oracle, and none of it may run.
+    """
+
+    def test_powershell_costume_does_not_run_on_windows(self):
+        with tempfile.TemporaryDirectory() as d:
+            outside = os.path.join(d, "outside")
+            os.makedirs(outside)
+            marker = os.path.join(outside, "ran")
+            job = {
+                "v": 1, "type": "job", "kind": "sensor_alert",
+                "job_id": "win-costume-1", "issued_at": _now(),
+                "sensor": "..\\..\\Windows\\System32",
+                "severity": "critical",
+                "title": "Remove-Item -Recurse -Force C:\\",
+                "detail": {"note": FLAG, "path": "C:\\Users\\Public\\flag"},
+                "script": f"Set-Content -Path '{marker}' -Value ran",
+                "interpreter": ["powershell", "-File"],
+                "script_url": "http://evil.example/p.ps1",
+            }
+            raw = _mail("[HOMING-PIGEON] job win-costume-1",
+                        sign_payload(job, SECRET))
+            cfg = {
+                "mailbox_user": "pigeon-test@example.com",
+                "shared_secret": SECRET,
+                "base_dir": d,
+                "sensors": {"host-ids": {"enabled": True, "key_id": "sense"}},
+                "judge": "enforce",
+            }
+            with mock.patch("runner.runner.os.name", "nt"), \
+                 mock.patch("runner.runner.sys.platform", "win32"):
+                poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                          imap=_IMAP(raw), smtp=_SMTP(), opts=_Opts())
+            self.assertFalse(os.path.exists(marker))
+            store = os.path.join(d, "senses.jsonl")
+            if os.path.exists(store):
+                self.assertNotIn(FLAG, open(store, encoding="utf-8").read())
+
+    def test_winlog_swallows_a_broken_event_log(self):
+        from runner import winlog
+        with mock.patch("runner.winlog.os.name", "nt"):
+            with mock.patch.dict("sys.modules", {"ctypes": None}):
+                winlog.report_event(FLAG)
+                winlog.report_event(None)
+                winlog.report_event("x" * 100000)
+        self.assertTrue(True)
+
+    def test_windows_extensions_share_one_poll(self):
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "board.json"), "w", encoding="utf-8") as fh:
+                json.dump({"t": {"state": "open", "requires": "not-a-list"}}, fh)
+            with mock.patch("runner.runner.os.name", "nt"):
+                review.review_job({}, {"kind": "exec", "script": FLAG,
+                                       "interpreter": ["powershell", "-File"]})
+                resources.check_resources({"resources": True}, d)
+                dri.maybe_page({"dri": {"enabled": True, "chat_id": "..\\x"}}, d)
+                body = sign_payload({
+                    "v": 1, "type": "task_request", "issued_at": _now(),
+                    "capabilities": ["powershell"],
+                }, SECRET)
+                raw = _mail("[HOMING-PIGEON] task_request worker-1", body)
+                cfg = {
+                    "mailbox_user": "pigeon-test@example.com",
+                    "shared_secret": SECRET,
+                    "worker_allowlist": ["worker-1"],
+                }
+                poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                          imap=_IMAP(raw), smtp=_SMTP(), opts=_Opts())

@@ -1225,6 +1225,8 @@ class Board:
         for t in self.tasks.values():
             if not isinstance(t, dict) or t.get("state") != "open":
                 continue
+            if not t.get("task_id"):
+                continue
             # compartment visibility
             tcomps = t.get("compartments") or []
             if not isinstance(tcomps, list):
@@ -1979,8 +1981,9 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
         elif kind == "task_request":
             caps = payload.get("capabilities") or []
             offered = board.offer(ident, caps, key_id, cfg)
-            if offered:
-                reply_subj = f"[HOMING-PIGEON] task_offer {offered['task_id']}"
+            tid = offered.get("task_id") if isinstance(offered, dict) else None
+            if offered and tid:
+                reply_subj = f"[HOMING-PIGEON] task_offer {tid}"
                 reply_body = {"v": 1, "type": "task_offer", "task": offered}
             else:
                 reply_subj = "[HOMING-PIGEON] task_offer empty"
