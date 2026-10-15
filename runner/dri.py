@@ -196,13 +196,19 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
                 continue
             by_sensor.setdefault(rec.get("sensor"), []).append(rec)
         for sensor, recs in by_sensor.items():
-            total = sum(_senses.alert_score(r, r.get("weight", 1.0))
-                        for r in recs)
+            total = 0.0
+            for rec in recs:
+                try:
+                    total += _senses.alert_score(rec, rec.get("weight", 1.0))
+                except (TypeError, ValueError):
+                    continue
             if total >= sfs["threshold"]:
-                top = sorted(
-                    recs,
-                    key=lambda r: _senses.alert_score(r, r.get("weight", 1.0)),
-                    reverse=True)[:3]
+                def _one(rec):
+                    try:
+                        return _senses.alert_score(rec, rec.get("weight", 1.0))
+                    except (TypeError, ValueError):
+                        return 0.0
+                top = sorted(recs, key=_one, reverse=True)[:3]
                 events.append({
                     "trigger": "sensor_fused_score",
                     "at": _now_iso(),
@@ -242,14 +248,22 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
     if kp or rp:
         for ev in _recent_events(base_dir, since_ts):
             if rp and ev.get("type") == "resource_pressure":
-                res = ", ".join(
-                    f"{k}={v:.0%}"
-                    for k, v in (ev.get("resources") or {}).items())
+                parts = []
+                resources = ev.get("resources") if isinstance(ev.get("resources"), dict) else {}
+                for k, v in resources.items():
+                    try:
+                        parts.append(f"{k}={float(v):.0%}")
+                    except (TypeError, ValueError):
+                        parts.append(f"{k}=?")
+                try:
+                    thr = float(ev.get("threshold", 0) or 0)
+                except (TypeError, ValueError):
+                    thr = 0.0
                 events.append({
                     "trigger": "resource_pressure",
                     "at": ev.get("at") or _now_iso(),
-                    "title": f"resource pressure: {res}",
-                    "detail": f"over {ev.get('threshold', 0):.0%} threshold",
+                    "title": "resource pressure: " + ", ".join(parts),
+                    "detail": f"over {thr:.0%} threshold",
                     "signals": [],
                 })
         if kp:
@@ -273,9 +287,11 @@ def format_page(events):
     """Render page events as one plain-text message."""
     lines = []
     for ev in events:
-        lines.append(f"homing-pigeon: {ev['title']}")
+        if not isinstance(ev, dict):
+            continue
+        lines.append("homing-pigeon: " + str(ev.get("title") or ev.get("trigger") or "page"))
         if ev.get("detail"):
-            lines.append(ev["detail"])
+            lines.append(str(ev["detail"]))
         for sig in ev.get("signals") or []:
             lines.append(f"  - {sig}")
         lines.append("")
@@ -309,6 +325,13 @@ def _send(dcfg, text):
     return False
 
 
+def _as_float(value, default):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def maybe_page(cfg, base_dir, now=None):
     """Evaluate triggers; page per cooldown/digest. Returns sent count."""
     now = time.time() if now is None else now
@@ -319,7 +342,7 @@ def maybe_page(cfg, base_dir, now=None):
     if not dcfg["enabled"]:
         return 0
     state = _load_state(base_dir)
-    since_ts = float(state.get("last_check") or 0)
+    since_ts = _as_float(state.get("last_check"), 0.0)
     if since_ts == 0:
         # First run: do not page for ancient history.
         state["last_check"] = now
@@ -333,9 +356,13 @@ def maybe_page(cfg, base_dir, now=None):
 
     # Per-trigger cooldown.
     last_page = state.get("last_page") or {}
+    if not isinstance(last_page, dict):
+        last_page = {}
     fresh = []
     for ev in events:
-        if now - float(last_page.get(ev["trigger"], 0)) \
+        if not isinstance(ev, dict) or not ev.get("trigger"):
+            continue
+        if now - _as_float(last_page.get(ev["trigger"]), 0.0) \
                 >= dcfg["cooldown_sec"]:
             fresh.append(ev)
             last_page[ev["trigger"]] = now
@@ -343,8 +370,10 @@ def maybe_page(cfg, base_dir, now=None):
 
     # Digest batching.
     pending = state.get("pending_digest") or []
+    if not isinstance(pending, list):
+        pending = []
     pending.extend(fresh)
-    digest_until = float(state.get("digest_until") or 0)
+    digest_until = _as_float(state.get("digest_until"), 0.0)
     if fresh and digest_until == 0:
         digest_until = now + dcfg["digest_window_sec"]
     sent = 0

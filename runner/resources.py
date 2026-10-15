@@ -67,10 +67,15 @@ def _read_proc_stat():
 
 
 def _cpu_percent(prev, cur):
-    if not prev or not cur:
+    if not isinstance(prev, (list, tuple)) or not isinstance(cur, (list, tuple)):
         return None
-    idle_d = cur[0] - prev[0]
-    total_d = cur[1] - prev[1]
+    if len(prev) < 2 or len(cur) < 2:
+        return None
+    try:
+        idle_d = float(cur[0]) - float(prev[0])
+        total_d = float(cur[1]) - float(prev[1])
+    except (TypeError, ValueError):
+        return None
     if total_d <= 0:
         return None
     return max(0.0, min(1.0, 1.0 - idle_d / total_d))
@@ -147,12 +152,19 @@ def check_resources(cfg, base_dir, now=None):
     threshold = rcfg["threshold"]
     cooldown = rcfg["cooldown_sec"]
     last_alert = state.get("last_alert") or {}
+    if not isinstance(last_alert, dict):
+        last_alert = {}
     over = {}
     for name, val in (("cpu", cpu), ("mem", mem), ("disk", disk)):
-        if val is not None and val >= threshold:
-            if now - float(last_alert.get(name, 0)) >= cooldown:
-                over[name] = round(val, 4)
-                last_alert[name] = now
+        if val is None or val < threshold:
+            continue
+        try:
+            last = float(last_alert.get(name, 0) or 0)
+        except (TypeError, ValueError):
+            last = 0.0
+        if now - last >= cooldown:
+            over[name] = round(val, 4)
+            last_alert[name] = now
     state["last_alert"] = last_alert
     _save_state(base_dir, state)
 

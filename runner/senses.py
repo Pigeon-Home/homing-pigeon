@@ -240,4 +240,10 @@ def load_alerts(base_dir: str, sensor=None, severity_floor=None,
 
 def alert_score(alert: dict, weight: float) -> float:
     """How much the Oracle weighs this alert: source weight x severity."""
-    return float(weight) * SEVERITY_SCORES.get(alert.get("severity"), 0.5)
+    try:
+        weight_n = float(weight)
+    except (TypeError, ValueError):
+        weight_n = 1.0
+    severity = alert.get("severity") if isinstance(alert, dict) else None
+    score = SEVERITY_SCORES.get(severity, 0.5) if isinstance(severity, str) else 0.5
+    return weight_n * score

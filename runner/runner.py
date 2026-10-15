@@ -925,16 +925,19 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                         weight = float(weight)
                     except (TypeError, ValueError):
                         weight = 1.0
-                    title, _ = redact_text(rec.get("title") or "", patterns)
-                    detail = rec.get("detail") or {}
+                    title_raw = rec.get("title") if isinstance(rec.get("title"), str) else ""
+                    title, _ = redact_text(title_raw, patterns)
+                    detail = rec.get("detail") if rec.get("detail") is not None else {}
                     if isinstance(detail, dict):
                         clean_detail = {}
                         for k, v in detail.items():
                             if isinstance(v, str):
                                 v, _ = redact_text(v, patterns)
                             clean_detail[k] = v
+                    elif isinstance(detail, str):
+                        clean_detail, _ = redact_text(detail, patterns)
                     else:
-                        clean_detail = detail
+                        clean_detail = ""
                     items.append({
                         "sensor": rec.get("sensor"),
                         "severity": rec.get("severity"),
@@ -1092,14 +1095,22 @@ class Board:
         self.load()
 
     def load(self):
-        if os.path.exists(self.path):
-            try:
-                with open(self.path, encoding="utf-8") as f:
-                    self.tasks = json.load(f)
-            except Exception:
-                self.tasks = {}
-        else:
-            self.tasks = {}
+        self.tasks = {}
+        if not os.path.exists(self.path):
+            return
+        try:
+            with open(self.path, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            return
+        # A list, a string, or a task that is not an object used to
+        # crash the next poll (tasks.values() / task.get).
+        if not isinstance(data, dict):
+            return
+        self.tasks = {
+            key: task for key, task in data.items()
+            if isinstance(key, str) and isinstance(task, dict)
+        }
 
     def save(self):
         tmp = self.path + ".tmp"
@@ -1141,34 +1152,63 @@ class Board:
         allow = cfg.get("worker_allowlist") or []
         if allow and worker_id not in allow:
             return None
+        raw_caps = capabilities if isinstance(capabilities, list) else []
+        capabilities = [c for c in raw_caps if isinstance(c, str)]
+        raw_comp = cfg.get("worker_compartments") or {}
+        if not isinstance(raw_comp, dict):
+            raw_comp = {}
+        compartments = raw_comp.get(worker_id)
+        if not isinstance(compartments, list) or not all(
+                isinstance(x, str) for x in compartments):
+            compartments = None
         # re-offer outstanding claim
         for t in self.tasks.values():
+            if not isinstance(t, dict):
+                continue
             if t.get("state") == "claimed" and t.get("claimed_by") == worker_id:
                 return t
-        compartments = (cfg.get("worker_compartments") or {}).get(worker_id)
         candidates = []
         for t in self.tasks.values():
-            if t.get("state") != "open":
+            if not isinstance(t, dict) or t.get("state") != "open":
                 continue
             # compartment visibility
             tcomps = t.get("compartments") or []
+            if not isinstance(tcomps, list):
+                tcomps = []
             if tcomps:
                 if compartments is None:
                     pass  # no config = visible
                 elif not set(tcomps) & set(compartments):
                     continue
             # capability filter
-            need = set(t.get("capabilities") or [])
+            need = t.get("capabilities") or []
+            if not isinstance(need, list):
+                need = []
+            need = {x for x in need if isinstance(x, str)}
             if need and not need <= set(capabilities or []):
                 continue
             # DAG
             if cfg.get("dag_mode") == "enforce":
-                if any(self.tasks.get(r, {}).get("state") != "done" for r in (t.get("requires") or [])):
+                reqs = t.get("requires") or []
+                if not isinstance(reqs, list):
+                    reqs = []
+                blocked = False
+                for req in reqs:
+                    dep = self.tasks.get(req)
+                    if not isinstance(dep, dict) or dep.get("state") != "done":
+                        blocked = True
+                        break
+                if blocked:
                     continue
             candidates.append(t)
         if not candidates:
             return None
-        candidates.sort(key=lambda x: (-x.get("priority", 0), x.get("submitted_at", "")))
+        def _rank(task):
+            priority = task.get("priority", 0)
+            if not isinstance(priority, (int, float)) or isinstance(priority, bool):
+                priority = 0
+            return (-priority, str(task.get("submitted_at") or ""))
+        candidates.sort(key=_rank)
         chosen = candidates[0]
         chosen["state"] = "claimed"
         chosen["claimed_by"] = worker_id
