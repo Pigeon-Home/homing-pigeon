@@ -338,5 +338,54 @@ class AnswerQueriesNullsTest(unittest.TestCase):
             self.fail(f"null output crashed answer_queries: {e}")
         self.assertEqual(spent, 2)
 
+
+class BudgetAndRateGracefulTest(unittest.TestCase):
+    """Finding: query_budget and check_rate_limit must not raise on
+    bad config, or a single bad job stops the poll.
+    """
+
+    def test_query_budget_bad_values(self):
+        from runner.runner import query_budget
+        cases = [
+            ({}, {}),
+            ({"max_query_budget": "nope"}, {"result_policy": {"query_budget": "x"}}),
+            ({"max_query_budget": -5}, {"result_policy": {"query_budget": None}}),
+            ({"max_query_budget": None}, {"result_policy": "not-a-dict"}),
+        ]
+        for cfg, job in cases:
+            try:
+                n = query_budget(cfg, job)
+            except Exception as e:
+                self.fail(f"query_budget crashed on {cfg}/{job}: {e}")
+            self.assertIsInstance(n, int)
+
+    def test_rate_limit_bad_config(self):
+        from runner.runner import check_rate_limit
+        tmp = tempfile.mkdtemp()
+        for cfg in ({}, {"max_queries_per_hour": "nope"}, {"max_queries_per_hour": -1}):
+            try:
+                check_rate_limit("k", cfg, path=os.path.join(tmp, "rate.json"))
+            except Exception as e:
+                self.fail(f"check_rate_limit crashed on {cfg}: {e}")
+
+    def test_prune_bad_days(self):
+        from runner.runner import prune_retained
+        tmp = tempfile.mkdtemp()
+        os.makedirs(os.path.join(tmp, "retained"))
+        for days in (None, "nope", -1, 0):
+            try:
+                prune_retained(tmp, days if isinstance(days, int) else 0)
+            except Exception as e:
+                self.fail(f"prune_retained crashed on {days}: {e}")
+
+    def test_save_retained_odd_job_id(self):
+        from runner.runner import save_retained
+        tmp = tempfile.mkdtemp()
+        for job_id in ("ok", "with space", "..", ""):
+            try:
+                save_retained(tmp, job_id or "empty", {"stdout": "x"})
+            except Exception as e:
+                self.fail(f"save_retained crashed on {job_id!r}: {e}")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
