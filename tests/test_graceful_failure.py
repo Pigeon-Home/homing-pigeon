@@ -1865,5 +1865,63 @@ class SensorKeyGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class BoardOpsGracefulTest(unittest.TestCase):
+    """Finding: complete and approve run on the board path. A missing
+    task or a bad result must not crash.
+    """
+
+    def test_complete_missing(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for task_id, result in (("", {}), ("missing", None), ("x", "string"),
+                                ("y", [1, 2])):
+            try:
+                status, reason = b.complete(task_id, result)
+            except Exception as e:
+                self.fail(f"complete crashed on {task_id!r}: {e}")
+            self.assertIsInstance(status, str)
+
+    def test_approve_missing(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for task_id in ("", "missing", None):
+            try:
+                ok, reason = b.approve(task_id if isinstance(task_id, str) else "")
+            except Exception as e:
+                self.fail(f"approve crashed on {task_id!r}: {e}")
+            self.assertIsInstance(ok, bool)
+
+    def test_complete_then_approve(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "t", "kind": "ping"})
+        b.offer("w", ["ping"])
+        try:
+            b.complete("t", {"ok": True}, require_review=True)
+            ok, reason = b.approve("t")
+        except Exception as e:
+            self.fail(f"complete/approve crashed: {e}")
+        self.assertTrue(ok)
+
+    def test_concurrent_complete_missing(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        errors = []
+
+        def one(i):
+            try:
+                b.complete(f"missing{i}", {})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
