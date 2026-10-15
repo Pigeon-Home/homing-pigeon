@@ -76,24 +76,83 @@ def prompt_yes_no(text: str, default: bool = True) -> bool:
     return answer in ("y", "yes")
 
 
+def _example_candidates():
+    """Where a shipped config.example.json might be.
+
+    Source checkouts keep it next to this file. A Windows zip keeps it
+    next to homing-pigeon.exe. A frozen build may also unpack it under
+    _MEIPASS. The first readable file wins.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    found = [os.path.join(here, "config.example.json")]
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        found.append(os.path.join(meipass, "config.example.json"))
+        found.append(os.path.join(meipass, "runner", "config.example.json"))
+    exe = getattr(sys, "executable", "") or ""
+    if exe:
+        found.append(os.path.join(os.path.dirname(os.path.abspath(exe)),
+                                  "config.example.json"))
+    found.append(os.path.join(os.getcwd(), "config.example.json"))
+    return found
+
+
+def _load_example() -> dict:
+    for path in _example_candidates():
+        try:
+            with open(path, encoding="utf-8") as fh:
+                cfg = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        if isinstance(cfg, dict):
+            return cfg
+    # The onefile binary does not contain the example unless the zip
+    # put it beside the exe. Gmail endpoints still have to be present
+    # or the first poll raises KeyError.
+    return {
+        "imap_host": "imap.gmail.com",
+        "imap_port": 993,
+        "smtp_host": "smtp.gmail.com",
+        "smtp_port": 587,
+        "poll_interval_sec": 20,
+        "max_output_bytes": 100000,
+        "max_job_age_sec": 3600,
+        "workers": 1,
+        "auth": "password",
+    }
+
+
 def _blank_config() -> dict:
     """Start from the example config when it ships alongside us."""
-    example = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           "config.example.json")
+    cfg = _load_example()
+    # Example ships with placeholder secrets and an example address;
+    # the wizard fills real ones below.
+    cfg.pop("shared_secret", None)
+    cfg.pop("mailbox_user", None)
+    cfg.pop("mailbox_password", None)
+    cfg.pop("oauth_refresh_token", None)
+    return cfg
+
+
+def _ensure_mail_hosts(cfg: dict) -> None:
+    """Fill Gmail endpoints when a partial config left them out."""
+    defaults = {
+        "imap_host": "imap.gmail.com",
+        "imap_port": 993,
+        "smtp_host": "smtp.gmail.com",
+        "smtp_port": 587,
+    }
+    for key, value in defaults.items():
+        if not cfg.get(key):
+            cfg[key] = value
+
+
+def _ask(prompt: str) -> str:
+    """input() that exits cleanly when there is no console."""
     try:
-        with open(example, encoding="utf-8") as fh:
-            cfg = json.load(fh)
-        if isinstance(cfg, dict):
-            # Example ships with placeholder secrets and an example
-            # address; the wizard fills real ones below.
-            cfg.pop("shared_secret", None)
-            cfg.pop("mailbox_user", None)
-            cfg.pop("mailbox_password", None)
-            cfg.pop("oauth_refresh_token", None)
-            return cfg
-    except (OSError, ValueError):
-        pass
-    return {}
+        return input(prompt).strip()
+    except EOFError:
+        raise SystemExit("setup needs a console (no input available)")
 
 
 def _write_config(cfg_path: str, cfg: dict) -> None:
@@ -162,6 +221,7 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
             cfg = None
     if not isinstance(cfg, dict):
         cfg = _blank_config()
+    _ensure_mail_hosts(cfg)
 
     print("=== Homing Pigeon setup ===")
     print("Thunderbird-style sign-in: a browser window, no password on")
@@ -169,8 +229,8 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
 
     # 1. The dedicated mailbox address.
     while not (cfg.get("mailbox_user") or "").strip():
-        cfg["mailbox_user"] = input(
-            "Gmail address for the runner's dedicated mailbox: ").strip()
+        cfg["mailbox_user"] = _ask(
+            "Gmail address for the runner's dedicated mailbox: ")
     user = cfg["mailbox_user"].strip()
     cfg["mailbox_user"] = user
 
@@ -182,12 +242,15 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
     else:
         print("[1] Sign in with Google (browser, recommended)")
         print("[2] Use a Gmail app password")
-        choice = input("Choice [1]: ").strip()
+        choice = _ask("Choice [1]: ")
         if choice == "2":
             cfg["auth"] = "password"
             cfg.pop("oauth_refresh_token", None)
-            cfg["mailbox_password"] = getpass.getpass(
-                "Gmail app password (stored in config.json): ")
+            try:
+                cfg["mailbox_password"] = getpass.getpass(
+                    "Gmail app password (stored in config.json): ")
+            except EOFError:
+                raise SystemExit("setup needs a console (no input available)")
         else:
             cfg["auth"] = "oauth"
             cfg.pop("mailbox_password", None)
@@ -196,8 +259,7 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
                 print("Credentials -> Create OAuth client ID -> Desktop app,")
                 print("then add http://127.0.0.1:8765/ as a redirect URI.")
                 while not (cfg.get("oauth_client_id") or "").strip():
-                    cfg["oauth_client_id"] = input(
-                        "OAuth client ID: ").strip()
+                    cfg["oauth_client_id"] = _ask("OAuth client ID: ")
             cfg["oauth_refresh_token"] = _browser_login_loop(cfg)
             # The token belongs to whoever just signed in; make sure the
             # address matches before we go further.

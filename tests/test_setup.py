@@ -172,6 +172,44 @@ class WizardOAuthTest(unittest.TestCase):
         self.assertNotIn("mailbox_user", cfg)
         self.assertNotIn("oauth_refresh_token", cfg)
 
+    def test_empty_config_still_gets_gmail_hosts(self):
+        with mock.patch.object(SU, "_blank_config", return_value={}):
+            _, written = self._run([
+                "runner@example.com", "", "my-client-id", "y",
+            ])
+        self.assertEqual(written["imap_host"], "imap.gmail.com")
+        self.assertEqual(written["imap_port"], 993)
+        self.assertEqual(written["smtp_host"], "smtp.gmail.com")
+        self.assertEqual(written["smtp_port"], 587)
+
+    def test_example_beside_the_executable(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.example.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({
+                    "imap_host": "imap.from.zip",
+                    "imap_port": 993,
+                    "smtp_host": "smtp.from.zip",
+                    "smtp_port": 587,
+                    "mailbox_user": "drop-me@example.com",
+                    "shared_secret": "generate-with-openssl-rand-hex-32",
+                }, fh)
+            with mock.patch.object(SU, "_example_candidates", return_value=[
+                    os.path.join(d, "missing.json"), path]):
+                cfg = SU._blank_config()
+        self.assertEqual(cfg["imap_host"], "imap.from.zip")
+        self.assertEqual(cfg["smtp_host"], "smtp.from.zip")
+        self.assertNotIn("mailbox_user", cfg)
+        self.assertNotIn("shared_secret", cfg)
+
+    def test_eof_during_address_is_a_clean_exit(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            with mock.patch("builtins.input", side_effect=EOFError):
+                with self.assertRaises(SystemExit) as caught:
+                    SU.run_setup_wizard(path, {})
+        self.assertIn("console", str(caught.exception))
+
 
 class WizardSecretTest(unittest.TestCase):
     def test_accept_secret_loop(self):
