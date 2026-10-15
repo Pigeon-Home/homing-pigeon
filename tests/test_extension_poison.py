@@ -25,6 +25,7 @@ from runner.runner import (  # noqa: E402
     _redact_patterns,
     answer_queries,
     poll_once,
+    query_budget,
     sign_payload,
 )
 
@@ -179,6 +180,40 @@ class ExtensionPoisonTest(unittest.TestCase):
         self.assertNotIn(FLAG, blob)
         self.assertIn("[REDACTED:flag]", blob)
         self.assertEqual(answers[0]["op"], "senses")
+
+
+class MistypedConfigTest(unittest.TestCase):
+    """Second simulation: the config and the job shape were the wrong types.
+
+    output_retention_days was the word "week", protected_paths was the
+    number 5, workspace_root was the number 5, and the job's
+    result_policy was the string "attested". The retention word killed
+    the poll before mail was read. The number 5 killed the job after
+    the ping ran, and the runner scheduled it to run again.
+    """
+
+    def test_mistyped_retention_and_paths_do_not_retry_the_job(self):
+        with tempfile.TemporaryDirectory() as d:
+            body = sign_payload({
+                "v": 1, "type": "job", "job_id": "job-shape",
+                "issued_at": _now(), "kind": "ping",
+                "result_policy": "attested",
+            }, SECRET)
+            raw = _mail("[HOMING-PIGEON] job job-shape", body)
+            cfg = {
+                "mailbox_user": "pigeon-test@example.com",
+                "shared_secret": SECRET,
+                "output_retention_days": "week",
+                "max_query_budget": "eight",
+                "protected_paths": 5,
+                "workspace_root": 5,
+                "judge": "off",
+            }
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_IMAP(raw), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("job-shape", seen)
+            self.assertEqual(query_budget(cfg, {"result_policy": "attested"}), 8)
 
 
 if __name__ == "__main__":

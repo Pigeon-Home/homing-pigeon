@@ -422,7 +422,9 @@ def _redact_patterns(cfg):
 
 def apply_result_policy(cfg, job, exec_result, patterns, confined):
     """Return (result_dict, retain_bool). Job can never widen past owner ceiling."""
-    policy = job.get("result_policy") or {}
+    policy = job.get("result_policy") if isinstance(job, dict) else None
+    if not isinstance(policy, dict):
+        policy = {}
     requested = policy.get("view") or "full"
     ceiling = cfg.get("max_result_view") or "full"
     effective = requested if VIEW_ORDER.get(requested, 3) <= VIEW_ORDER.get(ceiling, 3) else ceiling
@@ -530,7 +532,8 @@ def snapshot_outside(workspace_root, exclude=None):
     """Best-effort snapshot of paths outside the workspace. Returns path -> (size, mtime)."""
     exclude = exclude or []
     snap = {}
-    if not workspace_root or not os.path.isdir(workspace_root):
+    if not workspace_root or not isinstance(workspace_root, str) \
+            or not os.path.isdir(workspace_root):
         return snap
     parent = os.path.dirname(os.path.abspath(workspace_root))
     count = 0
@@ -558,10 +561,13 @@ def snapshot_outside(workspace_root, exclude=None):
 
 def check_protected_paths(before, after, protected):
     """Return list of paths under protected_paths that changed. Always reported."""
-    if not protected:
+    if not isinstance(protected, list):
         return []
     changed = []
-    abs_protected = [os.path.abspath(p) for p in protected if p]
+    abs_protected = []
+    for p in protected:
+        if isinstance(p, str) and p:
+            abs_protected.append(os.path.abspath(p))
     all_paths = set(before) | set(after)
     for path in all_paths:
         ap = os.path.abspath(path)
@@ -578,9 +584,18 @@ def confinement_violated(before, after):
 
 
 def query_budget(cfg, job):
-    job_b = (job.get("result_policy") or {}).get("query_budget", 8)
-    max_b = cfg.get("max_query_budget", 8)
-    return min(int(job_b), int(max_b))
+    policy = (job or {}).get("result_policy") if isinstance(job, dict) else None
+    if not isinstance(policy, dict):
+        policy = {}
+    try:
+        job_b = int(policy.get("query_budget", 8))
+    except (TypeError, ValueError):
+        job_b = 8
+    try:
+        max_b = int((cfg or {}).get("max_query_budget", 8))
+    except (TypeError, ValueError):
+        max_b = 8
+    return min(job_b, max_b)
 
 
 ASK_SYSTEM = (
@@ -2157,6 +2172,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # Confinement snapshots exclude the runner's own base_dir so
             # retained/, board.json, and seen.json do not false-positive.
             ws = cfg.get("workspace_root") or ""
+            if not isinstance(ws, str):
+                ws = ""
             before = snapshot_outside(ws, exclude=[base_dir]) if ws else {}
             r = execute_job(cfg, job, base_dir)
             after = snapshot_outside(ws, exclude=[base_dir]) if ws else {}
@@ -2180,7 +2197,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # Oracle view
             patterns = _redact_patterns(cfg)
             result, retain_view = apply_result_policy(cfg, job, result, patterns, confined=confined)
-            declared = (job.get("result_policy") or {}).get("queries") or []
+            declared = job.get("result_policy") if isinstance(job.get("result_policy"), dict) else {}
+            declared = declared.get("queries") or []
             if not isinstance(declared, list):
                 declared = []
             spent = 0
@@ -2432,7 +2450,11 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     # as-is.
     secrets = build_secrets(cfg)
     key_policies = build_key_policies(cfg)
-    prune_retained(base_dir, int(cfg.get("output_retention_days") or 7))
+    try:
+        retain_days = int(cfg.get("output_retention_days") or 7)
+    except (TypeError, ValueError):
+        retain_days = 7
+    prune_retained(base_dir, retain_days)
     # Built-in resource monitor: on by default. Threshold crossings
     # become security events for the DRI trigger evaluation.
     if _resources is not None:
