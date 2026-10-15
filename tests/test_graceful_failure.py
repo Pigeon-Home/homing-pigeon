@@ -1303,5 +1303,59 @@ class ArgsGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class ReloadGracefulTest(unittest.TestCase):
+    """Finding: hot reload runs every cycle. A bad file must not
+    raise out of reload, and must not replace the live cfg.
+    """
+
+    def test_load_config_bad_file(self):
+        from runner.runner import load_config
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "config.json")
+        for content in ("not json", "[]", "null", ""):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+            try:
+                load_config(path)
+            except (RuntimeError, ValueError):
+                pass  # clean rejection, including JSONDecodeError
+            except Exception as e:
+                self.fail(f"load_config crashed on {content!r}: {e}")
+
+    def test_reload_bad_keeps_cfg(self):
+        from runner.runner import reload_hot_config
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "config.json")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("not json")
+        cfg = {"mailbox_user": "keep-me"}
+        try:
+            reload_hot_config(cfg, path, {"mtime": 0}, set())
+        except Exception as e:
+            self.fail(f"reload raised: {e}")
+        self.assertEqual(cfg.get("mailbox_user"), "keep-me")
+
+    def test_concurrent_reload(self):
+        from runner.runner import reload_hot_config
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "config.json")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write('{"mailbox_user":"a@b.c"}')
+        errors = []
+
+        def one():
+            try:
+                reload_hot_config({"mailbox_user": "old"}, path, {"mtime": 0}, set())
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
