@@ -846,7 +846,7 @@ def inference_config(cfg):
     try:
         max_chars = int(inf.get("max_answer_chars") or 2000)
         timeout = int(inf.get("timeout_sec") or 60)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     if max_chars < 0 or timeout < 1:
         return None
