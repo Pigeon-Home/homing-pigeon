@@ -129,6 +129,10 @@ def _load_state(base_dir):
 
 
 def _save_state(base_dir, state):
+    if not isinstance(base_dir, str) or not base_dir:
+        return
+    if not isinstance(state, dict):
+        state = {}
     try:
         tmp = os.path.join(base_dir, STATE_FILE + ".tmp")
         with open(tmp, "w", encoding="utf-8") as f:

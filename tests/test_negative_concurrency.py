@@ -1516,3 +1516,49 @@ class ReloadHotConfigPoisonTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+
+class DriSaveStatePoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation):
+
+    dri._save_state assumed base_dir was a path. None or an int
+    raised TypeError on join and stopped a concurrent page cycle
+    that tried to persist state.
+
+    Non-path base_dir now returns immediately. A non-dict state is
+    treated as empty. Processing does not stop.
+    """
+
+    def test_bad_base_does_not_raise(self):
+        from runner import dri
+        dri._save_state(None, {})
+        dri._save_state(5, {"x": 1})
+        dri._save_state("", {"x": 1})
+        with tempfile.TemporaryDirectory() as d:
+            dri._save_state(d, None)
+            self.assertEqual(dri._load_state(d), {})
+            dri._save_state(d, {"last_check": 1})
+            self.assertEqual(dri._load_state(d).get("last_check"), 1)
+
+    def test_concurrent_save_state_does_not_raise(self):
+        import threading
+        from runner import dri
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                for _ in range(10):
+                    try:
+                        dri._save_state(None, {})
+                        dri._save_state(5, {"x": 1})
+                        dri._save_state(d, None)
+                        dri._load_state(d)
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
