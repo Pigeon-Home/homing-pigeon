@@ -287,7 +287,9 @@ The job gains an optional `result_policy` object:
   output, declared upfront before any answer is seen (section 10). This
   is what makes the exchange non-interactive.
 - `query_budget`: maximum queries answerable for this job (default 8;
-  the runner owner's config may only lower it). Bounds total leakage.
+  the runner owner's config may only lower it). Bounds total leakage —
+  and doubles as a tripwire (section 11): a job that burns its whole
+  budget is a job worth a human look.
 
 **The ceiling is set by the runner owner, not the SI.** `config.json`
 gains `max_result_view` (default `full`). The effective view is the
@@ -496,11 +498,43 @@ Defenses, in order of importance:
    Each answered or policy-rejected query spends 1; exhaustion silences
    the Oracle for that job. A budget bounds what rate limiting cannot:
    the total, not just the speed.
+
+   The budget is also an operational tripwire, not just a security
+   control. A well-formed job answers its questions in one or two
+   queries. A job that burns through all 8 is telling you something:
+   the SI is confused, the output is nothing like what was expected,
+   or the job is misbehaving. Budget exhaustion always deserves a
+   human look — even when there is no security concern at all.
 3. **Rate limiting.** Before committing expensive work, demand proof
    of seriousness — the challenge-cookie pattern: `max_queries_per_hour`
    per sender in runner config, on top of the freshness and seen-set
    checks every query already passes. This slows automated probing;
    the budget is what stops it.
+
+### 11.1 The Oracle as a debugging instrument
+
+The Oracle's machinery reads as security tooling, but most of it
+pulls double duty when something goes wrong. A developer hitting
+their first failed job gets:
+
+- **Judgment (§9.3):** "this job doesn't do what its description
+  claims" — before it ever runs. Catches the wrong-script,
+  wrong-arguments class of mistakes at send time.
+- **Confinement attestation (§9.4):** "did this job touch anything
+  outside its workspace?" — a yes/no answer instead of a forensic
+  hunt through the filesystem.
+- **Attestations (§9.2):** signed claims — exit code, no secrets in
+  output, output digest. When the SI says "it worked," the
+  attestation is the receipt.
+- **Budget exhaustion (§11):** "this job needed 8 questions and still
+  wasn't understood" — a smell that points at the job, not the
+  infrastructure.
+- **`ask` (§10.1):** "why did the tests fail?" — answered in plain
+  language by the local model, from the full output, without
+  pasting 100KB of logs into an email.
+
+None of this replaces reading the output. It tells you *where to
+look* — which, for most debugging sessions, is the expensive part.
 
 ## 12. v2 security properties
 
