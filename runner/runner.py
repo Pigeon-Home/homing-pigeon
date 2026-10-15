@@ -385,6 +385,9 @@ def answer_queries(queries, exec_result, patterns, budget):
         elif op == "tail":
             answers.append({"op": "tail", "lines": []})
         elif op == "ask":
+            # Inference (PROTOCOL §10.1) is not yet implemented.
+            # ask is always rejected until a loopback endpoint + sanitization
+            # pipeline exist. Do not treat this as a silent omission.
             answers.append({"op": "ask", "rejected": "inference_unconfigured"})
         else:
             answers.append({"rejected": "unknown_op"})
@@ -457,6 +460,10 @@ class Board:
         return True, "ok"
 
     def offer(self, worker_id, capabilities, key_id="", cfg=None):
+        with _BOARD_LOCK:
+            return self._offer_unlocked(worker_id, capabilities, key_id, cfg)
+
+    def _offer_unlocked(self, worker_id, capabilities, key_id="", cfg=None):
         cfg = cfg or {}
         allow = cfg.get("worker_allowlist") or []
         if allow and worker_id not in allow:
@@ -1158,7 +1165,13 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             verdict, reasons = judge_job(cfg, job)
             if cfg.get("judge") == "enforce" and reasons:
                 raise JobRejected("judge blocked: " + "; ".join(reasons))
+            # Confinement snapshots exclude the runner's own base_dir so
+            # retained/, board.json, and seen.json do not false-positive.
+            ws = cfg.get("workspace_root") or ""
+            before = snapshot_outside(ws, exclude=[base_dir]) if ws else {}
             r = execute_job(cfg, job, base_dir)
+            after = snapshot_outside(ws, exclude=[base_dir]) if ws else {}
+            confined = not confinement_violated(before, after) if ws else False
             result = {
                 "v": PROTOCOL_VERSION, "type": "result", "job_id": job_id,
                 "kind": job.get("kind"),
@@ -1172,7 +1185,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             }
             # Oracle view (no-op when oracle_enabled is false)
             patterns = _redact_patterns(cfg)
-            result, _retain = apply_result_policy(cfg, job, result, patterns, confined=False)
+            result, _retain = apply_result_policy(cfg, job, result, patterns, confined=confined)
             if cfg.get("judge") == "advisory" and reasons:
                 result["judgment"] = {"verdict": verdict, "reasons": reasons}
             with _MAIL_LOCK:

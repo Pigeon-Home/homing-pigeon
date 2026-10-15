@@ -60,3 +60,29 @@ class BoardUnitTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class BoardConcurrencyTest(unittest.TestCase):
+    def test_simultaneous_offers_are_exclusive(self):
+        """N concurrent offer() calls must never return the same task."""
+        import threading
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for i in range(5):
+            b.submit({"task_id": f"t{i}", "priority": 1})
+        results = []
+        lock = threading.Lock()
+
+        def worker(wid):
+            offered = b.offer(wid, [])
+            with lock:
+                results.append(offered["task_id"] if offered else None)
+
+        threads = [threading.Thread(target=worker, args=(f"w{i}",)) for i in range(5)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        claimed = [r for r in results if r is not None]
+        self.assertEqual(len(claimed), len(set(claimed)), "duplicate task handed to two workers")
+        self.assertEqual(len(claimed), 5)
