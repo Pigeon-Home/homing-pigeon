@@ -1510,3 +1510,29 @@ class EnvNameFaultTest(unittest.TestCase):
                       smtp=_SMTP(), opts=_Opts())
             with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
                 self.assertIn("env-1", json.load(fh))
+
+
+class NullArgFaultTest(unittest.TestCase):
+    """Finding: a null byte in an arg crashed Popen.
+
+    ValueError is not OSError, so the job path treated it as
+    transient and retried forever. A null in an arg or an
+    interpreter element is poison. The job is rejected.
+    """
+
+    def test_null_in_arg_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            body = sign_payload({
+                "v": 1, "type": "job", "kind": "exec",
+                "job_id": "arg-1", "issued_at": _now(),
+                "script": "echo hi",
+                "interpreter": ["sh"],
+                "args": ["ok", "bad\x00name"],
+            }, SECRET)
+            cfg = {"mailbox_user": "pigeon-test@example.com",
+                   "shared_secret": SECRET, "base_dir": d}
+            poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                      imap=_IMAP(_mail("[HOMING-PIGEON] job arg-1", body)),
+                      smtp=_SMTP(), opts=_Opts())
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                self.assertIn("arg-1", json.load(fh))

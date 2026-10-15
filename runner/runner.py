@@ -1916,6 +1916,8 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     if not isinstance(interpreter, list) or not interpreter or \
             not all(isinstance(x, str) for x in interpreter):
         raise JobRejected("interpreter must be a non-empty list of strings")
+    if any("\x00" in x for x in interpreter):
+        raise JobRejected("interpreter must not contain a null byte")
     script_path = os.path.join(work, script_filename(interpreter))
     if script_url:
         log(f"downloading script {script_url}")
@@ -1940,6 +1942,8 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
     timeout = min(max(timeout, 1), 3600)
     args = [str(a) for a in args]
+    if any("\x00" in a for a in args):
+        raise JobRejected("args must not contain a null byte")
     env = _scrub_env(os.environ.copy())
     for k, v in env_in.items():
         key = str(k)
@@ -1966,10 +1970,9 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         log(f"job {job['job_id']} process started pid={proc.pid} "
             f"interpreter={interpreter[0]}")
         log(f"job {job['job_id']} cwd={work} args={args}", "DEBUG")
-    except OSError as e:
-        # Missing binary or an unusable interpreter fails the same way
-        # every cycle. Treat it as poison so the mail is marked seen
-        # instead of retried forever.
+    except (OSError, ValueError) as e:
+        # Missing binary, a null in argv, or an unusable interpreter
+        # fails the same way every cycle. Poison, not transient.
         raise JobRejected(f"cannot start interpreter: {e}")
     try:
         outs, errs = proc.communicate(timeout=timeout)
