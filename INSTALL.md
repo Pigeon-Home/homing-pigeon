@@ -32,6 +32,18 @@ dry-run mode, config options, and updating.
 pip install pigeon-home-runner
 ```
 
+On RHEL, CentOS, Rocky, or AlmaLinux, install Python 3.9+ first:
+
+```bash
+# RHEL 8 / Rocky 8 / AlmaLinux 8
+sudo dnf install -y python39
+python3.9 -m pip install pigeon-home-runner
+
+# RHEL 9 / Rocky 9 / AlmaLinux 9 (Python 3.9 is default)
+sudo dnf install -y python3-pip
+pip3 install pigeon-home-runner
+```
+
 **Run:** register the boot service, configure, test.
 
 ```bash
