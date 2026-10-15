@@ -1258,5 +1258,50 @@ class EnvGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class ArgsGracefulTest(unittest.TestCase):
+    """Finding: args are read before execute. A non-list or a null
+    entry must not crash the describe or review path.
+    """
+
+    def test_describe_bad_args(self):
+        from runner.runner import _describe_job
+        for job in (
+            {"kind": "exec", "script": "echo", "args": None},
+            {"kind": "exec", "script": "echo", "args": "not-a-list"},
+            {"kind": "exec", "script": "echo", "args": [None, 1, "ok"]},
+            {"kind": "exec", "script": "echo", "args": [{"nested": True}]},
+        ):
+            try:
+                desc = _describe_job(job)
+            except Exception as e:
+                self.fail(f"describe crashed on {job['args']!r}: {e}")
+            self.assertIsInstance(desc, str)
+
+    def test_review_bad_args(self):
+        for args in (None, "nope", [None], [1, 2]):
+            job = {"kind": "exec", "script": "echo", "args": args}
+            try:
+                review.review_job({}, job)
+            except Exception as e:
+                self.fail(f"review crashed on args {args!r}: {e}")
+
+    def test_concurrent_describe(self):
+        from runner.runner import _describe_job
+        errors = []
+
+        def one(i):
+            try:
+                _describe_job({"kind": "exec", "script": "echo", "args": [None, str(i)]})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
