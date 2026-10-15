@@ -1636,7 +1636,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             return
     m = re.search(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)", subject, re.I)
     if not m:
-        # Result emails and other non-job mail share the [HOMING-PIGEON]
+        # Result messages and other non-job traffic share the [HOMING-PIGEON]
         # prefix. Mark them seen quietly so the console is not spammed
         # with "subject does not match job pattern" on every poll.
         if opts is None or not opts.dry_run:
@@ -1691,7 +1691,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     log(f"executing job {job_id} (kind={job.get('kind')})")
     if opts is not None and opts.dry_run:
         # Dry run: fully non-mutating. Verify everything, change nothing:
-        # no execution, no result email, no seen updates.
+        # no execution, no result message, no seen updates.
         desc = _describe_job(job)
         log(f"dry-run: would execute job {job_id}: {desc}")
         return
@@ -1707,7 +1707,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     try:
         def maybe_send(subject: str, body: str):
             if no_send:
-                log(f"no-send: result email suppressed "
+                log(f"no-send: result message suppressed "
                     f"(subject={subject!r}, {len(body)} bytes)")
                 return
             send_mail(smtp, cfg, subject, body)
@@ -1983,7 +1983,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
         try:
             mails = fetch_job_mails(imap)
             if mails:
-                log(f"poll: {len(mails)} mail(s)")
+                log(f"poll: {len(mails)} message(s)")
                 workers = _worker_count(cfg, opts)
                 if workers > 1:
                     log(f"poll: {workers} workers")
@@ -2160,7 +2160,7 @@ def log_startup(cfg, args, base_dir):
         flags.append("verbose")
     if flags:
         log("flags: " + ", ".join(flags))
-    log("expects: signed [HOMING-PIGEON] job mail. "
+    log("expects: signed [HOMING-PIGEON] job messages. "
         "Signature is the only gate. Results return to this mailbox.")
     if oracle and not cfg.get("workspace_root"):
         log("confinement is off; workspace_root is not set", "WARN")
@@ -2201,7 +2201,7 @@ def main() -> int:
                     help="truncate stdout/stderr beyond N bytes "
                          "(overrides config)")
     ap.add_argument("--no-send", action="store_true",
-                    help="execute jobs but do not send result emails "
+                    help="execute jobs but do not send result messages "
                          "(results go to the log only)")
     ap.add_argument("--timeout", type=int, default=None, metavar="SEC",
                     help="default per-job timeout in seconds (overrides config)")
