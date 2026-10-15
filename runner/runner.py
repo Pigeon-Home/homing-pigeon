@@ -1546,6 +1546,11 @@ class Board:
                     reqs = []
                 blocked = False
                 for req in reqs:
+                    # A dict in requires raises TypeError on get.
+                    # A corrupt board file must not stop the offer.
+                    if not isinstance(req, str):
+                        blocked = True
+                        break
                     dep = self.tasks.get(req)
                     if not isinstance(dep, dict) or dep.get("state") != "done":
                         blocked = True

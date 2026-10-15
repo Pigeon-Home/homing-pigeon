@@ -2027,3 +2027,26 @@ class BoardIdFaultTest(unittest.TestCase):
             self.assertEqual(status, "not_found")
             status, _why = board.approve({"not": "a string"})
             self.assertEqual(status, "not_found")
+
+
+class RequiresShapeFaultTest(unittest.TestCase):
+    """Finding: a dict in requires crashed offer under dag enforce.
+
+    tasks.get on a dict raises TypeError. A corrupt board file
+    stopped the offer. A non-string requires entry blocks that
+    task. The offer continues.
+    """
+
+    def test_dict_requires_does_not_crash_offer(self):
+        from runner.runner import Board
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "board.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"t": {
+                    "task_id": "t", "state": "open",
+                    "requires": [{"not": "a string"}],
+                    "capabilities": [],
+                }}, fh)
+            board = Board(path)
+            chosen = board.offer("w", [], "", {"dag_mode": "enforce"})
+            self.assertIsNone(chosen)
