@@ -2025,5 +2025,57 @@ class RequiresGracefulTest(unittest.TestCase):
         for e in errors:
             self.assertIsInstance(e, FileNotFoundError)
 
+
+class CompartmentsGracefulTest(unittest.TestCase):
+    """Finding: compartments are read on submit and offer. A non-list
+    compartments must reject cleanly, not crash the board.
+    """
+
+    def test_submit_bad_compartments(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for task in (
+            {"task_id": "a", "compartments": "secret"},
+            {"task_id": "b", "compartments": None},
+            {"task_id": "c", "compartments": [None]},
+            {"task_id": "d", "compartments": ["secret"]},
+        ):
+            try:
+                ok, reason = b.submit(task)
+            except Exception as e:
+                self.fail(f"submit crashed on compartments {task['compartments']!r}: {e}")
+            self.assertIsInstance(ok, bool)
+
+    def test_offer_compartment_mismatch(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "t", "compartments": ["secret"]})
+        try:
+            offered = b.offer("w", [], "", {"worker_compartments": {"w": ["other"]}})
+        except Exception as e:
+            self.fail(f"offer crashed on mismatch: {e}")
+        # A mismatch should not offer the task. None or empty is fine.
+        if offered:
+            self.assertNotEqual(offered.get("task_id"), "t")
+
+    def test_concurrent_compartments(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        errors = []
+
+        def one(i):
+            try:
+                b.submit({"task_id": f"c{i}", "compartments": ["s"] if i % 2 else "nope"})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
