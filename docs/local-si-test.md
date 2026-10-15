@@ -44,3 +44,18 @@ Use it while developing the Oracle:
 
 The point is a tight loop between "what the SI would ask" and "what
 the Oracle actually says", on one machine, with no mailbox in the way.
+
+## Two instances
+
+`--browser` starts a **second** Ollama process for the SI, on port
+11435. The Oracle keeps using its configured endpoint (usually 11434).
+Separate process, separate port, separate context.
+
+The page has two buttons:
+
+- **talk to SI** — your message goes to the SI model only.
+- **ask the Oracle** — your message is sent through the Oracle path
+  to the other model.
+
+The SI never sees the Oracle's context, and the Oracle never sees the
+SI's chat. That is the point of two instances.

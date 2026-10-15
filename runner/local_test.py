@@ -30,8 +30,87 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import runner as R  # noqa: E402
 
 
+SI_PORT = 11435
+ORACLE_PORT = 11434
+SI_SYSTEM = (
+    "You are the cloud SI in a local test. You are a different model "
+    "instance from the Oracle that runs on this box. You do not see the "
+    "Oracle's context. When you want to learn something about a job on "
+    "the box, say so plainly; the harness will send your question to the "
+    "Oracle and bring the answer back. Do not pretend you already know "
+    "the job output."
+)
+
+
 def _now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _port_up(port) -> bool:
+    import socket
+    s = socket.socket()
+    s.settimeout(0.5)
+    try:
+        s.connect(("127.0.0.1", port))
+        return True
+    except Exception:
+        return False
+    finally:
+        s.close()
+
+
+def start_si_instance() -> bool:
+    """Start a second Ollama process for the SI, on its own port.
+
+    The Oracle keeps using its configured endpoint (usually 11434).
+    The SI gets 11435. Separate process, separate context.
+    """
+    if _port_up(SI_PORT):
+        print(f"SI instance already listening on 127.0.0.1:{SI_PORT}")
+        return True
+    import shutil
+    import subprocess
+    if not shutil.which("ollama"):
+        print("ollama not found; cannot start a second instance")
+        return False
+    env = os.environ.copy()
+    env["OLLAMA_HOST"] = f"127.0.0.1:{SI_PORT}"
+    try:
+        subprocess.Popen(
+            ["ollama", "serve"],
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except Exception as e:
+        print(f"could not start SI instance: {e}")
+        return False
+    import time
+    for _ in range(20):
+        if _port_up(SI_PORT):
+            print(f"SI instance started on 127.0.0.1:{SI_PORT}")
+            return True
+        time.sleep(0.5)
+    print("SI instance did not become ready")
+    return False
+
+
+def ask_si(model: str, history: list, question: str) -> str:
+    """Talk to the SI instance. history is a list of {role, content}."""
+    from urllib.request import Request, urlopen
+    messages = [{"role": "system", "content": SI_SYSTEM}] + history
+    messages.append({"role": "user", "content": question})
+    payload = json.dumps({"model": model, "messages": messages}).encode()
+    req = Request(
+        f"http://127.0.0.1:{SI_PORT}/v1/chat/completions",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urlopen(req, timeout=120) as resp:
+        parsed = json.loads(resp.read().decode())
+    return parsed["choices"][0]["message"]["content"]
 
 
 def build_ask_job(question: str, secret: str, job_id=None) -> dict:
@@ -108,74 +187,63 @@ class _ChatHandler(BaseHTTPRequestHandler):
             return
         page = """<!doctype html>
 <meta charset="utf-8">
-<title>local SI test</title>
+<title>SI and Oracle</title>
 <style>
-body { font: 16px/1.4 system-ui; max-width: 42rem; margin: 2rem auto; }
-#log { white-space: pre-wrap; border: 1px solid #ccc; padding: 1rem; min-height: 12rem; }
+body { font: 16px/1.4 system-ui; max-width: 46rem; margin: 2rem auto; }
+#log { white-space: pre-wrap; border: 1px solid #ccc; padding: 1rem; min-height: 14rem; }
 form { display: flex; gap: .5rem; margin-top: 1rem; }
 input { flex: 1; font: inherit; padding: .4rem; }
 button { font: inherit; padding: .4rem 1rem; }
+.you { color: #333; }
 .si { color: #06c; }
 .oracle { color: #080; }
 </style>
-<h1>local SI test</h1>
-<p>You are the cloud SI. Each message is an ask to the Oracle on this box.</p>
+<h1>Two instances</h1>
+<p>The browser talks to the <b>SI</b> model (port 11435).
+The <b>Oracle</b> is a separate model (its own port and context).
+Chat with the SI, then send a question to the Oracle.</p>
 <div id="log"></div>
 <form id="f">
-  <input id="q" autofocus placeholder="ask the Oracle">
-  <button>send</button>
+  <input id="q" autofocus placeholder="say something">
+  <button name="to" value="si">talk to SI</button>
+  <button name="to" value="oracle">ask the Oracle</button>
 </form>
 <script>
 const log = document.getElementById('log');
+const q = document.getElementById('q');
 document.getElementById('f').onsubmit = async (e) => {
   e.preventDefault();
-  const q = document.getElementById('q').value.trim();
-  if (!q) return;
-  log.innerHTML += '<div class="si">SI> ' + q + '</div>';
-  document.getElementById('q').value = '';
-  const r = await fetch('/ask', {method:'POST', body: q});
+  const text = q.value.trim();
+  if (!text) return;
+  const to = e.submitter.value;
+  log.innerHTML += '<div class="you">you> ' + text + '</div>';
+  q.value = '';
+  const r = await fetch('/' + to, {method:'POST', body: text});
   const t = await r.text();
-  log.innerHTML += '<div class="oracle">Oracle> ' + t + '</div>';
+  const cls = to === 'si' ? 'si' : 'oracle';
+  log.innerHTML += '<div class="' + cls + '">' + to + '> ' + t + '</div>';
 };
 </script>
 """
         self._send(200, page)
 
     def do_POST(self):
-        if self.path != "/ask":
-            self._send(404, "not found", "text/plain")
-            return
         n = int(self.headers.get("Content-Length") or 0)
         question = self.rfile.read(n).decode("utf-8", "replace").strip()
-        ans = answer_as_oracle(self.cfg, question)
-        text = ans.get("answer") or f"rejected: {ans.get('rejected', ans)}"
-        self._send(200, text, "text/plain; charset=utf-8")
-
-
-def browser_chat(cfg, port=8765) -> int:
-    """Serve a loopback chat page and open it."""
-    host = "127.0.0.1"
-    _ChatHandler.cfg = cfg
-    try:
-        httpd = ThreadingHTTPServer((host, port), _ChatHandler)
-    except OSError as e:
-        print(f"could not bind {host}:{port}: {e}")
-        return 1
-    # Fail closed: refuse anything that is not loopback.
-    bound = httpd.server_address[0]
-    if bound not in ("127.0.0.1", "::1"):
-        print(f"refusing non-loopback bind {bound}")
-        return 1
-    url = f"http://{host}:{port}/"
-    print(f"local SI chat at {url}  (Ctrl-C to stop)")
-    threading.Timer(0.4, lambda: webbrowser.open(url)).start()
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        print()
-    finally:
-        httpd.shutdown()
-    return 0
+        if self.path == "/si":
+            model = (self.cfg.get("inference") or {}).get("model") or "llama3.2:3b"
+            try:
+                text = ask_si(model, [], question)
+            except Exception as e:
+                text = f"SI error: {e}"
+            self._send(200, text, "text/plain; charset=utf-8")
+            return
+        if self.path == "/oracle":
+            ans = answer_as_oracle(self.cfg, question)
+            text = ans.get("answer") or f"rejected: {ans.get('rejected', ans)}"
+            self._send(200, text, "text/plain; charset=utf-8")
+            return
+        self._send(404, "not found", "text/plain")
 
 
 def main(cfg, browser=False) -> int:
