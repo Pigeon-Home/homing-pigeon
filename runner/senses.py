@@ -304,8 +304,13 @@ def load_alerts(base_dir: str, sensor=None, severity_floor=None,
             continue
         if not isinstance(rec, dict):
             continue
-        if sensor and rec.get("sensor") != sensor:
-            continue
+        if sensor:
+            try:
+                same = rec.get("sensor") == sensor
+            except Exception:
+                same = False
+            if not same:
+                continue
         if severity_floor and SEVERITY_SCORES.get(rec.get("severity"), 0) < \
                 SEVERITY_SCORES.get(severity_floor, 0):
             continue

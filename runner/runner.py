@@ -2157,17 +2157,28 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         raise JobRejected("exec job requires script or script_url")
 
     timeout = min(max(timeout, 1), 3600)
-    args = [str(a) for a in args]
-    if any("\x00" in a for a in args):
-        raise JobRejected("args must not contain a null byte")
+    safe_args = []
+    for a in args:
+        try:
+            text = a if isinstance(a, str) else str(a)
+        except Exception:
+            raise JobRejected("args must be text")
+        if "\x00" in text:
+            raise JobRejected("args must not contain a null byte")
+        safe_args.append(text)
+    args = safe_args
     env = _scrub_env(os.environ.copy())
     for k, v in env_in.items():
-        key = str(k)
+        try:
+            key = k if isinstance(k, str) else str(k)
+            val = v if isinstance(v, str) else str(v)
+        except Exception:
+            raise JobRejected("env names and values must be text")
         # Popen raises ValueError on a null or an '=' in a name.
         # That is not transient. Reject it.
         if not key or "\x00" in key or "=" in key:
             raise JobRejected(f"unsafe env name: {key!r}")
-        env[key] = str(v)
+        env[key] = val
     env = _scrub_env(env)  # job must not smuggle the runner's credentials back in
 
     try:

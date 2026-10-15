@@ -2749,16 +2749,17 @@ class BoardStampPoisonTest(unittest.TestCase):
 
             b2 = Board(os.path.join(d, "board2.json"))
             b2.tasks["c"] = {
-                "task_id": "c", "state": "claimed", "claimed_by": "w",
+                "task_id": "c", "state": "claimed", "claimed_by": Boom(),
                 "submitted_at": "t",
             }
             b2.tasks["o"] = {
                 "task_id": "o", "state": "open", "submitted_at": "t",
                 "priority": 1,
             }
-            offered = b2.offer(Boom(), [])
+            offered = b2.offer("w", [])
             self.assertIsInstance(offered, dict)
             self.assertEqual(offered.get("task_id"), "o")
+            self.assertIsNone(b2.offer(Boom(), []))
 
             b3 = Board(os.path.join(d, "board3.json"))
             b3.tasks["bad"] = "nope"
@@ -2887,3 +2888,92 @@ class RawLinesViewBoomPoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+class ExecTextPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, exec text and senses, no poll):
+
+    execute_job called str() on an arg and on an env name and value.
+    A value whose text form raises was RuntimeError, not a rejection,
+    so the job retried. Six threads all raised. load_alerts compared
+    a sensor whose equality check raises and stopped the read.
+    ask_si json.dumps'd a set in the history and raised before the
+    model was called.
+
+    An arg or env value that cannot be printed is a permanent
+    rejection. A sensor comparison that raises skips that alert.
+    A history that cannot be encoded returns an empty reply.
+    The script is not started.
+    """
+
+    def test_bad_arg_and_sensor_do_not_raise(self):
+        from runner.local_test import ask_si
+        from runner.runner import JobRejected, execute_job
+        from runner.senses import load_alerts, store_alert
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+            def __eq__(self, other):
+                raise RuntimeError("eq")
+            def __hash__(self):
+                return 1
+
+        with tempfile.TemporaryDirectory() as d:
+            job = {"job_id": "j1", "kind": "exec", "script": "echo ok",
+                   "args": [Boom()]}
+            with self.assertRaises(JobRejected):
+                execute_job({}, job, d)
+            job = {"job_id": "j2", "kind": "exec", "script": "echo ok",
+                   "env": {Boom(): "x"}}
+            with self.assertRaises(JobRejected):
+                execute_job({}, job, d)
+            job = {"job_id": "j3", "kind": "exec", "script": "echo ok",
+                   "env": {"A": Boom()}}
+            with self.assertRaises(JobRejected):
+                execute_job({}, job, d)
+            store_alert(d, {"sensor": "net", "title": "t", "severity": "info"})
+            self.assertEqual(load_alerts(d, sensor=Boom()), [])
+            self.assertEqual(ask_si("m", [{"role": "user", "content": {1}}], "q"), "")
+            self.assertEqual(ask_si("m", None, "q"), "")
+
+    def test_concurrent_bad_args_do_not_raise(self):
+        import threading
+        from runner.runner import JobRejected, execute_job
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        errors = []
+
+        def hammer():
+            try:
+                with tempfile.TemporaryDirectory() as d:
+                    execute_job({}, {
+                        "job_id": "jt", "kind": "exec",
+                        "script": "echo ok", "args": [Boom()],
+                    }, d)
+            except JobRejected:
+                pass
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_arg(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-arg",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-arg", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-arg", seen)

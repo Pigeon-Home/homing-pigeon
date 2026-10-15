@@ -101,18 +101,29 @@ def start_si_instance() -> bool:
 def ask_si(model: str, history: list, question: str) -> str:
     """Talk to the SI instance. history is a list of {role, content}."""
     from urllib.request import Request, urlopen
+    if not isinstance(history, list):
+        history = []
     messages = [{"role": "system", "content": SI_SYSTEM}] + history
     messages.append({"role": "user", "content": question})
-    payload = json.dumps({"model": model, "messages": messages}).encode()
+    try:
+        payload = json.dumps({"model": model, "messages": messages}).encode()
+    except (TypeError, ValueError):
+        return ""
     req = Request(
         f"http://127.0.0.1:{SI_PORT}/v1/chat/completions",
         data=payload,
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urlopen(req, timeout=120) as resp:
-        parsed = json.loads(resp.read().decode())
-    return parsed["choices"][0]["message"]["content"]
+    try:
+        with urlopen(req, timeout=120) as resp:
+            parsed = json.loads(resp.read().decode())
+        content = parsed["choices"][0]["message"]["content"]
+        if not isinstance(content, str):
+            content = str(content)
+        return content
+    except Exception:
+        return ""
 
 
 def build_ask_job(question: str, secret: str, job_id=None) -> dict:
