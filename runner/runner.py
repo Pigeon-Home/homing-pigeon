@@ -1574,6 +1574,9 @@ class Board:
         return chosen
 
     def complete(self, task_id, result, require_review=False):
+        # A dict id raises TypeError on get. That rejected the message.
+        if not isinstance(task_id, str):
+            return "not_found", "not found"
         t = self.tasks.get(task_id)
         if not isinstance(t, dict):
             return "not_found", "not found"
@@ -1595,6 +1598,8 @@ class Board:
         return "done", "ok"
 
     def approve(self, task_id):
+        if not isinstance(task_id, str):
+            return "not_found", "not found"
         t = self.tasks.get(task_id)
         if not t:
             return False, "not found"

@@ -2010,3 +2010,20 @@ class AlertNanAndBoardRaceTest(unittest.TestCase):
             for t in threads:
                 t.join()
             self.assertEqual(errors, [])
+
+
+class BoardIdFaultTest(unittest.TestCase):
+    """Finding: a dict task id crashed complete.
+
+    tasks.get on a dict raises TypeError. The board message was
+    rejected. A non-string id is not found. The board continues.
+    """
+
+    def test_dict_id_does_not_crash_complete(self):
+        from runner.runner import Board
+        with tempfile.TemporaryDirectory() as d:
+            board = Board(os.path.join(d, "board.json"))
+            status, _why = board.complete({"not": "a string"}, {"ok": True})
+            self.assertEqual(status, "not_found")
+            status, _why = board.approve({"not": "a string"})
+            self.assertEqual(status, "not_found")
