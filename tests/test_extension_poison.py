@@ -1962,3 +1962,51 @@ class PriorityAndReplyFaultTest(unittest.TestCase):
             self.assertFalse(ok)
             ok, _why = board.submit({"task_id": "real", "priority": 1})
             self.assertTrue(ok)
+
+
+class AlertNanAndBoardRaceTest(unittest.TestCase):
+    """Finding: store_alert wrote NaN.
+
+    json.dumps emits NaN, which is not JSON. A strict reader
+    then fails the next load. The record is sanitized. Two
+    threads offering and completing the same board do not crash.
+    """
+
+    def test_nan_alert_is_stored_as_null(self):
+        from runner.senses import store_alert, load_alerts
+        with tempfile.TemporaryDirectory() as d:
+            store_alert(d, {"sensor": "s", "detail": {"x": float("nan")}})
+            recs = load_alerts(d)
+            self.assertEqual(len(recs), 1)
+            self.assertIsNone(recs[0]["detail"]["x"])
+
+    def test_concurrent_offer_and_complete(self):
+        from runner.runner import Board
+        import threading
+        with tempfile.TemporaryDirectory() as d:
+            board = Board(os.path.join(d, "board.json"))
+            for i in range(10):
+                board.submit({"task_id": f"t-{i}", "capabilities": []})
+            errors = []
+
+            def offer():
+                try:
+                    for _ in range(10):
+                        board.offer("w", [], "", {})
+                except Exception as e:
+                    errors.append(e)
+
+            def complete():
+                try:
+                    for i in range(10):
+                        board.complete(f"t-{i}", {"ok": True})
+                except Exception as e:
+                    errors.append(e)
+
+            threads = [threading.Thread(target=offer) for _ in range(4)]
+            threads += [threading.Thread(target=complete) for _ in range(4)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            self.assertEqual(errors, [])

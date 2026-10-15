@@ -257,7 +257,11 @@ def store_alert(base_dir: str, record: dict) -> None:
     if not isinstance(record, dict):
         return
     try:
-        line = json.dumps(record, ensure_ascii=False) + "\n"
+        try:
+            from runner.runner import _json_safe
+        except ImportError:
+            _json_safe = lambda v: v
+        line = json.dumps(_json_safe(record), ensure_ascii=False, allow_nan=False) + "\n"
     except (TypeError, ValueError):
         return
     path = _path(base_dir)
