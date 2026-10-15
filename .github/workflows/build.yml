@@ -75,7 +75,7 @@ jobs:
           print(root / 'config.json')
           "@
           $cfg = Join-Path $env:RUNNER_TEMP "hp-smoke\config.json"
-          $redact = "FLAG-CRED-WINDOWS-TEST" | & .\dist\homing-pigeon.exe --config $cfg --inspect redact
+          $redact = ("FLAG-CRED-WINDOWS-TEST" | & .\dist\homing-pigeon.exe --config $cfg --inspect redact | Out-String)
           if ($LASTEXITCODE -ne 0) { throw "inspect redact exited $LASTEXITCODE" }
           if ($redact -match "FLAG-CRED-WINDOWS-TEST") { throw "flag leaked: $redact" }
           if ($redact -notmatch "REDACTED") { throw "expected a redaction: $redact" }
