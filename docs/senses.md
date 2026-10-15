@@ -8,8 +8,9 @@ which job was running, what the job was supposed to do, whether it
 stayed confined — and that fusion is what makes the signal useful.
 
 Alerts are advisory. Nothing in this path executes, pages, or
-blocks. (Outbound reach to the owner is a separate, spec-only
-extension: `docs/dri-playbook.md`.)
+blocks. (Outbound reach to the owner — the DRI playbook — is a
+separate extension: `docs/dri-playbook.md`. It consumes these
+alerts through the fused-score trigger.)
 
 ## Why this shape
 

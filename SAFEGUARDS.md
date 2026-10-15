@@ -13,9 +13,9 @@ covers what **you** do, step by step, to keep a deployment safe.
   **is root on that box**. Anyone who can sign a job message owns the
   machine: install software, read files, add users, pivot to your
   network.
-- Email is the control plane. Whoever can send mail *as* the runner's
-  account and sign it is the operator. There is no second factor on
-  a job.
+- Email is the control plane. Whoever can sign a job message is the
+  operator — the sender address is not checked, the HMAC signature
+  is the only gate. There is no second factor on a job.
 
 If any of that makes you uncomfortable, good — that feeling is the
 whole point of this document. Set it up right and the risk is

@@ -76,7 +76,7 @@ Every Oracle config key, editable, with plain-language explanations:
   see what gets redacted)
 - `worker_allowlist`, `worker_compartments`, `dag_mode`,
   `task_timeout`, `require_review`
-- inference endpoint/model (v3.1)
+- inference endpoint/model (v3.0)
 
 **Parity rule:** everything the dashboard configures must be
 expressible in `config.json`, and everything in `config.json` must
@@ -150,7 +150,7 @@ for transport messages.
 
 **Out of v4:** new transports, any native GUI toolkit, multi-user
 or remote access (the dashboard is single-owner, loopback-only, by
-design). The `ask` op is v3.1 and is already implemented; the
+design). The `ask` op is v3.0 and is already implemented; the
 timeline shows its answers.
 
 ### 6.1 Confidentiality for transport messages
