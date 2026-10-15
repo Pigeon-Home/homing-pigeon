@@ -411,6 +411,43 @@ def answer_queries(queries, exec_result, patterns, budget):
 
 
 
+
+_QUERY_TIMES = {}  # key_id -> list of timestamps
+
+
+def check_rate_limit(key_id, cfg):
+    """Return True if under max_queries_per_hour. Zero means unlimited."""
+    limit = int(cfg.get("max_queries_per_hour") or 0)
+    if limit <= 0:
+        return True
+    now = time.time()
+    window = _QUERY_TIMES.setdefault(key_id, [])
+    window[:] = [t for t in window if now - t < 3600]
+    if len(window) >= limit:
+        return False
+    window.append(now)
+    return True
+
+
+def prune_retained(base_dir, days):
+    """Delete retained outputs older than output_retention_days."""
+    if not days or days <= 0:
+        return 0
+    d = os.path.join(base_dir, "retained")
+    if not os.path.isdir(d):
+        return 0
+    cutoff = time.time() - days * 86400
+    removed = 0
+    for name in os.listdir(d):
+        path = os.path.join(d, name)
+        try:
+            if os.path.getmtime(path) < cutoff:
+                os.remove(path)
+                removed += 1
+        except Exception:
+            pass
+    return removed
+
 def save_retained(base_dir, job_id, payload):
     """Persist output for later queries. job_id charset makes it filename-safe."""
     d = os.path.join(base_dir, "retained")
@@ -1005,6 +1042,11 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
             mark_seen(imap, seq)
         return True
     query_id = m.group(1)
+    if not check_rate_limit(query_id, cfg):
+        log(f"query rate limit exceeded seq {seq}", "WARN")
+        if opts is None or not opts.dry_run:
+            mark_seen(imap, seq)
+        return True
     try:
         body = get_text_body(email.message_from_bytes(raw))
         payload, key_id = verify_body_keyed(body, secrets)
@@ -1377,6 +1419,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     # as-is.
     secrets = build_secrets(cfg)
     cfg.setdefault("oracle_enabled", True)
+    prune_retained(base_dir, int(cfg.get("output_retention_days") or 7))
     board = Board(os.path.join(base_dir, "board.json"))
     cfg["board"] = board
     log(f"runner identity: {cfg['mailbox_user']} -- accepting signed jobs from any sender")
