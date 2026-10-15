@@ -1357,5 +1357,43 @@ class ReloadGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class FilesAndTimeoutGracefulTest(unittest.TestCase):
+    """Finding: files and timeout are read before execute. A non-list
+    files field or a word timeout must not crash describe or review.
+    """
+
+    def test_describe_bad_files(self):
+        from runner.runner import _describe_job
+        for job in (
+            {"kind": "exec", "script": "echo", "files": None},
+            {"kind": "exec", "script": "echo", "files": "nope"},
+            {"kind": "exec", "script": "echo", "files": [None]},
+            {"kind": "exec", "script": "echo", "files": [{"name": None}]},
+            {"kind": "exec", "script": "echo", "timeout": "long"},
+        ):
+            try:
+                desc = _describe_job(job)
+            except Exception as e:
+                self.fail(f"describe crashed: {e}")
+            self.assertIsInstance(desc, str)
+
+    def test_review_bad_files(self):
+        for files in (None, "nope", [None], [{"name": "../x", "content": "a"}]):
+            job = {"kind": "exec", "script": "echo", "files": files}
+            try:
+                review.review_job({}, job)
+            except Exception as e:
+                self.fail(f"review crashed on files {files!r}: {e}")
+
+    def test_reoffer_bad_timeout(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for timeout in (None, "nope", -1, 0):
+            try:
+                b.reoffer_expired(timeout if isinstance(timeout, int) else 0)
+            except Exception as e:
+                self.fail(f"reoffer crashed on {timeout!r}: {e}")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
