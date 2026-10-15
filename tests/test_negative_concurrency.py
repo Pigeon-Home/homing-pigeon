@@ -1020,3 +1020,47 @@ class ApplyAndFragmentPoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class DriEvaluatePoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation):
+
+    dri.evaluate_page_triggers assumed dcfg was a dict with a
+    triggers key. None dcfg raised TypeError on subscript. A
+    non-dict triggers value raised AttributeError on .get.
+
+    Non-dict dcfg or triggers now return an empty list. Evaluation
+    does not stop processing.
+    """
+
+    def test_bad_dcfg_returns_empty(self):
+        from runner import dri
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(dri.evaluate_page_triggers(None, d, 0), [])
+            self.assertEqual(dri.evaluate_page_triggers({}, d, 0), [])
+            self.assertEqual(dri.evaluate_page_triggers({"triggers": "bad"}, d, 0), [])
+            self.assertEqual(dri.evaluate_page_triggers({"triggers": None}, d, 0), [])
+            self.assertIsInstance(
+                dri.evaluate_page_triggers({"triggers": {}}, d, 0), list)
+
+    def test_concurrent_evaluate_does_not_raise(self):
+        import threading
+        from runner import dri
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                for _ in range(10):
+                    try:
+                        dri.evaluate_page_triggers(None, d, 0)
+                        dri.evaluate_page_triggers({"triggers": "bad"}, d, "bad")
+                        dri.maybe_page(None, d)
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])

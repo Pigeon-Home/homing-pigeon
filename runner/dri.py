@@ -184,8 +184,12 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
     Pure evaluation: no sending, no state writes.
     """
     now = time.time() if now is None else now
+    if not isinstance(dcfg, dict):
+        return []
     events = []
-    trig = dcfg["triggers"]
+    trig = dcfg.get("triggers")
+    if not isinstance(trig, dict):
+        return []
 
     # Fused sensor score per sensor over the window.
     sfs = trig.get("sensor_fused_score")
