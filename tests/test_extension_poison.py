@@ -1585,3 +1585,26 @@ class LogFaultTest(unittest.TestCase):
             R.log("hello")
             R.log({"not": "a string"})
             R.log("warn", "WARN")
+
+
+class WorkerCapFaultTest(unittest.TestCase):
+    """Finding: workers had no ceiling.
+
+    A config of 1000000 tried to build a million-thread pool and
+    stalled the poll. The cap is 32. A non-string log preview is
+    coerced, not crashed.
+    """
+
+    def test_huge_worker_count_is_capped(self):
+        from runner.runner import _worker_count
+        class O:
+            workers = 1000000
+        self.assertEqual(_worker_count({"workers": 1000000}, None), 32)
+        self.assertEqual(_worker_count({}, O()), 32)
+        self.assertEqual(_worker_count({"workers": 0}, None), 1)
+        self.assertEqual(_worker_count({"workers": "nope"}, None), 1)
+
+    def test_numeric_preview_does_not_raise(self):
+        from runner.runner import _preview
+        self.assertEqual(_preview(5), "5")
+        self.assertEqual(_preview(None), "")

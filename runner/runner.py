@@ -2055,7 +2055,9 @@ def _as_float(value, default):
 
 def _preview(text, n=80) -> str:
     """One line, capped. For the runner log, not for email."""
-    line = (text or "").replace("\r", " ").replace("\n", " ").strip()
+    if not isinstance(text, str):
+        text = "" if text is None else str(text)
+    line = text.replace("\r", " ").replace("\n", " ").strip()
     if len(line) > n:
         line = line[:n] + "..."
     return line
@@ -2840,7 +2842,8 @@ def _worker_count(cfg, opts) -> int:
         n = int(raw)
     except (TypeError, ValueError):
         return 1
-    return max(1, n)
+    # A million workers is a config typo, not a thread pool.
+    return max(1, min(n, 32))
 
 
 # Env vars the runner itself uses for credentials. Never leak these into
