@@ -2825,5 +2825,58 @@ class FilterEqualityGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class EnvTextGracefulTest(unittest.TestCase):
+    """Finding: an env key or value whose text raises must not stop
+    the scrub.
+    """
+
+    def test_key_text_raises(self):
+        from runner.runner import _scrub_env
+
+        class Bad:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        try:
+            got = _scrub_env({Bad(): "x", "ok": "y"})
+        except Exception as e:
+            self.fail(f"raising key text crashed scrub: {e}")
+        self.assertIsInstance(got, dict)
+
+    def test_value_text_raises(self):
+        from runner.runner import _scrub_env
+
+        class Bad:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        try:
+            got = _scrub_env({"K": Bad(), "ok": "y"})
+        except Exception as e:
+            self.fail(f"raising value text crashed scrub: {e}")
+        self.assertIsInstance(got, dict)
+
+    def test_concurrent_raising_env(self):
+        from runner.runner import _scrub_env
+        errors = []
+
+        class Bad:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        def one():
+            try:
+                _scrub_env({Bad(): "x", "ok": Bad()})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
