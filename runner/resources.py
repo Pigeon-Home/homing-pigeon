@@ -142,7 +142,10 @@ def check_resources(cfg, base_dir, now=None):
     """Sample resources. Returns an event dict when a threshold is
     crossed (per-resource cooldown), else None. Always updates state
     so CPU has a baseline next cycle."""
-    now = time.time() if now is None else now
+    try:
+        now = float(time.time() if now is None else now)
+    except (TypeError, ValueError):
+        now = time.time()
     if not isinstance(cfg, dict) or not isinstance(base_dir, str):
         return None
     try:

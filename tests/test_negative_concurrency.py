@@ -1880,3 +1880,83 @@ class DriRecentPoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class BoardRateAndResourceClockTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, board and resources, no poll):
+
+    _query_limit, check_rate_limit, and budget_status called .get on
+    a list config. Board.offer did the same. Six threads all raised
+    AttributeError. Board.complete stored a set and json.dump raised,
+    so the claim was not finished. check_resources subtracted a word
+    clock from a float and raised, so the sample was not saved.
+
+    A config that is not an object is treated as empty. A set in a
+    result is saved as a list. A clock that is not a number is the
+    current time. The sample still returns.
+    """
+
+    def test_bad_board_and_clock_do_not_raise(self):
+        from runner.runner import Board, budget_status, check_rate_limit, _query_limit
+        from runner import resources
+        self.assertEqual(_query_limit(["x"]), 0)
+        self.assertTrue(check_rate_limit("k", ["x"]))
+        self.assertEqual(budget_status(None, ["x"]), [])
+        with tempfile.TemporaryDirectory() as d:
+            board = Board(os.path.join(d, "board.json"))
+            self.assertIsNone(board.offer("w", ["run"], cfg=["nope"]))
+            self.assertTrue(board.submit({"task_id": "t1", "priority": 1})[0])
+            claimed = board.offer("w1", ["run"])
+            self.assertEqual(claimed.get("task_id"), "t1")
+            status, _why = board.complete("t1", {"notes": {1, 2}})
+            self.assertEqual(status, "done")
+            again = Board(os.path.join(d, "board.json"))
+            self.assertEqual(again.tasks["t1"]["state"], "done")
+            self.assertIsInstance(again.tasks["t1"]["result"]["notes"], list)
+            event = resources.check_resources(
+                {"resources": {"enabled": True, "threshold": 0.01, "cooldown_sec": 0}},
+                d, now="soon",
+            )
+            self.assertTrue(event is None or isinstance(event, dict))
+
+    def test_concurrent_board_and_clock_do_not_raise(self):
+        import threading
+        from runner.runner import Board, check_rate_limit
+        from runner import resources
+        errors = []
+
+        def hammer(i):
+            try:
+                check_rate_limit("k", ["x"])
+                with tempfile.TemporaryDirectory() as d:
+                    board = Board(os.path.join(d, "b.json"))
+                    board.submit({"task_id": "t", "priority": 1})
+                    board.offer("w", [], cfg=["bad"])
+                    board.offer("w", ["run"])
+                    board.complete("t", {"notes": {1}})
+                    resources.check_resources(
+                        {"resources": {"enabled": True, "threshold": 0.01}},
+                        d, now="soon",
+                    )
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer, args=(i,)) for i in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_board(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-board",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-board", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-board", seen)
