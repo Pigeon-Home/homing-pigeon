@@ -2012,3 +2012,52 @@ class NonSerializablePoisonTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+
+class DriWindowPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation):
+
+    dri.evaluate_page_triggers did now - kp["window_sec"] without
+    coercing. A None window_sec raised TypeError and stopped trigger
+    evaluation when called with a bad trigger config (bypassing
+    parse_dri).
+
+    window_sec and threshold are now coerced. A bad value falls back
+    to the default. Evaluation does not stop.
+    """
+
+    def test_bad_window_does_not_raise(self):
+        from runner import dri
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(dri.evaluate_page_triggers(
+                {"triggers": {"key_probe": {"threshold": "high", "window_sec": None}}},
+                d, None), [])
+            self.assertEqual(dri.evaluate_page_triggers(
+                {"triggers": {"key_probe": {"window_sec": "bad"}}},
+                d, 0), [])
+            self.assertIsInstance(dri.evaluate_page_triggers(
+                {"triggers": {"sensor_fused_score": {"threshold": 1, "window_sec": "bad"}}},
+                d, 0), list)
+
+    def test_concurrent_bad_window_does_not_raise(self):
+        import threading
+        from runner import dri
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                for _ in range(10):
+                    try:
+                        dri.evaluate_page_triggers(
+                            {"triggers": {"key_probe": {"window_sec": None}}}, d, None)
+                        dri.evaluate_page_triggers(
+                            {"triggers": {"key_probe": {"threshold": "high"}}}, d, 0)
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])

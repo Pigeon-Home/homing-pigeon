@@ -292,16 +292,21 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
                     "detail": f"over {thr:.0%} threshold",
                     "signals": [],
                 })
-        if kp:
+        if isinstance(kp, dict):
+            try:
+                window = float(kp.get("window_sec", 3600))
+                threshold = int(kp.get("threshold", 5))
+            except (TypeError, ValueError):
+                window, threshold = 3600.0, 5
             probes = [e for e in _recent_events(
-                base_dir, now - kp["window_sec"])
+                base_dir, now - window)
                 if e.get("type") == "auth_rejection"]
-            if len(probes) >= kp["threshold"]:
+            if len(probes) >= threshold:
                 events.append({
                     "trigger": "key_probe",
                     "at": _now_iso(),
                     "title": f"{len(probes)} auth rejections in "
-                             f"{kp['window_sec']:.0f}s",
+                             f"{window:.0f}s",
                     "detail": "someone is knocking: bad signatures or "
                               "key-policy violations",
                     "signals": [],
