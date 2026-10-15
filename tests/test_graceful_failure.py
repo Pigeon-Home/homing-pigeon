@@ -1141,5 +1141,38 @@ class DiskFractionGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class PatternMapGracefulTest(unittest.TestCase):
+    """Finding: _redact_patterns runs on every result. A non-object
+    extra map or a bad regex must not crash.
+    """
+
+    def test_extra_not_an_object(self):
+        from runner.runner import _redact_patterns
+        for extra in (None, [], "nope", 42, True):
+            try:
+                pats = _redact_patterns({"redact_patterns_extra": extra})
+            except Exception as e:
+                self.fail(f"extra {extra!r} crashed: {e}")
+            self.assertIsInstance(pats, dict)
+
+    def test_bad_regex_skipped(self):
+        from runner.runner import _redact_patterns
+        cfg = {"redact_patterns_extra": {"bad": "(unclosed", "ok": "password"}}
+        try:
+            pats = _redact_patterns(cfg)
+        except Exception as e:
+            self.fail(f"bad regex crashed: {e}")
+        self.assertIn("ok", pats)
+        self.assertNotIn("bad", pats)
+
+    def test_none_cfg_now_returns(self):
+        from runner.runner import _redact_patterns
+        try:
+            pats = _redact_patterns(None)
+        except Exception as e:
+            self.fail(f"None cfg crashed: {e}")
+        self.assertIsInstance(pats, dict)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
