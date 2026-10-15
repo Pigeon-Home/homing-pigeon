@@ -387,5 +387,59 @@ class BudgetAndRateGracefulTest(unittest.TestCase):
             except Exception as e:
                 self.fail(f"save_retained crashed on {job_id!r}: {e}")
 
+
+class ConfinementGracefulTest(unittest.TestCase):
+    """Finding: snapshot and confinement checks run on every exec.
+    A missing or odd workspace must not raise, or the job never
+    finishes and the poll stops on that worker.
+    """
+
+    def test_snapshot_missing_root(self):
+        from runner.runner import snapshot_outside
+        try:
+            snap = snapshot_outside("/no/such/root/anywhere", exclude=["/no/such/base"])
+        except Exception as e:
+            self.fail(f"snapshot_outside crashed: {e}")
+        self.assertIsInstance(snap, dict)
+
+    def test_confinement_none_inputs(self):
+        from runner.runner import confinement_violated, check_protected_paths
+        try:
+            confinement_violated({}, {})
+            confinement_violated(None or {}, None or {})
+            check_protected_paths({}, {}, [])
+            check_protected_paths({}, {}, None)
+        except Exception as e:
+            self.fail(f"confinement check crashed: {e}")
+
+    def test_protected_paths_not_a_list(self):
+        from runner.runner import check_protected_paths
+        try:
+            check_protected_paths({}, {"/tmp/x": (1, 1.0)}, "not-a-list")
+        except Exception as e:
+            self.fail(f"non-list protected_paths crashed: {e}")
+
+
+class SecretsGracefulTest(unittest.TestCase):
+    def test_build_secrets_missing_raises_clean(self):
+        from runner.runner import build_secrets
+        try:
+            build_secrets({})
+        except RuntimeError:
+            pass
+        except Exception as e:
+            self.fail(f"build_secrets crashed with non-RuntimeError: {e}")
+
+    def test_additional_secrets_bad_shape(self):
+        from runner.runner import build_secrets
+        secret = "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"
+        for extra in (None, [], "nope", {1: "x"}):
+            try:
+                build_secrets({"shared_secret": secret, "additional_secrets": extra})
+            except RuntimeError:
+                pass
+            except Exception as e:
+                self.fail(f"additional_secrets {extra!r} crashed: {e}")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
