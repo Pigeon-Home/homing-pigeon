@@ -1657,3 +1657,27 @@ class BoardCountAndHostFaultTest(unittest.TestCase):
             _host({"smtp_host": 5}, "smtp_host")
         self.assertEqual(_host({"imap_host": " imap.gmail.com "}, "imap_host"),
                          "imap.gmail.com")
+
+
+class RetainedDumpFaultTest(unittest.TestCase):
+    """Finding: save_retained dumped the payload raw.
+
+    A set inside the review dict made json.dump raise TypeError.
+    The job retried forever. The dump is guarded and NaN is
+    stripped. A bad payload is dropped, not fatal.
+    """
+
+    def test_set_in_retained_does_not_raise(self):
+        from runner.runner import save_retained, load_retained
+        with tempfile.TemporaryDirectory() as d:
+            save_retained(d, "job-1", {"stdout": "ok", "review": {"x": {1, 2}}})
+            got = load_retained(d, "job-1")
+            self.assertTrue(got is None or isinstance(got, dict))
+
+    def test_nan_in_retained_is_stripped(self):
+        from runner.runner import save_retained, load_retained
+        with tempfile.TemporaryDirectory() as d:
+            save_retained(d, "job-2", {"duration_sec": float("nan"), "ok": True})
+            got = load_retained(d, "job-2")
+            self.assertIsInstance(got, dict)
+            self.assertIsNone(got.get("duration_sec"))

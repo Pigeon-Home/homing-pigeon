@@ -1306,10 +1306,14 @@ def save_retained(base_dir, job_id, payload):
     with _RETAINED_LOCK:
         os.makedirs(d, exist_ok=True)
         path = os.path.join(d, f"{job_id}.json")
-        tmp = path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(payload, f)
-        os.replace(tmp, path)
+        tmp = path + ".tmp." + str(threading.get_ident())
+        try:
+            safe = _json_safe(payload) if isinstance(payload, dict) else {}
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(safe, f, allow_nan=False)
+            os.replace(tmp, path)
+        except (TypeError, ValueError, OSError) as e:
+            log(f"retained not saved for {job_id}: {e}", "WARN")
 
 
 def load_retained(base_dir, job_id):
