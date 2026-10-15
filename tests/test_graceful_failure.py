@@ -173,5 +173,89 @@ class BadExtensionDataTest(unittest.TestCase):
             self.fail(f"numeric resources state stopped processing: {e}")
 
 
+
+class AnswerQueriesGracefulTest(unittest.TestCase):
+    """Finding: answer_queries spends budget and continues on bad ops.
+    A malformed query must not abort the rest of the list.
+    """
+
+    def test_bad_ops_do_not_stop_later_queries(self):
+        queries = [
+            "not-a-dict",
+            {"op": "nope"},
+            {"op": "grep", "pattern": "("},
+            {"op": "attest", "predicate": "exit_zero"},
+        ]
+        answers, spent = answer_queries(
+            queries,
+            {"stdout": "ok", "stderr": "", "exit_code": 0},
+            {},
+            8,
+            cfg={},
+        )
+        self.assertEqual(spent, 4)
+        self.assertEqual(len(answers), 4)
+        self.assertEqual(answers[-1].get("op"), "attest")
+
+    def test_concurrent_answer_queries(self):
+        errors = []
+
+        def one():
+            try:
+                answer_queries(
+                    [{"op": "grep", "pattern": "x"}, {"op": "nope"}],
+                    {"stdout": "x\ny", "stderr": ""},
+                    {},
+                    4,
+                    cfg={},
+                )
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+
+class StoreAlertGracefulTest(unittest.TestCase):
+    """Finding: store_alert is called from the sensor path. A bad
+    record must not raise out of the store, or a sensor message
+    stops the poll.
+    """
+
+    def test_store_non_dict_is_contained(self):
+        tmp = tempfile.mkdtemp()
+        for record in (None, "string", 42, ["list"]):
+            try:
+                senses.store_alert(tmp, record if isinstance(record, dict) else {"sensor": "x"})
+            except Exception as e:
+                self.fail(f"store_alert raised: {e}")
+
+    def test_load_alerts_on_empty_dir(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            recs = senses.load_alerts(tmp)
+        except Exception as e:
+            self.fail(f"load_alerts on empty dir raised: {e}")
+        self.assertEqual(recs, [])
+
+
+class ReviewPatternsGracefulTest(unittest.TestCase):
+    def test_patterns_as_list_does_not_raise(self):
+        cfg = {"review_patterns": ["not", "a", "dict"]}
+        try:
+            review.parse_review_patterns(cfg)
+        except Exception as e:
+            self.fail(f"list patterns raised: {e}")
+
+    def test_patterns_as_none(self):
+        try:
+            review.parse_review_patterns({"review_patterns": None})
+        except Exception as e:
+            self.fail(f"None patterns raised: {e}")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
