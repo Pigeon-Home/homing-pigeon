@@ -463,6 +463,14 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
     effective = requested if VIEW_ORDER.get(requested, 3) <= VIEW_ORDER.get(ceiling, 3) else ceiling
     # Coerce: a poisoned or extension-supplied result may carry non-strings.
     # int + str used to raise and stop the poll.
+    if not isinstance(exec_result, dict):
+        exec_result = {}
+    if not isinstance(patterns, dict):
+        patterns = {}
+    if not isinstance(cfg, dict):
+        cfg = {}
+    if not isinstance(job, dict):
+        job = {}
     stdout = exec_result.get("stdout")
     stderr = exec_result.get("stderr")
     full_out = ("" if stdout is None else str(stdout)) + ("" if stderr is None else str(stderr))
@@ -486,9 +494,14 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
         out = full_out
         families = []
         for name, pat in patterns.items():
-            if re.search(pat, out):
-                out = re.sub(pat, f"[REDACTED:{name}]", out)
-                families.append(name)
+            if not isinstance(pat, str):
+                continue
+            try:
+                if re.search(pat, out):
+                    out = re.sub(pat, f"[REDACTED:{name}]", out)
+                    families.append(name)
+            except re.error:
+                continue
         base.update({"stdout": out, "stderr": "", "redacted_families": families})
     elif effective == "summary":
         base.update({
@@ -509,7 +522,11 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
 
 def build_attestations(queries, ctx):
     atts = []
+    if not isinstance(queries, list):
+        return atts
     for q in queries:
+        if not isinstance(q, dict):
+            continue
         if q.get("op") != "attest":
             continue
         pred = q.get("predicate")
@@ -543,6 +560,10 @@ def build_attestations(queries, ctx):
 # ---------------------------------------------------------------- judgment / confinement / queries (v3 remaining)
 def judge_job(cfg, job):
     """Return (verdict, reasons). Only when judge in advisory/enforce."""
+    if not isinstance(cfg, dict):
+        cfg = {}
+    if not isinstance(job, dict):
+        job = {}
     mode = cfg.get("judge") or "off"
     if mode not in ("advisory", "enforce"):
         return "pass", []
@@ -616,6 +637,8 @@ def check_protected_paths(before, after, protected):
     return changed
 
 def confinement_violated(before, after):
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return False
     for path, info in after.items():
         if path not in before or before[path] != info:
             return True
@@ -634,7 +657,7 @@ def query_budget(cfg, job):
         max_b = int((cfg or {}).get("max_query_budget", 8))
     except (TypeError, ValueError):
         max_b = 8
-    return min(job_b, max_b)
+    return max(0, min(job_b, max_b))
 
 
 ASK_SYSTEM = (

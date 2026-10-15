@@ -521,3 +521,73 @@ class ConcurrentBoardAndSensesTest(unittest.TestCase):
             self.assertIsInstance(senses.load_alerts(d, limit=None), list)
             self.assertIsInstance(senses.load_alerts(d, limit=-1), list)
             self.assertIsInstance(senses.load_alerts(d, sensor=5), list)
+
+
+class OraclePolicyPoisonTest(unittest.TestCase):
+    """Findings (2026-10-15 simulation):
+
+    1. confinement_violated assumed before/after were dicts. Passing a
+       string raised AttributeError and stopped the caller.
+    2. judge_job assumed cfg and job were dicts. None raised
+       AttributeError.
+    3. build_attestations iterated queries and called .get on each
+       item. A string queries value ("bad") made q a character and
+       raised AttributeError inside apply_result_policy.
+    4. apply_result_policy redacted branch called re.search on
+       non-string patterns without a guard.
+    5. query_budget returned a negative ceiling when max_query_budget
+       was negative.
+
+    All hardened. Poison inputs now return safe defaults and do not
+    stop processing.
+    """
+
+    def test_confinement_judge_policy_budget_tolerate_poison(self):
+        from runner.runner import (
+            confinement_violated, judge_job, apply_result_policy,
+            query_budget, build_attestations,
+        )
+        self.assertFalse(confinement_violated(None, "bad"))
+        self.assertFalse(confinement_violated({}, None))
+        self.assertEqual(judge_job(None, None), ("pass", []))
+        self.assertEqual(judge_job({"judge": 5}, {"script": None}), ("pass", []))
+        result, retain = apply_result_policy(
+            {"max_result_view": None},
+            {"result_policy": {"view": 5, "queries": "bad"}},
+            {"stdout": None, "stderr": 1, "exit_code": "x"},
+            {"bad": None}, None,
+        )
+        self.assertIsInstance(result, dict)
+        self.assertIsInstance(retain, bool)
+        self.assertEqual(build_attestations("bad", {}), [])
+        self.assertEqual(build_attestations([5, "x", None], {}), [])
+        self.assertGreaterEqual(query_budget({"max_query_budget": -1}, {}), 0)
+        self.assertGreaterEqual(query_budget(None, None), 0)
+
+    def test_concurrent_policy_and_judge_do_not_raise(self):
+        import threading
+        from runner.runner import (
+            confinement_violated, judge_job, apply_result_policy,
+        )
+        errors = []
+
+        def hammer():
+            for _ in range(20):
+                try:
+                    confinement_violated(None, "bad")
+                    judge_job(None, None)
+                    apply_result_policy(
+                        {"max_result_view": 5},
+                        {"result_policy": {"queries": "bad", "view": None}},
+                        {"stdout": None},
+                        {"bad": None}, None,
+                    )
+                except Exception as e:
+                    errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
