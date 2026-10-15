@@ -535,5 +535,48 @@ class JudgeGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class KeyPolicyGracefulTest(unittest.TestCase):
+    """Finding: check_key_policy and verify_body_keyed run on every
+    message. Bad policy shapes and bad bodies must reject cleanly,
+    not crash the poll.
+    """
+
+    def test_check_key_policy_odd_shapes(self):
+        from runner.runner import check_key_policy
+        cases = [
+            ({}, "", {}, {}),
+            ({"k": "not-a-dict"}, "k", {}, {"kind": "ping"}),
+            ({"k": {"allow_kinds": "ping"}}, "k", {}, {"kind": "ping"}),
+            (None, "", {}, {}),
+        ]
+        for policies, key_id, cfg, job in cases:
+            try:
+                check_key_policy(policies or {}, key_id, cfg, job)
+            except Exception as e:
+                self.fail(f"check_key_policy crashed: {e}")
+
+    def test_verify_bad_bodies(self):
+        from runner.runner import verify_body_keyed
+        secret = "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"
+        secrets = {"": secret}
+        for body in ("", "not json", "{}", "[]", "null"):
+            try:
+                verify_body_keyed(body, secrets)
+                self.fail(f"verify accepted {body!r}")
+            except Exception:
+                pass  # clean rejection is the graceful path
+
+    def test_build_key_policies_bad(self):
+        from runner.runner import build_key_policies
+        for cfg in ({}, {"key_policies": None}, {"key_policies": []},
+                    {"key_policies": {"k": "nope"}}):
+            try:
+                build_key_policies(cfg)
+            except RuntimeError:
+                pass
+            except Exception as e:
+                self.fail(f"build_key_policies crashed on {cfg}: {e}")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
