@@ -2221,7 +2221,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject("issued_at missing timezone (must be UTC / end with Z)")
         return
     age = (datetime.now(timezone.utc) - issued).total_seconds()
-    if age < -300 or age > int(cfg.get("max_job_age_sec", 3600)):
+    try:
+        max_age = int(cfg.get("max_job_age_sec", 3600))
+    except (TypeError, ValueError):
+        max_age = 3600
+    if age < -300 or age > max_age:
         reject(f"issued_at outside allowed window (age {age:.0f}s)")
         return
 
@@ -2242,16 +2246,22 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
 
     # Advisory pre-execution review. The Oracle looks at the job and
     # attaches notes about likely failures. It never blocks: the job
-    # runs regardless, because the Oracle can be wrong.
+    # runs regardless, because the Oracle can be wrong. A review that
+    # raises, or that cannot be signed as JSON, is dropped.
     review = None
     if _review:
         try:
             review = _review.review_job(cfg, job)
         except Exception as e:
-            # Advisory. A review that raises must not skip the job.
-            log(f"review failed: {e}", "WARN")
+            log(f"review failed for {job_id}: {e}", "WARN")
             review = None
-    if not isinstance(review, dict):
+    if isinstance(review, dict):
+        try:
+            json.dumps(review)
+        except (TypeError, ValueError):
+            log(f"review for {job_id} was not JSON; dropped", "WARN")
+            review = None
+    else:
         review = None
 
     log(f"executing job {job_id} (kind={job.get('kind')})")
@@ -3332,7 +3342,13 @@ def main() -> int:
                 pdb.post_mortem(sys.exc_info()[2])
         if args.once:
             break
-        time.sleep(int(cfg.get("poll_interval_sec", 20)))
+        try:
+            delay = int(cfg.get("poll_interval_sec", 20))
+        except (TypeError, ValueError):
+            delay = 20
+        if delay < 1:
+            delay = 20
+        time.sleep(delay)
     log("homing-pigeon exiting")
     return 0
 

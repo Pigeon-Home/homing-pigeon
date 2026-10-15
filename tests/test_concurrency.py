@@ -214,3 +214,46 @@ class SenseStoreTest(unittest.TestCase):
             rows = senses.load_alerts(d, limit=100)
             self.assertEqual(len(rows), 40)
             self.assertEqual(len({r["title"] for r in rows}), 40)
+
+
+class ReviewAndAgeTest(unittest.TestCase):
+    """A bad age window and a bad review used to stop every job.
+
+    Finding: max_job_age_sec set to the word "hour" raised inside
+    each worker before the job ran, so a poll of two pings stored
+    nothing. A review that raises, or that returns a set, did not
+    get that far in that run. Both must be skipped, not fatal.
+    """
+
+    def _two(self):
+        raws = []
+        for jid in ("good", "reviewed"):
+            body = sign_payload({
+                "v": 1, "type": "job", "job_id": jid,
+                "issued_at": _now(), "kind": "ping",
+            }, SECRET)
+            raws.append(_mail(f"[HOMING-PIGEON] job {jid}", body))
+        return raws
+
+    def test_word_age_and_a_raising_review_still_run_both_jobs(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = _cfg()
+            cfg["max_job_age_sec"] = "hour"
+            seen = {}
+
+            def boom(*a, **k):
+                raise RuntimeError("review exploded")
+
+            with mock.patch("runner.review.review_job", side_effect=boom):
+                poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                          imap=_IMAP(self._two()), smtp=_SMTP(), opts=_Opts())
+            self.assertEqual(sorted(seen), ["good", "reviewed"])
+
+    def test_non_json_review_is_dropped_and_the_job_finishes(self):
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            with mock.patch("runner.review.review_job",
+                            return_value={"notes": {1, 2}, "blob": b"\xff"}):
+                poll_once(_cfg(), d, seen, os.path.join(d, "seen.json"),
+                          imap=_IMAP(self._two()), smtp=_SMTP(), opts=_Opts())
+            self.assertEqual(sorted(seen), ["good", "reviewed"])
