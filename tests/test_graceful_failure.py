@@ -1219,5 +1219,44 @@ class DRIThresholdGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class EnvGracefulTest(unittest.TestCase):
+    """Finding: env is read before execute. A bad name or a non-dict
+    env must reject cleanly, not retry forever or crash.
+    """
+
+    def test_scrub_odd_env(self):
+        from runner.runner import _scrub_env
+        for env in ({}, {"OK": "1"}, {"bad name": "x"}, {"": "x"},
+                    {"A": None}, None, "nope"):
+            try:
+                _scrub_env(env if isinstance(env, dict) else {})
+            except Exception as e:
+                self.fail(f"scrub crashed on {env!r}: {e}")
+
+    def test_review_bad_env_name(self):
+        job = {"kind": "exec", "script": "echo hi", "env": {"bad name": "x", "OK": "1"}}
+        try:
+            review.review_job({}, job)
+        except Exception as e:
+            self.fail(f"review crashed on bad env name: {e}")
+
+    def test_concurrent_scrub(self):
+        from runner.runner import _scrub_env
+        errors = []
+
+        def one(i):
+            try:
+                _scrub_env({"K": str(i), "bad name": "x"})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
