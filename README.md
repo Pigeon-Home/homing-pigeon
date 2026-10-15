@@ -365,9 +365,8 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | `--pdb` | Drop into pdb on unhandled exceptions |
 | `--no-send` | Execute, but log results instead of emailing them |
 | `--once` | Single poll cycle, then exit |
-| `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. Turns are appended to `oracle-chat.jsonl` in the base dir (1 MiB, then one backup). |
+| `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. Turns are appended to `oracle-chat.jsonl` in the base dir (1 MiB, then one backup). See `docs/oracle-flag.md`. |
 | `--poll-interval SEC`, `--timeout SEC`, `--max-output-bytes N` | Override config |
-| `--no-oracle` | Disable the Oracle safety layer (v3) |
 
 `install.py` accepts the same flags and bakes them into the installed
 service, so the agent on boot runs exactly what you tested:
