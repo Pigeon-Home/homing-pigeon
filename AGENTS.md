@@ -79,3 +79,17 @@ The connector is attached to a personal Gmail account. Rules:
 ## Current connector
 
 The connected send-as address is the primary Gmail account on the connector. Jobs the SI sends come from that address. The runner accepts signed jobs from any sender; the signature is the only gate.
+
+## Platform-safe job construction (real failure)
+
+**Do not emit `interpreter: ["sh"]` or `["bash"]` when the runner is Windows.**  
+The job is rejected with `cannot start interpreter: [WinError 2] The system cannot find the file specified`.
+
+- Omit `--interpreter` / the `interpreter` field so the runner uses its platform default (PowerShell on Windows, `sh` elsewhere).
+- For a cross-platform clock/hello-world test, a script containing `Get-Date` works on the Windows default; a script containing `date` works on the Unix default. Prefer the default interpreter unless you know the target platform.
+- A shared test must not require a binary or marker that only one lane has.
+
+## Result location
+
+Result emails are sent **to the runner's mailbox** (`mailbox_user`), not to the SI's connected Gmail account. Searching the connector for `[HOMING-PIGEON] result <job_id>` will not find them unless the result was forwarded or the runner is configured to deliver elsewhere. Check the runner console or ask the user to forward the result if verification is needed.
+

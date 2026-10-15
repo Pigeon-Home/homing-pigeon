@@ -252,3 +252,18 @@ lie.
 - **The robots (Actions) show a red X** — click the X, click the
   failed job, read the red text at the bottom. It usually says
   exactly what went wrong.
+
+### Platform notes for scripts (especially clock / hello-world tests)
+
+- **Do not force `["sh"]` or `["bash"]` on Windows.** The runner rejects the job with `cannot start interpreter: [WinError 2] The system cannot find the file specified` because those binaries are not present by default.
+- Prefer **omitting `--interpreter`** so the runner uses its platform default: PowerShell on Windows, `sh` elsewhere. For a simple clock check on Windows use a script that contains `Get-Date` (or `date` if you know the default shell supports it).
+- If you must specify an interpreter, use one that exists on the target machine (e.g. `["powershell", "-File"]` or `["pwsh", "-File"]` on Windows).
+- A shared test job must not require a marker or binary that only one platform has.
+
+### Where results go
+
+Result emails are sent **to the runner's own mailbox** (the account in `mailbox_user`). They do not automatically appear in the cloud SI's connected Gmail account. To see them from the SI side you must either:
+- forward the result email to the connected account, or
+- have the runner configured so results are delivered somewhere the SI can read, or
+- check the runner's console/logs for the outbound result.
+
