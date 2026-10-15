@@ -85,6 +85,29 @@ except ImportError:  # running from inside runner/ as __main__
         _review = None
 
 try:
+    from runner import resources as _resources
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        import resources as _resources
+    except ImportError:
+        _resources = None
+
+
+def _append_security_event(base_dir: str, event: dict) -> None:
+    """Append one event to security-events.jsonl (capped). Best effort."""
+    path = os.path.join(base_dir, "security-events.jsonl")
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        if len(lines) > 5000:
+            with open(path, "w", encoding="utf-8") as f:
+                f.writelines(lines[-5000:])
+    except OSError:
+        pass
+
+try:
     from runner.winlog import report_event
 except ImportError:
     try:
@@ -1768,6 +1791,11 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
         secret = secrets[key_id]
     except Exception as e:
         reject(f"bad signature: {e}")
+        _append_security_event(base_dir, {
+            "type": "auth_rejection",
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "reason": "bad_signature",
+        })
         return True
     with _BOARD_LOCK:
         board.reoffer_expired(cfg.get("task_timeout", 86400))
@@ -1930,6 +1958,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         secret = secrets[key_id]
     except ValueError as e:
         reject(f"bad signature: {e}")
+        _append_security_event(base_dir, {
+            "type": "auth_rejection",
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "reason": "bad_signature",
+        })
         return
     if not isinstance(job, dict):
         # verify_body can return any JSON value if the signer hand-crafts
@@ -1960,6 +1993,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     violation = check_key_policy(key_policies or {}, key_id, cfg, job)
     if violation:
         reject(f"key policy: {violation}")
+        _append_security_event(base_dir, {
+            "type": "auth_rejection",
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "reason": "key_policy",
+        })
         return
 
     if job.get("kind") == "sensor_alert":
@@ -2279,6 +2317,19 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     secrets = build_secrets(cfg)
     key_policies = build_key_policies(cfg)
     prune_retained(base_dir, int(cfg.get("output_retention_days") or 7))
+    # Built-in resource monitor: on by default. Threshold crossings
+    # become security events for the DRI trigger evaluation.
+    if _resources is not None:
+        try:
+            event = _resources.check_resources(cfg, base_dir)
+        except Exception:
+            event = None
+        if event:
+            _append_security_event(base_dir, event)
+            over = ", ".join(f"{k}={v:.0%}"
+                             for k, v in event["resources"].items())
+            log(f"resource pressure over threshold "
+                f"({event['threshold']:.0%}): {over}", "WARN")
     board = Board(os.path.join(base_dir, "board.json"))
     cfg["board"] = board
     if not getattr(log, "identity_logged", False):

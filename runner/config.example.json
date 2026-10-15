@@ -30,6 +30,7 @@
   "owner_instructions": "",
   "redact_patterns_extra": {},
   "review_patterns_extra": [],
+  "resources": {"enabled": true, "threshold": 0.95, "cooldown_sec": 900},
   "inference": {
     "endpoint": "",
     "model": "",
