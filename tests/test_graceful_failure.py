@@ -959,5 +959,48 @@ class NoneCfgGracefulTest(unittest.TestCase):
             self.fail(f"None cfg crashed answer_queries: {e}")
         self.assertEqual(spent, 1)
 
+
+class DRIConfigGracefulTest(unittest.TestCase):
+    """Finding: DRI evaluation runs once per poll. A bad dri block
+    must not crash the cycle.
+    """
+
+    def test_parse_dri_odd(self):
+        for cfg in ({}, {"dri": None}, {"dri": "nope"}, {"dri": []},
+                    {"dri": {"enabled": "yes", "triggers": "nope"}}):
+            try:
+                dri.parse_dri(cfg)
+            except RuntimeError:
+                pass  # clean rejection
+            except Exception as e:
+                self.fail(f"parse_dri crashed on {cfg}: {e}")
+
+    def test_evaluate_triggers_odd(self):
+        tmp = tempfile.mkdtemp()
+        for dcfg in ({}, {"enabled": True, "triggers": None},
+                     {"enabled": True, "triggers": "nope"},
+                     {"enabled": True, "min_severity": 12}):
+            try:
+                dri.evaluate_page_triggers(dcfg, tmp, 0)
+            except Exception as e:
+                self.fail(f"evaluate crashed on {dcfg}: {e}")
+
+    def test_concurrent_maybe_page(self):
+        tmp = tempfile.mkdtemp()
+        errors = []
+
+        def one():
+            try:
+                dri.maybe_page({"dri": {"enabled": True}}, tmp)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
