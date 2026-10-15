@@ -247,7 +247,7 @@ plus standalone binaries (below) and a `SHA384SUMS` file so you can
 verify your download:
 
 1. Download the `.whl` from the release.
-2. `pip install pigeon_home-1.4.4-py3-none-any.whl` — same three
+2. `pip install pigeon_home_runner-*-py3-none-any.whl` — same three
    commands as above.
 3. `homing-pigeon-install` copies the runner, writes a default
    `config.json`, and registers the boot-start service.
