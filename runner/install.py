@@ -22,6 +22,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from xml.sax.saxutils import escape
 
@@ -301,31 +302,36 @@ BUILTIN_PROFILES = {
 
 
 
+_INSTRUCTIONS_LOCK = threading.Lock()
+
+
 def set_instructions(cfg_path: str, text_in: str, append: bool) -> None:
     """Store a human-readable instruction string in config.json.
 
     --instructions replaces. --instructions-add appends a new paragraph.
-    The value is a plain string, not a profile.
+    The value is a plain string, not a profile. Serialized so concurrent
+    callers cannot tear the file.
     """
     import json
     if not text_in:
         return
-    cfg = {}
-    if os.path.exists(cfg_path):
-        with open(cfg_path, encoding="utf-8") as f:
-            cfg = json.load(f)
-    current = cfg.get("owner_instructions") or ""
-    if append and current:
-        cfg["owner_instructions"] = current.rstrip() + "\n\n" + text_in.strip()
-    else:
-        cfg["owner_instructions"] = text_in.strip()
-    tmp = cfg_path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2)
-        f.write("\n")
-    os.replace(tmp, cfg_path)
-    action = "appended" if append else "replaced"
-    print(f"instructions: {action} ({len(cfg['owner_instructions'])} chars)")
+    with _INSTRUCTIONS_LOCK:
+        cfg = {}
+        if os.path.exists(cfg_path):
+            with open(cfg_path, encoding="utf-8") as f:
+                cfg = json.load(f)
+        current = cfg.get("owner_instructions") or ""
+        if append and current:
+            cfg["owner_instructions"] = current.rstrip() + "\n\n" + text_in.strip()
+        else:
+            cfg["owner_instructions"] = text_in.strip()
+        tmp = cfg_path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2)
+            f.write("\n")
+        os.replace(tmp, cfg_path)
+        action = "appended" if append else "replaced"
+        print(f"instructions: {action} ({len(cfg['owner_instructions'])} chars)")
 
 
 def detect_default_profile() -> str:
