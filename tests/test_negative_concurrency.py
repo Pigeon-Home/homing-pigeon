@@ -1186,6 +1186,14 @@ class AttestStoreResourcesBoardPoisonTest(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+
 class DiskFractionPoisonTest(unittest.TestCase):
     """Finding (2026-10-15 simulation):
 
@@ -1224,3 +1232,72 @@ class DiskFractionPoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class PatternMapAndChatLogTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, Oracle first, no mailbox poll):
+
+    redact_text and secret_fragment_hit called .items() on the pattern
+    map. A list or a string from an extension raised AttributeError
+    in every concurrent caller. record_oracle_turn passed a list
+    config into _redact_patterns, which called .get and raised, so
+    the chat line was never written.
+
+    A pattern map that is not an object falls back to the built-in
+    patterns. A config that is not an object is ignored. The chat
+    log is still written.
+    """
+
+    def test_bad_pattern_map_does_not_raise(self):
+        from runner.runner import redact_text, record_oracle_turn, secret_fragment_hit
+        secret = "AKIAIOSFODNN7EXAMPLE"
+        out, families = redact_text("leak " + secret, ["not-a-map"])
+        self.assertIsInstance(out, str)
+        self.assertIn("REDACTED", out)
+        self.assertIn("aws_key", families)
+        self.assertFalse(secret_fragment_hit("hello", "short", ["not-a-map"]))
+        self.assertTrue(secret_fragment_hit(secret[:8], "prefix " + secret, "nope"))
+        with tempfile.TemporaryDirectory() as d:
+            record_oracle_turn(d, ["not-a-config"], 5, "nope")
+            path = os.path.join(d, "oracle-chat.jsonl")
+            with open(path, encoding="utf-8") as fh:
+                line = json.loads(fh.read())
+            self.assertNotIn(secret, json.dumps(line))
+
+    def test_concurrent_bad_pattern_maps_do_not_raise(self):
+        import threading
+        from runner.runner import redact_text, record_oracle_turn, secret_fragment_hit
+        errors = []
+
+        def hammer(i):
+            try:
+                redact_text("AKIAIOSFODNN7EXAMPLE", ["nope"] if i % 2 else "nope")
+                secret_fragment_hit("AKIAIOSF", "x AKIAIOSFODNN7EXAMPLE y", ["nope"])
+                with tempfile.TemporaryDirectory() as d:
+                    record_oracle_turn(d, {"redact_patterns_extra": ["bad"]}, None, None)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_oracle_path(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "still-ping",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job still-ping", body)
+        cfg = {
+            "mailbox_user": "pigeon-test@example.com",
+            "shared_secret": SECRET,
+            "redact_patterns_extra": ["not-a-map"],
+        }
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("still-ping", seen)

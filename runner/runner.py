@@ -812,11 +812,15 @@ def inference_config(cfg):
 def redact_text(text, patterns):
     """Apply the section-9 redact engine. Returns (text, families).
 
-    Non-string patterns (None, int, list, ...) are skipped. A broken
-    extension that puts the wrong type in the pattern map must not
+    Non-string text is stringified. A pattern map that is not an object
+    falls back to the built-in patterns. A broken extension must not
     crash the Oracle.
     """
-    out = text or ""
+    if not isinstance(text, str):
+        text = "" if text is None else str(text)
+    if not isinstance(patterns, dict):
+        patterns = BUILTIN_REDACT_PATTERNS
+    out = text
     families = []
     for name, pat in (patterns or {}).items():
         if not isinstance(pat, str):
@@ -867,7 +871,9 @@ def secret_fragment_hit(reply, source, patterns, min_len=_SECRET_FRAGMENT):
     folded_reply = reply.casefold()
     if len(folded_reply) < min_len:
         return False
-    for _name, pat in (patterns or {}).items():
+    if not isinstance(patterns, dict) or not patterns:
+        patterns = BUILTIN_REDACT_PATTERNS
+    for _name, pat in patterns.items():
         if not isinstance(pat, str):
             continue
         try:
@@ -3261,9 +3267,9 @@ _ORACLE_CHAT_MAX = 1_048_576
 
 def record_oracle_turn(base_dir, cfg, question, ans, event="ask"):
     """One chat line on disk. Secrets are redacted. The file rolls at 1 MiB."""
-    if not base_dir:
+    if not base_dir or not isinstance(base_dir, str):
         return
-    patterns = _redact_patterns(cfg or {})
+    patterns = _redact_patterns(cfg if isinstance(cfg, dict) else {})
     question, _q = redact_text(question if isinstance(question, str) else "", patterns)
     if not isinstance(ans, dict):
         ans = {}
