@@ -642,8 +642,11 @@ class InstallVerifyTest(unittest.TestCase):
             self.assertGreaterEqual(len(value), 32)
             self.assertNotIn(value, text)
         self.assertFalse(os.path.exists(cfg_path + ".tmp"))
-        mode = stat.S_IMODE(os.stat(cfg_path).st_mode)
-        self.assertEqual(mode, 0o600)
+        # Windows does not honor Unix mode bits. chmod(0o600) is a
+        # no-op there and stat comes back 0o666. Require 0o600 on POSIX.
+        if os.name != "nt":
+            mode = stat.S_IMODE(os.stat(cfg_path).st_mode)
+            self.assertEqual(mode, 0o600)
 
 
 class JudgeOffPathTest(unittest.TestCase):
