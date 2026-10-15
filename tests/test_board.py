@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Board / dispatcher tests (v3 Piece 2)."""
+import json
 import os
 import sys
 import tempfile
@@ -14,6 +15,7 @@ sys.path.insert(0, os.path.join(REPO, "cloud"))
 
 from runner.runner import Board, poll_once
 from send_job import sign_payload
+from test_runner import SECRET, SENDER, FakeIMAP, FakeSMTP
 
 SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 SENDER = "runner@example.com"
@@ -86,3 +88,67 @@ class BoardConcurrencyTest(unittest.TestCase):
         claimed = [r for r in results if r is not None]
         self.assertEqual(len(claimed), len(set(claimed)), "duplicate task handed to two workers")
         self.assertEqual(len(claimed), 5)
+
+
+def _board_mail(subject, payload):
+    msg = EmailMessage()
+    msg["From"] = SENDER
+    msg["To"] = SENDER
+    msg["Subject"] = subject
+    msg.set_content(sign_payload(payload, SECRET))
+    return msg.as_bytes()
+
+
+class BoardE2ETest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-board-")
+        self.cfg = {
+            "mailbox_user": SENDER,
+            "mailbox_password": "test-gmail-password",
+            "shared_secret": SECRET,
+            "base_dir": self.tmp,
+            "oracle_enabled": True,
+            "workers": 1,
+        }
+        self.seen_path = os.path.join(self.tmp, "seen.json")
+
+    def test_poll_once_submit_request_result_done(self):
+        issued = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        mails = [
+            _board_mail("[HOMING-PIGEON] task_submit t-e2e", {
+                "v": 1, "type": "task_submit", "task_id": "t-e2e",
+                "issued_at": issued, "priority": 3, "capabilities": ["py"],
+                "payload": {"kind": "ping"},
+            }),
+            _board_mail("[HOMING-PIGEON] task_request w1", {
+                "v": 1, "type": "task_request", "issued_at": issued,
+                "capabilities": ["py"],
+            }),
+            _board_mail("[HOMING-PIGEON] task_result t-e2e", {
+                "v": 1, "type": "task_result", "issued_at": issued,
+                "result": {"ok": True},
+            }),
+        ]
+        smtp = FakeSMTP()
+        poll_once(self.cfg, self.tmp, {}, self.seen_path,
+                  imap=FakeIMAP(mails), smtp=smtp)
+        with open(os.path.join(self.tmp, "board.json"), encoding="utf-8") as fh:
+            tasks = json.load(fh)
+        self.assertEqual(tasks["t-e2e"]["state"], "done")
+        subjects = [m["Subject"] for m in smtp.sent]
+        self.assertTrue(any("task_ack t-e2e" in s for s in subjects))
+        self.assertTrue(any("task_offer t-e2e" in s for s in subjects))
+
+    def test_oracle_disabled_rejects_board(self):
+        self.cfg["oracle_enabled"] = False
+        issued = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        mail = _board_mail("[HOMING-PIGEON] task_submit t-off", {
+            "v": 1, "type": "task_submit", "task_id": "t-off",
+            "issued_at": issued,
+        })
+        imap = FakeIMAP([mail])
+        smtp = FakeSMTP()
+        poll_once(self.cfg, self.tmp, {}, self.seen_path, imap=imap, smtp=smtp)
+        self.assertIn("1", imap.flagged)
+        self.assertEqual(smtp.sent, [])
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "board.json")))

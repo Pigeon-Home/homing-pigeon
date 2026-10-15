@@ -16,6 +16,7 @@ import argparse
 import json
 import os
 import platform
+import re
 import secrets
 import shlex
 import shutil
@@ -95,6 +96,37 @@ def ensure_shared_secret(cfg_path: str, provided: str | None) -> None:
     else:
         print(f"generated a random shared_secret into {cfg_path} -- "
               f"give this string to your cloud SI")
+
+
+_KEY_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+
+
+def store_additional_secret(cfg_path: str, key_id: str) -> None:
+    """Generate a 256-bit secret and store it under additional_secrets.
+
+    The value is written into config.json and never printed.
+    """
+    if not isinstance(key_id, str) or not _KEY_ID.match(key_id):
+        print("error: --additional-secret KEY_ID must match "
+              "[A-Za-z0-9._-]{1,64}", file=sys.stderr)
+        sys.exit(2)
+    with open(cfg_path, encoding="utf-8") as f:
+        cfg = json.load(f)
+    extra = cfg.get("additional_secrets") or {}
+    if not isinstance(extra, dict):
+        print("error: additional_secrets in config is not an object",
+              file=sys.stderr)
+        sys.exit(2)
+    secret = secrets.token_urlsafe(32)
+    extra[key_id] = secret
+    cfg["additional_secrets"] = extra
+    tmp = cfg_path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, cfg_path)
+    os.chmod(cfg_path, 0o600)
+    print(f"additional secret stored for {key_id}")
 
 
 def install_files(src_dir: str, dst_dir: str):
@@ -288,6 +320,8 @@ def main() -> int:
         else os.path.join(dst_dir, "config.json")
     install_files(src_dir, dst_dir)
     ensure_shared_secret(cfg_path, args.shared_secret)
+    for kid in args.additional_secret:
+        store_additional_secret(cfg_path, kid)
     extra = _forwarded_args(args)
     if extra:
         print(f"forwarding runner flags into service: {' '.join(extra)}")
