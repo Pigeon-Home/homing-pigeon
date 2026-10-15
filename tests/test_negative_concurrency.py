@@ -2138,3 +2138,74 @@ class DriWindowPoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class KeyPolicyShapeTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, key policy, no poll):
+
+    check_key_policy treated a policy entry as a collection. An int
+    entry, an int allowed_kinds, a string allowlist of interpreters,
+    a word max_timeout_sec, and an int script allowlist each raised
+    TypeError. Six threads all died, so the job was retried instead
+    of rejected. make_oracle_server(port=None) raised TypeError
+    before the chat window existed.
+
+    A bad policy now returns a reason. A port that is not an integer
+    raises ValueError. A good policy still allows the job.
+    """
+
+    def test_bad_policy_returns_a_reason(self):
+        from runner.runner import check_key_policy, make_oracle_server
+        job = {"kind": "exec", "script": "echo hi", "timeout_sec": 10,
+               "interpreter": ["sh"]}
+        self.assertIn("invalid", check_key_policy({"k": 5}, "k", {}, job))
+        self.assertIn("invalid", check_key_policy(
+            {"k": {"allowed_kinds": 5}}, "k", {}, job))
+        self.assertIsInstance(check_key_policy(
+            {"k": {"allowed_interpreters": "sh"}}, "k", {}, job), str)
+        self.assertIn("invalid", check_key_policy(
+            {"k": {"max_timeout_sec": "soon"}}, "k", {}, job))
+        self.assertIn("invalid", check_key_policy(
+            {"k": {"allowed_script_sha384": 5}}, "k", {}, job))
+        self.assertIsNone(check_key_policy(
+            {"k": {"allowed_kinds": ["exec"], "max_timeout_sec": 30}},
+            "k", {}, job))
+        with self.assertRaises(ValueError):
+            make_oracle_server({}, port=None)
+        with self.assertRaises(ValueError):
+            make_oracle_server({}, port="lots")
+
+    def test_concurrent_bad_policies_do_not_raise(self):
+        import threading
+        from runner.runner import check_key_policy
+        errors = []
+        job = {"kind": "exec", "script": "echo hi", "interpreter": ["sh"]}
+
+        def hammer():
+            try:
+                check_key_policy(
+                    {"k": {"allowed_interpreters": "sh", "max_timeout_sec": "soon"}},
+                    "k", ["x"], job,
+                )
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_policy_check(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-policy",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-policy", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-policy", seen)

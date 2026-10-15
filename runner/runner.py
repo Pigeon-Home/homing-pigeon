@@ -409,20 +409,29 @@ def check_key_policy(policies: dict, key_id: str, cfg, job):
         return "invalid key policy map"
     if not isinstance(job, dict):
         return "invalid job"
+    if not isinstance(cfg, dict):
+        cfg = {}
     pol = policies.get(key_id)
     if not pol:
-        if key_id != "" and (cfg or {}).get("key_policies_default_deny"):
+        if key_id != "" and cfg.get("key_policies_default_deny"):
             return ("no key policy entry for this key "
                     "(key_policies_default_deny)")
         return None
+    if not isinstance(pol, dict):
+        return "invalid key policy entry"
     kind = job.get("kind")
-    if "allowed_kinds" in pol and kind not in pol["allowed_kinds"]:
-        return f"job kind {kind!r} is not allowed for this key"
+    if "allowed_kinds" in pol:
+        kinds = pol["allowed_kinds"]
+        if not isinstance(kinds, (list, tuple, set)):
+            return "invalid key policy: allowed_kinds"
+        if kind not in kinds:
+            return f"job kind {kind!r} is not allowed for this key"
     interpreter = job.get("interpreter") or cfg.get("default_interpreter") \
         or platform_interpreter()
     if "allowed_interpreters" in pol:
-        if not isinstance(interpreter, list) \
-                or interpreter not in pol["allowed_interpreters"]:
+        allowed = pol["allowed_interpreters"]
+        if not isinstance(allowed, (list, tuple)) or not isinstance(interpreter, list) \
+                or interpreter not in allowed:
             return f"interpreter {interpreter!r} is not allowed for this key"
     if "max_timeout_sec" in pol:
         try:
@@ -430,9 +439,13 @@ def check_key_policy(policies: dict, key_id: str, cfg, job):
                           or cfg.get("default_timeout_sec", 300))
         except (TypeError, ValueError):
             return "timeout_sec must be a number"
-        if timeout > pol["max_timeout_sec"]:
+        try:
+            cap = int(pol["max_timeout_sec"])
+        except (TypeError, ValueError):
+            return "invalid key policy: max_timeout_sec"
+        if timeout > cap:
             return (f"timeout {timeout}s exceeds this key's limit "
-                    f"of {pol['max_timeout_sec']}s")
+                    f"of {cap}s")
     if "allowed_script_sha384" in pol and kind == "exec":
         # The allowlist pins exact scripts. script_url cannot be checked
         # before download, so it is not permitted under such a policy.
@@ -440,8 +453,11 @@ def check_key_policy(policies: dict, key_id: str, cfg, job):
         if not isinstance(script, str):
             return ("this key may only run allowlisted scripts "
                     "(inline script required, script_url not permitted)")
+        allow = pol["allowed_script_sha384"]
+        if not isinstance(allow, (list, tuple, set)):
+            return "invalid key policy: allowed_script_sha384"
         digest = hashlib.sha384(script.encode("utf-8")).hexdigest()
-        if digest not in pol["allowed_script_sha384"]:
+        if digest not in allow:
             return "script is not in this key's allowlist"
     return None
 
@@ -3539,7 +3555,11 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436):
             self._send(200, json.dumps(payload), "application/json")
 
     bind_host = "127.0.0.1" if host == "localhost" else host
-    httpd = ThreadingHTTPServer((bind_host, int(port)), Handler)
+    try:
+        port_n = int(port)
+    except (TypeError, ValueError):
+        raise ValueError("oracle chat port must be an integer")
+    httpd = ThreadingHTTPServer((bind_host, port_n), Handler)
     bound = httpd.socket.getsockname()[0]
     if not _is_loopback_ip(bound):
         httpd.server_close()
