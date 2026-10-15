@@ -77,6 +77,14 @@ except ImportError:  # running from inside runner/ as __main__
         _senses = None
 
 try:
+    from runner import review as _review
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        import review as _review
+    except ImportError:
+        _review = None
+
+try:
     from runner.winlog import report_event
 except ImportError:
     try:
@@ -1959,6 +1967,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                              secrets, opts, base_dir, seen)
         return
 
+    # Advisory pre-execution review. The Oracle looks at the job and
+    # attaches notes about likely failures. It never blocks: the job
+    # runs regardless, because the Oracle can be wrong.
+    review = _review.review_job(cfg, job) if _review else None
+
     log(f"executing job {job_id} (kind={job.get('kind')})")
     if opts is not None and opts.dry_run:
         # Dry run: fully non-mutating. Verify everything, change nothing:
@@ -2008,6 +2021,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 "stderr_truncated": bool(r["stderr_truncated"]),
                 "duration_sec": float(r["duration_sec"]),
                 "runner": socket.gethostname(),
+                "review": review,
             }
             # Oracle view
             patterns = _redact_patterns(cfg)
@@ -2067,6 +2081,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     "stdout": "", "stderr": f"job rejected: {e}",
                     "stdout_truncated": False, "stderr_truncated": False,
                     "duration_sec": 0.0, "runner": socket.gethostname(),
+                    "review": review,
                 }
                 with _MAIL_LOCK:
                     maybe_send(f"{SUBJECT_RESULT}{job_id}",

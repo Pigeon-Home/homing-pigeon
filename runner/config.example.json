@@ -29,6 +29,7 @@
   "workspace_root": "",
   "owner_instructions": "",
   "redact_patterns_extra": {},
+  "review_patterns_extra": [],
   "inference": {
     "endpoint": "",
     "model": "",

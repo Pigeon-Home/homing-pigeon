@@ -25,6 +25,20 @@ traffic. So everything is adjustable from the beginning:
   and carried through, so tomorrow's heuristics get tuned in config,
   not in code.
 
+## The three senses
+
+- `host_ids` — host intrusion detection (file integrity, suspicious
+  syscalls, privilege changes). Collector: Falco, Wazuh agent, AIDE.
+- `netmon` — network monitoring (flows, DNS, anomalous outbound).
+  Collector: Suricata, Zeek, softflowd.
+- `sysmon` — system internals telemetry (process tree, CPU/memory,
+  open sockets/handles, file-touch events). This is the signal that
+  lets the Oracle spot *behavioral* anomalies: a new unknown process
+  plus an anomalous outbound connection plus file touches outside
+  the workspace, all inside one time window, is one incident, not
+  three alerts. Collector: osquery (cross-platform), Sysmon
+  (Windows), `/proc` + `lsof`/`ss` scraping (Linux).
+
 ## Config
 
 ```json
