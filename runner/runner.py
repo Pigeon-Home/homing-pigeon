@@ -966,6 +966,36 @@ def _describe_job(job: dict) -> str:
 
 
 
+
+def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_dir):
+    """Handle [HOMING-PIGEON] query <query_id>. Returns True if handled."""
+    m = re.search(r"\[HOMING-PIGEON\].*?query\s+(\S+)", subject, re.I)
+    if not m:
+        return False
+    if not cfg.get("oracle_enabled", True):
+        log(f"query rejected (oracle disabled) seq {seq}", "WARN")
+        if opts is None or not opts.dry_run:
+            mark_seen(imap, seq)
+        return True
+    query_id = m.group(1)
+    try:
+        body = get_text_body(email.message_from_bytes(raw))
+        payload, key_id = verify_body_keyed(body, secrets)
+        secret = secrets[key_id]
+    except Exception as e:
+        log(f"query bad signature seq {seq}: {e}", "WARN")
+        if opts is None or not opts.dry_run:
+            mark_seen(imap, seq)
+        return True
+    # Minimal reply: acknowledge and report budget remaining placeholder
+    reply = {"v": 1, "type": "qresult", "query_id": query_id,
+             "answers": [], "budget_remaining": cfg.get("max_query_budget", 8)}
+    if opts is None or not getattr(opts, "no_send", False):
+        send_mail(smtp, cfg, f"[HOMING-PIGEON] qresult {query_id}", sign_payload(reply, secret))
+    if opts is None or not opts.dry_run:
+        mark_seen(imap, seq)
+    return True
+
 def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, base_dir):
     """Handle task_submit / task_request / task_result / task_approve. Returns True if handled."""
     if not cfg.get("oracle_enabled", True):
@@ -1033,6 +1063,9 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         if opts is None or not opts.dry_run:
             mark_seen(imap, seq)
 
+    # Query follow-ups
+    if handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_dir):
+        return
     # Board messages take precedence when oracle is enabled.
     if "board" in cfg and cfg["board"] is not None:
         if handle_board_mail(cfg, imap, smtp, seq, raw, subject, cfg["board"], secrets, opts, base_dir):
