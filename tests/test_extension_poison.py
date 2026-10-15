@@ -744,3 +744,144 @@ class WindowsPathAndCapTest(unittest.TestCase):
             self.assertTrue(argv[-1].endswith("script.ps1"))
             self.assertEqual(result["stdout"], "hello\n")
             self.assertEqual(result["exit_code"], 0)
+
+
+class _MultiIMAP:
+    """Several messages in one poll. fetch returns the matching seq."""
+
+    def __init__(self, raws):
+        self.raws = {str(i + 1): raw for i, raw in enumerate(raws)}
+
+    def search(self, *args):
+        keys = sorted(self.raws, key=int)
+        return "OK", [" ".join(keys).encode()]
+
+    def fetch(self, num, what):
+        seq = num.decode() if isinstance(num, bytes) else str(num)
+        return "OK", [(b"1 (RFC822)", self.raws[seq])]
+
+    def store(self, *args, **kwargs):
+        return "OK", []
+
+
+class _Workers:
+    dry_run = False
+    no_send = True
+    workers = 4
+
+
+class ConcurrencyAndExtensionFaultTest(unittest.TestCase):
+    """Failures must not stop the poll, and two workers must not
+    double-execute one job.
+
+    Finding: a worker that raises fails the cycle after its siblings
+    finish. The process does not die. The next poll runs. That is the
+    contract these tests lock.
+    """
+
+    def _cfg(self, d):
+        return {
+            "mailbox_user": "pigeon-test@example.com",
+            "shared_secret": SECRET,
+            "base_dir": d,
+            "workers": 4,
+        }
+
+    def test_duplicate_job_id_executes_once(self):
+        from runner.runner import execute_job
+        calls = []
+
+        def once(cfg, job, base_dir):
+            calls.append(job.get("job_id"))
+            return {"stdout": "pong", "stderr": "", "exit_code": 0,
+                    "timed_out": False, "stdout_truncated": False,
+                    "stderr_truncated": False, "duration_sec": 0.0}
+
+        with tempfile.TemporaryDirectory() as d:
+            body = sign_payload({
+                "v": 1, "type": "job", "kind": "ping",
+                "job_id": "same-id", "issued_at": _now(),
+            }, SECRET)
+            raws = [
+                _mail("[HOMING-PIGEON] job same-id", body),
+                _mail("[HOMING-PIGEON] job same-id", body),
+            ]
+            with mock.patch("runner.runner.execute_job", side_effect=once):
+                poll_once(self._cfg(d), d, {}, os.path.join(d, "seen.json"),
+                          imap=_MultiIMAP(raws), smtp=_SMTP(), opts=_Workers())
+            self.assertEqual(calls, ["same-id"])
+
+    def test_a_raising_extension_does_not_stop_the_poll(self):
+        with tempfile.TemporaryDirectory() as d:
+            body = sign_payload({
+                "v": 1, "type": "job", "kind": "ping",
+                "job_id": "still-runs", "issued_at": _now(),
+            }, SECRET)
+            raw = _mail("[HOMING-PIGEON] job still-runs", body)
+
+            def boom(*a, **k):
+                raise RuntimeError("extension on fire")
+
+            with mock.patch("runner.runner._resources.check_resources", side_effect=boom), \
+                 mock.patch("runner.runner._dri.maybe_page", side_effect=boom):
+                poll_once(self._cfg(d), d, {}, os.path.join(d, "seen.json"),
+                          imap=_IMAP(raw), smtp=_SMTP(), opts=_Opts())
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                seen = json.load(fh)
+            self.assertIn("still-runs", seen)
+
+    def test_concurrent_alert_writes_stay_readable(self):
+        from runner import senses as S
+        import threading
+        with tempfile.TemporaryDirectory() as d:
+            def write(i):
+                S.store_alert(d, {
+                    "sensor": "host-ids", "severity": "low",
+                    "title": f"n{i}", "detail": {"i": i},
+                })
+            threads = [threading.Thread(target=write, args=(i,)) for i in range(20)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            recs = S.load_alerts(d, limit=100)
+            self.assertTrue(all(isinstance(r, dict) for r in recs))
+            self.assertGreater(len(recs), 0)
+
+    def test_sibling_job_finishes_when_one_worker_raises(self):
+        ran = []
+
+        def maybe(cfg, job, base_dir):
+            ran.append(job.get("job_id"))
+            if job.get("job_id") == "bad":
+                raise RuntimeError("worker blew up")
+            return {"stdout": "pong", "stderr": "", "exit_code": 0,
+                    "timed_out": False, "stdout_truncated": False,
+                    "stderr_truncated": False, "duration_sec": 0.0}
+
+        with tempfile.TemporaryDirectory() as d:
+            good = sign_payload({
+                "v": 1, "type": "job", "kind": "ping",
+                "job_id": "good", "issued_at": _now(),
+            }, SECRET)
+            bad = sign_payload({
+                "v": 1, "type": "job", "kind": "ping",
+                "job_id": "bad", "issued_at": _now(),
+            }, SECRET)
+            raws = [
+                _mail("[HOMING-PIGEON] job good", good),
+                _mail("[HOMING-PIGEON] job bad", bad),
+            ]
+            with mock.patch("runner.runner.execute_job", side_effect=maybe):
+                # Finding: execute_job raising is a transient failure.
+                # handle_mail catches it, leaves the job unseen so the
+                # next poll retries, and does not fail the cycle.
+                # The sibling job still completes.
+                poll_once(self._cfg(d), d, {}, os.path.join(d, "seen.json"),
+                          imap=_MultiIMAP(raws), smtp=_SMTP(), opts=_Workers())
+            self.assertIn("good", ran)
+            self.assertIn("bad", ran)
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                seen = json.load(fh)
+            self.assertIn("good", seen)
+            self.assertNotIn("bad", seen)
