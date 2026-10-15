@@ -435,3 +435,31 @@ class ResultPolicyPoisonTest(unittest.TestCase):
             )
             self.assertIsInstance(out2, dict)
             self.assertIn("output_digest", out2)
+
+
+class RedactPatternPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15): redact_text and secret_scan raised TypeError
+    when a pattern value was None, an int, or a list. A broken extension
+    that put the wrong type in the pattern map crashed the Oracle.
+
+    After the fix, non-string patterns are skipped. Processing continues.
+    """
+
+    def test_non_string_patterns_are_skipped(self):
+        from runner.runner import redact_text, secret_scan, secret_fragment_hit
+        bad = {"ok": r"FLAG", "none": None, "num": 5, "lst": ["a"], "obj": {}}
+        text = "hello FLAG world"
+        out, families = redact_text(text, bad)
+        self.assertIn("[REDACTED:ok]", out)
+        self.assertIn("ok", families)
+        self.assertNotIn("none", families)
+        hits = secret_scan(text, bad)
+        self.assertIn("ok", hits)
+        self.assertFalse(secret_fragment_hit("FLAG", text, bad) is None)
+        # answer_queries path also survives
+        answers, spent = answer_queries(
+            [{"op": "grep", "pattern": "x"}],
+            {"stdout": text, "stderr": ""},
+            bad, budget=2,
+        )
+        self.assertIsInstance(answers, list)

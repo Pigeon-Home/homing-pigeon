@@ -730,10 +730,17 @@ def inference_config(cfg):
 
 
 def redact_text(text, patterns):
-    """Apply the section-9 redact engine. Returns (text, families)."""
+    """Apply the section-9 redact engine. Returns (text, families).
+
+    Non-string patterns (None, int, list, ...) are skipped. A broken
+    extension that puts the wrong type in the pattern map must not
+    crash the Oracle.
+    """
     out = text or ""
     families = []
     for name, pat in (patterns or {}).items():
+        if not isinstance(pat, str):
+            continue
         try:
             if re.search(pat, out):
                 out = re.sub(pat, f"[REDACTED:{name}]", out)
@@ -749,6 +756,8 @@ def secret_scan(text, patterns):
     if not isinstance(patterns, dict) or not patterns:
         patterns = BUILTIN_REDACT_PATTERNS
     for name, pat in patterns.items():
+        if not isinstance(pat, str):
+            continue
         try:
             if re.search(pat, text or ""):
                 hits.append(name)
@@ -775,6 +784,8 @@ def secret_fragment_hit(reply, source, patterns, min_len=_SECRET_FRAGMENT):
     if len(folded_reply) < min_len:
         return False
     for _name, pat in (patterns or {}).items():
+        if not isinstance(pat, str):
+            continue
         try:
             found = list(re.finditer(pat, source or ""))
         except re.error:
