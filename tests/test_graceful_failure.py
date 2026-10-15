@@ -1659,5 +1659,52 @@ class AllowlistGracefulTest(unittest.TestCase):
         for e in errors:
             self.assertIsInstance(e, FileNotFoundError)
 
+
+class DRIWindowGracefulTest(unittest.TestCase):
+    """Finding: DRI windows are parsed each cycle. A word or a
+    negative window must not crash trigger evaluation.
+    """
+
+    def test_word_window_rejected_clean(self):
+        cfg = {"dri": {"enabled": True, "sensor_fused_score":
+                       {"threshold": 1, "window_sec": "hour"}}}
+        try:
+            dri.parse_dri(cfg)
+        except RuntimeError:
+            pass
+        except Exception as e:
+            self.fail(f"word window crashed: {e}")
+
+    def test_negative_window_evaluate(self):
+        tmp = tempfile.mkdtemp()
+        for dcfg in (
+            {"enabled": True, "sensor_fused_score": {"threshold": 1, "window_sec": -5}},
+            {"enabled": True, "sensor_fused_score": {"threshold": 1, "window_sec": None}},
+            {"enabled": True, "sensor_fused_score": {"threshold": 1, "window_sec": 0}},
+        ):
+            try:
+                dri.evaluate_page_triggers(dcfg, tmp, 0)
+            except Exception as e:
+                self.fail(f"window {dcfg} crashed: {e}")
+
+    def test_concurrent_window_evaluate(self):
+        tmp = tempfile.mkdtemp()
+        errors = []
+
+        def one():
+            try:
+                dri.evaluate_page_triggers(
+                    {"enabled": True, "sensor_fused_score":
+                     {"threshold": 1, "window_sec": 60}}, tmp, 0)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
