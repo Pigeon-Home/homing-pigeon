@@ -1,3 +1,5 @@
+See `docs/handoff-local-si.md` for the full handoff (two instances, email-only testing, transports, what was removed).
+
 # Local SI test
 
 ## Testing is email only
