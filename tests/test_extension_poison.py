@@ -288,6 +288,57 @@ class PoisonedQueryTest(unittest.TestCase):
             self.assertIn("query:q1", seen)
 
 
+class NumericBoardTaskTest(unittest.TestCase):
+    """Fifth simulation: a board submit, not a question.
+
+    task_id was the number 5, priority was the word high, requires
+    was a script name, and capabilities was an object. The number
+    reached re.fullmatch and the worker raised TypeError.
+    """
+
+    def test_numeric_task_id_is_rejected_without_a_crash(self):
+        from runner.runner import Board
+        with tempfile.TemporaryDirectory() as d:
+            board = Board(os.path.join(d, "board.json"))
+            ok, reason = board.submit({
+                "task_id": 5,
+                "priority": "high",
+                "requires": "setup.sh",
+                "capabilities": {"shell": True},
+                "payload": {"detail": FLAG},
+            })
+            self.assertFalse(ok)
+            self.assertEqual(reason, "invalid task_id")
+            ok, reason = board.submit(["not", "a", "task"])
+            self.assertFalse(ok)
+            self.assertEqual(reason, "invalid task")
+            self.assertEqual(board.tasks, {})
+
+            body = sign_payload({
+                "v": 1, "type": "task_submit", "issued_at": _now(),
+                "task_id": 5,
+                "priority": "high",
+                "requires": "setup.sh",
+                "capabilities": {"shell": True},
+                "payload": {"detail": FLAG},
+            }, SECRET)
+            raw = _mail("[HOMING-PIGEON] task_submit board-1", body)
+            cfg = {
+                "mailbox_user": "pigeon-test@example.com",
+                "shared_secret": SECRET,
+                "require_review": True,
+            }
+            poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                      imap=_IMAP(raw), smtp=_SMTP(), opts=_Opts())
+            self.assertFalse(os.path.exists(os.path.join(d, "work")))
+            path = os.path.join(d, "board.json")
+            if os.path.exists(path):
+                with open(path, encoding="utf-8") as fh:
+                    stored = json.load(fh)
+                self.assertNotIn("5", stored)
+                self.assertNotIn(FLAG, json.dumps(stored))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 

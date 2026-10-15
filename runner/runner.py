@@ -1173,8 +1173,11 @@ class Board:
         os.replace(tmp, self.path)
 
     def submit(self, task):
-        tid = task.get("task_id") or ""
-        if not re.fullmatch(r"[A-Za-z0-9._-]{1,128}", tid):
+        if not isinstance(task, dict):
+            return False, "invalid task"
+        tid = task.get("task_id")
+        if not isinstance(tid, str) or not re.fullmatch(
+                r"[A-Za-z0-9._-]{1,128}", tid):
             return False, "invalid task_id"
         if tid in self.tasks:
             return False, "duplicate task_id"
