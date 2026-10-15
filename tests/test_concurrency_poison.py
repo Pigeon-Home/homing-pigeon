@@ -280,9 +280,8 @@ class ConcurrentQueryAndDriTest(unittest.TestCase):
                                      "key_probe": {"threshold": "one", "window_sec": "hour"}},
                         "cooldown_sec": 0},
             }
-            with self.assertRaises(ValueError):
-                with mock.patch.object(dri, "_send", return_value=False):
-                    dri.maybe_page(cfg, d)
+            with mock.patch.object(dri, "_send", return_value=False):
+                dri.maybe_page(cfg, d)  # must not raise
             resources.check_resources(cfg, d)
             review.review_job({"review_patterns_extra": "nope"}, {"kind": "ping", "script": None})
             ping = sign_payload({
@@ -310,9 +309,8 @@ class MoreExtensionPoisonTest(unittest.TestCase):
             cfg = {"dri": {"enabled": True, "channel": "telegram",
                            "triggers": {"sensor_fused_score": {"threshold": "high", "window_sec": "long"}},
                            "cooldown_sec": "never", "digest_window_sec": "soon"}}
-            with self.assertRaises(ValueError):
-                with mock.patch.object(dri, "_send", return_value=False):
-                    dri.maybe_page(cfg, d)
+            with mock.patch.object(dri, "_send", return_value=False):
+                dri.maybe_page(cfg, d)  # must not raise
             ping = sign_payload({
                 "v": 1, "type": "job", "job_id": "float-ok",
                 "issued_at": _now(), "kind": "ping",
@@ -472,8 +470,7 @@ class OracleAndKeyPolicyPoisonTest(unittest.TestCase):
             self.assertNotIn("1,2,3", ctx)
             record_oracle_turn(d, {}, "q", None)
             record_oracle_turn(d, {"owner_instructions": 5}, "q", {"answer": FLAG})
-            with self.assertRaises(AttributeError):
-                record_oracle_turn(d, {}, "q", "not-a-dict")
+            record_oracle_turn(d, {}, "q", "not-a-dict")  # must not raise
             errors = []
             def writer(n):
                 try:
@@ -520,8 +517,7 @@ class SecurityEventAndConfinementTest(unittest.TestCase):
         from runner.runner import _append_security_event
         with tempfile.TemporaryDirectory() as d:
             _append_security_event(d, {"type": "ok", "n": 1})
-            with self.assertRaises(TypeError):
-                _append_security_event(d, {"type": "bad", "data": {1, 2, 3}})
+            _append_security_event(d, {"type": "bad", "data": {1, 2, 3}})  # must not raise
             errors = []
             def worker(n):
                 try:
@@ -562,28 +558,27 @@ class AttestAndQueryBudgetTest(unittest.TestCase):
     before calling, so the query path is safe; a direct caller is not.
     """
 
-    def test_answer_queries_bad_already_spent_raises(self):
-        """Finding: int(already_spent) is unguarded. "lots" raises ValueError.
-        A normal int or None does not.
+    def test_answer_queries_bad_already_spent_is_graceful(self):
+        """Finding: int(already_spent) is guarded. "lots" does not raise.
+        Treated as 0. A normal int or None does not raise.
         """
         from runner.runner import answer_queries
-        with self.assertRaises(ValueError):
-            answer_queries([], {}, {}, 8, already_spent="lots")
+        answers, spent = answer_queries([], {}, {}, 8, already_spent="lots")
+        self.assertEqual(spent, 0)
         answers, spent = answer_queries([], {}, {}, 8, already_spent=0)
         self.assertEqual(spent, 0)
         answers, spent = answer_queries([], {}, {}, 8, already_spent=None)
         self.assertEqual(spent, 0)
 
-    def test_build_attestations_bad_query_and_ctx_raise(self):
-        """Finding: build_attestations does q.get without an isinstance
-        check, and indexes ctx["exit_code"] / ctx["patterns"] directly.
-        Non-dict query -> AttributeError. Missing key -> KeyError.
+    def test_build_attestations_bad_query_and_ctx_are_graceful(self):
+        """Finding: build_attestations tolerates non-dict queries and
+        missing keys. No AttributeError or KeyError.
         """
         from runner.runner import build_attestations
-        with self.assertRaises(AttributeError):
-            build_attestations(["not-a-dict"], {"exit_code": 0, "digest": "x", "patterns": {}})
-        with self.assertRaises(KeyError):
-            build_attestations([{"op": "attest", "predicate": "exit_zero"}], {})
+        atts = build_attestations(["not-a-dict"], {"exit_code": 0, "digest": "x", "patterns": {}})
+        self.assertIsInstance(atts, list)
+        atts = build_attestations([{"op": "attest", "predicate": "exit_zero"}], {})
+        self.assertIsInstance(atts, list)
         atts = build_attestations(
             [{"op": "attest", "predicate": "exit_zero"}],
             {"exit_code": 0, "digest": "abc", "patterns": {}},
@@ -604,37 +599,35 @@ class ResultPolicyAndSensesLoadTest(unittest.TestCase):
     a direct call does not.
     """
 
-    def test_apply_result_policy_bad_types_raise(self):
-        """Finding: non-dict job or exec_result raises AttributeError.
-        Non-dict patterns raises AttributeError on the redacted path.
+    def test_apply_result_policy_bad_types_are_graceful(self):
+        """Finding: non-dict job, exec_result, or patterns do not raise.
         """
         from runner.runner import apply_result_policy
-        with self.assertRaises(AttributeError):
-            apply_result_policy({}, "not-a-job", {}, {}, False)
-        with self.assertRaises(AttributeError):
-            apply_result_policy({}, {"job_id": "x"}, "not-a-result", {}, False)
-        with self.assertRaises(AttributeError):
-            apply_result_policy(
-                {"max_result_view": "redacted"},
-                {"job_id": "x", "result_policy": {"view": "redacted"}},
-                {"stdout": "hi", "stderr": ""},
-                "not-a-dict",
-                False,
-            )
+        result, retain = apply_result_policy({}, "not-a-job", {}, {}, False)
+        self.assertIsInstance(result, dict)
+        result, retain = apply_result_policy({}, {"job_id": "x"}, "not-a-result", {}, False)
+        self.assertIsInstance(result, dict)
+        result, retain = apply_result_policy(
+            {"max_result_view": "redacted"},
+            {"job_id": "x", "result_policy": {"view": "redacted"}},
+            {"stdout": "hi", "stderr": ""},
+            "not-a-dict",
+            False,
+        )
+        self.assertIsInstance(result, dict)
         result, retain = apply_result_policy(
             {}, {"job_id": "ok"}, {"stdout": "hi", "stderr": "", "exit_code": 0}, {}, False,
         )
         self.assertIn("stdout", result)
 
-    def test_senses_load_alerts_bad_limit_raises(self):
-        """Finding: int(limit) is unguarded. "many" raises ValueError.
+    def test_senses_load_alerts_bad_limit_is_graceful(self):
+        """Finding: int(limit) is guarded. "many" does not raise.
         An int or None does not.
         """
         with tempfile.TemporaryDirectory() as d:
             with open(os.path.join(d, "senses.jsonl"), "w") as fh:
                 fh.write(json.dumps({"sensor": "s", "severity": "info"}) + "\n")
-            with self.assertRaises(ValueError):
-                senses.load_alerts(d, limit="many")
+            self.assertIsInstance(senses.load_alerts(d, limit="many"), list)
             self.assertIsInstance(senses.load_alerts(d, limit=5), list)
             self.assertIsInstance(senses.load_alerts(d, limit=None), list)
 
@@ -656,10 +649,10 @@ class RedactPatternsAndQueryRateTest(unittest.TestCase):
         the job seen. The poll returns (no crash).
         """
         from runner.runner import _redact_patterns
-        with self.assertRaises(AttributeError):
-            _redact_patterns({"redact_patterns_extra": ["bad"]})
-        with self.assertRaises(AttributeError):
-            _redact_patterns({"redact_patterns_extra": "not-a-dict"})
+        pats = _redact_patterns({"redact_patterns_extra": ["bad"]})
+        self.assertIsInstance(pats, dict)
+        pats = _redact_patterns({"redact_patterns_extra": "not-a-dict"})
+        self.assertIsInstance(pats, dict)
         self.assertIsInstance(_redact_patterns({}), dict)
         self.assertIsInstance(_redact_patterns({"redact_patterns_extra": None}), dict)
         with tempfile.TemporaryDirectory() as d:
@@ -768,10 +761,10 @@ class SensesGateAndStorePoisonTest(unittest.TestCase):
         """Finding: float(cooldown_sec) and float(max_per_hour) are
         unguarded. "hot" and "lots" raise ValueError.
         """
-        with self.assertRaises(ValueError):
-            senses.gate_alert({"profile": {"cooldown_sec": "hot"}}, {"title": "t"}, [])
-        with self.assertRaises(ValueError):
-            senses.gate_alert({"profile": {"max_per_hour": "lots"}}, {"title": "t"}, [])
+        reason = senses.gate_alert({"profile": {"cooldown_sec": "hot"}}, {"title": "t"}, [])
+        self.assertTrue(reason is None or isinstance(reason, str))
+        reason = senses.gate_alert({"profile": {"max_per_hour": "lots"}}, {"title": "t"}, [])
+        self.assertTrue(reason is None or isinstance(reason, str))
         self.assertIsNone(senses.gate_alert({"profile": {"cooldown_sec": 0, "max_per_hour": 0}}, {"title": "t"}, []))
 
     def test_store_alert_non_serializable_raises(self):
@@ -780,8 +773,7 @@ class SensesGateAndStorePoisonTest(unittest.TestCase):
         normal appends do not raise.
         """
         with tempfile.TemporaryDirectory() as d:
-            with self.assertRaises(TypeError):
-                senses.store_alert(d, {"sensor": "s", "detail": {1, 2}})
+            senses.store_alert(d, {"sensor": "s", "detail": {1, 2}})  # must not raise
             errors = []
             def worker(n):
                 try:

@@ -584,7 +584,7 @@ def build_attestations(queries, ctx):
             continue
         pred = q.get("predicate")
         if pred == "exit_zero":
-            atts.append({"predicate": pred, "ok": ctx["exit_code"] == 0})
+            atts.append({"predicate": pred, "ok": ctx.get("exit_code") == 0})
         elif pred == "no_secrets":
             pats = ctx.get("patterns")
             if not isinstance(pats, dict):
@@ -597,7 +597,7 @@ def build_attestations(queries, ctx):
                          "ok": not secret_scan(ctx.get("text", ""), pats),
                          "patterns_sha384": hashlib.sha384(json.dumps(sorted(safe_items)).encode()).hexdigest()})
         elif pred == "output_digest":
-            atts.append({"predicate": pred, "digest": ctx["digest"]})
+            atts.append({"predicate": pred, "digest": ctx.get("digest")})
         elif pred == "confined_to_workspace":
             c = ctx.get("confined")
             if c is None:
