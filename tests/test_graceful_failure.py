@@ -1623,10 +1623,9 @@ class AllowlistGracefulTest(unittest.TestCase):
                 b.offer("w", ["ping"], "", cfg)
             except Exception as e:
                 self.fail(f"offer crashed on allowlist {cfg}: {e}")
-        # Finding: a numeric worker_allowlist raises TypeError.
-        # The offer path assumes a list or a string.
-        with self.assertRaises(TypeError):
-            b.offer("w", ["ping"], "", {"worker_allowlist": 42})
+        # Finding, fixed: a numeric worker_allowlist used to raise
+        # TypeError. A non-list allowlist is now treated as empty.
+        self.assertIsNotNone(b.offer("w", ["ping"], "", {"worker_allowlist": 42}))
 
     def test_offer_bad_capabilities(self):
         tmp = tempfile.mkdtemp()
