@@ -1355,3 +1355,44 @@ class DriParseNumericPoisonTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+
+class ProtectedPathsPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation):
+
+    check_protected_paths did os.path.abspath on every key of the
+    before/after snapshots. An int key (poison from a bad snapshot)
+    raised TypeError and stopped the confinement report.
+
+    Non-dict snapshots and non-string keys are now skipped. A bad
+    snapshot does not crash the check.
+    """
+
+    def test_bad_snapshot_keys_do_not_raise(self):
+        from runner.runner import check_protected_paths
+        self.assertEqual(check_protected_paths({5: (1, 2)}, {5: (1, 2)}, ["/tmp"]), [])
+        self.assertEqual(check_protected_paths("bad", {}, [None, 5, ""]), [])
+        self.assertEqual(check_protected_paths(None, None, None), [])
+        changed = check_protected_paths(
+            {"/tmp/x": None}, {"/tmp/x": (1, 2)}, [5, None, "/tmp"])
+        self.assertIn("/tmp/x", changed)
+
+    def test_concurrent_protected_paths_do_not_raise(self):
+        import threading
+        from runner.runner import check_protected_paths
+        errors = []
+
+        def hammer():
+            for _ in range(15):
+                try:
+                    check_protected_paths({5: (1, 2)}, {5: (1, 2)}, [None, 5])
+                    check_protected_paths(None, "bad", "not-list")
+                except Exception as e:
+                    errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])

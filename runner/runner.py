@@ -685,8 +685,14 @@ def check_protected_paths(before, after, protected):
     for p in protected:
         if isinstance(p, str) and p:
             abs_protected.append(os.path.abspath(p))
+    if not isinstance(before, dict):
+        before = {}
+    if not isinstance(after, dict):
+        after = {}
     all_paths = set(before) | set(after)
     for path in all_paths:
+        if not isinstance(path, str):
+            continue
         ap = os.path.abspath(path)
         if any(ap == pp or ap.startswith(pp + os.sep) for pp in abs_protected):
             if before.get(path) != after.get(path):
