@@ -885,3 +885,78 @@ class ConcurrencyAndExtensionFaultTest(unittest.TestCase):
                 seen = json.load(fh)
             self.assertIn("good", seen)
             self.assertNotIn("bad", seen)
+
+
+class ReviewAndBoardFaultTest(unittest.TestCase):
+    """Finding: review_job used to run before the job, unguarded.
+
+    A raise, or a return that is not a dict, retried the job forever
+    because sign_payload could not serialize the result. The review is
+    advisory. It fails open now: the job runs, the review is dropped.
+    """
+
+    def _ping(self, jid):
+        return _mail("[HOMING-PIGEON] job " + jid, sign_payload({
+            "v": 1, "type": "job", "kind": "ping",
+            "job_id": jid, "issued_at": _now(),
+        }, SECRET))
+
+    def _cfg(self, d):
+        return {"mailbox_user": "pigeon-test@example.com",
+                "shared_secret": SECRET, "base_dir": d}
+
+    def test_raising_review_does_not_stop_the_job(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch("runner.runner._review.review_job",
+                            side_effect=RuntimeError("review on fire")):
+                poll_once(self._cfg(d), d, {}, os.path.join(d, "seen.json"),
+                          imap=_IMAP(self._ping("rev-1")), smtp=_SMTP(),
+                          opts=_Opts())
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                self.assertIn("rev-1", json.load(fh))
+
+    def test_non_dict_review_is_dropped(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch("runner.runner._review.review_job",
+                            return_value={"notes", "not-a-dict"}):
+                poll_once(self._cfg(d), d, {}, os.path.join(d, "seen.json"),
+                          imap=_IMAP(self._ping("rev-2")), smtp=_SMTP(),
+                          opts=_Opts())
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                self.assertIn("rev-2", json.load(fh))
+
+    def test_two_workers_claim_one_task(self):
+        with tempfile.TemporaryDirectory() as d:
+            board = os.path.join(d, "board.json")
+            with open(board, "w", encoding="utf-8") as fh:
+                json.dump({"only": {
+                    "task_id": "only", "state": "open",
+                    "priority": 1, "requires": [], "capabilities": [],
+                    "compartments": [], "submitted_at": _now(),
+                }}, fh)
+            req = sign_payload({
+                "v": 1, "type": "task_request", "issued_at": _now(),
+                "capabilities": [],
+            }, SECRET)
+            raws = [
+                _mail("[HOMING-PIGEON] task_request a", req),
+                _mail("[HOMING-PIGEON] task_request b", req),
+            ]
+            opts = _Workers()
+            poll_once(self._cfg(d), d, {}, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP(raws), smtp=_SMTP(), opts=opts)
+            with open(board, encoding="utf-8") as fh:
+                tasks = json.load(fh)
+            claimed = [t for t in tasks.values()
+                       if isinstance(t, dict) and t.get("state") == "claimed"]
+            self.assertEqual(len(claimed), 1)
+
+    def test_string_resource_event_does_not_stop_the_poll(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch("runner.runner._resources.check_resources",
+                            return_value="hot"):
+                poll_once(self._cfg(d), d, {}, os.path.join(d, "seen.json"),
+                          imap=_IMAP(self._ping("res-1")), smtp=_SMTP(),
+                          opts=_Opts())
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                self.assertIn("res-1", json.load(fh))

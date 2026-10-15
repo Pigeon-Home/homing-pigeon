@@ -2243,7 +2243,16 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # Advisory pre-execution review. The Oracle looks at the job and
     # attaches notes about likely failures. It never blocks: the job
     # runs regardless, because the Oracle can be wrong.
-    review = _review.review_job(cfg, job) if _review else None
+    review = None
+    if _review:
+        try:
+            review = _review.review_job(cfg, job)
+        except Exception as e:
+            # Advisory. A review that raises must not skip the job.
+            log(f"review failed: {e}", "WARN")
+            review = None
+    if not isinstance(review, dict):
+        review = None
 
     log(f"executing job {job_id} (kind={job.get('kind')})")
     if opts is not None and opts.dry_run:
