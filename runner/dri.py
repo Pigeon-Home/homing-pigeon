@@ -146,6 +146,8 @@ def _save_state(base_dir, state):
 
 def _recent_events(base_dir, since_ts):
     """security-events.jsonl entries newer than since_ts."""
+    if not isinstance(base_dir, str) or not base_dir:
+        return []
     path = os.path.join(base_dir, EVENTS_FILE)
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -171,6 +173,8 @@ def _recent_events(base_dir, since_ts):
 
 def _recent_retained(base_dir, since_ts):
     """Retained job results newer than since_ts: (job_id, payload)."""
+    if not isinstance(base_dir, str) or not base_dir:
+        return []
     d = os.path.join(base_dir, "retained")
     try:
         names = os.listdir(d)

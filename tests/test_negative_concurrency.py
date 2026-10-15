@@ -1838,3 +1838,45 @@ class MoreBadBasePoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class DriRecentPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation):
+
+    dri._recent_events and _recent_retained assumed base_dir was a
+    path. None or an int raised TypeError on join and stopped trigger
+    evaluation when called with a bad base.
+
+    Non-path base_dir now returns []. Evaluation does not stop.
+    """
+
+    def test_bad_base_returns_empty(self):
+        from runner import dri
+        self.assertEqual(dri._recent_events(None, 0), [])
+        self.assertEqual(dri._recent_events(5, "bad"), [])
+        self.assertEqual(dri._recent_events("", None), [])
+        self.assertEqual(dri._recent_retained(None, 0), [])
+        self.assertEqual(dri._recent_retained(5, None), [])
+        self.assertEqual(dri._recent_retained("", -1), [])
+
+    def test_concurrent_recent_does_not_raise(self):
+        import threading
+        from runner import dri
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                for since in (None, "bad", float("nan"), -1, 0):
+                    try:
+                        dri._recent_events(None, since)
+                        dri._recent_retained(5, since)
+                        dri._recent_events(d, since)
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
