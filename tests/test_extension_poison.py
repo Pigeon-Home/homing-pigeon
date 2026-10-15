@@ -1028,3 +1028,48 @@ class TraversalAndDoubleCompleteTest(unittest.TestCase):
             {"profile": {"severity_floor": "nope", "cooldown_sec": "hot"}},
             {"severity": "low", "title": "t"}, [])
         self.assertTrue(reason is None or isinstance(reason, str))
+
+
+class RedactAndSeenFaultTest(unittest.TestCase):
+    """Finding: redact_patterns_extra was iterated as a dict.
+
+    A string or a list crashed the job path on .items(). It is
+    ignored now. seen.json as a dict used to be read as empty;
+    the ids are kept.
+    """
+
+    def test_bad_redact_extra_does_not_stop_the_ping(self):
+        with tempfile.TemporaryDirectory() as d:
+            body = sign_payload({
+                "v": 1, "type": "job", "kind": "ping",
+                "job_id": "redact-1", "issued_at": _now(),
+            }, SECRET)
+            cfg = {
+                "mailbox_user": "pigeon-test@example.com",
+                "shared_secret": SECRET, "base_dir": d,
+                "redact_patterns_extra": ["not", "a", "map"],
+            }
+            poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                      imap=_IMAP(_mail("[HOMING-PIGEON] job redact-1", body)),
+                      smtp=_SMTP(), opts=_Opts())
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                self.assertIn("redact-1", json.load(fh))
+
+    def test_seen_dict_is_kept(self):
+        from runner.runner import load_seen
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "seen.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"already": True, "done": 1}, fh)
+            seen = load_seen(path)
+            self.assertIn("already", seen)
+            self.assertIn("done", seen)
+
+    def test_no_secrets_attest_with_a_list_of_patterns(self):
+        from runner.runner import build_attestations
+        atts = build_attestations(
+            [{"op": "attest", "predicate": "no_secrets"}],
+            {"text": FLAG, "patterns": ["not-a-dict"], "exit_code": 0},
+        )
+        self.assertTrue(atts)
+        self.assertNotIn(FLAG, json.dumps(atts))

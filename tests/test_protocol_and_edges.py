@@ -366,7 +366,8 @@ class SeenAndHelpersTests(unittest.TestCase):
             path = os.path.join(d, "obj.json")
             with open(path, "w") as f:
                 json.dump({"a": 1}, f)
-            self.assertEqual(load_seen(path), {})
+            # A dict is a seen map. The ids are kept, not dropped.
+            self.assertEqual(load_seen(path), {"a": True})
 
     def test_get_text_body_plain(self):
         m = EmailMessage()

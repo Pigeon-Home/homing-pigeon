@@ -441,6 +441,9 @@ VIEW_ORDER = {"attested": 0, "summary": 1, "redacted": 2, "full": 3}
 def _redact_patterns(cfg):
     pats = dict(BUILTIN_REDACT_PATTERNS)
     extra = cfg.get("redact_patterns_extra") or {}
+    if not isinstance(extra, dict):
+        log("redact_patterns_extra is not an object; ignored", "WARN")
+        extra = {}
     for name, regex in extra.items():
         try:
             re.compile(regex)
@@ -509,10 +512,12 @@ def build_attestations(queries, ctx):
         if pred == "exit_zero":
             atts.append({"predicate": pred, "ok": ctx["exit_code"] == 0})
         elif pred == "no_secrets":
+            pats = ctx.get("patterns")
+            if not isinstance(pats, dict):
+                pats = {}
             atts.append({"predicate": pred,
-                         "ok": not secret_scan(ctx.get("text", ""),
-                                               ctx.get("patterns", {})),
-                         "patterns_sha384": hashlib.sha384(json.dumps(sorted(ctx["patterns"].items())).encode()).hexdigest()})
+                         "ok": not secret_scan(ctx.get("text", ""), pats),
+                         "patterns_sha384": hashlib.sha384(json.dumps(sorted(pats.items())).encode()).hexdigest()})
         elif pred == "output_digest":
             atts.append({"predicate": pred, "digest": ctx["digest"]})
         elif pred == "confined_to_workspace":
@@ -737,7 +742,9 @@ def redact_text(text, patterns):
 def secret_scan(text, patterns):
     """Return pattern names that hit. Empty means the text is clean."""
     hits = []
-    for name, pat in (patterns or BUILTIN_REDACT_PATTERNS).items():
+    if not isinstance(patterns, dict) or not patterns:
+        patterns = BUILTIN_REDACT_PATTERNS
+    for name, pat in patterns.items():
         try:
             if re.search(pat, text or ""):
                 hits.append(name)
@@ -2405,7 +2412,11 @@ def load_seen(path: str) -> dict:
     try:
         with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
-        return {str(x): True for x in data} if isinstance(data, list) else {}
+        if isinstance(data, list):
+            return {str(x): True for x in data}
+        if isinstance(data, dict):
+            return {str(k): True for k in data}
+        return {}
     except Exception:
         return {}
 
