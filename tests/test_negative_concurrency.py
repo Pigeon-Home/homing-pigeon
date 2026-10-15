@@ -2379,3 +2379,83 @@ class UnprintableResultTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-text", seen)
+
+
+class UnprintableKeyTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, JSON keys and ask, no poll):
+
+    _json_safe called str() on a dict key. A key whose text form
+    raises stopped signing. Six threads all raised, so a result
+    with that key could not be mailed. ask_model called str() on
+    the question before the inference call, so the ask raised
+    instead of returning inference_error. redact_text built the
+    redaction label from the pattern name and skipped the pattern
+    when that name could not be printed, so an access key stayed
+    in the text.
+
+    A bad key is stored as "key". A question that cannot be printed
+    is empty, and the ask returns a rejection. A pattern whose name
+    cannot be printed is still applied, labeled "pattern".
+    """
+
+    def test_bad_key_and_question_do_not_raise(self):
+        from runner.runner import _json_safe, ask_model, redact_text, sign_payload
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        safe = _json_safe({Boom(): 1, "a": {Boom(): "x"}})
+        self.assertEqual(safe["key"], 1)
+        self.assertEqual(safe["a"]["key"], "x")
+        signed = sign_payload({"stdout": {Boom(): 1}}, SECRET)
+        self.assertIn('"key"', signed)
+        text, families = redact_text(
+            "AKIAIOSFODNN7EXAMPLE", {Boom(): r"AKIA[0-9A-Z]{16}"})
+        self.assertNotIn("AKIAIOSFODNN7EXAMPLE", text)
+        self.assertIn("pattern", families)
+        ans = ask_model(
+            {"endpoint": "http://127.0.0.1:9/v1", "model": "m",
+             "max_answer_chars": 20, "timeout_sec": 1},
+            Boom(), Boom(), 20, instructions=Boom(),
+        )
+        self.assertIsInstance(ans, dict)
+        self.assertIn(ans.get("rejected"), (
+            "inference_error", "inference_unconfigured"))
+
+    def test_concurrent_bad_keys_do_not_raise(self):
+        import threading
+        from runner.runner import _json_safe, sign_payload
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        errors = []
+
+        def hammer():
+            try:
+                _json_safe({Boom(): {"n": Boom()}})
+                sign_payload({"a": {Boom(): 1}}, SECRET)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_bad_key(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-key",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-key", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-key", seen)

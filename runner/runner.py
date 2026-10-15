@@ -184,7 +184,14 @@ def _json_safe(value):
             return None
         return value
     if isinstance(value, dict):
-        return {str(k): _json_safe(v) for k, v in value.items()}
+        out = {}
+        for k, v in value.items():
+            try:
+                key = k if isinstance(k, str) else str(k)
+            except Exception:
+                key = "key"
+            out[key] = _json_safe(v)
+        return out
     if isinstance(value, (list, tuple)):
         return [_json_safe(v) for v in value]
     if isinstance(value, (set, frozenset)):
@@ -567,8 +574,9 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
                 continue
             try:
                 if re.search(pat, out):
-                    out = re.sub(pat, f"[REDACTED:{name}]", out)
-                    families.append(name)
+                    label = _as_text(name) or "pattern"
+                    out = re.sub(pat, "[REDACTED:" + label + "]", out)
+                    families.append(label)
             except re.error:
                 continue
         base.update({"stdout": out, "stderr": "", "redacted_families": families})
@@ -880,8 +888,9 @@ def redact_text(text, patterns):
             continue
         try:
             if re.search(pat, out):
-                out = re.sub(pat, f"[REDACTED:{name}]", out)
-                families.append(name)
+                label = _as_text(name) or "pattern"
+                out = re.sub(pat, "[REDACTED:" + label + "]", out)
+                families.append(label)
         except Exception:
             continue
     return out, families
@@ -985,9 +994,9 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": ASK_SYSTEM + (("\n\nOwner instructions for this box:\n" + str(instructions).strip()) if instructions and str(instructions).strip() else "")},
+            {"role": "system", "content": ASK_SYSTEM + (("\n\nOwner instructions for this box:\n" + _as_text(instructions).strip()) if instructions and _as_text(instructions).strip() else "")},
             {"role": "user", "content":
-             "Question:\n" + str(question or "") + "\n\nOutput:\n" + str(output_text or "")},
+             "Question:\n" + _as_text(question) + "\n\nOutput:\n" + _as_text(output_text)},
         ],
     }
     req = Request(
