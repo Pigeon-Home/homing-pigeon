@@ -1567,3 +1567,31 @@ class SeenWriteFaultTest(unittest.TestCase):
             self.assertEqual(errors, [])
             seen = load_seen(path)
             self.assertTrue(seen)
+
+
+class LogFaultTest(unittest.TestCase):
+    """Finding: log() printed with no guard.
+
+    A closed stdout raises from print. That happened while holding
+    the mail lock and failed the poll cycle. Logging must not kill
+    the runner. The print is swallowed. The file still gets the line.
+    """
+
+    def test_closed_stdout_does_not_raise(self):
+        from runner.runner import log
+        import io
+        with tempfile.TemporaryDirectory() as d:
+            runner_mod = __import__("runner.runner", fromlist=["runner"])
+            old = runner_mod._LOG_FILE
+            runner_mod._LOG_FILE = os.path.join(d, "runner.log")
+            try:
+                with mock.patch("sys.stdout", io.StringIO()) as out:
+                    out.close()
+                    with mock.patch("builtins.print", side_effect=ValueError("closed")):
+                        log("hello")
+                        log({"not": "a string"})
+            finally:
+                runner_mod._LOG_FILE = old
+            with open(os.path.join(d, "runner.log"), encoding="utf-8") as fh:
+                blob = fh.read()
+            self.assertIn("hello", blob)

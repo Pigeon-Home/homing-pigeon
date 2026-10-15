@@ -2099,7 +2099,10 @@ def log(msg: str, level: str = "INFO"):
                 notice = (f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} "
                           f"[INFO] log: {_LOG_DROPPED} line(s) suppressed "
                           f"this minute")
-                print(notice, flush=True)
+                try:
+                    print(notice, flush=True)
+                except Exception:
+                    pass
                 if _LOG_FILE:
                     append_bounded_log(_LOG_FILE, notice)
             _LOG_MINUTE = now
@@ -2110,8 +2113,16 @@ def log(msg: str, level: str = "INFO"):
             _LOG_DROPPED += 1
             return
         _LOG_COUNT += 1
-        line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} [{level}] {msg}"
-        print(line, flush=True)
+        try:
+            text = msg if isinstance(msg, str) else str(msg)
+        except Exception:
+            text = "<unprintable>"
+        line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} [{level}] {text}"
+        # A closed stdout must not kill the runner. The file still gets it.
+        try:
+            print(line, flush=True)
+        except Exception:
+            pass
         if _LOG_FILE:
             append_bounded_log(_LOG_FILE, line)
 
