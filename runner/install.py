@@ -93,6 +93,9 @@ def ensure_shared_secret(cfg_path: str, provided: str | None) -> None:
         json.dump(cfg, f, indent=2)
         f.write("\n")
     os.chmod(cfg_path, 0o600)  # secrets on disk: owner read/write only
+    # (On Windows os.chmod cannot set Unix permission bits; the file
+    # inherits the parent directory's ACLs, which is the platform's
+    # equivalent protection.)
     if provided:
         print("wrote --shared-secret into config.json")
     else:

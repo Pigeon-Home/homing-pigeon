@@ -323,7 +323,7 @@ def judge_job(cfg, job):
     """Return (verdict, reasons). Only when judge in advisory/enforce."""
     mode = cfg.get("judge") or "off"
     if mode not in ("advisory", "enforce"):
-        return "ok", []
+        return "pass", []
     reasons = []
     script = job.get("script") or ""
     for bad in ("rm -rf /", "rm -rf ~", ":(){ :|:& };:", "mkfs"):

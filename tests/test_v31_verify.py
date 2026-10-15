@@ -196,13 +196,13 @@ class InferenceGateTest(unittest.TestCase):
             inf, "q", "out", 2000,
             opener=_CaptureOpener("see bearer abcdef"),
         )
-        self.assertEqual(got, {"rejected": "sanitization"})
+        self.assertEqual(got, {"op": "ask", "rejected": "sanitization"})
         # An empty pattern map falls back to the builtin families.
         got = ask_model(
             inf, "q", "out", 2000, patterns={},
             opener=_CaptureOpener("-----BEGIN PRIVATE KEY-----\n"),
         )
-        self.assertEqual(got, {"rejected": "sanitization"})
+        self.assertEqual(got, {"op": "ask", "rejected": "sanitization"})
 
     def test_non_loopback_and_transport_errors(self):
         self.assertEqual(
@@ -347,7 +347,7 @@ class AnswerQueryBranchTest(unittest.TestCase):
         finally:
             rr._default_inference_open = orig
         self.assertEqual(spent, 1)
-        self.assertEqual(answers[0], {"rejected": "sanitization"})
+        self.assertEqual(answers[0], {"op": "ask", "rejected": "sanitization"})
         self.assertIn("summarize", opener.calls[0]["body"]["messages"][1]["content"])
         self.assertIn("line", opener.calls[0]["body"]["messages"][1]["content"])
 
@@ -591,7 +591,7 @@ class QueryMailVerifyTest(unittest.TestCase):
             rr._default_inference_open = orig
         raw = smtp.sent[0].get_content()
         body = verify_body(raw, SECRET)
-        self.assertEqual(body["answers"][0], {"rejected": "sanitization"})
+        self.assertEqual(body["answers"][0], {"op": "ask", "rejected": "sanitization"})
         self.assertNotIn("PRIVATE KEY", raw)
         self.assertEqual(load_retained(self.tmp, "ask-job")["spent"], 1)
         self.assertEqual(len(opener.calls), 1)
@@ -642,8 +642,9 @@ class InstallVerifyTest(unittest.TestCase):
             self.assertGreaterEqual(len(value), 32)
             self.assertNotIn(value, text)
         self.assertFalse(os.path.exists(cfg_path + ".tmp"))
-        # Windows does not honor Unix mode bits. chmod(0o600) is a
-        # no-op there and stat comes back 0o666. Require 0o600 on POSIX.
+        # Windows does not honor Unix mode bits: chmod(0o600) is a
+        # no-op there and stat comes back 0o666. Require 0o600 on POSIX;
+        # on Windows the file inherits the parent directory's ACLs.
         if os.name != "nt":
             mode = stat.S_IMODE(os.stat(cfg_path).st_mode)
             self.assertEqual(mode, 0o600)
@@ -653,11 +654,11 @@ class JudgeOffPathTest(unittest.TestCase):
     def test_off_ignores_denylist_and_ping_still_pongs(self):
         verdict, reasons = judge_job(
             {"judge": "off"}, {"kind": "ping", "script": "rm -rf /"})
-        self.assertEqual((verdict, reasons), ("ok", []))
+        self.assertEqual((verdict, reasons), ("pass", []))
         verdict, reasons = judge_job(
             {}, {"kind": "ping", "script": "mkfs.ext4 /dev/sda",
                  "script_url": "https://example.invalid/s"})
-        self.assertEqual(verdict, "ok")
+        self.assertEqual(verdict, "pass")
         self.assertEqual(reasons, [])
 
         verdict, reasons = judge_job(
@@ -666,7 +667,7 @@ class JudgeOffPathTest(unittest.TestCase):
              "script_url": "https://example.invalid/s",
              "files": ["not-a-dict", {"name": "safe.py"}]},
         )
-        self.assertEqual((verdict, reasons), ("ok", []))
+        self.assertEqual((verdict, reasons), ("pass", []))
 
         tmp = tempfile.mkdtemp(prefix="hp-joff-")
         cfg = {

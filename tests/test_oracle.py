@@ -54,7 +54,7 @@ class JudgmentTest(unittest.TestCase):
     def test_judge_off_by_default(self):
         from runner.runner import judge_job
         v, r = judge_job({}, {"script": "rm -rf /"})
-        self.assertEqual(v, "ok")
+        self.assertEqual(v, "pass")
         self.assertEqual(r, [])
 
     def test_judge_detects_denylist(self):
