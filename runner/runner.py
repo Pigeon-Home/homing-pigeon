@@ -187,7 +187,16 @@ def _json_safe(value):
         return {str(k): _json_safe(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [_json_safe(v) for v in value]
-    return value
+    if isinstance(value, (set, frozenset)):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value).decode("utf-8", "replace")
+    if isinstance(value, (str, int, bool)) or value is None:
+        return value
+    try:
+        return str(value)
+    except Exception:
+        return None
 
 
 def sign_payload(payload: dict, secret: str) -> str:
@@ -268,6 +277,8 @@ def _in_root_object_at(norm: str, start: int, sig_at: int) -> bool:
 def verify_body(body: str, secret: str) -> dict:
     # Trailing whitespace is not signed. Surrounding text is ignored:
     # only the JSON object that ends in the signature is checked.
+    if not isinstance(secret, str):
+        raise ValueError("secret must be a string")
     norm = _normalize(body).rstrip()
     raw, sig = _extract_signed(norm)
     expect = hmac.new(secret.encode("utf-8"), raw.encode("utf-8"),
@@ -450,9 +461,11 @@ def verify_body_keyed(body_text: str, secrets: dict):
     if not isinstance(payload, dict):
         raise ValueError("signed body must be a JSON object")
     key_id = payload.get("key_id") or ""
-    if key_id not in secrets:
+    if not isinstance(key_id, str) or key_id not in secrets:
         raise ValueError(f"unknown key_id {key_id!r}")
     secret = secrets[key_id]
+    if not isinstance(secret, str):
+        raise ValueError("secret must be a string")
     expect = hmac.new(secret.encode("utf-8"), raw.encode("utf-8"),
                       hashlib.sha384).hexdigest()
     if not hmac.compare_digest(expect, sig.lower()):
@@ -3193,8 +3206,29 @@ def oracle_context(base_dir, limit=6, max_chars=4000) -> str:
         except OSError:
             continue
     rows.sort(reverse=True)
+    if limit is None:
+        n = None
+    elif isinstance(limit, bool):
+        n = 6
+    else:
+        try:
+            n = int(limit)
+        except (TypeError, ValueError):
+            n = 6
+        if n < 0:
+            n = 0
+    if isinstance(max_chars, bool):
+        cap = 4000
+    else:
+        try:
+            cap = int(max_chars)
+        except (TypeError, ValueError):
+            cap = 4000
+        if cap < 0:
+            cap = 0
     parts = []
-    for _mtime, path, job_id in rows[:limit]:
+    chosen = rows if n is None else rows[:n]
+    for _mtime, path, job_id in chosen:
         try:
             with open(path, encoding="utf-8") as fh:
                 data = json.load(fh)
@@ -3210,7 +3244,7 @@ def oracle_context(base_dir, limit=6, max_chars=4000) -> str:
     blob = "\n\n".join(parts).strip()
     if not blob:
         return "(no job output retained yet)"
-    return blob[:max_chars]
+    return blob[:cap]
 
 
 def oracle_page(token: str, model: str, ready: bool) -> str:

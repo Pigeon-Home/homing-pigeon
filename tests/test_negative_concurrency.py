@@ -1715,6 +1715,76 @@ class BadBaseDirPoisonTest(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class SignAndContextShapeTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, signing and Oracle context, no poll):
+
+    sign_payload json.dumps'd a set or bytes and raised TypeError, so
+    a result carrying that value could not be signed. verify_body_keyed
+    called .encode on a secret that was an int or bytes, which is not
+    ValueError, so the worker raised and the message was retried.
+    oracle_context sliced with limit "six" and max_chars "lots" and
+    raised TypeError. Six threads all died.
+
+    A set becomes a list, bytes become text, a bad secret is a
+    ValueError, and a word limit falls back to the default.
+    """
+
+    def test_bad_sign_and_context_do_not_raise(self):
+        from runner.runner import oracle_context, sign_payload, verify_body_keyed
+        body = sign_payload({"notes": {1, 2}, "blob": b"hi"}, SECRET)
+        self.assertIn("1", body)
+        self.assertIn("2", body)
+        self.assertIn("hi", body)
+        with self.assertRaises(ValueError):
+            verify_body_keyed(body, {"": 5})
+        with self.assertRaises(ValueError):
+            verify_body_keyed(body, {"": SECRET.encode()})
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "retained"))
+            with open(os.path.join(d, "retained", "job-a.json"), "w", encoding="utf-8") as fh:
+                json.dump({"stdout": "hello", "kind": "ping"}, fh)
+            text = oracle_context(d, limit="six", max_chars="lots")
+            self.assertIn("hello", text)
+            self.assertEqual(oracle_context(d, max_chars=-5), "")
+
+    def test_concurrent_sign_and_context_do_not_raise(self):
+        import threading
+        from runner.runner import oracle_context, sign_payload, verify_body_keyed
+        errors = []
+
+        def hammer():
+            try:
+                body = sign_payload({"notes": {1}, "blob": b"x"}, SECRET)
+                try:
+                    verify_body_keyed(body, {"": 5})
+                except ValueError:
+                    pass
+                with tempfile.TemporaryDirectory() as d:
+                    os.makedirs(os.path.join(d, "retained"))
+                    oracle_context(d, limit="six", max_chars="lots")
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_signing(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-sign",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-sign", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-sign", seen)
+
 
 class MoreBadBasePoisonTest(unittest.TestCase):
     """Findings (2026-10-15 simulation):
