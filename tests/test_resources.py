@@ -6,6 +6,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
@@ -73,8 +74,17 @@ class CheckTest(unittest.TestCase):
     def test_cooldown_suppresses(self):
         with tempfile.TemporaryDirectory() as d:
             cfg = {"resources": {"threshold": 0.0001, "cooldown_sec": 3600}}
-            self.assertIsNotNone(RS.check_resources(cfg, d))
-            self.assertIsNone(RS.check_resources(cfg, d))
+            # Pin the samplers: on a loaded box the real CPU reads 1.0
+            # on the second call (no baseline the first time, so no
+            # cooldown entry yet) and the test flakes.
+            with mock.patch.object(RS, "_read_proc_stat",
+                                   return_value=(1000, 2000)), \
+                 mock.patch.object(RS, "_mem_fraction",
+                                   return_value=0.5), \
+                 mock.patch.object(RS, "_disk_fraction",
+                                   return_value=0.5):
+                self.assertIsNotNone(RS.check_resources(cfg, d))
+                self.assertIsNone(RS.check_resources(cfg, d))
 
     def test_disabled(self):
         with tempfile.TemporaryDirectory() as d:
