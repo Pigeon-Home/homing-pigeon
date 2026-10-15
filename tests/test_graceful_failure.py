@@ -2483,5 +2483,52 @@ class RequiresDictGracefulTest(unittest.TestCase):
         for e in errors:
             self.assertIsInstance(e, FileNotFoundError)
 
+
+class WorkerIdGracefulTest(unittest.TestCase):
+    """Finding: worker_id is read on offer. A non-string id must
+    not crash.
+    """
+
+    def test_offer_odd_worker_id(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "t", "kind": "ping"})
+        for wid in (None, "", 42, {"id": "w"}, ["w"], "w"):
+            try:
+                b.offer(wid if isinstance(wid, str) else "", ["ping"])
+            except Exception as e:
+                self.fail(f"offer crashed on worker {wid!r}: {e}")
+
+    def test_offer_dict_worker_direct(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "t2", "kind": "ping"})
+        try:
+            b.offer({"id": "w"}, ["ping"])
+        except TypeError:
+            self.fail("dict worker id still raises TypeError")
+        except Exception as e:
+            self.fail(f"offer crashed on dict worker: {e}")
+
+    def test_concurrent_odd_workers(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "t3", "kind": "ping"})
+        errors = []
+
+        def one(i):
+            try:
+                b.offer(i if i % 2 else f"w{i}", ["ping"])
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
