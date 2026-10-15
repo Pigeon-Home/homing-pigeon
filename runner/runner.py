@@ -599,7 +599,12 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
 
     m = re.search(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)", subject, re.I)
     if not m:
-        reject("subject does not match job pattern")
+        # Result emails and other non-job mail share the [HOMING-PIGEON]
+        # prefix. Mark them seen quietly so the console is not spammed
+        # with "subject does not match job pattern" on every poll.
+        log(f"skipping seq {seq}: subject does not match job pattern", "DEBUG")
+        if opts is None or not opts.dry_run:
+            mark_seen(imap, seq)
         return
     job_id = m.group(1)
 
