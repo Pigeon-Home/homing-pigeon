@@ -1960,3 +1960,55 @@ class BoardRateAndResourceClockTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-board", seen)
+
+
+class NonSerializablePoisonTest(unittest.TestCase):
+    """Findings (2026-10-15 simulation):
+
+    1. Board.save json.dump'd self.tasks with no default. A payload
+       containing object() raised TypeError and stopped the board.
+       (Remote also fixed this with _json_safe.)
+    2. save_retained json.dump'd the payload with no default. A
+       non-serializable stdout raised TypeError and stopped retention.
+
+    save_retained now uses default=str. Poison values are stringified
+    and processing continues.
+    """
+
+    def test_non_serializable_payload_does_not_raise(self):
+        from runner.runner import Board, save_retained, load_retained
+        with tempfile.TemporaryDirectory() as d:
+            board = Board(os.path.join(d, "board.json"))
+            ok, _ = board.submit({"task_id": "t1", "payload": object()})
+            self.assertTrue(ok)
+            save_retained(d, "j", {"stdout": object(), "stderr": float("nan")})
+            data = load_retained(d, "j")
+            self.assertIsInstance(data, dict)
+            self.assertIn("stdout", data)
+
+    def test_concurrent_non_serializable_does_not_raise(self):
+        import threading
+        from runner.runner import Board, save_retained
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                board = Board(os.path.join(d, "board.json"))
+                for i in range(8):
+                    try:
+                        board.submit({
+                            "task_id": f"t{threading.get_ident()}-{i}",
+                            "payload": object(),
+                        })
+                        save_retained(d, f"j{threading.get_ident()}-{i}",
+                                      {"stdout": object()})
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
