@@ -133,9 +133,11 @@ def check_resources(cfg, base_dir, now=None):
     crossed (per-resource cooldown), else None. Always updates state
     so CPU has a baseline next cycle."""
     now = time.time() if now is None else now
+    if not isinstance(cfg, dict):
+        return None
     try:
         rcfg = parse_resources(cfg)
-    except RuntimeError:
+    except (RuntimeError, AttributeError, TypeError):
         return None
     if not rcfg["enabled"]:
         return None

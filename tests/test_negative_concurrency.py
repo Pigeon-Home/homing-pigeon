@@ -663,3 +663,60 @@ class ExtensionBudgetAndPrunePoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class NameOracleResourcesPoisonTest(unittest.TestCase):
+    """Findings (2026-10-15 simulation):
+
+    1. windows_reserved_name assumed name was a string. None, int, list,
+       or dict raised AttributeError on .replace.
+    2. record_oracle_turn did (ans or {}).get(...). A string ans is
+       truthy, so .get raised AttributeError.
+    3. resources.check_resources called parse_resources which did
+       cfg.get. None cfg raised AttributeError (only RuntimeError was
+       caught).
+
+    All hardened. Poison inputs return safe defaults and do not stop
+    processing.
+    """
+
+    def test_name_oracle_resources_tolerate_poison(self):
+        from runner.runner import windows_reserved_name, record_oracle_turn
+        from runner import resources
+        self.assertFalse(windows_reserved_name(None))
+        self.assertFalse(windows_reserved_name(5))
+        self.assertFalse(windows_reserved_name(["a"]))
+        self.assertFalse(windows_reserved_name({}))
+        self.assertTrue(windows_reserved_name("CON"))
+        with tempfile.TemporaryDirectory() as d:
+            record_oracle_turn(d, {}, "q", "bad")
+            record_oracle_turn(d, {}, 5, None)
+            record_oracle_turn(d, None, None, {"answer": 5, "rejected": 1})
+            self.assertIsNone(resources.check_resources(None, d))
+            self.assertIsNone(resources.check_resources({"resources": None}, d))
+            self.assertIsNone(resources.check_resources({"resources": "bad"}, d))
+
+    def test_concurrent_name_and_resources_do_not_raise(self):
+        import threading
+        from runner.runner import windows_reserved_name, record_oracle_turn
+        from runner import resources
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                for _ in range(15):
+                    try:
+                        windows_reserved_name(None)
+                        windows_reserved_name(5)
+                        record_oracle_turn(d, {}, None, "bad")
+                        resources.check_resources(None, d)
+                        resources.check_resources({"resources": {"enabled": True, "threshold": "high"}}, d)
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])

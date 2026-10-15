@@ -1628,6 +1628,8 @@ def windows_reserved_name(name: str) -> bool:
     Windows opens these as devices, or rewrites the trailing dot, no
     matter which directory they are joined onto.
     """
+    if not isinstance(name, str):
+        return False
     leaf = name.replace("/", "\\").rsplit("\\", 1)[-1]
     if not leaf or leaf.endswith(".") or leaf.endswith(" ") or ":" in leaf:
         return True
@@ -3117,17 +3119,25 @@ def record_oracle_turn(base_dir, cfg, question, ans, event="ask"):
         return
     patterns = _redact_patterns(cfg or {})
     question, _q = redact_text(question if isinstance(question, str) else "", patterns)
-    raw_answer = (ans or {}).get("answer") if isinstance(ans, dict) else ""
+    if not isinstance(ans, dict):
+        ans = {}
+    raw_answer = ans.get("answer") or ""
     if not isinstance(raw_answer, str):
         raw_answer = ""
     answer, _a = redact_text(raw_answer, patterns)
+    rejected = ans.get("rejected") or ""
+    model = ans.get("model") or ""
+    if not isinstance(rejected, str):
+        rejected = ""
+    if not isinstance(model, str):
+        model = ""
     rec = {
         "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "event": event,
+        "event": event if isinstance(event, str) else "ask",
         "question": question[:2000],
         "answer": answer[:4000],
-        "rejected": (ans or {}).get("rejected") or "",
-        "model": (ans or {}).get("model") or "",
+        "rejected": rejected,
+        "model": model,
     }
     path = os.path.join(base_dir, "oracle-chat.jsonl")
     append_bounded_log(path, json.dumps(rec, ensure_ascii=False),
