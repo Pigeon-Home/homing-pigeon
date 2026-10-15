@@ -231,6 +231,10 @@ The shared secret for authentication in the protocol is "YOUR_SECRET_STRING"
 Do a test routine to see if this all works, execute a runbook with the job of displaying the value of the system clock and show me the value here.
 ```
 
+All items in one prompt, as it contains a shared secret. A follow-up
+prompt, or a long runbook the SI iterates over, may be a new context.
+So doing it this way can make it go faster, depending on cloud SI.
+
 If it replies with the correct date and time from the runner's
 machine, it passed. If nothing comes back, the SI failed somewhere:
 wrong signature, wrong subject, wrong address. The clock does not
