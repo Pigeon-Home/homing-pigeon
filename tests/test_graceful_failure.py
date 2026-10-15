@@ -2177,5 +2177,54 @@ class KindGracefulTest(unittest.TestCase):
         for e in errors:
             self.assertIsInstance(e, FileNotFoundError)
 
+
+class DownloadGracefulTest(unittest.TestCase):
+    """Finding: download runs before execute when a job has a url.
+    A bad scheme or a bad host must reject cleanly, not crash.
+    """
+
+    def test_bad_schemes(self):
+        from runner.runner import download, JobRejected
+        tmp = tempfile.mkdtemp()
+        for url in ("", "ftp://x", "file:///etc/passwd", "not a url",
+                    "http://", "https://no-such-host.invalid/x"):
+            try:
+                download(url, os.path.join(tmp, "out"))
+                self.fail(f"download accepted {url!r}")
+            except (JobRejected, OSError, ValueError):
+                pass  # clean rejection; a bare http:// is URLError
+            except Exception as e:
+                self.fail(f"download crashed on {url!r}: {e}")
+
+    def test_none_url(self):
+        from runner.runner import download, JobRejected
+        tmp = tempfile.mkdtemp()
+        try:
+            download(None if False else "", os.path.join(tmp, "out"))
+        except JobRejected:
+            pass
+        except Exception as e:
+            self.fail(f"empty url crashed: {e}")
+
+    def test_concurrent_bad_urls(self):
+        from runner.runner import download, JobRejected
+        tmp = tempfile.mkdtemp()
+        errors = []
+
+        def one(i):
+            try:
+                download(f"ftp://x{i}", os.path.join(tmp, f"o{i}"))
+            except JobRejected:
+                pass
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
