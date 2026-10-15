@@ -224,7 +224,8 @@ def load_alerts(base_dir: str, sensor=None, severity_floor=None,
         try:
             with open(path, "r", encoding="utf-8") as f:
                 lines = f.readlines()
-        except OSError:
+        except (OSError, UnicodeDecodeError):
+            # Corrupt or non-UTF-8 store must not crash the poll or query path.
             return []
     since_dt = _parse_ts(since) if since else None
     until_dt = _parse_ts(until) if until else None
