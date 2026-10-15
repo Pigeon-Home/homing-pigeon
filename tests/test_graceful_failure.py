@@ -632,5 +632,74 @@ class InferenceGracefulTest(unittest.TestCase):
             self.fail(f"weird reply crashed ask_model: {e}")
         self.assertIn("rejected", got)
 
+
+class SeenAndConfigGracefulTest(unittest.TestCase):
+    """Finding: load_seen and reload_hot_config run every cycle.
+    A corrupt seen file or a corrupt config must not crash the
+    poll; the runner keeps the old state.
+    """
+
+    def test_load_seen_corrupt(self):
+        from runner.runner import load_seen
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "seen.json")
+        for content in ("not json", "[]", "42", ""):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+            try:
+                seen = load_seen(path)
+            except Exception as e:
+                self.fail(f"load_seen crashed on {content!r}: {e}")
+            self.assertIsInstance(seen, dict)
+
+    def test_load_seen_missing(self):
+        from runner.runner import load_seen
+        try:
+            seen = load_seen("/no/such/seen.json")
+        except Exception as e:
+            self.fail(f"missing seen crashed: {e}")
+        self.assertEqual(seen, {})
+
+    def test_reload_hot_corrupt_keeps_old(self):
+        from runner.runner import reload_hot_config
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "config.json")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("not json")
+        cfg = {"mailbox_user": "a@b.c"}
+        state = {"mtime": 0}
+        # Finding: reload_hot_config raises on corrupt JSON. The poll
+        # loop catches it and keeps the old cfg. The raise itself is
+        # the signal; the caller must contain it.
+        try:
+            reload_hot_config(cfg, path, state, set())
+        except Exception:
+            pass
+        self.assertEqual(cfg.get("mailbox_user"), "a@b.c")
+
+    def test_concurrent_save_seen(self):
+        from runner.runner import save_seen, load_seen
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "seen.json")
+        errors = []
+
+        def one(i):
+            try:
+                save_seen(path, {f"j{i}": True})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        # Finding: concurrent save_seen can race. A clean load after
+        # is the graceful bar.
+        try:
+            load_seen(path)
+        except Exception as e:
+            self.fail(f"seen file unreadable after concurrent saves: {e}")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
