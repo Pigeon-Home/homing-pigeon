@@ -51,6 +51,8 @@ def _to_ts(value):
 
 def parse_dri(cfg) -> dict:
     """Validate cfg["dri"]. Disabled by default. Raises RuntimeError."""
+    if not isinstance(cfg, dict):
+        raise RuntimeError("config error: config must be an object")
     raw = cfg.get("dri") or {}
     if not isinstance(raw, dict):
         raise RuntimeError("config error: dri must be an object")

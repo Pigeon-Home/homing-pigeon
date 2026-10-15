@@ -56,6 +56,8 @@ def parse_sensors(cfg) -> dict:
     Unknown profile keys are kept: the profile is the operator's
     tuning surface for heuristics that do not exist yet.
     """
+    if not isinstance(cfg, dict):
+        raise RuntimeError("config error: config must be an object")
     raw = cfg.get("sensors") or {}
     if not isinstance(raw, dict):
         raise RuntimeError("config error: sensors must be an object")

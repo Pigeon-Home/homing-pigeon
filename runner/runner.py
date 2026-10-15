@@ -261,6 +261,8 @@ def verify_body(body: str, secret: str) -> dict:
 
 def build_secrets(cfg) -> dict:
     """key_id -> secret. Default key is "". Every secret passes entropy gate."""
+    if not isinstance(cfg, dict):
+        raise RuntimeError("config error: config must be an object")
     secrets = {}
     default = cfg.get("shared_secret") or ""
     if not default:
@@ -289,6 +291,8 @@ def build_key_policies(cfg) -> dict:
     allowed_interpreters, max_timeout_sec, allowed_script_sha384.
     Malformed policies fail closed at startup.
     """
+    if not isinstance(cfg, dict):
+        raise RuntimeError("config error: config must be an object")
     raw = cfg.get("key_policies") or {}
     if not isinstance(raw, dict):
         raise RuntimeError("config error: key_policies must be an object")
@@ -368,6 +372,10 @@ def check_key_policy(policies: dict, key_id: str, cfg, job):
     effective interpreter and timeout (job value or configured
     default), mirroring execute_job.
     """
+    if not isinstance(policies, dict):
+        return "invalid key policy map"
+    if not isinstance(job, dict):
+        return "invalid job"
     pol = policies.get(key_id)
     if not pol:
         if key_id != "" and (cfg or {}).get("key_policies_default_deny"):
@@ -1722,6 +1730,10 @@ def _safe_job_id(job_id: str) -> str:
 
 
 def execute_job(cfg, job: dict, base_dir: str) -> dict:
+    if not isinstance(job, dict):
+        raise JobRejected("job must be an object")
+    if not isinstance(cfg, dict):
+        cfg = {}
     job_id = _safe_job_id(job.get("job_id", ""))
     work = os.path.join(base_dir, "work", job_id)
     try:

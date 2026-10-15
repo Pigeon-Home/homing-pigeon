@@ -720,3 +720,82 @@ class NameOracleResourcesPoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class ConfigAndJobShapePoisonTest(unittest.TestCase):
+    """Findings (2026-10-15 simulation):
+
+    1. execute_job assumed job was a dict. None/str/int raised
+       AttributeError instead of a clean JobRejected.
+    2. build_secrets and build_key_policies assumed cfg was a dict.
+       None/str raised AttributeError (would stop a poll cycle).
+    3. check_key_policy assumed policies and job were dicts. None
+       raised AttributeError.
+    4. senses.parse_sensors and dri.parse_dri assumed cfg was a dict.
+       None raised AttributeError.
+
+    All hardened. Non-dict inputs now raise RuntimeError (config) or
+    JobRejected (job), or return a reason string. Processing does not
+    stop with an unhandled AttributeError.
+    """
+
+    def test_non_dict_job_and_cfg_do_not_attribute_error(self):
+        from runner.runner import (
+            execute_job, JobRejected, build_secrets, build_key_policies,
+            check_key_policy,
+        )
+        from runner import senses, dri
+        with tempfile.TemporaryDirectory() as d:
+            for job in (None, "bad", 5, []):
+                with self.assertRaises(JobRejected):
+                    execute_job({}, job, d)
+        for cfg in (None, "bad", 5):
+            with self.assertRaises(RuntimeError):
+                build_secrets(cfg)
+            with self.assertRaises(RuntimeError):
+                build_key_policies(cfg)
+            with self.assertRaises(RuntimeError):
+                senses.parse_sensors(cfg)
+            with self.assertRaises(RuntimeError):
+                dri.parse_dri(cfg)
+        self.assertIsInstance(check_key_policy(None, "k", {}, {}), str)
+        self.assertIsInstance(check_key_policy({}, "k", {}, None), str)
+
+    def test_concurrent_shape_checks_do_not_raise_unexpected(self):
+        import threading
+        from runner.runner import (
+            execute_job, JobRejected, build_secrets, check_key_policy,
+        )
+        from runner import senses, dri
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                for _ in range(8):
+                    try:
+                        try:
+                            execute_job({}, None, d)
+                        except JobRejected:
+                            pass
+                        try:
+                            build_secrets(None)
+                        except RuntimeError:
+                            pass
+                        check_key_policy(None, "k", {}, None)
+                        try:
+                            senses.parse_sensors("bad")
+                        except RuntimeError:
+                            pass
+                        try:
+                            dri.parse_dri(None)
+                        except RuntimeError:
+                            pass
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
