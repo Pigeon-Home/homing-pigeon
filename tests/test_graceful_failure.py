@@ -1755,5 +1755,67 @@ class AttestationGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class QueryOpsGracefulTest(unittest.TestCase):
+    """Finding: grep and tail run on every result that asks. A bad
+    pattern or a bad line count must not stop the rest of the list.
+    """
+
+    def test_grep_bad_pattern(self):
+        queries = [
+            {"op": "grep", "pattern": "("},
+            {"op": "grep", "pattern": None},
+            {"op": "grep"},
+            {"op": "tail", "lines": 2},
+        ]
+        try:
+            answers, spent = answer_queries(
+                queries,
+                {"stdout": "a\nb\nc", "stderr": ""},
+                {},
+                8,
+                cfg={},
+            )
+        except Exception as e:
+            self.fail(f"bad grep stopped the list: {e}")
+        self.assertEqual(spent, 4)
+        self.assertEqual(answers[-1].get("op"), "tail")
+
+    def test_tail_bad_lines(self):
+        for lines in (None, "nope", -1, 0, 10**9):
+            try:
+                answers, spent = answer_queries(
+                    [{"op": "tail", "lines": lines}],
+                    {"stdout": "a\nb", "stderr": ""},
+                    {},
+                    4,
+                    cfg={},
+                )
+            except Exception as e:
+                self.fail(f"tail lines {lines!r} crashed: {e}")
+            self.assertEqual(spent, 1)
+
+    def test_concurrent_grep(self):
+        errors = []
+
+        def one():
+            try:
+                answer_queries(
+                    [{"op": "grep", "pattern": "("}, {"op": "tail", "lines": 1}],
+                    {"stdout": "x", "stderr": ""},
+                    {},
+                    4,
+                    cfg={},
+                )
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
