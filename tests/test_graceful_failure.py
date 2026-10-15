@@ -2258,5 +2258,48 @@ class NaNPriorityGracefulTest(unittest.TestCase):
         if offered:
             self.assertIn(offered.get("task_id"), ("nan", "ok"))
 
+
+class ResultViewGracefulTest(unittest.TestCase):
+    """Finding: the result view ceiling is applied on every result.
+    An odd ceiling or an odd requested view must not crash.
+    """
+
+    def test_odd_ceiling(self):
+        from runner.runner import apply_result_policy
+        for ceiling in (None, "", "nope", 42, "attested", "full"):
+            try:
+                apply_result_policy(
+                    {"max_result_view": ceiling},
+                    {"result_policy": {"view": "full"}},
+                    {"stdout": "hi", "stderr": ""},
+                    {},
+                    True,
+                )
+            except Exception as e:
+                self.fail(f"ceiling {ceiling!r} crashed: {e}")
+
+    def test_odd_requested_view(self):
+        from runner.runner import apply_result_policy
+        for view in (None, "", "sideways", 12, ["full"]):
+            try:
+                apply_result_policy(
+                    {"max_result_view": "full"},
+                    {"result_policy": {"view": view}},
+                    {"stdout": "hi", "stderr": ""},
+                    {},
+                    True,
+                )
+            except Exception as e:
+                self.fail(f"view {view!r} crashed: {e}")
+
+    def test_raw_lines_odd(self):
+        from runner.runner import _raw_lines_allowed
+        for view in (None, "", "full", "attested", 42):
+            try:
+                got = _raw_lines_allowed(view if isinstance(view, str) else "")
+            except Exception as e:
+                self.fail(f"raw lines crashed on {view!r}: {e}")
+            self.assertIsInstance(got, bool)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
