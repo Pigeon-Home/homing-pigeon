@@ -2068,3 +2068,17 @@ class WorkerIdFaultTest(unittest.TestCase):
             chosen = board.offer({"not": "a string"}, [], "",
                                  {"worker_compartments": {"w": ["a"]}})
             self.assertIsNone(chosen)
+
+
+class RateKeyFaultTest(unittest.TestCase):
+    """Finding: a dict key id crashed the rate limit.
+
+    store.get on a dict raises TypeError. The query stopped.
+    A non-string key id is the default key. The check continues.
+    """
+
+    def test_dict_key_id_does_not_crash(self):
+        from runner.runner import check_rate_limit
+        self.assertTrue(check_rate_limit({"not": "a string"},
+                                         {"max_queries_per_hour": 5}))
+        self.assertTrue(check_rate_limit(None, {"max_queries_per_hour": 5}))

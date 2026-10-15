@@ -1298,6 +1298,9 @@ def check_rate_limit(key_id, cfg, path=None):
             store = _QUERY_TIMES
         if not isinstance(store, dict):
             store = {}
+        # A dict key id raises TypeError on get. That stopped the query.
+        if not isinstance(key_id, str):
+            key_id = ""
         window = _live_times(store.get(key_id, []), now)
         if len(window) >= limit:
             store[key_id] = window
