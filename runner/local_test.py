@@ -235,17 +235,6 @@ document.getElementById('f').onsubmit = async (e) => {
             status = send_via_email(self.cfg, si_text)
             self._send(200, si_text + "\n(" + status + ")", "text/plain; charset=utf-8")
             return
-        if self.path == "/socket":
-            transport = getattr(self, "socket_transport", None)
-            if transport is None:
-                text = "socket transport not started"
-            else:
-                try:
-                    text = transport.send(question)
-                except Exception as e:
-                    text = f"socket error: {e}"
-            self._send(200, text, "text/plain; charset=utf-8")
-            return
         self._send(404, "not found", "text/plain")
 
 
@@ -318,99 +307,6 @@ def send_via_email(cfg, question: str) -> str:
     except Exception as e:
         return f"email send failed: {e}"
     return f"emailed job {job['job_id']}"
-
-
-class LocalSocketTransport:
-    """High-throughput loopback transport for the local SI test.
-
-    One TCP listener on 127.0.0.1. The SI connects and writes a
-    length-prefixed signed blob. A background thread reads blobs and
-    runs them through the Oracle path. No email, no queue broker.
-    Useful when you want many asks per second on one machine.
-    """
-
-    def __init__(self, cfg, port=8766):
-        self.cfg = cfg
-        self.port = port
-        self._stop = threading.Event()
-        self._thread = None
-        self.answers = []
-        self._lock = threading.Lock()
-
-    def start(self):
-        import socket
-        self._sock = socket.socket()
-        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self._sock.bind(("127.0.0.1", self.port))
-        self._sock.listen(16)
-        self._sock.settimeout(0.5)
-        self._thread = threading.Thread(target=self._serve, daemon=True)
-        self._thread.start()
-
-    def _serve(self):
-        import socket
-        while not self._stop.is_set():
-            try:
-                conn, _ = self._sock.accept()
-            except socket.timeout:
-                continue
-            except Exception:
-                break
-            threading.Thread(target=self._handle, args=(conn,), daemon=True).start()
-
-    def _handle(self, conn):
-        import struct
-        try:
-            hdr = self._readn(conn, 4)
-            if not hdr:
-                return
-            (n,) = struct.unpack("!I", hdr)
-            blob = self._readn(conn, n)
-            if not blob:
-                return
-            question = blob.decode("utf-8", "replace")
-            ans = answer_as_oracle(self.cfg, question)
-            text = ans.get("answer") or f"rejected: {ans.get('rejected', ans)}"
-            out = text.encode("utf-8")
-            conn.sendall(struct.pack("!I", len(out)) + out)
-            with self._lock:
-                self.answers.append(text)
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
-
-    @staticmethod
-    def _readn(conn, n):
-        buf = b""
-        while len(buf) < n:
-            chunk = conn.recv(n - len(buf))
-            if not chunk:
-                return b""
-            buf += chunk
-        return buf
-
-    def send(self, question: str) -> str:
-        """Client side: connect, send one question, read the answer."""
-        import socket
-        import struct
-        s = socket.create_connection(("127.0.0.1", self.port), timeout=30)
-        try:
-            data = question.encode("utf-8")
-            s.sendall(struct.pack("!I", len(data)) + data)
-            hdr = self._readn(s, 4)
-            (n,) = struct.unpack("!I", hdr)
-            return self._readn(s, n).decode("utf-8", "replace")
-        finally:
-            s.close()
-
-    def stop(self):
-        self._stop.set()
-        try:
-            self._sock.close()
-        except Exception:
-            pass
 
 
 def main(cfg, browser=False) -> int:

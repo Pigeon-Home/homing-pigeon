@@ -17,11 +17,15 @@ class ContractTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             T.get_transport("nope", {})
 
-    def test_all_names_construct(self):
+    def test_only_email_and_cloudflare(self):
         for name in ("nats", "mqtt", "redis", "postgres", "durable_objects",
-                     "cloudflare", "local_socket"):
-            t = T.get_transport(name, {})
-            self.assertTrue(hasattr(t, "send"))
+                     "local_socket"):
+            with self.assertRaises(ValueError):
+                T.get_transport(name, {})
+        cf = T.get_transport("cloudflare", {})
+        self.assertEqual(cf.name, "cloudflare")
+        email = T.get_transport("email", {}, runner_mod=object())
+        self.assertEqual(email.name, "email")
 
 
 class EmailTransportTest(unittest.TestCase):
@@ -41,28 +45,6 @@ class EmailTransportTest(unittest.TestCase):
         t.send("job-1", '{"v":1}')
         self.assertIn("job-1", sent["subject"])
         self.assertEqual(sent["body"], '{"v":1}')
-
-
-class SocketTransportTest(unittest.TestCase):
-    def test_send_then_poll(self):
-        t = T.LocalSocketTransportAdapter(port=18770)
-        t.start()
-        try:
-            t.send("q", "hello-blob")
-            import time
-            time.sleep(0.2)
-            got = t.poll("q")
-        finally:
-            t.stop()
-        self.assertIn("hello-blob", got)
-
-    def test_binds_loopback(self):
-        t = T.LocalSocketTransportAdapter(port=18771)
-        t.start()
-        try:
-            self.assertEqual(t._sock.getsockname()[0], "127.0.0.1")
-        finally:
-            t.stop()
 
 
 class CloudflareTransportTest(unittest.TestCase):

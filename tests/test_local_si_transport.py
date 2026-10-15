@@ -52,40 +52,6 @@ class EmailTransportTest(unittest.TestCase):
         self.assertIn("email send failed", status)
 
 
-class SocketTransportTest(unittest.TestCase):
-    def test_roundtrip(self):
-        cfg = {}
-        t = LT.LocalSocketTransport(cfg, port=0)
-        # bind to ephemeral by using a high port we control
-        t.port = 18766
-        with mock.patch.object(LT, "answer_as_oracle",
-                               return_value={"answer": "pong"}):
-            t.start()
-            try:
-                got = t.send("ping?")
-            finally:
-                t.stop()
-        self.assertEqual(got, "pong")
-
-    def test_reject_roundtrip(self):
-        t = LT.LocalSocketTransport({}, port=18767)
-        with mock.patch.object(LT, "answer_as_oracle",
-                               return_value={"rejected": "inference_unconfigured"}):
-            t.start()
-            try:
-                got = t.send("q")
-            finally:
-                t.stop()
-        self.assertIn("rejected", got)
-
-    def test_loopback_only_bind(self):
-        t = LT.LocalSocketTransport({}, port=18768)
-        t.start()
-        try:
-            self.assertEqual(t._sock.getsockname()[0], "127.0.0.1")
-        finally:
-            t.stop()
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
