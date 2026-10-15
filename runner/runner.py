@@ -254,7 +254,12 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
     }
     retain = effective != "full"
     if effective == "full":
-        base.update({"stdout": exec_result.get("stdout"), "stderr": exec_result.get("stderr")})
+        base.update({
+            "stdout": exec_result.get("stdout"),
+            "stderr": exec_result.get("stderr"),
+            "stdout_truncated": exec_result.get("stdout_truncated", False),
+            "stderr_truncated": exec_result.get("stderr_truncated", False),
+        })
     elif effective == "redacted":
         out = full_out
         families = []
