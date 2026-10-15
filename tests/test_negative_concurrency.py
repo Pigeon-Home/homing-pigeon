@@ -3034,3 +3034,89 @@ class SensesLoadBoomFilterPoisonTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+class AttestKeyPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, attestations, no poll):
+
+    build_attestations called str() on a pattern key. A key whose
+    text form raises stopped the no_secrets attestation. Six threads
+    all raised, so the Oracle result was not built. _scrub_env did
+    the same on an environment key, so the job environment was not
+    cleaned.
+
+    A key that cannot be printed is stored as "pattern" and the
+    attestation is still produced. That environment entry is dropped.
+    The other keys are kept.
+    """
+
+    def test_bad_pattern_key_does_not_raise(self):
+        from runner.runner import (
+            _scrub_env, answer_queries, apply_result_policy,
+            build_attestations,
+        )
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        pats = {Boom(): "hello", "ok": "zzz"}
+        atts = build_attestations(
+            [{"op": "attest", "predicate": "no_secrets"}],
+            {"text": "hello", "patterns": pats, "exit_code": 0})
+        self.assertEqual(len(atts), 1)
+        self.assertIn("ok", atts[0])
+        answers, spent = answer_queries(
+            [{"op": "attest", "predicate": "no_secrets"}],
+            {"stdout": "hello", "stderr": "", "exit_code": 0},
+            pats, 4)
+        self.assertEqual(spent, 1)
+        self.assertEqual(answers[0].get("op"), "attest")
+        result, retain = apply_result_policy(
+            {}, {"kind": "ping", "job_id": "j", "result_policy": {
+                "view": "attested",
+                "queries": [{"op": "attest", "predicate": "no_secrets"}],
+            }}, {"stdout": "hello", "stderr": "", "exit_code": 0}, pats, True)
+        self.assertIsInstance(result, dict)
+        self.assertIsInstance(retain, bool)
+        env = _scrub_env({Boom(): "x", "OK": "1", "PIGEON_SECRET": "hide"})
+        self.assertEqual(env.get("OK"), "1")
+        self.assertNotIn("PIGEON_SECRET", env)
+        self.assertNotIn("x", env.values())
+
+    def test_concurrent_bad_pattern_keys_do_not_raise(self):
+        import threading
+        from runner.runner import _scrub_env, build_attestations
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        errors = []
+
+        def hammer():
+            try:
+                build_attestations(
+                    [{"op": "attest", "predicate": "no_secrets"}],
+                    {"text": "hello", "patterns": {Boom(): "a"}, "exit_code": 0})
+                _scrub_env({Boom(): "x", "OK": "1"})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_attestation(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-attest",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-attest", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-attest", seen)

@@ -626,9 +626,17 @@ def build_attestations(queries, ctx):
             if not isinstance(pats, dict):
                 pats = {}
             # Non-string keys (poison from an extension) cannot be sorted
-            # with strings and used to crash the attestation.
-            safe_items = [(str(k), v) for k, v in pats.items()
-                          if isinstance(v, str)]
+            # with strings. A key whose text form raises must not stop
+            # the attestation.
+            safe_items = []
+            for k, v in pats.items():
+                if not isinstance(v, str):
+                    continue
+                try:
+                    key = k if isinstance(k, str) else str(k)
+                except Exception:
+                    key = "pattern"
+                safe_items.append((key, v))
             atts.append({"predicate": pred,
                          "ok": not secret_scan(ctx.get("text", ""), pats),
                          "patterns_sha384": hashlib.sha384(json.dumps(sorted(safe_items)).encode()).hexdigest()})
@@ -3083,8 +3091,16 @@ def _scrub_env(env: dict) -> dict:
     if not isinstance(env, dict):
         return {}
     prefixes = tuple(p.lower() for p in _SENSITIVE_ENV_PREFIXES)
-    return {k: v for k, v in env.items()
-            if not str(k).lower().startswith(prefixes)}
+    out = {}
+    for k, v in env.items():
+        try:
+            key = k if isinstance(k, str) else str(k)
+        except Exception:
+            continue
+        if key.lower().startswith(prefixes):
+            continue
+        out[key] = v
+    return out
 
 
 def _estimate_secret_entropy(secret: str) -> float:
