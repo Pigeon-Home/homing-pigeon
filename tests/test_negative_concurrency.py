@@ -1301,3 +1301,57 @@ class PatternMapAndChatLogTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("still-ping", seen)
+
+
+class DriParseNumericPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation):
+
+    dri.parse_dri did float()/int() on trigger thresholds without a
+    guard. threshold="high" raised ValueError, which maybe_page did
+    not catch (only RuntimeError/AttributeError/TypeError). A bad
+    DRI config stopped the page cycle.
+
+    Numeric conversions now raise RuntimeError, and maybe_page also
+    catches ValueError. A bad threshold returns 0 and does not stop
+    processing.
+    """
+
+    def test_bad_threshold_does_not_stop_page(self):
+        from runner import dri
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(dri.maybe_page(
+                {"dri": {"enabled": True, "triggers": {
+                    "sensor_fused_score": {"threshold": "high"}}}}, d), 0)
+            self.assertEqual(dri.maybe_page(
+                {"dri": {"enabled": True, "triggers": {
+                    "key_probe": {"threshold": None}}}}, d), 0)
+            with self.assertRaises(RuntimeError):
+                dri.parse_dri({"dri": {"enabled": True, "triggers": {
+                    "sensor_fused_score": {"threshold": "high"}}}})
+            with self.assertRaises(RuntimeError):
+                dri.parse_dri({"dri": {"enabled": True, "triggers": {
+                    "key_probe": {"window_sec": "bad"}}}})
+
+    def test_concurrent_bad_dri_cfg_does_not_raise(self):
+        import threading
+        from runner import dri
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                for _ in range(10):
+                    try:
+                        dri.maybe_page({"dri": {"enabled": True, "triggers": {
+                            "sensor_fused_score": {"threshold": "high"}}}}, d)
+                        dri.maybe_page({"dri": {"enabled": True, "triggers": {
+                            "key_probe": {"threshold": None}}}}, d)
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+

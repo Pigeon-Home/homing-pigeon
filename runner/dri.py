@@ -74,10 +74,15 @@ def parse_dri(cfg) -> dict:
             raise RuntimeError(
                 "config error: dri.triggers.sensor_fused_score "
                 "must be an object")
-        clean_triggers["sensor_fused_score"] = {
-            "threshold": float(sfs.get("threshold", 6.0)),
-            "window_sec": float(sfs.get("window_sec", 600)),
-        }
+        try:
+            clean_triggers["sensor_fused_score"] = {
+                "threshold": float(sfs.get("threshold", 6.0)),
+                "window_sec": float(sfs.get("window_sec", 600)),
+            }
+        except (TypeError, ValueError):
+            raise RuntimeError(
+                "config error: dri.triggers.sensor_fused_score "
+                "threshold/window_sec must be numbers")
     for name in ("confinement_violation", "judge_block", "resource_pressure"):
         if triggers.get(name) is not None:
             clean_triggers[name] = bool(triggers[name])
@@ -86,10 +91,15 @@ def parse_dri(cfg) -> dict:
         if not isinstance(kp, dict):
             raise RuntimeError(
                 "config error: dri.triggers.key_probe must be an object")
-        clean_triggers["key_probe"] = {
-            "threshold": int(kp.get("threshold", 5)),
-            "window_sec": float(kp.get("window_sec", 3600)),
-        }
+        try:
+            clean_triggers["key_probe"] = {
+                "threshold": int(kp.get("threshold", 5)),
+                "window_sec": float(kp.get("window_sec", 3600)),
+            }
+        except (TypeError, ValueError):
+            raise RuntimeError(
+                "config error: dri.triggers.key_probe "
+                "threshold/window_sec must be numbers")
     try:
         cooldown = float(raw.get("cooldown_sec", 3600))
         digest_window = float(raw.get("digest_window_sec", 300))
@@ -347,7 +357,7 @@ def maybe_page(cfg, base_dir, now=None):
         return 0
     try:
         dcfg = parse_dri(cfg)
-    except (RuntimeError, AttributeError, TypeError):
+    except (RuntimeError, AttributeError, TypeError, ValueError):
         return 0
     if not dcfg["enabled"]:
         return 0
