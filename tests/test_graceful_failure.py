@@ -1561,5 +1561,51 @@ class InterpreterGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class DRIRecentGracefulTest(unittest.TestCase):
+    """Finding: DRI reads recent events and retained each cycle.
+    A bad base or a corrupt file must not crash the page cycle.
+    """
+
+    def test_recent_bad_base(self):
+        for base in ("", "/no/such/base"):
+            try:
+                dri._recent_events(base, 0)
+                dri._recent_retained(base, 0)
+                dri._load_state(base)
+            except Exception as e:
+                self.fail(f"DRI recent crashed on {base!r}: {e}")
+
+    def test_recent_corrupt_file(self):
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "security-events.jsonl")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write('{"type":"ok"}\n')
+            f.write("not json\n")
+            f.write("\n")
+        try:
+            events = dri._recent_events(tmp, 0)
+        except Exception as e:
+            self.fail(f"corrupt events crashed: {e}")
+        self.assertIsInstance(events, list)
+
+    def test_concurrent_recent(self):
+        tmp = tempfile.mkdtemp()
+        errors = []
+
+        def one():
+            try:
+                dri._recent_events(tmp, 0)
+                dri._recent_retained(tmp, 0)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
