@@ -941,10 +941,10 @@ class NoneCfgGracefulTest(unittest.TestCase):
                 self.fail(f"{name} raised AttributeError: {e}")
             except Exception:
                 pass
-        # Finding: _redact_patterns(None) raises AttributeError.
-        # Callers must pass {} or the poll crashes on a missing cfg.
-        with self.assertRaises(AttributeError):
-            _redact_patterns(None)
+        # Finding, fixed: _redact_patterns(None) used to raise
+        # AttributeError. A missing cfg is the built-in patterns.
+        from runner.runner import BUILTIN_REDACT_PATTERNS
+        self.assertEqual(set(_redact_patterns(None)), set(BUILTIN_REDACT_PATTERNS))
 
     def test_answer_queries_none_cfg(self):
         try:
