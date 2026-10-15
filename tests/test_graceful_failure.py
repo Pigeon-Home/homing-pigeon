@@ -2923,5 +2923,56 @@ class FusedScoreGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class PredicateEqualityGracefulTest(unittest.TestCase):
+    """Finding: a predicate whose equality raises must not stop
+    attestations.
+    """
+
+    def test_predicate_equality_raises(self):
+        from runner.runner import build_attestations
+
+        class Bad:
+            def __eq__(self, other):
+                raise RuntimeError("nope")
+
+        try:
+            got = build_attestations(
+                [{"op": "attest", "predicate": Bad()}],
+                {"exit_code": 0},
+            )
+        except Exception as e:
+            self.fail(f"raising predicate crashed attestations: {e}")
+        self.assertIsInstance(got, list)
+
+    def test_odd_predicates(self):
+        from runner.runner import build_attestations
+        for pred in (None, "", 42, ["exit_zero"], "exit_zero"):
+            try:
+                build_attestations([{"op": "attest", "predicate": pred}], {"exit_code": 0})
+            except Exception as e:
+                self.fail(f"predicate {pred!r} crashed: {e}")
+
+    def test_concurrent_raising_predicate(self):
+        from runner.runner import build_attestations
+        errors = []
+
+        class Bad:
+            def __eq__(self, other):
+                raise RuntimeError("nope")
+
+        def one():
+            try:
+                build_attestations([{"op": "attest", "predicate": Bad()}], {"exit_code": 0})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
