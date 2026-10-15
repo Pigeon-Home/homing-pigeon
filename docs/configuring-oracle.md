@@ -21,7 +21,7 @@ Everything the dashboard configures must be expressible in `config.json`, and ev
 - `dag_mode` — `off` (default) or `enforce`. When enforce, a task is offered only after all of its `requires` are done.
 - `task_timeout` — seconds before a claimed task is returned to open. Default 86400.
 - `require_review` — when true, completed tasks go to `pending_review` instead of `done` until approved.
-- `inference` — endpoint and model for the `ask` op (v3.1). Must resolve to loopback; otherwise the op stays disabled.
+- `inference` — endpoint and model for the `ask` op (v3.1). The endpoint must be loopback or the op stays off. A non-loopback host is refused and `ask` stays disabled.
 
 ## Deployment profiles
 
