@@ -674,6 +674,29 @@ def main() -> int:
         else os.path.join(dst_dir, "config.json")
     install_files(src_dir, dst_dir)
     ensure_shared_secret(cfg_path, args.shared_secret)
+    # Mailbox auth is the one thing install cannot invent. On a TTY,
+    # offer the same Thunderbird-style wizard the runner uses, so a
+    # fresh install ends with a working service and no hand-edited
+    # JSON. Headless installs keep today's behavior (fail at first
+    # run with a config error pointing at --setup).
+    try:
+        from runner import setup as _setup
+    except ImportError:
+        try:
+            import setup as _setup
+        except ImportError:
+            _setup = None
+    if _setup is not None:
+        try:
+            with open(cfg_path, encoding="utf-8") as fh:
+                _cfg = json.load(fh)
+        except (OSError, ValueError):
+            _cfg = {}
+        _reason = _setup.needs_setup(_cfg)
+        if _reason and sys.stdin.isatty() and _setup.prompt_yes_no(
+                f"Mailbox auth not configured ({_reason}). "
+                f"Sign in now? [Y/n] "):
+            _setup.run_setup_wizard(cfg_path, _cfg)
     for kid in args.additional_secret:
         store_additional_secret(cfg_path, kid)
     profile = chosen_profile(args.profile, args.no_profile)

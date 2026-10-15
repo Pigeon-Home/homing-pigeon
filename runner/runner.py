@@ -100,6 +100,14 @@ except ImportError:  # running from inside runner/ as __main__
     except ImportError:
         _dri = None
 
+try:
+    from runner import setup as _setup
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        import setup as _setup
+    except ImportError:
+        _setup = None
+
 
 def _append_security_event(base_dir: str, event: dict) -> None:
     """Append one event to security-events.jsonl (capped). Best effort."""
@@ -3005,15 +3013,45 @@ def main() -> int:
                          "instead of the terminal")
     ap.add_argument("--job-id", default=None,
                     help="job id for --inspect job")
+    ap.add_argument("--setup", action="store_true",
+                    help="Thunderbird-style first-run setup: browser "
+                         "sign-in, shared secret, write config; then "
+                         "start normally")
     args = ap.parse_args()
 
     if args.workers is not None and args.workers < 1:
         print("error: --workers must be >= 1", file=sys.stderr)
         return 2
 
-    cfg = load_config(args.config)
+    cfg_path = args.config
+    if _setup is not None and args.setup:
+        cfg = _setup.run_setup_wizard(cfg_path)
+    elif not os.path.exists(cfg_path):
+        if _setup is not None and _setup.is_tty() and _setup.prompt_yes_no(
+                f"No config file at {cfg_path}. Run first-run setup? [Y/n] "):
+            cfg = _setup.run_setup_wizard(cfg_path)
+        else:
+            print(f"config error: no config file at {cfg_path} "
+                  f"(run with --setup)", file=sys.stderr)
+            return 2
+    else:
+        cfg = load_config(cfg_path)
     if args.inspect:
         return run_inspect(cfg, args)
+    # Mailbox auth gate, before any model work. On a TTY the runner
+    # offers the Thunderbird-style setup instead of dying; headless
+    # (service, automation) keeps the fail-fast config error.
+    if not args.local_test and not args.oracle and _setup is not None:
+        reason = _setup.needs_setup(cfg)
+        if reason:
+            if _setup.is_tty() and _setup.prompt_yes_no(
+                    f"Mailbox auth not configured ({reason}). "
+                    f"Run setup now? [Y/n] "):
+                cfg = _setup.run_setup_wizard(cfg_path, cfg)
+            else:
+                print(f"config error: {reason} (run with --setup)",
+                      file=sys.stderr)
+                return 2
     ensure_inference_ready(cfg)
     # First start has no previous model id, so this pulls once.
     update_llama_from_config(cfg)
@@ -3025,27 +3063,14 @@ def main() -> int:
         except ImportError:  # running from inside runner/ as __main__
             import local_test as _lt
         return _lt.main(cfg, browser=args.browser)
-    if not cfg.get("mailbox_user"):
-        print("config error: mailbox_user is required", file=sys.stderr)
-        return 2
     # The shared secret is required in all auth modes and must carry
     # enough entropy to resist offline brute force. It is separate from
     # the mailbox password (which is only a Gmail credential now).
+    # Mailbox auth itself was gated (or set up) before the model work.
     try:
         validate_shared_secret(cfg.get("shared_secret") or "")
     except RuntimeError as e:
         print(e, file=sys.stderr)
-        return 2
-    if _use_oauth(cfg):
-        for key in ("oauth_client_id", "oauth_refresh_token"):
-            if not cfg.get(key):
-                print(f"config error: {key} is required when auth=oauth "
-                      f"(run homing-pigeon-auth to get the refresh token)",
-                      file=sys.stderr)
-                return 2
-    elif not cfg.get("mailbox_password"):
-        print("config error: mailbox_password is required when auth=password",
-              file=sys.stderr)
         return 2
     # CLI overrides config.
     if args.poll_interval is not None:
@@ -3112,7 +3137,8 @@ def main() -> int:
                 report_event(
                     f"Homing Pigeon: Gmail sign-in failed ({e}). "
                     f"The runner cannot fetch or send mail until someone "
-                    f"re-runs the OAuth browser login on this machine.")
+                    f"signs in again on this machine (run the app with "
+                    f"--setup, or re-run the OAuth browser login).")
             if args.pdb:
                 import pdb
                 pdb.post_mortem(sys.exc_info()[2])
