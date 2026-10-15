@@ -879,5 +879,43 @@ class ExcludeAndTokenGracefulTest(unittest.TestCase):
                 self.fail(f"xoauth2_raw crashed on {user!r}: {e}")
             self.assertIsInstance(raw, str)
 
+
+class HelpersGracefulTest(unittest.TestCase):
+    """Finding: _describe_job, _worker_count, and validate_shared_secret
+    run on the poll path. Odd inputs must not raise.
+    """
+
+    def test_describe_odd_jobs(self):
+        from runner.runner import _describe_job
+        for job in ({}, {"kind": None}, {"kind": "exec", "script": None},
+                    {"kind": "exec", "script": 123}):
+            try:
+                desc = _describe_job(job)
+            except Exception as e:
+                self.fail(f"_describe_job crashed on {job}: {e}")
+            self.assertIsInstance(desc, str)
+
+    def test_worker_count_odd(self):
+        from runner.runner import _worker_count
+        class Opts:
+            workers = None
+        for cfg in ({}, {"workers": "nope"}, {"workers": -1}, {"workers": None}):
+            try:
+                n = _worker_count(cfg, Opts())
+            except Exception as e:
+                self.fail(f"_worker_count crashed on {cfg}: {e}")
+            self.assertIsInstance(n, int)
+            self.assertGreaterEqual(n, 1)
+
+    def test_validate_secret_rejects_clean(self):
+        from runner.runner import validate_shared_secret
+        for secret in ("", "short", "changeme", "x" * 32):
+            try:
+                validate_shared_secret(secret)
+            except RuntimeError:
+                pass
+            except Exception as e:
+                self.fail(f"validate crashed with non-RuntimeError: {e}")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
