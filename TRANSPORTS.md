@@ -240,3 +240,18 @@ This is the point of the runbook model: the user needs almost no
 technical knowledge, because the SI does the knowing and the
 runbook does the proving. Each step checks its own work, so a
 failed migration is a report, not a bricked machine.
+
+## Local socket — the test-harness pick
+
+For a mock SI on the same machine that needs volume, email is too
+slow and a broker is too much. The local SI harness
+(`--local-test --browser`) speaks a length-prefixed protocol over
+loopback TCP (`127.0.0.1:8766`):
+
+- 4-byte big-endian length, then the question bytes
+- the listener runs it through the Oracle path
+- the answer comes back the same way
+
+Loopback TCP rather than a Unix socket so Windows works. This is a
+test transport, not a deployment transport. When the SI is remote,
+use one of the brokers above.
