@@ -1,5 +1,10 @@
 # Verification runbook: v3.1 non-GUI protocol
 
+> Historical record. Written against `main` @ `1c03c72` during v3.1
+> verification, before the v3.1.0 tag. The `oracle_enabled` flag it
+> references was removed in the final v3.1.0 (the Oracle is now
+> unconditional); those checks no longer apply.
+
 Status under test: `main` @ `1c03c72` (parent `09768ab`, based on `e3cebb9`).
 
 This runbook checks the work that closed the non-GUI gaps. It does not add features. It does not start the loopback dashboard.
