@@ -2776,5 +2776,54 @@ class CompareGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class FilterEqualityGracefulTest(unittest.TestCase):
+    """Finding: a sense filter whose equality raises must not stop
+    the load.
+    """
+
+    def test_filter_equality_raises(self):
+        tmp = tempfile.mkdtemp()
+        senses.store_alert(tmp, {"sensor": "door", "severity": "low"})
+
+        class Bad:
+            def __eq__(self, other):
+                raise RuntimeError("nope")
+
+        try:
+            recs = senses.load_alerts(tmp, sensor=Bad(), severity_floor=Bad())
+        except Exception as e:
+            self.fail(f"raising filter crashed load: {e}")
+        self.assertIsInstance(recs, list)
+
+    def test_filter_odd(self):
+        tmp = tempfile.mkdtemp()
+        for sensor, floor in ((None, None), ("", ""), (42, 42), (["a"], ["b"])):
+            try:
+                senses.load_alerts(tmp, sensor=sensor, severity_floor=floor)
+            except Exception as e:
+                self.fail(f"filter {sensor!r}/{floor!r} crashed: {e}")
+
+    def test_concurrent_raising_filter(self):
+        tmp = tempfile.mkdtemp()
+        errors = []
+
+        class Bad:
+            def __eq__(self, other):
+                raise RuntimeError("nope")
+
+        def one():
+            try:
+                senses.load_alerts(tmp, sensor=Bad())
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
