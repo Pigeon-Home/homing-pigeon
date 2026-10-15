@@ -484,5 +484,56 @@ class ResultPolicyGracefulTest(unittest.TestCase):
         except Exception as e:
             self.fail(f"unknown view crashed: {e}")
 
+
+class JudgeGracefulTest(unittest.TestCase):
+    """Finding: judge_job runs before execute when judge is on.
+    A hostile job must not make it raise, or the job is dropped
+    and the worker stops on that message.
+    """
+
+    def test_judge_hostile_jobs(self):
+        from runner.runner import judge_job
+        cfg = {"judge": "enforce"}
+        jobs = [
+            {},
+            {"kind": "exec", "script": None},
+            {"kind": "exec", "script": 123},
+            {"kind": "exec", "script": "dd of=/dev/sda"},
+            {"kind": "ping"},
+            {"kind": "exec", "script": "echo ok", "interpreter": "not-a-list"},
+        ]
+        for job in jobs:
+            try:
+                reasons = judge_job(cfg, job)
+            except Exception as e:
+                self.fail(f"judge_job crashed on {job}: {e}")
+            self.assertTrue(isinstance(reasons, (list, tuple)))
+
+    def test_judge_off_and_advisory(self):
+        from runner.runner import judge_job
+        job = {"kind": "exec", "script": "rm -rf /"}
+        for mode in ("off", "advisory", "enforce", None, "nope"):
+            try:
+                judge_job({"judge": mode}, job)
+            except Exception as e:
+                self.fail(f"judge mode {mode!r} crashed: {e}")
+
+    def test_concurrent_judge(self):
+        from runner.runner import judge_job
+        errors = []
+
+        def one(i):
+            try:
+                judge_job({"judge": "enforce"}, {"kind": "exec", "script": f"echo {i}"})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
