@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pigeon-home-runner"
-version = "1.4.7"
+version = "1.4.8"
 description = "Self-hosted, email-driven agent: tell your cloud SI to send signed jobs via email that execute on your machine."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -29,6 +29,10 @@ homing-pigeon-auth = "runner.oauth:main"
 
 [project.urls]
 Homepage = "https://github.com/Pigeon-Home/homing-pigeon"
+Repository = "https://github.com/Pigeon-Home/homing-pigeon"
+Documentation = "https://github.com/Pigeon-Home/homing-pigeon#readme"
+Changelog = "https://github.com/Pigeon-Home/homing-pigeon/releases"
+"Bug Tracker" = "https://github.com/Pigeon-Home/homing-pigeon/issues"
 
 [tool.setuptools.packages.find]
 include = ["runner*", "cloud*"]
