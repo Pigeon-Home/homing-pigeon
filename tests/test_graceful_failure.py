@@ -1922,5 +1922,57 @@ class BoardOpsGracefulTest(unittest.TestCase):
         for e in errors:
             self.assertIsInstance(e, FileNotFoundError)
 
+
+class PriorityGracefulTest(unittest.TestCase):
+    """Finding: priority is read on submit. A non-numeric priority
+    must reject cleanly, not crash the board.
+    """
+
+    def test_submit_bad_priority(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for task in (
+            {"task_id": "a", "priority": "high"},
+            {"task_id": "b", "priority": None},
+            {"task_id": "c", "priority": [1]},
+            {"task_id": "d", "priority": 5},
+        ):
+            try:
+                ok, reason = b.submit(task)
+            except Exception as e:
+                self.fail(f"submit crashed on priority {task['priority']!r}: {e}")
+            self.assertIsInstance(ok, bool)
+
+    def test_offer_orders_by_priority(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "low", "priority": 1})
+        b.submit({"task_id": "high", "priority": 10})
+        try:
+            offered = b.offer("w", [])
+        except Exception as e:
+            self.fail(f"offer crashed: {e}")
+        if offered:
+            self.assertIn(offered.get("task_id"), ("low", "high"))
+
+    def test_concurrent_submit_priority(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        errors = []
+
+        def one(i):
+            try:
+                b.submit({"task_id": f"p{i}", "priority": i})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
