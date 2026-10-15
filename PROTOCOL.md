@@ -237,10 +237,19 @@ applied at the trust boundary, without any zero-knowledge proving
 machinery: the runner is trusted (it's the user's own machine), so
 egress filtering plus signed commitments gives the privacy property.
 
-The **Oracle** is the name for this subsystem taken
-together: result-policy enforcement, the query engine, attestations,
-output retention, and the privacy budget. Optional extensions:
-execution confinement (section 9.3) and local inference (section 10).
+The **Oracle** is a local agent: instructions plus an
+optional local model, running on the runner's own machine. It has
+three duties across a job's lifetime:
+
+- **Before execution — judgment** (section 9.3): read the incoming
+  job, assess whether it will do what it claims, and flag or block it
+  per the runner owner's policy.
+- **During execution — confinement** (section 9.4): bound what the
+  job may touch, and attest what it did touch.
+- **After execution — reporting** (sections 9, 10): enforce the
+  result policy, answer the declared queries, and sign attestations —
+  so the SI learns only what the policy permits.
+
 It is governed by a single runner-owner flag:
 
 - `oracle_enabled` in config.json (default `true`).
@@ -319,17 +328,36 @@ Built-in predicates (extensible by runner config):
   the SI can't see the output, but the runner is bound to it — if a
   wider view is ever granted later, the SI can verify the digest.
 - `confined_to_workspace`: the job created or modified no file outside
-  `workspace_root` (section 9.3). Only meaningful when confinement is
+  `workspace_root` (section 9.4). Only meaningful when confinement is
   configured; otherwise the predicate is answered `false` with
   `{"reason": "unconfigured"}`.
 
 Each attestation is covered by the message HMAC (section 4), so a
 predicate answer carries the same authenticity as v1 results.
 
-### 9.3 Execution confinement (optional)
+### 9.3 Pre-execution judgment (optional)
 
-The Oracle can also bound *what a job may touch*, not just what its
-results may reveal. Config:
+Before anything runs, the Oracle reads the job — its code, its
+declared intent, its interpreters and paths — and renders a verdict:
+does this look like it will do what it claims? With a local model
+configured (section 10.1), the verdict is semantic ("this script
+deletes files outside its workspace"; "this matches its description").
+Without one, the Oracle still applies deterministic checks against
+the job text (writes outside the workspace, known-dangerous patterns).
+
+A verdict is a judgment, not a proof. It can miss malicious code and
+flag benign code, so the runner owner sets the policy — config-only,
+like everything the Oracle does. No job field can soften or disable
+judgment:
+
+- `judge`: `off`, `advisory` (verdict attached to the result, job
+  still runs), or `enforce` (a failing verdict refuses the job
+  before execution).
+
+### 9.4 Execution confinement (optional)
+
+During execution, the Oracle bounds *what a job may touch*, not just
+what its results may reveal. Config:
 
 - `workspace_root`: absolute path (e.g. `/home/user/workspace`). When
   set, the job's working directory is created under it, and the Oracle
@@ -397,13 +425,16 @@ are semantic instead of regex-shaped. Config (all under an
 - `model`: model id, e.g. `"llama3.1:8b"`.
 - `max_answer_chars` (default 2000), `timeout_sec` (default 60).
 
-**Suggested local stack.** For the optional `ask` op, run any
-OpenAI-compatible server bound to loopback. Ollama
-(`http://127.0.0.1:11434/v1`) is the simplest; LM Studio and vLLM are
-equivalents. The Oracle refuses non-loopback endpoints. A local agent
-such as OpenClaw may use the same model server for other tasks on the
-box, but the Oracle's `ask` calls the model endpoint directly so answers
-stay constrained and non-adaptive — the agent is not in the result path.
+**Reference stack.** A Llama model (e.g. `llama3.1:8b`) served on
+loopback via Ollama (`http://127.0.0.1:11434/v1`). Any
+OpenAI-compatible server bound to loopback works — LM Studio and vLLM
+are equivalents — but Llama is what the Oracle is tested against. The
+Oracle refuses non-loopback endpoints. A general-purpose local agent
+such as OpenClaw may share the same model server for other tasks on
+the box, but the Oracle's `ask` calls the model endpoint directly
+under the Oracle's own instructions, so answers stay constrained and
+non-adaptive — the agent's autonomy is not in the result path, only
+the Oracle's instructions are.
 
 The `ask` op is declared upfront in `queries[]` like everything else,
 so non-interactivity is preserved:
