@@ -1096,11 +1096,11 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
     answers = []
     try:
         spent = int(already_spent or 0)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         spent = 0
     try:
         budget = int(budget)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         budget = 8
     if budget < 0:
         budget = 0
@@ -2514,14 +2514,14 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
         else:
             try:
                 budget = int(retained.get("budget"))
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 try:
                     budget = int(cfg.get("max_query_budget", 8))
-                except (TypeError, ValueError):
+                except (TypeError, ValueError, OverflowError):
                     budget = 8
             try:
                 already = int(retained.get("spent") or 0)
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 already = 0
             patterns = retained.get("patterns") or _redact_patterns(cfg)
             if not isinstance(patterns, dict):
