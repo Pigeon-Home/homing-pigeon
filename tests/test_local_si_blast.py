@@ -257,7 +257,6 @@ class HandlerRoutingTest(unittest.TestCase):
         page = h.wfile.getvalue().decode()
         self.assertIn("Tell the cloud SI", page)
         self.assertIn("have the SI send it", page)
-        self.assertIn("ask the Oracle directly", page)
         self.assertEqual(h._sent["code"], 200)
 
     def test_get_other_is_404(self):
@@ -265,19 +264,10 @@ class HandlerRoutingTest(unittest.TestCase):
         h.do_GET()
         self.assertEqual(h._sent["code"], 404)
 
-    def test_post_oracle_routes(self):
-        h = self._handler("/oracle", b"why?", {"inference": {}})
-        with mock.patch.object(LT, "answer_as_oracle",
-                               return_value={"answer": "because"}):
-            h.do_POST()
-        self.assertIn("because", h.wfile.getvalue().decode())
-
-    def test_post_oracle_rejected(self):
+    def test_post_oracle_is_gone(self):
         h = self._handler("/oracle", b"why?", {})
-        with mock.patch.object(LT, "answer_as_oracle",
-                               return_value={"rejected": "inference_unconfigured"}):
-            h.do_POST()
-        self.assertIn("rejected", h.wfile.getvalue().decode())
+        h.do_POST()
+        self.assertEqual(h._sent["code"], 404)
 
     def test_post_si_routes(self):
         h = self._handler("/si", b"hello",

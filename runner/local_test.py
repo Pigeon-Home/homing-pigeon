@@ -209,7 +209,6 @@ yourself.</p>
   <input id="q" autofocus placeholder="tell the SI what to do">
   <button name="to" value="email">have the SI send it</button>
   <button name="to" value="si">just talk to the SI</button>
-  <button name="to" value="oracle">ask the Oracle directly</button>
 </form>
 <script>
 const log = document.getElementById('log');
@@ -239,11 +238,6 @@ document.getElementById('f').onsubmit = async (e) => {
                 text = ask_si(model, [], question)
             except Exception as e:
                 text = f"SI error: {e}"
-            self._send(200, text, "text/plain; charset=utf-8")
-            return
-        if self.path == "/oracle":
-            ans = answer_as_oracle(self.cfg, question)
-            text = ans.get("answer") or f"rejected: {ans.get('rejected', ans)}"
             self._send(200, text, "text/plain; charset=utf-8")
             return
         if self.path == "/email":
