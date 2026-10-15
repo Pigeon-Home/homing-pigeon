@@ -1612,7 +1612,10 @@ class SenseGateAndPageTextTest(unittest.TestCase):
                 def __exit__(self, *a):
                     return False
 
-            with mock.patch("runner.runner.urlopen", return_value=_Resp()):
+            class _Opener:
+                def open(self, req, timeout=120):
+                    return _Resp()
+            with mock.patch("runner.runner.build_opener", return_value=_Opener()):
                 download("https://example.com/a", dest, max_bytes="1MB")
             self.assertTrue(os.path.isfile(dest))
             with self.assertRaises(JobRejected):
