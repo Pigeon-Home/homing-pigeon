@@ -59,3 +59,40 @@ The page has two buttons:
 
 The SI never sees the Oracle's context, and the Oracle never sees the
 SI's chat. That is the point of two instances.
+
+## Transports the mock SI can use
+
+The mock SI reads the same `config.json` as the runner.
+
+- **In-process** — the default. The question is handed to the Oracle
+  path directly. No email, no socket. Fastest for a single chat.
+- **Email** — `send email` on the page (or `send_via_email` in code)
+  builds a signed job and sends it with the runner's SMTP settings
+  (`smtp_host`, `smtp_port`, `mailbox_user`, password or OAuth). The
+  runner must be polling that mailbox to pick it up. This is the real
+  Transport #1 path.
+- **Local socket** — a loopback TCP listener on `127.0.0.1:8766`.
+  Length-prefixed signed blobs, one question per connection. No
+  broker, no mailbox. This is the high-throughput local option: many
+  asks per second on one machine, still two model instances.
+
+Other transports in TRANSPORTS.md (Cloudflare Queues, NATS, MQTT,
+Redis, Postgres) are not wired into this harness. The socket path is
+the local stand-in when you want volume without a queue service.
+
+## High-throughput local transport
+
+Email is the wrong tool for a tight local loop. A mailbox poll is
+seconds; a socket round trip is milliseconds.
+
+The harness speaks a tiny framing: 4-byte big-endian length, then the
+UTF-8 question. The listener runs the question through the Oracle
+path and writes the answer back the same way. Bind is `127.0.0.1`
+only.
+
+Why sockets and not a Unix domain socket: Windows (a supported
+platform) does not have the same Unix-socket story, and a loopback
+TCP port works everywhere the runner runs. Why not HTTP for this
+path: the browser page is already HTTP; the socket path is for
+scripted volume, not for a person clicking. See TRANSPORTS.md for
+the broker options when the SI is not on the same machine.
