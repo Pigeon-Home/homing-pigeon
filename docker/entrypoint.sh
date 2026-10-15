@@ -27,6 +27,7 @@ cfg = {
     "default_timeout_sec": int(os.environ.get("PIGEON_TIMEOUT", "300")),
     "workers": int(os.environ.get("PIGEON_WORKERS", "1")),
     "auth": os.environ.get("PIGEON_AUTH", "password"),
+    "shared_secret": os.environ.get("PIGEON_SHARED_SECRET", ""),
 }
 with open(sys.argv[1], "w") as fh:
     json.dump(cfg, fh, indent=2)

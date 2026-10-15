@@ -43,7 +43,7 @@ from runner.runner import (  # noqa: E402
 from runner import install as install_mod  # noqa: E402
 from send_job import sign_payload as cloud_sign  # noqa: E402
 
-SECRET = "edge-test-secret"
+SECRET = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
 SENDER = "runner@example.com"
 
 
@@ -124,6 +124,7 @@ class ProtocolTests(unittest.TestCase):
         self.cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": SECRET,
+            "shared_secret": SECRET,
             "imap_host": "fake", "imap_port": 993,
             "smtp_host": "fake", "smtp_port": 587,
             "max_job_age_sec": 3600,
@@ -233,6 +234,7 @@ class ExecutionEdgeTests(unittest.TestCase):
         self.cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": SECRET,
+            "shared_secret": SECRET,
             "max_output_bytes": 30,
             "default_timeout_sec": 300,
         }
@@ -382,6 +384,7 @@ class SeenAndHelpersTests(unittest.TestCase):
             cfg = {
                 "mailbox_user": SENDER,
                 "mailbox_password": SECRET,
+            "shared_secret": SECRET,
                 "max_job_age_sec": 3600,
             }
             imap, smtp, seen = FakeIMAP([msg.as_bytes()]), FakeSMTP(), {}
@@ -514,6 +517,7 @@ class InfiniteRetryBugs(unittest.TestCase):
         self.cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": SECRET,
+            "shared_secret": SECRET,
             "max_job_age_sec": 3600,
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
@@ -572,6 +576,7 @@ class PoisonShapeTests(unittest.TestCase):
         self.cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": SECRET,
+            "shared_secret": SECRET,
             "max_job_age_sec": 3600,
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
@@ -673,6 +678,7 @@ class AdversarialTests(unittest.TestCase):
         self.cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": SECRET,
+            "shared_secret": SECRET,
             "max_job_age_sec": 3600,
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")

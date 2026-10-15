@@ -25,13 +25,13 @@ from runner.runner import (  # noqa: E402
     verify_body,
 )
 
-SECRET = "test-shared-secret"
+SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 # Exact JSON line from message 1a1380ce30ccfbfb.
 HAPPY_PING = (
     '{"v":1,"type":"job","job_id":"c142d598-261a-4000-8a41-b8cb7d28bf38",'
     '"issued_at":"2026-10-14T01:35:25Z","kind":"ping",'
-    '"sig":"3e175d607fe637e5ba40bf0e104dd402253cc1a76869de6ef09d921e3dd13f6b68673b1719edf84025a19562fd8c876f"}'
+    '"sig":"06edce804aba4033ee3ad644adcbbca92e90be6411ae48babbeeaaa9ddd11444051be3781410b524b2e6dc452b6371dc"}'
 )
 
 # Exact JSON line from message 1a1380e84018aa6a (sig marker inside script).
@@ -39,14 +39,14 @@ SIG_IN_SCRIPT = (
     '{"v":1,"type":"job","job_id":"f62b9568-47fe-403e-8124-f9e06d5baed2",'
     '"issued_at":"2026-10-14T01:36:50Z","kind":"exec",'
     '"script":"echo \\",\\"sig\\":\\"deadbeef",'
-    '"sig":"8d6722e9b89a96036e68a03c038677fde70cff0573b09f88564549220267b227beeebfcbc6f727285c5727f2ab5f1b61"}'
+    '"sig":"b4f527e2af6ca1e672d0389639e303a58bef2ea300cbbb9639ae1c6ce38bd06d8c23c48aa7cc7a3f817a5f3771461049"}'
 )
 
 # Exact JSON line from message 1a1380e8aa70b40a (uppercase hex).
 UPPER_SIG = (
     '{"v":1,"type":"job","job_id":"4653829a-a53a-44ba-85d5-90d52a73b980",'
     '"issued_at":"2026-10-14T01:36:50Z","kind":"ping",'
-    '"sig":"4D75BB2FDBB3B3E966F5571C08D361CB5EE3DE7385412D5B35480E9D75CDEB2D3B222A83E0E81A0B02AE37637547A57B"}'
+    '"sig":"131AA38F6992783204D2C92D41680EF5811B4FC51A3F384A9B1376F6BC28FE9B46C4C0D169C7699544A64B760A60B68E"}'
 )
 
 HAPPY_PREAMBLE = (
@@ -117,6 +117,7 @@ class ConnectorCaptureTests(unittest.TestCase):
         cfg = {
             "mailbox_user": "runner@example.com",
             "mailbox_password": SECRET,
+            "shared_secret": SECRET,
             "max_job_age_sec": 10**9,  # captured issued_at is in the past
         }
         poll_once(cfg, base, seen, os.path.join(base, "seen.json"),
@@ -178,12 +179,12 @@ class ConnectorCaptureTests(unittest.TestCase):
             verify_body(HAPPY_PING[:-10], SECRET)
 
     def test_non_hex_signature_rejected(self):
-        bad = HAPPY_PING.replace('"sig":"3e17', '"sig":"3ezz')
+        bad = HAPPY_PING.replace('"sig":"06ed', '"sig":"06zz')
         with self.assertRaises(ValueError):
             verify_body(bad, SECRET)
 
     def test_mixed_case_signature_accepted(self):
-        mixed = HAPPY_PING.replace('"sig":"3e175d60', '"sig":"3E175D60')
+        mixed = HAPPY_PING.replace('"sig":"06edce80', '"sig":"06EDCE80')
         job = verify_body(mixed, SECRET)
         self.assertEqual(job["kind"], "ping")
 

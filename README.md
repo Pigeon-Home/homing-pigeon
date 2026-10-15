@@ -197,7 +197,8 @@ fine there: use `pip install pigeon-home-runner` or build from source.
    service (systemd / launchd / cron @reboot / Scheduled Task).
 3. Edit `config.json`. Two ways to sign in:
    - **Password** (default): `mailbox_user` + `mailbox_password` (Gmail app
-     password, plaintext, on purpose). The HMAC secret is that password.
+     password, plaintext, on purpose). The HMAC shared secret is a separate
+     `shared_secret` value — generate one with `openssl rand -hex 32`.
    - **Browser, like Thunderbird**: no Google password anywhere. Create a
      Desktop OAuth client in [Google Cloud
      Console](https://console.cloud.google.com/) (APIs & Services →
@@ -210,8 +211,9 @@ fine there: use `pip install pigeon-home-runner` or build from source.
      opens, you sign in and grant access, and the refresh token is stored.
      IMAP and SMTP then use XOAUTH2. Tested end to end on Windows 11.
    (your explicit choice for this throwaway account).
-4. When you want an SI to send jobs, paste that same app-password string
-   to it in chat. It doubles as the HMAC shared secret.
+4. When you want an SI to send jobs, generate a shared secret
+   (`openssl rand -hex 32`), put it in `shared_secret` in config.json,
+   and paste the same string to the SI in chat.
 
 **From Docker** — the fastest path, no Python or git needed:
 
@@ -380,9 +382,10 @@ End-to-end without your SI:
 
 - The runner is a **full-trust execution environment**: a valid signed
   job email means arbitrary code as a privileged user. The app password sits in
-  **plaintext** in config.json and doubles as the HMAC secret (your explicit
-  choice: throwaway account, fresh box). Anyone holding it gets Gmail access
-  and job-signing ability. Don't use this setup with an account you care about.
+  **plaintext** in config.json (your explicit
+  choice: throwaway account, fresh box). Anyone holding it gets Gmail access.
+  The HMAC shared secret is a separate value — anyone holding *it* can sign jobs.
+  Don't use this setup with an account you care about.
 - Every job is HMAC-SHA-384 signed; the signature is the sole
   authentication gate. Timestamp window and
   replay protection (seen-set) are enforced before anything runs; the

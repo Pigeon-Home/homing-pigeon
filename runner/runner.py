@@ -18,10 +18,13 @@ Usage:
 #     "oauth": Thunderbird-style. A browser window signs you in. config.json
 #     holds a refresh token, never the Google password. Run
 #     homing-pigeon-auth once to get the token.
-#  2. The HMAC shared secret is mailbox_password when auth is password
-#     (the original model). When auth is oauth it is the separate
-#     shared_secret field. Both sides use its UTF-8 bytes as the
-#     HMAC-SHA-384 key. The user hands that string to the cloud side.
+#  2. The HMAC shared secret is a dedicated high-entropy string in the
+#     shared_secret field, separate from the mailbox password (which is
+#     only a Gmail credential). Both sides use its UTF-8 bytes directly
+#     as the HMAC-SHA-384 key — no hashing or derivation, the SI uses it
+#     as-is. The user hands that string to the cloud side. The runner
+#     refuses to start if the secret is missing or too weak (it must
+#     resist offline brute force against captured signed messages).
 #  3. The runner obeys any job mail bearing a valid HMAC signature,
 #     regardless of sender. The signature is the sole authentication
 #     gate; the sender address is logged for audit but never trusted.
@@ -33,6 +36,7 @@ import hashlib
 import hmac
 import imaplib
 import json
+import math
 import os
 import re
 import shutil
@@ -484,9 +488,10 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
     timeout = min(max(timeout, 1), 3600)
     args = [str(a) for a in args]
-    env = os.environ.copy()
+    env = _scrub_env(os.environ.copy())
     for k, v in env_in.items():
         env[str(k)] = str(v)
+    env = _scrub_env(env)  # job must not smuggle the runner's credentials back in
 
     max_out = int(cfg.get("max_output_bytes", 100000))
     t0 = time.monotonic()
@@ -795,17 +800,59 @@ def _worker_count(cfg, opts) -> int:
     return max(1, n)
 
 
+# Env vars the runner itself uses for credentials. Never leak these into
+# job subprocesses: a job can print its environment, and job output goes
+# back to the SI.
+_SENSITIVE_ENV_PREFIXES = ("PIGEON_",)
+
+
+def _scrub_env(env: dict) -> dict:
+    """Remove the runner's own credential vars from a job's environment."""
+    return {k: v for k, v in env.items()
+            if not k.startswith(_SENSITIVE_ENV_PREFIXES)}
+
+
+def _estimate_secret_entropy(secret: str) -> float:
+    """Rough entropy estimate in bits: length × log2(alphabet size)."""
+    if not secret:
+        return 0.0
+    alphabet = len(set(secret))
+    if alphabet <= 1:
+        return 0.0
+    return len(secret) * math.log2(alphabet)
+
+
+def validate_shared_secret(secret: str) -> None:
+    """Refuse to start on a missing or weak shared secret.
+
+    Anyone holding one signed message can brute-force the HMAC key
+    offline, so the secret needs real entropy. Raises RuntimeError with
+    generation guidance when the secret is missing or too weak.
+    """
+    hint = ("generate one with: openssl rand -hex 32  "
+            "or: python3 -c \"import secrets; print(secrets.token_hex(32))\"")
+    if not secret:
+        raise RuntimeError(
+            "config error: shared_secret is required (a dedicated high-entropy "
+            f"secret, separate from the mailbox password). {hint}")
+    # Estimated entropy: length × log2(alphabet size). A 64-char hex
+    # string (the recommended shape) estimates at 256 bits.
+    bits = _estimate_secret_entropy(secret)
+    if bits < 128:
+        raise RuntimeError(
+            f"config error: shared_secret is too weak (~{bits:.0f} bits estimated, "
+            f"need at least 128). {hint}")
+
+
 def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
               imap=None, smtp=None, opts=None):
     """One poll cycle. imap/smtp may be injected (tests)."""
-    # Password auth: the HMAC secret is the mailbox password (original model).
-    # OAuth auth: the Google password is gone, so the secret is its own field.
-    if _use_oauth(cfg):
-        secret = cfg.get("shared_secret") or ""
-        if not secret:
-            raise RuntimeError("config error: shared_secret is required when auth=oauth")
-    else:
-        secret = cfg["mailbox_password"]
+    # The HMAC shared secret is always the dedicated shared_secret field,
+    # separate from the mailbox password. Both sides use its UTF-8 bytes
+    # as the HMAC-SHA-384 key. No hashing or derivation — the SI uses it
+    # as-is.
+    secret = cfg.get("shared_secret") or ""
+    validate_shared_secret(secret)
     log(f"runner identity: {cfg['mailbox_user']} -- accepting signed jobs from any sender")
     own_imap = imap is None
     own_smtp = smtp is None
@@ -896,8 +943,16 @@ def main() -> int:
     if not cfg.get("mailbox_user"):
         print("config error: mailbox_user is required", file=sys.stderr)
         return 2
+    # The shared secret is required in all auth modes and must carry
+    # enough entropy to resist offline brute force. It is separate from
+    # the mailbox password (which is only a Gmail credential now).
+    try:
+        validate_shared_secret(cfg.get("shared_secret") or "")
+    except RuntimeError as e:
+        print(e, file=sys.stderr)
+        return 2
     if _use_oauth(cfg):
-        for key in ("oauth_client_id", "oauth_refresh_token", "shared_secret"):
+        for key in ("oauth_client_id", "oauth_refresh_token"):
             if not cfg.get(key):
                 print(f"config error: {key} is required when auth=oauth "
                       f"(run homing-pigeon-auth to get the refresh token)",

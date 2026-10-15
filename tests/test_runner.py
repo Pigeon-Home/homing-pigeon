@@ -19,10 +19,10 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "cloud"))
 
-from runner.runner import poll_once  # noqa: E402
+from runner.runner import poll_once, validate_shared_secret  # noqa: E402
 from send_job import sign_payload, verify_body  # noqa: E402
 
-SECRET = "test-shared-secret-string"
+SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 SENDER = "runner@example.com"
 
 
@@ -100,7 +100,8 @@ class RunnerTest(unittest.TestCase):
         self.tmp = tempfile.mkdtemp(prefix="hp-test-")
         self.cfg = {
             "mailbox_user": SENDER,
-            "mailbox_password": SECRET,
+            "mailbox_password": "test-gmail-password",
+            "shared_secret": SECRET,
             "imap_host": "fake", "imap_port": 993,
             "smtp_host": "fake", "smtp_port": 587,
             "poll_interval_sec": 20,
@@ -201,6 +202,41 @@ class RunnerTest(unittest.TestCase):
         mail = job_email(job_payload(jid))
         imap, smtp, seen = self.run_cycle([mail, mail])
         self.assertEqual(len(smtp.sent), 1)  # executed once
+
+
+class SharedSecretTest(unittest.TestCase):
+    def test_accepts_64_hex(self):
+        validate_shared_secret(
+            "0123456789abcdef" * 4)  # 64 hex chars = 256 bits
+
+    def test_accepts_long_hex(self):
+        validate_shared_secret("ab12" * 20)  # 80 hex chars
+
+    def test_accepts_high_entropy_string(self):
+        # 32 chars from a large alphabet: ~190 bits
+        validate_shared_secret("xQ9#mK2$vL8@nP4&wR6*tY1!zA5%cE3^")
+
+    def test_rejects_empty(self):
+        with self.assertRaises(RuntimeError):
+            validate_shared_secret("")
+
+    def test_rejects_short_password(self):
+        with self.assertRaises(RuntimeError):
+            validate_shared_secret("correct-horse")
+
+    def test_rejects_low_alphabet(self):
+        with self.assertRaises(RuntimeError):
+            validate_shared_secret("a" * 100)  # 100 chars, 1 symbol
+
+    def test_rejects_app_password_shaped(self):
+        # 16 lowercase letters ~ 75 bits: the old model, now refused
+        with self.assertRaises(RuntimeError):
+            validate_shared_secret("abcdefghijklmnop")
+
+    def test_poll_once_rejects_weak_secret(self):
+        cfg = {"mailbox_user": SENDER, "shared_secret": "weak"}
+        with self.assertRaises(RuntimeError):
+            poll_once(cfg, tempfile.mkdtemp(), {}, "/nonexistent/seen.json")
 
 
 if __name__ == "__main__":

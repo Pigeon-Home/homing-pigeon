@@ -76,7 +76,11 @@ auditability:
 - **Consent:** you install it on your own machine, on purpose, to run
   your own jobs. It does nothing you did not ask it to do.
 - **Control:** the shared secret is yours, the mailbox is yours, and
-  revoking the app password bricks the agent remotely in seconds.
+  revoking the mailbox credential bricks the agent remotely in seconds —
+  without mailbox access the runner can't receive jobs, so a leaked
+  signing secret has no delivery channel. To rotate a compromised
+  secret, generate a new one and update `shared_secret` in config.json
+  on the runner (and hand the new string to your SI).
 - **Auditability:** the runner is inspectable by design. `--dry-run`
   verifies signatures and prints exactly what a job *would* do without
   executing anything; `--verbose` logs every accept/reject decision;

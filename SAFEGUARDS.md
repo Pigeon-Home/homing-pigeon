@@ -9,7 +9,7 @@ covers what **you** do, step by step, to keep a deployment safe.
 
 - The runner executes **arbitrary code** as the user it was installed
   as. There is no sandbox, no allowlist, no confirmation prompt.
-- The shared secret (the Gmail app password, by your explicit choice)
+- The shared secret (a dedicated high-entropy string, by your explicit choice)
   **is root on that box**. Anyone who can sign a job email owns the
   machine: install software, read files, add users, pivot to your
   network.
@@ -88,9 +88,10 @@ mitigation:
 - **Keep the runner updated.** New releases fix real bugs — including
   security-relevant ones. Check the releases page when you think of
   it.
-- **Rotate the secret periodically.** New app password in Google
-  Account settings → update `config.json` → paste the new string to
-  your SI. Two minutes, and it invalidates every copy of the old
+- **Rotate the shared secret periodically.** Generate a new one
+  (`openssl rand -hex 32`) → update `shared_secret` in `config.json` →
+  paste the new string to your SI. Two minutes, and it invalidates every
+  copy of the old
   one floating around in chat histories.
 - **Prune the mailbox.** The runner marks processed mail seen, but
   the job emails remain. Delete them periodically — they're signed,
@@ -112,9 +113,11 @@ mitigation:
 ## 7. If something goes wrong
 
 **Secret leaked or suspected leaked:**
-1. Revoke the app password *now* (Google Account → Security → App
-   passwords). This instantly deauthorizes every job signer.
-2. Generate a fresh app password, update `config.json`.
+1. Revoke the mailbox credential *now* (Google Account → Security → App
+   passwords, or revoke the OAuth token). Without mailbox access the runner
+   can't receive jobs — this instantly stops all job delivery.
+2. Generate a fresh shared secret (`openssl rand -hex 32`), update
+   `shared_secret` in `config.json`.
 3. Paste the new string to your SI.
 4. Check `runner.log` and the mailbox for jobs you didn't send.
 

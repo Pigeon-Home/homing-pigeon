@@ -55,6 +55,7 @@ cloud SI and let it do the whole thing.
 |---|---|---|
 | `PIGEON_MAILBOX_USER` | yes | — |
 | `PIGEON_MAILBOX_PASSWORD` | yes | — |
+| `PIGEON_SHARED_SECRET` | yes | — |
 | `PIGEON_IMAP_HOST` | no | `imap.gmail.com` |
 | `PIGEON_IMAP_PORT` | no | `993` |
 | `PIGEON_SMTP_HOST` | no | `smtp.gmail.com` |
@@ -64,8 +65,8 @@ cloud SI and let it do the whole thing.
 | `PIGEON_TIMEOUT` | no | `300` |
 | `PIGEON_MAX_OUTPUT` | no | `100000` |
 
-The password doubles as the HMAC secret (same as the bare-metal
-install). Throwaway account, nothing personal — see SECURITY.md.
+The HMAC shared secret is a separate `shared_secret` value (same as the bare-metal
+install) — set it via `PIGEON_SHARED_SECRET`. Throwaway account, nothing personal — see SECURITY.md.
 
 **Mounted config file.** If you already have a `config.json`, mount it
 instead. Env vars are ignored when the file exists:

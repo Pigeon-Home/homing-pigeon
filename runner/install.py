@@ -13,8 +13,10 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import platform
+import secrets
 import shlex
 import shutil
 import subprocess
@@ -62,6 +64,39 @@ def run(cmd, **kw):
     subprocess.run(cmd, check=True, **kw)
 
 
+def ensure_shared_secret(cfg_path: str, provided: str | None) -> None:
+    """Write a shared_secret into config.json.
+
+    Uses the --shared-secret value when given (automated deployments);
+    otherwise generates a random 256-bit secret. Either way the user
+    retrieves it from config.json afterwards and hands it to their
+    cloud SI. A provided secret gets the same entropy bar as the
+    runner's startup check.
+    """
+    with open(cfg_path) as f:
+        cfg = json.load(f)
+    if cfg.get("shared_secret") and not provided:
+        return  # already set by the user; leave it alone
+    secret = provided or secrets.token_hex(32)
+    # Light entropy gate (the runner does the full check at startup).
+    alphabet = len(set(secret))
+    bits = len(secret) * (alphabet.bit_length() - 1) if alphabet > 1 else 0
+    if bits < 128:
+        print(f"error: --shared-secret is too weak (~{bits} bits estimated, "
+              f"need at least 128)", file=sys.stderr)
+        sys.exit(2)
+    cfg["shared_secret"] = secret
+    with open(cfg_path, "w") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+    os.chmod(cfg_path, 0o600)  # secrets on disk: owner read/write only
+    if provided:
+        print("wrote --shared-secret into config.json")
+    else:
+        print(f"generated a random shared_secret into {cfg_path} -- "
+              f"give this string to your cloud SI")
+
+
 def install_files(src_dir: str, dst_dir: str):
     os.makedirs(dst_dir, exist_ok=True)
     if FROZEN:
@@ -77,7 +112,7 @@ def install_files(src_dir: str, dst_dir: str):
     if not os.path.exists(cfg_dst):
         shutil.copy2(os.path.join(src_dir, "config.example.json"), cfg_dst)
         print(f"wrote {cfg_dst} -- EDIT IT before starting "
-              "(mailbox_user, mailbox_password)")
+              "(mailbox_user, mailbox_password, shared_secret)")
 
 
 def install_windows(dst_dir: str, cfg_path: str, extra=()):
@@ -210,6 +245,9 @@ def main() -> int:
     ap.add_argument("--system", action="store_true",
                     help="Linux: install a system-wide systemd unit (needs root)")
     ap.add_argument("--uninstall", action="store_true")
+    ap.add_argument("--shared-secret", default=None, metavar="SECRET",
+                    help="shared secret to write into config.json "
+                         "(default: generate a random one)")
     # Runner flags forwarded into the installed service command, so the
     # installed agent runs with exactly the flags you tested with.
     ap.add_argument("--dry-run", action="store_true",
@@ -247,6 +285,7 @@ def main() -> int:
     cfg_path = os.path.abspath(args.config) if args.config \
         else os.path.join(dst_dir, "config.json")
     install_files(src_dir, dst_dir)
+    ensure_shared_secret(cfg_path, args.shared_secret)
     extra = _forwarded_args(args)
     if extra:
         print(f"forwarding runner flags into service: {' '.join(extra)}")

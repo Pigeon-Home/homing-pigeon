@@ -145,10 +145,14 @@ Verification:
 4. Recompute `HEX(HMAC_SHA384(secret, raw))` and compare with the
    presented signature using a constant-time comparison.
 
-The shared secret is the Gmail app password string itself (user's explicit
-choice). Both sides use its UTF-8 bytes directly as the HMAC-SHA-384 key.
-The user gives the same string to the cloud side when they want jobs sent.
-It never travels in email; only job signatures do.
+The shared secret is a dedicated high-entropy string in the `shared_secret`
+config field, separate from the mailbox password (which is only a Gmail
+credential). Both sides use its UTF-8 bytes directly as the HMAC-SHA-384 key —
+no hashing or derivation, the SI uses it as-is. The user gives the same string
+to the cloud side when they want jobs sent. It never travels in email; only job
+signatures do. The runner refuses to start if the secret is missing or too weak:
+it must carry enough entropy to resist offline brute force against a captured
+signed message (generate with `openssl rand -hex 32`).
 
 ## 5. Runner verification (all must pass, in order)
 
