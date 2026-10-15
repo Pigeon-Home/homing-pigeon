@@ -2128,5 +2128,54 @@ class PayloadGracefulTest(unittest.TestCase):
         for e in errors:
             self.assertIsInstance(e, FileNotFoundError)
 
+
+class KindGracefulTest(unittest.TestCase):
+    """Finding: kind is read on submit. An odd kind must not crash
+    the board.
+    """
+
+    def test_submit_odd_kind(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for task in (
+            {"task_id": "a", "kind": None},
+            {"task_id": "b", "kind": 42},
+            {"task_id": "c", "kind": ["ping"]},
+            {"task_id": "d", "kind": "ping"},
+        ):
+            try:
+                ok, reason = b.submit(task)
+            except Exception as e:
+                self.fail(f"submit crashed on kind {task['kind']!r}: {e}")
+            self.assertIsInstance(ok, bool)
+
+    def test_offer_odd_kind(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "t", "kind": None})
+        try:
+            b.offer("w", [])
+        except Exception as e:
+            self.fail(f"offer crashed on None kind: {e}")
+
+    def test_concurrent_kind(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        errors = []
+
+        def one(i):
+            try:
+                b.submit({"task_id": f"k{i}", "kind": "ping" if i % 2 else None})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
