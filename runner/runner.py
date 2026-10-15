@@ -1982,9 +1982,15 @@ def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
         max_bytes = MAX_DOWNLOAD_BYTES
     if max_bytes < 1:
         max_bytes = MAX_DOWNLOAD_BYTES
+    class _NoForeignRedirect(HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            if not isinstance(newurl, str) or not newurl.lower().startswith(("http://", "https://")):
+                raise JobRejected("download redirected off http: " + str(newurl))
+            return super().redirect_request(req, fp, code, msg, headers, newurl)
+
     try:
         req = Request(url, headers={"User-Agent": "homing-pigeon/1"})
-        resp = urlopen(req, timeout=120)
+        resp = build_opener(_NoForeignRedirect).open(req, timeout=120)
     except HTTPError as e:
         # 4xx will not succeed on retry. 5xx may.
         if 400 <= e.code < 500:

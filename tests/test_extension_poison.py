@@ -2151,3 +2151,31 @@ class CircularFaultTest(unittest.TestCase):
             result["self"] = result
             status, _why = board.complete("t", result)
             self.assertEqual(status, "done")
+
+
+class RedirectFaultTest(unittest.TestCase):
+    """Finding: a download followed an ftp redirect.
+
+    The scheme check only looked at the first URL. A 302 to
+    ftp:// made the runner connect to another host. A redirect
+    off http or https is poison. The job is rejected.
+    """
+
+    def test_ftp_redirect_is_rejected(self):
+        from runner.runner import download, JobRejected
+        import http.server, threading
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(302)
+                self.send_header("Location", "ftp://127.0.0.1/secret")
+                self.end_headers()
+            def log_message(self, *a):
+                pass
+        srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+        port = srv.server_address[1]
+        threading.Thread(target=srv.handle_request, daemon=True).start()
+        try:
+            with self.assertRaises(JobRejected):
+                download(f"http://127.0.0.1:{port}/", "/tmp/out")
+        finally:
+            srv.server_close()
