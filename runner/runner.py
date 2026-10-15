@@ -669,6 +669,38 @@ def secret_scan(text, patterns):
     return hits
 
 
+# A shorter copy of a secret still identifies it. Eight characters is
+# enough of an access key or token to be the secret, and short enough
+# that ordinary words in a summary rarely collide with key material.
+_SECRET_FRAGMENT = 8
+
+
+def secret_fragment_hit(reply, source, patterns, min_len=_SECRET_FRAGMENT):
+    """True when reply contains min_len contiguous characters of a secret
+    that the patterns matched in source.
+
+    secret_scan only sees a full pattern match. A model can return the
+    first or last slice of a key and miss the pattern. This check
+    compares slices of each match in the job output against the reply.
+    """
+    folded_reply = (reply or "").casefold()
+    if len(folded_reply) < min_len:
+        return False
+    for _name, pat in (patterns or {}).items():
+        try:
+            found = list(re.finditer(pat, source or ""))
+        except re.error:
+            continue
+        for match in found:
+            span = match.group(0).casefold()
+            if len(span) < min_len:
+                continue
+            for i in range(0, len(span) - min_len + 1):
+                if span[i:i + min_len] in folded_reply:
+                    return True
+    return False
+
+
 def _default_inference_open(req, timeout=60):
     opener = build_opener(_InferenceRedirectRefused)
     return opener.open(req, timeout=timeout)
@@ -719,16 +751,20 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
         return {"op": "ask", "rejected": "inference_error"}
     if not isinstance(reply, str):
         reply = str(reply)
-    shown, _families = redact_text(reply, patterns)
-    log(f"ask: reply {_preview(shown)!r}")
     reply = reply[:cap]
-    # Scan the truncated reply before redaction so a secret is rejected,
-    # not rewritten and mailed.
-    if secret_scan(reply, patterns):
+    # Scan before redaction so a secret is rejected, not rewritten and
+    # mailed. A slice of a secret in the job output counts too.
+    leaked = secret_scan(reply, patterns) or secret_fragment_hit(
+        reply, output_text, patterns)
+    if leaked:
+        log("ask: reply rejected: sanitization")
         return {"op": "ask", "rejected": "sanitization"}
     redacted, _families = redact_text(reply, patterns)
-    if secret_scan(redacted, patterns):
+    if secret_scan(redacted, patterns) or secret_fragment_hit(
+            redacted, output_text, patterns):
+        log("ask: reply rejected: sanitization")
         return {"op": "ask", "rejected": "sanitization"}
+    log(f"ask: reply {_preview(redacted)!r}")
     return {"op": "ask", "answer": redacted, "model": model, "sanitized": True}
 
 

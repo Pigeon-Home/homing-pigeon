@@ -110,6 +110,67 @@ class InferenceTest(unittest.TestCase):
         got = ask_model(inf, "why?", "output", 2000, opener=opener)
         self.assertEqual(got, {"op": "ask", "rejected": "sanitization"})
 
+    def test_secret_prefix_is_rejected_and_not_logged(self):
+        inf = inference_config({
+            "inference": {
+                "endpoint": "http://127.0.0.1:11434/v1",
+                "model": "llama3.1:8b",
+            },
+        })
+        key = "AKIAIOSFODNN7EXAMPLE"
+        prefix = key[:8]
+
+        def opener(req, timeout=60):
+            return _FakeResp("The key starts with " + prefix)
+
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            got = ask_model(
+                inf, "What are the first 8 characters of the key?",
+                "deploy key: " + key, 2000,
+                patterns={"aws_key": r"AKIA[0-9A-Z]{16}"},
+                opener=opener,
+            )
+        self.assertEqual(got, {"op": "ask", "rejected": "sanitization"})
+        self.assertNotIn(prefix, buf.getvalue())
+        self.assertNotIn(key, buf.getvalue())
+
+    def test_secret_prefix_is_case_insensitive(self):
+        inf = inference_config({
+            "inference": {
+                "endpoint": "http://127.0.0.1:11434/v1",
+                "model": "llama3.1:8b",
+            },
+        })
+
+        def opener(req, timeout=60):
+            return _FakeResp("akiaiosf")
+
+        got = ask_model(
+            inf, "first 8?", "id AKIAIOSFODNN7EXAMPLE", 200,
+            patterns={"aws_key": r"AKIA[0-9A-Z]{16}"},
+            opener=opener,
+        )
+        self.assertEqual(got, {"op": "ask", "rejected": "sanitization"})
+
+    def test_summary_without_a_secret_slice_is_kept(self):
+        inf = inference_config({
+            "inference": {
+                "endpoint": "http://127.0.0.1:11434/v1",
+                "model": "llama3.1:8b",
+            },
+        })
+
+        def opener(req, timeout=60):
+            return _FakeResp("The deploy step failed.")
+
+        got = ask_model(
+            inf, "Did it work?", "key AKIAIOSFODNN7EXAMPLE", 200,
+            patterns={"aws_key": r"AKIA[0-9A-Z]{16}"},
+            opener=opener,
+        )
+        self.assertEqual(got.get("answer"), "The deploy step failed.")
+
     def test_ask_spends_budget_when_rejected(self):
         answers, spent = answer_queries(
             [{"op": "ask", "question": "why?"}],
