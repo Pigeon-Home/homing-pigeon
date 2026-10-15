@@ -231,18 +231,14 @@ The shared secret for authentication in the protocol is "YOUR_SECRET_STRING"
 Do a test routine to see if this all works, execute a runbook with the job of displaying the value of the system clock and show me the value here.
 ```
 
+All items in one prompt, as it contains a shared secret. A follow-up
+prompt, or a long runbook the SI iterates over, may be a new context.
+So doing it this way can make it go faster, depending on cloud SI.
+
 If it replies with the correct date and time from the runner's
 machine, it passed. If nothing comes back, the SI failed somewhere:
 wrong signature, wrong subject, wrong address. The clock does not
 lie.
-
-Keep that whole check in the one prompt, shared secret included.
-A connector token (GitHub, email, or any other short-lived credential
-the SI was given) is credential-bearing. A follow-up prompt, or a
-long runbook the SI writes and then executes as its own step, is a
-new context. Those tokens are not guaranteed to still be present
-there. Putting the secret, the mailbox, and the clock job in the
-same prompt avoids that gap.
 
 ---
 
