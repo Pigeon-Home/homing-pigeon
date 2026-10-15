@@ -402,7 +402,7 @@ End-to-end without your SI:
 ## Roadmap
 
 - v2 = who signs (shipped)
-- v3 = what comes back — the Oracle: result policies, attestations, task dispatch, multi-secret (implemented, in review)
+- v3 = what comes back — the Oracle: result policies, attestations, task dispatch, multi-secret (implemented)
 - v3.1 = the Oracle gets smart. The ask op via local inference is implemented (PROTOCOL 10.1). The endpoint must be loopback or the op stays off.
 - v4 = watch the Oracle think — the loopback dashboard (spec in ORACLE_DASHBOARD.md)
 

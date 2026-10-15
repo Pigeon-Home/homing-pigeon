@@ -1,6 +1,6 @@
 # Oracle Dashboard — v4 Spec (draft)
 
-**Status:** draft for review. v4 makes the Oracle visible.
+**Status:** reviewed. Not started. v4 makes the Oracle visible.
 **Identity:** v2 was who signs, v3 is what comes back, v4 is watch the Oracle think.
 
 ## 1. Vision
@@ -20,15 +20,18 @@ config surface, with full CLI/config-file parity).
 - Loopback-bound local web dashboard. Stdlib `http.server` only —
   no new dependencies, no GUI toolkit. Opens in the user's browser.
   Cross-platform for free (Linux, macOS, Windows, FreeBSD).
-- Binds 127.0.0.1 only, fail closed. If the bind address is not
-  loopback, the dashboard does not start. This mirrors §10.1's rule
-  for the inference endpoint: the Oracle distrusts the network, and
-  its dashboard does too.
-- Read-only by default. The dashboard renders state; it does not
-  act. The single exception is approving a `pending_review` task,
-  which requires a deliberate, confirmed gesture — never a casual
-  click. The dashboard never sends email and never signs anything;
-  it only reads.
+- Binds loopback only, fail closed. The check is `ipaddress`
+  loopback (`127.0.0.0/8` and `::1`), not the string `127.0.0.1`.
+  Refuse `0.0.0.0`, `::`, and any LAN address. If the bind is not
+  loopback, the process does not start. This mirrors §10.1's rule
+  for the inference endpoint.
+- Two mutations, both named. Everything else is read-only. The
+  dashboard never sends email and never signs anything.
+  1. Approving a `pending_review` task. Not a button: the owner
+     types the task id. Log the local user and the time.
+  2. Writing Oracle config keys. `config.json` is the source of
+     truth. The dashboard must not write or display
+     `shared_secret`, `additional_secrets`, or the mailbox password.
 - Data sources (all local): `board.json` (task board state),
   `retained/` (job outputs, query budgets), `runner.log`
   (judgments, budget tripwires), `config.json` (live configuration).
@@ -55,10 +58,11 @@ language answer inline on the card.
 
 ### 3.2 Job detail
 
-Everything the timeline shows, plus the retained output (subject to
-the same view rules — the dashboard does not widen disclosure; an
-`attested` job shows attestations, not output), the full query/answer
-exchange, and the redaction families applied.
+Everything the timeline shows, plus the retained output, the full
+query/answer exchange, and the redaction families applied. The owner
+already has `retained/` on disk. The dashboard shows the owner
+everything, and labels what the SI was allowed to see. It does not
+hide the owner's files from the owner.
 
 ### 3.3 Configuration
 
@@ -111,26 +115,31 @@ matters on this box":
 }
 ```
 
-Profiles make the Oracle's per-deployment knowledge explicit and
-portable: a user declares what is valuable on their machine, and
-the Oracle watches exactly that. The dashboard offers profile
-creation from a questionnaire ("what kind of box is this? what
-credentials live here? what files matter?"); the result is an
-ordinary config file, editable by hand.
+Profiles make the Oracle's per-deployment knowledge explicit:
+a user declares what is valuable on their machine, and the Oracle
+watches exactly that. The dashboard offers profile creation from a
+questionnaire ("what kind of box is this? what credentials live
+here? what files matter?"); the result is an ordinary config file,
+editable by hand. Profiles are local. A profile that lists what
+credentials live on a box is a fingerprint of that box, and is not
+published.
 
 ## 5. Security considerations
 
 - Loopback-only bind, fail closed (no dashboard rather than a
-  network-exposed one).
-- Read-only default; the one mutating action (task approval) is
-  confirmed and logged.
-- The dashboard displays retained output under the same view rules
-  as email results — it never widens disclosure. What the job's
-  view hides from the SI, it hides from the dashboard too, unless
-  the owner explicitly elevates (which is itself logged).
+  network-exposed one). Check is `ipaddress` loopback, not a string.
+- Two mutations: task approval (type the task id, logged) and
+  Oracle config writes. Nothing else writes.
+- The dashboard shows the owner everything in `retained/`. It
+  labels what the SI was allowed to see under the job's view. It
+  does not hide the owner's files from the owner, and there is no
+  elevate gesture.
 - No credentials in the dashboard: it reads `config.json` but
-  never displays `shared_secret`, `additional_secrets`, or the
-  mailbox password.
+  never displays or writes `shared_secret`, `additional_secrets`,
+  or the mailbox password.
+- Loopback is per-host, not per-user. On a shared Linux box another
+  local account can reach `127.0.0.1`. The threat model is a
+  single-user box. No account system.
 
 ## 6. Scope
 
@@ -138,16 +147,16 @@ ordinary config file, editable by hand.
 "Configuring the Oracle" documentation (GUI-or-CLI parity,
 per-deployment profiles, worked Pi example).
 
-**Out of v4:** the `ask` op (v3.1 — the Oracle should be smart
-before it's visible), new transports, any native GUI toolkit,
-multi-user or remote access (the dashboard is single-owner,
-loopback-only, by design).
+**Out of v4:** new transports, any native GUI toolkit, multi-user
+or remote access (the dashboard is single-owner, loopback-only, by
+design). The `ask` op is v3.1 and is already implemented; the
+timeline shows its answers.
 
-## 7. Open questions for the owner
+## 7. Decisions
 
-1. Should the dashboard require any authentication beyond loopback
-   binding? (Default: no — the local user already owns the box.
-   Loopback + read-only is the threat model.)
-2. Job timeline retention: follow `output_retention_days`, or its
-   own setting?
-3. Should profiles be shareable/publishable, or strictly local?
+1. No authentication beyond loopback. No login form. The threat
+   model is a single-user box. Loopback is per-host, not per-user;
+   that is documented, not papered over with accounts.
+2. Timeline retention follows `output_retention_days`. The timeline
+   is a view of `retained/`, not a second store.
+3. Profiles are local. They are not shareable or publishable.
