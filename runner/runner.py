@@ -1506,8 +1506,13 @@ class Board:
         allow = cfg.get("worker_allowlist") or []
         if not isinstance(allow, list):
             allow = []
-        if allow and worker_id not in allow:
-            return None
+        if allow:
+            try:
+                allowed = worker_id in allow
+            except Exception:
+                allowed = False
+            if not allowed:
+                return None
         raw_caps = capabilities if isinstance(capabilities, list) else []
         capabilities = [c for c in raw_caps if isinstance(c, str)]
         raw_comp = cfg.get("worker_compartments") or {}
@@ -1524,8 +1529,13 @@ class Board:
         for t in list(self.tasks.values()):
             if not isinstance(t, dict):
                 continue
-            if t.get("state") == "claimed" and t.get("claimed_by") == worker_id:
-                return t
+            if t.get("state") == "claimed":
+                try:
+                    same = t.get("claimed_by") == worker_id
+                except Exception:
+                    same = False
+                if same:
+                    return t
         candidates = []
         for t in list(self.tasks.values()):
             if not isinstance(t, dict) or t.get("state") != "open":
@@ -1580,12 +1590,12 @@ class Board:
             # NaN sorts anywhere. Treat it as zero so the order is stable.
             if priority != priority:
                 priority = 0
-            return (-priority, str(task.get("submitted_at") or ""))
+            return (-priority, _as_str(task.get("submitted_at")))
         candidates.sort(key=_rank)
         chosen = candidates[0]
         chosen["state"] = "claimed"
         chosen["claimed_by"] = worker_id
-        log(f"board: {worker_id} claimed {chosen.get('task_id')}")
+        log(f"board: {_as_str(worker_id)} claimed {_as_str(chosen.get('task_id'))}")
         chosen["claimed_at"] = datetime.now(timezone.utc).isoformat()
         chosen["claimed_key_id"] = key_id
         self.save()
@@ -1619,7 +1629,7 @@ class Board:
         if not isinstance(task_id, str):
             return "not_found", "not found"
         t = self.tasks.get(task_id)
-        if not t:
+        if not isinstance(t, dict):
             return False, "not found"
         if t.get("state") != "pending_review":
             return False, "not pending_review"
@@ -1632,6 +1642,8 @@ class Board:
         now = datetime.now(timezone.utc)
         count = 0
         for t in self.tasks.values():
+            if not isinstance(t, dict):
+                continue
             if t.get("state") == "claimed" and t.get("claimed_at"):
                 try:
                     claimed = datetime.fromisoformat(t["claimed_at"])

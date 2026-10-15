@@ -2712,3 +2712,101 @@ class JudgeAndConfinePoisonTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-judge", seen)
+
+
+class BoardStampPoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, board offer, no poll):
+
+    offer sorted on str(submitted_at). A stamp whose text form raises
+    stopped the offer. Six threads all raised, so no worker was given
+    the task. Comparing a worker id whose equality check raises did
+    the same while looking for an existing claim. reoffer_expired and
+    approve called .get on a task that was a string, so one bad task
+    stopped the sweep.
+
+    A stamp that cannot be printed sorts as empty. A comparison that
+    raises is not a match. A task that is not an object is skipped.
+    """
+
+    def test_bad_stamp_and_task_do_not_raise(self):
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+            def __eq__(self, other):
+                raise RuntimeError("eq")
+            def __hash__(self):
+                return 1
+
+        with tempfile.TemporaryDirectory() as d:
+            b = Board(os.path.join(d, "board.json"))
+            b.tasks["a"] = {
+                "task_id": "a", "state": "open",
+                "submitted_at": Boom(), "priority": 1,
+            }
+            offered = b.offer("w", [])
+            self.assertIsInstance(offered, dict)
+            self.assertEqual(offered.get("task_id"), "a")
+
+            b2 = Board(os.path.join(d, "board2.json"))
+            b2.tasks["c"] = {
+                "task_id": "c", "state": "claimed", "claimed_by": "w",
+                "submitted_at": "t",
+            }
+            b2.tasks["o"] = {
+                "task_id": "o", "state": "open", "submitted_at": "t",
+                "priority": 1,
+            }
+            offered = b2.offer(Boom(), [])
+            self.assertIsInstance(offered, dict)
+            self.assertEqual(offered.get("task_id"), "o")
+
+            b3 = Board(os.path.join(d, "board3.json"))
+            b3.tasks["bad"] = "nope"
+            b3.tasks["ok"] = {
+                "task_id": "ok", "state": "claimed",
+                "claimed_at": "2000-01-01T00:00:00+00:00",
+            }
+            self.assertEqual(b3.reoffer_expired(1), 1)
+            self.assertEqual(b3.tasks["ok"]["state"], "open")
+            self.assertEqual(b3.approve("bad"), (False, "not found"))
+
+    def test_concurrent_bad_stamps_do_not_raise(self):
+        import threading
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        errors = []
+
+        def hammer():
+            try:
+                with tempfile.TemporaryDirectory() as d:
+                    b = Board(os.path.join(d, "board.json"))
+                    b.tasks["a"] = {
+                        "task_id": "a", "state": "open",
+                        "submitted_at": Boom(), "priority": 1,
+                    }
+                    b.offer("w", [])
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_board(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-board",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-board", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-board", seen)
