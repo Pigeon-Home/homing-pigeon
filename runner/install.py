@@ -300,6 +300,34 @@ BUILTIN_PROFILES = {
 
 
 
+
+def set_instructions(cfg_path: str, text_in: str, append: bool) -> None:
+    """Store a human-readable instruction string in config.json.
+
+    --instructions replaces. --instructions-add appends a new paragraph.
+    The value is a plain string, not a profile.
+    """
+    import json
+    if not text_in:
+        return
+    cfg = {}
+    if os.path.exists(cfg_path):
+        with open(cfg_path, encoding="utf-8") as f:
+            cfg = json.load(f)
+    current = cfg.get("owner_instructions") or ""
+    if append and current:
+        cfg["owner_instructions"] = current.rstrip() + "\n\n" + text_in.strip()
+    else:
+        cfg["owner_instructions"] = text_in.strip()
+    tmp = cfg_path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, cfg_path)
+    action = "appended" if append else "replaced"
+    print(f"instructions: {action} ({len(cfg['owner_instructions'])} chars)")
+
+
 def detect_default_profile() -> str:
     """Pick a profile automatically when the user did not name one.
 
@@ -486,6 +514,10 @@ def main() -> int:
     ap.add_argument("--no-oracle", action="store_true")
     ap.add_argument("--no-inference", action="store_true",
                     help="do not install Ollama or pull a model (ask stays off)")
+    ap.add_argument("--instructions", default=None, metavar="TEXT",
+                    help="human-readable instructions for this box (replaces any existing)")
+    ap.add_argument("--instructions-add", default=None, metavar="TEXT",
+                    help="append a paragraph to the existing instructions")
     ap.add_argument("--profile", default=None, metavar="NAME_OR_PATH",
                     help="apply a deployment profile (raspberry-pi-home, password-only, or a JSON file). "
                          "If omitted, a profile is chosen automatically.")
@@ -528,10 +560,12 @@ def main() -> int:
     for kid in args.additional_secret:
         store_additional_secret(cfg_path, kid)
     install_ollama_and_model(cfg_path, args.inference_model, args.no_inference)
-    chosen = None if args.no_profile else (args.profile or detect_default_profile())
-    if chosen:
-        print(f"profile: auto-selected {chosen}" if not args.profile else f"profile: using {chosen}")
-        apply_profile(cfg_path, chosen)
+    if args.profile and not args.no_profile:
+        apply_profile(cfg_path, args.profile)
+    if args.instructions_add:
+        set_instructions(cfg_path, args.instructions_add, append=True)
+    elif args.instructions:
+        set_instructions(cfg_path, args.instructions, append=False)
     extra = _forwarded_args(args)
     if extra:
         print(f"forwarding runner flags into service: {' '.join(extra)}")

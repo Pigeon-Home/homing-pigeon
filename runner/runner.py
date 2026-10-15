@@ -496,7 +496,7 @@ def _default_inference_open(req, timeout=60):
     return opener.open(req, timeout=timeout)
 
 
-def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None):
+def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None, instructions=None):
     """POST a constrained question to a loopback OpenAI-compatible endpoint.
 
     cfg is the dict from inference_config. The reply is truncated, redacted,
@@ -517,7 +517,7 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None)
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": ASK_SYSTEM},
+            {"role": "system", "content": ASK_SYSTEM + (("\n\nOwner instructions for this box:\n" + instructions.strip()) if instructions and str(instructions).strip() else "")},
             {"role": "user", "content":
              "Question:\n" + str(question or "") + "\n\nOutput:\n" + str(output_text or "")},
         ],
@@ -647,6 +647,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                     max_chars = inf["max_answer_chars"]
                 answers.append(ask_model(
                     inf, q.get("question") or "", text, max_chars, patterns,
+                    instructions=(cfg or {}).get("owner_instructions"),
                 ))
         else:
             answers.append({"rejected": "unknown_op"})

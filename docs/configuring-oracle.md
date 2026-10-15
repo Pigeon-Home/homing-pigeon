@@ -63,3 +63,21 @@ Built-in profiles:
 - `raspberry-pi-home` — same password-hash watch, plus `/home/pi/docs/manuals` as a protected path.
 
 A profile JSON file uses the same keys. Mailbox credentials and `shared_secret` are never overwritten. The runner already honors `redact_patterns_extra`, `protected_paths`, and `max_result_view` from `config.json`, so the profile takes effect on the next start.
+
+## Owner instructions
+
+A plain human-readable string describing this box. It is not a profile. The installer stores it in `config.json` as `owner_instructions`, and the Oracle includes it in the `ask` system prompt so the local model knows what matters here.
+
+Replace the string:
+
+```
+homing-pigeon-install --instructions "This is a Raspberry Pi. The only thing that matters is the password."
+```
+
+Append a paragraph:
+
+```
+homing-pigeon-install --instructions-add "Also watch the docs folder under home."
+```
+
+Re-running the installer with `--instructions` replaces the whole string. `--instructions-add` appends. Mailbox credentials are untouched.
