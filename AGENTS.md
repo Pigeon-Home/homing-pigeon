@@ -15,7 +15,7 @@ The connector is already authenticated. The SI uses it. The runner keeps using I
 
 - Sending a job is just sending an email. The connector can do that from the connected account.
 - Reading a result is just reading an email. The connector can search and fetch it.
-- The HMAC shared secret is a separate string the user pastes once into the runner's `config.json` and once to the SI. It is not the connector token, and it is not the user's Google password.
+- The HMAC shared secret is a separate string the user pastes once into the runner's `config.json` and once to the SI. It is not the connector token, and it is not the user's Google password. It must be high-entropy (the runner refuses weak secrets at startup); `install.py` generates a 256-bit one automatically.
 - Asking the user to paste `mailbox_user` / `mailbox_password` into chat is unnecessary and wrong for the SI side.
 
 ## What the runner still needs
