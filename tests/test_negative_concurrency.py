@@ -927,3 +927,45 @@ class SignScrubDescribePoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class SnapshotExcludePoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation):
+
+    snapshot_outside did os.path.abspath on every truthy exclude entry.
+    An int (or other non-string) in the exclude list raised TypeError
+    and stopped the confinement check.
+
+    Non-string entries are now filtered. A bad exclude list no longer
+    crashes the snapshot.
+    """
+
+    def test_bad_exclude_does_not_raise(self):
+        from runner.runner import snapshot_outside
+        with tempfile.TemporaryDirectory() as d:
+            self.assertIsInstance(snapshot_outside(d, exclude=[None, 5, "", d]), dict)
+            self.assertIsInstance(snapshot_outside(d, exclude="bad"), dict)
+            self.assertEqual(snapshot_outside(None), {})
+            self.assertEqual(snapshot_outside(5), {})
+            self.assertEqual(snapshot_outside(""), {})
+
+    def test_concurrent_snapshot_with_bad_exclude_does_not_raise(self):
+        import threading
+        from runner.runner import snapshot_outside
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                for _ in range(8):
+                    try:
+                        snapshot_outside(d, exclude=[None, 5, ""])
+                        snapshot_outside(5)
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])

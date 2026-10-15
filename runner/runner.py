@@ -622,7 +622,9 @@ def judge_job(cfg, job):
 
 def snapshot_outside(workspace_root, exclude=None):
     """Best-effort snapshot of paths outside the workspace. Returns path -> (size, mtime)."""
-    exclude = exclude or []
+    if not isinstance(exclude, list):
+        exclude = []
+    exclude = [e for e in exclude if isinstance(e, str) and e]
     snap = {}
     if not workspace_root or not isinstance(workspace_root, str) \
             or not os.path.isdir(workspace_root):
