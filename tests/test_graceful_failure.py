@@ -2721,5 +2721,60 @@ class OraclePageGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class CompareGracefulTest(unittest.TestCase):
+    """Finding: sorting patterns and secret keys must not crash when
+    a key cannot be compared.
+    """
+
+    def test_patterns_uncomparable_key(self):
+        from runner.runner import _redact_patterns
+
+        class Bad:
+            def __lt__(self, other):
+                raise TypeError("nope")
+
+        try:
+            pats = _redact_patterns({"redact_patterns_extra": {Bad(): "x", "ok": "y"}})
+        except Exception as e:
+            self.fail(f"uncomparable pattern key crashed: {e}")
+        self.assertIsInstance(pats, dict)
+
+    def test_additional_secrets_uncomparable(self):
+        from runner.runner import build_secrets
+        secret = "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"
+
+        class Bad:
+            def __lt__(self, other):
+                raise TypeError("nope")
+
+        try:
+            build_secrets({"shared_secret": secret, "additional_secrets": {Bad(): secret}})
+        except RuntimeError:
+            pass
+        except Exception as e:
+            self.fail(f"uncomparable secret key crashed: {e}")
+
+    def test_concurrent_uncomparable(self):
+        from runner.runner import _redact_patterns
+        errors = []
+
+        class Bad:
+            def __lt__(self, other):
+                raise TypeError("nope")
+
+        def one():
+            try:
+                _redact_patterns({"redact_patterns_extra": {Bad(): "x"}})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
