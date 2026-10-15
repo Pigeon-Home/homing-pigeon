@@ -1562,3 +1562,100 @@ class DriSaveStatePoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class SenseGateAndPageTextTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, senses and the Oracle page, no poll):
+
+    gate_alert called .get on a profile that was a string or a list,
+    float() on max_per_hour "lots", and .get on a recent row that was
+    a string. Each raised, and six threads all died. A clock value of
+    the word "now" raised TypeError. query_budget did the same .get
+    on a list config. oracle_page json.dumps'd a set and the page
+    was not built. download compared an int to the word "1MB".
+
+    Two alerts with max_per_hour 1 both would have been stored if the
+    load and the write were separate steps.
+
+    Bad shapes are now dropped or ignored. The page is still built.
+    Only one of the two alerts is stored.
+    """
+
+    def test_bad_gate_inputs_do_not_raise(self):
+        from runner import senses
+        from runner.runner import JobRejected, download, oracle_page, query_budget
+        from unittest import mock
+        alert = {"severity": "info", "title": "t"}
+        self.assertIsNone(senses.gate_alert({"profile": "tight"}, alert, []))
+        self.assertIsNone(senses.gate_alert({"profile": ["x"]}, alert, []))
+        self.assertIsNone(senses.gate_alert(
+            {"profile": {"max_per_hour": "lots"}}, alert, []))
+        self.assertIsNone(senses.gate_alert(
+            {"profile": {"cooldown_sec": 30}}, alert, ["not-a-dict"]))
+        self.assertIsNone(senses.gate_alert(
+            {"profile": {"cooldown_sec": 30}}, alert,
+            [{"received_at": "2026-10-15T00:00:00Z", "title": "other"}],
+            now="now"))
+        self.assertEqual(query_budget(["x"], {"result_policy": {"query_budget": 1}}), 1)
+        page = oracle_page({1}, {2}, "yes")
+        self.assertIn("Oracle", page)
+        with tempfile.TemporaryDirectory() as d:
+            dest = os.path.join(d, "blob")
+
+            class _Resp:
+                def read(self, n):
+                    return b""
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *a):
+                    return False
+
+            with mock.patch("runner.runner.urlopen", return_value=_Resp()):
+                download("https://example.com/a", dest, max_bytes="1MB")
+            self.assertTrue(os.path.isfile(dest))
+            with self.assertRaises(JobRejected):
+                download("file:///etc/passwd", dest, max_bytes="1MB")
+
+    def test_two_alerts_cannot_both_pass_the_hourly_cap(self):
+        import threading
+        from runner import senses
+        scfg = {"profile": {"max_per_hour": 1}}
+        kept = []
+        dropped = []
+        lock = threading.Lock()
+
+        def once(i):
+            rec = {
+                "sensor": "host-ids", "severity": "info",
+                "title": f"t{i}", "received_at": _now(),
+            }
+            reason = senses.file_sensor_alert(shared["d"], scfg, rec)
+            with lock:
+                (dropped if reason else kept).append(i)
+
+        with tempfile.TemporaryDirectory() as d:
+            shared = {"d": d}
+            threads = [threading.Thread(target=once, args=(i,)) for i in range(2)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            rows = senses.load_alerts(d, limit=10)
+        self.assertEqual(len(kept), 1)
+        self.assertEqual(len(dropped), 1)
+        self.assertEqual(len(rows), 1)
+
+    def test_ping_still_completes_after_the_sense_gate(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-sense",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-sense", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-sense", seen)

@@ -155,7 +155,10 @@ def gate_alert(sensor_cfg: dict, alert: dict, recent: list, now: float = None):
     is the sense's recent stored alerts (newest last), used for the
     cooldown and hourly cap.
     """
-    now = time.time() if now is None else now
+    try:
+        now = float(time.time() if now is None else now)
+    except (TypeError, ValueError):
+        now = time.time()
     if not isinstance(sensor_cfg, dict):
         return "bad sensor config"
     if not isinstance(alert, dict):
@@ -163,6 +166,8 @@ def gate_alert(sensor_cfg: dict, alert: dict, recent: list, now: float = None):
     if not isinstance(recent, list):
         recent = []
     profile = sensor_cfg.get("profile") or {}
+    if not isinstance(profile, dict):
+        profile = {}
     floor = profile.get("severity_floor", "info")
     if floor not in SEVERITY_SCORES:
         floor = "info"
@@ -177,6 +182,8 @@ def gate_alert(sensor_cfg: dict, alert: dict, recent: list, now: float = None):
         cooldown = 0
     if cooldown > 0:
         for prev in reversed(recent):
+            if not isinstance(prev, dict):
+                continue
             pts = _parse_ts(prev.get("received_at"))
             if pts is None:
                 continue
@@ -184,10 +191,15 @@ def gate_alert(sensor_cfg: dict, alert: dict, recent: list, now: float = None):
                 break
             if prev.get("title") == alert.get("title"):
                 return f"cooldown: same title within {cooldown:g}s"
-    cap = float(profile.get("max_per_hour") or 0)
+    try:
+        cap = float(profile.get("max_per_hour") or 0)
+    except (TypeError, ValueError):
+        cap = 0.0
     if cap > 0:
         n = 0
         for prev in reversed(recent):
+            if not isinstance(prev, dict):
+                continue
             pts = _parse_ts(prev.get("received_at"))
             if pts is None:
                 continue
@@ -199,11 +211,36 @@ def gate_alert(sensor_cfg: dict, alert: dict, recent: list, now: float = None):
     return None
 
 
+def file_sensor_alert(base_dir, sensor_cfg, record):
+    """Store one alert if the profile allows it. Returns a drop reason or None.
+
+    The load, the gate, and the write are one step, so two workers
+    cannot both pass the last slot of max_per_hour.
+    """
+    if not isinstance(base_dir, str) or not base_dir:
+        return "bad base dir"
+    if not isinstance(record, dict):
+        return "bad alert"
+    with _STORE_LOCK:
+        try:
+            recent = load_alerts(base_dir, sensor=record.get("sensor"), limit=500)
+        except Exception:
+            recent = []
+        try:
+            drop = gate_alert(sensor_cfg, record, recent)
+        except Exception as e:
+            return f"gate failed: {e}"
+        if drop:
+            return drop
+        store_alert(base_dir, record)
+        return None
+
+
 def _path(base_dir: str) -> str:
     return os.path.join(base_dir, SENSES_FILE)
 
 
-_STORE_LOCK = threading.Lock()
+_STORE_LOCK = threading.RLock()
 
 
 def store_alert(base_dir: str, record: dict) -> None:

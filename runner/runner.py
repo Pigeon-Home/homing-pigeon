@@ -710,6 +710,8 @@ def confinement_violated(before, after):
 
 def query_budget(cfg, job):
     policy = (job or {}).get("result_policy") if isinstance(job, dict) else None
+    if not isinstance(cfg, dict):
+        cfg = {}
     if not isinstance(policy, dict):
         policy = {}
     try:
@@ -717,7 +719,7 @@ def query_budget(cfg, job):
     except (TypeError, ValueError):
         job_b = 8
     try:
-        max_b = int((cfg or {}).get("max_query_budget", 8))
+        max_b = int(cfg.get("max_query_budget", 8))
     except (TypeError, ValueError):
         max_b = 8
     return max(0, min(job_b, max_b))
@@ -1767,6 +1769,12 @@ def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
     # can read the local machine. Reject them as poison.
     if not isinstance(url, str) or not url.lower().startswith(("http://", "https://")):
         raise JobRejected(f"unsupported url scheme: {url}")
+    try:
+        max_bytes = int(max_bytes)
+    except (TypeError, ValueError):
+        max_bytes = MAX_DOWNLOAD_BYTES
+    if max_bytes < 1:
+        max_bytes = MAX_DOWNLOAD_BYTES
     req = Request(url, headers={"User-Agent": "homing-pigeon/1"})
     try:
         resp = urlopen(req, timeout=120)
@@ -2407,7 +2415,6 @@ def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
         log(f"dry-run: would ingest sensor alert {job_id} "
             f"({name}/{job.get('severity', 'info')}: {job.get('title')})")
         return
-    recent = _senses.load_alerts(base_dir, sensor=name, limit=500)
     alert = {
         "sensor": name,
         "severity": job.get("severity") or "info",
@@ -2416,25 +2423,16 @@ def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
         "observed_at": job.get("observed_at"),
         "job_id_hint": job.get("job_id_hint"),
     }
-    drop = _senses.gate_alert(scfg, alert, recent)
-    if drop:
-        done(f"dropped by profile: {drop} "
-             f"({name}/{alert['severity']}: {alert['title']})")
-        return
     record = dict(alert)
     record.update({
         "received_at": _senses._now_iso(),
         "key_id": key_id,
-        "weight": scfg["weight"],
+        "weight": scfg.get("weight", 1.0) if isinstance(scfg, dict) else 1.0,
     })
-    try:
-        _senses.store_alert(base_dir, record)
-    except OSError as e:
-        log(f"sensor alert {job_id}: could not store: {e}", "ERROR")
-        if not dry:
-            with _MAIL_LOCK:
-                seen[job_id] = True
-                mark_seen(imap, seq)
+    drop = _senses.file_sensor_alert(base_dir, scfg, record)
+    if drop:
+        done(f"dropped by profile: {drop} "
+             f"({name}/{alert['severity']}: {alert['title']})")
         return
     done(f"stored ({name}/{alert['severity']}: {alert['title']})")
 
@@ -3198,8 +3196,17 @@ def oracle_context(base_dir, limit=6, max_chars=4000) -> str:
 
 def oracle_page(token: str, model: str, ready: bool) -> str:
     """One chat page. No remote assets. The token never goes in the URL."""
+    def _text(value):
+        if isinstance(value, str):
+            return value
+        if value is None:
+            return ""
+        try:
+            return str(value)
+        except Exception:
+            return ""
     payload = json.dumps(
-        {"token": token, "model": model or "", "ready": bool(ready)}
+        {"token": _text(token), "model": _text(model), "ready": bool(ready)}
     ).replace("<", "\\u003c")
     return """<!doctype html>
 <html lang="en">
