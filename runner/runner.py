@@ -671,18 +671,62 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
 _QUERY_TIMES = {}  # key_id -> list of timestamps
 
 
-def check_rate_limit(key_id, cfg):
-    """Return True if under max_queries_per_hour. Zero means unlimited."""
+def _write_json(path, obj):
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f)
+    os.replace(tmp, path)
+
+
+def check_rate_limit(key_id, cfg, path=None):
+    """Return True if under max_queries_per_hour. Zero means unlimited.
+
+    When path is set, the window is on disk so it survives a restart
+    and can be read without the runner running.
+    """
     limit = int(cfg.get("max_queries_per_hour") or 0)
     if limit <= 0:
         return True
     now = time.time()
-    window = _QUERY_TIMES.setdefault(key_id, [])
-    window[:] = [t for t in window if now - t < 3600]
+    if path and os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as f:
+                store = json.load(f)
+        except Exception:
+            store = {}
+    elif path:
+        store = {}
+    else:
+        store = _QUERY_TIMES
+    window = [t for t in store.get(key_id, []) if now - float(t) < 3600]
     if len(window) >= limit:
+        store[key_id] = window
+        if path:
+            _write_json(path, store)
         return False
     window.append(now)
+    store[key_id] = window
+    if path:
+        _write_json(path, store)
     return True
+
+
+def budget_status(path, cfg):
+    """Per-key spend in the current hour, for the owner to read."""
+    limit = int(cfg.get("max_queries_per_hour") or 0)
+    store = {}
+    if path and os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as f:
+                store = json.load(f)
+        except Exception:
+            store = {}
+    now = time.time()
+    out = []
+    for key, times in store.items():
+        live = [t for t in times if now - float(t) < 3600]
+        out.append({"key_id": key, "spent": len(live), "limit": limit})
+    return out
 
 
 def prune_retained(base_dir, days):
@@ -1398,7 +1442,7 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     # "" is the default secret. Do not replace it with query_id or each
     # query gets its own bucket and the cap never trips. PROTOCOL section 11
     # is per sender.
-    if not check_rate_limit(key_id, cfg):
+    if not check_rate_limit(key_id, cfg, os.path.join(base_dir, "query_times.json")):
         log(f"query rate limit exceeded seq {seq}", "WARN")
         finish({
             "v": 1, "type": "qresult", "query_id": query_id,
@@ -1673,10 +1717,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     "confined": bool(confined),
                     "digest": digest,
                     "saved_at": time.time(),
+                    "judgment": result.get("judgment"),
                 })
             if protected_changed:
                 result.setdefault("confinement_detail", {})["protected_paths_changed"] = protected_changed
-            if cfg.get("judge") == "advisory" and reasons:
+            if cfg.get("judge") in ("advisory", "enforce"):
                 result["judgment"] = {"verdict": verdict, "reasons": reasons}
             with _MAIL_LOCK:
                 maybe_send(f"{SUBJECT_RESULT}{job_id}",
@@ -1966,6 +2011,39 @@ def ensure_inference_ready(cfg):
         log(f"could not start ollama: {e}", "WARN")
 
 
+def run_inspect(cfg, args) -> int:
+    """Read local Oracle state. No mailbox, no network, no secrets printed."""
+    base = cfg.get("base_dir") or os.path.join(os.path.expanduser("~"),
+                                               ".homing-pigeon")
+    if args.inspect == "board":
+        board = Board(os.path.join(base, "board.json"))
+        print(json.dumps({"counts": board.counts(),
+                          "tasks": list(board.tasks.values())}, indent=2))
+        return 0
+    if args.inspect == "budget":
+        path = os.path.join(base, "query_times.json")
+        print(json.dumps({"max_queries_per_hour":
+                          int(cfg.get("max_queries_per_hour") or 0),
+                          "keys": budget_status(path, cfg)}, indent=2))
+        return 0
+    if args.inspect == "job":
+        if not args.job_id:
+            print("error: --job-id is required", file=sys.stderr)
+            return 2
+        data = load_retained(base, args.job_id)
+        if not data:
+            print("not found", file=sys.stderr)
+            return 1
+        # patterns are regexes the owner wrote; fine to show. never secrets.
+        print(json.dumps(data, indent=2, default=str))
+        return 0
+    text = sys.stdin.read()
+    patterns = _redact_patterns(cfg)
+    redacted, families = redact_text(text, patterns)
+    print(json.dumps({"families": families, "redacted": redacted}, indent=2))
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Homing Pigeon runner agent")
     ap.add_argument("--config", default="config.json")
@@ -1998,6 +2076,10 @@ def main() -> int:
                     help="debug logging: log every accept/reject decision")
     ap.add_argument("--pdb", action="store_true",
                     help="drop into pdb on unhandled exceptions")
+    ap.add_argument("--inspect", choices=["board", "budget", "job", "redact"],
+                    help="read local Oracle state and exit; no mailbox")
+    ap.add_argument("--job-id", default=None,
+                    help="job id for --inspect job")
     args = ap.parse_args()
 
     if args.workers is not None and args.workers < 1:
@@ -2005,6 +2087,8 @@ def main() -> int:
         return 2
 
     cfg = load_config(args.config)
+    if args.inspect:
+        return run_inspect(cfg, args)
     ensure_inference_ready(cfg)
     update_llama_from_config(cfg)
     if not cfg.get("mailbox_user"):

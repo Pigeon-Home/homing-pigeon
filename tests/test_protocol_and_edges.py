@@ -1,3 +1,5 @@
+import io
+import contextlib
 #!/usr/bin/env python3
 """Expanded unit and integration tests for homing-pigeon.
 
@@ -1087,3 +1089,60 @@ class HotReloadTests(unittest.TestCase):
             self.assertEqual(cfg["default_timeout_sec"], 30)
             # mtime still advances: the file was readable, bad keys skipped
             self.assertEqual(state["mtime"], 2000)
+
+
+class UnderDashboardTests(unittest.TestCase):
+    def test_rate_limit_persists(self):
+        from runner.runner import check_rate_limit, budget_status
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "query_times.json")
+            cfg = {"max_queries_per_hour": 2}
+            self.assertTrue(check_rate_limit("k", cfg, path))
+            self.assertTrue(check_rate_limit("k", cfg, path))
+            self.assertFalse(check_rate_limit("k", cfg, path))
+            status = budget_status(path, cfg)
+            self.assertEqual(status[0]["spent"], 2)
+            self.assertEqual(status[0]["limit"], 2)
+            # a new process sees the same window
+            self.assertFalse(check_rate_limit("k", cfg, path))
+
+    def test_inspect_redact(self):
+        from runner.runner import run_inspect
+        cfg = {"redact_patterns_extra": {"aws": "AKIA[0-9A-Z]{16}"}}
+        class A:
+            inspect = "redact"
+            job_id = None
+        import io
+        old = sys.stdin
+        sys.stdin = io.StringIO("key AKIAIOSFODNN7EXAMPLE end")
+        try:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = run_inspect(cfg, A())
+        finally:
+            sys.stdin = old
+        self.assertEqual(rc, 0)
+        out = json.loads(buf.getvalue())
+        self.assertIn("aws_key", out["families"])
+        self.assertIn("[REDACTED:aws_key]", out["redacted"])
+
+    def test_inspect_board_and_job(self):
+        from runner.runner import run_inspect, save_retained
+        with tempfile.TemporaryDirectory() as d:
+            cfg = {"base_dir": d}
+            class A:
+                inspect = "board"
+                job_id = None
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                self.assertEqual(run_inspect(cfg, A()), 0)
+            self.assertEqual(json.loads(buf.getvalue())["counts"]["open"], 0)
+            save_retained(d, "job-1", {"job_id": "job-1", "judgment":
+                                       {"verdict": "ok", "reasons": []}})
+            A.inspect = "job"
+            A.job_id = "job-1"
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                self.assertEqual(run_inspect(cfg, A()), 0)
+            self.assertEqual(json.loads(buf.getvalue())["judgment"]["verdict"],
+                             "ok")
