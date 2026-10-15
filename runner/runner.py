@@ -542,7 +542,7 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
     effective = requested if VIEW_ORDER.get(requested, 3) <= VIEW_ORDER.get(ceiling, 3) else ceiling
     stdout = exec_result.get("stdout")
     stderr = exec_result.get("stderr")
-    full_out = ("" if stdout is None else str(stdout)) + ("" if stderr is None else str(stderr))
+    full_out = _as_text(stdout) + _as_text(stderr)
     digest = hashlib.sha384(full_out.encode("utf-8")).hexdigest()
     base = {
         "v": 1, "type": "result", "job_id": job.get("job_id"),
@@ -574,8 +574,8 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
         base.update({"stdout": out, "stderr": "", "redacted_families": families})
     elif effective == "summary":
         base.update({
-            "stdout_bytes": len(str(exec_result.get("stdout") or "")),
-            "stderr_bytes": len(str(exec_result.get("stderr") or "")),
+            "stdout_bytes": len(_as_text(exec_result.get("stdout"))),
+            "stderr_bytes": len(_as_text(exec_result.get("stderr"))),
             "result_class": "ok" if exec_result.get("exit_code") == 0 else "fail",
         })
     else:  # attested
@@ -593,6 +593,8 @@ def build_attestations(queries, ctx):
     atts = []
     if not isinstance(queries, list):
         return atts
+    if not isinstance(ctx, dict):
+        ctx = {}
     for q in queries:
         if not isinstance(q, dict):
             continue
@@ -848,6 +850,18 @@ def inference_config(cfg):
     }
 
 
+def _as_text(value):
+    """Stringify extension data. A value whose text form raises is empty."""
+    if isinstance(value, str):
+        return value
+    if value is None:
+        return ""
+    try:
+        return str(value)
+    except Exception:
+        return ""
+
+
 def redact_text(text, patterns):
     """Apply the section-9 redact engine. Returns (text, families).
 
@@ -856,7 +870,7 @@ def redact_text(text, patterns):
     crash the Oracle.
     """
     if not isinstance(text, str):
-        text = "" if text is None else str(text)
+        text = _as_text(text)
     if not isinstance(patterns, dict):
         patterns = BUILTIN_REDACT_PATTERNS
     out = text
@@ -907,6 +921,15 @@ def secret_fragment_hit(reply, source, patterns, min_len=_SECRET_FRAGMENT):
         reply = ""
     if not isinstance(source, str):
         source = ""
+    if isinstance(min_len, bool):
+        min_len = _SECRET_FRAGMENT
+    else:
+        try:
+            min_len = int(min_len)
+        except (TypeError, ValueError):
+            min_len = _SECRET_FRAGMENT
+    if min_len < 1:
+        min_len = _SECRET_FRAGMENT
     folded_reply = reply.casefold()
     if len(folded_reply) < min_len:
         return False
@@ -1012,9 +1035,9 @@ def _output_blob(exec_result):
     out = exec_result.get("stdout") if isinstance(exec_result, dict) else ""
     err = exec_result.get("stderr") if isinstance(exec_result, dict) else ""
     if not isinstance(out, str):
-        out = "" if out is None else str(out)
+        out = _as_text(out)
     if not isinstance(err, str):
-        err = "" if err is None else str(err)
+        err = _as_text(err)
     return out + err
 
 

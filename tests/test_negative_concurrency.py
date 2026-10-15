@@ -2253,7 +2253,6 @@ class SensesPathPoisonTest(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
-
 class BudgetAndAllowlistPoisonTest(unittest.TestCase):
     """Findings (2026-10-15 simulation):
 
@@ -2301,3 +2300,82 @@ class BudgetAndAllowlistPoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class UnprintableResultTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, result text, no poll):
+
+    apply_result_policy, redact_text, and _output_blob called str()
+    on a value whose text form raises. The result could not be built.
+    secret_fragment_hit compared a length to the word eight and to
+    None. Six threads raised TypeError, so a sliced secret was not
+    checked. build_attestations called .get on a context that was a
+    string or None.
+
+    A value that cannot be printed becomes empty text. A length that
+    is not a positive number is eight. A context that is not an
+    object is treated as empty, and the attestation still returns.
+    """
+
+    def test_unprintable_and_bad_length_do_not_raise(self):
+        from runner.runner import (
+            _output_blob, apply_result_policy, build_attestations,
+            redact_text, secret_fragment_hit,
+        )
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        result, retain = apply_result_policy(
+            {}, {"kind": "ping", "job_id": "j"},
+            {"stdout": Boom(), "stderr": "ok", "exit_code": 0}, {}, True)
+        self.assertIsInstance(result, dict)
+        self.assertIsInstance(retain, bool)
+        text, families = redact_text(Boom(), {})
+        self.assertEqual(text, "")
+        self.assertEqual(families, [])
+        self.assertEqual(_output_blob({"stdout": Boom()}), "")
+        self.assertIs(secret_fragment_hit("hello world!!", "hello", {}, min_len="eight"), False)
+        self.assertIs(secret_fragment_hit("hello", "hello", {}, min_len=None), False)
+        self.assertIsInstance(build_attestations(
+            [{"op": "attest", "predicate": "exit_zero"}], "nope"), list)
+        self.assertIsInstance(build_attestations(
+            [{"op": "attest", "predicate": "no_secrets"}], None), list)
+
+    def test_concurrent_unprintable_does_not_raise(self):
+        import threading
+        from runner.runner import apply_result_policy, secret_fragment_hit
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+
+        errors = []
+
+        def hammer():
+            try:
+                secret_fragment_hit("abcdefghij", "abcdefghij", {}, min_len="eight")
+                apply_result_policy({}, {"job_id": "j"}, {"stdout": Boom()}, {}, True)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_unprintable(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-text",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-text", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-text", seen)
