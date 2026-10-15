@@ -101,8 +101,12 @@ Expand-Archive pigeon.zip .
   (or cron `@reboot` fallback).
 - **macOS:** run `python3 install.py` — registers a launchd agent.
 
-Then edit `config.json` (add your Gmail + app password) and send the
-clock check below.
+Then sign in: run the app once with `homing-pigeon --setup` (or let
+`install.py` offer it) — Thunderbird-style browser sign-in, a fresh
+shared secret shown once for you to give to your cloud SI, config
+written. No hand-edited JSON needed. If you'd rather wire it by hand,
+edit `config.json` (add your Gmail + app password) instead, then send
+the clock check below.
 
 ---
 
