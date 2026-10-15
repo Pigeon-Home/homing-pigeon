@@ -154,9 +154,17 @@ def gate_alert(sensor_cfg: dict, alert: dict, recent: list, now: float = None):
     now = time.time() if now is None else now
     profile = sensor_cfg.get("profile") or {}
     floor = profile.get("severity_floor", "info")
-    if SEVERITY_SCORES[alert.get("severity", "info")] < SEVERITY_SCORES[floor]:
+    if floor not in SEVERITY_SCORES:
+        floor = "info"
+    sev = alert.get("severity", "info")
+    if sev not in SEVERITY_SCORES:
+        sev = "info"
+    if SEVERITY_SCORES[sev] < SEVERITY_SCORES[floor]:
         return f"below severity_floor {floor}"
-    cooldown = float(profile.get("cooldown_sec") or 0)
+    try:
+        cooldown = float(profile.get("cooldown_sec") or 0)
+    except (TypeError, ValueError):
+        cooldown = 0
     if cooldown > 0:
         for prev in reversed(recent):
             pts = _parse_ts(prev.get("received_at"))

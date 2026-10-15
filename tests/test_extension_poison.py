@@ -960,3 +960,71 @@ class ReviewAndBoardFaultTest(unittest.TestCase):
                           opts=_Opts())
             with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
                 self.assertIn("res-1", json.load(fh))
+
+
+class TraversalAndDoubleCompleteTest(unittest.TestCase):
+    """Finding: save_retained joined the job_id onto the path.
+
+    load_retained refused an unsafe id. save_retained did not. A
+    job_id of ../outside was already rejected by execute_job, so it
+    did not land. The write is refused now too, so a later caller
+    cannot miss the check.
+    """
+
+    def test_traversal_job_id_is_rejected_and_writes_nothing(self):
+        from runner.runner import save_retained
+        with tempfile.TemporaryDirectory() as d:
+            outside = os.path.join(d, "outside")
+            os.makedirs(outside)
+            body = sign_payload({
+                "v": 1, "type": "job", "kind": "ping",
+                "job_id": "../outside", "issued_at": _now(),
+            }, SECRET)
+            raw = _mail("[HOMING-PIGEON] job ../outside", body)
+            cfg = {"mailbox_user": "pigeon-test@example.com",
+                   "shared_secret": SECRET, "base_dir": d}
+            poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                      imap=_IMAP(raw), smtp=_SMTP(), opts=_Opts())
+            self.assertFalse(os.path.exists(os.path.join(outside, ".json")))
+            self.assertFalse(os.path.exists(os.path.join(d, "outside.json")))
+            save_retained(d, "../outside", {"stdout": FLAG})
+            self.assertFalse(os.path.exists(os.path.join(outside, ".json")))
+            seen_path = os.path.join(d, "seen.json")
+            blob = ""
+            if os.path.exists(seen_path):
+                with open(seen_path, encoding="utf-8") as fh:
+                    blob = fh.read()
+            self.assertNotIn(FLAG, blob)
+
+    def test_two_completes_of_one_task_do_not_crash(self):
+        with tempfile.TemporaryDirectory() as d:
+            board = os.path.join(d, "board.json")
+            with open(board, "w", encoding="utf-8") as fh:
+                json.dump({"only": {
+                    "task_id": "only", "state": "claimed",
+                    "claimed_by": "a", "priority": 1,
+                    "requires": [], "capabilities": [],
+                    "compartments": [], "submitted_at": _now(),
+                }}, fh)
+            done = sign_payload({
+                "v": 1, "type": "task_result", "task_id": "only",
+                "issued_at": _now(), "result": {"ok": True},
+            }, SECRET)
+            raws = [
+                _mail("[HOMING-PIGEON] task_result only", done),
+                _mail("[HOMING-PIGEON] task_result only", done),
+            ]
+            cfg = {"mailbox_user": "pigeon-test@example.com",
+                   "shared_secret": SECRET, "base_dir": d, "workers": 4}
+            poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP(raws), smtp=_SMTP(), opts=_Workers())
+            with open(board, encoding="utf-8") as fh:
+                tasks = json.load(fh)
+            self.assertIn(tasks["only"]["state"], ("done", "claimed"))
+
+    def test_bad_profile_floor_does_not_raise(self):
+        from runner import senses as S
+        reason = S.gate_alert(
+            {"profile": {"severity_floor": "nope", "cooldown_sec": "hot"}},
+            {"severity": "low", "title": "t"}, [])
+        self.assertTrue(reason is None or isinstance(reason, str))

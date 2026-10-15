@@ -1125,7 +1125,9 @@ def prune_retained(base_dir, days):
     return removed
 
 def save_retained(base_dir, job_id, payload):
-    """Persist output for later queries. job_id charset makes it filename-safe."""
+    """Persist output for later queries. Unsafe ids are dropped, not written."""
+    if not isinstance(job_id, str) or not _SAFE_JOB_ID.match(job_id) or job_id in (".", ".."):
+        return
     d = os.path.join(base_dir, "retained")
     os.makedirs(d, exist_ok=True)
     path = os.path.join(d, f"{job_id}.json")
