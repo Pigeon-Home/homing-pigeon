@@ -665,7 +665,7 @@ def judge_job(cfg, job):
     files = job.get("files")
     if isinstance(files, list):
         for f in files:
-            if isinstance(f, dict) and ".." in str(f.get("name", "")):
+            if isinstance(f, dict) and ".." in _as_str(f.get("name", "")):
                 reasons.append("path traversal in file name")
     verdict = "fail" if reasons else "pass"
     return verdict, reasons
@@ -736,16 +736,26 @@ def check_protected_paths(before, after, protected):
             continue
         ap = os.path.abspath(path)
         if any(ap == pp or ap.startswith(pp + os.sep) for pp in abs_protected):
-            if before.get(path) != after.get(path):
+            try:
+                changed_here = before.get(path) != after.get(path)
+            except Exception:
+                changed_here = True
+            if changed_here:
                 changed.append(path)
     return changed
 
 def confinement_violated(before, after):
     if not isinstance(before, dict) or not isinstance(after, dict):
         return False
-    for path, info in after.items():
-        if path not in before or before[path] != info:
-            return True
+    try:
+        for path, info in after.items():
+            try:
+                if path not in before or before[path] != info:
+                    return True
+            except Exception:
+                return True
+    except Exception:
+        return True
     return False
 
 
@@ -1853,9 +1863,14 @@ def script_filename(interpreter) -> str:
     """Name the staged script so the interpreter will accept -File.
 
     PowerShell refuses -File on a file without a .ps1 extension. That
-    is a permanent failure, not a retry.
+    is a permanent failure, not a retry. A value that cannot be
+    printed is treated as a generic script.
     """
-    joined = " ".join(interpreter).lower()
+    parts = interpreter if isinstance(interpreter, (list, tuple)) else [interpreter]
+    texts = []
+    for part in parts:
+        texts.append(part if isinstance(part, str) else _as_str(part))
+    joined = " ".join(texts).lower()
     if "powershell" in joined or "pwsh" in joined:
         return "script.ps1"
     if "python" in joined:
@@ -2170,7 +2185,14 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
 # ---------------------------------------------------------------- job handling
 def _as_str(value) -> str:
-    return "" if value is None else str(value)
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    try:
+        return str(value)
+    except Exception:
+        return ""
 
 
 def _as_int(value, default):
@@ -2193,7 +2215,7 @@ def _as_float(value, default):
 def _preview(text, n=80) -> str:
     """One line, capped. For the runner log, not for email."""
     if not isinstance(text, str):
-        text = "" if text is None else str(text)
+        text = _as_str(text)
     line = text.replace("\r", " ").replace("\n", " ").strip()
     if len(line) > n:
         line = line[:n] + "..."
@@ -2308,20 +2330,25 @@ def _describe_job(job: dict) -> str:
         return "kind=ping (would reply pong)"
     parts = [f"kind=exec"]
     if job.get("script"):
-        parts.append(f"inline script ({len(str(job['script']))} chars)")
+        parts.append(f"inline script ({len(_as_str(job['script']))} chars)")
     if job.get("script_url"):
-        parts.append(f"script_url={job['script_url']}")
+        parts.append("script_url=" + _as_str(job["script_url"]))
     if job.get("interpreter"):
-        parts.append(f"interpreter={job['interpreter']}")
+        parts.append("interpreter=" + _as_str(job["interpreter"]))
     files = job.get("files") or []
     if isinstance(files, list) and files:
         parts.append(f"{len(files)} file(s): " +
-                     ", ".join(str(f.get("url", "?")) for f in files
+                     ", ".join(_as_str(f.get("url", "?")) for f in files
                                if isinstance(f, dict)))
     if job.get("args"):
-        parts.append(f"args={job['args']}")
+        args = job["args"]
+        if isinstance(args, list):
+            shown = [_as_str(a) for a in args]
+        else:
+            shown = _as_str(args)
+        parts.append(f"args={shown}")
     if job.get("timeout_sec"):
-        parts.append(f"timeout_sec={job['timeout_sec']}")
+        parts.append("timeout_sec=" + _as_str(job["timeout_sec"]))
     return ", ".join(parts)
 
 
@@ -2773,8 +2800,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "exit_code": _as_int(r.get("exit_code"), -1),
                 "timed_out": bool(r.get("timed_out")),
-                "stdout": "" if r.get("stdout") is None else str(r.get("stdout")),
-                "stderr": "" if r.get("stderr") is None else str(r.get("stderr")),
+                "stdout": _as_str(r.get("stdout")),
+                "stderr": _as_str(r.get("stderr")),
                 "stdout_truncated": bool(r.get("stdout_truncated")),
                 "stderr_truncated": bool(r.get("stderr_truncated")),
                 "duration_sec": _as_float(r.get("duration_sec"), 0.0),

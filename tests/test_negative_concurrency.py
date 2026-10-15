@@ -2617,3 +2617,98 @@ class PageAndHashPoisonTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-page", seen)
+
+
+class JudgeAndConfinePoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, judge and confinement, no poll):
+
+    confinement_violated compared a snapshot value whose equality
+    check raises, so the confinement result was not produced.
+    check_protected_paths did the same for a protected file, so a
+    changed credential path was not reported. judge_job called str()
+    on a file name, so advisory judgment raised and the job retried.
+    _describe_job did the same for a script, a URL, and an arg, so
+    dry-run stopped. script_filename joined a non-string interpreter
+    and raised TypeError instead of picking a file name.
+
+    A comparison that raises is a violation. A file name that cannot
+    be printed is empty. Dry-run text is empty for that field. A bad
+    interpreter is named script.
+    """
+
+    def test_bad_snapshot_and_judge_do_not_raise(self):
+        from runner.runner import (
+            _describe_job, check_protected_paths, confinement_violated,
+            judge_job, script_filename,
+        )
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+            def __repr__(self):
+                raise RuntimeError("nope")
+            def __eq__(self, other):
+                raise RuntimeError("nope")
+            def __hash__(self):
+                return 1
+
+        self.assertTrue(confinement_violated({"/t": Boom()}, {"/t": (1, 1)}))
+        changed = check_protected_paths(
+            {"/tmp/flag.txt": Boom()}, {"/tmp/flag.txt": (1, 2)}, ["/tmp"])
+        self.assertIn("/tmp/flag.txt", changed)
+        verdict, reasons = judge_job(
+            {"judge": "advisory"}, {"files": [{"name": Boom()}]})
+        self.assertEqual(verdict, "pass")
+        self.assertEqual(reasons, [])
+        text = _describe_job({
+            "kind": "exec", "script": Boom(), "script_url": Boom(),
+            "args": [Boom()],
+        })
+        self.assertIn("kind=exec", text)
+        self.assertEqual(script_filename([Boom()]), "script")
+        self.assertEqual(script_filename(None), "script")
+        self.assertEqual(script_filename(["python3"]), "script.py")
+
+    def test_concurrent_judge_and_confine_do_not_raise(self):
+        import threading
+        from runner.runner import (
+            _describe_job, confinement_violated, judge_job,
+        )
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("nope")
+            def __eq__(self, other):
+                raise RuntimeError("nope")
+            def __hash__(self):
+                return 1
+
+        errors = []
+
+        def hammer():
+            try:
+                confinement_violated({"/t": Boom()}, {"/t": (1, 1)})
+                judge_job({"judge": "advisory"}, {"files": [{"name": Boom()}]})
+                _describe_job({"kind": "exec", "script": Boom(), "args": [Boom()]})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_judge(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-judge",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-judge", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-judge", seen)
