@@ -92,6 +92,14 @@ except ImportError:  # running from inside runner/ as __main__
     except ImportError:
         _resources = None
 
+try:
+    from runner import dri as _dri
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        import dri as _dri
+    except ImportError:
+        _dri = None
+
 
 def _append_security_event(base_dir: str, event: dict) -> None:
     """Append one event to security-events.jsonl (capped). Best effort."""
@@ -2330,6 +2338,13 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
                              for k, v in event["resources"].items())
             log(f"resource pressure over threshold "
                 f"({event['threshold']:.0%}): {over}", "WARN")
+    # DRI playbook: evaluate page triggers once per cycle. Disabled
+    # by default; needs a configured channel to actually send.
+    if _dri is not None:
+        try:
+            _dri.maybe_page(cfg, base_dir)
+        except Exception as e:
+            log(f"DRI evaluation failed: {e}", "WARN")
     board = Board(os.path.join(base_dir, "board.json"))
     cfg["board"] = board
     if not getattr(log, "identity_logged", False):

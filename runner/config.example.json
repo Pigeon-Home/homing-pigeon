@@ -31,6 +31,21 @@
   "redact_patterns_extra": {},
   "review_patterns_extra": [],
   "resources": {"enabled": true, "threshold": 0.95, "cooldown_sec": 900},
+  "dri": {
+    "enabled": false,
+    "channel": "telegram",
+    "telegram_bot_token": "",
+    "telegram_chat_id": "",
+    "triggers": {
+      "sensor_fused_score": {"threshold": 6.0, "window_sec": 600},
+      "confinement_violation": true,
+      "judge_block": true,
+      "key_probe": {"threshold": 5, "window_sec": 3600},
+      "resource_pressure": true
+    },
+    "cooldown_sec": 3600,
+    "digest_window_sec": 300
+  },
   "inference": {
     "endpoint": "",
     "model": "",
