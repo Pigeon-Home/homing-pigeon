@@ -237,7 +237,7 @@ applied at the trust boundary, without any zero-knowledge proving
 machinery: the runner is trusted (it's the user's own machine), so
 egress filtering plus signed commitments gives the privacy property.
 
-**The Oracle** (proper noun) is the name for this subsystem taken
+**the Oracle** is the name for this subsystem taken
 together: result-policy enforcement, the query engine, attestations,
 output retention, and the privacy budget. Optional extensions:
 execution confinement (section 9.3) and local inference (section 10).
