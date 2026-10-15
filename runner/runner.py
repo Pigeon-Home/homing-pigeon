@@ -1231,10 +1231,17 @@ class Board:
         }
 
     def save(self):
-        tmp = self.path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(self.tasks, f, indent=2)
-        os.replace(tmp, self.path)
+        # Unique tmp so concurrent saves cannot race on one .tmp name.
+        tmp = self.path + f".tmp.{os.getpid()}.{threading.get_ident()}"
+        try:
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(self.tasks, f, indent=2)
+            os.replace(tmp, self.path)
+        finally:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
 
     def submit(self, task):
         if not isinstance(task, dict):
@@ -1243,25 +1250,26 @@ class Board:
         if not isinstance(tid, str) or not re.fullmatch(
                 r"[A-Za-z0-9._-]{1,128}", tid):
             return False, "invalid task_id"
-        if tid in self.tasks:
-            return False, "duplicate task_id"
         for field in ("requires", "capabilities", "compartments"):
             v = task.get(field)
             if v is not None and not (isinstance(v, list) and all(isinstance(x, str) for x in v)):
                 return False, f"{field} must be a list of strings"
         if "priority" in task and not isinstance(task["priority"], (int, float)):
             return False, "priority must be numeric"
-        self.tasks[tid] = {
-            "task_id": tid,
-            "state": "open",
-            "submitted_at": datetime.now(timezone.utc).isoformat(),
-            "priority": task.get("priority", 0),
-            "requires": task.get("requires") or [],
-            "capabilities": task.get("capabilities") or [],
-            "compartments": task.get("compartments") or [],
-            "payload": task.get("payload"),
-        }
-        self.save()
+        with _BOARD_LOCK:
+            if tid in self.tasks:
+                return False, "duplicate task_id"
+            self.tasks[tid] = {
+                "task_id": tid,
+                "state": "open",
+                "submitted_at": datetime.now(timezone.utc).isoformat(),
+                "priority": task.get("priority", 0),
+                "requires": task.get("requires") or [],
+                "capabilities": task.get("capabilities") or [],
+                "compartments": task.get("compartments") or [],
+                "payload": task.get("payload"),
+            }
+            self.save()
         return True, "ok"
 
     def offer(self, worker_id, capabilities, key_id="", cfg=None):
@@ -1283,13 +1291,13 @@ class Board:
                 isinstance(x, str) for x in compartments):
             compartments = None
         # re-offer outstanding claim
-        for t in self.tasks.values():
+        for t in list(self.tasks.values()):
             if not isinstance(t, dict):
                 continue
             if t.get("state") == "claimed" and t.get("claimed_by") == worker_id:
                 return t
         candidates = []
-        for t in self.tasks.values():
+        for t in list(self.tasks.values()):
             if not isinstance(t, dict) or t.get("state") != "open":
                 continue
             if not t.get("task_id"):

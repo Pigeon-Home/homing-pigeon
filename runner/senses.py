@@ -251,7 +251,13 @@ def load_alerts(base_dir: str, sensor=None, severity_floor=None,
             continue
         out.append(rec)
     if limit is not None:
-        out = out[-int(limit):]
+        try:
+            n = int(limit)
+        except (TypeError, ValueError):
+            n = 50
+        if n < 0:
+            n = 0
+        out = out[-n:]
     return out
 
 

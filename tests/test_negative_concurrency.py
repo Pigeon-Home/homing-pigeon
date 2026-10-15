@@ -463,3 +463,61 @@ class RedactPatternPoisonTest(unittest.TestCase):
             bad, budget=2,
         )
         self.assertIsInstance(answers, list)
+
+
+class ConcurrentBoardAndSensesTest(unittest.TestCase):
+    """Findings (2026-10-15 simulation):
+
+    1. Board.submit mutated self.tasks without the lock while
+       _offer_unlocked iterated values(). Concurrent hammer raised
+       RuntimeError: dictionary changed size during iteration.
+       Also Board.save used a fixed .tmp name, so concurrent saves
+       raced with FileNotFoundError on replace.
+
+    2. senses.load_alerts did int(limit) with no guard. limit="bad"
+       raised ValueError and stopped the caller.
+
+    Both are hardened. Concurrent submit/offer and bad limit now
+    complete without raising.
+    """
+
+    def test_concurrent_board_submit_and_offer_do_not_raise(self):
+        import threading
+        with tempfile.TemporaryDirectory() as d:
+            board = Board(os.path.join(d, "board.json"))
+            errors = []
+
+            def hammer():
+                for i in range(25):
+                    try:
+                        board.submit({
+                            "task_id": f"t{threading.get_ident()}-{i}",
+                            "priority": i,
+                        })
+                        board.offer(f"w{threading.get_ident()}", ["shell"])
+                        board.submit("not-a-dict")
+                        board.offer("w", None)
+                    except Exception as e:
+                        errors.append(e)
+
+            threads = [threading.Thread(target=hammer) for _ in range(6)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            self.assertEqual(errors, [])
+            # board remains usable
+            ok, _ = board.submit({"task_id": "after-hammer"})
+            self.assertTrue(ok)
+
+    def test_load_alerts_bad_limit_does_not_raise(self):
+        from runner import senses
+        with tempfile.TemporaryDirectory() as d:
+            senses.store_alert(d, {
+                "sensor": "host_ids", "severity": "info",
+                "title": "x", "detail": {},
+            })
+            self.assertIsInstance(senses.load_alerts(d, limit="bad"), list)
+            self.assertIsInstance(senses.load_alerts(d, limit=None), list)
+            self.assertIsInstance(senses.load_alerts(d, limit=-1), list)
+            self.assertIsInstance(senses.load_alerts(d, sensor=5), list)
