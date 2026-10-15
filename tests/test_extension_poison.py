@@ -1301,3 +1301,31 @@ class NanAndDirectoryFaultTest(unittest.TestCase):
                       smtp=_SMTP(), opts=_Opts())
             with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
                 self.assertIn("dir-1", json.load(fh))
+
+
+class SnapshotAndSubjectFaultTest(unittest.TestCase):
+    """Finding: a workspace of / makes the snapshot walk the disk.
+
+    The parent of / is /. The poll stalls. The walk is refused
+    when the parent is the filesystem root. A newline in a
+    subject used to raise from the email header and retry the
+    job. The newline is stripped.
+    """
+
+    def test_root_workspace_does_not_walk(self):
+        from runner.runner import snapshot_outside
+        snap = snapshot_outside("/")
+        self.assertEqual(snap, {})
+
+    def test_newline_subject_does_not_raise(self):
+        from runner.runner import send_mail
+        sent = {}
+
+        class S:
+            def send_message(self, msg):
+                sent["subject"] = msg["Subject"]
+
+        send_mail(S(), {"mailbox_user": "a@b.c"},
+                  "result\r\nbad", "body")
+        self.assertNotIn("\n", sent["subject"])
+        self.assertNotIn("\r", sent["subject"])
