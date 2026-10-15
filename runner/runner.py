@@ -849,7 +849,7 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": ASK_SYSTEM + (("\n\nOwner instructions for this box:\n" + instructions.strip()) if instructions and str(instructions).strip() else "")},
+            {"role": "system", "content": ASK_SYSTEM + (("\n\nOwner instructions for this box:\n" + str(instructions).strip()) if instructions and str(instructions).strip() else "")},
             {"role": "user", "content":
              "Question:\n" + str(question or "") + "\n\nOutput:\n" + str(output_text or "")},
         ],
@@ -1001,10 +1001,14 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                     max_chars = int(q.get("max_chars") or inf["max_answer_chars"])
                 except (TypeError, ValueError):
                     max_chars = inf["max_answer_chars"]
-                answers.append(ask_model(
-                    inf, q.get("question") or "", text, max_chars, patterns,
-                    instructions=(cfg or {}).get("owner_instructions"),
-                ))
+                try:
+                    answers.append(ask_model(
+                        inf, q.get("question") or "", text, max_chars, patterns,
+                        instructions=(cfg or {}).get("owner_instructions"),
+                    ))
+                except Exception as e:
+                    log(f"ask failed: {e}", "WARN")
+                    answers.append({"op": "ask", "rejected": "inference_error"})
         elif op == "senses":
             if _senses is None or base_dir is None:
                 answers.append({"op": "senses", "rejected": "senses_unavailable"})

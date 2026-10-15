@@ -1202,3 +1202,28 @@ class BoardAndEventFaultTest(unittest.TestCase):
             for t in threads:
                 t.join()
             self.assertEqual(errors, [])
+
+
+class AskInstructionFaultTest(unittest.TestCase):
+    """Finding: owner_instructions that is not a string crashed ask.
+
+    The prompt called .strip() on it before ask_model's own try.
+    A declared ask on a job then retried forever. The value is
+    coerced, and a raise becomes inference_error.
+    """
+
+    def test_numeric_instructions_do_not_crash_ask(self):
+        from runner.runner import ask_model, answer_queries, inference_config
+        cfg = {"endpoint": "http://127.0.0.1:11434/v1", "model": "m"}
+        got = ask_model(cfg, "q", "out", 20, opener=lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no")),
+                        instructions=5)
+        self.assertEqual(got.get("rejected"), "inference_error")
+        inf = inference_config({"inference": cfg})
+        answers, spent = answer_queries(
+            [{"op": "ask", "question": "why"}],
+            {"stdout": "ok", "stderr": ""}, {}, 4,
+            cfg={"inference": cfg, "owner_instructions": 5},
+        )
+        self.assertEqual(spent, 1)
+        self.assertEqual(answers[0].get("rejected"), "inference_error")
+        self.assertNotIn("Traceback", json.dumps(answers))
