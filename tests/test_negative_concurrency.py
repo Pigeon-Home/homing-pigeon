@@ -3378,3 +3378,99 @@ class ResultAndRedirectPoisonTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-result", seen)
+
+
+class AttestComparePoisonTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, attestations, no poll):
+
+    build_attestations compared the exit code with == and used the
+    confined flag as a boolean. An exit code whose equality check
+    raises, or a flag whose boolean check raises, stopped the
+    attestation. Six threads all raised, so the Oracle result was
+    not built.
+
+    A comparison that raises is not a pass. The query still answers.
+    A normal zero exit is still a pass.
+    """
+
+    def test_bad_exit_and_flag_do_not_raise(self):
+        from runner.runner import answer_queries, apply_result_policy, build_attestations
+
+        class Eq:
+            def __eq__(self, other):
+                raise RuntimeError("eq")
+
+        class BoolBoom:
+            def __bool__(self):
+                raise RuntimeError("bool")
+
+        atts = build_attestations(
+            [{"op": "attest", "predicate": "exit_zero"}],
+            {"exit_code": Eq()})
+        self.assertEqual(atts[0]["ok"], False)
+        atts = build_attestations(
+            [{"op": "attest", "predicate": "confined_to_workspace"}],
+            {"confined": BoolBoom()})
+        self.assertEqual(atts[0]["ok"], False)
+        atts = build_attestations(
+            [{"op": "attest", "predicate": "exit_zero"}],
+            {"exit_code": 0})
+        self.assertEqual(atts[0]["ok"], True)
+        answers, spent = answer_queries(
+            [{"op": "attest", "predicate": "exit_zero"}],
+            {"stdout": "", "stderr": "", "exit_code": Eq()}, {}, 4)
+        self.assertEqual(spent, 1)
+        self.assertEqual(answers[0].get("ok"), False)
+        result, retain = apply_result_policy(
+            {}, {"kind": "ping", "job_id": "j", "result_policy": {
+                "view": "attested",
+                "queries": [{"op": "attest", "predicate": "exit_zero"}],
+            }}, {"stdout": "", "stderr": "", "exit_code": Eq()}, {}, None)
+        self.assertIsInstance(result, dict)
+        self.assertIsInstance(retain, bool)
+
+    def test_concurrent_bad_exit_codes_do_not_raise(self):
+        import threading
+        from runner.runner import build_attestations
+
+        class Eq:
+            def __eq__(self, other):
+                raise RuntimeError("eq")
+
+        class BoolBoom:
+            def __bool__(self):
+                raise RuntimeError("bool")
+
+        errors = []
+
+        def hammer():
+            try:
+                build_attestations(
+                    [{"op": "attest", "predicate": "exit_zero"}],
+                    {"exit_code": Eq()})
+                build_attestations(
+                    [{"op": "attest", "predicate": "confined_to_workspace"}],
+                    {"confined": BoolBoom()})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_compare(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-compare",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-compare", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-compare", seen)
+

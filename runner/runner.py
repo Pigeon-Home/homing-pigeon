@@ -626,7 +626,11 @@ def build_attestations(queries, ctx):
             except Exception:
                 return False
         if _is("exit_zero"):
-            atts.append({"predicate": pred, "ok": ctx.get("exit_code") == 0})
+            try:
+                ok = ctx.get("exit_code") == 0
+            except Exception:
+                ok = False
+            atts.append({"predicate": "exit_zero", "ok": ok})
         elif _is("no_secrets"):
             pats = ctx.get("patterns")
             if not isinstance(pats, dict):
@@ -651,13 +655,23 @@ def build_attestations(queries, ctx):
         elif _is("confined_to_workspace"):
             c = ctx.get("confined")
             if c is None:
-                atts.append({"predicate": pred, "ok": False,
+                atts.append({"predicate": "confined_to_workspace", "ok": False,
                              "reason": "unconfigured"})
-            elif c:
-                atts.append({"predicate": pred, "ok": True, "reason": None})
             else:
-                atts.append({"predicate": pred, "ok": False,
-                             "reason": "violation_detected"})
+                try:
+                    confined_ok = bool(c)
+                except Exception:
+                    confined_ok = False
+                    c = None
+                if c is None:
+                    atts.append({"predicate": "confined_to_workspace", "ok": False,
+                                 "reason": "unconfigured"})
+                elif confined_ok:
+                    atts.append({"predicate": "confined_to_workspace", "ok": True,
+                                 "reason": None})
+                else:
+                    atts.append({"predicate": "confined_to_workspace", "ok": False,
+                                 "reason": "violation_detected"})
         else:
             atts.append({"predicate": pred, "ok": False, "reason": "unknown"})
     return atts
