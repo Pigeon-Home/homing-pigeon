@@ -487,22 +487,20 @@ def _redact_patterns(cfg):
 
 def apply_result_policy(cfg, job, exec_result, patterns, confined):
     """Return (result_dict, retain_bool). Job can never widen past owner ceiling."""
-    policy = job.get("result_policy") if isinstance(job, dict) else None
+    if not isinstance(cfg, dict):
+        cfg = {}
+    if not isinstance(job, dict):
+        job = {}
+    if not isinstance(exec_result, dict):
+        exec_result = {}
+    if not isinstance(patterns, dict):
+        patterns = {}
+    policy = job.get("result_policy")
     if not isinstance(policy, dict):
         policy = {}
     requested = policy.get("view") or "full"
     ceiling = cfg.get("max_result_view") or "full"
     effective = requested if VIEW_ORDER.get(requested, 3) <= VIEW_ORDER.get(ceiling, 3) else ceiling
-    # Coerce: a poisoned or extension-supplied result may carry non-strings.
-    # int + str used to raise and stop the poll.
-    if not isinstance(exec_result, dict):
-        exec_result = {}
-    if not isinstance(patterns, dict):
-        patterns = {}
-    if not isinstance(cfg, dict):
-        cfg = {}
-    if not isinstance(job, dict):
-        job = {}
     stdout = exec_result.get("stdout")
     stderr = exec_result.get("stderr")
     full_out = ("" if stdout is None else str(stdout)) + ("" if stderr is None else str(stderr))
@@ -850,7 +848,11 @@ def secret_fragment_hit(reply, source, patterns, min_len=_SECRET_FRAGMENT):
     first or last slice of a key and miss the pattern. This check
     compares slices of each match in the job output against the reply.
     """
-    folded_reply = (reply or "").casefold()
+    if not isinstance(reply, str):
+        reply = ""
+    if not isinstance(source, str):
+        source = ""
+    folded_reply = reply.casefold()
     if len(folded_reply) < min_len:
         return False
     for _name, pat in (patterns or {}).items():

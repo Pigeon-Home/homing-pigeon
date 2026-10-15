@@ -969,3 +969,54 @@ class SnapshotExcludePoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class ApplyAndFragmentPoisonTest(unittest.TestCase):
+    """Findings (2026-10-15 simulation):
+
+    1. apply_result_policy guarded cfg after the first cfg.get.
+       None cfg raised AttributeError on max_result_view and stopped
+       result packaging.
+    2. secret_fragment_hit did (reply or "").casefold(). An int reply
+       is truthy, so .casefold raised AttributeError. A non-string
+       source also crashed re.finditer.
+
+    Both hardened. Poison inputs return safe defaults and do not stop
+    processing.
+    """
+
+    def test_apply_and_fragment_tolerate_poison(self):
+        from runner.runner import apply_result_policy, secret_fragment_hit
+        result, retain = apply_result_policy(None, None, None, None, None)
+        self.assertIsInstance(result, dict)
+        self.assertIsInstance(retain, bool)
+        result, retain = apply_result_policy(
+            {"max_result_view": 5},
+            {"result_policy": {"view": "redacted", "queries": "bad"}},
+            None, "bad", "bad",
+        )
+        self.assertIsInstance(result, dict)
+        self.assertFalse(secret_fragment_hit(5, "src", {}))
+        self.assertFalse(secret_fragment_hit("hello", 5, {}))
+        self.assertFalse(secret_fragment_hit(None, None, None))
+        self.assertFalse(secret_fragment_hit("hello", "hello", {"bad": None}))
+
+    def test_concurrent_apply_and_fragment_do_not_raise(self):
+        import threading
+        from runner.runner import apply_result_policy, secret_fragment_hit
+        errors = []
+
+        def hammer():
+            for _ in range(15):
+                try:
+                    apply_result_policy(None, None, None, None, None)
+                    secret_fragment_hit(5, None, {"bad": None})
+                except Exception as e:
+                    errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
