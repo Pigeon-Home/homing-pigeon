@@ -229,7 +229,7 @@ authenticity and integrity come from HMAC-SHA-384.
 
 ---
 
-# Protocol v3 (proposal): privacy-preserving results
+# Protocol v3 (proposal): the Oracle
 
 **Paradigm: the runner as the Oracle.** In v1 the SI receives full job
 output (stdout/stderr) by email. v3 inverts this: the runner keeps the
@@ -244,7 +244,7 @@ egress filtering plus signed commitments gives the privacy property.
 
 The **Oracle** is a local agent: instructions plus an
 optional local model, running on the runner's own machine. It has
-three duties across a job's lifetime:
+four duties, three across a job's lifetime and one above it:
 
 - **Before execution — judgment** (section 9.3): read the incoming
   job, assess whether it will do what it claims, and flag or block it
@@ -254,8 +254,16 @@ three duties across a job's lifetime:
 - **After execution — reporting** (sections 9, 10): enforce the
   result policy, answer the declared queries, and sign attestations —
   so the SI learns only what the policy permits.
+- **Before jobs exist — dispatch** (section 13): hold the task board,
+  deal work to pulling workers, and compartmentalize what each worker
+  may see.
 
-It is governed by a single runner-owner flag:
+v3 adds a second direction without removing the first. In v1 the SI pushes jobs to the runner, and that keeps working unchanged. The Oracle can also run the other way: it holds a task board and worker SIs pull tasks by asking what to work on next (section 13). Push and pull coexist; a deployment uses either or both.
+
+It is governed by runner-owner flags. They are config-only, never job
+fields — no job field can disable the Oracle, otherwise the SI could
+switch off its own restraints. Section 13 adds dispatch-specific flags
+under the same rule. The master flag:
 
 - `oracle_enabled` in config.json (default `true`).
 - When `false`, the Oracle is fully bypassed: `result_policy` is
@@ -263,8 +271,6 @@ It is governed by a single runner-owner flag:
   `query` messages are rejected as unsupported. This is the debugging
   escape hatch — straight stdin/stdout, the dumb pipe, none of the
   machinery.
-- The flag is config-only. **No job field can disable the Oracle** —
-  otherwise the SI could switch off its own restraints.
 
 ## 9. Result policies
 
@@ -553,6 +559,113 @@ look* — which, for most debugging sessions, is the expensive part.
 - **Data lifetime:** retained outputs age out per config; nothing about
   v3 weakens the v1 rule that the runner host itself is fully trusted —
   v3 protects data *from the SI*, not from the machine's owner.
+- **Worker authentication:** task requests and results are HMAC-signed
+  with the same shared secret as v1 jobs. Without it, a third party can
+  neither pull tasks nor submit results.
+- **Compartmentalization is opt-in:** by default a pulling worker sees
+  the full task. Restriction is configuration (section 13.3), never the
+  default.
+- **Review is the correctness anchor:** attestations bind workers to
+  claimed outputs; correctness comes from review (section 13.4).
+
+## 13. Task dispatch: the Oracle as work queue
+
+This section adds a direction; it removes none. Everything in sections
+1 through 12 keeps working: a cloud SI can still push a job for a
+particular development task and the runner executes it. Dispatch is an
+additional mode. The Oracle holds a task board, and worker SIs pull
+tasks by asking what to work on next. The runner's machine becomes the
+dispatch center. The trust shape is unchanged. The Oracle still judges,
+confines, and reports. It just applies those duties to a queue instead
+of a single job.
+
+The default posture is least restrictive, like everything else here.
+Any holder of the shared secret can pull tasks and see full task
+descriptions. Restrictions are configuration for owners who want them,
+never the default. The disclaimers below say what that choice costs.
+
+### 13.1 Task model
+
+A task is a job the Oracle has not assigned yet:
+
+- `task_id`: same charset and length rules as `job_id` (section 3.1).
+- `requires[]`: task IDs that should complete first. A DAG, not a flat
+  queue.
+- `capabilities[]`: free-form tags (`code`, `review`, `prose`) describing
+  what the work needs. Workers claim capabilities when they pull;
+  matching is by tag equality.
+- `priority`: higher first. Ties break by arrival order.
+- `body`: the work itself, usually a v1 job body or a declared query set.
+
+Dependency enforcement follows the same three-mode pattern as
+pre-execution judgment (section 9.3): `dag_mode: off` (default; the
+Oracle lists dependencies in the task description and trusts the
+worker), `advisory` (the Oracle warns when handing out a task whose
+dependencies are incomplete), `enforce` (blocked tasks are withheld
+until dependencies complete). Config-only, like `judge`.
+
+### 13.2 Worker pull
+
+Workers ask; the Oracle deals. The worker sends a signed `task_request`:
+
+```json
+{"worker_id": "grok-4", "capabilities": ["code", "review"],
+ "last_completed": "task-9f2"}
+```
+
+The Oracle replies with a `task_offer` (the task plus its description)
+or `empty`. Both messages are HMAC-signed emails under the same shared
+secret as v1 jobs. The pull direction matters: workers initiate, so the
+runner needs no inbound connections and the firewall story from v1
+survives unchanged.
+
+Anyone holding the shared secret can pull. A `worker_allowlist` in
+config restricts pulls to named `worker_id` values. Off by default.
+
+### 13.3 Compartmentalization
+
+By default a worker sees the entire task it pulled. The Oracle may
+additionally partition work so no single worker holds the whole picture:
+one worker gets the database task, another gets the UI task, the Oracle
+aggregates. This is opt-in per task via `compartments[]` labels, matched
+against a `worker_compartments` map in config. Tasks without labels are
+fully visible to any pulling worker.
+
+Two bounds apply regardless. The per-task privacy budget (section 11)
+limits what a worker can extract across repeated pulls, and the
+two-phase query exchange (section 10) governs what workers may ask about
+retained outputs. Compartmentalization decides *which* work a worker
+sees; the budget and the exchange decide *how much* it can learn from it.
+
+Disclaimer: compartmentalization is a policy, not a proof. A worker that
+receives a task sees that task fully. Do not place mutually hostile
+workers on the same board and expect labels to save you.
+
+### 13.4 Results and the review gate
+
+Workers return `task_result` messages shaped like v1 results (section
+3.2), or attested answers where the task used a result policy (sections
+9, 10). Results carry the `task_id`; duplicates are deduped, so
+at-least-once redelivery is safe.
+
+An attestation binds a worker to its claimed output. It says nothing
+about whether the output is correct. Correctness comes from review: a
+second worker with the `review` capability, and finally a human. The
+Oracle routes results to reviewers the same way it routes tasks to
+workers. By default results are accepted as-is and flagged for human
+review; `require_review: true` in config holds them until a human signs
+off.
+
+### 13.5 Liveness and delivery
+
+If a worker pulls a task and no result arrives within `task_timeout`
+(config, default 24h), the Oracle re-offers the task. Workers that go
+silent are simply never dealt to again; there is no eviction protocol,
+just the timeout.
+
+Disclaimer: the Oracle is one box. It is the bottleneck and the single
+point of failure for the whole board. That is fine at human scale. It is
+not a distributed scheduler and does not pretend to be one.
 
 *Status: proposal. v1 remains the implemented protocol; v3 message types
 are not yet accepted by the runner.*
