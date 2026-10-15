@@ -229,11 +229,19 @@ document.getElementById('f').onsubmit = async (e) => {
     def do_POST(self):
         n = int(self.headers.get("Content-Length") or 0)
         question = self.rfile.read(n).decode("utf-8", "replace").strip()
+        model = (self.cfg.get("inference") or {}).get("model") or "llama3.2:3b"
+        if self.path == "/si":
+            try:
+                reply = ask_si(model, [], question)
+            except Exception as e:
+                self._send(200, f"SI error: {e}", "text/plain; charset=utf-8")
+                return
+            self._send(200, reply, "text/plain; charset=utf-8")
+            return
         if self.path == "/send":
-            model = (self.cfg.get("inference") or {}).get("model") or "llama3.2:3b"
             try:
                 si_text = ask_si(model, [], question)
-            except Exception as e:
+            except Exception:
                 si_text = question
             status = send_via_email(self.cfg, si_text)
             self._send(200, si_text + "\n(" + status + ")", "text/plain; charset=utf-8")
