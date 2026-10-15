@@ -1396,3 +1396,74 @@ class ProtectedPathsPoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class AskAndPageShapeTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, Oracle and DRI, no mailbox poll):
+
+    ask_model called .get on its config. A list or an int raised
+    AttributeError in every concurrent caller. timeout_sec or
+    max_answer_chars set to a word raised ValueError before the
+    request, so the ask never returned a rejection.
+
+    format_page iterated signals. An int is truthy, so "or []" did
+    not save it, and the page raised TypeError. The digest was not
+    saved.
+
+    A bad ask config now returns inference_unconfigured or uses a
+    numeric default. A signals value that is not a list is skipped.
+    """
+
+    def test_bad_ask_config_returns_a_rejection(self):
+        from runner.runner import ask_model
+        from runner import dri
+        inf = {"endpoint": "http://127.0.0.1:9/v1", "model": "m"}
+        for cfg in (["x"], 5, None):
+            got = ask_model(cfg, "what happened?", "out", 10)
+            self.assertEqual(got.get("rejected"), "inference_unconfigured")
+        got = ask_model({**inf, "timeout_sec": "soon", "max_answer_chars": "x"},
+                        "q", "out", "lots")
+        self.assertIn(got.get("rejected"), ("inference_error", "inference_unconfigured"))
+        text = dri.format_page([
+            {"title": "pressure", "signals": 5},
+            {"title": "ok", "signals": ["one"]},
+            {"signals": "word"},
+        ])
+        self.assertIn("pressure", text)
+        self.assertIn("one", text)
+        self.assertNotIn("w", text.split("ok")[-1][:20])
+
+    def test_concurrent_bad_asks_and_pages_do_not_raise(self):
+        import threading
+        from runner.runner import ask_model
+        from runner import dri
+        errors = []
+        inf = {"endpoint": "http://127.0.0.1:9/v1", "model": "m",
+               "timeout_sec": "soon", "max_answer_chars": "x"}
+
+        def hammer(i):
+            try:
+                ask_model(["x"] if i % 2 else inf, "q", "out", "lots")
+                dri.format_page([{"signals": 5}, {"signals": None}, 5])
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-ask",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-ask", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-ask", seen)

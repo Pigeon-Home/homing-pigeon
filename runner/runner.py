@@ -909,14 +909,21 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
     {"rejected": "sanitization"} and the model text is dropped.
     """
     patterns = patterns if patterns is not None else BUILTIN_REDACT_PATTERNS
-    endpoint = (cfg or {}).get("endpoint") or ""
-    model = (cfg or {}).get("model") or ""
+    if not isinstance(cfg, dict):
+        return {"op": "ask", "rejected": "inference_unconfigured"}
+    endpoint = cfg.get("endpoint") or ""
+    model = cfg.get("model") or ""
+    if not isinstance(endpoint, str) or not isinstance(model, str):
+        return {"op": "ask", "rejected": "inference_unconfigured"}
     if not endpoint or not model or not _endpoint_is_loopback(endpoint):
         return {"op": "ask", "rejected": "inference_unconfigured"}
     try:
         cap = int(max_chars)
     except (TypeError, ValueError):
-        cap = int(cfg.get("max_answer_chars") or 2000)
+        try:
+            cap = int(cfg.get("max_answer_chars") or 2000)
+        except (TypeError, ValueError):
+            cap = 2000
     if cap < 0:
         cap = 0
     payload = {
@@ -934,7 +941,12 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
         method="POST",
     )
     open_fn = opener or _default_inference_open
-    timeout = int(cfg.get("timeout_sec") or 60)
+    try:
+        timeout = int(cfg.get("timeout_sec") or 60)
+    except (TypeError, ValueError):
+        timeout = 60
+    if timeout < 1:
+        timeout = 60
     log(f"ask: calling model {model}")
     try:
         with open_fn(req, timeout=timeout) as resp:

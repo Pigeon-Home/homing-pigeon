@@ -310,7 +310,10 @@ def format_page(events):
         lines.append("homing-pigeon: " + str(ev.get("title") or ev.get("trigger") or "page"))
         if ev.get("detail"):
             lines.append(str(ev["detail"]))
-        for sig in ev.get("signals") or []:
+        sigs = ev.get("signals")
+        if not isinstance(sigs, list):
+            sigs = []
+        for sig in sigs:
             lines.append(f"  - {sig}")
         lines.append("")
     lines.append("the Oracle took no action.")
