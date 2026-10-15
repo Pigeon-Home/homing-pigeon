@@ -1139,3 +1139,66 @@ class PatternAndRateFaultTest(unittest.TestCase):
                           imap=_IMAP(raw), smtp=_SMTP(), opts=_Opts())
             with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
                 self.assertIn("query:q-1", json.load(fh))
+
+
+class BoardAndEventFaultTest(unittest.TestCase):
+    """Finding: a dict in compartments crashed the offer.
+
+    set() raises TypeError on an unhashable. The worker raised and
+    the cycle failed. Only strings are intersected now. A security
+    event that cannot be serialized is dropped, not fatal.
+    """
+
+    def test_unhashable_compartment_does_not_crash(self):
+        with tempfile.TemporaryDirectory() as d:
+            board = os.path.join(d, "board.json")
+            with open(board, "w", encoding="utf-8") as fh:
+                json.dump({"only": {
+                    "task_id": "only", "state": "open",
+                    "compartments": [{"not": "a string"}],
+                    "capabilities": [], "requires": [],
+                    "submitted_at": _now(),
+                }}, fh)
+            req = sign_payload({
+                "v": 1, "type": "task_request", "issued_at": _now(),
+                "capabilities": [],
+            }, SECRET)
+            cfg = {
+                "mailbox_user": "pigeon-test@example.com",
+                "shared_secret": SECRET, "base_dir": d,
+                "worker_compartments": {"worker-1": ["ops"]},
+            }
+            raw = _mail("[HOMING-PIGEON] task_request worker-1", req)
+            poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                      imap=_IMAP(raw), smtp=_SMTP(), opts=_Opts())
+            with open(board, encoding="utf-8") as fh:
+                tasks = json.load(fh)
+            self.assertIn("only", tasks)
+
+    def test_unserializable_event_is_dropped(self):
+        from runner.runner import _append_security_event
+        with tempfile.TemporaryDirectory() as d:
+            _append_security_event(d, {"type": "x", "detail": {"not", "json"}})
+            path = os.path.join(d, "security-events.jsonl")
+            if os.path.exists(path):
+                with open(path, encoding="utf-8") as fh:
+                    self.assertNotIn("not", fh.read())
+
+    def test_concurrent_event_appends_do_not_crash(self):
+        from runner.runner import _append_security_event
+        import threading
+        with tempfile.TemporaryDirectory() as d:
+            errors = []
+
+            def write(i):
+                try:
+                    _append_security_event(d, {"type": "n", "i": i})
+                except Exception as e:
+                    errors.append(e)
+
+            threads = [threading.Thread(target=write, args=(i,)) for i in range(15)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            self.assertEqual(errors, [])

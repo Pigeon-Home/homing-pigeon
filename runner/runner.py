@@ -120,7 +120,7 @@ def _append_security_event(base_dir: str, event: dict) -> None:
         if len(lines) > 5000:
             with open(path, "w", encoding="utf-8") as f:
                 f.writelines(lines[-5000:])
-    except OSError:
+    except Exception:
         pass
 
 
@@ -1343,8 +1343,12 @@ class Board:
             if tcomps:
                 if compartments is None:
                     pass  # no config = visible
-                elif not set(tcomps) & set(compartments):
-                    continue
+                else:
+                    # A dict in the list is bad data, not a crash.
+                    left = {x for x in tcomps if isinstance(x, str)}
+                    right = {x for x in compartments if isinstance(x, str)}
+                    if not left & right:
+                        continue
             # capability filter
             need = t.get("capabilities") or []
             if not isinstance(need, list):
@@ -2152,8 +2156,9 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
             "reason": "bad_signature",
         })
         return True
-    with _BOARD_LOCK:
-        board.reoffer_expired(cfg.get("task_timeout", 86400))
+    try:
+        with _BOARD_LOCK:
+            board.reoffer_expired(cfg.get("task_timeout", 86400))
         if kind == "task_submit":
             ok, reason = board.submit(payload)
             reply_subj = f"[HOMING-PIGEON] task_ack {ident}"
@@ -2180,6 +2185,11 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
         else:
             reject("unknown board kind")
             return True
+    except Exception as e:
+        # Bad board data must reject this message, not fail the cycle.
+        log(f"board failed seq {seq}: {e}", "WARN")
+        reject("board error")
+        return True
     if opts is None or not getattr(opts, "no_send", False):
         send_mail(smtp, cfg, reply_subj, sign_payload(reply_body, secret))
     if opts is None or not opts.dry_run:
