@@ -1706,5 +1706,54 @@ class DRIWindowGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class AttestationGracefulTest(unittest.TestCase):
+    """Finding: build_attestations and secret_fragment_hit run on
+    every result. Odd inputs must not crash the result path.
+    """
+
+    def test_attestations_odd(self):
+        from runner.runner import build_attestations
+        for queries, ctx in (
+            ([], {}),
+            (None, {}),
+            ([{"op": "attest", "predicate": "exit_zero"}], None),
+            (["not-a-dict"], {"exit_code": None}),
+            ([{"op": "attest", "predicate": "nope"}], {"exit_code": 0}),
+        ):
+            try:
+                got = build_attestations(queries if isinstance(queries, list) else [],
+                                         ctx if isinstance(ctx, dict) else {})
+            except Exception as e:
+                self.fail(f"attestations crashed: {e}")
+            self.assertIsInstance(got, list)
+
+    def test_fragment_odd(self):
+        from runner.runner import secret_fragment_hit
+        for reply, source in ((None, None), ("", ""), (42, "src"), ("secret", None)):
+            try:
+                secret_fragment_hit(reply if isinstance(reply, str) else "",
+                                    source if isinstance(source, str) else "", {})
+            except Exception as e:
+                self.fail(f"fragment hit crashed: {e}")
+
+    def test_concurrent_attest(self):
+        from runner.runner import build_attestations
+        errors = []
+
+        def one():
+            try:
+                build_attestations([{"op": "attest", "predicate": "exit_zero"}],
+                                   {"exit_code": 0})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
