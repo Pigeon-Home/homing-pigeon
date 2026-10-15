@@ -1413,3 +1413,24 @@ class ViewShapeFaultTest(unittest.TestCase):
                       smtp=_SMTP(), opts=_Opts())
             with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
                 self.assertIn("view-1", json.load(fh))
+
+
+class RedactAndPortFaultTest(unittest.TestCase):
+    """Finding: _redact_patterns(None) raised AttributeError.
+
+    The PR that named it did not fix it. A None cfg is the
+    built-in patterns now. A port that is a word is a config
+    error, not a ValueError mid-poll.
+    """
+
+    def test_redact_patterns_none_returns_builtins(self):
+        from runner.runner import _redact_patterns, BUILTIN_REDACT_PATTERNS
+        pats = _redact_patterns(None)
+        self.assertEqual(set(pats), set(BUILTIN_REDACT_PATTERNS))
+
+    def test_word_port_is_a_config_error(self):
+        from runner.runner import _port
+        with self.assertRaises(RuntimeError):
+            _port({"imap_port": "abc"}, "imap_port", 993)
+        self.assertEqual(_port({}, "imap_port", 993), 993)
+        self.assertEqual(_port({"smtp_port": "587"}, "smtp_port", 25), 587)

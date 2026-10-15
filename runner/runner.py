@@ -472,6 +472,8 @@ VIEW_ORDER = {"attested": 0, "summary": 1, "redacted": 2, "full": 3}
 
 def _redact_patterns(cfg):
     pats = dict(BUILTIN_REDACT_PATTERNS)
+    if not isinstance(cfg, dict):
+        return pats
     extra = cfg.get("redact_patterns_extra") or {}
     if not isinstance(extra, dict):
         log("redact_patterns_extra is not an object; ignored", "WARN")
@@ -1537,8 +1539,18 @@ def _imap_xoauth2(conn, user: str, raw: str) -> None:
     conn.state = "AUTH"
 
 
+def _port(cfg, key, default):
+    """A missing or non-numeric port is a config error, not a crash."""
+    if not isinstance(cfg, dict):
+        raise RuntimeError("config error: config is not an object")
+    try:
+        return int(cfg.get(key, default))
+    except (TypeError, ValueError):
+        raise RuntimeError("config error: " + key + " must be a number")
+
+
 def connect_imap(cfg) -> imaplib.IMAP4_SSL:
-    conn = imaplib.IMAP4_SSL(cfg["imap_host"], int(cfg["imap_port"]), timeout=30)
+    conn = imaplib.IMAP4_SSL(cfg["imap_host"], _port(cfg, "imap_port", 993), timeout=30)
     if _use_oauth(cfg):
         _imap_xoauth2(conn, cfg["mailbox_user"], _xoauth2_raw(cfg))
     else:
@@ -1552,7 +1564,7 @@ def connect_imap(cfg) -> imaplib.IMAP4_SSL:
 
 
 def connect_smtp(cfg) -> smtplib.SMTP:
-    smtp = smtplib.SMTP(cfg["smtp_host"], int(cfg["smtp_port"]), timeout=30)
+    smtp = smtplib.SMTP(cfg["smtp_host"], _port(cfg, "smtp_port", 587), timeout=30)
     smtp.starttls()
     if _use_oauth(cfg):
         # smtplib.auth base64-encodes the return value, and calls the
