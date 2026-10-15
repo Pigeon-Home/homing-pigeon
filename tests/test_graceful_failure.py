@@ -2226,5 +2226,37 @@ class DownloadGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class NaNPriorityGracefulTest(unittest.TestCase):
+    """Finding: a NaN or Infinity priority must not crash submit
+    or poison the board file.
+    """
+
+    def test_nan_and_inf_priority(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for i, priority in enumerate((float("nan"), float("inf"), float("-inf"), 0)):
+            try:
+                ok, reason = b.submit({"task_id": f"n{i}", "priority": priority})
+            except Exception as e:
+                self.fail(f"submit crashed on {priority}: {e}")
+            self.assertIsInstance(ok, bool)
+        # The board file must still be readable JSON.
+        with open(os.path.join(tmp, "board.json"), encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertIsInstance(data, dict)
+
+    def test_offer_after_nan(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "nan", "priority": float("nan")})
+        b.submit({"task_id": "ok", "priority": 1})
+        try:
+            offered = b.offer("w", [])
+        except Exception as e:
+            self.fail(f"offer after NaN crashed: {e}")
+        if offered:
+            self.assertIn(offered.get("task_id"), ("nan", "ok"))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
