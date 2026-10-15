@@ -22,6 +22,7 @@
     "ids-daemon": {"allowed_kinds": ["sensor_alert"]},
     "netmon-daemon": {"allowed_kinds": ["sensor_alert"]}
   },
+  "key_policies_default_deny": false,
   "max_result_view": "full",
   "max_query_budget": 8,
   "max_queries_per_hour": 0,

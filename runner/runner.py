@@ -243,7 +243,9 @@ def build_secrets(cfg) -> dict:
 
 
 def build_key_policies(cfg) -> dict:
-    """key_id -> policy dict. Keys without an entry are unrestricted.
+    """key_id -> policy dict. Keys without an entry are unrestricted
+    unless key_policies_default_deny is set (additional keys only;
+    the default key "" is always unrestricted).
 
     A policy is opt-in least privilege for a key: allowed_kinds,
     allowed_interpreters, max_timeout_sec, allowed_script_sha384.
@@ -302,15 +304,37 @@ def build_key_policies(cfg) -> dict:
     return policies
 
 
+def unrestricted_extra_keys(cfg) -> list:
+    """key_ids in additional_secrets with no key_policies entry.
+
+    The default key ("") is intentionally unrestricted and never
+    listed. An entry here means a probably-forgotten policy: the key
+    can do anything the default key can.
+    """
+    extra = cfg.get("additional_secrets") or {}
+    policies = cfg.get("key_policies") or {}
+    if not isinstance(extra, dict) or not isinstance(policies, dict):
+        return []
+    return sorted(k for k in extra
+                  if isinstance(k, str) and k and k not in policies)
+
+
 def check_key_policy(policies: dict, key_id: str, cfg, job):
     """Return None if the key's policy allows the job, else a reason string.
 
-    Keys without a policy entry are unrestricted. Every specified
-    constraint must hold; the check runs on the effective interpreter
-    and timeout (job value or configured default), mirroring execute_job.
+    Keys without a policy entry are unrestricted by default — the
+    default stays loose. Set key_policies_default_deny to refuse
+    everything from an additional key with no entry. The default key
+    (key_id "") is always unrestricted: it is the owner.
+    Every specified constraint must hold; the check runs on the
+    effective interpreter and timeout (job value or configured
+    default), mirroring execute_job.
     """
     pol = policies.get(key_id)
     if not pol:
+        if key_id != "" and (cfg or {}).get("key_policies_default_deny"):
+            return ("no key policy entry for this key "
+                    "(key_policies_default_deny)")
         return None
     kind = job.get("kind")
     if "allowed_kinds" in pol and kind not in pol["allowed_kinds"]:
@@ -2575,6 +2599,9 @@ def log_startup(cfg, args, base_dir):
             "Installer sets this unless --no-inference was passed.")
     if keys:
         log(f"additional secrets: {', '.join(keys)}")
+    for kid in unrestricted_extra_keys(cfg):
+        log(f"key {kid!r} has no key_policies entry: it is unrestricted "
+            f"(add a policy, or set key_policies_default_deny)", "WARN")
     flags = []
     if args.dry_run:
         flags.append("dry-run (will not execute)")
