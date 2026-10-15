@@ -2177,9 +2177,11 @@ def main() -> int:
                          "(results go to the log only)")
     ap.add_argument("--timeout", type=int, default=None, metavar="SEC",
                     help="default per-job timeout in seconds (overrides config)")
-    ap.add_argument("--verbose", action="store_true",
+    ap.add_argument("--verbose", action="store_true", default=True,
                     help="log each mail, each reject reason, each query "
-                         "op, and the non-secret config at startup")
+                         "op, and the non-secret config (default)")
+    ap.add_argument("--quiet", action="store_false", dest="verbose",
+                    help="startup block only; skip per-mail detail")
     ap.add_argument("--pdb", action="store_true",
                     help="drop into pdb on unhandled exceptions")
     ap.add_argument("--inspect", choices=["board", "budget", "job", "redact"],

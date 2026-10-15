@@ -52,9 +52,12 @@ def _runner_argv(dst_dir: str):
 def _forwarded_args(args) -> list:
     """Runner CLI flags to bake into the installed service command."""
     out = []
-    for name in ("dry_run", "no_oracle", "no_send", "verbose", "pdb"):
+    for name in ("dry_run", "no_oracle", "no_send", "pdb"):
         if getattr(args, name, False):
             out.append("--" + name.replace("_", "-"))
+    # verbose is the runner default. Only bake the off switch.
+    if getattr(args, "verbose", True) is False:
+        out.append("--quiet")
     for name in ("poll_interval", "max_output_bytes", "timeout", "workers"):
         v = getattr(args, name, None)
         if v is not None:
@@ -566,7 +569,8 @@ def main() -> int:
     ap.add_argument("--max-output-bytes", type=int, default=None, metavar="N")
     ap.add_argument("--no-send", action="store_true")
     ap.add_argument("--timeout", type=int, default=None, metavar="SEC")
-    ap.add_argument("--verbose", action="store_true")
+    ap.add_argument("--verbose", action="store_true", default=True)
+    ap.add_argument("--quiet", action="store_false", dest="verbose")
     ap.add_argument("--pdb", action="store_true")
     args = ap.parse_args()
 

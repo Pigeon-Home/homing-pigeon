@@ -483,7 +483,7 @@ class InstallHelperTests(unittest.TestCase):
                 unit = fh.read()
             self.assertIn("--dry-run", unit)
             self.assertIn("--no-send", unit)
-            self.assertIn("--verbose", unit)
+            self.assertNotIn("--quiet", unit)
             self.assertIn("--poll-interval 30", unit)
             self.assertNotIn("--no-oracle", unit)
 
@@ -493,7 +493,7 @@ class InstallHelperTests(unittest.TestCase):
             dry_run=False, no_oracle=False, no_send=False, verbose=False,
             pdb=False, poll_interval=None, max_output_bytes=None,
             timeout=None)
-        self.assertEqual(install_mod._forwarded_args(fake), [])
+        self.assertEqual(install_mod._forwarded_args(fake), ["--quiet"])
 
     def test_linux_unit_quotes_spaced_paths(self):
         import shlex
