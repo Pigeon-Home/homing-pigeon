@@ -8,6 +8,8 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
+from io import StringIO
+from contextlib import redirect_stdout
 from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -153,6 +155,24 @@ class OracleChatTest(unittest.TestCase):
                 from runner.runner import main
                 self.assertEqual(main(), 0)
             win.assert_called_once()
+
+    def test_startup_without_a_workspace_does_not_raise(self):
+        from runner.runner import log_startup
+
+        class Args:
+            dry_run = True
+            no_send = False
+            once = True
+            verbose = False
+
+        buf = StringIO()
+        with redirect_stdout(buf):
+            log_startup(
+                {"mailbox_user": "a@b.c", "judge": "enforce",
+                 "max_result_view": "redacted"},
+                Args(), "/tmp/base")
+        self.assertIn("workspace_root is not set", buf.getvalue())
+        self.assertNotIn("Traceback", buf.getvalue())
 
 
 if __name__ == "__main__":

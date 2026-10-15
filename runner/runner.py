@@ -2299,7 +2299,7 @@ def log_startup(cfg, args, base_dir):
         log("flags: " + ", ".join(flags))
     log("expects: signed [HOMING-PIGEON] job messages. "
         "Signature is the only gate. Results return to this mailbox.")
-    if oracle and not cfg.get("workspace_root"):
+    if not cfg.get("workspace_root"):
         log("confinement is off; workspace_root is not set", "WARN")
     if getattr(args, "verbose", False):
         safe = {k: cfg.get(k) for k in (
