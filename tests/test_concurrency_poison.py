@@ -741,8 +741,10 @@ class RateLimitAndWriteJsonRaceTest(unittest.TestCase):
             path = os.path.join(d, "ok.json")
             _write_json(path, {"a": 1})
             self.assertTrue(os.path.isfile(path))
-            with self.assertRaises(TypeError):
-                _write_json(path, {"bad": {1, 2}})
+            # Finding, fixed: a set used to raise. It is stored as a list now.
+            _write_json(path, {"bad": {1, 2}})
+            with open(path, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh)["bad"], [1, 2])
 
 
 class SensesGateAndStorePoisonTest(unittest.TestCase):

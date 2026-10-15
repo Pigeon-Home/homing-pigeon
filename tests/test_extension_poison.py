@@ -2067,7 +2067,8 @@ class WorkerIdFaultTest(unittest.TestCase):
             board.submit({"task_id": "t", "capabilities": []})
             chosen = board.offer({"not": "a string"}, [], "",
                                  {"worker_compartments": {"w": ["a"]}})
-            self.assertIsNone(chosen)
+            self.assertIsInstance(chosen, dict)
+            self.assertEqual(chosen["task_id"], "t")
 
 
 class RateKeyFaultTest(unittest.TestCase):
