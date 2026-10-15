@@ -3417,7 +3417,7 @@ def oracle_context(base_dir, limit=6, max_chars=4000) -> str:
     else:
         try:
             n = int(limit)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             n = 6
         if n < 0:
             n = 0
@@ -3426,7 +3426,7 @@ def oracle_context(base_dir, limit=6, max_chars=4000) -> str:
     else:
         try:
             cap = int(max_chars)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             cap = 4000
         if cap < 0:
             cap = 0
