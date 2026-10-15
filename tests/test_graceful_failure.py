@@ -2575,5 +2575,46 @@ class KeyIdRateGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class IssuedAtGracefulTest(unittest.TestCase):
+    """Finding: issued_at is checked on every job. An odd value or an
+    odd window must reject cleanly, not crash.
+    """
+
+    def test_odd_issued_at(self):
+        from runner.runner import _issued_at_ok
+        for value in (None, "", "not a date", "2020-01-01", 42, "2026-01-01T00:00:00Z"):
+            try:
+                ok, reason = _issued_at_ok(value, {})
+            except Exception as e:
+                self.fail(f"issued_at {value!r} crashed: {e}")
+            self.assertIsInstance(ok, bool)
+
+    def test_odd_window(self):
+        from runner.runner import _issued_at_ok
+        for cfg in ({}, {"max_job_age_sec": "nope"}, {"max_job_age_sec": None},
+                    {"max_job_age_sec": -1}, {"max_job_age_sec": 0}):
+            try:
+                _issued_at_ok("2026-01-01T00:00:00Z", cfg)
+            except Exception as e:
+                self.fail(f"window {cfg} crashed: {e}")
+
+    def test_concurrent_issued_at(self):
+        from runner.runner import _issued_at_ok
+        errors = []
+
+        def one(i):
+            try:
+                _issued_at_ok("not a date" if i % 2 else "2026-01-01T00:00:00Z", {})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
