@@ -2301,5 +2301,47 @@ class ResultViewGracefulTest(unittest.TestCase):
                 self.fail(f"raw lines crashed on {view!r}: {e}")
             self.assertIsInstance(got, bool)
 
+
+class RedactConcurrentGracefulTest(unittest.TestCase):
+    """Finding: redact and secret_scan run on every result. Odd
+    patterns and concurrent calls must not crash.
+    """
+
+    def test_redact_odd_patterns(self):
+        from runner.runner import redact_text, secret_scan
+        for patterns in ({}, {"ok": "password"}, {"bad": "("}, None):
+            pats = patterns if isinstance(patterns, dict) else {}
+            try:
+                redact_text("password=secret", pats)
+                secret_scan("password=secret", pats)
+            except Exception as e:
+                self.fail(f"redact crashed on {patterns}: {e}")
+
+    def test_redact_odd_text(self):
+        from runner.runner import redact_text
+        for text_in in ("", "x" * 10000, "line\nbreak", "üñícode"):
+            try:
+                got, _ = redact_text(text_in, {})
+            except Exception as e:
+                self.fail(f"redact crashed on text: {e}")
+            self.assertIsInstance(got, str)
+
+    def test_concurrent_redact(self):
+        from runner.runner import redact_text
+        errors = []
+
+        def one(i):
+            try:
+                redact_text(f"password={i}", {"p": "password"})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
