@@ -357,6 +357,8 @@ def snapshot_outside(workspace_root, exclude=None):
             continue
         for name in files:
             if count >= 50000:
+                log("confinement snapshot hit 50000 files; result is partial",
+                    "WARN")
                 return snap
             path = os.path.join(root, name)
             try:
@@ -2169,6 +2171,8 @@ def main() -> int:
     seen = load_seen(seen_path)
 
     log(f"homing-pigeon starting (base={base_dir}, platform={sys.platform})")
+    if not inference_config(cfg):
+        log("ask is off; no loopback model configured")
     log(f"flags: dry_run={args.dry_run} no_send={args.no_send} "
         f"no_oracle={args.no_oracle} verbose={args.verbose} pdb={args.pdb} "
         f"once={args.once} workers={_worker_count(cfg, args)}")

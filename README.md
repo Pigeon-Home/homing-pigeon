@@ -143,10 +143,10 @@ The Oracle also grows two optional capabilities (spec'd, not yet built):
   boundary. The endpoint must be loopback (fail closed), and every
   answer is truncated, redacted, and secret-scanned before it's sent.
   The SI gets useful answers, and your raw data never leaves the machine.
-- **Execution confinement.** Tell the Oracle the one folder jobs may
-  touch (`workspace_root`) and it *attests* the job stayed inside —
-  `confined_to_workspace`, signed like everything else. Today's
-  enforcement is attested; OS-level sandboxing is the stronger future.
+- **Execution confinement.** Set `workspace_root` and the Oracle
+  snapshots file metadata outside it before and after the job, then
+  attests `confined_to_workspace`. It is a snapshot, not a sandbox.
+  The walk stops at 50000 files. OS-level containment is future work.
 
 Full spec in PROTOCOL.md (sections 9–12).
 

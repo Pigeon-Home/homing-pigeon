@@ -500,14 +500,14 @@ def install_ollama_and_model(cfg_path: str, model: str, skip: bool) -> None:
                 print(f"inference: no automatic Ollama install for {plat}; pass --no-inference or install manually")
                 return
         except Exception as e:
-            print(f"inference: Ollama install failed ({e}); continuing without it. Pass --no-inference to silence this.")
+            print(f"inference: Ollama install failed ({e}); ask is off. Pass --no-inference to silence this.")
             return
     # Ensure the daemon is reachable, then pull the model.
     ensure_ollama_running()
     try:
         run(["ollama", "pull", model])
     except Exception as e:
-        print(f"inference: model pull failed ({e}); ask will stay off until a loopback endpoint is configured")
+        print(f"inference: model pull failed ({e}); ask is off until a loopback model is configured")
         return
     # Point config at the local server.
     try:

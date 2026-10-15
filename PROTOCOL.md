@@ -371,16 +371,20 @@ judgment:
 
 - `judge`: `off`, `advisory` (verdict attached to the result, job
   still runs), or `enforce` (a failing verdict refuses the job
-  before execution).
+  before execution). This is a tripwire, not a review. It matches a
+  short denylist (`rm -rf /`, `rm -rf ~`, a fork bomb, `mkfs`,
+  `dd` onto a device), a non-https `script_url`, and `..` in a file
+  name. It does not weigh the job.
 
 ### 9.4 Execution confinement (optional)
 
-During execution, the Oracle bounds *what a job may touch*, not just
-what its results may reveal. Config:
+During execution, the Oracle reports *what a job touched*, not just
+what its results may reveal. It does not contain the process. Config:
 
 - `workspace_root`: absolute path (e.g. `/home/user/workspace`). When
-  set, the job's working directory is created under it, and the Oracle
-  confines the job to that subtree.
+  set, the job's working directory is created under it. The Oracle
+  snapshots file metadata outside that directory before and after.
+  The walk stops at 50000 files and logs that the result is partial.
 
 Enforcement is honest about its limits: a stdlib-only runner cannot
 hard-sandbox an arbitrary subprocess. True containment needs
