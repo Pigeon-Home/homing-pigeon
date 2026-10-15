@@ -3384,7 +3384,7 @@ def oracle_context(base_dir, limit=6, max_chars=4000) -> str:
         if not name.endswith(".json"):
             continue
         job_id = name[:-5]
-        if not _SAFE_JOB_ID.match(job_id):
+        if not _SAFE_JOB_ID.match(job_id) or job_id in (".", ".."):
             continue
         path = os.path.join(d, name)
         try:

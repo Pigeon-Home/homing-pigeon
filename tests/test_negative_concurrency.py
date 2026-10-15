@@ -2810,3 +2810,21 @@ class BoardStampPoisonTest(unittest.TestCase):
             poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                       imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
             self.assertIn("after-board", seen)
+class OracleContextDotPoisonTest(unittest.TestCase):
+    """Finding: oracle_context accepted job ids '.' and '..' because
+    _SAFE_JOB_ID matches them. save_retained already rejects them.
+    Now oracle_context skips them too so a poisoned retained name
+    cannot surface as a job."""
+
+    def test_dot_ids_skipped(self):
+        from runner.runner import oracle_context
+        with tempfile.TemporaryDirectory() as d:
+            ret = os.path.join(d, "retained")
+            os.makedirs(ret)
+            for name in (".json", "..json", "ok.json"):
+                with open(os.path.join(ret, name), "w") as f:
+                    json.dump({"stdout": "x", "kind": "ping"}, f)
+            ctx = oracle_context(d)
+            self.assertNotIn("job .", ctx)
+            self.assertNotIn("job ..", ctx)
+            self.assertIn("job ok", ctx)
