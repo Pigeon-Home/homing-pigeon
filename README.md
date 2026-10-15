@@ -241,9 +241,16 @@ fine there: use `pip install pigeon-home-runner` or build from source.
 
 1. Extract the archive on the target machine.
 2. Run `install` (or `install.exe` on Windows). It copies the runner
-   binary, writes a default `config.json`, and registers the boot-start
-   service (systemd / launchd / cron @reboot / Scheduled Task).
-3. Edit `config.json`. Two ways to sign in:
+   binary, registers the boot-start service (systemd / launchd /
+   cron @reboot / Scheduled Task), and — on a console — offers the
+   Thunderbird-style setup: browser sign-in, a fresh shared secret
+   shown once for you to give your SI, config written. No hand-edited
+   JSON needed.
+3. If you skipped it (or run headless), do it later with
+   `homing-pigeon --setup`. On an existing config `--setup` offers
+   re-login and shared-secret rotation.
+4. Prefer to wire it by hand? Edit `config.json` instead. Two ways to
+   sign in:
    - **Password** (default): `mailbox_user` + `mailbox_password` (Gmail app
      password, plaintext, on purpose). The HMAC shared secret is a separate
      `shared_secret` value — generate one with `openssl rand -hex 32`.
@@ -259,9 +266,9 @@ fine there: use `pip install pigeon-home-runner` or build from source.
      opens, you sign in and grant access, and the refresh token is stored.
      IMAP and SMTP then use XOAUTH2. Tested end to end on Windows 11.
    (your explicit choice for this throwaway account).
-4. When you want an SI to send jobs, generate a shared secret
-   (`openssl rand -hex 32`), put it in `shared_secret` in config.json,
-   and paste the same string to the SI in chat.
+5. When you want an SI to send jobs, make sure `shared_secret` in
+   config.json matches the string you pasted to the SI in chat
+   (the wizard shows you a fresh one; `openssl rand -hex 32` works too).
 
 **From Docker** — the fastest path, no Python or git needed:
 
