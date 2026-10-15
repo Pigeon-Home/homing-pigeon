@@ -44,6 +44,22 @@ sudo dnf install -y python3-pip
 pip3 install pigeon-home-runner
 ```
 
+On Debian and Ubuntu, install Python 3.9+ first:
+
+```bash
+# Debian 11+ (Python 3.9+ is default)
+sudo apt install -y python3-pip
+pip3 install pigeon-home-runner
+
+# Ubuntu 20.04 (default Python is 3.8, too old)
+sudo apt update && sudo apt install -y python3.9 python3.9-venv
+python3.9 -m pip install pigeon-home-runner
+
+# Ubuntu 22.04+ (Python 3.10+ is default)
+sudo apt install -y python3-pip
+pip3 install pigeon-home-runner
+```
+
 **Run:** register the boot service, configure, test.
 
 ```bash
