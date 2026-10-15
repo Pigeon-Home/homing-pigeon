@@ -3175,3 +3175,79 @@ class ScrubEnvBoomKeyPoisonTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+class FusedSensorKeyTest(unittest.TestCase):
+    """Finding (2026-10-15 simulation, fused score, no poll):
+
+    evaluate_page_triggers used the sensor field as a dict key. A
+    list or a dict is valid JSON from a sense, and it is not
+    hashable. Six threads raised TypeError, so the page was not
+    evaluated and the same window was retried.
+
+    A sensor that cannot be a key is grouped as "sensor". The other
+    alerts are still scored.
+    """
+
+    def test_unhashable_sensor_does_not_raise(self):
+        import time
+        from runner import dri
+        from runner.senses import store_alert
+
+        now = time.time()
+        dcfg = {"triggers": {"sensor_fused_score": {
+            "window_sec": 3600, "threshold": 0.1,
+        }}}
+        with tempfile.TemporaryDirectory() as d:
+            store_alert(d, {
+                "sensor": ["net"], "title": "t", "severity": "high",
+                "observed_at": now, "weight": 1,
+            })
+            events = dri.evaluate_page_triggers(dcfg, d, 0, now)
+            self.assertIsInstance(events, list)
+            store_alert(d, {
+                "sensor": {"id": "net"}, "title": "u", "severity": "high",
+                "observed_at": now, "weight": 1,
+            })
+            events = dri.evaluate_page_triggers(dcfg, d, 0, now)
+            self.assertIsInstance(events, list)
+
+    def test_concurrent_unhashable_sensors_do_not_raise(self):
+        import threading
+        import time
+        from runner import dri
+        from runner.senses import store_alert
+
+        dcfg = {"triggers": {"sensor_fused_score": {
+            "window_sec": 3600, "threshold": 0.1,
+        }}}
+        errors = []
+
+        def hammer():
+            try:
+                with tempfile.TemporaryDirectory() as d:
+                    store_alert(d, {
+                        "sensor": ["net"], "title": "t", "severity": "high",
+                        "observed_at": time.time(), "weight": 1,
+                    })
+                    dri.evaluate_page_triggers(dcfg, d, 0, time.time())
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+    def test_ping_still_completes_after_the_sensor(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "after-sensor",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        raw = _mail("[HOMING-PIGEON] job after-sensor", body)
+        cfg = {"mailbox_user": "pigeon-test@example.com", "shared_secret": SECRET}
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
+                      imap=_MultiIMAP([raw]), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("after-sensor", seen)

@@ -249,7 +249,14 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
             ts = _to_ts(rec.get("observed_at") or rec.get("received_at"))
             if ts is None or now - ts > window:
                 continue
-            by_sensor.setdefault(rec.get("sensor"), []).append(rec)
+            sensor = rec.get("sensor")
+            # A list or a dict is valid JSON and is not a dict key.
+            # One bad sensor must not stop the page.
+            try:
+                hash(sensor)
+            except Exception:
+                sensor = "sensor"
+            by_sensor.setdefault(sensor, []).append(rec)
         for sensor, recs in by_sensor.items():
             total = 0.0
             for rec in recs:
@@ -288,13 +295,13 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
                     "detail": "job wrote outside workspace_root",
                     "signals": [],
                 })
-            if trig.get("judge_block") and "judge blocked:" in str(
-                    payload.get("stderr") or ""):
+            if trig.get("judge_block") and "judge blocked:" in _page_text(
+                    payload.get("stderr")):
                 events.append({
                     "trigger": "judge_block",
                     "at": _now_iso(),
                     "title": f"judge blocked job {job_id}",
-                    "detail": str(payload.get("stderr") or "")[:200],
+                    "detail": _page_text(payload.get("stderr"))[:200],
                     "signals": [],
                 })
 
