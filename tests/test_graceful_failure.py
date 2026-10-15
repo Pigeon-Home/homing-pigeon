@@ -2343,5 +2343,52 @@ class RedactConcurrentGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class PageFormatGracefulTest(unittest.TestCase):
+    """Finding: format_page runs before a DRI send. Unprintable or
+    odd events must not crash the page cycle.
+    """
+
+    def test_unprintable_events(self):
+        class Weird:
+            def __str__(self):
+                raise RuntimeError("nope")
+        events = [
+            {"kind": "alert", "detail": Weird()},
+            {"kind": None},
+            None,
+            {"kind": "job", "path": object()},
+        ]
+        try:
+            text = dri.format_page(events)
+        except Exception as e:
+            self.fail(f"format_page crashed: {e}")
+        self.assertIsInstance(text, str)
+
+    def test_empty_and_huge(self):
+        try:
+            empty = dri.format_page([])
+            huge = dri.format_page([{"kind": "x", "detail": "A" * 10000}])
+        except Exception as e:
+            self.fail(f"format_page crashed: {e}")
+        self.assertIsInstance(empty, str)
+        self.assertIsInstance(huge, str)
+
+    def test_concurrent_format(self):
+        errors = []
+
+        def one(i):
+            try:
+                dri.format_page([{"kind": "a", "i": i}, None])
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
