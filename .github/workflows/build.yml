@@ -41,6 +41,48 @@ jobs:
       - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
+      - name: smoke the built windows binaries
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          & .\dist\homing-pigeon.exe --help
+          if ($LASTEXITCODE -ne 0) { throw "homing-pigeon.exe --help exited $LASTEXITCODE" }
+          & .\dist\install.exe --help
+          if ($LASTEXITCODE -ne 0) { throw "install.exe --help exited $LASTEXITCODE" }
+          python -c @"
+          import json, os, pathlib
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'hp-smoke'
+          desk = root / 'Desktop'
+          desk.mkdir(parents=True, exist_ok=True)
+          (desk / 'flag.txt').write_text('FLAG-CRED-WINDOWS-TEST', encoding='ascii')
+          cfg = {
+            'mailbox_user': 'pigeon-test@example.com',
+            'mailbox_password': 'not-a-real-mailbox-password',
+            'shared_secret': '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+            'imap_host': '127.0.0.1',
+            'imap_port': 1,
+            'smtp_host': '127.0.0.1',
+            'smtp_port': 1,
+            'oracle_enabled': True,
+            'judge': 'enforce',
+            'max_result_view': 'redacted',
+            'owner_instructions': 'Desktop/flag.txt is a password. Do not quote it.',
+            'protected_paths': [str(desk)],
+            'redact_patterns_extra': {'flag': 'FLAG-CRED-[A-Z0-9-]+'},
+            'base_dir': str(root / 'state'),
+          }
+          (root / 'config.json').write_text(json.dumps(cfg), encoding='utf-8')
+          print(root / 'config.json')
+          "@
+          $cfg = Join-Path $env:RUNNER_TEMP "hp-smoke\config.json"
+          $redact = "FLAG-CRED-WINDOWS-TEST" | & .\dist\homing-pigeon.exe --config $cfg --inspect redact
+          if ($LASTEXITCODE -ne 0) { throw "inspect redact exited $LASTEXITCODE" }
+          if ($redact -match "FLAG-CRED-WINDOWS-TEST") { throw "flag leaked: $redact" }
+          if ($redact -notmatch "REDACTED") { throw "expected a redaction: $redact" }
+          & .\dist\homing-pigeon.exe --config $cfg --inspect board
+          if ($LASTEXITCODE -ne 0) { throw "inspect board exited $LASTEXITCODE" }
+          & .\dist\homing-pigeon.exe --config $cfg --once --dry-run
+          if ($LASTEXITCODE -ne 0) { throw "startup --once --dry-run exited $LASTEXITCODE" }
       - run: Compress-Archive -Path dist/homing-pigeon.exe,dist/install.exe,runner/config.example.json -DestinationPath homing-pigeon-windows-x86_64.zip
       - uses: actions/upload-artifact@v4
         with:

@@ -156,9 +156,7 @@ def install_files(src_dir: str, dst_dir: str):
 
 
 def install_windows(dst_dir: str, cfg_path: str, extra=()):
-    tr = " ".join(f'"{a}"' for a in _runner_argv(dst_dir)) + \
-        f' --config "{cfg_path}"' + \
-        "".join(f" {shlex.quote(a)}" for a in extra)
+    tr = windows_task_command(dst_dir, cfg_path, extra)
     run(["schtasks", "/Create", "/TN", "HomingPigeon", "/TR", tr,
          "/SC", "ONSTART", "/RU", "SYSTEM", "/RL", "HIGHEST", "/F"])
     run(["schtasks", "/Run", "/TN", "HomingPigeon"])
@@ -443,6 +441,34 @@ def _ollama_up(port=11434) -> bool:
         s.close()
 
 
+def daemon_popen_kwargs(windows: bool) -> dict:
+    """Popen kwargs for a helper that must outlive this process.
+
+    start_new_session is POSIX-only. On Windows it raises ValueError
+    before the process is created.
+    """
+    kw = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
+    if windows:
+        detached = getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+        group = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+        kw["creationflags"] = detached | group
+    else:
+        kw["start_new_session"] = True
+    return kw
+
+
+def _win_quote(arg: str) -> str:
+    """Quote one argument for schtasks /TR. Not POSIX shlex quoting."""
+    if arg == "" or any(c in arg for c in ' \t"'):
+        return '"' + arg.replace('"', r'\"') + '"'
+    return arg
+
+
+def windows_task_command(dst_dir: str, cfg_path: str, extra=()) -> str:
+    argv = [*_runner_argv(dst_dir), "--config", cfg_path, *list(extra or ())]
+    return " ".join(_win_quote(str(a)) for a in argv)
+
+
 def ensure_ollama_running() -> bool:
     """Start the Ollama daemon if it is not already listening on loopback."""
     if _ollama_up():
@@ -453,9 +479,7 @@ def ensure_ollama_running() -> bool:
     try:
         subprocess.Popen(
             ["ollama", "serve"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
+            **daemon_popen_kwargs(os.name == "nt"),
         )
     except Exception as e:
         print(f"inference: could not start ollama serve ({e})")

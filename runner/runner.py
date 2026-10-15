@@ -2061,6 +2061,26 @@ def update_llama_from_config(cfg, previous=None):
                 log(f"inference: model pull failed: {e}", "WARN")
 
 
+def daemon_popen_kwargs(windows: bool) -> dict:
+    """Popen kwargs for a helper that must outlive this process.
+
+    start_new_session is POSIX-only. On Windows it raises ValueError
+    before the process is created.
+    """
+    kw = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
+    if windows:
+        detached = getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+        group = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+        kw["creationflags"] = detached | group
+    else:
+        kw["start_new_session"] = True
+    return kw
+
+
+def _spawn_daemon(argv):
+    return subprocess.Popen(argv, **daemon_popen_kwargs(os.name == "nt"))
+
+
 def ensure_inference_ready(cfg):
     """If inference is configured, make sure the loopback daemon is up.
 
@@ -2081,17 +2101,11 @@ def ensure_inference_ready(cfg):
     except Exception:
         pass
     import shutil
-    import subprocess
     if not shutil.which("ollama"):
         log("inference configured but ollama not found", "WARN")
         return
     try:
-        subprocess.Popen(
-            ["ollama", "serve"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
+        _spawn_daemon(["ollama", "serve"])
         log("started ollama daemon for inference")
     except Exception as e:
         log(f"could not start ollama: {e}", "WARN")

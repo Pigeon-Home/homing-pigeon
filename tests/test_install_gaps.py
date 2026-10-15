@@ -3,6 +3,7 @@
 
 No live Ollama, no network, no curl. Subprocess is mocked.
 """
+import importlib.util
 import io
 import json
 import os
@@ -20,9 +21,17 @@ sys.path.insert(0, os.path.join(REPO, "runner"))
 from install import (  # noqa: E402
     apply_profile,
     chosen_profile,
+    daemon_popen_kwargs,
     detect_default_profile,
     install_ollama_and_model,
+    windows_task_command,
 )
+
+_spec = importlib.util.spec_from_file_location(
+    "homing_pigeon_runner_mod",
+    os.path.join(REPO, "runner", "runner.py"))
+pigeon = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(pigeon)
 
 
 def _cfg(path, body):
@@ -190,6 +199,27 @@ class InstallOllamaTest(unittest.TestCase):
         with open(self.path, encoding="utf-8") as fh:
             cfg = json.load(fh)
         self.assertNotIn("inference", cfg)
+
+
+class WindowsSpawnTest(unittest.TestCase):
+    def test_windows_daemon_does_not_pass_start_new_session(self):
+        for fn in (daemon_popen_kwargs, pigeon.daemon_popen_kwargs):
+            win = fn(True)
+            posix = fn(False)
+            self.assertNotIn("start_new_session", win)
+            self.assertEqual(win["creationflags"] & 0x00000008, 0x00000008)
+            self.assertTrue(posix.get("start_new_session"))
+            self.assertNotIn("creationflags", posix)
+
+    def test_scheduled_task_command_is_not_posix_quoted(self):
+        tr = windows_task_command(
+            "/tmp/pigeon home", "/tmp/pigeon home/config.json",
+            ["--workers", "2"])
+        self.assertNotIn("'", tr)
+        self.assertIn('"/tmp/pigeon home/config.json"', tr)
+        self.assertIn("--workers", tr)
+        self.assertIn(" 2", tr)
+        self.assertIn("--config", tr)
 
 
 if __name__ == "__main__":
