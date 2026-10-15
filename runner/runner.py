@@ -1466,6 +1466,10 @@ class Board:
                 return False, f"{field} must be a list of strings"
         if "priority" in task and not isinstance(task["priority"], (int, float)):
             return False, "priority must be numeric"
+        if isinstance(task.get("priority"), float) and task["priority"] != task["priority"]:
+            return False, "priority must be a finite number"
+        if isinstance(task.get("priority"), float) and task["priority"] in (float("inf"), float("-inf")):
+            return False, "priority must be a finite number"
         with _BOARD_LOCK:
             if tid in self.tasks:
                 return False, "duplicate task_id"
@@ -3623,7 +3627,11 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436):
                 record_oracle_turn(base, cfg, question, ans)
             except Exception as e:
                 log(f"oracle chat log failed: {e}", "WARN")
-            self._send(200, json.dumps(payload), "application/json")
+            try:
+                body = json.dumps(payload)
+            except (TypeError, ValueError):
+                body = json.dumps({"rejected": "inference_error"})
+            self._send(200, body, "application/json")
 
     bind_host = "127.0.0.1" if host == "localhost" else host
     try:

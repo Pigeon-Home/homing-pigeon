@@ -1941,3 +1941,24 @@ class NanPriorityFaultTest(unittest.TestCase):
             board.submit({"task_id": "real", "priority": 5, "capabilities": []})
             chosen = board.offer("w", [], "", {})
             self.assertEqual(chosen["task_id"], "real")
+
+
+class PriorityAndReplyFaultTest(unittest.TestCase):
+    """Finding: a NaN priority was stored on the board.
+
+    NaN is a float, so submit accepted it. The rank treats it as
+    zero, but the file held NaN. Submit rejects a non-finite
+    priority now. A reply that cannot be serialized is the
+    inference error, not a crash.
+    """
+
+    def test_nan_priority_is_rejected(self):
+        from runner.runner import Board
+        with tempfile.TemporaryDirectory() as d:
+            board = Board(os.path.join(d, "board.json"))
+            ok, why = board.submit({"task_id": "nan", "priority": float("nan")})
+            self.assertFalse(ok)
+            ok, why = board.submit({"task_id": "inf", "priority": float("inf")})
+            self.assertFalse(ok)
+            ok, _why = board.submit({"task_id": "real", "priority": 1})
+            self.assertTrue(ok)
