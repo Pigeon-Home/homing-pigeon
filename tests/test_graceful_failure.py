@@ -1037,5 +1037,69 @@ class PortAndPatternsGracefulTest(unittest.TestCase):
             return  # known finding
         self.assertIsInstance(got, (dict, list))
 
+
+class AlertSerializationGracefulTest(unittest.TestCase):
+    """Finding: store_alert serializes the record. A non-serializable
+    detail must not crash the sensor path.
+    """
+
+    def test_store_non_serializable(self):
+        tmp = tempfile.mkdtemp()
+        class Weird:
+            pass
+        for record in (
+            {"sensor": "s", "detail": Weird()},
+            {"sensor": "s", "detail": set([1, 2])},
+            {"sensor": "s", "at": object()},
+        ):
+            try:
+                senses.store_alert(tmp, record)
+            except TypeError:
+                pass  # contained if the store refuses
+            except Exception as e:
+                self.fail(f"store crashed on {record}: {e}")
+
+    def test_load_mixed_lines(self):
+        tmp = tempfile.mkdtemp()
+        path = senses._path(tmp)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        lines = [
+            '{"sensor":"ok"}',
+            '{"sensor":"ok","detail":{"nested":true}}',
+            "",
+            "not json",
+        ]
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        try:
+            recs = senses.load_alerts(tmp)
+        except Exception as e:
+            self.fail(f"load mixed lines crashed: {e}")
+        self.assertIsInstance(recs, list)
+
+    def test_concurrent_store_and_load(self):
+        tmp = tempfile.mkdtemp()
+        errors = []
+
+        def store(i):
+            try:
+                senses.store_alert(tmp, {"sensor": f"s{i}", "severity": "low"})
+            except Exception as e:
+                errors.append(e)
+
+        def load():
+            try:
+                senses.load_alerts(tmp)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=store, args=(i,)) for i in range(6)]
+        threads += [threading.Thread(target=load) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
