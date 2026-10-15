@@ -2077,5 +2077,56 @@ class CompartmentsGracefulTest(unittest.TestCase):
         for e in errors:
             self.assertIsInstance(e, FileNotFoundError)
 
+
+class PayloadGracefulTest(unittest.TestCase):
+    """Finding: payload is stored on submit and returned on offer.
+    A non-serializable or odd payload must not crash the board.
+    """
+
+    def test_submit_odd_payload(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for task in (
+            {"task_id": "a", "payload": None},
+            {"task_id": "b", "payload": "string"},
+            {"task_id": "c", "payload": [1, 2]},
+            {"task_id": "d", "payload": {"ok": True}},
+        ):
+            try:
+                ok, reason = b.submit(task)
+            except Exception as e:
+                self.fail(f"submit crashed on payload {task['payload']!r}: {e}")
+            self.assertIsInstance(ok, bool)
+
+    def test_offer_returns_payload(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "t", "payload": {"cmd": "echo"}})
+        try:
+            offered = b.offer("w", [])
+        except Exception as e:
+            self.fail(f"offer crashed: {e}")
+        if offered:
+            self.assertEqual(offered.get("payload"), {"cmd": "echo"})
+
+    def test_concurrent_payload(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        errors = []
+
+        def one(i):
+            try:
+                b.submit({"task_id": f"p{i}", "payload": {"i": i}})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
