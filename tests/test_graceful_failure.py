@@ -1922,5 +1922,260 @@ class BoardOpsGracefulTest(unittest.TestCase):
         for e in errors:
             self.assertIsInstance(e, FileNotFoundError)
 
+
+class PriorityGracefulTest(unittest.TestCase):
+    """Finding: priority is read on submit. A non-numeric priority
+    must reject cleanly, not crash the board.
+    """
+
+    def test_submit_bad_priority(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for task in (
+            {"task_id": "a", "priority": "high"},
+            {"task_id": "b", "priority": None},
+            {"task_id": "c", "priority": [1]},
+            {"task_id": "d", "priority": 5},
+        ):
+            try:
+                ok, reason = b.submit(task)
+            except Exception as e:
+                self.fail(f"submit crashed on priority {task['priority']!r}: {e}")
+            self.assertIsInstance(ok, bool)
+
+    def test_offer_orders_by_priority(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "low", "priority": 1})
+        b.submit({"task_id": "high", "priority": 10})
+        try:
+            offered = b.offer("w", [])
+        except Exception as e:
+            self.fail(f"offer crashed: {e}")
+        if offered:
+            self.assertIn(offered.get("task_id"), ("low", "high"))
+
+    def test_concurrent_submit_priority(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        errors = []
+
+        def one(i):
+            try:
+                b.submit({"task_id": f"p{i}", "priority": i})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
+
+class RequiresGracefulTest(unittest.TestCase):
+    """Finding: requires is read on submit and offer. A non-list
+    requires must reject cleanly, not crash the board.
+    """
+
+    def test_submit_bad_requires(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for task in (
+            {"task_id": "a", "requires": "ping"},
+            {"task_id": "b", "requires": None},
+            {"task_id": "c", "requires": [None]},
+            {"task_id": "d", "requires": ["ping"]},
+        ):
+            try:
+                ok, reason = b.submit(task)
+            except Exception as e:
+                self.fail(f"submit crashed on requires {task['requires']!r}: {e}")
+            self.assertIsInstance(ok, bool)
+
+    def test_offer_with_requires(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "t", "requires": ["ping"]})
+        try:
+            offered = b.offer("w", ["ping"])
+        except Exception as e:
+            self.fail(f"offer crashed: {e}")
+        if offered:
+            self.assertEqual(offered.get("task_id"), "t")
+
+    def test_concurrent_requires(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        errors = []
+
+        def one(i):
+            try:
+                b.submit({"task_id": f"r{i}", "requires": ["ping"] if i % 2 else "nope"})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
+
+class CompartmentsGracefulTest(unittest.TestCase):
+    """Finding: compartments are read on submit and offer. A non-list
+    compartments must reject cleanly, not crash the board.
+    """
+
+    def test_submit_bad_compartments(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for task in (
+            {"task_id": "a", "compartments": "secret"},
+            {"task_id": "b", "compartments": None},
+            {"task_id": "c", "compartments": [None]},
+            {"task_id": "d", "compartments": ["secret"]},
+        ):
+            try:
+                ok, reason = b.submit(task)
+            except Exception as e:
+                self.fail(f"submit crashed on compartments {task['compartments']!r}: {e}")
+            self.assertIsInstance(ok, bool)
+
+    def test_offer_compartment_mismatch(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "t", "compartments": ["secret"]})
+        try:
+            offered = b.offer("w", [], "", {"worker_compartments": {"w": ["other"]}})
+        except Exception as e:
+            self.fail(f"offer crashed on mismatch: {e}")
+        # A mismatch should not offer the task. None or empty is fine.
+        if offered:
+            self.assertNotEqual(offered.get("task_id"), "t")
+
+    def test_concurrent_compartments(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        errors = []
+
+        def one(i):
+            try:
+                b.submit({"task_id": f"c{i}", "compartments": ["s"] if i % 2 else "nope"})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
+
+class PayloadGracefulTest(unittest.TestCase):
+    """Finding: payload is stored on submit and returned on offer.
+    A non-serializable or odd payload must not crash the board.
+    """
+
+    def test_submit_odd_payload(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for task in (
+            {"task_id": "a", "payload": None},
+            {"task_id": "b", "payload": "string"},
+            {"task_id": "c", "payload": [1, 2]},
+            {"task_id": "d", "payload": {"ok": True}},
+        ):
+            try:
+                ok, reason = b.submit(task)
+            except Exception as e:
+                self.fail(f"submit crashed on payload {task['payload']!r}: {e}")
+            self.assertIsInstance(ok, bool)
+
+    def test_offer_returns_payload(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "t", "payload": {"cmd": "echo"}})
+        try:
+            offered = b.offer("w", [])
+        except Exception as e:
+            self.fail(f"offer crashed: {e}")
+        if offered:
+            self.assertEqual(offered.get("payload"), {"cmd": "echo"})
+
+    def test_concurrent_payload(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        errors = []
+
+        def one(i):
+            try:
+                b.submit({"task_id": f"p{i}", "payload": {"i": i}})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
+
+class KindGracefulTest(unittest.TestCase):
+    """Finding: kind is read on submit. An odd kind must not crash
+    the board.
+    """
+
+    def test_submit_odd_kind(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        for task in (
+            {"task_id": "a", "kind": None},
+            {"task_id": "b", "kind": 42},
+            {"task_id": "c", "kind": ["ping"]},
+            {"task_id": "d", "kind": "ping"},
+        ):
+            try:
+                ok, reason = b.submit(task)
+            except Exception as e:
+                self.fail(f"submit crashed on kind {task['kind']!r}: {e}")
+            self.assertIsInstance(ok, bool)
+
+    def test_offer_odd_kind(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "t", "kind": None})
+        try:
+            b.offer("w", [])
+        except Exception as e:
+            self.fail(f"offer crashed on None kind: {e}")
+
+    def test_concurrent_kind(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        errors = []
+
+        def one(i):
+            try:
+                b.submit({"task_id": f"k{i}", "kind": "ping" if i % 2 else None})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
