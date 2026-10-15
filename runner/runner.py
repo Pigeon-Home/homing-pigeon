@@ -2272,8 +2272,9 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
         if reply is not None and secret:
             send_mail(smtp, cfg, f"[HOMING-PIGEON] qresult {query_id}",
                       sign_payload(reply, secret))
-        if seen is not None and (opts is None or not opts.dry_run):
-            seen[seen_key] = True
+        if isinstance(seen, dict) and (opts is None or not opts.dry_run):
+            with _MAIL_LOCK:
+                seen[seen_key] = True
         _mark(imap, seq, opts)
 
     if seen is not None and seen.get(seen_key):
@@ -2300,8 +2301,9 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     if not ok_ts:
         log(f"query rejected seq {seq}: {why}", "WARN")
         _mark(imap, seq, opts)
-        if seen is not None and (opts is None or not opts.dry_run):
-            seen[seen_key] = True
+        if isinstance(seen, dict) and (opts is None or not opts.dry_run):
+            with _MAIL_LOCK:
+                seen[seen_key] = True
         return True
     # "" is the default secret. Do not replace it with query_id or each
     # query gets its own bucket and the cap never trips. PROTOCOL section 11
@@ -2974,6 +2976,8 @@ def validate_shared_secret(secret: str) -> None:
 def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
               imap=None, smtp=None, opts=None):
     """One poll cycle. imap/smtp may be injected (tests)."""
+    if not isinstance(seen, dict):
+        seen = {}
     # The HMAC shared secret is always the dedicated shared_secret field,
     # separate from the mailbox password. Both sides use its UTF-8 bytes
     # as the HMAC-SHA-384 key. No hashing or derivation — the SI uses it

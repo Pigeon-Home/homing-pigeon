@@ -1705,3 +1705,59 @@ class HashAndOracleFaultTest(unittest.TestCase):
             self.assertTrue(httpd.socket.getsockname()[1] > 0)
         finally:
             httpd.server_close()
+
+
+class SeenLockFaultTest(unittest.TestCase):
+    """Finding: the query path wrote seen with no lock.
+
+    Two workers marking two queries could race. The write is
+    under the mail lock now. A poll with a non-dict seen does
+    not crash.
+    """
+
+    def test_concurrent_query_seen_writes(self):
+        import threading
+        with tempfile.TemporaryDirectory() as d:
+            retained = os.path.join(d, "retained")
+            os.makedirs(retained)
+            with open(os.path.join(retained, "job-1.json"), "w", encoding="utf-8") as fh:
+                json.dump({"stdout": "ok", "budget": 8, "spent": 0,
+                           "saved_at": time.time()}, fh)
+            seen = {}
+            errors = []
+
+            def one(i):
+                try:
+                    body = sign_payload({
+                        "v": 1, "type": "query", "job_id": "job-1",
+                        "issued_at": _now(), "queries": [{"op": "attest", "predicate": "exit_zero"}],
+                    }, SECRET)
+                    raw = _mail(f"[HOMING-PIGEON] query q-{i}", body)
+                    poll_once(
+                        {"mailbox_user": "pigeon-test@example.com",
+                         "shared_secret": SECRET, "base_dir": d},
+                        d, seen, os.path.join(d, "seen.json"),
+                        imap=_IMAP(raw), smtp=_SMTP(), opts=_Opts())
+                except Exception as e:
+                    errors.append(e)
+
+            threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            self.assertEqual(errors, [])
+            self.assertTrue(any(k.startswith("query:") for k in seen))
+
+    def test_non_dict_seen_does_not_crash(self):
+        with tempfile.TemporaryDirectory() as d:
+            body = sign_payload({
+                "v": 1, "type": "job", "kind": "ping",
+                "job_id": "seen-1", "issued_at": _now(),
+            }, SECRET)
+            poll_once(
+                {"mailbox_user": "pigeon-test@example.com",
+                 "shared_secret": SECRET, "base_dir": d},
+                d, None, os.path.join(d, "seen.json"),
+                imap=_IMAP(_mail("[HOMING-PIGEON] job seen-1", body)),
+                smtp=_SMTP(), opts=_Opts())
