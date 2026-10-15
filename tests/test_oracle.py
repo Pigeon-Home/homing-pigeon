@@ -60,7 +60,7 @@ class JudgmentTest(unittest.TestCase):
     def test_judge_detects_denylist(self):
         from runner.runner import judge_job
         v, r = judge_job({"judge": "enforce"}, {"script": "rm -rf /"})
-        self.assertEqual(v, "block")
+        self.assertEqual(v, "fail")
         self.assertTrue(any("denylist" in x for x in r))
 
     def test_query_budget_min(self):
@@ -81,3 +81,39 @@ class ProtectedPathsTest(unittest.TestCase):
     def test_empty_default(self):
         from runner.runner import check_protected_paths
         self.assertEqual(check_protected_paths({}, {}, []), [])
+
+
+class AttestationFixTest(unittest.TestCase):
+    """Locks in the peer-review fixes: no_secrets actually scans, and
+    confined_to_workspace distinguishes unconfigured from violated."""
+
+    def test_no_secrets_scans_output(self):
+        from runner.runner import build_attestations, BUILTIN_REDACT_PATTERNS
+        # Clean output -> ok True.
+        atts = build_attestations(
+            [{"op": "attest", "predicate": "no_secrets"}],
+            {"exit_code": 0, "patterns": BUILTIN_REDACT_PATTERNS,
+             "text": "hello world", "confined": None})
+        self.assertTrue(atts[0]["ok"])
+        # Output containing a secret -> ok False (was hardcoded True).
+        atts = build_attestations(
+            [{"op": "attest", "predicate": "no_secrets"}],
+            {"exit_code": 0, "patterns": BUILTIN_REDACT_PATTERNS,
+             "text": "leaked AKIAIOSFODNN7EXAMPLE here", "confined": None})
+        self.assertFalse(atts[0]["ok"])
+
+    def test_confined_three_states(self):
+        from runner.runner import build_attestations
+        q = [{"op": "attest", "predicate": "confined_to_workspace"}]
+        base = {"exit_code": 0, "patterns": {}, "text": ""}
+        # Unconfigured -> ok False, reason "unconfigured".
+        atts = build_attestations(q, {**base, "confined": None})
+        self.assertFalse(atts[0]["ok"])
+        self.assertEqual(atts[0]["reason"], "unconfigured")
+        # Confined -> ok True.
+        atts = build_attestations(q, {**base, "confined": True})
+        self.assertTrue(atts[0]["ok"])
+        # Violation -> ok False, reason is NOT "unconfigured".
+        atts = build_attestations(q, {**base, "confined": False})
+        self.assertFalse(atts[0]["ok"])
+        self.assertNotEqual(atts[0]["reason"], "unconfigured")

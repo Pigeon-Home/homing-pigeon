@@ -108,7 +108,7 @@ class InferenceTest(unittest.TestCase):
             return _FakeResp("leak -----BEGIN PRIVATE KEY-----\nabc")
 
         got = ask_model(inf, "why?", "output", 2000, opener=opener)
-        self.assertEqual(got, {"rejected": "sanitization"})
+        self.assertEqual(got, {"op": "ask", "rejected": "sanitization"})
 
     def test_ask_spends_budget_when_rejected(self):
         answers, spent = answer_queries(
@@ -298,7 +298,7 @@ class JudgmentDenylistTest(unittest.TestCase):
         for script in scripts:
             verdict, reasons = judge_job(
                 {"judge": "enforce"}, {"kind": "ping", "script": script})
-            self.assertEqual(verdict, "block", script)
+            self.assertEqual(verdict, "fail", script)
             self.assertTrue(reasons, script)
 
     def test_non_https_and_dotdot(self):
@@ -356,7 +356,7 @@ class JudgmentDenylistTest(unittest.TestCase):
         result = verify_body(smtp.sent[0].get_content(), SECRET)
         self.assertEqual(result["stdout"], "pong")
         self.assertEqual(result["exit_code"], 0)
-        self.assertEqual(result["judgment"]["verdict"], "block")
+        self.assertEqual(result["judgment"]["verdict"], "fail")
         self.assertTrue(result["judgment"]["reasons"])
 
 

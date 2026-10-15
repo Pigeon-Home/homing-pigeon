@@ -208,7 +208,7 @@ def verify_body_keyed(body_text: str, secrets: dict):
     secret = secrets[key_id]
     expect = hmac.new(secret.encode("utf-8"), raw.encode("utf-8"),
                       hashlib.sha384).hexdigest()
-    if not hmac.compare_digest(expect, sig):
+    if not hmac.compare_digest(expect, sig.lower()):
         raise ValueError("bad signature")
     payload["sig"] = sig
     return payload, key_id
@@ -279,7 +279,8 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
     else:  # attested
         base["attestations"] = build_attestations(
             (policy.get("queries") or []),
-            {"exit_code": exec_result.get("exit_code"), "digest": digest, "confined": confined, "patterns": patterns},
+            {"exit_code": exec_result.get("exit_code"), "digest": digest, "confined": confined, "patterns": patterns,
+             "text": (exec_result.get("stdout") or "") + (exec_result.get("stderr") or "")},
         )
         base["stdout"] = ""
         base["stderr"] = ""
@@ -295,11 +296,22 @@ def build_attestations(queries, ctx):
         if pred == "exit_zero":
             atts.append({"predicate": pred, "ok": ctx["exit_code"] == 0})
         elif pred == "no_secrets":
-            atts.append({"predicate": pred, "ok": True, "patterns_sha384": hashlib.sha384(json.dumps(sorted(ctx["patterns"].items())).encode()).hexdigest()})
+            atts.append({"predicate": pred,
+                         "ok": not secret_scan(ctx.get("text", ""),
+                                               ctx.get("patterns", {})),
+                         "patterns_sha384": hashlib.sha384(json.dumps(sorted(ctx["patterns"].items())).encode()).hexdigest()})
         elif pred == "output_digest":
             atts.append({"predicate": pred, "digest": ctx["digest"]})
         elif pred == "confined_to_workspace":
-            atts.append({"predicate": pred, "ok": bool(ctx["confined"]), "reason": None if ctx["confined"] else "unconfigured"})
+            c = ctx.get("confined")
+            if c is None:
+                atts.append({"predicate": pred, "ok": False,
+                             "reason": "unconfigured"})
+            elif c:
+                atts.append({"predicate": pred, "ok": True, "reason": None})
+            else:
+                atts.append({"predicate": pred, "ok": False,
+                             "reason": "violation_detected"})
         else:
             atts.append({"predicate": pred, "ok": False, "reason": "unknown"})
     return atts
@@ -325,7 +337,7 @@ def judge_job(cfg, job):
     for f in (job.get("files") or []):
         if isinstance(f, dict) and ".." in str(f.get("name", "")):
             reasons.append("path traversal in file name")
-    verdict = "block" if reasons else "ok"
+    verdict = "fail" if reasons else "pass"
     return verdict, reasons
 
 
@@ -555,10 +567,10 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
     # Scan the truncated reply before redaction so a secret is rejected,
     # not rewritten and mailed.
     if secret_scan(reply, patterns):
-        return {"rejected": "sanitization"}
+        return {"op": "ask", "rejected": "sanitization"}
     redacted, _families = redact_text(reply, patterns)
     if secret_scan(redacted, patterns):
-        return {"rejected": "sanitization"}
+        return {"op": "ask", "rejected": "sanitization"}
     return {"op": "ask", "answer": redacted, "model": model, "sanitized": True}
 
 
@@ -595,6 +607,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                     text.encode("utf-8")).hexdigest(),
                 "confined": exec_result.get("confined"),
                 "patterns": patterns or {},
+                "text": text,
             }
             atts = build_attestations([q], ctx)
             if not atts:
@@ -1666,7 +1679,9 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             before = snapshot_outside(ws, exclude=[base_dir]) if ws else {}
             r = execute_job(cfg, job, base_dir)
             after = snapshot_outside(ws, exclude=[base_dir]) if ws else {}
-            confined = not confinement_violated(before, after) if ws else False
+            # Three states: None (unconfigured), True (confined),
+            # False (violation detected). Never conflate the first and last.
+            confined = None if not ws else (not confinement_violated(before, after))
             protected = cfg.get("protected_paths") or []
             protected_changed = check_protected_paths(before, after, protected)
             result = {
@@ -1714,7 +1729,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     "budget": query_budget(cfg, job),
                     "spent": spent,
                     "patterns": patterns,
-                    "confined": bool(confined),
+                    "confined": confined,
                     "digest": digest,
                     "saved_at": time.time(),
                     "judgment": result.get("judgment"),
