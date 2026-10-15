@@ -596,6 +596,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
     inf = inference_config(cfg) if cfg else None
     for q in queries or []:
         if spent >= budget:
+            log(f"query op={q.get('op')} rejected: budget", "DEBUG")
             answers.append({"rejected": "budget"})
             spent += 1
             continue
@@ -604,6 +605,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
             spent += 1
             continue
         op = q.get("op")
+        log(f"query op={op}", "DEBUG")
         if op == "attest":
             ctx = {
                 "exit_code": exec_result.get("exit_code"),
@@ -1299,6 +1301,7 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         )
         log(f"job {job['job_id']} process started pid={proc.pid} "
             f"interpreter={interpreter[0]}")
+        log(f"job {job['job_id']} cwd={work} args={args}", "DEBUG")
     except OSError as e:
         # Missing binary or an unusable interpreter fails the same way
         # every cycle. Treat it as poison so the mail is marked seen
@@ -2133,6 +2136,17 @@ def log_startup(cfg, args, base_dir):
         "Signature is the only gate. Results return to this mailbox.")
     if oracle and not cfg.get("workspace_root"):
         log("confinement is off; workspace_root is not set", "WARN")
+    if getattr(args, "verbose", False):
+        safe = {k: cfg.get(k) for k in (
+            "poll_interval_sec", "workers", "default_timeout_sec",
+            "max_output_bytes", "max_job_age_sec", "max_result_view",
+            "max_query_budget", "max_queries_per_hour",
+            "output_retention_days", "judge", "workspace_root",
+            "protected_paths", "oracle_enabled", "dag_mode",
+            "require_review", "worker_allowlist")}
+        log(f"config: {json.dumps(safe, default=str)}")
+        log("verbose: will log each mail examined, each reject reason, "
+            "and each query op")
 
 
 def main() -> int:
@@ -2164,7 +2178,8 @@ def main() -> int:
     ap.add_argument("--timeout", type=int, default=None, metavar="SEC",
                     help="default per-job timeout in seconds (overrides config)")
     ap.add_argument("--verbose", action="store_true",
-                    help="debug logging: log every accept/reject decision")
+                    help="log each mail, each reject reason, each query "
+                         "op, and the non-secret config at startup")
     ap.add_argument("--pdb", action="store_true",
                     help="drop into pdb on unhandled exceptions")
     ap.add_argument("--inspect", choices=["board", "budget", "job", "redact"],
