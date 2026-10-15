@@ -1467,5 +1467,49 @@ class BaseDirGracefulTest(unittest.TestCase):
         except Exception as e:
             self.fail(f"save_retained crashed on missing base: {e}")
 
+
+class ClosedStdoutGracefulTest(unittest.TestCase):
+    """Finding: log prints to stdout. A closed stdout must not raise.
+    """
+
+    def test_log_with_closed_stdout(self):
+        from runner.runner import log
+        import io
+        closed = io.StringIO()
+        closed.close()
+        real = sys.stdout
+        try:
+            sys.stdout = closed
+            log("still here", "WARN")
+        except Exception as e:
+            self.fail(f"closed stdout crashed log: {e}")
+        finally:
+            sys.stdout = real
+
+    def test_log_non_string(self):
+        from runner.runner import log
+        for msg in (None, 42, {"k": "v"}, ["a"]):
+            try:
+                log(msg, "INFO")
+            except Exception as e:
+                self.fail(f"log crashed on {msg!r}: {e}")
+
+    def test_concurrent_log(self):
+        from runner.runner import log
+        errors = []
+
+        def one(i):
+            try:
+                log(f"c{i}", "INFO")
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
