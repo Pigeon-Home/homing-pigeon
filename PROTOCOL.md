@@ -570,14 +570,13 @@ look* — which, for most debugging sessions, is the expensive part.
 
 ## 13. Task dispatch: the Oracle as work queue
 
-This section adds a direction; it removes none. Everything in sections
-1 through 12 keeps working: a cloud SI can still push a job for a
-particular development task and the runner executes it. Dispatch is an
-additional mode. The Oracle holds a task board, and worker SIs pull
-tasks by asking what to work on next. The runner's machine becomes the
-dispatch center. The trust shape is unchanged. The Oracle still judges,
-confines, and reports. It just applies those duties to a queue instead
-of a single job.
+This section adds a direction; it removes none. v3 does everything v2
+does: push a signed job, the runner verifies and executes, results come
+back. Identical wire behavior, identical auth. The Oracle, dispatch
+included, is purely additive and gated behind `oracle_enabled`. When the
+Oracle is on, it can additionally deal tasks from its board at the
+request of anyone holding the shared secret. When it is off, the runner
+is a v2 runner, full stop.
 
 The default posture is least restrictive, like everything else here.
 Any holder of the shared secret can pull tasks and see full task
@@ -621,6 +620,11 @@ survives unchanged.
 
 Anyone holding the shared secret can pull. A `worker_allowlist` in
 config restricts pulls to named `worker_id` values. Off by default.
+
+Dealing is a claim, not a copy. When the Oracle answers a `task_request`
+with a `task_offer`, that task is marked claimed and invisible to other
+workers until the claim lapses. Concurrent pulls never receive the same
+task. If no unclaimed task fits the worker, the Oracle answers `empty`.
 
 ### 13.3 Compartmentalization
 
@@ -666,6 +670,63 @@ just the timeout.
 Disclaimer: the Oracle is one box. It is the bottleneck and the single
 point of failure for the whole board. That is fine at human scale. It is
 not a distributed scheduler and does not pretend to be one.
+
+### 13.6 Concurrency
+
+The Oracle is the sole arbiter of the board, so there is no distributed
+consensus problem: one writer, many readers. Concurrency reduces to
+three rules.
+
+1. **Claims are exclusive.** A task has one state: open, claimed, or
+   done. Dealing moves open to claimed; only the claiming worker's
+   `task_result` moves claimed to done. No two workers ever hold the
+   same task.
+2. **Claims are leases, not locks.** A claim lapses after `task_timeout`
+   (config, default 24h) with no result, and the task returns to open.
+   A crashed worker cannot wedge the board; it can only delay a task
+   by one timeout.
+3. **Results are idempotent.** Every `task_result` carries its `task_id`.
+   Duplicates — from retries, redelivery, or a worker that finished
+   after its lease lapsed — are deduped. The first result wins; the
+   Oracle answers the late one with `duplicate` so the worker stands
+   down.
+
+Throughput is bounded by a single machine dealing from a local queue.
+That is the design, not a limitation to fix later. If the board ever
+outgrows one box, the answer is a second Oracle with its own board,
+not a distributed Oracle.
+
+## 14. Multiple shared secrets
+
+v2 has one shared secret. v3 keeps it and adds more. Config gains an
+optional `additional_secrets` object mapping key IDs to secrets:
+
+```json
+"additional_secrets": {"grok-4": "<high-entropy secret>",
+                       "client-acme": "<high-entropy secret>"}
+```
+
+Every secret in the map faces the same entropy gate as `shared_secret`
+(section 4). The runner refuses to start if any of them is weak.
+
+Any signed message — job, query, task_request, task_result — may carry
+a top-level `key_id` naming which secret verifies it. The field sits
+inside the signed body, so the signature covers it. When `key_id` is
+absent, the runner uses `shared_secret`: exactly the v2 path. A v2
+sender works against a v3 runner with zero changes. This is backward
+compatible by construction — the single-secret default never moves.
+Operators adding secrets keep the original v2 secret as `shared_secret`
+so keyless senders keep verifying.
+
+Key IDs are labels, not secrets. They may appear in logs and error
+messages. Unknown key IDs are rejected before any cryptographic work,
+and a message naming a key ID it cannot satisfy verifies against
+nothing.
+
+The key ID is also the natural key for per-sender policy. Rate limits
+and privacy budgets (section 11) are tracked per key ID, so one chatty
+worker cannot spend another worker's budget. Rotation is a config edit:
+add a new key ID, hand it out, retire the old one. No flag day.
 
 *Status: proposal. v1 remains the implemented protocol; v3 message types
 are not yet accepted by the runner.*
