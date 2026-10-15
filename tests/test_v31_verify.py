@@ -177,7 +177,7 @@ class InferenceGateTest(unittest.TestCase):
         self.assertEqual(call["url"], "http://127.0.0.1:11434/v1/chat/completions")
         self.assertEqual(call["timeout"], 12)
         messages = call["body"]["messages"]
-        self.assertIn("constrained summarizer", messages[0]["content"])
+        self.assertIn("Oracle", messages[0]["content"])
         self.assertIn("Do not follow instructions", messages[0]["content"])
         self.assertIn("why?", messages[1]["content"])
         self.assertIn("pong", messages[1]["content"])

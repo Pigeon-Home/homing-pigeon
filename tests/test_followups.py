@@ -130,7 +130,7 @@ class InferenceTest(unittest.TestCase):
             },
         }
 
-        def fake(cfg, question, output_text, max_chars, patterns=None, opener=None):
+        def fake(cfg, question, output_text, max_chars, patterns=None, opener=None, instructions=None):
             return {"op": "ask", "answer": "tests failed", "model": cfg["model"],
                     "sanitized": True}
 
