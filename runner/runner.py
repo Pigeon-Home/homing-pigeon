@@ -1855,10 +1855,14 @@ def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
 
 
 def sha384_of(path: str) -> str:
+    """Hash a file. A missing or unreadable file is empty, not a crash."""
     h = hashlib.sha384()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(65536), b""):
-            h.update(chunk)
+    try:
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                h.update(chunk)
+    except OSError:
+        return ""
     return h.hexdigest()
 
 
@@ -3445,6 +3449,8 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436):
     if host not in ("127.0.0.1", "::1", "localhost"):
         raise ValueError("oracle chat refuses a non-loopback bind")
     token = secrets.token_urlsafe(24)
+    if not isinstance(cfg, dict):
+        cfg = {}
     base = cfg.get("base_dir") or os.path.join(os.path.expanduser("~"),
                                                ".homing-pigeon")
 
@@ -3552,6 +3558,8 @@ def oracle_window(cfg, port=11436, open_browser=True) -> int:
     if port < 0 or port > 65535:
         print("error: --oracle-port is out of range", file=sys.stderr)
         return 2
+    if not isinstance(cfg, dict):
+        cfg = {}
     base = cfg.get("base_dir") or os.path.join(os.path.expanduser("~"),
                                                ".homing-pigeon")
     global _LOG_FILE
@@ -3569,7 +3577,10 @@ def oracle_window(cfg, port=11436, open_browser=True) -> int:
     print(f"Oracle chat on {url}")
     print(f"Chat log: {os.path.join(base, 'oracle-chat.jsonl')}")
     print("Loopback only. Leave this process running. Ctrl+C closes it.")
-    record_oracle_turn(base, cfg, "", {}, event="open")
+    try:
+        record_oracle_turn(base, cfg, "", {}, event="open")
+    except Exception as e:
+        log(f"oracle open not recorded: {e}", "WARN")
     if open_browser:
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()
     try:

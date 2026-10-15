@@ -1681,3 +1681,27 @@ class RetainedDumpFaultTest(unittest.TestCase):
             got = load_retained(d, "job-2")
             self.assertIsInstance(got, dict)
             self.assertIsNone(got.get("duration_sec"))
+
+
+class HashAndOracleFaultTest(unittest.TestCase):
+    """Finding: sha384_of raised on a directory.
+
+    IsADirectoryError is not JobRejected, so a hash of an
+    unreadable path retried the job forever. The hash is empty
+    on OSError, and the compare rejects. A None cfg must not
+    crash the Oracle server builder.
+    """
+
+    def test_hash_of_directory_is_empty(self):
+        from runner.runner import sha384_of
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(sha384_of(d), "")
+            self.assertEqual(sha384_of(os.path.join(d, "missing")), "")
+
+    def test_none_cfg_does_not_crash_oracle(self):
+        from runner.runner import make_oracle_server
+        httpd = make_oracle_server(None, "127.0.0.1", 0)
+        try:
+            self.assertTrue(httpd.socket.getsockname()[1] > 0)
+        finally:
+            httpd.server_close()
