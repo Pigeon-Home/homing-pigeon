@@ -1923,3 +1923,21 @@ class BadUrlFaultTest(unittest.TestCase):
                       smtp=_SMTP(), opts=_Opts())
             with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
                 self.assertIn("url-1", json.load(fh))
+
+
+class NanPriorityFaultTest(unittest.TestCase):
+    """Finding: a NaN priority made the board order unstable.
+
+    NaN is a float, so it passed the type check. Sorting with
+    NaN is not a crash but the order is undefined. NaN is zero
+    now. The higher real priority wins.
+    """
+
+    def test_nan_priority_does_not_win(self):
+        from runner.runner import Board
+        with tempfile.TemporaryDirectory() as d:
+            board = Board(os.path.join(d, "board.json"))
+            board.submit({"task_id": "nan", "priority": float("nan"), "capabilities": []})
+            board.submit({"task_id": "real", "priority": 5, "capabilities": []})
+            chosen = board.offer("w", [], "", {})
+            self.assertEqual(chosen["task_id"], "real")

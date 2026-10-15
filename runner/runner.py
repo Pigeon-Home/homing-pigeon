@@ -1523,6 +1523,9 @@ class Board:
             priority = task.get("priority", 0)
             if not isinstance(priority, (int, float)) or isinstance(priority, bool):
                 priority = 0
+            # NaN sorts anywhere. Treat it as zero so the order is stable.
+            if priority != priority:
+                priority = 0
             return (-priority, str(task.get("submitted_at") or ""))
         candidates.sort(key=_rank)
         chosen = candidates[0]
