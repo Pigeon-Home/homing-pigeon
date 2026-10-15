@@ -2125,3 +2125,29 @@ class ReofferAndWriteFaultTest(unittest.TestCase):
         from runner.runner import _write_json
         with tempfile.TemporaryDirectory() as d:
             _write_json(d, {"a": 1})
+
+
+class CircularFaultTest(unittest.TestCase):
+    """Finding: a circular dict crashed _json_safe.
+
+    RecursionError is not JobRejected, so a board result or a
+    retained payload with a self-reference retried the job
+    forever. A repeat is null. The walk returns.
+    """
+
+    def test_circular_dict_is_null(self):
+        from runner.runner import _json_safe
+        a = {}
+        a["self"] = a
+        self.assertEqual(_json_safe(a), {"self": None})
+
+    def test_circular_result_does_not_crash_complete(self):
+        from runner.runner import Board
+        with tempfile.TemporaryDirectory() as d:
+            board = Board(os.path.join(d, "board.json"))
+            board.submit({"task_id": "t", "capabilities": []})
+            board.offer("w", [], "", {})
+            result = {}
+            result["self"] = result
+            status, _why = board.complete("t", result)
+            self.assertEqual(status, "done")
