@@ -1120,3 +1120,67 @@ class RetainedResourcesPagePoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class AttestStoreResourcesBoardPoisonTest(unittest.TestCase):
+    """Findings (2026-10-15 simulation):
+
+    1. build_attestations did sorted(pats.items()). Mixed-type pattern
+       keys (int and str) raised TypeError on comparison and stopped
+       the Oracle attestation.
+    2. senses.store_alert json.dumps'd the record with no guard. A
+       non-serializable value (object()) raised TypeError.
+    3. resources.check_resources assumed base_dir was a path. None or
+       an int raised TypeError on join.
+    4. Board assumed path was a string. None raised TypeError on stat.
+
+    All hardened. Poison inputs return safe defaults or raise ValueError
+    and do not stop processing.
+    """
+
+    def test_attest_store_resources_board_tolerate_poison(self):
+        from runner.runner import answer_queries, Board, build_attestations
+        from runner import senses, resources
+        answers, spent = answer_queries(
+            [{"op": "attest", "predicate": "no_secrets"}],
+            {"stdout": "hello"},
+            {"bad": None, "ok": r"x", 5: "y"},
+            budget=2,
+        )
+        self.assertIsInstance(answers, list)
+        self.assertTrue(answers[0].get("ok"))
+        with tempfile.TemporaryDirectory() as d:
+            senses.store_alert(d, {"sensor": "x", "detail": object()})
+            senses.store_alert(d, {"sensor": "x", "title": "t", "observed_at": float("nan")})
+            self.assertIsNone(resources.check_resources({"resources": {"enabled": True}}, None))
+            self.assertIsNone(resources.check_resources({"resources": {"enabled": True}}, 5))
+        with self.assertRaises(ValueError):
+            Board(None)
+        with self.assertRaises(ValueError):
+            Board("")
+
+    def test_concurrent_attest_and_store_do_not_raise(self):
+        import threading
+        from runner.runner import answer_queries
+        from runner import senses, resources
+        errors = []
+
+        def hammer():
+            with tempfile.TemporaryDirectory() as d:
+                for _ in range(10):
+                    try:
+                        answer_queries(
+                            [{"op": "attest", "predicate": "no_secrets"}],
+                            {"stdout": None}, {"bad": None, 5: "y"}, 2,
+                        )
+                        senses.store_alert(d, {"detail": object()})
+                        resources.check_resources({"resources": {"enabled": True}}, None)
+                    except Exception as e:
+                        errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])

@@ -213,8 +213,11 @@ def store_alert(base_dir: str, record: dict) -> None:
     """
     if not isinstance(record, dict):
         return
+    try:
+        line = json.dumps(record, ensure_ascii=False) + "\n"
+    except (TypeError, ValueError):
+        return
     path = _path(base_dir)
-    line = json.dumps(record, ensure_ascii=False) + "\n"
     with _STORE_LOCK:
         with open(path, "a", encoding="utf-8") as f:
             f.write(line)

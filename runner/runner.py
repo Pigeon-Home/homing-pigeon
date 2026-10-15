@@ -574,9 +574,13 @@ def build_attestations(queries, ctx):
             pats = ctx.get("patterns")
             if not isinstance(pats, dict):
                 pats = {}
+            # Non-string keys (poison from an extension) cannot be sorted
+            # with strings and used to crash the attestation.
+            safe_items = [(str(k), v) for k, v in pats.items()
+                          if isinstance(v, str)]
             atts.append({"predicate": pred,
                          "ok": not secret_scan(ctx.get("text", ""), pats),
-                         "patterns_sha384": hashlib.sha384(json.dumps(sorted(pats.items())).encode()).hexdigest()})
+                         "patterns_sha384": hashlib.sha384(json.dumps(sorted(safe_items)).encode()).hexdigest()})
         elif pred == "output_digest":
             atts.append({"predicate": pred, "digest": ctx["digest"]})
         elif pred == "confined_to_workspace":
@@ -1305,6 +1309,8 @@ class Board:
     """Task board: open -> claimed -> done (plus pending_review)."""
 
     def __init__(self, path):
+        if not isinstance(path, str) or not path:
+            raise ValueError("board path must be a non-empty string")
         self.path = path
         self.tasks = {}
         self.load()
