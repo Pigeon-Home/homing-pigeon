@@ -92,6 +92,15 @@ class ProtectedPathsTest(unittest.TestCase):
 
 
 class LogRedactionTest(unittest.TestCase):
+    def setUp(self):
+        from runner import runner as rr
+        # Earlier tests can fill the per-minute log budget. This test
+        # needs the line to actually print.
+        rr._LOG_COUNT = 0
+        rr._LOG_DROPPED = 0
+        rr._LOG_MINUTE = 0.0
+        rr._VERBOSE = True
+
     def test_process_log_redacts_before_printing(self):
         from runner.runner import execute_job
         buf = StringIO()
