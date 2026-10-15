@@ -1871,13 +1871,31 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         stderr, trunc_err = stderr[:max_out], True
 
     return {"stdout": stdout, "stderr": stderr,
-            "exit_code": -1 if timed_out else proc.returncode,
+            "exit_code": -1 if timed_out else (proc.returncode if proc.returncode is not None else -1),
             "timed_out": timed_out,
             "stdout_truncated": trunc_out, "stderr_truncated": trunc_err,
             "duration_sec": duration}
 
 
 # ---------------------------------------------------------------- job handling
+def _as_str(value) -> str:
+    return "" if value is None else str(value)
+
+
+def _as_int(value, default):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_float(value, default):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _preview(text, n=80) -> str:
     """One line, capped. For the runner log, not for email."""
     line = (text or "").replace("\r", " ").replace("\n", " ").strip()
@@ -2446,11 +2464,13 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 "v": PROTOCOL_VERSION, "type": "result", "job_id": job_id,
                 "kind": job.get("kind"),
                 "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "exit_code": int(r["exit_code"]), "timed_out": bool(r["timed_out"]),
-                "stdout": str(r["stdout"]), "stderr": str(r["stderr"]),
-                "stdout_truncated": bool(r["stdout_truncated"]),
-                "stderr_truncated": bool(r["stderr_truncated"]),
-                "duration_sec": float(r["duration_sec"]),
+                "exit_code": _as_int(r.get("exit_code"), -1),
+                "timed_out": bool(r.get("timed_out")),
+                "stdout": "" if r.get("stdout") is None else str(r.get("stdout")),
+                "stderr": "" if r.get("stderr") is None else str(r.get("stderr")),
+                "stdout_truncated": bool(r.get("stdout_truncated")),
+                "stderr_truncated": bool(r.get("stderr_truncated")),
+                "duration_sec": _as_float(r.get("duration_sec"), 0.0),
                 "runner": socket.gethostname(),
                 "review": review,
             }
@@ -2463,13 +2483,13 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 declared = []
             spent = 0
             digest = hashlib.sha384(
-                (str(r["stdout"]) + str(r["stderr"])).encode("utf-8")).hexdigest()
+                (_as_str(r.get("stdout")) + _as_str(r.get("stderr"))).encode("utf-8")).hexdigest()
             if declared:
                 view = result.get("view") or "full"
                 answers, spent = answer_queries(
                     declared,
-                    {"stdout": str(r["stdout"]), "stderr": str(r["stderr"]),
-                     "exit_code": int(r["exit_code"]), "confined": confined,
+                    {"stdout": _as_str(r.get("stdout")), "stderr": _as_str(r.get("stderr")),
+                     "exit_code": _as_int(r.get("exit_code"), -1), "confined": confined,
                      "digest": digest},
                     patterns, query_budget(cfg, job), cfg=cfg, view=view,
                     base_dir=base_dir,
@@ -2478,11 +2498,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             if retain_view or declared:
                 save_retained(base_dir, job_id, {
                     "job_id": job_id,
-                    "stdout": str(r["stdout"]),
-                    "stderr": str(r["stderr"]),
-                    "exit_code": int(r["exit_code"]),
+                    "stdout": _as_str(r.get("stdout")),
+                    "stderr": _as_str(r.get("stderr")),
+                    "exit_code": _as_int(r.get("exit_code"), -1),
                     "timed_out": bool(r["timed_out"]),
-                    "duration_sec": float(r["duration_sec"]),
+                    "duration_sec": _as_float(r.get("duration_sec"), 0.0),
                     "view": result.get("view") or "full",
                     "budget": query_budget(cfg, job),
                     "spent": spent,

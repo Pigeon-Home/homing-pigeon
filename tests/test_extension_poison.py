@@ -1227,3 +1227,33 @@ class AskInstructionFaultTest(unittest.TestCase):
         self.assertEqual(spent, 1)
         self.assertEqual(answers[0].get("rejected"), "inference_error")
         self.assertNotIn("Traceback", json.dumps(answers))
+
+
+class PartialResultFaultTest(unittest.TestCase):
+    """Finding: the result builder cast exit_code and duration raw.
+
+    int(None) and float('hot') raise. A process with no return code,
+    or an extension that returned a partial result, retried the job
+    forever. The casts fall back now. The job completes.
+    """
+
+    def test_partial_result_still_completes(self):
+        with tempfile.TemporaryDirectory() as d:
+            body = sign_payload({
+                "v": 1, "type": "job", "kind": "ping",
+                "job_id": "partial-1", "issued_at": _now(),
+            }, SECRET)
+
+            def partial(cfg, job, base_dir):
+                return {"stdout": None, "exit_code": None,
+                        "duration_sec": "hot"}
+
+            with mock.patch("runner.runner.execute_job", side_effect=partial):
+                poll_once(
+                    {"mailbox_user": "pigeon-test@example.com",
+                     "shared_secret": SECRET, "base_dir": d},
+                    d, {}, os.path.join(d, "seen.json"),
+                    imap=_IMAP(_mail("[HOMING-PIGEON] job partial-1", body)),
+                    smtp=_SMTP(), opts=_Opts())
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                self.assertIn("partial-1", json.load(fh))
