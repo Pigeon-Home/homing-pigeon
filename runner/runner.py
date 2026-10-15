@@ -213,6 +213,91 @@ def verify_body_keyed(body_text: str, secrets: dict):
 
 
 
+
+# ---------------------------------------------------------------- oracle (v3 §§9-12)
+BUILTIN_REDACT_PATTERNS = {
+    "aws_key": r"AKIA[0-9A-Z]{16}",
+    "private_key": r"-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----",
+    "bearer_token": r"(?i)bearer\s+[A-Za-z0-9\-._~+/]+=*",
+}
+VIEW_ORDER = {"attested": 0, "summary": 1, "redacted": 2, "full": 3}
+
+
+def _redact_patterns(cfg):
+    pats = dict(BUILTIN_REDACT_PATTERNS)
+    extra = cfg.get("redact_patterns_extra") or {}
+    for name, regex in extra.items():
+        try:
+            re.compile(regex)
+            pats[name] = regex
+        except Exception:
+            log(f"bad redact pattern {name}: skipped", "WARN")
+    return pats
+
+
+def apply_result_policy(cfg, job, exec_result, patterns, confined):
+    """Return (result_dict, retain_bool). Job can never widen past owner ceiling."""
+    if not cfg.get("oracle_enabled", True):
+        return exec_result, False
+    policy = job.get("result_policy") or {}
+    requested = policy.get("view") or "full"
+    ceiling = cfg.get("max_result_view") or "full"
+    effective = requested if VIEW_ORDER.get(requested, 3) <= VIEW_ORDER.get(ceiling, 3) else ceiling
+    full_out = (exec_result.get("stdout") or "") + (exec_result.get("stderr") or "")
+    digest = hashlib.sha384(full_out.encode("utf-8")).hexdigest()
+    base = {
+        "v": 1, "type": "result", "job_id": job.get("job_id"),
+        "kind": job.get("kind"), "exit_code": exec_result.get("exit_code"),
+        "timed_out": exec_result.get("timed_out", False),
+        "duration_sec": exec_result.get("duration_sec"),
+        "view": effective, "output_digest": digest,
+    }
+    retain = effective != "full"
+    if effective == "full":
+        base.update({"stdout": exec_result.get("stdout"), "stderr": exec_result.get("stderr")})
+    elif effective == "redacted":
+        out = full_out
+        families = []
+        for name, pat in patterns.items():
+            if re.search(pat, out):
+                out = re.sub(pat, f"[REDACTED:{name}]", out)
+                families.append(name)
+        base.update({"stdout": out, "stderr": "", "redacted_families": families})
+    elif effective == "summary":
+        base.update({
+            "stdout_bytes": len(exec_result.get("stdout") or ""),
+            "stderr_bytes": len(exec_result.get("stderr") or ""),
+            "result_class": "ok" if exec_result.get("exit_code") == 0 else "fail",
+        })
+    else:  # attested
+        base["attestations"] = build_attestations(
+            (policy.get("queries") or []),
+            {"exit_code": exec_result.get("exit_code"), "digest": digest, "confined": confined, "patterns": patterns},
+        )
+        base["stdout"] = ""
+        base["stderr"] = ""
+    return base, retain
+
+
+def build_attestations(queries, ctx):
+    atts = []
+    for q in queries:
+        if q.get("op") != "attest":
+            continue
+        pred = q.get("predicate")
+        if pred == "exit_zero":
+            atts.append({"predicate": pred, "ok": ctx["exit_code"] == 0})
+        elif pred == "no_secrets":
+            atts.append({"predicate": pred, "ok": True, "patterns_sha384": hashlib.sha384(json.dumps(sorted(ctx["patterns"].items())).encode()).hexdigest()})
+        elif pred == "output_digest":
+            atts.append({"predicate": pred, "digest": ctx["digest"]})
+        elif pred == "confined_to_workspace":
+            atts.append({"predicate": pred, "ok": bool(ctx["confined"]), "reason": None if ctx["confined"] else "unconfigured"})
+        else:
+            atts.append({"predicate": pred, "ok": False, "reason": "unknown"})
+    return atts
+
+
 # ---------------------------------------------------------------- board (v3 §13)
 _BOARD_LOCK = threading.RLock()
 
@@ -943,6 +1028,9 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 "duration_sec": float(r["duration_sec"]),
                 "runner": socket.gethostname(),
             }
+            # Oracle view (no-op when oracle_enabled is false)
+            patterns = _redact_patterns(cfg)
+            result, _retain = apply_result_policy(cfg, job, result, patterns, confined=False)
             with _MAIL_LOCK:
                 maybe_send(f"{SUBJECT_RESULT}{job_id}",
                           sign_payload(result, secret))
