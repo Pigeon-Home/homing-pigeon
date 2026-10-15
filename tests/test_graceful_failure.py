@@ -1511,5 +1511,50 @@ class ClosedStdoutGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class InterpreterGracefulTest(unittest.TestCase):
+    """Finding: interpreter is resolved before execute. A bad shape
+    must not crash describe or script_filename.
+    """
+
+    def test_script_filename_odd(self):
+        from runner.runner import script_filename
+        for interp in (None, "", "python3", ["python3"], ["pwsh", "-File"], 42):
+            try:
+                name = script_filename(interp if isinstance(interp, (str, list)) else "")
+            except Exception as e:
+                self.fail(f"script_filename crashed on {interp!r}: {e}")
+            self.assertIsInstance(name, str)
+
+    def test_describe_bad_interpreter(self):
+        from runner.runner import _describe_job
+        for job in (
+            {"kind": "exec", "script": "echo", "interpreter": None},
+            {"kind": "exec", "script": "echo", "interpreter": 42},
+            {"kind": "exec", "script": "echo", "interpreter": ["python3", None]},
+        ):
+            try:
+                desc = _describe_job(job)
+            except Exception as e:
+                self.fail(f"describe crashed on interpreter: {e}")
+            self.assertIsInstance(desc, str)
+
+    def test_concurrent_script_filename(self):
+        from runner.runner import script_filename
+        errors = []
+
+        def one(i):
+            try:
+                script_filename(["python3"] if i % 2 else "bash")
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
