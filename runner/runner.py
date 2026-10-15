@@ -1281,6 +1281,8 @@ def load_retained(base_dir, job_id):
 
 def retained_expired(data, cfg):
     """True when saved_at is older than output_retention_days."""
+    if not isinstance(data, dict) or not isinstance(cfg, dict):
+        return True
     try:
         days = int(cfg.get("output_retention_days") or 7)
     except (TypeError, ValueError):

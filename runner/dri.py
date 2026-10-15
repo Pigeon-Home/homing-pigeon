@@ -291,6 +291,8 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
 
 def format_page(events):
     """Render page events as one plain-text message."""
+    if not isinstance(events, list):
+        events = []
     lines = []
     for ev in events:
         if not isinstance(ev, dict):

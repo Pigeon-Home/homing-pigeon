@@ -30,6 +30,8 @@ def _now_iso() -> str:
 
 def parse_resources(cfg) -> dict:
     """Validate cfg["resources"]. On by default. Raises RuntimeError."""
+    if not isinstance(cfg, dict):
+        raise RuntimeError("config error: config must be an object")
     raw = cfg.get("resources") or {}
     if not isinstance(raw, dict):
         raise RuntimeError("config error: resources must be an object")

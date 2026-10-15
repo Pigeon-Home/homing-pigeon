@@ -1064,3 +1064,59 @@ class DriEvaluatePoisonTest(unittest.TestCase):
         for t in threads:
             t.join()
         self.assertEqual(errors, [])
+
+
+class RetainedResourcesPagePoisonTest(unittest.TestCase):
+    """Findings (2026-10-15 simulation):
+
+    1. retained_expired assumed data and cfg were dicts. None or a
+       string raised AttributeError on .get and stopped retention
+       checks.
+    2. resources.parse_resources assumed cfg was a dict. None raised
+       AttributeError (only RuntimeError was the expected config error).
+    3. dri.format_page assumed events was a list. None raised TypeError
+       on iteration and stopped a page.
+
+    All hardened. Poison inputs return safe defaults or raise
+    RuntimeError and do not stop processing.
+    """
+
+    def test_retained_resources_page_tolerate_poison(self):
+        from runner.runner import retained_expired
+        from runner import resources, dri
+        self.assertTrue(retained_expired(None, {}))
+        self.assertTrue(retained_expired("bad", "bad"))
+        self.assertTrue(retained_expired({}, None))
+        with self.assertRaises(RuntimeError):
+            resources.parse_resources(None)
+        with self.assertRaises(RuntimeError):
+            resources.parse_resources("bad")
+        self.assertIsInstance(dri.format_page(None), str)
+        self.assertIsInstance(dri.format_page("bad"), str)
+        self.assertIsInstance(dri.format_page([None, 5, {"title": None}]), str)
+
+    def test_concurrent_retained_and_page_do_not_raise(self):
+        import threading
+        from runner.runner import retained_expired
+        from runner import resources, dri
+        errors = []
+
+        def hammer():
+            for _ in range(15):
+                try:
+                    retained_expired(None, "bad")
+                    try:
+                        resources.parse_resources(None)
+                    except RuntimeError:
+                        pass
+                    dri.format_page(None)
+                    dri.format_page([5, "x"])
+                except Exception as e:
+                    errors.append(e)
+
+        threads = [threading.Thread(target=hammer) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
