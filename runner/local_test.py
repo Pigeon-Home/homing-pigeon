@@ -205,10 +205,9 @@ Chat with the SI, then send a question to the Oracle.</p>
 <div id="log"></div>
 <form id="f">
   <input id="q" autofocus placeholder="say something">
+  <button name="to" value="email">send email (the test)</button>
   <button name="to" value="si">talk to SI</button>
   <button name="to" value="oracle">ask the Oracle</button>
-  <button name="to" value="email">send email</button>
-  <button name="to" value="socket">socket</button>
 </form>
 <script>
 const log = document.getElementById('log');

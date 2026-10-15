@@ -1,5 +1,18 @@
 # Local SI test
 
+## Testing is email only
+
+The mock SI is tested through email. That is Transport #1 and the
+only transport this harness exercises. The local socket and the
+other brokers exist in the tree for later; they are not part of
+this test.
+
+To run the email test you need a real mailbox in `config.json`
+(`smtp_host`, `smtp_port`, `mailbox_user`, password or OAuth) and a
+runner polling that same mailbox. The SI sends a signed job. The
+runner picks it up, runs it, and emails the result back.
+
+
 A development loop for the Oracle. You play the cloud SI. The harness
 ensures the local model is up, then each thing you type is an `ask`
 sent through the protocol path. The Oracle answers. Nothing is emailed.
