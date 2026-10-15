@@ -130,6 +130,8 @@ def cmd_new(args) -> int:
         "issued_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "kind": args.kind,
     }
+    if args.key_id:
+        payload["key_id"] = args.key_id
     if args.kind == "exec":
         if args.script_url:
             payload["script_url"] = args.script_url
@@ -199,6 +201,7 @@ def main() -> int:
                    help='JSON list overriding the runner\'s interpreter, e.g. '
                         '\'["pwsh", "-File"]\' or \'["bash"]\'')
     n.add_argument("--timeout", type=int, default=300)
+    n.add_argument("--key-id", default=None, help="key_id for multi-secret (Piece 1)")
     n.add_argument("--secret", required=True)
     n.set_defaults(func=cmd_new)
 

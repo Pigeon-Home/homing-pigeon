@@ -168,6 +168,50 @@ def verify_body(body: str, secret: str) -> dict:
     return job
 
 
+
+def build_secrets(cfg) -> dict:
+    """key_id -> secret. Default key is "". Every secret passes entropy gate."""
+    secrets = {}
+    default = cfg.get("shared_secret") or ""
+    if not default:
+        raise RuntimeError("config error: shared_secret is required")
+    validate_shared_secret(default)
+    secrets[""] = default
+    extra = cfg.get("additional_secrets") or {}
+    if not isinstance(extra, dict):
+        raise RuntimeError("config error: additional_secrets must be an object")
+    for kid, sec in extra.items():
+        if not isinstance(kid, str) or not isinstance(sec, str):
+            raise RuntimeError("config error: additional_secrets keys and values must be strings")
+        if kid == "":
+            raise RuntimeError("config error: empty key_id reserved for default")
+        validate_shared_secret(sec)
+        secrets[kid] = sec
+    return secrets
+
+
+def verify_body_keyed(body_text: str, secrets: dict):
+    """Return (payload, key_id). Unknown key_id raises before any crypto."""
+    norm = _normalize(body_text).rstrip()
+    raw, sig = _extract_signed(norm)
+    try:
+        payload = json.loads(raw)
+    except Exception as e:
+        raise ValueError(f"invalid JSON: {e}") from e
+    if not isinstance(payload, dict):
+        raise ValueError("signed body must be a JSON object")
+    key_id = payload.get("key_id") or ""
+    if key_id not in secrets:
+        raise ValueError(f"unknown key_id {key_id!r}")
+    secret = secrets[key_id]
+    expect = hmac.new(secret.encode("utf-8"), raw.encode("utf-8"),
+                      hashlib.sha384).hexdigest()
+    if not hmac.compare_digest(expect, sig):
+        raise ValueError("bad signature")
+    payload["sig"] = sig
+    return payload, key_id
+
+
 class JobRejected(Exception):
     """Validly signed job that can never succeed (poison)."""
 
@@ -584,7 +628,7 @@ def _describe_job(job: dict) -> str:
 
 
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
-                seen: dict, secret: str, opts=None):
+                seen: dict, secrets: dict, opts=None):
     msg = email.message_from_bytes(raw)
     subject = str(msg["Subject"] or "")
     from_header = str(msg["From"] or "")
@@ -621,9 +665,10 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         "DEBUG")
 
     try:
-        job = verify_body(get_text_body(msg), secret)
-    except ValueError:
-        reject("bad signature")
+        job, key_id = verify_body_keyed(get_text_body(msg), secrets)
+        secret = secrets[key_id]
+    except ValueError as e:
+        reject(f"bad signature: {e}")
         return
     if not isinstance(job, dict):
         # verify_body can return any JSON value if the signer hand-crafts
@@ -856,8 +901,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     # separate from the mailbox password. Both sides use its UTF-8 bytes
     # as the HMAC-SHA-384 key. No hashing or derivation — the SI uses it
     # as-is.
-    secret = cfg.get("shared_secret") or ""
-    validate_shared_secret(secret)
+    secrets = build_secrets(cfg)
     log(f"runner identity: {cfg['mailbox_user']} -- accepting signed jobs from any sender")
     own_imap = imap is None
     own_smtp = smtp is None
@@ -874,7 +918,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
                 log(f"executing with {workers} workers", "DEBUG")
             with ThreadPoolExecutor(max_workers=workers) as ex:
                 futs = [ex.submit(handle_mail, cfg, imap, smtp, seq, raw,
-                                  base_dir, seen, secret, opts)
+                                  base_dir, seen, secrets, opts)
                         for seq, raw in mails]
                 first_exc = None
                 for f in as_completed(futs):
