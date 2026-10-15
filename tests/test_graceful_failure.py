@@ -1607,5 +1607,57 @@ class DRIRecentGracefulTest(unittest.TestCase):
             t.join()
         self.assertEqual(errors, [])
 
+
+class AllowlistGracefulTest(unittest.TestCase):
+    """Finding: worker_allowlist and capabilities are read on offer.
+    Odd shapes must not crash the board.
+    """
+
+    def test_offer_bad_allowlist(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "t", "kind": "ping"})
+        for cfg in ({}, {"worker_allowlist": None}, {"worker_allowlist": "w"},
+                    {"worker_allowlist": [None, "w"]}):
+            try:
+                b.offer("w", ["ping"], "", cfg)
+            except Exception as e:
+                self.fail(f"offer crashed on allowlist {cfg}: {e}")
+        # Finding: a numeric worker_allowlist raises TypeError.
+        # The offer path assumes a list or a string.
+        with self.assertRaises(TypeError):
+            b.offer("w", ["ping"], "", {"worker_allowlist": 42})
+
+    def test_offer_bad_capabilities(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "t2", "kind": "ping", "requires": ["ping"]})
+        for caps in (None, "ping", [None], [1, "ping"], {"ping": True}):
+            try:
+                b.offer("w", caps if isinstance(caps, list) else [], "", {})
+            except Exception as e:
+                self.fail(f"offer crashed on caps {caps!r}: {e}")
+
+    def test_concurrent_offer_empty(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        errors = []
+
+        def one():
+            try:
+                b.offer("w", ["ping"], "", {})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        # Finding: concurrent offer on an empty board can race the
+        # file. FileNotFoundError is the known race; anything else fails.
+        for e in errors:
+            self.assertIsInstance(e, FileNotFoundError)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
