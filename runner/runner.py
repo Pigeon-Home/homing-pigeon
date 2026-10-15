@@ -1056,41 +1056,46 @@ def _live_times(times, now):
     return live
 
 
+_QUERY_LOCK = threading.Lock()
+
+
 def check_rate_limit(key_id, cfg, path=None):
     """Return True if under max_queries_per_hour. Zero means unlimited.
 
     When path is set, the window is on disk so it survives a restart
-    and can be read without the runner running.
+    and can be read without the runner running. The check and the
+    write are one step, so two workers cannot both pass the last slot.
     """
-    limit = _query_limit(cfg)
-    if limit < 0:
-        return False
-    if limit <= 0:
-        return True
-    now = time.time()
-    if path and os.path.exists(path):
-        try:
-            with open(path, encoding="utf-8") as f:
-                store = json.load(f)
-        except Exception:
+    with _QUERY_LOCK:
+        limit = _query_limit(cfg)
+        if limit < 0:
+            return False
+        if limit <= 0:
+            return True
+        now = time.time()
+        if path and os.path.exists(path):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    store = json.load(f)
+            except Exception:
+                store = {}
+        elif path:
             store = {}
-    elif path:
-        store = {}
-    else:
-        store = _QUERY_TIMES
-    if not isinstance(store, dict):
-        store = {}
-    window = _live_times(store.get(key_id, []), now)
-    if len(window) >= limit:
+        else:
+            store = _QUERY_TIMES
+        if not isinstance(store, dict):
+            store = {}
+        window = _live_times(store.get(key_id, []), now)
+        if len(window) >= limit:
+            store[key_id] = window
+            if path:
+                _write_json(path, store)
+            return False
+        window.append(now)
         store[key_id] = window
         if path:
             _write_json(path, store)
-        return False
-    window.append(now)
-    store[key_id] = window
-    if path:
-        _write_json(path, store)
-    return True
+        return True
 
 
 def budget_status(path, cfg):
@@ -1131,17 +1136,21 @@ def prune_retained(base_dir, days):
             pass
     return removed
 
+_RETAINED_LOCK = threading.RLock()
+
+
 def save_retained(base_dir, job_id, payload):
     """Persist output for later queries. Unsafe ids are dropped, not written."""
     if not isinstance(job_id, str) or not _SAFE_JOB_ID.match(job_id) or job_id in (".", ".."):
         return
     d = os.path.join(base_dir, "retained")
-    os.makedirs(d, exist_ok=True)
-    path = os.path.join(d, f"{job_id}.json")
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(payload, f)
-    os.replace(tmp, path)
+    with _RETAINED_LOCK:
+        os.makedirs(d, exist_ok=True)
+        path = os.path.join(d, f"{job_id}.json")
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(payload, f)
+        os.replace(tmp, path)
 
 
 def load_retained(base_dir, job_id):
@@ -1149,13 +1158,14 @@ def load_retained(base_dir, job_id):
     if not isinstance(job_id, str) or not _SAFE_JOB_ID.match(job_id):
         return None
     path = os.path.join(base_dir, "retained", f"{job_id}.json")
-    if not os.path.isfile(path):
-        return None
-    try:
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception:
-        return None
+    with _RETAINED_LOCK:
+        if not os.path.isfile(path):
+            return None
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            return None
     if not isinstance(data, dict):
         return None
     return data
@@ -1434,25 +1444,56 @@ def connect_smtp(cfg) -> smtplib.SMTP:
 
 
 def fetch_job_mails(imap):
-    """Return [(seq, raw_bytes)] for unseen mails with the job subject prefix."""
+    """Return [(seq, raw_bytes)] for unseen mails with the job subject prefix.
+
+    A bad SEARCH or one bad FETCH is skipped. The rest of the poll
+    still runs.
+    """
     # Search broad: the subject regex accepts decorated subjects
     # ("[HOMING-PIGEON] TEST job <id>", "Re: ..."), which do not contain
     # the exact "[HOMING-PIGEON] job" substring. handle_mail filters.
-    typ, data = imap.search(None, "UNSEEN", "SUBJECT", '"[HOMING-PIGEON]"')
+    try:
+        typ, data = imap.search(None, "UNSEEN", "SUBJECT", '"[HOMING-PIGEON]"')
+    except Exception as e:
+        log(f"IMAP SEARCH failed: {e}", "WARN")
+        return []
     if typ != "OK":
-        raise RuntimeError("IMAP SEARCH failed")
+        log("IMAP SEARCH failed", "WARN")
+        return []
+    if not isinstance(data, (list, tuple)) or not data:
+        return []
+    blob = data[0]
+    if blob is None:
+        return []
+    if isinstance(blob, str):
+        blob = blob.encode("ascii", "replace")
+    if not isinstance(blob, (bytes, bytearray)):
+        log(f"IMAP SEARCH returned {type(blob).__name__}; ignoring", "WARN")
+        return []
     mails = []
-    for num in (data[0] or b"").split():
-        typ, fetched = imap.fetch(num, "(RFC822)")
-        if typ != "OK":
+    for num in blob.split():
+        try:
+            seq = num.decode("ascii") if isinstance(num, (bytes, bytearray)) else str(num)
+        except Exception:
+            continue
+        try:
+            typ, fetched = imap.fetch(num, "(RFC822)")
+        except Exception as e:
+            log(f"IMAP FETCH {seq} failed: {e}", "WARN")
+            continue
+        if typ != "OK" or not fetched:
             continue
         raw = None
-        for part in fetched:
+        try:
+            parts = list(fetched)
+        except TypeError:
+            continue
+        for part in parts:
             if isinstance(part, tuple) and len(part) == 2 and isinstance(part[1], bytes):
                 raw = part[1]
                 break
         if raw is not None:
-            mails.append((num.decode("ascii"), raw))
+            mails.append((seq, raw))
     return mails
 
 
@@ -1966,56 +2007,58 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
         return True
 
     job_id = payload.get("job_id")
-    retained = load_retained(base_dir, job_id)
-    if retained is None or retained_expired(retained, cfg):
-        reason = "expired" if retained is not None else "unknown_job"
-        log(f"query rejected seq {seq}: {reason} {job_id!r}", "WARN")
-        finish({
-            "v": 1, "type": "qresult", "query_id": query_id,
-            "job_id": job_id, "rejected": reason, "answers": [],
-            "budget_remaining": 0,
-        }, secret)
-        return True
-
-    try:
-        budget = int(retained.get("budget"))
-    except (TypeError, ValueError):
-        try:
-            budget = int(cfg.get("max_query_budget", 8))
-        except (TypeError, ValueError):
-            budget = 8
-    try:
-        already = int(retained.get("spent") or 0)
-    except (TypeError, ValueError):
-        already = 0
-    patterns = retained.get("patterns") or _redact_patterns(cfg)
-    if not isinstance(patterns, dict):
-        patterns = _redact_patterns(cfg)
-    view = retained.get("view") or "full"
-    queries = payload.get("queries") or []
-    if not isinstance(queries, list):
-        queries = []
-    exec_result = {
-        "stdout": retained.get("stdout") or "",
-        "stderr": retained.get("stderr") or "",
-        "exit_code": retained.get("exit_code"),
-        "confined": retained.get("confined"),
-        "digest": retained.get("digest"),
-    }
-    answers, spent = answer_queries(
-        queries, exec_result, patterns, budget,
-        cfg=cfg, view=view, already_spent=already, base_dir=base_dir,
-    )
-    retained["spent"] = spent
-    retained["saved_at"] = retained.get("saved_at") or time.time()
-    save_retained(base_dir, job_id, retained)
-    remaining = budget - spent
-    if remaining < 0:
-        remaining = 0
-    finish({
-        "v": 1, "type": "qresult", "query_id": query_id, "job_id": job_id,
-        "answers": answers, "budget_remaining": remaining,
-    }, secret)
+    reply = None
+    with _RETAINED_LOCK:
+        retained = load_retained(base_dir, job_id)
+        if retained is None or retained_expired(retained, cfg):
+            reason = "expired" if retained is not None else "unknown_job"
+            log(f"query rejected seq {seq}: {reason} {job_id!r}", "WARN")
+            reply = {
+                "v": 1, "type": "qresult", "query_id": query_id,
+                "job_id": job_id, "rejected": reason, "answers": [],
+                "budget_remaining": 0,
+            }
+        else:
+            try:
+                budget = int(retained.get("budget"))
+            except (TypeError, ValueError):
+                try:
+                    budget = int(cfg.get("max_query_budget", 8))
+                except (TypeError, ValueError):
+                    budget = 8
+            try:
+                already = int(retained.get("spent") or 0)
+            except (TypeError, ValueError):
+                already = 0
+            patterns = retained.get("patterns") or _redact_patterns(cfg)
+            if not isinstance(patterns, dict):
+                patterns = _redact_patterns(cfg)
+            view = retained.get("view") or "full"
+            queries = payload.get("queries") or []
+            if not isinstance(queries, list):
+                queries = []
+            exec_result = {
+                "stdout": retained.get("stdout") or "",
+                "stderr": retained.get("stderr") or "",
+                "exit_code": retained.get("exit_code"),
+                "confined": retained.get("confined"),
+                "digest": retained.get("digest"),
+            }
+            answers, spent = answer_queries(
+                queries, exec_result, patterns, budget,
+                cfg=cfg, view=view, already_spent=already, base_dir=base_dir,
+            )
+            retained["spent"] = spent
+            retained["saved_at"] = retained.get("saved_at") or time.time()
+            save_retained(base_dir, job_id, retained)
+            remaining = budget - spent
+            if remaining < 0:
+                remaining = 0
+            reply = {
+                "v": 1, "type": "qresult", "query_id": query_id, "job_id": job_id,
+                "answers": answers, "budget_remaining": remaining,
+            }
+    finish(reply, secret)
     return True
 
 def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, base_dir):

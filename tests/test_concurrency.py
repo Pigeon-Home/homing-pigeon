@@ -27,6 +27,8 @@ sys.path.insert(0, REPO)
 
 from runner import senses  # noqa: E402
 from runner.runner import (  # noqa: E402
+    answer_queries,
+    fetch_job_mails,
     handle_mail,
     make_oracle_server,
     poll_once,
@@ -257,3 +259,95 @@ class ReviewAndAgeTest(unittest.TestCase):
                 poll_once(_cfg(), d, seen, os.path.join(d, "seen.json"),
                           imap=_IMAP(self._two()), smtp=_SMTP(), opts=_Opts())
             self.assertEqual(sorted(seen), ["good", "reviewed"])
+
+
+class ImapAndBudgetTest(unittest.TestCase):
+    """Bad SEARCH data and two queries spending one budget.
+
+    Finding: SEARCH that returned None, an empty list, or a number
+    raised before any mail was read, so the cycle failed. Two workers
+    reading the same retained job both saw spent 0 and both answered
+    a budget of 1. The last write left spent at 1.
+    """
+
+    def test_bad_search_does_not_fail_the_poll(self):
+        class Bad:
+            def __init__(self, data):
+                self.data = data
+
+            def search(self, *a):
+                return "OK", self.data
+
+            def fetch(self, *a):
+                raise AssertionError("fetch")
+
+            def store(self, *a, **k):
+                return "OK", []
+
+        for data in (None, [], [5], [None]):
+            self.assertEqual(fetch_job_mails(Bad(data)), [])
+            with tempfile.TemporaryDirectory() as d:
+                poll_once(_cfg(), d, {}, os.path.join(d, "seen.json"),
+                          imap=Bad(data), smtp=_SMTP(), opts=_Opts())
+
+    def test_one_bad_fetch_does_not_drop_the_sibling(self):
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "kept",
+            "issued_at": _now(), "kind": "ping",
+        }, SECRET)
+        good = _mail("[HOMING-PIGEON] job kept", body)
+
+        class Mixed:
+            def search(self, *a):
+                return "OK", [b"1 2"]
+
+            def fetch(self, num, what):
+                seq = num.decode() if isinstance(num, bytes) else str(num)
+                if seq == "1":
+                    raise RuntimeError("folder glitch")
+                return "OK", [(b"x", good)]
+
+            def store(self, *a, **k):
+                return "OK", []
+
+        with tempfile.TemporaryDirectory() as d:
+            seen = {}
+            poll_once(_cfg(), d, seen, os.path.join(d, "seen.json"),
+                      imap=Mixed(), smtp=_SMTP(), opts=_Opts())
+            self.assertIn("kept", seen)
+
+    def test_two_queries_cannot_both_spend_the_last_slot(self):
+        import time
+        spent_seen = []
+        real = answer_queries
+
+        def slow(queries, exec_result, patterns, budget, cfg=None, view="full",
+                 already_spent=0, base_dir=None):
+            spent_seen.append(already_spent)
+            time.sleep(0.05)
+            return real(queries, exec_result, patterns, budget, cfg=cfg,
+                        view=view, already_spent=already_spent, base_dir=base_dir)
+
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "retained"))
+            with open(os.path.join(d, "retained", "job-b.json"), "w", encoding="utf-8") as fh:
+                json.dump({
+                    "stdout": "hello flag\n", "stderr": "",
+                    "budget": 1, "spent": 0, "view": "full",
+                    "saved_at": time.time(),
+                }, fh)
+            raws = []
+            for qid in ("q1", "q2"):
+                body = sign_payload({
+                    "v": 1, "type": "query", "query_id": qid,
+                    "job_id": "job-b", "issued_at": _now(),
+                    "queries": [{"op": "grep", "pattern": "flag"}],
+                }, SECRET)
+                raws.append(_mail(f"[HOMING-PIGEON] query {qid}", body))
+            with mock.patch("runner.runner.answer_queries", side_effect=slow):
+                poll_once(_cfg(), d, {}, os.path.join(d, "seen.json"),
+                          imap=_IMAP(raws), smtp=_SMTP(), opts=_Opts())
+            self.assertEqual(sorted(spent_seen), [0, 1])
+            with open(os.path.join(d, "retained", "job-b.json"), encoding="utf-8") as fh:
+                saved = json.load(fh)
+            self.assertEqual(saved["spent"], 2)
