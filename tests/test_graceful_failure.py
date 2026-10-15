@@ -775,5 +775,37 @@ class InstructionsGracefulTest(unittest.TestCase):
             except Exception as e:
                 self.fail(f"record_oracle_turn crashed on {ans!r}: {e}")
 
+
+class LogAndBodyGracefulTest(unittest.TestCase):
+    """Finding: log, _preview, and get_text_body run on every message.
+    Odd inputs must not raise, or one bad message stops the poll.
+    """
+
+    def test_preview_odd(self):
+        from runner.runner import _preview
+        for text_in in (None, 42, "", "x" * 500, "line\nbreak"):
+            try:
+                _preview(text_in if isinstance(text_in, str) else "")
+            except Exception as e:
+                self.fail(f"_preview crashed on {text_in!r}: {e}")
+
+    def test_log_odd(self):
+        from runner.runner import log
+        for msg in ("", "x" * 5000, "üñícode", "line\nbreak"):
+            try:
+                log(msg, "WARN")
+            except Exception as e:
+                self.fail(f"log crashed on {msg[:20]!r}: {e}")
+
+    def test_get_text_body_empty(self):
+        from email.message import EmailMessage
+        from runner.runner import get_text_body
+        msg = EmailMessage()
+        try:
+            body = get_text_body(msg)
+        except Exception as e:
+            self.fail(f"empty message crashed get_text_body: {e}")
+        self.assertIsInstance(body, str)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
