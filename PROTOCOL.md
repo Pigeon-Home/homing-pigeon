@@ -777,7 +777,15 @@ Every field is optional; every specified constraint must hold:
 A policy may also be attached to the default key under the empty-string
 key ID (`"": {...}`). Violations are rejected like any other bad job:
 logged, marked seen, never retried. Keys without a policy entry behave
-exactly as before.
+exactly as before — unrestricted.
+
+Two guards against a forgotten entry. At startup the runner logs a
+warning naming every `additional_secrets` key with no policy entry
+(the default key is intentionally unrestricted and never listed).
+And `key_policies_default_deny` (default false) flips the default for
+additional keys: a key with no entry is refused outright. The default
+stays loose; strict is opt-in. The default key (`""`) is never
+affected by the deny flag.
 
 ## 15. Rollout plan
 

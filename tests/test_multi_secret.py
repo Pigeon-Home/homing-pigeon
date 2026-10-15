@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(REPO, "cloud"))
 
 from runner.runner import (build_secrets, verify_body_keyed, poll_once,
                            validate_shared_secret, build_key_policies,
-                           check_key_policy)
+                           check_key_policy, unrestricted_extra_keys)
 from send_job import sign_payload, verify_body
 
 SECRET = "2d2d42b99b668d4bcc0120c172c09e1059cdf4dd94d3422524519e3708937be4"
@@ -181,6 +181,66 @@ class KeyPolicyTest(unittest.TestCase):
                 build_key_policies({"key_policies": bad})
         with self.assertRaises(RuntimeError):
             build_key_policies({"key_policies": ["not", "a", "dict"]})
+
+
+class KeyPolicyDefaultDenyTest(unittest.TestCase):
+    """key_policies_default_deny: opt-in strict for additional keys.
+
+    The default stays loose: without the flag, a key with no entry is
+    unrestricted. The default key ("") is never affected by the flag.
+    """
+
+    def _job(self):
+        return {"kind": "ping"}
+
+    def test_loose_by_default(self):
+        cfg = {}
+        self.assertIsNone(check_key_policy({}, "worker1", cfg, self._job()))
+
+    def test_deny_refuses_key_without_entry(self):
+        cfg = {"key_policies_default_deny": True}
+        reason = check_key_policy({}, "worker1", cfg, self._job())
+        self.assertIsNotNone(reason)
+        self.assertIn("key_policies_default_deny", reason)
+
+    def test_deny_never_touches_default_key(self):
+        cfg = {"key_policies_default_deny": True}
+        self.assertIsNone(check_key_policy({}, "", cfg, self._job()))
+
+    def test_deny_policy_entry_still_governs(self):
+        cfg = {"key_policies_default_deny": True}
+        pol = build_key_policies(
+            {"key_policies": {"w": {"allowed_kinds": ["ping"]}}})
+        self.assertIsNone(check_key_policy(pol, "w", cfg, {"kind": "ping"}))
+        self.assertIsNotNone(
+            check_key_policy(pol, "w", cfg, {"kind": "exec",
+                                             "script": "x",
+                                             "interpreter": ["bash"]}))
+
+    def test_deny_with_none_cfg(self):
+        # defensive: truthiness check must not crash on a bare call
+        self.assertIsNone(check_key_policy({}, "worker1", None, self._job()))
+
+
+class UnrestrictedExtraKeysTest(unittest.TestCase):
+    def test_lists_missing_entries(self):
+        cfg = {"additional_secrets": {"b-key": "s", "a-key": "s"},
+               "key_policies": {"a-key": {"allowed_kinds": ["ping"]}}}
+        self.assertEqual(unrestricted_extra_keys(cfg), ["b-key"])
+
+    def test_default_key_never_listed(self):
+        cfg = {"shared_secret": "s", "additional_secrets": {}}
+        self.assertEqual(unrestricted_extra_keys(cfg), [])
+
+    def test_all_covered_quiet(self):
+        cfg = {"additional_secrets": {"w": "s"},
+               "key_policies": {"w": {"allowed_kinds": ["ping"]}}}
+        self.assertEqual(unrestricted_extra_keys(cfg), [])
+
+    def test_bad_shapes(self):
+        self.assertEqual(unrestricted_extra_keys({}), [])
+        self.assertEqual(
+            unrestricted_extra_keys({"additional_secrets": ["x"]}), [])
 
 
 if __name__ == "__main__":
