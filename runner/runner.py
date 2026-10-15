@@ -1872,7 +1872,11 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
     # --- stage input files
     for f in files:
-        dest = os.path.realpath(os.path.join(work, f["name"]))
+        try:
+            dest = os.path.realpath(os.path.join(work, f["name"]))
+        except ValueError as e:
+            # A null byte in the name raises here. It can never succeed.
+            raise JobRejected(f"unsafe file name: {e}")
         prefix = os.path.realpath(work) + os.sep
         if not dest.startswith(prefix):
             raise JobRejected(f"unsafe file name: {f['name']}")

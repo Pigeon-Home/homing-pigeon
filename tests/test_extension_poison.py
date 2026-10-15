@@ -1459,3 +1459,29 @@ class ScriptShapeFaultTest(unittest.TestCase):
                       smtp=_SMTP(), opts=_Opts())
             with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
                 self.assertIn("script-1", json.load(fh))
+
+
+class NullByteNameFaultTest(unittest.TestCase):
+    """Finding: a null byte in a file name retried the job forever.
+
+    os.path.realpath raises ValueError. That is not JobRejected,
+    so the job path treated it as transient. It is poison. The
+    job is rejected and marked seen.
+    """
+
+    def test_null_byte_name_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            body = sign_payload({
+                "v": 1, "type": "job", "kind": "exec",
+                "job_id": "null-1", "issued_at": _now(),
+                "script": "echo hi",
+                "interpreter": ["sh"],
+                "files": [{"name": "a\x00b", "url": "https://example.invalid/x"}],
+            }, SECRET)
+            cfg = {"mailbox_user": "pigeon-test@example.com",
+                   "shared_secret": SECRET, "base_dir": d}
+            poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                      imap=_IMAP(_mail("[HOMING-PIGEON] job null-1", body)),
+                      smtp=_SMTP(), opts=_Opts())
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                self.assertIn("null-1", json.load(fh))
