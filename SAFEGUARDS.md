@@ -59,7 +59,7 @@ Defense in depth, cheapest first:
 - **Execution confinement (v2, spec'd).** The Oracle can restrict jobs
   to a single `workspace_root` folder and *attest* that the job
   stayed inside it. Not a sandbox — an attested boundary. See
-  PROTOCOL.md §9.3.
+  PROTOCOL.md §9.4.
 
 ## 4. The Oracle as a safeguard (v2, spec'd)
 

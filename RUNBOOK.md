@@ -143,10 +143,13 @@ virtual machine is a good idea).
 4. Make a copy of `config.example.json` and name the copy
    `config.json`. (Copy, paste, rename.)
 5. Open `config.json` in Notepad (Windows) or TextEdit (Mac).
-   Fill in these two lines:
+   Fill in these lines:
    - `mailbox_user` — the Gmail address you made just for the runner.
    - `mailbox_password` — the app password for that Gmail account.
-   
+   - `shared_secret` — a long random string (generate one: `openssl rand -hex 32`).
+     This is the HMAC signing key, separate from the Gmail password. You'll
+     paste the same string to your SI when you want it to send jobs.
+
    How to get an app password:
    1. Log into the runner's Gmail account.
    2. Go to **myaccount.google.com** → **Security**.
@@ -175,11 +178,11 @@ It checks the mailbox one time and then stops. Watch what it prints.
 
 ## Job 6: Send a job to the runner
 
-You need two things: the **secret string** (it is the same as the app
-password from Job 5) and a way to send email as the runner's Gmail
-account. The easiest way is to just paste the secret string to your
-SI in chat and tell it what you want done — it writes the email,
-signs it, and sends it for you.
+You need two things: the **shared secret** (the `shared_secret` string
+from `config.json` in Job 5 — not the app password) and a way to send
+email as the runner's Gmail account. The easiest way is to just paste
+the secret string to your SI in chat and tell it what you want done —
+it writes the email, signs it, and sends it for you.
 
 If you want to do it by hand with the helper script:
 

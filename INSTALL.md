@@ -17,6 +17,7 @@ docker pull ghcr.io/pigeon-home/homing-pigeon:latest
 docker run -d --name pigeon --restart unless-stopped \
   -e PIGEON_MAILBOX_USER="your-runner@gmail.com" \
   -e PIGEON_MAILBOX_PASSWORD="your-app-password" \
+  -e PIGEON_SHARED_SECRET="your-256-bit-shared-secret" \
   -v pigeon-data:/data \
   ghcr.io/pigeon-home/homing-pigeon:latest
 ```
@@ -65,6 +66,7 @@ pip3 install pigeon-home-runner
 ```bash
 homing-pigeon-install
 # edit ~/.homing-pigeon/config.json — add your Gmail + app password
+# (the installer generates a shared_secret for you; give that string to your SI)
 homing-pigeon --config ~/.homing-pigeon/config.json --once
 ```
 
@@ -112,4 +114,4 @@ you're live.
 > picks up changes to `poll_interval_sec`, `workers`,
 > `default_timeout_sec`, `max_output_bytes`, and `max_job_age_sec`
 > automatically — no restart needed. Changing the mailbox credentials
-> still requires a restart.
+> or the shared secret still requires a restart.

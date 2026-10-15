@@ -11,8 +11,8 @@ Here's the thing: email was the right *first* transport, and not by
 accident. The runner lives on your machine, behind NAT, with no
 inbound ports — it can only *poll outward*. Email gives us a
 store-and-forward mailbox reachable from anywhere, with at-least-once
-semantics (the IMAP unseen flag), authentication (the From-address
-hard rule), and zero infrastructure to operate. Every SI on earth can
+semantics (the IMAP unseen flag), authentication (the HMAC signature
+on every message), and zero infrastructure to operate. Every SI on earth can
 already reach a mailbox. It was the only transport with all of those
 properties on day one.
 
@@ -34,7 +34,7 @@ Anything that wants to carry homing-pigeon must provide:
    home machine or a Pi.
 3. **Authenticated sender identity.** The transport must tell the
    runner *who sent this* in a way the runner can verify — the
-   equivalent of the From-address hard rule, ideally stronger.
+   equivalent of the HMAC signature check, ideally stronger.
 4. **At-least-once delivery.** The runner must be able to say "I
    haven't processed this yet" and see it again — the equivalent of
    leaving a message unseen.
@@ -65,9 +65,8 @@ Why it fits so well it feels designed for this:
 - **Batches.** The runner can pull up to 100 messages per poll instead
   of walking an inbox one `UNSEEN` at a time. Throughput goes from
   "fine" to "don't think about it."
-- **API-token auth replaces the From-address check with something
-  stronger.** Instead of "the From header says it's you" (spoofable
-  everywhere except Gmail's locked-down case), the queue is
+- **API-token auth gives the queue its own identity story.** Instead of
+  relying on the message signature alone, the queue is
   addressed by a token only the SI and the runner hold. The identity
   story gets *better* than email, not just equivalent.
 - **It's cheap to the point of irrelevance.** The free tier covers a

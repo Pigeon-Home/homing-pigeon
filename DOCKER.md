@@ -10,6 +10,7 @@ job queue.
 docker run -d --name pigeon --restart unless-stopped \
   -e PIGEON_MAILBOX_USER="your-runner@gmail.com" \
   -e PIGEON_MAILBOX_PASSWORD="your-app-password" \
+  -e PIGEON_SHARED_SECRET="your-256-bit-shared-secret" \
   -v pigeon-data:/data \
   ghcr.io/pigeon-home/homing-pigeon:latest
 ```
@@ -25,6 +26,7 @@ re-run jobs.
 docker run --rm \
   -e PIGEON_MAILBOX_USER="your-runner@gmail.com" \
   -e PIGEON_MAILBOX_PASSWORD="your-app-password" \
+  -e PIGEON_SHARED_SECRET="your-256-bit-shared-secret" \
   ghcr.io/pigeon-home/homing-pigeon:latest --once --dry-run --verbose
 ```
 
@@ -37,7 +39,7 @@ From anywhere — your laptop, your phone, your cloud SI:
 
 ```bash
 # On your machine (needs the repo):
-python3 cloud/send_job.py new --kind ping --secret "your-app-password"
+python3 cloud/send_job.py new --kind ping --secret "your-shared-secret"
 ```
 
 Copy the subject + body it prints, email it to `your-runner@gmail.com`.
