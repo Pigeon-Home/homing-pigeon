@@ -1863,8 +1863,8 @@ def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
         max_bytes = MAX_DOWNLOAD_BYTES
     if max_bytes < 1:
         max_bytes = MAX_DOWNLOAD_BYTES
-    req = Request(url, headers={"User-Agent": "homing-pigeon/1"})
     try:
+        req = Request(url, headers={"User-Agent": "homing-pigeon/1"})
         resp = urlopen(req, timeout=120)
     except HTTPError as e:
         # 4xx will not succeed on retry. 5xx may.
@@ -1880,6 +1880,10 @@ def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
         if any(s in reason for s in permanent):
             raise JobRejected(f"download host does not resolve: {url}")
         raise
+    except ValueError as e:
+        # "Invalid IPv6 URL" and a control character in the URL raise
+        # here. They fail the same way every cycle.
+        raise JobRejected(f"bad download url: {e}")
     with resp, open(dest, "wb") as f:
         total = 0
         while True:

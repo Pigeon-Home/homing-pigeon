@@ -1897,3 +1897,29 @@ class StateWriteFaultTest(unittest.TestCase):
             self.assertEqual(errors, [])
             state = dri._load_state(d)
             self.assertIsInstance(state, dict)
+
+
+class BadUrlFaultTest(unittest.TestCase):
+    """Finding: a malformed URL retried the job forever.
+
+    urlopen raises ValueError on "http://[" (invalid IPv6). That
+    is not URLError, so the job path treated it as transient.
+    It is poison. The job is rejected and marked seen.
+    """
+
+    def test_bad_ipv6_url_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            body = sign_payload({
+                "v": 1, "type": "job", "kind": "exec",
+                "job_id": "url-1", "issued_at": _now(),
+                "script": "echo hi",
+                "interpreter": ["sh"],
+                "files": [{"name": "x", "url": "http://["}],
+            }, SECRET)
+            cfg = {"mailbox_user": "pigeon-test@example.com",
+                   "shared_secret": SECRET, "base_dir": d}
+            poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                      imap=_IMAP(_mail("[HOMING-PIGEON] job url-1", body)),
+                      smtp=_SMTP(), opts=_Opts())
+            with open(os.path.join(d, "seen.json"), encoding="utf-8") as fh:
+                self.assertIn("url-1", json.load(fh))
