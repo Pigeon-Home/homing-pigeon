@@ -255,8 +255,8 @@ class HandlerRoutingTest(unittest.TestCase):
         h = self._handler("/")
         h.do_GET()
         page = h.wfile.getvalue().decode()
-        self.assertIn("Tell the cloud SI", page)
-        self.assertIn("have the SI send it", page)
+        self.assertIn("Cloud SI", page)
+        self.assertIn(">send<", page)
         self.assertEqual(h._sent["code"], 200)
 
     def test_get_other_is_404(self):

@@ -198,17 +198,13 @@ button { font: inherit; padding: .4rem 1rem; }
 .si { color: #06c; }
 .oracle { color: #080; }
 </style>
-<h1>Tell the cloud SI to do some work</h1>
-<p>You are talking to a cloud SI agent. It is a separate model from the
-Oracle that runs on this box. Describe the work. The SI will send it
-to the Oracle as an email (or whatever transport is configured).
-The Oracle does the work and answers. You never talk to the mailbox
-yourself.</p>
+<h1>Cloud SI</h1>
+<p>Tell the SI what to do. It sends the work to the Oracle on this box
+and brings the answer back.</p>
 <div id="log"></div>
 <form id="f">
   <input id="q" autofocus placeholder="tell the SI what to do">
-  <button name="to" value="email">have the SI send it</button>
-  <button name="to" value="si">just talk to the SI</button>
+  <button>send</button>
 </form>
 <script>
 const log = document.getElementById('log');
@@ -217,13 +213,11 @@ document.getElementById('f').onsubmit = async (e) => {
   e.preventDefault();
   const text = q.value.trim();
   if (!text) return;
-  const to = e.submitter.value;
   log.innerHTML += '<div class="you">you> ' + text + '</div>';
   q.value = '';
-  const r = await fetch('/' + to, {method:'POST', body: text});
+  const r = await fetch('/send', {method:'POST', body: text});
   const t = await r.text();
-  const cls = to === 'si' ? 'si' : 'oracle';
-  log.innerHTML += '<div class="' + cls + '">' + to + '> ' + t + '</div>';
+  log.innerHTML += '<div class="si">SI> ' + t + '</div>';
 };
 </script>
 """
@@ -232,17 +226,14 @@ document.getElementById('f').onsubmit = async (e) => {
     def do_POST(self):
         n = int(self.headers.get("Content-Length") or 0)
         question = self.rfile.read(n).decode("utf-8", "replace").strip()
-        if self.path == "/si":
+        if self.path == "/send":
             model = (self.cfg.get("inference") or {}).get("model") or "llama3.2:3b"
             try:
-                text = ask_si(model, [], question)
+                si_text = ask_si(model, [], question)
             except Exception as e:
-                text = f"SI error: {e}"
-            self._send(200, text, "text/plain; charset=utf-8")
-            return
-        if self.path == "/email":
-            text = send_via_email(self.cfg, question)
-            self._send(200, text, "text/plain; charset=utf-8")
+                si_text = question
+            status = send_via_email(self.cfg, si_text)
+            self._send(200, si_text + "\n(" + status + ")", "text/plain; charset=utf-8")
             return
         if self.path == "/socket":
             transport = getattr(self, "socket_transport", None)
