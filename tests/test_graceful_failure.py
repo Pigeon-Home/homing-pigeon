@@ -701,5 +701,50 @@ class SeenAndConfigGracefulTest(unittest.TestCase):
         except Exception as e:
             self.fail(f"seen file unreadable after concurrent saves: {e}")
 
+
+class EventAndCompartmentGracefulTest(unittest.TestCase):
+    """Finding: security events and worker compartments are read on
+    the poll and offer paths. Odd shapes must not stop the cycle.
+    """
+
+    def test_append_event_odd(self):
+        from runner.runner import _append_security_event
+        tmp = tempfile.mkdtemp()
+        for event in ({}, {"type": None}, {"type": "x", "at": 123}):
+            try:
+                _append_security_event(tmp, event)
+            except Exception as e:
+                self.fail(f"append event crashed on {event}: {e}")
+
+    def test_compartments_odd_shapes(self):
+        tmp = tempfile.mkdtemp()
+        b = Board(os.path.join(tmp, "board.json"))
+        b.submit({"task_id": "t", "kind": "ping", "compartments": ["a"]})
+        for cfg in ({}, {"worker_compartments": None},
+                    {"worker_compartments": "nope"},
+                    {"worker_compartments": {"w": "not-a-list"}}):
+            try:
+                b.offer("w", ["ping"], "", cfg)
+            except Exception as e:
+                self.fail(f"odd compartments crashed offer: {e}")
+
+    def test_concurrent_append_events(self):
+        from runner.runner import _append_security_event
+        tmp = tempfile.mkdtemp()
+        errors = []
+
+        def one(i):
+            try:
+                _append_security_event(tmp, {"type": "t", "i": i})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=one, args=(i,)) for i in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
