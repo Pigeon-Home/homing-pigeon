@@ -44,3 +44,20 @@ Worked example: a Raspberry Pi running a VS Code server. The owner wants the Ora
 ```
 
 The result is a normal config file. It can be edited by hand or loaded through the dashboard; both paths produce the same keys.
+
+## Applying a profile
+
+The installer can apply a profile so the runner watches what you said matters:
+
+```
+homing-pigeon-install --profile password-only
+homing-pigeon-install --profile raspberry-pi-home
+homing-pigeon-install --profile ./my-box.json
+```
+
+Built-in profiles:
+
+- `password-only` — treats password hashes and `password=` style assignments as secrets, watches `/etc/shadow`, sets `max_result_view` to `attested`.
+- `raspberry-pi-home` — same password-hash watch, plus `/home/pi/docs/manuals` as a protected path.
+
+A profile JSON file uses the same keys. Mailbox credentials and `shared_secret` are never overwritten. The runner already honors `redact_patterns_extra`, `protected_paths`, and `max_result_view` from `config.json`, so the profile takes effect on the next start.

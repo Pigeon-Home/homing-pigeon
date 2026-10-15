@@ -274,6 +274,69 @@ def _which(cmd):
     return which(cmd)
 
 
+
+BUILTIN_PROFILES = {
+    "raspberry-pi-home": {
+        "description": "Pi; watch root password hash and home manuals",
+        "redact_patterns_extra": {
+            "shadow_hash": r"\$[0-9a-z]+\$[A-Za-z0-9./]{20,}",
+        },
+        "protected_paths": ["/etc/shadow", "/home/pi/docs/manuals"],
+        "max_result_view": "attested",
+        "judge": "advisory",
+    },
+    "password-only": {
+        "description": "Only the password hash matters on this box",
+        "redact_patterns_extra": {
+            "shadow_hash": r"\$[0-9a-z]+\$[A-Za-z0-9./]{20,}",
+            "password_assignment": r"(?i)(password|passwd|pwd)\s*[=:]\s*\S+",
+        },
+        "protected_paths": ["/etc/shadow"],
+        "max_result_view": "attested",
+        "judge": "advisory",
+    },
+}
+
+
+def apply_profile(cfg_path: str, profile: str) -> None:
+    """Merge a named built-in profile or a JSON file into config.json.
+
+    Mailbox credentials and shared_secret are never overwritten.
+    """
+    import json
+    if not profile:
+        return
+    if os.path.isfile(profile):
+        with open(profile, encoding="utf-8") as f:
+            data = json.load(f)
+        name = data.get("profile", profile)
+    else:
+        data = BUILTIN_PROFILES.get(profile)
+        if not data:
+            known = ", ".join(sorted(BUILTIN_PROFILES))
+            print(f"profile: unknown {profile!r} (known: {known}); skipping")
+            return
+        name = profile
+    cfg = {}
+    if os.path.exists(cfg_path):
+        with open(cfg_path, encoding="utf-8") as f:
+            cfg = json.load(f)
+    # Merge only Oracle-relevant keys. Never touch secrets or mailbox auth.
+    for key in ("redact_patterns_extra", "protected_paths", "max_result_view",
+                "judge", "workspace_root", "max_query_budget",
+                "output_retention_days", "worker_allowlist",
+                "worker_compartments", "dag_mode", "require_review"):
+        if key in data:
+            cfg[key] = data[key]
+    cfg["profile"] = name
+    tmp = cfg_path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, cfg_path)
+    print(f"profile: applied {name}")
+
+
 def install_ollama_and_model(cfg_path: str, model: str, skip: bool) -> None:
     """Install Ollama and pull a model so the Oracle ask op works out of the box.
 
@@ -361,6 +424,8 @@ def main() -> int:
     ap.add_argument("--no-oracle", action="store_true")
     ap.add_argument("--no-inference", action="store_true",
                     help="do not install Ollama or pull a model (ask stays off)")
+    ap.add_argument("--profile", default=None, metavar="NAME_OR_PATH",
+                    help="apply a deployment profile (raspberry-pi-home, password-only, or a JSON file)")
     ap.add_argument("--inference-model", default="llama3.2:3b",
                     help="Ollama model to pull when inference is enabled (default llama3.2:3b)")
     ap.add_argument("--additional-secret", action="append", default=[],
@@ -398,6 +463,7 @@ def main() -> int:
     for kid in args.additional_secret:
         store_additional_secret(cfg_path, kid)
     install_ollama_and_model(cfg_path, args.inference_model, args.no_inference)
+    apply_profile(cfg_path, args.profile)
     extra = _forwarded_args(args)
     if extra:
         print(f"forwarding runner flags into service: {' '.join(extra)}")
