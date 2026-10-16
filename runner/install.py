@@ -192,22 +192,58 @@ def store_additional_secret(cfg_path: str, key_id: str) -> None:
     print(f"additional secret stored for {key_id}")
 
 
-def install_files(src_dir: str, dst_dir: str):
-    os.makedirs(dst_dir, exist_ok=True)
+def install_files(src_dir: str, bin_dir: str,
+                  cfg_path: str | None = None) -> bool:
+    """Copy binaries into bin_dir; seed cfg_path from the example when absent.
+
+    cfg_path defaults to bin_dir/config.json (the legacy layout). Also
+    installs the installer itself into bin_dir, so the ops commands
+    (--check/--console/--logs) are always at hand. Never replaces the
+    binary that is currently running. Returns False when a binary could
+    not be replaced (e.g. the agent is still running it).
+    """
+    if cfg_path is None:
+        cfg_path = os.path.join(bin_dir, "config.json")
+    os.makedirs(bin_dir, exist_ok=True)
     if FROZEN:
-        src = os.path.join(src_dir, RUNNER_BIN)
-        dst = os.path.join(dst_dir, RUNNER_BIN)
-        shutil.copy2(src, dst)
-        if os.name != "nt":
-            os.chmod(dst, 0o755)
+        pairs = [(os.path.join(src_dir, RUNNER_BIN),
+                  os.path.join(bin_dir, RUNNER_BIN))]
+        me_src = os.path.join(src_dir,
+                              "install.exe" if os.name == "nt" else "install")
+        me_dst = os.path.join(bin_dir, os.path.basename(me_src))
+        if (os.path.normcase(os.path.abspath(me_src))
+                != os.path.normcase(os.path.abspath(me_dst))):
+            pairs.append((me_src, me_dst))
+        else:
+            print("install: running from the home bin dir; "
+                  "leaving this install.exe in place")
+        for src, dst in pairs:
+            if not os.path.isfile(src):
+                print(f"install: error: {src} not found next to the installer")
+                return False
+            try:
+                shutil.copy2(src, dst)
+            except OSError as e:
+                print(f"install: error: could not replace {dst}: {e}")
+                print("install: is the agent still running it? stop the "
+                      "HomingPigeon task and re-run")
+                return False
+            if os.name != "nt":
+                os.chmod(dst, 0o755)
     else:
         for name in FILES:
-            shutil.copy2(os.path.join(src_dir, name), os.path.join(dst_dir, name))
-    cfg_dst = os.path.join(dst_dir, "config.json")
-    if not os.path.exists(cfg_dst):
-        shutil.copy2(os.path.join(src_dir, "config.example.json"), cfg_dst)
-        print(f"wrote {cfg_dst} -- EDIT IT before starting "
+            shutil.copy2(os.path.join(src_dir, name),
+                         os.path.join(bin_dir, name))
+    if not os.path.exists(cfg_path):
+        example = os.path.join(src_dir, "config.example.json")
+        if not os.path.isfile(example):
+            print(f"install: error: {example} not found; cannot seed config")
+            return False
+        os.makedirs(os.path.dirname(os.path.abspath(cfg_path)), exist_ok=True)
+        shutil.copy2(example, cfg_path)
+        print(f"wrote {cfg_path} -- EDIT IT before starting "
               "(mailbox_user, mailbox_password, shared_secret)")
+    return True
 
 
 def install_windows(dst_dir: str, cfg_path: str, extra=(), run_as="SYSTEM"):
@@ -358,6 +394,14 @@ def do_wipe(backup_dir=None, no_backup=False):
         print("wipe: launchd job unloaded (if it existed)")
 
     dirs = _candidate_state_dirs()
+    if sys.platform == "win32":
+        # The one home is wiped too: bin/, config.json, state/, receipt.
+        home = _default_home()
+        hkey = os.path.normcase(os.path.abspath(home))
+        if os.path.isdir(home) and all(
+                os.path.normcase(os.path.abspath(d)) != hkey for d in dirs):
+            dirs.append(home)
+            print(f"wipe: including the one home {home}")
     if not dirs:
         print("wipe: no .homing-pigeon state dirs found on this box")
     backup_path = None
@@ -458,6 +502,527 @@ def do_migrate(target_dir):
           f"{total_skipped} skipped.")
     print("migrate: sources left in place. Verify, then "
           "'install.exe --wipe' removes the old locations.")
+    return 0
+
+
+# --- The one home (Windows) ---
+#
+# One folder per box: C:\homing-pigeon holding bin/, config.json,
+# state/, and install-receipt.json. The installer runs once as admin,
+# ACLs the home for SYSTEM + Administrators, and every way of running
+# the agent (service task, terminal, --oracle) points at the same
+# config, so there is no more SYSTEM-vs-user state split.
+# Re-running the installer is idempotent: it upgrades the binaries in
+# place and never touches config.json or state/.
+
+RECEIPT_NAME = "install-receipt.json"
+LAYOUT_VERSION = 1
+
+
+def _default_home() -> str:
+    drive = os.environ.get("SystemDrive", "C:")
+    return os.path.join(drive + os.sep, "homing-pigeon")
+
+
+def _resolve_home(args):
+    """Windows one-home paths, or None when the one-home does not apply.
+
+    Returns (home, bin_dir, cfg_path, state_dir). None on non-Windows,
+    or when --dir is given without --home (legacy layout: the binaries
+    and config.json both live in --dir, no receipt, no ACL).
+    """
+    if sys.platform != "win32":
+        return None
+    if getattr(args, "dir", None) and not getattr(args, "home", None):
+        return None
+    home = os.path.abspath(getattr(args, "home", None) or _default_home())
+    bin_dir = (os.path.abspath(args.dir) if getattr(args, "dir", None)
+               else os.path.join(home, "bin"))
+    cfg_path = (os.path.abspath(args.config) if getattr(args, "config", None)
+                else os.path.join(home, "config.json"))
+    return home, bin_dir, cfg_path, os.path.join(home, "state")
+
+
+def _is_admin() -> bool:
+    if sys.platform != "win32":
+        return True
+    try:
+        import ctypes
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+
+def _acl_home(home, run_as=None) -> bool:
+    """Lock the home to SYSTEM + Administrators. A named --run-as account
+    gets full control too, or the agent could not read its own config.
+    Best effort: warns, never aborts the install."""
+    if sys.platform != "win32":
+        return True
+    grants = ["SYSTEM:(OI)(CI)F", "Administrators:(OI)(CI)F"]
+    names = ["SYSTEM", "Administrators"]
+    who = (run_as or "SYSTEM").upper()
+    if who not in ("SYSTEM", "NT AUTHORITY\\SYSTEM") and run_as:
+        grants.append(f"{run_as}:(OI)(CI)F")
+        names.append(run_as)
+    cmd = ["icacls", home, "/inheritance:r"]
+    for g in grants:
+        cmd += ["/grant:r", g]
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True,
+                           errors="replace")
+    except Exception as e:
+        print(f"home: warn: could not set ACLs on {home} ({e})")
+        return False
+    if p.returncode != 0:
+        detail = (p.stderr or p.stdout).strip().splitlines()
+        print(f"home: warn: icacls failed on {home}: "
+              f"{detail[0] if detail else 'unknown error'}")
+        return False
+    print(f"home: {home} is now {' + '.join(names)} only")
+    return True
+
+
+def _receipt_path(home: str) -> str:
+    return os.path.join(home, RECEIPT_NAME)
+
+
+def _read_receipt(home):
+    """The receipt dict, None when there is none, 'corrupt' when unreadable."""
+    try:
+        with open(_receipt_path(home), encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else "corrupt"
+    except FileNotFoundError:
+        return None
+    except Exception:
+        return "corrupt"
+
+
+def _write_receipt(home, fresh: bool) -> None:
+    now = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+    user = os.environ.get("USERNAME") or os.environ.get("USER") or "unknown"
+    domain = os.environ.get("USERDOMAIN")
+    who = f"{domain}\\{user}" if domain else user
+    prev = _read_receipt(home)
+    data = dict(prev) if isinstance(prev, dict) else {}
+    data.update({
+        "version": __version__,
+        "layout_version": LAYOUT_VERSION,
+        "home": home,
+    })
+    if fresh:
+        data["installed_at"] = now
+        data["installed_by"] = who
+    else:
+        data.setdefault("installed_by", who)
+        data["upgraded_at"] = now
+    tmp = _receipt_path(home) + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2)
+        fh.write("\n")
+    os.replace(tmp, _receipt_path(home))
+    print(f"home: receipt written "
+          f"({'fresh install' if fresh else 'upgrade'} v{__version__})")
+
+
+def _ensure_base_dir(cfg_path: str, state_dir: str) -> None:
+    """Point a fresh home config at the home's state dir, so the home
+    root stays clean and state never depends on who runs the agent."""
+    with open(cfg_path, encoding="utf-8") as fh:
+        cfg = json.load(fh)
+    if not cfg.get("base_dir"):
+        cfg["base_dir"] = state_dir
+        _write_json(cfg_path, cfg)
+
+
+# --- Scheduled-task helpers (Windows) ---
+
+def _task_exists() -> bool:
+    p = subprocess.run(["schtasks", "/Query", "/TN", "HomingPigeon"],
+                       capture_output=True)
+    return p.returncode == 0
+
+
+def _task_command():
+    """The 'Task To Run' line of the HomingPigeon task, or None."""
+    p = subprocess.run(["schtasks", "/Query", "/TN", "HomingPigeon",
+                        "/V", "/FO", "LIST"],
+                       capture_output=True, text=True, errors="replace")
+    if p.returncode != 0:
+        return None
+    for line in p.stdout.splitlines():
+        if line.strip().lower().startswith("task to run:"):
+            return line.split(":", 1)[1].strip()
+    return None
+
+
+def _task_end() -> int:
+    p = subprocess.run(["schtasks", "/End", "/TN", "HomingPigeon"],
+                       capture_output=True, text=True, errors="replace")
+    return p.returncode
+
+
+def _task_run() -> int:
+    p = subprocess.run(["schtasks", "/Run", "/TN", "HomingPigeon"],
+                       capture_output=True, text=True, errors="replace")
+    return p.returncode
+
+
+def _process_running(image: str) -> bool:
+    p = subprocess.run(["tasklist", "/FI", f"IMAGENAME eq {image}"],
+                       capture_output=True, text=True, errors="replace")
+    out = p.stdout.lower()
+    return image.lower() in out and "no tasks" not in out
+
+
+def _wait_for_exit(image: str, timeout: int = 15) -> bool:
+    for _ in range(int(timeout * 2)):
+        if not _process_running(image):
+            return True
+        time.sleep(0.5)
+    print(f"warn: {image} is still running after {timeout}s")
+    return False
+
+
+def _stop_task_for_upgrade() -> None:
+    """Best effort: stop the task so its binary can be replaced."""
+    if sys.platform != "win32" or not _task_exists():
+        return
+    print("install: stopping the HomingPigeon task for the upgrade...")
+    if _task_end() == 0:
+        _wait_for_exit(RUNNER_BIN, timeout=20)
+    else:
+        print("install: warn: could not stop the task; the binary "
+              "replacement may fail if the agent is still running it")
+
+
+def _split_host_port(url):
+    """(host, port) from an http(s) URL. Port None when absent."""
+    try:
+        from urllib.parse import urlsplit
+        p = urlsplit(url)
+        return p.hostname, p.port
+    except Exception:
+        return None, None
+
+
+def _tcp_reachable(host, port, timeout=2.0) -> bool:
+    import socket
+    s = socket.socket()
+    s.settimeout(timeout)
+    try:
+        s.connect((host, port))
+        return True
+    except Exception:
+        return False
+    finally:
+        s.close()
+
+
+def do_check(home, bin_dir, cfg_path, state_dir) -> int:
+    """Doctor: verify the one-home install. Plain-language PASS/WARN/FAIL
+    lines; exits non-zero when anything structural is broken."""
+    rows = []
+
+    def rec(status, label, detail=""):
+        rows.append((status, label, detail))
+
+    rec("PASS" if os.path.isdir(home) else "FAIL", f"home dir {home}",
+        "" if os.path.isdir(home) else "run install.exe to create it")
+    exe = os.path.join(bin_dir, RUNNER_BIN)
+    rec("PASS" if os.path.isfile(exe) else "FAIL", f"runner {exe}",
+        "" if os.path.isfile(exe) else "re-run install.exe")
+    if FROZEN:
+        me = os.path.join(bin_dir,
+                          "install.exe" if os.name == "nt" else "install")
+        present = os.path.isfile(me)
+        rec("PASS" if present else "WARN", f"installer {me}",
+            "" if present else
+            "ops commands (--check/--console/--logs) want install.exe "
+            "in the home bin")
+    receipt = _read_receipt(home)
+    if receipt is None:
+        rec("FAIL", "install-receipt.json",
+            "missing: this is not a one-home install")
+    elif receipt == "corrupt":
+        rec("WARN", "install-receipt.json",
+            "unreadable; re-run install.exe to rewrite it")
+    else:
+        rec("PASS", "install-receipt.json",
+            f"v{receipt.get('version', '?')} installed "
+            f"{receipt.get('installed_at', '?')} "
+            f"by {receipt.get('installed_by', '?')}")
+    cfg = None
+    if not os.path.isfile(cfg_path):
+        rec("FAIL", f"config {cfg_path}", "missing: re-run install.exe")
+    else:
+        try:
+            with open(cfg_path, encoding="utf-8") as fh:
+                cfg = json.load(fh)
+            rec("PASS", f"config {cfg_path}", "parses as JSON")
+        except Exception as e:
+            rec("FAIL", f"config {cfg_path}", f"does not parse: {e}")
+    if isinstance(cfg, dict):
+        if not cfg.get("shared_secret"):
+            rec("WARN", "shared_secret",
+                "not set in config.json; signed jobs cannot verify")
+        bd = cfg.get("base_dir")
+        if (bd and os.path.normcase(os.path.abspath(bd))
+                != os.path.normcase(os.path.abspath(state_dir))):
+            rec("WARN", "base_dir",
+                f"config points at {bd}, not the home state dir")
+    rec("PASS" if os.path.isdir(state_dir) else "WARN",
+        f"state dir {state_dir}",
+        "" if os.path.isdir(state_dir) else "created on the agent's first run")
+    if sys.platform == "win32":
+        if not _task_exists():
+            rec("FAIL", "scheduled task HomingPigeon",
+                "not registered; run install.exe to register it")
+        else:
+            cmd = _task_command()
+            if cmd and os.path.normcase(bin_dir) in os.path.normcase(cmd):
+                rec("PASS", "scheduled task HomingPigeon",
+                    "points at the home bin")
+            elif cmd:
+                rec("WARN", "scheduled task HomingPigeon", f"runs: {cmd}")
+            else:
+                rec("WARN", "scheduled task HomingPigeon",
+                    "exists but its command could not be read")
+    inf = (cfg.get("inference") or {}) if isinstance(cfg, dict) else {}
+    url = inf.get("endpoint") if isinstance(inf, dict) else None
+    if not url:
+        rec("WARN", "inference",
+            "not configured; the Oracle chat stays off "
+            "(install.exe --inference-only to set it up)")
+    else:
+        host, port = _split_host_port(url)
+        if host in ("127.0.0.1", "localhost", "::1"):
+            if _tcp_reachable(host, port or 11434):
+                rec("PASS", "inference", f"{url} answers")
+            else:
+                rec("WARN", "inference",
+                    f"{url} not reachable; is Ollama running?")
+        else:
+            rec("WARN", "inference",
+                f"{url} is not a loopback endpoint")
+
+    npass = sum(1 for s, _, _ in rows if s == "PASS")
+    nwarn = sum(1 for s, _, _ in rows if s == "WARN")
+    nfail = sum(1 for s, _, _ in rows if s == "FAIL")
+    for s, label, detail in rows:
+        line = f"{s}: {label}"
+        if detail:
+            line += f" -- {detail}"
+        print(line)
+    print(f"check: {npass} passed, {nwarn} warnings, {nfail} failed")
+    return 1 if nfail else 0
+
+
+def do_console(home, bin_dir, cfg_path) -> int:
+    """Stop the HomingPigeon task, run the agent in this terminal with
+    live logs, and restart the task on exit -- even on Ctrl+C."""
+    if sys.platform != "win32":
+        print("console: only supported on Windows (it manages the "
+              "HomingPigeon scheduled task)")
+        return 2
+    exe = os.path.join(bin_dir, RUNNER_BIN)
+    if not os.path.isfile(exe):
+        print(f"console: runner not found at {exe}; run install.exe first")
+        return 1
+    if not os.path.isfile(cfg_path):
+        print(f"console: config not found at {cfg_path}; "
+              "run install.exe first")
+        return 1
+    stopped = False
+    if _task_exists():
+        print("console: stopping the HomingPigeon scheduled task...")
+        _task_end()  # best effort; the process check below is the real gate
+        stopped = True
+        _wait_for_exit(os.path.basename(exe), timeout=15)
+        if _process_running(os.path.basename(exe)):
+            print("console: the agent would not stop; starting a second "
+                  "one would double-poll the mailbox -- aborting")
+            print("console: kill homing-pigeon.exe by hand and try again")
+            return 1
+    else:
+        print("console: no HomingPigeon task found; running the agent directly")
+    print(f"console: starting {exe} --config {cfg_path} "
+          "(Ctrl+C stops it and restores the task)")
+    try:
+        subprocess.run([exe, "--config", cfg_path])
+    except KeyboardInterrupt:
+        print("console: interrupted")
+    finally:
+        if stopped:
+            print("console: restarting the HomingPigeon scheduled task...")
+            if _task_run() != 0:
+                print("console: WARNING: could not restart the task; "
+                      "start it by hand: schtasks /Run /TN HomingPigeon")
+                return 1
+            print("console: task restarted")
+    return 0
+
+
+def _runner_log_path(cfg_path) -> str:
+    cfg = {}
+    try:
+        with open(cfg_path, encoding="utf-8") as fh:
+            cfg = json.load(fh)
+    except Exception:
+        pass
+    base = cfg.get("base_dir") if isinstance(cfg, dict) else None
+    if not base or not isinstance(base, str):
+        base = os.path.dirname(os.path.abspath(cfg_path))
+    return os.path.join(base, "runner.log")
+
+
+def _tail_file(path, n):
+    """Last n lines of a file, without reading the whole thing."""
+    with open(path, "rb") as fh:
+        fh.seek(0, os.SEEK_END)
+        pos = fh.tell()
+        buf = b""
+        while pos > 0 and buf.count(b"\n") <= n:
+            step = min(65536, pos)
+            pos -= step
+            fh.seek(pos)
+            buf = fh.read(step) + buf
+    lines = buf.decode("utf-8", errors="replace").splitlines()
+    return lines[-n:] if n > 0 else []
+
+
+def _follow_file(path):
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        fh.seek(0, os.SEEK_END)
+        while True:
+            line = fh.readline()
+            if line:
+                sys.stdout.write(line if line.endswith("\n") else line + "\n")
+                sys.stdout.flush()
+            else:
+                time.sleep(0.5)
+
+
+def do_logs(cfg_path, follow=False, lines=50) -> int:
+    path = _runner_log_path(cfg_path)
+    if not os.path.isfile(path):
+        print(f"logs: no log file at {path} yet; "
+              "the agent writes it on its first run")
+        return 1
+    if not follow:
+        for line in _tail_file(path, lines):
+            print(line)
+        return 0
+    print(f"logs: following {path} (Ctrl+C to stop)")
+    try:
+        _follow_file(path)
+    except KeyboardInterrupt:
+        print("logs: stopped")
+    return 0
+
+
+def do_oracle(bin_dir, cfg_path) -> int:
+    exe = os.path.join(bin_dir, RUNNER_BIN)
+    if not os.path.isfile(exe):
+        print(f"oracle: runner not found at {exe}; run install.exe first")
+        return 1
+    print(f"oracle: opening the chat against {cfg_path}")
+    p = subprocess.run([exe, "--oracle", "--config", cfg_path])
+    return p.returncode
+
+
+def _setup_fresh_config(args, cfg_path):
+    """Secrets, mailbox wizard, profile, instructions, Ollama.
+
+    Fresh installs only. Returns (inference_ok, model)."""
+    ensure_shared_secret(cfg_path, args.shared_secret)
+    # Mailbox auth is the one thing install cannot invent. On a TTY,
+    # offer the same Thunderbird-style wizard the runner uses, so a
+    # fresh install ends with a working service and no hand-edited
+    # JSON. Headless installs keep today's behavior (fail at first
+    # run with a config error pointing at --setup).
+    try:
+        from runner import setup as _setup
+    except ImportError:
+        try:
+            import setup as _setup
+        except ImportError:
+            _setup = None
+    if _setup is not None:
+        try:
+            with open(cfg_path, encoding="utf-8") as fh:
+                _cfg = json.load(fh)
+        except (OSError, ValueError):
+            _cfg = {}
+        _reason = _setup.needs_setup(_cfg)
+        if _reason and sys.stdin.isatty() and _setup.prompt_yes_no(
+                f"Mailbox auth not configured ({_reason}). "
+                f"Sign in now? [Y/n] "):
+            _setup.run_setup_wizard(cfg_path, _cfg)
+    for kid in args.additional_secret:
+        store_additional_secret(cfg_path, kid)
+    profile = chosen_profile(args.profile, args.no_profile)
+    model = inference_model_for(profile, args.inference_model)
+    inference_ok = install_ollama_and_model(cfg_path, model, args.no_inference)
+    if profile:
+        apply_profile(cfg_path, profile)
+    apply_instruction_flags(cfg_path, args.instructions, args.instructions_add)
+    return inference_ok, model
+
+
+def do_install_home(args, home, bin_dir, cfg_path, state_dir, src_dir) -> int:
+    """Windows one-home install. Idempotent: a re-run upgrades the
+    binaries in place and never touches config.json or state/."""
+    receipt = _read_receipt(home)
+    fresh = not isinstance(receipt, dict)
+    prev_version = (receipt.get("version", "?")
+                    if isinstance(receipt, dict) else "?")
+    if fresh and not _is_admin():
+        print(f"error: creating {home} needs elevation; "
+              "re-run install.exe as administrator")
+        return 2
+    for d in (home, bin_dir, state_dir):
+        os.makedirs(d, exist_ok=True)
+    if fresh:
+        print(f"install: creating the one home at {home}")
+        _acl_home(home, args.run_as)
+    else:
+        print(f"install: one home already installed (v{prev_version}); "
+              "upgrading binaries in place -- config.json and state/ "
+              "are untouched")
+        _stop_task_for_upgrade()
+    if not install_files(src_dir, bin_dir, cfg_path):
+        return 1
+    inference_ok, model = False, None
+    if fresh:
+        _ensure_base_dir(cfg_path, state_dir)
+        inference_ok, model = _setup_fresh_config(args, cfg_path)
+    _write_receipt(home, fresh)
+    extra = _forwarded_args(args)
+    if extra:
+        print(f"forwarding runner flags into service: {' '.join(extra)}")
+    install_windows(bin_dir, cfg_path, extra, run_as=args.run_as)
+    print(f"config: {cfg_path}")
+    if fresh:
+        if inference_ok:
+            print(f"inference: READY - local model {model} configured; "
+                  "the Oracle chat will answer")
+        elif not args.no_inference:
+            print("inference: NOT configured - ask stays off. "
+                  "Re-run install.exe --inference-only to retry, or set "
+                  "inference.endpoint in config.json to your local Ollama server.")
+    print("one home ready:")
+    print(f"  home:   {home}")
+    print(f"  bin:    {bin_dir}")
+    print(f"  config: {cfg_path}")
+    print(f"  state:  {state_dir}")
+    print("five commands to learn:")
+    print("  install.exe --check    doctor: verify the install")
+    print("  install.exe --console  run the agent here; the task restarts after")
+    print("  install.exe --oracle   the Oracle chat")
+    print("  install.exe --logs     tail the runner log (--follow to watch)")
+    print("  install.exe --wipe     back up and remove everything")
     return 0
 
 
@@ -919,8 +1484,30 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Install homing-pigeon as a service")
     ap.add_argument("--version", action="version",
                     version="%(prog)s " + __version__)
-    ap.add_argument("--dir", default=os.path.expanduser("~/.homing-pigeon"),
-                    help="install directory (default ~/.homing-pigeon)")
+    ap.add_argument("--dir", default=None,
+                    help="binary install dir (default <home>/bin on Windows, "
+                         "~/.homing-pigeon elsewhere). On Windows, --dir "
+                         "without --home keeps the legacy layout: binaries "
+                         "and config.json both land in --dir.")
+    ap.add_argument("--home", default=None, metavar="DIR",
+                    help="Windows: the one-home root (default "
+                         "C:\\homing-pigeon). Holds bin/, config.json, "
+                         "state/, install-receipt.json.")
+    ap.add_argument("--check", action="store_true",
+                    help="doctor: verify the one-home layout, receipt, "
+                         "service task, config, and inference endpoint")
+    ap.add_argument("--console", action="store_true",
+                    help="Windows: stop the HomingPigeon task, run the agent "
+                         "in this terminal with live logs, restart the task "
+                         "on exit")
+    ap.add_argument("--logs", action="store_true",
+                    help="print the tail of the runner log")
+    ap.add_argument("--follow", action="store_true",
+                    help="with --logs: keep following the log (Ctrl+C stops)")
+    ap.add_argument("--lines", type=int, default=50, metavar="N",
+                    help="with --logs: how many lines to print (default 50)")
+    ap.add_argument("--oracle", action="store_true",
+                    help="open the Oracle chat against the home config")
     ap.add_argument("--config", default=None,
                     help="config file to use (default <dir>/config.json)")
     ap.add_argument("--system", action="store_true",
@@ -1006,11 +1593,59 @@ def main() -> int:
         return do_wipe(backup_dir=args.backup_dir, no_backup=args.no_backup)
 
     if args.migrate:
-        return do_migrate(args.dir)
+        info = _resolve_home(args)
+        if info is not None:
+            # The one home is the default consolidation target: its state dir.
+            return do_migrate(info[3])
+        return do_migrate(os.path.abspath(args.dir) if args.dir
+                          else os.path.expanduser("~/.homing-pigeon"))
 
-    dst_dir = os.path.abspath(args.dir)
+    if args.home and plat != "win32":
+        print("note: --home is Windows-only; ignoring it on this platform")
+
+    info = _resolve_home(args)
+    if info is not None:
+        home, bin_dir, cfg_path, state_dir = info
+        if args.check:
+            return do_check(home, bin_dir, cfg_path, state_dir)
+        if args.console:
+            return do_console(home, bin_dir, cfg_path)
+        if args.logs:
+            return do_logs(cfg_path, follow=args.follow, lines=args.lines)
+        if args.follow:
+            print("note: --follow needs --logs")
+            return 2
+        if args.oracle:
+            return do_oracle(bin_dir, cfg_path)
+        if args.inference_only:
+            profile = chosen_profile(args.profile, args.no_profile)
+            model = inference_model_for(profile, args.inference_model)
+            ok = install_ollama_and_model(cfg_path, model, args.no_inference)
+            if ok:
+                print(f"inference: READY - local model {model} configured; "
+                      "restart the runner and the Oracle chat will answer")
+            else:
+                print("inference: NOT configured - ask stays off. "
+                      "Re-run install.exe --inference-only to retry, or set "
+                      "inference.endpoint in config.json to your local Ollama server.")
+            return 0
+        return do_install_home(args, home, bin_dir, cfg_path, state_dir,
+                               src_dir)
+
+    if args.check or args.console or args.oracle:
+        print("error: --check/--console/--oracle need the Windows one-home "
+              "install; this box uses the legacy per-user layout")
+        return 2
+    if args.follow and not args.logs:
+        print("note: --follow needs --logs")
+        return 2
+
+    dst_dir = (os.path.abspath(args.dir) if args.dir
+               else os.path.expanduser("~/.homing-pigeon"))
     cfg_path = os.path.abspath(args.config) if args.config \
         else os.path.join(dst_dir, "config.json")
+    if args.logs:
+        return do_logs(cfg_path, follow=args.follow, lines=args.lines)
     if args.inference_only:
         profile = chosen_profile(args.profile, args.no_profile)
         model = inference_model_for(profile, args.inference_model)
@@ -1023,39 +1658,10 @@ def main() -> int:
                   "Re-run install.exe --inference-only to retry, or set "
                   "inference.endpoint in config.json to your local Ollama server.")
         return 0
-    install_files(src_dir, dst_dir)
-    ensure_shared_secret(cfg_path, args.shared_secret)
-    # Mailbox auth is the one thing install cannot invent. On a TTY,
-    # offer the same Thunderbird-style wizard the runner uses, so a
-    # fresh install ends with a working service and no hand-edited
-    # JSON. Headless installs keep today's behavior (fail at first
-    # run with a config error pointing at --setup).
-    try:
-        from runner import setup as _setup
-    except ImportError:
-        try:
-            import setup as _setup
-        except ImportError:
-            _setup = None
-    if _setup is not None:
-        try:
-            with open(cfg_path, encoding="utf-8") as fh:
-                _cfg = json.load(fh)
-        except (OSError, ValueError):
-            _cfg = {}
-        _reason = _setup.needs_setup(_cfg)
-        if _reason and sys.stdin.isatty() and _setup.prompt_yes_no(
-                f"Mailbox auth not configured ({_reason}). "
-                f"Sign in now? [Y/n] "):
-            _setup.run_setup_wizard(cfg_path, _cfg)
-    for kid in args.additional_secret:
-        store_additional_secret(cfg_path, kid)
-    profile = chosen_profile(args.profile, args.no_profile)
-    model = inference_model_for(profile, args.inference_model)
-    inference_ok = install_ollama_and_model(cfg_path, model, args.no_inference)
-    if profile:
-        apply_profile(cfg_path, profile)
-    apply_instruction_flags(cfg_path, args.instructions, args.instructions_add)
+    if not install_files(src_dir, dst_dir, os.path.join(dst_dir,
+                                                        "config.json")):
+        return 1
+    inference_ok, model = _setup_fresh_config(args, cfg_path)
     extra = _forwarded_args(args)
     if extra:
         print(f"forwarding runner flags into service: {' '.join(extra)}")

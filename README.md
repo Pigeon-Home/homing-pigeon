@@ -253,12 +253,18 @@ their older glibc, but the runner itself is stdlib-only Python and runs
 fine there: use `pip install pigeon-home-runner` or build from source.
 
 1. Extract the archive on the target machine.
-2. Run `install` (or `install.exe` on Windows). It copies the runner
-   binary, registers the boot-start service (systemd / launchd /
-   cron @reboot / Scheduled Task), and — on a console — offers the
-   Thunderbird-style setup: browser sign-in, a fresh shared secret
-   shown once for you to give your SI, config written. No hand-edited
-   JSON needed.
+2. Run `install` (or `install.exe` on Windows, from an elevated
+   PowerShell). It copies the runner binary, registers the boot-start
+   service (systemd / launchd / cron @reboot / Scheduled Task), and —
+   on a console — offers the Thunderbird-style setup: browser sign-in,
+   a fresh shared secret shown once for you to give your SI, config
+   written. No hand-edited JSON needed. On Windows everything lives in
+   one home, `C:\homing-pigeon` (`bin/`, `config.json`, `state/`,
+   `install-receipt.json`); re-running `install.exe` upgrades the
+   binaries in place without touching your config or state. The
+   day-to-day commands live there too: `install.exe --check` (doctor),
+   `install.exe --console` (run the agent in your terminal),
+   `install.exe --oracle` (the chat), `install.exe --logs` (the log).
 3. If you skipped it (or run headless), do it later with
    `homing-pigeon --setup`. On an existing config `--setup` offers
    re-login and shared-secret rotation.

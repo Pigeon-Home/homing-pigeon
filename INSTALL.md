@@ -104,15 +104,30 @@ cd "homing-pigeon-windows-x86_64-$ver"
 
 **Run:** start the service.
 
-- **Windows:** run `install.exe` — registers a Scheduled Task that
-  starts at boot. By default it runs as SYSTEM; for least privilege,
-  create a dedicated local account first and install with
-  `install.exe --run-as pigeon` (schtasks will prompt for the
-  account's password; service accounts like `NT AUTHORITY\Network
-  Service` and gMSA names ending in `$` need none). A named account
-  runs at `LIMITED` run level instead of `HIGHEST`. Give the account
-  read access to the install dir and config, and full control of the
-  base dir (state, audit log, job workdirs) — and nothing else.
+- **Windows:** run `install.exe` from an elevated PowerShell. It creates
+  the one home at `C:\homing-pigeon` — `bin/` (the exes, including a
+  copy of the installer itself), `config.json`, `state/`, and
+  `install-receipt.json` — locks it down to SYSTEM + Administrators
+  (a named `--run-as` account is granted access too), and registers a
+  Scheduled Task that starts at boot. By default the task runs as
+  SYSTEM; for least privilege, create a dedicated local account first
+  and install with `install.exe --run-as pigeon` (schtasks will prompt
+  for the account's password; service accounts like
+  `NT AUTHORITY\Network Service` and gMSA names ending in `$` need
+  none). A named account runs at `LIMITED` run level instead of
+  `HIGHEST`. The service, a terminal run, and `--oracle` all use the
+  same `C:\homing-pigeon\config.json`, so there is one state dir and
+  no more SYSTEM-vs-user split. Re-running `install.exe` is safe: it
+  upgrades the binaries in place and never touches `config.json` or
+  `state/`. Five commands to learn (from `C:\homing-pigeon\bin`):
+  `install.exe --check` (doctor: verifies the home, the receipt, the
+  task, the config, and the inference endpoint, and says what's wrong
+  in plain language), `install.exe --console` (stops the task, runs
+  the agent in your terminal with live logs, restarts the task on
+  Ctrl+C), `install.exe --oracle` (the Oracle chat), `install.exe
+  --logs [--follow]` (tail or watch the runner log), and `install.exe
+  --wipe` (backs everything up into one zip, then removes the home,
+  the task, and every scattered state dir).
 - **Linux:** run `python3 install.py` — registers a systemd service
   (or cron `@reboot` fallback).
 - **macOS:** run `python3 install.py` — registers a launchd agent.

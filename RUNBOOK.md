@@ -168,6 +168,22 @@ virtual machine is a good idea).
 7. Done. The runner now starts by itself every time the computer
    turns on. It checks the mailbox for jobs again and again.
 
+On Windows, the installer keeps everything in one place:
+`C:\homing-pigeon` — the programs (`bin/`), the settings
+(`config.json`), the memory of past jobs (`state/`), and a receipt
+saying what version is installed. Five things to remember, all run
+from `C:\homing-pigeon\bin`:
+- `install.exe --check` — the doctor. It looks at the whole install
+  and tells you in plain words what is wrong, if anything.
+- `install.exe --console` — stops the background runner and runs it
+  in your window instead, so you can watch what it does live. When
+  you stop it (Ctrl+C), the background runner starts again by itself.
+- `install.exe --oracle` — opens the chat with the Oracle.
+- `install.exe --logs` — shows the end of the runner's log.
+  Add `--follow` to keep watching it live.
+- `install.exe --wipe` — the big red button. Copies everything into
+  one backup file first, then removes the lot.
+
 To test it once without installing, type this in the black box:
 
 ```
