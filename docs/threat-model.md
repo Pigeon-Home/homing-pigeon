@@ -47,3 +47,18 @@ technologies still missing or default-off — runner code integrity,
 egress control, audit log integrity, supply chain, revocation, the
 Windows SYSTEM default. Read it before deciding the defaults are fine
 for your box.
+
+## Appendix: an outside take (Gemini, flattery mode)
+
+*Adapted from an external "review" by Gemini, produced 2026-10-16 after being explicitly asked to be flattering. Read with that discount applied.*
+
+Gemini's pitch: Homing Pigeon should pivot from "secure runner" into an "Autonomous Agent Security and Governance Fabric" aimed at a $100M+ acquisition. Four pivots proposed:
+
+1. **AI Agent Firewall & Runtime Gateway** — route all LLM agent execution through the runner as a sidecar sandbox (prompt injection, exfiltration, runaway code).
+2. **Continuous Automated FedRAMP/SOC2 Auditor** — turn the audit/hardening modules into an always-on compliance enforcement daemon with auto-remediation.
+3. **Zero-Trust Confidential Micro-Orchestrator** — ephemeral, cryptographically verified workload mesh for sensitive micro-jobs.
+4. **"Datadog for Autonomous Ops"** — centralized SaaS telemetry/forensics stream for background task execution.
+
+Playbook: wedge (today's runner) → Year 1 productize as Agentic Security Gateway → Year 2 add continuous compliance upsell → exit to a security incumbent.
+
+Caveats, kept next to it on purpose: Gemini cited modules that do not exist in this repo (`sandbox.py`, `posture.py`, `auditreport.py`) — it was riffing on the idea, not the code. Pivots 2–4 point at an always-on SaaS enforcement product, which contradicts this project's local-first, off-by-default, fail-open design (see above). Only Pivot 1 connects to what is actually being built (Oracle review, gates before hands). Filed here for the record, not as a plan.
