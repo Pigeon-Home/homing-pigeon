@@ -108,6 +108,14 @@ except ImportError:  # running from inside runner/ as __main__
     except ImportError:
         _setup = None
 
+try:
+    from runner import security as _security
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        import security as _security
+    except ImportError:
+        _security = None
+
 
 def _append_security_event(base_dir: str, event: dict) -> None:
     """Append one event to security-events.jsonl (capped). Best effort."""
@@ -3926,6 +3934,15 @@ def main() -> int:
             cfg = load_config(cfg_path)
         except Exception as e:
             print(f"config error: {e}", file=sys.stderr)
+            return 2
+    # Hardening M0: a malformed security block stops startup here,
+    # before any mailbox, model, or job work. A missing block is
+    # fine -- every security feature stays off.
+    if _security is not None:
+        try:
+            _security.validate_security_config(cfg)
+        except RuntimeError as e:
+            print(e, file=sys.stderr)
             return 2
     if args.inspect:
         return run_inspect(cfg, args)

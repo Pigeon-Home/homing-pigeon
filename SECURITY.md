@@ -93,3 +93,61 @@ whose power is the point. If your antivirus flags the prebuilt
 binaries, that is a known PyInstaller false-positive pattern — verify
 the `SHA384SUMS` file attached to the release, or build from source
 (`pip install` the wheel, or run `runner/runner.py` directly).
+
+---
+
+## Optional security controls
+
+Homing Pigeon ships with optional, off-by-default security controls.
+With no `security` block in `config.json`, the runner behaves exactly
+as it always has. Every control has three modes:
+
+- `off` — the control does nothing. This is the default.
+- `audit` — the job proceeds exactly as with `off`, but a line is
+  written to `security-audit.jsonl` describing what `enforce` mode
+  would have decided.
+- `enforce` — violations are rejected through the existing reject
+  path. Nothing else changes.
+
+```json
+"security": {
+  "modes": {
+    "policy_env": "off",
+    "policy_files": "off",
+    "policy_args": "off",
+    "audience": "off",
+    "confinement": "off",
+    "job_user": "off"
+  },
+  "audit_max_lines": 20000
+}
+```
+
+**Changing a mode requires a restart.** The config file is read once
+at startup; it is not re-read each poll cycle.
+
+**A malformed security block stops startup** with an error naming the
+key and the bad value. It never silently falls back to `off`.
+
+The audit log lives at `security-audit.jsonl` in the runner base
+directory, created `0600` on POSIX, bounded by `audit_max_lines`
+(default 20000) with rollover to one `.1` file. A small counter file,
+`security-audit-counts.json`, tracks decisions per feature. Audit
+entries carry identifiers only — never secret values, script text,
+or file contents.
+
+### Features
+
+| Feature | Milestone | What it does |
+|---|---|---|
+| `policy_env` | M2 | Constrains env vars for keys with a policy entry |
+| `policy_files` | M2 | Constrains staged files for keys with a policy entry |
+| `policy_args` | M2 | Constrains job args for keys with a policy entry |
+| `audience` | M5 | Binds signed jobs to this runner's id |
+| `confinement` | M6 | Runs jobs inside a Linux sandbox (bwrap) |
+| `job_user` | M8 | Runs jobs as a different POSIX user |
+
+See the hardening report (`HARDENING_REPORT.md`) for per-milestone
+status, and the threat model (`docs/threat-model.md`) for the
+overall posture: the Oracle reviews while the operating system
+contains.
