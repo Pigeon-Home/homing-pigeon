@@ -490,8 +490,9 @@ def build_key_policies(cfg) -> dict:
                     f"config error: key_policies[{kid!r}].args_pattern "
                     f"does not compile: {e}")
             # Bound probe: the pattern must handle a hostile input
-            # quickly, since args are attacker-controlled.
-            probe = "a" * 25 + "!"
+            # quickly, since args are attacker-controlled. 30 a's makes
+            # (a+)+$-style backtracking catastrophic on any machine.
+            probe = "a" * 30 + "!"
             t0 = time.time()
             rx.fullmatch(probe)
             if time.time() - t0 > 1.0:
@@ -768,13 +769,16 @@ def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
         except Exception:
             pass
 
+    if mode == "audit":
+        # Audit records the policy decision, not the environment: what
+        # enforce would decide. Availability is an enforce-time concern.
+        _audit("would_sandbox", "would_run_sandboxed")
+        return normal
+    # enforce from here on
     if not _sandbox.sandbox_available():
         log(f"job {job_id}: confinement unavailable on this machine "
             f"({sys.platform}); running unsandboxed", "WARN")
         _audit("fallback", "confinement_unavailable")
-        return normal
-    if mode == "audit":
-        _audit("would_sandbox", "would_run_sandboxed")
         return normal
     # enforce
     try:

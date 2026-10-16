@@ -129,6 +129,16 @@ class FallbackTest(unittest.TestCase):
         self.assertEqual(audit[0]["decision"], "fallback")
         self.assertEqual(audit[0]["reason"], "confinement_unavailable")
 
+    def test_audit_without_bwrap_still_says_would_sandbox(self):
+        # Audit records the policy decision, not the environment.
+        with mock.patch.object(SB, "sandbox_available",
+                               return_value=False):
+            result, audit, _ = _run(
+                _conf("audit"), _job("m6-anb", "print('hi')"))
+        self.assertEqual(result["stdout"].strip(), "hi")
+        self.assertEqual(audit[0]["decision"], "would_sandbox")
+        self.assertEqual(audit[0]["reason"], "would_run_sandboxed")
+
     def test_unresolvable_interpreter_falls_back(self):
         job = _job("m6-bi", "print('hi')")
         job["interpreter"] = ["nope-not-a-binary-zzz"]
