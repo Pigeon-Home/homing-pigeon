@@ -4356,7 +4356,8 @@ def log_startup(cfg, args, base_dir):
     auth = "oauth" if _use_oauth(cfg) else "password"
     inf = inference_config(cfg)
     keys = sorted((cfg.get("additional_secrets") or {}).keys())
-    log(f"homing-pigeon starting (base={base_dir}, platform={sys.platform})")
+    log(f"homing-pigeon {__version__} starting "
+        f"(base={base_dir}, platform={sys.platform})")
     log(f"auth={auth} mailbox={cfg.get('mailbox_user')} "
         f"poll={cfg.get('poll_interval_sec', 20)}s "
         f"workers={_worker_count(cfg, args)} "
@@ -4865,6 +4866,7 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
         return 2
     bound = httpd.socket.getsockname()[1]
     url = f"http://127.0.0.1:{bound}/"
+    print(f"homing-pigeon {__version__} --oracle")
     print(f"Oracle chat on {url}")
     print(f"Chat log: {os.path.join(base, 'oracle-chat.jsonl')}")
     if cfg_path:

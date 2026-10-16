@@ -983,6 +983,7 @@ def main() -> int:
     ap.add_argument("--pdb", action="store_true")
     args = ap.parse_args()
 
+    print(f"install {__version__}")
     plat = sys.platform
     src_dir = _src_dir()
 

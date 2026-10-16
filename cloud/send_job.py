@@ -272,6 +272,8 @@ def main() -> int:
     v.set_defaults(func=cmd_verify)
 
     args = ap.parse_args()
+    # stderr: stdout is the email body contract (subject + blank + body).
+    print(f"send_job {__version__}", file=sys.stderr)
     return args.func(args)
 
 

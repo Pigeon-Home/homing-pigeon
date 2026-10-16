@@ -246,6 +246,7 @@ def main() -> int:
                     version="%(prog)s " + __version__)
     ap.add_argument("--config", default="config.json")
     args = ap.parse_args()
+    print(f"oauth {__version__}")
     with open(args.config, encoding="utf-8") as fh:
         cfg = json.load(fh)
     refresh = browser_consent(cfg)
