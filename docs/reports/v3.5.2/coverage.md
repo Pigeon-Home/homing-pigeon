@@ -11,6 +11,12 @@ No new tag was cut for this measurement.
 
 ![Before the seam tests, then after](before_after.png)
 
+![85 percent](picture-overall.jpg)
+
+![Coverage by file, pictured](picture-by-file.jpg)
+
+![Before, then after, pictured](picture-before-after.jpg)
+
 Measured 2026-10-16 with coverage.py 7.16.2.
 
 ```
