@@ -181,12 +181,24 @@ def install_files(src_dir: str, dst_dir: str):
               "(mailbox_user, mailbox_password, shared_secret)")
 
 
-def install_windows(dst_dir: str, cfg_path: str, extra=()):
+def install_windows(dst_dir: str, cfg_path: str, extra=(), run_as="SYSTEM"):
+    """Register the runner as a Windows Scheduled Task.
+
+    run_as: the account the task runs as. The default SYSTEM needs no
+    password. Well-known service accounts and gMSA names (ending in $)
+    also need none; any other account makes schtasks prompt for its
+    password interactively. Named (non-SYSTEM) accounts get /RL LIMITED
+    instead of HIGHEST: least privilege is the point of --run-as.
+    """
     tr = windows_task_command(dst_dir, cfg_path, extra)
+    run_as = run_as or "SYSTEM"
+    level = "HIGHEST" if run_as.upper() in ("SYSTEM", "NT AUTHORITY\\SYSTEM") \
+        else "LIMITED"
     run(["schtasks", "/Create", "/TN", "HomingPigeon", "/TR", tr,
-         "/SC", "ONSTART", "/RU", "SYSTEM", "/RL", "HIGHEST", "/F"])
+         "/SC", "ONSTART", "/RU", run_as, "/RL", level, "/F"])
     run(["schtasks", "/Run", "/TN", "HomingPigeon"])
-    print("installed: Scheduled Task 'HomingPigeon' (runs at boot as SYSTEM)")
+    print(f"installed: Scheduled Task 'HomingPigeon' "
+          f"(runs at boot as {run_as}, run level {level})")
 
 
 def uninstall_windows():
@@ -619,6 +631,11 @@ def main() -> int:
                     help="config file to use (default <dir>/config.json)")
     ap.add_argument("--system", action="store_true",
                     help="Linux: install a system-wide systemd unit (needs root)")
+    ap.add_argument("--run-as", default=None, metavar="USER",
+                    help="Windows: run the scheduled task as USER instead "
+                         "of SYSTEM (least privilege; schtasks prompts "
+                         "for the account password unless it is a "
+                         "service account)")
     ap.add_argument("--uninstall", action="store_true")
     ap.add_argument("--shared-secret", default=None, metavar="SECRET",
                     help="shared secret to write into config.json "
@@ -714,7 +731,7 @@ def main() -> int:
         print(f"forwarding runner flags into service: {' '.join(extra)}")
 
     if plat == "win32":
-        install_windows(dst_dir, cfg_path, extra)
+        install_windows(dst_dir, cfg_path, extra, run_as=args.run_as)
     elif plat == "darwin":
         install_macos(dst_dir, cfg_path, extra)
     elif plat.startswith("linux"):

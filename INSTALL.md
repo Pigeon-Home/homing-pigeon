@@ -96,7 +96,14 @@ Expand-Archive pigeon.zip .
 **Run:** start the service.
 
 - **Windows:** run `install.exe` — registers a Scheduled Task that
-  starts at boot.
+  starts at boot. By default it runs as SYSTEM; for least privilege,
+  create a dedicated local account first and install with
+  `install.exe --run-as pigeon` (schtasks will prompt for the
+  account's password; service accounts like `NT AUTHORITY\Network
+  Service` and gMSA names ending in `$` need none). A named account
+  runs at `LIMITED` run level instead of `HIGHEST`. Give the account
+  read access to the install dir and config, and full control of the
+  base dir (state, audit log, job workdirs) — and nothing else.
 - **Linux:** run `python3 install.py` — registers a systemd service
   (or cron `@reboot` fallback).
 - **macOS:** run `python3 install.py` — registers a launchd agent.
