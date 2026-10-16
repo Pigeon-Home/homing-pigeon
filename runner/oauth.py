@@ -200,8 +200,11 @@ def exchange_code(cfg, code, verifier, opener=None) -> str:
         except Exception:
             err_body = {"raw": "unparseable error body"}
         detail = err_body.get("error") if isinstance(err_body, dict) else err_body
-        raise SystemExit(
-            f"token exchange failed (HTTP {e.code}: {detail})") from e
+        desc = err_body.get("error_description") if isinstance(err_body, dict) else ""
+        msg = f"token exchange failed (HTTP {e.code}: {detail})"
+        if desc and desc != detail:
+            msg += f": {desc}"
+        raise SystemExit(msg) from e
     except json.JSONDecodeError as e:
         raise SystemExit("token exchange returned unparseable JSON") from e
     if not isinstance(body, dict):

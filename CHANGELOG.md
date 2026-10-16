@@ -13,6 +13,8 @@
   real reason lives), plus per-call shape: message roles and payload
   bytes. The agent loop also logs which replay mode it used. No more
   guessing from a bare "HTTP Error 400" line.
+- OAuth token exchange failures now include Google's `error_description`
+  (the part that says why), not just the bare `invalid_request` code.
 
 ## 3.7.7 — 2026-10-16
 
