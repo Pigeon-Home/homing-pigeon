@@ -1,6 +1,9 @@
 # Oracle Dashboard — v4 Spec (draft)
 
-**Status:** reviewed. Not started. v4 makes the Oracle visible.
+**Status:** not started. v4 makes the Oracle visible as a dashboard.
+`--oracle` already opens a loopback chat in the browser and writes
+`oracle-chat.jsonl`. That chat is not this dashboard. Do not treat
+this file as something the runner serves.
 **Identity:** v2 was who signs, v3 is what comes back, v4 is watch the Oracle think.
 
 ## 1. Vision

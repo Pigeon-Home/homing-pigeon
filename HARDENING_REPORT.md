@@ -1,7 +1,9 @@
 # Security hardening report (M0–M11)
 
-*Branch-only work. Nothing here touches `main`; the owner merges.
-Every control is off by default. Written 2026-10-15.*
+*Written 2026-10-15 as branch work against v3.5.2. Those controls
+shipped on `main` in v3.6.0. The "do not merge" lines below are the
+record of how the work was done, not the current rule. Every control
+is still off unless the owner turns it on.*
 
 ## Scope and constraints
 

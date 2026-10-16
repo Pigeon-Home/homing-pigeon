@@ -8,7 +8,9 @@ covers what **you** do, step by step, to keep a deployment safe.
 ## 1. Know what you're holding
 
 - The runner executes **arbitrary code** as the user it was installed
-  as. There is no sandbox, no allowlist, no confirmation prompt.
+  as. There is no confirmation prompt. A sandbox exists only if you
+  turn on Linux bubblewrap (`security.modes.confinement` set to
+  `enforce`, and `bwrap` installed). It is off by default.
 - The shared secret (a dedicated high-entropy string, by your explicit choice)
   **is root on that box**. Anyone who can sign a job message owns the
   machine: install software, read files, add users, pivot to your
@@ -50,16 +52,18 @@ Defense in depth, cheapest first:
   other projects stay out of reach.
 - **Don't run as root unless you mean it.** On Linux/macOS the
   installer uses a user-level service. Note the exception: on
-  **Windows the Scheduled Task runs as SYSTEM** — that's full
-  machine privilege by default, so every job executes as SYSTEM.
-  If the machine matters to you, prefer a VM there, or create a
-  dedicated low-privilege user account and point the task at it
-  instead. The installer takes the convenient path; the safe path
-  is one extra step and worth it on any machine you care about.
-- **Execution confinement (shipped).** The Oracle can restrict jobs
-  to a single `workspace_root` folder and *attest* that the job
-  stayed inside it. Not a sandbox — an attested boundary. See
-  PROTOCOL.md §9.4.
+  **Windows the Scheduled Task runs as SYSTEM** by default, so every
+  job executes as SYSTEM. `install.exe --run-as pigeon` (or another
+  dedicated account) runs the task as that user at `LIMITED` level
+  instead. If the machine matters to you, prefer a VM, or that
+  dedicated account. The installer takes the convenient path; the
+  safe path is one extra step.
+- **Execution confinement (shipped).** Two checks. Set
+  `workspace_root` and the Oracle attests that the job stayed inside
+  it. That one is a snapshot, not a sandbox. See PROTOCOL.md §9.4.
+  On Linux, `security.modes.confinement` set to `enforce` runs the
+  job inside bubblewrap. Off by default. If `bwrap` is missing, the
+  job runs normally and the audit log says so. See SECURITY.md.
 
 ## 4. The Oracle as a safeguard
 

@@ -23,7 +23,7 @@ The connector is already authenticated. The SI uses it. The runner keeps using I
 The runner is a different process on a different machine. It polls with IMAP. It needs:
 
 - a dedicated mailbox (never a personal inbox)
-- an app password in `config.json` on that host
+- an app password, or Thunderbird-style OAuth, in `config.json` on that host
 
 Those values live on the runner host. They do not travel through the SI chat.
 

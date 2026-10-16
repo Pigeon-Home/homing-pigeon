@@ -392,28 +392,28 @@ judgment:
 
 ### 9.4 Execution confinement (optional)
 
-During execution, the Oracle reports *what a job touched*, not just
-what its results may reveal. It does not contain the process. Config:
+During execution, the Oracle reports what a job touched, not just
+what its results may reveal. The snapshot below does not stop a
+write. An optional Linux sandbox does. Config for the snapshot:
 
 - `workspace_root`: absolute path (e.g. `/home/user/workspace`). When
   set, the job's working directory is created under it. The Oracle
   snapshots file metadata outside that directory before and after.
   The walk stops at 50000 files and logs that the result is partial.
 
-Enforcement is honest about its limits: a stdlib-only runner cannot
-hard-sandbox an arbitrary subprocess. True containment needs
-OS machinery (containers, namespaces, sandbox-exec) — the stronger
-future option.
+The snapshot is a record, not a cage. `confined_to_workspace` means
+no file outside `workspace_root` was created or modified during the
+job. Best-effort: a write that was reverted before the post-snapshot
+is not caught.
 
-What the Oracle provides today is **attested confinement**: it
-snapshots file metadata (path, size, mtime) outside `workspace_root`
-before and after execution, and attests the result:
-
-- `confined_to_workspace`: no file outside `workspace_root` was
-  created or modified during the job. Best-effort (it cannot catch a
-  write that was reverted before the post-snapshot), but the
-  attestation format is unchanged when hard enforcement arrives —
-  only the checker behind it gets stronger.
+OS containment is a separate switch, off by default. Set
+`security.modes.confinement` to `enforce` on Linux with `bwrap`
+installed and the job runs inside bubblewrap: `/usr` read-only, no
+network, and only the job workdir writable at `/work`. If `bwrap` is
+missing, or the machine is not Linux, the job runs normally and the
+audit log records the fallback. `audit` mode runs normally and
+records `would_run_sandboxed`. See SECURITY.md. The attestation
+format does not change when the sandbox is on.
 
 Like everything the Oracle does, the ceiling is the runner owner's:
 no job field can widen or disable confinement.

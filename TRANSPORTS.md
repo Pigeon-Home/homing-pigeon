@@ -207,45 +207,43 @@ notification is genuinely nicer than a 30-second poll.
 
 ## Comparison
 
-| Transport | NAT-friendly | Auth story | At-least-once | Self-hostable | Free tier | Vibe |
+Only the Email row runs in the runner. The other rows are design
+notes. There is no setting that switches the runner onto them.
+
+| Transport | NAT-friendly | Auth story | At-least-once | Self-hostable | Free tier | In the runner |
 |---|---|---|---|---|---|---|
-| Email (v1) | ✅ poll | From header | Unseen flag | n/a (Gmail) | ✅ | It works. Don't @ me. |
-| Cloudflare Queues ⭐ | ✅ HTTPS poll | API token | Retries + DLQ | ❌ | ✅ generous | The pick |
-| NATS JetStream | ✅ | NKey/JWT | Consumer acks | ✅ tiny binary | ✅ (self-host) | Purist |
-| MQTT | ✅ | TLS + creds | QoS 1 | ✅ Mosquitto | ✅ (self-host) | IoT sovereignty |
-| Redis Streams | ✅ | Token/password | Pending list | ✅ | ✅ (Upstash) | Pragmatic |
-| Postgres | ✅ | DB creds | Transactions | ✅ | ✅ (Neon/Supabase) | Boring (praise) |
-| Durable Objects | ✅ push | Token | Txn storage | ❌ | ✅ | Real-time |
+| Email | poll | HMAC on the body | Unseen flag | n/a (Gmail) | yes | yes, the only one |
+| Cloudflare Queues | HTTPS poll | API token | Retries + DLQ | no | yes | no |
+| NATS JetStream | yes | NKey/JWT | Consumer acks | tiny binary | self-host | no |
+| MQTT | yes | TLS + creds | QoS 1 | Mosquitto | self-host | no |
+| Redis Streams | yes | Token/password | Pending list | yes | Upstash | no |
+| Postgres | yes | DB creds | Transactions | yes | Neon/Supabase | no |
+| Durable Objects | push | Token | Txn storage | no | yes | no |
 
 ## Writing a new transport
 
-The protocol is deliberately transport-agnostic. A new transport
-implements three operations and nothing else:
+The protocol is deliberately transport-agnostic. A future transport
+would implement three operations and nothing else:
 
 - `send(queue, blob)` — put an opaque signed JSON blob somewhere
 - `poll(queue) -> [blob]` — retrieve unprocessed blobs, outbound-only
 - `ack(blob_id)` — mark processed (or don't, for redelivery)
 
-The blob never changes. The signatures never change. The Oracle
-never knows the difference. If you can implement those three
-functions against your favorite pipe, homing-pigeon runs on it —
-and we'd love the PR.
+The blob would not change. The signatures would not change. The
+Oracle would not know the difference. The runner does not load a
+transport module today. Email is hardcoded in `runner/runner.py`.
+A pull request is how a second pipe would land. There is no plugin
+hook.
 
-## Bootstrapping: switching transports by email
+## Bootstrapping
 
-You don't need to know how any of this works to get a better
-transport. Email is the bootstrap: get that running (it's just a
-Gmail account), then tell your SI "get me on Cloudflare Queues"
-or NATS or whatever. The SI writes a runbook — install the
-dependency, write the config, flip the transport setting, verify
-with a test job — and sends it as jobs through the email channel
-you already have. The runner reconfigures its own plumbing and
-reports back. The project swaps its transport using the transport.
-
-This is the point of the runbook model: the user needs almost no
-technical knowledge, because the SI does the knowing and the
-runbook does the proving. Each step checks its own work, so a
-failed migration is a report, not a bricked machine.
+Email is the only pipe you can turn on today. Get that running (a
+dedicated Gmail account), and stop there. Cloudflare Queues is the
+planned second transport. It is not in the runner, and neither is
+NATS, MQTT, Redis, Postgres, or Durable Objects. There is no config
+key that flips the runner onto another pipe. A runbook that says
+"install the dependency and switch the transport" will not find that
+switch.
 
 ## Local socket — cut
 

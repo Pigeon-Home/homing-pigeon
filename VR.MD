@@ -1,6 +1,8 @@
 # VR.MD — The VR Oracle (v5)
 
-**Status:** on track. Expected before v4.
+**Status:** not in the runner. Nothing below is implemented. There
+is no headset, no seat, and no 3D room. This file stays as the v5
+sketch.
 **Identity:** v2 was who signs, v3 is what comes back, v4 is watch the
 Oracle think, v5 is *be* where the Oracle thinks.
 
