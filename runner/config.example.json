@@ -19,7 +19,9 @@
   "oauth_client_secret": "",
   "oauth_refresh_token": "",
   "shared_secret": "generate-with-openssl-rand-hex-32",
+  "_shared_secret_file": "alternative: read the secret from a file instead of inline (mutually exclusive with shared_secret)",
   "additional_secrets": {},
+  "_additional_secrets_files": "alternative: {\"key_id\": \"/path/to/file\"}, mutually exclusive per key with additional_secrets",
   "key_policies": {
     "ids-daemon": {"allowed_kinds": ["sensor_alert"]},
     "netmon-daemon": {"allowed_kinds": ["sensor_alert"]}

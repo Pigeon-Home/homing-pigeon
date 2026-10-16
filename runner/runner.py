@@ -323,24 +323,70 @@ def verify_body(body: str, secret: str) -> dict:
 
 
 
+def _read_secret_file(path, label):
+    """Read a secret from a file. Fails closed on any problem."""
+    if not isinstance(path, str) or not path:
+        raise RuntimeError(
+            f"config error: {label} must be a path string")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            value = fh.read().strip()
+    except OSError as e:
+        raise RuntimeError(
+            f"config error: cannot read {label} {path!r}: {e}")
+    if not value:
+        raise RuntimeError(
+            f"config error: {label} {path!r} is empty")
+    return value
+
+
 def build_secrets(cfg) -> dict:
-    """key_id -> secret. Default key is "". Every secret passes entropy gate."""
+    """key_id -> secret. Default key is "". Every secret passes entropy gate.
+
+    Secrets may come from files instead of inline config:
+    shared_secret_file / additional_secrets_files. A secret may not be
+    given both inline and via file.
+    """
     if not isinstance(cfg, dict):
         raise RuntimeError("config error: config must be an object")
     secrets = {}
-    default = cfg.get("shared_secret") or ""
+    inline = cfg.get("shared_secret") or ""
+    secret_file = cfg.get("shared_secret_file")
+    if inline and secret_file:
+        raise RuntimeError("config error: shared_secret and "
+                           "shared_secret_file are mutually exclusive")
+    if secret_file:
+        default = _read_secret_file(secret_file, "shared_secret_file")
+    else:
+        default = inline
     if not default:
-        raise RuntimeError("config error: shared_secret is required")
+        raise RuntimeError("config error: shared_secret is required "
+                           "(or shared_secret_file)")
     validate_shared_secret(default)
     secrets[""] = default
     extra = cfg.get("additional_secrets") or {}
     if not isinstance(extra, dict):
         raise RuntimeError("config error: additional_secrets must be an object")
+    extra_files = cfg.get("additional_secrets_files") or {}
+    if not isinstance(extra_files, dict):
+        raise RuntimeError(
+            "config error: additional_secrets_files must be an object")
     for kid, sec in extra.items():
         if not isinstance(kid, str) or not isinstance(sec, str):
             raise RuntimeError("config error: additional_secrets keys and values must be strings")
         if kid == "":
             raise RuntimeError("config error: empty key_id reserved for default")
+        validate_shared_secret(sec)
+        secrets[kid] = sec
+    for kid, path in extra_files.items():
+        if not isinstance(kid, str) or not isinstance(path, str):
+            raise RuntimeError("config error: additional_secrets_files keys and values must be strings")
+        if kid == "":
+            raise RuntimeError("config error: empty key_id reserved for default")
+        if kid in secrets:
+            raise RuntimeError(
+                f"config error: key {kid!r} given both inline and via file")
+        sec = _read_secret_file(path, f"additional_secrets_files[{kid!r}]")
         validate_shared_secret(sec)
         secrets[kid] = sec
     return secrets
@@ -743,6 +789,87 @@ def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
     _audit("sandboxed", "sandboxed")
     # In the sandbox the env travels via --setenv; Popen inherits.
     return (argv, False, True)
+
+
+# Hardening M8: run jobs as a different POSIX user. Returns a preexec_fn
+# that drops privileges, or None. When a fn is returned the workdir has
+# been chown'd to the job user. Root-only; otherwise warns loudly,
+# audits the fallback, and runs as the current user.
+def _job_user_preexec(cfg, base_dir, job_id, work):
+    if _security is None or os.name == "nt":
+        return None
+    mode = _security.sec_mode(cfg, "job_user")
+    if mode == "off":
+        return None
+    ju = (cfg.get("security") or {}).get("job_user") or {}
+    user = ju.get("user") if isinstance(ju, dict) else None
+    if not user or not isinstance(user, str):
+        return None
+
+    def _audit(decision, reason, detail=""):
+        try:
+            _security.write_audit_entry(
+                base_dir, "job_user", decision, reason,
+                job_id=str(job_id), detail=str(detail), cfg=cfg)
+        except Exception:
+            pass
+
+    if mode == "audit":
+        _audit("would_run_as", "would_run_as_user", user)
+        return None
+    # enforce from here on
+    if os.geteuid() != 0:
+        log(f"job {job_id}: job_user needs root; running as current "
+            f"user", "WARN")
+        _audit("fallback", "job_user_needs_root")
+        return None
+    try:
+        import pwd
+        pw = pwd.getpwnam(user)
+    except (ImportError, KeyError) as e:
+        log(f"job {job_id}: job_user {user!r} unavailable ({e}); running "
+            f"as current user", "WARN")
+        _audit("fallback", "job_user_unavailable", str(e))
+        return None
+    # The job must own its workdir to read the script and write output.
+    try:
+        for root, dirs, files in os.walk(work):
+            os.chown(root, pw.pw_uid, pw.pw_gid)
+            for d in dirs:
+                os.chown(os.path.join(root, d), pw.pw_uid, pw.pw_gid)
+            for f in files:
+                os.chown(os.path.join(root, f), pw.pw_uid, pw.pw_gid)
+        # Traverse-only (+x, not +r) on the parent chain up to base_dir,
+        # so the job user can reach its workdir without listing the
+        # runner's state. Files there stay protected by their own mode.
+        node = os.path.realpath(work)
+        stop = os.path.realpath(base_dir)
+        while True:
+            node = os.path.dirname(node)
+            try:
+                st = os.stat(node)
+            except OSError:
+                break
+            if not st.st_mode & 0o001:
+                os.chmod(node, st.st_mode | 0o001)
+            if node == stop or node == os.path.dirname(node):
+                break
+    except OSError as e:
+        log(f"job {job_id}: cannot chown workdir to {user} ({e}); "
+            f"running as current user", "WARN")
+        _audit("fallback", "job_user_chown_failed", str(e))
+        return None
+    _audit("run_as", "ran_as_user", user)
+
+    def _demote():
+        # After fork, before exec. Syscalls only.
+        os.setgid(pw.pw_gid)
+        try:
+            os.initgroups(pw.pw_name, pw.pw_gid)
+        except OSError:
+            pass
+        os.setuid(pw.pw_uid)
+    return _demote
 
 
 def verify_body_keyed(body_text: str, secrets: dict):
@@ -2520,12 +2647,16 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     c_argv, use_host_env, sandboxed = _confinement_argv(
         cfg, base_dir, job.get("job_id", ""), interpreter, script_path,
         work, args, env)
+    # Hardening M8: drop to the job user when configured (POSIX,
+    # root only). None when off or unavailable.
+    preexec = _job_user_preexec(cfg, base_dir, job.get("job_id", ""), work)
     try:
         proc = subprocess.Popen(
             c_argv,
             cwd=work, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             env=env if use_host_env else None,
             start_new_session=(os.name != "nt"),
+            preexec_fn=preexec,
         )
         log(f"job {job['job_id']} process started pid={proc.pid} "
             f"interpreter={interpreter[0]}"

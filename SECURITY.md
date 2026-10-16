@@ -168,6 +168,26 @@ Optional tuning under `security.confinement` (all optional):
 }
 ```
 
+### Running jobs as another user (M8)
+
+With `security.modes.job_user: enforce` and
+`security.job_user: {"user": "pigeon-jobs"}`, each `exec` job runs as
+that POSIX user (via setuid after fork). The job's workdir is chown'd
+to the user, and the parent chain up to the base dir gets traverse-only
+(`+x`) permission so the job can reach its workdir without listing the
+runner's state. Requires the runner itself to run as root; otherwise
+it warns loudly, audits a `fallback` decision, and runs the job as the
+current user. `audit` mode runs normally and records `would_run_as_user`.
+The user must exist, or startup fails.
+
+### Secret files (M8)
+
+Secrets don't have to live in `config.json`. `shared_secret_file`
+and `additional_secrets_files` (`{"key_id": "/path/to/file"}`) read
+each secret from a file at startup (whitespace-stripped). A secret
+given both inline and via file is a startup error, as is a missing or
+empty file. File secrets pass the same entropy gate.
+
 See the hardening report (`HARDENING_REPORT.md`) for per-milestone
 status, and the threat model (`docs/threat-model.md`) for the
 overall posture: the Oracle reviews while the operating system

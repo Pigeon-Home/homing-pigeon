@@ -205,6 +205,26 @@ def validate_security_config(cfg):
                 _sandbox = None
         if _sandbox is not None:
             _sandbox._validate_confinement_block(sec["confinement"])
+    # Hardening M8: validate the job_user block.
+    if "job_user" in sec:
+        ju = sec["job_user"]
+        if not isinstance(ju, dict) or not isinstance(ju.get("user"), str) \
+                or not ju["user"]:
+            raise RuntimeError(
+                "config error: security.job_user must be an object with "
+                "a non-empty string 'user' (got %r)" % (ju,))
+        if os.name != "nt":
+            try:
+                import pwd
+            except ImportError:
+                pwd = None
+            if pwd is not None:
+                try:
+                    pwd.getpwnam(ju["user"])
+                except KeyError:
+                    raise RuntimeError(
+                        "config error: security.job_user.user %r does "
+                        "not exist" % (ju["user"],))
 
 
 def _audit_path(base_dir):
