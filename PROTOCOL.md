@@ -797,8 +797,15 @@ Every field is optional; every specified constraint must hold:
 - `allowed_env`: only the listed env var names may be set. For a pinned
   script (see below), env vars not listed here are denied.
 - `denied_env`: the listed env var names may never be set.
+- `allow_dangerous_env`: when boolean `true`, dangerous env names
+  (plan Appendix A) that are explicitly listed in `allowed_env` are
+  permitted. Without it they are refused even when listed. Default
+  off; only meaningful for keys with a policy entry.
 - `allowed_files`: only the listed file names may be staged. For a
   pinned script, files not listed here are denied.
+- `allow_file_urls`: when `false`, any `files` entry carrying a URL is
+  refused. Default `true` when absent.
+- `max_args`: integer cap on the number of args (`0` means no args).
 - `args_pattern`: every arg must fully match this regex. Args longer
   than 1024 characters are denied outright. The pattern is validated
   at startup and rejected if it risks catastrophic backtracking.
@@ -813,11 +820,15 @@ these fields are parsed but change nothing.
 A pinned script is not the whole story: without the env/files
 constraints, a pinned script could still be subverted through
 `BASH_ENV`, `LD_PRELOAD`, or a staged file. Env names that subvert
-execution (`BASH_ENV`, `LD_PRELOAD`, `PYTHONPATH`, and others — see
-`DANGEROUS_ENV_NAMES` in `runner/runner.py`) are denied for keys with
-a policy entry unless explicitly listed in `allowed_env`. The test
-suite backs this: a pinned script smuggling `BASH_ENV` is denied in
-enforce mode (`tests/test_policy_constraints.py`, PinnedScriptTest).
+execution (the plan's Appendix A list — `BASH_ENV`, `PATH`,
+`LD_PRELOAD`, `PYTHONPATH`, `DYLD_*`, `GIT_CONFIG_*`, and others; see
+`DANGEROUS_ENV_NAMES`/`DANGEROUS_ENV_PREFIXES` in `runner/security.py`)
+are denied for keys with a policy entry **even when explicitly listed
+in `allowed_env`**, unless the policy also sets
+`allow_dangerous_env: true` (boolean `true` only — anything else keeps
+the gate shut). The test suite backs this: a pinned script smuggling
+`BASH_ENV` is denied in enforce mode
+(`tests/test_policy_constraints.py`, PinnedScriptTest).
 
 A policy may also be attached to the default key under the empty-string
 key ID (`"": {...}`). Violations are rejected like any other bad job:

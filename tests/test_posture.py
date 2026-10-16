@@ -35,14 +35,80 @@ def _run(cfg, cfg_path, base_dir):
     return rc, buf.getvalue()
 
 
+def _full_cfg(d):
+    """A config that passes every posture check (for tests whose
+    subject is something else)."""
+    return {"base_dir": d, "shared_secret": STRONG,
+            "workspace_root": d,
+            "security": {"modes": {"audience": "audit",
+                                   "policy_env": "audit",
+                                   "policy_files": "audit",
+                                   "policy_args": "audit"}}}
+
+
 class PostureTest(unittest.TestCase):
     def test_all_ok(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = _full_cfg(d)
+            path = _cfg_file(d, cfg, 0o600)
+            with mock.patch.object(P.shutil, "which", return_value="/usr/bin/bwrap"):
+                rc, out = _run(cfg, path, d)
+        self.assertEqual(rc, 0)
+        self.assertIn("[OK  ]", out)
+
+    def test_workspace_root_unset_warns(self):
         with tempfile.TemporaryDirectory() as d:
             cfg = {"base_dir": d, "shared_secret": STRONG}
             path = _cfg_file(d, cfg, 0o600)
             rc, out = _run(cfg, path, d)
+        self.assertEqual(rc, 1)
+        self.assertIn("workspace_root unset", out)
+
+    def test_recommended_features_off_warn(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = {"base_dir": d, "shared_secret": STRONG,
+                   "workspace_root": d}
+            path = _cfg_file(d, cfg, 0o600)
+            rc, out = _run(cfg, path, d)
+        self.assertEqual(rc, 1)
+        self.assertIn("audience is off (recommended", out)
+
+    def test_loose_key_warns(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = _full_cfg(d)
+            cfg["additional_secrets"] = {"svc": STRONG}
+            path = _cfg_file(d, cfg, 0o600)
+            with mock.patch.object(P.shutil, "which", return_value="/usr/bin/bwrap"):
+                rc, out = _run(cfg, path, d)
+        self.assertEqual(rc, 1)
+        self.assertIn('key "svc" has no policy entry', out)
+
+    def test_loose_key_ok_with_default_deny(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = _full_cfg(d)
+            cfg["additional_secrets"] = {"svc": STRONG}
+            cfg["key_policies_default_deny"] = True
+            path = _cfg_file(d, cfg, 0o600)
+            with mock.patch.object(P.shutil, "which", return_value="/usr/bin/bwrap"):
+                rc, out = _run(cfg, path, d)
         self.assertEqual(rc, 0)
-        self.assertIn("[OK  ]", out)
+
+    def test_bwrap_missing_warns(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = _full_cfg(d)
+            path = _cfg_file(d, cfg, 0o600)
+            with mock.patch.object(P.shutil, "which", return_value=None):
+                with mock.patch.object(P.sys, "platform", "linux"):
+                    rc, out = _run(cfg, path, d)
+        self.assertEqual(rc, 1)
+        self.assertIn("bwrap not installed", out)
+
+    def test_privileges_reported(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = {"base_dir": d, "shared_secret": STRONG}
+            path = _cfg_file(d, cfg, 0o600)
+            _, out = _run(cfg, path, d)
+        self.assertIn("privileges", out)
 
     @unittest.skipUnless(os.name != "nt", "Unix mode bits")
     def test_loose_config_perms_warn(self):
@@ -81,12 +147,13 @@ class PostureTest(unittest.TestCase):
     @unittest.skipUnless(os.name != "nt", "Unix mode bits")
     def test_audit_file_perms(self):
         with tempfile.TemporaryDirectory() as d:
-            cfg = {"base_dir": d, "shared_secret": STRONG}
+            cfg = _full_cfg(d)
             path = _cfg_file(d, cfg, 0o600)
             audit = os.path.join(d, S.AUDIT_FILE)
             open(audit, "w").write("{}\n")
             os.chmod(audit, 0o600)
-            rc, _ = _run(cfg, path, d)
+            with mock.patch.object(P.shutil, "which", return_value="/usr/bin/bwrap"):
+                rc, _ = _run(cfg, path, d)
             self.assertEqual(rc, 0)
             os.chmod(audit, 0o644)
             rc, out = _run(cfg, path, d)
@@ -110,10 +177,10 @@ class PostureTest(unittest.TestCase):
 
     def test_modes_summarized(self):
         with tempfile.TemporaryDirectory() as d:
-            cfg = {"base_dir": d, "shared_secret": STRONG,
-                   "security": {"modes": {"policy_env": "audit"}}}
+            cfg = _full_cfg(d)
             path = _cfg_file(d, cfg, 0o600)
-            rc, out = _run(cfg, path, d)
+            with mock.patch.object(P.shutil, "which", return_value="/usr/bin/bwrap"):
+                rc, out = _run(cfg, path, d)
         self.assertEqual(rc, 0)
         self.assertIn("policy_env=audit", out)
 
@@ -123,12 +190,14 @@ class WindowsPermsTest(unittest.TestCase):
 
     def _results(self, mapped):
         with tempfile.TemporaryDirectory() as d:
-            cfg = {"base_dir": d, "shared_secret": STRONG}
+            cfg = _full_cfg(d)
             path = _cfg_file(d, cfg, 0o600)
             with mock.patch.object(P.os, "name", "nt"):
                 with mock.patch.object(P, "_windows_file_restricted",
                                         return_value=mapped):
-                    return P.build_posture(cfg, path, d)
+                    with mock.patch.object(P.shutil, "which",
+                                            return_value="bwrap"):
+                        return P.build_posture(cfg, path, d)
 
     def test_restricted_ok(self):
         levels = [r[0] for r in self._results(True)]
@@ -151,13 +220,15 @@ class FlagIntegrationTest(unittest.TestCase):
     def test_flag_via_main(self):
         from runner.runner import main
         with tempfile.TemporaryDirectory() as d:
-            cfg = {"base_dir": d, "shared_secret": STRONG}
+            cfg = _full_cfg(d)
             cfg_path = _cfg_file(d, cfg, 0o600)
             buf = io.StringIO()
             with mock.patch.object(sys, "argv", ["runner", "--config",
                                                  cfg_path, "--posture"]):
-                with redirect_stdout(buf):
-                    rc = main()
+                with mock.patch.object(P.shutil, "which",
+                                        return_value="/usr/bin/bwrap"):
+                    with redirect_stdout(buf):
+                        rc = main()
             self.assertEqual(rc, 0)
             self.assertIn("Security posture", buf.getvalue())
 

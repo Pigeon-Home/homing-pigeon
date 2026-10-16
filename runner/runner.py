@@ -469,6 +469,12 @@ def build_key_policies(cfg) -> dict:
                     f"config error: key_policies[{kid!r}].denied_env "
                     "must be a list of strings")
             clean["denied_env"] = denied
+        if "allow_dangerous_env" in pol:
+            # Plan Appendix A gate: dangerous names stay refused even
+            # when listed in allowed_env, unless this is boolean True.
+            # Normalized fail-safe: anything that is not boolean True
+            # (including truthy strings) keeps the gate shut.
+            clean["allow_dangerous_env"] = pol["allow_dangerous_env"] is True
         if "allowed_files" in pol:
             allowed = pol["allowed_files"]
             if not isinstance(allowed, list) or not allowed or \
@@ -477,6 +483,22 @@ def build_key_policies(cfg) -> dict:
                     f"config error: key_policies[{kid!r}].allowed_files "
                     "must be a non-empty list of strings")
             clean["allowed_files"] = allowed
+        if "allow_file_urls" in pol:
+            # Plan M2: when false, any files entry with a URL is
+            # refused. Default true when absent.
+            if not isinstance(pol["allow_file_urls"], bool):
+                raise RuntimeError(
+                    f"config error: key_policies[{kid!r}].allow_file_urls "
+                    "must be a boolean")
+            clean["allow_file_urls"] = pol["allow_file_urls"]
+        if "max_args" in pol:
+            cap = pol["max_args"]
+            if isinstance(cap, bool) or not isinstance(cap, int) \
+                    or cap < 0:
+                raise RuntimeError(
+                    f"config error: key_policies[{kid!r}].max_args "
+                    "must be an integer >= 0")
+            clean["max_args"] = cap
         if "args_pattern" in pol:
             pattern = pol["args_pattern"]
             if not isinstance(pattern, str) or not pattern:
@@ -644,8 +666,15 @@ def check_policy_constraints(pol, key_id, cfg, job):
             if _env_name_in(name, denied):
                 findings.append(("policy_env", "denied_env",
                                  "env %r is denied for this key" % name))
-            elif name.upper() in DANGEROUS_ENV_NAMES \
-                    and not _env_name_in(name, allowed):
+            elif _security.is_dangerous_env_name(name) and not (
+                    pol.get("allow_dangerous_env") is True
+                    and _env_name_in(name, allowed)):
+                # Plan Appendix A: dangerous names are refused even when
+                # listed in allowed_env, unless the policy explicitly
+                # opts in with allow_dangerous_env: true (boolean True
+                # only — a truthy string does not open the gate).
+                # The name must still be listed: the gate alone permits
+                # nothing.
                 findings.append(("policy_env", "dangerous_env",
                                  "env %r can subvert execution" % name))
             elif allowed is not None:
@@ -667,7 +696,10 @@ def check_policy_constraints(pol, key_id, cfg, job):
             fname = f.get("name")
             if not isinstance(fname, str):
                 continue
-            if allowed_files is not None:
+            if pol.get("allow_file_urls") is False and f.get("url"):
+                findings.append(("policy_files", "file_url_not_allowed",
+                                 "file %r carries a URL" % fname))
+            elif allowed_files is not None:
                 if fname not in allowed_files:
                     findings.append(("policy_files", "file_not_allowed",
                                      "file %r is not in allowed_files"
@@ -679,6 +711,12 @@ def check_policy_constraints(pol, key_id, cfg, job):
 
     # --- policy_args ---
     args = job.get("args")
+    if isinstance(args, list):
+        max_args = pol.get("max_args")
+        if isinstance(max_args, int) and not isinstance(max_args, bool) \
+                and len(args) > max_args:
+            findings.append(("policy_args", "args_too_many",
+                             "more than %d args" % max_args))
     pattern = pol.get("args_pattern")
     if pattern and isinstance(args, list) and args:
         try:
@@ -718,7 +756,13 @@ def check_audience(cfg, payload):
         return None
     if not isinstance(payload, dict):
         return None
-    if payload.get("runner_id") != expected:
+    # Plan M5: the signed audience field is `aud`. `runner_id` is also
+    # accepted for jobs signed by older senders (v3.6.0); when both are
+    # present, `aud` wins.
+    claimed = payload.get("aud")
+    if claimed is None:
+        claimed = payload.get("runner_id")
+    if claimed != expected:
         return "runner_id mismatch"
     return None
 
@@ -727,6 +771,8 @@ def audience_allows(cfg, base_dir, payload, key_id, ident):
     """Three-mode audience enforcement. Returns True when the message
     may proceed. In audit mode the decision is logged and processing
     continues; in enforce mode a mismatch denies."""
+    if _security is not None and _security.sec_mode(cfg, "audience") != "off":
+        _security.bump_evaluated(base_dir, "audience")
     if check_audience(cfg, payload) is None:
         return True
     if _security is None:
@@ -734,7 +780,7 @@ def audience_allows(cfg, base_dir, payload, key_id, ident):
     decision = _security.sec_decide(
         cfg, base_dir, "audience", "runner_id_mismatch",
         {"key_id": key_id, "job_id": ident})
-    return decision != "deny"
+    return bool(decision)
 
 
 def _seen_key(cfg, key):
@@ -760,12 +806,14 @@ def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
     mode = _security.sec_mode(cfg, "confinement")
     if mode == "off":
         return normal
+    _security.bump_evaluated(base_dir, "confinement")
 
     def _audit(decision, reason, detail=""):
         try:
             _security.write_audit_entry(
                 base_dir, "confinement", decision, reason,
-                job_id=str(job_id), detail=str(detail), cfg=cfg)
+                job_id=str(job_id), detail=str(detail), cfg=cfg,
+                mode=mode)
         except Exception:
             pass
 
@@ -805,6 +853,7 @@ def _job_user_preexec(cfg, base_dir, job_id, work):
     mode = _security.sec_mode(cfg, "job_user")
     if mode == "off":
         return None
+    _security.bump_evaluated(base_dir, "job_user")
     ju = (cfg.get("security") or {}).get("job_user") or {}
     user = ju.get("user") if isinstance(ju, dict) else None
     if not user or not isinstance(user, str):
@@ -814,7 +863,8 @@ def _job_user_preexec(cfg, base_dir, job_id, work):
         try:
             _security.write_audit_entry(
                 base_dir, "job_user", decision, reason,
-                job_id=str(job_id), detail=str(detail), cfg=cfg)
+                job_id=str(job_id), detail=str(detail), cfg=cfg,
+                mode=mode)
         except Exception:
             pass
 
@@ -3325,13 +3375,16 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         _m2_features = ("policy_env", "policy_files", "policy_args")
         if _pol and any(_security.sec_mode(cfg, f) != "off"
                         for f in _m2_features):
+            for _f in _m2_features:
+                if _security.sec_mode(cfg, _f) != "off":
+                    _security.bump_evaluated(base_dir, _f)
             for _feature, _reason, _detail in check_policy_constraints(
                     _pol, key_id, cfg, job):
                 _decision = _security.sec_decide(
                     cfg, base_dir, _feature, _reason,
                     {"key_id": key_id, "job_id": job_id,
                      "detail": _detail})
-                if _decision == "deny":
+                if not _decision:
                     reject(f"security policy ({_feature}): {_reason}")
                     _append_security_event(base_dir, {
                         "type": "auth_rejection",
@@ -4375,6 +4428,11 @@ def main() -> int:
     ap.add_argument("--since", default=None, metavar="14d|48h",
                     help="with --audit-report: only entries from the "
                          "last window (default 30d)")
+    ap.add_argument("--key", default=None, metavar="KEY_ID",
+                    help="with --audit-report: only entries for this key")
+    ap.add_argument("--feature", default=None, metavar="NAME",
+                    help="with --audit-report: only entries for this "
+                         "security feature")
     ap.add_argument("--posture", action="store_true",
                     help="report the runner's security posture and "
                          "exit; no mailbox needed")
@@ -4436,7 +4494,8 @@ def main() -> int:
             import auditreport as _auditreport
         base_dir = cfg.get("base_dir") or os.path.join(
             os.path.expanduser("~"), ".homing-pigeon")
-        return _auditreport.main(cfg, base_dir, since=args.since)
+        return _auditreport.main(cfg, base_dir, since=args.since,
+                                 key=args.key, feature=args.feature)
     if args.posture:
         # Read-only posture report; no mailbox needed.
         try:

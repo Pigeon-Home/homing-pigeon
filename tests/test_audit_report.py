@@ -105,6 +105,102 @@ class ReportTest(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertIn("no audit entries", buf.getvalue())
 
+    def test_fragments_suggest_policy(self):
+        with tempfile.TemporaryDirectory() as d:
+            _write_audit(d, [
+                _entry("policy_env", "would_deny", "env_not_allowed",
+                       key_id="svc",
+                       detail="env 'CI' is not in allowed_env"),
+                _entry("policy_env", "would_deny", "env_not_allowed",
+                       key_id="svc",
+                       detail="env 'CI' is not in allowed_env"),
+                _entry("policy_files", "would_deny", "file_not_allowed",
+                       key_id="svc",
+                       detail="file 'data.csv' is not in allowed_files"),
+                _entry("policy_args", "would_deny", "args_too_many",
+                       key_id="svc", detail="more than 2 args"),
+            ])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                AR.main({}, d, since="30d")
+            out = buf.getvalue()
+        frag = out.split("Suggested key_policies fragments")[1]
+        frag = frag.split("Refused to suggest")[0]
+        self.assertIn("KEY: svc", frag)
+        self.assertIn('"allowed_env"', frag)
+        self.assertIn('"CI"', frag)
+        self.assertIn('"allowed_files"', frag)
+        self.assertIn('"data.csv"', frag)
+        self.assertIn("args_too_many", frag)
+
+    def test_fragments_exclude_dangerous_names(self):
+        with tempfile.TemporaryDirectory() as d:
+            _write_audit(d, [
+                _entry("policy_env", "would_deny", "dangerous_env",
+                       key_id="svc",
+                       detail="env 'LD_PRELOAD' can subvert execution"),
+            ])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                AR.main({}, d, since="30d")
+            out = buf.getvalue()
+        frag = out.split("Suggested key_policies fragments")[1]
+        frag = frag.split("Refused to suggest")[0]
+        self.assertNotIn("LD_PRELOAD", frag)
+        self.assertIn("LD_PRELOAD", out.split("Refused to suggest")[1])
+
+    def test_key_filter(self):
+        with tempfile.TemporaryDirectory() as d:
+            _write_audit(d, [
+                _entry("policy_env", "would_deny", "denied_env",
+                       key_id="aaa"),
+                _entry("policy_env", "would_deny", "denied_env",
+                       key_id="bbb"),
+            ])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                AR.main({}, d, since="30d", key="aaa")
+            out = buf.getvalue()
+        self.assertIn('key "aaa"', out)
+        self.assertNotIn('key "bbb"', out)
+
+    def test_feature_filter(self):
+        with tempfile.TemporaryDirectory() as d:
+            _write_audit(d, [
+                _entry("policy_env", "would_deny", "denied_env"),
+                _entry("policy_args", "would_deny", "arg_too_long"),
+            ])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                AR.main({}, d, since="30d", feature="policy_args")
+            out = buf.getvalue()
+        self.assertIn("policy_args", out)
+        self.assertNotIn("policy_env", out)
+
+    def test_table_shows_mode_evaluated_would_deny(self):
+        with tempfile.TemporaryDirectory() as d:
+            _write_audit(d, [
+                _entry("policy_env", "would_deny", "denied_env",
+                       detail="env 'CI' is not in allowed_env"),
+                _entry("policy_env", "would_deny", "denied_env",
+                       detail="env 'CI' is not in allowed_env"),
+            ])
+            # evaluated counts come from the counts file
+            counts_path = os.path.join(d, S.COUNTS_FILE)
+            with open(counts_path, "w") as fh:
+                json.dump({"policy_env": {"evaluated": 412,
+                                          "would_deny": 2}}, fh)
+            cfg = {"security": {"modes": {"policy_env": "audit"}}}
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                AR.main(cfg, d, since="30d")
+            out = buf.getvalue()
+        self.assertIn("evaluated", out)
+        self.assertIn("would-deny", out)
+        self.assertIn("412", out)
+        self.assertIn("denied_env(2)", out)
+        self.assertIn("audit", out)
+
     def test_since_window_filters(self):
         with tempfile.TemporaryDirectory() as d:
             _write_audit(d, [

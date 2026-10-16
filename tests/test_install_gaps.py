@@ -26,6 +26,7 @@ from install import (  # noqa: E402
     inference_model_for,
     install_ollama_and_model,
     windows_task_command,
+    ensure_runner_id,
 )
 
 _spec = importlib.util.spec_from_file_location(
@@ -238,6 +239,31 @@ class WindowsSpawnTest(unittest.TestCase):
         self.assertIn("--workers", tr)
         self.assertIn(" 2", tr)
         self.assertIn("--config", tr)
+
+
+class RunnerIdTest(unittest.TestCase):
+    def test_ensure_runner_id_generates_128_bit(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"shared_secret": "x" * 64}, f)
+            ensure_runner_id(path)
+            with open(path, encoding="utf-8") as f:
+                cfg = json.load(f)
+            rid = cfg["runner_id"]
+            # 128 bits, hex-encoded.
+            self.assertEqual(len(rid), 32)
+            int(rid, 16)
+
+    def test_ensure_runner_id_never_overwrites(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"runner_id": "keep-me"}, f)
+            ensure_runner_id(path)
+            with open(path, encoding="utf-8") as f:
+                cfg = json.load(f)
+            self.assertEqual(cfg["runner_id"], "keep-me")
 
 
 if __name__ == "__main__":

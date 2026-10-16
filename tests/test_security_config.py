@@ -82,34 +82,36 @@ class SecDecideTest(unittest.TestCase):
     def test_off_allows_without_entry(self):
         with tempfile.TemporaryDirectory() as d:
             cfg = {"security": {"modes": {"policy_env": "off"}}}
-            self.assertEqual(
+            self.assertTrue(
                 S.sec_decide(cfg, d, "policy_env", "r",
-                             {"key_id": "k", "job_id": "j"}), "allow")
+                             {"key_id": "k", "job_id": "j"}))
             self.assertFalse(os.path.exists(
                 os.path.join(d, S.AUDIT_FILE)))
 
     def test_audit_allows_and_logs_would_deny(self):
         with tempfile.TemporaryDirectory() as d:
             cfg = {"security": {"modes": {"policy_env": "audit"}}}
-            self.assertEqual(
+            self.assertTrue(
                 S.sec_decide(cfg, d, "policy_env", "bad_env",
-                             {"key_id": "k", "job_id": "j"}), "allow")
+                             {"key_id": "k", "job_id": "j"}))
             lines = open(os.path.join(d, S.AUDIT_FILE)).readlines()
             self.assertEqual(len(lines), 1)
             entry = json.loads(lines[0])
             self.assertEqual(entry["decision"], "would_deny")
             self.assertEqual(entry["feature"], "policy_env")
             self.assertEqual(entry["reason"], "bad_env")
+            self.assertEqual(entry["mode"], "audit")
 
     def test_enforce_denies_and_logs_denied(self):
         with tempfile.TemporaryDirectory() as d:
             cfg = {"security": {"modes": {"policy_env": "enforce"}}}
-            self.assertEqual(
+            self.assertFalse(
                 S.sec_decide(cfg, d, "policy_env", "bad_env",
-                             {"key_id": "k", "job_id": "j"}), "deny")
+                             {"key_id": "k", "job_id": "j"}))
             entry = json.loads(
                 open(os.path.join(d, S.AUDIT_FILE)).readline())
             self.assertEqual(entry["decision"], "denied")
+            self.assertEqual(entry["mode"], "enforce")
 
     def test_entry_carries_identifiers_only(self):
         # Callers may stuff extra keys into ctx; the writer's field
@@ -125,7 +127,7 @@ class SecDecideTest(unittest.TestCase):
             entry = json.loads(raw.strip())
             self.assertEqual(set(entry),
                              {"ts", "feature", "decision", "reason",
-                              "key_id", "job_id", "detail"})
+                              "key_id", "job_id", "detail", "mode"})
 
 
 class AuditWriterTest(unittest.TestCase):
@@ -168,6 +170,16 @@ class AuditWriterTest(unittest.TestCase):
                 open(os.path.join(d, S.COUNTS_FILE)))
             self.assertEqual(
                 counts["policy_env"]["would_deny"], 2)
+
+    def test_bump_evaluated(self):
+        with tempfile.TemporaryDirectory() as d:
+            S.bump_evaluated(d, "audience")
+            S.bump_evaluated(d, "audience")
+            S.bump_evaluated(d, "confinement")
+            counts = json.load(
+                open(os.path.join(d, S.COUNTS_FILE)))
+            self.assertEqual(counts["audience"]["evaluated"], 2)
+            self.assertEqual(counts["confinement"]["evaluated"], 1)
 
 
 class StartupHookTest(unittest.TestCase):

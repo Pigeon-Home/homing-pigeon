@@ -1,9 +1,9 @@
 # Security hardening report (M0–M11)
 
-*Written 2026-10-15 as branch work against v3.5.2. Those controls
-shipped on `main` in v3.6.0. The "do not merge" lines below are the
-record of how the work was done, not the current rule. Every control
-is still off unless the owner turns it on.*
+*Written 2026-10-15 as branch work against v3.5.2; those controls
+shipped on `main` in **v3.6.0**. The "do not merge" lines below are
+the record of how the work was done, not the current rule. Every
+control is still off unless the owner turns it on.*
 
 ## Scope and constraints
 
@@ -12,12 +12,20 @@ Implemented Claude's security hardening runbook (M0–M11) against
 
 - **D9**: everything off by default. With no `security` block the
   runner behaves exactly as before (proven by the parity harness).
-- Branch-only (`hardening/mN-*`); never push/merge/tag `main`.
 - The design stays intact: signature-first verification, at-least-once
   delivery, the existing reject paths. Hardening hooks into them, it
   doesn't replace them.
 - All security restrictions left at "almost 0": every feature ships
   `off`, the owner opts in per feature.
+
+Ship history: the twelve milestones were built on `hardening/mN-*`
+branches, then merged to `main`, pushed, and tagged **v3.6.0** after
+the CI build went green (tag build green including PyPI publish).
+Post-ship review fixes (review findings 1, 4, 5) and the owner's
+fail-open decision (option C) are in. Follow-up items from the second
+review round (dangerous-env gate, `--aud`, 128-bit `runner_id`,
+`allow_file_urls`/`max_args`, audit-report fragments, posture
+checks) land on `main` after the tag.
 
 ## Per-milestone summary
 
@@ -36,7 +44,8 @@ Implemented Claude's security hardening runbook (M0–M11) against
 | M10 | `hardening/m9-m10-design-docs` | `docs/approval-gate-design.md`: human approval before execution (per-key modes, pending queue, channel ranking). Not implemented. |
 | M11 | `hardening/m11-windows-run-as` | `install.py --run-as USER`: scheduled task runs as USER (default SYSTEM). Named accounts get `/RL LIMITED`. Docs in INSTALL.md. Verified via schtasks argv inspection (no live Windows QA on this box). |
 
-Final suite: **1093 tests green** (945 at v3.5.2 baseline).
+Final suite at ship: **1093 tests green** (945 at v3.5.2 baseline).
+Post-ship follow-ups add more; see the test files.
 
 ## Divergences and plan-detail gaps
 
@@ -91,8 +100,7 @@ following are my designs, recorded here per runbook rule 15:
 
 ## Owner decisions needed
 
-1. Merge order: the branches stack conceptually (m0 → m11) but each
-   was cut from the previous tip; review/merge in order.
+1. ~~Merge order~~ — done: merged to `main`, tagged v3.6.0.
 2. Whether any feature should be on by default (D9 says no; the
    recommendation stands).
 3. M9/M10: approve the designs before any implementation.

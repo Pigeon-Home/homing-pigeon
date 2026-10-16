@@ -21,6 +21,7 @@ sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "tests"))
 
 from runner import runner as RR  # noqa: E402
+from runner import security as S  # noqa: E402
 from runner.runner import poll_once  # noqa: E402
 from tests.security_parity import (  # noqa: E402
     SECRET,
@@ -134,6 +135,9 @@ class PolicyEnvModesTest(unittest.TestCase):
         self.assertEqual(audit[0]["reason"], "dangerous_env")
 
     def test_dangerous_env_allowed_when_listed(self):
+        # Plan Appendix A: listing a dangerous name in allowed_env is
+        # NOT enough on its own — the allow_dangerous_env gate must
+        # also be set.
         cfg = policy_cfg(
             allowed_env=["BASH_ENV"],
             sec_modes=modes_for(policy_env="enforce", policy_files="off",
@@ -141,8 +145,68 @@ class PolicyEnvModesTest(unittest.TestCase):
         executed, audit, _ = run_job(
             cfg, self._job("env-listed", {"BASH_ENV": "/tmp/evil"}),
             secret=EXTRA)
+        self.assertFalse(executed)
+        self.assertEqual(audit[0]["reason"], "dangerous_env")
+
+    def test_dangerous_env_gate_permits_listed_name(self):
+        cfg = policy_cfg(
+            allowed_env=["BASH_ENV"],
+            allow_dangerous_env=True,
+            sec_modes=modes_for(policy_env="enforce", policy_files="off",
+                                policy_args="off"))
+        executed, audit, _ = run_job(
+            cfg, self._job("env-gated", {"BASH_ENV": "/tmp/evil"}),
+            secret=EXTRA)
         self.assertTrue(executed)
         self.assertEqual(audit, [])
+
+    def test_dangerous_env_gate_alone_permits_nothing(self):
+        # The gate without an explicit listing still denies.
+        cfg = policy_cfg(
+            allow_dangerous_env=True,
+            sec_modes=modes_for(policy_env="enforce", policy_files="off",
+                                policy_args="off"))
+        executed, audit, _ = run_job(
+            cfg, self._job("env-gate-alone", {"BASH_ENV": "/tmp/evil"}),
+            secret=EXTRA)
+        self.assertFalse(executed)
+        self.assertEqual(audit[0]["reason"], "dangerous_env")
+
+    def test_dangerous_env_gate_must_be_bool_true(self):
+        # A truthy string does not open the gate (fail-safe).
+        cfg = policy_cfg(
+            allowed_env=["BASH_ENV"],
+            allow_dangerous_env="true",
+            sec_modes=modes_for(policy_env="enforce", policy_files="off",
+                                policy_args="off"))
+        executed, audit, _ = run_job(
+            cfg, self._job("env-gate-str", {"BASH_ENV": "/tmp/evil"}),
+            secret=EXTRA)
+        self.assertFalse(executed)
+        self.assertEqual(audit[0]["reason"], "dangerous_env")
+
+    def test_new_appendix_a_names_denied(self):
+        for name in ("PATH", "PYTHONHOME", "JAVA_TOOL_OPTIONS",
+                     "COMSPEC", "PROMPT_COMMAND", "NODE_PATH"):
+            cfg = policy_cfg(
+                sec_modes=modes_for(policy_env="enforce",
+                                    policy_files="off", policy_args="off"))
+            executed, audit, _ = run_job(
+                cfg, self._job("env-new-" + name, {name: "x"}),
+                secret=EXTRA)
+            self.assertFalse(executed, name)
+            self.assertEqual(audit[0]["reason"], "dangerous_env", name)
+
+    def test_dangerous_prefixes_denied(self):
+        for name in ("DYLD_FALLBACK_LIBRARY_PATH", "GIT_CONFIG_COUNT"):
+            cfg = policy_cfg(
+                sec_modes=modes_for(policy_env="enforce",
+                                    policy_files="off", policy_args="off"))
+            executed, audit, _ = run_job(
+                cfg, self._job("env-pfx", {name: "x"}),
+                secret=EXTRA)
+            self.assertFalse(executed, name)
+            self.assertEqual(audit[0]["reason"], "dangerous_env", name)
 
     def test_sentinel_never_in_audit(self):
         cfg = policy_cfg(
@@ -210,6 +274,32 @@ class PolicyFilesModesTest(unittest.TestCase):
         self.assertTrue(executed)
         self.assertEqual(audit, [])
 
+    def test_allow_file_urls_false_denies(self):
+        cfg = policy_cfg(
+            allowed_files=["good.txt"],
+            allow_file_urls=False,
+            sec_modes=modes_for(policy_env="off", policy_files="enforce",
+                                policy_args="off"))
+        executed, audit, _ = run_job(
+            cfg, self._job("files-nourl", [self._file("good.txt")]),
+            secret=EXTRA)
+        self.assertFalse(executed)
+        self.assertEqual(audit[0]["reason"], "file_url_not_allowed")
+
+    def test_allow_file_urls_true_allows(self):
+        with mock.patch.object(RR, "download") as dl:
+            dl.side_effect = lambda url, dest: open(dest, "w").write("x")
+            cfg = policy_cfg(
+                allowed_files=["good.txt"],
+                allow_file_urls=True,
+                sec_modes=modes_for(policy_env="off", policy_files="enforce",
+                                    policy_args="off"))
+            executed, audit, _ = run_job(
+                cfg, self._job("files-url-ok", [self._file("good.txt")]),
+                secret=EXTRA)
+        self.assertTrue(executed)
+        self.assertEqual(audit, [])
+
 
 class PolicyArgsModesTest(unittest.TestCase):
     """Three-mode test for policy_args."""
@@ -243,6 +333,36 @@ class PolicyArgsModesTest(unittest.TestCase):
         executed, audit, _ = self.run_mode("enforce", ["BAD"])
         self.assertFalse(executed)
         self.assertEqual(audit[0]["decision"], "denied")
+
+    def test_max_args_denies(self):
+        cfg = policy_cfg(
+            max_args=1,
+            sec_modes=modes_for(policy_env="off", policy_files="off",
+                                policy_args="enforce"))
+        executed, audit, _ = run_job(
+            cfg, self._job("args-many", ["one", "two"]), secret=EXTRA)
+        self.assertFalse(executed)
+        self.assertEqual(audit[0]["reason"], "args_too_many")
+
+    def test_max_args_within_cap_runs(self):
+        cfg = policy_cfg(
+            max_args=2,
+            sec_modes=modes_for(policy_env="off", policy_files="off",
+                                policy_args="enforce"))
+        executed, audit, _ = run_job(
+            cfg, self._job("args-ok", ["one", "two"]), secret=EXTRA)
+        self.assertTrue(executed)
+        self.assertEqual(audit, [])
+
+    def test_max_args_zero_denies_any_arg(self):
+        cfg = policy_cfg(
+            max_args=0,
+            sec_modes=modes_for(policy_env="off", policy_files="off",
+                                policy_args="enforce"))
+        executed, audit, _ = run_job(
+            cfg, self._job("args-zero", ["one"]), secret=EXTRA)
+        self.assertFalse(executed)
+        self.assertEqual(audit[0]["reason"], "args_too_many")
 
     def test_enforce_still_runs_compliant_job(self):
         executed, audit, _ = self.run_mode("enforce", ["good"])
@@ -298,9 +418,21 @@ class PinnedScriptTest(unittest.TestCase):
         self.assertIn("dangerous_env", reasons)
 
     def test_pinned_env_allowed_when_listed(self):
+        # The Appendix A gate applies to pinned scripts too: listing
+        # alone is not enough.
         cfg = self._cfg("enforce", allowed_env=["BASH_ENV"])
         executed, audit, _ = run_job(
             cfg, self._job("pin-02", env={"BASH_ENV": "/tmp/evil"}),
+            secret=EXTRA)
+        self.assertFalse(executed)
+        reasons = [a["reason"] for a in audit]
+        self.assertIn("dangerous_env", reasons)
+
+    def test_pinned_env_gate_permits_listed_name(self):
+        cfg = self._cfg("enforce", allowed_env=["BASH_ENV"],
+                        allow_dangerous_env=True)
+        executed, audit, _ = run_job(
+            cfg, self._job("pin-02b", env={"BASH_ENV": "/tmp/evil"}),
             secret=EXTRA)
         self.assertTrue(executed)
         self.assertEqual(audit, [])
@@ -358,6 +490,24 @@ class DangerousNamesTest(unittest.TestCase):
         for name in ("BASH_ENV", "LD_PRELOAD", "PYTHONPATH",
                      "LD_LIBRARY_PATH", "ENV"):
             self.assertIn(name, RR.DANGEROUS_ENV_NAMES)
+
+    def test_constant_contains_appendix_a_names(self):
+        for name in ("PATH", "IFS", "SHELLOPTS", "BASHOPTS", "PS4",
+                     "PROMPT_COMMAND", "PYTHONHOME", "PYTHONINSPECT",
+                     "PYTHONUSERBASE", "NODE_PATH", "PERL5OPT",
+                     "JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "CLASSPATH",
+                     "GIT_EXEC_PATH", "COMSPEC", "PATHEXT",
+                     "PSModulePath"):
+            self.assertIn(name, S.DANGEROUS_ENV_NAMES)
+
+    def test_helper_matches_prefixes(self):
+        self.assertTrue(S.is_dangerous_env_name("DYLD_LIBRARY_PATH"))
+        self.assertTrue(S.is_dangerous_env_name("dyld_fallback_x"))
+        self.assertTrue(S.is_dangerous_env_name("GIT_CONFIG_COUNT"))
+        self.assertFalse(S.is_dangerous_env_name("MYAPP_VAR"))
+        self.assertFalse(S.is_dangerous_env_name(""))
+        self.assertFalse(S.is_dangerous_env_name(None))
+        self.assertFalse(S.is_dangerous_env_name(123))
 
 
 class ArgsPatternTimingTest(unittest.TestCase):

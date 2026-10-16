@@ -130,6 +130,24 @@ def ensure_shared_secret(cfg_path: str, provided: str | None) -> None:
     else:
         print(f"generated a random shared_secret into {cfg_path} -- "
               f"give this string to your cloud SI")
+    ensure_runner_id(cfg_path)
+
+
+def ensure_runner_id(cfg_path: str) -> None:
+    """Hardening M5: generate a 128-bit runner_id when absent.
+
+    Never overwrites an existing one: changing it would invalidate
+    previously signed jobs.
+    """
+    with open(cfg_path, encoding="utf-8") as f:
+        cfg = json.load(f)
+    if cfg.get("runner_id"):
+        return
+    cfg["runner_id"] = secrets.token_hex(16)
+    with open(cfg_path, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+    print(f"generated runner_id into {cfg_path}")
 
 
 _KEY_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")

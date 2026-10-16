@@ -88,6 +88,29 @@ class AudienceModesTest(unittest.TestCase):
         self.assertTrue(executed)
         self.assertEqual(audit, [])
 
+    def test_enforce_aud_field_accepted(self):
+        # Plan M5: the signed audience field is `aud`.
+        payload = _payload("a-enf-aud", kind="ping")
+        payload["aud"] = RID
+        executed, audit, _, _ = run_job(aud_cfg("enforce"), payload)
+        self.assertTrue(executed)
+        self.assertEqual(audit, [])
+
+    def test_enforce_aud_wrong_rejected(self):
+        payload = _payload("a-enf-aud2", kind="ping")
+        payload["aud"] = "other"
+        executed, audit, _, _ = run_job(aud_cfg("enforce"), payload)
+        self.assertFalse(executed)
+        self.assertEqual(audit[0]["reason"], "runner_id_mismatch")
+
+    def test_enforce_aud_wins_over_runner_id(self):
+        # When both are present, `aud` decides.
+        payload = _payload("a-enf-aud3", kind="ping", runner_id="other")
+        payload["aud"] = RID
+        executed, audit, _, _ = run_job(aud_cfg("enforce"), payload)
+        self.assertTrue(executed)
+        self.assertEqual(audit, [])
+
     def test_enforce_missing_runner_id_rejected(self):
         executed, audit, _, _ = run_job(
             aud_cfg("enforce"), self._job("a-enf-02"))

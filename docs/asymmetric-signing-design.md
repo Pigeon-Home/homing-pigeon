@@ -70,7 +70,8 @@ do not change.
   slow but fine at job-submission rates). The pure-Python route fits
   the project's stdlib-only preference; it must be constant-time
   where it matters (it is, for verification, if written carefully —
-  get this reviewed).
+  get this reviewed). A fourth option the plan asks us to evaluate is
+  `ssh-keygen -Y` (below) — it may obsolete this whole question.
 - **What HMAC still buys.** HMAC-SHA-384 is not broken; the migration
   is about key management, not algorithm strength. There is no rush.
 - **Revocation.** A compromised SI private key needs revocation: remove
@@ -87,3 +88,62 @@ one SI, one box. Asymmetric signing pays off when there are many
 signers with different trust levels (the sensor keys in
 `key_policies` are the first taste). Build it when the second
 untrusted signer appears, not before.
+
+## Appendix: evaluating `ssh-keygen -Y` (plan M9)
+
+The plan asks for an explicit evaluation of OpenSSH's `ssh-keygen -Y
+sign` / `-Y verify` as the Ed25519 mechanism, because it is the only
+option with no new Python dependency.
+
+**How it would work.** The SI signs the normalized body bytes with
+`ssh-keygen -Y sign -f <private-key> -n homing-pigeon`, producing an
+armored signature placed in the `sig` field (or a companion field —
+the armor is multi-line, so it needs a JSON-safe encoding). The
+runner verifies with `ssh-keygen -Y verify -f allowed_signers -n
+homing-pigeon -s <sig>`, where `allowed_signers` maps each `key_id`
+to a public key line:
+
+```
+default@example.com namespaces="homing-pigeon" ssh-ed25519 AAAA...
+```
+
+The `-n` namespace binds the signature to this application, so a
+signature minted for another purpose (git commits, SSH auth) cannot
+be replayed as a job.
+
+**In its favor.**
+- Zero Python dependencies: no C extensions, no vendored crypto to
+  own and get reviewed. OpenSSH ships on every target platform,
+  including recent Windows.
+- The crypto is maintained by someone else (OpenBSD) and is
+  battle-tested.
+- Key generation and management UX already exists
+  (`ssh-keygen -t ed25519`); operators already know it.
+- Verification-only on the runner, signing-only on the SI — the
+  timing-side-channel concern that haunts pure-Python Ed25519
+  applies to signing, which happens off-box.
+
+**Against it.**
+- Shelling out per message: a subprocess spawn on every poll hit.
+  At job-submission rates (a handful of messages per poll, polls
+  minutes apart) this is negligible, but it is a new failure mode
+  (missing binary, PATH issues, Windows quoting).
+- The armored signature is bulky (~0.5 KB base64-armored) versus
+  64 bytes raw; fine for email, but the envelope grows.
+- `allowed_signers` is a second key store beside `config.json`,
+  with its own file-permission story (it must not be writable by
+  the SI's key_id, obviously — it lives on the runner).
+- Namespace discipline is load-bearing: if the namespace string is
+  ever reused across applications, cross-protocol replay becomes
+  possible. It must be a constant, not configurable.
+
+**Recommendation.** The plan's lean is correct: `ssh-keygen -Y` is
+the best first mechanism, behind a `signature_scheme` config key
+(`hmac` today, `ssh-keygen` when implemented). It keeps the
+stdlib-only story intact, outsources the crypto, and the costs
+(subprocess per verify, bulky armor) are irrelevant at this
+system's message rates. The vendored pure-Python verifier remains
+the fallback if OpenSSH is ever unavailable on a target. Either
+way, the `alg` field in the signed body records which scheme
+verified each message, so the audit log stays unambiguous during
+rotation.

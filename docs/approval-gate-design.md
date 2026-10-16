@@ -33,7 +33,7 @@ M2 constraints):
 }
 ```
 
-Modes:
+Modes (what gets gated):
 
 - `off` (default) — no gate, current behavior.
 - `all` — every job from this key waits for approval.
@@ -41,6 +41,33 @@ Modes:
 - `destructive` — jobs whose review verdict is `hostile` or whose
   script matches destructive patterns wait. (Requires the reviewer to
   produce a machine-readable risk signal; today it produces notes.)
+
+### Audit/enforce integration (M0)
+
+The `mode` above selects *what* gets gated. *Whether* the gate holds
+jobs is governed by the M0 three-mode system like every other
+hardening feature, via `security.modes.approval`:
+
+- `off` (default) — the approval block is parsed but changes nothing.
+  Gated jobs run immediately, no log entries.
+- `audit` — the runner evaluates each job against the gate, logs
+  `would_deny` / `would_require_approval` to the security audit log,
+  and runs the job anyway. This is the dry-run: the owner watches
+  `--audit-report` for a week to see what *would* have waited before
+  turning the gate on.
+- `enforce` — jobs matching the gate's scope are held in the pending
+  queue instead of executing.
+
+This keeps the approval gate consistent with confinement, audience
+binding, and the M2 constraints: one mode vocabulary, one audit log,
+one `--audit-report` view. The `--posture` check for "features in
+off mode that are recommended" does not nag about `approval`,
+because a human-in-the-loop gate is a workflow decision, not a
+missing default.
+
+The pending-queue entries themselves are audit-logged (held,
+approved, rejected, expired), so the full lifecycle is visible in
+`--audit-report` under the `approval` feature.
 
 ### The pending queue
 

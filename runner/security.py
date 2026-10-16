@@ -43,13 +43,23 @@ COUNTS_FILE = "security-audit-counts.json"
 
 
 # Hardening M2: env names that subvert execution even when the script
-# itself is pinned. Compared case-insensitively (Windows env is
-# case-insensitive; on POSIX the uppercase form is the dangerous one,
-# and matching it case-insensitively errs toward safety).
+# itself is pinned. Compared case-insensitively everywhere (Windows env
+# is case-insensitive; on POSIX the uppercase form is the dangerous one,
+# and matching it case-insensitively errs toward safety — stricter than
+# the plan's case-sensitive-outside-Windows rule, kept deliberately).
+# Appendix A of the hardening plan. Prefixes cover the plan's DYLD_* and
+# GIT_CONFIG_* wildcards.
 DANGEROUS_ENV_NAMES = frozenset({
-    # Shell startup files: executed automatically by sh/bash/ksh.
+    # Shell startup files and shell behavior: executed automatically
+    # by sh/bash/ksh, or alter parsing of every command.
     "BASH_ENV",
     "ENV",
+    "PATH",
+    "IFS",
+    "SHELLOPTS",
+    "BASHOPTS",
+    "PS4",
+    "PROMPT_COMMAND",
     # Dynamic linker: hijack library loading for any subprocess.
     "LD_PRELOAD",
     "LD_LIBRARY_PATH",
@@ -57,15 +67,46 @@ DANGEROUS_ENV_NAMES = frozenset({
     # Interpreters: auto-executed startup code / module injection.
     "PYTHONPATH",
     "PYTHONSTARTUP",
+    "PYTHONHOME",
+    "PYTHONINSPECT",
+    "PYTHONUSERBASE",
     "PERL5LIB",
+    "PERL5OPT",
     "PERLLIB",
     "RUBYLIB",
     "RUBYOPT",
     "NODE_OPTIONS",
+    "NODE_PATH",
+    # JVM: agent injection on every java invocation.
+    "JAVA_TOOL_OPTIONS",
+    "_JAVA_OPTIONS",
+    "CLASSPATH",
     # Tool behavior: command substitution on invocation.
     "GIT_SSH",
     "GIT_SSH_COMMAND",
+    "GIT_EXEC_PATH",
+    # Windows: command interpreter and module search hijack.
+    "COMSPEC",
+    "PATHEXT",
+    "PSModulePath",
 })
+DANGEROUS_ENV_PREFIXES = frozenset({
+    "DYLD_",
+    "GIT_CONFIG_",
+})
+
+
+def is_dangerous_env_name(name) -> bool:
+    """True if the env name can subvert execution (plan Appendix A).
+
+    Case-insensitive everywhere: stricter than the plan, deliberate.
+    """
+    if not isinstance(name, str) or not name:
+        return False
+    upper = name.upper()
+    if upper in DANGEROUS_ENV_NAMES:
+        return True
+    return any(upper.startswith(p) for p in DANGEROUS_ENV_PREFIXES)
 
 
 def _estimate_secret_entropy(secret: str) -> float:
@@ -272,11 +313,23 @@ def _bump_counts(base_dir, feature, decision):
         pass
 
 
+def bump_evaluated(base_dir, feature):
+    """Count one evaluation of a security feature. Best effort.
+
+    Called by each feature's evaluation point when the feature is not
+    off, so --audit-report can show "jobs evaluated" per feature.
+    """
+    _bump_counts(base_dir, feature, "evaluated")
+
+
 def write_audit_entry(base_dir, feature, decision, reason,
-                      key_id="", job_id="", detail="", cfg=None):
+                      key_id="", job_id="", detail="", cfg=None,
+                      mode=None):
     """Append one audit entry. Best effort: never raises into the caller.
 
     decision is "would_deny" (audit mode) or "denied" (enforce mode).
+    mode is the feature's mode ("audit"/"enforce") at decision time,
+    recorded so --audit-report can show it per entry.
     Only names, counts, hashes and ids go in entries -- callers must
     never pass secret values, script text, or file contents.
     """
@@ -291,6 +344,8 @@ def write_audit_entry(base_dir, feature, decision, reason,
             "key_id": key_id,
             "job_id": job_id,
         }
+        if mode:
+            entry["mode"] = mode
         if detail:
             entry["detail"] = detail
         path = _audit_path(base_dir)
@@ -308,14 +363,15 @@ def write_audit_entry(base_dir, feature, decision, reason,
 def sec_decide(cfg, base_dir, feature, reason, ctx=None):
     """The single decision point for security features.
 
-    Returns "allow" or "deny". In audit mode the job proceeds (returns
-    "allow") and a "would_deny" entry is written. In enforce mode a
-    "denied" entry is written and the caller must reject through the
-    existing reject path. Never raises.
+    Returns True when the message may proceed, False when it must be
+    rejected. In audit mode the job proceeds (returns True) and a
+    "would_deny" entry is written. In enforce mode a "denied" entry is
+    written and the caller must reject through the existing reject
+    path. Never raises.
     """
     mode = sec_mode(cfg, feature)
     if mode == "off":
-        return "allow"
+        return True
     ctx = ctx if isinstance(ctx, dict) else {}
     # Audit entries carry identifiers only, never secrets. Coerce
     # defensively; a hostile __str__ must not break the poll loop.
@@ -328,8 +384,9 @@ def sec_decide(cfg, base_dir, feature, reason, ctx=None):
     if mode == "audit":
         write_audit_entry(base_dir, feature, "would_deny", reason,
                           key_id=key_id, job_id=job_id, detail=detail,
-                          cfg=cfg)
-        return "allow"
+                          cfg=cfg, mode=mode)
+        return True
     write_audit_entry(base_dir, feature, "denied", reason,
-                      key_id=key_id, job_id=job_id, detail=detail, cfg=cfg)
-    return "deny"
+                      key_id=key_id, job_id=job_id, detail=detail, cfg=cfg,
+                      mode=mode)
+    return False

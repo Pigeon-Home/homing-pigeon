@@ -4,9 +4,10 @@
 Read-only. No mailbox access, no network, never writes to
 config.json. Works with a config that has no mailbox credentials.
 
-Output: a table of audit decisions in the window, per-key
-suggestions, and a "refused to suggest" section. Dangerous env
-names and URL file sources are never suggested.
+Output: a table (feature, mode, evaluated, would-deny, reasons),
+per-key suggestions, suggested key_policies fragments (audit2allow),
+and a "refused to suggest" section. Dangerous env names and URL file
+sources are never suggested.
 """
 import json
 import os
@@ -77,28 +78,127 @@ def _looks_like_url(name):
         name.startswith("http://") or name.startswith("https://"))
 
 
-def build_report(cfg, base_dir, since_secs):
-    """Return (table_rows, suggestions, refused).
+def _is_dangerous(name):
+    if _security is not None and hasattr(_security, "is_dangerous_env_name"):
+        try:
+            return bool(_security.is_dangerous_env_name(name))
+        except Exception:
+            pass
+    names = _dangerous_names()
+    return isinstance(name, str) and name.upper() in names
 
-    table_rows: [(feature, decision, reason, count)] sorted by count.
-    suggestions: [str]. refused: [str].
+
+def _env_name_in_detail(detail):
+    m = re.search(r"env '([^']+)'", detail or "")
+    return m.group(1) if m else ""
+
+
+def _file_name_in_detail(detail):
+    m = re.search(r"file '([^']+)'", detail or "")
+    return m.group(1) if m else ""
+
+
+def build_fragments(per_key):
+    """key_id -> (fragment dict, counts) for the audit2allow section.
+
+    Only findings that would block a legitimate job (would_deny in
+    audit mode, denied in enforce) contribute. Dangerous env names are
+    never suggested — they belong in the refused section.
+    Returns {kid: {"fragment": {...}, "env_counts": {...},
+                   "file_counts": {...}, "arg_reasons": {...}}}.
+    """
+    out = {}
+    for kid, es in sorted(per_key.items()):
+        env_counts = {}
+        file_counts = {}
+        arg_reasons = {}
+        for e in es:
+            if e.get("decision") not in ("would_deny", "denied"):
+                continue
+            r = e.get("reason", "?")
+            detail = e.get("detail") or ""
+            if r == "env_not_allowed":
+                name = _env_name_in_detail(detail)
+                if name and not _is_dangerous(name):
+                    env_counts[name] = env_counts.get(name, 0) + 1
+            elif r == "file_not_allowed":
+                name = _file_name_in_detail(detail)
+                if name and not _looks_like_url(name):
+                    file_counts[name] = file_counts.get(name, 0) + 1
+            elif r in ("arg_pattern_mismatch", "args_too_many",
+                       "arg_too_long"):
+                arg_reasons[r] = arg_reasons.get(r, 0) + 1
+        fragment = {}
+        if env_counts:
+            fragment["allowed_env"] = sorted(env_counts)
+        if file_counts:
+            fragment["allowed_files"] = sorted(file_counts)
+        if fragment or arg_reasons:
+            out[kid] = {"fragment": fragment,
+                        "env_counts": env_counts,
+                        "file_counts": file_counts,
+                        "arg_reasons": arg_reasons}
+    return out
+
+
+def _read_counts(base_dir):
+    try:
+        with open(os.path.join(base_dir, "security-audit-counts.json"),
+                  encoding="utf-8") as fh:
+            counts = json.load(fh)
+        return counts if isinstance(counts, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def build_report(cfg, base_dir, since_secs, key=None, feature=None):
+    """Return (table_rows, suggestions, refused, fragments).
+
+    table_rows: [(feature, mode, evaluated, would_deny, reasons_str)]
+    sorted by would_deny desc. suggestions: [str]. refused: [str].
+    fragments: build_fragments() output for the audit2allow section.
+    key/feature filter entries by key_id / feature when given.
     """
     now = time.time()
     entries = [e for e in _read_entries(base_dir)
                if now - _entry_ts(e) <= since_secs]
+    if key is not None:
+        want = "" if key == "(default)" else key
+        entries = [e for e in entries if (e.get("key_id") or "") == want]
+    if feature is not None:
+        entries = [e for e in entries if e.get("feature") == feature]
 
-    counts = {}
+    counts = _read_counts(base_dir)
+    modes_cfg = (cfg.get("security") or {}).get("modes") or {}
+    by_feature = {}
+    for e in entries:
+        f = e.get("feature", "?")
+        info = by_feature.setdefault(
+            f, {"would_deny": 0, "reasons": {}, "modes": set()})
+        if e.get("decision") == "would_deny":
+            info["would_deny"] += 1
+        r = e.get("reason", "?")
+        info["reasons"][r] = info["reasons"].get(r, 0) + 1
+        m = e.get("mode") or modes_cfg.get(f) or "?"
+        info["modes"].add(m)
+
+    table_rows = []
+    for f, info in sorted(by_feature.items(),
+                          key=lambda kv: (-kv[1]["would_deny"], kv[0])):
+        evaluated = 0
+        feat_counts = counts.get(f)
+        if isinstance(feat_counts, dict):
+            evaluated = int(feat_counts.get("evaluated") or 0)
+        mode = "/".join(sorted(info["modes"]))
+        reasons = " ".join("%s(%d)" % (r, n) for r, n in sorted(
+            info["reasons"].items(), key=lambda kv: -kv[1])) or "-"
+        table_rows.append((f, mode, evaluated, info["would_deny"],
+                           reasons))
+
     per_key = {}
     for e in entries:
-        key = (e.get("feature", "?"), e.get("decision", "?"),
-               e.get("reason", "?"))
-        counts[key] = counts.get(key, 0) + 1
         kid = e.get("key_id") or "(default)"
         per_key.setdefault(kid, []).append(e)
-
-    table_rows = sorted(
-        ((f, d, r, c) for (f, d, r), c in counts.items()),
-        key=lambda row: (-row[3], row[0], row[1], row[2]))
 
     suggestions = []
     refused = []
@@ -147,27 +247,56 @@ def build_report(cfg, base_dir, since_secs):
                 "tightening the policy or switching the feature to "
                 "enforce" % (kid, n, reason, "s" if n != 1 else ""))
 
-    return table_rows, suggestions, refused
+    fragments = build_fragments(per_key)
+    return table_rows, suggestions, refused, fragments
 
 
-def format_report(table_rows, suggestions, refused, since_label):
+def format_report(table_rows, suggestions, refused, since_label,
+                fragments=None):
     lines = []
     lines.append("Security audit report (%s)" % since_label)
     lines.append("=" * 60)
     if not table_rows:
         lines.append("no audit entries in this window")
     else:
-        lines.append("%-16s %-10s %-24s %s"
-                     % ("feature", "decision", "reason", "count"))
-        for feature, decision, reason, count in table_rows:
-            lines.append("%-16s %-10s %-24s %d"
-                         % (feature, decision, reason, count))
+        lines.append("%-14s %-10s %-9s %-10s %s"
+                     % ("feature", "mode", "evaluated", "would-deny",
+                        "reasons"))
+        for feature, mode, evaluated, would_deny, reasons in table_rows:
+            lines.append("%-14s %-10s %-9d %-10d %s"
+                         % (feature, mode, evaluated, would_deny,
+                            reasons))
     lines.append("")
     lines.append("Per-key suggestions")
     lines.append("-" * 60)
     if suggestions:
         for s in suggestions:
             lines.append("- " + s)
+    else:
+        lines.append("none")
+    lines.append("")
+    lines.append("Suggested key_policies fragments")
+    lines.append("-" * 60)
+    lines.append("(paste into config.json under \"key_policies\"; "
+                 "nothing was written)")
+    if fragments:
+        for kid, info in fragments.items():
+            lines.append('KEY: %s' % kid)
+            frag = info["fragment"]
+            if frag:
+                lines.append("  %s" % json.dumps(frag, indent=4))
+            # Counts per contributed name, so the owner sees frequency.
+            bits = []
+            for name, n in sorted(info["env_counts"].items()):
+                bits.append('"%s" (%d)' % (name, n))
+            for name, n in sorted(info["file_counts"].items()):
+                bits.append('"%s" (%d)' % (name, n))
+            if bits:
+                lines.append("  observed: " + ", ".join(bits))
+            for reason, n in sorted(info["arg_reasons"].items()):
+                lines.append('  args: %d "%s" finding%s — craft '
+                             "args_pattern/max_args manually"
+                             % (n, reason, "s" if n != 1 else ""))
     else:
         lines.append("none")
     lines.append("")
@@ -181,7 +310,7 @@ def format_report(table_rows, suggestions, refused, since_label):
     return "\n".join(lines) + "\n"
 
 
-def main(cfg, base_dir, since=None):
+def main(cfg, base_dir, since=None, key=None, feature=None):
     """Entry point for --audit-report. Returns an exit code."""
     try:
         since_secs = parse_since(since)
@@ -190,8 +319,12 @@ def main(cfg, base_dir, since=None):
         return 2
     # parse_since(None) is the 30-day default; label it honestly.
     label = "last %s" % since if since else "last 30d"
-    table_rows, suggestions, refused = build_report(cfg, base_dir,
-                                                    since_secs)
+    if key:
+        label += ", key %s" % key
+    if feature:
+        label += ", feature %s" % feature
+    table_rows, suggestions, refused, fragments = build_report(
+        cfg, base_dir, since_secs, key=key, feature=feature)
     sys.stdout.write(format_report(table_rows, suggestions, refused,
-                                   label))
+                                   label, fragments))
     return 0
