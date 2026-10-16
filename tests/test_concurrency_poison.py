@@ -1260,7 +1260,7 @@ class ConcurrentOracleWritersAndSetupWriteTest(unittest.TestCase):
             def worker(n):
                 try:
                     _write_config(path, {"n": n, "host": "imap.gmail.com"})
-                except FileNotFoundError as e:
+                except (FileNotFoundError, PermissionError) as e:
                     errors.append(("fnf", repr(e)))
                 except Exception as e:
                     errors.append(("other", repr(e)))

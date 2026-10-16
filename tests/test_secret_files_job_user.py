@@ -2,12 +2,16 @@
 """M8 tests: secret files and job_user."""
 import json
 import os
-import pwd
 import secrets
 import sys
 import tempfile
 import unittest
 from unittest import mock
+
+try:
+    import pwd
+except ImportError:  # Windows has no pwd
+    pwd = None
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
@@ -18,12 +22,16 @@ from runner.runner import build_secrets, execute_job  # noqa: E402
 STRONG = secrets.token_hex(32)
 STRONG2 = secrets.token_hex(32)
 
-try:
-    pwd.getpwnam("pigeon-test")
-    HAS_TEST_USER = True
-except KeyError:
+if pwd is None:
     HAS_TEST_USER = False
+else:
+    try:
+        pwd.getpwnam("pigeon-test")
+        HAS_TEST_USER = True
+    except KeyError:
+        HAS_TEST_USER = False
 IS_ROOT = os.geteuid() == 0 if hasattr(os, "geteuid") else False
+POSIX = os.name != "nt"
 
 
 def _secret_file(d, name, content):
@@ -123,6 +131,7 @@ class JobUserTest(unittest.TestCase):
         self.assertEqual(result["stdout"].strip(), "hi")
         self.assertEqual(audit, [])
 
+    @unittest.skipUnless(POSIX, "job_user audit is POSIX")
     def test_audit_logs_and_runs(self):
         result, audit = _run(
             _ju("audit"), _job("m8-audit", "print('hi')"))
@@ -139,6 +148,7 @@ class JobUserTest(unittest.TestCase):
                 S.validate_security_config(
                     {"security": {"job_user": bad}})
 
+    @unittest.skipUnless(POSIX, "job_user fallback is POSIX")
     def test_non_root_falls_back(self):
         with mock.patch.object(os, "geteuid", return_value=1000):
             result, audit = _run(

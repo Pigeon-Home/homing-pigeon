@@ -44,6 +44,7 @@ class PostureTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("[OK  ]", out)
 
+    @unittest.skipUnless(os.name != "nt", "Unix mode bits")
     def test_loose_config_perms_warn(self):
         with tempfile.TemporaryDirectory() as d:
             cfg = {"base_dir": d, "shared_secret": STRONG}
@@ -77,6 +78,7 @@ class PostureTest(unittest.TestCase):
             rc, _ = _run(cfg, path, d)
         self.assertEqual(rc, 2)
 
+    @unittest.skipUnless(os.name != "nt", "Unix mode bits")
     def test_audit_file_perms(self):
         with tempfile.TemporaryDirectory() as d:
             cfg = {"base_dir": d, "shared_secret": STRONG}

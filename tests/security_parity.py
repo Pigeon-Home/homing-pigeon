@@ -108,6 +108,8 @@ _TS = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?")
 
 
 def normalize(text, tmpdir):
+    # JSON escapes backslashes, so a Windows temp path appears twice.
+    text = text.replace(tmpdir.replace("\\", "\\\\"), "<TMP>")
     text = text.replace(tmpdir, "<TMP>")
     text = _TS.sub("<TS>", text)
     text = re.sub(r'"duration_ms":\s*\d+', '"duration_ms": <D>', text)
@@ -116,6 +118,13 @@ def normalize(text, tmpdir):
     # The HMAC covers fields we normalize away (durations); drop it so
     # identical payloads compare equal. Authenticity is not under test.
     text = re.sub(r',"sig":"[0-9a-f]{96}"', '', text)
+    # stdout may contain the temp path. The digest is computed before
+    # that path is replaced, so two runs hash differently. The text
+    # above is what the comparison is for.
+    text = re.sub(r'"digest":"[0-9a-fA-F]+"', '"digest":"<DIGEST>"', text)
+    text = re.sub(
+        r'"output_digest":"[0-9a-fA-F]+"',
+        '"output_digest":"<DIGEST>"', text)
     try:
         text = text.replace(socket.gethostname(), "<HOST>")
     except Exception:

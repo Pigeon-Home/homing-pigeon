@@ -63,7 +63,8 @@ class BuildCommandTest(unittest.TestCase):
         si = argv.index("--setenv")
         self.assertIn("FOO", argv)
         # resolved interpreter, script under /work, args at the end
-        self.assertTrue(argv[-3].endswith("python3"))
+        base = os.path.basename(argv[-3]).lower()
+        self.assertTrue(base.startswith("python"), argv[-3])
         self.assertEqual(argv[-2], "/work/script.py")
         self.assertEqual(argv[-1], "--x")
 
