@@ -1,6 +1,16 @@
 # Coverage findings
 
-Homing Pigeon, main @ c48aece, after the coverage-seam tests in pull 76.
+This report belongs to release v3.5.2.
+The package version is 3.5.2 and the latest tag is v3.5.2.
+Measured on main at c48aece, 14 commits after that tag, after the coverage-seam tests in pull 76.
+No new tag was cut for this measurement.
+
+![85 percent of statements covered](overall.png)
+
+![Coverage by file](by_file.png)
+
+![Before the seam tests, then after](before_after.png)
+
 Measured 2026-10-16 with coverage.py 7.16.2.
 
 ```
