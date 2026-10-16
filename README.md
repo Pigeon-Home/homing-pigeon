@@ -465,7 +465,10 @@ End-to-end without your SI:
 
 - Honest threat model: [docs/threat-model.md](docs/threat-model.md) —
   what this is, what it isn't, and what "anyone holding the shared
-  secret effectively owns the box" means for how you deploy it.
+  secret effectively owns the box" means for how you deploy it. Its
+  companion [docs/security-gaps.md](docs/security-gaps.md) covers
+  what the defaults don't protect you from, and the order to turn
+  things on.
 - The runner is a **full-trust execution environment**: a valid signed
   job message means arbitrary code as a privileged user. The app password sits in
   **plaintext** in config.json (your explicit

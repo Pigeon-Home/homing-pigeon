@@ -37,3 +37,13 @@ It could even work as a marketable service.
   widens the blast radius. `docs/roadmap-spec.md` is exciting and
   dangerous in exactly equal measure; build the gates (§3) before
   the hands (§1.3).
+
+## What the defaults don't cover
+
+`docs/security-gaps.md` is the companion to this file: the ordered
+story (split identities, then ACL the secrets, then cage the
+workspace), the per-platform ACL gaps, and the inventory of basic
+technologies still missing or default-off — runner code integrity,
+egress control, audit log integrity, supply chain, revocation, the
+Windows SYSTEM default. Read it before deciding the defaults are fine
+for your box.
