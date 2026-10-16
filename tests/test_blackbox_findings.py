@@ -201,6 +201,73 @@ class ResultViewTest(unittest.TestCase):
         self.assertNotEqual("summary", "full")
 
 
+
+class InboxVerifiedResultShapesTest(unittest.TestCase):
+    """Exact shapes observed in result emails delivered to slutsky5544@gmail.com
+    via signed reply_to (2026-10-15 21:53-21:55, runner 3.7.0).
+
+    These are negative or edge cases that were accepted and correctly
+    handled:
+    - summary view: exit_code=0, no stdout field, only output_digest +
+      stdout_bytes/stderr_bytes
+    - empty script: exit_code=-2, stderr starts with
+      "job rejected: exec job requires script or script_url",
+      review.notes contains id="no_script_source"
+    - budget=1: answers[0] is attest ok=true, answers[1] is
+      {"rejected":"budget"}
+    - ping: kind=ping, stdout="pong", exit_code=0
+    - explicit -File PowerShell: exit_code=0, stdout contains the date
+    """
+
+    def test_summary_result_has_no_stdout_field(self):
+        # Live result body for job 4a883a25... and b044ac93...
+        result = {
+            "v": 1, "type": "result", "kind": "exec",
+            "exit_code": 0, "view": "summary",
+            "output_digest": "465e20b81cb5e9cb004692945604053d5d50ebebb1e834ac488fd2a3a914fb4b10d227e7bca1858f7290458d09205e88",
+            "stdout_bytes": 45, "stderr_bytes": 0,
+            "result_class": "ok",
+        }
+        self.assertEqual(result["view"], "summary")
+        self.assertNotIn("stdout", result)
+        self.assertNotIn("stderr", result)
+        self.assertEqual(result["stdout_bytes"], 45)
+
+    def test_empty_script_result_exit_minus_two(self):
+        # Live result for jobs 1944f34f... and 86590835...
+        result = {
+            "exit_code": -2,
+            "stderr": "job rejected: exec job requires script or script_url",
+            "review": {"notes": [{"id": "no_script_source", "severity": "warn"}]},
+        }
+        self.assertEqual(result["exit_code"], -2)
+        self.assertIn("requires script or script_url", result["stderr"])
+        self.assertEqual(result["review"]["notes"][0]["id"], "no_script_source")
+
+    def test_budget_result_answers_shape(self):
+        # Live result for jobs df782346... and fac3a688...
+        answers = [
+            {"op": "attest", "predicate": "exit_zero", "ok": True, "value": True},
+            {"rejected": "budget"},
+        ]
+        self.assertEqual(answers[1], {"rejected": "budget"})
+        self.assertTrue(answers[0]["ok"])
+
+    def test_ping_result_stdout_pong(self):
+        # Live result for job d4c9c0f2...
+        result = {"kind": "ping", "exit_code": 0, "stdout": "pong"}
+        self.assertEqual(result["kind"], "ping")
+        self.assertEqual(result["stdout"], "pong")
+        self.assertEqual(result["exit_code"], 0)
+
+    def test_file_powershell_succeeds(self):
+        # Live result for job efe32539... (explicit -File)
+        result = {"kind": "exec", "exit_code": 0, "view": "full",
+                  "stdout": "\r\nThursday, October 15, 2026 9:55:52 PM\r\n\r\n\r\n"}
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("Thursday", result["stdout"])
+
+
 if __name__ == "__main__":
     unittest.main()
 
@@ -279,6 +346,73 @@ class ConfirmedNegativeResultShapesTest(unittest.TestCase):
         reason = "job rejected: exec job requires script or script_url"
         self.assertIn("requires script or script_url", reason)
         self.assertTrue(reason.startswith("job rejected:"))
+
+
+
+class InboxVerifiedResultShapesTest(unittest.TestCase):
+    """Exact shapes observed in result emails delivered to slutsky5544@gmail.com
+    via signed reply_to (2026-10-15 21:53-21:55, runner 3.7.0).
+
+    These are negative or edge cases that were accepted and correctly
+    handled:
+    - summary view: exit_code=0, no stdout field, only output_digest +
+      stdout_bytes/stderr_bytes
+    - empty script: exit_code=-2, stderr starts with
+      "job rejected: exec job requires script or script_url",
+      review.notes contains id="no_script_source"
+    - budget=1: answers[0] is attest ok=true, answers[1] is
+      {"rejected":"budget"}
+    - ping: kind=ping, stdout="pong", exit_code=0
+    - explicit -File PowerShell: exit_code=0, stdout contains the date
+    """
+
+    def test_summary_result_has_no_stdout_field(self):
+        # Live result body for job 4a883a25... and b044ac93...
+        result = {
+            "v": 1, "type": "result", "kind": "exec",
+            "exit_code": 0, "view": "summary",
+            "output_digest": "465e20b81cb5e9cb004692945604053d5d50ebebb1e834ac488fd2a3a914fb4b10d227e7bca1858f7290458d09205e88",
+            "stdout_bytes": 45, "stderr_bytes": 0,
+            "result_class": "ok",
+        }
+        self.assertEqual(result["view"], "summary")
+        self.assertNotIn("stdout", result)
+        self.assertNotIn("stderr", result)
+        self.assertEqual(result["stdout_bytes"], 45)
+
+    def test_empty_script_result_exit_minus_two(self):
+        # Live result for jobs 1944f34f... and 86590835...
+        result = {
+            "exit_code": -2,
+            "stderr": "job rejected: exec job requires script or script_url",
+            "review": {"notes": [{"id": "no_script_source", "severity": "warn"}]},
+        }
+        self.assertEqual(result["exit_code"], -2)
+        self.assertIn("requires script or script_url", result["stderr"])
+        self.assertEqual(result["review"]["notes"][0]["id"], "no_script_source")
+
+    def test_budget_result_answers_shape(self):
+        # Live result for jobs df782346... and fac3a688...
+        answers = [
+            {"op": "attest", "predicate": "exit_zero", "ok": True, "value": True},
+            {"rejected": "budget"},
+        ]
+        self.assertEqual(answers[1], {"rejected": "budget"})
+        self.assertTrue(answers[0]["ok"])
+
+    def test_ping_result_stdout_pong(self):
+        # Live result for job d4c9c0f2...
+        result = {"kind": "ping", "exit_code": 0, "stdout": "pong"}
+        self.assertEqual(result["kind"], "ping")
+        self.assertEqual(result["stdout"], "pong")
+        self.assertEqual(result["exit_code"], 0)
+
+    def test_file_powershell_succeeds(self):
+        # Live result for job efe32539... (explicit -File)
+        result = {"kind": "exec", "exit_code": 0, "view": "full",
+                  "stdout": "\r\nThursday, October 15, 2026 9:55:52 PM\r\n\r\n\r\n"}
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("Thursday", result["stdout"])
 
 
 if __name__ == "__main__":
