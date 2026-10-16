@@ -485,6 +485,90 @@ class OracleWindowTest(unittest.TestCase):
         self.assertFalse(opened.called)
 
 
+class RunnerMainTest(unittest.TestCase):
+    _VALID = {
+        "shared_secret": "0123456789abcdef" * 4,
+        "mailbox_user": "a@b.c",
+        "mailbox_password": "pw",
+    }
+
+    def _main(self, argv, text=None, present=True):
+        import contextlib
+        import sys
+        from runner import runner
+        from runner import setup
+        stack = contextlib.ExitStack()
+        oracle = stack.enter_context(
+            mock.patch.object(runner, "oracle_window", return_value=7))
+        imap = stack.enter_context(mock.patch.object(runner, "connect_imap"))
+        stack.enter_context(mock.patch.object(runner, "connect_smtp"))
+        stack.enter_context(mock.patch.object(runner, "ensure_inference_ready"))
+        stack.enter_context(mock.patch.object(runner, "update_llama_from_config"))
+        stack.enter_context(mock.patch.object(setup, "is_tty", return_value=False))
+        stack.enter_context(mock.patch.object(setup, "needs_setup", return_value=None))
+        stack.enter_context(mock.patch.object(setup, "prompt_yes_no", return_value=False))
+        local = stack.enter_context(
+            mock.patch("runner.local_test.main", return_value=4))
+        stack.enter_context(mock.patch.object(
+            runner, "poll_once", side_effect=AssertionError("poll")))
+        stack.enter_context(mock.patch.object(
+            runner.time, "sleep", side_effect=AssertionError("sleep")))
+        directory = stack.enter_context(tempfile.TemporaryDirectory())
+        path = os.path.join(directory, "config.json")
+        if present:
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text if text is not None else json.dumps(self._VALID))
+        stack.enter_context(mock.patch.object(
+            sys, "argv", ["runner", "--config", path, *argv]))
+        try:
+            code = runner.main()
+        finally:
+            stack.close()
+        return code, oracle, imap, local
+
+    def test_a_missing_config_returns_2(self):
+        code, oracle, imap, _local = self._main([], present=False)
+        self.assertEqual(code, 2)
+        self.assertFalse(oracle.called)
+        self.assertFalse(imap.called)
+
+    def test_a_list_config_returns_2(self):
+        code, oracle, imap, _local = self._main([], text="[]")
+        self.assertEqual(code, 2)
+        self.assertFalse(oracle.called)
+        self.assertFalse(imap.called)
+
+    def test_zero_workers_returns_2(self):
+        code, oracle, imap, _local = self._main(["--workers", "0"])
+        self.assertEqual(code, 2)
+        self.assertFalse(oracle.called)
+        self.assertFalse(imap.called)
+
+    def test_oracle_does_not_open_a_mailbox(self):
+        code, oracle, imap, local = self._main(["--oracle"])
+        self.assertEqual(code, 7)
+        self.assertEqual(oracle.call_count, 1)
+        self.assertEqual(oracle.call_args[0][1], 11436)
+        self.assertEqual(oracle.call_args[0][0]["mailbox_user"], "a@b.c")
+        self.assertFalse(imap.called)
+        self.assertFalse(local.called)
+
+    def test_oracle_port_is_passed_through(self):
+        code, oracle, imap, _local = self._main(
+            ["--oracle", "--oracle-port", "11437"])
+        self.assertEqual(code, 7)
+        self.assertEqual(oracle.call_args[0][1], 11437)
+        self.assertFalse(imap.called)
+
+    def test_local_test_does_not_open_a_mailbox(self):
+        code, oracle, imap, local = self._main(["--local-test"])
+        self.assertEqual(code, 4)
+        self.assertEqual(local.call_count, 1)
+        self.assertFalse(oracle.called)
+        self.assertFalse(imap.called)
+
+
+
 
 
 
