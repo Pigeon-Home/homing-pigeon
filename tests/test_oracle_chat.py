@@ -247,5 +247,50 @@ class OracleChatTest(unittest.TestCase):
         self.assertNotIn("Traceback", buf.getvalue())
 
 
+class OracleWindowDiagnosticsTest(unittest.TestCase):
+    """--oracle says which config it loaded and whether a model is set."""
+
+    def _run_window(self, cfg, cfg_path):
+        from unittest import mock
+        from runner.runner import oracle_window
+
+        class FakeServer:
+            socket = type("S", (), {"getsockname": lambda self: ("127.0.0.1", 11436)})()
+            closed = False
+
+            def serve_forever(self):
+                raise KeyboardInterrupt
+
+            def server_close(self):
+                self.closed = True
+
+        buf = StringIO()
+        with tempfile.TemporaryDirectory() as d:
+            cfg = dict(cfg, base_dir=d)
+            with mock.patch("runner.runner.make_oracle_server", return_value=FakeServer()), \
+                 redirect_stdout(buf):
+                code = oracle_window(cfg, cfg_path=cfg_path, open_browser=False)
+        return code, buf.getvalue()
+
+    def test_prints_config_path_and_model(self):
+        code, out = self._run_window(_cfg("/tmp/x"), "/tmp/my-config.json")
+        self.assertEqual(code, 0)
+        self.assertIn("Config: /tmp/my-config.json", out)
+        self.assertIn("Inference: local model llama3.2:3b", out)
+        self.assertIn("does not poll the mailbox", out)
+
+    def test_prints_when_inference_missing(self):
+        cfg = {"base_dir": "/tmp/x"}
+        code, out = self._run_window(cfg, None)
+        self.assertEqual(code, 0)
+        self.assertNotIn("Config:", out)
+        self.assertIn("Inference: not configured", out)
+
+    def test_page_tells_stale_sessions_to_reload(self):
+        from runner.runner import oracle_page
+        page = oracle_page("tok", "llama3.2:3b", True)
+        self.assertIn("The chat session expired. Reload the page", page)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -2,7 +2,9 @@
 
 The Oracle is controlled entirely by `config.json`. The v4 dashboard
 is not built. `--oracle` opens a loopback chat. It does not edit
-these keys. When a dashboard exists, it must be a frontend over the
+these keys, and it does not poll the mailbox: the chat is a local UI
+only. Run the runner without `--oracle` (or the installed service) to
+handle email jobs. When a dashboard exists, it must be a frontend over the
 same file: nothing dashboard-only, and nothing in the file hidden
 from it.
 

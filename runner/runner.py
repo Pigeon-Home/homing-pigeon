@@ -4162,9 +4162,11 @@ document.getElementById("f").onsubmit = async (e) => {
       },
       body: JSON.stringify({question: text})
     });
-    const data = await r.json();
-    if (data.answer) add("Oracle", data.answer, "oracle");
-    else add("Oracle", data.detail || "The Oracle did not answer.", "oracle");
+    const data = await r.json().catch(() => null);
+    if (data && data.answer) add("Oracle", data.answer, "oracle");
+    else if (data && data.detail) add("Oracle", data.detail, "oracle");
+    else if (r.status === 403) add("Oracle", "The chat session expired. Reload the page and ask again.", "oracle");
+    else add("Oracle", "The page could not reach the local Oracle.", "oracle");
   } catch (err) {
     add("Oracle", "The page could not reach the local Oracle.", "oracle");
   }
@@ -4351,7 +4353,7 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436):
     return httpd
 
 
-def oracle_window(cfg, port=11436, open_browser=True) -> int:
+def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
     """Open the Oracle chat and wait. Does not poll the mailbox."""
     try:
         port = int(port)
@@ -4379,7 +4381,16 @@ def oracle_window(cfg, port=11436, open_browser=True) -> int:
     url = f"http://127.0.0.1:{bound}/"
     print(f"Oracle chat on {url}")
     print(f"Chat log: {os.path.join(base, 'oracle-chat.jsonl')}")
+    if cfg_path:
+        print(f"Config: {os.path.abspath(cfg_path)}")
+    inf = inference_config(cfg) or {}
+    if inf.get("model"):
+        print(f"Inference: local model {inf['model']} ({inf['endpoint']})")
+    else:
+        print("Inference: not configured (Ask stays off)")
     print("Loopback only. Leave this process running. Ctrl+C closes it.")
+    print("The chat does not poll the mailbox; run the runner without "
+          "--oracle (or the installed service) to handle email jobs.")
     try:
         record_oracle_turn(base, cfg, "", {}, event="open")
     except Exception as e:
@@ -4547,7 +4558,7 @@ def main() -> int:
     # First start has no previous model id, so this pulls once.
     update_llama_from_config(cfg)
     if args.oracle:
-        return oracle_window(cfg, args.oracle_port)
+        return oracle_window(cfg, args.oracle_port, cfg_path=args.config)
     if args.local_test:
         try:
             from runner import local_test as _lt
