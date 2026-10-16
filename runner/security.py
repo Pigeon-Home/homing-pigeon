@@ -16,6 +16,7 @@ once at startup, not re-read each poll cycle.
 Python 3.9 compatible. Standard library only.
 """
 import json
+import math
 import os
 import time
 
@@ -63,6 +64,67 @@ DANGEROUS_ENV_NAMES = frozenset({
     "GIT_SSH",
     "GIT_SSH_COMMAND",
 })
+
+
+def _estimate_secret_entropy(secret: str) -> float:
+    """Rough entropy estimate in bits: length x log2(alphabet size)."""
+    if not isinstance(secret, str) or not secret:
+        return 0.0
+    alphabet = len(set(secret))
+    if alphabet <= 1:
+        return 0.0
+    return len(secret) * math.log2(alphabet)
+
+
+def _secret_pattern_reason(secret: str) -> str | None:
+    """Return a reason if the secret looks hand-patterned, else None.
+
+    The length x log2(alphabet) estimate overrates patterned strings: a
+    104-char string cycling a-z estimates at ~490 bits while having
+    negligible real entropy. Randomly generated secrets (token_hex,
+    token_urlsafe) never trigger this.
+    """
+    if not isinstance(secret, str):
+        return "secret must be a string"
+    low = secret.lower()
+    placeholders = ("generate", "changeme", "example", "placeholder",
+                    "your-secret", "your_secret", "todo", "xxx")
+    if any(p in low for p in placeholders):
+        return "it looks like an example placeholder value"
+    # Fully periodic: the whole string is repeats of a shorter unit
+    # ("abcabc...", "passwordpassword", "aaaa...").
+    n = len(secret)
+    for period in range(1, n // 2 + 1):
+        unit = secret[:period]
+        if secret == (unit * ((n // period) + 1))[:n]:
+            return f"it repeats the {period}-character unit {unit!r}"
+    return None
+
+
+def validate_shared_secret(secret: str) -> None:
+    """Refuse to start on a missing or weak shared secret.
+
+    Anyone holding one signed message can brute-force the HMAC key
+    offline, so the secret needs real entropy. Raises RuntimeError with
+    generation guidance when the secret is missing or too weak.
+    """
+    hint = ("generate one with: openssl rand -hex 32  "
+            "or: python3 -c \"import secrets; print(secrets.token_hex(32))\"")
+    if not secret:
+        raise RuntimeError(
+            "config error: shared_secret is required (a dedicated high-entropy "
+            f"secret, separate from the mailbox password). {hint}")
+    reason = _secret_pattern_reason(secret)
+    if reason is not None:
+        raise RuntimeError(
+            f"config error: shared_secret is too weak ({reason}). {hint}")
+    # Estimated entropy: length x log2(alphabet size). A 64-char hex
+    # string (the recommended shape) estimates at 256 bits.
+    bits = _estimate_secret_entropy(secret)
+    if bits < 128:
+        raise RuntimeError(
+            f"config error: shared_secret is too weak (~{bits:.0f} bits estimated, "
+            f"need at least 128). {hint}")
 
 
 def sec_mode(cfg, feature):
