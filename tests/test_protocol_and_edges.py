@@ -1148,3 +1148,92 @@ class UnderDashboardTests(unittest.TestCase):
                 self.assertEqual(run_inspect(cfg, A()), 0)
             self.assertEqual(json.loads(buf.getvalue())["judgment"]["verdict"],
                              "ok")
+
+
+class ReplyToTests(unittest.TestCase):
+    """reply_to: results go back to the requester, safely.
+
+    The address must come from inside the signed job body — never the
+    spoofable From header — and only validly-signed jobs can trigger a
+    reply at all (unsigned mail is rejected before this is read).
+    """
+
+    def test_valid_address_accepted(self):
+        from runner.runner import _valid_reply_to
+        self.assertEqual(
+            _valid_reply_to({"reply_to": "owner@example.com"}),
+            "owner@example.com")
+
+    def test_missing_or_non_string_falls_back(self):
+        from runner.runner import _valid_reply_to
+        self.assertIsNone(_valid_reply_to({}))
+        self.assertIsNone(_valid_reply_to({"reply_to": None}))
+        self.assertIsNone(_valid_reply_to({"reply_to": ["a@b.c"]}))
+
+    def test_header_injection_rejected(self):
+        from runner.runner import _valid_reply_to
+        self.assertIsNone(
+            _valid_reply_to({"reply_to": "a@b.c\nBcc: victim@x.y"}))
+        self.assertIsNone(
+            _valid_reply_to({"reply_to": "a@b.c\r\nSubject: hi"}))
+        self.assertIsNone(_valid_reply_to({"reply_to": "not-an-address"}))
+        self.assertIsNone(_valid_reply_to({"reply_to": "a@b"}))
+        self.assertIsNone(_valid_reply_to({"reply_to": "a" * 250 + "@b.co"}))
+
+    def test_send_mail_to_override(self):
+        from runner.runner import send_mail
+        sent = []
+
+        class FakeSMTP:
+            def send_message(self, msg):
+                sent.append(msg)
+
+        cfg = {"mailbox_user": "runner@example.com"}
+        send_mail(FakeSMTP(), cfg, "subj", "body", to="owner@example.com")
+        self.assertEqual(sent[0]["To"], "owner@example.com")
+        self.assertEqual(sent[0]["From"], "runner@example.com")
+
+    def test_send_mail_defaults_to_mailbox(self):
+        from runner.runner import send_mail
+        sent = []
+
+        class FakeSMTP:
+            def send_message(self, msg):
+                sent.append(msg)
+
+        cfg = {"mailbox_user": "runner@example.com"}
+        send_mail(FakeSMTP(), cfg, "subj", "body")
+        self.assertEqual(sent[0]["To"], "runner@example.com")
+
+    def test_send_job_flag_lands_in_signed_body(self):
+        import send_job
+        import types
+        args = types.SimpleNamespace(
+            kind="ping", job_id="jid-1", key_id=None, aud=None,
+            reply_to="owner@example.com", timeout=300,
+            script_url=None, script_sha384=None, script_file=None,
+            file=[], arg=[], env=[], interpreter=None,
+            secret=SECRET)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.assertEqual(send_job.cmd_new(args), 0)
+        body = buf.getvalue().split("\n\n", 1)[1]
+        payload = send_job.verify_body(body, SECRET)
+        self.assertEqual(payload["reply_to"], "owner@example.com")
+        self.assertEqual(payload["v"], 1)
+
+    def test_send_job_omits_reply_to_when_unset(self):
+        import send_job
+        import types
+        args = types.SimpleNamespace(
+            kind="ping", job_id="jid-2", key_id=None, aud=None,
+            reply_to=None, timeout=300,
+            script_url=None, script_sha384=None, script_file=None,
+            file=[], arg=[], env=[], interpreter=None,
+            secret=SECRET)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.assertEqual(send_job.cmd_new(args), 0)
+        body = buf.getvalue().split("\n\n", 1)[1]
+        payload = send_job.verify_body(body, SECRET)
+        self.assertNotIn("reply_to", payload)

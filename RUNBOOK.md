@@ -320,7 +320,8 @@ can be configured. There is no flag that deletes the Oracle.
 
 ### Where results go
 
-Result emails are sent **to the runner's own mailbox** (the account in `mailbox_user`). They do not automatically appear in the cloud SI's connected Gmail account. To see them from the SI side you must either:
+Result emails are sent **to the runner's own mailbox** (the account in `mailbox_user`) — unless the signed job sets `reply_to`, in which case the result goes to that address instead (e.g. `send_job.py new --reply-to you@example.com`). The address must live inside the signed body; the email's `From` header is never trusted for this. They do not automatically appear in the cloud SI's connected Gmail account. To see them from the SI side you must either:
+- set `reply_to` on the job so the result is emailed straight to you, or
 - forward the result message to the connected account, or
 - have the runner configured so results are delivered somewhere the SI can read, or
 - check the runner's console/logs for the outbound result.

@@ -2356,7 +2356,7 @@ def mark_seen(imap, seq):
             log(f"STORE \\Seen failed for {seq}: {e}", "WARN")
 
 
-def send_mail(smtp, cfg, subject: str, body: str):
+def send_mail(smtp, cfg, subject: str, body: str, to: str | None = None):
     # SMTP connections are not thread-safe. Always serialize, even if
     # the caller already holds the lock (it is an RLock).
     # A newline in a header raises ValueError. That must not retry
@@ -2364,7 +2364,7 @@ def send_mail(smtp, cfg, subject: str, body: str):
     msg = EmailMessage()
     try:
         msg["From"] = str(cfg.get("mailbox_user") or "")
-        msg["To"] = str(cfg.get("mailbox_user") or "")
+        msg["To"] = to or str(cfg.get("mailbox_user") or "")
         msg["Subject"] = str(subject or "").replace("\r", " ").replace("\n", " ")
         msg.set_content("" if body is None else str(body))
     except Exception as e:
@@ -2372,6 +2372,25 @@ def send_mail(smtp, cfg, subject: str, body: str):
         return
     with _MAIL_LOCK:
         smtp.send_message(msg)
+
+
+_REPLY_TO_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+
+
+def _valid_reply_to(job) -> str | None:
+    """The job's reply_to address, or None.
+
+    Only a single plain address from inside the *signed* job body is
+    honored, so a spoofed From header can never steer results at
+    someone. Anything else falls back to the runner's own mailbox.
+    """
+    rt = job.get("reply_to") if isinstance(job, dict) else None
+    if not isinstance(rt, str):
+        return None
+    rt = rt.strip()
+    if len(rt) > 254 or not _REPLY_TO_RE.match(rt):
+        return None
+    return rt
 
 
 def get_text_body(msg) -> str:
@@ -3442,7 +3461,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 log(f"no-send: result message suppressed "
                     f"(subject={subject!r}, {len(body)} bytes)")
                 return
-            send_mail(smtp, cfg, subject, body)
+            send_mail(smtp, cfg, subject, body, to=_valid_reply_to(job))
 
         try:
             verdict, reasons = judge_job(cfg, job)

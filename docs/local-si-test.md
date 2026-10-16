@@ -12,7 +12,8 @@ of this test.
 To run the email test you need a real mailbox in `config.json`
 (`smtp_host`, `smtp_port`, `mailbox_user`, password or OAuth) and a
 runner polling that same mailbox. The SI sends a signed job. The
-runner picks it up, runs it, and emails the result back.
+runner picks it up, runs it, and emails the result back (to the
+mailbox, or to the job's `reply_to` address if one was set).
 
 
 A development loop for the Oracle. You play the cloud SI. The harness

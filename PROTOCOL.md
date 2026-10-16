@@ -42,7 +42,8 @@ gets done without you knowing how any of it works.
 
 - One dedicated mailbox (Gmail recommended). Both directions use it:
   The cloud SI sends jobs *to* it; the runner reads them and sends results back
-  to the same address.
+  to the same address — unless the signed job sets `reply_to`, in which
+  case the result email goes to that address instead (see §3.1).
 - Runner access: IMAP (read, port 993) + SMTP (send, port 587). Two
   authentication methods, both transport-level — the protocol (message
   format, signatures, verification) is identical either way:
@@ -90,9 +91,18 @@ gets done without you knowing how any of it works.
   "env": {"MY_VAR": "value"},
   "timeout_sec": 300,
   "runner_id": "<audience, optional>",
+  "reply_to": "<result email address, optional>",
   "sig": "<hex hmac>"
 }
 ```
+
+- `reply_to`: optional. When present and a valid single address, the
+  signed result email goes to this address instead of the runner's own
+  mailbox — results land in the requester's inbox. It lives *inside the
+  signed body*, so only the signature holder can set it; the email's
+  `From` header is never trusted for this. Unsigned or invalid jobs
+  never trigger a reply to anyone. Omit it and results behave as
+  before (the SI polls the runner mailbox).
 
 - `runner_id`: optional audience claim. When the runner's config sets
   `runner_id` and the `audience` security feature is not `off`,
