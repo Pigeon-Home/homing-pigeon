@@ -134,6 +134,8 @@ def cmd_new(args) -> int:
         payload["key_id"] = args.key_id
     if args.aud:
         payload["aud"] = args.aud
+    if args.reply_to:
+        payload["reply_to"] = args.reply_to
     if args.kind == "exec":
         if args.script_url:
             payload["script_url"] = args.script_url
@@ -225,6 +227,9 @@ def main() -> int:
     n.add_argument("--key-id", default=None, help="key_id for multi-secret (Piece 1)")
     n.add_argument("--aud", default=None,
                    help="audience: runner_id the job is addressed to (M5)")
+    n.add_argument("--reply-to", default=None, metavar="ADDRESS",
+                   help="email the result to this address instead of the "
+                        "runner mailbox (must be inside the signed body)")
     n.add_argument("--secret", required=True)
     n.set_defaults(func=cmd_new)
 

@@ -458,7 +458,8 @@ End-to-end without your SI:
 2. From any email account, send it to the
    runner mailbox.
 3. On the target machine: `python3 runner.py --config config.json --once`.
-4. A result message with `stdout: "pong"` should arrive in the mailbox.
+4. A result message with `stdout: "pong"` should arrive in the mailbox
+   (or at the job's `reply_to` address, if you set one).
 
 ## Security notes
 
@@ -501,6 +502,14 @@ Later:
 - Cloudflare Queues as Transport #2
 
 ## Status
+
+v3.7.0. Jobs can now ask for their result to be emailed back to the
+requester: set `reply_to` in the signed job body (or
+`send_job.py new --reply-to you@example.com`) and the result skips
+the runner mailbox and lands in your inbox. The address must come
+from inside the signed body — the email's `From` header is never
+trusted — so a spoofed sender can't steer results at anyone. Omit
+it and results behave as before.
 
 v3.6.1. Optional hardening controls, all off unless you turn them on:
 key policy for env, files, and args (including the dangerous-env
