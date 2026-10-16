@@ -146,13 +146,9 @@ class _Catch(BaseHTTPRequestHandler):
         return
 
 
-def browser_consent(cfg: dict) -> str:
-    """Open the system browser and return a refresh token. Blocks."""
-    client_id = cfg.get("oauth_client_id") or ""
-    if not client_id:
-        raise SystemExit("config error: oauth_client_id is required for auth=oauth")
-    verifier, challenge = _pkce()
-    state = secrets.token_urlsafe(16)
+def build_authorize_url(cfg, verifier, challenge, state) -> str:
+    """Authorize URL for the browser. Does not open one."""
+    client_id = (cfg or {}).get("oauth_client_id") or ""
     params = {
         "client_id": client_id,
         "redirect_uri": REDIRECT_URI,
@@ -164,7 +160,58 @@ def browser_consent(cfg: dict) -> str:
         "code_challenge_method": "S256",
         "state": state,
     }
-    url = AUTH_URL + "?" + urllib.parse.urlencode(params)
+    return AUTH_URL + "?" + urllib.parse.urlencode(params)
+
+
+def exchange_code(cfg, code, verifier, opener=None) -> str:
+    """Trade an authorization code for a refresh token.
+
+    opener, when set, is called like urlopen(request, timeout=30).
+    A bad body or an HTTP error is SystemExit, not a second parse error.
+    """
+    client_id = (cfg or {}).get("oauth_client_id") or ""
+    form = {
+        "client_id": client_id,
+        "code": code,
+        "code_verifier": verifier,
+        "grant_type": "authorization_code",
+        "redirect_uri": REDIRECT_URI,
+    }
+    secret = (cfg or {}).get("oauth_client_secret") or ""
+    if isinstance(secret, str) and secret:
+        form["client_secret"] = secret
+    data = urllib.parse.urlencode(form).encode("ascii")
+    req = urllib.request.Request(TOKEN_URL, data=data)
+    open_fn = opener or urllib.request.urlopen
+    try:
+        with open_fn(req, timeout=30) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        try:
+            err_body = json.loads(e.read().decode("utf-8"))
+        except Exception:
+            err_body = {"raw": "unparseable error body"}
+        detail = err_body.get("error") if isinstance(err_body, dict) else err_body
+        raise SystemExit(
+            f"token exchange failed (HTTP {e.code}: {detail})") from e
+    except json.JSONDecodeError as e:
+        raise SystemExit("token exchange returned unparseable JSON") from e
+    if not isinstance(body, dict):
+        raise SystemExit(f"token exchange returned a non-object: {body}")
+    refresh = body.get("refresh_token")
+    if not isinstance(refresh, str) or not refresh:
+        raise SystemExit(f"no refresh_token in response: {body}")
+    return refresh
+
+
+def browser_consent(cfg: dict) -> str:
+    """Open the system browser and return a refresh token. Blocks."""
+    client_id = cfg.get("oauth_client_id") or ""
+    if not client_id:
+        raise SystemExit("config error: oauth_client_id is required for auth=oauth")
+    verifier, challenge = _pkce()
+    state = secrets.token_urlsafe(16)
+    url = build_authorize_url(cfg, verifier, challenge, state)
     _Catch.code = None
     _Catch.error = None
     server = HTTPServer(("127.0.0.1", REDIRECT_PORT), _Catch)
@@ -180,24 +227,7 @@ def browser_consent(cfg: dict) -> str:
         raise SystemExit(f"Google sign-in failed: {_Catch.error}")
     if not _Catch.code:
         raise SystemExit("no sign-in code received (timed out or browser closed)")
-    form = {
-        "client_id": client_id,
-        "code": _Catch.code,
-        "code_verifier": verifier,
-        "grant_type": "authorization_code",
-        "redirect_uri": REDIRECT_URI,
-    }
-    secret = cfg.get("oauth_client_secret") or ""
-    if secret:
-        form["client_secret"] = secret
-    data = urllib.parse.urlencode(form).encode("ascii")
-    req = urllib.request.Request(TOKEN_URL, data=data)
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        body = json.loads(resp.read().decode("utf-8"))
-    refresh = body.get("refresh_token")
-    if not refresh:
-        raise SystemExit(f"no refresh_token in response: {body}")
-    return refresh
+    return exchange_code(cfg, _Catch.code, verifier, opener=None)
 
 
 def main() -> int:
