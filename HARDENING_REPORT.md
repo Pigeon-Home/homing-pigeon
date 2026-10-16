@@ -45,14 +45,17 @@ following are my designs, recorded here per runbook rule 15:
   SECURITY.md table written in M0.
 - **Confinement fallback**: unavailable bwrap / non-Linux → warn + run
   normally, not fail closed. Availability wins; every fallback is
-  audited and loud.
+  audited and loud. Owner decision 2026-10-15: keep fail-open
+  (option C) as a deliberate, documented deviation from the plan's
+  "denied, never run unconfined."
 - **`--unshare-pid` omitted** from the bwrap flags: on this VM it
   breaks the `/proc` mount (AppArmor/seccomp). Without it `--proc`
   mounts fine.
 - **M4 Windows DACL check**: best-effort ctypes; untested on Windows
   (Linux-only QA here); degrades to WARN, never FAIL.
 - **M8 `job_user`**: `preexec_fn` setuid; needs root. Non-root falls
-  back loudly rather than refusing jobs.
+  back loudly rather than refusing jobs. Owner decision 2026-10-15:
+  keep fail-open (option C), same rationale as confinement.
 - **M9/M10**: docs only, as specified.
 - **Secret files** and the **confinement config schema** (`extra_flags`,
   `extra_ro_binds`, `work_mount`) are my schemas; the plan's versions
