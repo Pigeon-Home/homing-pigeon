@@ -12,10 +12,7 @@ emails you send: ten jobs a day and ten thousand jobs a day are equally safe
 from a cryptographic standpoint. Transit is protected by TLS, and the mailbox
 is the only party that ever sees the signed bodies.
 
-So for email, volume is not the risk. The residual risk is **endpoint
-compromise**: someone getting the secret out of the runner's config, a backup,
-or the owner's records. Rotation doesn't prevent that — it bounds it. A
-90-day rotation means a quietly stolen secret is useful for at most 90 days.
+So for email, volume is not the risk, and 90 days is a comfortable cadence.
 
 ## Why other transports may need faster rotation
 
@@ -43,14 +40,4 @@ The runner verifies against a dict of secrets, selected by the job's `key_id`
 3. Switch the signer (`send_job.py` / the cloud SI) to the new `key_id`.
 4. Confirm jobs flow, then remove the old secret from the config.
 
-Never reuse a retired secret, and never put the new secret in the same place
-the old one lived if you suspect the old one was compromised — rotate the
-storage too, not just the value.
-
-## What rotation doesn't fix
-
-Rotation bounds the blast radius of a stolen secret; it does not prevent the
-theft. If the runner's config file itself is compromised, the attacker gets
-the new secret the moment you install it. Endpoint hygiene (locked-down user,
-0600 config, the ACL story in `docs/security-gaps.md`) is what keeps the
-secret secret. Rotation is the second line, not the first.
+Never reuse a retired secret.
