@@ -723,6 +723,56 @@ class ConnectMailTest(unittest.TestCase):
         self.assertIsNone(_FakeSMTP.built[0].login_args)
 
 
+class AnswerAsOracleTest(unittest.TestCase):
+    def test_no_inference_is_rejected(self):
+        from runner.local_test import answer_as_oracle
+        self.assertEqual(
+            answer_as_oracle({}, "hello"),
+            {"rejected": "inference_unconfigured"})
+
+    def test_no_secret_is_rejected(self):
+        from runner.local_test import answer_as_oracle
+        cfg = {"inference": {
+            "endpoint": "http://127.0.0.1:9/v1",
+            "model": "m",
+        }}
+        self.assertEqual(
+            answer_as_oracle(cfg, "hello"),
+            {"rejected": "no shared_secret in config"})
+
+    def test_a_signed_ask_returns_the_model_answer(self):
+        from runner import runner
+        from runner.local_test import answer_as_oracle
+        cfg = {
+            "inference": {
+                "endpoint": "http://127.0.0.1:9/v1",
+                "model": "m",
+            },
+            "shared_secret": "0123456789abcdef" * 4,
+        }
+        answer = {"op": "ask", "answer": "fine", "model": "m"}
+        with mock.patch.object(runner, "ask_model", return_value=answer):
+            result = answer_as_oracle(cfg, "what time is it")
+        self.assertEqual(result.get("answer"), "fine")
+
+    def test_a_model_error_is_a_dict(self):
+        from runner import runner
+        from runner.local_test import answer_as_oracle
+        cfg = {
+            "inference": {
+                "endpoint": "http://127.0.0.1:9/v1",
+                "model": "m",
+            },
+            "shared_secret": "0123456789abcdef" * 4,
+        }
+        with mock.patch.object(runner, "ask_model",
+                               side_effect=RuntimeError("down")):
+            result = answer_as_oracle(cfg, "hello")
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result.get("rejected"), "inference_error")
+
+
+
 
 
 
