@@ -297,6 +297,103 @@ class SharedSecretTest(unittest.TestCase):
                 self.assertEqual(os.stat(path).st_mode & 0o777, 0o600)
 
 
+class InstallMainTest(unittest.TestCase):
+    _SIDES = (
+        "install_files",
+        "ensure_shared_secret",
+        "store_additional_secret",
+        "install_ollama_and_model",
+        "apply_profile",
+        "apply_instruction_flags",
+        "install_windows",
+        "install_macos",
+        "install_linux",
+        "install_freebsd",
+        "uninstall_windows",
+        "uninstall_macos",
+        "uninstall_linux",
+        "uninstall_freebsd",
+    )
+
+    def _run(self, argv):
+        import contextlib
+        import sys
+        from runner import install
+        stack = contextlib.ExitStack()
+        for name in self._SIDES:
+            stack.enter_context(mock.patch.object(install, name))
+        stack.enter_context(mock.patch.object(sys.stdin, "isatty", return_value=False))
+        stack.enter_context(mock.patch.object(sys, "argv", ["install", *argv]))
+        try:
+            code = install.main()
+            recorded = {
+                "ollama": install.install_ollama_and_model.call_args,
+                "files_called": install.install_files.called,
+                "secret": install.ensure_shared_secret.call_args,
+                "install_count": self._installer(install).call_count,
+                "uninstall_count": self._uninstaller(install).call_count,
+            }
+        finally:
+            stack.close()
+        return code, recorded
+
+    def _installer(self, install):
+        import sys
+        plat = sys.platform
+        if plat == "win32":
+            return install.install_windows
+        if plat == "darwin":
+            return install.install_macos
+        if plat.startswith("linux"):
+            return install.install_linux
+        if plat.startswith("freebsd"):
+            return install.install_freebsd
+        self.fail("unsupported platform " + plat)
+
+    def _uninstaller(self, install):
+        import sys
+        plat = sys.platform
+        if plat == "win32":
+            return install.uninstall_windows
+        if plat == "darwin":
+            return install.uninstall_macos
+        if plat.startswith("linux"):
+            return install.uninstall_linux
+        if plat.startswith("freebsd"):
+            return install.uninstall_freebsd
+        self.fail("unsupported platform " + plat)
+
+    def test_no_inference_still_installs_this_platform(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code, recorded = self._run([
+                "--dir", directory, "--no-inference", "--no-profile"])
+        self.assertEqual(code, 0)
+        self.assertTrue(recorded["ollama"][0][2])
+        self.assertEqual(recorded["install_count"], 1)
+
+    def test_pi_profile_selects_the_light_model(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code, recorded = self._run([
+                "--dir", directory, "--profile", "raspberry-pi-home"])
+        self.assertEqual(code, 0)
+        self.assertEqual(recorded["ollama"][0][1], "llama3.2:1b")
+
+    def test_uninstall_does_not_copy_files(self):
+        code, recorded = self._run(["--uninstall"])
+        self.assertEqual(code, 0)
+        self.assertFalse(recorded["files_called"])
+        self.assertEqual(recorded["uninstall_count"], 1)
+
+    def test_shared_secret_is_handed_to_the_writer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code, recorded = self._run([
+                "--dir", directory, "--no-profile",
+                "--shared-secret", "supplied-secret-value"])
+        self.assertEqual(code, 0)
+        self.assertEqual(recorded["secret"][0][1], "supplied-secret-value")
+
+
+
 
 
 
