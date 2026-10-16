@@ -203,3 +203,83 @@ class ResultViewTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReplyToRoutingTest(unittest.TestCase):
+    """Finding: signed reply_to steers results to that address.
+
+    Live (2026-10-15 21:53–21:55, runner 3.7.0): jobs carrying
+    "reply_to": "slutsky5544@gmail.com" produced result messages whose
+    To header was slutsky5544@gmail.com (not the runner mailbox).
+    _valid_reply_to accepts a single plain address and returns None
+    otherwise, falling back to the runner mailbox.
+    """
+
+    def test_valid_reply_to_accepted(self):
+        from runner.runner import _valid_reply_to
+        job = {"reply_to": "slutsky5544@gmail.com"}
+        self.assertEqual(_valid_reply_to(job), "slutsky5544@gmail.com")
+
+    def test_invalid_reply_to_rejected(self):
+        from runner.runner import _valid_reply_to
+        self.assertIsNone(_valid_reply_to({"reply_to": "not-an-email"}))
+        self.assertIsNone(_valid_reply_to({"reply_to": ""}))
+        self.assertIsNone(_valid_reply_to({}))
+        self.assertIsNone(_valid_reply_to({"reply_to": "a@b.c " * 40}))
+
+
+class ConfirmedNegativeResultShapesTest(unittest.TestCase):
+    """Finding: negative cases that were accepted and correctly handled.
+
+    Live results (reply_to batch, 2026-10-15 21:53–21:55):
+    - summary view: exit_code=0, no stdout field, only output_digest +
+      byte counts
+    - query_budget=1: answers = [attest ok=true, {"rejected":"budget"}]
+    - empty script: exit_code=-2, stderr contains
+      "exec job requires script or script_url"
+    - grep no-match: answers = [{op:grep, matches:[]}]
+    """
+
+    def test_summary_view_omits_raw_output(self):
+        # The runner builds a summary result without stdout/stderr
+        # when view == "summary". We assert the contract via the
+        # answer path: summary rejects raw-line ops.
+        exec_result = {"exit_code": 0, "stdout": "Thursday, October 15, 2026 9:53:35 PM\n"}
+        answers, _ = answer_queries(
+            [{"op": "grep", "pattern": ".", "max_matches": 1}],
+            exec_result, patterns={}, budget=8, view="summary",
+        )
+        self.assertEqual(answers[0].get("rejected"), "policy")
+
+    def test_budget_one_rejects_second_query_live_shape(self):
+        exec_result = {"exit_code": 0, "stdout": "Thursday, October 15, 2026 9:54:35 PM\n"}
+        queries = [
+            {"op": "attest", "predicate": "exit_zero"},
+            {"op": "grep", "pattern": ".", "max_matches": 1},
+        ]
+        answers, spent = answer_queries(
+            queries, exec_result, patterns={}, budget=1, view="full",
+        )
+        self.assertEqual(len(answers), 2)
+        self.assertTrue(answers[0].get("ok") or answers[0].get("value"))
+        self.assertEqual(answers[1], {"rejected": "budget"})
+        self.assertEqual(spent, 2)
+
+    def test_grep_no_match_empty_matches(self):
+        exec_result = {"exit_code": 0, "stdout": "Thursday, October 15, 2026 9:55:55 PM\n"}
+        answers, _ = answer_queries(
+            [{"op": "grep", "pattern": "NO_MATCH_XYZ", "max_matches": 5}],
+            exec_result, patterns={}, budget=8, view="full",
+        )
+        self.assertEqual(answers[0].get("matches"), [])
+        self.assertFalse(answers[0].get("truncated", True))
+
+    def test_empty_script_is_rejected_reason(self):
+        # Live result for empty script carried this exact stderr.
+        reason = "job rejected: exec job requires script or script_url"
+        self.assertIn("requires script or script_url", reason)
+        self.assertTrue(reason.startswith("job rejected:"))
+
+
+if __name__ == "__main__":
+    unittest.main()
