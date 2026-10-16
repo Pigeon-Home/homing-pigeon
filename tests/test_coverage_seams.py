@@ -393,6 +393,99 @@ class InstallMainTest(unittest.TestCase):
         self.assertEqual(recorded["secret"][0][1], "supplied-secret-value")
 
 
+class _OracleServer:
+    def __init__(self):
+        self.socket = self
+        self.closed = False
+
+    def getsockname(self):
+        return ("127.0.0.1", 11436)
+
+    def serve_forever(self):
+        raise KeyboardInterrupt
+
+    def server_close(self):
+        self.closed = True
+
+
+class _RecordedTimer:
+    started = []
+
+    def __init__(self, delay, fn):
+        self.delay = delay
+        self.fn = fn
+        _RecordedTimer.started.append((delay, fn))
+
+    def start(self):
+        return None
+
+
+class OracleWindowTest(unittest.TestCase):
+    def test_a_word_port_does_not_listen(self):
+        from runner import runner
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(runner, "make_oracle_server") as made:
+            code = runner.oracle_window({"base_dir": directory}, port="nope")
+        self.assertEqual(code, 2)
+        self.assertFalse(made.called)
+
+    def test_an_out_of_range_port_does_not_listen(self):
+        from runner import runner
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(runner, "make_oracle_server") as made:
+            code = runner.oracle_window({"base_dir": directory}, port=70000)
+        self.assertEqual(code, 2)
+        self.assertFalse(made.called)
+
+    def test_a_bind_error_returns_1(self):
+        from runner import runner
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(runner, "make_oracle_server",
+                               side_effect=OSError("busy")):
+            code = runner.oracle_window({"base_dir": directory})
+        self.assertEqual(code, 1)
+
+    def test_a_bad_server_returns_2(self):
+        from runner import runner
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(runner, "make_oracle_server",
+                               side_effect=ValueError("bad")):
+            code = runner.oracle_window({"base_dir": directory})
+        self.assertEqual(code, 2)
+
+    def test_ctrl_c_records_open_and_close_without_a_browser(self):
+        from runner import runner
+        server = _OracleServer()
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(runner, "make_oracle_server", return_value=server), \
+             mock.patch.object(runner.webbrowser, "open") as opened:
+            code = runner.oracle_window(
+                {"base_dir": directory}, open_browser=False)
+            log = open(os.path.join(directory, "oracle-chat.jsonl"),
+                       encoding="utf-8").read()
+        self.assertEqual(code, 0)
+        self.assertTrue(server.closed)
+        self.assertFalse(opened.called)
+        self.assertIn('"event": "open"', log)
+        self.assertIn('"event": "close"', log)
+
+    def test_the_browser_is_scheduled_not_waited_on(self):
+        from runner import runner
+        _RecordedTimer.started = []
+        server = _OracleServer()
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(runner, "make_oracle_server", return_value=server), \
+             mock.patch.object(runner.webbrowser, "open") as opened, \
+             mock.patch.object(runner.threading, "Timer", _RecordedTimer):
+            code = runner.oracle_window(
+                {"base_dir": directory}, open_browser=True)
+        self.assertEqual(code, 0)
+        self.assertEqual(len(_RecordedTimer.started), 1)
+        self.assertEqual(_RecordedTimer.started[0][0], 0.4)
+        self.assertFalse(opened.called)
+
+
+
 
 
 
