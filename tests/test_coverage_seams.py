@@ -772,6 +772,62 @@ class AnswerAsOracleTest(unittest.TestCase):
         self.assertEqual(result.get("rejected"), "inference_error")
 
 
+class ReplTest(unittest.TestCase):
+    def _run(self, cfg, lines, answer):
+        import contextlib
+        from runner import local_test
+        buf = io.StringIO()
+        queued = iter(lines)
+
+        def fake_input(prompt=""):
+            try:
+                return next(queued)
+            except StopIteration:
+                raise EOFError
+
+        with mock.patch.object(local_test, "answer_as_oracle",
+                               return_value=answer) as asked, \
+             mock.patch("builtins.input", side_effect=fake_input), \
+             contextlib.redirect_stdout(buf):
+            code = local_test.repl(cfg)
+        return code, buf.getvalue(), asked
+
+    def test_an_answer_is_printed(self):
+        code, out, asked = self._run({}, ["hello", "quit"], {"answer": "hi"})
+        self.assertEqual(code, 0)
+        self.assertIn("Oracle> hi", out)
+        self.assertEqual(asked.call_count, 1)
+        self.assertEqual(asked.call_args[0][1], "hello")
+
+    def test_a_rejection_is_printed(self):
+        code, out, asked = self._run({}, ["hello", "q"], {"rejected": "no"})
+        self.assertEqual(code, 0)
+        self.assertIn("Oracle> rejected:", out)
+        self.assertEqual(asked.call_count, 1)
+
+    def test_eof_returns_zero(self):
+        code, out, asked = self._run({}, [], {"answer": "hi"})
+        self.assertEqual(code, 0)
+        self.assertEqual(asked.call_count, 0)
+
+    def test_a_blank_line_is_not_a_question(self):
+        code, out, asked = self._run(
+            {}, ["", "hello", "exit"], {"answer": "hi"})
+        self.assertEqual(code, 0)
+        self.assertEqual(asked.call_count, 1)
+        self.assertEqual(asked.call_args[0][1], "hello")
+
+    def test_owner_instructions_are_truncated(self):
+        text = "I" * 200
+        code, out, asked = self._run(
+            {"owner_instructions": text}, ["quit"], {"answer": "hi"})
+        self.assertEqual(code, 0)
+        self.assertIn(text[:120], out)
+        self.assertNotIn(text, out)
+        self.assertEqual(asked.call_count, 0)
+
+
+
 
 
 
