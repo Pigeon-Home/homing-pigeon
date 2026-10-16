@@ -1,11 +1,11 @@
-# draft-slutsky-homing-pigeon-00
+# draft-homing-pigeon-00
 
 Homing Pigeon Message Protocol, Version 1
 
 Workgroup: Individual
 Intended status: Informational
 Expires: 19 April 2027
-Author: Andrew Slutsky (editor)
+Author: Pigeon-Home (editor)
 
 This document is not an IETF standard and is not the product of a working group. It describes an existing protocol. Publication as an RFC, if it happens, would be on the Independent Stream.
 
@@ -312,7 +312,5 @@ This document has no IANA actions.
 
 ## Author's Address
 
-Andrew Slutsky
-Editor
 Pigeon-Home
 <https://github.com/Pigeon-Home/homing-pigeon>

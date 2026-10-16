@@ -1,7 +1,7 @@
 # Homing Pigeon Protocol v1
 
 The frozen wire description, written as an informational individual
-draft, is `docs/ietf/draft-slutsky-homing-pigeon-00.md`. This file
+draft, is `docs/ietf/draft-homing-pigeon-00.md`. This file
 remains the living spec.
 
 > **Two different versions — don't mix them up.** This document
