@@ -201,7 +201,9 @@ The Oracle ships two confinement capabilities:
   machine is not Linux, the job runs normally and the audit log records
   the fallback. See SECURITY.md.
 
-Full spec in PROTOCOL.md (sections 9–12).
+Full spec in PROTOCOL.md (sections 9–12). Note the doc's "Protocol v1"
+is the *message* version, not the product release — v3.x features ride
+on v1 messages as optional fields.
 
 ## Layout
 
