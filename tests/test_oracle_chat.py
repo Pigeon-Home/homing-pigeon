@@ -653,6 +653,28 @@ class OracleAgentTest(unittest.TestCase):
         self.assertIn("invalid credentials", ans["answer"])
         self.assertEqual(ans.get("tool_rounds"), 1)
 
+    def test_followup_sends_tool_arguments_as_a_string(self):
+        # Ollama rejects a follow-up whose function.arguments is an object
+        # with HTTP 400. The wire form is a JSON string.
+        from runner.runner import ask_model_agent
+        seen = []
+        with tempfile.TemporaryDirectory() as d:
+            script = [
+                _tool_msg("list_dir", {"path": d}),
+                {"role": "assistant", "content": "empty"},
+            ]
+            ans = ask_model_agent(_agent_cfg(), "status", "", 2000,
+                                  opener=_scripted_opener(script, seen),
+                                  base_dir=d)
+        self.assertEqual(ans.get("answer"), "empty")
+        self.assertEqual(len(seen), 2)
+        calls = seen[1]["messages"][2]["tool_calls"]
+        self.assertIsInstance(calls[0]["function"]["arguments"], str)
+        self.assertEqual(json.loads(calls[0]["function"]["arguments"])["path"], d)
+        tool_msg = seen[1]["messages"][3]
+        self.assertEqual(tool_msg["role"], "tool")
+        self.assertEqual(tool_msg["name"], "list_dir")
+
     def test_agent_sends_tools_in_payload(self):
         from runner.runner import ask_model_agent
         seen = []

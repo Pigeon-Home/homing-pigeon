@@ -1823,8 +1823,32 @@ def _run_oracle_tool(name, args, base_dir=None) -> str:
     return f"error: unknown tool {name!r}"
 
 
+def _wire_tool_arguments(fargs) -> str:
+    """Ollama's OpenAI shim unmarshals function.arguments as a string.
+
+    A JSON object in that field is HTTP 400 on the follow-up turn, which
+    is the turn after a tool actually ran.
+    """
+    if isinstance(fargs, str):
+        return fargs
+    try:
+        return json.dumps(fargs if isinstance(fargs, dict) else {})
+    except (TypeError, ValueError):
+        return "{}"
+
+
+def _inference_failure_text(exc) -> str:
+    text = str(exc).lower()
+    if "timed out" in text or "timeout" in text:
+        return ("The local model timed out. Ask again, or raise "
+                "inference.timeout_sec in config.json.")
+    if "400" in text:
+        return "The local model rejected the chat request."
+    return "The local model did not answer."
+
+
 def _inference_chat(cfg, messages, tools, opener, timeout):
-    """One /chat/completions call. Returns the message dict or None."""
+    """One /chat/completions call. Returns the message dict or an error dict."""
     payload = {"model": cfg.get("model"), "messages": messages}
     if tools:
         payload["tools"] = tools
@@ -1841,8 +1865,15 @@ def _inference_chat(cfg, messages, tools, opener, timeout):
         parsed = json.loads(raw.decode("utf-8"))
         msg = parsed["choices"][0]["message"]
     except Exception as e:
-        log(f"inference chat call failed: {e}", "WARN")
-        return None
+        detail = ""
+        if isinstance(e, HTTPError):
+            try:
+                detail = e.read(500).decode("utf-8", errors="replace").strip()
+            except Exception:
+                detail = ""
+        log("inference chat call failed: " + str(e)
+            + ((" " + detail) if detail else ""), "WARN")
+        return {"role": "error", "content": _inference_failure_text(e)}
     return msg if isinstance(msg, dict) else {"content": str(msg)}
 
 
@@ -2014,8 +2045,11 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
     for _round in range(_ORACLE_AGENT_MAX_ROUNDS):
         messages = _agent_trim(messages)
         msg = _inference_chat(cfg, messages, _ORACLE_TOOLS, opener, timeout)
-        if msg is None:
-            return {"op": "ask", "rejected": "inference_error"}
+        if not isinstance(msg, dict) or msg.get("role") == "error":
+            detail = msg.get("content") if isinstance(msg, dict) else ""
+            if not isinstance(detail, str) or not detail:
+                detail = "The local model did not answer."
+            return {"op": "ask", "rejected": "inference_error", "detail": detail}
         calls = _parse_tool_calls(msg)
         if not calls:
             reply = msg.get("content")
@@ -2033,7 +2067,8 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
         for call_id, name, fargs in calls:
             wire_calls.append({
                 "id": call_id, "type": "function",
-                "function": {"name": name, "arguments": fargs},
+                "function": {"name": name,
+                             "arguments": _wire_tool_arguments(fargs)},
             })
         assistant_msg["tool_calls"] = wire_calls
         messages.append(assistant_msg)
@@ -2048,7 +2083,8 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             messages.append({
                 "role": "tool",
                 "tool_call_id": call_id,
-                "content": result_text,
+                "name": name,
+                "content": result_text if result_text else "(no output)",
             })
     log("oracle agent: round budget exhausted", "WARN")
     return {"op": "ask", "rejected": "tool_budget"}
@@ -4950,8 +4986,10 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
             else:
                 why = ans.get("rejected") if isinstance(ans.get("rejected"), str) else ""
                 why = why or "inference_error"
-                payload = {"rejected": why,
-                           "detail": _ORACLE_REJECTS.get(why, "The Oracle did not answer.")}
+                detail = _ORACLE_REJECTS.get(why, "The Oracle did not answer.")
+                if why == "inference_error" and isinstance(ans.get("detail"), str) and ans["detail"]:
+                    detail = ans["detail"]
+                payload = {"rejected": why, "detail": detail}
             try:
                 record_oracle_turn(base, cfg, question, ans)
             except Exception as e:
