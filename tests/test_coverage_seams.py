@@ -568,6 +568,162 @@ class RunnerMainTest(unittest.TestCase):
         self.assertFalse(imap.called)
 
 
+class _FakeIMAP:
+    select_result = ("OK", [b"1"])
+    tagged = ("OK", [b"ok"])
+    built = []
+
+    def __init__(self, host, port=993, timeout=30):
+        _FakeIMAP.built.append(self)
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+        self.state = "NONAUTH"
+        self.login_args = None
+        self.selected = None
+        self.sent = []
+
+    def login(self, user, password):
+        self.login_args = (user, password)
+
+    def select(self, mailbox):
+        self.selected = mailbox
+        return type(self).select_result
+
+    def _new_tag(self):
+        return b"A001"
+
+    def send(self, data):
+        self.sent.append(data)
+
+    def _get_tagged_response(self, tag):
+        return type(self).tagged
+
+
+class _FakeSMTP:
+    built = []
+
+    def __init__(self, host, port=587, timeout=30):
+        _FakeSMTP.built.append(self)
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+        self.started = False
+        self.login_args = None
+        self.auth_mech = None
+        self.callback_result = None
+
+    def starttls(self, *args, **kwargs):
+        self.started = True
+
+    def login(self, user, password):
+        self.login_args = (user, password)
+
+    def auth(self, mech, callback, *args):
+        self.auth_mech = mech
+        self.callback_result = callback()
+
+
+class ConnectMailTest(unittest.TestCase):
+    def setUp(self):
+        _FakeIMAP.built = []
+        _FakeIMAP.select_result = ("OK", [b"1"])
+        _FakeIMAP.tagged = ("OK", [b"ok"])
+        _FakeSMTP.built = []
+
+    def _imap_cfg(self, **extra):
+        cfg = {
+            "imap_host": "imap.example.test",
+            "imap_port": 993,
+            "mailbox_user": "a@b.c",
+            "mailbox_password": "pw",
+        }
+        cfg.update(extra)
+        return cfg
+
+    def _smtp_cfg(self, **extra):
+        cfg = {
+            "smtp_host": "smtp.example.test",
+            "smtp_port": 587,
+            "mailbox_user": "a@b.c",
+            "mailbox_password": "pw",
+        }
+        cfg.update(extra)
+        return cfg
+
+    def test_password_login_selects_the_inbox(self):
+        from runner import runner
+        with mock.patch.object(runner.imaplib, "IMAP4_SSL", _FakeIMAP):
+            conn = runner.connect_imap(self._imap_cfg())
+        self.assertIs(conn, _FakeIMAP.built[0])
+        self.assertEqual(conn.host, "imap.example.test")
+        self.assertEqual(conn.port, 993)
+        self.assertEqual(conn.timeout, 30)
+        self.assertEqual(conn.login_args, ("a@b.c", "pw"))
+        self.assertEqual(conn.selected, "INBOX")
+
+    def test_a_non_string_password_does_not_login(self):
+        from runner import runner
+        with mock.patch.object(runner.imaplib, "IMAP4_SSL", _FakeIMAP):
+            with self.assertRaises(RuntimeError):
+                runner.connect_imap(self._imap_cfg(mailbox_password=5))
+        self.assertIsNone(_FakeIMAP.built[0].login_args)
+
+    def test_a_failed_select_is_a_runtime_error(self):
+        from runner import runner
+        _FakeIMAP.select_result = ("NO", [])
+        with mock.patch.object(runner.imaplib, "IMAP4_SSL", _FakeIMAP):
+            with self.assertRaises(RuntimeError):
+                runner.connect_imap(self._imap_cfg())
+
+    def test_oauth_sends_the_sasl_line_and_marks_auth(self):
+        import base64
+        from runner import runner
+        with mock.patch.object(runner.imaplib, "IMAP4_SSL", _FakeIMAP), \
+             mock.patch.object(runner, "_xoauth2_raw", return_value="raw-token"):
+            conn = runner.connect_imap(self._imap_cfg(auth="oauth"))
+        sent = b"".join(conn.sent)
+        self.assertIn(b"AUTHENTICATE XOAUTH2", sent)
+        self.assertIn(base64.b64encode(b"raw-token"), sent)
+        self.assertEqual(conn.state, "AUTH")
+        self.assertIsNone(conn.login_args)
+
+    def test_a_rejected_xoauth2_is_an_imap_error(self):
+        import imaplib
+        from runner import runner
+        _FakeIMAP.tagged = ("NO", [b"bad"])
+        with mock.patch.object(runner.imaplib, "IMAP4_SSL", _FakeIMAP), \
+             mock.patch.object(runner, "_xoauth2_raw", return_value="raw-token"):
+            with self.assertRaises(imaplib.IMAP4.error):
+                runner.connect_imap(self._imap_cfg(auth="oauth"))
+
+    def test_smtp_password_starts_tls_and_logs_in(self):
+        from runner import runner
+        with mock.patch.object(runner.smtplib, "SMTP", _FakeSMTP):
+            smtp = runner.connect_smtp(self._smtp_cfg())
+        self.assertTrue(smtp.started)
+        self.assertEqual(smtp.login_args, ("a@b.c", "pw"))
+        self.assertEqual(smtp.host, "smtp.example.test")
+
+    def test_smtp_oauth_calls_the_callback_with_no_arguments(self):
+        from runner import runner
+        with mock.patch.object(runner.smtplib, "SMTP", _FakeSMTP), \
+             mock.patch.object(runner, "_xoauth2_raw", return_value="raw-token"):
+            smtp = runner.connect_smtp(self._smtp_cfg(auth="oauth"))
+        self.assertEqual(smtp.auth_mech, "XOAUTH2")
+        self.assertEqual(smtp.callback_result, "raw-token")
+        self.assertIsNone(smtp.login_args)
+
+    def test_a_non_string_smtp_password_does_not_login(self):
+        from runner import runner
+        with mock.patch.object(runner.smtplib, "SMTP", _FakeSMTP):
+            with self.assertRaises(RuntimeError):
+                runner.connect_smtp(self._smtp_cfg(mailbox_password=5))
+        self.assertTrue(_FakeSMTP.built[0].started)
+        self.assertIsNone(_FakeSMTP.built[0].login_args)
+
+
+
 
 
 
