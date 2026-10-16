@@ -1513,11 +1513,11 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
     answers = []
     try:
         spent = int(already_spent or 0)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         spent = 0
     try:
         budget = int(budget)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         budget = 8
     if budget < 0:
         budget = 0
@@ -1571,7 +1571,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                     continue
                 try:
                     limit = int(q.get("max_matches", 10))
-                except (TypeError, ValueError):
+                except (TypeError, ValueError, OverflowError):
                     limit = 10
                 limit = max(0, min(limit, 100))
                 matches = []
@@ -1594,7 +1594,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
             else:
                 try:
                     n = int(q.get("lines", 20))
-                except (TypeError, ValueError):
+                except (TypeError, ValueError, OverflowError):
                     n = 20
                 n = max(0, min(n, 200))
                 lines = text.splitlines()[-n:] if n else []
@@ -1607,7 +1607,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
             else:
                 try:
                     max_chars = int(q.get("max_chars") or inf["max_answer_chars"])
-                except (TypeError, ValueError):
+                except (TypeError, ValueError, OverflowError):
                     max_chars = inf["max_answer_chars"]
                 try:
                     answers.append(ask_model(
