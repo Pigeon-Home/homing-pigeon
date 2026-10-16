@@ -1202,11 +1202,11 @@ def query_budget(cfg, job):
         policy = {}
     try:
         job_b = int(policy.get("query_budget", 8))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         job_b = 8
     try:
         max_b = int(cfg.get("max_query_budget", 8))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         max_b = 8
     return max(0, min(job_b, max_b))
 
