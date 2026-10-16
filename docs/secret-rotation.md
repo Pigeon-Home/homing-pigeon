@@ -5,15 +5,14 @@ volume-based — deliberately so.
 
 ## Why time, not exchanges
 
-TLS rotates keys every connection, but those keys protect *confidentiality*
-over a hostile network. Ours is an *authentication* key: after setup it never
-crosses the wire, only HMAC-SHA384 tags do, and a tag leaks nothing about the
-key. Ten jobs a day and ten thousand are cryptographically identical — so
-counting exchanges is the wrong axis.
+After setup, the secret never crosses the wire — only HMAC-SHA384 tags do,
+and a tag leaks nothing about the key. Ten jobs a day and ten thousand are
+cryptographically identical, so counting exchanges is the wrong axis. Rotation
+is a time question: how long should a single key be the one that matters.
 
-The standards agree. NIST SP 800-57 caps symmetric authentication keys at
-under 2 years (a ceiling, not a target), shortening with exposure. Ninety days
-sits comfortably inside that.
+NIST SP 800-57 caps symmetric authentication keys at under 2 years (a ceiling,
+not a target), shortening with exposure. Ninety days sits comfortably inside
+that.
 
 ## Other transports
 
