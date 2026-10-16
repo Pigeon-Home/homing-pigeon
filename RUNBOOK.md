@@ -241,6 +241,57 @@ machine, it passed. If nothing comes back, the SI failed somewhere:
 wrong signature, wrong subject, wrong address. The clock does not
 lie.
 
+### Run that same clock check the way v2 did
+
+v2 executed the job as the runner's user and sent the full stdout
+back. There was no Oracle view, no judge, and no local model. The
+wire message is still `"v": 1`. You do not send a v2 body. You send
+the same clock job and you keep the v3 switches at their loose
+settings.
+
+A current install does not start that way. `install.py` applies the
+`password-only` profile unless you pass `--no-profile`. That profile
+sets `max_result_view` to `attested` and `judge` to `advisory`, so
+the clock string never comes back. A Raspberry Pi gets
+`raspberry-pi-home`, which does the same and also pulls a model.
+
+Install, or re-apply, like this:
+
+```
+python3 install.py --no-profile --no-inference
+```
+
+On a config that already exists, set these keys. They are the whole
+v2-shaped run. Leave the mailbox and `shared_secret` alone.
+
+```json
+{
+  "max_result_view": "full",
+  "judge": "off",
+  "workspace_root": "",
+  "owner_instructions": "",
+  "inference": {"endpoint": "", "model": ""},
+  "dri": {"enabled": false},
+  "resources": {"enabled": false}
+}
+```
+
+Also leave every `security.modes` value at `off`, leave `sensors`
+disabled, and do not start the runner with `--oracle`.
+
+The clock job itself must be a normal exec: `"v": 1`, `"type":
+"job"`, `"kind": "exec"`, a script that prints the date, and no
+`result_policy`, no `queries`, and no `key_id`. Omit `interpreter`
+unless you know the machine. Windows prints the clock with
+`Get-Date`. Everywhere else, `date` is enough.
+
+What you still get, because the Oracle code is unconditional: the
+result carries `view` (`full`) and `output_digest`, and it may carry
+a `review` note. Those fields do not hide `stdout`. With the keys
+above, `stdout` is the clock, the job is not blocked, nothing is
+paged, and no model is called. That is as close to v2 as this runner
+can be configured. There is no flag that deletes the Oracle.
+
 ---
 
 ## If something goes wrong
