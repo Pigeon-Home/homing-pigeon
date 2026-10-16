@@ -13,6 +13,7 @@ Usage:
 """
 
 import argparse
+import datetime
 import json
 import os
 import platform
@@ -22,8 +23,10 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
+import zipfile
 from xml.sax.saxutils import escape
 
 try:
@@ -229,6 +232,233 @@ def install_windows(dst_dir: str, cfg_path: str, extra=(), run_as="SYSTEM"):
 
 def uninstall_windows():
     run(["schtasks", "/Delete", "/TN", "HomingPigeon", "/F"])
+
+
+# --- --wipe / --migrate: state discovery, backup, and consolidation ---
+#
+# Uninstall removes the scheduled task but leaves every state dir
+# behind, so a box accumulates them: the user's, the SYSTEM profile's,
+# older copies. --wipe backs them all up into one zip and then deletes
+# them ("as if never installed"). --migrate copies them into --dir
+# without overwriting. Both print exactly what they did, because the
+# first thing anyone does with these options is back everything up.
+
+def _run_quiet(cmd):
+    """Best-effort command. Never raises, never prints."""
+    try:
+        subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
+
+def _candidate_state_dirs():
+    """Everywhere a .homing-pigeon state dir could live on this box.
+
+    Existing directories only, deduplicated, current user's first.
+    """
+    cands = []
+    home = os.path.expanduser("~")
+    if home:
+        cands.append(os.path.join(home, ".homing-pigeon"))
+    if sys.platform == "win32":
+        drive = os.environ.get("SystemDrive", "C:")
+        users = drive + os.sep + "Users"
+        try:
+            names = os.listdir(users)
+        except OSError:
+            names = []
+        for n in sorted(names):
+            cands.append(os.path.join(users, n, ".homing-pigeon"))
+        sysroot = os.environ.get("SystemRoot", r"C:\Windows")
+        cands.append(os.path.join(sysroot, "System32", "config",
+                                  "systemprofile", ".homing-pigeon"))
+    else:
+        for h in ("/root", "/var/lib/homing-pigeon"):
+            cands.append(os.path.join(h, ".homing-pigeon"))
+    seen = set()
+    out = []
+    for c in cands:
+        try:
+            key = os.path.normcase(os.path.abspath(c))
+        except Exception:
+            continue
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            if os.path.isdir(c):
+                out.append(c)
+        except OSError:
+            pass
+    return out
+
+
+def _dir_summary(path):
+    """(file_count, total_bytes) for the printed report."""
+    n = 0
+    size = 0
+    for root, _dirs, files in os.walk(path):
+        for f in files:
+            n += 1
+            try:
+                size += os.path.getsize(os.path.join(root, f))
+            except OSError:
+                pass
+    return n, size
+
+
+def _kill_runner_processes():
+    """Stop pigeon runner processes. Never matches this installer."""
+    if sys.platform == "win32":
+        _run_quiet(["taskkill", "/F", "/IM", "homing-pigeon.exe"])
+    else:
+        _run_quiet(["pkill", "-f", "[h]oming-pigeon"])
+
+
+def _backup_dirs_to_zip(dirs, zip_path):
+    """Zip each dir under its own top-level folder. Returns file count."""
+    count = 0
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for d in dirs:
+            label = re.sub(r"[^A-Za-z0-9]+", "_", d).strip("_") or "pigeon"
+            for root, _dirs, files in os.walk(d):
+                for f in files:
+                    full = os.path.join(root, f)
+                    rel = os.path.relpath(full, d)
+                    try:
+                        zf.write(full, os.path.join(label, rel))
+                        count += 1
+                    except OSError:
+                        pass
+    return count
+
+
+def do_wipe(backup_dir=None, no_backup=False):
+    """Back up every state dir into one zip, then remove everything.
+
+    Removes the scheduled task / service entries (best effort),
+    kills runner processes, and deletes the state dirs. Ollama and
+    its models are left alone: they are a separate program.
+    """
+    print("wipe: stopping pigeon processes...")
+    _kill_runner_processes()
+    if sys.platform == "win32":
+        _run_quiet(["schtasks", "/Delete", "/TN", "HomingPigeon", "/F"])
+        print("wipe: scheduled task 'HomingPigeon' deleted (if it existed)")
+    elif sys.platform.startswith("linux"):
+        _run_quiet(["systemctl", "--user", "disable", "--now",
+                    "homing-pigeon.service"])
+        _run_quiet(["sudo", "-n", "systemctl", "disable", "--now",
+                    "homing-pigeon.service"])
+        print("wipe: systemd units disabled (if they existed)")
+    elif sys.platform == "darwin":
+        _run_quiet(["launchctl", "unload",
+                    os.path.expanduser("~/Library/LaunchAgents/homing-pigeon.plist")])
+        print("wipe: launchd job unloaded (if it existed)")
+
+    dirs = _candidate_state_dirs()
+    if not dirs:
+        print("wipe: no .homing-pigeon state dirs found on this box")
+    backup_path = None
+    if dirs and not no_backup:
+        ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        bdir = os.path.abspath(backup_dir) if backup_dir else tempfile.gettempdir()
+        try:
+            os.makedirs(bdir, exist_ok=True)
+        except OSError as e:
+            print(f"wipe: cannot create backup dir {bdir}: {e}")
+            return 1
+        backup_path = os.path.join(bdir, f"homing-pigeon-backup-{ts}.zip")
+        try:
+            n = _backup_dirs_to_zip(dirs, backup_path)
+        except OSError as e:
+            print(f"wipe: backup failed: {e}; nothing deleted")
+            return 1
+        print(f"wipe: backed up {n} file(s) from {len(dirs)} location(s):")
+        for d in dirs:
+            nfiles, size = _dir_summary(d)
+            print(f"wipe:   {d} ({nfiles} files)")
+        print(f"wipe: backup is {backup_path}")
+    elif dirs:
+        print("wipe: --no-backup given; deleting without a backup")
+
+    for d in dirs:
+        nfiles, _size = _dir_summary(d)
+        try:
+            shutil.rmtree(d)
+            print(f"wipe: deleted {d} ({nfiles} files)")
+        except OSError as e:
+            print(f"wipe: could not delete {d}: {e}")
+    print("wipe: done. Ollama and its models were left in place; "
+          "uninstall Ollama separately if you want it gone.")
+    print("wipe: reinstall with install.exe to start fresh.")
+    return 0
+
+
+def _merge_tree(src, dst):
+    """Copy files from src into dst, never overwriting.
+
+    Returns (copied, skipped).
+    """
+    copied = 0
+    skipped = 0
+    for root, _dirs, files in os.walk(src):
+        for f in files:
+            s = os.path.join(root, f)
+            rel = os.path.relpath(s, src)
+            t = os.path.join(dst, rel)
+            if os.path.exists(t):
+                skipped += 1
+                continue
+            try:
+                os.makedirs(os.path.dirname(t), exist_ok=True)
+            except OSError:
+                skipped += 1
+                continue
+            try:
+                shutil.copy2(s, t)
+                copied += 1
+            except OSError:
+                skipped += 1
+    return copied, skipped
+
+
+def do_migrate(target_dir):
+    """Copy state found in other locations into target_dir.
+
+    Never overwrites. Sources are left in place; verify the result,
+    then 'install.exe --wipe' removes the old locations.
+    """
+    target = os.path.abspath(target_dir)
+    try:
+        os.makedirs(target, exist_ok=True)
+    except OSError as e:
+        print(f"migrate: cannot create {target}: {e}")
+        return 1
+    print(f"migrate: target {target}")
+    tkey = os.path.normcase(target)
+    sources = [d for d in _candidate_state_dirs()
+               if os.path.normcase(os.path.abspath(d)) != tkey]
+    if not sources:
+        print("migrate: no other state dirs found; nothing to do")
+        return 0
+    print(f"migrate: found {len(sources)} other location(s):")
+    for s in sources:
+        print(f"migrate:   {s}")
+    total_copied = 0
+    total_skipped = 0
+    for src in sources:
+        copied, skipped = _merge_tree(src, target)
+        total_copied += copied
+        total_skipped += skipped
+        print(f"migrate: {src}: {copied} copied, "
+              f"{skipped} skipped (already present)")
+    print(f"migrate: done. {total_copied} file(s) consolidated into {target}; "
+          f"{total_skipped} skipped.")
+    print("migrate: sources left in place. Verify, then "
+          "'install.exe --wipe' removes the old locations.")
+    return 0
 
 
 def install_linux(dst_dir: str, cfg_path: str, system: bool, extra=()):
@@ -701,6 +931,18 @@ def main() -> int:
                          "for the account password unless it is a "
                          "service account)")
     ap.add_argument("--uninstall", action="store_true")
+    ap.add_argument("--wipe", action="store_true",
+                    help="back up every pigeon state dir on this box into one "
+                         "zip, then delete the state dirs, the scheduled "
+                         "task/service, and running processes")
+    ap.add_argument("--backup-dir", default=None, metavar="DIR",
+                    help="where --wipe writes its backup zip "
+                         "(default: system temp dir)")
+    ap.add_argument("--no-backup", action="store_true",
+                    help="with --wipe, delete without backing up first")
+    ap.add_argument("--migrate", action="store_true",
+                    help="copy state found in other locations into --dir "
+                         "(never overwrites) and report what moved")
     ap.add_argument("--shared-secret", default=None, metavar="SECRET",
                     help="shared secret to write into config.json "
                          "(default: generate a random one)")
@@ -758,6 +1000,12 @@ def main() -> int:
             return 2
         print("uninstalled")
         return 0
+
+    if args.wipe:
+        return do_wipe(backup_dir=args.backup_dir, no_backup=args.no_backup)
+
+    if args.migrate:
+        return do_migrate(args.dir)
 
     dst_dir = os.path.abspath(args.dir)
     cfg_path = os.path.abspath(args.config) if args.config \
