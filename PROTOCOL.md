@@ -78,9 +78,19 @@ gets done without you knowing how any of it works.
   "args": ["--flag", "value"],
   "env": {"MY_VAR": "value"},
   "timeout_sec": 300,
+  "runner_id": "<audience, optional>",
   "sig": "<hex hmac>"
 }
 ```
+
+- `runner_id`: optional audience claim. When the runner's config sets
+  `runner_id` and the `audience_binding` security feature is not `off`,
+  the body's `runner_id` must equal the configured one or the job is
+  rejected (enforce) / logged (audit). With the feature off (default),
+  the field is ignored. Every message type (job, query, task_*,
+  sensor_alert) may carry it. A **fresh config** — one created by the
+  setup wizard (`--setup`), not hand-edited — gets a random `runner_id`
+  automatically.
 
 - `kind`: `exec` or `ping`. A `ping` job carries no script; the runner
   answers with a `pong` result (health check).
@@ -165,7 +175,14 @@ signed message (generate with `openssl rand -hex 32`).
 3. `v == 1` and `type == "job"`.
 4. `issued_at` parses and is within `max_job_age_sec` (default 3600) of
    the runner's clock (replay / stale protection).
-5. `job_id` not in the seen-set (replay protection).
+5. `job_id` not in the seen-set (replay protection). The seen-set key
+   is namespaced by `runner_id` when one is configured.
+6. **Audience binding** (when `security.modes.audience_binding` is not
+   `off` and the config sets `runner_id`): the body's `runner_id` must
+   equal the configured one. The expected value always comes from the
+   config the runner loaded, never from the signed body. Applies to
+   jobs, queries (including the `ask` op), board messages, and sensor
+   alerts.
 
 Failures are logged, the mail is marked seen, and the job is **never**
 executed. Delivery is at-least-once: a job whose result email fails to

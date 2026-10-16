@@ -283,6 +283,12 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
     else:
         cfg["shared_secret"] = _accept_secret()
 
+    # Hardening M5: a fresh config gets a runner_id (the audience that
+    # signed jobs must claim). Existing configs keep theirs; hand-made
+    # configs without one simply skip audience binding.
+    if not cfg.get("runner_id"):
+        cfg["runner_id"] = secrets.token_hex(8)
+        print(f"generated runner_id: {cfg['runner_id']}")
     _write_config(cfg_path, cfg)
     print(f"\nwrote {cfg_path} (owner read/write only)")
     print("Give the shared secret above to your cloud SI so it can sign jobs.")

@@ -99,13 +99,16 @@ class WizardOAuthTest(unittest.TestCase):
 
     def test_secret_decline_regenerates(self):
         with mock.patch.object(SU.secrets, "token_hex",
-                               side_effect=["a" * 64, "b" * 64]):
+                               side_effect=["a" * 64, "b" * 64,
+                                            "c" * 16]):
             _, written = self._run([
                 "runner@example.com", "", "cid",
                 "n",   # decline first secret
                 "y",   # accept second
             ])
         self.assertEqual(written["shared_secret"], "b" * 64)
+        # Hardening M5: fresh configs also get a runner_id.
+        self.assertEqual(written["runner_id"], "c" * 16)
 
     def test_password_flow(self):
         with tempfile.TemporaryDirectory() as d:

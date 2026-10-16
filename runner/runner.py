@@ -644,6 +644,55 @@ def check_policy_constraints(pol, key_id, cfg, job):
     return findings
 
 
+# Hardening M5: audience binding. The runner_id is read from the actual
+# config the runner loaded, never from the signed body: the body only
+# carries the *claimed* audience. A signed job for another runner is
+# rejected in enforce mode, logged in audit mode, ignored when off.
+def check_audience(cfg, payload):
+    """Return 'runner_id mismatch' when the body's claimed audience does
+    not match the configured runner_id, else None.
+
+    Returns None when the feature is off or when no runner_id is
+    configured (there is nothing to bind to).
+    """
+    if _security is None:
+        return None
+    if _security.sec_mode(cfg, "audience") == "off":
+        return None
+    expected = cfg.get("runner_id") if isinstance(cfg, dict) else None
+    if not expected or not isinstance(expected, str):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    if payload.get("runner_id") != expected:
+        return "runner_id mismatch"
+    return None
+
+
+def audience_allows(cfg, base_dir, payload, key_id, ident):
+    """Three-mode audience enforcement. Returns True when the message
+    may proceed. In audit mode the decision is logged and processing
+    continues; in enforce mode a mismatch denies."""
+    if check_audience(cfg, payload) is None:
+        return True
+    if _security is None:
+        return True
+    decision = _security.sec_decide(
+        cfg, base_dir, "audience", "runner_id_mismatch",
+        {"key_id": key_id, "job_id": ident})
+    return decision != "deny"
+
+
+def _seen_key(cfg, key):
+    """Namespace a replay-cache (seen) key by runner_id when one is
+    configured, so entries do not collide after the runner_id is set
+    for the first time. Unchanged when no runner_id is configured."""
+    rid = cfg.get("runner_id") if isinstance(cfg, dict) else None
+    if isinstance(rid, str) and rid:
+        return "%s:%s" % (rid, key)
+    return key
+
+
 def verify_body_keyed(body_text: str, secrets: dict):
     """Return (payload, key_id). Unknown key_id raises before any crypto."""
     if not isinstance(body_text, str):
@@ -2654,7 +2703,9 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     if not m:
         return False
     query_id = m.group(1)
-    seen_key = "query:" + query_id
+    # Hardening M5: the replay-cache key is namespaced by runner_id
+    # when one is configured.
+    seen_key = _seen_key(cfg, "query:" + query_id)
 
     def finish(reply, secret):
         if reply is not None and secret and opts is not None and (opts.dry_run or getattr(opts, "no_send", False)):
@@ -2678,6 +2729,18 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     except Exception as e:
         log(f"query bad signature seq {seq}: {e}", "WARN")
         _mark(imap, seq, opts)
+        return True
+
+    # Hardening M5: audience binding. The expected runner_id comes from
+    # the loaded config, never from the signed body. This covers the
+    # ask op too: a spoofed audience cannot trick the model into
+    # answering for the wrong identity.
+    if not audience_allows(cfg, base_dir, payload, key_id, query_id):
+        log(f"query rejected seq {seq}: runner_id mismatch", "WARN")
+        _mark(imap, seq, opts)
+        if isinstance(seen, dict) and (opts is None or not opts.dry_run):
+            with _MAIL_LOCK:
+                seen[seen_key] = True
         return True
 
     if payload.get("v") != PROTOCOL_VERSION or payload.get("type") != "query":
@@ -2795,6 +2858,17 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
             "reason": "bad_signature",
         })
         return True
+    # Hardening M5: audience binding for every board message type
+    # (task_submit, task_request, task_result, task_approve).
+    if not audience_allows(cfg, base_dir, payload, key_id, ident):
+        reject("audience mismatch")
+        _append_security_event(base_dir, {
+            "type": "auth_rejection",
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "reason": "security_policy",
+            "feature": "audience",
+        })
+        return True
     try:
         with _BOARD_LOCK:
             board.reoffer_expired(cfg.get("task_timeout", 86400))
@@ -2851,7 +2925,7 @@ def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
         log(f"sensor alert {job_id}: {why}")
         if not dry:
             with _MAIL_LOCK:
-                seen[job_id] = True
+                seen[_seen_key(cfg, job_id)] = True
                 mark_seen(imap, seq)
 
     if _senses is None:
@@ -2863,7 +2937,7 @@ def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
         log(f"sensor alert {job_id}: rejected: {e}", "ERROR")
         if not dry:
             with _MAIL_LOCK:
-                seen[job_id] = True
+                seen[_seen_key(cfg, job_id)] = True
                 mark_seen(imap, seq)
         return
     bad = _senses.validate_sensor_alert(job)
@@ -2935,8 +3009,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             mark_seen(imap, seq)
         return
     job_id = m.group(1)
+    # Hardening M5: the replay-cache key is namespaced by runner_id
+    # when one is configured.
+    skey = _seen_key(cfg, job_id)
 
-    if job_id in seen:
+    if skey in seen:
         if opts is None or not opts.dry_run:
             mark_seen(imap, seq)
         return
@@ -2974,6 +3051,17 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         # verify_body can return any JSON value if the signer hand-crafts
         # one; job.get below would raise AttributeError -> transient retry.
         reject("job body must be a JSON object")
+        return
+    # Hardening M5: audience binding. The expected runner_id comes from
+    # the loaded config, never from the signed body.
+    if not audience_allows(cfg, base_dir, job, key_id, job_id):
+        reject("security policy (audience): runner_id mismatch")
+        _append_security_event(base_dir, {
+            "type": "auth_rejection",
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "reason": "security_policy",
+            "feature": "audience",
+        })
         return
     # Hardening M1b: bound the script after the signature is verified
     # (it lives inside the signed body). 0 means unlimited.
@@ -3085,10 +3173,10 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # Claim the job_id so a duplicate delivery on another worker thread
     # cannot double-execute it. The check-and-add is atomic under the lock.
     with _MAIL_LOCK:
-        if job_id in seen or job_id in _IN_FLIGHT:
+        if skey in seen or skey in _IN_FLIGHT:
             mark_seen(imap, seq)
             return
-        _IN_FLIGHT.add(job_id)
+        _IN_FLIGHT.add(skey)
     try:
         def maybe_send(subject: str, body: str):
             if no_send:
@@ -3174,7 +3262,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 maybe_send(f"{SUBJECT_RESULT}{job_id}",
                           sign_payload(result, secret))
                 log(f"job {job_id} done (exit={r['exit_code']})")
-                seen[job_id] = True  # only after the result is safely sent (at-least-once)
+                seen[skey] = True  # only after the result is safely sent (at-least-once)
                 mark_seen(imap, seq)
         except JobRejected as e:
             log(f"job {job_id} rejected: {e}", "WARN")
@@ -3192,7 +3280,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 with _MAIL_LOCK:
                     maybe_send(f"{SUBJECT_RESULT}{job_id}",
                               sign_payload(result, secret))
-                    seen[job_id] = True
+                    seen[skey] = True
                     mark_seen(imap, seq)
             except Exception as e2:
                 log(f"could not send rejection result: {e2}", "ERROR")
@@ -3201,7 +3289,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             log(f"job {job_id} failed, will retry: {e}", "ERROR")
     finally:
         with _MAIL_LOCK:
-            _IN_FLIGHT.discard(job_id)
+            _IN_FLIGHT.discard(skey)
 
 
 # ---------------------------------------------------------------- main
@@ -4116,6 +4204,15 @@ def main() -> int:
         except RuntimeError as e:
             print(e, file=sys.stderr)
             return 2
+        # Hardening M5: audience binding with no runner_id configured
+        # has nothing to bind to. Warn instead of silently doing
+        # nothing; the setup wizard generates one for fresh configs.
+        if _security.sec_mode(cfg, "audience") != "off" \
+                and not cfg.get("runner_id"):
+            log("WARN: security.modes.audience is not off but "
+                "no runner_id is configured; the check is skipped. "
+                "Set runner_id (the setup wizard generates one for "
+                "fresh configs).", "WARN")
     # Hardening M1b: the size caps must be non-negative integers.
     # 0 means unlimited.
     _err = _validate_size_caps(cfg)
