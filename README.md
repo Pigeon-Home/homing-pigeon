@@ -500,13 +500,17 @@ Later:
 
 ## Status
 
-v3.6.0. Optional hardening controls, all off unless you turn them on:
-key policy for env, files, and args; audience binding (`runner_id`);
-a security audit log; Linux bubblewrap confinement; and running a job
-as another POSIX user. See SECURITY.md. `--posture` and
+v3.6.1. Optional hardening controls, all off unless you turn them on:
+key policy for env, files, and args (including the dangerous-env
+gate and `allow_file_urls`/`max_args`); audience binding
+(`runner_id`, 128-bit, `--aud` on send_job.py); a security audit log
+with per-key `key_policies` fragments via `--audit-report`;
+Linux bubblewrap confinement; running a job as another POSIX user;
+and `secret_files`. See SECURITY.md. `--posture` and
 `--audit-report` read that state without opening the mailbox.
 
-v3.0.0 shipped the Oracle: result policies, signed attestations, task
+v3.6.0 shipped the M0–M11 hardening pass this builds on. v3.0.0
+shipped the Oracle: result policies, signed attestations, task
 dispatch, multi-secret installs, and the `ask` op. Later 3.x releases
 added the loopback Oracle chat (`--oracle`), the Raspberry Pi
 inference profile (`llama3.2:1b`), and the hardening above. The
