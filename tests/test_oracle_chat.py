@@ -589,6 +589,79 @@ class OracleAgentTest(unittest.TestCase):
                               opener=_scripted_opener(script))
         self.assertEqual(ans.get("answer"), "recovered")
 
+    def test_agent_content_tool_call_executes(self):
+        # Small local models often emit the tool call as a JSON blob in
+        # the message content instead of native tool_calls. That shape
+        # must execute, not leak into the chat as the "answer".
+        from runner.runner import ask_model_agent
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "debug.log")
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write("AUTHENTICATIONFAILED invalid credentials")
+            script = [
+                {"role": "assistant", "content": json.dumps({
+                    "name": "read_file",
+                    "parameters": {"path": p},
+                })},
+                {"role": "assistant",
+                 "content": "The log shows invalid credentials."},
+            ]
+            ans = ask_model_agent(_agent_cfg(), "did it fail?", "(no output)",
+                                  2000, opener=_scripted_opener(script))
+        self.assertIn("answer", ans)
+        self.assertIn("invalid credentials", ans["answer"])
+        self.assertEqual(ans.get("tool_rounds"), 1)
+
+    def test_agent_content_tool_call_fenced(self):
+        from runner.runner import ask_model_agent
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "notes.txt")
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write("fenced blob works")
+            blob = ("```json\n" + json.dumps({
+                "name": "read_file", "parameters": {"path": p}}) + "\n```")
+            script = [
+                {"role": "assistant", "content": blob},
+                {"role": "assistant", "content": "read it fine"},
+            ]
+            ans = ask_model_agent(_agent_cfg(), "what is in there?", "",
+                                  2000, opener=_scripted_opener(script))
+        self.assertEqual(ans.get("answer"), "read it fine")
+        self.assertEqual(ans.get("tool_rounds"), 1)
+
+    def test_agent_content_unknown_name_stays_text(self):
+        # A JSON blob naming something that is not an Oracle tool is
+        # not a tool call; it stays a (sanitized) plain-text answer.
+        from runner.runner import ask_model_agent
+        blob = json.dumps({"name": "nope", "parameters": {"x": 1}})
+        script = [{"role": "assistant", "content": blob}]
+        ans = ask_model_agent(_agent_cfg(), "hi", "", 2000,
+                              opener=_scripted_opener(script))
+        self.assertIn("nope", ans.get("answer", ""))
+        self.assertEqual(ans.get("tool_rounds"), 0)
+
+    def test_agent_native_tool_calls_win_over_content(self):
+        from runner.runner import ask_model_agent
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "debug.log")
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write("native path used")
+            script = [
+                {"role": "assistant",
+                 "content": json.dumps({"name": "run",
+                                        "parameters": {"command": "echo wrong"}}),
+                 "tool_calls": [{
+                     "id": "call-1", "type": "function",
+                     "function": {"name": "read_file",
+                                  "arguments": json.dumps({"path": p})},
+                 }]},
+                {"role": "assistant", "content": "native path used"},
+            ]
+            ans = ask_model_agent(_agent_cfg(), "hi", "", 2000,
+                                  opener=_scripted_opener(script))
+        self.assertEqual(ans.get("answer"), "native path used")
+        self.assertEqual(ans.get("tool_rounds"), 1)
+
     def test_agent_round_budget_exhausted(self):
         from runner.runner import ask_model_agent
         script = [_tool_msg("list_dir", {"path": "/tmp"})]

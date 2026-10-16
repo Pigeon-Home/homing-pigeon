@@ -1654,6 +1654,11 @@ _ORACLE_TOOLS = [
     },
 ]
 
+_ORACLE_TOOL_NAMES = frozenset(
+    t.get("function", {}).get("name") for t in _ORACLE_TOOLS
+    if isinstance(t, dict) and isinstance(t.get("function"), dict)
+)
+
 ASK_AGENT_SYSTEM = ASK_SYSTEM + (
     "\nYou have tools: read_file, list_dir, write_file, run. "
     "Use them to investigate the box instead of guessing. "
@@ -1816,31 +1821,78 @@ def _agent_trim(messages):
 
 
 def _parse_tool_calls(msg):
-    """Normalize OpenAI-style tool_calls from a chat message."""
+    """Normalize OpenAI-style tool_calls from a chat message.
+
+    Falls back to a content-embedded call: small local models often
+    skip native tool_calls and emit {"name": ..., "parameters": {...}}
+    as a JSON blob in the message content instead. Without this the
+    blob leaks into the chat as the "answer" instead of executing.
+    """
     calls = msg.get("tool_calls")
-    if not isinstance(calls, list):
-        return []
-    out = []
-    for tc in calls[:_ORACLE_AGENT_MAX_TOOLS_PER_ROUND]:
-        if not isinstance(tc, dict):
-            continue
-        fn = tc.get("function")
-        if not isinstance(fn, dict):
-            continue
-        name = fn.get("name")
-        raw_args = fn.get("arguments")
-        if isinstance(raw_args, str):
-            try:
-                raw_args = json.loads(raw_args)
-            except (TypeError, ValueError):
+    if isinstance(calls, list) and calls:
+        out = []
+        for tc in calls[:_ORACLE_AGENT_MAX_TOOLS_PER_ROUND]:
+            if not isinstance(tc, dict):
+                continue
+            fn = tc.get("function")
+            if not isinstance(fn, dict):
+                continue
+            name = fn.get("name")
+            raw_args = fn.get("arguments")
+            if isinstance(raw_args, str):
+                try:
+                    raw_args = json.loads(raw_args)
+                except (TypeError, ValueError):
+                    raw_args = {}
+            if not isinstance(raw_args, dict):
                 raw_args = {}
-        if not isinstance(raw_args, dict):
-            raw_args = {}
-        call_id = tc.get("id")
-        if not isinstance(call_id, str) or not call_id:
-            call_id = f"call-{len(out)}"
-        out.append((call_id, name if isinstance(name, str) else "", raw_args))
-    return out
+            call_id = tc.get("id")
+            if not isinstance(call_id, str) or not call_id:
+                call_id = f"call-{len(out)}"
+            out.append((call_id, name if isinstance(name, str) else "", raw_args))
+        if out:
+            return out
+    return _parse_content_tool_call(msg.get("content"))
+
+
+def _parse_content_tool_call(content):
+    """Detect a tool call the model wrote as JSON in its reply text.
+
+    Only the known Oracle tool names qualify; anything else stays a
+    plain-text answer. Returns a one-element call list or [].
+    """
+    if not isinstance(content, str):
+        return []
+    text = content.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+    candidates = [text]
+    if "{" in text:
+        brace = text[text.index("{"):text.rindex("}") + 1] if "}" in text else ""
+        if brace and brace != text:
+            candidates.append(brace)
+    for cand in candidates:
+        try:
+            obj = json.loads(cand)
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(obj, dict):
+            continue
+        name = obj.get("name")
+        if name not in _ORACLE_TOOL_NAMES:
+            continue
+        args = obj.get("parameters")
+        if args is None:
+            args = obj.get("arguments")
+        if not isinstance(args, dict):
+            continue
+        return [("content-call-0", name, args)]
+    return []
 
 
 def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
