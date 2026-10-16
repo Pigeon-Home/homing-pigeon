@@ -123,8 +123,9 @@ as it always has. Every control has three modes:
 }
 ```
 
-**Changing a mode requires a restart.** The config file is read once
-at startup; it is not re-read each poll cycle.
+**Changing a mode requires a restart.** Poll interval, workers,
+timeouts, output limits, and max job age reload when `config.json`
+changes. The `security` block does not.
 
 **A malformed security block stops startup** with an error naming the
 key and the bad value. It never silently falls back to `off`.

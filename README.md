@@ -89,10 +89,10 @@ and the job message carries download URLs (with optional SHA-384).
 **Why email?** Because it's the only transport with all five properties
 on day one: reachable from anywhere, outbound-only polling (no inbound
 ports — NAT-proof), at-least-once delivery, and
-zero infrastructure to operate. And because the protocol doesn't care
-about the pipe: Cloudflare Queues, NATS, MQTT, Redis Streams and friends
-all satisfy the same contract. Email is just Transport #1 —
-see TRANSPORTS.md.
+zero infrastructure to operate. The protocol does not care about the
+pipe, but email is the only transport wired in today. Cloudflare Queues
+is the planned second one. The other pipes in TRANSPORTS.md are design
+notes, not code.
 
 **Runbooks, not prompts.** The SI doesn't chat about the task — it ships
 a runbook: deterministic steps, each with a check that proves the step
@@ -190,10 +190,16 @@ The Oracle ships two confinement capabilities:
   boundary. The endpoint must be loopback (fail closed), and every
   answer is truncated, redacted, and secret-scanned before it's sent.
   The SI gets useful answers, and your raw data never leaves the machine.
-- **Execution confinement.** Set `workspace_root` and the Oracle
-  snapshots file metadata outside it before and after the job, then
-  attests `confined_to_workspace`. It is a snapshot, not a sandbox.
-  The walk stops at 50000 files. OS-level containment is future work.
+- **Execution confinement.** Two different checks, both shipped.
+  Set `workspace_root` and the Oracle snapshots file metadata outside
+  that folder before and after the job, then attests
+  `confined_to_workspace`. That one is a snapshot, not a sandbox. The
+  walk stops at 50000 files. Separately, on Linux, set
+  `security.modes.confinement` to `enforce` and the job runs inside
+  bubblewrap (`bwrap`): `/usr` read-only, no network, and only the job
+  workdir writable. It is off by default. If `bwrap` is missing, or the
+  machine is not Linux, the job runs normally and the audit log records
+  the fallback. See SECURITY.md.
 
 Full spec in PROTOCOL.md (sections 9–12).
 
@@ -201,9 +207,9 @@ Full spec in PROTOCOL.md (sections 9–12).
 
 - `PROTOCOL.md` — the full wire protocol (message formats, signatures,
   verification rules, security model).
-- `TRANSPORTS.md` — email is just Transport #1. Alternatives that satisfy
-  the transport contract: Cloudflare Queues (the pick), NATS, MQTT,
-  Redis Streams, Postgres, Durable Objects.
+- `TRANSPORTS.md` — email is the only transport in the runner.
+  Cloudflare Queues is the planned next one. The rest of that file is
+  design notes, not code.
 - `SAFEGUARDS.md` — how to run this without getting burned: the
   non-negotiables, containment, the Oracle as a safeguard, and what
   to do when something goes wrong.
@@ -436,7 +442,7 @@ service, so the agent on boot runs exactly what you tested:
 `python3 runner/install.py --verbose --poll-interval 30`.
 
 ```bash
-python3 -m pytest tests/   # or: python3 tests/test_runner.py
+python3 -m unittest discover -s tests -t .
 ```
 
 The suite drives the real runner code against fake IMAP/SMTP servers:
@@ -491,37 +497,25 @@ End-to-end without your SI:
 
 Later:
 - Cloudflare Queues as Transport #2
-- Thunderbird-grade OAuth decision for future users
 
 ## Status
 
-v1.4.4. Grok hardened the config hot-reload: bad files don't poison
-retries, CLI flags can't be undone by later edits, and invalid values
-(negative intervals, non-numbers) are rejected instead of crashing the
-loop. v1.4.3. The runner now hot-reloads `config.json` — edit poll
-interval,
-workers, timeouts, or output limits and they take effect within one
-poll cycle, no restart needed. Includes Grok's doc fix dropping the
-last leftover "From hard rule" references. v1.4.1. Release binaries now
-carry Sigstore build provenance attestations
-— verifiable proof they were built by this repo's CI. v1.4.0. The sender
-address is no longer validated — any sender may submit
-jobs, and the HMAC signature is the sole authentication gate. The sender
-is logged for audit but never trusted. v1.3.1. PowerShell jobs stage as
-`script.ps1` (Windows `-File` requires the
-extension — every exec job failed without it); dead OAuth refresh tokens
-now raise a distinct error and log once to the Windows Event Log instead
-of failing silently. v1.3.0: Thunderbird-style Google sign-in: the runner opens your browser,
-you sign in like adding Gmail on your phone, and IMAP/SMTP use XOAUTH2
-from then on — no app password. Tested end to end on Windows 11: browser
-login, job sent, runner polled and executed it, result sent back, all
-over OAuth. Password auth stays the default and is untouched. Runner
-rewritten in cross-platform Python; crypto tested (sign/verify roundtrip,
-tamper rejection, CRLF tolerance); end-to-end suite passes against fake
-mail servers (103 tests). Debug/audit flags (`--dry-run`, `--verbose`,
-`--pdb`, `--no-send`), concurrent job execution (`--workers`), SHA-384
-release hashes, and PyPI distribution (`pip install pigeon-home-runner`).
-Releases ship standalone binaries (Windows/macOS/Linux) plus a Python
-wheel and sdist. The v3 protocol — the Oracle, privacy-preserving
-results via signed
-attestations — shipped as 3.0.0, spec in PROTOCOL.md (sections 9–12).
+v3.6.0. Optional hardening controls, all off unless you turn them on:
+key policy for env, files, and args; audience binding (`runner_id`);
+a security audit log; Linux bubblewrap confinement; and running a job
+as another POSIX user. See SECURITY.md. `--posture` and
+`--audit-report` read that state without opening the mailbox.
+
+v3.0.0 shipped the Oracle: result policies, signed attestations, task
+dispatch, multi-secret installs, and the `ask` op. Later 3.x releases
+added the loopback Oracle chat (`--oracle`), the Raspberry Pi
+inference profile (`llama3.2:1b`), and the hardening above. The
+package version lives in `pyproject.toml`.
+
+Still true from earlier releases. Any sender may submit a job, and the
+HMAC is the only gate. `config.json` hot-reloads poll interval,
+workers, timeouts, output limits, and max job age. A `security` mode
+change still needs a restart. Thunderbird-style Google sign-in is
+shipped. PowerShell jobs stage as `script.ps1`. Release binaries carry
+Sigstore build provenance. The suite is
+`python3 -m unittest discover -s tests -t .`.
