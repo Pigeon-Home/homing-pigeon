@@ -87,7 +87,7 @@ class OracleChatTest(unittest.TestCase):
             self.addCleanup(httpd.server_close)
 
             def fake_ask(inf, question, output_text, max_chars, patterns=None,
-                         opener=None, instructions=None):
+                         opener=None, instructions=None, base_dir=None):
                 self.assertIn("5", output_text)
                 return {"op": "ask", "rejected": "sanitization"}
 
@@ -130,7 +130,7 @@ class OracleChatTest(unittest.TestCase):
             seen = {}
 
             def fake_ask(inf, question, output_text, max_chars, patterns=None,
-                         opener=None, instructions=None):
+                         opener=None, instructions=None, base_dir=None):
                 seen["question"] = question
                 seen["output"] = output_text
                 seen["instructions"] = instructions
@@ -550,6 +550,57 @@ def _tool_msg(name, args, call_id="call-1"):
 
 class OracleAgentTest(unittest.TestCase):
     """The --oracle chat model gets tools. The job path does not."""
+
+    def test_oracle_page_prefills_job_summary_prompt(self):
+        page = oracle_page("tok", "llama3.2:3b", True)
+        self.assertIn(
+            "Give me a summary of the job status of what you found "
+            "on this system.",
+            page)
+
+    def test_oracle_page_describes_oracle_role(self):
+        page = oracle_page("tok", "llama3.2:3b", True)
+        self.assertIn("retained job outputs", page)
+        self.assertIn("runner log", page)
+        self.assertIn("nothing leaves it", page)
+
+    def test_agent_system_names_state_paths(self):
+        from runner.runner import ask_model_agent
+        seen = []
+        with tempfile.TemporaryDirectory() as d:
+            script = [{"role": "assistant", "content": "done"}]
+            ask_model_agent(_agent_cfg(), "hi", "", 2000,
+                            opener=_scripted_opener(script, seen),
+                            base_dir=d)
+        self.assertTrue(seen)
+        system = seen[0]["messages"][0]["content"]
+        self.assertIn("signed work request", system)
+        self.assertIn("retained/ folder", system)
+        self.assertIn(d, system)
+        self.assertIn(os.path.join(d, "retained"), system)
+        self.assertIn(os.path.join(d, "runner.log"), system)
+
+    def test_agent_relative_read_resolves_to_base_dir(self):
+        from runner.runner import _run_oracle_tool
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "notes.txt"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("relative paths land here")
+            res = _run_oracle_tool("read_file", {"path": "notes.txt"},
+                                   base_dir=d)
+        self.assertIn("relative paths land here", res)
+
+    def test_agent_run_uses_base_dir_as_cwd(self):
+        from runner.runner import _run_oracle_tool
+        with tempfile.TemporaryDirectory() as d:
+            cmd = ('"%s" -c "import os, sys; '
+                   'sys.stdout.write(os.getcwd())"' % sys.executable)
+            res = _run_oracle_tool("run", {"command": cmd}, base_dir=d)
+        self.assertTrue(res.startswith("exit=0"),
+                        f"run failed: {res[:200]}")
+        reported = res.split("\n", 1)[1].strip()
+        self.assertEqual(os.path.realpath(reported),
+                         os.path.realpath(d))
 
     def test_agent_reads_file_then_answers(self):
         from runner.runner import ask_model_agent
