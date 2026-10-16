@@ -142,11 +142,15 @@ class JobUserTest(unittest.TestCase):
         self.assertEqual(audit[0]["reason"], "would_run_as_user")
 
     def test_bad_config_rejected(self):
-        for bad in ({"user": ""}, {"user": 123}, "pigeon-test",
-                    {"user": "no-such-user-zzz"}):
+        for bad in ({"user": ""}, {"user": 123}, "pigeon-test"):
             with self.assertRaises(RuntimeError, msg=str(bad)):
                 S.validate_security_config(
                     {"security": {"job_user": bad}})
+        # Existence is checked with pwd, which Windows does not have.
+        if os.name != "nt":
+            with self.assertRaises(RuntimeError):
+                S.validate_security_config(
+                    {"security": {"job_user": {"user": "no-such-user-zzz"}}})
 
     @unittest.skipUnless(POSIX, "job_user fallback is POSIX")
     def test_non_root_falls_back(self):

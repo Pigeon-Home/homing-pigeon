@@ -108,9 +108,13 @@ _TS = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?")
 
 
 def normalize(text, tmpdir):
-    # JSON escapes backslashes, so a Windows temp path appears twice.
+    # JSON escapes backslashes. Windows also rewrites the parent of
+    # the temp dir (short name versus long name), so match the unique
+    # directory name as well as the full path.
+    base = os.path.basename(tmpdir)
     text = text.replace(tmpdir.replace("\\", "\\\\"), "<TMP>")
     text = text.replace(tmpdir, "<TMP>")
+    text = text.replace(base, "<TMP>")
     text = _TS.sub("<TS>", text)
     text = re.sub(r'"duration_ms":\s*\d+', '"duration_ms": <D>', text)
     text = re.sub(r'"duration_sec":\s*[\d.]+', '"duration_sec": <D>', text)
