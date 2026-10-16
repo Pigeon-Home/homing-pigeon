@@ -206,7 +206,11 @@ class CheckTest(unittest.TestCase):
     def test_all_pass(self):
         tree = _HomeTree(self)
         buf = io.StringIO()
-        with redirect_stdout(buf):
+        with mock.patch.object(install, "_task_exists", return_value=True), \
+             mock.patch.object(install, "_task_command",
+                               return_value=os.path.join(
+                                   tree.bin, install.RUNNER_BIN)), \
+             redirect_stdout(buf):
             rc = do_check(tree.home, tree.bin, tree.cfg, tree.state)
         out = buf.getvalue()
         self.assertEqual(rc, 0)
@@ -252,7 +256,11 @@ class CheckTest(unittest.TestCase):
         _seed(tree.cfg, json.dumps({"shared_secret": "s" * 64,
                                     "base_dir": tree.state}))
         buf = io.StringIO()
-        with redirect_stdout(buf):
+        with mock.patch.object(install, "_task_exists", return_value=True), \
+             mock.patch.object(install, "_task_command",
+                               return_value=os.path.join(
+                                   tree.bin, install.RUNNER_BIN)), \
+             redirect_stdout(buf):
             rc = do_check(tree.home, tree.bin, tree.cfg, tree.state)
         self.assertEqual(rc, 0)
         self.assertIn("WARN: inference", buf.getvalue())
