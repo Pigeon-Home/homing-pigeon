@@ -40,7 +40,7 @@ jobs:
           python-version: "3.12"
       - run: python -m unittest discover -s tests -t .
       - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
-      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py
+      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md;pigeon-docs"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
       - name: smoke the built windows binaries
         shell: pwsh
@@ -118,7 +118,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
-      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py
+      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
       - name: package linux binaries
         run: |
@@ -145,7 +145,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
-      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py
+      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
       - name: package macos binaries
         run: |

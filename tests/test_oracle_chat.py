@@ -551,6 +551,40 @@ def _tool_msg(name, args, call_id="call-1"):
 class OracleAgentTest(unittest.TestCase):
     """The --oracle chat model gets tools. The job path does not."""
 
+    def test_bundled_protocol_doc_resolves_in_source_layout(self):
+        from runner.runner import _bundled_doc_path
+        p = _bundled_doc_path("PROTOCOL.md")
+        self.assertTrue(p)
+        self.assertTrue(os.path.isfile(p))
+
+    def test_bundled_doc_missing_returns_empty(self):
+        from runner.runner import _bundled_doc_path
+        self.assertEqual(_bundled_doc_path("NO-SUCH-DOC.md"), "")
+        self.assertEqual(_bundled_doc_path(""), "")
+
+    def test_agent_system_frames_admin_and_points_at_protocol(self):
+        from runner.runner import ask_model_agent, _bundled_doc_path
+        proto = _bundled_doc_path("PROTOCOL.md")
+        self.assertTrue(proto)
+        seen = []
+        with tempfile.TemporaryDirectory() as d:
+            script = [{"role": "assistant", "content": "done"}]
+            ask_model_agent(_agent_cfg(), "hi", "", 2000,
+                            opener=_scripted_opener(script, seen),
+                            base_dir=d)
+        self.assertTrue(seen)
+        system = seen[0]["messages"][0]["content"]
+        self.assertIn("over-the-shoulder administrator", system)
+        self.assertIn("signed emails", system)
+        self.assertIn(proto, system)
+
+    def test_build_packages_protocol_doc(self):
+        yml = os.path.join(REPO, ".github", "workflows", "build.yml")
+        with open(yml, encoding="utf-8") as fh:
+            text = fh.read()
+        self.assertEqual(text.count('PROTOCOL.md;pigeon-docs'), 1)
+        self.assertEqual(text.count('PROTOCOL.md:pigeon-docs'), 2)
+
     def test_oracle_page_prefills_job_summary_prompt(self):
         page = oracle_page("tok", "llama3.2:3b", True)
         self.assertIn(

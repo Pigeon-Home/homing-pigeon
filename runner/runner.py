@@ -1660,6 +1660,11 @@ _ORACLE_TOOL_NAMES = frozenset(
 )
 
 ASK_AGENT_SYSTEM = ASK_SYSTEM + (
+    "\nYou are the over-the-shoulder administrator watching the Homing "
+    "Pigeon runner execute jobs on this machine. Jobs arrive as signed "
+    "emails in the runner's dedicated mailbox: the runner polls the "
+    "mailbox, verifies each job's signature, executes it, and emails back "
+    "a signed result.\n"
     "\nYou have tools: read_file, list_dir, write_file, run. "
     "Use them to investigate the box instead of guessing. "
     "Read the relevant files or run the relevant commands, then answer. "
@@ -1684,6 +1689,27 @@ def _tool_base_dir(base_dir):
     """State dir for Oracle tool paths, or "" when unknown."""
     if isinstance(base_dir, str) and base_dir:
         return base_dir
+    return ""
+
+
+def _bundled_doc_path(name):
+    """Path to a doc file shipped inside the release, or "".
+
+    Frozen (PyInstaller --onefile --add-data): the file is extracted to
+    sys._MEIPASS at startup. Source layout: it sits at the repo root.
+    Lets the local model read the protocol without the internet.
+    """
+    if isinstance(name, str) and name:
+        if getattr(sys, "frozen", False):
+            meipass = getattr(sys, "_MEIPASS", "")
+            if isinstance(meipass, str) and meipass:
+                p = os.path.join(meipass, "pigeon-docs", name)
+                if os.path.isfile(p):
+                    return p
+        here = os.path.dirname(os.path.abspath(__file__))
+        p = os.path.join(os.path.dirname(here), name)
+        if os.path.isfile(p):
+            return p
     return ""
 
 
@@ -1972,6 +1998,12 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             "\n- The runner log is: " + os.path.join(state, "runner.log") +
             "\nUse these paths when you investigate; relative paths resolve "
             "against the state directory.")
+    proto = _bundled_doc_path("PROTOCOL.md")
+    if proto:
+        system += (
+            "\n\nThe Homing Pigeon protocol reference is at: " + proto +
+            "\nRead it with your file tools when you need exact message "
+            "shapes; it is the authoritative spec.")
     messages = [
         {"role": "system", "content": system},
         {"role": "user", "content":

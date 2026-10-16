@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.7.7 — 2026-10-16
+
+### Oracle protocol pack
+- The Oracle is now framed as the over-the-shoulder administrator
+  watching the runner execute jobs on this machine; the prompt explains
+  where jobs come from (signed emails in the runner's dedicated mailbox:
+  the runner polls, verifies each signature, executes, and emails back
+  a signed result).
+- PROTOCOL.md now ships inside the release binaries (PyInstaller
+  --add-data on Windows, Linux, and macOS) and the Oracle's system
+  prompt points the local model at it, so the model reads the protocol
+  spec on demand with its file tools. No internet needed: the spec
+  travels with the release.
+
+### Verification
+- Unit tests in `tests/test_oracle_chat.py`: bundled doc resolution
+  (source layout and missing-doc cases), admin framing and protocol
+  pointer in the system prompt, build.yml wiring on all three platforms.
+- End-to-end: release one-liner on the deployment box; ask the Oracle
+  where the protocol reference lives and what a job is.
+
 ## 3.7.6 — 2026-10-16
 
 ### Oracle chat
