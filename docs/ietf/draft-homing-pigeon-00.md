@@ -7,13 +7,13 @@ Intended status: Informational
 Expires: 19 April 2027
 Author: Pigeon-Home (editor)
 
-This document is not an IETF standard and is not the product of a working group. It describes an existing protocol. Publication as an RFC, if it happens, would be on the Independent Stream.
+This document is not an IETF standard and is not the product of a working group. Publication as an RFC, if it happens, would be on the Independent Stream.
 
-Extracted from `PROTOCOL.md` in `github.com/Pigeon-Home/homing-pigeon` at commit `205f74e` (16 October 2026). That file remains the living spec for the implementation. This draft does not track product release numbers.
+This revision specifies the on-wire messages and the receiver checks. It replaces the shorter narrative that was first committed in this file. The living implementation notes remain `PROTOCOL.md` in `github.com/Pigeon-Home/homing-pigeon` at commit `205f74e`. Product release numbers are not protocol versions.
 
 ## Abstract
 
-This document specifies version 1 of the Homing Pigeon message protocol. A submitter sends a job to a mailbox. A runner on a host that has no inbound listener polls that mailbox, checks an HMAC-SHA-384 signature, runs the job, and sends a signed result. The signature is the only authorization. The message is not encrypted.
+This document specifies version 1 of the Homing Pigeon message protocol. A submitter places one HMAC-SHA-384 signed JSON object in an email to a mailbox. A runner polls that mailbox, verifies the signature, executes the job, and returns a signed result. The signature is the only authorization. The message is not encrypted. There is no inbound listener on the host that runs the job.
 
 ## Status of This Memo
 
@@ -27,104 +27,178 @@ This Internet-Draft will expire on 19 April 2027.
 
 ## 1. Introduction
 
-Some hosts cannot accept inbound connections. This protocol uses a mailbox as the queue. The submitter writes a signed JSON object into an email. The runner reads the mailbox, verifies the signature, and writes a signed result back.
+Some hosts cannot accept inbound connections. This protocol uses a store-and-forward mailbox as the only queue. The submitter does not open a connection to the runner. The runner does not open a connection to the submitter except to read and write that mailbox.
 
-The originating project calls the submitter an SI. This document says "submitter". The name does not appear on the wire.
+The exchange is two messages:
 
-The integer `v` inside a message is the protocol version. It is 1. Product release numbers are a different series and are out of scope.
+```
+Submitter                         Mailbox                         Runner
+    |                                 |                               |
+    |  job email (signed JSON)        |                               |
+    |-------------------------------->|                               |
+    |                                 |  poll (IMAP)                  |
+    |                                 |<------------------------------|
+    |                                 |  result email (signed JSON)   |
+    |                                 |<------------------------------|
+    |  result (same mailbox, or       |                               |
+    |   signed reply_to)              |                               |
+    |<--------------------------------|                               |
+```
+
+Version negotiation is not a handshake. The message carries `v`. This document defines `v` = 1 only. A receiver that does not implement version 1 MUST reject the message.
 
 ## 2. Requirements Language
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all capitals, as shown here.
 
-## 3. Scope
+## 3. Terminology
 
-This document specifies:
+Job: a signed request that the runner execute work, or answer a liveness check.
 
-* the email subject lines that identify a job and a result
-* one signed JSON object carried in a text body
-* HMAC-SHA-384 over that object, using the UTF-8 bytes of a shared secret and no key derivation
-* the optional `key_id` and `reply_to` fields
-* replay and freshness checks
-* the job message and the result message
+Result: a signed report of what the runner did with one job.
 
-This document does not specify local disclosure policy, result views, queries, attestations, task boards, sensors, confinement, installers, or any local model. Those are properties of one implementation. A job that adds fields for them still uses `"v": 1`. Receivers that do not understand those fields ignore them (Section 6).
+Shared secret: an octet string known to the submitter and the runner. It is the HMAC key. It is not sent on the wire.
 
-## 4. Actors
+Default secret: the shared secret selected when `key_id` is absent.
 
-Submitter: builds a signed job and sends it to the mailbox. Reads the signed result.
+Key identifier: the string in `key_id`. It is a label, not a secret.
 
-Runner: polls the mailbox, verifies the job, executes it, and sends the result.
+Seen-set: the runner's record of `job_id` values already processed. It is local state. It is not a message.
 
-Either side may hold the work. The message format does not change if the runner is the side that composes jobs.
+Freshness window: how far `issued_at` may be from the runner's clock before the job is rejected.
+
+Preamble: text in the mail body before the signed JSON object. It is not signed.
+
+LOCAL: a parameter or a check this document allows a receiver to set for itself. It is not negotiated.
+
+## 4. Scope
+
+This document specifies subjects, the signed object, the MAC, `key_id`, `reply_to`, replay, freshness, the `job` message, and the `result` message.
+
+This document does not specify disclosure policy, queries, attestations, task boards, sensors, confinement, installers, or local models. A job MAY carry extra members for those uses. Receivers that do not implement them MUST ignore unknown members (Section 8) and MUST still reject an unknown `v` or an unknown job `kind` (Section 12).
 
 ## 5. Transport
 
-One dedicated mailbox carries both directions. The submitter sends jobs to that mailbox. By default the runner sends results to that same mailbox.
+The runner reads the mailbox with IMAP and writes with SMTP. Mail authentication is out of band. The signature check does not change with the mail credential.
 
-Access from the runner is IMAP for reading and SMTP for sending. Authentication to the mail provider is out of scope. The signature check is the same whichever mail credential is used.
+IMAP and SMTP SHOULD be used over TLS. TLS protects a hop. It does not hide the message from the mailbox provider (Section 16.2).
 
-Messages are ordinary email. This protocol does not define a new media type. The body is UTF-8 text.
+The body is UTF-8 text in a `text/plain` part. This document does not register a media type. If the message is multipart, the receiver uses the first `text/plain` part that is not an attachment.
 
-IMAP and SMTP SHOULD be used over TLS. TLS protects a hop. It does not hide the message from the mailbox provider (Section 14).
+The message MUST be rejected before the MAC if the raw RFC822 object exceeds the receiver's size cap. The RECOMMENDED cap is 4194304 octets. A cap of 0 means no limit. This cap is LOCAL.
 
-### 5.1. Subjects
+## 6. Subjects
 
-A job subject contains the literal `[HOMING-PIGEON]`, then zero or more words, then the literal `job`, then the `job_id`. A `Re:` prefix or an extra word such as `TEST` is allowed. Matching of this pattern is case-insensitive.
+Subjects are matched case-insensitively. A preamble such as `Re:` MAY appear before the marker. The marker need not be the first character of the subject.
 
-A result subject is:
+A job subject matches this pattern, in the sense of a search, not a full-string match:
 
 ```
-[HOMING-PIGEON] result <job_id>
+[HOMING-PIGEON] (SP word)* SP job SP job-id
 ```
 
-`job_id` contains no spaces. The `job_id` in the subject MUST equal the `job_id` in the signed body. A mismatch is rejected.
+`word` is one or more visible characters. `job-id` is one or more visible characters with no space, further constrained below. The words between the marker and `job` are decoration. `TEST` is a legal decoration.
 
-## 6. Message Format
+A result subject matches:
 
-The body is UTF-8 text. It contains one JSON object. Text around that object is ignored. The object that ends with the signature is the one that is verified.
+```
+[HOMING-PIGEON] SP result SP job-id
+```
 
-Every signed message ends with a `sig` member. `sig` is lowercase hexadecimal. Receivers MUST ignore object members they do not recognize. They MUST NOT ignore an unrecognized `v` or an unrecognized `type` on a message they intend to execute: `v` other than 1 is rejected, and a job `type` other than those in Section 8 is rejected.
+ABNF [RFC5234] for the identifier only:
 
-JSON key order is the sender's choice, except that `sig` is last on the wire (Section 7).
+```
+job-id      = 1*128 job-id-char
+job-id-char = ALPHA / DIGIT / "." / "_" / "-"
+```
 
-### 6.1. Common members
+The `job_id` in the subject MUST equal the `job_id` member. A mismatch MUST be rejected (Section 14).
 
-`v`: integer. This document specifies only the value 1. Any other value MUST be rejected.
+`job-id` MUST NOT be `.` or `..`.
 
-`type`: string. This document specifies `job` and `result`.
+A UUID [RFC9562] is RECOMMENDED as the `job_id`.
 
-`job_id`: string, 1 to 128 characters from the set `A-Z`, `a-z`, `0-9`, `.`, `_`, and `-`. The values `.` and `..` MUST be rejected. A UUID is RECOMMENDED.
+A message whose subject is not a job subject is not a job. The receiver MUST NOT execute it. The receiver MAY mark it seen so that a later poll skips it. Result messages use the result pattern above and are produced by the runner. They are not jobs.
 
-`key_id`: OPTIONAL string. Names which shared secret verifies this message. Absent means the default secret. The member is inside the signed object. Key identifiers are labels. They are not secret, and they MAY be written to logs. An unknown `key_id` MUST be rejected before any MAC is computed.
+## 7. Body and Signature Marker
 
-`runner_id`: OPTIONAL string. An audience claim. Whether a receiver enforces it is local policy. If the receiver enforces it, the expected value comes from the receiver's own configuration, not from the message. The member is covered by the signature when present.
+The signed object is one JSON object [RFC8259]. The receiver ignores preamble and trailer. Verification uses the object that ends in the signature marker.
 
-`sig`: string. 96 lowercase hexadecimal characters (48 bytes), the HMAC-SHA-384 output (Section 7).
+Line endings are normalized before both signing and verifying: every CRLF becomes LF, then every remaining CR becomes LF. Trailing whitespace after that normalization is not part of the signed octets.
 
-## 7. Signatures
+The sender builds the object without `sig`, serializes it, normalizes line endings, computes the MAC over those octets (Section 7.1), and replaces the final `}` with:
 
-The MAC is HMAC-SHA-384 [RFC2104] with SHA-384 [FIPS180-4]. The key is the UTF-8 bytes of the shared secret. There is no hash, salt, or other derivation. The secret is not sent in the message.
+```
+,"sig":"<96 hex digits>"}
+```
 
-The construction avoids a canonical JSON encoding by appending the signature:
+JSON member order before `sig` is the sender's choice. `sig` MUST be last. Senders SHOULD serialize with no insignificant whitespace. Receivers MUST accept insignificant whitespace inside the object, because the MAC covers the octets the sender actually produced, not a re-encoding.
 
-1. Serialize the object without `sig`. Compact or pretty, any key order.
-2. Normalize line endings to LF: replace CRLF with LF, then replace remaining CR with LF.
-3. Compute HMAC-SHA-384 over those octets. Encode the 48-byte result as 96 lowercase hex digits. That is `sig`.
-4. Transmit the serialized object with its final `}` replaced by `,"sig":"<sig>"}`.
+The receiver finds the signature as follows:
 
-Verification:
+1. Normalize line endings and remove trailing whitespace.
+2. Let `marker` be the last occurrence of the eight characters `,` `"` `s` `i` `g` `"` `:` `"`.
+3. If `marker` is absent, the message is malformed.
+4. The 96 characters after `marker` MUST be hexadecimal. The two characters after those MUST be `"` and `}`.
+5. The signed octets are the bytes from the `{` that opens this object through the character before `marker`, plus one `}`.
+6. That `{` is the start of the object that contains the marker, not a `{` inside a string. If no such `{` exists, the message is malformed.
 
-1. Normalize line endings to LF.
-2. Find the last occurrence of the ASCII sequence `,"sig":"`. The bytes after that marker MUST match 96 lowercase hex digits, a quote, and a closing brace. Otherwise reject.
-3. The signed octets are everything before that marker, plus one `}`.
-4. Recompute the HMAC and compare with `sig` in constant time.
+A sender MUST NOT place the character sequence `,"sig":"` inside any string value. The receiver uses the last occurrence.
 
-A sender MUST NOT emit a payload whose normalized text contains `,"sig":"` except as the real signature marker. The receiver uses the last occurrence.
+### 7.1. MAC
 
-## 8. Jobs
+The MAC is HMAC-SHA-384 [RFC2104] using SHA-384 [FIPS180-4].
 
-A job is a message with `"type": "job"`.
+The HMAC key is the UTF-8 octets of the shared secret. Implementations MUST NOT hash, stretch, or otherwise derive that key. The secret is a string of characters. Two sides that disagree on the characters disagree on the key.
+
+`sig` is the 48-octet HMAC value encoded as 96 hexadecimal digits. Senders MUST use lowercase digits. Receivers MUST compare in constant time after mapping ASCII `A-F` to `a-f`.
+
+Receivers MUST reject a malformed tail. Receivers MUST reject a MAC mismatch. A mismatch produces no result email (Section 14).
+
+### 7.2. Constant-time compare
+
+The compare covers all 96 digits. It MUST NOT stop at the first differing digit in a way that a network observer can time. A local reject log MAY record that the MAC failed. It SHOULD NOT record the expected digest.
+
+## 8. Unknown Members
+
+A receiver MUST ignore object members it does not implement, except:
+
+* `v` other than 1 MUST be rejected
+* `type` other than `job`, on a message the receiver is executing as a job, MUST be rejected
+* `kind` other than `exec` or `ping` MUST be rejected and MUST NOT be executed
+
+Ignoring a member means the member is still covered by the MAC and has no effect on version 1 processing.
+
+## 9. Common Members
+
+| Member | JSON type | Presence | Rule |
+|---|---|---|---|
+| `v` | number | REQUIRED | Integer 1. No other value is defined. |
+| `type` | string | REQUIRED | `job` or `result`. |
+| `job_id` | string | REQUIRED | Section 6. |
+| `key_id` | string | OPTIONAL | Selects the HMAC key. Absent selects the default secret. |
+| `runner_id` | string | OPTIONAL | Audience claim. Enforcement is LOCAL. |
+| `sig` | string | REQUIRED | Section 7. Not part of the signed octets. |
+
+`key_id` is covered by the MAC. Key identifiers MAY appear in logs. An unknown `key_id` MUST be rejected before the MAC is computed. The receiver MUST NOT try another secret.
+
+If a receiver enforces `runner_id`, the expected value MUST come from the receiver's configuration. The signed value is what the submitter claimed. It is not the source of the expected value.
+
+## 10. Key Selection
+
+The receiver holds a map from `key_id` to secret. The empty identifier names the default secret.
+
+Selection, before the MAC:
+
+1. If `key_id` is absent, select the default secret.
+2. If `key_id` is present and is a string in the map, select that secret.
+3. Otherwise reject. Do not compute a MAC.
+
+How keys are stored is LOCAL. Two values MUST NOT be assigned to one `key_id`. The default identifier has one slot.
+
+## 11. Job Message
+
+`type` is `job`.
 
 ```json
 {
@@ -137,47 +211,89 @@ A job is a message with `"type": "job"`.
   "timeout_sec": 60,
   "key_id": "submitter-a",
   "reply_to": "submitter@example.com",
-  "sig": "<96 lowercase hex digits>"
+  "sig": "001122...eeff"
 }
 ```
 
-`issued_at`: UTC timestamp, `YYYY-MM-DDTHH:MM:SSZ`. The receiver MUST reject a job whose `issued_at` is missing, unparseable, or further from the receiver's clock than its freshness window. The RECOMMENDED window is 3600 seconds.
+The `sig` line above is abbreviated. On the wire it is 96 hex digits.
 
-`kind`: `exec` or `ping`.
+| Member | JSON type | Presence | Rule |
+|---|---|---|---|
+| `issued_at` | string | REQUIRED | Section 11.1. |
+| `kind` | string | REQUIRED | `exec` or `ping`. |
+| `reply_to` | string | OPTIONAL | Section 11.2. |
+| `script` | string | see 11.3 | Inline script. `exec` only. |
+| `script_url` | string | see 11.3 | `https` URL of the script. `exec` only. |
+| `script_sha384` | string | OPTIONAL | 96 lowercase hex digits over the script octets. |
+| `interpreter` | array of strings | OPTIONAL | Program, then its arguments. |
+| `args` | array of strings | OPTIONAL | Appended after the script path. |
+| `env` | object | OPTIONAL | String values merged into the environment. |
+| `files` | array | OPTIONAL | Section 11.4. |
+| `timeout_sec` | number | OPTIONAL | Positive integer. RECOMMENDED default 300. RECOMMENDED maximum 3600. |
 
-`reply_to`: OPTIONAL. A single mailbox address, at most 254 characters, matching a conventional `local@domain` form with no display name and no comma. When it is valid, the result is sent there instead of to the runner mailbox. When it is absent or invalid, the result is sent to the runner mailbox. The address is taken only from this signed member. The email `From` header MUST NOT select the result destination. An invalid signature MUST NOT cause a result to be sent to anyone.
+### 11.1. issued_at
 
-### 8.1. ping
+`issued_at` is UTC, `YYYY-MM-DDTHH:MM:SSZ`. A missing timezone MUST be rejected. A value that does not parse MUST be rejected.
 
-A `ping` job carries no script. The runner does not execute a script. It returns a result whose `kind` is `ping`. This is a liveness check.
+Let `age` be the runner's clock minus `issued_at`, in seconds.
 
-### 8.2. exec
+The receiver MUST reject the job if `age` is greater than its past window. The RECOMMENDED past window is 3600 seconds. That window is LOCAL.
 
-An `exec` job carries work for the host.
+The receiver MUST reject the job if `issued_at` is too far in the future. The RECOMMENDED future allowance is 300 seconds.
 
-`script`: OPTIONAL inline script text.
+### 11.2. reply_to
 
-`script_url`: OPTIONAL https URL whose body is the script.
+`reply_to` is a single address, at most 254 characters, of the form `local@domain`, with no display name, no angle brackets, and no comma. The domain contains a dot.
 
-Exactly one of `script` or `script_url` is REQUIRED. If both are present, `script_url` is used.
+If the member is absent, or present but invalid, the result goes to the runner's own mailbox. The job is not rejected for an invalid `reply_to`.
 
-`script_sha384`: OPTIONAL. When present, 96 lowercase hex digits. The receiver MUST reject the job if the script octets do not match.
+The receiver MUST take the result address only from this member. The email `From` header and the email `Reply-To` header MUST NOT select it.
 
-`interpreter`: OPTIONAL array of strings. The first element is the program. The rest are its arguments. If absent, the runner chooses a local default.
+### 11.3. ping and exec
 
-`args`: OPTIONAL array of strings, appended after the script path.
+`kind` `ping` carries no script. The runner MUST NOT start a script. The result has `kind` `ping`.
 
-`env`: OPTIONAL object whose values are strings, merged into the process environment.
+`kind` `exec` requires exactly one of `script` or `script_url`. If both are present, the receiver MUST use `script_url` and MUST ignore `script`.
 
-`files`: OPTIONAL array of objects with `name`, `url`, and OPTIONAL `sha384`. `url` is https. `name` MUST NOT escape the job directory. When `sha384` is present it MUST be checked.
+If `script_sha384` is present, the receiver MUST hash the script octets with SHA-384 and MUST reject the job if the digest differs. The digest is 96 lowercase hex digits.
 
-`timeout_sec`: OPTIONAL positive integer. The RECOMMENDED default is 300. The RECOMMENDED maximum a receiver will honor is 3600.
+If `interpreter` is absent, the runner uses a LOCAL default.
 
-Unknown `kind` values MUST be rejected and MUST NOT be executed.
+The script is written to a new file in a fresh directory for this `job_id` and run as:
 
-## 9. Results
+```
+<interpreter...> <script-file> <args...>
+```
 
-A result is a message with `"type": "result"`. It is signed with the same secret that verified the job.
+The working directory is that job directory. On timeout the receiver MUST kill the process tree. `timeout_sec` above the receiver's maximum MUST be reduced to that maximum or the job MUST be rejected. The receiver MUST document which it does. The RECOMMENDED maximum is 3600.
+
+### 11.4. files
+
+Each element is an object:
+
+| Member | JSON type | Presence | Rule |
+|---|---|---|---|
+| `name` | string | REQUIRED | File name inside the job directory. |
+| `url` | string | REQUIRED | `https` URL. |
+| `sha384` | string | OPTIONAL | 96 lowercase hex digits. |
+
+`name` MUST NOT be absolute, MUST NOT contain `..` as a path segment, and MUST NOT escape the job directory. A violation MUST be rejected before the file is used.
+
+Downloads MUST use HTTPS. If `sha384` is present, a digest mismatch MUST be rejected.
+
+## 12. Kind and Type Failures
+
+Unknown `kind` MUST NOT be executed.
+
+A job the receiver rejects after the MAC has verified, because the kind, the script hash, the file name, or a similar check failed, MUST produce a result (Section 13) with `exit_code` -2 and a short reason in `stderr`. That job MUST be marked seen and MUST NOT be retried.
+
+A job rejected before the MAC verifies produces no result. See Section 14.
+
+## 13. Result Message
+
+The result is signed with the same secret that verified the job. `key_id` on the result, if the sender includes it, MUST name that secret.
+
+`type` is `result`. The subject is the result pattern in Section 6.
 
 ```json
 {
@@ -188,127 +304,152 @@ A result is a message with `"type": "result"`. It is signed with the same secret
   "completed_at": "2026-10-13T12:01:23Z",
   "exit_code": 0,
   "timed_out": false,
-  "stdout": "...",
-  "stderr": "...",
+  "stdout": "",
+  "stderr": "",
   "stdout_truncated": false,
   "stderr_truncated": false,
   "duration_sec": 12.345,
   "runner": "host.example",
-  "sig": "<96 lowercase hex digits>"
+  "sig": "001122...eeff"
 }
 ```
 
-`completed_at` uses the same timestamp form as `issued_at`.
+| Member | JSON type | Presence | Rule |
+|---|---|---|---|
+| `completed_at` | string | REQUIRED | Same form as `issued_at`. |
+| `kind` | string | REQUIRED | The job's kind. |
+| `exit_code` | number | REQUIRED | Section 13.1. |
+| `timed_out` | boolean | REQUIRED | True if the process tree was killed for time. |
+| `stdout` | string | REQUIRED | Captured standard output. May be empty. |
+| `stderr` | string | REQUIRED | Captured standard error. May be empty. |
+| `stdout_truncated` | boolean | REQUIRED | True if `stdout` was cut. |
+| `stderr_truncated` | boolean | REQUIRED | True if `stderr` was cut. |
+| `duration_sec` | number | REQUIRED | Seconds, as a JSON number. |
+| `runner` | string | REQUIRED | Host label. Authenticated only by the result MAC. |
 
-`exit_code` 0 is success. `timed_out` true means the process tree was killed; `exit_code` is then -1. `exit_code` -2 means the job was rejected before execution. The reason is in `stderr`. A rejected job is marked seen and MUST NOT be retried.
+### 13.1. exit_code
 
-`stdout` and `stderr` MAY be truncated. The matching `*_truncated` boolean is true when that stream was cut. A receiver that needs a byte limit SHOULD document it. 100000 bytes is the RECOMMENDED default.
+| Value | Meaning |
+|---|---|
+| 0 | The process exited 0, or `ping` succeeded. |
+| -1 | `timed_out` is true. The process tree was killed. |
+| -2 | Rejected before execution. Reason in `stderr`. Not retried. |
+| other | The process exit status. |
 
-`runner` is a human-readable host label. It is not authenticated beyond the signature on the result.
+If `timed_out` is true, `exit_code` MUST be -1.
 
-`duration_sec` is a number of seconds.
+### 13.2. Truncation
 
-## 10. Verification Order
+Each stream MAY be cut at a LOCAL byte limit. The RECOMMENDED limit is 100000 octets. When a stream is cut, its `*_truncated` member MUST be true. When it is not cut, that member MUST be false.
 
-The receiver performs these checks in order. Failure means the job is not executed. The message is marked seen so it is not retried, except for a result that could not be sent (Section 11).
+A result specified here includes the output the receiver chose to send. Omitting output for a local privacy policy is outside version 1. A submitter MUST NOT assume output will be withheld.
 
-1. Select the secret from `key_id`, or the default secret if `key_id` is absent. An unknown `key_id` fails here, before the MAC.
-2. Check the signature (Section 7).
-3. Check the subject (Section 5.1) and require the subject `job_id` to equal the body `job_id`.
-4. Require `v` of 1 and `type` of `job`.
-5. Check `issued_at` against the freshness window.
-6. Reject a `job_id` already in the seen-set.
-7. If the receiver enforces audience, require `runner_id` to equal the configured value.
+## 14. Receiver Processing
 
-The email `From` address is not a check. It MAY be logged. It MUST NOT authorize the job.
+The receiver maintains a seen-set. The key SHOULD be `job_id` prefixed by the receiver's configured `runner_id` when one is configured, so two runners sharing a mailbox do not treat each other's jobs as replays.
 
-## 11. Replay, Freshness, and Retries
+For each unseen message:
 
-Two controls limit replay. `issued_at` rejects a stale message. The seen-set rejects a `job_id` already processed. The seen-set key SHOULD include the receiver's `runner_id` when one is configured, so two runners that share a mailbox do not treat each other's jobs as replays.
+1. If the subject is not a job subject, do not execute. This is not an error. Stop.
+2. If the seen-set already contains this `job_id`, do not execute. Stop.
+3. If the raw message exceeds the size cap (Section 5), reject with no result. Mark seen. Stop.
+4. Select the key (Section 10). On failure, reject with no result. Mark seen. Stop.
+5. Verify the MAC (Section 7). On failure, reject with no result. Mark seen. Stop. The `From` header is not an input to this step.
+6. Parse the signed octets as one JSON object. If it is not an object, reject with no result. Mark seen. Stop.
+7. If `v` is not 1 or `type` is not `job`, reject with no result. Mark seen. Stop.
+8. If the subject `job_id` and the member `job_id` differ, or `job_id` is illegal (Section 6), reject with no result. Mark seen. Stop.
+9. Check `issued_at` (Section 11.1). On failure, reject with no result. Mark seen. Stop.
+10. LOCAL checks (audience, per-key policy) MAY reject here. A reject at this step MUST NOT execute the job. Whether a result is sent is LOCAL. The reference receiver sends no result for an audience failure.
+11. If `kind` is `ping`, go to step 13.
+12. If `kind` is `exec`, resolve the script and files (Section 11). On failure, send a result with `exit_code` -2, mark seen, stop. If `kind` is anything else, send a result with `exit_code` -2, mark seen, stop.
+13. Execute. Honor `timeout_sec`.
+14. Build the result (Section 13) and sign it with the secret from step 4.
+15. Send the result to `reply_to` if that member is valid, otherwise to the runner mailbox.
+16. If the send succeeds, mark seen. If the send fails, leave the job unseen. A later poll will execute it again (Section 15).
 
-Delivery is at-least-once. If the result email is not sent, the job stays unseen and will be processed again. Submitters MUST treat execution as repeatable. A job that is not safe to run twice is a broken job, not a broken receiver.
+The email `From` address MAY be logged after step 5. It MUST NOT authorize the job. It MUST NOT choose the result address.
 
-A signature failure, a stale timestamp, a replay, or a rejected job is marked seen and is not executed again.
+## 15. Retry
 
-## 12. Multiple Secrets
+Delivery of the result is at-least-once.
 
-A deployment MAY hold more than one secret. `key_id` selects among them. The default secret has no `key_id` on the wire.
+If step 16 fails, the receiver MUST leave the job out of the seen-set. The next poll MUST be allowed to run the job again.
 
-Rotation does not need a new message version. The holder of a secret adds a new `key_id`, both keys verify during the overlap, submitters switch, and the old key is removed. Two values MUST NOT be assigned to one `key_id`. Retired secrets SHOULD NOT be reused.
+Submitters MUST treat `exec` as repeatable. A job that is not safe to run twice is not a conforming job.
 
-How a deployment stores keys is out of scope. The wire requirement is only that the signed `key_id` selects the key, and that an unknown identifier verifies against nothing.
+A job marked seen is not executed again, including `exit_code` -2 and every no-result reject in Section 14.
 
-## 13. Execution
+## 16. Security Considerations
 
-These requirements exist so two implementations agree on what a signed `exec` job did.
+### 16.1. The signer controls the host
 
-The receiver creates a fresh working directory for the `job_id`.
+A valid MAC is permission to run as the runner's account. Anyone who holds the secret can operate the host. This protocol does not define a sandbox. LOCAL confinement MUST NOT be assumed by the submitter.
 
-The script is written to a file in that directory and run as the interpreter, then that file, then `args`. The working directory is the job directory. `env` is merged into the environment.
+### 16.2. No confidentiality
 
-On timeout the receiver kills the process tree.
+HMAC authenticates. It does not encrypt. The mailbox provider can read every job and every result. An observer who can read the mailbox learns the script, the arguments, the environment, and the output. Confidentiality needs a mechanism this document does not define.
 
-File downloads use HTTPS only.
+### 16.3. Offline guessing
 
-## 14. Security Considerations
+One captured message is enough to test candidate secrets. More messages do not reduce that search. HMAC-SHA-384 does not yield the key from the tags.
 
-### 14.1. The signer owns the host
+The secret SHOULD be 32 octets from a cryptographic generator, stored as characters and used as UTF-8. Sixty-four hexadecimal characters are the usual form. A long human sentence is not a substitute. The secret SHOULD NOT be the mailbox password.
 
-A valid signature is permission to run the job as the runner's account. Anyone who holds the secret can operate the host. This protocol does not provide a sandbox. Local confinement, if any, is outside this document and MUST NOT be assumed by the submitter.
+### 16.4. Headers are not authentication
 
-### 14.2. There is no confidentiality
+`From`, `Reply-To`, `Sender`, and `To` MUST NOT satisfy the MAC and MUST NOT select `reply_to`. An invalid MAC MUST NOT cause any result to be sent.
 
-HMAC-SHA-384 authenticates the message. It does not encrypt it. The mailbox provider, and anyone who can read the mailbox, can read every job and every result. Operators who need confidentiality need a mechanism this document does not define.
+### 16.5. Unknown key identifiers
 
-### 14.3. One message is enough to test a guess
+Failing closed before the MAC stops a message from verifying under the default secret because of a typo, and it avoids using MAC time as a probe of which identifiers exist.
 
-An observer who captures one signed message can test candidate secrets offline. Further messages do not reduce that work. HMAC-SHA-384 does not leak the key as more tags are collected.
+### 16.6. Replay
 
-The secret SHOULD be 32 bytes from a cryptographic random generator, used as UTF-8 (for example 64 hexadecimal characters). A secret an observer can guess from a phrase is not saved by a long length. The secret SHOULD be distinct from the mailbox password.
+The past window rejects stale `issued_at`. The seen-set rejects a repeated `job_id`. A receiver with a wrong clock will accept stale jobs or reject fresh ones. A receiver whose seen-set is cleared will accept a replay that is still inside the past window. Jobs MUST be safe to repeat, because a lost result already causes a second execution.
 
-### 14.4. The envelope is not trusted
+### 16.7. Two secrets
 
-`From`, `Reply-To`, and any other email header MUST NOT choose the result address and MUST NOT satisfy authentication. `reply_to` is honored only as a signed member. Unsigned or invalid jobs produce no result mail.
+The mailbox credential reads and deletes mail. The HMAC secret authorizes jobs. Neither substitutes for the other. A store that holds both has lost both when it is copied.
 
-### 14.5. Unknown key identifiers
+### 16.8. Marker collision
 
-An unknown `key_id` fails before the MAC. The receiver does not try other secrets. This stops a message from probing which identifiers exist by timing a MAC, and it stops a typo from verifying under the default secret.
+The splitter uses the last `,"sig":"`. A string value that contains that sequence will not verify as the sender intended. Senders MUST keep that sequence out of values.
 
-### 14.6. Replay and duplicate execution
+### 16.9. Output
 
-The freshness window assumes rough clock agreement. A receiver whose clock is wrong will accept stale jobs or reject fresh ones. The seen-set is local. An attacker who can clear it, on a receiver that also has a wide freshness window, can submit the same job again. Jobs MUST be safe to run more than once because a lost result already causes a second run.
+Version 1 results carry `stdout` and `stderr` up to the truncation limit. A receiver that wants to withhold output is implementing a different policy. That policy is not signaled by `v`.
 
-### 14.7. Mailbox credential and signing key
+### 16.10. At-least-once
 
-The mailbox credential and the HMAC secret are different secrets. The mailbox credential can read and delete mail. The HMAC secret can authorize jobs. Holding only the mailbox credential does not create a valid `sig`. Holding only the HMAC secret does not, by itself, deliver a job to a runner that polls a mailbox the attacker cannot write to. A deployment that stores both in one file has lost both when that file is copied.
+An attacker who can drop the result mail can cause another execution. That is the same outcome as a failed send. Idempotent jobs bound the damage. This protocol does not add a separate ack.
 
-### 14.8. The signature marker
-
-Verification splits on the last `,"sig":"`. A payload that contains that sequence will not verify as the sender intended. Senders MUST keep that sequence out of field values, or they MUST treat a failed verify as the expected outcome.
-
-### 14.9. What this document does not hide
-
-A result specified here includes `stdout` and `stderr`. Cutting, redacting, or replacing that output is a local policy. It is not part of version 1 interoperability. A submitter MUST NOT assume a receiver will withhold output unless that behavior is agreed out of band.
-
-## 15. IANA Considerations
+## 17. IANA Considerations
 
 This document has no IANA actions.
 
-## 16. References
+No new port, service name, media type, TLS extension, or object identifier is required. HMAC-SHA-384 is already named by [RFC2104] and [FIPS180-4]. The algorithm OID `hmacWithSHA384` (`1.2.840.113549.2.10`) already exists. This protocol identifies the algorithm by name, not by OID.
 
-### 16.1. Normative References
+## 18. References
+
+### 18.1. Normative References
 
 [RFC2104] Krawczyk, H., Bellare, M., and R. Canetti, "HMAC: Keyed-Hashing for Message Authentication", RFC 2104, DOI 10.17487/RFC2104, February 1997, <https://www.rfc-editor.org/info/rfc2104>.
 
 [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/RFC2119, March 1997, <https://www.rfc-editor.org/info/rfc2119>.
 
+[RFC5234] Crocker, D., Ed., and P. Overell, "Augmented BNF for Syntax Specifications: ABNF", STD 68, RFC 5234, DOI 10.17487/RFC5234, January 2008, <https://www.rfc-editor.org/info/rfc5234>.
+
 [RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174, May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+[RFC8259] Bray, T., Ed., "The JavaScript Object Notation (JSON) Data Interchange Format", STD 90, RFC 8259, DOI 10.17487/RFC8259, December 2017, <https://www.rfc-editor.org/info/rfc8259>.
 
 [FIPS180-4] National Institute of Standards and Technology, "Secure Hash Standard (SHS)", FIPS PUB 180-4, DOI 10.6028/NIST.FIPS.180-4, August 2015, <https://doi.org/10.6028/NIST.FIPS.180-4>.
 
-### 16.2. Informative References
+### 18.2. Informative References
 
 [RFC3552] Rescorla, E. and B. Korver, "Guidelines for Writing RFC Text on Security Considerations", BCP 72, RFC 3552, DOI 10.17487/RFC3552, July 2003, <https://www.rfc-editor.org/info/rfc3552>.
+
+[RFC9562] Davis, K., Peabody, B., and P. Leach, "Universally Unique IDentifiers (UUIDs)", RFC 9562, DOI 10.17487/RFC9562, May 2024, <https://www.rfc-editor.org/info/rfc9562>.
 
 ## Author's Address
 
