@@ -75,6 +75,21 @@ CLI reports it via `--version`, and the frozen binaries cannot read
 `pyproject.toml` — `tests/test_version.py` fails the build if the two
 drift.
 
+### The looking is the gate
+
+The SI can run the entire release pipeline: implement, test, commit,
+push, tag, cut the release, install it, and run it. None of that ships
+without the owner's word.
+
+This is not a capability limit. The owner is the final integration
+environment: a release proceeds when he has looked at the results and
+said so. The Oracle is not forbidden from approving its own releases
+— it can, and then it waits anyway, because approval was never the
+gate. The looking is the gate.
+
+In practice: no push, tag, or release without his explicit word, and
+a tag never lands before the build is green.
+
 The section below is history that bites. It is for the next person
 or bot that touches the runner, the installer, or the v3 docs.
 
