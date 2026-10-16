@@ -2791,6 +2791,17 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     log(f"seq {seq}: job {job_id} submitted by {from_addr or '(no sender)'} "
         f"subject={subject!r}")
 
+    # Hardening M1b: bound the raw mail before any signature work.
+    # 0 means unlimited. IMAP FETCH returns the whole RFC822 blob, so
+    # without this cap a single mail can exhaust memory.
+    try:
+        max_job_bytes = int(cfg.get("max_job_bytes", 4194304))
+    except (TypeError, ValueError):
+        max_job_bytes = 4194304
+    if max_job_bytes and len(raw) > max_job_bytes:
+        reject(f"mail exceeds max_job_bytes ({len(raw)} > {max_job_bytes})")
+        return
+
     try:
         job, key_id = verify_body_keyed(get_text_body(msg), secrets)
         secret = secrets[key_id]
@@ -2806,6 +2817,18 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         # verify_body can return any JSON value if the signer hand-crafts
         # one; job.get below would raise AttributeError -> transient retry.
         reject("job body must be a JSON object")
+        return
+    # Hardening M1b: bound the script after the signature is verified
+    # (it lives inside the signed body). 0 means unlimited.
+    try:
+        max_script_bytes = int(cfg.get("max_script_bytes", 1048576))
+    except (TypeError, ValueError):
+        max_script_bytes = 1048576
+    script = job.get("script")
+    if max_script_bytes and isinstance(script, str) \
+            and len(script.encode("utf-8")) > max_script_bytes:
+        reject(f"script exceeds max_script_bytes "
+               f"({len(script.encode('utf-8'))} > {max_script_bytes})")
         return
     if job.get("v") != PROTOCOL_VERSION or job.get("type") != "job":
         reject("unsupported version/type")
@@ -2999,6 +3022,24 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
 
 
 # ---------------------------------------------------------------- main
+def _validate_size_caps(cfg):
+    """Return an error string for a bad size cap, or None.
+
+    Hardening M1b: max_job_bytes and max_script_bytes must be
+    non-negative integers. 0 means unlimited. A missing key is fine.
+    """
+    if not isinstance(cfg, dict):
+        return None
+    for key in ("max_job_bytes", "max_script_bytes"):
+        cap = cfg.get(key)
+        if cap is None:
+            continue
+        if isinstance(cap, bool) or not isinstance(cap, int) or cap < 0:
+            return ("%s must be a non-negative integer (got %r)"
+                    % (key, cap))
+    return None
+
+
 def load_config(path: str) -> dict:
     with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
@@ -3944,6 +3985,12 @@ def main() -> int:
         except RuntimeError as e:
             print(e, file=sys.stderr)
             return 2
+    # Hardening M1b: the size caps must be non-negative integers.
+    # 0 means unlimited.
+    _err = _validate_size_caps(cfg)
+    if _err:
+        print(f"config error: {_err}", file=sys.stderr)
+        return 2
     if args.inspect:
         return run_inspect(cfg, args)
     # Mailbox auth gate, before any model work. On a TTY the runner

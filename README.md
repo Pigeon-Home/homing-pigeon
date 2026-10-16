@@ -468,6 +468,12 @@ End-to-end without your SI:
 - Delivery is at-least-once: if a result email fails to send, the job
   stays unseen and will be re-executed next cycle. Make jobs idempotent
   or check the seen behavior accordingly.
+- Size caps: `max_job_bytes` (default 4 MiB) bounds the raw mail before
+  the signature is even checked; `max_script_bytes` (default 1 MiB)
+  bounds the script after verification. Either rejects through the
+  normal reject path; `0` means unlimited. A negative or non-integer
+  value is a startup config error.
+- Optional hardening controls (all off by default): see [SECURITY.md](SECURITY.md).
 - Hardening ideas still open: encrypted credentials at rest,
   per-job encryption, result file upload for large outputs. The
   Oracle is implemented: result policies, signed attestations,

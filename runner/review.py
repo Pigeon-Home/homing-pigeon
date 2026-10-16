@@ -46,6 +46,73 @@ def _note(pid, tier, severity, note):
 _FILENAME_RE = re.compile(
     r"""['"]([^'"]*?[A-Za-z0-9_][A-Za-z0-9_.\-]*\.(?:py|sh|ps1|json|yaml|yml|toml|csv|txt|log|sql|js|ts))['"]"""
 )
+# Kept for the differential test in tests/test_review_perf.py, which
+# pins the new scan below to the old pattern's behavior.
+_OLD_FILENAME_RE = _FILENAME_RE
+
+# Bounded filename-literal scan (hardening M1a). _FILENAME_RE nests
+# quantifiers over overlapping character classes, which backtracks
+# catastrophically on long scripts (~29s for 160KB). The scan below
+# walks quote positions exactly like the old regex engine did: at
+# each quote the span runs to the next quote (either type); a span
+# that fails the checks consumes nothing, so pairing is identical.
+# Each span is checked in linear time.
+_EXTS = ("py", "sh", "ps1", "json", "yaml", "yml", "toml", "csv", "txt",
+         "log", "sql", "js", "ts")
+_QUOTE_RE = re.compile(r"""['\"]""")
+_NAME = frozenset(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_")
+_NAMECHARS = _NAME | frozenset(".-")
+
+DEFAULT_REVIEW_SCAN_BYTES = 65536
+
+
+def _has_filename_tail(stem):
+    """True iff some suffix of stem matches [A-Za-z0-9_][A-Za-z0-9_.\-]*.
+
+    Linear reverse walk. Exactly mirrors the old regex's inner
+    constraint: a name character followed only by name characters,
+    dots, or dashes.
+    """
+    ok = True  # every char to the right is a name char
+    for ch in reversed(stem):
+        if ch in _NAMECHARS:
+            if ch in _NAME and ok:
+                return True
+        else:
+            ok = False
+    return False
+
+
+def _scan_refs(text):
+    """Yield (ref, base) for quoted literals that look like filenames.
+
+    Exactly mirrors _FILENAME_RE: at each quote the span runs to the
+    next quote (either type); the span must end with a dotted
+    extension from _EXTS and its stem must have a filename tail (a
+    name character followed only by name characters, dots, dashes).
+    A span that fails the checks consumes nothing, so quote pairing
+    is identical to the old pattern.
+    """
+    quotes = [m.start() for m in _QUOTE_RE.finditer(text)]
+    i = 0
+    while i + 1 < len(quotes):
+        p, q = quotes[i], quotes[i + 1]
+        lit = text[p + 1:q]
+        ref = None
+        if lit:
+            for ext in _EXTS:
+                suffix = "." + ext
+                if lit.endswith(suffix) \
+                        and _has_filename_tail(lit[:-len(suffix)]):
+                    ref = lit
+                    break
+        if ref is None:
+            i += 1  # no match here; try the next quote
+            continue
+        base = ref.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+        yield ref, base
+        i += 2  # matched: continue after the closing quote
 
 
 def parse_review_patterns(cfg):
@@ -153,21 +220,32 @@ def _metadata_notes(job):
     return notes
 
 
-def _content_notes(job, extra_patterns):
+def _review_scan_bytes(cfg):
+    """Bytes of script the reviewer scans for filename references."""
+    try:
+        n = int(cfg.get("review_scan_bytes", DEFAULT_REVIEW_SCAN_BYTES))
+    except (TypeError, ValueError):
+        return DEFAULT_REVIEW_SCAN_BYTES
+    return n if n > 0 else DEFAULT_REVIEW_SCAN_BYTES
+
+
+def _content_notes(job, extra_patterns, scan_bytes=None):
     notes = []
     script = job.get("script")
     if not isinstance(script, str) or not script:
         return notes
 
     # C1: dangling file references — string literals that look like
-    # filenames but are not in the staged files list.
+    # filenames but are not in the staged files list. The scan is
+    # bounded; truncation is reported, never silent.
+    if scan_bytes is None:
+        scan_bytes = DEFAULT_REVIEW_SCAN_BYTES
+    truncated = len(script) > scan_bytes
     files = job.get("files") or []
     staged = {f.get("name") for f in files
               if isinstance(f, dict) and isinstance(f.get("name"), str)}
     seen_refs = set()
-    for m in _FILENAME_RE.finditer(script):
-        ref = m.group(1)
-        base = ref.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+    for ref, base in _scan_refs(script[:scan_bytes]):
         if base in seen_refs:
             continue
         seen_refs.add(base)
@@ -178,6 +256,11 @@ def _content_notes(job, extra_patterns):
                 "likely to fail at runtime"))
         if len(notes) >= 5:
             break
+    if truncated:
+        notes.append(_note(
+            "review_scan_truncated", "metadata", "info",
+            f"script longer than review_scan_bytes ({scan_bytes}): "
+            "filename scan covered the first part only"))
 
     # C2: operator-defined known-failure patterns.
     for p in extra_patterns:
@@ -207,7 +290,7 @@ def review_job(cfg, job):
     except Exception:
         extra = []
     try:
-        notes.extend(_content_notes(job, extra))
+        notes.extend(_content_notes(job, extra, _review_scan_bytes(cfg)))
     except Exception:
         pass
     # Stable order: warns first, then by id.
