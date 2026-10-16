@@ -292,5 +292,27 @@ class OracleWindowDiagnosticsTest(unittest.TestCase):
         self.assertIn("The chat session expired. Reload the page", page)
 
 
+class CleanShutdownTest(unittest.TestCase):
+    """Ctrl+C on the frozen exe exits quietly, not as 'Failed to execute script'."""
+
+    def test_keyboard_interrupt_exits_quietly(self):
+        from unittest import mock
+        from runner.runner import _run
+
+        with mock.patch("runner.runner.main", side_effect=KeyboardInterrupt):
+            with self.assertRaises(SystemExit) as cm:
+                _run()
+        self.assertEqual(cm.exception.code, 0)
+
+    def test_normal_exit_code_passes_through(self):
+        from unittest import mock
+        from runner.runner import _run
+
+        with mock.patch("runner.runner.main", return_value=3):
+            with self.assertRaises(SystemExit) as cm:
+                _run()
+        self.assertEqual(cm.exception.code, 3)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

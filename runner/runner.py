@@ -4662,5 +4662,15 @@ def main() -> int:
     return 0
 
 
+def _run() -> "NoReturn":
+    # A frozen exe (PyInstaller) reports an uncaught KeyboardInterrupt as
+    # "Failed to execute script", which looks like a crash. Ctrl+C is a
+    # normal shutdown: exit quietly.
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        sys.exit(0)
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    _run()
