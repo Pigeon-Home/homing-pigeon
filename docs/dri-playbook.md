@@ -1,14 +1,12 @@
 # DRI playbook ("presence of mind")
 
-> **Status: implemented (v3.x).** `runner/dri.py` evaluates triggers
-> every poll cycle (`maybe_page`), with per-trigger cooldown and
-> digest batching in `dri-state.json`. Telegram channel implemented
-> (`send_telegram`, Bot API over HTTPS). Signal and WhatsApp remain
-> spec-only. Auth rejections (bad signature, key policy) and
-> resource-pressure crossings are recorded to
-> `security-events.jsonl` for the triggers to consume. — SPEC
-
-Status: spec only. Nothing here is implemented.
+> **Status: implemented, off by default (v3.x).** `runner/dri.py`
+> evaluates triggers every poll cycle (`maybe_page`), with per-trigger
+> cooldown and digest batching in `dri-state.json`. The only channel
+> the runner accepts is Telegram (`send_telegram`, Bot API over HTTPS).
+> Signal, WhatsApp, the dashboard ack, and the VR seat are not in the
+> runner. `dri.enabled` defaults to false. Nothing pages until the
+> owner turns it on and sets a bot token and chat id.
 
 ## What it is
 
@@ -45,27 +43,27 @@ not code, and every trigger can be disabled.
   the mail flow within a window — someone is knocking. Adjustable
   threshold and window.
 
-Future evaluation entry point (not implemented):
+`evaluate_page_triggers` is implemented in `runner/dri.py`. It
+consumes stored senses, retained job results, and the mail-flow
+rejection counters, and returns page-worthy events. `maybe_page`
+is what the poll loop calls. The sketch below is not the live
+signature:
 
 ```python
 evaluate_page_triggers(cfg, base_dir) -> list[PageEvent]
 ```
 
-It consumes stored senses, retained job results, and the mail-flow
-rejection counters, and returns page-worthy events. The messaging
-layer below only renders and delivers what this returns.
-
 ## Channels
 
-WhatsApp, Telegram, or Signal. Exactly one is configured.
+Telegram is the only channel the runner will start with. Signal
+and WhatsApp are not implemented. SMS stays out of scope.
 
-- **Telegram (recommended first).** Bot API over HTTPS: one token,
-  one chat id, no phone number, no app install on the box. A page
-  is a single POST. Simplest to operate.
-- **Signal.** `signal-cli` against a registered number. Stronger
-  privacy story, heavier setup (registration, keys on disk).
-- **WhatsApp.** Cloud API through a Meta business app, or a paired
-  device bridge. Most setup friction of the three.
+- **Telegram.** This is the channel the runner implements. Bot API
+  over HTTPS: one token, one chat id. A page is a single POST.
+  `dri.channel` must be `"telegram"`.
+- **Signal.** Not implemented. Do not set `dri.channel` to it.
+  The runner rejects anything other than `telegram`.
+- **WhatsApp.** Not implemented. Same rejection.
 
 **Out of scope, by owner decision: SMS.** No text messaging. No
 Twilio-style provider, no per-message cost, no carrier metadata.
@@ -82,6 +80,10 @@ top signals: host_ids critical "unexpected setuid" (score 4.0),
              netmon high "outbound to 203.0.113.7" (score 2.1)
 the Oracle took no action. ack with "ack 3fa8" or open the dashboard.
 ```
+
+The runner's real page text says "open the dashboard for the full
+context." That dashboard is not built. The useful half of the line
+is "the Oracle took no action." Investigate from the log.
 
 Pages include: what tripped, when, the top weighted signals behind
 it, the job context if any, and an explicit statement of what the
@@ -126,9 +128,8 @@ the owner's runbook — what *you* do when paged — and it lives with
 you, not in this repo. Template for when the time comes:
 
 1. Ack the page (so the cooldown logic knows a human saw it).
-2. Open the dashboard / pull the `senses` window around the event.
-   VR operators: suit up, put on the headset, take the seat — the
-   page deep-links straight into the 3D job room.
+2. Read the runner log and the senses around the event. There is
+   no dashboard and no headset to open.
 3. Correlate: which job, which sensor, fused score, confinement state.
 4. Decide: benign (tune the profile/weight), suspicious (rotate the
    sensor key, quarantine the job's outputs), hostile (rotate all
@@ -137,9 +138,6 @@ you, not in this repo. Template for when the time comes:
 
 ## Relationship to v4
 
-The dashboard (v4) is the natural home for page history and ack:
-a page deep-links to the relevant sense window and job, and acking
-happens there instead of by reply keyword. The spec's message
-format already reserves the "open the dashboard" line for it.
-v5 (VR Oracle) is expected before v4; when it lands, the page
-deep-links into the job room instead, and the DRI sits in the seat.
+The dashboard (v4) is not built. `--oracle` is a loopback chat, not
+a page history. Ack by reply keyword is the path that exists today.
+The VR seat is not in the runner and is not scheduled ahead of v4.

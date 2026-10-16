@@ -1,8 +1,11 @@
 # Handoff: local SI test and transports
 
-Branch: `feat/local-si-test`
-For the next Grok chat. This is the state of the work from the
-conversation that built it.
+Historical note from the `feat/local-si-test` work. The transport
+table that used to sit here said Cloudflare, NATS, MQTT, Redis, and
+the rest were send-ready. That was wrong then and it is wrong now.
+`runner/transports.py` was removed. Email is the only transport in
+the runner. See `docs/transports-status.md`. Do not treat "try
+Cloudflare tomorrow" as an open task.
 
 ## What this is
 
@@ -41,30 +44,21 @@ tell the SI what to do. The SI sends it.
 
 ## Testing is email only
 
-The transport we exercise is email (Transport #1). The mock SI reads
+The transport this harness exercises is email. The mock SI reads
 `config.json` (`smtp_host`, `smtp_port`, `mailbox_user`, password or
 OAuth) and sends a signed `[HOMING-PIGEON] job …` message. A runner
-polling that mailbox picks it up.
+polling that mailbox picks it up. Do not add another transport
+unless asked.
 
-The owner will try Cloudflare tomorrow. Do not add more transport
-tests unless asked. Email is the one under test.
+## Transports
 
-## Transports (ready, not all tested)
-
-Code: was `runner/transports.py` (contract: `send`, `poll`, `ack`);
-the module was removed as dead code — the runner was never wired to it.
-Status: `docs/transports-status.md`.
+There is no adapter module. Status: `docs/transports-status.md`.
 
 | Transport | State |
 |-----------|--------|
-| email | implemented, this is what we test |
-| cloudflare | send, poll, ack ready. Config: `cf_account_id`, `cf_api_token`, `cf_queue_id`. Next live try. |
-| local_socket | loopback TCP, test harness only |
-| nats | send ready (`nats_host`, `nats_port`) |
-| mqtt | send ready (`mqtt_host`, `mqtt_port`) |
-| redis | send ready (`redis_host`, `redis_port`) |
-| durable_objects | send ready (`do_url`, `cf_api_token`) |
-| postgres | config-ready (`pg_dsn`); wire protocol not bundled |
+| email | implemented, this is what the harness tests |
+| cloudflare | not in the runner |
+| local_socket, nats, mqtt, redis, durable_objects, postgres | cut on purpose |
 
 ## What was removed on purpose
 
@@ -88,17 +82,19 @@ Not part of this branch's unique commits, but context:
 ## Files
 
 - `runner/local_test.py` — the harness
-- `runner/transports.py` — transport adapters (removed; dead code)
 - `docs/local-si-test.md` — how to run it
 - `docs/transports-status.md` — transport table
 - `docs/handoff-local-si.md` — this file
 - `tests/test_local_si.py`, `tests/test_local_si_blast.py`,
   `tests/test_local_si_transport.py`
 
-## Open items for the next chat
+## Open items left in this note
 
-1. Live Cloudflare try (owner said tomorrow).
+These were open when the note was written. They are not a queue.
+
+1. A live Cloudflare try was planned and was not done. Queues are
+   still not in the runner.
 2. Confirm Open WebUI env var `OLLAMA_BASE_URL` is the one that
-   build honors; adjust if the current release uses a different name.
-3. Decide whether send-from-chat should wait for the result email
-   and show it, or only confirm the send.
+   build honors, if you run `--local-test --browser`.
+3. The chat confirms the send. It does not wait for the result
+   email unless someone adds that later.

@@ -1,6 +1,10 @@
 # Configuring the Oracle
 
-The Oracle is controlled entirely by `config.json`. The future dashboard is a frontend over the same keys; nothing the dashboard can set is dashboard-only, and nothing in the config file is hidden from the dashboard.
+The Oracle is controlled entirely by `config.json`. The v4 dashboard
+is not built. `--oracle` opens a loopback chat. It does not edit
+these keys. When a dashboard exists, it must be a frontend over the
+same file: nothing dashboard-only, and nothing in the file hidden
+from it.
 
 ## Parity rule
 
@@ -13,7 +17,7 @@ Everything the dashboard configures must be expressible in `config.json`, and ev
 - `max_queries_per_hour` — rate limit on query follow-ups. Zero means no limit.
 - `output_retention_days` — how long retained outputs are kept for later queries. Default 7.
 - `judge` — `off` (default), `advisory` (attach reasons, still run), or `enforce` (block denylisted jobs before execution).
-- `workspace_root` — directory the confinement snapshot treats as the job's allowed workspace. Empty means confinement is unconfigured.
+- `workspace_root` — directory the confinement snapshot treats as the job's allowed workspace. Empty means the snapshot is unconfigured. That snapshot does not stop a write. Linux bubblewrap is a separate switch, `security.modes.confinement`, off by default. See SECURITY.md.
 - `protected_paths` — list of absolute paths the confinement snapshot watches closely. Any create/modify/delete under these paths is reported in the attestation detail even if the overall `confined_to_workspace` verdict is unchanged. Default empty (least restrictive).
 - `redact_patterns_extra` — additional named regexes treated as secrets in the `redacted` view and in sanitization. Built-in families (`aws_key`, `private_key`, `bearer_token`) are always present.
 - `worker_allowlist` — worker IDs allowed to pull tasks. Empty means any signed worker.

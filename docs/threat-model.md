@@ -27,8 +27,12 @@ It could even work as a marketable service.
   secret like a root password, because that is what it is.
 - Run the agent as a locked-down user, on a throwaway account, on a
   box you can wipe. The README's security notes are not boilerplate.
-- The Oracle is advisory: it reviews and attests, it does not
-  contain. Containment is the OS's job — use it.
+- The Oracle reviews and attests. It does not contain a job unless
+  you turn on Linux bubblewrap (`security.modes.confinement` set to
+  `enforce`, and `bwrap` installed). That switch is off by default.
+  A VM, a locked-down user, and the OS policy still do the real
+  containment. AppArmor and SELinux profiles live under `hardening/`
+  and are opt-in. They are not installed for you.
 - Every new sense, transport, and job kind added to this project
   widens the blast radius. `docs/roadmap-spec.md` is exciting and
   dangerous in exactly equal measure; build the gates (§3) before

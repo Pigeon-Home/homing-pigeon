@@ -1,6 +1,8 @@
 # Coverage findings
 
-This report belongs to release v3.5.2.
+This report belongs to release v3.5.2. It was not remeasured for
+v3.6.0. The numbers below are that day's measurement, not the
+current suite.
 The package version is 3.5.2 and the latest tag is v3.5.2.
 Measured on main at c48aece, 14 commits after that tag, after the coverage-seam tests in pull 76.
 No new tag was cut for this measurement.
