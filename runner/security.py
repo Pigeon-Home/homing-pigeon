@@ -15,6 +15,8 @@ once at startup, not re-read each poll cycle.
 
 Python 3.9 compatible. Standard library only.
 """
+from __future__ import annotations
+
 import json
 import math
 import os

@@ -8,10 +8,13 @@
 # via the `confinement` security feature.
 #
 # Usage: @PYTHON@ @RUNNER_DIR@/runner.py --config @CONFIG@
+#
+# Complain mode: violations are logged, not denied. Validate with
+# `aa-logprof` before ever removing flags=(complain).
 
 #include <tunables/global>
 
-@PYTHON@ {
+@PYTHON@ flags=(complain) {
   #include <abstractions/base>
   #include <abstractions/python>
 
