@@ -40,6 +40,69 @@ traffic. So everything is adjustable from the beginning:
   three alerts. Collector: osquery (cross-platform), Sysmon
   (Windows), `/proc` + `lsof`/`ss` scraping (Linux).
 
+## More senses: antivirus and basic hygiene
+
+The three above are the advanced tier. The boring tier matters just
+as much and is easier to overlook precisely because it is boring.
+Each of these is a sense in the same framework — enable flag,
+weight, profile, restricted key — so the Oracle can be told to
+care about them per platform.
+
+### `av` — antivirus / anti-malware detections
+
+The sense does not replace the antivirus; it is a collector that
+files what the platform's AV already found as `sensor_alert`s.
+
+- **Windows:** Microsoft Defender. Collector reads detections via
+  `MpCmdRun -Scan` result parsing or the
+  `MSFT_MpThreatDetection` WMI class; AMSI-backed script-block
+  logging (PowerShell Operational log, event 4104) catches what
+  file scanning misses.
+- **Linux:** ClamAV (`clamdscan`) on a schedule, plus the
+  freshness of its signatures as its own info-level alert.
+  Sysmon for Linux (current: 1.4) feeds the `sysmon` sense on
+  the same box.
+- **macOS:** XProtect/MRT run automatically with no stable API,
+  so the collector watches what the OS surfaces: XProtect
+  detections in the unified log and Gatekeeper assessments.
+
+Profile knobs: `severity_floor` (Defender "severe" maps to
+critical), `scan_schedule` for on-demand sweeps, and the usual
+cooldown/cap gates — AV products love to re-report the same
+quarantined file.
+
+### Basic hygiene senses
+
+One sense per check, all cheap, all per-platform. They answer the
+question "is the boring stuff actually on?"
+
+- `av_posture` — is real-time protection enabled, and are
+  signatures current? (Defender status, `freshclam` age,
+  XProtect version.) An AV that is installed but disabled is
+  worse than none: it looks like coverage.
+- `firewall` — host firewall state per platform (Windows
+  Firewall profiles, `ufw`/nftables, macOS `pf`/Application
+  Firewall). Reports profile changes, not every dropped packet.
+- `patch_level` — pending security updates (Windows Update
+  status, unattended-upgrades/dnf-automatic state, macOS
+  softwareupdate). Info-level; the Oracle correlates "unpatched
+  for 90 days" with everything else.
+- `listening_sockets` — listening ports vs the expected
+  baseline in profile (`expected_ports`). A new listener is
+  medium by default; the Oracle decides if it matters.
+- `persistence` — autorun/persistence locations: Windows
+  autoruns (Run keys, services, scheduled tasks), Linux systemd
+  units + cron, macOS LaunchAgents/LaunchDaemons. A new entry
+  outside a job window is the classic backdoor shape.
+- `disk_encryption` — BitLocker / LUKS / FileVault status.
+  Info-level posture, mostly for the "is this box actually
+  hardened" question.
+
+None of these remediate. They file alerts; the Oracle fuses
+them with job activity the same way it fuses IDS alerts. A
+disabled Defender *during* a job run is one incident, not two
+alerts.
+
 ## Config
 
 ```json

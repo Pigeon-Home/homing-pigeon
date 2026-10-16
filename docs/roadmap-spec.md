@@ -133,3 +133,85 @@ from a log-reading exercise into a glance.
   a Docker Compose preset with Ollama included, and a Prometheus
   endpoint for the resource monitor (`runner/resources.py` already
   collects the numbers).
+
+## 7. Security model sub-agent
+
+The general model is a mediocre security analyst: it has never seen
+your network, it confabulates, and it is exactly the thing an
+attacker talks to. So incidents get a specialist. The shape:
+
+```
+sensor_alert  →  security model (triage)  →  Oracle/Llama (decides)
+                                                      |
+                              dismiss / log / watch / raise → DRI playbook
+```
+
+A **security sub-model** — a smaller model trained for safety and
+security classification, running locally next to the main model —
+reads each fused incident first and returns a triage verdict:
+benign / suspicious / malicious, with a severity and a one-line
+reason. The Oracle (the main Llama) then decides what to do with
+that verdict: dismiss it, log it, watch the box for follow-ups, or
+raise it through the DRI playbook (`docs/dri-playbook.md`), which
+pages the owner. The sub-model never pages, never remediates, never
+touches a tool. It is an advisor with one output: a verdict. The
+Oracle keeps the decision, which keeps the "advisory only" design
+constraint intact.
+
+Why a separate model instead of a better prompt:
+
+- Classification is what these models are *trained* for. A
+  general chat model grades its own homework; a guard model
+  grades the homework against a fixed hazard taxonomy.
+- It is cheap to run beside the main model (1–8B parameters) and
+  fast enough to sit in the alert path without slowing the chat.
+- The verdict is structured (`safe`/`unsafe` + category), not
+  prose — the Oracle can weight and threshold it like any other
+  sensor signal.
+
+What exists today (verified 2026-10-16, all Ollama-pullable,
+all local, no cloud):
+
+- **Llama Guard 3** (`llama-guard3:1b`, ~1.6 GB; `:8b`, ~4.9 GB).
+  Safety classification against the MLCommons hazard taxonomy;
+  the 8B variant is also trained on tool-call and code-interpreter
+  abuse — the closest public model to "agent security triage".
+- **Granite Guardian** (`granite3-guardian:2b/8b`, Apache-2.0).
+  Harm/jailbreak/violence classification with a yes/no output.
+
+Both are content-safety models, not IDS models — they judge
+*text* (an alert, a job script, a tool result), not packets. That
+is exactly the triage job here: "is this alert describing
+something malicious?" Packet-level detection stays with the
+senses (§1); the sub-model judges what the senses *say*.
+
+Config (same adjustable-everything posture as the senses):
+
+```json
+"security_model": {
+  "enabled": false,
+  "model": "llama-guard3:8b",
+  "endpoint": "http://127.0.0.1:11434/v1",
+  "route": "severity_floor_medium",
+  "timeout_sec": 30
+}
+```
+
+- `enabled` (bool, default false): nothing changes until the
+  owner turns it on.
+- `model` / `endpoint`: which local model judges. Any
+  OpenAI-compatible chat endpoint on loopback; the loopback-only
+  rule applies here exactly as it does to the main model.
+- `route`: which incidents get triaged. `all`, or
+  `severity_floor_<level>` to skip info/low noise.
+- When the sub-model is unreachable or times out, the incident
+  falls through to the Oracle untriaged — loud in the log, never
+  silently dropped, never blocking.
+
+Open questions, deliberately unresolved: whether the verdict
+should carry a numeric score the Oracle can fuse with sensor
+weights (§1's `score = weight × severity`), and whether the
+sub-model should also screen job *scripts* pre-execution
+(advisory reviewer input, `docs/job-review.md`) or only
+post-hoc incidents. Both are config-shaped, not code-shaped,
+so they can be decided per box.
