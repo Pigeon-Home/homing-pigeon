@@ -47,6 +47,12 @@ Submitter                         Mailbox                         Runner
 
 Version negotiation is not a handshake. The message carries `v`. This document defines `v` = 1 only. A receiver that does not implement version 1 MUST reject the message.
 
+### Why specify this publicly
+
+The protocol is specified in the open so that a submitter does not need the runner's source code. An owner should be able to name the protocol ("homing pigeon"), share the secret, and name the mailbox, and any sender that understands this document can submit jobs: a personal AI assistant today, a hosted service tomorrow, a system not yet built. Email is the transport because every such sender already speaks it; no new connector is required on either side.
+
+Discovery of the mailbox address is out of scope for this document. The address is established out of band — the sender asks the owner which address to use, or the owner provides it alongside the secret. Once the sender knows the address, the secret, and this specification, no further coordination is required.
+
 ## 2. Requirements Language
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all capitals, as shown here.
