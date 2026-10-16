@@ -8,13 +8,6 @@ gets the 90-day cadence not because it's low-volume, but because of its
 exposure properties: TLS in transit, a single mailbox, no shared topics, no
 third-party message logging.
 
-## Other transports
-
-A different transport changes the exposure: broader visibility (shared
-topics), weaker encryption, message logging, indefinite retention. Where any
-of those apply, rotate every few weeks until you've measured the actual
-exposure.
-
 ## How to rotate (no downtime)
 
 The runner verifies against a dict of secrets by `key_id`:
