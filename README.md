@@ -506,6 +506,8 @@ Later:
 
 ## Status
 
+v3.7.1. Test attribution cleanup; no functional changes since v3.7.0.
+
 v3.7.0. Jobs can now ask for their result to be emailed back to the
 requester: set `reply_to` in the signed job body (or
 `send_job.py new --reply-to you@example.com`) and the result skips
