@@ -183,6 +183,18 @@ tail of `runner.log`. The log tail is what lets the Oracle answer
 tells the model to quote from what it was given and to say it cannot
 see something when it is not there.
 
+The chat goes further: `ask_model_agent` runs a tool loop, so the
+model can call `read_file`, `list_dir`, `write_file`, and `run`
+while it works through a question. That is the debugging interface
+the owner asked for. The mailbox-driven job path (`answer_queries`
+-> `ask_model`) stays single-shot and constrained; only the
+interactive chat gets hands. Bounds are mechanical: 10 tool rounds,
+4 calls per round, bounded tool output, command timeouts, and a
+context trim. The final answer goes through the same secret scan +
+redaction as any other model reply. Stated risk: anything the model
+reads can steer it, so a poisoned file could talk it into running
+something unwise. That is the owner's explicit trade.
+
 `oracle_window` then:
 
 - Rejects a port that is not an integer or is outside 0..65535.

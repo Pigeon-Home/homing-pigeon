@@ -91,7 +91,7 @@ class OracleChatTest(unittest.TestCase):
                 self.assertIn("5", output_text)
                 return {"op": "ask", "rejected": "sanitization"}
 
-            with mock.patch("runner.runner.ask_model", side_effect=fake_ask):
+            with mock.patch("runner.runner.ask_model_agent", side_effect=fake_ask):
                 req = urllib.request.Request(
                     f"http://127.0.0.1:{port}/ask",
                     data=json.dumps({"question": "what happened?"}).encode(),
@@ -138,7 +138,7 @@ class OracleChatTest(unittest.TestCase):
                     return {"op": "ask", "rejected": "sanitization"}
                 return {"op": "ask", "answer": "a job finished at noon"}
 
-            with mock.patch("runner.runner.ask_model", side_effect=fake_ask):
+            with mock.patch("runner.runner.ask_model_agent", side_effect=fake_ask):
                 page = urllib.request.urlopen(
                     f"http://127.0.0.1:{port}/", timeout=5).read().decode()
                 self.assertNotIn("mailbox-secret-should-not-appear", page)
@@ -500,6 +500,156 @@ class OracleLogTailTest(unittest.TestCase):
         from runner.runner import ASK_SYSTEM
         self.assertIn("Recent runner log", ASK_SYSTEM)
         self.assertIn("cannot", ASK_SYSTEM)
+
+
+class _FakeAgentResp:
+    def __init__(self, message):
+        self._body = json.dumps({"choices": [{"message": message}]}).encode("utf-8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def read(self, n=-1):
+        return self._body
+
+
+def _scripted_opener(script, seen=None):
+    state = {"i": 0}
+
+    def opener(req, timeout=60):
+        if seen is not None:
+            try:
+                seen.append(json.loads(req.data.decode("utf-8")))
+            except Exception:
+                pass
+        msg = script[min(state["i"], len(script) - 1)]
+        state["i"] += 1
+        return _FakeAgentResp(msg)
+
+    return opener
+
+
+def _agent_cfg():
+    return {"endpoint": "http://127.0.0.1:11434/v1", "model": "llama3.2:3b"}
+
+
+def _tool_msg(name, args, call_id="call-1"):
+    return {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [{
+            "id": call_id,
+            "type": "function",
+            "function": {"name": name, "arguments": json.dumps(args)},
+        }],
+    }
+
+
+class OracleAgentTest(unittest.TestCase):
+    """The --oracle chat model gets tools. The job path does not."""
+
+    def test_agent_reads_file_then_answers(self):
+        from runner.runner import ask_model_agent
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "debug.log")
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write("AUTHENTICATIONFAILED invalid credentials")
+            script = [
+                _tool_msg("read_file", {"path": p}),
+                {"role": "assistant",
+                 "content": "The log shows invalid credentials."},
+            ]
+            ans = ask_model_agent(_agent_cfg(), "did it fail?", "(no output)",
+                                  2000, opener=_scripted_opener(script))
+        self.assertIn("answer", ans)
+        self.assertIn("invalid credentials", ans["answer"])
+        self.assertEqual(ans.get("tool_rounds"), 1)
+
+    def test_agent_sends_tools_in_payload(self):
+        from runner.runner import ask_model_agent
+        seen = []
+        script = [{"role": "assistant", "content": "done"}]
+        ask_model_agent(_agent_cfg(), "hi", "", 2000,
+                        opener=_scripted_opener(script, seen))
+        self.assertTrue(seen)
+        tools = seen[0].get("tools") or []
+        names = [t["function"]["name"] for t in tools]
+        self.assertEqual(names, ["read_file", "list_dir", "write_file", "run"])
+
+    def test_agent_unknown_tool_gets_error_and_continues(self):
+        from runner.runner import ask_model_agent
+        script = [
+            _tool_msg("nope", {}),
+            {"role": "assistant", "content": "recovered"},
+        ]
+        ans = ask_model_agent(_agent_cfg(), "hi", "", 2000,
+                              opener=_scripted_opener(script))
+        self.assertEqual(ans.get("answer"), "recovered")
+
+    def test_agent_round_budget_exhausted(self):
+        from runner.runner import ask_model_agent
+        script = [_tool_msg("list_dir", {"path": "/tmp"})]
+        ans = ask_model_agent(_agent_cfg(), "hi", "", 2000,
+                              opener=_scripted_opener(script))
+        self.assertEqual(ans.get("rejected"), "tool_budget")
+
+    def test_agent_final_answer_still_sanitized(self):
+        from runner.runner import ask_model_agent
+        script = [{"role": "assistant",
+                   "content": "the key is hunter2-secret-value here"}]
+        patterns = {"testkey": "hunter2-secret-value"}
+        ans = ask_model_agent(_agent_cfg(), "hi", "", 2000,
+                              patterns=patterns,
+                              opener=_scripted_opener(script))
+        self.assertEqual(ans.get("rejected"), "sanitization")
+
+    def test_agent_unconfigured(self):
+        from runner.runner import ask_model_agent
+        ans = ask_model_agent({}, "hi", "", 2000)
+        self.assertEqual(ans.get("rejected"), "inference_unconfigured")
+
+    def test_run_tool_validation_never_raises(self):
+        from runner.runner import _run_oracle_tool
+        self.assertTrue(_run_oracle_tool("read_file", {"path": 5}).startswith("error:"))
+        self.assertTrue(_run_oracle_tool("list_dir", "x").startswith("error:"))
+        self.assertTrue(_run_oracle_tool("write_file", {"path": ""}).startswith("error:"))
+        self.assertTrue(_run_oracle_tool("run", {"command": ""}).startswith("error:"))
+        self.assertTrue(_run_oracle_tool("run", {"command": "x" * 9000}).startswith("error:"))
+        self.assertTrue(_run_oracle_tool("bogus", {}).startswith("error:"))
+
+    def test_write_file_round_trip(self):
+        from runner.runner import _run_oracle_tool
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "sub", "note.txt")
+            res = _run_oracle_tool("write_file", {"path": p, "content": "hello"})
+            self.assertIn("wrote 5 chars", res)
+            back = _run_oracle_tool("read_file", {"path": p})
+            self.assertEqual(back, "hello")
+
+    def test_run_tool_echo(self):
+        from runner.runner import _run_oracle_tool
+        res = _run_oracle_tool("run", {"command": "echo oracle-ok"})
+        self.assertIn("exit=0", res)
+        self.assertIn("oracle-ok", res)
+
+    def test_agent_trim_keeps_question(self):
+        from runner.runner import _agent_trim, _ORACLE_AGENT_CONTEXT_CHARS
+        big = "x" * (_ORACLE_AGENT_CONTEXT_CHARS + 1000)
+        messages = [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": "the question"},
+            {"role": "assistant", "content": "", "tool_calls": []},
+            {"role": "tool", "content": big},
+            {"role": "assistant", "content": "", "tool_calls": []},
+            {"role": "tool", "content": big},
+        ]
+        trimmed = _agent_trim(messages)
+        self.assertEqual(trimmed[0]["content"], "sys")
+        self.assertEqual(trimmed[1]["content"], "the question")
+        self.assertLess(len(trimmed), len(messages))
 
 
 if __name__ == "__main__":
