@@ -561,11 +561,11 @@ def check_key_policy(policies: dict, key_id: str, cfg, job):
         try:
             timeout = int(job.get("timeout_sec")
                           or cfg.get("default_timeout_sec", 300))
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return "timeout_sec must be a number"
         try:
             cap = int(pol["max_timeout_sec"])
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return "invalid key policy: max_timeout_sec"
         if timeout > cap:
             return (f"timeout {timeout}s exceeds this key's limit "
@@ -1702,7 +1702,7 @@ def _query_limit(cfg):
         return 0
     try:
         return int(raw)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return -1
 
 
@@ -1791,7 +1791,7 @@ def prune_retained(base_dir, days):
         return 0
     try:
         days = int(days)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return 0
     if days <= 0:
         return 0

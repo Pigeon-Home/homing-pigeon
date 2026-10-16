@@ -977,13 +977,12 @@ class AskModelAndDownloadRaceTest(unittest.TestCase):
     """
 
     def test_ask_model_bad_timeout_raises(self):
-        """Finding: int(timeout_sec) is unguarded. "hour" raises ValueError.
-        A normal int or None does not raise before the call.
+        """A bad timeout_sec does not raise. The call returns a dict.
         """
         from runner.runner import ask_model
-        with self.assertRaises(ValueError):
-            ask_model({"endpoint": "http://127.0.0.1:1", "model": "m",
-                       "timeout_sec": "hour"}, "q", "out", 100)
+        ans = ask_model({"endpoint": "http://127.0.0.1:1", "model": "m",
+                         "timeout_sec": "hour"}, "q", "out", 100)
+        self.assertIsInstance(ans, dict)
         ans = ask_model({"endpoint": "http://127.0.0.1:1", "model": "m",
                          "timeout_sec": 1}, "q", "out", 100)
         self.assertEqual(ans.get("rejected"), "inference_error")
@@ -1023,14 +1022,11 @@ class WindowsNameAndKillTreeTest(unittest.TestCase):
     """
 
     def test_windows_reserved_name_bad_type_raises(self):
-        """Finding: non-string name raises AttributeError. Normal
-        strings return a bool.
+        """A non-string name does not raise. The result is a bool.
         """
         from runner.runner import windows_reserved_name
-        with self.assertRaises(AttributeError):
-            windows_reserved_name(5)
-        with self.assertRaises(AttributeError):
-            windows_reserved_name(None)
+        self.assertIsInstance(windows_reserved_name(5), bool)
+        self.assertIsInstance(windows_reserved_name(None), bool)
         self.assertIsInstance(windows_reserved_name("CON"), bool)
         self.assertIsInstance(windows_reserved_name("safe.txt"), bool)
 
@@ -1162,26 +1158,20 @@ class RetainedExpiredAndSecretScanTest(unittest.TestCase):
     """
 
     def test_retained_expired_bad_data_raises(self):
-        """Finding: non-dict data raises AttributeError. A normal
-        dict returns a bool.
+        """Non-dict data does not raise. The result is a bool.
         """
         from runner.runner import retained_expired
-        with self.assertRaises(AttributeError):
-            retained_expired("not-a-dict", {})
-        with self.assertRaises(AttributeError):
-            retained_expired(5, {})
+        self.assertIsInstance(retained_expired("not-a-dict", {}), bool)
+        self.assertIsInstance(retained_expired(5, {}), bool)
         self.assertIsInstance(retained_expired({"saved_at": 0}, {}), bool)
         self.assertIsInstance(retained_expired({"saved_at": "bad"}, {}), bool)
 
     def test_secret_scan_bad_patterns_raises(self):
-        """Finding: non-dict patterns raises AttributeError. A
-        normal dict returns a list.
+        """Non-dict patterns do not raise. The result is a list.
         """
         from runner.runner import secret_scan
-        with self.assertRaises(AttributeError):
-            secret_scan("text", ["bad"])
-        with self.assertRaises(AttributeError):
-            secret_scan("text", "not-a-dict")
+        self.assertIsInstance(secret_scan("text", ["bad"]), list)
+        self.assertIsInstance(secret_scan("text", "not-a-dict"), list)
         self.assertIsInstance(secret_scan("text", {}), list)
         self.assertIsInstance(secret_scan("text", None), list)
 
