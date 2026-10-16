@@ -187,4 +187,66 @@ class CatchHandlerTest(unittest.TestCase):
         self.assertIsNone(handler.log_message("x"))
 
 
+class MailboxProbeTest(unittest.TestCase):
+    def test_a_missing_helper_is_a_string(self):
+        from runner import setup
+        with mock.patch.object(setup, "refresh_access_token", None):
+            text = setup._mailbox_probe({"mailbox_user": "a@b.c"})
+        self.assertIsInstance(text, str)
+        self.assertIn("oauth", text)
+
+    def test_a_failed_refresh_names_the_token(self):
+        from runner import setup
+        with mock.patch.object(setup, "refresh_access_token",
+                               side_effect=RuntimeError("nope")):
+            text = setup._mailbox_probe({"mailbox_user": "a@b.c"})
+        self.assertIsInstance(text, str)
+        self.assertIn("token", text)
+
+    def test_a_failed_constructor_names_imap(self):
+        from runner import setup
+        with mock.patch.object(setup, "refresh_access_token", return_value="tok"), \
+             mock.patch.object(setup.imaplib, "IMAP4_SSL",
+                               side_effect=OSError("down")):
+            text = setup._mailbox_probe({"mailbox_user": "a@b.c"})
+        self.assertIsInstance(text, str)
+        self.assertIn("IMAP", text)
+
+    def test_a_failed_authenticate_names_imap(self):
+        from runner import setup
+
+        class Boom:
+            def __init__(self, host, port, ssl_context=None):
+                self.host = host
+            def authenticate(self, mech, callback):
+                raise RuntimeError("bad sasl")
+            def logout(self):
+                raise AssertionError("logout after a failed login")
+
+        with mock.patch.object(setup, "refresh_access_token", return_value="tok"), \
+             mock.patch.object(setup.imaplib, "IMAP4_SSL", Boom):
+            text = setup._mailbox_probe({"mailbox_user": "a@b.c"})
+        self.assertIsInstance(text, str)
+        self.assertIn("IMAP", text)
+
+    def test_a_successful_login_returns_none_and_logs_out(self):
+        from runner import setup
+        seen = []
+
+        class Ok:
+            def __init__(self, host, port, ssl_context=None):
+                seen.append(("host", host, port))
+            def authenticate(self, mech, callback):
+                seen.append(("auth", mech))
+            def logout(self):
+                seen.append(("logout",))
+
+        with mock.patch.object(setup, "refresh_access_token", return_value="tok"), \
+             mock.patch.object(setup.imaplib, "IMAP4_SSL", Ok):
+            self.assertIsNone(setup._mailbox_probe({"mailbox_user": "a@b.c"}))
+        self.assertEqual(seen[0], ("host", "imap.gmail.com", 993))
+        self.assertIn(("logout",), seen)
+
+
+
 
