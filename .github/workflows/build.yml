@@ -101,8 +101,8 @@ jobs:
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item dist/homing-pigeon.exe, dist/install.exe, runner/config.example.json $stage
           Compress-Archive -Path $stage -DestinationPath "$name.zip" -Force
-          $top = python -c "import zipfile,sys; print(zipfile.ZipFile(sys.argv[1]).namelist()[0])" "$name.zip"
-          if ($top -ne "$name/") { throw "zip top level is '$top', expected '$name/'" }
+          python -c "import zipfile,sys; ns=zipfile.ZipFile(sys.argv[1]).namelist(); b=[n for n in ns if not n.startswith(sys.argv[2]+'/')]; sys.exit('entries outside top dir: %s' % b if b else 0)" "$name.zip" "$name"
+          if ($LASTEXITCODE -ne 0) { throw "zip layout check failed: not all entries are under '$name/'" }
           "PKG_NAME=$name" >> $env:GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with:
@@ -128,8 +128,8 @@ jobs:
           mkdir -p "pkg/$name"
           cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
           tar czf "$name.tar.gz" -C pkg "$name"
-          top=$(tar tzf "$name.tar.gz" | head -1)
-          [ "$top" = "$name/" ] || { echo "tarball top level is '$top', expected '$name/'"; exit 1; }
+          bad=$(tar tzf "$name.tar.gz" | grep -v "^$name/" || true)
+          [ -z "$bad" ] || { echo "tarball has entries outside '$name/': $bad"; exit 1; }
           echo "PKG_NAME=$name" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
@@ -155,8 +155,8 @@ jobs:
           mkdir -p "pkg/$name"
           cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
           tar czf "$name.tar.gz" -C pkg "$name"
-          top=$(tar tzf "$name.tar.gz" | head -1)
-          [ "$top" = "$name/" ] || { echo "tarball top level is '$top', expected '$name/'"; exit 1; }
+          bad=$(tar tzf "$name.tar.gz" | grep -v "^$name/" || true)
+          [ -z "$bad" ] || { echo "tarball has entries outside '$name/': $bad"; exit 1; }
           echo "PKG_NAME=$name" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
