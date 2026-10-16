@@ -1658,6 +1658,9 @@ _ORACLE_TOOL_NAMES = frozenset(
     t.get("function", {}).get("name") for t in _ORACLE_TOOLS
     if isinstance(t, dict) and isinstance(t.get("function"), dict)
 )
+# Call IDs minted for content-embedded tool calls (never issued as wire
+# tool_calls by the model endpoint).
+_CONTENT_CALL_ID_PREFIX = "content-"
 
 ASK_AGENT_SYSTEM = ASK_SYSTEM + (
     "\nYou are the over-the-shoulder administrator watching the Homing "
@@ -1828,9 +1831,17 @@ def _inference_chat(cfg, messages, tools, opener, timeout):
     payload = {"model": cfg.get("model"), "messages": messages}
     if tools:
         payload["tools"] = tools
+    body_bytes = json.dumps(payload).encode("utf-8")
+    try:
+        roles = ",".join(m.get("role", "?") for m in messages
+                         if isinstance(m, dict))
+    except Exception:
+        roles = "?"
+    log(f"inference chat call: {len(messages)} message(s) [{roles}], "
+        f"{len(body_bytes)} byte payload")
     req = Request(
         cfg.get("endpoint", "").rstrip("/") + "/chat/completions",
-        data=json.dumps(payload).encode("utf-8"),
+        data=body_bytes,
         headers={"Content-Type": "application/json"},
         method="POST",
     )
@@ -1840,6 +1851,14 @@ def _inference_chat(cfg, messages, tools, opener, timeout):
             raw = resp.read(1_000_000)
         parsed = json.loads(raw.decode("utf-8"))
         msg = parsed["choices"][0]["message"]
+    except HTTPError as e:
+        try:
+            err_body = e.read().decode("utf-8", "replace")[:500]
+        except Exception:
+            err_body = "?"
+        log(f"inference chat call failed: HTTP {e.code} {e.reason}; "
+            f"endpoint response body: {err_body}", "WARN")
+        return None
     except Exception as e:
         log(f"inference chat call failed: {e}", "WARN")
         return None
@@ -1946,7 +1965,7 @@ def _parse_content_tool_call(content):
             args = obj.get("arguments")
         if not isinstance(args, dict):
             continue
-        return [("content-call-0", name, args)]
+        return [(_CONTENT_CALL_ID_PREFIX + "call-0", name, args)]
     return []
 
 
@@ -2028,15 +2047,7 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
         log(f"oracle agent: round {tool_rounds}, "
             f"{len(calls)} tool call(s): "
             + ", ".join(n for _, n, _ in calls))
-        assistant_msg = {"role": "assistant", "content": msg.get("content") or ""}
-        wire_calls = []
-        for call_id, name, fargs in calls:
-            wire_calls.append({
-                "id": call_id, "type": "function",
-                "function": {"name": name, "arguments": fargs},
-            })
-        assistant_msg["tool_calls"] = wire_calls
-        messages.append(assistant_msg)
+        executed = []
         for call_id, name, fargs in calls:
             try:
                 preview = json.dumps(fargs)[:120]
@@ -2045,11 +2056,36 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             log(f"oracle tool: {name} {preview}")
             result_text = _run_oracle_tool(name, fargs, base_dir)
             scan_text += "\n" + result_text
-            messages.append({
-                "role": "tool",
-                "tool_call_id": call_id,
-                "content": result_text,
-            })
+            executed.append((call_id, name, fargs, result_text))
+        if executed[0][0].startswith(_CONTENT_CALL_ID_PREFIX):
+            # Content-embedded calls were never issued as wire
+            # tool_calls. Fabricating tool_calls/tool history for them
+            # makes some endpoints (Ollama) reject the next request
+            # with HTTP 400, so replay the exchange as plain chat.
+            log("oracle agent: replaying tool results as plain chat "
+                "(content-embedded calls, no wire tool_calls)")
+            messages.append({"role": "assistant",
+                             "content": msg.get("content") or ""})
+            for _, name, _, result_text in executed:
+                messages.append({
+                    "role": "user",
+                    "content": f"Tool '{name}' returned:\n{result_text}",
+                })
+        else:
+            assistant_msg = {"role": "assistant",
+                             "content": msg.get("content") or ""}
+            assistant_msg["tool_calls"] = [
+                {"id": call_id, "type": "function",
+                 "function": {"name": name, "arguments": fargs}}
+                for call_id, name, fargs, _ in executed
+            ]
+            messages.append(assistant_msg)
+            for call_id, _, _, result_text in executed:
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": call_id,
+                    "content": result_text,
+                })
     log("oracle agent: round budget exhausted", "WARN")
     return {"op": "ask", "rejected": "tool_budget"}
 
