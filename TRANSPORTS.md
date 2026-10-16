@@ -235,6 +235,13 @@ transport module today. Email is hardcoded in `runner/runner.py`.
 A pull request is how a second pipe would land. There is no plugin
 hook.
 
+Result routing travels with the job. A signed job may name where its
+result goes — on email that's the `reply_to` field; on a future
+transport it would be the equivalent (a reply queue or address inside
+the signed blob). The transport never invents a destination: it
+delivers where the signed job says, and falls back to the shared
+mailbox/queue when the job names nothing.
+
 ## Bootstrapping
 
 Email is the only pipe you can turn on today. Get that running (a
