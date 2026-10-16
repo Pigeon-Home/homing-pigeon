@@ -39,6 +39,32 @@ AUDIT_ROLLED_FILE = "security-audit.jsonl.1"
 COUNTS_FILE = "security-audit-counts.json"
 
 
+# Hardening M2: env names that subvert execution even when the script
+# itself is pinned. Compared case-insensitively (Windows env is
+# case-insensitive; on POSIX the uppercase form is the dangerous one,
+# and matching it case-insensitively errs toward safety).
+DANGEROUS_ENV_NAMES = frozenset({
+    # Shell startup files: executed automatically by sh/bash/ksh.
+    "BASH_ENV",
+    "ENV",
+    # Dynamic linker: hijack library loading for any subprocess.
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "LD_AUDIT",
+    # Interpreters: auto-executed startup code / module injection.
+    "PYTHONPATH",
+    "PYTHONSTARTUP",
+    "PERL5LIB",
+    "PERLLIB",
+    "RUBYLIB",
+    "RUBYOPT",
+    "NODE_OPTIONS",
+    # Tool behavior: command substitution on invocation.
+    "GIT_SSH",
+    "GIT_SSH_COMMAND",
+})
+
+
 def sec_mode(cfg, feature):
     """Return the mode for a feature: off, audit, or enforce.
 

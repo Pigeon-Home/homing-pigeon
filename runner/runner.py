@@ -534,30 +534,10 @@ def check_key_policy(policies: dict, key_id: str, cfg, job):
     return None
 
 
-# Hardening M2: env names that subvert execution even when the script
-# itself is pinned. Compared case-insensitively (Windows env is
-# case-insensitive; on POSIX the uppercase form is the dangerous one,
-# and matching it case-insensitively errs toward safety).
-DANGEROUS_ENV_NAMES = frozenset({
-    # Shell startup files: executed automatically by sh/bash/ksh.
-    "BASH_ENV",
-    "ENV",
-    # Dynamic linker: hijack library loading for any subprocess.
-    "LD_PRELOAD",
-    "LD_LIBRARY_PATH",
-    "LD_AUDIT",
-    # Interpreters: auto-executed startup code / module injection.
-    "PYTHONPATH",
-    "PYTHONSTARTUP",
-    "PERL5LIB",
-    "PERLLIB",
-    "RUBYLIB",
-    "RUBYOPT",
-    "NODE_OPTIONS",
-    # Tool behavior: command substitution on invocation.
-    "GIT_SSH",
-    "GIT_SSH_COMMAND",
-})
+# Hardening M2: env names that subvert execution. Defined in
+# runner/security.py; re-exported here for the policy check.
+DANGEROUS_ENV_NAMES = _security.DANGEROUS_ENV_NAMES \
+    if _security is not None else frozenset()
 
 
 def _env_name_in(name, lst):
@@ -4142,6 +4122,12 @@ def main() -> int:
                     help="Thunderbird-style first-run setup: browser "
                          "sign-in, shared secret, write config; then "
                          "start normally")
+    ap.add_argument("--audit-report", action="store_true",
+                    help="print a summary of the security audit log "
+                         "and exit; no mailbox needed")
+    ap.add_argument("--since", default=None, metavar="14d|48h",
+                    help="with --audit-report: only entries from the "
+                         "last window (default 30d)")
     args = ap.parse_args()
 
     if args.workers is not None and args.workers < 1:
@@ -4182,6 +4168,16 @@ def main() -> int:
         return 2
     if args.inspect:
         return run_inspect(cfg, args)
+    if args.audit_report:
+        # Read-only: works with a config that has no mailbox
+        # credentials, and never touches the mailbox or config.json.
+        try:
+            from runner import auditreport as _auditreport
+        except ImportError:  # running from inside runner/ as __main__
+            import auditreport as _auditreport
+        base_dir = cfg.get("base_dir") or os.path.join(
+            os.path.expanduser("~"), ".homing-pigeon")
+        return _auditreport.main(cfg, base_dir, since=args.since)
     # Mailbox auth gate, before any model work. On a TTY the runner
     # offers the Thunderbird-style setup instead of dying; headless
     # (service, automation) keeps the fail-fast config error.

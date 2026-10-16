@@ -426,6 +426,7 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | `--no-send` | Execute, but log results instead of emailing them |
 | `--once` | Single poll cycle, then exit |
 | `--inspect {board,budget,job,redact}` | Read local Oracle state and exit; no mailbox |
+| `--audit-report [--since 14d|48h]` | Summarize the security audit log and exit; no mailbox, read-only |
 | `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. Turns are appended to `oracle-chat.jsonl` in the base dir (1 MiB, then one backup). See `CONTRIBUTING.md` (maintainer notes: the `--oracle` flag). |
 | `--poll-interval SEC`, `--timeout SEC`, `--max-output-bytes N` | Override config |
 
