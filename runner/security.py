@@ -193,6 +193,18 @@ def validate_security_config(cfg):
         raise RuntimeError(
             "config error: security.audit_max_lines must be at least 1 "
             "(got %r)" % (max_lines,))
+    # Hardening M6: validate the confinement block. The sandbox module
+    # owns the schema; import lazily to avoid a cycle.
+    if "confinement" in sec:
+        try:
+            from runner import sandbox as _sandbox
+        except ImportError:
+            try:
+                import sandbox as _sandbox
+            except ImportError:
+                _sandbox = None
+        if _sandbox is not None:
+            _sandbox._validate_confinement_block(sec["confinement"])
 
 
 def _audit_path(base_dir):

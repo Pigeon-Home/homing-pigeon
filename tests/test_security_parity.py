@@ -4,7 +4,10 @@
 Default behavior must not change: no security block, all features
 off, and all features audit must produce identical mail outputs.
 At M0 no feature calls sec_decide, so the audit log must stay absent.
+From M6, confinement in audit mode logs would_* decisions; the mail
+outputs must still be identical.
 """
+import json
 import os
 import sys
 import unittest
@@ -35,7 +38,17 @@ class ParityTest(unittest.TestCase):
         # M0: nothing calls sec_decide yet; no audit log may exist.
         self.assertIsNone(base["audit_lines"])
         self.assertIsNone(off["audit_lines"])
-        self.assertIsNone(audit["audit_lines"])
+        # M6: confinement in audit mode records would_run_sandboxed for
+        # every exec job -- the outcomes above are still identical, and
+        # every audit entry must be a would_* decision (audit never
+        # denies).
+        if audit["audit_lines"] is not None:
+            for line in audit["audit_lines"]:
+                entry = json.loads(line)
+                self.assertEqual(entry["feature"], "confinement")
+                self.assertTrue(
+                    entry["decision"].startswith("would_"),
+                    "audit mode must never deny: %r" % (entry,))
         # The corpus actually exercised the runner.
         self.assertTrue(base["sent"], "corpus produced no mail output")
         self.assertIn("parity-01", base["seen"])

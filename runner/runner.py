@@ -114,6 +114,13 @@ except ImportError:  # running from inside runner/ as __main__
         import security as _security
     except ImportError:
         _security = None
+try:
+    from runner import sandbox as _sandbox
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        import sandbox as _sandbox
+    except ImportError:
+        _sandbox = None
 
 
 def _append_security_event(base_dir: str, event: dict) -> None:
@@ -691,6 +698,51 @@ def _seen_key(cfg, key):
     if isinstance(rid, str) and rid:
         return "%s:%s" % (rid, key)
     return key
+
+
+# Hardening M6: Linux confinement fallback chain. Returns
+# (argv, use_host_env, sandboxed). In enforce mode the job runs inside
+# bwrap; when bwrap is unavailable (non-Linux, missing binary, build
+# failure) it warns loudly, audits the fallback, and runs normally.
+# Audit mode runs normally and records what enforce would have done.
+def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
+                      work, args, env):
+    normal = ([*interpreter, script_path, *args], True, False)
+    if _security is None or _sandbox is None:
+        return normal
+    mode = _security.sec_mode(cfg, "confinement")
+    if mode == "off":
+        return normal
+
+    def _audit(decision, reason, detail=""):
+        try:
+            _security.write_audit_entry(
+                base_dir, "confinement", decision, reason,
+                job_id=str(job_id), detail=str(detail), cfg=cfg)
+        except Exception:
+            pass
+
+    if not _sandbox.sandbox_available():
+        log(f"job {job_id}: confinement unavailable on this machine "
+            f"({sys.platform}); running unsandboxed", "WARN")
+        _audit("fallback", "confinement_unavailable")
+        return normal
+    if mode == "audit":
+        _audit("would_sandbox", "would_run_sandboxed")
+        return normal
+    # enforce
+    try:
+        argv = _sandbox.build_bwrap_command(
+            cfg, interpreter, os.path.basename(script_path),
+            work, args, env)
+    except RuntimeError as e:
+        log(f"job {job_id}: cannot build sandbox ({e}); "
+            f"running unsandboxed", "WARN")
+        _audit("fallback", "confinement_build_failed", str(e))
+        return normal
+    _audit("sandboxed", "sandboxed")
+    # In the sandbox the env travels via --setenv; Popen inherits.
+    return (argv, False, True)
 
 
 def verify_body_keyed(body_text: str, secrets: dict):
@@ -2462,14 +2514,22 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     if max_out < 1:
         max_out = 100000
     t0 = time.monotonic()
+    # Hardening M6: confinement wraps the argv in bwrap when the
+    # feature is in enforce mode and bwrap is available. With the
+    # feature off (default) this is exactly the old behavior.
+    c_argv, use_host_env, sandboxed = _confinement_argv(
+        cfg, base_dir, job.get("job_id", ""), interpreter, script_path,
+        work, args, env)
     try:
         proc = subprocess.Popen(
-            [*interpreter, script_path, *args],
+            c_argv,
             cwd=work, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=env, start_new_session=(os.name != "nt"),
+            env=env if use_host_env else None,
+            start_new_session=(os.name != "nt"),
         )
         log(f"job {job['job_id']} process started pid={proc.pid} "
-            f"interpreter={interpreter[0]}")
+            f"interpreter={interpreter[0]}"
+            f"{' sandboxed' if sandboxed else ''}")
         log(f"job {job['job_id']} cwd={work} args={args}", "DEBUG")
     except (OSError, ValueError) as e:
         # Missing binary, a null in argv, or an unusable interpreter

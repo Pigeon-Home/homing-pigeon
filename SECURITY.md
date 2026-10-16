@@ -147,6 +147,27 @@ or file contents.
 | `confinement` | M6 | Runs jobs inside a Linux sandbox (bwrap) |
 | `job_user` | M8 | Runs jobs as a different POSIX user |
 
+### Confinement (M6)
+
+With `security.modes.confinement: enforce` on Linux and `bwrap`
+installed, each `exec` job runs inside a bubblewrap sandbox: `/usr`
+read-only, no network, no access to home, and only the job workdir
+writable (mounted at `/work`). The job's scrubbed env arrives via
+`--setenv`. When `bwrap` is missing, or on non-Linux, the runner warns
+loudly, audits a `fallback` decision, and runs the job normally —
+availability wins over confinement, and the fallback is always
+visible. `audit` mode runs normally and records `would_run_sandboxed`.
+
+Optional tuning under `security.confinement` (all optional):
+
+```json
+"confinement": {
+  "extra_flags": ["--unshare-pid"],
+  "extra_ro_binds": [["/opt/data", "/data"]],
+  "work_mount": "/work"
+}
+```
+
 See the hardening report (`HARDENING_REPORT.md`) for per-milestone
 status, and the threat model (`docs/threat-model.md`) for the
 overall posture: the Oracle reviews while the operating system
