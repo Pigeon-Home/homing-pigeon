@@ -2057,6 +2057,10 @@ class Board:
         return chosen
 
     def complete(self, task_id, result, require_review=False):
+        with _BOARD_LOCK:
+            return self._complete_unlocked(task_id, result, require_review)
+
+    def _complete_unlocked(self, task_id, result, require_review=False):
         # A dict id raises TypeError on get. That rejected the message.
         if not isinstance(task_id, str):
             return "not_found", "not found"
@@ -2081,6 +2085,10 @@ class Board:
         return "done", "ok"
 
     def approve(self, task_id):
+        with _BOARD_LOCK:
+            return self._approve_unlocked(task_id)
+
+    def _approve_unlocked(self, task_id):
         if not isinstance(task_id, str):
             return "not_found", "not found"
         t = self.tasks.get(task_id)
@@ -2094,10 +2102,13 @@ class Board:
         return True, "ok"
 
     def reoffer_expired(self, task_timeout=86400):
+        with _BOARD_LOCK:
+            return self._reoffer_expired_unlocked(task_timeout)
+
+    def _reoffer_expired_unlocked(self, task_timeout=86400):
         now = datetime.now(timezone.utc)
         count = 0
-        with _BOARD_LOCK:
-            tasks = list(self.tasks.values())
+        tasks = list(self.tasks.values())
         for t in tasks:
             if not isinstance(t, dict):
                 continue
