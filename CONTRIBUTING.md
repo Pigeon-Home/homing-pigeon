@@ -174,6 +174,15 @@ poll loop are all after the `return`. You can open the chat on a
 config that has inference and `base_dir` and nothing else. A normal
 poll (`homing-pigeon` with no `--oracle`) is unchanged.
 
+## What the chat can see
+
+`oracle_context` builds the model's context from two sources in the
+base dir: the retained job records (id, kind, script, output) and the
+tail of `runner.log`. The log tail is what lets the Oracle answer
+"did this happen?" instead of inventing log events. `ASK_SYSTEM`
+tells the model to quote from what it was given and to say it cannot
+see something when it is not there.
+
 `oracle_window` then:
 
 - Rejects a port that is not an integer or is outside 0..65535.

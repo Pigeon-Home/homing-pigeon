@@ -392,5 +392,115 @@ class BaseDirForTest(unittest.TestCase):
         self.assertEqual(made.call_args.kwargs.get("base_dir"), d)
 
 
+class OracleContextSummaryTest(unittest.TestCase):
+    """The Oracle gets kind, script, status, and time — not just output."""
+
+    def _write(self, d, job_id, payload):
+        import time
+        os.makedirs(os.path.join(d, "retained"), exist_ok=True)
+        p = os.path.join(d, "retained", job_id + ".json")
+        with open(p, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh)
+        # newest first ordering is by mtime; stagger them
+        ts = time.time() - len(os.listdir(os.path.join(d, "retained")))
+        os.utime(p, (ts, ts))
+
+    def test_summary_carries_kind_script_status_time(self):
+        from runner.runner import oracle_context
+        with tempfile.TemporaryDirectory() as d:
+            self._write(d, "job-1", {
+                "job_id": "job-1", "kind": "exec",
+                "script": "Get-Date; Write-Output hello",
+                "stdout": "hello\n", "stderr": "",
+                "exit_code": 0, "timed_out": False,
+                "saved_at": 1760572271,
+            })
+            ctx = oracle_context(d)
+        self.assertIn("job job-1 (exec, exit code 0,", ctx)
+        self.assertIn("script: Get-Date; Write-Output hello", ctx)
+        self.assertIn("output:\nhello", ctx)
+
+    def test_old_records_without_new_fields_degrade_gracefully(self):
+        from runner.runner import oracle_context
+        with tempfile.TemporaryDirectory() as d:
+            self._write(d, "job-9", {"job_id": "job-9", "stdout": "x"})
+            ctx = oracle_context(d)
+        self.assertIn("job job-9 (unknown, status unknown, time unknown)", ctx)
+        self.assertNotIn("script:", ctx)
+
+    def test_timed_out_status(self):
+        from runner.runner import _retained_job_summary
+        s = _retained_job_summary({"timed_out": True, "exit_code": -1}, "j")
+        self.assertIn("timed out", s)
+
+    def test_output_still_capped(self):
+        from runner.runner import oracle_context
+        with tempfile.TemporaryDirectory() as d:
+            self._write(d, "big", {
+                "job_id": "big", "kind": "exec",
+                "script": "s" * 2000, "stdout": "o" * 5000,
+                "exit_code": 0, "saved_at": 1,
+            })
+            ctx = oracle_context(d, max_chars=500)
+        self.assertLessEqual(len(ctx), 500)
+
+    def test_system_prompt_forbids_invented_ids(self):
+        from runner.runner import ASK_SYSTEM
+        self.assertIn("Never invent", ASK_SYSTEM)
+
+
+class OracleLogTailTest(unittest.TestCase):
+    """The Oracle can see the runner log, so it stops inventing log events."""
+
+    def _write_log(self, d, lines):
+        p = os.path.join(d, "runner.log")
+        with open(p, "w", encoding="utf-8") as fh:
+            fh.write("\n".join(lines) + "\n")
+        return p
+
+    def test_tail_returns_last_lines(self):
+        from runner.runner import _runner_log_tail
+        with tempfile.TemporaryDirectory() as d:
+            self._write_log(d, [f"line {i}" for i in range(50)])
+            tail = _runner_log_tail(d)
+        self.assertIn("line 49", tail)
+        self.assertNotIn("line 0\n", tail.split("\n")[0] if "\n" in tail else tail)
+        self.assertLessEqual(len(tail), 2000)
+
+    def test_tail_missing_log_is_empty(self):
+        from runner.runner import _runner_log_tail
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(_runner_log_tail(d), "")
+
+    def test_tail_bad_base_dir_is_empty(self):
+        from runner.runner import _runner_log_tail
+        self.assertEqual(_runner_log_tail(None), "")
+        self.assertEqual(_runner_log_tail(5), "")
+
+    def test_context_includes_log_section(self):
+        from runner.runner import oracle_context
+        with tempfile.TemporaryDirectory() as d:
+            self._write_log(d, [
+                "2026-10-16 11:40:05 [ERROR] poll cycle failed: auth bad",
+                "2026-10-16 11:40:06 [INFO] retrying",
+            ])
+            ctx = oracle_context(d)
+        self.assertIn("Recent runner log", ctx)
+        self.assertIn("poll cycle failed: auth bad", ctx)
+
+    def test_context_includes_log_even_without_retained_dir(self):
+        from runner.runner import oracle_context
+        with tempfile.TemporaryDirectory() as d:
+            self._write_log(d, ["2026-10-16 11:40:05 [ERROR] boom"])
+            ctx = oracle_context(d)
+        self.assertIn("(no job output retained yet)", ctx)
+        self.assertIn("boom", ctx)
+
+    def test_system_prompt_describes_log_section(self):
+        from runner.runner import ASK_SYSTEM
+        self.assertIn("Recent runner log", ASK_SYSTEM)
+        self.assertIn("cannot", ASK_SYSTEM)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
