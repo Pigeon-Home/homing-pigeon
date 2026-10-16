@@ -146,13 +146,9 @@ class _Catch(BaseHTTPRequestHandler):
         return
 
 
-def browser_consent(cfg: dict) -> str:
-    """Open the system browser and return a refresh token. Blocks."""
-    client_id = cfg.get("oauth_client_id") or ""
-    if not client_id:
-        raise SystemExit("config error: oauth_client_id is required for auth=oauth")
-    verifier, challenge = _pkce()
-    state = secrets.token_urlsafe(16)
+def build_authorize_url(cfg, verifier, challenge, state) -> str:
+    """Authorize URL for the browser. Does not open one."""
+    client_id = (cfg or {}).get("oauth_client_id") or ""
     params = {
         "client_id": client_id,
         "redirect_uri": REDIRECT_URI,
@@ -164,7 +160,17 @@ def browser_consent(cfg: dict) -> str:
         "code_challenge_method": "S256",
         "state": state,
     }
-    url = AUTH_URL + "?" + urllib.parse.urlencode(params)
+    return AUTH_URL + "?" + urllib.parse.urlencode(params)
+
+
+def browser_consent(cfg: dict) -> str:
+    """Open the system browser and return a refresh token. Blocks."""
+    client_id = cfg.get("oauth_client_id") or ""
+    if not client_id:
+        raise SystemExit("config error: oauth_client_id is required for auth=oauth")
+    verifier, challenge = _pkce()
+    state = secrets.token_urlsafe(16)
+    url = build_authorize_url(cfg, verifier, challenge, state)
     _Catch.code = None
     _Catch.error = None
     server = HTTPServer(("127.0.0.1", REDIRECT_PORT), _Catch)
