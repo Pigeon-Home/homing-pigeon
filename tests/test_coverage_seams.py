@@ -140,3 +140,51 @@ class ExchangeCodeTest(unittest.TestCase):
                 opener=self._opener(b'{"access_token":"x"}', []))
 
 
+class CatchHandlerTest(unittest.TestCase):
+    def setUp(self):
+        from runner.oauth import _Catch
+        _Catch.code = None
+        _Catch.error = None
+
+    def _handler(self, path):
+        from runner.oauth import _Catch
+        handler = _Catch.__new__(_Catch)
+        handler.path = path
+        handler.request_version = "HTTP/1.1"
+        handler.requestline = "GET " + path + " HTTP/1.1"
+        handler.wfile = io.BytesIO()
+        return handler
+
+    def test_code_is_stored_and_the_page_is_200(self):
+        from runner.oauth import _Catch
+        handler = self._handler("/?code=abc")
+        handler.do_GET()
+        self.assertEqual(_Catch.code, "abc")
+        self.assertIsNone(_Catch.error)
+        page = handler.wfile.getvalue()
+        self.assertIn(b"200", page)
+        self.assertIn(b"Signed in", page)
+
+    def test_error_is_stored_and_code_stays_unset(self):
+        from runner.oauth import _Catch
+        handler = self._handler("/?error=access_denied")
+        handler.do_GET()
+        self.assertEqual(_Catch.error, "access_denied")
+        self.assertIsNone(_Catch.code)
+        self.assertIn(b"access_denied", handler.wfile.getvalue())
+
+    def test_a_bare_path_is_an_unknown_error(self):
+        from runner.oauth import _Catch
+        handler = self._handler("/")
+        handler.do_GET()
+        self.assertEqual(_Catch.error, "unknown")
+        self.assertIsNone(_Catch.code)
+        self.assertIn(b"unknown", handler.wfile.getvalue())
+
+    def test_log_message_is_silent(self):
+        from runner.oauth import _Catch
+        handler = self._handler("/")
+        self.assertIsNone(handler.log_message("x"))
+
+
+
