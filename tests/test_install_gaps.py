@@ -27,6 +27,7 @@ from install import (  # noqa: E402
     install_ollama_and_model,
     windows_task_command,
     ensure_runner_id,
+    _ollama_bin,
 )
 
 _spec = importlib.util.spec_from_file_location(
@@ -182,10 +183,11 @@ class InstallOllamaTest(unittest.TestCase):
         _assert_mode(self, self.path, 0o640)
 
     def test_present_ollama_pulls_without_curl_and_locks_mode(self):
-        with mock.patch("install._which", return_value="/usr/bin/ollama"), \
+        with mock.patch("install._ollama_bin", return_value="ollama"), \
              mock.patch("install.ensure_ollama_running", return_value=True), \
              mock.patch("install.run") as run:
-            install_ollama_and_model(self.path, "llama3.2:3b; touch /tmp/nope", skip=False)
+            ok = install_ollama_and_model(self.path, "llama3.2:3b; touch /tmp/nope", skip=False)
+        self.assertTrue(ok)
         run.assert_called_once_with(
             ["ollama", "pull", "llama3.2:3b; touch /tmp/nope"])
         with open(self.path, encoding="utf-8") as fh:
@@ -200,24 +202,96 @@ class InstallOllamaTest(unittest.TestCase):
 
     def test_linux_install_command_is_pinned_and_failures_do_not_write(self):
         curl = ["sh", "-c", "curl -fsSL https://ollama.com/install.sh | sh"]
-        with mock.patch("install._which", return_value=None), \
+        with mock.patch("install._ollama_bin", return_value=None), \
              mock.patch("install.sys.platform", "linux"), \
              mock.patch("install.ensure_ollama_running", return_value=True), \
              mock.patch("install.run", side_effect=subprocess.CalledProcessError(1, curl)) as run:
-            install_ollama_and_model(self.path, "llama3.2:3b", skip=False)
+            ok = install_ollama_and_model(self.path, "llama3.2:3b", skip=False)
+        self.assertFalse(ok)
         run.assert_called_once_with(curl)
         with open(self.path, encoding="utf-8") as fh:
             cfg = json.load(fh)
         self.assertNotIn("inference", cfg)
         self.assertEqual(cfg["shared_secret"], "keep-secret")
 
-        with mock.patch("install._which", return_value="/usr/bin/ollama"), \
+        with mock.patch("install._ollama_bin", return_value="/usr/bin/ollama"), \
              mock.patch("install.ensure_ollama_running", return_value=True), \
              mock.patch("install.run", side_effect=subprocess.CalledProcessError(1, "pull")):
-            install_ollama_and_model(self.path, "llama3.2:3b", skip=False)
+            ok = install_ollama_and_model(self.path, "llama3.2:3b", skip=False)
+        self.assertFalse(ok)
         with open(self.path, encoding="utf-8") as fh:
             cfg = json.load(fh)
         self.assertNotIn("inference", cfg)
+
+
+class OllamaBinTest(unittest.TestCase):
+    """The stale-PATH bug: winget installs Ollama into %LOCALAPPDATA% but
+    the running installer never picks up the registry PATH change, so
+    'ollama pull' died with FileNotFoundError and no inference block was
+    ever written. _ollama_bin checks the well-known locations first."""
+
+    def test_windows_known_location_beats_path(self):
+        fake = os.path.join("C:\\", "Users", "u", "AppData", "Local",
+                            "Programs", "Ollama", "ollama.exe")
+        with mock.patch("install.sys.platform", "win32"), \
+             mock.patch.dict(os.environ, {"LOCALAPPDATA": os.path.join("C:\\", "Users", "u", "AppData", "Local")}), \
+             mock.patch("install.os.path.isfile", return_value=True), \
+             mock.patch("install._which", return_value=None):
+            self.assertEqual(_ollama_bin(), fake)
+
+    def test_falls_back_to_which(self):
+        with mock.patch("install.sys.platform", "linux"), \
+             mock.patch("install.os.path.isfile", return_value=False), \
+             mock.patch("install._which", return_value="/usr/bin/ollama"):
+            self.assertEqual(_ollama_bin(), "/usr/bin/ollama")
+
+    def test_none_when_nowhere(self):
+        with mock.patch("install.sys.platform", "linux"), \
+             mock.patch("install.os.path.isfile", return_value=False), \
+             mock.patch("install._which", return_value=None):
+            self.assertIsNone(_ollama_bin())
+
+
+class InferenceOnlyFlagTest(unittest.TestCase):
+    def _tmp(self):
+        d = tempfile.mkdtemp(prefix="hp-infonly-")
+        self.addCleanup(lambda: __import__("shutil").rmtree(d, ignore_errors=True))
+        return d
+
+    def test_inference_only_runs_just_the_model_setup(self):
+        import install
+        with mock.patch.object(install, "install_ollama_and_model", return_value=True) as oll, \
+             mock.patch.object(install, "install_files") as files, \
+             mock.patch.object(install, "ensure_shared_secret"), \
+             mock.patch.object(sys, "argv", ["install", "--inference-only",
+                                             "--dir", self._tmp()]):
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                code = install.main()
+        self.assertEqual(code, 0)
+        oll.assert_called_once()
+        files.assert_not_called()
+        self.assertIn("READY", buf.getvalue())
+
+    def test_inference_only_reports_failure_actionably(self):
+        import install
+        with mock.patch.object(install, "install_ollama_and_model", return_value=False), \
+             mock.patch.object(install, "install_files"), \
+             mock.patch.object(install, "ensure_shared_secret"), \
+             mock.patch.object(sys, "argv", ["install", "--inference-only",
+                                             "--dir", self._tmp()]):
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                code = install.main()
+        self.assertEqual(code, 0)
+        self.assertIn("--inference-only", buf.getvalue())
+
+
+class OracleUnconfiguredMessageTest(unittest.TestCase):
+    def test_reject_tells_the_owner_how_to_fix(self):
+        msg = pigeon._ORACLE_REJECTS["inference_unconfigured"]
+        self.assertIn("--inference-only", msg)
+        self.assertIn("inference.endpoint", msg)
 
 
 class WindowsSpawnTest(unittest.TestCase):

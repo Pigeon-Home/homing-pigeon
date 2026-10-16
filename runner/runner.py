@@ -4110,7 +4110,9 @@ const note = document.getElementById("note");
 note.textContent = boot.ready
   ? ("Local model " + boot.model + ". This window stays on this machine. "
      + "The Oracle answers from retained job output and the instructions for this box.")
-  : "No loopback model is configured. Ask stays off until inference.endpoint is loopback.";
+  : "No loopback model is configured, so Ask stays off. To fix it, re-run install.exe "
+    + "--inference-only (it keeps your config and finishes the model setup), or point "
+    + "inference.endpoint in config.json at your local Ollama server and restart the runner.";
 const log = document.getElementById("log");
 const q = document.getElementById("q");
 const send = document.getElementById("send");
@@ -4156,7 +4158,10 @@ document.getElementById("f").onsubmit = async (e) => {
 
 
 _ORACLE_REJECTS = {
-    "inference_unconfigured": "No loopback model is configured.",
+    "inference_unconfigured": ("No loopback model is configured. Re-run install.exe "
+                               "--inference-only to finish the model setup, or point "
+                               "inference.endpoint in config.json at your local "
+                               "Ollama server."),
     "inference_error": "The local model did not answer.",
     "sanitization": "The reply was dropped because it repeated protected material.",
 }

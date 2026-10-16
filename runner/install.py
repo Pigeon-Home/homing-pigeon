@@ -336,6 +336,30 @@ def _which(cmd):
     return which(cmd)
 
 
+def _ollama_bin():
+    """Absolute path to the ollama binary, or None.
+
+    The installer often runs with a stale PATH: on Windows, winget drops
+    Ollama into %LOCALAPPDATA%\\Programs\\Ollama and updates the registry
+    PATH, which this process never picks up. Same story for the macOS
+    .app bundle. So check the well-known install locations first and
+    fall back to PATH.
+    """
+    candidates = []
+    if sys.platform == "win32":
+        local = os.environ.get("LOCALAPPDATA", "")
+        if local:
+            candidates.append(os.path.join(local, "Programs", "Ollama", "ollama.exe"))
+    elif sys.platform == "darwin":
+        candidates.append("/Applications/Ollama.app/Contents/Resources/ollama")
+    else:
+        candidates.append(os.path.expanduser("~/.ollama/bin/ollama"))
+    for c in candidates:
+        if c and os.path.isfile(c):
+            return c
+    return _which("ollama")
+
+
 
 BUILTIN_PROFILES = {
     "raspberry-pi-home": {
@@ -559,12 +583,15 @@ def ensure_ollama_running() -> bool:
     """Start the Ollama daemon if it is not already listening on loopback."""
     if _ollama_up():
         return True
-    if not _which("ollama"):
+    exe = _ollama_bin()
+    if not exe:
+        print("inference: ollama installed but the binary is not on PATH; "
+              "open a fresh terminal so PATH picks it up, then re-run install.exe")
         return False
     import subprocess
     try:
         subprocess.Popen(
-            ["ollama", "serve"],
+            [exe, "serve"],
             **daemon_popen_kwargs(os.name == "nt"),
         )
     except Exception as e:
@@ -579,18 +606,19 @@ def ensure_ollama_running() -> bool:
     return False
 
 
-def install_ollama_and_model(cfg_path: str, model: str, skip: bool) -> None:
+def install_ollama_and_model(cfg_path: str, model: str, skip: bool) -> bool:
     """Install Ollama and pull a model so the Oracle ask op works out of the box.
 
     Skipped entirely when skip is True (--no-inference). Failures are
     non-fatal: the runner still installs; ask stays off until the owner
-    sets a loopback endpoint.
+    sets a loopback endpoint. Returns True when the inference block was
+    written to the config.
     """
     if skip:
         print("inference: skipped (--no-inference)")
-        return
+        return False
     plat = sys.platform
-    if _which("ollama"):
+    if _ollama_bin():
         print("inference: ollama already present")
     else:
         print("inference: installing ollama (this may take a few minutes)...")
@@ -602,26 +630,32 @@ def install_ollama_and_model(cfg_path: str, model: str, skip: bool) -> None:
                     run(["brew", "install", "ollama"])
                 else:
                     print("inference: Homebrew not found; install Ollama from https://ollama.com and re-run, or pass --no-inference")
-                    return
+                    return False
             elif plat == "win32":
                 if _which("winget"):
                     run(["winget", "install", "--id", "Ollama.Ollama", "-e", "--accept-source-agreements", "--accept-package-agreements"])
                 else:
                     print("inference: winget not found; install Ollama from https://ollama.com and re-run, or pass --no-inference")
-                    return
+                    return False
             else:
                 print(f"inference: no automatic Ollama install for {plat}; pass --no-inference or install manually")
-                return
+                return False
         except Exception as e:
             print(f"inference: Ollama install failed ({e}); ask is off. Pass --no-inference to silence this.")
-            return
+            return False
     # Ensure the daemon is reachable, then pull the model.
-    ensure_ollama_running()
+    exe = _ollama_bin()
+    if not exe:
+        print("inference: ollama binary not found after install; "
+              "open a fresh terminal and re-run install.exe --inference-only")
+        return False
+    if not ensure_ollama_running():
+        return False
     try:
-        run(["ollama", "pull", model])
+        run([exe, "pull", model])
     except Exception as e:
         print(f"inference: model pull failed ({e}); ask is off until a loopback model is configured")
-        return
+        return False
     # Point config at the local server.
     try:
         import json
@@ -637,8 +671,10 @@ def install_ollama_and_model(cfg_path: str, model: str, skip: bool) -> None:
         }
         _write_json(cfg_path, cfg)
         print(f"inference: configured endpoint http://127.0.0.1:11434/v1 model {model}")
+        return True
     except Exception as e:
         print(f"inference: could not write config ({e})")
+        return False
 
 
 def main() -> int:
@@ -667,6 +703,11 @@ def main() -> int:
     ap.add_argument("--poll-interval", type=int, default=None, metavar="SEC")
     ap.add_argument("--no-inference", action="store_true",
                     help="do not install Ollama or pull a model (ask stays off)")
+    ap.add_argument("--inference-only", action="store_true",
+                    help="only install Ollama / pull the model and write the "
+                         "inference block; leaves the rest of the install alone. "
+                         "Safe to re-run when a previous install did not finish "
+                         "the model setup.")
     ap.add_argument("--instructions", default=None, metavar="TEXT",
                     help="human-readable instructions for this box (replaces any existing)")
     ap.add_argument("--instructions-add", default=None, metavar="TEXT",
@@ -711,6 +752,18 @@ def main() -> int:
     dst_dir = os.path.abspath(args.dir)
     cfg_path = os.path.abspath(args.config) if args.config \
         else os.path.join(dst_dir, "config.json")
+    if args.inference_only:
+        profile = chosen_profile(args.profile, args.no_profile)
+        model = inference_model_for(profile, args.inference_model)
+        ok = install_ollama_and_model(cfg_path, model, args.no_inference)
+        if ok:
+            print(f"inference: READY - local model {model} configured; "
+                  "restart the runner and the Oracle chat will answer")
+        else:
+            print("inference: NOT configured - ask stays off. "
+                  "Re-run install.exe --inference-only to retry, or set "
+                  "inference.endpoint in config.json to your local Ollama server.")
+        return 0
     install_files(src_dir, dst_dir)
     ensure_shared_secret(cfg_path, args.shared_secret)
     # Mailbox auth is the one thing install cannot invent. On a TTY,
@@ -740,7 +793,7 @@ def main() -> int:
         store_additional_secret(cfg_path, kid)
     profile = chosen_profile(args.profile, args.no_profile)
     model = inference_model_for(profile, args.inference_model)
-    install_ollama_and_model(cfg_path, model, args.no_inference)
+    inference_ok = install_ollama_and_model(cfg_path, model, args.no_inference)
     if profile:
         apply_profile(cfg_path, profile)
     apply_instruction_flags(cfg_path, args.instructions, args.instructions_add)
@@ -761,6 +814,13 @@ def main() -> int:
               "start manually: "
               f"{sys.executable} {dst_dir}/runner.py --config {cfg_path}")
     print(f"config: {cfg_path}")
+    if inference_ok:
+        print(f"inference: READY - local model {model} configured; "
+              "the Oracle chat will answer")
+    elif not args.no_inference:
+        print("inference: NOT configured - ask stays off. "
+              "Re-run install.exe --inference-only to retry, or set "
+              "inference.endpoint in config.json to your local Ollama server.")
     return 0
 
 

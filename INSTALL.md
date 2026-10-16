@@ -115,6 +115,15 @@ written. No hand-edited JSON needed. If you'd rather wire it by hand,
 edit `config.json` (add your Gmail + app password) instead, then send
 the clock check below.
 
+The installer also sets up the Oracle's local model: it installs
+Ollama and pulls a small Llama, then points `config.json` at it, so
+the `--oracle` chat answers on the box with nothing leaving it. If
+that step doesn't finish (it downloads a couple of gigabytes), the
+Oracle chat says so and tells you how to fix it — re-running
+`install.exe --inference-only` is safe and only retries the model
+setup, leaving the rest of your install alone. Pass
+`--no-inference` to skip it entirely.
+
 ### Working scenario
 
 Checked against a working simulation (Windows-shaped profile, no live
