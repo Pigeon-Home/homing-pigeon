@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.7.8 — 2026-10-16
+
+### Oracle agent: plain-chat replay + real diagnostics
+- Content-embedded tool calls no longer fabricate `tool_calls`/`tool`
+  history for the next model call. Ollama rejected history referencing
+  call IDs it never issued (HTTP 400 on the follow-up call); the
+  exchange is now replayed as plain chat (assistant's own words, then
+  `Tool '<name>' returned:` as a user message). Native tool_calls keep
+  the OpenAI wire format.
+- Inference failures now log the endpoint's response body (where the
+  real reason lives), plus per-call shape: message roles and payload
+  bytes. The agent loop also logs which replay mode it used. No more
+  guessing from a bare "HTTP Error 400" line.
+
 ## 3.7.7 — 2026-10-16
 
 ### Oracle protocol pack

@@ -719,6 +719,64 @@ class OracleAgentTest(unittest.TestCase):
         self.assertIn("invalid credentials", ans["answer"])
         self.assertEqual(ans.get("tool_rounds"), 1)
 
+    def test_agent_content_tool_history_is_plain_chat(self):
+        # Content-embedded calls were never issued as wire tool_calls, so
+        # the next request must not fabricate tool_calls/tool history:
+        # Ollama rejects history referencing unknown call IDs (HTTP 400).
+        from runner.runner import ask_model_agent
+        seen = []
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "debug.log")
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write("AUTHENTICATIONFAILED invalid credentials")
+            script = [
+                {"role": "assistant", "content": json.dumps({
+                    "name": "read_file",
+                    "parameters": {"path": p},
+                })},
+                {"role": "assistant",
+                 "content": "The log shows invalid credentials."},
+            ]
+            ans = ask_model_agent(_agent_cfg(), "did it fail?", "(no output)",
+                                  2000, opener=_scripted_opener(script, seen))
+        self.assertIn("answer", ans)
+        second = seen[1]["messages"]
+        self.assertFalse(any("tool_calls" in m for m in second),
+                         "content-embedded history must not contain tool_calls")
+        self.assertFalse(any(m.get("role") == "tool" for m in second),
+                         "content-embedded history must not contain tool messages")
+        tool_results = [m for m in second
+                        if m.get("role") == "user"
+                        and m.get("content", "").startswith("Tool 'read_file' returned:")]
+        self.assertEqual(len(tool_results), 1)
+        self.assertIn("invalid credentials", tool_results[0]["content"])
+
+    def test_agent_native_tool_history_uses_wire_format(self):
+        # Native tool_calls keep the OpenAI wire format in history.
+        from runner.runner import ask_model_agent
+        seen = []
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "debug.log")
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write("AUTHENTICATIONFAILED invalid credentials")
+            script = [
+                _tool_msg("read_file", {"path": p}, call_id="call-9"),
+                {"role": "assistant",
+                 "content": "The log shows invalid credentials."},
+            ]
+            ans = ask_model_agent(_agent_cfg(), "did it fail?", "(no output)",
+                                  2000, opener=_scripted_opener(script, seen))
+        self.assertIn("answer", ans)
+        second = seen[1]["messages"]
+        asst = [m for m in second
+                if m.get("role") == "assistant" and "tool_calls" in m]
+        self.assertEqual(len(asst), 1)
+        self.assertEqual(asst[0]["tool_calls"][0]["id"], "call-9")
+        tools = [m for m in second if m.get("role") == "tool"]
+        self.assertEqual(len(tools), 1)
+        self.assertEqual(tools[0]["tool_call_id"], "call-9")
+        self.assertIn("invalid credentials", tools[0]["content"])
+
     def test_agent_content_tool_call_fenced(self):
         from runner.runner import ask_model_agent
         with tempfile.TemporaryDirectory() as d:
@@ -785,6 +843,31 @@ class OracleAgentTest(unittest.TestCase):
                               patterns=patterns,
                               opener=_scripted_opener(script))
         self.assertEqual(ans.get("rejected"), "sanitization")
+
+    def test_inference_chat_logs_http_error_body(self):
+        # When the endpoint rejects a call, the WARN log must carry the
+        # endpoint's response body -- that is where the real reason lives,
+        # not in the bare "HTTP Error 400" line.
+        import io
+        from urllib.error import HTTPError
+        import runner.runner as R
+        lines = []
+        real_log = R.log
+        R.log = lambda msg, level="INFO": lines.append((level, msg))
+        try:
+            def opener(req, timeout=60):
+                raise HTTPError(req.full_url, 400, "Bad Request", {},
+                                io.BytesIO(b'{"error":"unknown tool call id"}'))
+
+            msg = R._inference_chat(
+                _agent_cfg(), [{"role": "user", "content": "hi"}],
+                None, opener, 60)
+        finally:
+            R.log = real_log
+        self.assertIsNone(msg)
+        warns = [m for lvl, m in lines if lvl == "WARN"]
+        self.assertTrue(any("unknown tool call id" in m for m in warns),
+                        f"HTTP error body missing from WARN log: {warns}")
 
     def test_agent_unconfigured(self):
         from runner.runner import ask_model_agent
