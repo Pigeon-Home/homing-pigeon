@@ -26,6 +26,14 @@ import threading
 import time
 from xml.sax.saxutils import escape
 
+try:
+    from runner._version import __version__
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        from _version import __version__
+    except ImportError:
+        __version__ = "unknown"
+
 SERVICE_NAME = "homing-pigeon"
 FILES = ["runner.py", "oauth.py", "winlog.py"]
 
@@ -679,6 +687,8 @@ def install_ollama_and_model(cfg_path: str, model: str, skip: bool) -> bool:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Install homing-pigeon as a service")
+    ap.add_argument("--version", action="version",
+                    version="%(prog)s " + __version__)
     ap.add_argument("--dir", default=os.path.expanduser("~/.homing-pigeon"),
                     help="install directory (default ~/.homing-pigeon)")
     ap.add_argument("--config", default=None,

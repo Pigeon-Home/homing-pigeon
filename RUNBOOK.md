@@ -110,10 +110,11 @@ you. You start them by making a **release**. All point and click:
 7. Now click the **Actions** tab at the top. You will see the robots
    working. It takes about 10 minutes.
 8. When they finish, go back to **Releases**. Your version is there
-   with files to download:
-   - `homing-pigeon-windows-x86_64.zip` — for Windows computers
-   - `homing-pigeon-linux-x86_64.tar.gz` — for Linux computers
-   - `homing-pigeon-macos-arm64.tar.gz` — for Mac computers
+   with files to download (each file and folder name carries the
+   version, e.g. `homing-pigeon-windows-x86_64-3.7.2.zip`):
+   - `homing-pigeon-windows-x86_64-<version>.zip` — for Windows computers
+   - `homing-pigeon-linux-x86_64-<version>.tar.gz` — for Linux computers
+   - `homing-pigeon-macos-arm64-<version>.tar.gz` — for Mac computers
 
 For the next version, do the same thing with `v3.6.2`, then `v3.6.3`,
 and so on. Bigger number = newer. The current release is v3.6.0.

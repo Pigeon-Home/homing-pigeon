@@ -34,6 +34,14 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+try:
+    from runner._version import __version__
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        from _version import __version__
+    except ImportError:
+        __version__ = "unknown"
+
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 
@@ -234,6 +242,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(
         description="Sign the runner into Gmail the way Thunderbird does: "
                     "browser window, no password on the command line.")
+    ap.add_argument("--version", action="version",
+                    version="%(prog)s " + __version__)
     ap.add_argument("--config", default="config.json")
     args = ap.parse_args()
     with open(args.config, encoding="utf-8") as fh:

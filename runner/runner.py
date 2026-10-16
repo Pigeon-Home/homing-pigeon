@@ -59,6 +59,14 @@ from urllib.parse import urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
 try:
+    from runner._version import __version__
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        from _version import __version__
+    except ImportError:
+        __version__ = "unknown"
+
+try:
     from runner.oauth import OAuthRefreshError
 except ImportError:  # running from inside runner/ as __main__
     try:
@@ -4423,6 +4431,8 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Homing Pigeon runner agent")
+    ap.add_argument("--version", action="version",
+                    version="%(prog)s " + __version__)
     ap.add_argument("--config", default="config.json")
     ap.add_argument("--once", action="store_true",
                     help="run a single poll cycle, then exit")

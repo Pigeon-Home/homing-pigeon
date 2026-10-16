@@ -28,9 +28,29 @@ import argparse
 import hashlib
 import hmac
 import json
+import os
+import re
 import sys
 import uuid
 from datetime import datetime, timezone
+
+try:
+    from runner._version import __version__
+except ImportError:  # run by path (python cloud/send_job.py) instead of -m
+    try:
+        from _version import __version__
+    except ImportError:
+        __version__ = None
+if not __version__:
+    # Last resort for a bare checkout run by path: read pyproject.toml
+    # next to this repo. Works on 3.9+ (no tomllib needed).
+    try:
+        _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(_root, "pyproject.toml"), encoding="utf-8") as _fh:
+            _m = re.search(r'^version\s*=\s*"([^"]+)"', _fh.read(), re.M)
+        __version__ = _m.group(1) if _m else "unknown"
+    except Exception:
+        __version__ = "unknown"
 
 
 def normalize(text: str) -> str:
@@ -206,6 +226,8 @@ def cmd_task_request(args) -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="homing-pigeon cloud-side helper")
+    ap.add_argument("--version", action="version",
+                    version="%(prog)s " + __version__)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     n = sub.add_parser("new", help="build a signed job email")

@@ -73,24 +73,33 @@ homing-pigeon --config ~/.homing-pigeon/config.json --once
 ## 3. Release binary
 
 **Install:** download and extract. Every default OS ships a
-downloader — no extra tools needed.
+downloader — no extra tools needed. Release file names carry the
+version (e.g. `homing-pigeon-linux-x86_64-3.7.2.tar.gz`), and
+extracting creates a folder with the same name, so several releases
+can live side by side.
 
 Linux (curl is always there):
 ```bash
-curl -sL -o pigeon.tar.gz https://github.com/Pigeon-Home/homing-pigeon/releases/latest/download/homing-pigeon-linux-x86_64.tar.gz
+ver=$(curl -s https://api.github.com/repos/Pigeon-Home/homing-pigeon/releases/latest | python3 -c "import json,sys; print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
+curl -sL -o pigeon.tar.gz "https://github.com/Pigeon-Home/homing-pigeon/releases/latest/download/homing-pigeon-linux-x86_64-$ver.tar.gz"
 tar xzf pigeon.tar.gz
+cd "homing-pigeon-linux-x86_64-$ver"
 ```
 
 macOS (same):
 ```bash
-curl -sL -o pigeon.tar.gz https://github.com/Pigeon-Home/homing-pigeon/releases/latest/download/homing-pigeon-macos-arm64.tar.gz
+ver=$(curl -s https://api.github.com/repos/Pigeon-Home/homing-pigeon/releases/latest | python3 -c "import json,sys; print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
+curl -sL -o pigeon.tar.gz "https://github.com/Pigeon-Home/homing-pigeon/releases/latest/download/homing-pigeon-macos-arm64-$ver.tar.gz"
 tar xzf pigeon.tar.gz
+cd "homing-pigeon-macos-arm64-$ver"
 ```
 
 Windows 11 (PowerShell has Invoke-WebRequest built in):
 ```powershell
-Invoke-WebRequest -Uri https://github.com/Pigeon-Home/homing-pigeon/releases/latest/download/homing-pigeon-windows-x86_64.zip -OutFile pigeon.zip
+$ver = (Invoke-RestMethod https://api.github.com/repos/Pigeon-Home/homing-pigeon/releases/latest).tag_name.TrimStart('v')
+Invoke-WebRequest -Uri "https://github.com/Pigeon-Home/homing-pigeon/releases/latest/download/homing-pigeon-windows-x86_64-$ver.zip" -OutFile pigeon.zip
 Expand-Archive pigeon.zip .
+cd "homing-pigeon-windows-x86_64-$ver"
 ```
 
 **Run:** start the service.

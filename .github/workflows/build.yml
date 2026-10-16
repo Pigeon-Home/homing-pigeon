@@ -50,6 +50,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "homing-pigeon.exe --help exited $LASTEXITCODE" }
           & .\dist\install.exe --help
           if ($LASTEXITCODE -ne 0) { throw "install.exe --help exited $LASTEXITCODE" }
+          $ver = python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])"
+          $out = (& .\dist\homing-pigeon.exe --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0) { throw "homing-pigeon.exe --version exited $LASTEXITCODE" }
+          if ($out -notmatch [regex]::Escape($ver)) { throw "homing-pigeon.exe --version printed '$out', expected $ver" }
+          $out = (& .\dist\install.exe --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0) { throw "install.exe --version exited $LASTEXITCODE" }
+          if ($out -notmatch [regex]::Escape($ver)) { throw "install.exe --version printed '$out', expected $ver" }
           python -c @"
           import json, os, pathlib
           root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'hp-smoke'
@@ -84,11 +91,23 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "inspect board exited $LASTEXITCODE" }
           & .\dist\homing-pigeon.exe --config $cfg --once --dry-run
           if ($LASTEXITCODE -ne 0) { throw "startup --once --dry-run exited $LASTEXITCODE" }
-      - run: Compress-Archive -Path dist/homing-pigeon.exe,dist/install.exe,runner/config.example.json -DestinationPath homing-pigeon-windows-x86_64.zip
+      - name: package windows binaries
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $ver = python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])"
+          $name = "homing-pigeon-windows-x86_64-$ver"
+          $stage = "stage/$name"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item dist/homing-pigeon.exe, dist/install.exe, runner/config.example.json $stage
+          Compress-Archive -Path $stage -DestinationPath "$name.zip" -Force
+          $top = python -c "import zipfile,sys; print(zipfile.ZipFile(sys.argv[1]).namelist()[0])" "$name.zip"
+          if ($top -ne "$name/") { throw "zip top level is '$top', expected '$name/'" }
+          "PKG_NAME=$name" >> $env:GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with:
-          name: homing-pigeon-windows-x86_64
-          path: homing-pigeon-windows-x86_64.zip
+          name: ${{ env.PKG_NAME }}
+          path: ${{ env.PKG_NAME }}.zip
 
   build-linux:
     needs: test
@@ -101,14 +120,21 @@ jobs:
       - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
-      - run: |
-          mkdir -p pkg
-          cp dist/homing-pigeon dist/install runner/config.example.json pkg/
-          tar czf homing-pigeon-linux-x86_64.tar.gz -C pkg .
+      - name: package linux binaries
+        run: |
+          set -euo pipefail
+          ver=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          name="homing-pigeon-linux-x86_64-$ver"
+          mkdir -p "pkg/$name"
+          cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
+          tar czf "$name.tar.gz" -C pkg "$name"
+          top=$(tar tzf "$name.tar.gz" | head -1)
+          [ "$top" = "$name/" ] || { echo "tarball top level is '$top', expected '$name/'"; exit 1; }
+          echo "PKG_NAME=$name" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
-          name: homing-pigeon-linux-x86_64
-          path: homing-pigeon-linux-x86_64.tar.gz
+          name: ${{ env.PKG_NAME }}
+          path: ${{ env.PKG_NAME }}.tar.gz
 
   build-macos:
     needs: test
@@ -121,14 +147,21 @@ jobs:
       - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
-      - run: |
-          mkdir -p pkg
-          cp dist/homing-pigeon dist/install runner/config.example.json pkg/
-          tar czf homing-pigeon-macos-arm64.tar.gz -C pkg .
+      - name: package macos binaries
+        run: |
+          set -euo pipefail
+          ver=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          name="homing-pigeon-macos-arm64-$ver"
+          mkdir -p "pkg/$name"
+          cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
+          tar czf "$name.tar.gz" -C pkg "$name"
+          top=$(tar tzf "$name.tar.gz" | head -1)
+          [ "$top" = "$name/" ] || { echo "tarball top level is '$top', expected '$name/'"; exit 1; }
+          echo "PKG_NAME=$name" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
-          name: homing-pigeon-macos-arm64
-          path: homing-pigeon-macos-arm64.tar.gz
+          name: ${{ env.PKG_NAME }}
+          path: ${{ env.PKG_NAME }}.tar.gz
 
   build-python:
     needs: test

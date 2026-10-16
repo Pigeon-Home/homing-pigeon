@@ -70,6 +70,11 @@ bump `version` in `pyproject.toml` to match, commit, then tag. Tags on
 this repo are protected by a rule, so a pushed tag cannot be moved —
 if the version is wrong, bump again and tag the next patch version.
 
+Bump `runner/_version.py` (`__version__`) in the same commit. Every
+CLI reports it via `--version`, and the frozen binaries cannot read
+`pyproject.toml` — `tests/test_version.py` fails the build if the two
+drift.
+
 The section below is history that bites. It is for the next person
 or bot that touches the runner, the installer, or the v3 docs.
 
