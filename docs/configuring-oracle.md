@@ -8,6 +8,19 @@ handle email jobs. When a dashboard exists, it must be a frontend over the
 same file: nothing dashboard-only, and nothing in the file hidden
 from it.
 
+## Where the state lives
+
+An explicit `base_dir` in the config wins. Otherwise the runner keeps
+its state (retained job output, work dirs, the Oracle chat log) next
+to the config file itself — not in the home folder of whoever happens
+to run it. That way the installed service (which often runs as
+SYSTEM, or another service account) and a manually started `--oracle`
+chat using the same `--config` always see the same jobs. If you point
+two runs at two different config files, they are two different
+instances with two different states: that is the usual reason the
+Oracle chat says it has no job output while the service is clearly
+handling jobs.
+
 ## Parity rule
 
 Everything the dashboard configures must be expressible in `config.json`, and everything in `config.json` must be configurable from the dashboard. No GUI-only settings, ever. The config file remains the source of truth.

@@ -506,6 +506,12 @@ Later:
 
 ## Status
 
+v3.7.2. The runner's state dir now follows the config file, not the
+user running it: the installed service (often SYSTEM) and a manual
+`--oracle` chat on the same `--config` finally see the same jobs.
+Also: `--oracle` prints which config it loaded and whether a model is
+set, and Ctrl+C on the frozen exe exits quietly.
+
 v3.7.1. Test attribution cleanup; no functional changes since v3.7.0.
 
 v3.7.0. Jobs can now ask for their result to be emailed back to the

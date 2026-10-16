@@ -314,5 +314,82 @@ class CleanShutdownTest(unittest.TestCase):
         self.assertEqual(cm.exception.code, 3)
 
 
+class BaseDirForTest(unittest.TestCase):
+    """State follows the config file, not the user running it."""
+
+    def test_explicit_base_dir_wins(self):
+        from runner.runner import _base_dir_for
+        self.assertEqual(
+            _base_dir_for({"base_dir": "/srv/pigeon"}, "/etc/pigeon/config.json"),
+            "/srv/pigeon")
+
+    def test_config_dir_is_default(self):
+        from runner.runner import _base_dir_for
+        self.assertEqual(
+            _base_dir_for({}, "/etc/pigeon/config.json"),
+            "/etc/pigeon")
+
+    def test_relative_config_path_resolves_against_cwd(self):
+        import os
+        from runner.runner import _base_dir_for
+        self.assertEqual(
+            _base_dir_for({}, "config.json"),
+            os.path.dirname(os.path.abspath("config.json")))
+
+    def test_home_fallback_when_no_config_path(self):
+        import os
+        from runner.runner import _base_dir_for
+        self.assertEqual(
+            _base_dir_for({}),
+            os.path.join(os.path.expanduser("~"), ".homing-pigeon"))
+
+    def test_blank_base_dir_falls_through(self):
+        from runner.runner import _base_dir_for
+        self.assertEqual(
+            _base_dir_for({"base_dir": "   "}, "/etc/pigeon/config.json"),
+            "/etc/pigeon")
+
+    def test_same_config_same_state_for_any_user(self):
+        # The Windows failure: the service runs as SYSTEM, the chat as the
+        # user. expanduser("~") differs per user, so the old default split
+        # one config into two state dirs. The config path does not move.
+        import os
+        from unittest import mock
+        from runner.runner import _base_dir_for
+        cfg_path = "C:\\Users\\DRU\\.homing-pigeon\\config.json"
+        with mock.patch("os.path.expanduser", return_value="C:\\Windows\\System32\\config\\systemprofile"):
+            as_system = _base_dir_for({}, cfg_path)
+        with mock.patch("os.path.expanduser", return_value="C:\\Users\\DRU"):
+            as_user = _base_dir_for({}, cfg_path)
+        self.assertEqual(as_system, as_user)
+        self.assertEqual(as_user, os.path.dirname(os.path.abspath(cfg_path)))
+
+    def test_oracle_window_passes_resolved_base_to_server(self):
+        from unittest import mock
+        from runner.runner import oracle_window
+
+        class FakeServer:
+            socket = type("S", (), {"getsockname": lambda self: ("127.0.0.1", 11436)})()
+            closed = False
+
+            def serve_forever(self):
+                raise KeyboardInterrupt
+
+            def server_close(self):
+                self.closed = True
+
+        with tempfile.TemporaryDirectory() as d:
+            cfg_path = os.path.join(d, "svc", "config.json")
+            os.makedirs(os.path.dirname(cfg_path))
+            with open(cfg_path, "w") as fh:
+                json.dump({"base_dir": d}, fh)
+            with mock.patch("runner.runner.make_oracle_server",
+                            return_value=FakeServer()) as made:
+                oracle_window({"base_dir": d}, cfg_path=cfg_path,
+                              open_browser=False)
+        made.assert_called_once()
+        self.assertEqual(made.call_args.kwargs.get("base_dir"), d)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

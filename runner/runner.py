@@ -3907,10 +3907,26 @@ def ensure_inference_ready(cfg):
         log(f"could not start ollama: {e}", "WARN")
 
 
+def _base_dir_for(cfg, cfg_path=None) -> str:
+    """State directory for this config.
+
+    An explicit base_dir wins. Otherwise the state lives next to the
+    config file, so the same config always resolves to the same state
+    no matter which user (or service account) runs it. The historic
+    ~/.homing-pigeon default is kept only when no config path is known.
+    """
+    if isinstance(cfg, dict):
+        bd = cfg.get("base_dir")
+        if isinstance(bd, str) and bd.strip():
+            return bd
+    if cfg_path:
+        return os.path.dirname(os.path.abspath(cfg_path))
+    return os.path.join(os.path.expanduser("~"), ".homing-pigeon")
+
+
 def run_inspect(cfg, args) -> int:
     """Read local Oracle state. No mailbox, no network, no secrets printed."""
-    base = cfg.get("base_dir") or os.path.join(os.path.expanduser("~"),
-                                               ".homing-pigeon")
+    base = _base_dir_for(cfg, getattr(args, "config", None))
     if args.inspect == "board":
         board = Board(os.path.join(base, "board.json"))
         print(json.dumps({"counts": board.counts(),
@@ -4241,15 +4257,14 @@ def _oracle_host_ok(handler) -> bool:
         "127.0.0.1", "localhost", "::1")
 
 
-def make_oracle_server(cfg, host="127.0.0.1", port=11436):
+def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
     """Loopback chat server. Refuses any other bind."""
     if host not in ("127.0.0.1", "::1", "localhost"):
         raise ValueError("oracle chat refuses a non-loopback bind")
     token = secrets.token_urlsafe(24)
     if not isinstance(cfg, dict):
         cfg = {}
-    base = cfg.get("base_dir") or os.path.join(os.path.expanduser("~"),
-                                               ".homing-pigeon")
+    base = base_dir or _base_dir_for(cfg)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
@@ -4365,12 +4380,11 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
         return 2
     if not isinstance(cfg, dict):
         cfg = {}
-    base = cfg.get("base_dir") or os.path.join(os.path.expanduser("~"),
-                                               ".homing-pigeon")
+    base = _base_dir_for(cfg, cfg_path)
     global _LOG_FILE
     _LOG_FILE = os.path.join(base, "runner.log")
     try:
-        httpd = make_oracle_server(cfg, "127.0.0.1", port)
+        httpd = make_oracle_server(cfg, "127.0.0.1", port, base_dir=base)
     except OSError as e:
         print(f"oracle chat could not listen: {e}", file=sys.stderr)
         return 1
@@ -4527,8 +4541,7 @@ def main() -> int:
             from runner import auditreport as _auditreport
         except ImportError:  # running from inside runner/ as __main__
             import auditreport as _auditreport
-        base_dir = cfg.get("base_dir") or os.path.join(
-            os.path.expanduser("~"), ".homing-pigeon")
+        base_dir = _base_dir_for(cfg, args.config)
         return _auditreport.main(cfg, base_dir, since=args.since,
                                  key=args.key, feature=args.feature)
     if args.posture:
@@ -4537,8 +4550,7 @@ def main() -> int:
             from runner import posture as _posture
         except ImportError:  # running from inside runner/ as __main__
             import posture as _posture
-        base_dir = cfg.get("base_dir") or os.path.join(
-            os.path.expanduser("~"), ".homing-pigeon")
+        base_dir = _base_dir_for(cfg, args.config)
         return _posture.main(cfg, cfg_path, base_dir)
     # Mailbox auth gate, before any model work. On a TTY the runner
     # offers the Thunderbird-style setup instead of dying; headless
@@ -4583,8 +4595,7 @@ def main() -> int:
         cfg["default_timeout_sec"] = args.timeout
     global _VERBOSE
     _VERBOSE = args.verbose
-    base_dir = cfg.get("base_dir") or os.path.join(os.path.expanduser("~"),
-                                                  ".homing-pigeon")
+    base_dir = _base_dir_for(cfg, args.config)
     os.makedirs(base_dir, exist_ok=True)
     os.makedirs(os.path.join(base_dir, "work"), exist_ok=True)
 
