@@ -827,6 +827,110 @@ class ReplTest(unittest.TestCase):
         self.assertEqual(asked.call_count, 0)
 
 
+class _ChatTimer:
+    started = []
+
+    def __init__(self, delay, fn):
+        self.delay = delay
+        self.fn = fn
+        _ChatTimer.started.append((delay, fn))
+
+    def start(self):
+        return None
+
+
+class _ChatProc:
+    built = []
+
+    def __init__(self, args, env=None, **kwargs):
+        self.args = args
+        self.env = env or {}
+        self.terminated = False
+        _ChatProc.built.append(self)
+
+    def wait(self):
+        raise KeyboardInterrupt
+
+    def terminate(self):
+        self.terminated = True
+
+
+class BrowserChatTest(unittest.TestCase):
+    def setUp(self):
+        _ChatTimer.started = []
+        _ChatProc.built = []
+
+    def _patches(self, stack, start=True, webui=True, popen=None):
+        import subprocess
+        from runner import local_test
+        stack.enter_context(mock.patch.object(
+            local_test, "start_si_instance", return_value=start))
+        stack.enter_context(mock.patch.object(
+            local_test, "_open_webui_available", return_value=webui))
+        # browser_chat imports subprocess inside the function. Patch the
+        # module attribute, not a name on local_test.
+        stack.enter_context(mock.patch.object(
+            subprocess, "Popen", popen if popen is not None else _ChatProc))
+        stack.enter_context(mock.patch.object(
+            local_test.threading, "Timer", _ChatTimer))
+        stack.enter_context(mock.patch.object(local_test.webbrowser, "open"))
+
+    def test_a_missing_si_does_not_spawn(self):
+        import contextlib
+        from runner.local_test import browser_chat
+        with contextlib.ExitStack() as stack:
+            self._patches(stack, start=False)
+            code = browser_chat({})
+        self.assertEqual(code, 2)
+        self.assertEqual(_ChatProc.built, [])
+
+    def test_a_missing_webui_does_not_spawn(self):
+        import contextlib
+        from runner.local_test import browser_chat
+        buf = io.StringIO()
+        with contextlib.ExitStack() as stack, contextlib.redirect_stdout(buf):
+            self._patches(stack, start=True, webui=False)
+            code = browser_chat({})
+        self.assertEqual(code, 2)
+        self.assertIn("open-webui", buf.getvalue())
+        self.assertEqual(_ChatProc.built, [])
+
+    def test_a_ready_chat_terminates_on_interrupt(self):
+        import contextlib
+        from runner.local_test import browser_chat
+        with contextlib.ExitStack() as stack:
+            self._patches(stack)
+            code = browser_chat({})
+        self.assertEqual(code, 0)
+        self.assertEqual(len(_ChatProc.built), 1)
+        proc = _ChatProc.built[0]
+        self.assertEqual(proc.args, [
+            "open-webui", "serve", "--host", "127.0.0.1", "--port", "8080"])
+        self.assertIn("11435", proc.env.get("OLLAMA_BASE_URL", ""))
+        self.assertTrue(proc.terminated)
+        self.assertEqual(len(_ChatTimer.started), 1)
+        self.assertEqual(_ChatTimer.started[0][0], 1.5)
+
+    def test_a_custom_port_is_passed_through(self):
+        import contextlib
+        from runner.local_test import browser_chat
+        with contextlib.ExitStack() as stack:
+            self._patches(stack)
+            code = browser_chat({}, port=9090)
+        self.assertEqual(code, 0)
+        self.assertEqual(_ChatProc.built[0].args[-1], "9090")
+
+    def test_a_spawn_error_returns_1(self):
+        import contextlib
+        from runner.local_test import browser_chat
+        with contextlib.ExitStack() as stack:
+            self._patches(stack, popen=mock.Mock(side_effect=OSError("missing")))
+            code = browser_chat({})
+        self.assertEqual(code, 1)
+        self.assertEqual(_ChatTimer.started, [])
+
+
+
 
 
 
