@@ -758,7 +758,11 @@ the test suite cannot be repurposed to run arbitrary shell.
     "allowed_kinds": ["exec"],
     "allowed_interpreters": [["bash"]],
     "max_timeout_sec": 600,
-    "allowed_script_sha384": ["<sha384 of the exact test script>"]
+    "allowed_script_sha384": ["<sha384 of the exact test script>"],
+    "allowed_env": ["PYTEST_ADDOPTS"],
+    "denied_env": ["BASH_ENV"],
+    "allowed_files": ["tests.txt"],
+    "args_pattern": "[a-z0-9_\\-\\.]+"
   }
 }
 ```
@@ -773,6 +777,30 @@ Every field is optional; every specified constraint must hold:
   must be listed. `script_url` jobs are rejected under such a policy
   (the content cannot be checked before download); `ping` jobs have no
   script and are governed by `allowed_kinds` alone.
+- `allowed_env`: only the listed env var names may be set. For a pinned
+  script (see below), env vars not listed here are denied.
+- `denied_env`: the listed env var names may never be set.
+- `allowed_files`: only the listed file names may be staged. For a
+  pinned script, files not listed here are denied.
+- `args_pattern`: every arg must fully match this regex. Args longer
+  than 1024 characters are denied outright. The pattern is validated
+  at startup and rejected if it risks catastrophic backtracking.
+
+Env, file, and arg constraints are hardening controls with three modes
+(`off`, `audit`, `enforce`) under `security.modes` (`policy_env`,
+`policy_files`, `policy_args`); see SECURITY.md. In `audit` mode the
+job runs and the decision is logged; in `enforce` mode violations are
+rejected like any other bad job. With every mode `off` (the default),
+these fields are parsed but change nothing.
+
+A pinned script is not the whole story: without the env/files
+constraints, a pinned script could still be subverted through
+`BASH_ENV`, `LD_PRELOAD`, or a staged file. Env names that subvert
+execution (`BASH_ENV`, `LD_PRELOAD`, `PYTHONPATH`, and others — see
+`DANGEROUS_ENV_NAMES` in `runner/runner.py`) are denied for keys with
+a policy entry unless explicitly listed in `allowed_env`. The test
+suite backs this: a pinned script smuggling `BASH_ENV` is denied in
+enforce mode (`tests/test_policy_constraints.py`, PinnedScriptTest).
 
 A policy may also be attached to the default key under the empty-string
 key ID (`"": {...}`). Violations are rejected like any other bad job:

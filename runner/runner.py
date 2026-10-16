@@ -400,6 +400,53 @@ def build_key_policies(cfg) -> dict:
                     f"config error: key_policies[{kid!r}].allowed_script_sha384 "
                     "must be a non-empty list of strings")
             clean["allowed_script_sha384"] = [h.lower() for h in hashes]
+        # Hardening M2: env/files/args constraints for pinned keys.
+        if "allowed_env" in pol:
+            allowed = pol["allowed_env"]
+            if not isinstance(allowed, list) or not allowed or \
+                    not all(isinstance(e, str) for e in allowed):
+                raise RuntimeError(
+                    f"config error: key_policies[{kid!r}].allowed_env "
+                    "must be a non-empty list of strings")
+            clean["allowed_env"] = allowed
+        if "denied_env" in pol:
+            denied = pol["denied_env"]
+            if not isinstance(denied, list) or \
+                    not all(isinstance(e, str) for e in denied):
+                raise RuntimeError(
+                    f"config error: key_policies[{kid!r}].denied_env "
+                    "must be a list of strings")
+            clean["denied_env"] = denied
+        if "allowed_files" in pol:
+            allowed = pol["allowed_files"]
+            if not isinstance(allowed, list) or not allowed or \
+                    not all(isinstance(f, str) for f in allowed):
+                raise RuntimeError(
+                    f"config error: key_policies[{kid!r}].allowed_files "
+                    "must be a non-empty list of strings")
+            clean["allowed_files"] = allowed
+        if "args_pattern" in pol:
+            pattern = pol["args_pattern"]
+            if not isinstance(pattern, str) or not pattern:
+                raise RuntimeError(
+                    f"config error: key_policies[{kid!r}].args_pattern "
+                    "must be a non-empty string")
+            try:
+                rx = re.compile(pattern)
+            except re.error as e:
+                raise RuntimeError(
+                    f"config error: key_policies[{kid!r}].args_pattern "
+                    f"does not compile: {e}")
+            # Bound probe: the pattern must handle a hostile input
+            # quickly, since args are attacker-controlled.
+            probe = "a" * 25 + "!"
+            t0 = time.time()
+            rx.fullmatch(probe)
+            if time.time() - t0 > 1.0:
+                raise RuntimeError(
+                    f"config error: key_policies[{kid!r}].args_pattern "
+                    "may backtrack catastrophically on hostile input")
+            clean["args_pattern"] = pattern
         policies[kid] = clean
     return policies
 
@@ -485,6 +532,122 @@ def check_key_policy(policies: dict, key_id: str, cfg, job):
         if digest not in allow:
             return "script is not in this key's allowlist"
     return None
+
+
+# Hardening M2: env names that subvert execution even when the script
+# itself is pinned. Compared case-insensitively (Windows env is
+# case-insensitive; on POSIX the uppercase form is the dangerous one,
+# and matching it case-insensitively errs toward safety).
+DANGEROUS_ENV_NAMES = frozenset({
+    # Shell startup files: executed automatically by sh/bash/ksh.
+    "BASH_ENV",
+    "ENV",
+    # Dynamic linker: hijack library loading for any subprocess.
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "LD_AUDIT",
+    # Interpreters: auto-executed startup code / module injection.
+    "PYTHONPATH",
+    "PYTHONSTARTUP",
+    "PERL5LIB",
+    "PERLLIB",
+    "RUBYLIB",
+    "RUBYOPT",
+    "NODE_OPTIONS",
+    # Tool behavior: command substitution on invocation.
+    "GIT_SSH",
+    "GIT_SSH_COMMAND",
+})
+
+
+def _env_name_in(name, lst):
+    """Case-insensitive on Windows, exact elsewhere."""
+    if not lst:
+        return False
+    if os.name == "nt":
+        upper = name.upper()
+        return any(isinstance(x, str) and x.upper() == upper for x in lst)
+    return name in lst
+
+
+def check_policy_constraints(pol, key_id, cfg, job):
+    """M2 constraints for env, files and args.
+
+    Returns a list of (feature, reason, detail) findings. Only called
+    for keys WITH a policy entry (D3): keys without an entry are
+    unrestricted, and the default key ("") only when the owner adds
+    an explicit "" entry. Never raises for a malformed job; bad job
+    shapes are rejected elsewhere.
+    """
+    findings = []
+    if not isinstance(pol, dict) or not isinstance(job, dict):
+        return findings
+    kind = job.get("kind")
+    pinned = "allowed_script_sha384" in pol and kind == "exec"
+
+    # --- policy_env ---
+    env = job.get("env")
+    if isinstance(env, dict) and env:
+        denied = pol.get("denied_env") or []
+        allowed = pol.get("allowed_env")  # None = not specified
+        for name in env:
+            if not isinstance(name, str):
+                continue
+            if _env_name_in(name, denied):
+                findings.append(("policy_env", "denied_env",
+                                 "env %r is denied for this key" % name))
+            elif name.upper() in DANGEROUS_ENV_NAMES \
+                    and not _env_name_in(name, allowed):
+                findings.append(("policy_env", "dangerous_env",
+                                 "env %r can subvert execution" % name))
+            elif allowed is not None:
+                if not _env_name_in(name, allowed):
+                    findings.append(("policy_env", "env_not_allowed",
+                                     "env %r is not in allowed_env" % name))
+            elif pinned:
+                findings.append(("policy_env", "pinned_script_with_env",
+                                 "pinned script carries env that is not "
+                                 "explicitly allowed"))
+
+    # --- policy_files ---
+    files = job.get("files")
+    if isinstance(files, list) and files:
+        allowed_files = pol.get("allowed_files")  # None = not specified
+        for f in files:
+            if not isinstance(f, dict):
+                continue
+            fname = f.get("name")
+            if not isinstance(fname, str):
+                continue
+            if allowed_files is not None:
+                if fname not in allowed_files:
+                    findings.append(("policy_files", "file_not_allowed",
+                                     "file %r is not in allowed_files"
+                                     % fname))
+            elif pinned:
+                findings.append(("policy_files", "pinned_script_with_files",
+                                 "pinned script stages files that are not "
+                                 "explicitly allowed"))
+
+    # --- policy_args ---
+    args = job.get("args")
+    pattern = pol.get("args_pattern")
+    if pattern and isinstance(args, list) and args:
+        try:
+            rx = re.compile(pattern)
+        except re.error:
+            rx = None  # validated at startup; stay defensive
+        if rx is not None:
+            for a in args:
+                if not isinstance(a, str):
+                    continue
+                if len(a) > 1024:
+                    findings.append(("policy_args", "arg_too_long",
+                                     "arg exceeds 1024 characters"))
+                elif not rx.fullmatch(a):
+                    findings.append(("policy_args", "arg_pattern_mismatch",
+                                     "arg does not match args_pattern"))
+    return findings
 
 
 def verify_body_keyed(body_text: str, secrets: dict):
@@ -2864,6 +3027,32 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             "reason": "key_policy",
         })
         return
+
+    # Hardening M2: env/files/args constraints for keys with a policy
+    # entry (D3). Each finding goes through sec_decide; enforce mode
+    # denies through the existing reject path. When every feature is
+    # off the check is skipped entirely, so off changes nothing.
+    if _security is not None:
+        _pol = (key_policies or {}).get(key_id)
+        _m2_features = ("policy_env", "policy_files", "policy_args")
+        if _pol and any(_security.sec_mode(cfg, f) != "off"
+                        for f in _m2_features):
+            for _feature, _reason, _detail in check_policy_constraints(
+                    _pol, key_id, cfg, job):
+                _decision = _security.sec_decide(
+                    cfg, base_dir, _feature, _reason,
+                    {"key_id": key_id, "job_id": job_id,
+                     "detail": _detail})
+                if _decision == "deny":
+                    reject(f"security policy ({_feature}): {_reason}")
+                    _append_security_event(base_dir, {
+                        "type": "auth_rejection",
+                        "at": datetime.now(timezone.utc).strftime(
+                            "%Y-%m-%dT%H:%M:%SZ"),
+                        "reason": "security_policy",
+                        "feature": _feature,
+                    })
+                    return
 
     if job.get("kind") == "sensor_alert":
         _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
