@@ -1,29 +1,19 @@
 # Shared secret rotation
 
-Rotate the shared secret every **90 days**. This is time-based, not
-volume-based — deliberately so.
+Rotate the shared secret every **90 days**.
 
-## Why time, not exchanges
-
-After setup, the secret never crosses the wire — only HMAC-SHA384 tags do,
-and a tag leaks nothing about the key. Ten jobs a day and ten thousand are
-cryptographically identical, so counting exchanges is the wrong axis. Rotation
-is a time question: how long should a single key be the one that matters.
-
-NIST SP 800-57 caps symmetric authentication keys at under 2 years (a ceiling,
-not a target), shortening with exposure. Ninety days sits comfortably inside
-that.
+Volume doesn't affect this: the secret never crosses the wire after setup,
+only HMAC tags do, and tags don't leak the key at any message count.
 
 ## Other transports
 
-The 90-day guidance is for email. A different transport changes the exposure:
-broader visibility (shared topics), weaker encryption, message logging or
-indefinite retention. If any of those apply, rotate every few weeks until
-you've measured the actual exposure.
+The 90-day cadence is for email. A different transport — broader visibility,
+weaker encryption, message logging, longer retention — warrants faster
+rotation: every few weeks until you've measured the actual exposure.
 
 ## How to rotate (no downtime)
 
-The runner verifies against a dict of secrets by `key_id`, so:
+The runner verifies against a dict of secrets by `key_id`:
 
 1. Add the new secret under `additional_secrets` (new `key_id`) — the old one
    keeps working.
