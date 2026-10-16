@@ -864,7 +864,8 @@ class OracleAgentTest(unittest.TestCase):
                 None, opener, 60)
         finally:
             R.log = real_log
-        self.assertIsNone(msg)
+        self.assertEqual(msg.get("role"), "error")
+        self.assertIn("rejected", msg.get("content", ""))
         warns = [m for lvl, m in lines if lvl == "WARN"]
         self.assertTrue(any("unknown tool call id" in m for m in warns),
                         f"HTTP error body missing from WARN log: {warns}")
