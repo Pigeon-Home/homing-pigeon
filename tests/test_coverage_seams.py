@@ -62,3 +62,81 @@ class AuthorizeUrlTest(unittest.TestCase):
         self.assertEqual(q2["state"], ["two"])
         self.assertEqual(q1["client_id"], [""])
 
+
+class _Body:
+    def __init__(self, raw):
+        self.raw = raw
+
+    def read(self):
+        return self.raw
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+class ExchangeCodeTest(unittest.TestCase):
+    def _opener(self, raw, seen):
+        def opener(req, timeout=30):
+            seen.append((req.data, timeout))
+            return _Body(raw)
+        return opener
+
+    def test_refresh_token_is_returned(self):
+        import urllib.parse
+        from runner.oauth import exchange_code
+
+        seen = []
+        token = exchange_code(
+            {"oauth_client_id": "cid", "oauth_client_secret": "sek"},
+            "code", "ver", opener=self._opener(b'{"refresh_token":"rtok"}', seen))
+        self.assertEqual(token, "rtok")
+        form = urllib.parse.parse_qs(seen[0][0].decode("ascii"))
+        self.assertEqual(form["client_secret"], ["sek"])
+        self.assertEqual(form["code"], ["code"])
+        self.assertEqual(form["code_verifier"], ["ver"])
+        self.assertEqual(form["grant_type"], ["authorization_code"])
+        self.assertEqual(seen[0][1], 30)
+
+    def test_secret_is_omitted_when_empty(self):
+        import urllib.parse
+        from runner.oauth import exchange_code
+
+        seen = []
+        exchange_code(
+            {"oauth_client_id": "cid"},
+            "code", "ver", opener=self._opener(b'{"refresh_token":"rtok"}', seen))
+        form = urllib.parse.parse_qs(seen[0][0].decode("ascii"))
+        self.assertNotIn("client_secret", form)
+
+    def test_http_error_with_bad_json_is_system_exit(self):
+        import io
+        import urllib.error
+        from runner.oauth import TOKEN_URL, exchange_code
+
+        def opener(req, timeout=30):
+            raise urllib.error.HTTPError(
+                TOKEN_URL, 400, "bad", {}, io.BytesIO(b"not-json"))
+
+        with self.assertRaises(SystemExit):
+            exchange_code({"oauth_client_id": "cid"}, "code", "ver", opener=opener)
+
+    def test_a_list_body_is_system_exit(self):
+        from runner.oauth import exchange_code
+
+        with self.assertRaises(SystemExit):
+            exchange_code(
+                {"oauth_client_id": "cid"}, "code", "ver",
+                opener=self._opener(b"[1]", []))
+
+    def test_missing_refresh_token_is_system_exit(self):
+        from runner.oauth import exchange_code
+
+        with self.assertRaises(SystemExit):
+            exchange_code(
+                {"oauth_client_id": "cid"}, "code", "ver",
+                opener=self._opener(b'{"access_token":"x"}', []))
+
+
