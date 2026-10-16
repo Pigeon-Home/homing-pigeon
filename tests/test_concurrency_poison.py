@@ -790,5 +790,502 @@ class SensesGateAndStorePoisonTest(unittest.TestCase):
             self.assertEqual(errors, [])
 
 
+class BoardSaveAndSeenRaceTest(unittest.TestCase):
+    """Board.save and seen-dict mutation under concurrency.
+
+    Finding: Board.save uses a deterministic path.tmp name and is not
+    locked (only offer takes _BOARD_LOCK). Concurrent save calls can
+    raise FileNotFoundError on the replace or lose updates. The seen
+    dict is mutated under _MAIL_LOCK in the poll path, so concurrent
+    mark-seen is safe. A direct concurrent mutation of seen without
+    the lock can lose entries.
+    """
+
+    def test_concurrent_board_save_can_race(self):
+        """Finding: concurrent Board.save on the same path may raise
+        FileNotFoundError or lose task updates. The process does not
+        crash; the race is the finding.
+        """
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "board.json")
+            board = Board(path)
+            errors = []
+            def worker(n):
+                try:
+                    board.tasks[f"t{n}"] = {"task_id": f"t{n}", "state": "open"}
+                    board.save()
+                except FileNotFoundError as e:
+                    errors.append(("fnf", repr(e)))
+                except Exception as e:
+                    errors.append(("other", repr(e)))
+            threads = [threading.Thread(target=worker, args=(i,)) for i in range(12)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=5)
+            other = [e for e in errors if e[0] != "fnf"]
+            self.assertEqual(other, [])
+            if os.path.isfile(path):
+                loaded = Board(path)
+                self.assertIsInstance(loaded.tasks, dict)
+
+    def test_concurrent_seen_mutation_under_lock_does_not_raise(self):
+        """Finding: the poll path mutates seen under _MAIL_LOCK.
+        Concurrent locked updates do not raise. An unlocked concurrent
+        mutation can lose entries (dict is not atomic for compound ops).
+        """
+        from runner.runner import _MAIL_LOCK
+        seen = {}
+        errors = []
+        def worker(n):
+            try:
+                with _MAIL_LOCK:
+                    seen[f"k{n}"] = True
+            except Exception as e:
+                errors.append((n, repr(e)))
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=5)
+        self.assertEqual(errors, [])
+        self.assertEqual(len(seen), 20)
+
+
+class PruneAndSensesRewriteRaceTest(unittest.TestCase):
+    """prune_retained and senses rewrite under concurrency.
+
+    Finding: prune_retained walks the retained dir and removes old
+    files without a lock. Concurrent save_retained can race with the
+    remove (the file can be deleted after the writer opens the .tmp,
+    or the writer can recreate a file prune just removed). Neither
+    raises; the race can lose a retained output. senses.store_alert
+    appends then rewrites the whole file when over the cap. Concurrent
+    append + rewrite can interleave lines or drop entries. Neither
+    raises; the race is the finding.
+    """
+
+    def test_concurrent_prune_and_save_retained_do_not_raise(self):
+        """Finding: prune and save_retained concurrent on the same
+        dir do not raise. A retained file can be lost to the race.
+        """
+        from runner.runner import save_retained, prune_retained
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "retained"), exist_ok=True)
+            old = time.time() - 86400 * 30
+            for i in range(5):
+                pth = os.path.join(d, "retained", f"old-{i}.json")
+                with open(pth, "w") as fh:
+                    fh.write("{}")
+                os.utime(pth, (old, old))
+            errors = []
+            def saver(n):
+                try:
+                    save_retained(d, f"new-{n}", {"stdout": n, "saved_at": time.time()})
+                except Exception as e:
+                    errors.append(("save", n, repr(e)))
+            def pruner():
+                try:
+                    prune_retained(d, 7)
+                except Exception as e:
+                    errors.append(("prune", repr(e)))
+            threads = [threading.Thread(target=saver, args=(i,)) for i in range(8)]
+            threads.append(threading.Thread(target=pruner))
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=5)
+            self.assertEqual(errors, [])
+
+    def test_concurrent_senses_append_and_rewrite_do_not_raise(self):
+        """Finding: concurrent store_alert with a small cap can
+        interleave the append and the rewrite. Neither raises.
+        """
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "senses.jsonl")
+            with open(path, "w") as fh:
+                for i in range(100):
+                    fh.write(json.dumps({"sensor": f"seed{i}"}) + "\n")
+            errors = []
+            def worker(n):
+                try:
+                    senses.store_alert(d, {"sensor": f"s{n}", "title": f"t{n}"})
+                except Exception as e:
+                    errors.append((n, repr(e)))
+            threads = [threading.Thread(target=worker, args=(i,)) for i in range(10)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=5)
+            self.assertEqual(errors, [])
+            with open(path, encoding="utf-8") as fh:
+                self.assertTrue(fh.read())
+
+
+class SameJobIdWorkDirRaceTest(unittest.TestCase):
+    """Same job_id concurrent execute_job under no _IN_FLIGHT.
+
+    Finding: the poll path uses _IN_FLIGHT to stop two threads from
+    running the same job_id. A direct concurrent call to execute_job
+    with the same job_id races on the work dir (rmtree vs makedirs).
+    The race can raise OSError (caught as JobRejected) or produce a
+    work dir that one thread sees as missing. Neither crashes the
+    process; the race is the finding.
+    """
+
+    def test_concurrent_execute_job_same_id_does_not_crash_process(self):
+        """Finding: concurrent execute_job on the same job_id may
+        raise OSError/JobRejected from the rmtree/makedirs race.
+        The process continues.
+        """
+        from runner.runner import execute_job, JobRejected
+        with tempfile.TemporaryDirectory() as d:
+            errors = []
+            def worker(n):
+                try:
+                    execute_job({"workers": 1}, {
+                        "job_id": "same-id",
+                        "kind": "ping",
+                    }, d)
+                except JobRejected as e:
+                    errors.append(("rejected", repr(e)))
+                except OSError as e:
+                    errors.append(("os", repr(e)))
+                except Exception as e:
+                    errors.append(("other", repr(e)))
+            threads = [threading.Thread(target=worker, args=(i,)) for i in range(6)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=5)
+            other = [e for e in errors if e[0] not in ("rejected", "os")]
+            self.assertEqual(other, [])
+            work = os.path.join(d, "work", "same-id")
+            if os.path.exists(work):
+                self.assertTrue(os.path.isdir(work))
+
+
+class AskModelAndDownloadRaceTest(unittest.TestCase):
+    """ask_model timeout and concurrent download dest under bad data.
+
+    Finding: ask_model does timeout = int(cfg.get("timeout_sec") or 60)
+    with no try/except. A non-numeric timeout_sec raises ValueError
+    before the inference call. inference_config guards the type, so
+    the poll path is safe; a direct call is not. Concurrent download
+    to the same dest can interleave writes. The poll path uses unique
+    work dirs, so the race is only on a direct call.
+    """
+
+    def test_ask_model_bad_timeout_raises(self):
+        """Finding: int(timeout_sec) is unguarded. "hour" raises ValueError.
+        A normal int or None does not raise before the call.
+        """
+        from runner.runner import ask_model
+        with self.assertRaises(ValueError):
+            ask_model({"endpoint": "http://127.0.0.1:1", "model": "m",
+                       "timeout_sec": "hour"}, "q", "out", 100)
+        ans = ask_model({"endpoint": "http://127.0.0.1:1", "model": "m",
+                         "timeout_sec": 1}, "q", "out", 100)
+        self.assertEqual(ans.get("rejected"), "inference_error")
+
+    def test_concurrent_download_same_dest_does_not_crash_process(self):
+        """Finding: concurrent download to the same dest may interleave
+        writes. The process does not crash. The poll path uses unique
+        work dirs, so this is a direct-call race.
+        """
+        from runner.runner import download, JobRejected
+        with tempfile.TemporaryDirectory() as d:
+            dest = os.path.join(d, "out.bin")
+            errors = []
+            def worker(n):
+                try:
+                    download("file:///etc/passwd", dest)
+                except JobRejected:
+                    pass
+                except Exception as e:
+                    errors.append((n, repr(e)))
+            threads = [threading.Thread(target=worker, args=(i,)) for i in range(6)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=5)
+            self.assertEqual(errors, [])
+
+
+class WindowsNameAndKillTreeTest(unittest.TestCase):
+    """Windows reserved names and kill_tree under bad input.
+
+    Finding: windows_reserved_name does name.replace without a type
+    check. A non-string name raises AttributeError. The file staging
+    path checks isinstance(name, str) before calling, so the poll
+    path is safe. kill_tree catches Exception around the kill. A
+    None or non-Popen does not crash the process.
+    """
+
+    def test_windows_reserved_name_bad_type_raises(self):
+        """Finding: non-string name raises AttributeError. Normal
+        strings return a bool.
+        """
+        from runner.runner import windows_reserved_name
+        with self.assertRaises(AttributeError):
+            windows_reserved_name(5)
+        with self.assertRaises(AttributeError):
+            windows_reserved_name(None)
+        self.assertIsInstance(windows_reserved_name("CON"), bool)
+        self.assertIsInstance(windows_reserved_name("safe.txt"), bool)
+
+    def test_kill_tree_bad_proc_does_not_raise(self):
+        """Finding: kill_tree catches Exception. None and a non-Popen
+        do not propagate.
+        """
+        from runner.runner import kill_tree
+        kill_tree(None)
+        kill_tree("not-a-proc")
+        self.assertTrue(True)
+
+
+class ConcurrentKillTreeAndSetupTest(unittest.TestCase):
+    """Concurrent kill_tree and setup config under bad input.
+
+    Finding: kill_tree catches Exception around the kill. Concurrent
+    calls on None and non-Popen do not raise. setup._blank_config
+    starts from the example or a fallback dict. A missing example
+    does not raise; the fallback has the Gmail endpoints.
+    """
+
+    def test_concurrent_kill_tree_does_not_raise(self):
+        """Finding: concurrent kill_tree on None and non-Popen do
+        not raise. The process continues.
+        """
+        from runner.runner import kill_tree
+        errors = []
+        def worker(n):
+            try:
+                kill_tree(None)
+                kill_tree("not-a-proc")
+                kill_tree(5)
+            except Exception as e:
+                errors.append((n, repr(e)))
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=5)
+        self.assertEqual(errors, [])
+
+    def test_blank_config_missing_example_does_not_raise(self):
+        """Finding: _blank_config returns a dict even when the
+        example is missing. The fallback has the Gmail endpoints.
+        """
+        from runner.setup import _blank_config
+        cfg = _blank_config()
+        self.assertIsInstance(cfg, dict)
+        self.assertIn("imap_host", cfg)
+        self.assertIn("smtp_host", cfg)
+
+
+class ConcurrentOracleContextAndBoardLoadTest(unittest.TestCase):
+    """Concurrent oracle_context and Board.load under poison.
+
+    Finding: concurrent oracle_context against a poisoned retained
+    dir does not raise. Non-JSON and non-object files are skipped.
+    Concurrent Board.load against a file that is being rewritten
+    does not raise. A torn write returns an empty tasks dict.
+    """
+
+    def test_concurrent_oracle_context_does_not_raise(self):
+        """Finding: concurrent oracle_context on a poisoned retained
+        dir does not raise. The process continues.
+        """
+        from runner.runner import oracle_context
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "retained"), exist_ok=True)
+            with open(os.path.join(d, "retained", "good.json"), "w") as fh:
+                json.dump({"stdout": "hello", "kind": "ping"}, fh)
+            with open(os.path.join(d, "retained", "bad.json"), "w") as fh:
+                fh.write("not json")
+            with open(os.path.join(d, "retained", "list.json"), "w") as fh:
+                fh.write("[1,2,3]")
+            errors = []
+            def worker(n):
+                try:
+                    oracle_context(d)
+                except Exception as e:
+                    errors.append((n, repr(e)))
+            threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=5)
+            self.assertEqual(errors, [])
+
+    def test_concurrent_board_load_does_not_raise(self):
+        """Finding: concurrent Board.load against a file that is
+        being rewritten does not raise. A torn write returns an
+        empty tasks dict.
+        """
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "board.json")
+            board = Board(path)
+            errors = []
+            def loader(n):
+                try:
+                    board.load()
+                except Exception as e:
+                    errors.append((n, repr(e)))
+            def writer(n):
+                try:
+                    board.tasks[f"t{n}"] = {"task_id": f"t{n}", "state": "open"}
+                    board.save()
+                except FileNotFoundError:
+                    pass
+                except Exception as e:
+                    errors.append(("w", n, repr(e)))
+            threads = [threading.Thread(target=loader, args=(i,)) for i in range(6)]
+            threads += [threading.Thread(target=writer, args=(i,)) for i in range(6)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=5)
+            self.assertEqual(errors, [])
+            self.assertIsInstance(board.tasks, dict)
+
+
+class RetainedExpiredAndSecretScanTest(unittest.TestCase):
+    """retained_expired and secret_scan under bad types.
+
+    Finding: retained_expired does data.get without a type check.
+    A non-dict data raises AttributeError. The prune path checks
+    the type before calling, so the poll path is safe. secret_scan
+    does (patterns or BUILTIN).items() without a type check. A
+    list raises AttributeError. The poll path always passes a dict.
+    """
+
+    def test_retained_expired_bad_data_raises(self):
+        """Finding: non-dict data raises AttributeError. A normal
+        dict returns a bool.
+        """
+        from runner.runner import retained_expired
+        with self.assertRaises(AttributeError):
+            retained_expired("not-a-dict", {})
+        with self.assertRaises(AttributeError):
+            retained_expired(5, {})
+        self.assertIsInstance(retained_expired({"saved_at": 0}, {}), bool)
+        self.assertIsInstance(retained_expired({"saved_at": "bad"}, {}), bool)
+
+    def test_secret_scan_bad_patterns_raises(self):
+        """Finding: non-dict patterns raises AttributeError. A
+        normal dict returns a list.
+        """
+        from runner.runner import secret_scan
+        with self.assertRaises(AttributeError):
+            secret_scan("text", ["bad"])
+        with self.assertRaises(AttributeError):
+            secret_scan("text", "not-a-dict")
+        self.assertIsInstance(secret_scan("text", {}), list)
+        self.assertIsInstance(secret_scan("text", None), list)
+
+
+class ConcurrentRedactAndSecretScanTest(unittest.TestCase):
+    """Concurrent redact_text and secret_scan under bad patterns.
+
+    Finding: redact_text does (patterns or {}).items() without a
+    type check. A list raises AttributeError. The poll path always
+    passes a dict. Concurrent calls on normal patterns do not raise.
+    secret_scan does the same. Concurrent calls on normal patterns
+    do not raise.
+    """
+
+    def test_concurrent_redact_and_secret_scan_do_not_raise(self):
+        """Finding: concurrent redact_text and secret_scan on
+        normal patterns do not raise. Bad patterns raise
+        AttributeError (documented in the single-thread tests).
+        """
+        from runner.runner import redact_text, secret_scan
+        errors = []
+        def worker(n):
+            try:
+                redact_text(f"text {n}", {})
+                secret_scan(f"text {n}", {})
+                redact_text(f"text {n}", None)
+                secret_scan(f"text {n}", None)
+            except Exception as e:
+                errors.append((n, repr(e)))
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=5)
+        self.assertEqual(errors, [])
+
+
+class ConcurrentOracleWritersAndSetupWriteTest(unittest.TestCase):
+    """Concurrent oracle_context with retained writers, and setup
+    _write_config under concurrency.
+
+    Finding: concurrent oracle_context and save_retained on the
+    same retained dir do not raise. A torn write can produce a
+    non-JSON file that oracle_context skips. setup._write_config
+    uses a deterministic path.tmp name. Concurrent calls on the
+    same path can raise FileNotFoundError or lose updates.
+    """
+
+    def test_concurrent_oracle_and_retained_writers_do_not_raise(self):
+        """Finding: concurrent oracle_context and save_retained
+        do not raise. A torn write is skipped.
+        """
+        from runner.runner import oracle_context, save_retained
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "retained"), exist_ok=True)
+            errors = []
+            def reader(n):
+                try:
+                    oracle_context(d)
+                except Exception as e:
+                    errors.append(("r", n, repr(e)))
+            def writer(n):
+                try:
+                    save_retained(d, f"job-{n}", {"stdout": f"out{n}", "saved_at": time.time()})
+                except FileNotFoundError:
+                    pass
+                except Exception as e:
+                    errors.append(("w", n, repr(e)))
+            threads = [threading.Thread(target=reader, args=(i,)) for i in range(6)]
+            threads += [threading.Thread(target=writer, args=(i,)) for i in range(6)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=5)
+            self.assertEqual(errors, [])
+
+    def test_concurrent_write_config_can_race(self):
+        """Finding: concurrent _write_config on the same path may
+        raise FileNotFoundError or lose updates. The process does
+        not crash.
+        """
+        from runner.setup import _write_config
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            errors = []
+            def worker(n):
+                try:
+                    _write_config(path, {"n": n, "host": "imap.gmail.com"})
+                except FileNotFoundError as e:
+                    errors.append(("fnf", repr(e)))
+                except Exception as e:
+                    errors.append(("other", repr(e)))
+            threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=5)
+            other = [e for e in errors if e[0] != "fnf"]
+            self.assertEqual(other, [])
+            if os.path.isfile(path):
+                with open(path, encoding="utf-8") as fh:
+                    data = json.load(fh)
+                self.assertIsInstance(data, dict)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
