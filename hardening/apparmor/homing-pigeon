@@ -1,0 +1,54 @@
+# AppArmor profile for the Homing Pigeon runner daemon (M7).
+# NOT installed by default. Render @PLACEHOLDERS@ (see hardening/README.md),
+# then: apparmor_parser -r /etc/apparmor.d/homing-pigeon
+#
+# Path list derived from `strace -f -e openat` of one `--once` poll cycle,
+# plus the paths a working run needs (TLS, DNS, base dir). This profile
+# covers the runner daemon itself; sandboxed jobs are confined by bwrap
+# via the `confinement` security feature.
+#
+# Usage: @PYTHON@ @RUNNER_DIR@/runner.py --config @CONFIG@
+
+#include <tunables/global>
+
+@PYTHON@ {
+  #include <abstractions/base>
+  #include <abstractions/python>
+
+  # Python interpreter and stdlib (observed via strace).
+  @PYTHON@ mr,
+  /usr/lib/python3*/** r,
+  /usr/lib/locale/** r,
+  /etc/ld.so.cache r,
+  /lib/x86_64-linux-gnu/** mr,
+  /usr/bin/pybuilddir.txt r,
+  /usr/bin/pyvenv.cfg r,
+
+  # Runner source (observed via strace).
+  @RUNNER_DIR@/** r,
+
+  # Config (read-only) and base dir (read-write: state, audit, workdirs).
+  @CONFIG@ r,
+  @BASE_DIR@/** rw,
+
+  # TLS and DNS for the mailbox connection.
+  /etc/ssl/certs/** r,
+  /etc/resolv.conf r,
+  /etc/hosts r,
+  /etc/nsswitch.conf r,
+
+  # Process/tmp basics.
+  /proc/*/stat r,
+  /dev/urandom r,
+  /tmp/** rw,
+
+  # The runner spawns job interpreters and bwrap.
+  /usr/bin/bwrap ix,
+  /usr/bin/python3* ix,
+  /usr/bin/bash ix,
+  /bin/bash ix,
+  /usr/bin/sh ix,
+
+  # Deny everything else by default (abstractions/base handles the rest).
+  deny /home/** w,
+}
