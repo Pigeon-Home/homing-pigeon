@@ -273,9 +273,10 @@ class OracleWindowDiagnosticsTest(unittest.TestCase):
         return code, buf.getvalue()
 
     def test_prints_config_path_and_model(self):
-        code, out = self._run_window(_cfg("/tmp/x"), "/tmp/my-config.json")
+        cfg_path = os.path.join("some", "dir", "my-config.json")
+        code, out = self._run_window(_cfg("/tmp/x"), cfg_path)
         self.assertEqual(code, 0)
-        self.assertIn("Config: /tmp/my-config.json", out)
+        self.assertIn("Config: %s" % os.path.abspath(cfg_path), out)
         self.assertIn("Inference: local model llama3.2:3b", out)
         self.assertIn("does not poll the mailbox", out)
 
@@ -325,9 +326,9 @@ class BaseDirForTest(unittest.TestCase):
 
     def test_config_dir_is_default(self):
         from runner.runner import _base_dir_for
-        self.assertEqual(
-            _base_dir_for({}, "/etc/pigeon/config.json"),
-            "/etc/pigeon")
+        with tempfile.TemporaryDirectory() as d:
+            cfg_path = os.path.join(d, "config.json")
+            self.assertEqual(_base_dir_for({}, cfg_path), d)
 
     def test_relative_config_path_resolves_against_cwd(self):
         import os
@@ -345,9 +346,9 @@ class BaseDirForTest(unittest.TestCase):
 
     def test_blank_base_dir_falls_through(self):
         from runner.runner import _base_dir_for
-        self.assertEqual(
-            _base_dir_for({"base_dir": "   "}, "/etc/pigeon/config.json"),
-            "/etc/pigeon")
+        with tempfile.TemporaryDirectory() as d:
+            cfg_path = os.path.join(d, "config.json")
+            self.assertEqual(_base_dir_for({"base_dir": "   "}, cfg_path), d)
 
     def test_same_config_same_state_for_any_user(self):
         # The Windows failure: the service runs as SYSTEM, the chat as the
