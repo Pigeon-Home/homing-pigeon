@@ -49,9 +49,9 @@ Version negotiation is not a handshake. The message carries `v`. This document d
 
 ### Why specify this publicly
 
-The protocol is specified in the open so that a submitter does not need the runner's source code. An owner should be able to name the protocol ("homing pigeon"), share the secret, and name the mailbox, and any sender that understands this document can submit jobs: a personal AI assistant today, a hosted service tomorrow, a system not yet built. Email is the transport because every such sender already speaks it; no new connector is required on either side.
+The protocol is specified in the open so that a submitter does not need the runner's source code. Any implementation of this document can submit jobs: the subject, the JSON object, and the MAC are all specified here, and the transport is email, which the submitter already speaks.
 
-Discovery of the mailbox address is out of scope for this document. The address is established out of band — the sender asks the owner which address to use, or the owner provides it alongside the secret. Once the sender knows the address, the secret, and this specification, no further coordination is required.
+Two things are out of scope for this document and are established out of band: the mailbox address, and the shared secret. The sender asks the owner which address to use, and the owner provides the secret with it. Neither is discovered from the mail. Once the sender knows the address, the secret, and this specification, no further coordination is required.
 
 ## 2. Requirements Language
 
