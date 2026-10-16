@@ -29,8 +29,8 @@ so re-evaluate:
 - **Retention:** a transport that archives messages indefinitely extends the
   lifetime of anything that leaks into them.
 
-If the transport is weaker than email on any of these, rotate faster — 30 days
-is a sane starting point — until you've measured the actual exposure.
+If the transport is weaker than email on any of these, rotate faster — every few
+weeks is a sane starting point — until you've measured the actual exposure.
 
 ## How to rotate (no downtime)
 
