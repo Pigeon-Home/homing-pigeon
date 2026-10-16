@@ -1,5 +1,9 @@
 # Homing Pigeon Protocol v1
 
+The frozen wire description, written as an informational individual
+draft, is `docs/ietf/draft-slutsky-homing-pigeon-00.md`. This file
+remains the living spec.
+
 > **Two different versions — don't mix them up.** This document
 > describes the *message protocol*, currently v1: the shape of the
 > signed JSON in every job and result email. It is independent of the
