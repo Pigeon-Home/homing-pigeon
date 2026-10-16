@@ -248,5 +248,55 @@ class MailboxProbeTest(unittest.TestCase):
         self.assertIn(("logout",), seen)
 
 
+class SharedSecretTest(unittest.TestCase):
+    def _write(self, directory, secret):
+        path = os.path.join(directory, "config.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"shared_secret": secret, "mailbox_user": "a@b.c"}, fh)
+        return path
+
+    def test_a_real_secret_is_left_alone(self):
+        from runner.install import ensure_shared_secret
+        real = "ab" * 32
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, real)
+            before = open(path, "rb").read()
+            ensure_shared_secret(path, None)
+            self.assertEqual(open(path, "rb").read(), before)
+
+    def test_a_placeholder_is_replaced(self):
+        from runner.install import ensure_shared_secret
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, "changeme")
+            ensure_shared_secret(path, None)
+            written = json.load(open(path, encoding="utf-8"))
+            secret = written["shared_secret"]
+            self.assertEqual(len(secret), 64)
+            self.assertTrue(all(c in "0123456789abcdef" for c in secret))
+            self.assertEqual(written["mailbox_user"], "a@b.c")
+
+    def test_a_weak_provided_secret_exits(self):
+        from runner.install import ensure_shared_secret
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, "")
+            before = open(path, "rb").read()
+            with self.assertRaises(SystemExit) as raised:
+                ensure_shared_secret(path, "aaaa")
+            self.assertEqual(raised.exception.code, 2)
+            self.assertEqual(open(path, "rb").read(), before)
+
+    def test_an_empty_secret_is_generated(self):
+        from runner.install import ensure_shared_secret
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, "")
+            ensure_shared_secret(path, None)
+            secret = json.load(open(path, encoding="utf-8"))["shared_secret"]
+            self.assertEqual(len(secret), 64)
+            self.assertTrue(all(c in "0123456789abcdef" for c in secret))
+            if os.name != "nt":
+                self.assertEqual(os.stat(path).st_mode & 0o777, 0o600)
+
+
+
 
 
