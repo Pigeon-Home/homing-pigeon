@@ -286,7 +286,10 @@ class OracleWindowDiagnosticsTest(unittest.TestCase):
                 self.closed = True
 
         buf = StringIO()
-        with tempfile.TemporaryDirectory() as d:
+        # The Oracle warms the model on a daemon thread that can still
+        # hold the log file when this returns. Windows refuses to delete
+        # a directory in that state.
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             cfg = dict(cfg, base_dir=d)
             with mock.patch("runner.runner.make_oracle_server", return_value=FakeServer()), \
                  redirect_stdout(buf):
