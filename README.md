@@ -564,3 +564,11 @@ change still needs a restart. Thunderbird-style Google sign-in is
 shipped. PowerShell jobs stage as `script.ps1`. Release binaries carry
 Sigstore build provenance. The suite is
 `python3 -m unittest discover -s tests -t .`.
+
+## Mirrors
+
+Development is centralized on GitHub. Every tagged release is also
+published, with its full file set and a mirror of the source, to:
+
+- GitLab: https://gitlab.com/pigeon-home/homing-pigeon
+- SourceForge: https://sourceforge.net/projects/homing-pigeon/
