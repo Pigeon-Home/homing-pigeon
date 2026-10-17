@@ -63,9 +63,12 @@ from runner.runner import (
     save_retained,
     script_filename,
     sha384_of,
+    snapshot_outside,
     JobRejected,
     _safe_job_id,
     _staged_dest,
+    check_protected_paths,
+    confinement_violated,
     judge_job,
 )
 
@@ -2392,6 +2395,115 @@ class StagedDestFuzzTest(unittest.TestCase):
                     break
             if set(os.listdir(work)) != before:
                 crashes.append("created")
+        self.assertEqual(crashes, [])
+
+
+class ConfinementSnapshotTest(unittest.TestCase):
+    def test_the_walk_stays_out_of_the_work_dir_and_an_excluded_dir(self):
+        with tempfile.TemporaryDirectory() as parent:
+            work = os.path.join(parent, "work")
+            skip = os.path.join(parent, "skip")
+            os.makedirs(work)
+            os.makedirs(skip)
+            with open(os.path.join(work, "secret.txt"), "w", encoding="utf-8") as fh:
+                fh.write("x")
+            with open(os.path.join(parent, "outside.txt"), "w", encoding="utf-8") as fh:
+                fh.write("y")
+            with open(os.path.join(skip, "hidden.txt"), "w", encoding="utf-8") as fh:
+                fh.write("z")
+            snap = snapshot_outside(work, exclude=[skip])
+        names = [os.path.basename(path) for path in snap]
+        self.assertIn("outside.txt", names)
+        self.assertNotIn("secret.txt", names)
+        self.assertNotIn("hidden.txt", names)
+        self.assertTrue(all(isinstance(info, tuple) and len(info) == 2 for info in snap.values()))
+
+    def test_root_is_refused_and_a_prefix_is_not_a_child(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch("runner.runner.os.path.dirname", return_value="/"):
+                self.assertEqual(snapshot_outside(d), {})
+            self.assertEqual(snapshot_outside(os.path.join(d, "missing")), {})
+            self.assertEqual(snapshot_outside(None), {})
+        changed = check_protected_paths(
+            {"/tmp/a/file": (1, 1), "/tmp/ab/file": (1, 1), "/tmp/a": (1, 1)},
+            {"/tmp/a/file": (2, 1), "/tmp/ab/file": (9, 1), "/tmp/a": (1, 2)},
+            ["/tmp/a"])
+        self.assertEqual(sorted(changed), ["/tmp/a", "/tmp/a/file"])
+        self.assertEqual(check_protected_paths({}, {}, "nope"), [])
+        self.assertEqual(check_protected_paths(None, None, ["/tmp"]), [])
+        self.assertFalse(confinement_violated({"a": (1, 1)}, {"a": (1, 1)}))
+        self.assertTrue(confinement_violated({"a": (1, 1)}, {"a": (1, 2)}))
+        self.assertTrue(confinement_violated({}, {"new": (1, 1)}))
+        self.assertFalse(confinement_violated(None, {"a": (1, 1)}))
+
+    def test_the_file_cap_stops_at_50000(self):
+        with tempfile.TemporaryDirectory() as d:
+            real_stat = os.stat
+
+            def fake_walk(_root):
+                yield os.path.dirname(d), [], ["f%d" % i for i in range(50001)]
+
+            def fake_stat(path):
+                name = os.path.basename(str(path))
+                if len(name) > 1 and name[0] == "f" and name[1:].isdigit():
+                    return mock.Mock(st_size=1, st_mtime=2, st_mode=stat.S_IFREG)
+                return real_stat(path)
+
+            with mock.patch("runner.runner.os.walk", side_effect=fake_walk), \
+                 mock.patch("runner.runner.os.stat", side_effect=fake_stat):
+                snap = snapshot_outside(d)
+        self.assertEqual(len(snap), 50000)
+
+
+class ConfinementSnapshotFuzzTest(unittest.TestCase):
+    def test_random_snapshots_never_include_the_work_dir(self):
+        rng = random.Random(20261017)
+        crashes = []
+        with tempfile.TemporaryDirectory() as parent:
+            work = os.path.join(parent, "work")
+            os.makedirs(work)
+            for i in range(4):
+                with open(os.path.join(parent, "o%d" % i), "w", encoding="utf-8") as fh:
+                    fh.write("x")
+                with open(os.path.join(work, "s%d" % i), "w", encoding="utf-8") as fh:
+                    fh.write("y")
+            for _ in range(200):
+                protected = rng.choice([
+                    [parent],
+                    [os.path.join(parent, "o0")],
+                    ["/no/such"],
+                    [],
+                    None,
+                    "bad",
+                ])
+                before = rng.choice([
+                    {},
+                    {os.path.join(parent, "o0"): (1, 1.0)},
+                    None,
+                    {"/tmp/ab/x": (1, 1), "/tmp/a/x": (1, 1)},
+                ])
+                after = rng.choice([
+                    {},
+                    {os.path.join(parent, "o0"): (2, 1.0)},
+                    None,
+                    {"/tmp/ab/x": (2, 1), "/tmp/a/x": (2, 1)},
+                ])
+                try:
+                    snap = snapshot_outside(work, exclude=rng.choice([None, [], [work]]))
+                    changed = check_protected_paths(before, after, protected)
+                    violated = confinement_violated(before, after)
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                if not isinstance(snap, dict) or not isinstance(violated, bool):
+                    crashes.append("shape")
+                    break
+                if any(os.path.basename(path).startswith("s") for path in snap):
+                    crashes.append("inside")
+                    break
+                if not isinstance(changed, list):
+                    crashes.append("changed")
+                    break
         self.assertEqual(crashes, [])
 
 
