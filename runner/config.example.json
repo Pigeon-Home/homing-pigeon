@@ -23,8 +23,16 @@
   "additional_secrets": {},
   "_additional_secrets_files": "alternative: {\"key_id\": \"/path/to/file\"}, mutually exclusive per key with additional_secrets",
   "key_policies": {
-    "ids-daemon": {"allowed_kinds": ["sensor_alert"]},
-    "netmon-daemon": {"allowed_kinds": ["sensor_alert"]}
+    "ids-daemon": {
+      "allowed_kinds": [
+        "sensor_alert"
+      ]
+    },
+    "netmon-daemon": {
+      "allowed_kinds": [
+        "sensor_alert"
+      ]
+    }
   },
   "key_policies_default_deny": false,
   "max_result_view": "full",
@@ -35,7 +43,11 @@
   "owner_instructions": "",
   "redact_patterns_extra": {},
   "review_patterns_extra": [],
-  "resources": {"enabled": true, "threshold": 0.95, "cooldown_sec": 900},
+  "resources": {
+    "enabled": true,
+    "threshold": 0.95,
+    "cooldown_sec": 900
+  },
   "security": {
     "modes": {
       "policy_env": "off",
@@ -53,10 +65,16 @@
     "telegram_bot_token": "",
     "telegram_chat_id": "",
     "triggers": {
-      "sensor_fused_score": {"threshold": 6.0, "window_sec": 600},
+      "sensor_fused_score": {
+        "threshold": 6.0,
+        "window_sec": 600
+      },
       "confinement_violation": true,
       "judge_block": true,
-      "key_probe": {"threshold": 5, "window_sec": 3600},
+      "key_probe": {
+        "threshold": 5,
+        "window_sec": 3600
+      },
       "resource_pressure": true
     },
     "cooldown_sec": 3600,
@@ -99,5 +117,8 @@
         "max_per_hour": 30
       }
     }
+  },
+  "_comments": {
+    "detection": "Optional low-overhead detection (runner/detection.py) runs after job completion when the module is importable. It records detection_hits (Sigma/YARA-style rules + ATT&CK tags), detection_anomaly (tiny baseline), and plan_budget_ok when a job carries a plan list. Canary tripwires are separate (_canary_watch). All advisory; never raises."
   }
 }
