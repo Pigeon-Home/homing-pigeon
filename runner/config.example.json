@@ -68,7 +68,8 @@
     "max_answer_chars": 2000,
     "timeout_sec": 60,
     "watch_system": true,
-    "artifact_scan": true
+    "artifact_scan": true,
+    "yara_rules": ""
   },
   "judge": "off",
   "dag_mode": "off",

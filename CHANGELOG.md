@@ -24,6 +24,10 @@
 - The firewall line is diffed against the last reading. A flip says
   "changed". The first look is a baseline. Unreadable does not
   overwrite that baseline.
+- A YARA or ClamAV hit is kept for the local Oracle even when the job
+  output itself is not retained. The note has the finding, not the
+  raw output. `inference.yara_rules` can point at an operator rules
+  file. A missing file falls back to the built-in rules.
 
 ## 3.7.12 - 2026-10-16
 

@@ -264,6 +264,53 @@ class ArtifactScanTest(unittest.TestCase):
         self.assertEqual(len(hits), 1)
         self.assertIn("yara hp_webshell drop.php [T1505.003]", hits[0])
 
+    def test_operator_rules_file_is_what_gets_scanned(self):
+        seen = {}
+
+        def fake_run(argv, **kwargs):
+            with open(argv[-2], encoding="utf-8") as fh:
+                seen["rules"] = fh.read()
+            return mock.Mock(returncode=0, stdout="hp_custom " + argv[-1] + "\n")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            rules = os.path.join(tmp, "local.yar")
+            with open(rules, "w", encoding="utf-8") as fh:
+                fh.write("rule hp_custom { condition: true }\n")
+            work = os.path.join(tmp, "work")
+            os.makedirs(work)
+            with open(os.path.join(work, "drop.bin"), "w", encoding="utf-8") as fh:
+                fh.write("x")
+            cfg = {"inference": {"yara_rules": rules}}
+            with mock.patch.object(R.shutil, "which",
+                                   side_effect=lambda n: "/usr/bin/yr" if n == "yr" else None), \
+                 mock.patch.object(R.subprocess, "run", side_effect=fake_run):
+                hits = R._artifact_findings(work, {}, cfg)
+        self.assertIn("hp_custom", seen["rules"])
+        self.assertIn("[T1204.002]", hits[0])
+
+    def test_missing_rules_file_falls_back(self):
+        self.assertIn("hp_webshell", R._yara_rules_text(
+            {"inference": {"yara_rules": "/no/such/rules.yar"}}))
+
+    def test_note_reaches_the_oracle_without_the_output(self):
+        note = R._artifact_note(
+            "job1",
+            {"kind": "exec", "script": "print(1)\n"},
+            {"exit_code": 0, "stdout": "secret-output",
+             "artifact_scan": ["yara hp_webshell drop.php [T1505.003]"]})
+        self.assertNotIn("secret-output", json.dumps(note))
+        self.assertIsNone(R._artifact_note("job1", {}, {"artifact_scan": []}))
+        with tempfile.TemporaryDirectory() as base:
+            R.save_retained(base, "job1", note)
+            with mock.patch.object(R.sys, "platform", "linux"), \
+                 mock.patch.object(R, "_host_log_tail", return_value=""), \
+                 mock.patch.object(R, "_firewall_watch", return_value=""), \
+                 mock.patch.object(R, "_canary_watch", return_value=""):
+                blob = R.oracle_context(base, watch=False)
+        self.assertIn("artifact scan", blob)
+        self.assertIn("hp_webshell", blob)
+        self.assertNotIn("secret-output", blob)
+
     def test_missing_tools_add_nothing(self):
         with tempfile.TemporaryDirectory() as work:
             with open(os.path.join(work, "a.txt"), "w", encoding="utf-8") as fh:

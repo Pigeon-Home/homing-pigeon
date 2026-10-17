@@ -4242,6 +4242,10 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     "judgment": result.get("judgment"),
                     "artifact_scan": r.get("artifact_scan") or [],
                 })
+            else:
+                note = _artifact_note(job_id, job, r)
+                if note:
+                    save_retained(base_dir, job_id, note)
             if protected_changed:
                 result.setdefault("confinement_detail", {})["protected_paths_changed"] = protected_changed
             if cfg.get("judge") in ("advisory", "enforce"):
@@ -5580,14 +5584,32 @@ def _artifact_findings(work, before, cfg):
         return []
     hits = []
     try:
-        hits.extend(_yara_hits(work, targets))
+        hits.extend(_yara_hits(work, targets, cfg))
         hits.extend(_clam_hits(work, targets))
     except Exception:
         return hits
     return hits[:20]
 
 
-def _yara_hits(work, targets):
+def _yara_rules_text(cfg):
+    """Operator rules if inference.yara_rules is a readable file.
+
+    A missing or empty file falls back to the built-in rules. Never raises.
+    """
+    inf = cfg.get("inference") if isinstance(cfg, dict) else None
+    path = inf.get("yara_rules") if isinstance(inf, dict) else None
+    if isinstance(path, str) and path.strip():
+        try:
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read(65536)
+        except OSError:
+            text = ""
+        if isinstance(text, str) and text.strip():
+            return text
+    return _YARA_RULES
+
+
+def _yara_hits(work, targets, cfg=None):
     yr = shutil.which("yr")
     yara = shutil.which("yara")
     if not yr and not yara:
@@ -5596,7 +5618,7 @@ def _yara_hits(work, targets):
     try:
         fd, rules_path = tempfile.mkstemp(prefix="hp-yara-", suffix=".yar")
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            fh.write(_YARA_RULES)
+            fh.write(_yara_rules_text(cfg))
     except OSError:
         return []
     hits = []
@@ -5632,6 +5654,34 @@ def _yara_hits(work, targets):
             except OSError:
                 pass
     return hits
+
+
+def _artifact_note(job_id, job, r):
+    """A retained record that carries a scan hit and not the raw output.
+
+    Full-view jobs are not retained. A hit still has to reach the local
+    Oracle, so this note is what gets saved in that case. None when
+    there is nothing to report.
+    """
+    scan = r.get("artifact_scan") if isinstance(r, dict) else None
+    if not isinstance(scan, list) or not scan:
+        return None
+    script = ""
+    kind = ""
+    if isinstance(job, dict):
+        kind = job.get("kind") if isinstance(job.get("kind"), str) else ""
+        script = _as_str(job.get("script"))[:500]
+    return {
+        "job_id": job_id,
+        "kind": kind,
+        "script": script,
+        "stdout": "",
+        "stderr": "",
+        "exit_code": _as_int(r.get("exit_code"), -1),
+        "timed_out": bool(r.get("timed_out")),
+        "artifact_scan": [str(item)[:200] for item in scan[:20]],
+        "saved_at": time.time(),
+    }
 
 
 def _clam_hits(work, targets):
