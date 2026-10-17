@@ -319,6 +319,32 @@ class NonFiniteElsewhereTest(unittest.TestCase):
                         max_bytes=float("inf"))
 
 
+class ResourceAndFragmentTest(unittest.TestCase):
+    def test_infinite_cooldown_and_fragment_length_do_not_escape(self):
+        from runner.resources import parse_resources
+        from runner.runner import answer_queries, secret_fragment_hit
+        from runner.senses import _path
+
+        with self.assertRaises(RuntimeError) as caught:
+            parse_resources({
+                "resources": {"enabled": True, "cooldown_sec": float("inf")},
+            })
+        self.assertIn("finite", str(caught.exception))
+        self.assertFalse(secret_fragment_hit(
+            "hello", "hello", {}, min_len=float("inf")))
+
+        with tempfile.TemporaryDirectory() as directory:
+            with open(_path(directory), "w", encoding="utf-8") as fh:
+                fh.write(
+                    '{"sensor": "disk", "title": "hot", "severity": "info", '
+                    '"weight": Infinity}\n')
+            answers, _spent = answer_queries(
+                [{"op": "senses"}], {}, {}, 5, cfg={}, base_dir=directory)
+        item = answers[0]["alerts"][0]
+        self.assertEqual(item["weight"], 1.0)
+        self.assertEqual(item["weight"], item["weight"])
+
+
 class SensorRecordTest(unittest.TestCase):
     def test_nan_is_stored_as_null_and_a_cycle_does_not_recurse(self):
         from runner.senses import load_alerts, store_alert

@@ -49,8 +49,10 @@ def parse_resources(cfg) -> dict:
         cooldown = float(raw.get("cooldown_sec", 900))
     except (TypeError, ValueError):
         raise RuntimeError("config error: resources.cooldown_sec must be a number")
-    if cooldown < 0:
-        raise RuntimeError("config error: resources.cooldown_sec must be >= 0")
+    if (cooldown != cooldown or cooldown < 0 or cooldown == float("inf")
+            or cooldown == float("-inf")):
+        raise RuntimeError(
+            "config error: resources.cooldown_sec must be a finite number >= 0")
     return {"enabled": enabled, "threshold": threshold,
             "cooldown_sec": cooldown}
 

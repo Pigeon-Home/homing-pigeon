@@ -1447,7 +1447,7 @@ def secret_fragment_hit(reply, source, patterns, min_len=_SECRET_FRAGMENT):
     else:
         try:
             min_len = int(min_len)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             min_len = _SECRET_FRAGMENT
     if min_len < 1:
         min_len = _SECRET_FRAGMENT
@@ -2273,7 +2273,10 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                         "weight", rec.get("weight", 1.0))
                     try:
                         weight = float(weight)
-                    except (TypeError, ValueError):
+                    except (TypeError, ValueError, OverflowError):
+                        weight = 1.0
+                    if weight != weight or weight < 0 or weight in (
+                            float("inf"), float("-inf")):
                         weight = 1.0
                     title_raw = rec.get("title") if isinstance(rec.get("title"), str) else ""
                     title, _ = redact_text(title_raw, patterns)
