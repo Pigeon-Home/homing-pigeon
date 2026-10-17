@@ -4963,18 +4963,53 @@ def load_seen(path: str) -> dict:
 
 
 def save_seen(path: str, seen: dict):
+    """Write the replay cache. A symlink at the temp name is not followed.
+
+    The file is a JSON list of the newest SEEN_CAP keys, mode 0600.
+    A bad path or a key that cannot be printed is skipped. Never raises.
+    """
     if not isinstance(path, str) or not path:
         return
     if not isinstance(seen, dict):
         seen = {}
-    keys = list(seen.keys())[-SEEN_CAP:]
+    keys = []
+    for key in list(seen.keys())[-SEEN_CAP:]:
+        try:
+            text = key if isinstance(key, str) else str(key)
+        except Exception:
+            continue
+        if "\x00" in text:
+            continue
+        keys.append(text)
     tmp = path + ".tmp." + str(threading.get_ident())
+    fd = None
     try:
-        with open(tmp, "w", encoding="utf-8") as fh:
+        try:
+            os.unlink(tmp)
+        except FileNotFoundError:
+            pass
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(tmp, flags, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fd = None
             json.dump(keys, fh)
         os.replace(tmp, path)
-    except OSError:
-        pass
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
+    except (OSError, TypeError, ValueError):
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
 
 
 HOT_KEYS = ("poll_interval_sec", "workers", "default_timeout_sec",
