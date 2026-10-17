@@ -1968,11 +1968,8 @@ def _inference_failure_text(exc, timeout=None) -> str:
     text = str(exc).lower()
     if "timed out" in text or "timeout" in text:
         waited = ""
-        try:
-            if int(timeout) > 0:
-                waited = " after " + str(int(timeout)) + "s"
-        except (TypeError, ValueError):
-            waited = ""
+        if isinstance(timeout, int) and not isinstance(timeout, bool) and timeout > 0:
+            waited = " after " + str(timeout) + "s"
         return ("The local model timed out" + waited
                 + ". Ask again, or raise inference.timeout_sec in config.json.")
     if "400" in text:
