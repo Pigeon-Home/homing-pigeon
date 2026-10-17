@@ -3473,6 +3473,7 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     if findings:
         log(f"job {job['job_id']} artifact scan: " + "; ".join(findings),
             "WARN")
+        _file_artifact_hits(base_dir, job.get("job_id"), findings)
 
     return {"stdout": stdout, "stderr": stderr,
             "exit_code": -1 if timed_out else (proc.returncode if proc.returncode is not None else -1),
@@ -5171,6 +5172,33 @@ def _file_watch_alert(base_dir, sensor, severity, title, attack):
         })
     except Exception:
         return
+
+
+def _file_artifact_hits(base_dir, job_id, findings):
+    """File a YARA or ClamAV hit once, when the job is scanned.
+
+    The title carries the job id so a later job that drops the same
+    file still files. At most eight hits. Never raises.
+    """
+    if not isinstance(findings, list):
+        return
+    jid = job_id if isinstance(job_id, str) else ""
+    filed = 0
+    for item in findings:
+        if filed >= 8:
+            break
+        if not isinstance(item, str) or not item.strip():
+            continue
+        attack = ""
+        start = item.rfind("[")
+        end = item.rfind("]")
+        if start >= 0 and end > start and item[start + 1:end].startswith("T"):
+            attack = item[start + 1:end]
+        title = item.strip()
+        if jid:
+            title = jid + ": " + title
+        _file_watch_alert(base_dir, "artifact", "high", title[:200], attack)
+        filed += 1
 
 
 def _file_fresh_lines(base_dir, sensor, text):

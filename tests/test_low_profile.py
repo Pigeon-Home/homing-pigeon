@@ -414,9 +414,13 @@ class ArtifactScanTest(unittest.TestCase):
                  mock.patch.object(R, "_artifact_findings",
                                    return_value=["yara hp_webshell drop.php [T1505.003]"]):
                 result = execute_job({}, job, base)
-        self.assertEqual(result["exit_code"], 0)
-        self.assertEqual(result["artifact_scan"],
-                         ["yara hp_webshell drop.php [T1505.003]"])
+            self.assertEqual(result["exit_code"], 0)
+            self.assertEqual(result["artifact_scan"],
+                             ["yara hp_webshell drop.php [T1505.003]"])
+            filed = R._senses.load_alerts(base, sensor="artifact")
+            self.assertEqual(len(filed), 1)
+            self.assertEqual(filed[0]["detail"]["attack"], "T1505.003")
+            self.assertTrue(filed[0]["title"].startswith("scan1:"))
 
 
 class PromptTest(unittest.TestCase):

@@ -34,6 +34,8 @@
 - A registry change, and a new auth or audit line that carries an
   ATT&CK id, are filed the same way. The first look at a log is a
   baseline and is not an alert. A plain error line is not filed.
+- A YARA or ClamAV hit is filed there too, once, with the job id in
+  the title. The raw output is still not stored with it.
 
 ## 3.7.12 - 2026-10-16
 
