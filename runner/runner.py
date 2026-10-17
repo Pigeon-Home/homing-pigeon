@@ -5275,10 +5275,13 @@ def _runner_log_tail(base_dir, max_chars=2000) -> str:
     if not isinstance(base_dir, str) or not base_dir:
         return ""
     path = os.path.join(base_dir, "runner.log")
-    try:
-        max_chars = int(max_chars)
-    except (TypeError, ValueError, OverflowError):
+    if isinstance(max_chars, bool):
         max_chars = 2000
+    else:
+        try:
+            max_chars = int(max_chars)
+        except (TypeError, ValueError, OverflowError):
+            max_chars = 2000
     if max_chars < 0:
         max_chars = 0
     try:
@@ -5297,6 +5300,8 @@ def _runner_log_tail(base_dir, max_chars=2000) -> str:
     if size > 4096 and lines:
         lines = lines[1:]  # partial first line from the seek
     tail = "\n".join(lines[-30:]).strip()
+    if max_chars < 1:
+        return ""
     if len(tail) > max_chars:
         tail = tail[-max_chars:]
     return tail

@@ -37,6 +37,7 @@ from runner.runner import (
     _artifact_scan_enabled,
     _clam_hits,
     _clam_sig_line,
+    _canary_state,
     _confinement_argv,
     _env_name_in,
     _file_artifact_hits,
@@ -49,6 +50,7 @@ from runner.runner import (
     _parse_iptables_policy,
     _parse_ufw,
     _run_text,
+    _runner_log_tail,
     _tail_marked,
     _yara_hits,
     _yara_rules_text,
@@ -2151,6 +2153,85 @@ class KillAndStoreFuzzTest(unittest.TestCase):
                     break
                 if not isinstance(rows, list) or len(rows) > 5:
                     crashes.append(len(rows) if isinstance(rows, list) else rows)
+                    break
+        self.assertEqual(crashes, [])
+
+
+class LogAndCanaryTest(unittest.TestCase):
+    def test_log_tail_caps_and_drops_the_partial_first_line(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(_runner_log_tail(None), "")
+            self.assertEqual(_runner_log_tail(d), "")
+            path = os.path.join(d, "runner.log")
+            with open(path, "wb") as fh:
+                fh.write(b"DROPME-" + (b"a" * 5000) + b"\nKEEPME\n")
+            self.assertIn("KEEPME", _runner_log_tail(d))
+            self.assertNotIn("DROPME", _runner_log_tail(d))
+            self.assertEqual(_runner_log_tail(d, 0), "")
+            self.assertEqual(_runner_log_tail(d, -3), "")
+            self.assertEqual(len(_runner_log_tail(d, 5)), 5)
+            full = _runner_log_tail(d, True)
+            self.assertIn("KEEPME", full)
+            self.assertEqual(_runner_log_tail(d, "nope"), full)
+            with open(path, "wb") as fh:
+                fh.write(b"\xff\xfe KEEP\n")
+            self.assertIn("KEEP", _runner_log_tail(d))
+
+    def test_canary_hash_folds_crlf_and_stops_at_64k(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "passwords.txt")
+            self.assertIsNone(_canary_state(path))
+            with open(path, "wb") as fh:
+                fh.write(b"line\r\n")
+            folded = _canary_state(path)
+            with open(path, "wb") as fh:
+                fh.write(b"line\n")
+            self.assertEqual(_canary_state(path), folded)
+            with open(path, "wb") as fh:
+                fh.write(b"line\r")
+            self.assertNotEqual(_canary_state(path), folded)
+            with open(path, "wb") as fh:
+                fh.write(b"a" * 65536 + b"b")
+            capped = _canary_state(path)
+            with open(path, "wb") as fh:
+                fh.write(b"a" * 65536 + b"c")
+            self.assertEqual(_canary_state(path), capped)
+            self.assertEqual(len(capped), 12)
+            with mock.patch("builtins.open", side_effect=OSError("busy")):
+                self.assertEqual(_canary_state(path), "?")
+
+
+class LogAndCanaryFuzzTest(unittest.TestCase):
+    def test_random_bytes_stay_inside_the_cap(self):
+        rng = random.Random(20261017)
+        crashes = []
+        with tempfile.TemporaryDirectory() as d:
+            log_path = os.path.join(d, "runner.log")
+            canary = os.path.join(d, "canary.txt")
+            for _ in range(200):
+                blob = bytes(rng.randrange(0, 256) for _ in range(rng.randrange(0, 8000)))
+                cap = rng.choice([0, 1, 8, 2000, -1, True, False, None, "nope"])
+                try:
+                    with open(log_path, "wb") as fh:
+                        fh.write(blob)
+                    with open(canary, "wb") as fh:
+                        fh.write(blob[:100])
+                    tail = _runner_log_tail(d, cap)
+                    state = _canary_state(canary)
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                if not isinstance(tail, str):
+                    crashes.append(type(tail).__name__)
+                    break
+                if isinstance(cap, int) and not isinstance(cap, bool) and 0 <= cap < 2000:
+                    if len(tail) > cap:
+                        crashes.append(len(tail))
+                        break
+                if state is not None and (
+                        not isinstance(state, str) or len(state) not in (1, 12)
+                        or (len(state) == 12 and any(c not in "0123456789abcdef" for c in state))):
+                    crashes.append(state)
                     break
         self.assertEqual(crashes, [])
 
