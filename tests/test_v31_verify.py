@@ -155,7 +155,7 @@ class InferenceGateTest(unittest.TestCase):
         self.assertEqual(whole["endpoint"], "http://127.0.0.2:9/v1")
         # 0 is falsy and means "unset", so the default 60 is kept.
         unset = inference_config(_loopback_cfg(timeout_sec=0, max_answer_chars=0))
-        self.assertEqual(unset["timeout_sec"], 60)
+        self.assertEqual(unset["timeout_sec"], 180)
         self.assertEqual(unset["max_answer_chars"], 2000)
 
     def test_redirect_is_refused(self):

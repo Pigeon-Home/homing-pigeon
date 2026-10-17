@@ -1470,7 +1470,7 @@ def install_ollama_and_model(cfg_path: str, model: str, skip: bool) -> bool:
             "endpoint": "http://127.0.0.1:11434/v1",
             "model": model,
             "max_answer_chars": 2000,
-            "timeout_sec": 60,
+            "timeout_sec": 180,
         }
         _write_json(cfg_path, cfg)
         print(f"inference: configured endpoint http://127.0.0.1:11434/v1 model {model}")

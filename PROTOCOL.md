@@ -500,7 +500,7 @@ are semantic instead of regex-shaped. Config (all under an
   against a non-local endpoint (fail closed; inference that leaves the
   box defeats the entire purpose).
 - `model`: model id, e.g. `"llama3.1:8b"`.
-- `max_answer_chars` (default 2000), `timeout_sec` (default 60).
+- `max_answer_chars` (default 2000), `timeout_sec` (default 180).
 
 **Reference stack.** A Llama model (e.g. `llama3.1:8b`) served on
 loopback via Ollama (`http://127.0.0.1:11434/v1`). Any

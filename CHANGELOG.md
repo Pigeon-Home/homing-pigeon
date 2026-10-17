@@ -44,6 +44,10 @@
   7 days). Windows asks whether the Defender service is running.
   macOS stays unreadable. A stale or stopped tool is T1562.001, and
   a flip is filed once.
+- The local model timeout defaults to 180 seconds, not 60. A cold
+  llama3.2:3b on a laptop was dying at the old cap before the first
+  token. A config that already says 60 still uses 60. The chat says
+  how many seconds it waited.
 
 ## 3.7.12 - 2026-10-16
 

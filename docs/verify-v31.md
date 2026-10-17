@@ -82,7 +82,7 @@ Confirm these if you are reading a failure rather than trusting the test name.
 - Unknown `job_id`, unsafe `job_id`: qresult `rejected=unknown_job`, message marked seen.
 - Retained file present but `saved_at` older than `output_retention_days`: `rejected=expired`. `spent` does not change.
 - `max_queries_per_hour` exceeded: `rejected=rate_limit`. The bucket is the signing `key_id`, and the empty id (the default secret) shares one bucket across query ids. This happens before the budget is spent. A check that keyed the bucket on `query_id` whenever `key_id` was `""` did not cap the common install. That path is covered by `QueryMailVerifyTest.test_expired_rate_limit_and_attested_view`.
-- `timeout_sec` of 0, or a missing timeout, means unset and becomes 60. A negative or non-numeric timeout is refused. The same rule applies to `max_answer_chars` (0 means the default 2000, a negative value is refused).
+- `timeout_sec` of 0, or a missing timeout, means unset and becomes 180. A negative or non-numeric timeout is refused. The same rule applies to `max_answer_chars` (0 means the default 2000, a negative value is refused).
 - `output_retention_days` of 0, or a missing value, means the default 7, so an old retained file is `rejected=expired`. A negative value disables expiry.
 - Bad signature: IMAP message marked seen, no qresult, seen-set key not written.
 - `issued_at` outside the window: no qresult, seen-set key written.

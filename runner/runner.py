@@ -1438,7 +1438,7 @@ def inference_config(cfg):
         return None
     try:
         max_chars = int(inf.get("max_answer_chars") or 2000)
-        timeout = int(inf.get("timeout_sec") or 60)
+        timeout = int(inf.get("timeout_sec") or 180)
     except (TypeError, ValueError, OverflowError):
         return None
     if max_chars < 0 or timeout < 1:
@@ -1600,7 +1600,7 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
     )
     open_fn = opener or _default_inference_open
     try:
-        timeout = int(cfg.get("timeout_sec") or 60)
+        timeout = int(cfg.get("timeout_sec") or 180)
     except (TypeError, ValueError, OverflowError):
         timeout = 60
     if timeout < 1:
@@ -1954,11 +1954,17 @@ def _wire_tool_arguments(fargs) -> str:
         return "{}"
 
 
-def _inference_failure_text(exc) -> str:
+def _inference_failure_text(exc, timeout=None) -> str:
     text = str(exc).lower()
     if "timed out" in text or "timeout" in text:
-        return ("The local model timed out. Ask again, or raise "
-                "inference.timeout_sec in config.json.")
+        waited = ""
+        try:
+            if int(timeout) > 0:
+                waited = " after " + str(int(timeout)) + "s"
+        except (TypeError, ValueError):
+            waited = ""
+        return ("The local model timed out" + waited
+                + ". Ask again, or raise inference.timeout_sec in config.json.")
     if "400" in text:
         return "The local model rejected the chat request."
     return "The local model did not answer."
@@ -1996,10 +2002,10 @@ def _inference_chat(cfg, messages, tools, opener, timeout):
             err_body = "?"
         log(f"inference chat call failed: HTTP {e.code} {e.reason}; "
             f"endpoint response body: {err_body}", "WARN")
-        return {"role": "error", "content": _inference_failure_text(e)}
+        return {"role": "error", "content": _inference_failure_text(e, timeout)}
     except Exception as e:
-        log(f"inference chat call failed: {e}", "WARN")
-        return {"role": "error", "content": _inference_failure_text(e)}
+        log(f"inference chat call failed after {timeout}s: {e}", "WARN")
+        return {"role": "error", "content": _inference_failure_text(e, timeout)}
     return msg if isinstance(msg, dict) else {"content": str(msg)}
 
 
@@ -2139,7 +2145,7 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
     if cap < 0:
         cap = 0
     try:
-        timeout = int(cfg.get("timeout_sec") or 60)
+        timeout = int(cfg.get("timeout_sec") or 180)
     except (TypeError, ValueError, OverflowError):
         timeout = 60
     if timeout < 1:
