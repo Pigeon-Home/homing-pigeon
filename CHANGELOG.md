@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.7.21 - 2026-10-17
+
+### Distribution
+
+- Releases now also publish to SourceForge (project
+  `homing-pigeon`): the three install archives and SHA384SUMS
+  land in the project's file area under the tag, each marked
+  as the default download for its OS, and the source is
+  mirrored to the project's git repository (main + tags).
+  Publishing there is best-effort: the GitHub release and
+  PyPI never wait on it.
+
 ## 3.7.20 - 2026-10-17
 
 ### Protocol v2
