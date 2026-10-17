@@ -425,7 +425,7 @@ class OracleContextSummaryTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             self._write(d, "job-9", {"job_id": "job-9", "stdout": "x"})
             ctx = oracle_context(d)
-        self.assertIn("job job-9 (unknown, status unknown, time unknown)", ctx)
+        self.assertIn("job job-9 (kind not recorded, status unknown, time unknown)", ctx)
         self.assertNotIn("script:", ctx)
 
     def test_timed_out_status(self):
@@ -577,6 +577,8 @@ class OracleAgentTest(unittest.TestCase):
         self.assertIn("over-the-shoulder administrator", system)
         self.assertIn("signed emails", system)
         self.assertIn(proto, system)
+        self.assertIn("stays on this machine", system)
+        self.assertNotIn("must never inspect", system)
 
     def test_build_packages_protocol_doc(self):
         yml = os.path.join(REPO, ".github", "workflows", "build.yml")
