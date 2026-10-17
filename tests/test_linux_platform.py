@@ -36,6 +36,7 @@ from runner.runner import (
     _parse_ufw,
     _yara_hits,
     _yara_rules_text,
+    oracle_context,
 )
 
 
@@ -1166,6 +1167,126 @@ class RulesAndModeFuzzTest(unittest.TestCase):
                     break
                 if level not in ("OK", "WARN"):
                     crashes.append(("level", level))
+                    break
+        self.assertEqual(crashes, [])
+
+
+def _linux_context(base, host, fw, av, **kwargs):
+    with mock.patch("runner.runner.sys.platform", "linux"), \
+         mock.patch("runner.runner._canary_watch", return_value=""), \
+         mock.patch("runner.runner._host_log_tail", return_value=host), \
+         mock.patch("runner.runner._firewall_watch", return_value=fw), \
+         mock.patch("runner.runner._av_watch", return_value=av), \
+         mock.patch("runner.runner.subprocess.run",
+                    side_effect=AssertionError("host")):
+        return oracle_context(base, **kwargs)
+
+
+class OracleLinuxContextTest(unittest.TestCase):
+    def test_linux_shows_host_firewall_and_av_and_not_windows(self):
+        with tempfile.TemporaryDirectory() as d:
+            blob = _linux_context(
+                d, None, None, None)
+        self.assertIn("Host log tail: unreadable", blob)
+        self.assertIn("do not claim the log is clean", blob)
+        self.assertIn("Firewall posture: unreadable", blob)
+        self.assertIn("do not claim the firewall is on", blob)
+        self.assertIn("AV posture: unreadable", blob)
+        self.assertNotIn("Windows Event Log", blob)
+        self.assertNotIn("registry watch", blob)
+
+        with tempfile.TemporaryDirectory() as d:
+            blob = _linux_context(
+                d, "", "firewall: linux ufw=active",
+                "av: clamav signatures current")
+        self.assertIn("no matching auth failures", blob)
+        self.assertIn("ufw=active", blob)
+        self.assertIn("signatures current", blob)
+        self.assertNotIn("unreadable", blob)
+
+        with tempfile.TemporaryDirectory() as d:
+            blob = _linux_context(
+                d, "failed password for root [T1110]",
+                "firewall: linux ufw=inactive [T1562.004]",
+                "av: clamav signatures stale (8d) [T1562.001]")
+        self.assertIn("[T1110]", blob)
+        self.assertIn("[T1562.004]", blob)
+        self.assertIn("[T1562.001]", blob)
+
+    def test_caps_and_the_watch_switch(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(_linux_context(d, "x", "y", "z", max_chars=0), "")
+            short = _linux_context(d, "x", "y", "z", max_chars=5)
+            self.assertNotIn("Firewall", short)
+            self.assertLessEqual(len(short), 5)
+            quiet = _linux_context(d, "failed password", "ufw", "clam",
+                                   watch=False)
+        self.assertNotIn("Host log tail", quiet)
+        self.assertNotIn("Firewall", quiet)
+        self.assertNotIn("Windows", quiet)
+        self.assertEqual(oracle_context(5), "")
+
+    def test_limit_mutations_keep_only_safe_job_ids(self):
+        with tempfile.TemporaryDirectory() as d:
+            retained = os.path.join(d, "retained")
+            os.makedirs(retained)
+            for name, body in (
+                ("job-new.json", {"kind": "ping", "exit_code": 0}),
+                ("job-old.json", {"kind": "ping", "exit_code": 1}),
+                ("../evil.json", {"kind": "exec"}),
+                ("not a job.json", {"kind": "ping"}),
+            ):
+                path = os.path.join(retained, name)
+                if name.startswith(".."):
+                    continue
+                with open(path, "w", encoding="utf-8") as fh:
+                    json.dump(body, fh)
+            os.utime(os.path.join(retained, "job-old.json"), (1, 1))
+            os.utime(os.path.join(retained, "job-new.json"), (2, 2))
+            one = _linux_context(d, "", "", "", limit=1, watch=False)
+            none = _linux_context(d, "", "", "", limit=-1, watch=False)
+            bad = _linux_context(d, "", "", "", limit="nope", watch=False)
+            flag = _linux_context(d, "", "", "", limit=True, watch=False)
+        self.assertIn("job-new", one)
+        self.assertNotIn("job-old", one)
+        self.assertNotIn("job-new", none)
+        self.assertIn("job-new", bad)
+        self.assertIn("job-old", bad)
+        self.assertIn("job-new", flag)
+        self.assertNotIn("evil", one)
+
+
+class OracleContextFuzzTest(unittest.TestCase):
+    def test_random_watch_lines_stay_text_and_stay_off_windows(self):
+        rng = random.Random(20261017)
+        crashes = []
+        with tempfile.TemporaryDirectory() as d, \
+             mock.patch("runner.runner.subprocess.run",
+                        side_effect=AssertionError("host")):
+            for _ in range(200):
+                def pick():
+                    roll = rng.randrange(4)
+                    if roll == 0:
+                        return None
+                    if roll == 1:
+                        return ""
+                    n = rng.randrange(0, 30)
+                    return "".join(chr(rng.randrange(32, 127)) for _ in range(n))
+
+                try:
+                    blob = _linux_context(d, pick(), pick(), pick(),
+                                          max_chars=rng.choice([0, 5, 80, 8000]))
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                if not isinstance(blob, str):
+                    crashes.append(type(blob).__name__)
+                    break
+                if "Windows Event Log" in blob or "registry watch" in blob:
+                    crashes.append("windows")
+                    break
+                if len(blob) > 8000:
+                    crashes.append(len(blob))
                     break
         self.assertEqual(crashes, [])
 
