@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.7.22 - 2026-10-17
+
+### Distribution
+
+- Both mirrors now carry the full release: the SourceForge and
+  GitLab publishers ship every published asset (the three
+  install archives, the Python wheel and sdist, and SHA384SUMS).
+  This is the first release GitLab receives unattended.
+
+### Documentation
+
+- `AGENTS.md`: one result-location rule, stated consistently —
+  results are delivered to the runner's mailbox; the connector
+  sees one only when it was addressed there or forwarded.
+- `docs/local-si-test.md`: a status block at the top separates
+  `--local-test`, the email harness, `--browser`, and
+  `--diagnose`, replacing the "email only" opening.
+- README links the GitLab and SourceForge mirrors.
+
 ## 3.7.21 - 2026-10-17
 
 ### Distribution
