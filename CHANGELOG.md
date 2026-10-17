@@ -1,5 +1,32 @@
 # Changelog
 
+## 3.7.17 - 2026-10-16
+
+### The Oracle chat gets a real interface
+
+- The chat page is redesigned: a neutral dark chat UI in the
+  system sans (the old olive-and-serif theme dated from the first
+  --oracle commit and never had a design pass). Real bubbles now:
+  the operator's in deep steel blue on the right, the Oracle's in
+  dark slate on the left; a subtler role card; an accent Send
+  button; the Working bubble's border breathes while the model
+  thinks.
+- Every bubble carries a clock stamp: the question when it was
+  sent, the Working bubble with its start time (still ticking
+  elapsed seconds and the current step), and the answer with its
+  arrival time and the total wait ("took 2m 12s") — so a slow
+  answer can be documented from a screenshot.
+- The operator's messages sit on the right, the Oracle's on the
+  left, like a normal chat.
+
+### Summary questions stay out of the tools
+
+- Field fix from the testing loop: the model answered summary
+  questions correctly from the new job index, but still spent
+  extra rounds listing directories first. The chat instructions
+  now ban tools outright for summary, count, and status questions
+  and ask for each job's time in the answer.
+
 ## 3.7.16 - 2026-10-16
 
 - Version-only release: no code changes from 3.7.15. Cut at the
