@@ -422,6 +422,22 @@ class ArtifactScanTest(unittest.TestCase):
             self.assertEqual(filed[0]["detail"]["attack"], "T1505.003")
             self.assertTrue(filed[0]["title"].startswith("scan1:"))
 
+    def test_poll_look_files_a_trip_without_the_chat(self):
+        tmp = tempfile.mkdtemp()
+        R._local_watch({}, tmp)
+        path = os.path.join(tmp, "canaries", "api-keys.txt")
+        with open(path, "ab") as fh:
+            fh.write(b"\nx\n")
+        R._local_watch({}, tmp)
+        filed = R._senses.load_alerts(tmp, sensor="canary")
+        self.assertEqual(len(filed), 1)
+
+    def test_watch_opt_out_does_not_plant(self):
+        tmp = tempfile.mkdtemp()
+        R._local_watch({"inference": {"watch_system": False}}, tmp)
+        self.assertFalse(os.path.isdir(os.path.join(tmp, "canaries")))
+        self.assertEqual(R._senses.load_alerts(tmp), [])
+
 
 class PromptTest(unittest.TestCase):
     def test_prompts_name_the_new_sections(self):

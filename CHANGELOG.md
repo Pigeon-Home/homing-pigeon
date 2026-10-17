@@ -36,6 +36,9 @@
   baseline and is not an alert. A plain error line is not filed.
 - A YARA or ClamAV hit is filed there too, once, with the job id in
   the title. The raw output is still not stored with it.
+- The same look runs once per poll, before the page check, so a trip
+  is filed even when the chat window is closed. The poll skips the
+  journalctl fallback. `inference.watch_system=false` still opts out.
 
 ## 3.7.12 - 2026-10-16
 

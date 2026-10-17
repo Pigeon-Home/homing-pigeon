@@ -4482,6 +4482,9 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
             _note_resource_event(base_dir, event)
         except Exception as e:
             log(f"resource monitor failed: {e}", "WARN")
+    # Local watches file alerts before the page check, so a trip that
+    # happened since the last poll can page on this cycle.
+    _local_watch(cfg, base_dir)
     # DRI playbook: evaluate page triggers once per cycle. Disabled
     # by default; needs a configured channel to actually send.
     if _dri is not None:
@@ -5258,6 +5261,33 @@ def _file_fresh_lines(base_dir, sensor, text):
         return
 
 
+def _local_watch(cfg, base_dir):
+    """One cheap look, on the poll, not only when the chat is opened.
+
+    Three canary hashes, one firewall command, a short log tail, and
+    on Windows the registry diff. The journalctl fallback is skipped
+    here so a box with no log file does not spawn a scan every poll.
+    A trip is filed by the watch itself, before the page check runs.
+    inference.watch_system=false skips the look. Never raises.
+    """
+    if not _oracle_watch_enabled(cfg):
+        return
+    if not isinstance(base_dir, str) or not base_dir:
+        return
+    for fn in (
+            lambda: _canary_watch(base_dir),
+            lambda: (_eventlog_tail(base_dir=base_dir)
+                     if sys.platform == "win32"
+                     else _host_log_tail(base_dir=base_dir, journal=False)),
+            lambda: _registry_watch(base_dir) if sys.platform == "win32" else None,
+            lambda: _firewall_watch(base_dir),
+    ):
+        try:
+            fn()
+        except Exception:
+            continue
+
+
 def _canary_watch(base_dir, max_chars=2000):
     """Canary tripwire watch, for the Oracle's context.
 
@@ -5445,7 +5475,7 @@ def _tail_marked(path, markers, max_lines=20):
     return kept[-max_lines:]
 
 
-def _host_log_tail(max_chars=2000, base_dir=""):
+def _host_log_tail(max_chars=2000, base_dir="", journal=True):
     """Narrow auth and system log tail for Linux and macOS.
 
     File tails only. log show on macOS is a scan, so it is not used.
@@ -5471,7 +5501,7 @@ def _host_log_tail(max_chars=2000, base_dir=""):
             continue
         readable = True
         kept.extend(rows)
-    if not readable and sys.platform.startswith("linux"):
+    if not readable and journal and sys.platform.startswith("linux"):
         try:
             proc = subprocess.run(
                 ["journalctl", "-n", "20", "-p", "err", "--no-pager",
