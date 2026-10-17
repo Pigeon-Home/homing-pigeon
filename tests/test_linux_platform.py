@@ -31,6 +31,8 @@ from runner.runner import (
     _clam_sig_line,
     _confinement_argv,
     _env_name_in,
+    _file_artifact_hits,
+    _file_fresh_lines,
     _firewall_posture,
     _host_log_tail,
     _label_auth,
@@ -1687,6 +1689,95 @@ class AuthLineFuzzTest(unittest.TestCase):
                     break
                 if any(not isinstance(item, str) or len(item) > 240 for item in kept):
                     crashes.append(("item", kept[:1]))
+                    break
+        self.assertEqual(crashes, [])
+
+
+def _alerts(base, sensor):
+    from runner.runner import _senses
+    return _senses.load_alerts(base, sensor=sensor)
+
+
+class FreshLineTest(unittest.TestCase):
+    def test_only_a_new_technique_line_is_filed_and_only_eight(self):
+        with tempfile.TemporaryDirectory() as d:
+            _file_fresh_lines(d, "hostlog",
+                              "Failed password [T1110]\nkernel: disk full\nnote [nope]")
+            self.assertEqual(_alerts(d, "hostlog"), [])
+            lines = "\n".join("event %d [T1110]" % i for i in range(9))
+            _file_fresh_lines(d, "hostlog", lines)
+            self.assertEqual(len(_alerts(d, "hostlog")), 8)
+            _file_fresh_lines(d, "hostlog", lines)
+            self.assertEqual(len(_alerts(d, "hostlog")), 9)
+            _file_fresh_lines(d, "hostlog", lines)
+            filed = _alerts(d, "hostlog")
+        self.assertEqual(len(filed), 9)
+        self.assertTrue(all(row["detail"]["attack"] == "T1110" for row in filed))
+        self.assertTrue(all(len(row["title"]) <= 200 for row in filed))
+
+    def test_bracket_and_snapshot_mutations(self):
+        with tempfile.TemporaryDirectory() as d:
+            _file_fresh_lines(None, "hostlog", "x [T1110]")
+            _file_fresh_lines(d, "hostlog", None)
+            _file_fresh_lines(d, "hostlog", "plain [t1110]\nlast [T1110] tail [nope]")
+            self.assertEqual(_alerts(d, "hostlog"), [])
+            path = os.path.join(d, "oracle-logseen.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("[]")
+            _file_fresh_lines(d, "hostlog", "again [T1548.003]")
+            self.assertEqual(_alerts(d, "hostlog"), [])
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"hostlog": "nope"}, fh)
+            _file_fresh_lines(d, "hostlog", "sudo: bob [T1548.003]")
+            self.assertEqual(_alerts(d, "hostlog"), [])
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"hostlog": ["not-this"]}, fh)
+            _file_fresh_lines(d, "hostlog", "useradd bob [T1136]")
+            filed = _alerts(d, "hostlog")
+        self.assertEqual(len(filed), 1)
+        self.assertEqual(filed[0]["detail"]["attack"], "T1136")
+
+    def test_artifact_hits_keep_eight_and_the_job_id(self):
+        with tempfile.TemporaryDirectory() as d:
+            _file_artifact_hits(d, "job-1", None)
+            _file_artifact_hits(d, "job-1", ["", "  ", 1, "yara hp_webshell a.php [T1505.003]"])
+            self.assertEqual(len(_alerts(d, "artifact")), 1)
+            _file_artifact_hits(d, "job-1", ["clamav Eicar a.txt [T1204.002]"] * 10)
+            filed = _alerts(d, "artifact")
+        self.assertEqual(len(filed), 9)
+        attacks = [row["detail"]["attack"] for row in filed]
+        self.assertEqual(attacks.count("T1505.003"), 1)
+        self.assertEqual(attacks.count("T1204.002"), 8)
+        self.assertTrue(all(row["title"].startswith("job-1: ") for row in filed))
+        self.assertTrue(all(len(row["title"]) <= 200 for row in filed))
+        self.assertTrue(all(row["severity"] == "high" for row in filed))
+
+
+class FreshLineFuzzTest(unittest.TestCase):
+    def test_random_text_never_raises_and_files_at_most_eight(self):
+        rng = random.Random(20261017)
+        crashes = []
+        with tempfile.TemporaryDirectory() as d:
+            for _ in range(200):
+                n = rng.randrange(0, 12)
+                lines = []
+                for i in range(n):
+                    attack = rng.choice(["T1110", "T1548.003", "nope", "t1110", ""])
+                    lines.append("line %d [%s]" % (i, attack))
+                text = rng.choice(["\n".join(lines), None, 1, ""])
+                sensor = rng.choice(["hostlog", "auth", ""])
+                try:
+                    before = len(_alerts(d, sensor)) if sensor else 0
+                    _file_fresh_lines(d, sensor, text)
+                    _file_artifact_hits(
+                        d, rng.choice(["job-1", "", None]),
+                        rng.choice([lines, None, "x", []]))
+                    after = len(_alerts(d, sensor)) if sensor else 0
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                if sensor and after - before > 8:
+                    crashes.append(after - before)
                     break
         self.assertEqual(crashes, [])
 
