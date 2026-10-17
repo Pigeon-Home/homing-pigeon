@@ -110,6 +110,16 @@ except ImportError:  # running from inside runner/ as __main__
         _dri = None
 
 try:
+    from runner import detection as _detection
+except ImportError:
+    try:
+        import detection as _detection
+    except ImportError:
+        _detection = None
+except Exception:
+    _detection = None
+
+try:
     from runner import setup as _setup
 except ImportError:  # running from inside runner/ as __main__
     try:
@@ -4205,6 +4215,19 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             scan = r.get("artifact_scan")
             if isinstance(scan, list) and scan:
                 result["artifact_scan"] = [str(item)[:200] for item in scan[:20]]
+            # Optional low-overhead detection (rules, baseline, ATT&CK tags).
+            # Canaries are handled separately by _canary_watch. Never raises.
+            if _detection is not None and isinstance(base_dir, str) and base_dir:
+                try:
+                    hits = _detection.evaluate_rules(job, result)
+                    if hits:
+                        result["detection_hits"] = hits
+                    baseline = _detection.update_baseline(base_dir, job, result)
+                    anomaly = _detection.baseline_anomaly(baseline, job, result)
+                    if anomaly:
+                        result["detection_anomaly"] = anomaly
+                except Exception:
+                    pass
             declared = job.get("result_policy") if isinstance(job.get("result_policy"), dict) else {}
             declared = declared.get("queries") or []
             if not isinstance(declared, list):
