@@ -14,7 +14,11 @@ The connector is already authenticated. The SI uses it. The runner keeps using I
 ## Why the SI does not need the mailbox password
 
 - Sending a job is just sending an email. The connector can do that from the connected account.
-- Reading a result is just reading an email. The connector can search and fetch it.
+- Reading a result does not need the password either. Results are
+  delivered to the runner's mailbox (see "Result location" below);
+  the connector can fetch one only after it reaches the connected
+  account — addressed there (for example via `reply_to`) or
+  forwarded by the user.
 - The HMAC shared secret is a separate string the user pastes once into the runner's `config.json` and once to the SI. It is not the connector token, and it is not the user's Google password. It must be high-entropy (the runner refuses weak secrets at startup); `install.py` generates a 256-bit one automatically.
 - Asking the user to paste `mailbox_user` / `mailbox_password` into chat is unnecessary and wrong for the SI side.
 
@@ -32,7 +36,7 @@ Those values live on the runner host. They do not travel through the SI chat.
 1. Use the Gmail connector for all cloud-side mail. Do not request or accept mailbox credentials in conversation.
 2. The runner's IMAP/SMTP config is an install-time concern for the host, not a chat concern.
 3. The shared secret for HMAC is the only secret the SI needs, and only so it can sign jobs. It is not a login.
-4. If a live round-trip is required, send the signed job with the connector to the runner's dedicated address, then poll for the result with the connector. Do not log into the runner's mailbox.
+4. If a live round-trip is required, send the signed job with the connector to the runner's dedicated address. The result is delivered to the runner's mailbox, not to the connector account (see 'Result location' below); to verify it, ask the user to forward it, then read the forward with the connector. Do not log into the runner's mailbox.
 5. If the connector is not connected, ask the user to connect Gmail. Do not fall back to asking for a password.
 
 
@@ -65,8 +69,12 @@ object. Prefer the body `send_job.py` prints.
 `send_job.py` already emits lowercase hex, a `Z` timestamp, and a UUID.
 Use it.
 
-**Result.** Search the connector for subject `[HOMING-PIGEON] result <job_id>`,
-then verify the body. Do not log into the runner's mailbox.
+**Result.** The result email is delivered to the runner's mailbox
+(see "Result location" below). Search the connector for subject
+`[HOMING-PIGEON] result <job_id>` only when the result was addressed
+to the connected account — for example, the job set `reply_to` to
+it. Otherwise ask the user to forward the result, then verify the
+body. Do not log into the runner's mailbox.
 
 ## Personal account is not the runner
 

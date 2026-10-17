@@ -2,7 +2,18 @@ See `docs/handoff-local-si.md` for the full handoff (two instances, email-only t
 
 # Local SI test
 
-## Testing is email only
+## Status — read this first
+
+- `--local-test` (in-process) is the development loop. You play the
+  cloud SI; nothing is emailed. See "Run it" below.
+- The email harness (next section) exercises the real Transport #1
+  path through a mailbox the runner polls.
+- `--browser` opens Open WebUI against a second Ollama. It is a
+  generic chat skin, not the Oracle page.
+- `--diagnose` is the one-shot black-box gauntlet (last section).
+  It probes the configured system; it does not fix it.
+
+## The email harness
 
 The mock SI is tested through email. That is Transport #1 and the
 only transport this harness exercises. The local socket and the
