@@ -87,6 +87,18 @@ def build_bwrap_command(cfg, interpreter, script_name, workdir, args, env):
     """
     if not interpreter or not all(isinstance(x, str) for x in interpreter):
         raise RuntimeError("interpreter must be a non-empty list of strings")
+    if (not isinstance(script_name, str) or not script_name
+            or script_name in (".", "..")
+            or "/" in script_name or "\\" in script_name
+            or "\x00" in script_name):
+        raise RuntimeError("script name must be a single path segment")
+    if not isinstance(workdir, str) or not workdir or "\x00" in workdir:
+        raise RuntimeError("workdir must be a path string")
+    if not isinstance(args, (list, tuple)) or not all(
+            isinstance(a, str) for a in args):
+        raise RuntimeError("args must be a list of strings")
+    if not isinstance(env, dict):
+        raise RuntimeError("env must be a dict")
     resolved = shutil.which(interpreter[0])
     if not resolved:
         raise RuntimeError(

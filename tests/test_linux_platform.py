@@ -15,6 +15,7 @@ from unittest import mock
 
 from runner import resources as RS
 from runner import sandbox as SB
+from runner import security as SEC
 from runner.install import detect_default_profile, do_wipe, install_linux, uninstall_linux
 from runner.posture import (
     _check_confinement_backend,
@@ -1388,6 +1389,105 @@ class PolicyFuzzTest(unittest.TestCase):
                         crashes.append(("row", row))
                         break
                 if crashes:
+                    break
+        self.assertEqual(crashes, [])
+
+
+class SandboxNameTest(unittest.TestCase):
+    def test_script_name_mutations_never_resolve_a_binary(self):
+        bad = ("", ".", "..", "../etc/passwd", "/bin/sh",
+               "a/b", "a\\b", "a\x00b", None, 1)
+        for name in bad:
+            with mock.patch("runner.sandbox.shutil.which",
+                            side_effect=AssertionError("which")):
+                with self.assertRaises(RuntimeError):
+                    SB.build_bwrap_command(
+                        {}, ["sh"], name, "/work", [], {})
+        with mock.patch("runner.sandbox.shutil.which", return_value="/bin/sh"):
+            argv = SB.build_bwrap_command(
+                {}, ["sh", "-c"], "job.sh", "/work", ["--x"], {"OK": "1"})
+        self.assertEqual(argv[-2:], ["/work/job.sh", "--x"])
+        self.assertNotIn("..", argv[-1])
+
+    def test_workdir_args_and_env_mutations(self):
+        with mock.patch("runner.sandbox.shutil.which",
+                        side_effect=AssertionError("which")):
+            for workdir, args, env in (
+                ("", [], {}),
+                ("/work\x00", [], {}),
+                (None, [], {}),
+                ("/work", ["ok", 1], {}),
+                ("/work", None, {}),
+                ("/work", [], None),
+                ("/work", [], []),
+            ):
+                with self.assertRaises(RuntimeError):
+                    SB.build_bwrap_command(
+                        {}, ["sh"], "job.sh", workdir, args, env)
+
+
+class JobUserNameTest(unittest.TestCase):
+    def test_only_a_real_username_passes(self):
+        def lookup(name):
+            if name == "pigeon":
+                return mock.Mock()
+            raise KeyError(name)
+
+        with mock.patch("pwd.getpwnam", side_effect=lookup):
+            SEC.validate_security_config(
+                {"security": {"job_user": {"user": "pigeon"}}})
+            for bad in ("no-such", "a/b", "a\\b", "a\x00b", "a:b",
+                        "a b", " a", "a\n", "root/../pigeon"):
+                with self.assertRaises(RuntimeError) as caught:
+                    SEC.validate_security_config(
+                        {"security": {"job_user": {"user": bad}}})
+                self.assertIn("job_user", str(caught.exception))
+            for bad in ("", 1, None):
+                shape = {"user": ""} if bad == "" else bad
+                with self.assertRaises(RuntimeError):
+                    SEC.validate_security_config(
+                        {"security": {"job_user": shape}})
+
+
+class SandboxAndUserFuzzTest(unittest.TestCase):
+    def test_random_names_raise_or_return_a_string_argv(self):
+        rng = random.Random(20261017)
+        crashes = []
+
+        def lookup(name):
+            if name == "pigeon":
+                return mock.Mock()
+            raise KeyError(name)
+
+        with mock.patch("runner.sandbox.shutil.which", return_value="/bin/sh"), \
+             mock.patch("pwd.getpwnam", side_effect=lookup):
+            for _ in range(200):
+                name = "".join(chr(rng.randrange(0, 128))
+                               for _ in range(rng.randrange(0, 12)))
+                if rng.randrange(8) == 0:
+                    name = rng.choice(["job.sh", "pigeon", "..", "", "a/b"])
+                try:
+                    argv = SB.build_bwrap_command(
+                        {}, ["sh"], name, "/work", [], {})
+                except RuntimeError:
+                    argv = None
+                except Exception as exc:
+                    crashes.append(("argv", type(exc).__name__))
+                    break
+                if argv is not None:
+                    if not all(isinstance(x, str) for x in argv):
+                        crashes.append(("type", argv[:3]))
+                        break
+                    if "/" in name or name in ("", ".", ".."):
+                        crashes.append(("accepted", name))
+                        break
+                try:
+                    SEC.validate_security_config(
+                        {"security": {"job_user": {"user": name or "x"}}})
+                except RuntimeError:
+                    pass
+                except Exception as exc:
+                    crashes.append(("user", type(exc).__name__))
                     break
         self.assertEqual(crashes, [])
 

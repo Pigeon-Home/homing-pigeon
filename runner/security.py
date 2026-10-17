@@ -256,6 +256,11 @@ def validate_security_config(cfg):
             raise RuntimeError(
                 "config error: security.job_user must be an object with "
                 "a non-empty string 'user' (got %r)" % (ju,))
+        user = ju["user"]
+        if any(c in user for c in "/\\\x00:\n\r \t"):
+            raise RuntimeError(
+                "config error: security.job_user.user %r is not a "
+                "username" % (user,))
         if os.name != "nt":
             try:
                 import pwd
@@ -263,11 +268,11 @@ def validate_security_config(cfg):
                 pwd = None
             if pwd is not None:
                 try:
-                    pwd.getpwnam(ju["user"])
-                except KeyError:
+                    pwd.getpwnam(user)
+                except (KeyError, ValueError):
                     raise RuntimeError(
                         "config error: security.job_user.user %r does "
-                        "not exist" % (ju["user"],))
+                        "not exist" % (user,))
 
 
 def _audit_path(base_dir):
