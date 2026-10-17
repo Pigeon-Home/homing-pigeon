@@ -1,8 +1,8 @@
-"""The branches the 90 percent run still missed.
+"""The branches the 90 percent run still missed, as their own suites.
 
 Each test calls the function the runner calls. Windows parsers get
 their tool output handed to them. Nothing here starts a real daemon
-or a real setuid.
+or a real setuid. The job-user syscalls stay untested.
 """
 import json
 import os
@@ -655,11 +655,8 @@ class StartupTailTest(unittest.TestCase):
                 runner.make_oracle_server({}, "127.0.0.1", 0)
 
 
-class RemainingTailTest(unittest.TestCase):
-    """Decision branches still red after the first tail pass.
-
-    The real job-user face (chown, setuid) stays uncalled.
-    """
+class BoardOfferTailTest(unittest.TestCase):
+    """Offer, approve, and count when saved rows are the wrong shape."""
 
     def test_board_filters_a_failed_save_and_the_counts(self):
         from runner.runner import Board
@@ -714,6 +711,8 @@ class RemainingTailTest(unittest.TestCase):
             self.assertEqual(board.reoffer_expired(), 0)
             self.assertGreaterEqual(board.counts()["open"], 1)
 
+
+class AgentClockTest(unittest.TestCase):
     def test_agent_gives_up_when_the_clock_runs_out(self):
         from runner import runner
         cfg = {"endpoint": "http://127.0.0.1:9/v1", "model": "m",
@@ -748,6 +747,8 @@ class RemainingTailTest(unittest.TestCase):
         self.assertIn("did not answer", err["detail"])
         self.assertIn("7", prose.get("answer") or "")
 
+
+class InferenceOnceTest(unittest.TestCase):
     def test_one_model_call_rejects_a_bad_endpoint_and_a_dead_body(self):
         from urllib.error import HTTPError
         from runner.runner import _ask_model_once, _inference_chat, _inference_failure_text
@@ -780,6 +781,8 @@ class RemainingTailTest(unittest.TestCase):
             [BadGet(role="user", content="hi")], None, opener, 5)
         self.assertEqual(msg["role"], "error")
 
+
+class HashAndChatLogTest(unittest.TestCase):
     def test_hashes_paths_and_a_chat_line_with_bad_fields(self):
         import os as osmod
         from runner.runner import record_oracle_turn, sha384_of
@@ -797,6 +800,8 @@ class RemainingTailTest(unittest.TestCase):
             })
             self.assertTrue(os.path.exists(os.path.join(d, "oracle-chat.jsonl")))
 
+
+class MailDetectorTailTest(unittest.TestCase):
     def test_mail_rejects_a_non_object_and_a_detector_that_raises(self):
         from runner import runner
         from runner.runner import poll_once
@@ -828,6 +833,8 @@ class RemainingTailTest(unittest.TestCase):
             self.assertTrue(smtp.sent)
             self.assertNotIn("detection_hits", smtp.sent[-1].get_content())
 
+
+class ToolParseTailTest(unittest.TestCase):
     def test_content_tool_calls_and_secret_slices(self):
         from runner.runner import (
             _parse_content_tool_call, _wire_tool_arguments, secret_fragment_hit,
@@ -847,6 +854,8 @@ class RemainingTailTest(unittest.TestCase):
         self.assertFalse(secret_fragment_hit(
             "aaaaaaaa", "xx aa yy", {"a": "a+"}, min_len=8))
 
+
+class InspectAndSecretsTest(unittest.TestCase):
     def test_inspect_job_errors_and_weak_secret_files(self):
         import contextlib
         import io
@@ -878,6 +887,8 @@ class RemainingTailTest(unittest.TestCase):
                 "shared_secret": SECRET, "additional_secrets_files": {"": "/tmp/x"},
             })
 
+
+class QueryPolicyTailTest(unittest.TestCase):
     def test_queries_reject_a_policy_and_a_bad_ask_cap(self):
         from runner import runner
         with mock.patch.object(runner, "build_attestations", return_value=[]):
@@ -894,6 +905,8 @@ class RemainingTailTest(unittest.TestCase):
                     "max_answer_chars": 20}})
         self.assertEqual(answers[0]["op"], "ask")
 
+
+class WatchAndPostureTest(unittest.TestCase):
     def test_watches_logs_and_a_frozen_doc(self):
         from runner import runner
         with tempfile.TemporaryDirectory() as d:
@@ -1016,6 +1029,8 @@ class RemainingTailTest(unittest.TestCase):
              mock.patch.object(runner, "_parse_iptables_policy", return_value="drop"):
             self.assertEqual(runner._firewall_posture(), "drop")
 
+
+class YaraDeadlineTest(unittest.TestCase):
     def test_yara_stops_at_the_deadline_and_a_rules_file_that_sticks(self):
         from runner import runner
         ticks = {"n": 0}
@@ -1040,6 +1055,8 @@ class RemainingTailTest(unittest.TestCase):
                  mock.patch.object(runner.os, "remove", side_effect=OSError("busy")):
                 self.assertEqual(runner._yara_hits(d, [target, target], {}), [])
 
+
+class LogClosedStdoutTest(unittest.TestCase):
     def test_log_survives_a_closed_stdout_and_a_bad_message(self):
         from runner import runner
         saved = (runner._LOG_MINUTE, runner._LOG_COUNT, runner._LOG_DROPPED,
@@ -1061,6 +1078,8 @@ class RemainingTailTest(unittest.TestCase):
             (runner._LOG_MINUTE, runner._LOG_COUNT, runner._LOG_DROPPED,
              runner._VERBOSE, runner._LOG_FILE) = saved
 
+
+class ConfinementTailTest(unittest.TestCase):
     def test_confinement_without_a_security_module_and_with_a_built_sandbox(self):
         from runner import runner
         with tempfile.TemporaryDirectory() as d:
