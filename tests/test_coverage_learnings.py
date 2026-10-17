@@ -345,6 +345,27 @@ class ResourceAndFragmentTest(unittest.TestCase):
         self.assertEqual(item["weight"], item["weight"])
 
 
+class RetentionAndGateTest(unittest.TestCase):
+    def test_a_non_finite_timestamp_is_expired_and_does_not_silence(self):
+        import time
+        from runner.runner import retained_expired
+        from runner.senses import gate_alert
+
+        cfg = {"output_retention_days": 7}
+        self.assertTrue(retained_expired({"saved_at": float("inf")}, cfg))
+        self.assertTrue(retained_expired({"saved_at": float("nan")}, cfg))
+        self.assertFalse(retained_expired({"saved_at": time.time()}, cfg))
+
+        recent = [{"title": "hot", "received_at": "2026-10-16T00:00:00Z"}]
+        self.assertIsNone(gate_alert(
+            {"profile": {"cooldown_sec": float("inf")}},
+            {"title": "hot", "severity": "info"}, recent, now=time.time()))
+        reason = gate_alert(
+            {"profile": {"max_per_hour": float("inf")}},
+            {"title": "other", "severity": "info"}, recent, now=time.time())
+        self.assertIn("unreadable cap", reason)
+
+
 class SensorRecordTest(unittest.TestCase):
     def test_nan_is_stored_as_null_and_a_cycle_does_not_recurse(self):
         from runner.senses import load_alerts, store_alert

@@ -2528,7 +2528,9 @@ def retained_expired(data, cfg):
         return False
     try:
         saved = float(data.get("saved_at") or 0)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        return True
+    if saved != saved or saved in (float("inf"), float("-inf")):
         return True
     return (time.time() - saved) > days * 86400
 

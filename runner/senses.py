@@ -188,7 +188,10 @@ def gate_alert(sensor_cfg: dict, alert: dict, recent: list, now: float = None):
         return f"below severity_floor {floor}"
     try:
         cooldown = float(profile.get("cooldown_sec") or 0)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        cooldown = 0
+    if cooldown != cooldown or cooldown < 0 or cooldown in (
+            float("inf"), float("-inf")):
         cooldown = 0
     if cooldown > 0:
         for prev in reversed(recent):
@@ -203,8 +206,10 @@ def gate_alert(sensor_cfg: dict, alert: dict, recent: list, now: float = None):
                 return f"cooldown: same title within {cooldown:g}s"
     try:
         cap = float(profile.get("max_per_hour") or 0)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         cap = 0.0
+    if cap != cap or cap < 0 or cap in (float("inf"), float("-inf")):
+        return "over max_per_hour (unreadable cap)"
     if cap > 0:
         n = 0
         for prev in reversed(recent):
