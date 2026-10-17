@@ -16,7 +16,12 @@ from unittest import mock
 from runner import resources as RS
 from runner import sandbox as SB
 from runner.install import detect_default_profile, do_wipe, install_linux, uninstall_linux
-from runner.posture import _check_confinement_backend, _check_service_unit
+from runner.posture import (
+    _check_confinement_backend,
+    _check_file_perms,
+    _check_recommended_features,
+    _check_service_unit,
+)
 from runner.runner import (
     _artifact_findings,
     _artifact_scan_enabled,
@@ -30,6 +35,7 @@ from runner.runner import (
     _parse_iptables_policy,
     _parse_ufw,
     _yara_hits,
+    _yara_rules_text,
 )
 
 
@@ -1033,6 +1039,133 @@ class ArtifactScanFuzzTest(unittest.TestCase):
                     break
                 if any(not isinstance(item, str) for item in hits):
                     crashes.append(("item", hits[:2]))
+                    break
+        self.assertEqual(crashes, [])
+
+
+class YaraRulesTest(unittest.TestCase):
+    def test_empty_whitespace_and_a_bad_path_fall_back(self):
+        with tempfile.TemporaryDirectory() as d:
+            empty = os.path.join(d, "empty.yar")
+            blank = os.path.join(d, "blank.yar")
+            open(empty, "w", encoding="utf-8").close()
+            with open(blank, "w", encoding="utf-8") as fh:
+                fh.write("  \n\t")
+            for path in (empty, blank, os.path.join(d, "missing.yar"), d):
+                text = _yara_rules_text({"inference": {"yara_rules": path}})
+                self.assertIn("hp_webshell", text)
+                self.assertIn("hp_encoded_exec", text)
+        for cfg in (None, {}, {"inference": []},
+                    {"inference": {"yara_rules": 1}},
+                    {"inference": {"yara_rules": "  "}}):
+            self.assertIn("hp_webshell", _yara_rules_text(cfg))
+
+    def test_a_long_file_is_cut_at_64k_and_a_real_file_is_kept(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "local.yar")
+            body = "rule hp_custom { condition: true }\n" + ("x" * 70000)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(body)
+            text = _yara_rules_text({"inference": {"yara_rules": path}})
+        self.assertTrue(text.startswith("rule hp_custom"))
+        self.assertEqual(len(text), 65536)
+        self.assertNotIn("hp_webshell", text)
+
+
+class PosixModeTest(unittest.TestCase):
+    def _one(self, mode):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("{}\n")
+            os.chmod(path, mode)
+            results = []
+            _check_file_perms(path, results)
+        return results[0]
+
+    def test_only_0600_is_ok(self):
+        level, _section, detail = self._one(0o600)
+        self.assertEqual(level, "OK")
+        self.assertIn("0600", detail)
+        for mode in (0o640, 0o644, 0o700, 0o000):
+            level, _section, detail = self._one(mode)
+            self.assertEqual(level, "WARN", oct(mode))
+            self.assertIn("%04o" % mode, detail)
+            self.assertIn("expected 0600", detail)
+
+    def test_a_missing_file_fails_and_the_type_bits_are_ignored(self):
+        results = []
+        _check_file_perms("/no/such/hp-config.json", results)
+        self.assertEqual(results[0][0], "FAIL")
+        self.assertIn("cannot stat", results[0][2])
+
+        class _Stat:
+            st_mode = 0o100600
+
+        results = []
+        with mock.patch("runner.posture.os.stat", return_value=_Stat()):
+            _check_file_perms("/tmp/hp-config.json", results)
+        self.assertEqual(results[0][0], "OK")
+
+    def test_feature_mode_case(self):
+        results = []
+        _check_recommended_features(
+            {"security": {"modes": {
+                "audience": "OFF",
+                "policy_env": "Audit",
+                "policy_files": 1,
+                "policy_args": "enforce",
+            }}},
+            results)
+        text = " ".join(row[2] for row in results)
+        self.assertIn("audience is off", text)
+        self.assertIn("policy_files is off", text)
+        self.assertNotIn("policy_env is off", text)
+        self.assertNotIn("policy_args is off", text)
+
+
+class RulesAndModeFuzzTest(unittest.TestCase):
+    def test_random_rules_and_modes_do_not_raise(self):
+        rng = random.Random(20261017)
+        crashes = []
+        with tempfile.TemporaryDirectory() as d:
+            for i in range(200):
+                path = os.path.join(d, "r.yar")
+                blob = bytes(rng.randrange(0, 256) for _ in range(rng.randrange(0, 80)))
+                with open(path, "wb") as fh:
+                    fh.write(blob)
+                cfg = rng.choice([
+                    None,
+                    {},
+                    {"inference": {"yara_rules": path}},
+                    {"inference": {"yara_rules": rng.choice([None, 1, "", path])}},
+                    [],
+                ])
+                mode = rng.randrange(0, 0o1000)
+                try:
+                    text = _yara_rules_text(cfg)
+                    results = []
+
+                    class _Stat:
+                        st_mode = 0o100000 | mode
+
+                    with mock.patch("runner.posture.os.stat", return_value=_Stat()):
+                        _check_file_perms(path, results)
+                except Exception as exc:
+                    crashes.append((type(exc).__name__, i))
+                    break
+                if not isinstance(text, str) or not text.strip():
+                    crashes.append(("rules", repr(text)[:40]))
+                    break
+                level = results[0][0]
+                if level == "OK" and mode != 0o600:
+                    crashes.append(("mode-ok", oct(mode)))
+                    break
+                if level == "WARN" and mode == 0o600:
+                    crashes.append(("mode-warn", oct(mode)))
+                    break
+                if level not in ("OK", "WARN"):
+                    crashes.append(("level", level))
                     break
         self.assertEqual(crashes, [])
 

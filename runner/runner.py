@@ -6411,7 +6411,7 @@ def _yara_rules_text(cfg):
         try:
             with open(path, encoding="utf-8") as fh:
                 text = fh.read(65536)
-        except OSError:
+        except (OSError, UnicodeError):
             text = ""
         if isinstance(text, str) and text.strip():
             return text
