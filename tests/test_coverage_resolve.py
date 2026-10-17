@@ -156,7 +156,8 @@ class ReviewGapTest(unittest.TestCase):
             notes = _metadata_notes({"script": "#!/bin/bash\necho"})
         self.assertTrue(any(n["id"] == "shebang_platform_mismatch"
                             for n in notes))
-        notes = _metadata_notes({"script": "#!powershell\necho"})
+        with mock.patch("runner.review.os.name", "posix"):
+            notes = _metadata_notes({"script": "#!powershell\necho"})
         self.assertTrue(any("powershell" in n["note"].lower()
                             or n["id"] == "shebang_platform_mismatch"
                             for n in notes))
@@ -446,7 +447,8 @@ class PostureWindowsTest(unittest.TestCase):
         self.assertIn("Windows", results[0][2])
 
         results = []
-        with mock.patch("runner.posture.os.path.exists", return_value=False):
+        with mock.patch("runner.posture.os.name", "posix"), \
+             mock.patch("runner.posture.os.path.exists", return_value=False):
             _check_service_unit(results)
         self.assertIn("no homing-pigeon", results[0][2])
 
@@ -454,14 +456,16 @@ class PostureWindowsTest(unittest.TestCase):
             return path.endswith("homing-pigeon.service")
 
         results = []
-        with mock.patch("runner.posture.os.path.exists", side_effect=exists), \
+        with mock.patch("runner.posture.os.name", "posix"), \
+             mock.patch("runner.posture.os.path.exists", side_effect=exists), \
              mock.patch("builtins.open", mock.mock_open(
                  read_data="NoNewPrivileges=yes\nProtectSystem=strict\n")):
             _check_service_unit(results)
         self.assertEqual(results[0][0], "OK")
 
         results = []
-        with mock.patch("runner.posture.os.path.exists", side_effect=exists), \
+        with mock.patch("runner.posture.os.name", "posix"), \
+             mock.patch("runner.posture.os.path.exists", side_effect=exists), \
              mock.patch("builtins.open", side_effect=OSError("no")):
             _check_service_unit(results)
         self.assertEqual(results[0][0], "WARN")
@@ -550,7 +554,7 @@ class PostureWindowsTest(unittest.TestCase):
 
 
 class InstallMainGapTest(unittest.TestCase):
-    def _main(self, argv, **patches):
+    def _main(self, argv, plat=None, **patches):
         from runner import install
         stack = mock.patch.multiple(
             install,
@@ -574,35 +578,41 @@ class InstallMainGapTest(unittest.TestCase):
             do_install_home=mock.DEFAULT,
         )
         with stack as patched, mock.patch.object(sys, "argv", ["install", *argv]):
-            install.install_files.return_value = patches.get(
-                "install_files", True)
-            install._setup_fresh_config.return_value = patches.get(
-                "setup", (True, "llama"))
-            install.install_ollama_and_model.return_value = patches.get(
-                "ollama", True)
-            install.do_wipe.return_value = 0
-            install.do_migrate.return_value = 0
-            install.do_check.return_value = 0
-            install.do_console.return_value = 0
-            install.do_logs.return_value = 0
-            install.do_oracle.return_value = 0
-            install.do_install_home.return_value = 0
-            code = install.main()
-            called = {name: getattr(install, name).called
-                      for name in (
-                          "install_files", "install_linux", "install_windows",
-                          "install_macos", "install_freebsd",
-                          "uninstall_windows", "uninstall_macos",
-                          "uninstall_linux", "uninstall_freebsd",
-                          "install_ollama_and_model", "do_wipe", "do_migrate")}
+            if plat is None:
+                return self._run_install_main(install, patches)
+            with mock.patch.object(sys, "platform", plat):
+                return self._run_install_main(install, patches)
+
+    def _run_install_main(self, install, patches):
+        install.install_files.return_value = patches.get(
+            "install_files", True)
+        install._setup_fresh_config.return_value = patches.get(
+            "setup", (True, "llama"))
+        install.install_ollama_and_model.return_value = patches.get(
+            "ollama", True)
+        install.do_wipe.return_value = 0
+        install.do_migrate.return_value = 0
+        install.do_check.return_value = 0
+        install.do_console.return_value = 0
+        install.do_logs.return_value = 0
+        install.do_oracle.return_value = 0
+        install.do_install_home.return_value = 0
+        code = install.main()
+        called = {name: getattr(install, name).called
+                  for name in (
+                      "install_files", "install_linux", "install_windows",
+                      "install_macos", "install_freebsd",
+                      "uninstall_windows", "uninstall_macos",
+                      "uninstall_linux", "uninstall_freebsd",
+                      "install_ollama_and_model", "do_wipe", "do_migrate")}
         return code, called
 
     def test_check_follow_and_oracle_need_the_windows_home(self):
-        code, _called = self._main(["--check"])
+        code, _called = self._main(["--check"], plat="linux")
         self.assertEqual(code, 2)
-        code, _called = self._main(["--follow"])
+        code, _called = self._main(["--follow"], plat="linux")
         self.assertEqual(code, 2)
-        code, _called = self._main(["--oracle"])
+        code, _called = self._main(["--oracle"], plat="linux")
         self.assertEqual(code, 2)
 
     def test_inference_only_reports_both_outcomes(self):
@@ -635,11 +645,12 @@ class InstallMainGapTest(unittest.TestCase):
         self.assertTrue(called["install_files"])
 
     def test_a_failed_copy_returns_1(self):
-        code, _called = self._main([], install_files=False)
+        code, _called = self._main([], plat="linux", install_files=False)
         self.assertEqual(code, 1)
 
     def test_home_flag_is_ignored_off_windows(self):
-        code, _called = self._main(["--home", "/opt/pigeon", "--check"])
+        code, _called = self._main(["--home", "/opt/pigeon", "--check"],
+                                   plat="linux")
         self.assertEqual(code, 2)
 
     def test_wipe_and_migrate_delegate(self):
