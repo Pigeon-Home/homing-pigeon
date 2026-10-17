@@ -107,5 +107,5 @@ jobs:
           git clone --mirror "https://github.com/${REPO}.git" sf-src
           export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
           git -C sf-src push "ssh://${SF_USER}@git.code.sf.net/p/${SF_PROJECT}/code" refs/heads/main:refs/heads/main
-          git -C sf-src push "ssh://${SF_USER}@git.code.sf.net/p/${SF_PROJECT}/code" 'refs/tags/*:refs/tags/*'
+          git -C sf-src push --force "ssh://${SF_USER}@git.code.sf.net/p/${SF_PROJECT}/code" 'refs/tags/*:refs/tags/*'
           echo "source mirrored to SourceForge git (main + tags)"

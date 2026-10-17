@@ -58,7 +58,7 @@ jobs:
           export GL_API="https://gitlab.com/api/v4/projects/${GL_ENC}"
           git clone --mirror "https://github.com/${REPO}.git" gl-src
           git -C gl-src push "https://${GL_USER}:${GL_TOKEN}@gitlab.com/${GL_PROJECT}.git" refs/heads/main:refs/heads/main
-          git -C gl-src push "https://${GL_USER}:${GL_TOKEN}@gitlab.com/${GL_PROJECT}.git" 'refs/tags/*:refs/tags/*'
+          git -C gl-src push --force "https://${GL_USER}:${GL_TOKEN}@gitlab.com/${GL_PROJECT}.git" 'refs/tags/*:refs/tags/*'
           echo "source mirrored to GitLab (main + tags)"
           mkdir -p publish
           gh release download "$TAG" --repo "$REPO" --dir publish
