@@ -23,6 +23,7 @@ ignore-missing-imports = [
     "dri",
     "auditreport",
     "winlog",
+    "detection",
 ]
 
 # Lenient to start: only check bodies of annotated functions.

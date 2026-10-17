@@ -359,3 +359,13 @@ def alert_score(alert: dict, weight: float) -> float:
     severity = alert.get("severity") if isinstance(alert, dict) else None
     score = SEVERITY_SCORES.get(severity, 0.5) if isinstance(severity, str) else 0.5
     return weight_n * score
+
+
+# ---------------------------------------------------------------------------
+# Optional low-overhead detection (rules, plan budgets, baseline)
+# ---------------------------------------------------------------------------
+# The runner evaluates runner/detection.py after job completion and
+# records advisory fields on the result (detection_hits,
+# detection_anomaly, plan_budget_ok). Canary tripwires are separate:
+# they live in runner._canary_watch. This module stays free of heavy
+# imports; the note exists so the two systems are not confused.
