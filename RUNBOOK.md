@@ -242,11 +242,10 @@ Copy this, fill in your own email and secret, and paste it to the
 new SI:
 
 ```
-project: https://github.com/Pigeon-Home/homing-pigeon
-Use my email connector to send emails.
-Send emails to YOUR_RUNNER_EMAIL@gmail.com
+Send an email to YOUR_RUNNER_EMAIL@gmail.com
+Use this protocol: https://github.com/Pigeon-Home/homing-pigeon/blob/main/PROTOCOL.md
 The shared secret for authentication in the protocol is "YOUR_SECRET_STRING"
-Do a test routine to see if this all works, execute a runbook with the job of displaying the value of the system clock and show me the value here.
+Execute a job which obtains the value of the system clock and show me the value here.
 ```
 
 All items in one prompt, as it contains a shared secret. A follow-up
