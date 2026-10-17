@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.7.19 - 2026-10-17
+
+### Logging that can actually be debugged from
+
+- `runner.log` grows up: it was capped at 2 MB with a single
+  backup (~4 MB of history, ever). The bounds are now config
+  (`log_max_bytes` / `log_backups`, defaults 32 MB across 4
+  rotated files), so a debugging session survives in the log.
+- A job's complete stdout and stderr now land in `runner.log`
+  before the result email's bounded copy is cut — still
+  redacted the way the log has always been, just no longer
+  truncated to a one-line preview.
+- New opt-in `oracle.log` (config `oracle_log`, off by
+  default): full-fidelity inference records — request
+  payloads, replies, error bodies verbatim, per-call timings —
+  at both inference entry points, plus the Ollama daemon's own
+  output when the runner spawns it. Sized for weeks of testing
+  (`oracle_log_max_bytes` / `oracle_log_backups`, defaults
+  512 MB x 4, ~2 GB worst case). Config secrets never enter
+  either log.
+
 ## 3.7.18 - 2026-10-17
 
 ### A diagnostic harness the operator can run
