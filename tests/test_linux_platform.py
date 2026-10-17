@@ -1887,5 +1887,150 @@ class InstallModeFuzzTest(unittest.TestCase):
         self.assertEqual(crashes, [])
 
 
+_HARDENING = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "hardening")
+_POLICY_TOKENS = ("@PYTHON@", "@RUNNER_DIR@", "@BASE_DIR@", "@CONFIG@", "@USER@")
+
+
+def _policy(name):
+    with open(os.path.join(_HARDENING, name), encoding="utf-8") as fh:
+        return fh.read()
+
+
+def _safe_value(token, value):
+    if not isinstance(value, str) or not value:
+        return False
+    if any(c in value for c in "\n\r\t @#{}'\""):
+        return False
+    if token == "@USER@":
+        bare = value.replace(".", "").replace("_", "").replace("-", "")
+        return bool(bare) and bare.isalnum() and "/" not in value
+    return value.startswith("/")
+
+
+def _render_policy(text, values):
+    for token, value in values.items():
+        if token not in _POLICY_TOKENS or not _safe_value(token, value):
+            raise ValueError(token)
+        text = text.replace(token, value)
+    return text
+
+
+def _active(text):
+    return "\n".join(
+        line for line in text.splitlines()
+        if not line.lstrip().startswith(("#", "!")))
+
+
+def _policy_ok(name, text):
+    active = _active(text)
+    if name.startswith("apparmor/"):
+        if active.count("flags=(complain)") != 1 or "flags=(enforce)" in active:
+            return False
+        if "deny /home/** w," not in active:
+            return False
+        if re_search_capability(text):
+            return False
+    if name.endswith(".service"):
+        lines = active.splitlines()
+        if "CapabilityBoundingSet=" not in lines or "AmbientCapabilities=" not in lines:
+            return False
+        if "NoNewPrivileges=true" not in lines or "ProtectHome=true" not in lines:
+            return False
+    if name.endswith(".te"):
+        if re_caps(text) != {"sys_admin", "sys_chroot", "setuid", "setgid"}:
+            return False
+    return True
+
+
+def re_search_capability(text):
+    for line in text.splitlines():
+        if line.lstrip().startswith("#"):
+            continue
+        if "capability" in line:
+            return True
+    return False
+
+
+def re_caps(text):
+    import re
+    match = re.search(r"capability \{ ([^}]+) \}", text)
+    if not match:
+        return set()
+    return set(match.group(1).split())
+
+
+class LinuxPolicyTest(unittest.TestCase):
+    NAMES = (
+        "apparmor/homing-pigeon",
+        "systemd/homing-pigeon.service",
+        "selinux/homing_pigeon.te",
+    )
+
+    def test_shipped_policies_stay_in_complain_and_drop_capabilities(self):
+        for name in self.NAMES:
+            text = _policy(name)
+            self.assertTrue(_policy_ok(name, text), name)
+        unit = _policy("systemd/homing-pigeon.service")
+        self.assertIn("CapabilityBoundingSet=\n", unit)
+        self.assertIn("AmbientCapabilities=\n", unit)
+        self.assertNotIn("CapabilityBoundingSet=CAP_", unit)
+
+    def test_placeholder_mutations(self):
+        clean = {
+            "@PYTHON@": "/usr/bin/python3",
+            "@RUNNER_DIR@": "/opt/homing-pigeon",
+            "@BASE_DIR@": "/var/lib/homing-pigeon",
+            "@CONFIG@": "/etc/homing-pigeon.json",
+            "@USER@": "pigeon",
+        }
+        for name in self.NAMES:
+            rendered = _render_policy(_policy(name), clean)
+            self.assertTrue(_policy_ok(name, rendered), name)
+            for token in _POLICY_TOKENS:
+                self.assertNotIn(token, "\n".join(
+                    line for line in rendered.splitlines()
+                    if not line.lstrip().startswith(("#", "!"))))
+        raw = _policy("apparmor/homing-pigeon")
+        for bad in ("", "python3", "/usr/bin/python3\n/tmp/x rw,",
+                    "/opt/{x}", "/opt/@X@", "/opt/a b", "p igeon"):
+            with self.assertRaises(ValueError):
+                _render_policy(raw, {"@PYTHON@": bad})
+
+
+class LinuxPolicyFuzzTest(unittest.TestCase):
+    def test_random_placeholders_either_refuse_or_keep_the_invariants(self):
+        rng = random.Random(20261017)
+        crashes = []
+        raw = {name: _policy(name) for name in LinuxPolicyTest.NAMES}
+        for _ in range(200):
+            values = {}
+            for token in _POLICY_TOKENS:
+                if token == "@USER@":
+                    values[token] = rng.choice(
+                        ["pigeon", "a", "svc_user", "p igeon", "", "root/x"])
+                    continue
+                if rng.randrange(2) == 0:
+                    values[token] = "/" + "".join(
+                        rng.choice("abc._-") for _ in range(rng.randrange(1, 8)))
+                else:
+                    values[token] = "".join(
+                        chr(rng.randrange(32, 127)) for _ in range(rng.randrange(0, 12)))
+            try:
+                rendered = {name: _render_policy(text, values) for name, text in raw.items()}
+            except ValueError:
+                continue
+            except Exception as exc:
+                crashes.append(type(exc).__name__)
+                break
+            for name, text in rendered.items():
+                if not _policy_ok(name, text):
+                    crashes.append(name)
+                    break
+            if crashes:
+                break
+        self.assertEqual(crashes, [])
+
+
 if __name__ == "__main__":
     unittest.main()
