@@ -72,11 +72,18 @@ product; standalone NDR as a growth story; chat-only copilots; pre-LLM
   can't dodge (the Falco/Tetragon lineage, now the respected standard).
   Optional sense on Linux; integrate, don't build.
 - **Canary tokens and files** — zero cost until touched; the cheapest
-  high-signal item on this entire list. Nothing is tripwired today.
-- **Firewall posture reads** — already spec'd in the senses doc; free.
-- **YARA on job artifacts** — scan dropped files on demand; cheap, respected.
-- **ATT&CK IDs on sense output** — documentation now, zero runtime cost. If
-  every AI SOC reasons in ATT&CK, our Oracle should speak it too.
+  high-signal item on this entire list. The runner plants three
+  tripwire files in its state directory and reports a change or a
+  deletion until the file is restored.
+- **Firewall posture reads** — one line in the Oracle context (on or
+  off). Not a packet capture. The ruleset-diff daemon in the senses
+  doc is still not built.
+- **YARA on job artifacts** — only files that job just wrote, only if
+  `yr` or `yara` is installed, size-capped. ClamAV the same way, and
+  only through `clamdscan`.
+- **ATT&CK IDs on sense output** — on the watch lines now (audit
+  events, persistence changes, canary trips, a firewall that is off).
+  Zero runtime cost. A label, not a verdict.
 
 ### Moderate: optional, off by default
 

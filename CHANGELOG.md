@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.7.13 - 2026-10-16
+
+### Low-profile senses on the watches that already exist
+- ATT&CK labels on the lines the Oracle already sees: Security audit
+  ids, autorun and Winlogon changes, a service-list change, and a
+  canary trip. A label is not a verdict.
+- Linux and macOS get a narrow host-log tail (auth failures and error
+  lines from the log files, 4KB from the end). journalctl is only the
+  fallback when those files cannot be read, and it is capped. macOS
+  does not call `log show`.
+- Firewall posture is one line: netsh profile state, `ufw status` or
+  the iptables policy lines, or the macOS Application Firewall state.
+  No ruleset dump and no packet capture. Unreadable is not "off".
+- After an exec job, files that job created or changed are scanned
+  only when `yr`, `yara`, or `clamdscan` is already installed. Files
+  over 1MB are skipped. `clamscan` is not used. A miss or a missing
+  tool adds nothing. A hit is advisory and does not change the exit
+  code. Opt out with `inference.artifact_scan=false`.
+
 ## 3.7.12 - 2026-10-16
 
 ### Oracle system watch, on by default

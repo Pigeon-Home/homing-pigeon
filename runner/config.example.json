@@ -67,7 +67,8 @@
     "model": "",
     "max_answer_chars": 2000,
     "timeout_sec": 60,
-    "watch_system": true
+    "watch_system": true,
+    "artifact_scan": true
   },
   "judge": "off",
   "dag_mode": "off",
