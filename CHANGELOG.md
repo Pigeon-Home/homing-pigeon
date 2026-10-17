@@ -48,6 +48,10 @@
   llama3.2:3b on a laptop was dying at the old cap before the first
   token. A config that already says 60 still uses 60. The chat says
   how many seconds it waited.
+- Each model call logs the timeout it is using. A reply that names a
+  tool but is not valid JSON is one warning, with a short preview.
+  The chat log stores the failure detail, redacted, so a timeout is
+  visible there and not only as `inference_error`.
 
 ## 3.7.12 - 2026-10-16
 

@@ -1982,7 +1982,7 @@ def _inference_chat(cfg, messages, tools, opener, timeout):
     except Exception:
         roles = "?"
     log(f"inference chat call: {len(messages)} message(s) [{roles}], "
-        f"{len(body_bytes)} byte payload")
+        f"{len(body_bytes)} byte payload, timeout={timeout}s")
     req = Request(
         cfg.get("endpoint", "").rstrip("/") + "/chat/completions",
         data=body_bytes,
@@ -2113,6 +2113,19 @@ def _parse_content_tool_call(content):
     return []
 
 
+def _unparsed_tool_note(content):
+    """Short note when a reply names a tool but is not a parseable call.
+
+    Empty when the reply is an ordinary answer. Used for one log line,
+    not for execution.
+    """
+    if not isinstance(content, str) or '"name"' not in content:
+        return ""
+    if not any(('"' + name + '"') in content for name in _ORACLE_TOOL_NAMES):
+        return ""
+    return " ".join(content.split())[:160]
+
+
 def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
                     opener=None, instructions=None, base_dir=None):
     """Agentic Oracle loop for the interactive --oracle chat.
@@ -2184,6 +2197,10 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             return {"op": "ask", "rejected": "inference_error", "detail": detail}
         calls = _parse_tool_calls(msg)
         if not calls:
+            note = _unparsed_tool_note(msg.get("content"))
+            if note:
+                log("oracle agent: reply looked like a tool call but did "
+                    "not parse: " + note, "WARN")
             reply = msg.get("content")
             if not isinstance(reply, str):
                 reply = "" if reply is None else str(reply)
@@ -6334,12 +6351,17 @@ def record_oracle_turn(base_dir, cfg, question, ans, event="ask"):
         tool_rounds = int(ans.get("tool_rounds") or 0)
     except (TypeError, ValueError, OverflowError):
         tool_rounds = 0
+    detail = ans.get("detail") or ""
+    if not isinstance(detail, str):
+        detail = ""
+    detail, _d = redact_text(detail, patterns)
     rec = {
         "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "event": event if isinstance(event, str) else "ask",
         "question": question[:2000],
         "answer": answer[:4000],
         "rejected": rejected,
+        "detail": detail[:300],
         "model": model,
         "tool_rounds": tool_rounds,
     }

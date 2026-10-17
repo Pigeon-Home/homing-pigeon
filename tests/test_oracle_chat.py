@@ -212,6 +212,25 @@ class OracleChatTest(unittest.TestCase):
             self.assertLess(
                 os.path.getsize(path) + os.path.getsize(path + ".1"), 400)
 
+    def test_chat_log_keeps_the_failure_detail(self):
+        from runner.runner import record_oracle_turn, _unparsed_tool_note
+        with tempfile.TemporaryDirectory() as d:
+            record_oracle_turn(
+                d, _cfg(d), "status?",
+                {"rejected": "inference_error",
+                 "detail": "timed out after 60s near " + FLAG})
+            with open(os.path.join(d, "oracle-chat.jsonl"),
+                      encoding="utf-8") as fh:
+                rec = json.loads(fh.readline())
+        self.assertEqual(rec["rejected"], "inference_error")
+        self.assertIn("timed out after 60s", rec["detail"])
+        self.assertNotIn(FLAG, rec["detail"])
+        self.assertEqual(_unparsed_tool_note("all jobs finished"), "")
+        note = _unparsed_tool_note(
+            '{ "name": "run", "parameters": { cut | date } }')
+        self.assertIn("run", note)
+        self.assertLessEqual(len(note), 160)
+
     def test_oracle_flag_does_not_need_a_mailbox(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "config.json")
