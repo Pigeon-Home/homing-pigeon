@@ -39,6 +39,8 @@ from runner.runner import (
     _clam_hits,
     _clam_sig_line,
     _canary_state,
+    _endpoint_is_loopback,
+    _is_loopback_ip,
     _confinement_argv,
     _env_name_in,
     _file_artifact_hits,
@@ -69,6 +71,7 @@ from runner.runner import (
     _staged_dest,
     check_protected_paths,
     confinement_violated,
+    inference_config,
     judge_job,
 )
 
@@ -2503,6 +2506,106 @@ class ConfinementSnapshotFuzzTest(unittest.TestCase):
                     break
                 if not isinstance(changed, list):
                     crashes.append("changed")
+                    break
+        self.assertEqual(crashes, [])
+
+
+def _loop_cfg(endpoint="http://127.0.0.1:11434/v1/", **extra):
+    body = {"endpoint": endpoint, "model": "llama"}
+    body.update(extra)
+    return {"inference": body}
+
+
+class LoopbackTest(unittest.TestCase):
+    def test_only_a_loopback_http_host_is_accepted(self):
+        self.assertTrue(_endpoint_is_loopback("http://127.0.0.1:11434/v1"))
+        self.assertTrue(_endpoint_is_loopback("https://127.0.0.2/v1"))
+        self.assertTrue(_endpoint_is_loopback("http://[::1]/v1"))
+        self.assertTrue(_endpoint_is_loopback("http://localhost/v1"))
+        self.assertFalse(_endpoint_is_loopback("http://8.8.8.8/v1"))
+        self.assertFalse(_endpoint_is_loopback("file:///etc/passwd"))
+        self.assertFalse(_endpoint_is_loopback("ftp://127.0.0.1/v1"))
+        self.assertFalse(_endpoint_is_loopback(""))
+        self.assertFalse(_endpoint_is_loopback(None))
+        self.assertTrue(_is_loopback_ip("127.0.0.1%lo"))
+        self.assertTrue(_is_loopback_ip("[::1]"))
+        self.assertTrue(_is_loopback_ip("::ffff:127.0.0.1"))
+        self.assertFalse(_is_loopback_ip("8.8.8.8"))
+        self.assertFalse(_is_loopback_ip("localhost"))
+        self.assertFalse(_is_loopback_ip(None))
+
+        def fake_addr(host, port, *args, **kwargs):
+            port = port or 80
+            if host.endswith(".loop"):
+                return [(0, 0, 0, "", ("127.0.0.1", port))]
+            if host.endswith(".both"):
+                return [(0, 0, 0, "", ("127.0.0.1", port)),
+                        (0, 0, 0, "", ("8.8.8.8", port))]
+            if host.endswith(".bad"):
+                return [(0, 0, 0, "", ("not-an-ip", port))]
+            raise OSError("no dns")
+
+        with mock.patch("runner.runner.socket.getaddrinfo", side_effect=fake_addr):
+            self.assertTrue(_endpoint_is_loopback("http://box.loop/v1"))
+            self.assertFalse(_endpoint_is_loopback("http://box.both/v1"))
+            self.assertFalse(_endpoint_is_loopback("http://box.bad/v1"))
+            self.assertFalse(_endpoint_is_loopback("http://box.missing/v1"))
+
+    def test_inference_config_mutations(self):
+        got = inference_config(_loop_cfg())
+        self.assertEqual(got["endpoint"], "http://127.0.0.1:11434/v1")
+        self.assertEqual(got["timeout_sec"], 180)
+        self.assertIsNone(inference_config(_loop_cfg("http://8.8.8.8/v1")))
+        self.assertIsNone(inference_config(_loop_cfg("file:///tmp/model")))
+        self.assertIsNone(inference_config(_loop_cfg(timeout_sec=True)))
+        self.assertIsNone(inference_config(_loop_cfg(max_answer_chars=True)))
+        self.assertEqual(
+            inference_config(_loop_cfg(timeout_sec=0))["timeout_sec"], 180)
+        self.assertEqual(
+            inference_config(_loop_cfg(max_answer_chars=0))["max_answer_chars"], 2000)
+        self.assertIsNone(inference_config(_loop_cfg(max_answer_chars=-1)))
+        self.assertIsNone(inference_config(_loop_cfg(model="  ")))
+        self.assertIsNone(inference_config(None))
+        self.assertIsNone(inference_config({"inference": []}))
+
+
+class LoopbackFuzzTest(unittest.TestCase):
+    def test_random_endpoints_do_not_resolve_for_real(self):
+        rng = random.Random(20261017)
+        crashes = []
+
+        def fake_addr(host, port, *args, **kwargs):
+            return [(0, 0, 0, "", ("127.0.0.1", port or 80))]
+
+        with mock.patch("runner.runner.socket.getaddrinfo", side_effect=fake_addr):
+            for _ in range(200):
+                host = rng.choice([
+                    "127.0.0.1", "127.0.0.2", "8.8.8.8", "::1",
+                    "localhost", "box.example", "",
+                ])
+                scheme = rng.choice(["http", "https", "file", "ftp", ""])
+                endpoint = "%s://%s/v1" % (scheme, host) if scheme else host
+                if host == "::1" and scheme in ("http", "https"):
+                    endpoint = "%s://[::1]/v1" % scheme
+                cfg = rng.choice([
+                    _loop_cfg(endpoint),
+                    _loop_cfg(endpoint, timeout_sec=True),
+                    _loop_cfg(endpoint, max_answer_chars=rng.choice([-1, 0, 20, True])),
+                    None,
+                    {},
+                ])
+                try:
+                    ok = _endpoint_is_loopback(endpoint)
+                    ip_ok = _is_loopback_ip(host)
+                    got = inference_config(cfg)
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                if not isinstance(ok, bool) or not isinstance(ip_ok, bool):
+                    crashes.append("type")
+                    break
+                if got is not None and (not ok or not got["endpoint"].startswith(("http://", "https://"))):
+                    crashes.append(got["endpoint"])
                     break
         self.assertEqual(crashes, [])
 

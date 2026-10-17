@@ -1479,6 +1479,8 @@ def inference_config(cfg):
     if not _endpoint_is_loopback(endpoint):
         log(f"inference endpoint refused (not loopback): {endpoint}", "WARN")
         return None
+    if inf.get("max_answer_chars") is True or inf.get("timeout_sec") is True:
+        return None
     try:
         max_chars = int(inf.get("max_answer_chars") or 2000)
         timeout = int(inf.get("timeout_sec") or 180)
