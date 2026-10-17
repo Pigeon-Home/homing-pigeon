@@ -33,10 +33,12 @@ from runner.runner import (
     _env_name_in,
     _firewall_posture,
     _host_log_tail,
+    _label_auth,
     _local_watch,
     _oracle_watch_enabled,
     _parse_iptables_policy,
     _parse_ufw,
+    _tail_marked,
     _yara_hits,
     _yara_rules_text,
     check_policy_constraints,
@@ -1600,6 +1602,91 @@ class AuditFuzzTest(unittest.TestCase):
                         break
                 if got is not None and not (0.0 <= got <= 1.0):
                     crashes.append(got)
+                    break
+        self.assertEqual(crashes, [])
+
+
+class AuthLineTest(unittest.TestCase):
+    def test_each_mark_is_tagged_once_and_case_does_not_matter(self):
+        cases = (
+            ("Failed password for root", "T1110"),
+            ("AUTHENTICATION FAILURE", "T1110"),
+            ("Invalid user bob", "T1110"),
+            ("sudo: bob : COMMAND=/bin/id", "T1548.003"),
+            ("useradd bob", "T1136"),
+            ("USERMOD bob", "T1136"),
+            ("groupadd wheel", "T1136"),
+        )
+        for line, attack in cases:
+            tagged = _label_auth(line)
+            tag = "[" + attack + "]"
+            self.assertTrue(tagged.endswith(tag), tagged)
+            self.assertEqual(tagged.count(tag), 1)
+            self.assertEqual(_label_auth(tagged), tagged)
+        self.assertEqual(_label_auth("kernel: error: disk full"),
+                         "kernel: error: disk full")
+        self.assertEqual(_label_auth(None), None)
+        self.assertEqual(_label_auth(1), 1)
+        both = _label_auth("failed password sudo: bob")
+        self.assertIn("[T1110]", both)
+        self.assertNotIn("[T1548.003]", both)
+
+    def test_a_zero_cap_keeps_nothing_and_a_long_line_is_cut(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "auth.log")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("ok\n" + ("failed password " + ("x" * 400)) + "\n")
+            self.assertEqual(_tail_marked(path, ("failed password",), 0), [])
+            self.assertEqual(_tail_marked(path, ("failed password",), True), [])
+            self.assertEqual(_tail_marked(path, ("failed password",), -1), [])
+            self.assertEqual(_tail_marked(path, "failed", 5), [])
+            kept = _tail_marked(path, ("failed password",), 5)
+        self.assertEqual(len(kept), 1)
+        self.assertLessEqual(len(kept[0]), 240)
+        self.assertTrue(kept[0].lower().startswith("failed password"))
+        self.assertIsNone(_tail_marked("/no/such/auth.log", ("error",)))
+
+
+class AuthLineFuzzTest(unittest.TestCase):
+    def test_random_lines_and_log_bytes_do_not_raise(self):
+        rng = random.Random(20261017)
+        marks = (
+            "failed password", "authentication failure", "invalid user",
+            "sudo:", "useradd", "usermod", "groupadd",
+        )
+        crashes = []
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "syslog")
+            for _ in range(200):
+                line = "".join(chr(rng.randrange(32, 127))
+                               for _ in range(rng.randrange(0, 80)))
+                if rng.randrange(3) == 0:
+                    line = rng.choice(marks).upper() + " " + line
+                blob = bytes(rng.randrange(0, 256) for _ in range(rng.randrange(0, 300)))
+                cap = rng.choice([0, 1, 3, 20, -1, True, None])
+                try:
+                    tagged = _label_auth(line)
+                    with open(path, "wb") as fh:
+                        fh.write(blob)
+                    kept = _tail_marked(path, marks, cap)
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                if not isinstance(tagged, str):
+                    crashes.append(("tag", type(tagged).__name__))
+                    break
+                if not isinstance(kept, list):
+                    crashes.append(("kept", type(kept).__name__))
+                    break
+                if isinstance(cap, int) and not isinstance(cap, bool) and cap > 0:
+                    if len(kept) > cap:
+                        crashes.append(("cap", len(kept)))
+                        break
+                elif kept:
+                    crashes.append(("empty", cap))
+                    break
+                if any(not isinstance(item, str) or len(item) > 240 for item in kept):
+                    crashes.append(("item", kept[:1]))
                     break
         self.assertEqual(crashes, [])
 

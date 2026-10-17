@@ -5966,6 +5966,8 @@ _AUTH_LINE_ATTACK = (
 
 def _label_auth(line):
     """Append an ATT&CK id when a line is an auth event. Otherwise unchanged."""
+    if not isinstance(line, str):
+        return line
     low = line.lower()
     for mark, attack in _AUTH_LINE_ATTACK:
         if mark in low:
@@ -5996,10 +5998,14 @@ def _tail_marked(path, markers, max_lines=20):
     if size > 4096 and lines:
         lines = lines[1:]
     kept = []
+    if not isinstance(markers, (list, tuple)):
+        return []
     for line in lines:
         low = line.lower()
-        if any(mark in low for mark in markers):
+        if any(isinstance(mark, str) and mark in low for mark in markers):
             kept.append(line.strip()[:240])
+    if isinstance(max_lines, bool) or not isinstance(max_lines, int) or max_lines < 1:
+        return []
     return kept[-max_lines:]
 
 
