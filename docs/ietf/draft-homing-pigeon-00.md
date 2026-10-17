@@ -9,7 +9,7 @@ Author: Pigeon-Home (editor)
 
 This document is not an IETF standard and is not the product of a working group. Publication as an RFC, if it happens, would be on the Independent Stream.
 
-This revision specifies the on-wire messages and the receiver checks. It replaces the shorter narrative that was first committed in this file. The living implementation notes remain `PROTOCOL.md` in `github.com/Pigeon-Home/homing-pigeon` at commit `205f74e`. Product release numbers are not protocol versions.
+This revision specifies the on-wire messages and the receiver checks. The living implementation notes are in `PROTOCOL.md` in the homing-pigeon repository. Product release numbers are not protocol versions.
 
 ## Abstract
 
@@ -45,6 +45,8 @@ Submitter                         Mailbox                         Runner
     |<--------------------------------|                               |
 ```
 
+The deployment this protocol is written for is a person operating their own machines from a cloud-resident agent. The person holds the mailbox and the secret; the agent holds neither the host nor a network path to it. Email is the path that already exists between them. The runner is deliberately plain: it executes what the signature authorizes, on the owner's host, under the owner's account.
+
 Version negotiation is not a handshake. The message carries `v`. This document defines `v` = 1 only. A receiver that does not implement version 1 MUST reject the message.
 
 ### Why specify this publicly
@@ -52,6 +54,12 @@ Version negotiation is not a handshake. The message carries `v`. This document d
 The protocol is specified in the open so that a submitter does not need the runner's source code. Any implementation of this document can submit jobs: the subject, the JSON object, and the MAC are all specified here, and the reference transport is email, which the submitter already speaks.
 
 Two things are out of scope for this document and are established out of band: the mailbox address, and the shared secret. The sender asks the owner which address to use, and the owner provides the secret with it. Neither is discovered from the mail. Once the sender knows the address, the secret, and this specification, no further coordination is required.
+
+### Relationship to later versions
+
+This document specifies version 1 and is not updated to track the implementation. The reference implementation has moved to protocol version 2. Version 2 changes the `v` value and adds a minimum-entropy requirement for the shared secret (Section 16.3); its receivers reject version 1 messages unless the operator explicitly opts in to accepting them. Nothing else in the version 1 exchange changes shape.
+
+Later work also layers behavior this document scopes out (Section 4) onto the base exchange: a local disclosure policy on results, queries against retained output, attestations, and task boards. Those behaviors ride in extra members (Section 8); they do not redefine any message specified here. One consequence a submitter needs: a receiver layered with a disclosure policy can withhold result output that a version 1 receiver would send, so the guidance in Section 13.2 binds only where no such policy is in force.
 
 ## 2. Requirements Language
 
@@ -81,7 +89,7 @@ LOCAL: a parameter or a check this document allows a receiver to set for itself.
 
 This document specifies subjects, the signed object, the MAC, `key_id`, `reply_to`, replay, freshness, the `job` message, and the `result` message.
 
-This document does not specify disclosure policy, queries, attestations, task boards, sensors, confinement, installers, or local models. A job MAY carry extra members for those uses. Receivers that do not implement them MUST ignore unknown members (Section 8) and MUST still reject an unknown `v` or an unknown job `kind` (Section 12).
+This document does not specify disclosure policy, queries, attestations, task boards, sensors, confinement, installers, or local models. A job MAY carry extra members for those uses. Receivers that do not implement them MUST ignore unknown members (Section 8) and MUST still reject an unknown `v` or an unknown job `kind` (Section 12). Section 1 describes how those uses relate to this document.
 
 ## 5. Transport Binding
 
@@ -243,7 +251,7 @@ The `sig` line above is abbreviated. On the wire it is 96 hex digits.
 
 ### 11.1. issued_at
 
-`issued_at` is UTC, `YYYY-MM-DDTHH:MM:SSZ`. A missing timezone MUST be rejected. A value that does not parse MUST be rejected.
+`issued_at` is an ISO 8601 timestamp. It MUST carry a timezone designator, `Z` or a numeric offset. A value without a timezone MUST be rejected. A value that does not parse MUST be rejected. Senders SHOULD use UTC in the form `YYYY-MM-DDTHH:MM:SSZ`.
 
 Let `age` be the runner's clock minus `issued_at`, in seconds.
 
@@ -263,7 +271,7 @@ The receiver MUST take the result address only from this member. The email `From
 
 `kind` `ping` carries no script. The runner MUST NOT start a script. The result has `kind` `ping`.
 
-`kind` `exec` requires exactly one of `script` or `script_url`. If both are present, the receiver MUST use `script_url` and MUST ignore `script`.
+`kind` `exec` requires at least one of `script` or `script_url`. If neither is present, the receiver MUST reject the job (Section 12). If both are present, the receiver MUST use `script_url` and MUST ignore `script`.
 
 If `script_sha384` is present, the receiver MUST hash the script octets with SHA-384 and MUST reject the job if the digest differs. The digest is 96 lowercase hex digits.
 
@@ -275,7 +283,7 @@ The script is written to a new file in a fresh directory for this `job_id` and r
 <interpreter...> <script-file> <args...>
 ```
 
-The working directory is that job directory. On timeout the receiver MUST kill the process tree. `timeout_sec` above the receiver's maximum MUST be reduced to that maximum or the job MUST be rejected. The receiver MUST document which it does. The RECOMMENDED maximum is 3600.
+The working directory is that job directory. On timeout the receiver MUST kill the process tree. A `timeout_sec` above the receiver's maximum MUST be reduced to that maximum; the job MUST NOT be rejected for an excessive timeout alone. The RECOMMENDED maximum is 3600.
 
 ### 11.4. files
 
@@ -352,7 +360,7 @@ If `timed_out` is true, `exit_code` MUST be -1.
 
 Each stream MAY be cut at a LOCAL byte limit. The RECOMMENDED limit is 100000 octets. When a stream is cut, its `*_truncated` member MUST be true. When it is not cut, that member MUST be false.
 
-A result specified here includes the output the receiver chose to send. Omitting output for a local privacy policy is outside version 1. A submitter MUST NOT assume output will be withheld.
+A result specified here includes the output the receiver chose to send. Omitting output for a local privacy policy is outside version 1. A submitter MUST NOT assume output will be withheld. Where a disclosure policy is layered on the exchange (Section 1), this guidance does not hold and the submitter MUST NOT rely on it.
 
 ## 14. Receiver Processing
 
@@ -405,6 +413,8 @@ One captured message is enough to test candidate secrets. More messages do not r
 
 The secret SHOULD be 32 octets from a cryptographic generator, stored as characters and used as UTF-8. Sixty-four hexadecimal characters are the usual form. A long human sentence is not a substitute. The secret SHOULD NOT be the mailbox password.
 
+Version 2 of this protocol makes a floor normative: the shared secret MUST carry at least 128 bits of entropy, estimated as the secret's length times log2 of its alphabet size, and a sender MUST refuse to sign with a secret below that floor. The requirement answers the offline-guessing attack above. It does not change version 1 processing.
+
 ### 16.4. Headers are not authentication
 
 `From`, `Reply-To`, `Sender`, and `To` MUST NOT satisfy the MAC and MUST NOT select `reply_to`. An invalid MAC MUST NOT cause any result to be sent.
@@ -427,7 +437,7 @@ The splitter uses the last `,"sig":"`. A string value that contains that sequenc
 
 ### 16.9. Output
 
-Version 1 results carry `stdout` and `stderr` up to the truncation limit. A receiver that wants to withhold output is implementing a different policy. That policy is not signaled by `v`.
+Version 1 results carry `stdout` and `stderr` up to the truncation limit. A receiver that wants to withhold output is implementing a different policy. That policy is not signaled by `v`. How that layering relates to this document is stated in Section 1.
 
 ### 16.10. At-least-once
 
