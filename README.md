@@ -570,4 +570,4 @@ Sigstore build provenance. The suite is
 - GitLab: https://gitlab.com/pigeon-home/homing-pigeon
 - SourceForge: https://sourceforge.net/projects/homing-pigeon/
 - "You'll never find a programming language that frees you from the burden of clarifying your ideas." — [xkcd 568](https://xkcd.com/568/)
-- Unless the language is spoken and have AIs or SIs.
+- Unless the language is spoken and you have AIs or SIs. Plus an extensive paragraph of context ;)
