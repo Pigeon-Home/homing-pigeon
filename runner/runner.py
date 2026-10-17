@@ -121,13 +121,29 @@ def _append_security_event(base_dir: str, event: dict) -> None:
         return
     path = os.path.join(base_dir, "security-events.jsonl")
     try:
-        with open(path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+        flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(path, flags, 0o600)
+        try:
+            os.write(fd, (json.dumps(event, ensure_ascii=False) + "\n").encode("utf-8"))
+        finally:
+            os.close(fd)
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
         with open(path, "r", encoding="utf-8") as f:
             lines = f.readlines()
         if len(lines) > 5000:
-            with open(path, "w", encoding="utf-8") as f:
-                f.writelines(lines[-5000:])
+            flags = os.O_WRONLY | os.O_TRUNC
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            fd = os.open(path, flags)
+            try:
+                os.write(fd, "".join(lines[-5000:]).encode("utf-8"))
+            finally:
+                os.close(fd)
     except Exception:
         pass
 

@@ -262,6 +262,22 @@ def _path(base_dir: str) -> str:
 _STORE_LOCK = threading.RLock()
 
 
+def _write_private(path: str, data: bytes, append: bool) -> None:
+    """Write bytes without following a symlink. The file is mode 0600."""
+    flags = os.O_WRONLY | os.O_CREAT | (os.O_APPEND if append else os.O_TRUNC)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(path, flags, 0o600)
+    try:
+        os.write(fd, data)
+    finally:
+        os.close(fd)
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+
+
 def store_alert(base_dir: str, record: dict) -> None:
     """Append one alert record; keep the file capped at MAX_STORED lines.
 
@@ -281,16 +297,15 @@ def store_alert(base_dir: str, record: dict) -> None:
         return
     path = _path(base_dir)
     with _STORE_LOCK:
-        with open(path, "a", encoding="utf-8") as f:
-            f.write(line)
         try:
+            _write_private(path, line.encode("utf-8"), True)
             with open(path, "r", encoding="utf-8") as f:
                 lines = f.readlines()
+            if len(lines) > MAX_STORED:
+                body = "".join(lines[-MAX_STORED:]).encode("utf-8")
+                _write_private(path, body, False)
         except OSError:
             return
-        if len(lines) > MAX_STORED:
-            with open(path, "w", encoding="utf-8") as f:
-                f.writelines(lines[-MAX_STORED:])
 
 
 def load_alerts(base_dir: str, sensor=None, severity_floor=None,

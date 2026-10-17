@@ -39,6 +39,7 @@ from runner.runner import (
     _artifact_scan_enabled,
     _clam_hits,
     _clam_sig_line,
+    _append_security_event,
     _canary_state,
     _endpoint_is_loopback,
     _is_loopback_ip,
@@ -2747,6 +2748,77 @@ class QueryWindowFuzzTest(unittest.TestCase):
             os.symlink(target, tmp)
             try:
                 check_rate_limit("owner", {"max_queries_per_hour": 2}, path)
+            except Exception as exc:
+                crashes.append(type(exc).__name__)
+            with open(target, encoding="utf-8") as fh:
+                if fh.read() != "keep":
+                    crashes.append("followed")
+        self.assertEqual(crashes, [])
+
+
+class StateFileTest(unittest.TestCase):
+    def test_alert_and_security_files_are_owner_only(self):
+        with tempfile.TemporaryDirectory() as d:
+            store_alert(d, {"sensor": "host", "severity": "low", "title": "ok"})
+            _append_security_event(d, {"resources": {"cpu": 0.9}})
+            _append_security_event(d, {"bad": {1, 2}})
+            alert = os.path.join(d, "senses.jsonl")
+            events = os.path.join(d, "security-events.jsonl")
+            self.assertEqual(_mode(alert), 0o600)
+            self.assertEqual(_mode(events), 0o600)
+            with open(alert, encoding="utf-8") as fh:
+                self.assertIn("host", fh.read())
+            target = os.path.join(d, "target")
+            with open(target, "w", encoding="utf-8") as fh:
+                fh.write("keep")
+            os.remove(alert)
+            os.remove(events)
+            os.symlink(target, alert)
+            os.symlink(target, events)
+            store_alert(d, {"sensor": "host", "title": "pwned"})
+            _append_security_event(d, {"resources": {"cpu": 1}})
+            with open(target, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), "keep")
+
+
+class StateFileFuzzTest(unittest.TestCase):
+    def test_random_records_do_not_follow_a_symlink(self):
+        rng = random.Random(20261017)
+        crashes = []
+        with tempfile.TemporaryDirectory() as d:
+            for _ in range(200):
+                record = rng.choice([
+                    {"sensor": "host", "n": rng.randrange(0, 4)},
+                    {"sensor": "host", "n": float("nan")},
+                    None,
+                    ["x"],
+                ])
+                event = rng.choice([
+                    {"resources": {"cpu": 0.1}},
+                    {"bad": {1}},
+                    None,
+                ])
+                try:
+                    store_alert(d, record)
+                    _append_security_event(d, event)
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+            for name in ("senses.jsonl", "security-events.jsonl"):
+                path = os.path.join(d, name)
+                if os.path.isfile(path) and not os.path.islink(path):
+                    if _mode(path) != 0o600:
+                        crashes.append(oct(_mode(path)))
+            target = os.path.join(d, "target")
+            with open(target, "w", encoding="utf-8") as fh:
+                fh.write("keep")
+            nested = os.path.join(d, "nested")
+            os.makedirs(nested)
+            os.symlink(target, os.path.join(nested, "senses.jsonl"))
+            os.symlink(target, os.path.join(nested, "security-events.jsonl"))
+            try:
+                store_alert(nested, {"sensor": "host"})
+                _append_security_event(nested, {"resources": {}})
             except Exception as exc:
                 crashes.append(type(exc).__name__)
             with open(target, encoding="utf-8") as fh:
