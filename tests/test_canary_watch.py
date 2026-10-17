@@ -74,6 +74,36 @@ class CanaryQuietTest(unittest.TestCase):
 
 
 class CanaryTripTest(unittest.TestCase):
+    def test_crlf_rewrite_is_not_a_trip(self):
+        # Regression: on Windows the original plant wrote text mode, so
+        # the file landed on disk with CRLF endings while the snapshot
+        # hashed the LF string — every canary read as modified forever
+        # (build-windows CI failure, 2026-10-16). Line-ending
+        # translation alone must stay quiet, on every platform.
+        tmp = tempfile.mkdtemp()
+        R._canary_watch(tmp)
+        for name in R._CANARY_NAMES:
+            path = _canary_path(tmp, name)
+            with open(path, "rb") as fh:
+                data = fh.read()
+            with open(path, "wb") as fh:
+                fh.write(data.replace(b"\n", b"\r\n"))
+        out = R._canary_watch(tmp)
+        self.assertNotIn("TRIPPED", out)
+        self.assertIn("untouched", out)
+
+    def test_content_change_with_crlf_still_trips(self):
+        tmp = tempfile.mkdtemp()
+        R._canary_watch(tmp)
+        path = _canary_path(tmp, "passwords.txt")
+        with open(path, "rb") as fh:
+            data = fh.read().replace(b"\n", b"\r\n")
+        with open(path, "wb") as fh:
+            fh.write(data + b"hunter2\r\n")
+        out = R._canary_watch(tmp)
+        self.assertIn("TRIPPED", out)
+        self.assertIn("passwords.txt", out)
+
     def test_modify_trips_by_name(self):
         tmp = tempfile.mkdtemp()
         R._canary_watch(tmp)

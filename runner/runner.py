@@ -5030,10 +5030,13 @@ _CANARY_MARKER = "HOMING-PIGEON CANARY: this file is a tripwire."
 
 
 def _canary_state(path):
-    """sha1[:12] of a canary file's content.
+    """sha1[:12] of a canary file's content, line endings normalized.
 
-    None when the file is missing; "?" when it exists but cannot be
-    read (an unreadable canary is not a trip). Never raises.
+    The hash is taken over the content with CRLF folded to LF: planting
+    writes exact bytes, but a text editor or tool on Windows may
+    rewrite the file with CRLF endings, and that translation alone is
+    not a trip. None when the file is missing; "?" when it exists but
+    cannot be read (an unreadable canary is not a trip). Never raises.
     """
     try:
         with open(path, "rb") as fh:
@@ -5042,7 +5045,7 @@ def _canary_state(path):
         return None
     except OSError:
         return "?"
-    return hashlib.sha1(data).hexdigest()[:12]
+    return hashlib.sha1(data.replace(b"\r\n", b"\n")).hexdigest()[:12]
 
 
 def _plant_canary(path):
@@ -5058,11 +5061,11 @@ def _plant_canary(path):
         "canary-token: " + token + "\n"
     )
     try:
-        with open(path, "w", encoding="utf-8") as fh:
-            fh.write(body)
+        with open(path, "wb") as fh:
+            fh.write(body.encode("utf-8"))
     except OSError:
         return None
-    return hashlib.sha1(body.encode("utf-8")).hexdigest()[:12]
+    return _canary_state(path)
 
 
 def _canary_watch(base_dir, max_chars=2000):
