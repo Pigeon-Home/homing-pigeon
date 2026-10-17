@@ -1772,10 +1772,13 @@ ASK_AGENT_SYSTEM = (
     "log says.\n"
     "\n"
     "How to answer:\n"
-    "- Investigate before you answer. You have tools: read_file, list_dir, "
-    "write_file, run. Open the retained files and the runner log instead "
-    "of guessing. The text under Output in the user message is a short "
-    "index, not the whole record.\n"
+    "- The text under Output is already the recent job index and the "
+    "log tail. Answer a summary, a count, or a status question from "
+    "that text. Do not open files for those.\n"
+    "- You have tools: read_file, list_dir, write_file, run. Open one "
+    "retained file only when the question asks for that job's script, "
+    "output, or exit code, or when the index says the kind was not "
+    "recorded. Do not open several files in one turn.\n"
     "- A kind of 'kind not recorded' means the type was not saved. It does "
     "not mean the job failed. Read the file. The script, the output, and "
     "the exit code are the status.\n"
@@ -1990,6 +1993,7 @@ def _inference_chat(cfg, messages, tools, opener, timeout):
         roles = "?"
     log(f"inference chat call: {len(messages)} message(s) [{roles}], "
         f"{len(body_bytes)} byte payload, timeout={timeout}s")
+    started = time.monotonic()
     req = Request(
         cfg.get("endpoint", "").rstrip("/") + "/chat/completions",
         data=body_bytes,
@@ -2002,6 +2006,7 @@ def _inference_chat(cfg, messages, tools, opener, timeout):
             raw = resp.read(1_000_000)
         parsed = json.loads(raw.decode("utf-8"))
         msg = parsed["choices"][0]["message"]
+        log(f"inference chat call returned in {time.monotonic() - started:.0f}s")
     except HTTPError as e:
         try:
             err_body = e.read().decode("utf-8", "replace")[:500]
@@ -6313,6 +6318,7 @@ function add(who, text, cls) {
   wrap.appendChild(document.createTextNode(text));
   log.appendChild(wrap);
   wrap.scrollIntoView({block: "nearest"});
+  return wrap;
 }
 document.getElementById("f").onsubmit = async (e) => {
   e.preventDefault();
@@ -6321,6 +6327,9 @@ document.getElementById("f").onsubmit = async (e) => {
   add("You", text, "you");
   q.value = "";
   send.disabled = true;
+  const pending = add("Oracle",
+    "Working. This machine's model often takes a few minutes per step. The answer replaces this line.",
+    "oracle");
   try {
     const r = await fetch("/ask", {
       method: "POST",
@@ -6331,11 +6340,13 @@ document.getElementById("f").onsubmit = async (e) => {
       body: JSON.stringify({question: text})
     });
     const data = await r.json().catch(() => null);
+    pending.remove();
     if (data && data.answer) add("Oracle", data.answer, "oracle");
     else if (data && data.detail) add("Oracle", data.detail, "oracle");
     else if (r.status === 403) add("Oracle", "The chat session expired. Reload the page and ask again.", "oracle");
     else add("Oracle", "The page could not reach the local Oracle.", "oracle");
   } catch (err) {
+    pending.remove();
     add("Oracle", "The page could not reach the local Oracle.", "oracle");
   }
   send.disabled = false;

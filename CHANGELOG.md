@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.7.14 - 2026-10-16
+
+### The chat shows that the model is working
+- A summary is answered from the index already in the prompt. The
+  model is no longer told to open every retained file first. One
+  file, and only when the question asks for that job's script,
+  output, or exit code.
+- The page says "Working" as soon as the question is sent. A local
+  3B model on a laptop can take a few minutes, and the page used
+  to look frozen.
+- A finished model call logs how many seconds it took.
+
 ## 3.7.13 - 2026-10-16
 
 ### Low-profile senses on the watches that already exist
