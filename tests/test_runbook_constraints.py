@@ -236,5 +236,89 @@ class HostDriftTest(unittest.TestCase):
             self.assertIn(code, (0, 1, 2))
 
 
+class PolicyPathTest(unittest.TestCase):
+    """An interpreter that is not on the allowlist never gets a pass.
+
+    This is the static half of the policy row. The mail handler must
+    call check_key_policy, and it must not start a process itself.
+    """
+
+    def test_every_off_list_interpreter_is_denied(self):
+        from runner.runner import check_key_policy
+
+        allowed = [["pwsh", "-NoProfile"]]
+        policies = {"k": {"allowed_interpreters": allowed}}
+        cfg = {"default_interpreter": ["pwsh", "-NoProfile"]}
+        off = [
+            ["bash", "-c"],
+            ["/bin/bash", "-c"],
+            ["pwsh"],
+            ["pwsh", "-NoProfile", "-Command"],
+            ["python3"],
+            ["cmd", "/c"],
+        ]
+        for interp in off:
+            reason = check_key_policy(
+                policies, "k", cfg, {"kind": "exec", "interpreter": interp})
+            self.assertIsNotNone(reason, interp)
+            self.assertIn("not allowed", reason)
+
+        # The one listed shape is the only pass.
+        self.assertIsNone(check_key_policy(
+            policies, "k", cfg,
+            {"kind": "exec", "interpreter": ["pwsh", "-NoProfile"]}))
+
+    def test_an_empty_policy_object_is_not_an_allowlist(self):
+        from runner.runner import check_key_policy
+
+        # {} is falsy, so it is "no entry". default_deny is what
+        # closes that. Without it the key stays loose, on purpose.
+        self.assertIsNone(check_key_policy(
+            {"k": {}}, "k", {}, {"kind": "exec", "interpreter": ["bash", "-c"]}))
+        reason = check_key_policy(
+            {"k": {}}, "k", {"key_policies_default_deny": True},
+            {"kind": "exec", "interpreter": ["bash", "-c"]})
+        self.assertIn("default_deny", reason)
+
+    def test_handle_mail_checks_policy_and_does_not_spawn(self):
+        import ast
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "runner", "runner.py")
+        with open(path, encoding="utf-8") as fh:
+            tree = ast.parse(fh.read())
+        handle = next(
+            n for n in tree.body
+            if isinstance(n, ast.FunctionDef) and n.name == "handle_mail")
+        names = [
+            n.func.attr if isinstance(n.func, ast.Attribute) else getattr(n.func, "id", "")
+            for n in ast.walk(handle) if isinstance(n, ast.Call)
+        ]
+        self.assertIn("check_key_policy", names)
+        self.assertNotIn("Popen", names)
+        self.assertNotIn("system", names)
+
+
+class HalfReadTest(unittest.TestCase):
+    def test_a_reply_that_dies_mid_read_is_a_rejection(self):
+        from runner.runner import ask_model
+
+        def die(req, timeout=60):
+            class Resp:
+                def read(self, n):
+                    raise ConnectionResetError("mid-stream")
+                def __enter__(self):
+                    return self
+                def __exit__(self, *a):
+                    return False
+            return Resp()
+
+        out = ask_model(
+            {"endpoint": "http://127.0.0.1:9/v1", "model": "test",
+             "timeout_sec": 1},
+            "when?", "12:00", 100, opener=die)
+        self.assertEqual(out.get("rejected"), "inference_error")
+
+
 if __name__ == "__main__":
     unittest.main()
