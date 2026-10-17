@@ -4221,11 +4221,23 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 try:
                     hits = _detection.evaluate_rules(job, result)
                     if hits:
-                        result["detection_hits"] = hits
+                        # Tag each hit with its ATT&CK technique when present.
+                        tagged = []
+                        for h in hits:
+                            tech = h.get("technique") if isinstance(h, dict) else None
+                            tagged.append(_detection.tag_alert(h, tech) if tech else h)
+                        result["detection_hits"] = tagged
                     baseline = _detection.update_baseline(base_dir, job, result)
                     anomaly = _detection.baseline_anomaly(baseline, job, result)
                     if anomaly:
                         result["detection_anomaly"] = anomaly
+                    # Optional multi-step plan budget check.
+                    plan = job.get("plan") if isinstance(job, dict) else None
+                    if isinstance(plan, list):
+                        allowed, reason = _detection.check_plan_budget(plan, cfg or {})
+                        result["plan_budget_ok"] = allowed
+                        if not allowed and reason:
+                            result["plan_budget_reason"] = reason
                 except Exception:
                     pass
             declared = job.get("result_policy") if isinstance(job.get("result_policy"), dict) else {}
