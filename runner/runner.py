@@ -1776,6 +1776,11 @@ ASK_AGENT_SYSTEM = (
     "- The text under Output is already the recent job index and the "
     "log tail. Answer a summary, a count, or a status question from "
     "that text. Do not open files for those.\n"
+    "- For a summary or status answer, name the jobs from the Job "
+    "index: the id, the kind, and the result. The runner log tail "
+    "below the index is about the runner itself. Mailbox polls, "
+    "sign-ins, and startup lines in the log are not jobs, and a "
+    "warning there is not a job failing.\n"
     "- You have tools: read_file, list_dir, write_file, run. Open one "
     "retained file only when the question asks for that job's script, "
     "output, or exit code, or when the index says the kind was not "
@@ -6121,15 +6126,11 @@ def _clam_hits(work, targets):
     return hits
 
 
-def _retained_job_summary(data, job_id) -> str:
-    """One retained job as context for the Oracle.
+def _job_facts(data, job_id):
+    """(kind, status, when) for one retained job, as plain facts.
 
-    Small local models answer concrete questions ("what did this job
-    do?", "did it succeed?") only when the record carries the job's
-    kind, its script, its real timestamp, and its exit status, not
-    just the output text. A missing kind is "kind not recorded".
-    That is not a failure, and it is not the word "unknown", which a
-    small model will repeat as the status.
+    Shared by the per-job summary and the job index at the top of
+    the Oracle context, so the two can never disagree.
     """
     kind = data.get("kind") if isinstance(data.get("kind"), str) else ""
     kind = kind or "kind not recorded"
@@ -6145,6 +6146,20 @@ def _retained_job_summary(data, job_id) -> str:
             when = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
     except (TypeError, ValueError, OverflowError):
         pass
+    return kind, status, when
+
+
+def _retained_job_summary(data, job_id) -> str:
+    """One retained job as context for the Oracle.
+
+    Small local models answer concrete questions ("what did this job
+    do?", "did it succeed?") only when the record carries the job's
+    kind, its script, its real timestamp, and its exit status, not
+    just the output text. A missing kind is "kind not recorded".
+    That is not a failure, and it is not the word "unknown", which a
+    small model will repeat as the status.
+    """
+    kind, status, when = _job_facts(data, job_id)
     lines = [f"job {job_id} ({kind}, {status}, {when})"]
     script = data.get("script") if isinstance(data.get("script"), str) else ""
     if script.strip():
@@ -6209,6 +6224,7 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
         if cap < 0:
             cap = 0
     parts = []
+    facts = []
     chosen = rows if n is None else rows[:n]
     for _mtime, path, job_id in chosen:
         try:
@@ -6218,7 +6234,18 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
             continue
         if not isinstance(data, dict):
             continue
+        kind, status, when = _job_facts(data, job_id)
+        facts.append(f"job {job_id} ({kind}, {status}, {when})")
         parts.append(_retained_job_summary(data, job_id))
+    if facts:
+        # The index comes first on purpose: it is the whole job
+        # record in a few short lines a small model can read back,
+        # it survives the max_chars cap that may cut the detailed
+        # blocks below, and it keeps a summary question from being
+        # answered out of the log tail's noise instead.
+        parts.insert(0, "Job index (newest first; this is the record "
+                        "for summary and status questions):\n"
+                        + "\n".join(facts))
     blob = "\n\n".join(parts).strip()
     if not blob:
         blob = "(no job output retained yet)"

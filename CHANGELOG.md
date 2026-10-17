@@ -38,6 +38,20 @@
   the current step, fed by a token-gated /status on the same
   loopback server.
 
+### A summary comes from a job index, not the log
+
+- Field report: asked for a summary of the job status, the Oracle
+  narrated the runner log tail instead — mailbox authentication
+  warnings and startup lines — and never named a job. The context
+  it was handed had no index to read back: detailed job blocks
+  (script and output), then a noisy log. oracle_context now leads
+  with a computed Job index — one line per job: id, kind, result,
+  time, newest first — ahead of the detail blocks, where it also
+  survives the context size cap. The chat instructions now say a
+  summary names jobs from the index, and that the log tail is
+  about the runner itself: polls, sign-ins, and startup lines are
+  not jobs, and a warning there is not a job failing.
+
 ## 3.7.13 - 2026-10-16
 
 ### Low-profile senses on the watches that already exist
