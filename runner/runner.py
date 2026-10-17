@@ -5410,7 +5410,11 @@ def main() -> int:
             poll_once(cfg, base_dir, seen, seen_path, opts=args)
             if auth_failed:
                 auth_failed = False
-                log("gmail authentication recovered")
+                # WARN, not INFO. The per-minute cap drops INFO once a
+                # busy process is full, which hid this line from the
+                # mutation job's clean pytest run and can hide a real
+                # recovery on a chatty box.
+                log("gmail authentication recovered", "WARN")
         except OAuthRefreshError as e:
             # The refresh token is dead; only a human browser login fixes
             # it. Log locally every cycle, but shout to the Event Log once.

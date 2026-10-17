@@ -451,6 +451,12 @@ class OAuthLatchTest(unittest.TestCase):
                  mock.patch.object(setup, "is_tty", return_value=False), \
                  mock.patch.object(setup, "needs_setup", return_value=None), \
                  mock.patch.object(sys, "argv", ["runner", "--config", path]):
+                # The log budget is process-global. Pytest (the mutation
+                # job's clean run) can fill the minute before this test,
+                # and an INFO line would be dropped. Start from empty.
+                runner._LOG_MINUTE = 0.0
+                runner._LOG_COUNT = 0
+                runner._LOG_DROPPED = 0
                 with self.assertRaises(KeyboardInterrupt):
                     runner.main()
             log_path = os.path.join(directory, "runner.log")
