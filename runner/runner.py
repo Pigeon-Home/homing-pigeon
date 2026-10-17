@@ -6239,9 +6239,11 @@ def _parse_socketfilterfw(text):
     if not isinstance(text, str):
         return None
     low = text.lower()
-    if "disabled" in low or "state = 0" in low:
+    # "disabled" contains the letters "enabled", and "state = 10"
+    # contains "state = 1". Match the words, not the substrings.
+    if re.search(r"\bdisabled\b", low) or re.search(r"state\s*=\s*0\b", low):
         return "firewall: macos application-firewall=off [T1562.004]"
-    if "enabled" in low or "state = 1" in low:
+    if re.search(r"\benabled\b", low) or re.search(r"state\s*=\s*1\b", low):
         return "firewall: macos application-firewall=on"
     return None
 

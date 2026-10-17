@@ -395,8 +395,9 @@ def do_wipe(backup_dir=None, no_backup=False):
                     "homing-pigeon.service"])
         print("wipe: systemd units disabled (if they existed)")
     elif sys.platform == "darwin":
-        _run_quiet(["launchctl", "unload",
-                    os.path.expanduser("~/Library/LaunchAgents/homing-pigeon.plist")])
+        _run_quiet(["launchctl", "bootout", "gui/%s" % os.getuid(),
+                    os.path.expanduser(
+                        "~/Library/LaunchAgents/com.homing-pigeon.runner.plist")])
         print("wipe: launchd job unloaded (if it existed)")
 
     dirs = _candidate_state_dirs()
@@ -1120,7 +1121,10 @@ def uninstall_macos():
     path = os.path.expanduser("~/Library/LaunchAgents/com.homing-pigeon.runner.plist")
     uid = os.getuid()
     run(["launchctl", "bootout", f"gui/{uid}", path])
-    os.remove(path)
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
 
 
 def install_freebsd(dst_dir: str, cfg_path: str, extra=()):
