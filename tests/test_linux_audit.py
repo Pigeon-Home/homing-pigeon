@@ -99,6 +99,8 @@ class AuditMutations(unittest.TestCase):
             for base in (None, "", 5, os.path.join(d, "missing")):
                 write_audit_entry(base, "audience", "denied", "why")
                 bump_evaluated(base, "audience")
+            self.assertFalse(os.path.exists("security-audit.jsonl"))
+            self.assertFalse(os.path.exists(COUNTS_FILE))
             write_audit_entry(d, None, None, None, detail=object())
             path = os.path.join(d, "security-audit.jsonl")
             if os.path.isfile(path) and not os.path.islink(path):

@@ -307,6 +307,8 @@ def _bump_counts(base_dir, feature, decision):
     the counts path is replaced, not written through, and its old
     contents are not used.
     """
+    if not isinstance(base_dir, str) or not base_dir:
+        return
     try:
         path = os.path.join(base_dir, COUNTS_FILE)
         counts = {}
@@ -372,6 +374,8 @@ def write_audit_entry(base_dir, feature, decision, reason,
     Only names, counts, hashes and ids go in entries -- callers must
     never pass secret values, script text, or file contents.
     """
+    if not isinstance(base_dir, str) or not base_dir:
+        return
     try:
         max_lines = audit_max_lines(cfg or {})
         _enforce_bound(base_dir, max_lines)
