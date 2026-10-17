@@ -14,6 +14,7 @@ No external dependencies.
 """
 import json
 import os
+import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -139,42 +140,80 @@ def update_baseline(base_dir: str, job: Dict[str, Any],
                     result: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Update a tiny rolling baseline. Returns the current baseline.
 
-    Stores only counts and a few size samples. File stays small.
+    Stores only counts and a few size samples. The file is mode 0600.
+    A symlink at that path is not read and not written through.
     """
     if not isinstance(base_dir, str) or not base_dir:
         return {}
     path = os.path.join(base_dir, "detection-baseline.json")
     baseline = {"kinds": {}, "output_sizes": [], "updated": 0}
-    if os.path.exists(path):
+    if os.path.isfile(path) and not os.path.islink(path):
         try:
             with open(path, encoding="utf-8") as f:
-                baseline = json.load(f)
-        except Exception:
+                loaded = json.load(f)
+            if isinstance(loaded, dict):
+                baseline = loaded
+        except (OSError, ValueError):
             baseline = {"kinds": {}, "output_sizes": [], "updated": 0}
     if not isinstance(baseline, dict):
         baseline = {"kinds": {}, "output_sizes": [], "updated": 0}
-    kind = (job or {}).get("kind") or "unknown"
-    kinds = baseline.setdefault("kinds", {})
+    kind = "unknown"
+    if isinstance(job, dict):
+        raw_kind = job.get("kind")
+        if isinstance(raw_kind, str) and raw_kind and "\x00" not in raw_kind:
+            kind = raw_kind
+    kinds = baseline.get("kinds")
     if not isinstance(kinds, dict):
         kinds = {}
-        baseline["kinds"] = kinds
-    kinds[kind] = kinds.get(kind, 0) + 1
+    baseline["kinds"] = kinds
+    try:
+        kinds[kind] = int(kinds.get(kind, 0)) + 1
+    except (TypeError, ValueError):
+        kinds[kind] = 1
     if isinstance(result, dict):
         stdout = result.get("stdout") or ""
         if isinstance(stdout, str):
-            sizes = baseline.setdefault("output_sizes", [])
+            sizes = baseline.get("output_sizes")
             if not isinstance(sizes, list):
                 sizes = []
-                baseline["output_sizes"] = sizes
-            sizes.append(len(stdout))
-            if len(sizes) > 50:
-                baseline["output_sizes"] = sizes[-50:]
+            kept = []
+            for item in sizes:
+                try:
+                    kept.append(int(item))
+                except (TypeError, ValueError):
+                    continue
+            kept.append(len(stdout))
+            baseline["output_sizes"] = kept[-50:]
     baseline["updated"] = int(time.time())
+    tmp = path + ".tmp." + str(threading.get_ident())
+    fd = None
     try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(baseline, f)
-    except OSError:
-        pass
+        try:
+            os.unlink(tmp)
+        except FileNotFoundError:
+            pass
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(tmp, flags, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            fd = None
+            json.dump(baseline, f, allow_nan=False)
+        os.replace(tmp, path)
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
+    except (OSError, TypeError, ValueError):
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
     return baseline
 
 
