@@ -6356,7 +6356,10 @@ def oracle_page(token: str, model: str, ready: bool) -> str:
   .who { display: block; font: 11px/1 ui-sans-serif, system-ui, sans-serif;
          letter-spacing: 0.16em; text-transform: uppercase; color: #8d8678;
          margin-bottom: 0.3rem; }
-  .you { color: #e4c99a; }
+  .you { color: #e4c99a; align-self: flex-end; text-align: right;
+         max-width: 85%; }
+  .oracle { align-self: flex-start; max-width: 85%; }
+  .stamp { letter-spacing: 0.04em; text-transform: none; }
   form { position: sticky; bottom: 0; display: flex; gap: 0.55rem;
          padding: 1rem 0 1.3rem;
          background: linear-gradient(#14160f00, #14160f 28%); }
@@ -6394,12 +6397,26 @@ note.textContent = boot.ready
 const log = document.getElementById("log");
 const q = document.getElementById("q");
 const send = document.getElementById("send");
-function add(who, text, cls) {
+function stamp(d) {
+  const p = (n) => String(n).padStart(2, "0");
+  return p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+}
+function took(ms) {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return Math.floor(s / 60) + "m " + String(s % 60).padStart(2, "0") + "s";
+}
+function add(who, text, cls, note) {
   const wrap = document.createElement("div");
   wrap.className = "bubble " + cls;
   const label = document.createElement("span");
   label.className = "who";
   label.textContent = who;
+  if (note) {
+    const st = document.createElement("span");
+    st.className = "stamp";
+    st.textContent = " \\u00b7 " + note;
+    label.appendChild(st);
+  }
   wrap.appendChild(label);
   wrap.appendChild(document.createTextNode(text));
   log.appendChild(wrap);
@@ -6410,12 +6427,12 @@ document.getElementById("f").onsubmit = async (e) => {
   e.preventDefault();
   const text = q.value.trim();
   if (!text || send.disabled) return;
-  add("You", text, "you");
+  const t0 = Date.now();
+  add("You", text, "you", stamp(new Date(t0)));
   q.value = "";
   send.disabled = true;
-  const pending = add("Oracle", "Working…", "oracle");
+  const pending = add("Oracle", "Working…", "oracle", stamp(new Date(t0)));
   const pendingText = pending.childNodes[1];
-  const t0 = Date.now();
   let stepText = "";
   const paint = () => {
     const s = Math.floor((Date.now() - t0) / 1000);
@@ -6446,15 +6463,17 @@ document.getElementById("f").onsubmit = async (e) => {
     clearInterval(tick);
     clearInterval(poll);
     pending.remove();
-    if (data && data.answer) add("Oracle", data.answer, "oracle");
-    else if (data && data.detail) add("Oracle", data.detail, "oracle");
-    else if (r.status === 403) add("Oracle", "The chat session expired. Reload the page and ask again.", "oracle");
-    else add("Oracle", "The page could not reach the local Oracle.", "oracle");
+    const done = stamp(new Date()) + " \\u00b7 took " + took(Date.now() - t0);
+    if (data && data.answer) add("Oracle", data.answer, "oracle", done);
+    else if (data && data.detail) add("Oracle", data.detail, "oracle", done);
+    else if (r.status === 403) add("Oracle", "The chat session expired. Reload the page and ask again.", "oracle", done);
+    else add("Oracle", "The page could not reach the local Oracle.", "oracle", done);
   } catch (err) {
     clearInterval(tick);
     clearInterval(poll);
     pending.remove();
-    add("Oracle", "The page could not reach the local Oracle.", "oracle");
+    add("Oracle", "The page could not reach the local Oracle.", "oracle",
+        stamp(new Date()) + " \\u00b7 took " + took(Date.now() - t0));
   }
   send.disabled = false;
   q.focus();
