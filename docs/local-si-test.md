@@ -100,3 +100,52 @@ big-endian length, UTF-8 question, answer back the same way,
 `127.0.0.1` only). It was never implemented and was cut with the
 other broker transports. For volume testing today, use the in-process
 path or the real email transport.
+
+## Diagnose mode — the black-box gauntlet
+
+`--local-test` is a development loop. `--diagnose` is the opposite:
+a one-shot diagnostic that exercises the **real configured system**
+from outside and writes a verdict report.
+
+```
+python3 runner/runner.py --config config.json --diagnose
+python3 runner/runner.py --config config.json --diagnose --diagnose-timeout 60
+```
+
+Start the runner normally first (service or console). `--diagnose`
+is a separate process probing the same config, mailbox, model, and
+state directory. It does not start daemons or fix anything up; it
+measures the system as it is. Sections, in order:
+
+0. **banner** — version, protocol version, config path, state dir,
+   runner identity, platform.
+1. **config** — required keys present; the shared secret's length
+   and estimated entropy (never its value) and whether it passes the
+   startup entropy gate; the inference endpoint's loopback check;
+   confinement posture.
+2. **mailbox** — IMAP connect, login, folder list; SMTP connect
+   (nothing is sent by this section).
+3. **model** — the configured model is listed by the endpoint, and
+   one minimal chat completion is timed (cold latency).
+4. **round-trip** — a signed trivial `exec` job (`echo <nonce>`) is
+   emailed to the runner's own mailbox; the harness polls for the
+   result (default up to 120s, `--diagnose-timeout` to change),
+   verifies its signature, and checks the nonce came back with a
+   success exit. A no-show is reported as "the runner may not be
+   polling", not as a hang.
+5. **oracle-context** — the context the chat path builds: size,
+   section headers, and the computed Job index lines verbatim.
+6. **oracle-probes** — the five acceptance probes through the
+   in-process ask path, with full transcripts and per-probe latency
+   in the report. Only mechanical flags: an empty or rejected answer
+   is a FAIL.
+7. **senses** — canary status, registry watch, and event-log (or
+   host log) readability, exactly as the Oracle context reports
+   them. Unreadable is reported as unreadable, never as clean.
+
+Each section streams one verdict line (`[PASS] model — ...`) as it
+completes and is fault-isolated: a section that blows up is a FAIL
+for that section, the rest still run. The full report lands in
+`harness-report-<UTC timestamp>.txt` in the state dir, and the exit
+code is the number of FAIL sections. The shared secret and mailbox
+password never appear in the output or the report.

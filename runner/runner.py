@@ -6841,6 +6841,13 @@ def main() -> int:
     ap.add_argument("--browser", action="store_true",
                     help="with --local-test: chat via Open WebUI "
                          "instead of the terminal")
+    ap.add_argument("--diagnose", action="store_true",
+                    help="run the diagnostic harness against this "
+                         "config and exit (see docs/local-si-test.md)")
+    ap.add_argument("--diagnose-timeout", type=int, default=None,
+                    metavar="SEC",
+                    help="with --diagnose: seconds to wait for the "
+                         "round-trip result (default 120)")
     ap.add_argument("--job-id", default=None,
                     help="job id for --inspect job")
     ap.add_argument("--setup", action="store_true",
@@ -6953,6 +6960,17 @@ def main() -> int:
                 print(f"config error: {reason} (run with --setup)",
                       file=sys.stderr)
                 return 2
+    if args.diagnose:
+        # Black-box gauntlet against the configured system. Runs
+        # before any model warm-up or daemon spawning: the harness
+        # measures the system as it is, it does not fix it up first.
+        try:
+            from runner import harness as _harness
+        except ImportError:  # running from inside runner/ as __main__
+            import harness as _harness
+        base_dir = _base_dir_for(cfg, args.config)
+        return _harness.main(cfg, base_dir, cfg_path=args.config,
+                             roundtrip_timeout=args.diagnose_timeout)
     if args.faster:
         inf = cfg.get("inference")
         if not isinstance(inf, dict):

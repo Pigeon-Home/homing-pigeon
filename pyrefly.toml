@@ -20,6 +20,7 @@ ignore-missing-imports = [
     "resources",
     "posture",
     "local_test",
+    "harness",
     "dri",
     "auditreport",
     "winlog",
