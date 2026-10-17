@@ -234,6 +234,57 @@ class OracleContextWatchTest(unittest.TestCase):
         self.assertNotIn("registry watch", blob)
 
 
+class OracleContextWatchCapTest(unittest.TestCase):
+    """Regression (build-windows CI failure, 2026-10-16): max_chars is
+    a cap on the whole context. The Windows watch sections were
+    appended after the job blob had been sliced, with no budget check,
+    so a capped call returned ~740 chars and a non-positive cap
+    returned the sections instead of "". Linux CI never saw it: off
+    Windows the sections are no-ops. These tests patch the platform,
+    so they reproduce the Windows behavior everywhere."""
+
+    def _big_job_dir(self):
+        tmp = tempfile.mkdtemp()
+        retained = os.path.join(tmp, "retained")
+        os.makedirs(retained)
+        with open(os.path.join(retained, "big.json"), "w",
+                  encoding="utf-8") as fh:
+            json.dump({"job_id": "big", "kind": "exec",
+                       "script": "s" * 2000, "stdout": "o" * 5000,
+                       "exit_code": 0, "saved_at": 1}, fh)
+        return tmp
+
+    def _win_watch(self):
+        return (
+            mock.patch.object(R.sys, "platform", "win32"),
+            mock.patch.object(R, "_eventlog_tail",
+                              return_value="ev line\n" * 100),
+            mock.patch.object(R, "_registry_watch",
+                              return_value="(no changes since last look)"),
+        )
+
+    def test_watch_sections_respect_the_cap(self):
+        tmp = self._big_job_dir()
+        win, ev, reg = self._win_watch()
+        with win, ev, reg:
+            blob = R.oracle_context(tmp, max_chars=500)
+        self.assertLessEqual(len(blob), 500)
+
+    def test_nonpositive_cap_is_empty_even_on_windows(self):
+        tmp = tempfile.mkdtemp()
+        win, ev, reg = self._win_watch()
+        with win, ev, reg:
+            self.assertEqual(R.oracle_context(tmp, max_chars=-5), "")
+
+    def test_sections_present_under_the_default_cap(self):
+        tmp = tempfile.mkdtemp()
+        win, ev, reg = self._win_watch()
+        with win, ev, reg:
+            blob = R.oracle_context(tmp)
+        self.assertIn("Recent Windows Event Log", blob)
+        self.assertIn("Windows registry watch", blob)
+
+
 class WatchEnabledTest(unittest.TestCase):
     def test_default_on(self):
         self.assertTrue(R._oracle_watch_enabled({}))

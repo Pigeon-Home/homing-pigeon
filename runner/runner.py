@@ -5286,7 +5286,7 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
         if can:
             blob += ("\n\n---\nCanary watch (tripwire files planted by "
                      "the runner):\n" + can)
-    if watch and sys.platform == "win32":
+    if watch and sys.platform == "win32" and job_blob_len < cap:
         ev = _eventlog_tail()
         if ev is None:
             blob += ("\n\n---\nWindows Event Log: unreadable by the runner "
@@ -5306,7 +5306,13 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
         elif reg:
             blob += ("\n\n---\nWindows registry watch (autorun and "
                      "persistence locations, services):\n" + reg)
-    return blob
+    # max_chars caps the whole context, not just the job portion: the
+    # log tail and the watch sections are appended after the job blob
+    # was sliced, so enforce the budget here, at the end. A zero cap
+    # (a zero or negative max_chars) means no context at all.
+    if cap <= 0:
+        return ""
+    return blob[:cap] if len(blob) > cap else blob
 
 
 def oracle_page(token: str, model: str, ready: bool) -> str:
