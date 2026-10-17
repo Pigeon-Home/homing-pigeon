@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.7.20 - 2026-10-17
+
+### Protocol v2
+
+- The wire protocol is now version 2. Every message carries
+  `"v": 2`, and every reply carries it too. Protocol and
+  product versions are separate numbers from here on.
+- No backward compatibility by default: a v1 message is
+  rejected at the job, query, and board gates. An operator who
+  still needs v1 opts in per process with
+  `--allow-protocol-v1`; replies stay v2 regardless.
+- The shared secret now has a protocol floor of 128 bits of
+  entropy, enforced on the runner at startup (as before) and
+  now on the sender too: `cloud/send_job.py` refuses to sign
+  with a missing, patterned, or weak secret.
+- Documentation: the generation idiom is retired (unwritten
+  future work takes the single placeholder label v9), and the
+  IETF draft gained a statement of purpose and a "Relationship
+  to later versions" section. `PROTOCOL.md` and the draft
+  continue to specify v1, the specification of record.
+
 ## 3.7.19 - 2026-10-17
 
 ### Logging that can actually be debugged from
