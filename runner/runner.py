@@ -6759,6 +6759,10 @@ def main() -> int:
                     help="read local Oracle state and exit; no mailbox")
     ap.add_argument("--oracle", action="store_true",
                     help="open a loopback chat with the Oracle in your browser")
+    ap.add_argument("--faster", action="store_true",
+                    help="use llama3.2:1b for this process, the lighter "
+                         "Llama the Raspberry Pi profile installs. "
+                         "The model in config.json is left as it is.")
     ap.add_argument("--oracle-port", type=int, default=11436, metavar="PORT",
                     help="port for --oracle (default 11436, 127.0.0.1 only)")
     ap.add_argument("--local-test", action="store_true",
@@ -6878,6 +6882,16 @@ def main() -> int:
                 print(f"config error: {reason} (run with --setup)",
                       file=sys.stderr)
                 return 2
+    if args.faster:
+        inf = cfg.get("inference")
+        if not isinstance(inf, dict):
+            inf = {}
+            cfg["inference"] = inf
+        # Same tag as the raspberry-pi-home profile. This process only.
+        inf["model"] = "llama3.2:1b"
+        if not inf.get("endpoint"):
+            inf["endpoint"] = "http://127.0.0.1:11434/v1"
+        log("inference: --faster, using llama3.2:1b")
     ensure_inference_ready(cfg)
     # First start has no previous model id, so this pulls once.
     update_llama_from_config(cfg)

@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.7.15 - 2026-10-16
+
+### A lighter Llama without the Pi profile
+- `install.exe --faster` pulls `llama3.2:1b`, the same model the
+  Raspberry Pi profile uses. It does not change protected paths.
+  `--inference-model` still wins. On an upgrade it switches the
+  model; a normal upgrade still leaves config.json alone.
+- `homing-pigeon --faster` uses that model for one process and does
+  not rewrite config.json.
+
 ## 3.7.14 - 2026-10-16
 
 ### The chat shows that the model is working

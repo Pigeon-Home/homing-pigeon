@@ -963,7 +963,8 @@ def _setup_fresh_config(args, cfg_path):
     for kid in args.additional_secret:
         store_additional_secret(cfg_path, kid)
     profile = chosen_profile(args.profile, args.no_profile)
-    model = inference_model_for(profile, args.inference_model)
+    model = inference_model_for(profile, args.inference_model,
+                                faster=getattr(args, "faster", False))
     inference_ok = install_ollama_and_model(cfg_path, model, args.no_inference)
     if profile:
         apply_profile(cfg_path, profile)
@@ -988,9 +989,13 @@ def do_install_home(args, home, bin_dir, cfg_path, state_dir, src_dir) -> int:
         print(f"install: creating the one home at {home}")
         _acl_home(home, args.run_as)
     else:
-        print(f"install: one home already installed (v{prev_version}); "
-              "upgrading binaries in place -- config.json and state/ "
-              "are untouched")
+        if getattr(args, "faster", False) and not args.no_inference:
+            print(f"install: one home already installed (v{prev_version}); "
+                  "upgrading binaries, and switching the model to the lighter Llama")
+        else:
+            print(f"install: one home already installed (v{prev_version}); "
+                  "upgrading binaries in place -- config.json and state/ "
+                  "are untouched")
         _stop_task_for_upgrade()
     if not install_files(src_dir, bin_dir, cfg_path):
         return 1
@@ -998,31 +1003,34 @@ def do_install_home(args, home, bin_dir, cfg_path, state_dir, src_dir) -> int:
     if fresh:
         _ensure_base_dir(cfg_path, state_dir)
         inference_ok, model = _setup_fresh_config(args, cfg_path)
+    elif getattr(args, "faster", False) and not args.no_inference:
+        model = inference_model_for(None, args.inference_model, faster=True)
+        inference_ok = install_ollama_and_model(cfg_path, model, False)
     _write_receipt(home, fresh)
     extra = _forwarded_args(args)
     if extra:
         print(f"forwarding runner flags into service: {' '.join(extra)}")
     install_windows(bin_dir, cfg_path, extra, run_as=args.run_as)
     print(f"config: {cfg_path}")
-    if fresh:
-        if inference_ok:
-            print(f"inference: READY - local model {model} configured; "
-                  "the Oracle chat will answer")
-        elif not args.no_inference:
-            print("inference: NOT configured - ask stays off. "
-                  "Re-run install.exe --inference-only to retry, or set "
-                  "inference.endpoint in config.json to your local Ollama server.")
+    if inference_ok:
+        print(f"inference: READY - local model {model} configured; "
+              "the Oracle chat will answer")
+    elif fresh and not args.no_inference:
+        print("inference: NOT configured - ask stays off. "
+              "Re-run install.exe --inference-only to retry, or set "
+              "inference.endpoint in config.json to your local Ollama server.")
     print("one home ready:")
     print(f"  home:   {home}")
     print(f"  bin:    {bin_dir}")
     print(f"  config: {cfg_path}")
     print(f"  state:  {state_dir}")
-    print("five commands to learn:")
+    print("commands to learn:")
     print("  install.exe --check    doctor: verify the install")
     print("  install.exe --console  run the agent here; the task restarts after")
     print("  install.exe --oracle   the Oracle chat")
     print("  install.exe --logs     tail the runner log (--follow to watch)")
     print("  install.exe --wipe     back up and remove everything")
+    print("  install.exe --faster   pull llama3.2:1b, the lighter Llama")
     return 0
 
 
@@ -1192,15 +1200,21 @@ BUILTIN_PROFILES = {
 DEFAULT_INFERENCE_MODEL = "llama3.2:3b"
 
 
-def inference_model_for(profile, explicit=None) -> str:
+def inference_model_for(profile, explicit=None, faster=False) -> str:
     """Which Ollama tag to pull.
 
-    An explicit --inference-model always wins. The raspberry-pi-home
-    profile, whether detected or passed with --profile, pulls the
-    lighter Llama. Every other install keeps the 3B default.
+    An explicit --inference-model always wins. --faster pulls the same
+    lighter Llama as the raspberry-pi-home profile, without the rest of
+    that profile. Otherwise the raspberry-pi-home profile, whether
+    detected or passed with --profile, pulls that lighter Llama, and
+    every other install keeps the 3B default.
     """
     if isinstance(explicit, str) and explicit.strip():
         return explicit.strip()
+    if faster:
+        light = BUILTIN_PROFILES["raspberry-pi-home"].get("inference_model")
+        if isinstance(light, str) and light.strip():
+            return light.strip()
     name = profile or ""
     if name and os.path.isfile(name):
         try:
@@ -1558,8 +1572,12 @@ def main() -> int:
                     help="do not apply any deployment profile")
     ap.add_argument("--inference-model", default=None,
                     help="Ollama model to pull when inference is enabled "
-                         "(default llama3.2:3b, or llama3.2:1b with "
-                         "the raspberry-pi-home profile)")
+                         "(default llama3.2:3b, llama3.2:1b with "
+                         "--faster or the raspberry-pi-home profile)")
+    ap.add_argument("--faster", action="store_true",
+                    help="pull llama3.2:1b, the lighter Llama the "
+                         "Raspberry Pi profile uses. Does not change "
+                         "protected paths. --inference-model still wins.")
     ap.add_argument("--additional-secret", action="append", default=[],
                     help="KEY_ID (generates 256-bit secret, never printed)")
     ap.add_argument("--max-output-bytes", type=int, default=None, metavar="N")
@@ -1619,7 +1637,8 @@ def main() -> int:
             return do_oracle(bin_dir, cfg_path)
         if args.inference_only:
             profile = chosen_profile(args.profile, args.no_profile)
-            model = inference_model_for(profile, args.inference_model)
+            model = inference_model_for(profile, args.inference_model,
+                                         faster=args.faster)
             ok = install_ollama_and_model(cfg_path, model, args.no_inference)
             if ok:
                 print(f"inference: READY - local model {model} configured; "
@@ -1648,7 +1667,8 @@ def main() -> int:
         return do_logs(cfg_path, follow=args.follow, lines=args.lines)
     if args.inference_only:
         profile = chosen_profile(args.profile, args.no_profile)
-        model = inference_model_for(profile, args.inference_model)
+        model = inference_model_for(profile, args.inference_model,
+                                     faster=args.faster)
         ok = install_ollama_and_model(cfg_path, model, args.no_inference)
         if ok:
             print(f"inference: READY - local model {model} configured; "

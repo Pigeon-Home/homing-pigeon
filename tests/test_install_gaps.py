@@ -88,6 +88,10 @@ class ProfileSelectionTest(unittest.TestCase):
         self.assertEqual(inference_model_for("password-only", None),
                          "llama3.2:3b")
         self.assertEqual(inference_model_for(None, None), "llama3.2:3b")
+        self.assertEqual(inference_model_for("password-only", None, faster=True),
+                         "llama3.2:1b")
+        self.assertEqual(inference_model_for(None, "llama3.2:3b", faster=True),
+                         "llama3.2:3b")
         self.assertEqual(
             inference_model_for("raspberry-pi-home", "llama3.2:3b"),
             "llama3.2:3b")
