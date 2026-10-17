@@ -359,3 +359,15 @@ def alert_score(alert: dict, weight: float) -> float:
     severity = alert.get("severity") if isinstance(alert, dict) else None
     score = SEVERITY_SCORES.get(severity, 0.5) if isinstance(severity, str) else 0.5
     return weight_n * score
+
+
+# ---------------------------------------------------------------------------
+# Optional low-overhead detection hooks (canaries, rules, baseline)
+# ---------------------------------------------------------------------------
+# These are called by the runner when configured. They live in
+# runner/detection.py so this module stays free of heavy imports.
+# Example (from runner):
+#   from runner import detection as _det
+#   tripped = _det.check_canaries(base_dir)
+#   hits = _det.evaluate_rules(job, result)
+#   _det.update_baseline(base_dir, job, result)
