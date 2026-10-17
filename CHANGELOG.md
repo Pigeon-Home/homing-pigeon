@@ -18,6 +18,12 @@
   over 1MB are skipped. `clamscan` is not used. A miss or a missing
   tool adds nothing. A hit is advisory and does not change the exit
   code. Opt out with `inference.artifact_scan=false`.
+- Auth-log lines carry the same ATT&CK ids as the Windows audit map
+  (a failed password is T1110, sudo is T1548.003, a new account is
+  T1136). A plain error line is not labeled.
+- The firewall line is diffed against the last reading. A flip says
+  "changed". The first look is a baseline. Unreadable does not
+  overwrite that baseline.
 
 ## 3.7.12 - 2026-10-16
 

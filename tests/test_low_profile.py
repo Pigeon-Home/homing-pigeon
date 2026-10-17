@@ -3,6 +3,7 @@ and the on-demand artifact scan. No test starts yara, clamdscan,
 netsh, or journalctl. A missing tool is a skip, not a clean bill.
 """
 
+import json
 import os
 import sys
 import tempfile
@@ -141,7 +142,49 @@ class HostLogTest(unittest.TestCase):
                  mock.patch.object(R.sys, "platform", "linux"):
                 out = R._host_log_tail()
         self.assertIn("Failed password", out)
+        self.assertIn("[T1110]", out)
         self.assertNotIn("session opened", out)
+
+    def test_sudo_is_labeled_and_a_plain_error_is_not(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            auth = os.path.join(tmp, "auth.log")
+            sys_log = os.path.join(tmp, "syslog")
+            with open(auth, "w", encoding="utf-8") as fh:
+                fh.write("sudo: bob : TTY=pts/0 ; COMMAND=/bin/id\n")
+            with open(sys_log, "w", encoding="utf-8") as fh:
+                fh.write("kernel: error: disk full\n")
+            with mock.patch.object(R, "_AUTH_LOG_PATHS", (auth,)), \
+                 mock.patch.object(R, "_SYS_LOG_PATHS", (sys_log,)), \
+                 mock.patch.object(R.sys, "platform", "linux"):
+                out = R._host_log_tail()
+        self.assertIn("[T1548.003]", out)
+        self.assertIn("disk full", out)
+        self.assertNotIn("disk full [T", out)
+
+
+class FirewallWatchTest(unittest.TestCase):
+    def test_flip_is_a_change_and_unreadable_keeps_the_baseline(self):
+        tmp = tempfile.mkdtemp()
+        with mock.patch.object(R, "_firewall_posture",
+                               return_value="firewall: linux ufw=active"):
+            first = R._firewall_watch(tmp)
+            second = R._firewall_watch(tmp)
+        self.assertIn("baseline", first)
+        self.assertNotIn("changed", second)
+        self.assertNotIn("baseline", second)
+        with mock.patch.object(
+                R, "_firewall_posture",
+                return_value="firewall: linux ufw=inactive [T1562.004]"):
+            third = R._firewall_watch(tmp)
+        self.assertIn("(changed)", third)
+        self.assertIn("[T1562.004]", third)
+        snap = os.path.join(tmp, "oracle-firewall.json")
+        with open(snap, encoding="utf-8") as fh:
+            saved = json.load(fh)["line"]
+        with mock.patch.object(R, "_firewall_posture", return_value=None):
+            self.assertIsNone(R._firewall_watch(tmp))
+        with open(snap, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["line"], saved)
 
     def test_nothing_readable_is_none_not_clean(self):
         with mock.patch.object(R, "_AUTH_LOG_PATHS", ("/no/such/auth",)), \

@@ -99,8 +99,10 @@ daemon. Windows reads `netsh advfirewall show allprofiles` (profile
 state only). Linux reads `ufw status` when ufw is installed, otherwise
 the iptables `-P` policy lines. macOS reads
 `socketfilterfw --getglobalstate` and does not call `pfctl`. A profile
-or policy that is off is labeled T1562.004. Unreadable stays
-unreadable. The rule-hash diff and the cage check below are not built.
+or policy that is off is labeled T1562.004. The line is diffed
+against the previous reading, so a flip says "changed". Unreadable
+stays unreadable and does not overwrite the last good reading. The
+rule-hash diff and the cage check below are not built.
 
 Not built, kept as the spec. The collector snapshots firewall state per platform and files an
 alert on change — never on every dropped packet:

@@ -5236,6 +5236,28 @@ _AUTH_LOG_MARKERS = (
     "failed password", "authentication failure", "invalid user",
     "sudo:", "useradd", "usermod", "groupadd",
 )
+# Same ids as the Windows audit map. A generic error line is not tagged.
+_AUTH_LINE_ATTACK = (
+    ("failed password", "T1110"),
+    ("authentication failure", "T1110"),
+    ("invalid user", "T1110"),
+    ("sudo:", "T1548.003"),
+    ("useradd", "T1136"),
+    ("usermod", "T1136"),
+    ("groupadd", "T1136"),
+)
+
+
+def _label_auth(line):
+    """Append an ATT&CK id when a line is an auth event. Otherwise unchanged."""
+    low = line.lower()
+    for mark, attack in _AUTH_LINE_ATTACK:
+        if mark in low:
+            tag = "[" + attack + "]"
+            if tag not in line:
+                return line + " " + tag
+            return line
+    return line
 _SYS_LOG_MARKERS = ("error", "fatal", "fault", "fail")
 
 
@@ -5284,7 +5306,7 @@ def _host_log_tail(max_chars=2000):
         if rows is None:
             continue
         readable = True
-        kept.extend(rows)
+        kept.extend(_label_auth(row) for row in rows)
     for path in _SYS_LOG_PATHS:
         rows = _tail_marked(path, _SYS_LOG_MARKERS)
         if rows is None:
@@ -5303,7 +5325,7 @@ def _host_log_tail(max_chars=2000):
                 and isinstance(proc.stdout, str):
             readable = True
             kept.extend(
-                line.strip()[:240]
+                _label_auth(line.strip()[:240])
                 for line in proc.stdout.splitlines() if line.strip())
     if not readable:
         return None
@@ -5425,6 +5447,38 @@ def _firewall_posture():
         return _parse_iptables_policy(
             _run_text(["iptables", "-S"], timeout=3))
     return None
+
+
+def _firewall_watch(base_dir):
+    """Posture line, plus whether it changed since the last look.
+
+    The snapshot is the one line, not the ruleset. Unreadable returns
+    None and does not overwrite a previous reading. Never raises.
+    """
+    line = _firewall_posture()
+    if not line:
+        return None
+    if not isinstance(base_dir, str) or not base_dir:
+        return line
+    path = os.path.join(base_dir, "oracle-firewall.json")
+    prev = None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            old = json.load(fh)
+        if isinstance(old, dict) and isinstance(old.get("line"), str):
+            prev = old["line"]
+    except Exception:
+        prev = None
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"line": line, "saved_at": time.time()}, fh)
+    except Exception:
+        pass
+    if prev is None:
+        return line + " (baseline recorded just now)"
+    if prev != line:
+        return line + " (changed)"
+    return line
 
 
 _ARTIFACT_MAX_FILES = 40
@@ -5755,7 +5809,7 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
             blob += ("\n\n---\nHost log tail: no matching auth failures "
                      "or error lines in the recent window.")
     if watch and job_blob_len < cap:
-        fw = _firewall_posture()
+        fw = _firewall_watch(base_dir if isinstance(base_dir, str) else "")
         if fw is None:
             blob += ("\n\n---\nFirewall posture: unreadable by the runner "
                      "(nothing shown; do not claim the firewall is on "
