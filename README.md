@@ -567,8 +567,5 @@ Sigstore build provenance. The suite is
 
 ## Mirrors
 
-Development is centralized on GitHub. Every tagged release is also
-published, with its full file set and a mirror of the source, to:
-
 - GitLab: https://gitlab.com/pigeon-home/homing-pigeon
 - SourceForge: https://sourceforge.net/projects/homing-pigeon/
