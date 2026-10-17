@@ -279,6 +279,46 @@ class InfinityFromFileTest(unittest.TestCase):
         self.assertEqual(result["exit_code"], 0)
 
 
+class NonFiniteElsewhereTest(unittest.TestCase):
+    def test_dri_and_sensor_weight_and_exit_code(self):
+        from runner.dri import parse_dri
+        from runner.runner import _as_int, download
+        from runner.senses import parse_sensors
+
+        with self.assertRaises(RuntimeError) as caught:
+            parse_dri({
+                "dri": {
+                    "enabled": False,
+                    "triggers": {"key_probe": {"threshold": float("inf")}},
+                },
+            })
+        self.assertIn("must be numbers", str(caught.exception))
+
+        with self.assertRaises(RuntimeError) as caught:
+            parse_sensors({
+                "sensors": {
+                    "disk": {
+                        "enabled": True,
+                        "key_id": "k",
+                        "weight": float("inf"),
+                    },
+                },
+            })
+        self.assertIn("finite", str(caught.exception))
+
+        self.assertEqual(_as_int(float("inf"), -1), -1)
+        self.assertEqual(_as_int(float("-inf"), -1), -1)
+
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch("runner.runner._open_download",
+                            side_effect=RuntimeError("stop")):
+                with self.assertRaises(RuntimeError):
+                    download(
+                        "https://example.invalid/x",
+                        os.path.join(directory, "out"),
+                        max_bytes=float("inf"))
+
+
 class SensorRecordTest(unittest.TestCase):
     def test_nan_is_stored_as_null_and_a_cycle_does_not_recurse(self):
         from runner.senses import load_alerts, store_alert

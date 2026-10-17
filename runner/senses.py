@@ -76,10 +76,10 @@ def parse_sensors(cfg) -> dict:
             raise RuntimeError(where + ".key_id must be a non-empty string")
         try:
             weight = float(scfg.get("weight", 1.0))
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             raise RuntimeError(where + ".weight must be a number")
-        if weight < 0:
-            raise RuntimeError(where + ".weight must be >= 0")
+        if weight != weight or weight < 0 or weight == float("inf"):
+            raise RuntimeError(where + ".weight must be a finite number >= 0")
         profile = scfg.get("profile") or {}
         if not isinstance(profile, dict):
             raise RuntimeError(where + ".profile must be an object")
@@ -93,10 +93,11 @@ def parse_sensors(cfg) -> dict:
             if knob in clean_profile:
                 try:
                     v = float(clean_profile[knob])
-                except (TypeError, ValueError):
+                except (TypeError, ValueError, OverflowError):
                     raise RuntimeError(where + f".profile.{knob} must be a number")
-                if v < 0:
-                    raise RuntimeError(where + f".profile.{knob} must be >= 0")
+                if v != v or v < 0 or v == float("inf"):
+                    raise RuntimeError(
+                        where + f".profile.{knob} must be a finite number >= 0")
                 clean_profile[knob] = v
         out[name] = {
             "enabled": enabled,

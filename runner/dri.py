@@ -80,7 +80,7 @@ def parse_dri(cfg) -> dict:
                 "threshold": float(sfs.get("threshold", 6.0)),
                 "window_sec": float(sfs.get("window_sec", 600)),
             }
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             raise RuntimeError(
                 "config error: dri.triggers.sensor_fused_score "
                 "threshold/window_sec must be numbers")
@@ -97,17 +97,20 @@ def parse_dri(cfg) -> dict:
                 "threshold": int(kp.get("threshold", 5)),
                 "window_sec": float(kp.get("window_sec", 3600)),
             }
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             raise RuntimeError(
                 "config error: dri.triggers.key_probe "
                 "threshold/window_sec must be numbers")
     try:
         cooldown = float(raw.get("cooldown_sec", 3600))
         digest_window = float(raw.get("digest_window_sec", 300))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         raise RuntimeError("config error: dri cooldown/digest must be numbers")
-    if cooldown < 0 or digest_window < 0:
-        raise RuntimeError("config error: dri cooldown/digest must be >= 0")
+    if (cooldown < 0 or digest_window < 0
+            or cooldown != cooldown or digest_window != digest_window
+            or cooldown == float("inf") or digest_window == float("inf")):
+        raise RuntimeError(
+            "config error: dri cooldown/digest must be a finite number >= 0")
     return {
         "enabled": enabled,
         "channel": channel,
@@ -332,7 +335,7 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
             try:
                 window = float(kp.get("window_sec", 3600))
                 threshold = int(kp.get("threshold", 5))
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 window, threshold = 3600.0, 5
             probes = [e for e in _recent_events(
                 base_dir, now - window)

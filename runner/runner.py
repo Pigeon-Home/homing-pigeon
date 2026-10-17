@@ -3077,7 +3077,7 @@ def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
         raise JobRejected("download destination is not a path")
     try:
         max_bytes = int(max_bytes)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         max_bytes = MAX_DOWNLOAD_BYTES
     if max_bytes < 1:
         max_bytes = MAX_DOWNLOAD_BYTES
@@ -3373,7 +3373,7 @@ def _as_str(value) -> str:
 def _as_int(value, default):
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return default
 
 
@@ -3407,7 +3407,7 @@ def append_bounded_log(path, text, max_bytes=2_097_152):
         return
     try:
         max_bytes = int(max_bytes)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         max_bytes = 2_097_152
     if max_bytes < 1:
         max_bytes = 2_097_152
