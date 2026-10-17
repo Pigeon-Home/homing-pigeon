@@ -1,5 +1,27 @@
 # Changelog
 
+## 3.7.18 - 2026-10-17
+
+### A diagnostic harness the operator can run
+
+- New `--diagnose` mode: one command runs a black-box gauntlet
+  against the real configured system — the same config, mailbox,
+  model, and state dir the live runner uses — and writes a
+  verdict report instead of making the operator photograph
+  consoles. Eight fault-isolated sections: identity banner,
+  config audit (the shared secret is measured against the
+  startup entropy gate, its value never printed), mailbox auth,
+  model reachability with a timed completion, a signed
+  round-trip job through the real email transport with the
+  result's signature verified, an audit of the Oracle context
+  exactly as the chat builds it (job index quoted verbatim),
+  the five Oracle acceptance probes, and a senses snapshot
+  that reports unreadable as unreadable, never as clean.
+- The full report lands in `harness-report-<timestamp>.txt`
+  in the state dir; the exit code is the number of failed
+  sections. `--diagnose-timeout SEC` bounds the round-trip
+  wait (default 120s).
+
 ## 3.7.17 - 2026-10-16
 
 ### The Oracle chat gets a real interface
