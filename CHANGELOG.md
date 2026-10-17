@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.7.9 — 2026-10-16
 
 ### Property-based tests + a real signature bug they caught
 - New `tests/test_properties.py`: Hypothesis property tests over the
@@ -16,6 +16,13 @@
   legitimately signed body. Braces inside string literals are now
   excluded from candidacy, with a fallback to the old order for
   lopsided quotes in the preamble.
+- Infinity hardening (Grok): a config value of Infinity no longer kills
+  the poll -- hot reload ignores it, and the poll sleep, worker count,
+  mail caps, job timeout, retention, and output caps all fall back to
+  their defaults instead of raising OverflowError.
+- IETF draft: email reframed as the transport binding, not the
+  protocol; 13 more property tests (keyed verification, redaction,
+  fragment detection, normalization).
 
 ## 3.7.8 — 2026-10-16
 
