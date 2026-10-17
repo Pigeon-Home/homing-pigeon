@@ -77,9 +77,13 @@ One sense per check, all cheap, all per-platform. They answer the
 question "is the boring stuff actually on?"
 
 - `av_posture` — is real-time protection enabled, and are
-  signatures current? (Defender status, `freshclam` age,
-  XProtect version.) An AV that is installed but disabled is
-  worse than none: it looks like coverage.
+  signatures current? Shipped as one stat, not a scan. Linux
+  reads the mtime of the ClamAV daily signature file and calls
+  it stale after 7 days. Windows asks `sc query WinDefend`.
+  macOS has no stable XProtect read, so the line stays
+  unreadable. A stale or stopped tool is labeled T1562.001.
+  The line is diffed, and a flip is filed. Unreadable does not
+  overwrite the last good reading.
 - `firewall` — host firewall state per platform (Windows
   Firewall profiles, `ufw`/nftables, macOS `pf`/Application
   Firewall). Reports profile changes, not every dropped packet.
@@ -100,12 +104,14 @@ state only). Linux reads `ufw status` when ufw is installed, otherwise
 the iptables `-P` policy lines. macOS reads
 `socketfilterfw --getglobalstate` and does not call `pfctl`. A profile
 or policy that is off is labeled T1562.004. The line is diffed
-against the previous reading, so a flip says "changed". Unreadable
-stays unreadable and does not overwrite the last good reading. The
-rule-hash diff and the cage check below are not built.
+against the previous reading, so a flip says "changed" and is
+filed once. Unreadable stays unreadable and does not overwrite
+the last good reading. The rule-hash diff and the cage check
+below are not built.
 
-Not built, kept as the spec. The collector snapshots firewall state per platform and files an
-alert on change — never on every dropped packet:
+Not built, kept as the spec. This is the ruleset hash, not the
+posture line above. The collector would snapshot the rule set and
+file an alert on a new allow rule, never on every dropped packet:
 
 - **Windows:** `Get-NetFirewallProfile` (Domain/Private/Public
   enabled flags) plus a hash of the `Get-NetFirewallRule` set.

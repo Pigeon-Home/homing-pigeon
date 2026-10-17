@@ -77,9 +77,11 @@ is load-bearing — see `docs/senses.md` ("why this shape").
 - **DNS monitoring** — the exfiltration channel. A per-job
   DNS log correlated by `job_id_hint` is the sharpest
   available signal for "job talking where it shouldn't."
-- **Canary tokens** — tripwires (canary files, canary
-  credentials) that no legitimate job should ever touch.
-  Nothing is tripwired today.
+- **Canary tokens** — the runner plants three tripwire files
+  under its state directory (`passwords.txt`, `backup-codes.txt`,
+  `api-keys.txt`). A read that changes one, or a delete, is filed
+  once and stays reported until the file is restored. Canary
+  credentials (a token that phones home when used) are not built.
 - **FIM proper** — file integrity monitoring. The roadmap's
   "snapshot eyes" gestures at it; no design yet.
 - **Out of scope:** TLS inspection, WAF (there is no inbound

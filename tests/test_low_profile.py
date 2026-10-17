@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -444,7 +445,52 @@ class PromptTest(unittest.TestCase):
         for prompt in (R.ASK_SYSTEM, R.ASK_AGENT_SYSTEM):
             self.assertIn("Host log tail", prompt)
             self.assertIn("Firewall posture", prompt)
+            self.assertIn("AV posture", prompt)
             self.assertIn("artifact scan", prompt)
+
+
+class AvPostureTest(unittest.TestCase):
+    def test_missing_signatures_are_unreadable(self):
+        with mock.patch.object(R, "_CLAM_SIG_PATHS", ("/no/such/daily.cvd",)), \
+             mock.patch.object(R.sys, "platform", "linux"):
+            self.assertIsNone(R._av_posture())
+
+    def test_stale_signatures_are_labeled_and_filed_once(self):
+        tmp = tempfile.mkdtemp()
+        sig = os.path.join(tmp, "daily.cvd")
+        with open(sig, "w", encoding="utf-8") as fh:
+            fh.write("x")
+        old = time.time() - (8 * 86400)
+        os.utime(sig, (old, old))
+        with mock.patch.object(R, "_CLAM_SIG_PATHS", (sig,)), \
+             mock.patch.object(R.sys, "platform", "linux"):
+            first = R._av_watch(tmp)
+            second = R._av_watch(tmp)
+        self.assertIn("stale", first)
+        self.assertIn("[T1562.001]", first)
+        self.assertIn("baseline", first)
+        self.assertNotIn("changed", second)
+        self.assertEqual(R._senses.load_alerts(tmp, sensor="av"), [])
+        fresh = time.time()
+        os.utime(sig, (fresh, fresh))
+        with mock.patch.object(R, "_CLAM_SIG_PATHS", (sig,)), \
+             mock.patch.object(R.sys, "platform", "linux"):
+            third = R._av_watch(tmp)
+            fourth = R._av_watch(tmp)
+        self.assertIn("(changed)", third)
+        self.assertNotIn("changed", fourth)
+        filed = R._senses.load_alerts(tmp, sensor="av")
+        self.assertEqual(len(filed), 1)
+        self.assertEqual(filed[0]["severity"], "info")
+
+    def test_stopped_defender_is_labeled(self):
+        text = "SERVICE_NAME: WinDefend\n        STATE              : 1  STOPPED\n"
+        self.assertIn("[T1562.001]", R._parse_defender_query(text))
+        running = "SERVICE_NAME: WinDefend\n        STATE              : 4  RUNNING\n"
+        self.assertEqual(
+            R._parse_defender_query(running),
+            "av: windows defender=running")
+        self.assertIsNone(R._parse_defender_query(""))
 
 
 if __name__ == "__main__":

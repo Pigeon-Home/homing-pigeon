@@ -1358,6 +1358,9 @@ ASK_SYSTEM = (
     "- A 'Firewall posture' section may follow: whether the host firewall\n"
     "  is on. Quote the line. A technique id on a line is a label, not\n"
     "  proof of an intrusion.\n"
+    "- An 'AV posture' section may follow: whether signatures are current\n"
+    "  or real-time protection is running. Quote the line. Unreadable is\n"
+    "  not the same as off.\n"
     "- A job block may include an 'artifact scan' note when YARA or ClamAV\n"
     "  matched a file that job wrote. Quote it. No note is not a finding.\n"
     "- If something is not in the job output or these sections, say you\n"
@@ -1780,9 +1783,10 @@ ASK_AGENT_SYSTEM = (
     "files the runner planted. If it names a file as TRIPPED, say so "
     "plainly and quote the line exactly. Never invent a trip that is "
     "not listed.\n"
-    "- The context may carry a 'Host log tail' (Linux or macOS) and a "
-    "'Firewall posture' line. Quote them. If a section says it could "
-    "not be read, say so. A technique id is a label, not proof.\n"
+    "- The context may carry a 'Host log tail' (Linux or macOS), a "
+    "'Firewall posture' line, and an 'AV posture' line. Quote them. "
+    "If a section says it could not be read, say so. A technique id "
+    "is a label, not proof.\n"
     "- A retained job may carry an 'artifact scan' note: YARA or ClamAV "
     "matched a file that job wrote. Quote it. No note means the scan "
     "was clean or the tool was not installed. Do not invent a match.\n"
@@ -5264,11 +5268,12 @@ def _file_fresh_lines(base_dir, sensor, text):
 def _local_watch(cfg, base_dir):
     """One cheap look, on the poll, not only when the chat is opened.
 
-    Three canary hashes, one firewall command, a short log tail, and
-    on Windows the registry diff. The journalctl fallback is skipped
-    here so a box with no log file does not spawn a scan every poll.
-    A trip is filed by the watch itself, before the page check runs.
-    inference.watch_system=false skips the look. Never raises.
+    Three canary hashes, one firewall command, one antivirus posture
+    check, a short log tail, and on Windows the registry diff. The
+    journalctl fallback is skipped here so a box with no log file does
+    not spawn a scan every poll. A trip is filed by the watch itself,
+    before the page check runs. inference.watch_system=false skips the
+    look. Never raises.
     """
     if not _oracle_watch_enabled(cfg):
         return
@@ -5281,6 +5286,7 @@ def _local_watch(cfg, base_dir):
                      else _host_log_tail(base_dir=base_dir, journal=False)),
             lambda: _registry_watch(base_dir) if sys.platform == "win32" else None,
             lambda: _firewall_watch(base_dir),
+            lambda: _av_watch(base_dir),
     ):
         try:
             fn()
@@ -5674,6 +5680,104 @@ def _firewall_watch(base_dir):
     return line
 
 
+_CLAM_SIG_PATHS = (
+    "/var/lib/clamav/daily.cvd",
+    "/var/lib/clamav/daily.cld",
+)
+_AV_STALE_SEC = 7 * 86400
+
+
+def _parse_defender_query(text):
+    """'av: windows defender=running' from sc query, or None."""
+    if not isinstance(text, str) or "STATE" not in text:
+        return None
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line.upper().startswith("STATE"):
+            continue
+        state = line.split()[-1].upper() if line.split() else ""
+        if state == "RUNNING":
+            return "av: windows defender=running"
+        if state in ("STOPPED", "STOP_PENDING", "PAUSED"):
+            return "av: windows defender=" + state.lower() + " [T1562.001]"
+    return None
+
+
+def _clam_sig_line(now=None):
+    """Signature age only. Does not run freshclam or scan a file."""
+    newest = None
+    for path in _CLAM_SIG_PATHS:
+        try:
+            mtime = os.path.getmtime(path)
+        except OSError:
+            continue
+        if newest is None or mtime > newest:
+            newest = mtime
+    if newest is None:
+        return None
+    try:
+        now = time.time() if now is None else float(now)
+    except (TypeError, ValueError):
+        now = time.time()
+    age = now - newest
+    if age > _AV_STALE_SEC:
+        days = int(age // 86400)
+        return "av: clamav signatures stale (%dd) [T1562.001]" % days
+    return "av: clamav signatures current"
+
+
+def _av_posture():
+    """One line: is the host antivirus effective. None if unreadable.
+
+    Not a malware scan. Linux stats the ClamAV daily signature file.
+    Windows asks whether the Defender service is running. macOS has
+    no stable read for XProtect, so it returns None. Never raises.
+    """
+    try:
+        if sys.platform == "win32":
+            return _parse_defender_query(_run_text(["sc", "query", "WinDefend"]))
+        if sys.platform == "darwin":
+            return None
+        return _clam_sig_line()
+    except Exception:
+        return None
+
+
+def _av_watch(base_dir):
+    """Posture line, plus whether it changed since the last look.
+
+    Unreadable returns None and does not overwrite a previous reading.
+    A baseline is not an alert. Never raises.
+    """
+    line = _av_posture()
+    if not line:
+        return None
+    if not isinstance(base_dir, str) or not base_dir:
+        return line
+    path = os.path.join(base_dir, "oracle-av.json")
+    prev = None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            old = json.load(fh)
+        if isinstance(old, dict) and isinstance(old.get("line"), str):
+            prev = old["line"]
+    except Exception:
+        prev = None
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"line": line, "saved_at": time.time()}, fh)
+    except Exception:
+        pass
+    if prev is None:
+        return line + " (baseline recorded just now)"
+    if prev != line:
+        attack = "T1562.001" if "T1562.001" in line else ""
+        _file_watch_alert(
+            base_dir, "av", "high" if attack else "info", line, attack)
+        return line + " (changed)"
+    return line
+
+
 _ARTIFACT_MAX_FILES = 40
 _ARTIFACT_MAX_BYTES = 1048576
 _YARA_RULES = (
@@ -6055,6 +6159,13 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
                      "or off).")
         elif fw:
             blob += "\n\n---\nFirewall posture:\n" + fw
+        av = _av_watch(base_dir if isinstance(base_dir, str) else "")
+        if av is None:
+            blob += ("\n\n---\nAV posture: unreadable by the runner "
+                     "(nothing shown; do not claim antivirus is on "
+                     "or off).")
+        elif av:
+            blob += "\n\n---\nAV posture:\n" + av
     # max_chars caps the whole context, not just the job portion.
     # A zero cap (zero or negative max_chars) means no context at all.
     if cap <= 0:

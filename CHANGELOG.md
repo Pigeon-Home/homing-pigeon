@@ -39,6 +39,11 @@
 - The same look runs once per poll, before the page check, so a trip
   is filed even when the chat window is closed. The poll skips the
   journalctl fallback. `inference.watch_system=false` still opts out.
+- AV posture is the same shape as the firewall line, and it is not
+  a scan. Linux stats the ClamAV daily signature file (stale after
+  7 days). Windows asks whether the Defender service is running.
+  macOS stays unreadable. A stale or stopped tool is T1562.001, and
+  a flip is filed once.
 
 ## 3.7.12 - 2026-10-16
 
