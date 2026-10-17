@@ -26,14 +26,19 @@ class PageStampsTest(unittest.TestCase):
         cls.page = R.oracle_page("tok", "llama3.2:3b", True)
 
     def test_user_messages_right_aligned_oracle_left(self):
+        # His bubbles sit on the right, the Oracle's on the left,
+        # each a real bubble with its own surface.
         self.assertIn("align-self: flex-end", self.page)
-        self.assertIn("text-align: right", self.page)
         self.assertIn("align-self: flex-start", self.page)
+        self.assertIn("background: #1e3a5f", self.page)
+        self.assertIn("background: #17191f", self.page)
+        self.assertNotIn("Georgia", self.page)
 
     def test_every_bubble_carries_a_clock_stamp(self):
         self.assertIn("function stamp(", self.page)
         self.assertIn('add("You", text, "you", stamp(', self.page)
-        self.assertIn('"oracle", stamp(new Date(t0)))', self.page)
+        self.assertIn('"oracle working", stamp(new Date(t0)))',
+                      self.page)
 
     def test_the_answer_is_stamped_with_its_wait(self):
         self.assertIn("function took(", self.page)

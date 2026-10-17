@@ -6340,36 +6340,47 @@ def oracle_page(token: str, model: str, ready: bool) -> str:
 <title>Oracle</title>
 <style>
   :root { color-scheme: dark; }
-  body { margin: 0; min-height: 100vh; background: #14160f; color: #ebe4d6;
-         font: 17px/1.45 Georgia, "Iowan Old Style", Palatino, serif; }
-  main { max-width: 40rem; margin: 0 auto; padding: 2.4rem 1.2rem 7rem; }
-  h1 { font-weight: 500; font-size: 1.35rem; letter-spacing: 0.08em;
-       text-transform: uppercase; margin: 0 0 0.4rem; }
-  .note { color: #9c9486; font: 13px/1.45 ui-sans-serif, system-ui, sans-serif;
-          margin: 0 0 1.6rem; }
-  .role { color: #b9b2a4; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif;
-          margin: 0 0 1.6rem; padding: 0.8rem 0.9rem;
-          border: 1px solid #3c4034; border-radius: 0.7rem;
-          background: #1e2218; }
-  #log { display: flex; flex-direction: column; gap: 1rem; min-height: 12rem; }
-  .bubble { white-space: pre-wrap; overflow-wrap: anywhere; }
-  .who { display: block; font: 11px/1 ui-sans-serif, system-ui, sans-serif;
-         letter-spacing: 0.16em; text-transform: uppercase; color: #8d8678;
-         margin-bottom: 0.3rem; }
-  .you { color: #e4c99a; align-self: flex-end; text-align: right;
-         max-width: 85%; }
-  .oracle { align-self: flex-start; max-width: 85%; }
-  .stamp { letter-spacing: 0.04em; text-transform: none; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: #0e1013; color: #e8eaed;
+         font: 16px/1.55 ui-sans-serif, system-ui, -apple-system,
+               "Segoe UI", sans-serif; }
+  main { max-width: 46rem; margin: 0 auto; padding: 1.6rem 1.1rem 7rem; }
+  h1 { font-weight: 650; font-size: 1.3rem; letter-spacing: 0.01em;
+       margin: 0 0 0.25rem; }
+  .note { color: #9aa0a6; font-size: 13px; margin: 0 0 1.1rem; }
+  .role { color: #aeb4bc; font-size: 13.5px; line-height: 1.55;
+          margin: 0 0 1.4rem; padding: 0.75rem 0.9rem;
+          border: 1px solid #23262d; border-radius: 0.8rem;
+          background: #14161a; }
+  #log { display: flex; flex-direction: column; gap: 0.9rem;
+         min-height: 12rem; }
+  .bubble { white-space: pre-wrap; overflow-wrap: anywhere;
+            padding: 0.65rem 0.85rem 0.75rem; border-radius: 1rem;
+            max-width: 85%; }
+  .who { display: block; font-size: 10.5px; font-weight: 600;
+         letter-spacing: 0.12em; text-transform: uppercase; color: #8b9096;
+         margin-bottom: 0.35rem; }
+  .stamp { letter-spacing: 0.03em; text-transform: none; font-weight: 400;
+           font-variant-numeric: tabular-nums; }
+  .oracle { align-self: flex-start; background: #17191f;
+            border: 1px solid #262a33; border-bottom-left-radius: 0.35rem; }
+  .you { align-self: flex-end; background: #1e3a5f; color: #eaf1ff;
+         border: 1px solid #2e5079; border-bottom-right-radius: 0.35rem; }
+  .you .who { color: #9db8dd; }
+  .working { animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 50% { border-color: #454c61; } }
   form { position: sticky; bottom: 0; display: flex; gap: 0.55rem;
-         padding: 1rem 0 1.3rem;
-         background: linear-gradient(#14160f00, #14160f 28%); }
+         padding: 1rem 0 1.2rem;
+         background: linear-gradient(#0e101300, #0e1013 30%); }
   textarea { flex: 1; resize: none; min-height: 3.1rem; max-height: 8rem;
-             font: 16px/1.4 ui-sans-serif, system-ui, sans-serif;
-             background: #1e2218; color: inherit; border: 1px solid #3c4034;
-             border-radius: 0.7rem; padding: 0.7rem 0.85rem; }
-  button { font: 15px ui-sans-serif, system-ui, sans-serif; background: #ebe4d6;
-           color: #14160f; border: 0; border-radius: 0.7rem; padding: 0 1.15rem; }
-  button:disabled { opacity: 0.45; }
+             font: 15.5px/1.45 ui-sans-serif, system-ui, sans-serif;
+             background: #17191f; color: inherit; border: 1px solid #2a2e38;
+             border-radius: 0.9rem; padding: 0.7rem 0.85rem; outline: none; }
+  textarea:focus { border-color: #3d6fb8; }
+  button { font: 15px ui-sans-serif, system-ui, sans-serif; font-weight: 600;
+           background: #2f6fd0; color: #ffffff; border: 0;
+           border-radius: 0.9rem; padding: 0 1.2rem; cursor: pointer; }
+  button:disabled { opacity: 0.45; cursor: default; }
 </style>
 <main>
   <h1>Oracle</h1>
@@ -6431,7 +6442,7 @@ document.getElementById("f").onsubmit = async (e) => {
   add("You", text, "you", stamp(new Date(t0)));
   q.value = "";
   send.disabled = true;
-  const pending = add("Oracle", "Working…", "oracle", stamp(new Date(t0)));
+  const pending = add("Oracle", "Working…", "oracle working", stamp(new Date(t0)));
   const pendingText = pending.childNodes[1];
   let stepText = "";
   const paint = () => {
