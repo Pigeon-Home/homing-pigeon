@@ -1367,6 +1367,8 @@ ASK_SYSTEM = (
     "\n"
     "What you do:\n"
     "- Answer only the question asked, briefly, in plain language.\n"
+    "- Never reply with JSON or any structured data format, and never "
+    "write a tool call as text. Plain sentences only.\n"
     "- Use only the job output provided in the user message. Do not invent facts.\n"
     "- Quote job IDs exactly as they appear in the output. Never invent, shorten, or reformat them.\n"
     "- A 'Recent runner log' section may follow the job output. Use it to answer\n"
@@ -1587,6 +1589,42 @@ def _default_inference_open(req, timeout=60):
 
 
 def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None, instructions=None):
+    """ask_model with the answer-format guard.
+
+    A reply that trips the guard (structured-data dump or a
+    tool-call fragment riding in the text) is withheld and the
+    question is re-asked once with a plain-sentences instruction.
+    If the re-ask also trips and produced an answer, the caller
+    gets the mechanical fallback sentence, sanitized like any
+    other reply; a rejection from either attempt passes through.
+    """
+    result = _ask_model_once(cfg, question, output_text, max_chars,
+                             patterns, opener, instructions)
+    problem = _answer_format_problem(result.get("answer"))
+    if not problem:
+        return result
+    log(f"ask: reply withheld by format guard ({problem}); "
+        "re-asking for prose")
+    retry = _ask_model_once(cfg,
+                            _as_text(question) + "\n\n" + _FORMAT_REASK,
+                            output_text, max_chars, patterns, opener,
+                            instructions)
+    if not _answer_format_problem(retry.get("answer")):
+        return retry
+    if "answer" not in retry:
+        return retry
+    log("ask: re-ask also failed the format guard", "WARN")
+    pats = patterns if patterns is not None else BUILTIN_REDACT_PATTERNS
+    try:
+        cap = int(max_chars)
+    except (TypeError, ValueError, OverflowError):
+        cap = 2000
+    model = cfg.get("model") if isinstance(cfg, dict) else ""
+    return _sanitize_model_reply(_FORMAT_FALLBACK_ANSWER, cap,
+                                 output_text, pats, model or "")
+
+
+def _ask_model_once(cfg, question, output_text, max_chars, patterns=None, opener=None, instructions=None):
     """POST a constrained question to a loopback OpenAI-compatible endpoint.
 
     cfg is the dict from inference_config. The reply is truncated, redacted,
@@ -1681,6 +1719,100 @@ def _sanitize_model_reply(reply, cap, scan_text, patterns, model):
         return {"op": "ask", "rejected": "sanitization"}
     log(f"ask: reply {_preview(redacted)!r}")
     return {"op": "ask", "answer": redacted, "model": model, "sanitized": True}
+
+
+# --- Answer-format guard: a reply that is a structured-data dump or
+# carries a tool-call-shaped fragment is not an answer, whatever the
+# model intended. Field report, 2026-10-17: on a 2-core laptop the
+# 1B model answered a job-status summary by re-serializing the job
+# index as JSON, and a follow-up judgment question with corrupted
+# JSON ending in a fabricated {"name": "run", "parameters":
+# {"command": "psexec ..."}} fragment. Detection is mechanical.
+# Parseable whole-reply tool calls never reach here as text:
+# _parse_tool_calls routes them first.
+
+_INDEX_FIELD_NAMES = ("job_status", "newest_job_index", "job_ids",
+                      "previous_job_details", "total_job_count",
+                      "current_job_count")
+
+_FORMAT_FALLBACK_ANSWER = (
+    "The local model answered in raw structured data instead of "
+    "sentences, twice in a row, so I withheld both replies. Ask "
+    "about one specific job, or check the retained job files and "
+    "the runner log in the state directory.")
+
+_FORMAT_REASK = (
+    "(Your previous reply was raw structured data, not an answer. "
+    "Reply in plain sentences only. No JSON, no field names, no "
+    "lists of ids, no tool calls.)")
+
+
+def _answer_format_problem(text):
+    """Why a model reply is not a presentable answer, or "".
+
+    Two shapes: a tool-call fragment embedded in the text (a
+    parameters/command pair, or a known tool name in a
+    name/parameters shape), and a job-index dump (three or more
+    quoted index field names with : or =, or a whole-reply JSON
+    object carrying two or more of them).
+    """
+    if not isinstance(text, str) or not text.strip():
+        return ""
+    if '"parameters"' in text and '"command"' in text:
+        return "tool-call fragment (parameters/command)"
+    if '"name"' in text and ('"parameters"' in text
+                             or '"arguments"' in text):
+        for name in _ORACLE_TOOL_NAMES:
+            if ('"' + name + '"') in text:
+                return "tool-call fragment naming " + name
+    hits = [f for f in _INDEX_FIELD_NAMES
+            if re.search('"' + f + r'"\s*[:=]', text)]
+    if len(hits) >= 3:
+        return "job-index dump (" + ", ".join(hits[:3]) + ")"
+    stripped = text.strip()
+    if stripped.startswith("{"):
+        try:
+            obj = json.loads(stripped)
+        except (TypeError, ValueError):
+            obj = None
+        if isinstance(obj, dict):
+            keys = [f for f in _INDEX_FIELD_NAMES if f in obj]
+            if len(keys) >= 2:
+                return "job-index dump (" + ", ".join(keys[:3]) + ")"
+    return ""
+
+
+def _agent_finish(cfg, messages, reply, cap, scan_text, patterns,
+                  model, opener, timeout, tool_rounds):
+    """Final-answer gate for ask_model_agent.
+
+    Sanitize the reply; if the format guard trips, re-ask once with
+    tools off for plain prose; if that also trips, return the
+    mechanical fallback sentence instead of the dump.
+    """
+    result = _sanitize_model_reply(reply, cap, scan_text, patterns, model)
+    problem = _answer_format_problem(result.get("answer"))
+    if not problem:
+        result["tool_rounds"] = tool_rounds
+        return result
+    log(f"oracle agent: reply withheld by format guard ({problem}); "
+        "re-asking for prose")
+    messages.append({"role": "user", "content": _FORMAT_REASK})
+    msg = _inference_chat(cfg, messages, None, opener, timeout)
+    if isinstance(msg, dict) and msg.get("role") != "error":
+        reply2 = msg.get("content")
+        if not isinstance(reply2, str):
+            reply2 = "" if reply2 is None else str(reply2)
+        result2 = _sanitize_model_reply(reply2, cap, scan_text,
+                                        patterns, model)
+        if not _answer_format_problem(result2.get("answer")):
+            result2["tool_rounds"] = tool_rounds
+            return result2
+        log("oracle agent: re-ask also failed the format guard", "WARN")
+    fallback = _sanitize_model_reply(_FORMAT_FALLBACK_ANSWER, cap,
+                                     scan_text, patterns, model)
+    fallback["tool_rounds"] = tool_rounds
+    return fallback
 
 
 # --- Oracle agent tools: the chat model gets hands, the job path does not.
@@ -1804,6 +1936,8 @@ ASK_AGENT_SYSTEM = (
     "log says.\n"
     "\n"
     "How to answer:\n"
+    "- Reply in plain sentences. Never answer with JSON or any "
+    "structured data format, and never write a tool call as text.\n"
     "- The text under Output is already the recent job index and the "
     "log tail. Answer a summary, a count, or a status question from "
     "that text alone. Do not use tools for those: no file opens, no "
@@ -2299,10 +2433,9 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             reply = msg.get("content")
             if not isinstance(reply, str):
                 reply = "" if reply is None else str(reply)
-            result = _sanitize_model_reply(reply, cap, scan_text,
-                                           patterns, model)
-            result["tool_rounds"] = tool_rounds
-            return result
+            return _agent_finish(cfg, messages, reply, cap, scan_text,
+                                 patterns, model, opener, timeout,
+                                 tool_rounds)
         _progress(f"Thinking (step {tool_rounds + 1})")
         msg = _inference_chat(cfg, messages, _ORACLE_TOOLS, opener, timeout)
         if not isinstance(msg, dict) or msg.get("role") == "error":
@@ -2319,9 +2452,9 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             reply = msg.get("content")
             if not isinstance(reply, str):
                 reply = "" if reply is None else str(reply)
-            result = _sanitize_model_reply(reply, cap, scan_text, patterns, model)
-            result["tool_rounds"] = tool_rounds
-            return result
+            return _agent_finish(cfg, messages, reply, cap, scan_text,
+                                 patterns, model, opener, timeout,
+                                 tool_rounds)
         tool_rounds += 1
         log(f"oracle agent: round {tool_rounds}, "
             f"{len(calls)} tool call(s): "
