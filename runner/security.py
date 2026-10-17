@@ -280,8 +280,14 @@ def _audit_path(base_dir):
 
 
 def _enforce_bound(base_dir, max_lines):
-    """Roll the audit log to .1 when it reaches the bound."""
+    """Roll the audit log to .1 when it reaches the bound.
+
+    A symlink is not followed. Rolling renames the name, it does not
+    read or rewrite the target.
+    """
     path = _audit_path(base_dir)
+    if os.path.islink(path):
+        return
     try:
         with open(path, "rb") as fh:
             count = sum(1 for _ in fh)
@@ -295,14 +301,21 @@ def _enforce_bound(base_dir, max_lines):
 
 
 def _bump_counts(base_dir, feature, decision):
-    """Maintain security-audit-counts.json. Best effort."""
-    path = os.path.join(base_dir, COUNTS_FILE)
+    """Maintain security-audit-counts.json. Best effort.
+
+    The temp name is created with O_EXCL | O_NOFOLLOW. A symlink at
+    the counts path is replaced, not written through, and its old
+    contents are not used.
+    """
     try:
-        try:
-            with open(path, encoding="utf-8") as fh:
-                counts = json.load(fh)
-        except (OSError, ValueError):
-            counts = {}
+        path = os.path.join(base_dir, COUNTS_FILE)
+        counts = {}
+        if not os.path.islink(path):
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    counts = json.load(fh)
+            except (OSError, ValueError):
+                counts = {}
         if not isinstance(counts, dict):
             counts = {}
         feat = counts.get(feature)
@@ -310,10 +323,31 @@ def _bump_counts(base_dir, feature, decision):
             feat = {}
             counts[feature] = feat
         feat[decision] = int(feat.get(decision) or 0) + 1
-        tmp = path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as fh:
-            json.dump(counts, fh)
-        os.replace(tmp, path)
+        tmp = path + ".tmp." + str(os.getpid())
+        fd = None
+        try:
+            try:
+                os.unlink(tmp)
+            except FileNotFoundError:
+                pass
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            fd = os.open(tmp, flags, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fd = None
+                json.dump(counts, fh)
+            os.replace(tmp, path)
+            try:
+                os.chmod(path, 0o600)
+            except OSError:
+                pass
+        finally:
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
     except Exception:
         pass
 
@@ -360,12 +394,17 @@ def write_audit_entry(base_dir, feature, decision, reason,
             if detail:
                 entry["detail"] = detail
         path = _audit_path(base_dir)
+        line = (json.dumps(entry) + "\n").encode("utf-8")
+        flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(path, flags, 0o600)
         try:
-            with open(path, "a", encoding="utf-8") as fh:
-                fh.write(json.dumps(entry) + "\n")
+            os.write(fd, line)
         finally:
+            os.close(fd)
             try:
-                if os.path.exists(path):
+                if os.path.exists(path) and not os.path.islink(path):
                     os.chmod(path, 0o600)
             except OSError:
                 pass
