@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.7.11 - 2026-10-16
+## 3.7.12 - 2026-10-16
 
 ### Oracle system watch, on by default
 - On Windows the Oracle's context now includes a tail of the Windows
@@ -20,6 +20,22 @@
   silently re-baselines over a trip. Cross-platform.
 - Opt out of all three sections with `inference.watch_system=false`
   in config (default true).
+
+### Fixes Windows CI caught before this shipped
+- Canary hashes now survive Windows line endings: planting writes
+  exact bytes and the state check folds CRLF to LF before hashing.
+  The first cut planted in text mode but hashed the LF string, so on
+  Windows every canary read as modified forever.
+- `oracle_context`'s `max_chars` now caps the whole context, the way
+  its contract always said: the Event Log and registry sections were
+  appended after the job output had been sliced, with no budget check,
+  so on Windows a capped call overran and a non-positive cap returned
+  the watch sections instead of "". The job-budget tests pass on
+  Windows now, with regression tests that patch the platform so
+  Linux CI covers the Windows behavior too.
+- The v3.7.11 tag carries the first of these fixes but its Windows
+  build failed on the second, so it was never published — no GitHub
+  Release, no PyPI upload. This release supersedes it.
 
 ## 3.7.10 - 2026-10-16
 
