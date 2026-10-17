@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.7.10 - 2026-10-16
+
+### Local Oracle chat prompt
+- The browser chat no longer inherits the cloud ask rules. Those rules
+  told the model never to inspect raw output and to answer only from
+  the pasted text, so a small model ignored the files on the box. The
+  local chat now has its own instructions: the operator is at this
+  computer, open the retained files and the log, and a missing kind
+  is "kind not recorded", not a failed job.
+- The mailed ask path is unchanged. It still must not reveal raw output.
+- Gmail auth recovery is logged at WARN. The per-minute cap drops INFO
+  once a process is busy, which hid the recovery line from the mutation
+  job's clean pytest run.
+
 ## 3.7.9 — 2026-10-16
 
 ### Property-based tests + a real signature bug they caught
