@@ -120,9 +120,11 @@ def _disk_fraction(path):
 def _load_state(base_dir):
     if not isinstance(base_dir, str) or not base_dir:
         return {}
+    path = os.path.join(base_dir, STATE_FILE)
+    if os.path.islink(path):
+        return {}
     try:
-        with open(os.path.join(base_dir, STATE_FILE), "r",
-                  encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             st = json.load(f)
         return st if isinstance(st, dict) else {}
     except (OSError, ValueError):
@@ -153,14 +155,37 @@ def _save_state(base_dir, state):
                 clean[key] = str(v)
             except Exception:
                 continue
-    tmp = os.path.join(base_dir, STATE_FILE + ".tmp." + str(threading.get_ident()))
+    path = os.path.join(base_dir, STATE_FILE)
+    tmp = path + ".tmp." + str(threading.get_ident())
+    fd = None
     try:
         with _STATE_LOCK:
-            with open(tmp, "w", encoding="utf-8") as f:
+            try:
+                os.unlink(tmp)
+            except FileNotFoundError:
+                pass
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            fd = os.open(tmp, flags, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                fd = None
                 json.dump(clean, f)
-            os.replace(tmp, os.path.join(base_dir, STATE_FILE))
+            os.replace(tmp, path)
+            try:
+                os.chmod(path, 0o600)
+            except OSError:
+                pass
     except (OSError, TypeError, ValueError):
-        pass
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
 
 
 def check_resources(cfg, base_dir, now=None):
