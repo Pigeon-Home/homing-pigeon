@@ -5,7 +5,8 @@ name: sourceforge
 # default download for its OS. Skips until the repo secrets exist, so a
 # release is never blocked on SourceForge.
 #
-# Secrets: SOURCEFORGE_USER, SOURCEFORGE_SSH_KEY, SOURCEFORGE_API_KEY
+# Upload user: dru555444, unless SOURCEFORGE_USER is set.
+# Secrets: SOURCEFORGE_SSH_KEY, SOURCEFORGE_API_KEY
 # Variable (or secret): SOURCEFORGE_PROJECT  (the unix name)
 
 on:
@@ -35,8 +36,9 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          if [ -z "${SF_USER}" ] || [ -z "${SF_KEY}" ] || [ -z "${SF_API}" ] || [ -z "${SF_PROJECT}" ]; then
-            echo "::warning::SourceForge publish skipped. Set secrets SOURCEFORGE_USER, SOURCEFORGE_SSH_KEY, SOURCEFORGE_API_KEY, and variable SOURCEFORGE_PROJECT."
+          SF_USER="${SF_USER:-dru555444}"
+          if [ -z "${SF_KEY}" ] || [ -z "${SF_API}" ] || [ -z "${SF_PROJECT}" ]; then
+            echo "::warning::SourceForge publish skipped. Set secrets SOURCEFORGE_SSH_KEY and SOURCEFORGE_API_KEY, and variable SOURCEFORGE_PROJECT."
             exit 0
           fi
           case "$SF_PROJECT" in
