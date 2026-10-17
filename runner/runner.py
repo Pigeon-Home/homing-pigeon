@@ -443,7 +443,7 @@ def build_key_policies(cfg) -> dict:
         if "max_timeout_sec" in pol:
             try:
                 mt = int(pol["max_timeout_sec"])
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 raise RuntimeError(
                     f"config error: key_policies[{kid!r}].max_timeout_sec "
                     "must be a number")
@@ -2811,7 +2811,7 @@ def _port(cfg, key, default):
         raise RuntimeError("config error: config is not an object")
     try:
         return int(cfg.get(key, default))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         raise RuntimeError("config error: " + key + " must be a number")
 
 
@@ -5209,6 +5209,17 @@ def main() -> int:
     _err = _validate_size_caps(cfg)
     if _err:
         print(f"config error: {_err}", file=sys.stderr)
+        return 2
+    # A bad key policy or port is a config error. Checked here so the
+    # poll loop is not the thing that discovers it, every cycle.
+    try:
+        build_key_policies(cfg)
+        if "imap_port" in cfg:
+            _port(cfg, "imap_port", 993)
+        if "smtp_port" in cfg:
+            _port(cfg, "smtp_port", 587)
+    except RuntimeError as e:
+        print(e, file=sys.stderr)
         return 2
     if args.inspect:
         return run_inspect(cfg, args)

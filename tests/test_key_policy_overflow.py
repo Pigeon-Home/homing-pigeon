@@ -42,5 +42,31 @@ class KeyPolicyOverflowTest(unittest.TestCase):
         self.assertIsInstance(reason, str)
 
 
+class KeyPolicyLoadTest(unittest.TestCase):
+    def test_infinity_is_a_config_error_before_the_poll(self):
+        import tempfile
+        from runner.runner import _port, build_key_policies, main
+
+        with self.assertRaises(RuntimeError) as caught:
+            build_key_policies(
+                {"key_policies": {"k": {"max_timeout_sec": float("inf")}}})
+        self.assertIn("must be a number", str(caught.exception))
+        with self.assertRaises(RuntimeError):
+            _port({"imap_port": float("-inf")}, "imap_port", 993)
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(
+                    '{"key_policies": {"k": {"max_timeout_sec": Infinity}}}')
+            old = sys.argv
+            sys.argv = ["runner", "--config", path]
+            try:
+                code = main()
+            finally:
+                sys.argv = old
+        self.assertEqual(code, 2)
+
+
 if __name__ == "__main__":
     unittest.main()

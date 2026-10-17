@@ -211,7 +211,7 @@ def _metadata_notes(job):
     # M7: timeout clamp.
     try:
         timeout = int(job.get("timeout_sec") or 0)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         timeout = 0
     if timeout > 3600:
         notes.append(_note("timeout_clamped", "metadata", "info",
@@ -224,7 +224,7 @@ def _review_scan_bytes(cfg):
     """Bytes of script the reviewer scans for filename references."""
     try:
         n = int(cfg.get("review_scan_bytes", DEFAULT_REVIEW_SCAN_BYTES))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return DEFAULT_REVIEW_SCAN_BYTES
     return n if n > 0 else DEFAULT_REVIEW_SCAN_BYTES
 
