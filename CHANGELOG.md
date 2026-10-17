@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.7.16 - 2026-10-16
+
+- Version-only release: no code changes from 3.7.15. Cut at the
+  maintainer's request so the latest-release line moves to a round
+  checkpoint of tonight's work — the Oracle stall fixes, the job
+  index, the warm-up join, `--faster`, and the CI security checks
+  all shipped across 3.7.14 and 3.7.15.
+
 ## 3.7.15 - 2026-10-16
 
 ### A lighter Llama without the Pi profile
