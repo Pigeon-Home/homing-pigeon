@@ -31,6 +31,7 @@ from runner.posture import (
     _check_recommended_features,
     _check_service_unit,
 )
+from runner.senses import load_alerts, store_alert
 from runner.runner import (
     _artifact_findings,
     _artifact_scan_enabled,
@@ -47,11 +48,15 @@ from runner.runner import (
     _oracle_watch_enabled,
     _parse_iptables_policy,
     _parse_ufw,
+    _run_text,
     _tail_marked,
     _yara_hits,
     _yara_rules_text,
     check_policy_constraints,
+    kill_tree,
     oracle_context,
+    platform_interpreter,
+    script_filename,
 )
 
 
@@ -2029,6 +2034,124 @@ class LinuxPolicyFuzzTest(unittest.TestCase):
                     break
             if crashes:
                 break
+        self.assertEqual(crashes, [])
+
+
+class PosixKillTest(unittest.TestCase):
+    def test_linux_kills_the_group_and_does_not_call_taskkill(self):
+        proc = mock.Mock()
+        proc.pid = 42
+        with mock.patch("runner.runner.os.name", "posix"), \
+             mock.patch("runner.runner.os.killpg") as killpg, \
+             mock.patch("runner.runner.subprocess.run",
+                        side_effect=AssertionError("taskkill")):
+            kill_tree(proc)
+        killpg.assert_called_once()
+        self.assertEqual(killpg.call_args.args[0], 42)
+        proc.kill.assert_not_called()
+
+        proc.kill.side_effect = OSError("gone")
+        with mock.patch("runner.runner.os.name", "posix"), \
+             mock.patch("runner.runner.os.killpg", side_effect=OSError("no group")), \
+             mock.patch("runner.runner.subprocess.run",
+                        side_effect=AssertionError("taskkill")):
+            kill_tree(proc)
+        proc.kill.assert_called_once()
+
+    def test_interpreter_and_script_name_mutations(self):
+        with mock.patch("runner.runner.os.name", "posix"):
+            self.assertEqual(platform_interpreter(), ["sh"])
+        with mock.patch("runner.runner.os.name", "nt"):
+            self.assertEqual(platform_interpreter()[-1], "-File")
+        self.assertEqual(script_filename(["sh"]), "script")
+        self.assertEqual(script_filename(["/bin/bash"]), "script")
+        self.assertEqual(script_filename(["Python3"]), "script.py")
+        self.assertEqual(script_filename(["powershell"]), "script.ps1")
+        self.assertEqual(script_filename(None), "script")
+        self.assertEqual(script_filename(["sh", None]), "script")
+
+    def test_run_text_does_not_execute_and_drops_a_failure(self):
+        def fake_run(argv, **kwargs):
+            self.assertNotIn("creationflags", kwargs)
+            self.assertEqual(argv, ["ufw", "status"])
+            return mock.Mock(returncode=0, stdout="Status: active\n")
+
+        with mock.patch("runner.runner.sys.platform", "linux"), \
+             mock.patch("runner.runner.subprocess.run", side_effect=fake_run):
+            self.assertEqual(_run_text(["ufw", "status"]), "Status: active\n")
+        with mock.patch("runner.runner.subprocess.run",
+                        return_value=mock.Mock(returncode=1, stdout="no")):
+            self.assertIsNone(_run_text(["ufw", "status"]))
+        with mock.patch("runner.runner.subprocess.run",
+                        return_value=mock.Mock(returncode=0, stdout=None)):
+            self.assertIsNone(_run_text(["ufw", "status"]))
+        with mock.patch("runner.runner.subprocess.run",
+                        side_effect=OSError("missing")):
+            self.assertIsNone(_run_text(["no-such-binary"]))
+
+
+class AlertStoreTest(unittest.TestCase):
+    def test_the_cap_keeps_the_newest_and_a_bad_record_is_dropped(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch("runner.senses.MAX_STORED", 3):
+                store_alert("", {"sensor": "x"})
+                store_alert(d, ["not", "a", "dict"])
+                store_alert(d, {"sensor": "bad", "n": float("nan")})
+                for i in range(5):
+                    store_alert(d, {"sensor": "host", "n": i, "severity": "high"})
+                rows = load_alerts(d, sensor="host")
+            self.assertEqual([row["n"] for row in rows], [2, 3, 4])
+            path = os.path.join(d, "senses.jsonl")
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write("not-json\n")
+            self.assertEqual(len(load_alerts(d, sensor="host")), 3)
+            self.assertEqual(
+                load_alerts(d, sensor="host", severity_floor="critical"), [])
+
+
+class KillAndStoreFuzzTest(unittest.TestCase):
+    def test_random_kills_reads_and_records_do_not_raise(self):
+        rng = random.Random(20261017)
+        crashes = []
+
+        def killpg(pid, sig):
+            if rng.randrange(3) == 0:
+                raise OSError("no group")
+
+        def fake_run(argv, **kwargs):
+            return mock.Mock(
+                returncode=rng.choice([0, 1, 2]),
+                stdout=rng.choice(["ok", "", None, b"ok"]))
+
+        with tempfile.TemporaryDirectory() as d, \
+             mock.patch("runner.runner.os.name", "posix"), \
+             mock.patch("runner.runner.os.killpg", side_effect=killpg), \
+             mock.patch("runner.runner.subprocess.run", side_effect=fake_run), \
+             mock.patch("runner.senses.MAX_STORED", 5):
+            for _ in range(200):
+                proc = mock.Mock()
+                proc.pid = rng.choice([1, 42, None, "x"])
+                proc.kill.side_effect = OSError("gone") if rng.randrange(4) == 0 else None
+                record = rng.choice([
+                    {"sensor": "host", "n": rng.randrange(0, 8), "severity": "low"},
+                    {"sensor": "host", "n": float("nan")},
+                    ["x"],
+                    None,
+                ])
+                try:
+                    kill_tree(proc)
+                    got = _run_text(["ufw", "status"])
+                    store_alert(d, record)
+                    rows = load_alerts(d, sensor="host", limit=10)
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                if got not in (None, "ok", ""):
+                    crashes.append(got)
+                    break
+                if not isinstance(rows, list) or len(rows) > 5:
+                    crashes.append(len(rows) if isinstance(rows, list) else rows)
+                    break
         self.assertEqual(crashes, [])
 
 
