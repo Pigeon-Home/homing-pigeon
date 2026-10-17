@@ -4817,7 +4817,7 @@ def _wevtutil_query(logname, xpath, count, timeout=15):
     return out if isinstance(out, str) else None
 
 
-def _eventlog_tail(max_events=30, max_chars=2000):
+def _eventlog_tail(max_events=30, max_chars=2000, base_dir=""):
     """Recent Windows Event Log entries, for the Oracle's context.
 
     Windows-only. Reads System + Application (Critical/Error/Warning)
@@ -4895,6 +4895,7 @@ def _eventlog_tail(max_events=30, max_chars=2000):
     blob = "\n".join(lines[:max_events]).strip()
     if len(blob) > max_chars:
         blob = blob[-max_chars:]
+    _file_fresh_lines(base_dir, "eventlog", blob)
     return blob
 
 
@@ -5074,7 +5075,27 @@ def _registry_watch(base_dir, max_chars=2000):
     blob = "\n".join(lines).strip()
     if len(blob) > max_chars:
         blob = blob[:max_chars]
+    if isinstance(old, dict) and isinstance(base_dir, str) and base_dir:
+        _file_registry_lines(base_dir, lines)
     return blob
+
+
+def _file_registry_lines(base_dir, lines):
+    """File registry diffs. A baseline and a quiet look are not alerts."""
+    for line in lines:
+        if not isinstance(line, str) or line.startswith("("):
+            continue
+        attack = ""
+        start = line.rfind("[")
+        end = line.rfind("]")
+        if start >= 0 and end > start:
+            attack = line[start + 1:end]
+            if not attack.startswith("T"):
+                attack = ""
+        title = line.split(" = ", 1)[0].strip()[:200]
+        _file_watch_alert(
+            base_dir, "registry", "high" if attack else "medium",
+            title, attack)
 
 
 # Canary (tripwire) files the Oracle watches, planted by the runner
@@ -5148,6 +5169,63 @@ def _file_watch_alert(base_dir, sensor, severity, title, attack):
             "observed_at": now,
             "received_at": now,
         })
+    except Exception:
+        return
+
+
+def _file_fresh_lines(base_dir, sensor, text):
+    """File log lines that carry an ATT&CK id and were not seen before.
+
+    The first look is a baseline: those lines are remembered and not
+    filed. A later line with the same text is not filed again. A plain
+    error line, with no technique id, is never filed. Never raises.
+    """
+    if _senses is None or not isinstance(base_dir, str) or not base_dir:
+        return
+    if not isinstance(text, str):
+        text = ""
+    path = os.path.join(base_dir, "oracle-logseen.json")
+    seen = {}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            loaded = json.load(fh)
+        if isinstance(loaded, dict):
+            seen = loaded
+    except Exception:
+        seen = {}
+    prior = seen.get(sensor)
+    first = not isinstance(prior, list)
+    known = set(prior) if isinstance(prior, list) else set()
+    tagged = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        start = line.rfind("[")
+        end = line.rfind("]")
+        if start < 0 or end <= start:
+            continue
+        attack = line[start + 1:end]
+        if not attack.startswith("T"):
+            continue
+        digest = hashlib.sha1(line.encode("utf-8", "replace")).hexdigest()[:16]
+        tagged.append((digest, line[:200], attack))
+    if first:
+        seen[sensor] = [digest for digest, _line, _attack in tagged][-40:]
+    else:
+        filed = 0
+        remembered = list(prior)
+        for digest, line, attack in tagged:
+            if digest in known or filed >= 8:
+                continue
+            _file_watch_alert(base_dir, sensor, "high", line, attack)
+            remembered.append(digest)
+            known.add(digest)
+            filed += 1
+        seen[sensor] = remembered[-40:]
+        if filed == 0 and list(prior) == seen[sensor]:
+            return
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(seen, fh)
     except Exception:
         return
 
@@ -5339,7 +5417,7 @@ def _tail_marked(path, markers, max_lines=20):
     return kept[-max_lines:]
 
 
-def _host_log_tail(max_chars=2000):
+def _host_log_tail(max_chars=2000, base_dir=""):
     """Narrow auth and system log tail for Linux and macOS.
 
     File tails only. log show on macOS is a scan, so it is not used.
@@ -5388,6 +5466,7 @@ def _host_log_tail(max_chars=2000):
         max_chars = 2000
     if len(blob) > max_chars:
         blob = blob[-max_chars:]
+    _file_fresh_lines(base_dir, "hostlog", blob)
     return blob
 
 
@@ -5880,7 +5959,7 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
             blob += ("\n\n---\nCanary watch (tripwire files planted by "
                      "the runner):\n" + can)
     if watch and sys.platform == "win32" and job_blob_len < cap:
-        ev = _eventlog_tail()
+        ev = _eventlog_tail(base_dir=base_dir if isinstance(base_dir, str) else "")
         if ev is None:
             blob += ("\n\n---\nWindows Event Log: unreadable by the runner "
                      "(no entries shown; do not claim the log is clean).")
@@ -5900,7 +5979,7 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
             blob += ("\n\n---\nWindows registry watch (autorun and "
                      "persistence locations, services):\n" + reg)
     if watch and job_blob_len < cap and sys.platform != "win32":
-        host = _host_log_tail()
+        host = _host_log_tail(base_dir=base_dir if isinstance(base_dir, str) else "")
         if host is None:
             blob += ("\n\n---\nHost log tail: unreadable by the runner "
                      "(no lines shown; do not claim the log is clean).")

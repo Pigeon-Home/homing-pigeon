@@ -108,6 +108,30 @@ class AttackLabelTest(unittest.TestCase):
         self.assertEqual(len(filed), 2)
 
 
+class FreshLineTest(unittest.TestCase):
+    def test_first_look_is_a_baseline_and_a_new_line_files_once(self):
+        tmp = tempfile.mkdtemp()
+        line = "Failed password for root [T1110]"
+        R._file_fresh_lines(tmp, "hostlog", line + "\nkernel: error: disk full")
+        self.assertEqual(R._senses.load_alerts(tmp, sensor="hostlog"), [])
+        R._file_fresh_lines(tmp, "hostlog", line)
+        R._file_fresh_lines(tmp, "hostlog", line + "\nMar 1 sudo: bob [T1548.003]")
+        filed = R._senses.load_alerts(tmp, sensor="hostlog")
+        self.assertEqual(len(filed), 1)
+        self.assertEqual(filed[0]["detail"]["attack"], "T1548.003")
+
+    def test_registry_quiet_look_is_not_an_alert(self):
+        tmp = tempfile.mkdtemp()
+        R._file_registry_lines(tmp, ["(no changes since last look)"])
+        R._file_registry_lines(tmp, [
+            r"+ HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\evil = calc [T1547.001]",
+        ])
+        filed = R._senses.load_alerts(tmp, sensor="registry")
+        self.assertEqual(len(filed), 1)
+        self.assertNotIn("calc", filed[0]["title"])
+        self.assertEqual(filed[0]["detail"]["attack"], "T1547.001")
+
+
 class FirewallParseTest(unittest.TestCase):
     def test_netsh_off_profile_is_labeled(self):
         line = R._parse_netsh_profiles(NETSH)

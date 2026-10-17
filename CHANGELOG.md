@@ -31,6 +31,9 @@
 - A canary trip and a firewall flip are written once into the senses
   store, so a senses query can see them. The same trip is not filed
   again on the next look. Restoring the canary clears that memory.
+- A registry change, and a new auth or audit line that carries an
+  ATT&CK id, are filed the same way. The first look at a log is a
+  baseline and is not an alert. A plain error line is not filed.
 
 ## 3.7.12 - 2026-10-16
 
