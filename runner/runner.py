@@ -1616,14 +1616,28 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
     if timeout < 1:
         timeout = 60
     log(f"ask: calling model {model}")
+    started = time.monotonic()
+    raw_text = None
     try:
         with open_fn(req, timeout=timeout) as resp:
             raw = resp.read(1_000_000)
+        raw_text = raw.decode("utf-8", "replace")
         parsed = json.loads(raw.decode("utf-8"))
         reply = parsed["choices"][0]["message"]["content"]
     except Exception as e:
+        err_body = None
+        if isinstance(e, HTTPError):
+            try:
+                err_body = e.read().decode("utf-8", "replace")
+            except Exception:
+                err_body = None
+        _oracle_log_exchange(endpoint, model, payload, started,
+                             error=str(e), error_body=err_body,
+                             raw=raw_text)
         log(f"inference call failed: {e}", "WARN")
         return {"op": "ask", "rejected": "inference_error"}
+    _oracle_log_exchange(endpoint, model, payload, started,
+                         response=reply, raw=raw_text)
     if not isinstance(reply, str):
         reply = str(reply)
     return _sanitize_model_reply(reply, cap, output_text, patterns, model)
@@ -2023,21 +2037,30 @@ def _inference_chat(cfg, messages, tools, opener, timeout):
         method="POST",
     )
     open_fn = opener or _default_inference_open
+    raw_text = None
     try:
         with open_fn(req, timeout=timeout) as resp:
             raw = resp.read(1_000_000)
+        raw_text = raw.decode("utf-8", "replace")
         parsed = json.loads(raw.decode("utf-8"))
         msg = parsed["choices"][0]["message"]
         log(f"inference chat call returned in {time.monotonic() - started:.0f}s")
+        _oracle_log_exchange(endpoint, cfg.get("model"), payload, started,
+                             response=msg, raw=raw_text)
     except HTTPError as e:
         try:
-            err_body = e.read().decode("utf-8", "replace")[:500]
+            err_body = e.read().decode("utf-8", "replace")
         except Exception:
             err_body = "?"
+        _oracle_log_exchange(endpoint, cfg.get("model"), payload, started,
+                             error=f"HTTP {e.code} {e.reason}",
+                             error_body=err_body)
         log(f"inference chat call failed: HTTP {e.code} {e.reason}; "
-            f"endpoint response body: {err_body}", "WARN")
+            f"endpoint response body: {err_body[:500]}", "WARN")
         return {"role": "error", "content": _inference_failure_text(e, timeout)}
     except Exception as e:
+        _oracle_log_exchange(endpoint, cfg.get("model"), payload, started,
+                             error=str(e), raw=raw_text)
         log(f"inference chat call failed after {timeout}s: {e}", "WARN")
         return {"role": "error", "content": _inference_failure_text(e, timeout)}
     return msg if isinstance(msg, dict) else {"content": str(msg)}
@@ -3564,6 +3587,9 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     shown, _families = redact_text(stdout, _redact_patterns(cfg))
     log(f"job {job['job_id']} process finished exit={proc.returncode} "
         f"stdout={_preview(shown)!r}")
+    # The full output goes to runner.log before the bounded copies
+    # below are cut for the result email.
+    _log_job_output(job_id, kind, stdout, stderr, cfg)
     trunc_out, trunc_err = False, False
     if len(stdout) > max_out:
         stdout, trunc_out = stdout[:max_out], True
@@ -3625,11 +3651,13 @@ def _preview(text, n=80) -> str:
     return line
 
 
-def append_bounded_log(path, text, max_bytes=2_097_152):
-    """Append one record. Roll to path.1 once the file would pass max_bytes.
+def append_bounded_log(path, text, max_bytes=2_097_152, backups=1):
+    """Append one record. Roll once the file would pass max_bytes.
 
-    One backup, then the old backup is replaced. A chatty process cannot
-    fill the disk. Failures are swallowed: logging must not kill the runner.
+    Keeps up to `backups` rotated files (path.1 .. path.N, oldest
+    dropped); backups=1 is the historic behavior: one backup, then
+    the old backup is replaced. A chatty process cannot fill the
+    disk. Failures are swallowed: logging must not kill the runner.
     """
     if not path or not isinstance(text, str) or not text:
         return
@@ -3639,6 +3667,14 @@ def append_bounded_log(path, text, max_bytes=2_097_152):
         max_bytes = 2_097_152
     if max_bytes < 1:
         max_bytes = 2_097_152
+    try:
+        backups = int(backups)
+    except (TypeError, ValueError, OverflowError):
+        backups = 1
+    if backups < 1:
+        backups = 1
+    if backups > 100:
+        backups = 100
     data = text if text.endswith("\n") else text + "\n"
     raw = data.encode("utf-8")
     if len(raw) > max_bytes:
@@ -3654,6 +3690,14 @@ def append_bounded_log(path, text, max_bytes=2_097_152):
                 size = 0
             if size and size + len(raw) > max_bytes:
                 try:
+                    if backups > 1:
+                        oldest = f"{path}.{backups}"
+                        if os.path.exists(oldest):
+                            os.remove(oldest)
+                        for n in range(backups - 1, 0, -1):
+                            src = f"{path}.{n}"
+                            if os.path.exists(src):
+                                os.replace(src, f"{path}.{n + 1}")
                     os.replace(path, path + ".1")
                 except OSError:
                     pass
@@ -3685,7 +3729,8 @@ def log(msg: str, level: str = "INFO"):
                 except Exception:
                     pass
                 if _LOG_FILE:
-                    append_bounded_log(_LOG_FILE, notice)
+                    append_bounded_log(_LOG_FILE, notice,
+                                       _LOG_MAX_BYTES, _LOG_BACKUPS)
             _LOG_MINUTE = now
             _LOG_COUNT = 0
             _LOG_DROPPED = 0
@@ -3705,7 +3750,8 @@ def log(msg: str, level: str = "INFO"):
         except Exception:
             pass
         if _LOG_FILE:
-            append_bounded_log(_LOG_FILE, line)
+            append_bounded_log(_LOG_FILE, line,
+                               _LOG_MAX_BYTES, _LOG_BACKUPS)
 
 
 _LOG_FILE = None
@@ -3714,6 +3760,173 @@ _LOG_MINUTE = 0.0
 _LOG_COUNT = 0
 _LOG_DROPPED = 0
 _LOG_WRITE_LOCK = threading.Lock()
+
+# runner.log bounds, from config (log_max_bytes / log_backups).
+# Refreshed at startup by _refresh_log_settings; the defaults here
+# keep log() sane for any caller that runs before that.
+_LOG_DEFAULT_MAX_BYTES = 33_554_432
+_LOG_DEFAULT_BACKUPS = 4
+_LOG_MAX_BYTES = _LOG_DEFAULT_MAX_BYTES
+_LOG_BACKUPS = _LOG_DEFAULT_BACKUPS
+
+# oracle.log: full-fidelity inference records (request payloads,
+# replies, error bodies), gated by the `oracle_log` config key and
+# sized by oracle_log_max_bytes / oracle_log_backups. Off by
+# default: no file, no records, no behavior change.
+_ORACLE_LOG_DEFAULT_MAX_BYTES = 536_870_912
+_ORACLE_LOG_DEFAULT_BACKUPS = 4
+_ORACLE_LOG_ENABLED = False
+_ORACLE_LOG_PATH = None
+_ORACLE_LOG_MAX_BYTES = _ORACLE_LOG_DEFAULT_MAX_BYTES
+_ORACLE_LOG_BACKUPS = _ORACLE_LOG_DEFAULT_BACKUPS
+_ORACLE_LOG_ANNOUNCED = False
+
+
+def _cfg_size(value, default, hi):
+    """A config size/count: invalid falls back, valid clamps to [1, hi].
+
+    Booleans are not sizes. A non-numeric value must never crash the
+    runner at startup; it just gets the default.
+    """
+    if isinstance(value, bool):
+        return default
+    try:
+        n = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return default
+    if n < 1:
+        return default
+    return min(n, hi)
+
+
+def _cfg_flag(value) -> bool:
+    """An opt-in config boolean (oracle_log). Default off."""
+    if value is True or value == 1:
+        return True
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "yes", "on", "1")
+    return False
+
+
+def _log_settings(cfg):
+    """(max_bytes, backups) for runner.log, from config or defaults."""
+    if not isinstance(cfg, dict):
+        cfg = {}
+    return (
+        _cfg_size(cfg.get("log_max_bytes"), _LOG_DEFAULT_MAX_BYTES, 2**40),
+        _cfg_size(cfg.get("log_backups"), _LOG_DEFAULT_BACKUPS, 10),
+    )
+
+
+def _oracle_log_settings(cfg):
+    """(max_bytes, backups) for oracle.log, from config or defaults."""
+    if not isinstance(cfg, dict):
+        cfg = {}
+    return (
+        _cfg_size(cfg.get("oracle_log_max_bytes"),
+                  _ORACLE_LOG_DEFAULT_MAX_BYTES, 2**42),
+        _cfg_size(cfg.get("oracle_log_backups"),
+                  _ORACLE_LOG_DEFAULT_BACKUPS, 10),
+    )
+
+
+def _refresh_log_settings(cfg, base_dir):
+    """Load the log bounds (and the oracle.log switch) from config.
+
+    Called at startup, next to where _LOG_FILE itself is assigned,
+    so every later log()/inference/daemon path sees the same values.
+    """
+    global _LOG_MAX_BYTES, _LOG_BACKUPS
+    global _ORACLE_LOG_ENABLED, _ORACLE_LOG_PATH
+    global _ORACLE_LOG_MAX_BYTES, _ORACLE_LOG_BACKUPS
+    _LOG_MAX_BYTES, _LOG_BACKUPS = _log_settings(cfg)
+    _ORACLE_LOG_MAX_BYTES, _ORACLE_LOG_BACKUPS = _oracle_log_settings(cfg)
+    if isinstance(cfg, dict) and _cfg_flag(cfg.get("oracle_log")) \
+            and isinstance(base_dir, str) and base_dir:
+        _ORACLE_LOG_ENABLED = True
+        _ORACLE_LOG_PATH = os.path.join(base_dir, "oracle.log")
+    else:
+        _ORACLE_LOG_ENABLED = False
+        _ORACLE_LOG_PATH = None
+
+
+def _announce_oracle_log():
+    """One startup line in runner.log naming oracle.log. Once only."""
+    global _ORACLE_LOG_ANNOUNCED
+    if _ORACLE_LOG_ENABLED and _ORACLE_LOG_PATH \
+            and not _ORACLE_LOG_ANNOUNCED:
+        _ORACLE_LOG_ANNOUNCED = True
+        log(f"oracle log enabled: full inference records are written "
+            f"to {_ORACLE_LOG_PATH}")
+
+
+def _oracle_log_record(record):
+    """Append one full-fidelity inference record to oracle.log.
+
+    Only model traffic is recorded: the request payload and the
+    endpoint's reply. The config's shared secret and mailbox
+    password are never part of either, so they cannot land here.
+    Failures are swallowed: a debug log must not kill the ask path.
+    The per-minute INFO cap applies to runner.log only, never here:
+    records are written straight through append_bounded_log.
+    """
+    if not _ORACLE_LOG_ENABLED or not _ORACLE_LOG_PATH:
+        return
+    try:
+        line = json.dumps(record, ensure_ascii=False, default=str)
+    except (TypeError, ValueError):
+        return
+    append_bounded_log(_ORACLE_LOG_PATH, line,
+                       _ORACLE_LOG_MAX_BYTES, _ORACLE_LOG_BACKUPS)
+
+
+def _oracle_log_exchange(endpoint, model, payload, started,
+                         response=None, raw=None, error=None,
+                         error_body=None):
+    """Record one inference exchange in oracle.log (when enabled)."""
+    if not _ORACLE_LOG_ENABLED:
+        return
+    record = {
+        "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "endpoint": endpoint,
+        "model": model,
+        "elapsed_sec": round(time.monotonic() - started, 3),
+        "request": payload,
+    }
+    if response is not None:
+        record["response"] = response
+    if raw is not None:
+        record["response_raw"] = raw
+    if error is not None:
+        record["error"] = error
+    if error_body is not None:
+        record["error_body"] = error_body
+    _oracle_log_record(record)
+
+
+def _log_job_output(job_id, kind, stdout, stderr, cfg):
+    """Write a job's complete stdout/stderr to runner.log.
+
+    The result email carries a bounded copy; the log keeps the whole
+    output so a debugging session can read what the job actually
+    said. Redaction still applies (the log never carries cleartext
+    secrets, same as the one-line preview in execute_job). Written
+    straight through append_bounded_log, not log(): the per-minute
+    cap must not drop exactly the record a debugging session needs,
+    and a chatty job must not flood the console.
+    """
+    if not _LOG_FILE:
+        return
+    patterns = _redact_patterns(cfg)
+    out_text, _f1 = redact_text(stdout, patterns)
+    err_text, _f2 = redact_text(stderr, patterns)
+    stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    record = (
+        f"{stamp} [INFO] job {job_id} (kind={kind}) full output:\n"
+        f"--- stdout ---\n{out_text}\n"
+        f"--- stderr ---\n{err_text}\n"
+        f"--- end of job {job_id} output ---")
+    append_bounded_log(_LOG_FILE, record, _LOG_MAX_BYTES, _LOG_BACKUPS)
 
 # Concurrency: IMAP/SMTP connections and the seen-set are not
 # thread-safe. Worker threads run handle_mail, but every touch of shared
@@ -4719,8 +4932,23 @@ def daemon_popen_kwargs(windows: bool) -> dict:
     return kw
 
 
-def _spawn_daemon(argv):
-    return subprocess.Popen(argv, **daemon_popen_kwargs(os.name == "nt"))
+def _spawn_daemon(argv, log_path=None):
+    kw = daemon_popen_kwargs(os.name == "nt")
+    fh = None
+    if log_path:
+        try:
+            fh = open(log_path, "ab")
+            kw["stdout"] = fh
+            kw["stderr"] = fh
+        except OSError:
+            fh = None
+    try:
+        return subprocess.Popen(argv, **kw)
+    finally:
+        # The child holds its own dup of the fd; the parent's copy
+        # can close as soon as the process exists.
+        if fh is not None:
+            fh.close()
 
 
 def ensure_inference_ready(cfg):
@@ -4746,8 +4974,14 @@ def ensure_inference_ready(cfg):
     if not shutil.which("ollama"):
         log("inference configured but ollama not found", "WARN")
         return
+    # With oracle_log on, the daemon's own output goes to oracle.log
+    # too (it is part of the Oracle's story); otherwise it stays
+    # discarded, exactly as before.
+    daemon_log = _ORACLE_LOG_PATH if _ORACLE_LOG_ENABLED else None
+    if daemon_log is None and _cfg_flag(cfg.get("oracle_log")):
+        daemon_log = os.path.join(_base_dir_for(cfg), "oracle.log")
     try:
-        _spawn_daemon(["ollama", "serve"])
+        _spawn_daemon(["ollama", "serve"], log_path=daemon_log)
         log("started ollama daemon for inference")
     except Exception as e:
         log(f"could not start ollama: {e}", "WARN")
@@ -6721,6 +6955,8 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
     base = _base_dir_for(cfg, cfg_path)
     global _LOG_FILE
     _LOG_FILE = os.path.join(base, "runner.log")
+    _refresh_log_settings(cfg, base)
+    _announce_oracle_log()
     try:
         httpd = make_oracle_server(cfg, "127.0.0.1", port, base_dir=base)
     except OSError as e:
@@ -6981,6 +7217,9 @@ def main() -> int:
         if not inf.get("endpoint"):
             inf["endpoint"] = "http://127.0.0.1:11434/v1"
         log("inference: --faster, using llama3.2:1b")
+    # Log bounds (and the oracle.log switch) load before any daemon
+    # is spawned, so a spawned daemon can write into oracle.log.
+    _refresh_log_settings(cfg, _base_dir_for(cfg, args.config))
     ensure_inference_ready(cfg)
     # First start has no previous model id, so this pulls once.
     update_llama_from_config(cfg)
@@ -7016,6 +7255,7 @@ def main() -> int:
 
     global _LOG_FILE
     _LOG_FILE = os.path.join(base_dir, "runner.log")
+    _announce_oracle_log()
 
     seen_path = os.path.join(base_dir, "seen.json")
     seen = load_seen(seen_path)

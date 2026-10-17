@@ -41,6 +41,11 @@ Everything the dashboard configures must be expressible in `config.json`, and ev
 - `task_timeout` — seconds before a claimed task is returned to open. Default 86400.
 - `require_review` — when true, completed tasks go to `pending_review` instead of `done` until approved.
 - `inference` — endpoint and model for the `ask` op (v3.0). The endpoint must be loopback or the op stays off. A non-loopback host is refused and `ask` stays disabled. The installer sets this up by default (Ollama + a model); pass `--no-inference` to skip. The default model is `llama3.2:3b`. `--faster`, and the `raspberry-pi-home` profile, use `llama3.2:1b`, the lighter Llama. `--inference-model` overrides either. On the runner, `--faster` uses that lighter model for one process and does not rewrite config.json. Sub-keys: `endpoint` (loopback URL, required), `model` (tag, required), `max_answer_chars` (default 2000 — answers are truncated past this), `timeout_sec` (default 180, per-question model timeout; a cold llama3.2:3b on a laptop often needs more than 60).
+- `log_max_bytes` — size at which `runner.log` rotates. Default 33554432 (32 MiB). An invalid value falls back to the default.
+- `log_backups` — rotated `runner.log` files kept (`runner.log.1` … `runner.log.N`, oldest dropped). Default 4, clamped to 1–10.
+- `oracle_log` — when true, every inference exchange is recorded in full in `oracle.log` in the state dir (request payload, reply, error bodies, elapsed time), and a spawned inference daemon writes its output there too. A debugging aid; off by default, and no `oracle.log` is created while off.
+- `oracle_log_max_bytes` — size at which `oracle.log` rotates. Default 536870912 (512 MiB); with the default backups the file family stays under roughly 2.5 GiB.
+- `oracle_log_backups` — rotated `oracle.log` files kept. Default 4, clamped to 1–10.
 
 ## Deployment profiles
 
