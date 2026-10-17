@@ -5127,6 +5127,31 @@ def _plant_canary(path):
     return _canary_state(path)
 
 
+def _file_watch_alert(base_dir, sensor, severity, title, attack):
+    """Append one local-watch alert. Never raises, never executes.
+
+    These are not mailed in by a sensor daemon. They are the runner
+    noticing a canary trip or a firewall flip, written where the
+    senses query already reads.
+    """
+    if _senses is None or not isinstance(base_dir, str) or not base_dir:
+        return
+    if not isinstance(title, str) or not title.strip():
+        return
+    try:
+        now = _senses._now_iso()
+        _senses.store_alert(base_dir, {
+            "sensor": sensor,
+            "severity": severity,
+            "title": title.strip()[:200],
+            "detail": {"attack": attack or "", "source": "local-watch"},
+            "observed_at": now,
+            "received_at": now,
+        })
+    except Exception:
+        return
+
+
 def _canary_watch(base_dir, max_chars=2000):
     """Canary tripwire watch, for the Oracle's context.
 
@@ -5153,6 +5178,9 @@ def _canary_watch(base_dir, max_chars=2000):
     recorded = {}
     if isinstance(old, dict) and isinstance(old.get("files"), dict):
         recorded = old["files"]
+    alerted = {}
+    if isinstance(old, dict) and isinstance(old.get("alerted"), dict):
+        alerted = dict(old["alerted"])
     first = not recorded
     try:
         os.makedirs(canary_dir, exist_ok=True)
@@ -5183,16 +5211,35 @@ def _canary_watch(base_dir, max_chars=2000):
                 tripped.append(
                     f"TRIPPED: canaries/{name} is missing (deleted) "
                     "[T1070.004]")
+                if alerted.get(name) != "deleted":
+                    _file_watch_alert(
+                        base_dir, "canary", "high",
+                        f"canaries/{name} is missing (deleted)",
+                        "T1070.004")
+                    alerted[name] = "deleted"
+                    dirty = True
             elif cur != rec_hash:
                 tripped.append(
                     f"TRIPPED: canaries/{name} was modified "
                     "(content changed) [T1552.001]")
+                if alerted.get(name) != "modified":
+                    _file_watch_alert(
+                        base_dir, "canary", "high",
+                        f"canaries/{name} was modified (content changed)",
+                        "T1552.001")
+                    alerted[name] = "modified"
+                    dirty = True
             else:
+                if name in alerted:
+                    alerted.pop(name, None)
+                    dirty = True
                 untouched += 1
         elif cur is not None:
             # Missing at baseline and present again (restored by hand):
             # adopt the new content as the baseline.
             recorded[name] = {"exists": True, "hash": cur}
+            if name in alerted:
+                alerted.pop(name, None)
             dirty = True
             untouched += 1
         else:
@@ -5200,7 +5247,8 @@ def _canary_watch(base_dir, max_chars=2000):
     if dirty:
         try:
             with open(snap_path, "w", encoding="utf-8") as fh:
-                json.dump({"saved_at": time.time(), "files": recorded}, fh)
+                json.dump({"saved_at": time.time(), "files": recorded,
+                           "alerted": alerted}, fh)
         except Exception:
             pass
     lines = []
@@ -5481,6 +5529,10 @@ def _firewall_watch(base_dir):
     if prev is None:
         return line + " (baseline recorded just now)"
     if prev != line:
+        attack = "T1562.004" if "T1562.004" in line else ""
+        _file_watch_alert(
+            base_dir, "firewall", "high" if attack else "medium",
+            line, attack)
         return line + " (changed)"
     return line
 

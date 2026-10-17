@@ -28,6 +28,9 @@
   output itself is not retained. The note has the finding, not the
   raw output. `inference.yara_rules` can point at an operator rules
   file. A missing file falls back to the built-in rules.
+- A canary trip and a firewall flip are written once into the senses
+  store, so a senses query can see them. The same trip is not filed
+  again on the next look. Restoring the canary clears that memory.
 
 ## 3.7.12 - 2026-10-16
 

@@ -85,6 +85,28 @@ class AttackLabelTest(unittest.TestCase):
         gone = R._canary_watch(tmp)
         self.assertIn("[T1070.004]", gone)
 
+    def test_trip_is_filed_once_and_again_after_restore(self):
+        tmp = tempfile.mkdtemp()
+        R._canary_watch(tmp)
+        path = os.path.join(tmp, "canaries", "passwords.txt")
+        with open(path, "rb") as fh:
+            original = fh.read()
+        with open(path, "ab") as fh:
+            fh.write(b"\ntouched\n")
+        R._canary_watch(tmp)
+        R._canary_watch(tmp)
+        filed = R._senses.load_alerts(tmp, sensor="canary")
+        self.assertEqual(len(filed), 1)
+        self.assertEqual(filed[0]["detail"]["attack"], "T1552.001")
+        with open(path, "wb") as fh:
+            fh.write(original)
+        R._canary_watch(tmp)
+        with open(path, "ab") as fh:
+            fh.write(b"\nagain\n")
+        R._canary_watch(tmp)
+        filed = R._senses.load_alerts(tmp, sensor="canary")
+        self.assertEqual(len(filed), 2)
+
 
 class FirewallParseTest(unittest.TestCase):
     def test_netsh_off_profile_is_labeled(self):
@@ -185,6 +207,21 @@ class FirewallWatchTest(unittest.TestCase):
             self.assertIsNone(R._firewall_watch(tmp))
         with open(snap, encoding="utf-8") as fh:
             self.assertEqual(json.load(fh)["line"], saved)
+
+    def test_flip_is_filed_once(self):
+        tmp = tempfile.mkdtemp()
+        with mock.patch.object(R, "_firewall_posture",
+                               return_value="firewall: linux ufw=active"):
+            R._firewall_watch(tmp)
+        self.assertEqual(R._senses.load_alerts(tmp, sensor="firewall"), [])
+        off = "firewall: linux ufw=inactive [T1562.004]"
+        with mock.patch.object(R, "_firewall_posture", return_value=off):
+            R._firewall_watch(tmp)
+            R._firewall_watch(tmp)
+        filed = R._senses.load_alerts(tmp, sensor="firewall")
+        self.assertEqual(len(filed), 1)
+        self.assertEqual(filed[0]["severity"], "high")
+        self.assertEqual(filed[0]["detail"]["attack"], "T1562.004")
 
     def test_nothing_readable_is_none_not_clean(self):
         with mock.patch.object(R, "_AUTH_LOG_PATHS", ("/no/such/auth",)), \
