@@ -12,8 +12,14 @@ import unittest
 from unittest import mock
 
 from runner import sandbox as SB
-from runner.install import install_linux, uninstall_linux
+from runner.install import do_wipe, install_linux, uninstall_linux
 from runner.posture import _check_confinement_backend, _check_service_unit
+from runner.runner import (
+    _firewall_posture,
+    _host_log_tail,
+    _parse_iptables_policy,
+    _parse_ufw,
+)
 
 
 def _argv(conf=None, env=None, args=None, interpreter=None, script="job.sh",
@@ -303,6 +309,192 @@ class ConfinementFuzzTest(unittest.TestCase):
                 break
             if argv[0] != "bwrap":
                 crashes.append(("argv0", argv[0], repr(block)[:80]))
+                break
+        self.assertEqual(crashes, [])
+
+
+class LinuxFirewallMutations(unittest.TestCase):
+    def test_ufw_case_and_a_missing_space(self):
+        self.assertEqual(
+            _parse_ufw("STATUS: ACTIVE\nlogging: on"),
+            "firewall: linux ufw=active")
+        both = _parse_ufw("Status: active\nStatus: inactive")
+        self.assertEqual(both, "firewall: linux ufw=active")
+        self.assertIsNone(_parse_ufw("status:active"))
+        self.assertIsNone(_parse_ufw(None))
+        self.assertIsNone(_parse_ufw(1))
+
+    def test_iptables_policy_mutations(self):
+        forward = _parse_iptables_policy("-P FORWARD REJECT\n")
+        self.assertIn("FORWARD=REJECT", forward)
+        self.assertNotIn("T1562", forward)
+        output_only = _parse_iptables_policy("-P OUTPUT DROP\n")
+        self.assertIn("OUTPUT=DROP", output_only)
+        self.assertIn("[T1562.004]", output_only)
+        self.assertIn(
+            "[T1562.004]",
+            _parse_iptables_policy("-P INPUT drop\n"))
+        self.assertIsNone(_parse_iptables_policy("-A INPUT -j DROP\n"))
+        self.assertIsNone(_parse_iptables_policy("-P INPUT\n"))
+        self.assertIsNone(_parse_iptables_policy(""))
+        self.assertIsNone(_parse_iptables_policy(None))
+
+    def test_ufw_wins_and_a_dead_ufw_falls_through(self):
+        def which(name):
+            if name == "ufw":
+                return "/usr/sbin/ufw"
+            if name == "iptables":
+                return "/usr/sbin/iptables"
+            return None
+
+        def run_text(argv, timeout=5):
+            if argv[:2] == ["ufw", "status"]:
+                return "Status: inactive"
+            if argv[:2] == ["iptables", "-S"]:
+                return "-P INPUT DROP\n"
+            raise AssertionError(argv)
+
+        with mock.patch("runner.runner.sys.platform", "linux"), \
+             mock.patch("runner.runner.shutil.which", side_effect=which), \
+             mock.patch("runner.runner._run_text", side_effect=run_text):
+            self.assertIn("ufw=inactive", _firewall_posture())
+
+        def run_dead(argv, timeout=5):
+            if argv[0] == "ufw":
+                return None
+            return "-P INPUT DROP\n"
+
+        with mock.patch("runner.runner.sys.platform", "linux"), \
+             mock.patch("runner.runner.shutil.which", side_effect=which), \
+             mock.patch("runner.runner._run_text", side_effect=run_dead):
+            line = _firewall_posture()
+        self.assertIn("iptables", line)
+        self.assertIn("INPUT=DROP", line)
+
+        with mock.patch("runner.runner.sys.platform", "linux"), \
+             mock.patch("runner.runner.shutil.which", return_value=None):
+            self.assertIsNone(_firewall_posture())
+
+
+class JournalFallbackTest(unittest.TestCase):
+    def _tail(self, platform, stdout=None, rc=0, boom=False, journal=True):
+        calls = []
+
+        def run(argv, **kwargs):
+            calls.append(list(argv))
+            if boom:
+                raise OSError("no journal")
+            proc = mock.Mock()
+            proc.returncode = rc
+            proc.stdout = stdout
+            return proc
+
+        with mock.patch("runner.runner._AUTH_LOG_PATHS", ()), \
+             mock.patch("runner.runner._SYS_LOG_PATHS", ()), \
+             mock.patch("runner.runner.sys.platform", platform), \
+             mock.patch("runner.runner.subprocess.run", side_effect=run):
+            out = _host_log_tail(journal=journal, base_dir="")
+        return out, calls
+
+    def test_linux_reads_journal_errors_and_labels_auth(self):
+        text = "failed password for root\nkernel: disk full\n"
+        out, calls = self._tail("linux", stdout=text)
+        self.assertEqual(calls[0][:4], ["journalctl", "-n", "20", "-p"])
+        self.assertIn("failed password", out)
+        self.assertIn("[T1110]", out)
+        self.assertIn("disk full", out)
+        self.assertNotIn("disk full [T", out)
+
+    def test_mutations_that_are_not_a_readable_journal(self):
+        for kwargs in (
+            {"platform": "linux", "stdout": "", "rc": 1},
+            {"platform": "linux", "stdout": None, "rc": 0},
+            {"platform": "linux", "boom": True},
+            {"platform": "linux", "stdout": "failed password\n", "journal": False},
+            {"platform": "darwin", "stdout": "failed password\n"},
+        ):
+            out, calls = self._tail(**kwargs)
+            self.assertIsNone(out)
+            if kwargs["platform"] != "linux" or kwargs.get("journal") is False:
+                self.assertEqual(calls, [])
+
+    def test_a_bad_cap_and_a_long_journal_are_cut_from_the_end(self):
+        lines = "\n".join("error %d" % i for i in range(30))
+        out, _calls = self._tail("linux", stdout=lines)
+        self.assertLessEqual(len(out.splitlines()), 20)
+        self.assertIn("error 29", out)
+        self.assertNotIn("error 0\n", out)
+        short, _calls = self._tail("linux", stdout="failed password for root\n")
+        with mock.patch("runner.runner._AUTH_LOG_PATHS", ()), \
+             mock.patch("runner.runner._SYS_LOG_PATHS", ()), \
+             mock.patch("runner.runner.sys.platform", "linux"), \
+             mock.patch("runner.runner.subprocess.run",
+                        return_value=mock.Mock(returncode=0, stdout="abcdefghij")):
+            cut = _host_log_tail(max_chars="nope", base_dir="")
+            tiny = _host_log_tail(max_chars=4, base_dir="")
+        self.assertIn("abcdefghij", cut)
+        self.assertEqual(tiny, "ghij")
+        self.assertTrue(short)
+
+
+class LinuxWipeTest(unittest.TestCase):
+    def test_system_uninstall_disables_then_removes_the_unit(self):
+        order = []
+        with mock.patch("runner.install.run",
+                        side_effect=lambda cmd, **kw: order.append(("run", list(cmd)))), \
+             mock.patch("runner.install.os.remove",
+                        side_effect=lambda path: order.append(("remove", path))):
+            uninstall_linux(True)
+        self.assertEqual(order, [
+            ("run", ["systemctl", "disable", "--now", "homing-pigeon.service"]),
+            ("remove", "/etc/systemd/system/homing-pigeon.service"),
+            ("run", ["systemctl", "daemon-reload"]),
+        ])
+
+    def test_wipe_disables_both_units_and_deletes_nothing(self):
+        calls = []
+        with mock.patch("runner.install.sys.platform", "linux"), \
+             mock.patch("runner.install._kill_runner_processes"), \
+             mock.patch("runner.install._candidate_state_dirs", return_value=[]), \
+             mock.patch("runner.install._run_quiet",
+                        side_effect=lambda cmd: calls.append(list(cmd))):
+            code = do_wipe(no_backup=True)
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, [
+            ["systemctl", "--user", "disable", "--now", "homing-pigeon.service"],
+            ["sudo", "-n", "systemctl", "disable", "--now",
+             "homing-pigeon.service"],
+        ])
+
+
+class LinuxParserFuzzTest(unittest.TestCase):
+    def test_random_text_never_raises_and_stays_a_linux_line(self):
+        rng = random.Random(20261017)
+        crashes = []
+        for _ in range(300):
+            roll = rng.randrange(5)
+            if roll == 0:
+                text = None
+            elif roll == 1:
+                text = rng.choice(["", 0, 1, True, [], {}])
+            else:
+                n = rng.randrange(0, 80)
+                text = "".join(chr(rng.randrange(0, 128)) for _ in range(n))
+                if rng.randrange(4) == 0:
+                    text = "-P " + text
+            for name, fn in (("ufw", _parse_ufw),
+                             ("iptables", _parse_iptables_policy)):
+                try:
+                    got = fn(text)
+                except Exception as exc:
+                    crashes.append((name, type(exc).__name__))
+                    break
+                if got is None:
+                    continue
+                if not isinstance(got, str) or not got.startswith("firewall: linux "):
+                    crashes.append((name, got[:40] if isinstance(got, str) else got))
+                    break
+            if crashes:
                 break
         self.assertEqual(crashes, [])
 
