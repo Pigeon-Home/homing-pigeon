@@ -7087,9 +7087,9 @@ def main() -> int:
     ap.add_argument("--oracle", action="store_true",
                     help="open a loopback chat with the Oracle in your browser")
     ap.add_argument("--faster", action="store_true",
-                    help="use llama3.2:1b for this process, the lighter "
-                         "Llama the Raspberry Pi profile installs. "
-                         "The model in config.json is left as it is.")
+                    help="use qwen2.5:1.5b for this process, the "
+                         "faster small model. The model in "
+                         "config.json is left as it is.")
     ap.add_argument("--oracle-port", type=int, default=11436, metavar="PORT",
                     help="port for --oracle (default 11436, 127.0.0.1 only)")
     ap.add_argument("--local-test", action="store_true",
@@ -7238,11 +7238,12 @@ def main() -> int:
         if not isinstance(inf, dict):
             inf = {}
             cfg["inference"] = inf
-        # Same tag as the raspberry-pi-home profile. This process only.
-        inf["model"] = "llama3.2:1b"
+        # --faster's model; keep in step with
+        # install.FASTER_INFERENCE_MODEL. This process only.
+        inf["model"] = "qwen2.5:1.5b"
         if not inf.get("endpoint"):
             inf["endpoint"] = "http://127.0.0.1:11434/v1"
-        log("inference: --faster, using llama3.2:1b")
+        log("inference: --faster, using qwen2.5:1.5b")
     # Log bounds (and the oracle.log switch) load before any daemon
     # is spawned, so a spawned daemon can write into oracle.log.
     _refresh_log_settings(cfg, _base_dir_for(cfg, args.config))

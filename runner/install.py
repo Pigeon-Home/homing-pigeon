@@ -1030,7 +1030,7 @@ def do_install_home(args, home, bin_dir, cfg_path, state_dir, src_dir) -> int:
     print("  install.exe --oracle   the Oracle chat")
     print("  install.exe --logs     tail the runner log (--follow to watch)")
     print("  install.exe --wipe     back up and remove everything")
-    print("  install.exe --faster   pull llama3.2:1b, the lighter Llama")
+    print("  install.exe --faster   pull qwen2.5:1.5b, the faster small model")
     return 0
 
 
@@ -1199,22 +1199,27 @@ BUILTIN_PROFILES = {
 
 DEFAULT_INFERENCE_MODEL = "llama3.2:3b"
 
+# --faster's model: a small Qwen. Chosen 2026-10-17 after field runs
+# on a 2-core laptop showed llama3.2:1b echoing the job index as raw
+# JSON instead of answering; qwen2.5:1.5b follows format instructions
+# far better at comparable speed, and shorter answers mean fewer
+# generated tokens. The raspberry-pi-home profile keeps llama3.2:1b.
+FASTER_INFERENCE_MODEL = "qwen2.5:1.5b"
+
 
 def inference_model_for(profile, explicit=None, faster=False) -> str:
     """Which Ollama tag to pull.
 
-    An explicit --inference-model always wins. --faster pulls the same
-    lighter Llama as the raspberry-pi-home profile, without the rest of
-    that profile. Otherwise the raspberry-pi-home profile, whether
-    detected or passed with --profile, pulls that lighter Llama, and
-    every other install keeps the 3B default.
+    An explicit --inference-model always wins. --faster pulls
+    FASTER_INFERENCE_MODEL (qwen2.5:1.5b). Otherwise the
+    raspberry-pi-home profile, whether detected or passed with
+    --profile, pulls its lighter Llama, and every other install
+    keeps the 3B default.
     """
     if isinstance(explicit, str) and explicit.strip():
         return explicit.strip()
     if faster:
-        light = BUILTIN_PROFILES["raspberry-pi-home"].get("inference_model")
-        if isinstance(light, str) and light.strip():
-            return light.strip()
+        return FASTER_INFERENCE_MODEL
     name = profile or ""
     if name and os.path.isfile(name):
         try:
@@ -1572,12 +1577,13 @@ def main() -> int:
                     help="do not apply any deployment profile")
     ap.add_argument("--inference-model", default=None,
                     help="Ollama model to pull when inference is enabled "
-                         "(default llama3.2:3b, llama3.2:1b with "
-                         "--faster or the raspberry-pi-home profile)")
+                         "(default llama3.2:3b, qwen2.5:1.5b with "
+                         "--faster, llama3.2:1b with the "
+                         "raspberry-pi-home profile)")
     ap.add_argument("--faster", action="store_true",
-                    help="pull llama3.2:1b, the lighter Llama the "
-                         "Raspberry Pi profile uses. Does not change "
-                         "protected paths. --inference-model still wins.")
+                    help="pull qwen2.5:1.5b, a smaller faster model. "
+                         "Does not change protected paths. "
+                         "--inference-model still wins.")
     ap.add_argument("--additional-secret", action="append", default=[],
                     help="KEY_ID (generates 256-bit secret, never printed)")
     ap.add_argument("--max-output-bytes", type=int, default=None, metavar="N")

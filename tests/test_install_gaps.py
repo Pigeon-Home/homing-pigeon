@@ -89,7 +89,7 @@ class ProfileSelectionTest(unittest.TestCase):
                          "llama3.2:3b")
         self.assertEqual(inference_model_for(None, None), "llama3.2:3b")
         self.assertEqual(inference_model_for("password-only", None, faster=True),
-                         "llama3.2:1b")
+                         "qwen2.5:1.5b")
         self.assertEqual(inference_model_for(None, "llama3.2:3b", faster=True),
                          "llama3.2:3b")
         self.assertEqual(
