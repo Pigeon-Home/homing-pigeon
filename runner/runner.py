@@ -2935,23 +2935,53 @@ _RETAINED_LOCK = threading.RLock()
 
 
 def save_retained(base_dir, job_id, payload):
-    """Persist output for later queries. Unsafe ids are dropped, not written."""
+    """Persist output for later queries. Unsafe ids are dropped, not written.
+
+    The temp name is created with O_EXCL | O_NOFOLLOW, so a symlink
+    planted there is not written through. The file is mode 0600.
+    """
     if not isinstance(base_dir, str) or not base_dir:
         return
     if not isinstance(job_id, str) or not _SAFE_JOB_ID.match(job_id) or job_id in (".", ".."):
         return
     d = os.path.join(base_dir, "retained")
     with _RETAINED_LOCK:
-        os.makedirs(d, exist_ok=True)
+        try:
+            os.makedirs(d, exist_ok=True)
+        except OSError:
+            return
         path = os.path.join(d, f"{job_id}.json")
         tmp = path + ".tmp." + str(threading.get_ident())
+        fd = None
         try:
+            try:
+                os.unlink(tmp)
+            except FileNotFoundError:
+                pass
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            fd = os.open(tmp, flags, 0o600)
             safe = _json_safe(payload) if isinstance(payload, dict) else {}
-            with open(tmp, "w", encoding="utf-8") as f:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                fd = None
                 json.dump(safe, f, allow_nan=False)
             os.replace(tmp, path)
+            try:
+                os.chmod(path, 0o600)
+            except OSError:
+                pass
         except (TypeError, ValueError, OSError) as e:
             log(f"retained not saved for {job_id}: {e}", "WARN")
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
 
 
 def load_retained(base_dir, job_id):
@@ -2962,7 +2992,10 @@ def load_retained(base_dir, job_id):
             or job_id in (".", ".."):
         return None
     retained = os.path.realpath(os.path.join(base_dir, "retained"))
-    path = os.path.realpath(os.path.join(retained, f"{job_id}.json"))
+    stored = os.path.join(retained, f"{job_id}.json")
+    if os.path.islink(stored):
+        return None
+    path = os.path.realpath(stored)
     try:
         if os.path.commonpath([retained, path]) != retained:
             return None
