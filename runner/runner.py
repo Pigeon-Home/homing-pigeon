@@ -60,87 +60,59 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
-try:
-    from runner._version import __version__
-except ImportError:  # running from inside runner/ as __main__
-    try:
-        from _version import __version__
-    except ImportError:
-        __version__ = "unknown"
+def _load_attr(package, local, attr, default):
+    """package.attr, else the sibling import used when this file is __main__.
 
-try:
-    from runner.oauth import OAuthRefreshError
-except ImportError:  # running from inside runner/ as __main__
-    try:
-        from oauth import OAuthRefreshError
-    except ImportError:
-        class OAuthRefreshError(RuntimeError):
-            """Fallback when oauth.py is unavailable; never raised."""
+    `python runner.py` from inside runner/ cannot see the package name.
+    One face for that, instead of a copy of the same try at every import.
+    """
+    import importlib
+    for name in (package, local):
+        try:
+            mod = importlib.import_module(name)
+        except ImportError:
+            continue
+        try:
+            return getattr(mod, attr)
+        except AttributeError:
+            return default
+    return default
 
-try:
-    from runner import senses as _senses
-except ImportError:  # running from inside runner/ as __main__
-    try:
-        import senses as _senses
-    except ImportError:
-        _senses = None
 
-try:
-    from runner import review as _review
-except ImportError:  # running from inside runner/ as __main__
+def _load_mod(package, local, broad=False):
+    """Import a sibling module. broad=True also swallows a broken import."""
+    import importlib
     try:
-        import review as _review
+        return importlib.import_module(package)
     except ImportError:
-        _review = None
+        pass
+    except Exception:
+        if broad:
+            return None
+        raise
+    try:
+        return importlib.import_module(local)
+    except Exception if broad else ImportError:
+        return None
 
-try:
-    from runner import resources as _resources
-except ImportError:  # running from inside runner/ as __main__
-    try:
-        import resources as _resources
-    except ImportError:
-        _resources = None
 
-try:
-    from runner import dri as _dri
-except ImportError:  # running from inside runner/ as __main__
-    try:
-        import dri as _dri
-    except ImportError:
-        _dri = None
+__version__ = _load_attr("runner._version", "_version", "__version__", "unknown")
 
-try:
-    from runner import detection as _detection
-except ImportError:
-    try:
-        import detection as _detection
-    except ImportError:
-        _detection = None
-except Exception:
-    _detection = None
 
-try:
-    from runner import setup as _setup
-except ImportError:  # running from inside runner/ as __main__
-    try:
-        import setup as _setup
-    except ImportError:
-        _setup = None
+class _OAuthRefreshErrorFallback(RuntimeError):
+    """Fallback when oauth.py is unavailable; never raised."""
 
-try:
-    from runner import security as _security
-except ImportError:  # running from inside runner/ as __main__
-    try:
-        import security as _security
-    except ImportError:
-        _security = None
-try:
-    from runner import sandbox as _sandbox
-except ImportError:  # running from inside runner/ as __main__
-    try:
-        import sandbox as _sandbox
-    except ImportError:
-        _sandbox = None
+
+OAuthRefreshError = _load_attr(
+    "runner.oauth", "oauth", "OAuthRefreshError", _OAuthRefreshErrorFallback)
+_senses = _load_mod("runner.senses", "senses")
+_review = _load_mod("runner.review", "review")
+_resources = _load_mod("runner.resources", "resources")
+_dri = _load_mod("runner.dri", "dri")
+_detection = _load_mod("runner.detection", "detection", broad=True)
+_setup = _load_mod("runner.setup", "setup")
+_security = _load_mod("runner.security", "security")
+_sandbox = _load_mod("runner.sandbox", "sandbox")
 
 
 def _append_security_event(base_dir: str, event: dict) -> None:
@@ -189,14 +161,12 @@ def _note_resource_event(base_dir, event):
         log(f"resource pressure over threshold ({thr}): {', '.join(bits)}", "WARN")
 
 
-try:
-    from runner.winlog import report_event
-except ImportError:
-    try:
-        from winlog import report_event
-    except ImportError:
-        def report_event(message: str, level: str = "ERROR") -> None:
-            pass
+def _report_event_fallback(message: str, level: str = "ERROR") -> None:
+    return None
+
+
+report_event = _load_attr(
+    "runner.winlog", "winlog", "report_event", _report_event_fallback)
 
 SUBJECT_JOB = "[HOMING-PIGEON] job "
 SUBJECT_RESULT = "[HOMING-PIGEON] result "
@@ -926,9 +896,48 @@ def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
 # that drops privileges, or None. When a fn is returned the workdir has
 # been chown'd to the job user. Root-only; otherwise warns loudly,
 # audits the fallback, and runs as the current user.
-def _job_user_preexec(cfg, base_dir, job_id, work):
+class _JobUserFace:
+    """The syscalls job_user needs. Tests pass a fake; the runner uses this."""
+
+    def euid(self):
+        return os.geteuid()
+
+    def getpwnam(self, user):
+        import pwd
+        return pwd.getpwnam(user)
+
+    def walk(self, path):
+        return os.walk(path)
+
+    def chown(self, path, uid, gid):
+        os.chown(path, uid, gid)
+
+    def realpath(self, path):
+        return os.path.realpath(path)
+
+    def dirname(self, path):
+        return os.path.dirname(path)
+
+    def stat(self, path):
+        return os.stat(path)
+
+    def chmod(self, path, mode):
+        os.chmod(path, mode)
+
+    def setgid(self, gid):
+        os.setgid(gid)
+
+    def initgroups(self, name, gid):
+        os.initgroups(name, gid)
+
+    def setuid(self, uid):
+        os.setuid(uid)
+
+
+def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
     if _security is None or os.name == "nt":
         return None
+    face = face or _JobUserFace()
     mode = _security.sec_mode(cfg, "job_user")
     if mode == "off":
         return None
@@ -951,14 +960,13 @@ def _job_user_preexec(cfg, base_dir, job_id, work):
         _audit("would_run_as", "would_run_as_user", user)
         return None
     # enforce from here on
-    if os.geteuid() != 0:
+    if face.euid() != 0:
         log(f"job {job_id}: job_user needs root; running as current "
             f"user", "WARN")
         _audit("fallback", "job_user_needs_root")
         return None
     try:
-        import pwd
-        pw = pwd.getpwnam(user)
+        pw = face.getpwnam(user)
     except (ImportError, KeyError) as e:
         log(f"job {job_id}: job_user {user!r} unavailable ({e}); running "
             f"as current user", "WARN")
@@ -966,26 +974,26 @@ def _job_user_preexec(cfg, base_dir, job_id, work):
         return None
     # The job must own its workdir to read the script and write output.
     try:
-        for root, dirs, files in os.walk(work):
-            os.chown(root, pw.pw_uid, pw.pw_gid)
+        for root, dirs, files in face.walk(work):
+            face.chown(root, pw.pw_uid, pw.pw_gid)
             for d in dirs:
-                os.chown(os.path.join(root, d), pw.pw_uid, pw.pw_gid)
+                face.chown(os.path.join(root, d), pw.pw_uid, pw.pw_gid)
             for f in files:
-                os.chown(os.path.join(root, f), pw.pw_uid, pw.pw_gid)
+                face.chown(os.path.join(root, f), pw.pw_uid, pw.pw_gid)
         # Traverse-only (+x, not +r) on the parent chain up to base_dir,
         # so the job user can reach its workdir without listing the
         # runner's state. Files there stay protected by their own mode.
-        node = os.path.realpath(work)
-        stop = os.path.realpath(base_dir)
+        node = face.realpath(work)
+        stop = face.realpath(base_dir)
         while True:
-            node = os.path.dirname(node)
+            node = face.dirname(node)
             try:
-                st = os.stat(node)
+                st = face.stat(node)
             except OSError:
                 break
             if not st.st_mode & 0o001:
-                os.chmod(node, st.st_mode | 0o001)
-            if node == stop or node == os.path.dirname(node):
+                face.chmod(node, st.st_mode | 0o001)
+            if node == stop or node == face.dirname(node):
                 break
     except OSError as e:
         log(f"job {job_id}: cannot chown workdir to {user} ({e}); "
@@ -996,12 +1004,12 @@ def _job_user_preexec(cfg, base_dir, job_id, work):
 
     def _demote():
         # After fork, before exec. Syscalls only.
-        os.setgid(pw.pw_gid)
+        face.setgid(pw.pw_gid)
         try:
-            os.initgroups(pw.pw_name, pw.pw_gid)
+            face.initgroups(pw.pw_name, pw.pw_gid)
         except OSError:
             pass
-        os.setuid(pw.pw_uid)
+        face.setuid(pw.pw_uid)
     return _demote
 
 
@@ -3175,11 +3183,8 @@ def _use_oauth(cfg) -> bool:
 
 
 def _xoauth2_raw(cfg) -> str:
-    try:
-        from runner.oauth import refresh_access_token, xoauth2_raw
-    except ImportError:
-        from oauth import refresh_access_token, xoauth2_raw
-    return xoauth2_raw(cfg["mailbox_user"], refresh_access_token(cfg))
+    oauth = _load_mod("runner.oauth", "oauth")
+    return oauth.xoauth2_raw(cfg["mailbox_user"], oauth.refresh_access_token(cfg))
 
 
 def _imap_xoauth2(conn, user: str, raw: str) -> None:
@@ -7324,19 +7329,13 @@ def main() -> int:
     if args.audit_report:
         # Read-only: works with a config that has no mailbox
         # credentials, and never touches the mailbox or config.json.
-        try:
-            from runner import auditreport as _auditreport
-        except ImportError:  # running from inside runner/ as __main__
-            import auditreport as _auditreport
+        _auditreport = _load_mod("runner.auditreport", "auditreport")
         base_dir = _base_dir_for(cfg, args.config)
         return _auditreport.main(cfg, base_dir, since=args.since,
                                  key=args.key, feature=args.feature)
     if args.posture:
         # Read-only posture report; no mailbox needed.
-        try:
-            from runner import posture as _posture
-        except ImportError:  # running from inside runner/ as __main__
-            import posture as _posture
+        _posture = _load_mod("runner.posture", "posture")
         base_dir = _base_dir_for(cfg, args.config)
         return _posture.main(cfg, cfg_path, base_dir)
     # Mailbox auth gate, before any model work. On a TTY the runner
@@ -7357,10 +7356,7 @@ def main() -> int:
         # Black-box gauntlet against the configured system. Runs
         # before any model warm-up or daemon spawning: the harness
         # measures the system as it is, it does not fix it up first.
-        try:
-            from runner import harness as _harness
-        except ImportError:  # running from inside runner/ as __main__
-            import harness as _harness
+        _harness = _load_mod("runner.harness", "harness")
         base_dir = _base_dir_for(cfg, args.config)
         return _harness.main(cfg, base_dir, cfg_path=args.config,
                              roundtrip_timeout=args.diagnose_timeout)
@@ -7386,10 +7382,7 @@ def main() -> int:
     if args.oracle:
         return oracle_window(cfg, args.oracle_port, cfg_path=args.config)
     if args.local_test:
-        try:
-            from runner import local_test as _lt
-        except ImportError:  # running from inside runner/ as __main__
-            import local_test as _lt
+        _lt = _load_mod("runner.local_test", "local_test")
         return _lt.main(cfg, browser=args.browser)
     # The shared secret is required in all auth modes and must carry
     # enough entropy to resist offline brute force. It is separate from
