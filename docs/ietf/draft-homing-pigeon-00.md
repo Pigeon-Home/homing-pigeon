@@ -13,7 +13,7 @@ This revision specifies the on-wire messages and the receiver checks. It replace
 
 ## Abstract
 
-This document specifies version 1 of the Homing Pigeon message protocol. A submitter places one HMAC-SHA-384 signed JSON object in an email to a mailbox. A runner polls that mailbox, verifies the signature, executes the job, and returns a signed result. The signature is the only authorization. The message is not encrypted. There is no inbound listener on the host that runs the job.
+This document specifies version 1 of the Homing Pigeon message protocol: signed JSON job and result objects exchanged over a store-and-forward transport. This document binds the protocol to email. A submitter sends one HMAC-SHA-384 signed JSON object to a mailbox. A runner polls that mailbox, verifies the signature, executes the job, and returns a signed result. The signature is the only authorization. The message is not encrypted. There is no inbound listener on the host that runs the job.
 
 ## Status of This Memo
 
@@ -27,18 +27,18 @@ This Internet-Draft will expire on 19 April 2027.
 
 ## 1. Introduction
 
-Some hosts cannot accept inbound connections. This protocol uses a store-and-forward mailbox as the only queue. The submitter does not open a connection to the runner. The runner does not open a connection to the submitter except to read and write that mailbox.
+Some hosts cannot accept inbound connections. The protocol needs a store-and-forward queue so neither side opens a connection to the other. The binding in this document is a mailbox: the submitter does not open a connection to the runner, and the runner does not open a connection to the submitter except to read and write that mailbox.
 
 The exchange is two messages:
 
 ```
 Submitter                         Mailbox                         Runner
     |                                 |                               |
-    |  job email (signed JSON)        |                               |
+    |  job message (signed JSON)      |                               |
     |-------------------------------->|                               |
-    |                                 |  poll (IMAP)                  |
+    |                                 |  poll                         |
     |                                 |<------------------------------|
-    |                                 |  result email (signed JSON)   |
+    |                                 |  result message (signed JSON) |
     |                                 |<------------------------------|
     |  result (same mailbox, or       |                               |
     |   signed reply_to)              |                               |
@@ -49,7 +49,7 @@ Version negotiation is not a handshake. The message carries `v`. This document d
 
 ### Why specify this publicly
 
-The protocol is specified in the open so that a submitter does not need the runner's source code. Any implementation of this document can submit jobs: the subject, the JSON object, and the MAC are all specified here, and the transport is email, which the submitter already speaks.
+The protocol is specified in the open so that a submitter does not need the runner's source code. Any implementation of this document can submit jobs: the subject, the JSON object, and the MAC are all specified here, and the reference transport is email, which the submitter already speaks.
 
 Two things are out of scope for this document and are established out of band: the mailbox address, and the shared secret. The sender asks the owner which address to use, and the owner provides the secret with it. Neither is discovered from the mail. Once the sender knows the address, the secret, and this specification, no further coordination is required.
 
@@ -73,7 +73,7 @@ Seen-set: the runner's record of `job_id` values already processed. It is local 
 
 Freshness window: how far `issued_at` may be from the runner's clock before the job is rejected.
 
-Preamble: text in the mail body before the signed JSON object. It is not signed.
+Preamble: text in the message body before the signed JSON object. It is not signed.
 
 LOCAL: a parameter or a check this document allows a receiver to set for itself. It is not negotiated.
 
@@ -83,7 +83,9 @@ This document specifies subjects, the signed object, the MAC, `key_id`, `reply_t
 
 This document does not specify disclosure policy, queries, attestations, task boards, sensors, confinement, installers, or local models. A job MAY carry extra members for those uses. Receivers that do not implement them MUST ignore unknown members (Section 8) and MUST still reject an unknown `v` or an unknown job `kind` (Section 12).
 
-## 5. Transport
+## 5. Transport Binding
+
+This document binds the protocol to email. The protocol itself needs only the store-and-forward queue from Section 1; a future binding could carry the same messages over a different transport.
 
 The runner reads the mailbox with IMAP and writes with SMTP. Mail authentication is out of band. The signature check does not change with the mail credential.
 
@@ -94,6 +96,8 @@ The body is UTF-8 text in a `text/plain` part. This document does not register a
 The message MUST be rejected before the MAC if the raw RFC822 object exceeds the receiver's size cap. The RECOMMENDED cap is 4194304 octets. A cap of 0 means no limit. This cap is LOCAL.
 
 ## 6. Subjects
+
+Subjects are part of the email binding (Section 5): they are how the receiver recognizes a job message in the mailbox.
 
 Subjects are matched case-insensitively. A preamble such as `Re:` MAY appear before the marker. The marker need not be the first character of the subject.
 
@@ -159,7 +163,7 @@ The HMAC key is the UTF-8 octets of the shared secret. Implementations MUST NOT 
 
 `sig` is the 48-octet HMAC value encoded as 96 hexadecimal digits. Senders MUST use lowercase digits. Receivers MUST compare in constant time after mapping ASCII `A-F` to `a-f`.
 
-Receivers MUST reject a malformed tail. Receivers MUST reject a MAC mismatch. A mismatch produces no result email (Section 14).
+Receivers MUST reject a malformed tail. Receivers MUST reject a MAC mismatch. A mismatch produces no result message (Section 14).
 
 ### 7.2. Constant-time compare
 
@@ -393,7 +397,7 @@ A valid MAC is permission to run as the runner's account. Anyone who holds the s
 
 ### 16.2. No confidentiality
 
-HMAC authenticates. It does not encrypt. The mailbox provider can read every job and every result. An observer who can read the mailbox learns the script, the arguments, the environment, and the output. Confidentiality needs a mechanism this document does not define.
+HMAC authenticates. It does not encrypt. The transport operator (in this binding, the mailbox provider) can read every job and every result. An observer who can read the transport learns the script, the arguments, the environment, and the output. Confidentiality needs a mechanism this document does not define.
 
 ### 16.3. Offline guessing
 
@@ -415,7 +419,7 @@ The past window rejects stale `issued_at`. The seen-set rejects a repeated `job_
 
 ### 16.7. Two secrets
 
-The mailbox credential reads and deletes mail. The HMAC secret authorizes jobs. Neither substitutes for the other. A store that holds both has lost both when it is copied.
+The transport credential reads and deletes mail. The HMAC secret authorizes jobs. Neither substitutes for the other. A store that holds both has lost both when it is copied.
 
 ### 16.8. Marker collision
 

@@ -13,11 +13,17 @@ from datetime import datetime, timedelta, timezone
 from hypothesis import assume, given, strategies as st
 
 from runner.runner import (
+    BUILTIN_REDACT_PATTERNS,
     JobRejected,
     _issued_at_ok,
+    _normalize,
     _safe_job_id,
+    redact_text,
+    secret_fragment_hit,
+    secret_scan,
     sign_payload,
     verify_body,
+    verify_body_keyed,
 )
 
 SUBJECT_RE = re.compile(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)", re.I)
@@ -148,6 +154,116 @@ class FreshnessProperties(unittest.TestCase):
                     "2026-13-99T99:99:99Z"]:
             ok, _ = _issued_at_ok(bad, {})
             self.assertFalse(ok, bad)
+
+    @given(payload=payloads, secret=secrets)
+    def test_sign_deterministic(self, payload, secret):
+        self.assertEqual(sign_payload(payload, secret),
+                         sign_payload(payload, secret))
+
+
+class KeyedVerificationProperties(unittest.TestCase):
+    @given(payload=payloads, kid=st.text(min_size=1, max_size=16),
+           secret=secrets, default_secret=secrets)
+    def test_keyed_roundtrip_selects_key(self, payload, kid, secret,
+                                         default_secret):
+        assume(kid != "")
+        p = dict(payload)
+        p["key_id"] = kid
+        body = sign_payload(p, secret)
+        out, out_kid = verify_body_keyed(
+            body, {"": default_secret, kid: secret})
+        self.assertEqual(out_kid, kid)
+        self.assertEqual({k: v for k, v in out.items() if k != "sig"}, p)
+
+    @given(payload=payloads, secret=secrets)
+    def test_default_key_when_absent(self, payload, secret):
+        p = dict(payload)
+        p.pop("key_id", None)
+        body = sign_payload(p, secret)
+        out, out_kid = verify_body_keyed(body, {"": secret, "other": "x"})
+        self.assertEqual(out_kid, "")
+
+    @given(payload=payloads, secret=secrets)
+    def test_unknown_key_id_fails_closed(self, payload, secret):
+        p = dict(payload)
+        p["key_id"] = "nope"
+        body = sign_payload(p, secret)
+        with self.assertRaisesRegex(ValueError, "unknown key_id"):
+            verify_body_keyed(body, {"": secret})
+
+    @given(payload=payloads, kid=st.text(min_size=1, max_size=16),
+           secret=secrets, wrong=secrets)
+    def test_wrong_keyed_secret_rejected(self, payload, kid, secret, wrong):
+        assume(kid != "" and secret != wrong)
+        p = dict(payload)
+        p["key_id"] = kid
+        body = sign_payload(p, secret)
+        with self.assertRaises(ValueError):
+            verify_body_keyed(body, {"": "d", kid: wrong})
+
+
+class RedactionProperties(unittest.TestCase):
+    @given(secret=st.text(
+        alphabet=st.characters(blacklist_categories=("Z", "C")),
+        min_size=8, max_size=32))
+    def test_redact_removes_literal_secret(self, secret):
+        out, families = redact_text("leaked: " + secret,
+                                    {"tok": re.escape(secret)})
+        self.assertNotIn(secret, out)
+        self.assertIn("[REDACTED:tok]", out)
+        self.assertIn("tok", families)
+
+    @given(text=st.one_of(st.text(max_size=100), st.integers(), st.none(),
+                           st.lists(st.text(max_size=20), max_size=3)),
+           patterns=st.one_of(
+               st.none(),
+               st.dictionaries(st.text(max_size=10),
+                               st.one_of(st.text(max_size=30),
+                                         st.integers(), st.none()),
+                               max_size=3)))
+    def test_redact_never_crashes(self, text, patterns):
+        out, families = redact_text(text, patterns)
+        self.assertIsInstance(out, str)
+        self.assertIsInstance(families, list)
+
+    @given(text=st.text(max_size=120))
+    def test_redact_clean_text_untouched(self, text):
+        assume(not secret_scan(text, BUILTIN_REDACT_PATTERNS))
+        out, families = redact_text(text, BUILTIN_REDACT_PATTERNS)
+        self.assertEqual(out, text)
+        self.assertEqual(families, [])
+
+
+class FragmentProperties(unittest.TestCase):
+    @given(secret=st.from_regex(r"AKIA[0-9A-Z]{16}", fullmatch=True),
+           at=st.integers(min_value=0, max_value=8))
+    def test_fragment_hit_on_slice(self, secret, at):
+        sl = secret[at:at + 8]
+        self.assertTrue(secret_fragment_hit(
+            "here is " + sl + " ok", "key=" + secret,
+            BUILTIN_REDACT_PATTERNS))
+
+    @given(secret=st.from_regex(r"AKIA[0-9A-Z]{16}", fullmatch=True))
+    def test_fragment_hit_case_insensitive(self, secret):
+        self.assertTrue(secret_fragment_hit(
+            "key " + secret[:8].lower(), "key=" + secret,
+            BUILTIN_REDACT_PATTERNS))
+
+    @given(reply=st.text(max_size=60), source=st.text(max_size=60))
+    def test_fragment_no_match_no_hit(self, reply, source):
+        assume(not secret_scan(source, BUILTIN_REDACT_PATTERNS))
+        self.assertFalse(secret_fragment_hit(reply, source,
+                                             BUILTIN_REDACT_PATTERNS))
+
+
+class NormalizeProperties(unittest.TestCase):
+    @given(s=st.text(max_size=100))
+    def test_normalize_idempotent(self, s):
+        self.assertEqual(_normalize(_normalize(s)), _normalize(s))
+
+    @given(s=st.text(max_size=100))
+    def test_normalize_no_cr(self, s):
+        self.assertNotIn("\r", _normalize(s))
 
 
 if __name__ == "__main__":
