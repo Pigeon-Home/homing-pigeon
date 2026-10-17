@@ -39,6 +39,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - run: pip install hypothesis
       - run: python -m unittest discover -s tests -t .
       - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md;pigeon-docs"
