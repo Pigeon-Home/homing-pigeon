@@ -480,6 +480,9 @@ End-to-end without your SI:
   companion [docs/security-gaps.md](docs/security-gaps.md) covers
   what the defaults don't protect you from, and the order to turn
   things on.
+- Industry map: [docs/industry-map.md](docs/industry-map.md) — five years
+  of commercial detection (2021–2026) read honestly against this project,
+  sorted by local footprint cost.
 - The runner is a **full-trust execution environment**: a valid signed
   job message means arbitrary code as a privileged user. The app password sits in
   **plaintext** in config.json (your explicit
