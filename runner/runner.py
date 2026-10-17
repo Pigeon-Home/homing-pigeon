@@ -3843,16 +3843,22 @@ def append_bounded_log(path, text, max_bytes=2_097_152, backups=1):
     """
     if not path or not isinstance(text, str) or not text:
         return
-    try:
-        max_bytes = int(max_bytes)
-    except (TypeError, ValueError, OverflowError):
+    if isinstance(max_bytes, bool):
         max_bytes = 2_097_152
+    else:
+        try:
+            max_bytes = int(max_bytes)
+        except (TypeError, ValueError, OverflowError):
+            max_bytes = 2_097_152
     if max_bytes < 1:
         max_bytes = 2_097_152
-    try:
-        backups = int(backups)
-    except (TypeError, ValueError, OverflowError):
+    if isinstance(backups, bool):
         backups = 1
+    else:
+        try:
+            backups = int(backups)
+        except (TypeError, ValueError, OverflowError):
+            backups = 1
     if backups < 1:
         backups = 1
     if backups > 100:
@@ -3883,7 +3889,10 @@ def append_bounded_log(path, text, max_bytes=2_097_152, backups=1):
                     os.replace(path, path + ".1")
                 except OSError:
                     pass
-            fd = os.open(path, os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600)
+            flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            fd = os.open(path, flags, 0o600)
             try:
                 os.write(fd, raw)
             finally:

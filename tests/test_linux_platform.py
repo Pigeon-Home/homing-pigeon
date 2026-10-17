@@ -73,6 +73,7 @@ from runner.runner import (
     confinement_violated,
     inference_config,
     judge_job,
+    append_bounded_log,
 )
 
 
@@ -2607,6 +2608,72 @@ class LoopbackFuzzTest(unittest.TestCase):
                 if got is not None and (not ok or not got["endpoint"].startswith(("http://", "https://"))):
                     crashes.append(got["endpoint"])
                     break
+        self.assertEqual(crashes, [])
+
+
+class BoundedLogTest(unittest.TestCase):
+    def test_the_log_is_owner_only_and_a_symlink_is_not_followed(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "runner.log")
+            append_bounded_log(path, "hello")
+            append_bounded_log(None, "nope")
+            append_bounded_log(path, "")
+            self.assertEqual(_mode(path), 0o600)
+            with open(path, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), "hello\n")
+            append_bounded_log(path, "x" * 20, max_bytes=True)
+            with open(path, encoding="utf-8") as fh:
+                self.assertIn("hello", fh.read())
+            target = os.path.join(d, "target")
+            with open(target, "w", encoding="utf-8") as fh:
+                fh.write("keep")
+            os.remove(path)
+            os.symlink(target, path)
+            append_bounded_log(path, "pwned")
+            with open(target, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), "keep")
+
+    def test_rotation_keeps_one_backup_when_the_cap_is_a_bool(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "runner.log")
+            append_bounded_log(path, "a" * 40, max_bytes=30, backups=True)
+            append_bounded_log(path, "b" * 40, max_bytes=30, backups=False)
+            self.assertTrue(os.path.isfile(path + ".1"))
+            self.assertFalse(os.path.exists(path + ".2"))
+            self.assertEqual(_mode(path), 0o600)
+
+
+class BoundedLogFuzzTest(unittest.TestCase):
+    def test_random_records_stay_owner_only(self):
+        rng = random.Random(20261017)
+        crashes = []
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "runner.log")
+            target = os.path.join(d, "target")
+            with open(target, "w", encoding="utf-8") as fh:
+                fh.write("keep")
+            for _ in range(200):
+                text = rng.choice(["", "ok", "x" * rng.randrange(1, 40), None])
+                cap = rng.choice([30, 100, True, False, 0, -1, "n"])
+                backups = rng.choice([1, 2, True, False, 0])
+                try:
+                    append_bounded_log(path, text, max_bytes=cap, backups=backups)
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                if os.path.isfile(path) and not os.path.islink(path):
+                    if _mode(path) != 0o600:
+                        crashes.append(oct(_mode(path)))
+                        break
+            link = os.path.join(d, "link.log")
+            os.symlink(target, link)
+            try:
+                append_bounded_log(link, "pwned")
+            except Exception as exc:
+                crashes.append(type(exc).__name__)
+            with open(target, encoding="utf-8") as fh:
+                if fh.read() != "keep":
+                    crashes.append("followed")
         self.assertEqual(crashes, [])
 
 
