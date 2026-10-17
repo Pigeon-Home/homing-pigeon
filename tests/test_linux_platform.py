@@ -222,27 +222,27 @@ class SystemdUnitTest(unittest.TestCase):
     def test_system_unit_targets_multi_user_and_does_not_touch_the_disk(self):
         written = {}
 
-        class _Buf:
-            def __enter__(self):
-                return self
+        def _open(path, flags, mode=0o777):
+            if path != "/etc/systemd/system/homing-pigeon.service":
+                raise AssertionError(path)
+            written["flags"] = flags
+            return 77
 
-            def __exit__(self, *exc):
-                return False
-
-            def write(self, text):
-                written["unit"] = text
-
-        def _open(path, mode="r", *args, **kwargs):
-            if path == "/etc/systemd/system/homing-pigeon.service":
-                return _Buf()
-            raise AssertionError(path)
+        def _write(fd, data):
+            self.assertEqual(fd, 77)
+            written["unit"] = data.decode("utf-8")
+            return len(data)
 
         calls = []
-        with mock.patch("builtins.open", side_effect=_open), \
+        with mock.patch("os.open", side_effect=_open), \
+             mock.patch("os.write", side_effect=_write), \
+             mock.patch("os.close"), \
+             mock.patch("os.chmod"), \
              mock.patch("runner.install.run",
                         side_effect=lambda cmd, **kw: calls.append(list(cmd))):
             install_linux("/opt/hp", "/cfg/a.json", True, ())
         self.assertIn("WantedBy=multi-user.target", written["unit"])
+        self.assertTrue(written["flags"] & os.O_NOFOLLOW)
         self.assertEqual(calls[0], ["systemctl", "daemon-reload"])
         self.assertEqual(calls[1][0], "systemctl")
         self.assertNotIn("--user", calls[0])

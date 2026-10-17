@@ -1041,7 +1041,26 @@ def do_install_home(args, home, bin_dir, cfg_path, state_dir, src_dir) -> int:
     return 0
 
 
+def _write_text(path: str, text: str, mode: int = 0o644) -> None:
+    """Write text without following a symlink. Used for the systemd unit."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(path, flags, mode)
+    try:
+        os.write(fd, text.encode("utf-8"))
+    finally:
+        os.close(fd)
+    try:
+        os.chmod(path, mode)
+    except OSError:
+        pass
+
+
 def install_linux(dst_dir: str, cfg_path: str, system: bool, extra=()):
+    for arg in extra:
+        if not isinstance(arg, str) or "\n" in arg or "\r" in arg or "\x00" in arg:
+            raise ValueError("systemd extra argument must be a single line")
     exec_start = " ".join(shlex.quote(a) for a in _runner_argv(dst_dir)) + " --config " + shlex.quote(cfg_path) + \
         "".join(f" {shlex.quote(a)}" for a in extra)
     unit = f"""[Unit]
@@ -1060,16 +1079,14 @@ WantedBy={"multi-user.target" if system else "default.target"}
 """
     if system:
         path = "/etc/systemd/system/homing-pigeon.service"
-        with open(path, "w") as fh:
-            fh.write(unit)
+        _write_text(path, unit)
         run(["systemctl", "daemon-reload"])
         run(["systemctl", "enable", "--now", "homing-pigeon.service"])
     else:
         udir = os.path.expanduser("~/.config/systemd/user")
         os.makedirs(udir, exist_ok=True)
         path = os.path.join(udir, "homing-pigeon.service")
-        with open(path, "w") as fh:
-            fh.write(unit)
+        _write_text(path, unit)
         run(["systemctl", "--user", "daemon-reload"])
         run(["systemctl", "--user", "enable", "--now", "homing-pigeon.service"])
     print(f"installed: systemd unit at {path}")
