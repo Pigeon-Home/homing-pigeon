@@ -3033,16 +3033,36 @@ class Board:
 
     def save(self):
         # Unique tmp so concurrent saves cannot race on one .tmp name.
+        # O_EXCL | O_NOFOLLOW: a symlink planted on that name is not
+        # written through. The board file itself is mode 0600.
         tmp = self.path + f".tmp.{os.getpid()}.{threading.get_ident()}"
+        fd = None
         try:
-            with open(tmp, "w", encoding="utf-8") as f:
+            try:
+                os.unlink(tmp)
+            except FileNotFoundError:
+                pass
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            fd = os.open(tmp, flags, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                fd = None
                 json.dump(_json_safe(self.tasks), f, indent=2, allow_nan=False)
             os.replace(tmp, self.path)
+            try:
+                os.chmod(self.path, 0o600)
+            except OSError:
+                pass
         except Exception as e:
             log(f"board save failed: {e}", "WARN")
-        finally:
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
             try:
-                os.remove(tmp)
+                os.unlink(tmp)
             except OSError:
                 pass
 
