@@ -1024,11 +1024,13 @@ class WatchAndPostureTest(unittest.TestCase):
              mock.patch.object(runner, "_run_text", return_value=""), \
              mock.patch.object(runner, "_parse_socketfilterfw", return_value="fw on"):
             self.assertEqual(runner._firewall_posture(), "fw on")
-        with mock.patch.object(runner.shutil, "which", side_effect=which), \
+        with mock.patch.object(runner.sys, "platform", "linux"), \
+             mock.patch.object(runner.shutil, "which", side_effect=which), \
              mock.patch.object(runner, "_run_text", return_value=""), \
              mock.patch.object(runner, "_parse_ufw", return_value="ufw on"):
             self.assertEqual(runner._firewall_posture(), "ufw on")
-        with mock.patch.object(runner.shutil, "which",
+        with mock.patch.object(runner.sys, "platform", "linux"), \
+             mock.patch.object(runner.shutil, "which",
                                side_effect=lambda name: which(name) if name == "iptables" else None), \
              mock.patch.object(runner, "_run_text", return_value=""), \
              mock.patch.object(runner, "_parse_iptables_policy", return_value="drop"):
