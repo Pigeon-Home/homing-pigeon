@@ -91,6 +91,13 @@ class JobIndexTest(unittest.TestCase):
         self.assertIn("name the jobs from the Job index",
                       R.ASK_AGENT_SYSTEM)
         self.assertIn("are not jobs", R.ASK_AGENT_SYSTEM)
+        # Round 2 of the field loop: the model listed directories
+        # twice before answering a summary question -- "do not open
+        # files" left list_dir outside the rule. The rule now covers
+        # every tool, and the index line's time is part of the ask.
+        self.assertIn("Do not use tools for those",
+                      R.ASK_AGENT_SYSTEM)
+        self.assertIn("the result, and the time", R.ASK_AGENT_SYSTEM)
 
 
 if __name__ == "__main__":
