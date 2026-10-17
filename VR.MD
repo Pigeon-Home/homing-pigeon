@@ -1,14 +1,13 @@
-# VR.MD — The VR Oracle (v5)
+# VR.MD — The VR Oracle (v9)
 
 **Status:** not in the runner. Nothing below is implemented. There
-is no headset, no seat, and no 3D room. This file stays as the v5
+is no headset, no seat, and no 3D room. This file stays as the v9
 sketch.
-**Identity:** v2 was who signs, v3 is what comes back, v4 is watch the
-Oracle think, v5 is *be* where the Oracle thinks.
+**Identity:** v9 is *be* where the Oracle thinks.
 
 ## 1. Vision
 
-The flat dashboard (v4, not started) shows the Oracle's thinking on a
+The flat dashboard (v9, not started) shows the Oracle's thinking on a
 screen. The VR Oracle puts the operator inside it. Each job is a room
 you walk through. The verdict is the lighting. Attestations hang on
 the walls, framed. Budget burn is a meter on your wrist. The senses
@@ -62,7 +61,7 @@ Arena mode (roadmap §6) becomes a shared space. Competing SIs appear
 as ghosts. They cannot touch your levers. The scoreboard is a
 trophy shelf.
 
-## 6. Relationship to v4
+## 6. Relationship to the other v9
 
 The flat dashboard remains the fallback for operators without a
 headset, and will follow when ready. All deep-links resolve in 3D

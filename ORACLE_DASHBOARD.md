@@ -1,15 +1,15 @@
-# Oracle Dashboard — v4 Spec (draft)
+# Oracle Dashboard — v9 Spec (draft)
 
-**Status:** not started. v4 makes the Oracle visible as a dashboard.
+**Status:** not started. v9 makes the Oracle visible as a dashboard.
 `--oracle` already opens a loopback chat in the browser and writes
 `oracle-chat.jsonl`. That chat is not this dashboard. Do not treat
 this file as something the runner serves.
-**Identity:** v2 was who signs, v3 is what comes back, v4 is watch the Oracle think.
+**Identity:** watch the Oracle think. (v9 is the project's single placeholder label for unwritten future work.)
 
 ## 1. Vision
 
 The Oracle currently does its work invisibly — verdicts, attestations,
-budget burn, all buried in a log file. v4 gives the runner owner a
+budget burn, all buried in a log file. v9 gives the runner owner a
 window into what the Oracle decided about each job and why. It is a
 local operator console, not a cloud service: it shows what the box's
 owner could already see, in a form a human can actually read.
@@ -146,12 +146,12 @@ published.
 
 ## 6. Scope
 
-**In v4:** dashboard server, the five views above, profiles,
+**In v9:** dashboard server, the five views above, profiles,
 "Configuring the Oracle" documentation (GUI-or-CLI parity,
 per-deployment profiles, worked Pi example), and confidentiality
 for transport messages.
 
-**Out of v4:** new transports, any native GUI toolkit, multi-user
+**Out of v9:** new transports, any native GUI toolkit, multi-user
 or remote access (the dashboard is single-owner, loopback-only, by
 design). The `ask` op is v3.0 and is already implemented; the
 timeline shows its answers.
@@ -160,7 +160,7 @@ timeline shows its answers.
 
 TLS protects the pipe. It does not protect the message from the
 transport operator. A mailbox provider, or a queue operator, can
-read the signed JSON today. v4 encrypts the message body so the
+read the signed JSON today. v9 encrypts the message body so the
 pipe carries ciphertext.
 
 - Cipher: AES-256-GCM, as named in PROTOCOL section 8.

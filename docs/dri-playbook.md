@@ -136,8 +136,8 @@ you, not in this repo. Template for when the time comes:
    keys, take the box offline).
 5. Write down what you changed, so the next page is smarter.
 
-## Relationship to v4
+## Relationship to v9
 
-The dashboard (v4) is not built. `--oracle` is a loopback chat, not
+The dashboard (v9) is not built. `--oracle` is a loopback chat, not
 a page history. Ack by reply keyword is the path that exists today.
-The VR seat is not in the runner and is not scheduled ahead of v4.
+The VR seat is not in the runner and is not scheduled ahead of v9.

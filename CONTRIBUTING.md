@@ -91,13 +91,13 @@ In practice: no push, tag, or release without his explicit word, and
 a tag never lands before the build is green.
 
 The section below is history that bites. It is for the next person
-or bot that touches the runner, the installer, or the v3 docs.
+or bot that touches the runner, the installer, or the docs.
 
 ### The `--oracle` flag
 
 This note is for the next person or bot that touches the runner.
 The name is easy to get backwards. Read this before you edit
-`runner/runner.py`, the installer, or the v3 docs.
+`runner/runner.py`, the installer, or the docs.
 
 ## Two different flags. Only one of them exists.
 
@@ -151,7 +151,7 @@ satisfy it.
 
 The owner wanted one way, for the rest of the project, to ask the
 Oracle on a box what it thinks is going on. They were explicit that
-this is not the v4 loopback dashboard in `ORACLE_DASHBOARD.md`. That
+this is not the v9 loopback dashboard in `ORACLE_DASHBOARD.md`. That
 dashboard is a later product: job tables, controls, a frontend over
 config. Do not grow `--oracle` into that page.
 
@@ -427,7 +427,7 @@ do not open a browser.
   belongs to the local SI test harness on `feat/local-si-test`, not
   to this flag.
 - Do not put `--oracle` in the installed service command.
-- Do not turn this page into the v4 dashboard.
+- Do not turn this page into the v9 dashboard.
 - Do not remove the size cap on `oracle-chat.jsonl` or `runner.log`.
 
 ## How to run it

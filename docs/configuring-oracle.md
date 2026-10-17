@@ -1,6 +1,6 @@
 # Configuring the Oracle
 
-The Oracle is controlled entirely by `config.json`. The v4 dashboard
+The Oracle is controlled entirely by `config.json`. The v9 dashboard
 is not built. `--oracle` opens a loopback chat. It does not edit
 these keys, and it does not poll the mailbox: the chat is a local UI
 only. Run the runner without `--oracle` (or the installed service) to
