@@ -2493,7 +2493,7 @@ def retained_expired(data, cfg):
         return True
     try:
         days = int(cfg.get("output_retention_days") or 7)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         days = 7
     if days <= 0:
         return False
@@ -3300,7 +3300,7 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
     try:
         max_out = int(cfg.get("max_output_bytes", 100000))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         max_out = 100000
     if max_out < 1:
         max_out = 100000
@@ -3540,7 +3540,7 @@ def _issued_at_ok(value, cfg):
     age = (datetime.now(timezone.utc) - issued).total_seconds()
     try:
         window = int(cfg.get("max_job_age_sec", 3600))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         window = 3600
     if age < -300 or age > window:
         return False, "issued_at outside allowed window"
@@ -4338,7 +4338,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     key_policies = build_key_policies(cfg)
     try:
         retain_days = int(cfg.get("output_retention_days") or 7)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         retain_days = 7
     prune_retained(base_dir, retain_days)
     # Built-in resource monitor: on by default. Threshold crossings

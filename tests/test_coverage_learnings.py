@@ -231,6 +231,53 @@ class InfinityFromFileTest(unittest.TestCase):
             "when?", "12:00", 100, opener=cut)
         self.assertEqual(out.get("rejected"), "inference_error")
 
+    def test_infinity_retention_does_not_stop_the_poll(self):
+        from runner.runner import (
+            _issued_at_ok, poll_once, retained_expired)
+
+        class Imap:
+            def search(self, *args):
+                return "OK", [b""]
+
+            def logout(self):
+                return None
+
+        cfg = {
+            "shared_secret": self.SECRET,
+            "output_retention_days": float("inf"),
+            "max_job_age_sec": float("inf"),
+            "max_output_bytes": float("inf"),
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            poll_once(cfg, directory, {}, os.path.join(directory, "seen.json"),
+                      imap=Imap(), smtp=object())
+        self.assertIs(retained_expired(
+            {"saved_at": 0}, {"output_retention_days": float("inf")}), True)
+        ok, _reason = _issued_at_ok(
+            "2020-01-01T00:00:00Z", {"max_job_age_sec": float("inf")})
+        self.assertFalse(ok)
+
+    def test_an_infinite_output_cap_does_not_raise(self):
+        from runner.runner import execute_job
+
+        class Proc:
+            pid = 1
+            returncode = 0
+
+            def communicate(self, timeout=None):
+                return b"ok", b""
+
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch("runner.runner.subprocess.Popen",
+                            return_value=Proc()):
+                result = execute_job(
+                    {"max_output_bytes": float("inf"),
+                     "default_timeout_sec": 5},
+                    {"job_id": "abc", "kind": "exec", "script": "echo hi",
+                     "timeout_sec": 5},
+                    directory)
+        self.assertEqual(result["exit_code"], 0)
+
 
 class SensorRecordTest(unittest.TestCase):
     def test_nan_is_stored_as_null_and_a_cycle_does_not_recurse(self):
