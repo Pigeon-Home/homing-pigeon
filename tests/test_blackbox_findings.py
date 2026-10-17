@@ -26,6 +26,9 @@ from runner.runner import (  # noqa: E402
 
 # Test-only shared secret. Used solely for unit tests in this file.
 # Never deployed or used outside of testing.
+# Valid under current (v1) rules: 44-char base64 of 32 bytes, ~222 bits
+# estimated entropy, no weak pattern. Protocol message version has
+# always been 1; there is no separate v2 secret format.
 SECRET = "wmKK+9avPLN9rSsETqH5E1SrXXzdS3YCQQePMRj8e3A="
 
 
