@@ -362,12 +362,10 @@ def alert_score(alert: dict, weight: float) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Optional low-overhead detection hooks (canaries, rules, baseline)
+# Optional low-overhead detection (rules, plan budgets, baseline)
 # ---------------------------------------------------------------------------
-# These are called by the runner when configured. They live in
-# runner/detection.py so this module stays free of heavy imports.
-# Example (from runner):
-#   from runner import detection as _det
-#   tripped = _det.check_canaries(base_dir)
-#   hits = _det.evaluate_rules(job, result)
-#   _det.update_baseline(base_dir, job, result)
+# The runner evaluates runner/detection.py after job completion and
+# records advisory fields on the result (detection_hits,
+# detection_anomaly, plan_budget_ok). Canary tripwires are separate:
+# they live in runner._canary_watch. This module stays free of heavy
+# imports; the note exists so the two systems are not confused.
