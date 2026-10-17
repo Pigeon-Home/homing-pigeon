@@ -113,8 +113,7 @@ def ensure_shared_secret(cfg_path: str, provided: str | None) -> None:
     cloud SI. A provided secret gets the same entropy bar as the
     runner's startup check.
     """
-    with open(cfg_path) as f:
-        cfg = json.load(f)
+    cfg = _read_config(cfg_path)
     current = cfg.get("shared_secret") or ""
     if current and not provided and not _looks_like_placeholder(current):
         return  # user-set real secret; leave it alone
@@ -129,13 +128,7 @@ def ensure_shared_secret(cfg_path: str, provided: str | None) -> None:
               file=sys.stderr)
         sys.exit(2)
     cfg["shared_secret"] = secret
-    with open(cfg_path, "w") as f:
-        json.dump(cfg, f, indent=2)
-        f.write("\n")
-    os.chmod(cfg_path, 0o600)  # secrets on disk: owner read/write only
-    # (On Windows os.chmod cannot set Unix permission bits; the file
-    # inherits the parent directory's ACLs, which is the platform's
-    # equivalent protection.)
+    _write_json(cfg_path, cfg)
     if provided:
         print("wrote --shared-secret into config.json")
     else:
@@ -150,14 +143,11 @@ def ensure_runner_id(cfg_path: str) -> None:
     Never overwrites an existing one: changing it would invalidate
     previously signed jobs.
     """
-    with open(cfg_path, encoding="utf-8") as f:
-        cfg = json.load(f)
+    cfg = _read_config(cfg_path)
     if cfg.get("runner_id"):
         return
     cfg["runner_id"] = secrets.token_hex(16)
-    with open(cfg_path, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2)
-        f.write("\n")
+    _write_json(cfg_path, cfg)
     print(f"generated runner_id into {cfg_path}")
 
 
@@ -173,8 +163,7 @@ def store_additional_secret(cfg_path: str, key_id: str) -> None:
         print("error: --additional-secret KEY_ID must match "
               "[A-Za-z0-9._-]{1,64}", file=sys.stderr)
         sys.exit(2)
-    with open(cfg_path, encoding="utf-8") as f:
-        cfg = json.load(f)
+    cfg = _read_config(cfg_path)
     extra = cfg.get("additional_secrets")
     if extra is None:
         extra = {}
@@ -185,12 +174,7 @@ def store_additional_secret(cfg_path: str, key_id: str) -> None:
     secret = secrets.token_urlsafe(32)
     extra[key_id] = secret
     cfg["additional_secrets"] = extra
-    tmp = cfg_path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2)
-        f.write("\n")
-    os.replace(tmp, cfg_path)
-    os.chmod(cfg_path, 0o600)
+    _write_json(cfg_path, cfg)
     print(f"additional secret stored for {key_id}")
 
 
@@ -1268,14 +1252,54 @@ def inference_model_for(profile, explicit=None, faster=False) -> str:
 _INSTRUCTIONS_LOCK = threading.Lock()
 
 
+def _read_config(path: str) -> dict:
+    """Load a config object. A symlink is not followed."""
+    if os.path.islink(path):
+        raise OSError("refusing to follow a symlink config: %s" % path)
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        raise ValueError("config must be an object")
+    return data
+
+
 def _write_json(path: str, cfg: dict) -> None:
-    """Atomic config write. The replacement must stay owner-only."""
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2)
-        f.write("\n")
-    os.replace(tmp, path)
-    os.chmod(path, 0o600)
+    """Atomic config write. The temp name is not a symlink.
+
+    The replacement is mode 0600. os.replace swaps the name, so a
+    symlink at path is replaced rather than written through.
+    """
+    tmp = path + ".tmp." + str(threading.get_ident())
+    fd = None
+    try:
+        try:
+            os.unlink(tmp)
+        except FileNotFoundError:
+            pass
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(tmp, flags, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            fd = None
+            json.dump(cfg, f, indent=2)
+            f.write("\n")
+        os.replace(tmp, path)
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
+    except Exception:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def set_instructions(cfg_path: str, text_in: str, append: bool) -> None:
@@ -1290,9 +1314,10 @@ def set_instructions(cfg_path: str, text_in: str, append: bool) -> None:
         return
     with _INSTRUCTIONS_LOCK:
         cfg = {}
+        if os.path.islink(cfg_path):
+            raise OSError("refusing to follow a symlink config: %s" % cfg_path)
         if os.path.exists(cfg_path):
-            with open(cfg_path, encoding="utf-8") as f:
-                cfg = json.load(f)
+            cfg = _read_config(cfg_path)
         current = cfg.get("owner_instructions") or ""
         if not isinstance(current, str):
             current = ""
