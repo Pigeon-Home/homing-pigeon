@@ -10,12 +10,16 @@ import random
 import shlex
 import tempfile
 import unittest
+from io import StringIO
 from unittest import mock
 
+from runner import resources as RS
 from runner import sandbox as SB
-from runner.install import do_wipe, install_linux, uninstall_linux
+from runner.install import detect_default_profile, do_wipe, install_linux, uninstall_linux
 from runner.posture import _check_confinement_backend, _check_service_unit
 from runner.runner import (
+    _clam_hits,
+    _clam_sig_line,
     _confinement_argv,
     _firewall_posture,
     _host_log_tail,
@@ -673,6 +677,197 @@ class ConfinementDecisionFuzzTest(unittest.TestCase):
                 if not got[2] and not got[1]:
                     crashes.append(("host", got[:2]))
                     break
+        self.assertEqual(crashes, [])
+
+
+def _open_as(mapping):
+    real = open
+
+    def _open(path, *args, **kwargs):
+        if path in mapping:
+            return StringIO(mapping[path])
+        return real(path, *args, **kwargs)
+
+    return _open
+
+
+class ProcSampleTest(unittest.TestCase):
+    def test_proc_stat_mutations(self):
+        cases = {
+            "cpu  1 2 3 4 5\n": (9, 15),
+            "cpu 1 2 3 4\n": (4, 10),
+            "cpu\n": None,
+            "cpu a b c d\n": None,
+            "intr 1 2 3\n": None,
+            "": None,
+        }
+        for text, expect in cases.items():
+            with mock.patch("builtins.open", side_effect=_open_as({"/proc/stat": text})):
+                self.assertEqual(RS._read_proc_stat(), expect, text)
+
+    def test_cpu_fraction_clamps(self):
+        self.assertAlmostEqual(RS._cpu_percent((0, 100), (0, 200)), 1.0)
+        self.assertAlmostEqual(RS._cpu_percent((0, 100), (200, 200)), 0.0)
+        self.assertIsNone(RS._cpu_percent((0, 100), ("x", 200)))
+        self.assertIsNone(RS._cpu_percent((1,), (2, 3)))
+        self.assertIsNone(RS._cpu_percent("cpu", (2, 3)))
+
+    def test_meminfo_mutations(self):
+        full = "MemTotal: 1000 kB\nMemAvailable: 250 kB\n"
+        free = "MemTotal: 1000 kB\nMemFree: 250 kB\n"
+        over = "MemTotal: 100 kB\nMemAvailable: 400 kB\n"
+        for text, expect in ((full, 0.75), (free, 0.75), (over, 0.0)):
+            with mock.patch("builtins.open", side_effect=_open_as({"/proc/meminfo": text})):
+                self.assertAlmostEqual(RS._mem_fraction(), expect)
+        for text in ("MemTotal: 0 kB\n", "MemFree: 1 kB\n", "nope\n", ""):
+            with mock.patch("builtins.open", side_effect=_open_as({"/proc/meminfo": text})):
+                self.assertIsNone(RS._mem_fraction(), text)
+
+    def test_resource_config_mutations(self):
+        self.assertTrue(RS.parse_resources({})["enabled"])
+        for bad in (
+            {"resources": {"enabled": "yes"}},
+            {"resources": {"threshold": "high"}},
+            {"resources": {"threshold": 0}},
+            {"resources": {"threshold": 1.1}},
+            {"resources": {"cooldown_sec": float("nan")}},
+            {"resources": {"cooldown_sec": float("inf")}},
+            {"resources": []},
+            [],
+        ):
+            with self.assertRaises(RuntimeError):
+                RS.parse_resources(bad)
+
+
+class ClamAndPiTest(unittest.TestCase):
+    def test_signature_age_mutations(self):
+        now = 1_000_000.0
+        day = 86400
+
+        def mtime(path):
+            if path.endswith("daily.cvd"):
+                raise OSError("missing")
+            if path.endswith("daily.cld"):
+                return now - 8 * day
+            raise OSError(path)
+
+        with mock.patch("runner.runner.os.path.getmtime", side_effect=mtime):
+            line = _clam_sig_line(now)
+        self.assertIn("stale (8d)", line)
+        self.assertIn("[T1562.001]", line)
+
+        with mock.patch("runner.runner.os.path.getmtime",
+                        return_value=now - day):
+            self.assertEqual(_clam_sig_line(now), "av: clamav signatures current")
+        with mock.patch("runner.runner.os.path.getmtime",
+                        side_effect=OSError("none")):
+            self.assertIsNone(_clam_sig_line(now))
+        with mock.patch("runner.runner.os.path.getmtime",
+                        side_effect=lambda path: __import__("time").time()):
+            self.assertEqual(_clam_sig_line("nope"),
+                             "av: clamav signatures current")
+
+    def test_clam_hit_lines_do_not_run_a_scan(self):
+        def which(name):
+            return "/usr/bin/clamdscan" if name == "clamdscan" else None
+
+        def hits(stdout, rc=1):
+            proc = mock.Mock(returncode=rc, stdout=stdout)
+            with mock.patch("runner.runner.shutil.which", side_effect=which), \
+                 mock.patch("runner.runner.subprocess.run", return_value=proc) as run:
+                got = _clam_hits("/work", ["/work/a.txt"])
+            run.assert_called_once()
+            argv = run.call_args.args[0]
+            self.assertEqual(argv[0], "/usr/bin/clamdscan")
+            self.assertNotIn("clamscan", argv)
+            return got
+
+        self.assertEqual(
+            hits("/work/a.txt: Eicar-Test-Signature FOUND\n"),
+            ["clamav Eicar-Test-Signature a.txt [T1204.002]"])
+        self.assertEqual(hits("OK\n", rc=0), [])
+        self.assertEqual(hits("/work/a.txt: Eicar FOUND\n", rc=2), [])
+        self.assertEqual(hits(None, rc=1), [])
+        self.assertEqual(hits("just a name FOUND\n"),
+                         ["clamav just a name file [T1204.002]"])
+        with mock.patch("runner.runner.shutil.which", return_value=None), \
+             mock.patch("runner.runner.subprocess.run") as run:
+            self.assertEqual(_clam_hits("/work", ["/work/a.txt"]), [])
+            run.assert_not_called()
+        with mock.patch("runner.runner.shutil.which", return_value="clamdscan"), \
+             mock.patch("runner.runner.subprocess.run",
+                        side_effect=OSError("down")):
+            self.assertEqual(_clam_hits("/work", ["/work/a.txt"]), [])
+
+    def test_pi_detection_mutations(self):
+        def detect(tree, cpu):
+            def _open(path, *args, **kwargs):
+                if path == "/proc/device-tree/model":
+                    if tree is None:
+                        raise OSError(path)
+                    return StringIO(tree)
+                if path == "/proc/cpuinfo":
+                    if cpu is None:
+                        raise OSError(path)
+                    return StringIO(cpu)
+                raise OSError(path)
+
+            with mock.patch("builtins.open", side_effect=_open):
+                return detect_default_profile()
+
+        self.assertEqual(detect("Raspberry Pi 5\x00", None), "raspberry-pi-home")
+        self.assertEqual(detect("not a pi", "Hardware\t: Raspberry Pi"),
+                         "raspberry-pi-home")
+        self.assertEqual(detect(None, "model name\t: intel"), "password-only")
+        self.assertEqual(detect(None, None), "password-only")
+        self.assertEqual(detect("RASPBERRY PI", None), "raspberry-pi-home")
+
+
+class ProcAndClamFuzzTest(unittest.TestCase):
+    def test_random_proc_text_and_configs_do_not_raise(self):
+        rng = random.Random(20261017)
+        crashes = []
+        for _ in range(200):
+            n = rng.randrange(0, 40)
+            text = "".join(chr(rng.randrange(9, 127)) for _ in range(n))
+            if rng.randrange(3) == 0:
+                text = "cpu " + " ".join(str(rng.randrange(-1, 5))
+                                         for _ in range(rng.randrange(0, 8)))
+            cfg = rng.choice([
+                {},
+                {"resources": rng.choice([
+                    None, [], "x", True,
+                    {"enabled": rng.choice([True, False, 1, "yes"])},
+                    {"threshold": rng.choice([0, 1, 0.5, "n", 2])},
+                    {"cooldown_sec": rng.choice([0, -1, "n"])},
+                ])},
+                [],
+            ])
+            try:
+                with mock.patch("builtins.open",
+                                side_effect=_open_as({"/proc/stat": text,
+                                                      "/proc/meminfo": text})):
+                    stat = RS._read_proc_stat()
+                    mem = RS._mem_fraction()
+                if stat is not None and (
+                        not isinstance(stat, tuple) or len(stat) != 2):
+                    crashes.append(("stat", stat))
+                    break
+                if mem is not None and not (0.0 <= mem <= 1.0):
+                    crashes.append(("mem", mem))
+                    break
+                try:
+                    parsed = RS.parse_resources(cfg)
+                except RuntimeError:
+                    parsed = None
+                if parsed is not None and not (
+                        isinstance(parsed["enabled"], bool)
+                        and 0 < parsed["threshold"] <= 1):
+                    crashes.append(("cfg", parsed))
+                    break
+            except Exception as exc:
+                crashes.append((type(exc).__name__, text[:40]))
+                break
         self.assertEqual(crashes, [])
 
 

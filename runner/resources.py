@@ -33,7 +33,9 @@ def parse_resources(cfg) -> dict:
     """Validate cfg["resources"]. On by default. Raises RuntimeError."""
     if not isinstance(cfg, dict):
         raise RuntimeError("config error: config must be an object")
-    raw = cfg.get("resources") or {}
+    raw = cfg.get("resources")
+    if raw is None:
+        raw = {}
     if not isinstance(raw, dict):
         raise RuntimeError("config error: resources must be an object")
     enabled = raw.get("enabled", True)
@@ -99,7 +101,7 @@ def _mem_fraction():
         if not total or not avail:
             return None
         return max(0.0, min(1.0, 1.0 - avail / total))
-    except (OSError, ValueError):
+    except (OSError, ValueError, IndexError):
         return None
 
 
