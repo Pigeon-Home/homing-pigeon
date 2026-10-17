@@ -2717,16 +2717,44 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
 
 _QUERY_TIMES = {}  # key_id -> list of timestamps
 def _write_json(path, obj):
-    """Atomic. A bad path or a bad object must not crash the caller."""
+    """Atomic. A bad path or a bad object must not crash the caller.
+
+    The temporary file is created with O_EXCL | O_NOFOLLOW, so a
+    symlink planted at the temporary name is not written through.
+    The replacement is mode 0600.
+    """
     if not isinstance(path, str) or not path:
         return
     tmp = f"{path}.tmp.{threading.get_ident()}"
+    fd = None
     try:
-        with open(tmp, "w", encoding="utf-8") as f:
+        try:
+            os.unlink(tmp)
+        except FileNotFoundError:
+            pass
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(tmp, flags, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            fd = None
             json.dump(_json_safe(obj), f, allow_nan=False)
         os.replace(tmp, path)
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
     except (OSError, TypeError, ValueError) as e:
         log(f"json not written to {path}: {e}", "WARN")
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
 
 
 def _query_limit(cfg):
@@ -2737,6 +2765,8 @@ def _query_limit(cfg):
     instead of treating the typo as unlimited.
     """
     raw = cfg.get("max_queries_per_hour", 0) if isinstance(cfg, dict) else 0
+    if raw is True:
+        return -1
     if raw in (None, "", 0, False):
         return 0
     try:

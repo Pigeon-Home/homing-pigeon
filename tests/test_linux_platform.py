@@ -11,6 +11,7 @@ import random
 import shlex
 import stat
 import tempfile
+import threading
 import unittest
 from io import StringIO
 from unittest import mock
@@ -74,6 +75,8 @@ from runner.runner import (
     inference_config,
     judge_job,
     append_bounded_log,
+    budget_status,
+    check_rate_limit,
 )
 
 
@@ -2669,6 +2672,81 @@ class BoundedLogFuzzTest(unittest.TestCase):
             os.symlink(target, link)
             try:
                 append_bounded_log(link, "pwned")
+            except Exception as exc:
+                crashes.append(type(exc).__name__)
+            with open(target, encoding="utf-8") as fh:
+                if fh.read() != "keep":
+                    crashes.append("followed")
+        self.assertEqual(crashes, [])
+
+
+class QueryWindowTest(unittest.TestCase):
+    def test_the_window_is_owner_only_and_a_symlink_is_not_followed(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "queries.json")
+            cfg = {"max_queries_per_hour": 2}
+            self.assertTrue(check_rate_limit("owner", cfg, path))
+            self.assertTrue(check_rate_limit("owner", cfg, path))
+            self.assertFalse(check_rate_limit("owner", cfg, path))
+            self.assertEqual(_mode(path), 0o600)
+            self.assertFalse(os.path.islink(path))
+            self.assertEqual(budget_status(path, cfg)[0]["spent"], 2)
+            self.assertTrue(check_rate_limit("owner", {"max_queries_per_hour": 0}, path))
+            self.assertFalse(check_rate_limit("owner", {"max_queries_per_hour": True}, path))
+            self.assertFalse(check_rate_limit("owner", {"max_queries_per_hour": "many"}, path))
+            target = os.path.join(d, "target")
+            with open(target, "w", encoding="utf-8") as fh:
+                fh.write("keep")
+            tmp = "%s.tmp.%s" % (path, threading.get_ident())
+            os.symlink(target, tmp)
+            self.assertTrue(check_rate_limit("other", cfg, path))
+            with open(target, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), "keep")
+            self.assertFalse(os.path.islink(path))
+
+    def test_a_bad_store_and_a_bad_key_do_not_raise(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "queries.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("[]")
+            self.assertTrue(check_rate_limit(None, {"max_queries_per_hour": 1}, path))
+            self.assertEqual(budget_status(path, {"max_queries_per_hour": 1})[0]["key_id"], "")
+            self.assertEqual(budget_status(None, {}), [])
+            self.assertEqual(budget_status(path, None)[0]["limit"], 0)
+
+
+class QueryWindowFuzzTest(unittest.TestCase):
+    def test_random_limits_never_follow_a_symlink(self):
+        rng = random.Random(20261017)
+        crashes = []
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "queries.json")
+            target = os.path.join(d, "target")
+            with open(target, "w", encoding="utf-8") as fh:
+                fh.write("keep")
+            for _ in range(200):
+                limit = rng.choice([0, 1, 2, True, False, "many", -1, None])
+                key = rng.choice(["owner", "", "a", None, 1])
+                try:
+                    allowed = check_rate_limit(
+                        key, {"max_queries_per_hour": limit}, path)
+                    rows = budget_status(path, {"max_queries_per_hour": limit})
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                if not isinstance(allowed, bool) or not isinstance(rows, list):
+                    crashes.append("shape")
+                    break
+                if os.path.isfile(path) and not os.path.islink(path):
+                    if _mode(path) != 0o600:
+                        crashes.append(oct(_mode(path)))
+                        break
+            tmp = "%s.tmp.%s" % (path, threading.get_ident())
+            if os.path.lexists(tmp):
+                os.unlink(tmp)
+            os.symlink(target, tmp)
+            try:
+                check_rate_limit("owner", {"max_queries_per_hour": 2}, path)
             except Exception as exc:
                 crashes.append(type(exc).__name__)
             with open(target, encoding="utf-8") as fh:
