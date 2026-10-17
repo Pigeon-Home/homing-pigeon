@@ -579,9 +579,16 @@ def _receipt_path(home: str) -> str:
 
 
 def _read_receipt(home):
-    """The receipt dict, None when there is none, 'corrupt' when unreadable."""
+    """The receipt dict, None when there is none, 'corrupt' when unreadable.
+
+    A symlink is not followed. It is treated as corrupt so the next
+    write replaces the name instead of trusting the target.
+    """
+    path = _receipt_path(home)
+    if os.path.islink(path):
+        return "corrupt"
     try:
-        with open(_receipt_path(home), encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
         return data if isinstance(data, dict) else "corrupt"
     except FileNotFoundError:
@@ -608,11 +615,7 @@ def _write_receipt(home, fresh: bool) -> None:
     else:
         data.setdefault("installed_by", who)
         data["upgraded_at"] = now
-    tmp = _receipt_path(home) + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(data, fh, indent=2)
-        fh.write("\n")
-    os.replace(tmp, _receipt_path(home))
+    _write_json(_receipt_path(home), data)
     print(f"home: receipt written "
           f"({'fresh install' if fresh else 'upgrade'} v{__version__})")
 
