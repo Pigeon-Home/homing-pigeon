@@ -4,6 +4,7 @@ Unit cases, one-field mutations, and a deterministic fuzz of the
 confinement block. shutil.which and systemctl are mocked. Nothing
 here execs bwrap, systemctl, or a job.
 """
+import json
 import os
 import random
 import shlex
@@ -15,8 +16,11 @@ from runner import sandbox as SB
 from runner.install import do_wipe, install_linux, uninstall_linux
 from runner.posture import _check_confinement_backend, _check_service_unit
 from runner.runner import (
+    _confinement_argv,
     _firewall_posture,
     _host_log_tail,
+    _local_watch,
+    _oracle_watch_enabled,
     _parse_iptables_policy,
     _parse_ufw,
 )
@@ -496,6 +500,179 @@ class LinuxParserFuzzTest(unittest.TestCase):
                     break
             if crashes:
                 break
+        self.assertEqual(crashes, [])
+
+
+def _conf(mode):
+    return {"security": {"modes": {"confinement": mode}}}
+
+
+def _audit_rows(base):
+    path = os.path.join(base, "security-audit.jsonl")
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as fh:
+        return [json.loads(line) for line in fh if line.strip()]
+
+
+class ConfinementDecisionTest(unittest.TestCase):
+    def test_off_and_a_bad_mode_stay_on_the_host(self):
+        with tempfile.TemporaryDirectory() as d:
+            for cfg in ({}, _conf("off"), _conf("sometimes"),
+                        {"security": []}, None):
+                argv, host, boxed = _confinement_argv(
+                    cfg, d, "j", ["python3"], "/w/s.sh", "/w", [], {})
+                self.assertEqual(argv[:2], ["python3", "/w/s.sh"])
+                self.assertTrue(host)
+                self.assertFalse(boxed)
+            self.assertEqual(_audit_rows(d), [])
+
+    def test_audit_does_not_ask_whether_bwrap_exists(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch("runner.runner._sandbox.sandbox_available") as avail, \
+                 mock.patch("runner.runner._sandbox.build_bwrap_command") as build, \
+                 mock.patch("runner.runner.subprocess.Popen") as popen:
+                argv, host, boxed = _confinement_argv(
+                    _conf("audit"), d, "j", ["python3"], "/w/s.sh",
+                    "/w", ["a"], {"OK": "1"})
+            avail.assert_not_called()
+            build.assert_not_called()
+            popen.assert_not_called()
+            self.assertEqual(argv[0], "python3")
+            self.assertTrue(host)
+            self.assertFalse(boxed)
+            row = _audit_rows(d)[-1]
+            self.assertEqual(row["decision"], "would_sandbox")
+            self.assertEqual(row["mode"], "audit")
+
+    def test_enforce_falls_back_when_bwrap_or_the_build_is_missing(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch("runner.runner._sandbox.sandbox_available",
+                            return_value=False), \
+                 mock.patch("runner.runner.subprocess.Popen") as popen:
+                argv, host, boxed = _confinement_argv(
+                    _conf("enforce"), d, "j", ["python3"], "/w/s.sh",
+                    "/w", [], {})
+            popen.assert_not_called()
+            self.assertTrue(host)
+            self.assertFalse(boxed)
+            self.assertEqual(_audit_rows(d)[-1]["reason"],
+                             "confinement_unavailable")
+
+            with mock.patch("runner.runner._sandbox.sandbox_available",
+                            return_value=True), \
+                 mock.patch("runner.runner._sandbox.build_bwrap_command",
+                            side_effect=RuntimeError("no interpreter")), \
+                 mock.patch("runner.runner.subprocess.Popen") as popen:
+                argv, host, boxed = _confinement_argv(
+                    _conf("enforce"), d, "j", ["python3"], "/w/s.sh",
+                    "/w", [], {})
+            popen.assert_not_called()
+            self.assertFalse(boxed)
+            row = _audit_rows(d)[-1]
+            self.assertEqual(row["reason"], "confinement_build_failed")
+            self.assertIn("no interpreter", row["detail"])
+
+    def test_enforce_success_hands_back_bwrap_and_drops_the_host_env(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch("runner.runner._sandbox.sandbox_available",
+                            return_value=True), \
+                 mock.patch("runner.runner._sandbox.build_bwrap_command",
+                            return_value=["bwrap", "--bind", "/w", "/work"]), \
+                 mock.patch("runner.runner.subprocess.Popen") as popen:
+                argv, host, boxed = _confinement_argv(
+                    _conf("enforce"), d, "j", ["python3", "-c"],
+                    "/w/s.sh", "/w", ["--x"], {"OK": "1"})
+            popen.assert_not_called()
+            self.assertEqual(argv[0], "bwrap")
+            self.assertFalse(host)
+            self.assertTrue(boxed)
+            self.assertEqual(_audit_rows(d)[-1]["decision"], "sandboxed")
+
+
+class PollWatchTest(unittest.TestCase):
+    def test_the_poll_skips_journalctl(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch("runner.runner.sys.platform", "linux"), \
+                 mock.patch("runner.runner._canary_watch"), \
+                 mock.patch("runner.runner._firewall_watch"), \
+                 mock.patch("runner.runner._av_watch"), \
+                 mock.patch("runner.runner._host_log_tail") as tail, \
+                 mock.patch("runner.runner.subprocess.run") as run:
+                _local_watch({}, d)
+            tail.assert_called_once()
+            self.assertIs(tail.call_args.kwargs.get("journal"), False)
+            run.assert_not_called()
+
+    def test_watch_flag_mutations(self):
+        skip = (False, 0, "false", "NO", "off", "0")
+        keep = (True, 1, "yes", "on", "", None)
+        for value in skip:
+            self.assertFalse(_oracle_watch_enabled(
+                {"inference": {"watch_system": value}}), value)
+        for value in keep:
+            self.assertTrue(_oracle_watch_enabled(
+                {"inference": {"watch_system": value}}), value)
+        self.assertTrue(_oracle_watch_enabled({}))
+        self.assertTrue(_oracle_watch_enabled(None))
+        self.assertTrue(_oracle_watch_enabled({"inference": []}))
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch("runner.runner._host_log_tail") as tail:
+                _local_watch({"inference": {"watch_system": "off"}}, d)
+            tail.assert_not_called()
+
+
+class ConfinementDecisionFuzzTest(unittest.TestCase):
+    def test_random_config_returns_a_triple_and_never_starts_a_process(self):
+        rng = random.Random(20261017)
+
+        def atom(depth):
+            if depth > 2 or rng.randrange(4) == 0:
+                return rng.choice([
+                    None, True, False, 0, 1, "", "off", "audit",
+                    "enforce", "sometimes", "/", "python3",
+                ])
+            if rng.randrange(2) == 0:
+                return [atom(depth + 1) for _ in range(rng.randrange(0, 3))]
+            key = rng.choice([
+                "security", "modes", "confinement", "extra_flags",
+                "work_mount", "inference", "watch_system",
+            ])
+            return {key: atom(depth + 1)}
+
+        crashes = []
+        with tempfile.TemporaryDirectory() as d, \
+             mock.patch("runner.runner.subprocess.Popen",
+                        side_effect=AssertionError("popen")), \
+             mock.patch("runner.runner._sandbox.sandbox_available",
+                        side_effect=lambda: rng.randrange(2) == 0), \
+             mock.patch("runner.runner._sandbox.build_bwrap_command",
+                        side_effect=lambda *a, **k: (
+                            (_ for _ in ()).throw(RuntimeError("fuzz"))
+                            if rng.randrange(4) == 0 else ["bwrap", "--"])):
+            for _ in range(200):
+                cfg = atom(0)
+                if not isinstance(cfg, dict):
+                    cfg = {"security": cfg}
+                try:
+                    got = _confinement_argv(
+                        cfg, d, "j", ["python3"], "/w/s.sh", "/w", [],
+                        {"OK": "1"})
+                except Exception as exc:
+                    crashes.append((type(exc).__name__, repr(cfg)[:80]))
+                    break
+                if (not isinstance(got, tuple) or len(got) != 3
+                        or not isinstance(got[0], list)
+                        or not isinstance(got[1], bool)
+                        or not isinstance(got[2], bool)):
+                    crashes.append(("shape", repr(got)[:80]))
+                    break
+                if got[2] and (got[1] or not got[0] or got[0][0] != "bwrap"):
+                    crashes.append(("boxed", got[0][:3]))
+                    break
+                if not got[2] and not got[1]:
+                    crashes.append(("host", got[:2]))
+                    break
         self.assertEqual(crashes, [])
 
 
