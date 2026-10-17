@@ -28,6 +28,7 @@ from runner.runner import (
     _clam_hits,
     _clam_sig_line,
     _confinement_argv,
+    _env_name_in,
     _firewall_posture,
     _host_log_tail,
     _local_watch,
@@ -36,6 +37,7 @@ from runner.runner import (
     _parse_ufw,
     _yara_hits,
     _yara_rules_text,
+    check_policy_constraints,
     oracle_context,
 )
 
@@ -1287,6 +1289,105 @@ class OracleContextFuzzTest(unittest.TestCase):
                     break
                 if len(blob) > 8000:
                     crashes.append(len(blob))
+                    break
+        self.assertEqual(crashes, [])
+
+
+class LinuxEnvMatchTest(unittest.TestCase):
+    def test_posix_is_exact_and_windows_folds_case(self):
+        with mock.patch("runner.runner.os.name", "posix"):
+            self.assertTrue(_env_name_in("PATH", ["PATH"]))
+            self.assertFalse(_env_name_in("path", ["PATH"]))
+            self.assertFalse(_env_name_in("PATH", []))
+            self.assertFalse(_env_name_in("PATH", None))
+            self.assertFalse(_env_name_in("PATH", 1))
+        with mock.patch("runner.runner.os.name", "nt"):
+            self.assertTrue(_env_name_in("path", ["PATH"]))
+            self.assertFalse(_env_name_in("HOME", ["PATH"]))
+            self.assertFalse(_env_name_in("PATH", 1))
+
+    def test_linux_policy_mutations(self):
+        with mock.patch("runner.runner.os.name", "posix"):
+            denied = check_policy_constraints(
+                {"denied_env": ["PATH"]}, "k", {},
+                {"kind": "exec", "env": {"path": "x", "PATH": "y"}})
+            self.assertEqual(
+                [row[2] for row in denied if row[1] == "denied_env"],
+                ["env 'PATH' is denied for this key"])
+
+            gate = check_policy_constraints(
+                {"allowed_env": ["LD_PRELOAD"], "allow_dangerous_env": "true"},
+                "k", {},
+                {"kind": "exec", "env": {"LD_PRELOAD": "x"}})
+            self.assertTrue(any(row[1] == "dangerous_env" for row in gate))
+
+            opened = check_policy_constraints(
+                {"allowed_env": ["LD_PRELOAD"], "allow_dangerous_env": True},
+                "k", {},
+                {"kind": "exec", "env": {"LD_PRELOAD": "x", "OTHER": "z"}})
+            reasons = [row[1] for row in opened]
+            self.assertNotIn("dangerous_env", reasons)
+            self.assertIn("env_not_allowed", reasons)
+
+            many = check_policy_constraints(
+                {"max_args": True, "args_pattern": 1,
+                 "allowed_files": "ab"},
+                "k", {},
+                {"kind": "exec", "args": ["a" * 1025, "nope"],
+                 "files": [{"name": "a", "url": "http://x"}]})
+            self.assertEqual(many, [])
+
+            pinned = check_policy_constraints(
+                {"allowed_script_sha384": ["ab"], "allow_file_urls": False},
+                "k", {},
+                {"kind": "exec", "env": {"FOO": "1"},
+                 "files": [{"name": "a", "url": "http://x"}]})
+            self.assertIn("pinned_script_with_env", [row[1] for row in pinned])
+            self.assertIn("file_url_not_allowed", [row[1] for row in pinned])
+
+            self.assertEqual(check_policy_constraints([], "k", {}, {}), [])
+            self.assertEqual(check_policy_constraints({}, "k", {}, None), [])
+
+
+class PolicyFuzzTest(unittest.TestCase):
+    def test_random_policies_return_findings_and_do_not_raise(self):
+        rng = random.Random(20261017)
+
+        def atom(depth):
+            if depth > 2 or rng.randrange(3) == 0:
+                return rng.choice([
+                    None, True, False, 0, 1, "", "PATH", "path",
+                    "LD_PRELOAD", "a", "^a+$", "(", "http://x",
+                ])
+            if rng.randrange(2) == 0:
+                return [atom(depth + 1) for _ in range(rng.randrange(0, 3))]
+            key = rng.choice([
+                "denied_env", "allowed_env", "allow_dangerous_env",
+                "allowed_files", "allow_file_urls", "max_args",
+                "args_pattern", "allowed_script_sha384", "kind",
+                "env", "files", "args", "name", "url",
+            ])
+            return {key: atom(depth + 1)}
+
+        crashes = []
+        with mock.patch("runner.runner.os.name", "posix"):
+            for _ in range(200):
+                pol = atom(0)
+                job = atom(0)
+                try:
+                    got = check_policy_constraints(pol, "k", {}, job)
+                except Exception as exc:
+                    crashes.append((type(exc).__name__, repr(pol)[:60]))
+                    break
+                if not isinstance(got, list):
+                    crashes.append(("shape", type(got).__name__))
+                    break
+                for row in got:
+                    if (not isinstance(row, tuple) or len(row) != 3
+                            or not all(isinstance(x, str) for x in row)):
+                        crashes.append(("row", row))
+                        break
+                if crashes:
                     break
         self.assertEqual(crashes, [])
 

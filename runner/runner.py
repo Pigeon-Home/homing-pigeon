@@ -684,9 +684,15 @@ def _env_name_in(name, lst):
     if not lst:
         return False
     if os.name == "nt":
-        upper = name.upper()
-        return any(isinstance(x, str) and x.upper() == upper for x in lst)
-    return name in lst
+        try:
+            upper = name.upper()
+            return any(isinstance(x, str) and x.upper() == upper for x in lst)
+        except (AttributeError, TypeError):
+            return False
+    try:
+        return name in lst
+    except TypeError:
+        return False
 
 
 def check_policy_constraints(pol, key_id, cfg, job):
@@ -748,7 +754,7 @@ def check_policy_constraints(pol, key_id, cfg, job):
             if pol.get("allow_file_urls") is False and f.get("url"):
                 findings.append(("policy_files", "file_url_not_allowed",
                                  "file %r carries a URL" % fname))
-            elif allowed_files is not None:
+            elif isinstance(allowed_files, (list, tuple, set, frozenset)):
                 if fname not in allowed_files:
                     findings.append(("policy_files", "file_not_allowed",
                                      "file %r is not in allowed_files"
@@ -770,7 +776,7 @@ def check_policy_constraints(pol, key_id, cfg, job):
     if pattern and isinstance(args, list) and args:
         try:
             rx = re.compile(pattern)
-        except re.error:
+        except (re.error, TypeError, ValueError):
             rx = None  # validated at startup; stay defensive
         if rx is not None:
             for a in args:
