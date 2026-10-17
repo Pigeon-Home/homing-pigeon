@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.7.11 - 2026-10-16
+
+### Oracle system watch, on by default
+- On Windows the Oracle's context now includes a tail of the Windows
+  Event Log — Critical/Error/Warning from System and Application, plus
+  Security audit failures (4625, 4672, 4648, 4720, 1102) — read-only
+  via wevtutil, and a registry watch over autorun/persistence values
+  (Run/RunOnce in HKLM and HKCU, Winlogon Shell/Userinit) and the
+  service list via reg.exe, diffed against a snapshot so only changes
+  are reported. A log that cannot be read is reported as unreadable,
+  never as clean. Both prompts (mailed ask and local chat) document
+  the sections and the anti-fabrication rule covers them.
+- Canary tripwires: the runner plants three files with unique tokens
+  (passwords.txt, backup-codes.txt, api-keys.txt) in its state folder.
+  A canary whose content changes or that goes missing is reported to
+  the Oracle by name as TRIPPED, and the trip stays reported until the
+  file is restored or the snapshot is cleared — a tripwire never
+  silently re-baselines over a trip. Cross-platform.
+- Opt out of all three sections with `inference.watch_system=false`
+  in config (default true).
+
 ## 3.7.10 - 2026-10-16
 
 ### Local Oracle chat prompt
