@@ -141,6 +141,97 @@ class HotReloadPinTest(unittest.TestCase):
         self.assertNotEqual(state["mtime"], 0)
 
 
+class InfinityFromFileTest(unittest.TestCase):
+    """Infinity loaded with the config, not applied later by hot reload.
+
+    The hot-key gate never sees these. int() has to tolerate them
+    on the poll path or the process dies after the first cycle.
+    """
+
+    SECRET = (
+        "0123456789abcdef"
+        "fedcba9876543210"
+        "0011223344556677"
+        "8899aabbccddeeff"
+    )
+
+    def test_the_poll_sleeps_the_default_and_the_worker_count_stays_one(self):
+        import sys
+        from runner import runner
+        from runner import setup
+
+        delays = []
+
+        def sleep(seconds):
+            delays.append(seconds)
+            raise KeyboardInterrupt
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(
+                    '{"shared_secret": "%s", "mailbox_user": "a@b.c", '
+                    '"mailbox_password": "pw", "base_dir": "%s", '
+                    '"poll_interval_sec": Infinity, "workers": Infinity, '
+                    '"max_job_age_sec": Infinity, '
+                    '"default_timeout_sec": -Infinity}'
+                    % (self.SECRET, directory.replace("\\", "\\\\")))
+            with mock.patch.object(runner, "ensure_inference_ready"), \
+                 mock.patch.object(runner, "update_llama_from_config"), \
+                 mock.patch.object(runner, "poll_once"), \
+                 mock.patch.object(runner.time, "sleep", side_effect=sleep), \
+                 mock.patch.object(setup, "is_tty", return_value=False), \
+                 mock.patch.object(setup, "needs_setup", return_value=None), \
+                 mock.patch.object(sys, "argv", ["runner", "--config", path]):
+                with self.assertRaises(KeyboardInterrupt):
+                    runner.main()
+        self.assertEqual(delays, [20])
+        self.assertEqual(runner._worker_count(
+            {"workers": float("inf")}, None), 1)
+
+    def test_a_mail_cap_of_infinity_does_not_raise(self):
+        from runner.runner import handle_mail
+
+        raw = b"Subject: [HOMING-PIGEON] job abc\r\n\r\nnope"
+        cfg = {
+            "max_job_bytes": float("inf"),
+            "max_script_bytes": float("inf"),
+            "max_job_age_sec": float("inf"),
+            "shared_secret": self.SECRET,
+        }
+
+        class Imap:
+            def store(self, *args):
+                return None
+
+        with tempfile.TemporaryDirectory() as directory:
+            handle_mail(cfg, Imap(), None, "1", raw, directory, {},
+                        {"": self.SECRET})
+
+    def test_an_infinite_job_timeout_is_rejected(self):
+        from runner.runner import JobRejected, execute_job
+
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(JobRejected):
+                execute_job(
+                    {"default_timeout_sec": float("inf")},
+                    {"job_id": "abc", "kind": "exec",
+                     "timeout_sec": float("inf")},
+                    directory)
+
+    def test_an_infinite_model_timeout_is_a_rejection(self):
+        from runner.runner import ask_model
+
+        def cut(req, timeout=60):
+            raise TimeoutError("cut")
+
+        out = ask_model(
+            {"endpoint": "http://127.0.0.1:9/v1", "model": "test",
+             "timeout_sec": float("inf")},
+            "when?", "12:00", 100, opener=cut)
+        self.assertEqual(out.get("rejected"), "inference_error")
+
+
 class SensorRecordTest(unittest.TestCase):
     def test_nan_is_stored_as_null_and_a_cycle_does_not_recurse(self):
         from runner.senses import load_alerts, store_alert

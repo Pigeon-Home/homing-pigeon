@@ -1520,7 +1520,7 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
     open_fn = opener or _default_inference_open
     try:
         timeout = int(cfg.get("timeout_sec") or 60)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         timeout = 60
     if timeout < 1:
         timeout = 60
@@ -2026,7 +2026,7 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
         cap = 0
     try:
         timeout = int(cfg.get("timeout_sec") or 60)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         timeout = 60
     if timeout < 1:
         timeout = 60
@@ -3217,7 +3217,7 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     try:
         timeout = int(job.get("timeout_sec")
                       or cfg.get("default_timeout_sec", 300))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         raise JobRejected("timeout_sec must be a number")
     timeout = min(max(timeout, 1), 3600)
 
@@ -3885,7 +3885,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # without this cap a single mail can exhaust memory.
     try:
         max_job_bytes = int(cfg.get("max_job_bytes", 4194304))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         max_job_bytes = 4194304
     if max_job_bytes and len(raw) > max_job_bytes:
         reject(f"mail exceeds max_job_bytes ({len(raw)} > {max_job_bytes})")
@@ -3922,7 +3922,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # (it lives inside the signed body). 0 means unlimited.
     try:
         max_script_bytes = int(cfg.get("max_script_bytes", 1048576))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         max_script_bytes = 1048576
     script = job.get("script")
     if max_script_bytes and isinstance(script, str) \
@@ -3949,7 +3949,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     age = (datetime.now(timezone.utc) - issued).total_seconds()
     try:
         max_age = int(cfg.get("max_job_age_sec", 3600))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         max_age = 3600
     if age < -300 or age > max_age:
         reject(f"issued_at outside allowed window (age {age:.0f}s)")
@@ -4292,7 +4292,7 @@ def _worker_count(cfg, opts) -> int:
         return 1
     try:
         n = int(raw)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return 1
     # A million workers is a config typo, not a thread pool.
     return max(1, min(n, 32))
@@ -5342,7 +5342,7 @@ def main() -> int:
             break
         try:
             delay = int(cfg.get("poll_interval_sec", 20))
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             delay = 20
         if delay < 1:
             delay = 20
