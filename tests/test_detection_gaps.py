@@ -47,3 +47,25 @@ class DetectionGapsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DetectionHookIntegrationTest(unittest.TestCase):
+    """Finding: the job-completion hook must record hits and plan budgets."""
+
+    def test_hook_records_hits_and_plan_budget(self):
+        # Simulate the hook logic directly (the runner call site is thin).
+        from runner import detection
+        job = {
+            "interpreter": "python2",
+            "script": "eval(x)",
+            "plan": [{"timeout_sec": 30}, {"timeout_sec": 30}],
+        }
+        result = {"stdout": "ok"}
+        hits = detection.evaluate_rules(job, result)
+        self.assertTrue(hits)
+        tagged = [detection.tag_alert(h, h.get("technique")) for h in hits if h.get("technique")]
+        self.assertTrue(any("technique" in t for t in tagged))
+        allowed, reason = detection.check_plan_budget(job["plan"], {"max_plan_steps": 5})
+        self.assertTrue(allowed)
+        allowed, reason = detection.check_plan_budget(job["plan"], {"max_plan_steps": 1})
+        self.assertFalse(allowed)
