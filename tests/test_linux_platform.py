@@ -17,7 +17,14 @@ from unittest import mock
 from runner import resources as RS
 from runner import sandbox as SB
 from runner import security as SEC
-from runner.install import detect_default_profile, do_wipe, install_linux, uninstall_linux
+from runner.install import (
+    detect_default_profile,
+    do_wipe,
+    install_files,
+    install_linux,
+    store_additional_secret,
+    uninstall_linux,
+)
 from runner.posture import (
     _check_confinement_backend,
     _check_file_perms,
@@ -1778,6 +1785,104 @@ class FreshLineFuzzTest(unittest.TestCase):
                     break
                 if sensor and after - before > 8:
                     crashes.append(after - before)
+                    break
+        self.assertEqual(crashes, [])
+
+
+def _mode(path):
+    return stat.S_IMODE(os.stat(path).st_mode)
+
+
+class InstallModeTest(unittest.TestCase):
+    def _src(self, d):
+        for name in ("runner.py", "oauth.py", "winlog.py",
+                     "homing-pigeon", "install", "install.exe",
+                     "config.example.json"):
+            with open(os.path.join(d, name), "w", encoding="utf-8") as fh:
+                fh.write("{}\n" if name.endswith(".json") else "# stub\n")
+
+    def test_a_seeded_config_is_owner_only_and_an_existing_one_is_left_alone(self):
+        with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
+            self._src(src)
+            with mock.patch("runner.install.FROZEN", False):
+                self.assertTrue(install_files(src, dst))
+            cfg = os.path.join(dst, "config.json")
+            self.assertEqual(_mode(cfg), 0o600)
+            os.chmod(cfg, 0o644)
+            with mock.patch("runner.install.FROZEN", False):
+                self.assertTrue(install_files(src, dst))
+            self.assertEqual(_mode(cfg), 0o644)
+
+    def test_a_frozen_binary_is_executable_only_on_posix(self):
+        with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
+            self._src(src)
+            with mock.patch("runner.install.FROZEN", True), \
+                 mock.patch("runner.install.os.name", "posix"):
+                self.assertTrue(install_files(src, dst))
+            self.assertEqual(_mode(os.path.join(dst, "homing-pigeon")), 0o755)
+            self.assertEqual(_mode(os.path.join(dst, "install")), 0o755)
+            self.assertEqual(_mode(os.path.join(dst, "config.json")), 0o600)
+
+        with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
+            self._src(src)
+            with mock.patch("runner.install.FROZEN", True), \
+                 mock.patch("runner.install.os.name", "nt"), \
+                 mock.patch("runner.install.os.chmod") as chmod:
+                self.assertTrue(install_files(src, dst))
+            self.assertNotIn(0o755, [call.args[-1] for call in chmod.call_args_list])
+
+    def test_a_bad_key_id_does_not_write_and_the_secret_is_not_printed(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write('{"additional_secrets": {}}\n')
+            os.chmod(path, 0o600)
+            for bad in ("", "a/b", "has space", "x" * 65, "ü", "../k"):
+                with self.assertRaises(SystemExit) as caught:
+                    store_additional_secret(path, bad)
+                self.assertEqual(caught.exception.code, 2)
+            buf = __import__("io").StringIO()
+            with mock.patch("sys.stdout", buf):
+                store_additional_secret(path, "ops.reader")
+            with open(path, encoding="utf-8") as fh:
+                saved = json.load(fh)["additional_secrets"]["ops.reader"]
+            self.assertNotIn(saved, buf.getvalue())
+            self.assertEqual(_mode(path), 0o600)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write('{"additional_secrets": []}\n')
+            with self.assertRaises(SystemExit):
+                store_additional_secret(path, "ops.reader")
+
+
+class InstallModeFuzzTest(unittest.TestCase):
+    def test_random_key_ids_exit_or_store_an_unprinted_secret(self):
+        rng = random.Random(20261017)
+        crashes = []
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("{}\n")
+            for _ in range(200):
+                n = rng.randrange(0, 70)
+                key = "".join(chr(rng.randrange(32, 127)) for _ in range(n))
+                if rng.randrange(5) == 0:
+                    key = rng.choice(["a", "A._-z", "", "a/b", "x" * 65])
+                buf = __import__("io").StringIO()
+                try:
+                    with mock.patch("sys.stdout", buf):
+                        store_additional_secret(path, key)
+                except SystemExit as exc:
+                    if exc.code != 2:
+                        crashes.append(exc.code)
+                        break
+                    continue
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                with open(path, encoding="utf-8") as fh:
+                    saved = json.load(fh)["additional_secrets"][key]
+                if saved in buf.getvalue() or _mode(path) != 0o600:
+                    crashes.append(key[:20])
                     break
         self.assertEqual(crashes, [])
 

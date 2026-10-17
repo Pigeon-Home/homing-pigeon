@@ -175,7 +175,9 @@ def store_additional_secret(cfg_path: str, key_id: str) -> None:
         sys.exit(2)
     with open(cfg_path, encoding="utf-8") as f:
         cfg = json.load(f)
-    extra = cfg.get("additional_secrets") or {}
+    extra = cfg.get("additional_secrets")
+    if extra is None:
+        extra = {}
     if not isinstance(extra, dict):
         print("error: additional_secrets in config is not an object",
               file=sys.stderr)
@@ -241,6 +243,10 @@ def install_files(src_dir: str, bin_dir: str,
             return False
         os.makedirs(os.path.dirname(os.path.abspath(cfg_path)), exist_ok=True)
         shutil.copy2(example, cfg_path)
+        try:
+            os.chmod(cfg_path, 0o600)
+        except OSError:
+            pass
         print(f"wrote {cfg_path} -- EDIT IT before starting "
               "(mailbox_user, mailbox_password, shared_secret)")
     return True
