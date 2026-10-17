@@ -8,6 +8,7 @@ import json
 import os
 import random
 import shlex
+import stat
 import tempfile
 import unittest
 from io import StringIO
@@ -1488,6 +1489,117 @@ class SandboxAndUserFuzzTest(unittest.TestCase):
                     pass
                 except Exception as exc:
                     crashes.append(("user", type(exc).__name__))
+                    break
+        self.assertEqual(crashes, [])
+
+
+class AuditAndDiskTest(unittest.TestCase):
+    def test_an_audit_line_is_owner_only_and_a_hostile_detail_stays_inside(self):
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("boom")
+
+        with tempfile.TemporaryDirectory() as d:
+            self.assertTrue(SEC.sec_decide(
+                {"security": {"modes": {"audience": "audit"}}},
+                d, "audience", "runner_id_mismatch",
+                {"detail": Boom(), "key_id": "k"}))
+            path = os.path.join(d, SEC.AUDIT_FILE)
+            mode = stat.S_IMODE(os.stat(path).st_mode)
+            self.assertEqual(mode, 0o600)
+            with open(path, encoding="utf-8") as fh:
+                row = json.loads(fh.readline())
+            self.assertEqual(row.get("key_id", ""), "")
+            self.assertNotIn("detail", row)
+            self.assertNotIn("boom", json.dumps(row))
+
+    def test_disk_fraction_mutations(self):
+        def usage(total, used):
+            return mock.Mock(total=total, used=used)
+
+        with mock.patch("runner.resources.shutil.disk_usage",
+                        return_value=usage(0, 0)):
+            self.assertIsNone(RS._disk_fraction("/tmp"))
+        with mock.patch("runner.resources.shutil.disk_usage",
+                        return_value=usage(100, 150)):
+            self.assertEqual(RS._disk_fraction("/tmp"), 1.0)
+        with mock.patch("runner.resources.shutil.disk_usage",
+                        return_value=usage(100, 0)):
+            self.assertEqual(RS._disk_fraction("/tmp"), 0.0)
+        with mock.patch("runner.resources.shutil.disk_usage",
+                        return_value=usage("n", 1)):
+            self.assertIsNone(RS._disk_fraction("/tmp"))
+        with mock.patch("runner.resources.shutil.disk_usage",
+                        side_effect=OSError("nope")):
+            self.assertIsNone(RS._disk_fraction("/tmp"))
+        self.assertIsNone(RS._disk_fraction(1))
+        self.assertIsNone(RS._disk_fraction(None))
+
+    def test_cpu_cooldown_does_not_hide_memory(self):
+        cfg = {"resources": {"threshold": 0.5, "cooldown_sec": 100}}
+        plan = [
+            ((0, 100), 0.1, 0.1),
+            ((0, 200), 0.1, 0.1),
+            ((0, 300), 0.9, 0.1),
+        ]
+        cursor = {"i": 0}
+
+        def proc():
+            return plan[cursor["i"]][0]
+
+        def mem():
+            return plan[cursor["i"]][1]
+
+        def disk(_path):
+            return plan[cursor["i"]][2]
+
+        seen = []
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(RS, "_read_proc_stat", side_effect=proc), \
+                 mock.patch.object(RS, "_mem_fraction", side_effect=mem), \
+                 mock.patch.object(RS, "_disk_fraction", side_effect=disk):
+                for i in range(3):
+                    cursor["i"] = i
+                    seen.append(RS.check_resources(cfg, d, now=1000 + i))
+        self.assertIsNone(seen[0])
+        self.assertEqual(set(seen[1]["resources"]), {"cpu"})
+        self.assertEqual(set(seen[2]["resources"]), {"mem"})
+
+
+class AuditFuzzTest(unittest.TestCase):
+    def test_random_entries_never_raise_and_stay_owner_only(self):
+        rng = random.Random(20261017)
+        crashes = []
+
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("boom")
+
+        with tempfile.TemporaryDirectory() as d:
+            for _ in range(200):
+                detail = rng.choice(["", "ok", Boom(), None])
+                cfg = rng.choice([
+                    None,
+                    {},
+                    {"security": {"audit_max_lines": rng.choice([1, 2, True, "n"])}},
+                ])
+                try:
+                    SEC.write_audit_entry(
+                        d, rng.choice(["audience", "confinement", ""]),
+                        rng.choice(["denied", "would_deny", ""]),
+                        "reason", detail=detail, cfg=cfg)
+                    got = RS._disk_fraction(rng.choice(["/tmp", 1, None, ""]))
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                path = os.path.join(d, SEC.AUDIT_FILE)
+                if os.path.exists(path):
+                    mode = stat.S_IMODE(os.stat(path).st_mode)
+                    if mode != 0o600:
+                        crashes.append(oct(mode))
+                        break
+                if got is not None and not (0.0 <= got <= 1.0):
+                    crashes.append(got)
                     break
         self.assertEqual(crashes, [])
 

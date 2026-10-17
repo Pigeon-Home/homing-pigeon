@@ -113,7 +113,7 @@ def _disk_fraction(path):
         if u.total <= 0:
             return None
         return max(0.0, min(1.0, u.used / u.total))
-    except OSError:
+    except (OSError, TypeError, ValueError, ZeroDivisionError):
         return None
 
 

@@ -352,14 +352,23 @@ def write_audit_entry(base_dir, feature, decision, reason,
         if mode:
             entry["mode"] = mode
         if detail:
-            entry["detail"] = detail
+            try:
+                if not isinstance(detail, str):
+                    detail = str(detail)
+            except Exception:
+                detail = ""
+            if detail:
+                entry["detail"] = detail
         path = _audit_path(base_dir)
-        with open(path, "a", encoding="utf-8") as fh:
-            fh.write(json.dumps(entry) + "\n")
         try:
-            os.chmod(path, 0o600)
-        except OSError:
-            pass  # Windows: ACLs come from the parent directory
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(entry) + "\n")
+        finally:
+            try:
+                if os.path.exists(path):
+                    os.chmod(path, 0o600)
+            except OSError:
+                pass
         _bump_counts(base_dir, feature, decision)
     except Exception:
         pass
