@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.7.23 - 2026-10-17
+
+### Oracle
+
+- Answer-format guard: a reply that is a structured-data dump
+  (the job index re-serialized as JSON, clean or corrupted) or
+  that carries a tool-call-shaped fragment is withheld, the
+  question is re-asked once for plain prose, and a second
+  failure returns a mechanical fallback sentence. Both system
+  prompts now state the rule: no JSON, no tool calls as text.
+
+### Inference
+
+- `--faster` now pulls `qwen2.5:1.5b` instead of
+  `llama3.2:1b`: better format-following at comparable speed,
+  and prose answers generate a fraction of the tokens. The
+  raspberry-pi-home profile keeps `llama3.2:1b`.
+
 ## 3.7.22 - 2026-10-17
 
 ### Distribution
