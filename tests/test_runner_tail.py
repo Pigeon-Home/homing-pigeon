@@ -1002,7 +1002,12 @@ class WatchAndPostureTest(unittest.TestCase):
             stdout = "denied for user\n" * 40
 
         with mock.patch.object(runner, "_tail_marked", return_value=None), \
-             mock.patch.object(runner.subprocess, "run", return_value=Proc()):
+             mock.patch.object(runner.subprocess, "run", return_value=Proc()), \
+             mock.patch.object(runner.sys, "platform", "linux"):
+            # The platform patch matters: _host_log_tail returns
+            # None on win32 by contract (the Event Log covers
+            # Windows; None means unreadable, never clean). The
+            # journal fallback under test here is the Linux path.
             self.assertIsInstance(runner._host_log_tail(max_chars="nope"), str)
             short = runner._host_log_tail(max_chars=5)
         self.assertTrue(short)

@@ -8,6 +8,7 @@ not the real syscall.
 import json
 import os
 import socket
+import sys
 import tempfile
 import threading
 import time
@@ -123,7 +124,14 @@ class JobUserFaceTest(unittest.TestCase):
         directory = base or tempfile.mkdtemp()
         work = os.path.join(directory, "work")
         os.makedirs(work, exist_ok=True)
-        return _job_user_preexec(cfg or _cfg(), directory, "job-1", work, face=face)
+        # _job_user_preexec returns None up front on Windows (os.name
+        # == "nt"): the demote is POSIX-only by design. These tests
+        # drive the face behind that gate, so the gate is patched
+        # open; without this, half the class passes vacuously on
+        # Windows and the other half fails.
+        with mock.patch.object(os, "name", "posix"):
+            return _job_user_preexec(
+                cfg or _cfg(), directory, "job-1", work, face=face)
 
     def test_not_root_does_not_demote(self):
         fn = self._run(_Face(euid=1000))
@@ -223,7 +231,12 @@ class OracleToolFaceTest(unittest.TestCase):
 
     def test_a_long_command_result_is_cut(self):
         from runner.runner import _run_oracle_tool
-        msg = _run_oracle_tool("run", {"command": "python3 -c 'print(\"y\"*9000)'", "timeout_sec": 10})
+        # sys.executable, double-quoted: a bare "python3 -c '...'"
+        # is POSIX shell shape — under cmd the quotes are literal
+        # and python3 resolves to the Store stub, which exits 0
+        # printing nothing, so there is no output to truncate.
+        cmd = '"{}" -c "print(\'y\' * 9000)"'.format(sys.executable)
+        msg = _run_oracle_tool("run", {"command": cmd, "timeout_sec": 10})
         self.assertIn("truncated", msg)
         self.assertTrue(msg.startswith("exit=0"))
 
@@ -262,14 +275,21 @@ class LogAndContextFaceTest(unittest.TestCase):
              mock.patch.object(runner, "_firewall_watch", return_value="on"), \
              mock.patch.object(runner, "_av_watch", return_value="clamd"):
             text = runner.oracle_context(d, limit=True, max_chars=8000, watch=True)
-        self.assertIn("Host log tail", text)
+        # The host log tail is a Linux/macOS section; on Windows the
+        # Event Log section takes its place (oracle_context gates on
+        # sys.platform). Firewall and AV render on every platform.
+        if sys.platform == "win32":
+            self.assertIn("Windows Event Log", text)
+        else:
+            self.assertIn("Host log tail", text)
         self.assertIn("Firewall posture", text)
         self.assertIn("AV posture", text)
         with mock.patch.object(runner, "_host_log_tail", return_value=""), \
              mock.patch.object(runner, "_firewall_watch", return_value=""), \
              mock.patch.object(runner, "_av_watch", return_value=""):
             empty = runner.oracle_context(d, limit=None, watch=True)
-        self.assertIn("no matching auth failures", empty)
+        if sys.platform != "win32":
+            self.assertIn("no matching auth failures", empty)
         self.assertNotIn("Firewall posture:\n", empty)
 
 
