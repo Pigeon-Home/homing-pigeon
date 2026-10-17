@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Property-based tests + a real signature bug they caught
+- New `tests/test_properties.py`: Hypothesis property tests over the
+  protocol's pure core -- sign/verify round-trip, tamper rejection,
+  wrong-secret rejection, preamble/trailer tolerance, subject-line
+  job extraction, job_id charset, and issued_at window boundaries.
+  Hypothesis is now installed in the CI test job (test-only; the
+  runtime stays stdlib-only).
+- The round-trip property caught a genuine bug in `_object_start`:
+  when a signed payload contained a `{` inside a string literal (a
+  `"{"` key, a script with `{...}` blocks), the extractor could pick
+  that brace as the JSON object opener and `verify_body` rejected a
+  legitimately signed body. Braces inside string literals are now
+  excluded from candidacy, with a fallback to the old order for
+  lopsided quotes in the preamble.
+
 ## 3.7.8 — 2026-10-16
 
 ### Oracle agent: plain-chat replay + real diagnostics

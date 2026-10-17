@@ -273,18 +273,44 @@ def _extract_signed(norm: str):
 
 
 def _object_start(norm: str, sig_at: int) -> int:
-    """Index of the `{` that opens the object ending at the sig marker."""
-    j = 0
-    candidates = []
-    while True:
-        j = norm.find("{", j, sig_at)
-        if j < 0:
-            break
-        candidates.append(j)
-        j += 1
-    for start in reversed(candidates):
-        if _in_root_object_at(norm, start, sig_at):
-            return start
+    """Index of the `{` that opens the object ending at the sig marker.
+
+    A forward pass first marks every position inside a string literal,
+    so a `{` that is payload text (a brace inside a script, a "{" key)
+    is never tried as the object opener. The old code re-scanned from
+    each candidate `{` without knowing whether that brace sat inside
+    a string, and could accept a wrong start whose braces happened to
+    balance -- rejecting a legitimately signed body.
+    """
+    in_str = False
+    escape = False
+    in_string = bytearray(sig_at)
+    for k in range(sig_at):
+        c = norm[k]
+        if in_str:
+            in_string[k] = 1
+            if escape:
+                escape = False
+            elif c == "\\":
+                escape = True
+            elif c == '"':
+                in_str = False
+            continue
+        if c == '"':
+            in_str = True
+            in_string[k] = 1
+    for start in range(sig_at - 1, -1, -1):
+        if norm[start] == "{" and not in_string[start]:
+            if _in_root_object_at(norm, start, sig_at):
+                return start
+    # Fallback: a lopsided quote in the preamble can throw off the
+    # forward string tracking above. Retry every `{` newest-first,
+    # exactly as before -- a wrong start fails the brace check or,
+    # failing that, the HMAC.
+    for start in range(sig_at - 1, -1, -1):
+        if norm[start] == "{" and in_string[start]:
+            if _in_root_object_at(norm, start, sig_at):
+                return start
     raise ValueError("no JSON object before signature")
 
 
