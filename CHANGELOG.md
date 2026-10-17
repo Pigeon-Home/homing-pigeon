@@ -12,6 +12,22 @@
   to look frozen.
 - A finished model call logs how many seconds it took.
 
+### The chat cannot stall in silence
+- Tool commands run with an empty stdin, so a command that waits
+  for input fails in a second instead of burning its whole timeout
+  doing nothing.
+- The model stays warm: calls to the local Ollama endpoint carry
+  keep_alive, and --oracle warms the model in the background at
+  startup, so the first question does not pay the cold start.
+- One question has a wall-clock budget (inference
+  .agent_wall_clock_sec, default 300 seconds). When it runs out,
+  the Oracle answers from what it has already seen instead of
+  opening another tool round.
+- The prompt ranks run last: never use it to search or read files.
+- The page's Working line now counts elapsed seconds and shows
+  the current step, fed by a token-gated /status on the same
+  loopback server.
+
 ## 3.7.13 - 2026-10-16
 
 ### Low-profile senses on the watches that already exist

@@ -87,7 +87,8 @@ class OracleChatTest(unittest.TestCase):
             self.addCleanup(httpd.server_close)
 
             def fake_ask(inf, question, output_text, max_chars, patterns=None,
-                         opener=None, instructions=None, base_dir=None):
+                         opener=None, instructions=None, base_dir=None,
+                         progress=None):
                 self.assertIn("5", output_text)
                 return {"op": "ask", "rejected": "sanitization"}
 
@@ -130,7 +131,8 @@ class OracleChatTest(unittest.TestCase):
             seen = {}
 
             def fake_ask(inf, question, output_text, max_chars, patterns=None,
-                         opener=None, instructions=None, base_dir=None):
+                         opener=None, instructions=None, base_dir=None,
+                         progress=None):
                 seen["question"] = question
                 seen["output"] = output_text
                 seen["instructions"] = instructions

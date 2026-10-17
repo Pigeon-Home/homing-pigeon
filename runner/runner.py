@@ -1669,6 +1669,7 @@ def _sanitize_model_reply(reply, cap, scan_text, patterns, model):
 # so a poisoned file could talk it into running something unwise.
 
 _ORACLE_AGENT_MAX_ROUNDS = 10
+_ORACLE_AGENT_WALL_CLOCK_SEC = 300
 _ORACLE_AGENT_MAX_TOOLS_PER_ROUND = 4
 _ORACLE_AGENT_CONTEXT_CHARS = 12000
 
@@ -1779,6 +1780,9 @@ ASK_AGENT_SYSTEM = (
     "retained file only when the question asks for that job's script, "
     "output, or exit code, or when the index says the kind was not "
     "recorded. Do not open several files in one turn.\n"
+    "- Use run only when no file can answer the question. It is the "
+    "slowest tool and the easiest to get wrong. Never use run to "
+    "search or read files; list_dir and read_file do that.\n"
     "- A kind of 'kind not recorded' means the type was not saved. It does "
     "not mean the job failed. Read the file. The script, the output, and "
     "the exit code are the status.\n"
@@ -1939,6 +1943,7 @@ def _run_oracle_tool(name, args, base_dir=None) -> str:
         try:
             proc = subprocess.run(
                 command, shell=True, capture_output=True,
+                stdin=subprocess.DEVNULL,
                 timeout=timeout, cwd=_tool_base_dir(base_dir) or None)
         except subprocess.TimeoutExpired:
             return f"error: command timed out after {timeout}s"
@@ -1985,6 +1990,16 @@ def _inference_chat(cfg, messages, tools, opener, timeout):
     payload = {"model": cfg.get("model"), "messages": messages}
     if tools:
         payload["tools"] = tools
+    # Keep the local model loaded between calls: Ollama unloads after a
+    # few idle minutes, and the next question then pays a multi-minute
+    # cold start. Explicit config wins; the Ollama default port gets a
+    # keep-alive without any config.
+    keep_alive = cfg.get("keep_alive")
+    endpoint = cfg.get("endpoint")
+    if keep_alive is None and isinstance(endpoint, str) and ":11434" in endpoint:
+        keep_alive = "30m"
+    if keep_alive:
+        payload["keep_alive"] = keep_alive
     body_bytes = json.dumps(payload).encode("utf-8")
     try:
         roles = ",".join(m.get("role", "?") for m in messages
@@ -2139,7 +2154,8 @@ def _unparsed_tool_note(content):
 
 
 def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
-                    opener=None, instructions=None, base_dir=None):
+                    opener=None, instructions=None, base_dir=None,
+                    progress=None):
     """Agentic Oracle loop for the interactive --oracle chat.
 
     The model may call read_file, list_dir, write_file, and run while
@@ -2175,6 +2191,13 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
         timeout = 60
     if timeout < 1:
         timeout = 60
+    try:
+        wall_clock = int(cfg.get("agent_wall_clock_sec")
+                         or _ORACLE_AGENT_WALL_CLOCK_SEC)
+    except (TypeError, ValueError, OverflowError):
+        wall_clock = _ORACLE_AGENT_WALL_CLOCK_SEC
+    if wall_clock < 1:
+        wall_clock = _ORACLE_AGENT_WALL_CLOCK_SEC
     system = ASK_AGENT_SYSTEM + (
         ("\n\nOwner instructions for this box:\n" + _as_text(instructions).strip())
         if instructions and _as_text(instructions).strip() else "")
@@ -2184,8 +2207,8 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             "\n\nThis box's state directory: " + state +
             "\n- Finished job files live in: " + os.path.join(state, "retained") +
             "\n- The runner log is: " + os.path.join(state, "runner.log") +
-            "\nUse these paths when you investigate; relative paths resolve "
-            "against the state directory.")
+            "\nOpen a file there only when you need that specific file; "
+            "relative paths resolve against the state directory.")
     proto = _bundled_doc_path("PROTOCOL.md")
     if proto:
         system += (
@@ -2199,8 +2222,41 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
     ]
     scan_text = _as_text(output_text)
     tool_rounds = 0
+    started = time.monotonic()
+
+    def _progress(step):
+        if progress is not None:
+            progress["step"] = step
+
     for _round in range(_ORACLE_AGENT_MAX_ROUNDS):
         messages = _agent_trim(messages)
+        if tool_rounds and time.monotonic() - started >= wall_clock:
+            # Out of investigation time: one last call, tools off, and
+            # the model answers from what it has already seen. Without
+            # this, a slow local model can stack round after round of
+            # multi-minute calls while the chat shows nothing.
+            _progress("Writing the answer from what it has")
+            messages.append({
+                "role": "user",
+                "content": "(You are out of investigation time. Answer "
+                           "the question now, in plain text, from what "
+                           "you have already seen. Do not call tools.)",
+            })
+            msg = _inference_chat(cfg, messages, None, opener, timeout)
+            if not isinstance(msg, dict) or msg.get("role") == "error":
+                detail = msg.get("content") if isinstance(msg, dict) else ""
+                if not isinstance(detail, str) or not detail:
+                    detail = "The local model did not answer."
+                return {"op": "ask", "rejected": "inference_error",
+                        "detail": detail}
+            reply = msg.get("content")
+            if not isinstance(reply, str):
+                reply = "" if reply is None else str(reply)
+            result = _sanitize_model_reply(reply, cap, scan_text,
+                                           patterns, model)
+            result["tool_rounds"] = tool_rounds
+            return result
+        _progress(f"Thinking (step {tool_rounds + 1})")
         msg = _inference_chat(cfg, messages, _ORACLE_TOOLS, opener, timeout)
         if not isinstance(msg, dict) or msg.get("role") == "error":
             detail = msg.get("content") if isinstance(msg, dict) else ""
@@ -2230,6 +2286,7 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             except (TypeError, ValueError):
                 preview = "?"
             log(f"oracle tool: {name} {preview}")
+            _progress(f"Running {name}")
             result_text = _run_oracle_tool(name, fargs, base_dir)
             scan_text += "\n" + result_text
             executed.append((call_id, name, fargs, result_text))
@@ -6327,9 +6384,26 @@ document.getElementById("f").onsubmit = async (e) => {
   add("You", text, "you");
   q.value = "";
   send.disabled = true;
-  const pending = add("Oracle",
-    "Working. This machine's model often takes a few minutes per step. The answer replaces this line.",
-    "oracle");
+  const pending = add("Oracle", "Working…", "oracle");
+  const pendingText = pending.childNodes[1];
+  const t0 = Date.now();
+  let stepText = "";
+  const paint = () => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    pendingText.textContent = "Working… " + s + "s."
+      + (stepText ? " Current step: " + stepText + "."
+                  : " This machine's model often takes a few minutes per step.")
+      + " The answer replaces this line.";
+  };
+  paint();
+  const tick = setInterval(paint, 1000);
+  const poll = setInterval(async () => {
+    try {
+      const sr = await fetch("/status", {headers: {"X-Oracle-Token": boot.token}});
+      const sd = await sr.json().catch(() => null);
+      if (sd && sd.active && sd.step) stepText = sd.step;
+    } catch (err) {}
+  }, 3000);
   try {
     const r = await fetch("/ask", {
       method: "POST",
@@ -6340,12 +6414,16 @@ document.getElementById("f").onsubmit = async (e) => {
       body: JSON.stringify({question: text})
     });
     const data = await r.json().catch(() => null);
+    clearInterval(tick);
+    clearInterval(poll);
     pending.remove();
     if (data && data.answer) add("Oracle", data.answer, "oracle");
     else if (data && data.detail) add("Oracle", data.detail, "oracle");
     else if (r.status === 403) add("Oracle", "The chat session expired. Reload the page and ask again.", "oracle");
     else add("Oracle", "The page could not reach the local Oracle.", "oracle");
   } catch (err) {
+    clearInterval(tick);
+    clearInterval(poll);
     pending.remove();
     add("Oracle", "The page could not reach the local Oracle.", "oracle");
   }
@@ -6440,6 +6518,7 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
     if not isinstance(cfg, dict):
         cfg = {}
     base = base_dir or _base_dir_for(cfg)
+    progress = {"active": False, "step": "", "started": 0.0}
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
@@ -6458,6 +6537,23 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
             self.wfile.write(body)
 
         def do_GET(self):
+            if self.path.split("?", 1)[0] == "/status":
+                if not _oracle_host_ok(self):
+                    self._send(403, "forbidden", "text/plain; charset=utf-8")
+                    return
+                got = self.headers.get("X-Oracle-Token") or ""
+                if not hmac.compare_digest(got, token):
+                    self._send(403, "forbidden", "text/plain; charset=utf-8")
+                    return
+                elapsed = 0
+                if progress.get("active") and progress.get("started"):
+                    elapsed = max(0, int(time.time() - progress["started"]))
+                self._send(200, json.dumps({
+                    "active": bool(progress.get("active")),
+                    "step": progress.get("step") or "",
+                    "elapsed_sec": elapsed,
+                }), "application/json")
+                return
             if self.path.split("?", 1)[0] != "/":
                 self._send(404, "not found", "text/plain; charset=utf-8")
                 return
@@ -6500,6 +6596,9 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
                            "application/json")
                 return
             inf = inference_config(cfg)
+            progress["active"] = True
+            progress["step"] = "Thinking"
+            progress["started"] = time.time()
             try:
                 ans = ask_model_agent(
                     inf, question, oracle_context(base, watch=_oracle_watch_enabled(cfg)),
@@ -6507,10 +6606,12 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
                     _redact_patterns(cfg),
                     instructions=cfg.get("owner_instructions"),
                     base_dir=base,
+                    progress=progress,
                 )
             except Exception as e:
                 log(f"oracle ask failed: {e}", "WARN")
                 ans = None
+            progress["active"] = False
             if not isinstance(ans, dict):
                 ans = {"rejected": "inference_error"}
             if isinstance(ans.get("answer"), str) and ans.get("answer"):
@@ -6588,6 +6689,25 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
         record_oracle_turn(base, cfg, "", {}, event="open")
     except Exception as e:
         log(f"oracle open not recorded: {e}", "WARN")
+    if inf.get("model"):
+        def _warm_model():
+            t0 = time.monotonic()
+            try:
+                msg = _inference_chat(
+                    inf,
+                    [{"role": "user",
+                      "content": "Reply with the single word: ok"}],
+                    None, None, 120)
+            except Exception as e:
+                log(f"oracle model warm-up failed: {e}", "WARN")
+                return
+            if isinstance(msg, dict) and msg.get("role") == "error":
+                log("oracle model warm-up did not answer: "
+                    + str(msg.get("content") or ""), "WARN")
+            else:
+                log(f"oracle model warm-up finished in "
+                    f"{time.monotonic() - t0:.0f}s")
+        threading.Thread(target=_warm_model, daemon=True).start()
     if open_browser:
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()
     try:
