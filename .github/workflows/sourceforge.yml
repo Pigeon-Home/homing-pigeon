@@ -1,8 +1,9 @@
 name: sourceforge
 
-# After a tagged build publishes a GitHub Release, copy the three install
-# archives and SHA384SUMS to SourceForge and mark each archive as the
-# default download for its OS. The same run also mirrors the source to
+# After a tagged build publishes a GitHub Release, copy every
+# published release asset to SourceForge — the three install
+# archives, the Python wheel and sdist, and SHA384SUMS — and mark
+# each install archive as the default download for its OS. The same run also mirrors the source to
 # the project's SourceForge git repo (main + all tags), so the code
 # lives there too, updated only when a tag ships. Skips until the repo
 # secrets exist, so a release is never blocked on SourceForge.
@@ -59,8 +60,7 @@ jobs:
             *) echo "refusing tag $TAG"; exit 1 ;;
           esac
           mkdir -p publish
-          gh release download "$TAG" --repo "$REPO" --dir publish --pattern 'homing-pigeon-*' --pattern 'SHA384SUMS'
-          find publish -maxdepth 1 -type f ! -name 'homing-pigeon-windows-*.zip' ! -name 'homing-pigeon-linux-*.tar.gz' ! -name 'homing-pigeon-macos-*.tar.gz' ! -name 'SHA384SUMS' -delete
+          gh release download "$TAG" --repo "$REPO" --dir publish
           test -f publish/SHA384SUMS
           install -d -m 700 "$HOME/.ssh"
           printf '%s\n' "$SF_KEY" > "$HOME/.ssh/id_ed25519"

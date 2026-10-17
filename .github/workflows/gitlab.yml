@@ -1,8 +1,9 @@
 name: gitlab
 
 # After a tagged build publishes a GitHub Release, mirror the release
-# to GitLab: push main and all tags to the GitLab repo, upload the
-# three install archives and SHA384SUMS to the project's generic
+# to GitLab: push main and all tags to the GitLab repo, upload every
+# published release asset (the three install archives, the Python
+# wheel and sdist, and SHA384SUMS) to the project's generic
 # package registry, and create a GitLab Release on the tag linking
 # those packages. Skips until the repo secret exists, so a release
 # is never blocked on GitLab.
@@ -60,8 +61,7 @@ jobs:
           git -C gl-src push "https://${GL_USER}:${GL_TOKEN}@gitlab.com/${GL_PROJECT}.git" 'refs/tags/*:refs/tags/*'
           echo "source mirrored to GitLab (main + tags)"
           mkdir -p publish
-          gh release download "$TAG" --repo "$REPO" --dir publish --pattern 'homing-pigeon-*' --pattern 'SHA384SUMS'
-          find publish -maxdepth 1 -type f ! -name 'homing-pigeon-windows-*.zip' ! -name 'homing-pigeon-linux-*.tar.gz' ! -name 'homing-pigeon-macos-*.tar.gz' ! -name 'SHA384SUMS' -delete
+          gh release download "$TAG" --repo "$REPO" --dir publish
           test -f publish/SHA384SUMS
           python3 - <<'PY'
           import json, os, pathlib, subprocess, urllib.parse
@@ -96,7 +96,7 @@ jobs:
               "tag_name": tag,
               "name": f"homing-pigeon {tag}",
               "description": ("Mirrored from the GitHub release. "
-                              "Install archives are in the package "
+                              "Release files are in the package "
                               "registry, linked below."),
               "assets": {"links": links},
           }
