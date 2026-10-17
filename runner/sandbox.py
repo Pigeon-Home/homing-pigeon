@@ -49,30 +49,52 @@ def _confinement_cfg(cfg):
     return block if isinstance(block, dict) else {}
 
 
+def _absolute_mount(value, label):
+    """An absolute mount path. No null, no newline, no .. segment."""
+    parts = value.split("/") if isinstance(value, str) else []
+    if (not isinstance(value, str) or not value.startswith("/")
+            or any(ch in value for ch in "\x00\r\n")
+            or ".." in parts):
+        raise RuntimeError(
+            "config error: security.confinement.%s "
+            "must be an absolute path with no .. segment" % label)
+
+
+def _flag_list(flags):
+    if not isinstance(flags, list) or not all(
+            isinstance(f, str) and f and ".." not in f
+            and not any(ch in f for ch in "\x00\r\n/")
+            for f in flags):
+        raise RuntimeError(
+            "config error: security.confinement.extra_flags "
+            "must be a list of strings")
+
+
+def _bind_pairs(pairs):
+    if not isinstance(pairs, list):
+        raise RuntimeError(
+            "config error: security.confinement.extra_ro_binds "
+            "must be a list of [src, dst] string pairs")
+    for pair in pairs:
+        if not isinstance(pair, list) or len(pair) != 2:
+            raise RuntimeError(
+                "config error: security.confinement.extra_ro_binds "
+                "must be a list of [src, dst] string pairs")
+        _absolute_mount(pair[0], "extra_ro_binds")
+        _absolute_mount(pair[1], "extra_ro_binds")
+
+
 def _validate_confinement_block(block):
     """Raise RuntimeError on a malformed confinement block."""
     if not isinstance(block, dict):
         raise RuntimeError(
             "config error: security.confinement must be an object")
     extra_flags = block.get("extra_flags", [])
-    if not isinstance(extra_flags, list) or \
-            not all(isinstance(f, str) for f in extra_flags):
-        raise RuntimeError(
-            "config error: security.confinement.extra_flags "
-            "must be a list of strings")
+    _flag_list(extra_flags)
     extra_binds = block.get("extra_ro_binds", [])
-    if not isinstance(extra_binds, list) or any(
-            not isinstance(p, list) or len(p) != 2 or
-            not all(isinstance(x, str) for x in p)
-            for p in extra_binds):
-        raise RuntimeError(
-            "config error: security.confinement.extra_ro_binds "
-            "must be a list of [src, dst] string pairs")
+    _bind_pairs(extra_binds)
     work_mount = block.get("work_mount", WORK_MOUNT)
-    if not isinstance(work_mount, str) or not work_mount.startswith("/"):
-        raise RuntimeError(
-            "config error: security.confinement.work_mount "
-            "must be an absolute path string")
+    _absolute_mount(work_mount, "work_mount")
     return True
 
 
@@ -99,18 +121,23 @@ def build_bwrap_command(cfg, interpreter, script_name, workdir, args, env):
         raise RuntimeError("args must be a list of strings")
     if not isinstance(env, dict):
         raise RuntimeError("env must be a dict")
+    conf = _confinement_cfg(cfg if isinstance(cfg, dict) else {})
+    work_mount = conf.get("work_mount", WORK_MOUNT)
+    _absolute_mount(work_mount, "work_mount")
+    flags = conf.get("extra_flags", [])
+    _flag_list(flags)
+    binds = conf.get("extra_ro_binds", [])
+    _bind_pairs(binds)
     resolved = shutil.which(interpreter[0])
     if not resolved:
         raise RuntimeError(
             "cannot resolve interpreter %r for sandbox" % interpreter[0])
-    conf = _confinement_cfg(cfg)
-    work_mount = conf.get("work_mount", WORK_MOUNT)
 
     argv = [BWRAP_BIN]
     argv.extend(DEFAULT_FLAGS)
-    for f in conf.get("extra_flags", []):
-        argv.append(f)
-    for src, dst in conf.get("extra_ro_binds", []):
+    for flag in flags:
+        argv.append(flag)
+    for src, dst in binds:
         argv.extend(["--ro-bind", src, dst])
     # Minimal PATH plus the job's scrubbed env.
     argv.extend(["--setenv", "PATH", "/usr/bin:/bin"])
