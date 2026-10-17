@@ -42,8 +42,8 @@ sys.path.insert(0, os.path.join(REPO, "cloud"))
 
 from send_job import verify_body  # noqa: E402
 
-# Shared secret that was in the runner config for the live session.
-# (Not a Google password; the HMAC key.)
+# Test-only shared secret. Used solely for unit tests that replay
+# live captures. Never deployed or used outside of testing.
 LIVE_SECRET = "wmKK+9avPLN9rSsETqH5E1SrXXzdS3YCQQePMRj8e3A="
 
 # --- Real captured result bodies (exact bytes that arrived) ---

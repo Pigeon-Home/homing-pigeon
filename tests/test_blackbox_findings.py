@@ -24,6 +24,8 @@ from runner.runner import (  # noqa: E402
     verify_body_keyed,
 )
 
+# Test-only shared secret. Used solely for unit tests in this file.
+# Never deployed or used outside of testing.
 SECRET = "wmKK+9avPLN9rSsETqH5E1SrXXzdS3YCQQePMRj8e3A="
 
 
