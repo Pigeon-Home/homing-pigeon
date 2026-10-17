@@ -119,6 +119,27 @@ class HotReloadPinTest(unittest.TestCase):
         self.assertEqual(cfg["workers"], 2)
         self.assertEqual(cfg["poll_interval_sec"], 20)
 
+    def test_infinity_is_ignored_and_the_other_key_still_loads(self):
+        from runner.runner import reload_hot_config
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "config.json")
+            # JSON accepts Infinity. int() of it raises OverflowError,
+            # which used to abort the whole reload.
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(
+                    '{"workers": Infinity, "poll_interval_sec": NaN, '
+                    '"default_timeout_sec": 15}')
+            cfg = {"workers": 2, "poll_interval_sec": 20,
+                   "default_timeout_sec": 30}
+            state = {"mtime": 0}
+            changed = reload_hot_config(cfg, path, state)
+        self.assertEqual(cfg["workers"], 2)
+        self.assertEqual(cfg["poll_interval_sec"], 20)
+        self.assertEqual(cfg["default_timeout_sec"], 15)
+        self.assertEqual(changed, ["default_timeout_sec"])
+        self.assertNotEqual(state["mtime"], 0)
+
 
 class SensorRecordTest(unittest.TestCase):
     def test_nan_is_stored_as_null_and_a_cycle_does_not_recurse(self):

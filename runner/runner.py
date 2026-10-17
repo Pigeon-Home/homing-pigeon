@@ -4218,7 +4218,7 @@ def _valid_hot(key: str, value):
     """Return the int to store, or None if the value must be rejected."""
     try:
         n = int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     if n < 1:
         return None

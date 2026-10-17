@@ -246,6 +246,63 @@ class FuzzSurfacesTest(unittest.TestCase):
             store_alert(directory, cycle)
 
 
+class LearningSurfaceTest(unittest.TestCase):
+    """The coverage-run shapes, thrown at the functions as a campaign.
+
+    A repeated secret, a pinned worker count, a sensor record that is
+    not JSON, and a sequence number that is not ASCII. None of them
+    may raise anything but the documented RuntimeError.
+    """
+
+    def test_the_shapes_do_not_escape(self):
+        from runner.runner import fetch_job_mails, reload_hot_config
+        from runner.security import validate_shared_secret
+        from runner.senses import load_alerts, store_alert
+
+        for unit in ("a", "ab", "0123456789abcdef", "ė", "X", "ĳ"):
+            for copies in (1, 2, 4, 8):
+                try:
+                    validate_shared_secret(unit * copies)
+                except RuntimeError:
+                    pass
+
+        class Boom(dict):
+            def items(self):
+                raise ValueError("no")
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "config.json")
+            for body in (
+                '{"workers": Infinity}',
+                '{"workers": -Infinity, "poll_interval_sec": NaN}',
+                '{"workers": true, "poll_interval_sec": false}',
+                '{"workers": [], "owner_instructions": 1}',
+                '{"inference": "nope"}',
+                '{',
+            ):
+                with open(path, "w", encoding="utf-8") as fh:
+                    fh.write(body)
+                cfg = {"workers": 2, "poll_interval_sec": 20}
+                reload_hot_config(cfg, path, {"mtime": 0}, pinned={"workers"})
+                self.assertEqual(cfg["workers"], 2)
+
+            cycle = {"title": "loop", "reading": float("inf")}
+            cycle["self"] = cycle
+            store_alert(directory, cycle)
+            store_alert(directory, {"reading": float("nan")})
+            store_alert(directory, Boom(title="x"))
+            load_alerts(directory, limit=5)
+
+        class Imap:
+            def search(self, *args):
+                return "OK", [b"\xff 1 2"]
+
+            def fetch(self, num, spec):
+                return "OK", [(num, b"x")]
+
+        self.assertIsInstance(fetch_job_mails(Imap()), list)
+
+
 if __name__ == "__main__":
     found = campaign(400, 20261017)
     if found:
