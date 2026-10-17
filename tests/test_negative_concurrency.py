@@ -105,17 +105,17 @@ class ConcurrentPoisonTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             # Poison: numeric task_id on board
             bad_body = sign_payload({
-                "v": 1, "type": "task_submit", "issued_at": _now(),
+                "v": 2, "type": "task_submit", "issued_at": _now(),
                 "task_id": 999, "priority": "high",
             }, SECRET)
             # Good ping
             good_body = sign_payload({
-                "v": 1, "type": "job", "job_id": "good-ping",
+                "v": 2, "type": "job", "job_id": "good-ping",
                 "issued_at": _now(), "kind": "ping",
             }, SECRET)
             # Poison: query against missing/poisoned retained
             q_body = sign_payload({
-                "v": 1, "type": "query", "query_id": "q-bad",
+                "v": 2, "type": "query", "query_id": "q-bad",
                 "job_id": "missing", "issued_at": _now(),
                 "queries": [{"op": "grep", "pattern": "("}],
             }, SECRET)
@@ -176,7 +176,7 @@ class MalformedExtensionStateTest(unittest.TestCase):
                 dri.maybe_page(cfg, d)
             # A ping still works
             body = sign_payload({
-                "v": 1, "type": "job", "job_id": "still-works",
+                "v": 2, "type": "job", "job_id": "still-works",
                 "issued_at": _now(), "kind": "ping",
             }, SECRET)
             raw = _mail("[HOMING-PIGEON] job still-works", body)
@@ -215,13 +215,13 @@ class SensorShapePoisonTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             jobs = [
                 {  # wrong types
-                    "v": 1, "type": "job", "kind": "sensor_alert",
+                    "v": 2, "type": "job", "kind": "sensor_alert",
                     "job_id": "bad-types", "issued_at": _now(),
                     "sensor": 5, "severity": ["high"], "title": None,
                     "detail": "string-detail",
                 },
                 {  # path traversal
-                    "v": 1, "type": "job", "kind": "sensor_alert",
+                    "v": 2, "type": "job", "kind": "sensor_alert",
                     "job_id": "trav", "issued_at": _now(),
                     "sensor": "../etc/passwd", "severity": "critical",
                     "title": "x", "detail": FLAG,
@@ -337,7 +337,7 @@ class ConcurrentQueryPoisonTest(unittest.TestCase):
             raws = []
             for i in range(8):
                 body = sign_payload({
-                    "v": 1, "type": "query", "query_id": f"q{i}",
+                    "v": 2, "type": "query", "query_id": f"q{i}",
                     "job_id": f"missing-{i}", "issued_at": _now(),
                     "queries": [
                         {"op": "grep", "pattern": "("},
@@ -348,7 +348,7 @@ class ConcurrentQueryPoisonTest(unittest.TestCase):
                 raws.append(_mail(f"[HOMING-PIGEON] query q{i}", body))
             # also a good ping so we confirm the poll still processes
             ping = sign_payload({
-                "v": 1, "type": "job", "job_id": "still-alive",
+                "v": 2, "type": "job", "job_id": "still-alive",
                 "issued_at": _now(), "kind": "ping",
             }, SECRET)
             raws.append(_mail("[HOMING-PIGEON] job still-alive", ping))
@@ -396,7 +396,7 @@ class ExtremeExtensionStateTest(unittest.TestCase):
                 dri.maybe_page(cfg, d)
             # poll still works
             body = sign_payload({
-                "v": 1, "type": "job", "job_id": "after-extreme",
+                "v": 2, "type": "job", "job_id": "after-extreme",
                 "issued_at": _now(), "kind": "ping",
             }, SECRET)
             poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
@@ -1287,7 +1287,7 @@ class PatternMapAndChatLogTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_oracle_path(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "still-ping",
+            "v": 2, "type": "job", "job_id": "still-ping",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job still-ping", body)
@@ -1457,7 +1457,7 @@ class AskAndPageShapeTest(unittest.TestCase):
 
     def test_ping_still_completes(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-ask",
+            "v": 2, "type": "job", "job_id": "after-ask",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-ask", body)
@@ -1652,7 +1652,7 @@ class SenseGateAndPageTextTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_sense_gate(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-sense",
+            "v": 2, "type": "job", "job_id": "after-sense",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-sense", body)
@@ -1777,7 +1777,7 @@ class SignAndContextShapeTest(unittest.TestCase):
 
     def test_ping_still_completes_after_signing(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-sign",
+            "v": 2, "type": "job", "job_id": "after-sign",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-sign", body)
@@ -1953,7 +1953,7 @@ class BoardRateAndResourceClockTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_board(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-board",
+            "v": 2, "type": "job", "job_id": "after-board",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-board", body)
@@ -2082,7 +2082,7 @@ class SensorKeyAndFusedScoreTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_fused_score(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-fused",
+            "v": 2, "type": "job", "job_id": "after-fused",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-fused", body)
@@ -2202,7 +2202,7 @@ class KeyPolicyShapeTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_policy_check(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-policy",
+            "v": 2, "type": "job", "job_id": "after-policy",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-policy", body)
@@ -2372,7 +2372,7 @@ class UnprintableResultTest(unittest.TestCase):
 
     def test_ping_still_completes_after_unprintable(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-text",
+            "v": 2, "type": "job", "job_id": "after-text",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-text", body)
@@ -2452,7 +2452,7 @@ class UnprintableKeyTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_bad_key(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-key",
+            "v": 2, "type": "job", "job_id": "after-key",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-key", body)
@@ -2534,7 +2534,7 @@ class StateSavePoisonTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_state_save(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-state",
+            "v": 2, "type": "job", "job_id": "after-state",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-state", body)
@@ -2610,7 +2610,7 @@ class PageAndHashPoisonTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_page(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-page",
+            "v": 2, "type": "job", "job_id": "after-page",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-page", body)
@@ -2705,7 +2705,7 @@ class JudgeAndConfinePoisonTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_judge(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-judge",
+            "v": 2, "type": "job", "job_id": "after-judge",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-judge", body)
@@ -2804,7 +2804,7 @@ class BoardStampPoisonTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_board(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-board",
+            "v": 2, "type": "job", "job_id": "after-board",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-board", body)
@@ -2970,7 +2970,7 @@ class ExecTextPoisonTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_arg(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-arg",
+            "v": 2, "type": "job", "job_id": "after-arg",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-arg", body)
@@ -3113,7 +3113,7 @@ class AttestKeyPoisonTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_attestation(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-attest",
+            "v": 2, "type": "job", "job_id": "after-attest",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-attest", body)
@@ -3244,7 +3244,7 @@ class FusedSensorKeyTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_sensor(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-sensor",
+            "v": 2, "type": "job", "job_id": "after-sensor",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-sensor", body)
@@ -3368,7 +3368,7 @@ class ResultAndRedirectPoisonTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_result(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-result",
+            "v": 2, "type": "job", "job_id": "after-result",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-result", body)
@@ -3463,7 +3463,7 @@ class AttestComparePoisonTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_compare(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-compare",
+            "v": 2, "type": "job", "job_id": "after-compare",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-compare", body)
@@ -3533,7 +3533,7 @@ class SummaryExitPoisonTest(unittest.TestCase):
 
     def test_ping_still_completes_after_the_summary(self):
         body = sign_payload({
-            "v": 1, "type": "job", "job_id": "after-summary",
+            "v": 2, "type": "job", "job_id": "after-summary",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         raw = _mail("[HOMING-PIGEON] job after-summary", body)

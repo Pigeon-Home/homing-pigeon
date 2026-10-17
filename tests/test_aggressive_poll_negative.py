@@ -81,7 +81,7 @@ class AggressivePollNegative(unittest.TestCase):
             # Poisoned alerts and bad jobs
             for i in range(6):
                 body = sign_payload({
-                    "v": 1, "type": "job", "job_id": f"bad-{i}",
+                    "v": 2, "type": "job", "job_id": f"bad-{i}",
                     "kind": "sensor_alert", "issued_at": _now(),
                     "sensor": "door", "severity": 999, "title": None,
                     "detail": [1, 2],
@@ -90,7 +90,7 @@ class AggressivePollNegative(unittest.TestCase):
             # Good jobs
             for i in range(3):
                 body = sign_payload({
-                    "v": 1, "type": "job", "job_id": f"good-{i}",
+                    "v": 2, "type": "job", "job_id": f"good-{i}",
                     "kind": "exec", "issued_at": _now(),
                     "script": "echo ok",
                 }, SECRET)

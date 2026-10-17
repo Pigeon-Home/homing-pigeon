@@ -130,7 +130,7 @@ def build_ask_job(question: str, secret: str, job_id=None) -> dict:
     """A signed job that declares a single ask query. The SI side."""
     job_id = job_id or str(uuid.uuid4())
     payload = {
-        "v": 1,
+        "v": R.PROTOCOL_VERSION,  # pyrefly: ignore[missing-attribute]  # R is runner.runner at runtime; pyrefly binds the package
         "type": "job",
         "job_id": job_id,
         "issued_at": _now(),

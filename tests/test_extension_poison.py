@@ -79,7 +79,7 @@ class ExtensionPoisonTest(unittest.TestCase):
             with open(os.path.join(d, "board.json"), "w", encoding="utf-8") as fh:
                 json.dump(["not", "a", "board"], fh)
             body = sign_payload({
-                "v": 1, "type": "task_request", "issued_at": _now(),
+                "v": 2, "type": "task_request", "issued_at": _now(),
                 "capabilities": 5,
             }, SECRET)
             raw = _mail("[HOMING-PIGEON] task_request worker-1", body)
@@ -199,7 +199,7 @@ class MistypedConfigTest(unittest.TestCase):
     def test_mistyped_retention_and_paths_do_not_retry_the_job(self):
         with tempfile.TemporaryDirectory() as d:
             body = sign_payload({
-                "v": 1, "type": "job", "job_id": "job-shape",
+                "v": 2, "type": "job", "job_id": "job-shape",
                 "issued_at": _now(), "kind": "ping",
                 "result_policy": "attested",
             }, SECRET)
@@ -240,7 +240,7 @@ class PoisonedQueryTest(unittest.TestCase):
                 "view": 3, "saved_at": time.time(),
             }, fh)
         body = sign_payload({
-            "v": 1, "type": "query", "query_id": "q1", "job_id": "job-q",
+            "v": 2, "type": "query", "query_id": "q1", "job_id": "job-q",
             "issued_at": _now(),
             "queries": [
                 "not-an-object",
@@ -315,7 +315,7 @@ class NumericBoardTaskTest(unittest.TestCase):
             self.assertEqual(board.tasks, {})
 
             body = sign_payload({
-                "v": 1, "type": "task_submit", "issued_at": _now(),
+                "v": 2, "type": "task_submit", "issued_at": _now(),
                 "task_id": 5,
                 "priority": "high",
                 "requires": "setup.sh",
@@ -357,7 +357,7 @@ class SensorCostumeTest(unittest.TestCase):
             os.makedirs(outside)
             marker = os.path.join(outside, "ran")
             job = {
-                "v": 1, "type": "job", "kind": "sensor_alert",
+                "v": 2, "type": "job", "kind": "sensor_alert",
                 "job_id": "costume-1", "issued_at": _now(),
                 "sensor": "../outside",
                 "severity": "critical",
@@ -431,7 +431,7 @@ class WindowsExtensionTest(unittest.TestCase):
             os.makedirs(outside)
             marker = os.path.join(outside, "ran")
             job = {
-                "v": 1, "type": "job", "kind": "sensor_alert",
+                "v": 2, "type": "job", "kind": "sensor_alert",
                 "job_id": "win-costume-1", "issued_at": _now(),
                 "sensor": "..\\..\\Windows\\System32",
                 "severity": "critical",
@@ -478,7 +478,7 @@ class WindowsExtensionTest(unittest.TestCase):
                 resources.check_resources({"resources": True}, d)
                 dri.maybe_page({"dri": {"enabled": True, "chat_id": "..\\x"}}, d)
                 body = sign_payload({
-                    "v": 1, "type": "task_request", "issued_at": _now(),
+                    "v": 2, "type": "task_request", "issued_at": _now(),
                     "capabilities": ["powershell"],
                 }, SECRET)
                 raw = _mail("[HOMING-PIGEON] task_request worker-1", body)
@@ -503,7 +503,7 @@ class WindowsReservedNameTest(unittest.TestCase):
         from runner.runner import execute_job
         with tempfile.TemporaryDirectory() as d:
             job = {
-                "v": 1, "type": "job", "kind": "exec", "job_id": "win-names",
+                "v": 2, "type": "job", "kind": "exec", "job_id": "win-names",
                 "script": FLAG,
                 "interpreter": ["powershell", "-NoProfile", "-File"],
                 "files": [
@@ -799,7 +799,7 @@ class ConcurrencyAndExtensionFaultTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as d:
             body = sign_payload({
-                "v": 1, "type": "job", "kind": "ping",
+                "v": 2, "type": "job", "kind": "ping",
                 "job_id": "same-id", "issued_at": _now(),
             }, SECRET)
             raws = [
@@ -814,7 +814,7 @@ class ConcurrencyAndExtensionFaultTest(unittest.TestCase):
     def test_a_raising_extension_does_not_stop_the_poll(self):
         with tempfile.TemporaryDirectory() as d:
             body = sign_payload({
-                "v": 1, "type": "job", "kind": "ping",
+                "v": 2, "type": "job", "kind": "ping",
                 "job_id": "still-runs", "issued_at": _now(),
             }, SECRET)
             raw = _mail("[HOMING-PIGEON] job still-runs", body)
@@ -861,11 +861,11 @@ class ConcurrencyAndExtensionFaultTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as d:
             good = sign_payload({
-                "v": 1, "type": "job", "kind": "ping",
+                "v": 2, "type": "job", "kind": "ping",
                 "job_id": "good", "issued_at": _now(),
             }, SECRET)
             bad = sign_payload({
-                "v": 1, "type": "job", "kind": "ping",
+                "v": 2, "type": "job", "kind": "ping",
                 "job_id": "bad", "issued_at": _now(),
             }, SECRET)
             raws = [
@@ -897,7 +897,7 @@ class ReviewAndBoardFaultTest(unittest.TestCase):
 
     def _ping(self, jid):
         return _mail("[HOMING-PIGEON] job " + jid, sign_payload({
-            "v": 1, "type": "job", "kind": "ping",
+            "v": 2, "type": "job", "kind": "ping",
             "job_id": jid, "issued_at": _now(),
         }, SECRET))
 
@@ -935,7 +935,7 @@ class ReviewAndBoardFaultTest(unittest.TestCase):
                     "compartments": [], "submitted_at": _now(),
                 }}, fh)
             req = sign_payload({
-                "v": 1, "type": "task_request", "issued_at": _now(),
+                "v": 2, "type": "task_request", "issued_at": _now(),
                 "capabilities": [],
             }, SECRET)
             raws = [
@@ -977,7 +977,7 @@ class TraversalAndDoubleCompleteTest(unittest.TestCase):
             outside = os.path.join(d, "outside")
             os.makedirs(outside)
             body = sign_payload({
-                "v": 1, "type": "job", "kind": "ping",
+                "v": 2, "type": "job", "kind": "ping",
                 "job_id": "../outside", "issued_at": _now(),
             }, SECRET)
             raw = _mail("[HOMING-PIGEON] job ../outside", body)
@@ -1007,7 +1007,7 @@ class TraversalAndDoubleCompleteTest(unittest.TestCase):
                     "compartments": [], "submitted_at": _now(),
                 }}, fh)
             done = sign_payload({
-                "v": 1, "type": "task_result", "task_id": "only",
+                "v": 2, "type": "task_result", "task_id": "only",
                 "issued_at": _now(), "result": {"ok": True},
             }, SECRET)
             raws = [
@@ -1041,7 +1041,7 @@ class RedactAndSeenFaultTest(unittest.TestCase):
     def test_bad_redact_extra_does_not_stop_the_ping(self):
         with tempfile.TemporaryDirectory() as d:
             body = sign_payload({
-                "v": 1, "type": "job", "kind": "ping",
+                "v": 2, "type": "job", "kind": "ping",
                 "job_id": "redact-1", "issued_at": _now(),
             }, SECRET)
             cfg = {
@@ -1127,7 +1127,7 @@ class PatternAndRateFaultTest(unittest.TestCase):
                 json.dump({"stdout": "ok", "budget": 8, "spent": 0,
                            "saved_at": time.time()}, fh)
             body = sign_payload({
-                "v": 1, "type": "query", "job_id": "job-1",
+                "v": 2, "type": "query", "job_id": "job-1",
                 "issued_at": _now(), "queries": [{"op": "attest"}],
             }, SECRET)
             raw = _mail("[HOMING-PIGEON] query q-1", body)
@@ -1160,7 +1160,7 @@ class BoardAndEventFaultTest(unittest.TestCase):
                     "submitted_at": _now(),
                 }}, fh)
             req = sign_payload({
-                "v": 1, "type": "task_request", "issued_at": _now(),
+                "v": 2, "type": "task_request", "issued_at": _now(),
                 "capabilities": [],
             }, SECRET)
             cfg = {
@@ -1240,7 +1240,7 @@ class PartialResultFaultTest(unittest.TestCase):
     def test_partial_result_still_completes(self):
         with tempfile.TemporaryDirectory() as d:
             body = sign_payload({
-                "v": 1, "type": "job", "kind": "ping",
+                "v": 2, "type": "job", "kind": "ping",
                 "job_id": "partial-1", "issued_at": _now(),
             }, SECRET)
 
@@ -1271,7 +1271,7 @@ class NanAndDirectoryFaultTest(unittest.TestCase):
     def test_nan_duration_still_signs(self):
         from runner.runner import sign_payload, verify_body
         body = sign_payload({
-            "v": 1, "type": "result", "duration_sec": float("nan"),
+            "v": 2, "type": "result", "duration_sec": float("nan"),
             "score": float("inf"), "note": "ok",
         }, SECRET)
         self.assertNotIn("NaN", body)
@@ -1286,7 +1286,7 @@ class NanAndDirectoryFaultTest(unittest.TestCase):
             os.makedirs(os.path.join(d, "board.json"))
             os.makedirs(os.path.join(d, "dri-state.json"))
             body = sign_payload({
-                "v": 1, "type": "job", "kind": "ping",
+                "v": 2, "type": "job", "kind": "ping",
                 "job_id": "dir-1", "issued_at": _now(),
                 "result_policy": {"queries": [{"op": "senses"}]},
             }, SECRET)
@@ -1399,7 +1399,7 @@ class ViewShapeFaultTest(unittest.TestCase):
     def test_dict_view_does_not_stop_the_job(self):
         with tempfile.TemporaryDirectory() as d:
             body = sign_payload({
-                "v": 1, "type": "job", "kind": "ping",
+                "v": 2, "type": "job", "kind": "ping",
                 "job_id": "view-1", "issued_at": _now(),
                 "result_policy": {"view": {"not": "a string"}},
             }, SECRET)
@@ -1447,7 +1447,7 @@ class ScriptShapeFaultTest(unittest.TestCase):
     def test_numeric_script_is_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             body = sign_payload({
-                "v": 1, "type": "job", "kind": "exec",
+                "v": 2, "type": "job", "kind": "exec",
                 "job_id": "script-1", "issued_at": _now(),
                 "script": 5,
                 "interpreter": ["sh"],
@@ -1472,7 +1472,7 @@ class NullByteNameFaultTest(unittest.TestCase):
     def test_null_byte_name_is_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             body = sign_payload({
-                "v": 1, "type": "job", "kind": "exec",
+                "v": 2, "type": "job", "kind": "exec",
                 "job_id": "null-1", "issued_at": _now(),
                 "script": "echo hi",
                 "interpreter": ["sh"],
@@ -1497,7 +1497,7 @@ class EnvNameFaultTest(unittest.TestCase):
     def test_equals_in_env_name_is_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             body = sign_payload({
-                "v": 1, "type": "job", "kind": "exec",
+                "v": 2, "type": "job", "kind": "exec",
                 "job_id": "env-1", "issued_at": _now(),
                 "script": "echo hi",
                 "interpreter": ["sh"],
@@ -1523,7 +1523,7 @@ class NullArgFaultTest(unittest.TestCase):
     def test_null_in_arg_is_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             body = sign_payload({
-                "v": 1, "type": "job", "kind": "exec",
+                "v": 2, "type": "job", "kind": "exec",
                 "job_id": "arg-1", "issued_at": _now(),
                 "script": "echo hi",
                 "interpreter": ["sh"],
@@ -1729,7 +1729,7 @@ class SeenLockFaultTest(unittest.TestCase):
             def one(i):
                 try:
                     body = sign_payload({
-                        "v": 1, "type": "query", "job_id": "job-1",
+                        "v": 2, "type": "query", "job_id": "job-1",
                         "issued_at": _now(), "queries": [{"op": "attest", "predicate": "exit_zero"}],
                     }, SECRET)
                     raw = _mail(f"[HOMING-PIGEON] query q-{i}", body)
@@ -1752,7 +1752,7 @@ class SeenLockFaultTest(unittest.TestCase):
     def test_non_dict_seen_does_not_crash(self):
         with tempfile.TemporaryDirectory() as d:
             body = sign_payload({
-                "v": 1, "type": "job", "kind": "ping",
+                "v": 2, "type": "job", "kind": "ping",
                 "job_id": "seen-1", "issued_at": _now(),
             }, SECRET)
             poll_once(
@@ -1809,7 +1809,7 @@ class MailboxFaultTest(unittest.TestCase):
     def test_missing_user_does_not_crash_the_identity_log(self):
         with tempfile.TemporaryDirectory() as d:
             body = sign_payload({
-                "v": 1, "type": "job", "kind": "ping",
+                "v": 2, "type": "job", "kind": "ping",
                 "job_id": "user-1", "issued_at": _now(),
             }, SECRET)
             # No mailbox_user. The identity log must not raise.
@@ -1910,7 +1910,7 @@ class BadUrlFaultTest(unittest.TestCase):
     def test_bad_ipv6_url_is_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             body = sign_payload({
-                "v": 1, "type": "job", "kind": "exec",
+                "v": 2, "type": "job", "kind": "exec",
                 "job_id": "url-1", "issued_at": _now(),
                 "script": "echo hi",
                 "interpreter": ["sh"],

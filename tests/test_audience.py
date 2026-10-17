@@ -183,7 +183,7 @@ class QueryAudienceTest(unittest.TestCase):
         from datetime import datetime, timezone
         from email.message import EmailMessage
         from tests.security_parity import SENDER, sign_payload
-        p = {"v": 1, "type": "query", "query_id": qid,
+        p = {"v": 2, "type": "query", "query_id": qid,
              "issued_at": datetime.now(timezone.utc).strftime(
                  "%Y-%m-%dT%H:%M:%SZ"),
              "queries": [{"op": "ask", "question": "hi",
@@ -252,7 +252,7 @@ class BoardAudienceTest(unittest.TestCase):
 
     def _payload(self, runner_id="MISSING"):
         from datetime import datetime, timezone
-        p = {"v": 1, "type": "task_submit", "task_id": "t-aud",
+        p = {"v": 2, "type": "task_submit", "task_id": "t-aud",
              "issued_at": datetime.now(timezone.utc).strftime(
                  "%Y-%m-%dT%H:%M:%SZ"),
              "priority": 3, "capabilities": ["py"],

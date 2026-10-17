@@ -20,6 +20,7 @@ from email.message import EmailMessage
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
+from runner import runner as _runner  # noqa: E402
 from runner.runner import (  # noqa: E402
     execute_job,
     poll_once,
@@ -121,8 +122,15 @@ class ConnectorCaptureTests(unittest.TestCase):
             "shared_secret": SECRET,
             "max_job_age_sec": 10**9,  # captured issued_at is in the past
         }
-        poll_once(cfg, base, seen, os.path.join(base, "seen.json"),
-                  imap=imap, smtp=smtp)
+        # The capture is genuine v1 traffic. Since protocol v2 it is
+        # accepted only under the operator's --allow-protocol-v1
+        # opt-in, which is what this replay exercises.
+        _runner._ALLOW_PROTOCOL_V1 = True
+        try:
+            poll_once(cfg, base, seen, os.path.join(base, "seen.json"),
+                      imap=imap, smtp=smtp)
+        finally:
+            _runner._ALLOW_PROTOCOL_V1 = False
         self.assertEqual(len(smtp.sent), 1)
         result = verify_body(smtp.sent[0].get_content(), SECRET)
         self.assertEqual(result["exit_code"], 0)

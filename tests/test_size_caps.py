@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.join(REPO, "tests"))
 
 from runner.runner import poll_once  # noqa: E402
 from tests.security_parity import (  # noqa: E402
+    EXTRA_SECRET,
     SECRET,
     FakeIMAP,
     FakeSMTP,
@@ -70,7 +71,7 @@ class SizeCapTest(unittest.TestCase):
         tmpdir = tempfile.mkdtemp(prefix="hp-cap-")
         cfg = base_config(tmpdir)
         cfg["max_job_bytes"] = 100
-        mail = _email(payload, secret="00" * 32)
+        mail = _email(payload, secret=EXTRA_SECRET)
         imap = FakeIMAP([mail])
         smtp = FakeSMTP()
         poll_once(cfg, tmpdir, {}, os.path.join(tmpdir, "seen.json"),

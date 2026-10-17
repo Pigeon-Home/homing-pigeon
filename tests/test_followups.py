@@ -243,7 +243,7 @@ class QueryFollowupTest(unittest.TestCase):
 
     def test_unknown_job_rejected_and_seen(self):
         payload = {
-            "v": 1, "type": "query", "query_id": "q-missing",
+            "v": 2, "type": "query", "query_id": "q-missing",
             "job_id": "no-such-job", "issued_at": _now(),
             "queries": [{"op": "grep", "pattern": "x"}],
         }
@@ -271,7 +271,7 @@ class QueryFollowupTest(unittest.TestCase):
             "saved_at": time.time(),
         })
         payload = {
-            "v": 1, "type": "query", "query_id": "q1", "job_id": "job1",
+            "v": 2, "type": "query", "query_id": "q1", "job_id": "job1",
             "issued_at": _now(),
             "queries": [
                 {"op": "grep", "pattern": "ERROR", "max_matches": 5},
@@ -304,7 +304,7 @@ class QueryFollowupTest(unittest.TestCase):
             "saved_at": time.time(),
         })
         payload = {
-            "v": 1, "type": "query", "query_id": "q-budget", "job_id": "job2",
+            "v": 2, "type": "query", "query_id": "q-budget", "job_id": "job2",
             "issued_at": _now(),
             "queries": [{"op": "grep", "pattern": "hello"}],
         }

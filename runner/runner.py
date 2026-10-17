@@ -200,7 +200,24 @@ except ImportError:
 
 SUBJECT_JOB = "[HOMING-PIGEON] job "
 SUBJECT_RESULT = "[HOMING-PIGEON] result "
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
+
+# Protocol v2 is not backward compatible: a v1 message is rejected
+# unless the operator opted in with --allow-protocol-v1 (main() sets
+# this). Replies always carry PROTOCOL_VERSION, never the version
+# of the message being answered.
+_ALLOW_PROTOCOL_V1 = False
+
+
+def _version_ok(v) -> bool:
+    """True when a message's protocol version may be accepted.
+
+    The current version always passes. Version 1 passes only under
+    the operator's --allow-protocol-v1 opt-in.
+    """
+    if v == PROTOCOL_VERSION:
+        return True
+    return v == 1 and _ALLOW_PROTOCOL_V1
 SEEN_CAP = 2000
 
 
@@ -1087,7 +1104,7 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
     full_out = _as_text(stdout) + _as_text(stderr)
     digest = hashlib.sha384(full_out.encode("utf-8")).hexdigest()
     base = {
-        "v": 1, "type": "result", "job_id": job.get("job_id"),
+        "v": PROTOCOL_VERSION, "type": "result", "job_id": job.get("job_id"),
         "kind": job.get("kind"), "exit_code": exec_result.get("exit_code"),
         "timed_out": exec_result.get("timed_out", False),
         "duration_sec": exec_result.get("duration_sec"),
@@ -4039,10 +4056,10 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
                 seen[seen_key] = True
         return True
 
-    if payload.get("v") != PROTOCOL_VERSION or payload.get("type") != "query":
+    if not _version_ok(payload.get("v")) or payload.get("type") != "query":
         log(f"query rejected (bad type) seq {seq}", "WARN")
         finish({
-            "v": 1, "type": "qresult", "query_id": query_id,
+            "v": PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
             "rejected": "unsupported", "answers": [],
         }, secret)
         return True
@@ -4060,7 +4077,7 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     if not check_rate_limit(key_id, cfg, os.path.join(base_dir, "query_times.json")):
         log(f"query rate limit exceeded seq {seq}", "WARN")
         finish({
-            "v": 1, "type": "qresult", "query_id": query_id,
+            "v": PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
             "rejected": "rate_limit", "answers": [],
         }, secret)
         return True
@@ -4073,7 +4090,7 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
             reason = "expired" if retained is not None else "unknown_job"
             log(f"query rejected seq {seq}: {reason} {job_id!r}", "WARN")
             reply = {
-                "v": 1, "type": "qresult", "query_id": query_id,
+                "v": PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
                 "job_id": job_id, "rejected": reason, "answers": [],
                 "budget_remaining": 0,
             }
@@ -4114,7 +4131,7 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
                 # stop the poll.
                 log(f"query failed: {e}", "WARN")
                 reply = {
-                    "v": 1, "type": "qresult", "query_id": query_id,
+                    "v": PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
                     "job_id": job_id, "rejected": "query_error", "answers": [],
                 }
             else:
@@ -4125,7 +4142,7 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
                 if remaining < 0:
                     remaining = 0
                 reply = {
-                    "v": 1, "type": "qresult", "query_id": query_id,
+                    "v": PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
                     "job_id": job_id, "answers": answers,
                     "budget_remaining": remaining,
                 }
@@ -4165,32 +4182,35 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
             "feature": "audience",
         })
         return True
+    if not _version_ok(payload.get("v")):
+        reject("unsupported version")
+        return True
     try:
         with _BOARD_LOCK:
             board.reoffer_expired(cfg.get("task_timeout", 86400))
         if kind == "task_submit":
             ok, reason = board.submit(payload)
             reply_subj = f"[HOMING-PIGEON] task_ack {ident}"
-            reply_body = {"v": 1, "type": "task_ack", "task_id": ident, "ok": ok, "reason": reason}
+            reply_body = {"v": PROTOCOL_VERSION, "type": "task_ack", "task_id": ident, "ok": ok, "reason": reason}
         elif kind == "task_request":
             caps = payload.get("capabilities") or []
             offered = board.offer(ident, caps, key_id, cfg)
             tid = offered.get("task_id") if isinstance(offered, dict) else None
             if offered and tid:
                 reply_subj = f"[HOMING-PIGEON] task_offer {tid}"
-                reply_body = {"v": 1, "type": "task_offer", "task": offered}
+                reply_body = {"v": PROTOCOL_VERSION, "type": "task_offer", "task": offered}
             else:
                 reply_subj = "[HOMING-PIGEON] task_offer empty"
-                reply_body = {"v": 1, "type": "task_offer", "empty": True}
+                reply_body = {"v": PROTOCOL_VERSION, "type": "task_offer", "empty": True}
         elif kind == "task_result":
             require_review = cfg.get("require_review", False)
             status, reason = board.complete(ident, payload.get("result"), require_review)
             reply_subj = f"[HOMING-PIGEON] task_ack {ident}"
-            reply_body = {"v": 1, "type": "task_ack", "task_id": ident, "status": status, "reason": reason}
+            reply_body = {"v": PROTOCOL_VERSION, "type": "task_ack", "task_id": ident, "status": status, "reason": reason}
         elif kind == "task_approve":
             ok, reason = board.approve(ident)
             reply_subj = f"[HOMING-PIGEON] task_ack {ident}"
-            reply_body = {"v": 1, "type": "task_ack", "task_id": ident, "ok": ok, "reason": reason}
+            reply_body = {"v": PROTOCOL_VERSION, "type": "task_ack", "task_id": ident, "ok": ok, "reason": reason}
         else:
             reject("unknown board kind")
             return True
@@ -4371,7 +4391,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject(f"script exceeds max_script_bytes "
                f"({len(script.encode('utf-8'))} > {max_script_bytes})")
         return
-    if job.get("v") != PROTOCOL_VERSION or job.get("type") != "job":
+    if not _version_ok(job.get("v")) or job.get("type") != "job":
         reject("unsupported version/type")
         return
     if job.get("job_id") != job_id:
@@ -7084,6 +7104,10 @@ def main() -> int:
                     metavar="SEC",
                     help="with --diagnose: seconds to wait for the "
                          "round-trip result (default 120)")
+    ap.add_argument("--allow-protocol-v1", action="store_true",
+                    help="accept protocol v1 messages (default: "
+                         "rejected; protocol v2 is not backward "
+                         "compatible)")
     ap.add_argument("--job-id", default=None,
                     help="job id for --inspect job")
     ap.add_argument("--setup", action="store_true",
@@ -7207,6 +7231,8 @@ def main() -> int:
         base_dir = _base_dir_for(cfg, args.config)
         return _harness.main(cfg, base_dir, cfg_path=args.config,
                              roundtrip_timeout=args.diagnose_timeout)
+    global _ALLOW_PROTOCOL_V1
+    _ALLOW_PROTOCOL_V1 = bool(args.allow_protocol_v1)
     if args.faster:
         inf = cfg.get("inference")
         if not isinstance(inf, dict):

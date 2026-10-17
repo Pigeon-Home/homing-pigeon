@@ -52,7 +52,7 @@ def base_config(tmpdir):
 
 def _payload(job_id, issued_at=None, **kw):
     p = {
-        "v": 1, "type": "job", "job_id": job_id,
+        "v": 2, "type": "job", "job_id": job_id,
         "issued_at": (issued_at or datetime.now(timezone.utc)
                       ).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "kind": "ping",

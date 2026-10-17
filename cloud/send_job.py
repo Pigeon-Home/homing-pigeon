@@ -28,6 +28,7 @@ import argparse
 import hashlib
 import hmac
 import json
+import math
 import os
 import re
 import sys
@@ -53,11 +54,64 @@ if not __version__:
         __version__ = "unknown"
 
 
+PROTOCOL_VERSION = 2
+
+
 def normalize(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
+# Protocol v2 requires the shared secret to carry at least 128 bits
+# of entropy on the sender as well as the runner. The estimator and
+# the pattern check mirror runner/security.py (validate_shared_
+# secret); the two implementations must stay in step.
+def _estimate_secret_entropy(secret) -> float:
+    """Rough entropy estimate in bits: length x log2(alphabet size)."""
+    if not isinstance(secret, str) or not secret:
+        return 0.0
+    alphabet = len(set(secret))
+    if alphabet <= 1:
+        return 0.0
+    return len(secret) * math.log2(alphabet)
+
+
+def _secret_pattern_reason(secret):
+    """Return a reason if the secret looks hand-patterned, else None."""
+    if not isinstance(secret, str):
+        return "secret must be a string"
+    low = secret.lower()
+    placeholders = ("generate", "changeme", "example", "placeholder",
+                    "your-secret", "your_secret", "todo", "xxx")
+    if any(p in low for p in placeholders):
+        return "it looks like an example placeholder value"
+    n = len(secret)
+    for period in range(1, n // 2 + 1):
+        unit = secret[:period]
+        if secret == (unit * ((n // period) + 1))[:n]:
+            return f"it repeats the {period}-character unit {unit!r}"
+    return None
+
+
+def require_signable_secret(secret) -> None:
+    """Refuse to sign with a missing or weak shared secret."""
+    hint = ("generate one with: openssl rand -hex 32  "
+            "or: python3 -c \"import secrets; "
+            "print(secrets.token_hex(32))\"")
+    if not secret:
+        raise ValueError(f"a shared secret is required. {hint}")
+    reason = _secret_pattern_reason(secret)
+    if reason is not None:
+        raise ValueError(
+            f"shared secret is too weak ({reason}). {hint}")
+    bits = _estimate_secret_entropy(secret)
+    if bits < 128:
+        raise ValueError(
+            f"shared secret is too weak (~{bits:.0f} bits estimated, "
+            f"need at least 128). {hint}")
+
+
 def sign_payload(payload: dict, secret: str) -> str:
+    require_signable_secret(secret)
     body = normalize(json.dumps(payload, separators=(",", ":"), ensure_ascii=False))
     if not body.endswith("}"):
         raise ValueError("payload must serialize to a JSON object")
@@ -144,7 +198,7 @@ def verify_body(body: str, secret: str) -> dict:
 
 def cmd_new(args) -> int:
     payload = {
-        "v": 1,
+        "v": PROTOCOL_VERSION,
         "type": "job",
         "job_id": args.job_id or str(uuid.uuid4()),
         "issued_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -207,7 +261,7 @@ def cmd_verify(args) -> int:
 
 
 def cmd_task_submit(args) -> int:
-    payload = {"v": 1, "type": "task", "task_id": args.task_id, "priority": args.priority}
+    payload = {"v": PROTOCOL_VERSION, "type": "task", "task_id": args.task_id, "priority": args.priority}
     body = sign_payload(payload, args.secret)
     print(f"[HOMING-PIGEON] task_submit {args.task_id}")
     print()
@@ -216,7 +270,7 @@ def cmd_task_submit(args) -> int:
 
 
 def cmd_task_request(args) -> int:
-    payload = {"v": 1, "type": "task_request", "worker_id": args.worker_id, "capabilities": []}
+    payload = {"v": PROTOCOL_VERSION, "type": "task_request", "worker_id": args.worker_id, "capabilities": []}
     body = sign_payload(payload, args.secret)
     print(f"[HOMING-PIGEON] task_request {args.worker_id}")
     print()
@@ -274,7 +328,11 @@ def main() -> int:
     args = ap.parse_args()
     # stderr: stdout is the email body contract (subject + blank + body).
     print(f"send_job {__version__}", file=sys.stderr)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

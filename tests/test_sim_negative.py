@@ -91,13 +91,13 @@ class SimNegativeTest(unittest.TestCase):
             }
             # Bad sensor alert + good job
             bad_alert = sign_payload({
-                "v": 1, "type": "job", "job_id": "bad-alert",
+                "v": 2, "type": "job", "job_id": "bad-alert",
                 "kind": "sensor_alert", "issued_at": _now(),
                 "sensor": "door", "severity": 999, "title": None,
                 "detail": "not a dict",
             }, SECRET)
             good = sign_payload({
-                "v": 1, "type": "job", "job_id": "good-1",
+                "v": 2, "type": "job", "job_id": "good-1",
                 "issued_at": _now(),
                 "kind": "exec",
                 "script": "echo ok",
@@ -137,7 +137,7 @@ class SimNegativeTest(unittest.TestCase):
             t = threading.Thread(target=poison, daemon=True)
             t.start()
             good = sign_payload({
-                "v": 1, "type": "job", "job_id": "concurrent-good",
+                "v": 2, "type": "job", "job_id": "concurrent-good",
                 "issued_at": _now(),
                 "kind": "exec",
                 "script": "echo survived",
