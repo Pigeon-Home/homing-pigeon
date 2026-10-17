@@ -41,6 +41,7 @@ from runner.runner import (
     _clam_sig_line,
     _append_security_event,
     _canary_state,
+    _run_oracle_tool,
     _endpoint_is_loopback,
     _is_loopback_ip,
     _confinement_argv,
@@ -2824,6 +2825,87 @@ class StateFileFuzzTest(unittest.TestCase):
             with open(target, encoding="utf-8") as fh:
                 if fh.read() != "keep":
                     crashes.append("followed")
+        self.assertEqual(crashes, [])
+
+
+class OracleToolPathTest(unittest.TestCase):
+    def test_a_tool_path_cannot_leave_the_state_dir(self):
+        with tempfile.TemporaryDirectory() as parent:
+            base = os.path.join(parent, "state")
+            os.makedirs(base)
+            with open(os.path.join(base, "notes.txt"), "w", encoding="utf-8") as fh:
+                fh.write("inside-the-state")
+            with open(os.path.join(parent, "secret.txt"), "w", encoding="utf-8") as fh:
+                fh.write("outside")
+            os.symlink(parent, os.path.join(base, "link"))
+            got = _run_oracle_tool("read_file", {"path": "notes.txt"}, base_dir=base)
+            self.assertEqual(got, "inside-the-state")
+            wide = _run_oracle_tool(
+                "read_file", {"path": "notes.txt", "max_chars": True}, base_dir=base)
+            self.assertEqual(wide, "inside-the-state")
+            for name, args in (
+                ("read_file", {"path": "../secret.txt"}),
+                ("read_file", {"path": "/etc/passwd"}),
+                ("read_file", {"path": "link/secret.txt"}),
+                ("list_dir", {"path": ".."}),
+                ("list_dir", {"path": parent}),
+                ("write_file", {"path": "../pwned.txt", "content": "x"}),
+                ("write_file", {"path": "/tmp/pwned-hp.txt", "content": "x"}),
+                ("write_file", {"path": "link/pwned.txt", "content": "x"}),
+            ):
+                msg = _run_oracle_tool(name, args, base_dir=base)
+                self.assertIn("leaves the state dir", msg, msg)
+            self.assertFalse(os.path.exists(os.path.join(parent, "pwned.txt")))
+            wrote = _run_oracle_tool(
+                "write_file", {"path": "sub/ok.txt", "content": "hello"}, base_dir=base)
+            self.assertIn("wrote 5 chars", wrote)
+            self.assertEqual(_mode(os.path.join(base, "sub", "ok.txt")), 0o600)
+            listing = _run_oracle_tool("list_dir", {"path": "."}, base_dir=base)
+            self.assertIn("notes.txt", listing)
+            self.assertNotIn("secret.txt", listing)
+
+
+class OracleToolPathFuzzTest(unittest.TestCase):
+    def test_random_names_do_not_create_a_file_outside(self):
+        rng = random.Random(20261017)
+        crashes = []
+        with tempfile.TemporaryDirectory() as parent:
+            base = os.path.join(parent, "state")
+            os.makedirs(base)
+            marker = os.path.join(parent, "marker")
+            with open(marker, "w", encoding="utf-8") as fh:
+                fh.write("keep")
+            before = os.path.getmtime(marker)
+            for _ in range(200):
+                name = rng.choice([
+                    "ok.txt", "sub/a", "..", "../marker", "/etc/passwd",
+                    "a\\b", "", "a\x00b", "." ,
+                ])
+                if rng.randrange(2) == 0:
+                    name = "".join(chr(rng.randrange(32, 127))
+                                   for _ in range(rng.randrange(0, 12)))
+                try:
+                    msg = _run_oracle_tool(
+                        rng.choice(["read_file", "list_dir", "write_file"]),
+                        {"path": name, "content": "x"},
+                        base_dir=base)
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                if not isinstance(msg, str):
+                    crashes.append(type(msg).__name__)
+                    break
+                if msg.startswith("wrote"):
+                    written = msg.split(" to ", 1)[-1]
+                    root = os.path.realpath(base) + os.sep
+                    if not os.path.realpath(written).startswith(root):
+                        crashes.append(written)
+                        break
+            if os.path.getmtime(marker) != before:
+                crashes.append("marker")
+            with open(marker, encoding="utf-8") as fh:
+                if fh.read() != "keep":
+                    crashes.append("rewritten")
         self.assertEqual(crashes, [])
 
 

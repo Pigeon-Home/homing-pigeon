@@ -2060,6 +2060,26 @@ def _resolve_tool_path(path, base_dir):
     return path
 
 
+def _tool_stays_inside(path, base_dir):
+    """When a state dir is known, the real path must stay inside it.
+
+    No state dir means the caller passed an absolute path on purpose.
+    """
+    base = _tool_base_dir(base_dir)
+    if not base:
+        return True
+    if not isinstance(path, str) or not path or "\x00" in path:
+        return False
+    try:
+        root = os.path.realpath(base)
+        dest = os.path.realpath(path)
+    except (TypeError, ValueError, OSError):
+        return False
+    if dest == root:
+        return True
+    return dest.startswith(root + os.sep)
+
+
 def _run_oracle_tool(name, args, base_dir=None) -> str:
     """Execute one Oracle agent tool call. Never raises.
 
@@ -2074,10 +2094,16 @@ def _run_oracle_tool(name, args, base_dir=None) -> str:
         if not isinstance(path, str) or not path:
             return "error: path must be a non-empty string"
         path = _resolve_tool_path(path, base_dir)
-        try:
-            max_chars = int(args.get("max_chars", 4000))
-        except (TypeError, ValueError, OverflowError):
+        if not _tool_stays_inside(path, base_dir):
+            return "error: path leaves the state dir"
+        raw_cap = args.get("max_chars", 4000)
+        if isinstance(raw_cap, bool):
             max_chars = 4000
+        else:
+            try:
+                max_chars = int(raw_cap)
+            except (TypeError, ValueError, OverflowError):
+                max_chars = 4000
         max_chars = max(1, min(max_chars, 20000))
         try:
             with open(path, "rb") as fh:
@@ -2095,6 +2121,8 @@ def _run_oracle_tool(name, args, base_dir=None) -> str:
         if not isinstance(path, str) or not path:
             return "error: path must be a non-empty string"
         path = _resolve_tool_path(path, base_dir)
+        if not _tool_stays_inside(path, base_dir):
+            return "error: path leaves the state dir"
         try:
             entries = os.listdir(path)
         except OSError as e:
@@ -2120,14 +2148,22 @@ def _run_oracle_tool(name, args, base_dir=None) -> str:
         if not isinstance(content, str):
             return "error: content must be a string"
         path = _resolve_tool_path(path, base_dir)
+        if not _tool_stays_inside(path, base_dir):
+            return "error: path leaves the state dir"
         if len(content) > 200000:
             return "error: content too large (200000 char cap)"
         try:
             parent = os.path.dirname(os.path.abspath(path))
             if parent:
                 os.makedirs(parent, exist_ok=True)
-            with open(path, "w", encoding="utf-8") as fh:
-                fh.write(content)
+            flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            fd = os.open(path, flags, 0o600)
+            try:
+                os.write(fd, content.encode("utf-8"))
+            finally:
+                os.close(fd)
         except OSError as e:
             return f"error: cannot write {path!r}: {e.strerror or e}"
         except Exception as e:
