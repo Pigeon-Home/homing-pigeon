@@ -6734,7 +6734,10 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
             else:
                 log(f"oracle model warm-up finished in "
                     f"{time.monotonic() - t0:.0f}s")
-        threading.Thread(target=_warm_model, daemon=True).start()
+        warm_thread = threading.Thread(target=_warm_model, daemon=True)
+        warm_thread.start()
+    else:
+        warm_thread = None
     if open_browser:
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()
     try:
@@ -6742,6 +6745,15 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
     except KeyboardInterrupt:
         pass
     finally:
+        if warm_thread is not None:
+            # The warm-up logs through the inference path, into the
+            # base dir. Give it a bounded moment to finish so it
+            # never writes after the window has closed -- a racing
+            # writer in a directory being torn down is exactly what
+            # Windows refuses to delete around (WinError 145 in the
+            # --oracle diagnostics test). The daemon flag still caps
+            # the wait if the endpoint hangs.
+            warm_thread.join(timeout=5)
         record_oracle_turn(base, cfg, "", {}, event="close")
         httpd.server_close()
     return 0
