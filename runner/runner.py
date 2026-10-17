@@ -5898,8 +5898,7 @@ def _file_fresh_lines(base_dir, sensor, text):
         if filed == 0 and list(prior) == seen[sensor]:
             return
     try:
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(seen, fh)
+        _write_json(path, seen)
     except Exception:
         return
 
@@ -6310,8 +6309,7 @@ def _firewall_watch(base_dir):
     except Exception:
         prev = None
     try:
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump({"line": line, "saved_at": time.time()}, fh)
+        _write_json(path, {"line": line, "saved_at": time.time()})
     except Exception:
         pass
     if prev is None:
@@ -6409,8 +6407,7 @@ def _av_watch(base_dir):
     except Exception:
         prev = None
     try:
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump({"line": line, "saved_at": time.time()}, fh)
+        _write_json(path, {"line": line, "saved_at": time.time()})
     except Exception:
         pass
     if prev is None:

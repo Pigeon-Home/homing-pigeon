@@ -49,6 +49,8 @@ from runner.runner import (
     _file_artifact_hits,
     _file_fresh_lines,
     _firewall_posture,
+    _firewall_watch,
+    _av_watch,
     _host_log_tail,
     _label_auth,
     _local_watch,
@@ -2906,6 +2908,113 @@ class OracleToolPathFuzzTest(unittest.TestCase):
             with open(marker, encoding="utf-8") as fh:
                 if fh.read() != "keep":
                     crashes.append("rewritten")
+        self.assertEqual(crashes, [])
+
+
+class PostureSnapshotTest(unittest.TestCase):
+    def test_firewall_and_av_snapshots_are_owner_only(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch("runner.runner._firewall_posture",
+                            return_value="firewall: ufw=active"), \
+                 mock.patch("runner.runner._av_posture",
+                            return_value="av: clamav signatures current"):
+                first = _firewall_watch(d)
+                same = _firewall_watch(d)
+                with mock.patch("runner.runner._firewall_posture",
+                                return_value="firewall: ufw=inactive [T1562.004]"):
+                    changed = _firewall_watch(d)
+                av = _av_watch(d)
+            self.assertIn("baseline", first)
+            self.assertEqual(same, "firewall: ufw=active")
+            self.assertIn("changed", changed)
+            self.assertIn("baseline", av)
+            for name in ("oracle-firewall.json", "oracle-av.json"):
+                path = os.path.join(d, name)
+                self.assertEqual(_mode(path), 0o600)
+                self.assertFalse(os.path.islink(path))
+            target = os.path.join(d, "target")
+            with open(target, "w", encoding="utf-8") as fh:
+                fh.write("keep")
+            os.remove(os.path.join(d, "oracle-firewall.json"))
+            os.symlink(target, os.path.join(d, "oracle-firewall.json"))
+            with mock.patch("runner.runner._firewall_posture",
+                            return_value="firewall: ufw=active"):
+                _firewall_watch(d)
+            with open(target, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), "keep")
+            self.assertFalse(os.path.islink(os.path.join(d, "oracle-firewall.json")))
+
+    def test_log_seen_is_owner_only_and_a_first_look_is_a_baseline(self):
+        with tempfile.TemporaryDirectory() as d:
+            _file_fresh_lines(d, "auth", "Failed password [T1110]\n")
+            path = os.path.join(d, "oracle-logseen.json")
+            self.assertEqual(_mode(path), 0o600)
+            self.assertEqual(load_alerts(d, sensor="auth"), [])
+            _file_fresh_lines(d, "auth", "Failed password [T1110]\n")
+            self.assertEqual(load_alerts(d, sensor="auth"), [])
+            _file_fresh_lines(d, "auth", "sudo: bob [T1548.003]\n")
+            self.assertEqual(len(load_alerts(d, sensor="auth")), 1)
+
+
+class PostureSnapshotFuzzTest(unittest.TestCase):
+    def test_random_lines_do_not_follow_a_symlink(self):
+        rng = random.Random(20261017)
+        crashes = []
+        with tempfile.TemporaryDirectory() as d:
+            target = os.path.join(d, "target")
+            with open(target, "w", encoding="utf-8") as fh:
+                fh.write("keep")
+            with mock.patch("runner.runner._firewall_posture",
+                            return_value="firewall: ufw=active"), \
+                 mock.patch("runner.runner._av_posture",
+                            return_value="av: clamav signatures current"):
+                _firewall_watch(d)
+                _av_watch(d)
+            for _ in range(200):
+                line = rng.choice([
+                    "firewall: ufw=active",
+                    "firewall: ufw=inactive [T1562.004]",
+                    "",
+                    None,
+                ])
+                text = rng.choice([
+                    "Failed password [T1110]\n",
+                    "plain error\n",
+                    "",
+                    None,
+                    "sudo: bob [T1548.003]\n",
+                ])
+                try:
+                    with mock.patch("runner.runner._firewall_posture", return_value=line), \
+                         mock.patch("runner.runner._av_posture", return_value=line):
+                        fw = _firewall_watch(d)
+                        av = _av_watch(d)
+                    _file_fresh_lines(d, "auth", text)
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                if fw is not None and not isinstance(fw, str):
+                    crashes.append(type(fw).__name__)
+                    break
+                if av is not None and not isinstance(av, str):
+                    crashes.append(type(av).__name__)
+                    break
+            for name in ("oracle-firewall.json", "oracle-av.json", "oracle-logseen.json"):
+                path = os.path.join(d, name)
+                if os.path.isfile(path) and not os.path.islink(path):
+                    if _mode(path) != 0o600:
+                        crashes.append(name)
+            os.remove(os.path.join(d, "oracle-firewall.json"))
+            os.symlink(target, os.path.join(d, "oracle-firewall.json"))
+            try:
+                with mock.patch("runner.runner._firewall_posture",
+                                return_value="firewall: ufw=active"):
+                    _firewall_watch(d)
+            except Exception as exc:
+                crashes.append(type(exc).__name__)
+            with open(target, encoding="utf-8") as fh:
+                if fh.read() != "keep":
+                    crashes.append("followed")
         self.assertEqual(crashes, [])
 
 
