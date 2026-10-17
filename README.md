@@ -570,4 +570,4 @@ Sigstore build provenance. The suite is
 - GitLab: https://gitlab.com/pigeon-home/homing-pigeon
 - SourceForge: https://sourceforge.net/projects/homing-pigeon/
 - "You'll never find a programming language that frees you from the burden of clarifying your ideas." — [xkcd 568](https://xkcd.com/568/)
--- Exception and unless the programming language is english or oyur native language. (irritatively long context paragraph required)
+-- Exception and unless the programming language is english. (irritatively long context paragraph required)
