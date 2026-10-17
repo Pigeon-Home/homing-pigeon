@@ -53,6 +53,24 @@
   The chat log stores the failure detail, redacted, so a timeout is
   visible there and not only as `inference_error`.
 
+### Low-overhead detection after job completion
+- A new runner/detection.py evaluates each finished job: tiny
+  Sigma/YARA-style rules over the job and its result (unexpected
+  interpreter, encoded-command markers, unusually large output),
+  recorded on the result as detection_hits with ATT&CK technique
+  ids. Advisory only — a hit never changes the job's outcome.
+- A tiny rolling baseline (detection-baseline.json in the state
+  folder: job-kind counts and recent output sizes) flags extremes
+  as detection_anomaly: output over 10x the median once enough
+  samples exist, or a brand-new job kind after many jobs.
+- A job carrying a multi-step plan gets an explicit budget check
+  (plan_budget_ok / plan_budget_reason): step count and summed step
+  timeouts against max_plan_steps (default 8) and
+  max_plan_timeout_sec (default 600) from the top level of config.
+- Canary tripwires stay with _canary_watch; this module defers to
+  it. Detection never raises into job handling: an evaluation error
+  records nothing.
+
 ## 3.7.12 - 2026-10-16
 
 ### Oracle system watch, on by default
