@@ -227,7 +227,7 @@ def cmd_task_request(args) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description="homing-pigeon cloud-side helper")
     ap.add_argument("--version", action="version",
-                    version="%(prog)s " + __version__)
+                    version="%(prog)s " + (__version__ or "unknown"))
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     n = sub.add_parser("new", help="build a signed job email")

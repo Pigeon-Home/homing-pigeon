@@ -171,14 +171,14 @@ def answer_as_oracle(cfg, question: str) -> dict:
         "stdout": "", "stderr": "", "exit_code": 0, "timed_out": False,
         "duration_sec": 0.0, "confined": True,
     }
-    result, _retain = R.apply_result_policy(
+    result, _retain = R.apply_result_policy(  # pyrefly: ignore[missing-attribute]  # R is runner.runner at runtime; pyrefly binds the package
         cfg, verified, exec_result, patterns, confined=True)
     declared = (verified.get("result_policy") or {}).get("queries") or []
     if not isinstance(declared, list):
         declared = []
     view = result.get("view") or "full"
-    answers, _spent = R.answer_queries(
-        declared, exec_result, patterns, R.query_budget(cfg, verified),
+    answers, _spent = R.answer_queries(  # pyrefly: ignore[missing-attribute]  # R is runner.runner at runtime; pyrefly binds the package
+        declared, exec_result, patterns, R.query_budget(cfg, verified),  # pyrefly: ignore[missing-attribute]  # R is runner.runner at runtime
         cfg=cfg, view=view,
     )
     if not answers:

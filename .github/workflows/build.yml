@@ -31,6 +31,31 @@ jobs:
       - run: pip install hypothesis
       - run: python -m unittest discover -s tests -t . -v
 
+  typecheck:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyrefly==1.4.0
+      - run: pyrefly check
+
+  mutation:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "mutmut==3.8.0" pytest hypothesis
+      - run: mutmut run --max-children 4
+    # NOTE: mutmut exits 0 even with surviving mutants; it only fails on
+    # infra errors (broken baseline, collection failure). Survivors are
+    # reported in the log for triage -- this job is a signal, not a block.
+
   build-windows:
     needs: test
     runs-on: windows-latest

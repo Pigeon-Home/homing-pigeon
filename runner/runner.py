@@ -54,6 +54,7 @@ from datetime import datetime, timezone
 from email.message import EmailMessage
 from email.utils import parseaddr
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import NoReturn
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
@@ -447,7 +448,7 @@ def build_key_policies(cfg) -> dict:
         if not isinstance(pol, dict):
             raise RuntimeError(
                 f"config error: key_policies[{kid!r}] must be an object")
-        clean = {}
+        clean: dict = {}
         if "allowed_kinds" in pol:
             kinds = pol["allowed_kinds"]
             if not isinstance(kinds, list) or not kinds or \
@@ -1352,7 +1353,7 @@ def _endpoint_is_loopback(endpoint: str) -> bool:
     if not infos:
         return False
     for info in infos:
-        ip_s = info[4][0].split("%", 1)[0]
+        ip_s = info[4][0].split("%", 1)[0]  # pyrefly: ignore[missing-attribute]  # sockaddr[0] is str; typeshed models it loosely
         try:
             ip = ipaddress.ip_address(ip_s)
         except ValueError:
@@ -1681,7 +1682,7 @@ _ORACLE_TOOLS = [
 ]
 
 _ORACLE_TOOL_NAMES = frozenset(
-    t.get("function", {}).get("name") for t in _ORACLE_TOOLS
+    t.get("function", {}).get("name") for t in _ORACLE_TOOLS  # pyrefly: ignore[missing-attribute]  # elements are dicts; guarded below
     if isinstance(t, dict) and isinstance(t.get("function"), dict)
 )
 # Call IDs minted for content-embedded tool calls (never issued as wire
@@ -4391,7 +4392,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     cfg["board"] = board
     if not getattr(log, "identity_logged", False):
         log(f"runner identity: {cfg.get('mailbox_user') or '(unset)'} -- accepting signed jobs from any sender")
-        log.identity_logged = True
+        log.identity_logged = True  # pyrefly: ignore[missing-attribute]  # intentional monkey-patch: one log line per process
     own_imap = imap is None
     own_smtp = smtp is None
     try:

@@ -1,0 +1,31 @@
+# Type-check gate: pyrefly (Meta's Rust checker).
+project-includes = [
+    "runner/**/*.py",
+    "cloud/**/*.py",
+]
+
+# Sibling modules are imported in two forms: `from runner.oauth import X`
+# (primary) and `from oauth import X` (fallback when a file runs as
+# __main__ from inside runner/). The fallback names resolve to nothing
+# statically; treat them as Any instead of erroring.
+ignore-missing-imports = [
+    "oauth",
+    "_version",
+    "install",
+    "setup",
+    "security",
+    "senses",
+    "sandbox",
+    "review",
+    "resources",
+    "posture",
+    "local_test",
+    "dri",
+    "auditreport",
+    "winlog",
+]
+
+# Lenient to start: only check bodies of annotated functions.
+# Unannotated code is still parsed (syntax, imports), but its bodies
+# are not type-checked. Annotating a function opts it into checking.
+check-unannotated-defs = false

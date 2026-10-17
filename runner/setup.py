@@ -199,7 +199,7 @@ def _mailbox_probe(cfg: dict) -> str | None:
         except ImportError:
             from oauth import xoauth2_raw
         auth_str = xoauth2_raw(cfg["mailbox_user"], token)
-        imap.authenticate("XOAUTH2", lambda _: auth_str)
+        imap.authenticate("XOAUTH2", lambda _: auth_str)  # pyrefly: ignore[bad-argument-type]  # imaplib accepts the str at runtime; typeshed wants bytes
         imap.logout()
         return None
     except Exception as e:
@@ -300,7 +300,7 @@ def _browser_login_loop(cfg: dict) -> str:
     """browser_consent with a retry offer instead of a traceback."""
     while True:
         try:
-            return browser_consent(cfg)
+            return browser_consent(cfg)  # pyrefly: ignore[not-callable]  # None only if oauth.py is absent, which cannot happen in a real install
         except SystemExit as e:
             print(f"sign-in failed: {e}", file=sys.stderr)
             if not prompt_yes_no("Try again? [Y/n] "):

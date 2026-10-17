@@ -39,3 +39,21 @@ include = ["runner*", "cloud*"]
 
 [tool.setuptools.package-data]
 runner = ["config.example.json"]
+
+[tool.mutmut]
+source_paths = ["runner"]
+# Core scope: security.py is the pure policy/audit logic (392 lines, ~7 min).
+# Broader scopes were measured: 4 files (security/senses/dri/posture,
+# 1567 mutants) extrapolates to ~45-50 min -- too slow for per-push CI.
+# Full runner/ (~10k lines) would be hours. Expand deliberately.
+only_mutate = ["runner/security.py"]
+pytest_add_cli_args = [
+    "-x",
+    "-q",
+    "-p", "no:cacheprovider",
+    # Timing-sensitive: hostile-regex perf probe (73s); not mutation-relevant.
+    "--deselect", "tests/test_policy_constraints.py::ArgsPatternTimingTest::test_hostile_pattern_rejected_at_parse",
+]
+pytest_add_cli_args_test_selection = ["tests/"]
+mutate_only_covered_lines = true
+also_copy = ["cloud/", "docs/", "hardening/", ".github/", "PROTOCOL.md"]

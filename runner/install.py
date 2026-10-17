@@ -548,7 +548,7 @@ def _is_admin() -> bool:
         return True
     try:
         import ctypes
-        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())  # pyrefly: ignore[missing-attribute]  # win32-only; guarded by sys.platform above
     except Exception:
         return False
 
@@ -1328,7 +1328,7 @@ def apply_profile(cfg_path: str, profile: str) -> None:
             continue
         current = cfg.get(key)
         merged = dict(current) if isinstance(current, dict) else {}
-        merged.update(data[key])
+        merged.update(data[key])  # pyrefly: ignore[no-matching-overload]  # guarded by isinstance dict above; data is unannotated config
         cfg[key] = merged
     for key in ("protected_paths", "max_result_view", "judge", "workspace_root",
                 "max_query_budget", "output_retention_days", "worker_allowlist",

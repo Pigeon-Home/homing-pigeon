@@ -22,6 +22,7 @@ import os
 import threading
 import time
 from datetime import datetime, timezone
+from typing import Optional
 
 SEVERITY_SCORES = {
     "critical": 4.0,
@@ -151,7 +152,8 @@ def validate_sensor_alert(job: dict):
     return None
 
 
-def gate_alert(sensor_cfg: dict, alert: dict, recent: list, now: float = None):
+def gate_alert(sensor_cfg: dict, alert: dict, recent: list,
+             now: Optional[float] = None):
     """Apply the sense profile's ingest gates.
 
     Returns None if the alert is kept, else a drop reason. `recent`
@@ -326,8 +328,8 @@ def load_alerts(base_dir: str, sensor=None, severity_floor=None,
                 continue
         if severity_floor is not None:
             try:
-                if SEVERITY_SCORES.get(rec.get("severity"), 0) < \
-                        SEVERITY_SCORES.get(severity_floor, 0):
+                if (SEVERITY_SCORES.get(rec.get("severity"), 0)  # pyrefly: ignore[no-matching-overload]  # rec is a dict here; unannotated sense plumbing
+                        < SEVERITY_SCORES.get(severity_floor, 0)):
                     continue
             except Exception:
                 continue

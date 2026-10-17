@@ -48,7 +48,7 @@ def report_event(message: str, level: str = "ERROR") -> None:
             except Exception:
                 pass  # unregistered source still writes; move on
 
-        advapi32 = ctypes.windll.advapi32
+        advapi32 = ctypes.windll.advapi32  # pyrefly: ignore[missing-attribute]  # win32-only; this module is a no-op elsewhere
         EVENTLOG_ERROR_TYPE = 0x0001
         EVENTLOG_WARNING_TYPE = 0x0002
         EVENTLOG_INFORMATION_TYPE = 0x0004

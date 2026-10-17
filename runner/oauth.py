@@ -33,6 +33,7 @@ import urllib.parse
 import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any
 
 try:
     from runner._version import __version__
@@ -150,7 +151,7 @@ class _Catch(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, *args):
+    def log_message(self, format: str, *args: Any) -> None:
         return
 
 

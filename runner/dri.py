@@ -68,7 +68,7 @@ def parse_dri(cfg) -> dict:
     triggers = raw.get("triggers") or {}
     if not isinstance(triggers, dict):
         raise RuntimeError("config error: dri.triggers must be an object")
-    clean_triggers = {}
+    clean_triggers: dict = {}
     sfs = triggers.get("sensor_fused_score")
     if sfs is not None:
         if not isinstance(sfs, dict):
