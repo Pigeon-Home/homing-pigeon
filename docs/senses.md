@@ -83,6 +83,58 @@ question "is the boring stuff actually on?"
 - `firewall` — host firewall state per platform (Windows
   Firewall profiles, `ufw`/nftables, macOS `pf`/Application
   Firewall). Reports profile changes, not every dropped packet.
+  Full spec below — it also verifies the job's network cage.
+
+### `firewall` — host firewall state, rule changes, and cage verification
+
+The hygiene list above treats this sense as "is the host firewall
+on." The full spec has three jobs, in increasing order of
+ambition. The first two are sensing; the third is enforcement and
+stays opt-in, like every hardening knob.
+
+**1. Posture: is the firewall on, and did that change?**
+The collector snapshots firewall state per platform and files an
+alert on change — never on every dropped packet:
+
+- **Windows:** `Get-NetFirewallProfile` (Domain/Private/Public
+  enabled flags) plus a hash of the `Get-NetFirewallRule` set.
+  A profile flip is medium; a new inbound allow rule is high.
+- **Linux:** `nft list ruleset` (or `iptables-save` /
+  `ufw status`), hashed the same way. Read-only; runs with
+  whatever privilege the ruleset needs.
+- **macOS:** `pfctl -sr` plus the Application Firewall state
+  (`socketfilterfw --getglobalstate`).
+
+Profile knobs: `watch_rules` (bool, default true — diff the
+ruleset, not just on/off), `severity_inbound_allow` (default
+high), `poll_interval_sec` for the collector daemon.
+
+**2. Cage verification: did the job's network cage hold?**
+The runner can already cage a job's network on Linux: bwrap
+runs with `--unshare-net`, so the job gets loopback only —
+but only in enforce mode (M6); by default the job's network
+edge is unrestricted. The firewall sense is how the Oracle
+*checks* the cage claim instead of trusting it: the collector
+watches for what a caged job must never do — an outbound
+connection from a job UID, a new listener inside a job
+window — and files it with `job_id_hint` set, so the Oracle
+correlates directly instead of by timestamp. On Windows the
+cage is per-user WFP rules tied to the job identity
+(M8 `--run-as`); the collector reads the effective rules for
+that user the same way.
+
+This keeps the architecture's split clean: the *cage* is
+enforcement (runner, opt-in), the *verification* is sensing
+(this sense — always safe to leave on).
+
+**3. Egress policy (opt-in enforcement, not a sense).**
+Per-job-identity egress rules — the job user may reach
+loopback and nothing else, or an allowlist from profile —
+are the answer to the exfiltration shape the secret-scanner
+cannot see: a job that phones home prints nothing, so there
+is no output to scan. This is deliberately not part of the
+sense. Senses never enforce. The design lives in
+`docs/networking.md`.
 - `patch_level` — pending security updates (Windows Update
   status, unattended-upgrades/dnf-automatic state, macOS
   softwareupdate). Info-level; the Oracle correlates "unpatched
