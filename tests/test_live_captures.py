@@ -138,3 +138,88 @@ class LiveCaptureGuidanceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class ClockCheckSessionTests(unittest.TestCase):
+    """Findings from the 2026-10-16 clock-check session on the Windows runner.
+
+    Two compact one-line jobs were rejected:
+      seq 5 job a8ec79f9: bad signature: invalid JSON: Invalid control
+        character at: line 1 column 132 (char 131)
+      seq 6 job 37578cdd: bad signature: invalid JSON: Invalid control
+        character at: line 1 column 136 (char 135)
+    The mail transport had wrapped the long line, inserting a raw
+    control character inside a JSON string.
+
+    Two pretty-printed jobs ran:
+      job a1d57437: powershell, exit=0,
+        stdout='Friday, October 16, 2026 6:52:00 PM'
+      job c1093eea: powershell, exit=0,
+        stdout='Friday, October 16, 2026 6:53:27 PM'
+        ask reply: October 16, 2026 6:53:27 PM
+
+    A transport-inserted control character is now stripped and the
+    signature is checked against the cleaned form, so the compact
+    shape that failed in the log verifies. The pretty-printed shape
+    that worked still verifies.
+    """
+
+    SECRET = "8855248d44c014135c2a532252aaf372643ee1f665ef3730b50773c256b7cfeb"
+
+    def _sign(self, payload: dict) -> str:
+        import hmac
+        import hashlib
+        import json
+        body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+        sig = hmac.new(self.SECRET.encode(), body.encode(),
+                       hashlib.sha384).hexdigest()
+        return body[:-1] + ',"sig":"' + sig + '"}'
+
+    def test_compact_with_control_character_verifies(self):
+        from runner.runner import verify_body_keyed
+        payload = {
+            "v": 1, "type": "job",
+            "job_id": "a8ec79f9-b7f9-472a-bee4-b38f3f41db87",
+            "issued_at": "2026-10-17T01:47:48Z",
+            "kind": "exec",
+            "script": "date -u +%Y-%m-%dT%H:%M:%SZ",
+            "timeout_sec": 60,
+        }
+        signed = self._sign(payload)
+        # Inject a raw newline where the transport wrapped (inside a string).
+        wrapped = signed.replace("date -u", "date\n -u", 1)
+        job, _ = verify_body_keyed(wrapped, {"": self.SECRET})
+        self.assertEqual(job["job_id"], payload["job_id"])
+        self.assertEqual(job["script"], payload["script"])
+
+    def test_pretty_printed_clock_job_verifies(self):
+        import hmac
+        import hashlib
+        import json
+        from runner.runner import verify_body_keyed
+        payload = {
+            "v": 1, "type": "job",
+            "job_id": "a1d57437-4b45-48d1-b995-86ec79fd8deb",
+            "issued_at": "2026-10-17T01:51:39Z",
+            "kind": "exec",
+            "script": "Get-Date",
+            "timeout_sec": 60,
+        }
+        body = json.dumps(payload, indent=2, ensure_ascii=False)
+        sig = hmac.new(self.SECRET.encode(), body.encode(),
+                       hashlib.sha384).hexdigest()
+        signed = body[:-1] + ',"sig":"' + sig + '"}'
+        job, _ = verify_body_keyed(signed, {"": self.SECRET})
+        self.assertEqual(job["script"], "Get-Date")
+        self.assertEqual(job["kind"], "exec")
+
+    def test_clock_values_from_the_log(self):
+        """The two jobs that ran returned these clocks (from the log)."""
+        clocks = {
+            "a1d57437-4b45-48d1-b995-86ec79fd8deb":
+                "Friday, October 16, 2026 6:52:00 PM",
+            "c1093eea-237a-44c3-84f5-202f5433ef4b":
+                "Friday, October 16, 2026 6:53:27 PM",
+        }
+        self.assertIn("6:52:00 PM", clocks["a1d57437-4b45-48d1-b995-86ec79fd8deb"])
+        self.assertIn("6:53:27 PM", clocks["c1093eea-237a-44c3-84f5-202f5433ef4b"])

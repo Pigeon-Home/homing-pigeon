@@ -340,6 +340,17 @@ def _in_root_object_at(norm: str, start: int, sig_at: int) -> bool:
     return depth == 1 and not in_str
 
 
+def _strip_controls(text: str) -> str:
+    """Drop raw control characters a mail transport may insert.
+
+    Pretty-printed bodies sign their own newlines, so this is only used
+    when the received form does not parse or does not verify. The
+    signature is then checked against the cleaned form, which is what
+    the sender signed.
+    """
+    return "".join(c for c in text if ord(c) >= 32 or c in "\t")
+
+
 def verify_body(body: str, secret: str) -> dict:
     # Trailing whitespace is not signed. Surrounding text is ignored:
     # only the JSON object that ends in the signature is checked.
@@ -350,7 +361,12 @@ def verify_body(body: str, secret: str) -> dict:
     expect = hmac.new(secret.encode("utf-8"), raw.encode("utf-8"),
                       hashlib.sha384).hexdigest()
     if not hmac.compare_digest(expect, sig.lower()):
-        raise ValueError("signature mismatch")
+        cleaned = _strip_controls(raw)
+        expect = hmac.new(secret.encode("utf-8"), cleaned.encode("utf-8"),
+                          hashlib.sha384).hexdigest()
+        if not hmac.compare_digest(expect, sig.lower()):
+            raise ValueError("signature mismatch")
+        raw = cleaned
     job = json.loads(raw)
     if not isinstance(job, dict):
         raise ValueError("signed body is not a JSON object")
@@ -969,24 +985,40 @@ def verify_body_keyed(body_text: str, secrets: dict):
         raise ValueError("secrets must be an object")
     norm = _normalize(body_text).rstrip()
     raw, sig = _extract_signed(norm)
-    try:
-        payload = json.loads(raw)
-    except Exception as e:
-        raise ValueError(f"invalid JSON: {e}") from e
-    if not isinstance(payload, dict):
-        raise ValueError("signed body must be a JSON object")
-    key_id = payload.get("key_id") or ""
-    if not isinstance(key_id, str) or key_id not in secrets:
-        raise ValueError(f"unknown key_id {key_id!r}")
-    secret = secrets[key_id]
-    if not isinstance(secret, str):
-        raise ValueError("secret must be a string")
-    expect = hmac.new(secret.encode("utf-8"), raw.encode("utf-8"),
-                      hashlib.sha384).hexdigest()
-    if not hmac.compare_digest(expect, sig.lower()):
-        raise ValueError("bad signature")
-    payload["sig"] = sig
-    return payload, key_id
+    # A mail transport may insert a control character (line wrap) into a
+    # compact body. Try the received form first; if it does not parse or
+    # the signature does not match, retry on the form with controls
+    # removed. The signature is over the cleaned form.
+    candidates = [raw]
+    cleaned = _strip_controls(raw)
+    if cleaned != raw:
+        candidates.append(cleaned)
+    last_err = None
+    for cand in candidates:
+        try:
+            payload = json.loads(cand)
+        except Exception as e:
+            last_err = e
+            continue
+        if not isinstance(payload, dict):
+            raise ValueError("signed body must be a JSON object")
+        key_id = payload.get("key_id") or ""
+        if not isinstance(key_id, str) or key_id not in secrets:
+            raise ValueError(f"unknown key_id {key_id!r}")
+        secret = secrets[key_id]
+        if not isinstance(secret, str):
+            raise ValueError("secret must be a string")
+        expect = hmac.new(secret.encode("utf-8"), cand.encode("utf-8"),
+                          hashlib.sha384).hexdigest()
+        if hmac.compare_digest(expect, sig.lower()):
+            payload["sig"] = sig
+            return payload, key_id
+        last_err = ValueError("bad signature")
+    if last_err and not isinstance(last_err, ValueError):
+        raise ValueError(f"invalid JSON: {last_err}") from last_err
+    if isinstance(last_err, ValueError) and "bad signature" in str(last_err):
+        raise last_err
+    raise ValueError(f"invalid JSON: {last_err}")
 
 
 
