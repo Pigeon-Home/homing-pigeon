@@ -1,0 +1,110 @@
+name: gitlab
+
+# After a tagged build publishes a GitHub Release, mirror the release
+# to GitLab: push main and all tags to the GitLab repo, upload the
+# three install archives and SHA384SUMS to the project's generic
+# package registry, and create a GitLab Release on the tag linking
+# those packages. Skips until the repo secret exists, so a release
+# is never blocked on GitLab.
+#
+# Secret: GITLAB_TOKEN (GitLab token with api + write_repository)
+# Variable (or secret): GITLAB_PROJECT (default pigeon-home/homing-pigeon)
+# Variable (or secret): GITLAB_USER (default pigeon-home, the token owner)
+
+on:
+  workflow_run:
+    workflows: ["build"]
+    types: [completed]
+
+jobs:
+  publish:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: publish release to GitLab
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GL_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          GL_PROJECT: ${{ vars.GITLAB_PROJECT || secrets.GITLAB_PROJECT || 'pigeon-home/homing-pigeon' }}
+          GL_USER: ${{ vars.GITLAB_USER || secrets.GITLAB_USER || 'pigeon-home' }}
+          TAG: ${{ github.event.workflow_run.head_branch }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GL_TOKEN}" ]; then
+            echo "::warning::GitLab publish skipped. Set the GITLAB_TOKEN secret."
+            exit 0
+          fi
+          if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            SHA="${{ github.event.workflow_run.head_sha }}"
+            case "$SHA" in
+              *[!0-9a-f]*|"") echo "no commit sha for this run"; exit 1 ;;
+            esac
+            TAG=$(gh api --paginate "repos/$REPO/git/matching-refs/tags/v" --jq ".[] | select(.object.sha==\"$SHA\") | .ref" | sed 's#refs/tags/##' | head -n 1)
+            [ -n "$TAG" ] || { echo "no v* tag on $SHA"; exit 1; }
+          fi
+          case "$TAG" in
+            v[0-9A-Za-z._+-]*) ;;
+            *) echo "refusing tag $TAG"; exit 1 ;;
+          esac
+          GL_ENC=$(printf '%s' "$GL_PROJECT" | sed 's|/|%2F|g')
+          export GL_API="https://gitlab.com/api/v4/projects/${GL_ENC}"
+          git clone --mirror "https://github.com/${REPO}.git" gl-src
+          git -C gl-src push "https://${GL_USER}:${GL_TOKEN}@gitlab.com/${GL_PROJECT}.git" refs/heads/main:refs/heads/main
+          git -C gl-src push "https://${GL_USER}:${GL_TOKEN}@gitlab.com/${GL_PROJECT}.git" 'refs/tags/*:refs/tags/*'
+          echo "source mirrored to GitLab (main + tags)"
+          mkdir -p publish
+          gh release download "$TAG" --repo "$REPO" --dir publish --pattern 'homing-pigeon-*' --pattern 'SHA384SUMS'
+          find publish -maxdepth 1 -type f ! -name 'homing-pigeon-windows-*.zip' ! -name 'homing-pigeon-linux-*.tar.gz' ! -name 'homing-pigeon-macos-*.tar.gz' ! -name 'SHA384SUMS' -delete
+          test -f publish/SHA384SUMS
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess, urllib.parse
+          token = os.environ["GL_TOKEN"]
+          api = os.environ["GL_API"]
+          project = os.environ["GL_PROJECT"]
+          tag = os.environ["TAG"]
+
+          def call(method, url, data=None):
+              cmd = ["curl", "-fsS", "-X", method,
+                     "-H", f"PRIVATE-TOKEN: {token}", url]
+              if data is not None:
+                  cmd += ["-H", "Content-Type: application/json",
+                          "--data", json.dumps(data)]
+              return subprocess.check_call(cmd)
+
+          links = []
+          for path in sorted(pathlib.Path("publish").iterdir()):
+              url = (f"{api}/packages/generic/homing-pigeon/"
+                     f"{urllib.parse.quote(tag, safe='')}/{path.name}")
+              subprocess.check_call([
+                  "curl", "-fsS", "-X", "PUT",
+                  "-H", f"PRIVATE-TOKEN: {token}",
+                  "--upload-file", str(path), url])
+              print(f"uploaded {path.name}")
+              links.append({
+                  "name": path.name,
+                  "url": url,
+                  "link_type": "package",
+              })
+          body = {
+              "tag_name": tag,
+              "name": f"homing-pigeon {tag}",
+              "description": ("Mirrored from the GitHub release. "
+                              "Install archives are in the package "
+                              "registry, linked below."),
+              "assets": {"links": links},
+          }
+          try:
+              call("POST", f"{api}/releases", body)
+              print(f"gitlab release {tag} created")
+          except subprocess.CalledProcessError:
+              call("PUT", f"{api}/releases/{urllib.parse.quote(tag, safe='')}",
+                   body)
+              print(f"gitlab release {tag} updated")
+          PY
