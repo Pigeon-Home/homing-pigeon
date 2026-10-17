@@ -4,6 +4,7 @@ Unit cases, one-field mutations, and a deterministic fuzz of the
 confinement block. shutil.which and systemctl are mocked. Nothing
 here execs bwrap, systemctl, or a job.
 """
+import hashlib
 import json
 import os
 import random
@@ -56,9 +57,14 @@ from runner.runner import (
     _yara_rules_text,
     check_policy_constraints,
     kill_tree,
+    load_retained,
     oracle_context,
     platform_interpreter,
+    save_retained,
     script_filename,
+    sha384_of,
+    JobRejected,
+    _safe_job_id,
 )
 
 
@@ -2233,6 +2239,94 @@ class LogAndCanaryFuzzTest(unittest.TestCase):
                         or (len(state) == 12 and any(c not in "0123456789abcdef" for c in state))):
                     crashes.append(state)
                     break
+        self.assertEqual(crashes, [])
+
+
+class RetainedPathTest(unittest.TestCase):
+    def test_dot_dot_cannot_leave_the_retained_dir(self):
+        with tempfile.TemporaryDirectory() as d:
+            outside = os.path.join(d, ".json")
+            with open(outside, "w", encoding="utf-8") as fh:
+                fh.write('{"escaped": true}\n')
+            os.makedirs(os.path.join(d, "retained"))
+            with open(os.path.join(d, "retained", ".json"), "w", encoding="utf-8") as fh:
+                fh.write('{"dot": true}\n')
+            self.assertIsNone(load_retained(d, ".."))
+            self.assertIsNone(load_retained(d, "."))
+            save_retained(d, "..", {"escaped": True})
+            save_retained(d, ".", {"dot": True})
+            with open(outside, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh), {"escaped": True})
+            linked = os.path.join(d, "outside.json")
+            with open(linked, "w", encoding="utf-8") as fh:
+                fh.write('{"linked": true}\n')
+            os.symlink(linked, os.path.join(d, "retained", "job-1.json"))
+            self.assertIsNone(load_retained(d, "job-1"))
+            save_retained(d, "job-2", {"stdout": "ok", "n": float("nan")})
+            got = load_retained(d, "job-2")
+            self.assertEqual(got["stdout"], "ok")
+            self.assertIsNone(got["n"])
+
+    def test_job_id_and_hash_mutations(self):
+        for bad in ("", ".", "..", "a/b", "/tmp/x", "a\\b", "a b",
+                    "a\x00b", "x" * 129, None, 1):
+            with self.assertRaises(JobRejected):
+                _safe_job_id(bad)
+            self.assertIsNone(load_retained("/tmp", bad if isinstance(bad, str) else "a/b"))
+        self.assertEqual(_safe_job_id("job.1_a-b"), "job.1_a-b")
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "script.sh")
+            with open(path, "wb") as fh:
+                fh.write(b"echo hi\n")
+            digest = hashlib.sha384(b"echo hi\n").hexdigest()
+            self.assertEqual(sha384_of(path), digest)
+            self.assertEqual(len(digest), 96)
+            self.assertEqual(sha384_of(d), "")
+            self.assertEqual(sha384_of(""), "")
+            self.assertEqual(sha384_of(None), "")
+            self.assertEqual(sha384_of(b"/no/such/hp-sha-missing"), "")
+
+
+class RetainedPathFuzzTest(unittest.TestCase):
+    def test_random_ids_never_leave_the_directory(self):
+        rng = random.Random(20261017)
+        crashes = []
+        with tempfile.TemporaryDirectory() as d:
+            marker = os.path.join(d, ".json")
+            with open(marker, "w", encoding="utf-8") as fh:
+                fh.write("{}\n")
+            before = os.path.getmtime(marker)
+            for _ in range(200):
+                n = rng.randrange(0, 140)
+                job_id = "".join(chr(rng.randrange(1, 128)) for _ in range(n))
+                if rng.randrange(6) == 0:
+                    job_id = rng.choice(["ok", ".", "..", "a/b", "", "x" * 129])
+                try:
+                    try:
+                        got_id = _safe_job_id(job_id)
+                    except JobRejected:
+                        got_id = None
+                    save_retained(d, job_id, {"n": rng.randrange(0, 4)})
+                    loaded = load_retained(d, job_id)
+                    digest = sha384_of(os.path.join(d, "retained", "ok.json")
+                                       if got_id == "ok" else marker)
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                if got_id not in (None, job_id):
+                    crashes.append(("id", got_id))
+                    break
+                if loaded is not None and not isinstance(loaded, dict):
+                    crashes.append(type(loaded).__name__)
+                    break
+                if job_id in (".", "..", "a/b") and loaded is not None:
+                    crashes.append(("escaped", job_id))
+                    break
+                if not isinstance(digest, str) or (digest and len(digest) != 96):
+                    crashes.append(("hash", digest[:20]))
+                    break
+            if os.path.getmtime(marker) != before:
+                crashes.append("marker")
         self.assertEqual(crashes, [])
 
 

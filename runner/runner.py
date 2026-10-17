@@ -2874,9 +2874,16 @@ def load_retained(base_dir, job_id):
     """Load retained/<job_id>.json. Unsafe or missing ids return None."""
     if not isinstance(base_dir, str) or not base_dir:
         return None
-    if not isinstance(job_id, str) or not _SAFE_JOB_ID.match(job_id):
+    if not isinstance(job_id, str) or not _SAFE_JOB_ID.match(job_id) \
+            or job_id in (".", ".."):
         return None
-    path = os.path.join(base_dir, "retained", f"{job_id}.json")
+    retained = os.path.realpath(os.path.join(base_dir, "retained"))
+    path = os.path.realpath(os.path.join(retained, f"{job_id}.json"))
+    try:
+        if os.path.commonpath([retained, path]) != retained:
+            return None
+    except ValueError:
+        return None
     with _RETAINED_LOCK:
         if not os.path.isfile(path):
             return None
