@@ -18,6 +18,8 @@ from runner import sandbox as SB
 from runner.install import detect_default_profile, do_wipe, install_linux, uninstall_linux
 from runner.posture import _check_confinement_backend, _check_service_unit
 from runner.runner import (
+    _artifact_findings,
+    _artifact_scan_enabled,
     _clam_hits,
     _clam_sig_line,
     _confinement_argv,
@@ -27,6 +29,7 @@ from runner.runner import (
     _oracle_watch_enabled,
     _parse_iptables_policy,
     _parse_ufw,
+    _yara_hits,
 )
 
 
@@ -868,6 +871,169 @@ class ProcAndClamFuzzTest(unittest.TestCase):
             except Exception as exc:
                 crashes.append((type(exc).__name__, text[:40]))
                 break
+        self.assertEqual(crashes, [])
+
+
+class ArtifactScanTest(unittest.TestCase):
+    def test_scan_flag_mutations(self):
+        skip = (False, 0, "false", "NO", "off", "0")
+        keep = (True, 1, "yes", "on", "", None)
+        for value in skip:
+            self.assertFalse(_artifact_scan_enabled(
+                {"inference": {"artifact_scan": value}}), value)
+        for value in keep:
+            self.assertTrue(_artifact_scan_enabled(
+                {"inference": {"artifact_scan": value}}), value)
+        self.assertTrue(_artifact_scan_enabled({}))
+        self.assertTrue(_artifact_scan_enabled(None))
+        self.assertTrue(_artifact_scan_enabled({"inference": []}))
+
+    def test_only_a_new_small_file_is_offered_to_clam(self):
+        after = {
+            "/w/old": (3, 1),
+            "/w/big": (1048577, 1),
+            "/w/new": (4, 2),
+            "/w/neg": (-1, 1),
+            "/w/bad": ("4", 1),
+        }
+        offered = {}
+
+        def yara(work, targets, cfg=None):
+            offered["yara"] = list(targets)
+            return ["yara hp_webshell new [T1505.003]"]
+
+        def clam(work, targets):
+            offered["clam"] = list(targets)
+            return ["clamav Eicar new [T1204.002]"]
+
+        with mock.patch("runner.runner._work_files", return_value=after), \
+             mock.patch("runner.runner._yara_hits", side_effect=yara), \
+             mock.patch("runner.runner._clam_hits", side_effect=clam), \
+             mock.patch("runner.runner.subprocess.run",
+                        side_effect=AssertionError("scan")):
+            hits = _artifact_findings("/w", {"/w/old": (3, 1)}, {})
+        self.assertEqual(offered["yara"], ["/w/new"])
+        self.assertEqual(offered["clam"], ["/w/new"])
+        self.assertEqual(hits, [
+            "yara hp_webshell new [T1505.003]",
+            "clamav Eicar new [T1204.002]",
+        ])
+
+        with mock.patch("runner.runner._work_files") as files, \
+             mock.patch("runner.runner.subprocess.run",
+                        side_effect=AssertionError("scan")):
+            self.assertEqual(_artifact_findings(
+                "/w", {}, {"inference": {"artifact_scan": "off"}}), [])
+        files.assert_not_called()
+
+    def test_a_yara_crash_does_not_reach_clam_and_the_forty_first_file_is_dropped(self):
+        after = {"/w/f%02d" % i: (1, i) for i in range(50)}
+        offered = {}
+
+        def clam(work, targets):
+            offered["n"] = len(targets)
+            return []
+
+        with mock.patch("runner.runner._work_files", return_value=after), \
+             mock.patch("runner.runner._yara_hits", return_value=[]), \
+             mock.patch("runner.runner._clam_hits", side_effect=clam):
+            self.assertEqual(_artifact_findings("/w", {}, {}), [])
+        self.assertEqual(offered["n"], 40)
+
+        with mock.patch("runner.runner._work_files", return_value={"/w/a": (1, 1)}), \
+             mock.patch("runner.runner._yara_hits", side_effect=RuntimeError("yr")), \
+             mock.patch("runner.runner._clam_hits",
+                        side_effect=AssertionError("clam")):
+            self.assertEqual(_artifact_findings("/w", {}, {}), [])
+
+        with mock.patch("runner.runner._work_files", return_value={"/w/a": (1, 1)}), \
+             mock.patch("runner.runner._yara_hits",
+                        return_value=["yara hp_webshell a [T1505.003]"]), \
+             mock.patch("runner.runner._clam_hits", side_effect=OSError("down")):
+            hits = _artifact_findings("/w", {}, {})
+        self.assertEqual(hits, ["yara hp_webshell a [T1505.003]"])
+
+    def test_yara_labels_a_hit_and_drops_tool_noise(self):
+        proc = mock.Mock(
+            returncode=0,
+            stdout="hp_webshell /w/a.php\nerror boom\nwarning x\ncustom /w/a.php\n")
+
+        def which(name):
+            return "/usr/bin/yr" if name == "yr" else None
+
+        with mock.patch("runner.runner.shutil.which", side_effect=which), \
+             mock.patch("runner.runner.subprocess.run", return_value=proc) as run:
+            hits = _yara_hits("/w", ["/w/a.php"], {})
+        argv = run.call_args.args[0]
+        self.assertEqual(argv[:2], ["/usr/bin/yr", "scan"])
+        self.assertEqual(hits, [
+            "yara hp_webshell a.php [T1505.003]",
+            "yara custom a.php [T1204.002]",
+        ])
+
+        def which_yara(name):
+            return "/usr/bin/yara" if name == "yara" else None
+
+        with mock.patch("runner.runner.shutil.which", side_effect=which_yara), \
+             mock.patch("runner.runner.subprocess.run", return_value=proc) as run:
+            _yara_hits("/w", ["/w/a.php"], {})
+        self.assertEqual(run.call_args.args[0][:2], ["/usr/bin/yara", run.call_args.args[0][1]])
+        self.assertNotIn("scan", run.call_args.args[0])
+
+        with mock.patch("runner.runner.shutil.which", return_value=None), \
+             mock.patch("runner.runner.subprocess.run") as run:
+            self.assertEqual(_yara_hits("/w", ["/w/a.php"], {}), [])
+        run.assert_not_called()
+
+
+class ArtifactScanFuzzTest(unittest.TestCase):
+    def test_random_workdirs_return_a_short_list_and_never_scan(self):
+        rng = random.Random(20261017)
+        crashes = []
+
+        def yara(work, targets, cfg=None):
+            if rng.randrange(5) == 0:
+                raise RuntimeError("yr")
+            return ["yara hp_webshell x [T1505.003]"] * rng.randrange(0, 3)
+
+        def clam(work, targets):
+            if rng.randrange(5) == 0:
+                raise OSError("down")
+            return ["clamav Eicar x [T1204.002]"] * rng.randrange(0, 3)
+
+        with mock.patch("runner.runner._yara_hits", side_effect=yara), \
+             mock.patch("runner.runner._clam_hits", side_effect=clam), \
+             mock.patch("runner.runner.subprocess.run",
+                        side_effect=AssertionError("scan")):
+            for _ in range(200):
+                after = {}
+                for i in range(rng.randrange(0, 6)):
+                    size = rng.choice([0, 1, -1, 1048576, 1048577, "1", None])
+                    after["/w/%d" % i] = (size, rng.randrange(0, 4))
+                before = {}
+                if after and rng.randrange(2) == 0:
+                    key = next(iter(after))
+                    before[key] = after[key]
+                cfg = rng.choice([
+                    {},
+                    None,
+                    {"inference": []},
+                    {"inference": {"artifact_scan": rng.choice(
+                        [True, False, 0, "off", "yes", "0"])}},
+                ])
+                try:
+                    with mock.patch("runner.runner._work_files",
+                                    return_value=after):
+                        hits = _artifact_findings("/w", before, cfg)
+                except Exception as exc:
+                    crashes.append((type(exc).__name__, repr(cfg)[:40]))
+                    break
+                if not isinstance(hits, list) or len(hits) > 20:
+                    crashes.append(("shape", hits[:3] if isinstance(hits, list) else hits))
+                    break
+                if any(not isinstance(item, str) for item in hits):
+                    crashes.append(("item", hits[:2]))
+                    break
         self.assertEqual(crashes, [])
 
 
