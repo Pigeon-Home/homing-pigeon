@@ -3566,6 +3566,25 @@ def _safe_job_id(job_id: str) -> str:
     return job_id
 
 
+def _staged_dest(work, name):
+    """Absolute path of a staged file. It must stay inside work.
+
+    An absolute name, `..`, or a symlink that points outside is
+    rejected. Nothing is created and nothing is downloaded.
+    """
+    if not isinstance(name, str) or not name or "\x00" in name:
+        raise JobRejected("unsafe file name: %r" % (name,))
+    try:
+        dest = os.path.realpath(os.path.join(work, name))
+        root = os.path.realpath(work)
+    except (TypeError, ValueError) as e:
+        raise JobRejected("unsafe file name: %s" % (e,))
+    prefix = root + os.sep
+    if not dest.startswith(prefix):
+        raise JobRejected("unsafe file name: %s" % (name,))
+    return dest
+
+
 def execute_job(cfg, job: dict, base_dir: str) -> dict:
     if not isinstance(job, dict):
         raise JobRejected("job must be an object")
@@ -3632,14 +3651,7 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
     # --- stage input files
     for f in files:
-        try:
-            dest = os.path.realpath(os.path.join(work, f["name"]))
-        except ValueError as e:
-            # A null byte in the name raises here. It can never succeed.
-            raise JobRejected(f"unsafe file name: {e}")
-        prefix = os.path.realpath(work) + os.sep
-        if not dest.startswith(prefix):
-            raise JobRejected(f"unsafe file name: {f['name']}")
+        dest = _staged_dest(work, f["name"])
         log(f"downloading {f['url']}")
         try:
             download(f["url"], dest)

@@ -65,6 +65,8 @@ from runner.runner import (
     sha384_of,
     JobRejected,
     _safe_job_id,
+    _staged_dest,
+    judge_job,
 )
 
 
@@ -2327,6 +2329,69 @@ class RetainedPathFuzzTest(unittest.TestCase):
                     break
             if os.path.getmtime(marker) != before:
                 crashes.append("marker")
+        self.assertEqual(crashes, [])
+
+
+class StagedDestTest(unittest.TestCase):
+    def test_a_name_cannot_leave_the_work_dir(self):
+        with tempfile.TemporaryDirectory() as d:
+            work = os.path.join(d, "work")
+            os.makedirs(work)
+            os.symlink("/tmp", os.path.join(work, "link"))
+            good = _staged_dest(work, "ok.txt")
+            nested = _staged_dest(work, "sub/ok.txt")
+            self.assertTrue(good.startswith(os.path.realpath(work) + os.sep))
+            self.assertTrue(nested.startswith(os.path.realpath(work) + os.sep))
+            self.assertTrue(os.path.basename(good) == "ok.txt")
+            for bad in ("", ".", "..", "../etc/passwd", "/etc/passwd",
+                        "sub/../../etc/passwd", "link/x", "a\x00b", None, 1):
+                with self.assertRaises(JobRejected):
+                    _staged_dest(work, bad)
+            verdict, reasons = judge_job(
+                {"judge": "enforce"},
+                {"files": [{"name": "../etc/passwd"}, {"name": "ok.txt"}]})
+            self.assertEqual(verdict, "fail")
+            self.assertIn("path traversal in file name", reasons)
+            self.assertEqual(judge_job({"judge": "off"}, {"files": [{"name": ".."}]})[0], "pass")
+
+    def test_nothing_is_created(self):
+        with tempfile.TemporaryDirectory() as d:
+            work = os.path.join(d, "work")
+            os.makedirs(work)
+            _staged_dest(work, "new/file.txt")
+            self.assertEqual(os.listdir(work), [])
+
+
+class StagedDestFuzzTest(unittest.TestCase):
+    def test_random_names_stay_inside_or_are_rejected(self):
+        rng = random.Random(20261017)
+        crashes = []
+        with tempfile.TemporaryDirectory() as d:
+            work = os.path.join(d, "work")
+            os.makedirs(work)
+            os.symlink("/tmp", os.path.join(work, "link"))
+            root = os.path.realpath(work) + os.sep
+            before = set(os.listdir(work))
+            for _ in range(200):
+                n = rng.randrange(0, 24)
+                name = "".join(chr(rng.randrange(1, 128)) for _ in range(n))
+                if rng.randrange(5) == 0:
+                    name = rng.choice([
+                        "ok.txt", "sub/a", "..", "../x", "/etc/passwd",
+                        "link/x", "", "a\x00b", None,
+                    ])
+                try:
+                    dest = _staged_dest(work, name)
+                except JobRejected:
+                    continue
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                if not isinstance(dest, str) or not dest.startswith(root):
+                    crashes.append(dest)
+                    break
+            if set(os.listdir(work)) != before:
+                crashes.append("created")
         self.assertEqual(crashes, [])
 
 
