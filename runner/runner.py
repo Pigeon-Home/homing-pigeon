@@ -5851,8 +5851,11 @@ def _canary_state(path):
     writes exact bytes, but a text editor or tool on Windows may
     rewrite the file with CRLF endings, and that translation alone is
     not a trip. None when the file is missing; "?" when it exists but
-    cannot be read (an unreadable canary is not a trip). Never raises.
+    cannot be read (an unreadable canary is not a trip). A symlink is
+    not followed. Never raises.
     """
+    if os.path.islink(path):
+        return "?"
     try:
         with open(path, "rb") as fh:
             data = fh.read(65536)
@@ -5866,20 +5869,35 @@ def _canary_state(path):
 def _plant_canary(path):
     """Write one canary file holding a fresh random token.
 
-    Returns the new file's state hash, or None when the write failed.
-    Never raises.
+    O_EXCL | O_NOFOLLOW: an existing file is left alone, and a symlink
+    is not written through. The file is mode 0600. Returns the new
+    file's state hash, or None when the write failed. Never raises.
     """
     token = secrets.token_hex(16)
     body = (
         _CANARY_MARKER + "\n"
         "Reading, editing, or deleting this file is reported.\n"
         "canary-token: " + token + "\n"
-    )
+    ).encode("utf-8")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = None
     try:
-        with open(path, "wb") as fh:
-            fh.write(body.encode("utf-8"))
+        fd = os.open(path, flags, 0o600)
+        os.write(fd, body)
     except OSError:
         return None
+    finally:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
     return _canary_state(path)
 
 
@@ -6038,11 +6056,12 @@ def _canary_watch(base_dir, max_chars=2000):
     canary_dir = os.path.join(base_dir, "canaries")
     snap_path = os.path.join(base_dir, "canary-watch.json")
     old = None
-    try:
-        with open(snap_path, encoding="utf-8") as fh:
-            old = json.load(fh)
-    except Exception:
-        old = None
+    if not os.path.islink(snap_path):
+        try:
+            with open(snap_path, encoding="utf-8") as fh:
+                old = json.load(fh)
+        except Exception:
+            old = None
     recorded = {}
     if isinstance(old, dict) and isinstance(old.get("files"), dict):
         recorded = old["files"]
@@ -6059,6 +6078,18 @@ def _canary_watch(base_dir, max_chars=2000):
     dirty = False
     for name in _CANARY_NAMES:
         path = os.path.join(canary_dir, name)
+        if os.path.islink(path):
+            tripped.append(
+                "TRIPPED: canaries/%s is a symlink (not a canary) [T1552.001]"
+                % name)
+            if alerted.get(name) != "symlink":
+                _file_watch_alert(
+                    base_dir, "canary", "high",
+                    "canaries/%s is a symlink" % name,
+                    "T1552.001")
+                alerted[name] = "symlink"
+                dirty = True
+            continue
         cur = _canary_state(path)
         rec = recorded.get(name)
         if not isinstance(rec, dict):
@@ -6113,12 +6144,8 @@ def _canary_watch(base_dir, max_chars=2000):
         else:
             untouched += 1
     if dirty:
-        try:
-            with open(snap_path, "w", encoding="utf-8") as fh:
-                json.dump({"saved_at": time.time(), "files": recorded,
-                           "alerted": alerted}, fh)
-        except Exception:
-            pass
+        _write_json(snap_path, {"saved_at": time.time(), "files": recorded,
+                                "alerted": alerted})
     lines = []
     if first:
         lines.append(f"({len(_CANARY_NAMES)} canaries planted just now; "
