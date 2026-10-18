@@ -1567,17 +1567,24 @@ class ExchangeLogTest(unittest.TestCase):
     def setUp(self):
         self._saved = (
             R._ORACLE_LOG_ENABLED, R._ORACLE_LOG_PATH,
-            R._ORACLE_LOG_ANNOUNCED, R._LOG_FILE)
+            R._ORACLE_LOG_ANNOUNCED, R._LOG_FILE,
+            R._LOG_COUNT, R._LOG_DROPPED, R._LOG_MINUTE)
         self.base = tempfile.mkdtemp()
         os.makedirs(os.path.join(self.base, "retained"))
         R.save_retained(self.base, "jobflag1",
                         _record(FLAG, stdout=_KEY + "\n"))
         self.ctx = R.oracle_context(self.base, watch=False)
         R._LOG_FILE = os.path.join(self.base, "runner.log")
+        # The announce is an INFO line, and the runner drops those
+        # after 50 in a minute. Earlier jobs in the suite fill that.
+        R._LOG_COUNT = 0
+        R._LOG_DROPPED = 0
+        R._LOG_MINUTE = 0.0
 
     def tearDown(self):
         (R._ORACLE_LOG_ENABLED, R._ORACLE_LOG_PATH,
-         R._ORACLE_LOG_ANNOUNCED, R._LOG_FILE) = self._saved
+         R._ORACLE_LOG_ANNOUNCED, R._LOG_FILE,
+         R._LOG_COUNT, R._LOG_DROPPED, R._LOG_MINUTE) = self._saved
 
     def _ask(self, replies=("noted",)):
         queue = list(replies)

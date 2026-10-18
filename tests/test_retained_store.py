@@ -273,8 +273,9 @@ class RetainedExpiredTest(unittest.TestCase):
         self.assertFalse(R.retained_expired(fresh, {}))
 
     def test_boundary_is_strictly_greater(self):
-        inside = {"saved_at": self.NOW - 7 * 86400 + 120}
-        outside = {"saved_at": self.NOW - 7 * 86400 - 120}
+        now = time.time()
+        inside = {"saved_at": now - 7 * 86400 + 120}
+        outside = {"saved_at": now - 7 * 86400 - 120}
         self.assertFalse(R.retained_expired(inside, {}))
         self.assertTrue(R.retained_expired(outside, {}))
 
