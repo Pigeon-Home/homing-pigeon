@@ -116,7 +116,13 @@ class PromptDirectiveTest(unittest.TestCase):
     def test_both_prompts_carry_the_notable_directive(self):
         for prompt in (R.ASK_SYSTEM, R.ASK_AGENT_SYSTEM):
             self.assertIn("'notable:' line", prompt)
-            self.assertIn("Never answer", prompt)
+            self.assertIn("report every job with a", prompt)
+            self.assertIn("never write one for it", prompt)
+
+    def test_summary_line_classifies_the_access(self):
+        s = R._retained_job_summary(_record(FLAG), "jobx", BASE)
+        self.assertIn("SUSPICIOUS ACCESS", s)
+        self.assertIn("malicious-job behavior", s)
 
 
 if __name__ == "__main__":
