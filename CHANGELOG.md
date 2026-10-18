@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.7.28 - 2026-10-18
+
+### CI
+
+- The mutation job runs on version tags only. Branch pushes
+  and pull requests skip it.
+
 ## 3.7.27 - 2026-10-17
 
 ### Install
