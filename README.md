@@ -30,6 +30,8 @@ Use this protocol: https://github.com/Pigeon-Home/homing-pigeon/blob/main/PROTOC
 Shared Secret: "YOUR_SECRET_STRING"
 Get the system clock and display it here.
 ```
+IETF Homing Pigeon Draft: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-homing-pigeon-00.md
+After passage, you could say "Use the Homing Pigeon protocol" instead of providing the specification link in the prompt.
 
 ## What this is for
 
