@@ -19,6 +19,7 @@ import os
 import secrets
 import ssl
 import sys
+import threading
 
 try:
     from runner.oauth import browser_consent, refresh_access_token
@@ -156,16 +157,48 @@ def _ask(prompt: str) -> str:
 
 
 def _write_config(cfg_path: str, cfg: dict) -> None:
-    os.makedirs(os.path.dirname(os.path.abspath(cfg_path)), exist_ok=True)
-    tmp = cfg_path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(cfg, fh, indent=2)
-        fh.write("\n")
-    os.replace(tmp, cfg_path)
+    """Write config.json without following a symlink.
+
+    The temp file is created with O_EXCL | O_NOFOLLOW. os.replace
+    swaps the name, so a symlink at cfg_path is replaced rather than
+    written through. The file is mode 0600.
+    """
+    if not isinstance(cfg, dict):
+        raise TypeError("config must be an object")
+    parent = os.path.dirname(os.path.abspath(cfg_path))
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    tmp = cfg_path + ".tmp." + str(threading.get_ident())
+    fd = None
     try:
-        os.chmod(cfg_path, 0o600)
-    except OSError:
-        pass  # Windows: ACLs come from the parent directory
+        try:
+            os.unlink(tmp)
+        except FileNotFoundError:
+            pass
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(tmp, flags, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fd = None
+            json.dump(cfg, fh, indent=2)
+            fh.write("\n")
+        os.replace(tmp, cfg_path)
+        try:
+            os.chmod(cfg_path, 0o600)
+        except OSError:
+            pass
+    except Exception:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def _secret_is_real(secret: str) -> bool:
