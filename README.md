@@ -20,7 +20,7 @@ transport — the protocol doesn't care about the pipe. See TRANSPORTS.md.)
 > throwaway account on a machine you can afford to lose, and read
 > PROTOCOL.md before you deploy it.
 
-Try this prompt, it should return in less than a minute.
+Install the agent and then try this prompt in your cloud SI. It should return in less than a minute.
 
 ```
 Send an email to YOUR_RUNNER_EMAIL@gmail.com
