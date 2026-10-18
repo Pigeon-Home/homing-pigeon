@@ -2116,5 +2116,155 @@ class LaterQueryTest(unittest.TestCase):
         self.assertEqual(answers[0]["count"], 3)
 
 
+class JudgeAndOutsideTest(unittest.TestCase):
+    """The judge, and whether a job changed anything outside its workspace."""
+
+    def test_the_denylist_fails_and_the_line_is_separate(self):
+        script = "cat /etc/shadow; rm -rf /"
+        for mode in ("advisory", "enforce"):
+            verdict, reasons = R.judge_job({"judge": mode}, {"script": script})
+            self.assertEqual(verdict, "fail")
+            self.assertTrue(any("rm -rf /" in r for r in reasons))
+        summary = R._retained_job_summary(
+            _record(script), "jobx", BASE)
+        self.assertIn("notable:", summary)
+        self.assertIn("/etc/shadow", summary)
+        verdict, reasons = R.judge_job({"judge": "off"}, {"script": script})
+        self.assertEqual((verdict, reasons), ("pass", []))
+        verdict, reasons = R.judge_job("nope", "nope")
+        self.assertEqual(verdict, "pass")
+
+    def test_each_denied_token(self):
+        tokens = ["rm -rf /", "rm -rf ~", ":(){ :|:& };:", "mkfs",
+                  "dd if=/dev/zero of=/dev/sda"]
+        for token in tokens:
+            verdict, reasons = R.judge_job(
+                {"judge": "enforce"}, {"script": "echo ok; " + token})
+            self.assertEqual(verdict, "fail", token)
+            self.assertTrue(reasons)
+        verdict, reasons = R.judge_job(
+            {"judge": "enforce"},
+            {"script": 5,
+             "script_url": "http://example.com/a.sh",
+             "files": [{"name": "../flag.txt"}, "nope", {"name": "ok.txt"}]})
+        self.assertEqual(verdict, "fail")
+        self.assertIn("non-https script_url", reasons)
+        self.assertIn("path traversal in file name", reasons)
+        verdict, reasons = R.judge_job(
+            {"judge": "enforce"},
+            {"script": "uname", "script_url": "https://example.com/a.sh",
+             "files": [{"name": "ok.txt"}]})
+        self.assertEqual(verdict, "pass")
+
+    def test_random_scripts(self):
+        import random
+        rng = random.Random(321)
+        denied = ["rm -rf /", "mkfs", "dd if=/dev/zero of=/dev/sda"]
+        plain = ["uname", "echo hi", "cat /etc/shadow", ""]
+        for _ in range(30):
+            token = rng.choice(denied + plain)
+            script = rng.choice(plain) + "\n" + token
+            mode = rng.choice(["advisory", "enforce", "off"])
+            verdict, _reasons = R.judge_job({"judge": mode}, {"script": script})
+            hit = any(t in script for t in denied)
+            if mode == "off":
+                self.assertEqual(verdict, "pass")
+            else:
+                self.assertEqual(verdict == "fail", hit)
+            summary = R._retained_job_summary(_record(script), "jobx", BASE)
+            self.assertEqual("/etc/shadow" in script, "notable:" in summary)
+
+    def test_a_change_outside_the_workspace_is_visible(self):
+        parent = tempfile.mkdtemp()
+        ws = os.path.join(parent, "ws")
+        os.makedirs(ws)
+        outside = os.path.join(parent, "flag.txt")
+        with open(outside, "w", encoding="utf-8") as fh:
+            fh.write("321")
+        with open(os.path.join(ws, "inside.txt"), "w", encoding="utf-8") as fh:
+            fh.write("no")
+        snap = R.snapshot_outside(ws)
+        self.assertIn(os.path.abspath(outside), snap)
+        self.assertNotIn(os.path.abspath(os.path.join(ws, "inside.txt")), snap)
+        skip = os.path.join(parent, "skip")
+        os.makedirs(skip)
+        skipped = os.path.join(skip, "x.txt")
+        with open(skipped, "w", encoding="utf-8") as fh:
+            fh.write("x")
+        pruned = R.snapshot_outside(ws, exclude=[skip, 5])
+        self.assertNotIn(os.path.abspath(skipped), pruned)
+        self.assertIn(os.path.abspath(outside), pruned)
+        self.assertIn(os.path.abspath(outside),
+                      R.snapshot_outside(ws, exclude="nope"))
+        self.assertEqual(R.snapshot_outside("/no/such/dir"), {})
+        self.assertEqual(R.snapshot_outside(None), {})
+        self.assertEqual(R.snapshot_outside("/"), {})
+
+    def test_protected_paths_and_a_comparison_that_raises(self):
+        parent = tempfile.mkdtemp()
+        flag = os.path.join(parent, "flag.txt")
+        other = os.path.join(parent, "other.txt")
+        before = {flag: (3, 1.0), other: (1, 1.0)}
+        after = {flag: (3, 2.0), other: (1, 1.0)}
+        changed = R.check_protected_paths(before, after, [parent])
+        self.assertEqual(changed, [flag])
+        self.assertEqual(R.check_protected_paths(before, after, "nope"), [])
+        self.assertEqual(
+            R.check_protected_paths("nope", "nope", [parent]), [])
+
+        class Bad:
+            def __eq__(self, other):
+                raise RuntimeError("no")
+
+        changed = R.check_protected_paths(
+            {flag: Bad()}, {flag: (1, 1)}, [parent])
+        self.assertEqual(changed, [flag])
+        self.assertTrue(R.confinement_violated(
+            {flag: Bad()}, {flag: (1, 1)}))
+        self.assertTrue(R.confinement_violated({}, {flag: (1, 1)}))
+        self.assertFalse(R.confinement_violated(
+            {flag: (1, 1)}, {flag: (1, 1)}))
+        self.assertFalse(R.confinement_violated("nope", {}))
+        self.assertFalse(R.confinement_violated({}, "nope"))
+
+    def test_random_snapshots_of_protected_paths(self):
+        import random
+        rng = random.Random(321)
+        parent = tempfile.mkdtemp()
+        flag = os.path.join(parent, "flag.txt")
+        for _ in range(20):
+            before = {flag: (rng.randint(0, 5), 1.0)}
+            after = {flag: (rng.randint(0, 5), 1.0)}
+            changed = R.check_protected_paths(before, after, [parent])
+            self.assertEqual(changed == [flag], before[flag] != after[flag])
+            self.assertEqual(
+                R.confinement_violated(before, after),
+                before[flag] != after[flag])
+
+    def test_a_snapshot_that_cannot_be_read(self):
+        parent = tempfile.mkdtemp()
+        ws = os.path.join(parent, "ws")
+        os.makedirs(ws)
+        with unittest.mock.patch("runner.runner.os.walk",
+                                 side_effect=OSError("no")):
+            self.assertEqual(R.snapshot_outside(ws), {})
+
+        def walk_then_fail(_parent):
+            yield (parent, [], ["gone"])
+            raise OSError("mid")
+
+        with unittest.mock.patch("runner.runner.os.walk", walk_then_fail):
+            self.assertEqual(R.snapshot_outside(ws), {})
+
+        class BadAfter(dict):
+            def items(self):
+                raise RuntimeError("no")
+
+        self.assertTrue(R.confinement_violated({}, BadAfter()))
+        self.assertEqual(
+            R.check_protected_paths({5: (1, 1)}, {5: (2, 1)}, [parent]),
+            [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
