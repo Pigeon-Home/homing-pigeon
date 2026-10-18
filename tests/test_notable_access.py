@@ -13,6 +13,7 @@ script and classic credential stores are flagged).
 import json
 import os
 import tempfile
+import time
 import unittest
 import unittest.mock
 
@@ -1874,6 +1875,245 @@ class ResultPolicyTest(unittest.TestCase):
                 "patterns": R.BUILTIN_REDACT_PATTERNS,
             })
             self.assertIsInstance(atts, list)
+
+
+class LaterQueryTest(unittest.TestCase):
+    """A later query of a retained flag job, and what it may return."""
+
+    def _save(self):
+        base = tempfile.mkdtemp()
+        os.makedirs(os.path.join(base, "retained"))
+        R.save_retained(base, "jobflag1",
+                        _record(FLAG, stdout=_KEY + "\n"))
+        return base
+
+    def test_the_record_still_loads_and_is_still_notable(self):
+        base = self._save()
+        data = R.load_retained(base, "jobflag1")
+        self.assertEqual(data["script"], FLAG)
+        self.assertTrue(R.retained_expired(data, {}))
+        text = R.oracle_context(base, watch=False)
+        self.assertIn("notable:", text)
+        self.assertIn(_KEY, text)
+
+    def test_an_attested_query_cannot_read_the_lines(self):
+        answers, spent = R.answer_queries(
+            [{"op": "grep", "pattern": "AKIA"},
+             {"op": "tail", "lines": 5},
+             {"op": "ask", "question": "what did it read?"}],
+            {"stdout": _KEY + "\n", "exit_code": 0},
+            R.BUILTIN_REDACT_PATTERNS, 8, view="attested")
+        self.assertEqual(spent, 3)
+        blob = json.dumps(answers)
+        self.assertNotIn(_KEY, blob)
+        self.assertEqual(answers[0]["rejected"], "policy")
+        self.assertEqual(answers[1]["rejected"], "policy")
+        self.assertEqual(answers[2]["rejected"], "inference_unconfigured")
+
+    def test_redacted_returns_the_marker_and_full_returns_the_key(self):
+        red, _s = R.answer_queries(
+            [{"op": "grep", "pattern": "AKIA"},
+             {"op": "tail", "lines": 5}],
+            {"stdout": _KEY + "\n", "exit_code": 0},
+            R.BUILTIN_REDACT_PATTERNS, 8, view="redacted")
+        self.assertNotIn(_KEY, json.dumps(red))
+        self.assertIn("[REDACTED:aws_key]", json.dumps(red))
+        full, _s = R.answer_queries(
+            [{"op": "grep", "pattern": "AKIA"},
+             {"op": "tail", "lines": 5}],
+            {"stdout": _KEY + "\n", "exit_code": 0},
+            R.BUILTIN_REDACT_PATTERNS, 8, view="full")
+        self.assertIn(_KEY, json.dumps(full))
+
+    def test_a_bad_query_spends_budget_and_returns_nothing_secret(self):
+        answers, spent = R.answer_queries(
+            ["junk", {"op": "grep", "pattern": "["},
+             {"op": "made_up"}, {"op": "attest", "predicate": "nope"}],
+            {"stdout": _KEY, "exit_code": 0},
+            R.BUILTIN_REDACT_PATTERNS, 8, view="full")
+        self.assertEqual(spent, 4)
+        self.assertEqual(answers[0]["rejected"], "unknown_op")
+        self.assertEqual(answers[1]["rejected"], "bad_pattern")
+        self.assertEqual(answers[2]["rejected"], "unknown_op")
+        self.assertEqual(answers[3]["reason"], "unknown")
+        self.assertNotIn(_KEY, json.dumps(answers))
+
+    def test_the_budget_stops_the_second_question(self):
+        answers, spent = R.answer_queries(
+            [{"op": "attest", "predicate": "exit_zero"},
+             {"op": "tail", "lines": 1}],
+            {"stdout": _KEY, "exit_code": 0},
+            {}, 1, view="full")
+        self.assertEqual(spent, 2)
+        self.assertEqual(answers[1]["rejected"], "budget")
+        self.assertNotIn(_KEY, answers[1].values())
+
+    def test_unsafe_and_broken_records_do_not_load(self):
+        self.assertIsNone(R.load_retained(None, "jobflag1"))
+        self.assertIsNone(R.load_retained("/tmp", "../jobflag1"))
+        self.assertIsNone(R.load_retained("/tmp", "a/b"))
+        base = self._save()
+        stored = os.path.join(base, "retained", "jobflag1.json")
+        os.remove(stored)
+        os.symlink("/etc/passwd", stored)
+        self.assertIsNone(R.load_retained(base, "jobflag1"))
+        os.remove(stored)
+        with open(stored, "w", encoding="utf-8") as fh:
+            fh.write("{")
+        self.assertIsNone(R.load_retained(base, "jobflag1"))
+        with open(stored, "w", encoding="utf-8") as fh:
+            fh.write("[]")
+        self.assertIsNone(R.load_retained(base, "jobflag1"))
+
+    def test_retention_expiry(self):
+        fresh = {"saved_at": time.time()}
+        old = {"saved_at": time.time() - 10 * 86400}
+        self.assertFalse(R.retained_expired(fresh, {}))
+        self.assertTrue(R.retained_expired(old, {}))
+        # 0 is falsy, so it falls through to the 7-day default.
+        self.assertTrue(R.retained_expired(old, {"output_retention_days": 0}))
+        self.assertFalse(R.retained_expired(
+            old, {"output_retention_days": -1}))
+        self.assertTrue(R.retained_expired({"saved_at": "nope"}, {}))
+        self.assertTrue(R.retained_expired({"saved_at": float("nan")}, {}))
+        self.assertTrue(R.retained_expired({"saved_at": float("inf")}, {}))
+        self.assertTrue(R.retained_expired("nope", {}))
+        self.assertTrue(R.retained_expired(fresh, "nope"))
+        self.assertTrue(R.retained_expired(
+            old, {"output_retention_days": "many"}))
+
+    def test_the_budget_is_the_smaller_number(self):
+        job = {"result_policy": {"query_budget": 3}}
+        self.assertEqual(R.query_budget({"max_query_budget": 8}, job), 3)
+        self.assertEqual(R.query_budget({"max_query_budget": 1}, job), 1)
+        self.assertEqual(R.query_budget({}, "nope"), 8)
+        self.assertEqual(R.query_budget(
+            {"max_query_budget": "many"},
+            {"result_policy": {"query_budget": -4}}), 0)
+        self.assertEqual(R.query_budget(
+            {}, {"result_policy": {"query_budget": float("inf")}}), 8)
+
+    def test_random_queries_never_raise(self):
+        import random
+        rng = random.Random(321)
+        ops = ["grep", "tail", "ask", "attest", "senses", "nope", None]
+        for _ in range(30):
+            queries = []
+            for _ in range(rng.randint(0, 4)):
+                queries.append({
+                    "op": rng.choice(ops),
+                    "pattern": rng.choice(["AKIA", "[", ""]),
+                    "lines": rng.choice([0, 1, "nope", 500]),
+                    "predicate": rng.choice(["exit_zero", "no_secrets", "nope"]),
+                    "max_matches": rng.choice([0, 1, "nope"]),
+                })
+            if rng.random() < 0.2:
+                queries.append("junk")
+            answers, spent = R.answer_queries(
+                queries, {"stdout": _KEY + "\n", "exit_code": 0},
+                R.BUILTIN_REDACT_PATTERNS,
+                rng.choice([0, 1, 8, "nope"]),
+                view=rng.choice(["full", "redacted", "attested", "summary", ""]))
+            self.assertEqual(spent, len(queries))
+            blob = json.dumps(answers)
+            if queries and all(
+                    isinstance(q, dict) and q.get("op") in ("grep", "tail")
+                    for q in queries):
+                pass
+            self.assertIsInstance(answers, list)
+
+    def test_the_remaining_query_shapes(self):
+        answers, spent = R.answer_queries(
+            [{"op": "grep", "pattern": "AKIA", "max_matches": "nope"},
+             {"op": "grep", "pattern": "AKIA", "max_matches": 0},
+             {"op": "tail", "lines": "nope"},
+             {"op": "tail", "lines": 0}],
+            {"stdout": ""}, R.BUILTIN_REDACT_PATTERNS, 8, view=None)
+        self.assertEqual(spent, 4)
+        self.assertNotIn(_KEY, json.dumps(answers))
+        stopped, spent = R.answer_queries(
+            [{"op": "grep", "pattern": "AKIA"}],
+            {"stdout": _KEY}, {}, -3, already_spent="many", view="full")
+        self.assertEqual(stopped[0]["rejected"], "budget")
+        blocked, _s = R.answer_queries(
+            [{"op": "grep", "pattern": "AKIA"}],
+            {"stdout": _KEY}, {}, 8, view=5)
+        self.assertEqual(blocked[0]["rejected"], "policy")
+        odd, _s = R.answer_queries(
+            [{"op": "attest", "predicate": "exit_zero"}], "nope", {}, 8)
+        self.assertIn("ok", odd[0])
+        empty, spent = R.answer_queries("nope", {}, {}, 8)
+        self.assertEqual((empty, spent), ([], 0))
+        self.assertEqual(R.query_budget("nope", {}), 8)
+        base = self._save()
+        self.assertIsNone(R.load_retained(base, "jobmissing"))
+
+    def test_an_ask_query_is_handed_the_output_and_scanned(self):
+        seen = {}
+
+        def fake_ask(inf, question, text, max_chars, patterns, **_k):
+            seen["text"] = text
+            seen["question"] = question
+            return {"op": "ask", "answer": "none of it was malicious"}
+
+        cfg = {"inference": {
+            "endpoint": "http://127.0.0.1:11434/v1", "model": "m"}}
+        with unittest.mock.patch("runner.runner.ask_model", fake_ask):
+            answers, _s = R.answer_queries(
+                [{"op": "ask", "question": "what did it read?",
+                  "max_chars": "nope"}],
+                {"stdout": _KEY + "\n", "exit_code": 0},
+                R.BUILTIN_REDACT_PATTERNS, 8, cfg=cfg, view="attested")
+        self.assertIn(_KEY, seen["text"])
+        self.assertEqual(seen["question"], "what did it read?")
+        self.assertEqual(answers[0]["answer"], "none of it was malicious")
+
+        def boom(*_a, **_k):
+            raise RuntimeError("down")
+
+        with unittest.mock.patch("runner.runner.ask_model", boom):
+            answers, _s = R.answer_queries(
+                [{"op": "ask", "question": "again"}],
+                {"stdout": _KEY}, {}, 8, cfg=cfg, view="full")
+        self.assertEqual(answers[0]["rejected"], "inference_error")
+        self.assertNotIn(_KEY, json.dumps(answers))
+
+    def test_a_senses_query_redacts_the_secret(self):
+        class Senses:
+            def parse_sensors(self, cfg):
+                if cfg.get("boom"):
+                    raise RuntimeError("down")
+                return {"eye": {"weight": "nope"}}
+
+            def load_alerts(self, base_dir, **_k):
+                return [
+                    {"sensor": "eye", "title": "saw " + _KEY,
+                     "detail": {"note": _KEY, "n": 1},
+                     "severity": "high", "weight": float("nan")},
+                    {"sensor": "eye", "title": "plain", "detail": _KEY,
+                     "weight": 2},
+                    {"sensor": "eye", "title": "other", "detail": 5,
+                     "weight": float("inf")},
+                ]
+
+            def alert_score(self, rec, weight):
+                return weight
+
+        base = self._save()
+        with unittest.mock.patch("runner.runner._senses", Senses()):
+            answers, _s = R.answer_queries(
+                [{"op": "senses", "sensor": "eye", "severity_floor": "high",
+                  "since": "2020", "until": "2030", "limit": "nope"}],
+                {"stdout": ""}, R.BUILTIN_REDACT_PATTERNS, 8,
+                cfg={}, view="attested", base_dir=base)
+        blob = json.dumps(answers)
+        self.assertNotIn(_KEY, blob)
+        self.assertIn("[REDACTED:aws_key]", blob)
+        with unittest.mock.patch("runner.runner._senses", Senses()):
+            answers, _s = R.answer_queries(
+                [{"op": "senses"}], {"stdout": ""}, {}, 8,
+                cfg={"boom": True}, base_dir=base)
+        self.assertEqual(answers[0]["count"], 3)
 
 
 if __name__ == "__main__":
