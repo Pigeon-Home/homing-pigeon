@@ -1,14 +1,11 @@
 # Changelog
 
-## 3.7.30 - 2026-10-18
+## 3.7.31 - 2026-10-18
 
-### CI
+### Fixes
 
-- Mutation collects a baseline again. The live-doc guard looks for
-  the root manuals next to the runner package, and mutmut's copy of
-  the tree did not include them, so the tag job died on
-  `INSTALL.md not found` before any mutant ran. Those manuals are
-  now part of the mutation copy.
+- A job id that ends in a newline is rejected. The checker used `$`,
+  which matches just before a final newline, so `0\n` passed.
 
 ### Oracle
 
@@ -20,6 +17,23 @@
   that never moved: never invent an event, never reveal secrets.
   The mailbox query prompt keeps its disclosure-boundary role.
   tests/test_oracle_charter.py pins both sides of the split.
+  This landed after v3.7.30 was tagged, so it ships here.
+
+### Docs
+
+- Coverage and mutation reports for the 3.7.30 tree are in
+  docs/reports/v3.7.30. Statements 91.8%. Mutation of
+  runner/security.py killed 458 of 537 (85.3%).
+
+## 3.7.30 - 2026-10-18
+
+### CI
+
+- Mutation collects a baseline again. The live-doc guard looks for
+  the root manuals next to the runner package, and mutmut's copy of
+  the tree did not include them, so the tag job died on
+  `INSTALL.md not found` before any mutant ran. Those manuals are
+  now part of the mutation copy.
 
 ## 3.7.29 - 2026-10-18
 
