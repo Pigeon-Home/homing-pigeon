@@ -2,6 +2,20 @@
 
 ## 3.7.34 - 2026-10-18
 
+### Security
+
+- A job carrying a notable (suspicious-access) finding no longer
+  has its raw output placed in the Oracle's context: the summary
+  carries the finding, the script, and an attestation-shaped
+  withheld marker (length and digest) instead. Field tests
+  showed small models handing a flagged job's output back on
+  request and unprompted, and the reply gate cannot catch an
+  arbitrary short value. The withheld outputs still feed the
+  reply gate as scan-only watch text -- never shown to the
+  model -- so a reply repeating a pattern-shaped secret from a
+  flagged job is still rejected. The retained record on disk is
+  unchanged, and unflagged jobs keep their output in context.
+
 ### Oracle
 
 - The default inference model is now `qwen3:1.7b` (was

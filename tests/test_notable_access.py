@@ -750,7 +750,11 @@ class HandedToTheModelTest(unittest.TestCase):
         self.assertIn("which jobs are malicious?", user)
         self.assertIn("notable: SUSPICIOUS ACCESS", user)
         self.assertIn("Desktop/flag.txt", user)
-        self.assertIn("321", user)
+        # The flagged job's output itself is withheld from the
+        # message (the disclosure fix): the model sees the line,
+        # the script and the withheld marker, never the value.
+        self.assertNotIn("321", user)
+        self.assertIn("output: (withheld", user)
 
     def test_question_mutations_do_not_drop_the_line(self):
         import random
@@ -792,7 +796,9 @@ class ReplyGateTest(unittest.TestCase):
                          "none of the jobs are malicious.")
         self.assertIn("notable: SUSPICIOUS ACCESS",
                       seen[0]["messages"][1]["content"])
-        self.assertIn(_KEY, seen[0]["messages"][1]["content"])
+        self.assertNotIn(_KEY, seen[0]["messages"][1]["content"])
+        self.assertIn("output: (withheld",
+                      seen[0]["messages"][1]["content"])
 
     def test_repeating_the_secret_is_rejected(self):
         ans, seen = self.ask(
@@ -813,7 +819,11 @@ class ReplyGateTest(unittest.TestCase):
                 replies=("saw " + slice_,))
             self.assertEqual(ans.get("rejected"), "sanitization", slice_)
 
-    def test_clean_replies_pass_while_the_secret_stays_in_context(self):
+    def test_clean_replies_pass_while_the_secret_stays_on_the_watch_list(self):
+        # Was "...stays_in_context": the flagged job's output is
+        # withheld from the message now, and the key rides only in
+        # the gate's scan-only watch text. Clean replies still
+        # pass, and the key is in no message the model receives.
         import random
         rng = random.Random(321)
         words = ["none", "malicious", "jobflag1", "read", "a", "file",
@@ -825,7 +835,7 @@ class ReplyGateTest(unittest.TestCase):
                 "which jobs are malicious?", self.ctx, self.base,
                 replies=(reply,))
             self.assertEqual(ans.get("answer"), reply)
-            self.assertIn(_KEY, seen[0]["messages"][1]["content"])
+            self.assertNotIn(_KEY, seen[0]["messages"][1]["content"])
 
     def test_a_json_dump_is_withheld_and_the_line_survives_the_reask(self):
         dump = json.dumps({
@@ -1309,7 +1319,8 @@ class HttpAskTest(unittest.TestCase):
         self.assertEqual(body, {"answer": "jobflag1 is the one."})
         self.assertEqual(seen["question"], "which jobs are malicious?")
         self.assertIn("notable: SUSPICIOUS ACCESS", seen["output"])
-        self.assertIn(_KEY, seen["output"])
+        self.assertNotIn(_KEY, seen["output"])
+        self.assertIn("output: (withheld", seen["output"])
         rec = _chat_lines(self.base)[0]
         self.assertEqual(rec["answer"], "jobflag1 is the one.")
         self.assertNotIn(_KEY, json.dumps(rec))
@@ -1396,7 +1407,7 @@ class HttpAskTest(unittest.TestCase):
         self.assertEqual(len(seen), 12)
         for output in seen:
             self.assertIn("notable: SUSPICIOUS ACCESS", output)
-            self.assertIn(_KEY, output)
+            self.assertNotIn(_KEY, output)
 
     def test_the_handler_rejects_a_bad_request(self):
         import http.client
@@ -1505,7 +1516,8 @@ class CliNotableTest(unittest.TestCase):
         self.assertEqual(len(seen), 1)
         self.assertEqual(seen[0][0], "which jobs are malicious?")
         self.assertIn("notable: SUSPICIOUS ACCESS", seen[0][1])
-        self.assertIn(_KEY, seen[0][1])
+        self.assertNotIn(_KEY, seen[0][1])
+        self.assertIn("output: (withheld", seen[0][1])
         self.assertIn("jobflag1 is the one.", out)
         self.assertTrue(any("/quit ends" in line for line in out))
         blob = json.dumps(_chat_lines(base))
@@ -1544,7 +1556,7 @@ class CliNotableTest(unittest.TestCase):
         self.assertEqual(len(seen), 8)
         for output in seen:
             self.assertIn("notable:", output)
-            self.assertIn(_KEY, output)
+            self.assertNotIn(_KEY, output)
         self.assertNotIn(_KEY, json.dumps(_chat_lines(base)))
 
     def _base(self):
@@ -1621,7 +1633,7 @@ class CliNotableTest(unittest.TestCase):
         self.assertEqual(len(seen), 4)
         for output in seen:
             self.assertIn("notable:", output)
-            self.assertIn(_KEY, output)
+            self.assertNotIn(_KEY, output)
         text = "\n".join(out)
         self.assertIn("protected material", text)
         self.assertIn("disk full", text)
@@ -1687,7 +1699,12 @@ class ExchangeLogTest(unittest.TestCase):
         rec = self._oracle_log()[0]
         blob = json.dumps(rec)
         self.assertIn("notable: SUSPICIOUS ACCESS", blob)
-        self.assertIn(_KEY, blob)
+        # The logged request is the payload the model actually
+        # got: the flagged output was withheld from it, so the
+        # key is not in the log either. Completeness now means
+        # the record shows the withheld marker, not the value.
+        self.assertNotIn(_KEY, blob)
+        self.assertIn("output: (withheld", blob)
         self.assertIn("noted", blob)
         with open(R._LOG_FILE, encoding="utf-8") as fh:
             runner = fh.read()
@@ -1707,7 +1724,7 @@ class ExchangeLogTest(unittest.TestCase):
         rec = self._oracle_log()[0]
         blob = json.dumps(rec)
         self.assertIn("notable:", blob)
-        self.assertIn(_KEY, blob)
+        self.assertNotIn(_KEY, blob)
         self.assertIn("error", rec)
 
     def test_the_flag_is_only_those_words(self):
@@ -1969,7 +1986,8 @@ class LaterQueryTest(unittest.TestCase):
         self.assertTrue(R.retained_expired(data, {}))
         text = R.oracle_context(base, watch=False)
         self.assertIn("notable:", text)
-        self.assertIn(_KEY, text)
+        self.assertNotIn(_KEY, text)
+        self.assertIn("output: (withheld", text)
 
     def test_an_attested_query_cannot_read_the_lines(self):
         answers, spent = R.answer_queries(
@@ -2768,7 +2786,7 @@ class RetentionWindowTest(unittest.TestCase):
         self.assertEqual(R.prune_retained(base, 7), 0)
         text = R.oracle_context(base, watch=False)
         self.assertIn("notable:", text)
-        self.assertIn(_KEY, text)
+        self.assertNotIn(_KEY, text)
 
     def test_an_old_file_is_deleted_and_the_line_goes_with_it(self):
         base = self._base()

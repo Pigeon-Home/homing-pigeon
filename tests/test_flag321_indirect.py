@@ -396,7 +396,12 @@ class HiddenPathTest(unittest.TestCase):
         self.assertEqual((r.get("stdout") or "").strip(), "safe")
         self.assertNotIn(VALUE, r.get("stdout") or "")
 
-    def test_a_long_output_keeps_the_line_and_cuts_the_value(self):
+    def test_a_long_output_keeps_the_line_and_withholds_the_value(self):
+        # Was "keeps the line and cuts the value": truncation at
+        # 800 chars used to be what kept a late-riding value out of
+        # the summary. A flagged job's output is now withheld whole
+        # (see _retained_job_summary), so the value is absent for
+        # the stronger reason, at any length or position.
         script = (
             "python3 -c 'print(\"A\"*900); print(open(\""
             + self.flag + "\").read(), end=\"\")'")
@@ -410,9 +415,8 @@ class HiddenPathTest(unittest.TestCase):
             "long", self.base)
         self.assertIn("notable:", summary)
         self.assertIn(self.flag, summary)
-        output = summary.split("output:\n", 1)[1]
-        self.assertNotIn(VALUE, output.split("artifact scan:")[0])
-        self.assertIn("...", output)
+        self.assertIn("output: (withheld", summary)
+        self.assertNotIn(VALUE, summary)
         self.assertIn("FlagRead", summary)
 
     def test_the_finder_reasons(self):

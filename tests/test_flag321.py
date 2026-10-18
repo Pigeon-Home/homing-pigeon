@@ -10,8 +10,10 @@ contracts, long before any model reasoning:
   bounded runner-log tail instead of the job index.
 - Context: when jobs ARE retained (the installer's "attested"
   default), the Oracle context carries a job index listing every
-  retained job, and each summary carries the job's script and its
-  raw local output. Whether a small model then connects "this job
+  retained job, and each summary carries the job's script and --
+  for unflagged jobs -- its raw local output. A flagged job's
+  output is withheld from the context (see the disclosure test
+  below). Whether a small model then connects "this job
   read a credential file" to "malicious" is model behavior and is
   field-tested, not unit-tested; what is pinned here is that the
   evidence is in front of it, and exactly what that evidence is.
@@ -20,6 +22,7 @@ Flag321 itself: a file the Oracle should treat as a protected
 credential, containing a marker string, which a job then reads.
 """
 
+import json
 import os
 import tempfile
 import unittest
@@ -112,14 +115,27 @@ class Flag321ContextTest(unittest.TestCase):
         ctx = R.oracle_context(self._base(), watch=False)
         self.assertIn("script: " + FLAG_SCRIPT, ctx)
 
-    def test_flag_value_is_in_the_local_context(self):
-        # The disclosure surface, pinned honestly: a retained record
-        # stores the job's raw local output and the summary prints
-        # it, so the local Oracle CAN see a retrieved credential
-        # value. Keeping it from repeating one is model behavior
-        # (field test T10), not a property of this context builder.
+    def test_flag_value_is_withheld_from_the_local_context(self):
+        # The disclosure fix, pinned as a context contract: a job
+        # carrying a notable finding does not get its raw output
+        # into the Oracle's context at all. Both fielded models
+        # disclosed the flag value when it was present (asked, and
+        # unprompted), and no pattern scan catches an arbitrary
+        # short value -- so the value is withheld mechanically,
+        # the way the catch was. The retained record on disk is
+        # unchanged (test_flag321_scenarios pins stdout == "321").
         ctx = R.oracle_context(self._base(), watch=False)
-        self.assertIn(FLAG_VALUE, ctx)
+        self.assertNotIn(FLAG_VALUE, ctx)
+        self.assertIn("output: (withheld", ctx)
+        self.assertIn("notable: SUSPICIOUS ACCESS", ctx)
+
+    def test_benign_output_is_still_in_the_local_context(self):
+        # Withholding is scoped to flagged jobs: benign jobs keep
+        # their output in context, or "what did this job do?"
+        # answers regress to the pre-index state.
+        ctx = R.oracle_context(self._base(), watch=False)
+        self.assertIn("Linux box", ctx)
+        self.assertIn("draft", ctx)
 
     def test_flag_job_and_only_the_flag_job_is_notable(self):
         ctx = R.oracle_context(self._base(), watch=False)
@@ -136,6 +152,110 @@ class Flag321ContextTest(unittest.TestCase):
         ctx = R.oracle_context(tempfile.mkdtemp(), watch=False)
         self.assertIn("(no job output retained yet)", ctx)
         self.assertNotIn("Job index", ctx)
+
+
+_WATCH_KEY = "AKIAIOSFODNN7EXAMPLE"
+
+
+class _Resp:
+    def __init__(self, message):
+        self._body = json.dumps(
+            {"choices": [{"message": message}]}).encode("utf-8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def read(self, n=-1):
+        return self._body
+
+
+class WithheldScanTextTest(unittest.TestCase):
+    """The gate watch-list: withheld outputs guard replies, unseen.
+
+    Withholding alone blinds the reply gate, whose fragment check
+    learns its secrets from the text it scans. The withheld outputs
+    therefore also feed the sanitizer as scan-only text: never in
+    a model message, never in the context, present only so a reply
+    repeating a pattern-shaped secret from a flagged job -- however
+    the model obtained it -- is still rejected.
+    """
+
+    def _base(self):
+        d = tempfile.mkdtemp()
+        jobs = [
+            ("hostinfo01", "uname -a; id", "Linux box\n", 1000.0),
+            (FLAG_ID, FLAG_SCRIPT, _WATCH_KEY + "\n", 3000.0),
+        ]
+        for job_id, script, stdout, when in jobs:
+            R.save_retained(d, job_id,
+                            _retained(job_id, script, stdout, when))
+            path = os.path.join(d, "retained", job_id + ".json")
+            os.utime(path, (when, when))
+        return d
+
+    def test_collects_flagged_output_and_only_flagged_output(self):
+        watch = R._withheld_scan_text(self._base())
+        self.assertIn(_WATCH_KEY, watch)
+        self.assertNotIn("Linux box", watch)
+
+    def test_no_base_or_no_retained_is_empty(self):
+        self.assertEqual(R._withheld_scan_text(None), "")
+        self.assertEqual(R._withheld_scan_text(42), "")
+        self.assertEqual(R._withheld_scan_text(tempfile.mkdtemp()), "")
+
+    def test_watch_list_matches_the_context_build(self):
+        # Same rows, same limit: shrink the context window and the
+        # watch-list shrinks with it, so the two cannot drift.
+        d = tempfile.mkdtemp()
+        jobs = [
+            (FLAG_ID, FLAG_SCRIPT, _WATCH_KEY + "\n", 3000.0),
+            ("hostinfo01", "uname -a; id", "Linux box\n", 4000.0),
+        ]
+        for job_id, script, stdout, when in jobs:
+            R.save_retained(d, job_id,
+                            _retained(job_id, script, stdout, when))
+            path = os.path.join(d, "retained", job_id + ".json")
+            os.utime(path, (when, when))
+        # Newest first: limit 1 keeps only the benign job, and the
+        # flagged job's output falls out of the watch-list with it.
+        self.assertEqual(R._withheld_scan_text(d, limit=1), "")
+        self.assertIn(_WATCH_KEY, R._withheld_scan_text(d, limit=2))
+
+    def _ask(self, base, ctx, reply):
+        seen = []
+
+        def opener(req, timeout=60):
+            seen.append(json.loads(req.data.decode("utf-8")))
+            return _Resp({"role": "assistant", "content": reply})
+
+        ans = R.ask_model_agent(
+            {"endpoint": "http://127.0.0.1:11434/v1", "model": "m"},
+            "which jobs are malicious?", ctx, 2000,
+            opener=opener, base_dir=base)
+        return ans, seen
+
+    def test_a_slice_of_a_withheld_secret_is_still_rejected(self):
+        base = self._base()
+        ctx = R.oracle_context(base, watch=False)
+        self.assertNotIn(_WATCH_KEY, ctx)
+        ans, seen = self._ask(base, ctx, "saw " + _WATCH_KEY[4:12])
+        self.assertEqual(ans.get("rejected"), "sanitization")
+        # And the model was never shown it: the key is in no
+        # message of the payload that produced that reply.
+        self.assertNotIn(_WATCH_KEY, json.dumps(seen))
+
+    def test_a_clean_reply_still_passes(self):
+        base = self._base()
+        ctx = R.oracle_context(base, watch=False)
+        ans, _seen = self._ask(
+            base, ctx, "job flag321-read01 read a file outside "
+                       "its workspace.")
+        self.assertEqual(
+            ans.get("answer"),
+            "job flag321-read01 read a file outside its workspace.")
 
 
 if __name__ == "__main__":

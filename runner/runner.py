@@ -2584,6 +2584,11 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
         {"role": "user", "content": user},
     ]
     scan_text = _as_text(output_text)
+    _watch = _withheld_scan_text(base_dir)
+    if _watch:
+        # Scan-only: the withheld outputs join the gate's reference
+        # text, never the messages above. See _withheld_scan_text.
+        scan_text += "\n" + _watch
     tool_rounds = 0
     kind = _oracle_instruction_kind(question)
     reasked = False
@@ -7128,6 +7133,7 @@ def _retained_job_summary(data, job_id, base_dir=None) -> str:
     kind, status, when = _job_facts(data, job_id)
     lines = [f"job {job_id} ({kind}, {status}, {when})"]
     script = data.get("script") if isinstance(data.get("script"), str) else ""
+    findings = []
     if script.strip():
         lines.append("script: " + script.strip()[:400])
         findings = _script_path_findings(script, base_dir, job_id)
@@ -7141,9 +7147,30 @@ def _retained_job_summary(data, job_id, base_dir=None) -> str:
                 "is malicious-job behavior; the signature proves "
                 "who sent the job, not that its behavior is benign.")
     text = _output_blob(data).strip()
-    if len(text) > 800:
-        text = text[:800] + "\n..."
-    lines.append("output:\n" + text if text else "output: (empty)")
+    if findings:
+        # Withhold, do not merely label. The Flag321 field tests
+        # showed both small models handing a flagged job's raw
+        # output back on request ("The value stored in flag.txt
+        # is: 321") despite ASK_SYSTEM's no-reveal line, and the
+        # 3B volunteering it unprompted: a pattern-based secret
+        # scan cannot catch an arbitrary short value, and a value
+        # that is not in the context cannot be repeated. The
+        # retained record on disk is unchanged; only the Oracle's
+        # summary withholds it, the same shape as an attested
+        # result (attestations and a digest, not the output).
+        digest = data.get("digest") if isinstance(
+            data.get("digest"), str) else ""
+        lines.append(
+            "output: (withheld -- this job carries a notable "
+            "finding, so its output may contain the material it "
+            "accessed and is not shown to the Oracle"
+            + (f"; {len(text)} chars, digest {digest[:16]}"
+               if text else "; output was empty")
+            + ")")
+    else:
+        if len(text) > 800:
+            text = text[:800] + "\n..."
+        lines.append("output:\n" + text if text else "output: (empty)")
     scan = data.get("artifact_scan")
     if isinstance(scan, list) and scan:
         lines.append("artifact scan:\n" + "\n".join(
@@ -7151,21 +7178,18 @@ def _retained_job_summary(data, job_id, base_dir=None) -> str:
     return "\n".join(lines)
 
 
-def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
-                   watch=True) -> str:
-    """Recent retained job output plus the runner log tail, for a local
-    Oracle question.
+def _chosen_retained_rows(base_dir, limit=6):
+    """The retained rows a context build would use, newest first.
 
-    Only safe job ids. Bounded. This is data for the model, not a
-    dashboard, and it is not written back to the page. The Oracle also
-    watches the box by default, unless watch is False: canary tripwire
-    files on every platform, and on Windows a bounded tail of the
-    Event Log and a diff of registry persistence locations.
+    Shared by oracle_context (which summarizes them) and
+    _withheld_scan_text (which collects what those summaries
+    withhold), so the two can never drift apart: the gate watches
+    exactly the outputs the context withheld, no more, no fewer.
     """
-    if not isinstance(base_dir, str):
-        return ""
-    d = os.path.join(base_dir or "", "retained")
     rows = []
+    if not isinstance(base_dir, str):
+        return rows
+    d = os.path.join(base_dir or "", "retained")
     if os.path.isdir(d):
         for name in os.listdir(d):
             if not name.endswith(".json"):
@@ -7192,6 +7216,60 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
             n = 6
         if n < 0:
             n = 0
+    return rows if n is None else rows[:n]
+
+
+def _withheld_scan_text(base_dir, limit=6) -> str:
+    """Outputs the retained summaries withhold, for the reply gate only.
+
+    A flagged job's output never reaches the model (see
+    _retained_job_summary), but the gate's fragment check learns
+    its secrets from the text it scans -- remove the output from
+    the context and the gate goes blind to that value. This text
+    is the compensation: the same outputs, handed to the sanitizer
+    as scan-only material. It is never placed in a model message,
+    never logged as context, and never returned to a caller of the
+    ask functions; it exists so a reply that repeats a pattern-
+    shaped secret from a flagged job -- however the model obtained
+    it -- is still rejected. Arbitrary short values match no
+    pattern and stay unprotectable here; withholding is their
+    defense, and it stands.
+    """
+    blobs = []
+    for _mtime, path, job_id in _chosen_retained_rows(base_dir, limit):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except Exception:
+            continue
+        if not isinstance(data, dict):
+            continue
+        script = data.get("script") if isinstance(
+            data.get("script"), str) else ""
+        if not script.strip():
+            continue
+        if not _script_path_findings(script, base_dir, job_id):
+            continue
+        text = _output_blob(data).strip()
+        if text:
+            blobs.append(text[:8000])
+    return "\n".join(blobs)
+
+
+def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
+                   watch=True) -> str:
+    """Recent retained job output plus the runner log tail, for a local
+    Oracle question.
+
+    Only safe job ids. Bounded. This is data for the model, not a
+    dashboard, and it is not written back to the page. The Oracle also
+    watches the box by default, unless watch is False: canary tripwire
+    files on every platform, and on Windows a bounded tail of the
+    Event Log and a diff of registry persistence locations.
+    """
+    if not isinstance(base_dir, str):
+        return ""
+    chosen = _chosen_retained_rows(base_dir, limit)
     if isinstance(max_chars, bool):
         cap = 4000
     else:
@@ -7203,7 +7281,6 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
             cap = 0
     parts = []
     facts = []
-    chosen = rows if n is None else rows[:n]
     for _mtime, path, job_id in chosen:
         try:
             with open(path, encoding="utf-8") as fh:
