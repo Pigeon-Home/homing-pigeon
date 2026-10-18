@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.7.29 - 2026-10-18
+
+### Fixes
+
+- The Oracle chat page's script parses again: a raw newline
+  inside a JS string made the whole script a SyntaxError, so
+  the send handler never attached and pressing Send in the
+  browser did nothing. A node --check regression test now
+  parses the served script.
+- The Oracle chat box starts empty. The example question is a
+  placeholder hint, not content: a prefilled box impersonated
+  an already-asked question.
+
+### Tests
+
+- Negative-simulation batches for concurrency, extension
+  poison, result policy, secret scan/redaction, DRI paging,
+  platform interpreters, and Windows reserved names (PR #84).
+
+### Docs
+
+- Live docs name Gmail only where it is the concrete fact
+  (installer hostnames, the dedicated-account walkthrough,
+  the connector's current identity); a guard test holds the
+  line. Evergreen procedures use version placeholders instead
+  of the current version, guarded likewise.
+- PROTOCOL.md updates.
+
 ## 3.7.28 - 2026-10-18
 
 ### CI
