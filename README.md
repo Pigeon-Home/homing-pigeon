@@ -19,8 +19,10 @@ Think "GitHub self-hosted runner, but the control plane is email." Python
 3.9+, standard library only, no dependencies. (Email is just the first
 transport — the protocol doesn't care about the pipe. See TRANSPORTS.md.)
 
-Install the agent and configure a username and password and then try this
-prompt in your cloud SI. It should return in less than a minute:
+Install the homing pigeon agent on your system. By default it will prompt
+you for login credentials to an email address.
+
+Then try this prompt in your cloud SI, it should return in 30 seconds.
 
 ```
 Send an email to YOUR_RUNNER_EMAIL@gmail.com
