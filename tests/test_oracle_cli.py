@@ -152,5 +152,96 @@ class OracleCliWiringTest(unittest.TestCase):
             self.assertEqual(cli.call_args.kwargs.get("cfg_path"), path)
 
 
+class WindowsOracleCliSimTest(unittest.TestCase):
+    """--oracle-cli as a Windows box, without a Windows machine.
+
+    The same ask the browser prefills. Host picture is the Windows
+    one (event log, registry, firewall, Defender), not the Linux
+    host-log tail. The model is scripted. Nothing is executed.
+    """
+
+    def test_summary_question_sees_the_windows_picture(self):
+        question = ("Give me a summary of the job status of what "
+                    "you found on this system.")
+        seen = {}
+
+        def ask(inf, q, ctx, cap, patterns, **kw):
+            seen["question"] = q
+            seen["ctx"] = ctx
+            return {"answer": (
+                "One job, ping, exit 0. Event log shows a failed "
+                "logon (4625). Defender is running. Firewall is on."
+            )}
+
+        out = []
+        queue = [question, "/quit"]
+
+        def fake_input(prompt=""):
+            if not queue:
+                raise EOFError
+            return queue.pop(0)
+
+        with tempfile.TemporaryDirectory() as d:
+            retained = os.path.join(d, "retained")
+            os.makedirs(retained)
+            with open(os.path.join(retained, "job1.json"), "w",
+                      encoding="utf-8") as fh:
+                json.dump({"job_id": "job1", "kind": "ping",
+                           "exit_code": 0, "stdout": "pong",
+                           "saved_at": 1}, fh)
+            cfg = {"base_dir": d, "inference": dict(INF)}
+            with mock.patch.object(R.sys, "platform", "win32"), \
+                    mock.patch.object(
+                        R, "_eventlog_tail",
+                        return_value=("2026-10-18T07:00:00Z [Error] "
+                                      "Microsoft-Windows-Security-Auditing "
+                                      "(4625) [T1110]: failed logon")), \
+                    mock.patch.object(
+                        R, "_registry_watch",
+                        return_value=("HKCU\\...\\Run: added "
+                                      "Updater=C:\\Users\\Public\\u.exe "
+                                      "[T1547.001]")), \
+                    mock.patch.object(
+                        R, "_firewall_watch",
+                        return_value=("firewall: windows domain=on "
+                                      "private=on public=on "
+                                      "(baseline recorded just now)")), \
+                    mock.patch.object(
+                        R, "_av_watch",
+                        return_value=("av: windows defender=running "
+                                      "(baseline recorded just now)")), \
+                    mock.patch.object(
+                        R, "_canary_watch",
+                        return_value="canaries: 3 planted, 0 tripped"), \
+                    mock.patch.object(R, "_host_log_tail",
+                                      side_effect=AssertionError(
+                                          "linux host log on windows")), \
+                    mock.patch.object(R, "_warm_oracle_model"), \
+                    mock.patch.object(R, "ask_model_agent",
+                                      side_effect=ask):
+                rc = R.oracle_cli(
+                    cfg, input_fn=fake_input, print_fn=out.append)
+            with open(os.path.join(d, "oracle-chat.jsonl"),
+                      encoding="utf-8") as fh:
+                events = [json.loads(line) for line in fh if line.strip()]
+        self.assertEqual(rc, 0)
+        self.assertEqual(seen["question"], question)
+        ctx = seen["ctx"]
+        self.assertIn("job job1 (ping", ctx)
+        self.assertIn("Recent Windows Event Log", ctx)
+        self.assertIn("4625", ctx)
+        self.assertIn("Windows registry watch", ctx)
+        self.assertIn("T1547.001", ctx)
+        self.assertIn("Firewall posture", ctx)
+        self.assertIn("windows defender=running", ctx)
+        self.assertIn("Canary watch", ctx)
+        self.assertNotIn("Host log tail", ctx)
+        self.assertTrue(any("failed logon" in line for line in out))
+        self.assertEqual(events[0]["event"], "open")
+        self.assertEqual(events[1]["event"], "ask")
+        self.assertIn("Defender is running", events[1]["answer"])
+        self.assertEqual(events[-1]["event"], "close")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
