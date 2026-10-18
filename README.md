@@ -22,7 +22,7 @@ transport — the protocol doesn't care about the pipe. See TRANSPORTS.md.)
 Install the homing pigeon agent on your system. It will prompt for login
 credentials to an email address, the default transport mechanism.
 
-Then try this prompt in your cloud SI, it should return in 30 seconds.
+Then try this prompt in your cloud SI, it should return in less than 30 seconds.
 
 ```
 Send an email to YOUR_RUNNER_EMAIL@gmail.com
