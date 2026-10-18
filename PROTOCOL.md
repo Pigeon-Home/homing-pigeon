@@ -1,8 +1,7 @@
 # Homing Pigeon Protocol
 
 The frozen wire description, written as an informational individual
-draft, is `docs/ietf/draft-homing-pigeon-00.md`. This file
-remains the living spec.
+draft, is `docs/ietf/draft-homing-pigeon-00.md`.
 
 ## 1. Actors
 
