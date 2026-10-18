@@ -2266,5 +2266,240 @@ class JudgeAndOutsideTest(unittest.TestCase):
             [])
 
 
+class ArtifactNoteTest(unittest.TestCase):
+    """A scan hit is retained even when the raw output is not."""
+
+    def test_no_hit_is_no_note(self):
+        self.assertIsNone(R._artifact_note("jobflag1", {}, {}))
+        self.assertIsNone(R._artifact_note("jobflag1", {}, {"artifact_scan": []}))
+        self.assertIsNone(R._artifact_note("jobflag1", {}, "nope"))
+
+    def test_a_hit_keeps_the_script_and_drops_the_secret(self):
+        note = R._artifact_note(
+            "jobflag1", {"kind": "exec", "script": FLAG},
+            {"artifact_scan": ["yara FlagRead Desktop/flag.txt"],
+             "exit_code": 0, "timed_out": False, "stdout": _KEY})
+        self.assertEqual(note["stdout"], "")
+        self.assertEqual(note["script"], FLAG)
+        self.assertNotIn(_KEY, json.dumps(note))
+        base = tempfile.mkdtemp()
+        os.makedirs(os.path.join(base, "retained"))
+        R.save_retained(base, "jobflag1", note)
+        text = R.oracle_context(base, watch=False)
+        self.assertIn("notable:", text)
+        self.assertIn("FlagRead", text)
+        self.assertNotIn(_KEY, text)
+
+    def test_the_script_and_the_scan_are_cut(self):
+        late = "echo " + ("a" * 500) + " && cat /etc/shadow"
+        scan = ["s" * 250] + [f"hit-{i}" for i in range(24)]
+        note = R._artifact_note(
+            "jobx", {"kind": 5, "script": late},
+            {"artifact_scan": scan, "exit_code": "nope", "timed_out": 1})
+        self.assertEqual(note["kind"], "")
+        self.assertEqual(len(note["script"]), 500)
+        self.assertNotIn("/etc/shadow", note["script"])
+        self.assertEqual(len(note["artifact_scan"]), 20)
+        self.assertEqual(len(note["artifact_scan"][0]), 200)
+        self.assertEqual(note["exit_code"], -1)
+        self.assertTrue(note["timed_out"])
+        summary = R._retained_job_summary(note, "jobx", BASE)
+        self.assertNotIn("notable:", summary)
+
+    def test_the_scan_switch(self):
+        self.assertTrue(R._artifact_scan_enabled({}))
+        self.assertTrue(R._artifact_scan_enabled("nope"))
+        for off in (False, 0, "false", "no", "off", "0", " OFF "):
+            self.assertFalse(R._artifact_scan_enabled(
+                {"inference": {"artifact_scan": off}}), off)
+        for on in (True, 1, "yes", "on", None):
+            self.assertTrue(R._artifact_scan_enabled(
+                {"inference": {"artifact_scan": on}}), on)
+
+    def test_clam_lines(self):
+        class Proc:
+            def __init__(self, code, out):
+                self.returncode = code
+                self.stdout = out
+
+        work = tempfile.mkdtemp()
+        line = os.path.join(work, "flag.txt") + ": Win.Test.EICAR FOUND"
+        with unittest.mock.patch("runner.runner.shutil.which",
+                                 return_value="/usr/bin/clamdscan"), \
+                unittest.mock.patch(
+                    "runner.runner.subprocess.run",
+                    return_value=Proc(1, line + "\nnoise\n")):
+            hits = R._clam_hits(work, [os.path.join(work, "flag.txt")])
+        self.assertEqual(len(hits), 1)
+        self.assertIn("clamav", hits[0])
+        self.assertIn("Win.Test.EICAR", hits[0])
+        self.assertIn("flag.txt", hits[0])
+        with unittest.mock.patch("runner.runner.shutil.which",
+                                 return_value=None):
+            self.assertEqual(R._clam_hits(work, ["a"]), [])
+        with unittest.mock.patch("runner.runner.shutil.which",
+                                 return_value="clamdscan"), \
+                unittest.mock.patch(
+                    "runner.runner.subprocess.run",
+                    side_effect=OSError("down")):
+            self.assertEqual(R._clam_hits(work, ["a"]), [])
+        with unittest.mock.patch("runner.runner.shutil.which",
+                                 return_value="clamdscan"), \
+                unittest.mock.patch(
+                    "runner.runner.subprocess.run",
+                    return_value=Proc(2, line)):
+            self.assertEqual(R._clam_hits(work, ["a"]), [])
+
+    def test_only_changed_files_are_scanned(self):
+        work = tempfile.mkdtemp()
+        after = {os.path.join(work, "same"): (4, 1),
+                 os.path.join(work, "new"): (4, 2),
+                 os.path.join(work, "big"): (R._ARTIFACT_MAX_BYTES + 1, 3),
+                 os.path.join(work, "bad"): ("nope", 4)}
+        for i in range(50):
+            after[os.path.join(work, f"n{i:02d}")] = (3, i)
+        seen = {}
+
+        def yara(_work, targets, _cfg):
+            seen["targets"] = list(targets)
+            return ["yara FlagRead " + os.path.basename(targets[0])]
+
+        with unittest.mock.patch("runner.runner._work_files",
+                                 return_value=after), \
+                unittest.mock.patch("runner.runner._yara_hits", yara), \
+                unittest.mock.patch("runner.runner._clam_hits",
+                                    return_value=[]):
+            hits = R._artifact_findings(
+                work, {os.path.join(work, "same"): (4, 1)}, {})
+        self.assertEqual(len(seen["targets"]), R._ARTIFACT_MAX_FILES)
+        self.assertNotIn(os.path.join(work, "big"), seen["targets"])
+        self.assertNotIn(os.path.join(work, "same"), seen["targets"])
+        self.assertTrue(hits)
+        self.assertEqual(R._artifact_findings(work, {}, {
+            "inference": {"artifact_scan": False}}), [])
+        with unittest.mock.patch("runner.runner._work_files",
+                                 side_effect=OSError("no")):
+            self.assertEqual(R._artifact_findings(work, {}, {}), [])
+
+    def test_yara_rules_hits_and_the_cap(self):
+        self.assertEqual(R._yara_rules_text({}), R._YARA_RULES)
+        d = tempfile.mkdtemp()
+        path = os.path.join(d, "rules.yar")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("rule Custom { condition: true }\n")
+        self.assertIn("Custom", R._yara_rules_text(
+            {"inference": {"yara_rules": path}}))
+        link = os.path.join(d, "link.yar")
+        os.symlink(path, link)
+        self.assertEqual(R._yara_rules_text(
+            {"inference": {"yara_rules": link}}), R._YARA_RULES)
+        empty = os.path.join(d, "empty.yar")
+        open(empty, "w", encoding="utf-8").close()
+        self.assertEqual(R._yara_rules_text(
+            {"inference": {"yara_rules": empty}}), R._YARA_RULES)
+        self.assertEqual(R._yara_rules_text(
+            {"inference": {"yara_rules": os.path.join(d, "missing.yar")}}),
+            R._YARA_RULES)
+
+        class Proc:
+            def __init__(self, out):
+                self.stdout = out
+
+        work = tempfile.mkdtemp()
+        target = os.path.join(work, "flag.txt")
+
+        def which(name):
+            return "/usr/bin/yr" if name == "yr" else None
+
+        with unittest.mock.patch("runner.runner.shutil.which", which), \
+                unittest.mock.patch(
+                    "runner.runner.subprocess.run",
+                    return_value=Proc(
+                        "FlagRead " + target + "\nerror: boom\n\n")):
+            hits = R._yara_hits(work, [target])
+        self.assertEqual(len(hits), 1)
+        self.assertIn("yara FlagRead", hits[0])
+        self.assertIn("flag.txt", hits[0])
+
+        with unittest.mock.patch("runner.runner.shutil.which",
+                                 return_value=None):
+            self.assertEqual(R._yara_hits(work, [target]), [])
+        with unittest.mock.patch("runner.runner.shutil.which", which), \
+                unittest.mock.patch("runner.runner.tempfile.mkstemp",
+                                    side_effect=OSError("no")):
+            self.assertEqual(R._yara_hits(work, [target]), [])
+        with unittest.mock.patch("runner.runner.shutil.which", which), \
+                unittest.mock.patch(
+                    "runner.runner.subprocess.run", side_effect=OSError("down")):
+            self.assertEqual(R._yara_hits(work, [target]), [])
+        with unittest.mock.patch("runner.runner.os.path.relpath",
+                                 side_effect=ValueError("drive")):
+            self.assertEqual(R._rel_work(work, target), "flag.txt")
+
+        after = {os.path.join(work, "a"): (1, 1)}
+        with unittest.mock.patch("runner.runner._work_files",
+                                 return_value=after), \
+                unittest.mock.patch("runner.runner._yara_hits",
+                                    return_value=["h"] * 25), \
+                unittest.mock.patch("runner.runner._clam_hits",
+                                    return_value=[]):
+            self.assertEqual(len(R._artifact_findings(work, {}, {})), 20)
+        with unittest.mock.patch("runner.runner._work_files",
+                                 return_value=after), \
+                unittest.mock.patch("runner.runner._yara_hits",
+                                    side_effect=RuntimeError("bad")):
+            self.assertEqual(R._artifact_findings(work, {}, {}), [])
+
+    def test_a_real_walk_and_the_quiet_edges(self):
+        work = tempfile.mkdtemp()
+        path = os.path.join(work, "a.txt")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("hi")
+        found = R._work_files(work)
+        self.assertEqual(found[path][0], 2)
+        with unittest.mock.patch("runner.runner.os.walk",
+                                 side_effect=OSError("no")):
+            self.assertEqual(R._work_files(work), {})
+        self.assertEqual(R._artifact_findings(work, found, {}), [])
+        with unittest.mock.patch("runner.runner._work_files",
+                                 return_value=found), \
+                unittest.mock.patch("runner.runner._yara_hits",
+                                    return_value=[]), \
+                unittest.mock.patch("runner.runner._clam_hits",
+                                    return_value=[]):
+            self.assertEqual(R._artifact_findings(work, "nope", {}), [])
+        real_stat = os.stat
+
+        def stat(path, *args, **kwargs):
+            if str(path).endswith("a.txt"):
+                raise OSError("stat")
+            return real_stat(path, *args, **kwargs)
+
+        with unittest.mock.patch("runner.runner.os.stat", stat):
+            self.assertNotIn(path, R._work_files(work))
+
+        class Proc:
+            stdout = 5
+
+        def which(name):
+            return "/usr/bin/yr" if name == "yr" else None
+
+        clock = {"n": 0}
+
+        def mono():
+            clock["n"] += 1
+            return 0 if clock["n"] == 1 else 100
+
+        with unittest.mock.patch("runner.runner.shutil.which", which), \
+                unittest.mock.patch("runner.runner.time.monotonic", mono):
+            self.assertEqual(R._yara_hits(work, [path, path]), [])
+        with unittest.mock.patch("runner.runner.shutil.which", which), \
+                unittest.mock.patch(
+                    "runner.runner.subprocess.run", return_value=Proc()), \
+                unittest.mock.patch("runner.runner.os.remove",
+                                    side_effect=OSError("busy")):
+            self.assertEqual(R._yara_hits(work, [path]), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
