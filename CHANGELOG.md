@@ -20,6 +20,13 @@
 
 ### Detection
 
+- The Oracle's job summaries now carry a "notable:" line when a
+  job's script referenced a credential store or a file outside
+  the job's own workspace -- a deterministic finding computed from
+  the script, after field tests showed small local models miss
+  that reasoning even when the script is in front of them. Both
+  ask prompts direct the Oracle to name every such job, in
+  detail, when asked about malicious or suspicious jobs.
 - Artifact scan build-out: the post-job YARA/ClamAV scan gains a
   dedicated cross-platform test suite (it was previously covered
   only inside the Linux-gated tests), and two new built-in YARA
