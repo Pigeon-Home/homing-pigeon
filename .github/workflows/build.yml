@@ -80,7 +80,12 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install hypothesis
-      - run: python -m unittest discover -s tests -t .
+      # The suite is this job's long pole (~5 of its ~6.5 minutes
+      # serial). It runs sharded across the runner's cores by
+      # module test count; the shard runner discovers the same
+      # suite, runs every test exactly once, and fails if any
+      # shard fails or if discovery comes up empty.
+      - run: python tools/run_tests_parallel.py --jobs 4
       - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md;pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.review --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
