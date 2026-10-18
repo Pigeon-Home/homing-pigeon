@@ -233,9 +233,8 @@ send stays unseen and will be retried (re-executed) on the next cycle.
   target host. VM snapshots give instant rollback, and the guest
   boundary contains everything a signed job can reach.
 - IMAP/SMTP over TLS (993/587). File downloads over HTTPS only.
-- Still open: encrypted credentials at rest, ack messages,
-  per-job encryption, and result file upload for large outputs.
-  Result policies are specified below.
+  Work that is not built is listed in FUTURE.md. Result policies
+  are specified below.
 
 ## 8. Cryptography — Suite B alignment (384-bit tier)
 
@@ -388,9 +387,8 @@ description"). Without one, the Oracle still applies deterministic
 checks against the job text (writes outside the workspace,
 known-dangerous patterns).
 
-*Implementation note: the runner currently ships the deterministic
-checks only. The semantic path — asking the local model for a verdict
-before execution — is spec'd but not yet wired up.*
+*The runner ships the deterministic checks only. The semantic
+path is listed in FUTURE.md.*
 
 A verdict is a judgment, not a proof. It can miss malicious code and
 flag benign code, so the runner owner sets the policy — config-only,

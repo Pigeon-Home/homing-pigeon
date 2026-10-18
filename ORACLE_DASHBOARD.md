@@ -1,10 +1,9 @@
 # Oracle Dashboard (draft)
 
-**Status:** not started. This spec makes the Oracle visible as a dashboard.
-`--oracle` already opens a loopback chat in the browser and writes
+**Status:** not built. See FUTURE.md. `--oracle` already opens a loopback chat in the browser and writes
 `oracle-chat.jsonl`. That chat is not this dashboard. Do not treat
 this file as something the runner serves.
-**Identity:** watch the Oracle think. This file is unwritten work. It is not something the runner serves.
+**Identity:** watch the Oracle think. This file is the design. It is not something the runner serves.
 
 ## 1. Vision
 

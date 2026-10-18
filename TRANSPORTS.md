@@ -1,10 +1,9 @@
 # Transports: beyond email
 
 > **Status.** Only email is implemented, in `runner/runner.py` directly.
-> Cloudflare Queues is the planned second transport (not yet attempted).
-> NATS, MQTT, Redis, Postgres, Durable Objects, and the local-socket
-> test transport were cut from the code — the sections below are kept
-> as design notes, not implementation.
+> Anything not built is listed in FUTURE.md. NATS, MQTT, Redis,
+> Postgres, Durable Objects, and the local-socket test transport
+> were cut. The sections below are design notes, not implementation.
 
 ## Yes, email. We know.
 
@@ -245,9 +244,8 @@ mailbox/queue when the job names nothing.
 ## Bootstrapping
 
 Email is the only pipe you can turn on today. Get that running (a
-dedicated Gmail account), and stop there. Cloudflare Queues is the
-planned second transport. It is not in the runner, and neither is
-NATS, MQTT, Redis, Postgres, or Durable Objects. There is no config
+dedicated Gmail account), and stop there. What is not built, and
+what was cut, is listed in FUTURE.md. There is no config
 key that flips the runner onto another pipe. A runbook that says
 "install the dependency and switch the transport" will not find that
 switch.

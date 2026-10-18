@@ -55,15 +55,15 @@ evaluate_page_triggers(cfg, base_dir) -> list[PageEvent]
 
 ## Channels
 
-Telegram is the only channel the runner will start with. Signal
-and WhatsApp are not implemented. SMS stays out of scope.
+Telegram is the only channel the runner accepts. Signal, WhatsApp,
+and SMS are listed in FUTURE.md. Do not set `dri.channel` to
+anything but `"telegram"`.
 
 - **Telegram.** This is the channel the runner implements. Bot API
   over HTTPS: one token, one chat id. A page is a single POST.
   `dri.channel` must be `"telegram"`.
-- **Signal.** Not implemented. Do not set `dri.channel` to it.
-  The runner rejects anything other than `telegram`.
-- **WhatsApp.** Not implemented. Same rejection.
+- **Signal.** The runner rejects it. See FUTURE.md.
+- **WhatsApp.** The runner rejects it. See FUTURE.md.
 
 **Out of scope, by owner decision: SMS.** No text messaging. No
 Twilio-style provider, no per-message cost, no carrier metadata.
@@ -136,7 +136,7 @@ you, not in this repo. Template for when the time comes:
    keys, take the box offline).
 5. Write down what you changed, so the next page is smarter.
 
-## The dashboard is not built
+## The dashboard
 
-The dashboard spec is not built. `--oracle` is a loopback chat, not
+Listed in FUTURE.md. `--oracle` is a loopback chat, not
 a page history. Ack by reply keyword is the path that exists today.

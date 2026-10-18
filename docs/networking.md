@@ -71,6 +71,8 @@ is load-bearing — see `docs/senses.md` ("why this shape").
 
 ## What the picture still lacks
 
+Listed in FUTURE.md.
+
 - **NIDS** — Zeek/Suricata as a network-side sense next to the
   host IDS. The `netmon` sense slot exists; a real collector
   does not yet.
@@ -81,7 +83,8 @@ is load-bearing — see `docs/senses.md` ("why this shape").
   under its state directory (`passwords.txt`, `backup-codes.txt`,
   `api-keys.txt`). A read that changes one, or a delete, is filed
   once and stays reported until the file is restored. Canary
-  credentials (a token that phones home when used) are not built.
+  credentials (a token that phones home when used) are listed in
+  FUTURE.md.
 - **FIM proper** — file integrity monitoring. The roadmap's
   "snapshot eyes" gestures at it; no design yet.
 - **Out of scope:** TLS inspection, WAF (there is no inbound

@@ -72,7 +72,7 @@ job field that turns the judge off.**
 ## The rest of the inventory
 
 Basic technologies a project like this is expected to have, and
-where each one stands:
+where each one stands. Items marked absent are listed in FUTURE.md.
 
 - **Runner code integrity.** Nothing verifies `runner.py` hasn't
   been modified on disk. A same-user job can patch the runner and own

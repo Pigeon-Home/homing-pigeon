@@ -9,7 +9,7 @@ targeted an API we have not tried yet.
 | Transport | State |
 |-----------|-------|
 | email | implemented, this is what we test |
-| cloudflare | later item; Cloudflare Queues not yet attempted |
+| cloudflare | listed in FUTURE.md |
 
 The send/poll/ack contract is described in TRANSPORTS.md. Do not add
 transports unless asked; NATS/MQTT/Redis/etc. were cut on purpose.

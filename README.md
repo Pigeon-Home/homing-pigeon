@@ -97,9 +97,8 @@ and the job message carries download URLs (with optional SHA-384).
 on day one: reachable from anywhere, outbound-only polling (no inbound
 ports — NAT-proof), at-least-once delivery, and
 zero infrastructure to operate. The protocol does not care about the
-pipe, but email is the only transport wired in today. Cloudflare Queues
-is the planned second one. The other pipes in TRANSPORTS.md are design
-notes, not code.
+pipe, but email is the only transport wired in today. Anything else
+is in [FUTURE.md](FUTURE.md).
 
 **Runbooks, not prompts.** The SI doesn't chat about the task — it ships
 a runbook: deterministic steps, each with a check that proves the step
@@ -214,9 +213,9 @@ members of a `"v": 1` message. They are not a separate message version.
 
 - `PROTOCOL.md` — the full wire protocol (message formats, signatures,
   verification rules, security model).
+- `FUTURE.md` — work that is not built. The only list.
 - `TRANSPORTS.md` — email is the only transport in the runner.
-  Cloudflare Queues is the planned next one. The rest of that file is
-  design notes, not code.
+  The rest of that file is design notes, not code.
 - `SAFEGUARDS.md` — how to run this without getting burned: the
   non-negotiables, containment, the Oracle as a safeguard, and what
   to do when something goes wrong.
@@ -507,22 +506,16 @@ End-to-end without your SI:
   normal reject path; `0` means unlimited. A negative or non-integer
   value is a startup config error.
 - Optional hardening controls (all off by default): see [SECURITY.md](SECURITY.md).
-- Hardening ideas still open: encrypted credentials at rest,
-  per-job encryption, result file upload for large outputs. The
-  Oracle is implemented: result policies, signed attestations,
+  The Oracle is implemented: result policies, signed attestations,
   and a query budget, so a cloud SI learns *answers* about your output
   without ever seeing it.
 
-## Not built yet
-
-- A loopback dashboard for the Oracle, and encryption of the message
-  body on the transport. The sketch is
-  [ORACLE_DASHBOARD.md](ORACLE_DASHBOARD.md). The runner does not
-  serve that page.
-- Cloudflare Queues as a second transport.
-
 The download version and the message field `"v"` are different
 numbers. The runner is 3.7.x and speaks `"v": 1`.
+
+## Not built
+
+The list is [FUTURE.md](FUTURE.md).
 
 ## Status
 

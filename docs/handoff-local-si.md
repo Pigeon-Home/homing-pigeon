@@ -90,7 +90,7 @@ Not part of this branch's unique commits, but context:
 
 ## Open items left in this note
 
-These were open when the note was written. They are not a queue.
+Unbuilt work is listed in FUTURE.md. These notes are not a queue.
 
 1. A live Cloudflare try was planned and was not done. Queues are
    still not in the runner.

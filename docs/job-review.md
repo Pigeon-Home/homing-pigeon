@@ -18,7 +18,7 @@ with the judge; review is correctness ("will this work").
 
 ## The two tiers
 
-Designed for the coming transport confidentiality:
+Designed for message-body encryption, listed in FUTURE.md:
 
 - **Metadata tier** needs no content access: job shape, declared
   files, timeouts, interpreter form, shebang vs platform. It works
@@ -34,7 +34,7 @@ Designed for the coming transport confidentiality:
 The notes ride in the already-HMAC-signed result message, bound to
 the `job_id`. The Oracle is an authenticated party with an opinion;
 it does not need its own key for this. A dedicated Oracle signing
-key is the later path, when the opinion may need to travel
+key is listed in FUTURE.md, for when the opinion may need to travel
 outside the result envelope (e.g., to the DRI playbook channel).
 
 ## Built-in checks

@@ -107,9 +107,9 @@ or policy that is off is labeled T1562.004. The line is diffed
 against the previous reading, so a flip says "changed" and is
 filed once. Unreadable stays unreadable and does not overwrite
 the last good reading. The rule-hash diff and the cage check
-below are not built.
+below are listed in FUTURE.md.
 
-Not built, kept as the spec. This is the ruleset hash, not the
+Listed in FUTURE.md. This is the ruleset hash, not the
 posture line above. The collector would snapshot the rule set and
 file an alert on a new allow rule, never on every dropped packet:
 

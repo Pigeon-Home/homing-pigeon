@@ -1,7 +1,7 @@
 # Configuring the Oracle
 
 The Oracle is controlled entirely by `config.json`. The dashboard
-spec is not built. `--oracle` opens a loopback chat. It does not edit
+is listed in FUTURE.md. `--oracle` opens a loopback chat. It does not edit
 these keys, and it does not poll the mailbox: the chat is a local UI
 only. Run the runner without `--oracle` (or the installed service) to
 handle email jobs. When a dashboard exists, it must be a frontend over the
