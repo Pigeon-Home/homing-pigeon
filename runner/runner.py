@@ -6664,11 +6664,12 @@ def _artifact_findings(work, before, cfg):
 def _yara_rules_text(cfg):
     """Operator rules if inference.yara_rules is a readable file.
 
-    A missing or empty file falls back to the built-in rules. Never raises.
+    A missing file, an empty file, or a symlink falls back to the
+    built-in rules. The symlink is not followed. Never raises.
     """
     inf = cfg.get("inference") if isinstance(cfg, dict) else None
     path = inf.get("yara_rules") if isinstance(inf, dict) else None
-    if isinstance(path, str) and path.strip():
+    if isinstance(path, str) and path.strip() and not os.path.islink(path):
         try:
             with open(path, encoding="utf-8") as fh:
                 text = fh.read(65536)
