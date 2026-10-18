@@ -419,7 +419,7 @@ python3 cloud/send_job.py new --kind exec --script-file job.sh \
   --secret <the-string>
 ```
 
-Or just paste the string to your SI in chat — it composes, signs, and sends
+Or paste the string to your SI in chat — it composes, signs, and sends
 the job message itself, and reads the result message when it arrives. Large files
 are uploaded to cloud storage first; the job message carries the URLs.
 

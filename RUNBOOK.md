@@ -104,8 +104,8 @@ you. You start them by making a **release**. All point and click:
 2. On the right side, click **Releases**.
 3. Click the **Draft a new release** button.
 4. Click **Choose a tag**, then type the tag you are cutting, such as
-   `v3.7.28`, and click **Create new tag**.
-5. Type a title like `Version 3.7.28`. The number is the one in
+   `vX.Y.Z`, and click **Create new tag**.
+5. Type a title like `Version X.Y.Z`. The number is the one in
    `pyproject.toml`, not a guess.
 6. Click the big green **Publish release** button.
 7. Now click the **Actions** tab at the top. You will see the robots
@@ -198,7 +198,7 @@ It checks the mailbox one time and then stops. Watch what it prints.
 
 You need two things: the **shared secret** (the `shared_secret` string
 from `config.json` in Job 5 — not the app password) and a way to send
-email to the runner's mailbox. The easiest way is to just paste
+email to the runner's mailbox. The easiest way is to paste
 the secret string to your SI in chat and tell it what you want done —
 it writes the email, signs it, and sends it for you.
 

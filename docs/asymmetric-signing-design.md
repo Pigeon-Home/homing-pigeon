@@ -132,7 +132,7 @@ be replayed as a job.
   64 bytes raw; fine for email, but the envelope grows.
 - `allowed_signers` is a second key store beside `config.json`,
   with its own file-permission story (it must not be writable by
-  the SI's key_id, obviously — it lives on the runner).
+  the SI's key_id — it lives on the runner).
 - Namespace discipline is load-bearing: if the namespace string is
   ever reused across applications, cross-protocol replay becomes
   possible. It must be a constant, not configurable.
