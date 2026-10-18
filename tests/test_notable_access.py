@@ -1096,5 +1096,96 @@ class ToolRoundTest(unittest.TestCase):
         self.assertEqual(R._agent_trim(odd)[:2], [system, question])
 
 
+def _chat_lines(base):
+    path = os.path.join(base, "oracle-chat.jsonl")
+    with open(path, encoding="utf-8") as fh:
+        return [json.loads(line) for line in fh if line.strip()]
+
+
+class ChatLogTest(unittest.TestCase):
+    """The chat log stores the question and the answer, not the job record."""
+
+    def setUp(self):
+        self.base = tempfile.mkdtemp()
+
+    def test_a_denial_is_logged_without_the_job_secret(self):
+        R.record_oracle_turn(
+            self.base, {}, "which jobs are malicious?",
+            {"answer": "none of the jobs are malicious.", "model": "m",
+             "tool_rounds": 1})
+        rec = _chat_lines(self.base)[0]
+        self.assertEqual(rec["question"], "which jobs are malicious?")
+        self.assertEqual(rec["answer"], "none of the jobs are malicious.")
+        self.assertEqual(rec["model"], "m")
+        self.assertEqual(rec["tool_rounds"], 1)
+        self.assertNotIn(_KEY, json.dumps(rec))
+
+    def test_a_secret_in_the_question_or_the_answer_is_redacted(self):
+        R.record_oracle_turn(
+            self.base, {}, "the file held " + _KEY,
+            {"answer": "saw " + _KEY, "detail": "detail " + _KEY,
+             "rejected": "sanitization"})
+        rec = _chat_lines(self.base)[0]
+        blob = json.dumps(rec)
+        self.assertNotIn(_KEY, blob)
+        self.assertIn("[REDACTED:aws_key]", rec["question"])
+        self.assertIn("[REDACTED:aws_key]", rec["answer"])
+        self.assertIn("[REDACTED:aws_key]", rec["detail"])
+
+    def test_bad_shapes_do_not_write_the_secret(self):
+        R.record_oracle_turn(None, {}, "q", {"answer": _KEY})
+        R.record_oracle_turn(3, {}, "q", {"answer": _KEY})
+        R.record_oracle_turn(self.base, {}, "q", "not-a-record")
+        R.record_oracle_turn(
+            self.base, {}, "secret " + _KEY,
+            {"answer": "clean", "detail": 5})
+        R.record_oracle_turn(
+            self.base, "nope", 321,
+            {"answer": 5, "rejected": 9, "model": 8,
+             "tool_rounds": "many", "detail": None},
+            event=7)
+        lines = _chat_lines(self.base)
+        self.assertEqual(lines[0]["answer"], "")
+        self.assertEqual(lines[1]["detail"], "")
+        self.assertIn("[REDACTED:aws_key]", lines[1]["question"])
+        rec = lines[2]
+        self.assertEqual(rec["question"], "")
+        self.assertEqual(rec["answer"], "")
+        self.assertEqual(rec["rejected"], "")
+        self.assertEqual(rec["model"], "")
+        self.assertEqual(rec["detail"], "")
+        self.assertEqual(rec["tool_rounds"], 0)
+        self.assertEqual(rec["event"], "ask")
+        for line in lines:
+            self.assertNotIn(_KEY, json.dumps(line))
+
+    def test_long_fields_are_cut(self):
+        R.record_oracle_turn(
+            self.base, {}, "q" * 3000,
+            {"answer": "a" * 5000, "detail": "d" * 500})
+        rec = _chat_lines(self.base)[0]
+        self.assertEqual(len(rec["question"]), 2000)
+        self.assertEqual(len(rec["answer"]), 4000)
+        self.assertEqual(len(rec["detail"]), 300)
+
+    def test_random_questions_never_store_the_key(self):
+        import random
+        rng = random.Random(321)
+        words = ["which", "jobs", "are", "malicious", "none", "jobflag1",
+                 _KEY, "321", "notable"]
+        for _ in range(40):
+            question = " ".join(rng.choice(words)
+                                for _ in range(rng.randint(1, 8)))
+            answer = " ".join(rng.choice(words)
+                              for _ in range(rng.randint(1, 8)))
+            base = tempfile.mkdtemp()
+            R.record_oracle_turn(
+                base, {}, question, {"answer": answer, "model": "m"})
+            blob = json.dumps(_chat_lines(base)[0])
+            self.assertNotIn(_KEY, blob)
+            if _KEY in question or _KEY in answer:
+                self.assertIn("[REDACTED:aws_key]", blob)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
