@@ -662,8 +662,19 @@ def run_diagnose(cfg, out=print, base_dir=None, cfg_path=None,
     path = os.path.join(base_dir, f"harness-report-{stamp}.txt")
     try:
         os.makedirs(base_dir, exist_ok=True)
-        with open(path, "w", encoding="utf-8") as fh:
-            fh.write("\n".join(report) + "\n")
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        body = ("\n".join(report) + "\n").encode("utf-8")
+        fd = os.open(path, flags, 0o600)
+        try:
+            os.write(fd, body)
+        finally:
+            os.close(fd)
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
         out(f"report written to {path}")
     except Exception as e:
         out(f"could not write report file ({e}); full report follows:")
