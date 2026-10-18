@@ -23,6 +23,14 @@ def _tmp_for(base):
     return os.path.join(base, dri.STATE_FILE) + ".tmp." + str(threading.get_ident())
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class DriStateTest(unittest.TestCase):
     def test_the_first_look_is_owner_only_and_sends_nothing(self):
         cfg = {"dri": {"enabled": True, "channel": "telegram"}}

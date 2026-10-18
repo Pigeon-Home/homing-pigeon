@@ -27,6 +27,14 @@ def _tmp(base):
     return _path(base) + ".tmp." + str(threading.get_ident())
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class BaselineFileTest(unittest.TestCase):
     def test_counts_are_owner_only_and_capped(self):
         with tempfile.TemporaryDirectory() as d:

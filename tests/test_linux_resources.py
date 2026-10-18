@@ -34,6 +34,14 @@ def _open_proc(text, name):
     return fake
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class ProcParseTest(unittest.TestCase):
     def test_cpu_and_memory_lines(self):
         with mock.patch("builtins.open", _open_proc(

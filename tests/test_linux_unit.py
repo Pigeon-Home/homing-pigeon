@@ -27,6 +27,14 @@ def _install(home, dst, cfg, extra=()):
     return calls
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class UnitFileTest(unittest.TestCase):
     def test_the_user_unit_is_owner_readable_and_quoted(self):
         with tempfile.TemporaryDirectory() as home:

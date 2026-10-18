@@ -23,6 +23,14 @@ def _counts_tmp(base):
     return os.path.join(base, COUNTS_FILE + ".tmp." + str(os.getpid()))
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class AuditFileTest(unittest.TestCase):
     def test_an_entry_is_owner_only_and_the_count_increments(self):
         with tempfile.TemporaryDirectory() as d:

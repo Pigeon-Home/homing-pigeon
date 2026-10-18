@@ -24,6 +24,14 @@ def _ok(ctx, sec):
     sec.note("evidence")
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class _Clock:
     @staticmethod
     def now(tz=None):

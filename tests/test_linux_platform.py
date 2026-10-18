@@ -94,6 +94,14 @@ def _argv(conf=None, env=None, args=None, interpreter=None, script="job.sh",
             script, workdir, list(args or []), dict(env or {}))
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class SandboxAvailabilityTest(unittest.TestCase):
     def test_only_linux_with_bwrap_on_path(self):
         cases = [

@@ -14,6 +14,8 @@ from runner.install import do_wipe, install_macos, uninstall_macos
 from runner.runner import _firewall_posture, _parse_socketfilterfw
 
 
+@unittest.skipIf(os.name == "nt",
+                 "launchd tests patch os.getuid, which Windows lacks")
 class LaunchdTest(unittest.TestCase):
     def test_the_agent_plist_and_the_bootout_use_the_same_name(self):
         with tempfile.TemporaryDirectory() as d:

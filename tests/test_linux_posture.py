@@ -18,6 +18,14 @@ def _mode(path):
     return os.stat(path).st_mode & 0o777
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class PostureReadTest(unittest.TestCase):
     def test_a_json_symlink_is_not_the_baseline(self):
         with tempfile.TemporaryDirectory() as d:

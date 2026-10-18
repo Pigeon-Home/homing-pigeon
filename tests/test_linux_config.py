@@ -32,6 +32,14 @@ def _seed(path, cfg):
         fh.write("\n")
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class ConfigFileTest(unittest.TestCase):
     def test_a_generated_secret_is_owner_only(self):
         with tempfile.TemporaryDirectory() as d:

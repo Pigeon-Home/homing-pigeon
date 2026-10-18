@@ -24,6 +24,14 @@ def _digest(line):
     return hashlib.sha1(line.encode("utf-8", "replace")).hexdigest()[:16]
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class LogSeenTest(unittest.TestCase):
     def test_a_first_look_is_a_baseline_and_a_symlink_is_not_trusted(self):
         with tempfile.TemporaryDirectory() as d:

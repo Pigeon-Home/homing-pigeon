@@ -25,6 +25,14 @@ def _check(path, exists=True):
     return results[0]
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class UnitPostureTest(unittest.TestCase):
     def test_hardening_directives_are_read_from_a_regular_file(self):
         with tempfile.TemporaryDirectory() as d:

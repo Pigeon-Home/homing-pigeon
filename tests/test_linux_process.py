@@ -21,6 +21,14 @@ def _proc(pid=42):
     return proc
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class KillSignalTest(unittest.TestCase):
     def test_linux_sends_sigkill_to_the_group(self):
         proc = _proc(42)

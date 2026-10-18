@@ -23,6 +23,14 @@ def _path(home):
     return os.path.join(home, RECEIPT_NAME)
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class ReceiptFileTest(unittest.TestCase):
     def test_a_fresh_receipt_is_owner_only(self):
         with tempfile.TemporaryDirectory() as home:

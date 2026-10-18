@@ -22,6 +22,14 @@ def _tmp_for(path):
     return path + ".tmp." + str(threading.get_ident())
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class RetainedFileTest(unittest.TestCase):
     def test_a_save_is_owner_only_and_round_trips(self):
         with tempfile.TemporaryDirectory() as d:

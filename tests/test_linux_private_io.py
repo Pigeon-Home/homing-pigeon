@@ -24,6 +24,14 @@ def _lines(path):
         return fh.read().splitlines()
 
 
+import sys
+
+if not sys.platform.startswith("linux"):
+    raise unittest.SkipTest(
+        "Linux-only suite: it pins POSIX modes, nofollow opens, "
+        "signals, and systemd units, and runs in the Linux test job")
+
+
 class PrivateWriteTest(unittest.TestCase):
     def test_the_cap_rewrite_uses_nofollow_and_keeps_the_tail(self):
         self.assertEqual(MAX_STORED, 5000)
