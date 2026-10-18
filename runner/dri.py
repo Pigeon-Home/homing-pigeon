@@ -208,11 +208,24 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
     # Fused sensor score per sensor over the window.
     sfs = trig.get("sensor_fused_score")
     if sfs and _senses is not None:
+        # Unvalidated config (not through parse_dri) must not abort.
+        if not isinstance(sfs, dict):
+            sfs = {}
+        try:
+            window = float(sfs.get("window_sec", 600))
+            threshold = float(sfs.get("threshold", 6.0))
+        except (TypeError, ValueError):
+            window, threshold = 600.0, 6.0
         recs = _senses.load_alerts(base_dir, limit=5000)
+        # Extension fault: a non-list must not abort trigger evaluation.
+        if not isinstance(recs, list):
+            recs = []
         by_sensor = {}
         for rec in recs:
+            if not isinstance(rec, dict):
+                continue
             ts = _to_ts(rec.get("observed_at") or rec.get("received_at"))
-            if ts is None or now - ts > sfs["window_sec"]:
+            if ts is None or now - ts > window:
                 continue
             by_sensor.setdefault(rec.get("sensor"), []).append(rec)
         for sensor, recs in by_sensor.items():
@@ -222,7 +235,7 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
                     total += _senses.alert_score(rec, rec.get("weight", 1.0))
                 except (TypeError, ValueError):
                     continue
-            if total >= sfs["threshold"]:
+            if total >= threshold:
                 def _one(rec):
                     try:
                         return _senses.alert_score(rec, rec.get("weight", 1.0))
@@ -233,9 +246,9 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
                     "trigger": "sensor_fused_score",
                     "at": _now_iso(),
                     "title": f"sensor fused score {total:.1f} "
-                             f"on {sensor} (threshold {sfs['threshold']:.1f})",
+                             f"on {sensor} (threshold {threshold:.1f})",
                     "detail": f"{len(recs)} alerts in "
-                              f"{sfs['window_sec']:.0f}s window",
+                              f"{window:.0f}s window",
                     "signals": [
                         f"{r.get('sensor')}/{r.get('severity')}: "
                         f"{r.get('title')}" for r in top],
@@ -287,15 +300,23 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
                     "signals": [],
                 })
         if kp:
+            # Unvalidated config must not abort trigger evaluation.
+            if not isinstance(kp, dict):
+                kp = {}
+            try:
+                kp_window = float(kp.get("window_sec", 3600))
+                kp_threshold = int(kp.get("threshold", 5))
+            except (TypeError, ValueError):
+                kp_window, kp_threshold = 3600.0, 5
             probes = [e for e in _recent_events(
-                base_dir, now - kp["window_sec"])
+                base_dir, now - kp_window)
                 if e.get("type") == "auth_rejection"]
-            if len(probes) >= kp["threshold"]:
+            if len(probes) >= kp_threshold:
                 events.append({
                     "trigger": "key_probe",
                     "at": _now_iso(),
                     "title": f"{len(probes)} auth rejections in "
-                             f"{kp['window_sec']:.0f}s",
+                             f"{kp_window:.0f}s",
                     "detail": "someone is knocking: bad signatures or "
                               "key-policy violations",
                     "signals": [],

@@ -117,9 +117,18 @@ def parse_sensors(cfg) -> dict:
 
 
 def sensor_for_key(sensors: dict, key_id: str):
-    """Return the sensor name bound to key_id, or None."""
+    """Return the sensor name bound to key_id, or None.
+
+    A non-dict map or a non-dict entry is bad extension data. Return
+    None rather than raise, so a poisoned sensors config cannot abort
+    alert ingest.
+    """
+    if not isinstance(sensors, dict):
+        return None
     for name, scfg in sensors.items():
-        if scfg["key_id"] == key_id:
+        if not isinstance(scfg, dict):
+            continue
+        if scfg.get("key_id") == key_id:
             return name
     return None
 
@@ -232,7 +241,11 @@ def file_sensor_alert(base_dir, sensor_cfg, record):
             return f"gate failed: {e}"
         if drop:
             return drop
-        store_alert(base_dir, record)
+        try:
+            store_alert(base_dir, record)
+        except OSError as e:
+            # Missing directory or unwritable store must not abort ingest.
+            return f"store failed: {e}"
         return None
 
 

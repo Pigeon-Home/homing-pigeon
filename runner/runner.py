@@ -569,22 +569,25 @@ def build_attestations(queries, ctx):
             continue
         pred = q.get("predicate")
         if pred == "exit_zero":
-            atts.append({"predicate": pred, "ok": ctx["exit_code"] == 0})
+            code = ctx.get("exit_code") if isinstance(ctx, dict) else None
+            atts.append({"predicate": pred, "ok": code == 0})
         elif pred == "no_secrets":
-            pats = ctx.get("patterns")
+            pats = ctx.get("patterns") if isinstance(ctx, dict) else None
             if not isinstance(pats, dict):
                 pats = {}
             # Non-string keys (poison from an extension) cannot be sorted
             # with strings and used to crash the attestation.
             safe_items = [(str(k), v) for k, v in pats.items()
                           if isinstance(v, str)]
+            text = ctx.get("text", "") if isinstance(ctx, dict) else ""
             atts.append({"predicate": pred,
-                         "ok": not secret_scan(ctx.get("text", ""), pats),
+                         "ok": not secret_scan(text, pats),
                          "patterns_sha384": hashlib.sha384(json.dumps(sorted(safe_items)).encode()).hexdigest()})
         elif pred == "output_digest":
-            atts.append({"predicate": pred, "digest": ctx["digest"]})
+            digest = ctx.get("digest") if isinstance(ctx, dict) else None
+            atts.append({"predicate": pred, "digest": digest})
         elif pred == "confined_to_workspace":
-            c = ctx.get("confined")
+            c = ctx.get("confined") if isinstance(ctx, dict) else None
             if c is None:
                 atts.append({"predicate": pred, "ok": False,
                              "reason": "unconfigured"})
@@ -996,6 +999,10 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                    already_spent=0, base_dir=None):
     """Answer declared queries. Every query spends 1, answered or rejected."""
     answers = []
+    # A non-dict result is bad data from an extension or a corrupt retain.
+    # Do not let it abort the query or the mail cycle.
+    if not isinstance(exec_result, dict):
+        exec_result = {}
     try:
         spent = int(already_spent or 0)
     except (TypeError, ValueError):
@@ -1093,6 +1100,10 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                         inf, q.get("question") or "", text, max_chars, patterns,
                         instructions=(cfg or {}).get("owner_instructions"),
                     ))
+                    # A non-dict return is bad inference data. Do not let
+                    # it become an answer that later .get calls crash on.
+                    if not isinstance(answers[-1], dict):
+                        answers[-1] = {"op": "ask", "rejected": "inference_error"}
                 except Exception as e:
                     log(f"ask failed: {e}", "WARN")
                     answers.append({"op": "ask", "rejected": "inference_error"})
@@ -1112,10 +1123,22 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                     until=q.get("until") if isinstance(q.get("until"), str) else None,
                     limit=q.get("limit") if isinstance(q.get("limit"), int) else 20,
                 )
+                # Extension may return None or a non-iterable under fault.
+                # Do not let that abort the query or the mail cycle.
+                if not isinstance(recs, list):
+                    log("senses load_alerts returned unusable data; ignoring", "WARN")
+                    answers.append({"op": "senses", "rejected": "senses_unavailable"})
+                    spent += 1
+                    continue
                 items = []
                 for rec in recs:
-                    weight = (sensors.get(rec.get("sensor")) or {}).get(
-                        "weight", rec.get("weight", 1.0))
+                    # A non-dict in the list is bad extension data, not fatal.
+                    if not isinstance(rec, dict):
+                        continue
+                    scfg = sensors.get(rec.get("sensor")) if isinstance(sensors, dict) else None
+                    if not isinstance(scfg, dict):
+                        scfg = {}
+                    weight = scfg.get("weight", rec.get("weight", 1.0))
                     try:
                         weight = float(weight)
                     except (TypeError, ValueError):
@@ -1142,8 +1165,13 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                         "received_at": rec.get("received_at"),
                         "job_id_hint": rec.get("job_id_hint"),
                         "weight": weight,
-                        "score": _senses.alert_score(rec, weight),
                     })
+                    try:
+                        items[-1]["score"] = _senses.alert_score(rec, weight)
+                    except Exception:
+                        # A raising scorer is bad extension data. Keep the
+                        # alert with a neutral score rather than abort.
+                        items[-1]["score"] = 0.0
                 items.sort(key=lambda a: a["score"], reverse=True)
                 answers.append({"op": "senses", "alerts": items,
                                 "count": len(items)})
@@ -1487,57 +1515,64 @@ class Board:
         return chosen
 
     def complete(self, task_id, result, require_review=False):
-        t = self.tasks.get(task_id)
-        if not t:
-            return "not_found", "not found"
-        if t.get("state") == "done":
-            return "duplicate", "already done"
-        if t.get("state") != "claimed":
-            return "not_claimed", "not claimed"
-        if require_review:
-            t["state"] = "pending_review"
+        with _BOARD_LOCK:
+            t = self.tasks.get(task_id)
+            if not isinstance(t, dict):
+                return "not_found", "not found"
+            if t.get("state") == "done":
+                return "duplicate", "already done"
+            if t.get("state") != "claimed":
+                return "not_claimed", "not claimed"
+            if require_review:
+                t["state"] = "pending_review"
+                t["result"] = result
+                self.save()
+                return "pending_review", "awaiting review"
+            t["state"] = "done"
             t["result"] = result
+            t["completed_at"] = datetime.now(timezone.utc).isoformat()
             self.save()
-            return "pending_review", "awaiting review"
-        t["state"] = "done"
-        t["result"] = result
-        t["completed_at"] = datetime.now(timezone.utc).isoformat()
-        self.save()
-        return "done", "ok"
+            return "done", "ok"
 
     def approve(self, task_id):
-        t = self.tasks.get(task_id)
-        if not t:
-            return False, "not found"
-        if t.get("state") != "pending_review":
-            return False, "not pending_review"
-        t["state"] = "done"
-        t["completed_at"] = datetime.now(timezone.utc).isoformat()
-        self.save()
-        return True, "ok"
+        with _BOARD_LOCK:
+            t = self.tasks.get(task_id)
+            if not isinstance(t, dict):
+                return False, "not found"
+            if t.get("state") != "pending_review":
+                return False, "not pending_review"
+            t["state"] = "done"
+            t["completed_at"] = datetime.now(timezone.utc).isoformat()
+            self.save()
+            return True, "ok"
 
     def reoffer_expired(self, task_timeout=86400):
-        now = datetime.now(timezone.utc)
-        count = 0
-        for t in self.tasks.values():
-            if t.get("state") == "claimed" and t.get("claimed_at"):
-                try:
-                    claimed = datetime.fromisoformat(t["claimed_at"])
-                    if (now - claimed).total_seconds() > task_timeout:
-                        t["state"] = "open"
-                        t.pop("claimed_by", None)
-                        t.pop("claimed_at", None)
-                        t.pop("claimed_key_id", None)
-                        count += 1
-                except Exception:
-                    pass
-        if count:
-            self.save()
-        return count
+        with _BOARD_LOCK:
+            now = datetime.now(timezone.utc)
+            count = 0
+            for t in list(self.tasks.values()):
+                if not isinstance(t, dict):
+                    continue
+                if t.get("state") == "claimed" and t.get("claimed_at"):
+                    try:
+                        claimed = datetime.fromisoformat(t["claimed_at"])
+                        if (now - claimed).total_seconds() > task_timeout:
+                            t["state"] = "open"
+                            t.pop("claimed_by", None)
+                            t.pop("claimed_at", None)
+                            t.pop("claimed_key_id", None)
+                            count += 1
+                    except Exception:
+                        pass
+            if count:
+                self.save()
+            return count
 
     def counts(self):
         c = {"open": 0, "claimed": 0, "done": 0, "pending_review": 0}
         for t in self.tasks.values():
+            if not isinstance(t, dict):
+                continue
             s = t.get("state")
             if s in c:
                 c[s] += 1
@@ -1720,9 +1755,13 @@ def script_filename(interpreter) -> str:
     """Name the staged script so the interpreter will accept -File.
 
     PowerShell refuses -File on a file without a .ps1 extension. That
-    is a permanent failure, not a retry.
+    is a permanent failure, not a retry. A non-list or a non-string
+    entry is bad data; fall back to the generic name rather than raise.
     """
-    joined = " ".join(interpreter).lower()
+    if not isinstance(interpreter, list):
+        return "script"
+    parts = [x for x in interpreter if isinstance(x, str)]
+    joined = " ".join(parts).lower()
     if "powershell" in joined or "pwsh" in joined:
         return "script.ps1"
     if "python" in joined:
@@ -2037,8 +2076,20 @@ def _as_float(value, default):
 
 
 def _preview(text, n=80) -> str:
-    """One line, capped. For the runner log, not for email."""
-    line = (text or "").replace("\r", " ").replace("\n", " ").strip()
+    """One line, capped. For the runner log, not for email.
+
+    A non-string is bad data from an extension or a caller. Coerce
+    rather than raise, so a log line cannot kill the runner.
+    """
+    if not isinstance(text, str):
+        text = "" if text is None else str(text)
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        n = 80
+    if n < 1:
+        n = 80
+    line = text.replace("\r", " ").replace("\n", " ").strip()
     if len(line) > n:
         line = line[:n] + "..."
     return line
@@ -2416,10 +2467,10 @@ def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
         return
     name = job["sensor"]
     scfg = sensors.get(name)
-    if scfg is None:
+    if not isinstance(scfg, dict):
         done(f"rejected: unknown sensor {name!r}")
         return
-    if not scfg["enabled"]:
+    if not scfg.get("enabled"):
         done(f"rejected: sensor {name!r} is not enabled")
         return
     bound = _senses.sensor_for_key(sensors, key_id)
