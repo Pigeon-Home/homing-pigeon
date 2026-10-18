@@ -242,6 +242,61 @@ def browser_consent(cfg: dict) -> str:
     return exchange_code(cfg, _Catch.code, verifier, opener=None)
 
 
+def store_refresh_token(path, cfg, refresh):
+    """Write the refresh token. A symlink is not followed.
+
+    The file is mode 0600. The token must be one line so it cannot
+    break the JSON writer or smuggle a second record.
+    """
+    if not isinstance(path, str) or not path:
+        raise ValueError("config path is required")
+    if os.path.islink(path):
+        raise OSError("refusing to follow a symlink config")
+    if not isinstance(cfg, dict):
+        raise TypeError("config must be an object")
+    if not isinstance(refresh, str) or not refresh or any(
+            ch in refresh for ch in ("\n", "\r", "\x00")):
+        raise ValueError("refresh token must be a single line")
+    saved = dict(cfg)
+    saved["auth"] = "oauth"
+    saved["oauth_refresh_token"] = refresh
+    parent = os.path.dirname(os.path.abspath(path))
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    tmp = path + ".tmp." + str(threading.get_ident())
+    fd = None
+    try:
+        try:
+            os.unlink(tmp)
+        except FileNotFoundError:
+            pass
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(tmp, flags, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fd = None
+            json.dump(saved, fh, indent=2)
+            fh.write("\n")
+        os.replace(tmp, path)
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
+    except Exception:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+    return saved
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description="Sign the runner into Gmail the way Thunderbird does: "
@@ -251,14 +306,17 @@ def main() -> int:
     ap.add_argument("--config", default="config.json")
     args = ap.parse_args()
     print(f"oauth {__version__}")
+    if os.path.islink(args.config):
+        print("config error: refusing to follow a symlink", file=sys.stderr)
+        return 2
     with open(args.config, encoding="utf-8") as fh:
         cfg = json.load(fh)
     refresh = browser_consent(cfg)
-    cfg["auth"] = "oauth"
-    cfg["oauth_refresh_token"] = refresh
-    with open(args.config, "w", encoding="utf-8") as fh:
-        json.dump(cfg, fh, indent=2)
-        fh.write("\n")
+    try:
+        store_refresh_token(args.config, cfg, refresh)
+    except (OSError, ValueError, TypeError) as exc:
+        print("config error: %s" % exc, file=sys.stderr)
+        return 2
     print(f"wrote refresh token to {args.config}")
     print("The Google password is not in this file. Start the runner.")
     return 0
