@@ -235,22 +235,24 @@ send stays unseen and will be retried (re-executed) on the next cycle.
   Work that is not built is listed in FUTURE.md. Result policies
   are specified below.
 
-## 8. Cryptography — Suite B alignment (384-bit tier)
+## 8. Cryptography
 
-All primitives are in the NSA Suite B set at the 384-bit tier (now
-transitioned to CNSA; the symmetric/hash primitives carry over unchanged):
+The protocol uses exactly two cryptographic primitives:
 
-- **Message authentication:** HMAC-SHA-384, keyed with the shared secret
-  (Suite B integrity primitive, 384-bit tier).
-- **Hashing:** SHA-384, used for file/script integrity checks (Suite B,
-  384-bit tier).
-- **Transport:** TLS 1.2+ enforced for IMAP, SMTP, and file downloads
-  (Suite B requires TLS 1.2 with Suite B cipher suites).
-- **Payload encryption:** AES-256-GCM is the designated cipher for
-  confidentiality beyond TLS.
+- **Message authentication:** HMAC-SHA-384, keyed with the shared
+  secret. This is the protocol's authentication mechanism; sender
+  identity asserted by the transport (for email, the From header)
+  carries no weight.
+- **Hashing:** SHA-384, used for file and script integrity checks.
 
-The protocol does not encrypt payloads: confidentiality in transit
-comes from TLS; authenticity and integrity come from HMAC-SHA-384.
+Both are the CNSA-listed choices at the 384-bit tier.
+
+The protocol does not encrypt payloads, and it designates no payload
+cipher. Confidentiality in transit is a property of the transport
+binding — for email, the TLS sessions between each endpoint and its
+mail provider. Authenticity and integrity come from HMAC-SHA-384.
+A future version that adds payload encryption will name its cipher
+in this section when it exists.
 
 ---
 
