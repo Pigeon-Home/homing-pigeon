@@ -1,7 +1,6 @@
 # Industry map: five years of detection, read against Homing Pigeon
 
-How the commercial security world moved from 2021 to 2026, and where this
-project honestly stands against it. Not flattering on purpose.
+How the commercial security world moved from 2021 to 2026.
 
 ## The footprint rule
 
