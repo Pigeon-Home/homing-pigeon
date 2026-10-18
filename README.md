@@ -15,11 +15,9 @@ fixes that: tell your SI to complete a task and it will do it on your
 machine. The results return so that your SI can iterate — run the tests,
 read the failure, fix, repeat. From your phone or anywhere.
 
-The agent bares similary to GitHub self-hosted runners. Email is the
-default option. But others are supported. (See TRANSPORTS.md.)
-
-Install the homing pigeon agent on your system. It will prompt for login
-credentials to an email address, the default transport mechanism.
+Install the Homing Pigeon agent/runner on your system. It will prompt
+for login credentials to an email address, the default. The agent bares
+similarity to GitHub self-hosted runners.
 
 Then try this prompt in your cloud SI, it should return in less than 30 seconds.
 
