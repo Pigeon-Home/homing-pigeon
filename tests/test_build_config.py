@@ -173,6 +173,11 @@ class MutationTreeTest(unittest.TestCase):
                          "PROTOCOL.md", "RUNBOOK.md"):
             self.assertIn(expected, copied)
 
+    def test_the_sharded_runner_is_copied(self):
+        # test_parallel_runner imports this file at load time.
+        # A missing copy fails stats collection before any mutant.
+        self.assertIn("tools/", _also_copy())
+
     def test_also_copy_file_entries_exist(self):
         root = _root()
         for entry in _also_copy():
