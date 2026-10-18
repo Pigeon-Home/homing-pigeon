@@ -2843,6 +2843,22 @@ def _live_times(times, now):
 _QUERY_LOCK = threading.Lock()
 
 
+def _read_query_store(path):
+    """The on-disk query window, or {}. A symlink is not followed."""
+    if not isinstance(path, (str, bytes, os.PathLike)) or not path:
+        return {}
+    if os.path.islink(path):
+        return {}
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            loaded = json.load(f)
+    except Exception:
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
 def check_rate_limit(key_id, cfg, path=None):
     """Return True if under max_queries_per_hour. Zero means unlimited.
 
@@ -2857,14 +2873,8 @@ def check_rate_limit(key_id, cfg, path=None):
         if limit <= 0:
             return True
         now = time.time()
-        if path and os.path.exists(path):
-            try:
-                with open(path, encoding="utf-8") as f:
-                    store = json.load(f)
-            except Exception:
-                store = {}
-        elif path:
-            store = {}
+        if path:
+            store = _read_query_store(path)
         else:
             store = _QUERY_TIMES
         if not isinstance(store, dict):
@@ -2890,14 +2900,7 @@ def budget_status(path, cfg):
         return []
     """Per-key spend in the current hour, for the owner to read."""
     limit = _query_limit(cfg)
-    store = {}
-    if path and os.path.exists(path):
-        try:
-            with open(path, encoding="utf-8") as f:
-                loaded = json.load(f)
-            store = loaded if isinstance(loaded, dict) else {}
-        except Exception:
-            store = {}
+    store = _read_query_store(path)
     now = time.time()
     out = []
     for key, times in store.items():
