@@ -10,6 +10,7 @@ precision (benign scripts stay silent) and recall (the Flag321
 script and classic credential stores are flagged).
 """
 
+import json
 import os
 import tempfile
 import unittest
@@ -639,6 +640,70 @@ class WatchRecordTest(unittest.TestCase):
         verdict, reasons = R.judge_job({"judge": "enforce"}, {"script": script})
         self.assertEqual(verdict, "fail")
         self.assertTrue(reasons)
+
+
+class _ModelResp:
+    def __init__(self, message):
+        self._body = json.dumps(
+            {"choices": [{"message": message}]}).encode("utf-8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def read(self, n=-1):
+        return self._body
+
+
+class HandedToTheModelTest(unittest.TestCase):
+    """The notable line is in the message the model actually receives."""
+
+    def _ask(self, question, ctx, base):
+        seen = []
+
+        def opener(req, timeout=60):
+            seen.append(json.loads(req.data.decode("utf-8")))
+            return _ModelResp({"role": "assistant", "content": "noted"})
+
+        ans = R.ask_model_agent(
+            {"endpoint": "http://127.0.0.1:11434/v1", "model": "m"},
+            question, ctx, 2000, opener=opener, base_dir=base)
+        return ans, seen
+
+    def test_flag_record_is_the_user_message(self):
+        d = tempfile.mkdtemp()
+        os.makedirs(os.path.join(d, "retained"))
+        R.save_retained(d, "jobflag1", _record(FLAG, stdout="321\n"))
+        ctx = R.oracle_context(d, watch=False)
+        ans, seen = self._ask("which jobs are malicious?", ctx, d)
+        self.assertEqual(ans.get("answer"), "noted")
+        self.assertEqual(len(seen), 1)
+        system = seen[0]["messages"][0]["content"]
+        user = seen[0]["messages"][1]["content"]
+        self.assertIn("'notable:' line", system)
+        self.assertIn("which jobs are malicious?", user)
+        self.assertIn("notable: SUSPICIOUS ACCESS", user)
+        self.assertIn("Desktop/flag.txt", user)
+        self.assertIn("321", user)
+
+    def test_question_mutations_do_not_drop_the_line(self):
+        import random
+        rng = random.Random(321)
+        d = tempfile.mkdtemp()
+        os.makedirs(os.path.join(d, "retained"))
+        R.save_retained(d, "jobflag1", _record(FLAG, stdout="321\n"))
+        ctx = R.oracle_context(d, watch=False)
+        words = ["malicious", "none", "flag", "?", "jobflag1", "321",
+                 "notable", "clean", "all of them", ""]
+        for _ in range(40):
+            question = " ".join(rng.choice(words)
+                                for _ in range(rng.randint(1, 6)))
+            _ans, seen = self._ask(question or "?", ctx, d)
+            user = seen[0]["messages"][1]["content"]
+            self.assertIn("notable: SUSPICIOUS ACCESS", user)
+            self.assertIn(question or "?", user)
 
 
 if __name__ == "__main__":
