@@ -1,9 +1,7 @@
 # Homing Pigeon Protocol
 
-The frozen description of protocol 1 is
-`docs/ietf/draft-homing-pigeon-00.md`. Examples in this file use
-`"v": 1`, which is the only value the runner accepts. Any other
-`"v"` is rejected. Replies are `"v": 1`.
+The protocol description can be found here:
+`docs/ietf/draft-homing-pigeon-00.md`
 
 ## 1. Actors
 
