@@ -1034,6 +1034,67 @@ class ToolRoundTest(unittest.TestCase):
         ans = self._out_of_time({"role": "assistant", "content": 3})
         self.assertEqual(ans.get("answer"), "3")
 
+    def test_an_unprintable_tool_argument_is_logged_as_unknown(self):
+        class Bad:
+            pass
+
+        real = R._parse_tool_calls
+        seen = {"n": 0}
+
+        def parse(msg):
+            seen["n"] += 1
+            if seen["n"] == 1:
+                return [("call-1", "list_dir", Bad())]
+            return real(msg)
+
+        with unittest.mock.patch("runner.runner._parse_tool_calls", parse), \
+                unittest.mock.patch(
+                    "runner.runner._run_oracle_tool", return_value="listed"):
+            ans, calls = self._ask([
+                _wire_call("list_dir", {"path": "."}),
+                {"role": "assistant", "content": "jobflag1 is the one."},
+            ])
+        self.assertEqual(ans.get("answer"), "jobflag1 is the one.")
+        self.assertIn("notable:", calls[0]["messages"][1]["content"])
+
+    def test_trimming_keeps_the_question_and_drops_the_oldest_tool(self):
+        fat = "x" * 8000
+        ans, seen = self._ask([
+            _wire_call("list_dir", {"path": "."}, "c1"),
+            _wire_call("read_file", {"path": "a"}, "c2"),
+            {"role": "assistant", "content": "jobflag1 is the one."},
+        ], tool_text=fat)
+        self.assertEqual(ans.get("answer"), "jobflag1 is the one.")
+        last = seen[-1]["messages"]
+        self.assertIn("notable:", last[1]["content"])
+        self.assertEqual(last[0]["role"], "system")
+        # The first tool pair is gone. The second result is still there.
+        blob = json.dumps(last)
+        self.assertNotIn('"c1"', blob)
+        self.assertIn("read_file", blob)
+
+    def test_trim_invariants(self):
+        import random
+        rng = random.Random(321)
+        question = {"role": "user", "content": "notable: SUSPICIOUS ACCESS"}
+        system = {"role": "system", "content": "rules"}
+        for _ in range(40):
+            pairs = []
+            for i in range(rng.randint(0, 6)):
+                pairs.append({"role": "assistant", "content": "c" * rng.randint(0, 9000)})
+                pairs.append({"role": "tool", "content": "t" * rng.randint(0, 9000)})
+            messages = [system, question] + pairs
+            got = R._agent_trim(messages)
+            self.assertEqual(got[:2], [system, question])
+            tail = got[2:]
+            self.assertEqual(len(tail) % 2, 0)
+            if len(tail) > 2:
+                self.assertLessEqual(
+                    R._agent_context_size(got),
+                    R._ORACLE_AGENT_CONTEXT_CHARS)
+        odd = [system, question, "nope", {"role": "tool", "content": 3}]
+        self.assertEqual(R._agent_trim(odd)[:2], [system, question])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
