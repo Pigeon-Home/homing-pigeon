@@ -24,9 +24,13 @@ protocol, not drift, and these tests pin that it KEEPS it -- the
 acting charter must never leak into the boundary prompt.
 """
 
+import json
+import os
+import sys
+import tempfile
 import unittest
 
-from runner.runner import ASK_AGENT_SYSTEM, ASK_SYSTEM
+from runner.runner import ASK_AGENT_SYSTEM, ASK_SYSTEM, ask_model_agent
 
 
 class AgentCharterTest(unittest.TestCase):
@@ -111,6 +115,94 @@ class BoundaryDoorTest(unittest.TestCase):
 
     def test_the_boundary_role_keeps_its_closing(self):
         self.assertIn("Stay inside this role for every reply", ASK_SYSTEM)
+
+
+class _FakeResp:
+    def __init__(self, message):
+        self._body = json.dumps(
+            {"choices": [{"message": message}]}).encode("utf-8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def read(self, n=-1):
+        return self._body
+
+
+def _opener(script):
+    state = {"i": 0}
+
+    def opener(req, timeout=60):
+        msg = script[min(state["i"], len(script) - 1)]
+        state["i"] += 1
+        return _FakeResp(msg)
+
+    return opener
+
+
+def _tool_msg(name, args):
+    return {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [{
+            "id": "call-1",
+            "type": "function",
+            "function": {"name": name, "arguments": json.dumps(args)},
+        }],
+    }
+
+
+class CharterActionSubstrateTest(unittest.TestCase):
+    """The deterministic substrate of the 2026-10-18 field probe
+    (hp-vmtest TESTLOG, charter probe): qwen2.5:3b under the
+    restored charter answered an action instruction with a run
+    tool call in round 1, and a write_file call whose artifact
+    was verified on disk. The live model's choices cannot be a
+    unit test; the loop that executes them can, and it is pinned
+    here in the same shapes the probe used."""
+
+    _CFG = {"endpoint": "http://127.0.0.1:11434/v1",
+            "model": "qwen2.5:3b"}
+
+    def test_action_instruction_executes_run(self):
+        with tempfile.TemporaryDirectory() as d:
+            marker = os.path.join(d, "marker.txt")
+            cmd = (f"{sys.executable} -c \""
+                   f"open({marker!r}, 'w').write('ran')\"")
+            script = [
+                _tool_msg("run", {"command": cmd}),
+                {"role": "assistant",
+                 "content": "Done: the marker was written."},
+            ]
+            ans = ask_model_agent(
+                self._CFG, "Create the marker file for me.", "", 2000,
+                opener=_opener(script), base_dir=d)
+            self.assertEqual(ans.get("tool_rounds"), 1)
+            with open(marker, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), "ran")
+            self.assertIn("marker", ans["answer"])
+
+    def test_action_instruction_write_file_creates_the_artifact(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = os.path.join(d, "charter-probe.txt")
+            script = [
+                _tool_msg("write_file",
+                          {"path": target, "content": "launched"}),
+                {"role": "assistant",
+                 "content": "The file has been created."},
+            ]
+            ans = ask_model_agent(
+                self._CFG,
+                "Create a file named charter-probe.txt containing "
+                "the word launched, and tell me when it is done.",
+                "", 2000, opener=_opener(script), base_dir=d)
+            self.assertEqual(ans.get("tool_rounds"), 1)
+            with open(target, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), "launched")
+            self.assertIn("created", ans["answer"])
 
 
 if __name__ == "__main__":
