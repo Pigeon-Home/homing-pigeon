@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.7.40 - 2026-10-18
 
 ### Features
 
