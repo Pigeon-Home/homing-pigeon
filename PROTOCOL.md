@@ -910,5 +910,5 @@ ship with each piece, not after.
 other value.*
 
 ### Agent Guide
-The python script to compose transport message: https://github.com/Pigeon-Home/homing-pigeon/blob/main/cloud/send_job.py
-Project context: https://github.com/Pigeon-Home/homing-pigeon/blob/main/AGENTS.md
+- The python script to compose transport message: https://github.com/Pigeon-Home/homing-pigeon/blob/main/cloud/send_job.py
+- Project context: https://github.com/Pigeon-Home/homing-pigeon/blob/main/AGENTS.md
