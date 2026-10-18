@@ -61,7 +61,6 @@ def _base_cfg(ext_root):
 class LocalFixture(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self._tmp.cleanup)
         self.base = os.path.join(self._tmp.name, "base")
         os.makedirs(self.base)
         self.ext_root = os.path.join(self._tmp.name, "exts")
@@ -73,6 +72,25 @@ class LocalFixture(unittest.TestCase):
         R._wake_gate_release()
         self.addCleanup(R._LOCAL_WAKE_LAST.clear)
         self.addCleanup(R._wake_gate_release)
+
+    def tearDown(self):
+        # A high alert starts the oracle-brief daemon, which still
+        # has the brief file open when the temp dir is removed.
+        # Windows then fails the test in cleanup (WinError 145)
+        # even though the assertions passed.
+        for th in threading.enumerate():
+            if th.name == "oracle-brief":
+                th.join(timeout=5)
+        last = None
+        for _ in range(20):
+            try:
+                self._tmp.cleanup()
+                return
+            except OSError as exc:
+                last = exc
+                time.sleep(0.05)
+        if last is not None:
+            raise last
 
     # -- helpers ------------------------------------------------------
     def drop(self, payload, secret):
