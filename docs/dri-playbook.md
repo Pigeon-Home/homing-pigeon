@@ -4,7 +4,7 @@
 > evaluates triggers every poll cycle (`maybe_page`), with per-trigger
 > cooldown and digest batching in `dri-state.json`. The only channel
 > the runner accepts is Telegram (`send_telegram`, Bot API over HTTPS).
-> Signal, WhatsApp, the dashboard ack, and the VR seat are not in the
+> Signal, WhatsApp, and the dashboard ack are not in the
 > runner. `dri.enabled` defaults to false. Nothing pages until the
 > owner turns it on and sets a bot token and chat id.
 
@@ -140,4 +140,3 @@ you, not in this repo. Template for when the time comes:
 
 The dashboard (v9) is not built. `--oracle` is a loopback chat, not
 a page history. Ack by reply keyword is the path that exists today.
-The VR seat is not in the runner and is not scheduled ahead of v9.

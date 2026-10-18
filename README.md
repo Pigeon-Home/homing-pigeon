@@ -519,7 +519,6 @@ End-to-end without your SI:
 - 2.0 = who signs (shipped)
 - 3.0 = what comes back — the Oracle: result policies, attestations, task dispatch, multi-secret, and the ask op (shipped as 3.0.0). The ask endpoint must be loopback or the op stays off.
 - v9 = watch the Oracle think — the loopback dashboard, and confidentiality for transport messages (spec in ORACLE_DASHBOARD.md, not started)
-- v9 = the VR Oracle — walk through your jobs in 3D (ahead of schedule, expected before the other v9)
 
 Product and protocol versions are separate numbers: the product is
 at 3.7.x; the wire protocol implemented is v2, with PROTOCOL.md
