@@ -14,13 +14,20 @@ Ideas...
 
 ## Before a job runs
 
-- A approval-only req user to say yes before the job runs: `docs/approval-gate-design.md`
-- User can discuss job with Oracle and modifications could be made or suggested with minor addition to proto field
-- Also, the job can be run, but since the oracle has local knowledge and context, could give the runner a suggestion
-- to file in it's return, or there could be a job "help me, local agent" mode, where modifications are permitted.
-- agents have a hard time knowing what env they are in, what tools are the system, etc.
-- an oracle could have a mode or option where it always includes full platform meta information to the runner
-- to tack on to all responses.
+- An approval gate: the owner says yes before the job runs.
+  `docs/approval-gate-design.md`
+- A discussion with the Oracle before the job runs. The Oracle
+  can suggest a change, or apply one. A small protocol field
+  carries the suggestion or the revised job. Nothing else in
+  the message changes.
+- The job still runs as sent. The Oracle has local context the
+  sender does not, and files a suggestion on the result. Or a
+  "help me, local agent" job kind, where the Oracle is allowed
+  to modify the job before it runs.
+- A remote agent rarely knows the box: the OS, the tools on
+  PATH, the versions, what is installed. An Oracle option
+  attaches full platform metadata to every result, so the
+  sender stops guessing.
 
 ## Who signs
 
