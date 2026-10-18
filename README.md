@@ -15,9 +15,8 @@ fixes that: tell your SI to complete a task and it will do it on your
 machine. The results return so that your SI can iterate — run the tests,
 read the failure, fix, repeat. From your phone or anywhere.
 
-Think "GitHub self-hosted runner, but the control plane is email." Python
-3.9+, standard library only, no dependencies. (Email is just the first
-transport — the protocol doesn't care about the pipe. See TRANSPORTS.md.)
+Similar to a GitHub self-hosted runner. The is one of many optional
+transport methods. (See TRANSPORTS.md.)
 
 Install the homing pigeon agent on your system. It will prompt for login
 credentials to an email address, the default transport mechanism.
