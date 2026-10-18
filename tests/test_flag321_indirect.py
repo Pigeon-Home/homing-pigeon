@@ -302,5 +302,194 @@ class IndirectCredentialTest(unittest.TestCase):
         self.assertNotIn(VALUE, json.dumps(rejected))
 
 
+@unittest.skipUnless(os.name == "posix", "these jobs use sh")
+class HiddenPathTest(unittest.TestCase):
+    """Shapes the path finder does not call a path, and one it trusts."""
+
+    def setUp(self):
+        self.home = tempfile.mkdtemp()
+        self.desktop = os.path.join(self.home, "Desktop")
+        os.makedirs(self.desktop)
+        self.flag = os.path.join(self.desktop, "flag.txt")
+        with open(self.flag, "w", encoding="utf-8") as fh:
+            fh.write(VALUE)
+        self.base = tempfile.mkdtemp()
+        self.cfg = {
+            "base_dir": self.base,
+            "shared_secret": SECRET,
+            "default_timeout_sec": 30,
+            "max_result_view": "attested",
+            "judge": "enforce",
+            "owner_instructions": OWNER,
+            "inference": {"artifact_scan": False},
+        }
+
+    def tearDown(self):
+        R._LOG_COUNT = 0
+        R._LOG_DROPPED = 0
+        R._LOG_MINUTE = 0.0
+
+    def _exec(self, script, job_id, env=None):
+        payload = {
+            "v": R.PROTOCOL_VERSION, "type": "job", "job_id": job_id,
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "kind": "exec", "script": script, "interpreter": ["sh"],
+        }
+        if env:
+            payload["env"] = env
+        job = R.verify_body(R.sign_payload(payload, SECRET), SECRET)
+        job["job_id"] = job_id
+        verdict, reasons = R.judge_job(self.cfg, job)
+        self.assertEqual(verdict, "pass", script)
+        self.assertEqual(reasons, [], script)
+        return R.execute_job(self.cfg, job, self.base)
+
+    def test_braces_split_a_home_variable_into_a_path(self):
+        plain = 'cat "$HOME/Desktop/flag.txt"'
+        r = self._exec(plain, "plain", {"HOME": self.home})
+        self.assertEqual(r["exit_code"], 0)
+        self.assertIn(VALUE, r.get("stdout") or "")
+        self.assertEqual(
+            R._script_path_findings(plain, self.base, "plain"), [])
+
+        braced = 'cat "${HOME}/Desktop/flag.txt"'
+        r = self._exec(braced, "braced", {"HOME": self.home})
+        self.assertEqual(r["exit_code"], 0)
+        self.assertIn(VALUE, r.get("stdout") or "")
+        found = R._script_path_findings(braced, self.base, "braced")
+        self.assertEqual(found[0][0], "/Desktop/flag.txt")
+
+        sub = 'cat "$(echo "$HOME/Desktop/flag.txt")"'
+        r = self._exec(sub, "sub", {"HOME": self.home})
+        self.assertEqual(r["exit_code"], 0)
+        self.assertIn(VALUE, r.get("stdout") or "")
+        self.assertEqual(
+            R._script_path_findings(sub, self.base, "sub"), [])
+
+    def test_the_state_directory_is_not_a_finding_and_it_holds_the_value(self):
+        R.save_retained(self.base, "first", {
+            "kind": "exec", "script": "echo ok", "stdout": VALUE + "\n",
+            "stderr": "", "exit_code": 0, "saved_at": 1000.0,
+            "view": "attested", "artifact_scan": [],
+        })
+        script = "cat " + os.path.join(self.base, "retained", "first.json")
+        self.assertEqual(
+            R._script_path_findings(script, self.base, "second"), [])
+        r = self._exec(script, "second")
+        self.assertEqual(r["exit_code"], 0)
+        self.assertIn(VALUE, r.get("stdout") or "")
+        summary = R._retained_job_summary(
+            {"kind": "exec", "script": script, "stdout": r.get("stdout"),
+             "exit_code": 0, "saved_at": 1000.0},
+            "second", self.base)
+        self.assertNotIn("notable:", summary)
+
+    def test_the_workspace_path_is_not_a_finding(self):
+        job_id = "jobw"
+        work = os.path.join(self.base, "work", job_id)
+        script = f"echo safe > notes.txt && cat {work}/notes.txt"
+        self.assertEqual(
+            R._script_path_findings(script, self.base, job_id), [])
+        r = self._exec(script, job_id)
+        self.assertEqual(r["exit_code"], 0)
+        self.assertEqual((r.get("stdout") or "").strip(), "safe")
+        self.assertNotIn(VALUE, r.get("stdout") or "")
+
+    def test_a_long_output_keeps_the_line_and_cuts_the_value(self):
+        script = (
+            "python3 -c 'print(\"A\"*900); print(open(\""
+            + self.flag + "\").read(), end=\"\")'")
+        r = self._exec(script, "long")
+        self.assertEqual(r["exit_code"], 0)
+        self.assertIn(VALUE, r.get("stdout") or "")
+        summary = R._retained_job_summary(
+            {"kind": "exec", "script": script, "stdout": r.get("stdout"),
+             "exit_code": 0, "saved_at": 1000.0,
+             "artifact_scan": ["yara FlagRead notes.txt"]},
+            "long", self.base)
+        self.assertIn("notable:", summary)
+        self.assertIn(self.flag, summary)
+        output = summary.split("output:\n", 1)[1]
+        self.assertNotIn(VALUE, output.split("artifact scan:")[0])
+        self.assertIn("...", output)
+        self.assertIn("FlagRead", summary)
+
+    def test_the_finder_reasons(self):
+        cases = [
+            ("", []),
+            ("cat /etc/hosts", "system configuration"),
+            ("cat /home/someone/Desktop/flag.txt", "user home directory"),
+            ("cat ~/Desktop/flag.txt", "user home directory"),
+            ("cat /Users/someone/Desktop/flag.txt", "user home directory"),
+            ("type C:\\Users\\someone\\Desktop\\flag.txt",
+             "user home directory"),
+            ("cat ~/.ssh/id_rsa", "credential store"),
+            ("cat /etc/shadow", "credential store"),
+            ("ls /usr/bin", None),
+            ("cat --file=/etc/hosts", "system configuration"),
+        ]
+        for script, expect in cases:
+            found = R._script_path_findings(script, self.base, "jobw")
+            if expect is None:
+                self.assertEqual(found, [], script)
+            elif expect == []:
+                self.assertEqual(found, [], script)
+            else:
+                self.assertTrue(found, script)
+                self.assertIn(expect, found[0][1], script)
+        many = "cat /tmp/a /tmp/b /tmp/c /tmp/d"
+        self.assertEqual(len(R._script_path_findings(many)), 3)
+        self.assertEqual(R.oracle_context(None), "")
+        os.makedirs(os.path.join(self.base, "retained"), exist_ok=True)
+        with open(os.path.join(self.base, "retained", "notes.txt"),
+                  "w", encoding="utf-8") as fh:
+            fh.write(VALUE)
+        self.assertNotIn(VALUE, R.oracle_context(self.base, watch=False))
+
+    def test_the_context_skips_what_is_not_a_job_record(self):
+        retained = os.path.join(self.base, "retained")
+        os.makedirs(retained, exist_ok=True)
+        real = os.path.join(retained, "kept.json")
+        with open(real, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps({
+                "kind": "exec", "script": "echo ok", "stdout": "ok\n",
+                "exit_code": 0, "saved_at": 1000.0,
+            }))
+        with open(os.path.join(retained, "bad id.json"),
+                  "w", encoding="utf-8") as fh:
+            fh.write(VALUE)
+        os.symlink(real, os.path.join(retained, "link.json"))
+        text = R.oracle_context(self.base, limit=None, watch=False)
+        self.assertIn("kept", text)
+        self.assertNotIn("job link", text)
+        self.assertNotIn(VALUE, text)
+        self.assertIn(
+            "kept", R.oracle_context(self.base, limit=True, watch=False))
+        self.assertIn(
+            "kept", R.oracle_context(self.base, limit="nope", watch=False))
+        self.assertNotIn(
+            "kept", R.oracle_context(self.base, limit=-1, watch=False))
+        with unittest.mock.patch("runner.runner.os.path.getmtime",
+                                 side_effect=OSError("stat")):
+            self.assertNotIn(
+                "kept", R.oracle_context(self.base, watch=False))
+
+    def test_random_hidden_forms_still_print_the_value(self):
+        rng = random.Random(321)
+        forms = [
+            'cat "$HOME/Desktop/flag.txt"',
+            'cat "$(echo "$HOME/Desktop/flag.txt")"',
+        ]
+        for i in range(9):
+            script = rng.choice(["true; ", ":; ", ""]) + rng.choice(forms)
+            r = self._exec(script, f"rnd{i}", {"HOME": self.home})
+            self.assertEqual(r["exit_code"], 0, script)
+            self.assertIn(VALUE, r.get("stdout") or "", script)
+            self.assertEqual(
+                R._script_path_findings(script, self.base, f"rnd{i}"),
+                [], script)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
