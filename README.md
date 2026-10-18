@@ -109,7 +109,9 @@ part that writes the next attempt.
 
 ## The Oracle: answers, not output
 
-The **Oracle** is a black box the SI can question but never inspect.
+The **Oracle** is a black box the SI questions rather than inspects:
+it answers with signed attestations about the output, and hands over
+raw output only as far as the owner's view ceiling allows.
 
 The SI asks "did the tests pass?" or "does the output contain secrets?"
 and gets back HMAC-signed *attestations*: proofs about the output that
