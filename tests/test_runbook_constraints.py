@@ -78,8 +78,11 @@ class BudgetRunnerTest(unittest.TestCase):
         self.assertEqual(_query_limit({"max_queries_per_hour": "nope"}), -1)
         self.assertFalse(check_rate_limit(
             "k", {"max_queries_per_hour": "nope"}))
-        # JSON true is the integer 1, not unlimited. false is unlimited.
-        self.assertEqual(_query_limit({"max_queries_per_hour": True}), 1)
+        # JSON true is not a number: like any unreadable cap it reads
+        # as -1 (refuse), never as unlimited. false is unlimited.
+        self.assertEqual(_query_limit({"max_queries_per_hour": True}), -1)
+        self.assertFalse(check_rate_limit(
+            "k", {"max_queries_per_hour": True}))
         self.assertEqual(_query_limit({"max_queries_per_hour": False}), 0)
 
 
