@@ -569,4 +569,4 @@ Sigstore build provenance. The suite is
 
 - GitLab: https://gitlab.com/pigeon-home/homing-pigeon
 - SourceForge: https://sourceforge.net/projects/homing-pigeon/
-- [xkcd 568](https://xkcd.com/568/): "You'll never find a programming language that frees you from the burden of clarifying your ideas." Exception: unless the programming language is English, and we have SI. (irritatively long context paragraph required)
+- Randall Munroe: [xkcd 568](https://xkcd.com/568/) "You'll never find a programming language that frees you from the burden of clarifying your ideas." Exception: unless the programming language is English, and we have SI. (irritatively long context paragraph required)
