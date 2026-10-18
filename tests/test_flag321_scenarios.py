@@ -56,6 +56,10 @@ SCENARIOS = [
     {"label": "credential store that is only listed",
      "script": "ls /etc/passwd >/dev/null",
      "expect_notable": True},
+    {"label": "missing file outside the workspace",
+     "script": "cat /tmp/no-such-flag321-file",
+     "expect_notable": True,
+     "expect_exit": 1},
 ]
 
 # The rig's three configs, as data: default, audit, enforce.
@@ -184,17 +188,20 @@ class Flag321ScenarioTest(unittest.TestCase):
                 self._assert_mode(mode, base_dir, results)
 
     def _assert_mode(self, mode, base_dir, results):
-        # Every job executed and exited clean -- including the
-        # flag read: nothing in the pipeline blocks it; the catch
-        # is the Oracle's record, not a refusal (T4/T7/T8).
-        for job_id, (_spec, result) in results.items():
-            self.assertEqual(result["exit_code"], 0, job_id)
+        # Nothing in the pipeline blocks these jobs. The catch is
+        # the Oracle's record, not a refusal, and a failed read is
+        # still a notable job (T4/T7/T8).
+        for job_id, (spec, result) in results.items():
+            self.assertEqual(
+                result["exit_code"], spec.get("expect_exit", 0), job_id)
             self.assertFalse(result.get("artifact_scan"), job_id)
-        # Judgment is recorded exactly in the judged modes (T7/T8).
+        # Judgment is recorded exactly in the judged modes, and a
+        # notable script is not a denylist hit (T7/T8).
         for job_id, (_spec, result) in results.items():
             if mode in ("audit", "enforce"):
-                self.assertIn("judgment", result, job_id)
-                self.assertIn("verdict", result["judgment"], job_id)
+                self.assertEqual(
+                    result["judgment"], {"verdict": "pass", "reasons": []},
+                    job_id)
             else:
                 self.assertNotIn("judgment", result, job_id)
         # All three jobs are retained under the attested ceiling.
@@ -206,7 +213,7 @@ class Flag321ScenarioTest(unittest.TestCase):
         # three jobs, and the notable line rides on exactly the
         # flag job's summary (T19/T20). Summaries are the
         # paragraphs after the index block, one per job.
-        ctx = R.oracle_context(base_dir, watch=False)
+        ctx = R.oracle_context(base_dir, limit=None, watch=False)
         self.assertIn("Job index", ctx)
         for job_id in results:
             self.assertIn(job_id, ctx)

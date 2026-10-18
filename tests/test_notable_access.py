@@ -476,5 +476,42 @@ class MarkerFuzzTest(unittest.TestCase):
         self.assertNotIn("home", got[0][1])
 
 
+class BoundaryTest(unittest.TestCase):
+    def test_path_past_the_script_cut_still_flags(self):
+        script = ("echo " + ("a" * 400) + " && cat /etc/shadow")
+        s = R._retained_job_summary(_record(script), "jobx", BASE)
+        self.assertIn("notable:", s)
+        self.assertIn("/etc/shadow", s)
+        shown = s.split("script: ", 1)[1].split("\n", 1)[0]
+        self.assertEqual(len(shown), 400)
+        self.assertNotIn("/etc/shadow", shown)
+
+    def test_three_findings_are_joined_on_the_line(self):
+        script = "cat /tmp/a /etc/shadow /home/u/Desktop/flag.txt"
+        s = R._retained_job_summary(_record(script), "jobx", BASE)
+        self.assertIn(
+            "/tmp/a (a file outside the job's own workspace); "
+            "/etc/shadow (a credential store or key material); "
+            "/home/u/Desktop/flag.txt (a file under a user home "
+            "directory, outside the job's own workspace)", s)
+
+    def test_trailing_slash_on_the_state_dir_still_excludes_it(self):
+        self.assertEqual(
+            R._script_path_findings(
+                f"cat {BASE}/config.json", BASE + "/", "jobx"), [])
+
+    def test_path_buried_in_a_long_script_is_found(self):
+        import random
+        rng = random.Random(321)
+        path = "/etc/shadow"
+        for _ in range(120):
+            pad = "a" * rng.randint(0, 500)
+            script = pad + " " + path + " " + pad
+            got = findings(script)
+            self.assertEqual(len(got), 1, script[:40])
+            self.assertEqual(got[0][0], path)
+            self.assertIn("credential", got[0][1])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

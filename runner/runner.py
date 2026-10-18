@@ -6952,8 +6952,6 @@ def _script_path_findings(script, base_dir=None, job_id=None):
             continue
         else:
             reason = "a file outside the job's own workspace"
-        if reason is None:
-            continue
         if token in seen:
             continue
         seen.add(token)
