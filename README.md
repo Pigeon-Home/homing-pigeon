@@ -20,6 +20,15 @@ transport — the protocol doesn't care about the pipe. See TRANSPORTS.md.)
 > throwaway account on a machine you can afford to lose, and read
 > PROTOCOL.md before you deploy it.
 
+Try this prompt, it should return in less than a minute.
+
+```
+Send an email to YOUR_RUNNER_EMAIL@gmail.com
+Use this protocol: https://github.com/Pigeon-Home/homing-pigeon/blob/main/PROTOCOL.md
+The shared secret for authentication in the protocol is "YOUR_SECRET_STRING"
+Execute a job which obtains the value of the system clock and show me the value here.
+```
+
 ## What this is for
 
 Homing Pigeon is a personal remote-development agent. The point is not
