@@ -43,6 +43,8 @@ def _read_entries(base_dir):
         return entries
     for name in (_security.AUDIT_FILE, _security.AUDIT_ROLLED_FILE):
         path = os.path.join(base_dir, name)
+        if os.path.islink(path):
+            continue
         try:
             with open(path, encoding="utf-8") as fh:
                 for line in fh:
@@ -142,6 +144,9 @@ def build_fragments(per_key):
 
 
 def _read_counts(base_dir):
+    path = os.path.join(base_dir, "security-audit-counts.json")
+    if os.path.islink(path):
+        return {}
     try:
         with open(os.path.join(base_dir, "security-audit-counts.json"),
                   encoding="utf-8") as fh:
