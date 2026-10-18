@@ -86,3 +86,28 @@ class PageWindowTest(unittest.TestCase):
         self.assertIn("function fit(text)", page)
         self.assertIn("oracle-chat.jsonl", page)
         self.assertIn("trimLog();", page)
+
+
+class OraclePageScriptTest(unittest.TestCase):
+    """The page script must parse. A raw newline inside a JS string
+    used to make the whole script a SyntaxError, so the send handler
+    never attached and pressing Send did nothing.
+    """
+
+    def test_oracle_page_script_parses(self):
+        import subprocess
+        from runner.runner import oracle_page
+        page = oracle_page("tok", "m", True)
+        start = page.find("<script>")
+        end = page.find("</script>")
+        self.assertGreater(start, 0)
+        self.assertGreater(end, start)
+        js = page[start + 8:end]
+        # Must not contain a raw newline inside a double-quoted string
+        # that would break the parser. node --check is the authority.
+        r = subprocess.run(
+            ["node", "--check", "-"],
+            input=js.encode(),
+            capture_output=True,
+        )
+        self.assertEqual(r.returncode, 0, r.stderr.decode())
