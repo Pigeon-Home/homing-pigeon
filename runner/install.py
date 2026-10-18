@@ -1213,7 +1213,20 @@ BUILTIN_PROFILES = {
 }
 
 
-DEFAULT_INFERENCE_MODEL = "llama3.2:3b"
+# The project default, set by the full eval battery (2026-10-18,
+# hp-vmtest EVAL.md) under the owner's ranking: a clean catch
+# with no invention first, then history/detail accuracy, then
+# latency. qwen3:1.7b was one of only two models with two clean
+# catches and no invented findings (the other, hermes3:8b,
+# failed history and needs 8B-class RAM), and the only one of
+# the two that also passed history and detail. llama3.2:3b, the
+# previous default, stays the most reliable answerer but
+# transplants the notable line onto the benign job under two of
+# three phrasings -- an invention, which the ranking gates out.
+# The known cost: qwen3 thinks before answering, and a thinking
+# runaway can eat the per-question timeout; the catch ranking
+# was bought with that latency on purpose.
+DEFAULT_INFERENCE_MODEL = "qwen3:1.7b"
 
 # --faster's model. qwen2.5:1.5b held this slot first: it follows
 # format instructions far better than llama3.2:1b (which echoed the
@@ -1235,7 +1248,7 @@ def inference_model_for(profile, explicit=None, faster=False) -> str:
     FASTER_INFERENCE_MODEL (qwen2.5:3b). Otherwise the
     raspberry-pi-home profile, whether detected or passed with
     --profile, pulls its lighter Llama, and every other install
-    keeps the 3B default.
+    keeps the project default.
     """
     if isinstance(explicit, str) and explicit.strip():
         return explicit.strip()
@@ -1641,7 +1654,7 @@ def main() -> int:
                     help="do not apply any deployment profile")
     ap.add_argument("--inference-model", default=None,
                     help="Ollama model to pull when inference is enabled "
-                         "(default llama3.2:3b, qwen2.5:3b with "
+                         "(default qwen3:1.7b, qwen2.5:3b with "
                          "--faster, llama3.2:1b with the "
                          "raspberry-pi-home profile)")
     ap.add_argument("--faster", action="store_true",

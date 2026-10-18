@@ -19,6 +19,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "runner"))
 
 from install import (  # noqa: E402
+    DEFAULT_INFERENCE_MODEL,
     apply_profile,
     chosen_profile,
     daemon_popen_kwargs,
@@ -82,12 +83,23 @@ class ProfileSelectionTest(unittest.TestCase):
         with mock.patch("builtins.open", side_effect=open_other):
             self.assertEqual(detect_default_profile(), "password-only")
 
+    def test_project_default_is_the_battery_winner(self):
+        # The default is a measured choice, not a habit: the full
+        # eval battery (2026-10-18, hp-vmtest EVAL.md) under the
+        # owner's ranking -- clean catch with no invention first,
+        # then history/detail, then latency -- put qwen3:1.7b in
+        # this slot (two clean catches, no invented findings,
+        # history and detail passed). If this pin ever needs to
+        # change, the battery that justifies the new value should
+        # exist first.
+        self.assertEqual(DEFAULT_INFERENCE_MODEL, "qwen3:1.7b")
+
     def test_pi_profile_pulls_the_lighter_llama(self):
         self.assertEqual(inference_model_for("raspberry-pi-home", None),
                          "llama3.2:1b")
         self.assertEqual(inference_model_for("password-only", None),
-                         "llama3.2:3b")
-        self.assertEqual(inference_model_for(None, None), "llama3.2:3b")
+                         "qwen3:1.7b")
+        self.assertEqual(inference_model_for(None, None), "qwen3:1.7b")
         self.assertEqual(inference_model_for("password-only", None, faster=True),
                          "qwen2.5:3b")
         self.assertEqual(inference_model_for(None, "llama3.2:3b", faster=True),

@@ -140,7 +140,7 @@ edit `config.json` (add your mailbox address + app password) instead, then send
 the clock check below.
 
 The installer also sets up the Oracle's local model: it installs
-Ollama and pulls a small Llama, then points `config.json` at it, so
+Ollama and pulls a small local model, then points `config.json` at it, so
 the `--oracle` chat answers on the box with nothing leaving it. If
 that step doesn't finish (it downloads a couple of gigabytes), the
 Oracle chat says so and tells you how to fix it — re-running
@@ -150,7 +150,7 @@ setup, leaving the rest of your install alone. Pass
 
 ## 4. The full walkthrough
 
-By default the installer also sets up local inference for the Oracle `ask` op: it installs Ollama (if missing) and pulls a model (`llama3.2:3b` by default). A Raspberry Pi install, detected automatically or selected with `--profile raspberry-pi-home`, pulls the lighter `llama3.2:1b` instead. `--faster` pulls `qwen2.5:3b`, a smaller faster model, on any machine. Pass `--inference-model` to choose a tag yourself, or `--no-inference` to skip the model entirely. The runner itself never bundles the model; Ollama runs separately on loopback. `homing-pigeon --faster` uses `qwen2.5:3b` for that process only and leaves `config.json` unchanged.
+By default the installer also sets up local inference for the Oracle `ask` op: it installs Ollama (if missing) and pulls a model (`qwen3:1.7b` by default). A Raspberry Pi install, detected automatically or selected with `--profile raspberry-pi-home`, pulls the lighter `llama3.2:1b` instead. `--faster` pulls `qwen2.5:3b`, a smaller faster model, on any machine. Pass `--inference-model` to choose a tag yourself, or `--no-inference` to skip the model entirely. The runner itself never bundles the model; Ollama runs separately on loopback. `homing-pigeon --faster` uses `qwen2.5:3b` for that process only and leaves `config.json` unchanged.
 
 **Easiest: download a release.** No Python needed — each release ships
 standalone binaries built by GitHub Actions:

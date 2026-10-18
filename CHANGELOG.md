@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Oracle
+
+- The default inference model is now `qwen3:1.7b` (was
+  `llama3.2:3b`), chosen by the full model eval battery under
+  the project's ranking -- a clean catch with no invented
+  findings first, then history and detail accuracy, then
+  latency. It was one of only two models with two clean
+  catches and no invention, and the only one of the two that
+  also passed history and detail. `--faster` still pulls
+  `qwen2.5:3b`; the Raspberry Pi profile still pulls
+  `llama3.2:1b`; `--inference-model` still wins over both.
+
 ## 3.7.33 - 2026-10-18
 
 ### CI
