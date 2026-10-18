@@ -113,9 +113,11 @@ The **Oracle** is a black box the SI can question but never inspect.
 
 The SI asks "did the tests pass?" or "does the output contain secrets?"
 and gets back HMAC-signed *attestations*: proofs about the output that
-reveal nothing else. It's the zero-knowledge shape applied at the trust
-boundary — prove things about your data without showing your data. The
-raw output never leaves your disk.
+reveal nothing else. It's the interactive-proof shape applied at the
+trust boundary — prove things about your data without showing your
+data — without any zero-knowledge proving machinery: the attestation
+is an HMAC, and the runner itself is trusted. The raw output never
+leaves your disk.
 
 ```
   Cloud SI                                Your machine
