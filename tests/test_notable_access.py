@@ -2676,5 +2676,154 @@ class OracleToolTest(unittest.TestCase):
                 "run", {"command": "echo hi"}, self.base))
 
 
+class RetentionWindowTest(unittest.TestCase):
+    """Pruning uses the file's age. The notable line uses saved_at. They differ."""
+
+    def _base(self):
+        base = tempfile.mkdtemp()
+        os.makedirs(os.path.join(base, "retained"))
+        R.save_retained(base, "jobflag1",
+                        _record(FLAG, stdout=_KEY + "\n"))
+        return base
+
+    def test_a_fresh_file_with_an_old_stamp_is_kept(self):
+        base = self._base()
+        data = R.load_retained(base, "jobflag1")
+        self.assertTrue(R.retained_expired(data, {}))
+        self.assertEqual(R.prune_retained(base, 7), 0)
+        text = R.oracle_context(base, watch=False)
+        self.assertIn("notable:", text)
+        self.assertIn(_KEY, text)
+
+    def test_an_old_file_is_deleted_and_the_line_goes_with_it(self):
+        base = self._base()
+        path = os.path.join(base, "retained", "jobflag1.json")
+        old = time.time() - 10 * 86400
+        os.utime(path, (old, old))
+        fresh = os.path.join(base, "retained", "jobkeep.json")
+        with open(fresh, "w", encoding="utf-8") as fh:
+            fh.write("{}")
+        self.assertEqual(R.prune_retained(base, 7), 1)
+        self.assertFalse(os.path.exists(path))
+        self.assertTrue(os.path.exists(fresh))
+        text = R.oracle_context(base, watch=False)
+        self.assertNotIn("notable:", text)
+        self.assertNotIn(_KEY, text)
+
+    def test_a_bad_window_deletes_nothing(self):
+        base = self._base()
+        for days in (0, -1, "nope", None, True):
+            self.assertEqual(R.prune_retained(base, days), 0, days)
+        self.assertEqual(R.prune_retained(None, 7), 0)
+        self.assertEqual(R.prune_retained(base + "-missing", 7), 0)
+        self.assertIsNotNone(R.load_retained(base, "jobflag1"))
+
+    def test_a_file_that_cannot_be_removed_is_skipped(self):
+        base = self._base()
+        path = os.path.join(base, "retained", "jobflag1.json")
+        old = time.time() - 10 * 86400
+        os.utime(path, (old, old))
+        with unittest.mock.patch("runner.runner.os.remove",
+                                 side_effect=OSError("busy")):
+            self.assertEqual(R.prune_retained(base, 7), 0)
+        self.assertTrue(os.path.exists(path))
+        self.assertIn("notable:", R.oracle_context(base, watch=False))
+
+    def test_the_query_cap(self):
+        path = os.path.join(tempfile.mkdtemp(), "queries.json")
+        cfg = {"max_queries_per_hour": 2}
+        self.assertTrue(R.check_rate_limit("owner", cfg, path))
+        self.assertTrue(R.check_rate_limit("owner", cfg, path))
+        self.assertFalse(R.check_rate_limit("owner", cfg, path))
+        self.assertTrue(R.check_rate_limit("other", cfg, path))
+        status = R.budget_status(path, cfg)
+        by_key = {row["key_id"]: row["spent"] for row in status}
+        self.assertEqual(by_key["owner"], 2)
+        self.assertEqual(by_key["other"], 1)
+        self.assertTrue(R.check_rate_limit("owner", {}, path + "-new"))
+        self.assertFalse(R.check_rate_limit(
+            "owner", {"max_queries_per_hour": "many"}, path + "-bad"))
+        self.assertFalse(R.check_rate_limit(
+            "owner", {"max_queries_per_hour": True}, path + "-bool"))
+        self.assertEqual(R.budget_status("", {}), [])
+
+    def test_a_symlink_store_is_not_followed(self):
+        d = tempfile.mkdtemp()
+        target = os.path.join(d, "real.json")
+        with open(target, "w", encoding="utf-8") as fh:
+            fh.write('{"owner": [1]}')
+        link = os.path.join(d, "queries.json")
+        os.symlink(target, link)
+        self.assertEqual(R._read_query_store(link), {})
+        self.assertTrue(R.check_rate_limit(
+            "owner", {"max_queries_per_hour": 2}, link))
+        with open(target, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), '{"owner": [1]}')
+
+    def test_random_caps(self):
+        import random
+        rng = random.Random(321)
+        for _ in range(20):
+            limit = rng.choice([0, 1, 2, 5, "nope", True, None])
+            path = os.path.join(tempfile.mkdtemp(), "q.json")
+            cfg = {"max_queries_per_hour": limit}
+            allowed = 0
+            for _ in range(4):
+                if R.check_rate_limit("k", cfg, path):
+                    allowed += 1
+            if limit is None or limit == 0:
+                self.assertEqual(allowed, 4)
+            elif limit is True or limit == "nope":
+                self.assertEqual(allowed, 0)
+            else:
+                self.assertEqual(allowed, min(4, limit))
+
+    def test_broken_stores(self):
+        self.assertEqual(R._read_query_store(""), {})
+        self.assertEqual(R._read_query_store(None), {})
+        bad = os.path.join(tempfile.mkdtemp(), "bad.json")
+        with open(bad, "w", encoding="utf-8") as fh:
+            fh.write("{")
+        self.assertEqual(R._read_query_store(bad), {})
+        with open(bad, "w", encoding="utf-8") as fh:
+            fh.write("[]")
+        self.assertEqual(R._read_query_store(bad), {})
+        now = time.time()
+        self.assertEqual(R._live_times("nope", now), [])
+        live = R._live_times(["nope", now, 0], now)
+        self.assertEqual(len(live), 1)
+        R._write_json("", {"a": 1})
+        path = os.path.join(tempfile.mkdtemp(), "q.json")
+        with unittest.mock.patch("runner.runner.json.dump",
+                                 side_effect=ValueError("no")):
+            R._write_json(path, {"a": 1})
+        self.assertFalse(os.path.exists(path))
+        saved = dict(R._QUERY_TIMES)
+        try:
+            R._QUERY_TIMES = []
+            self.assertTrue(R.check_rate_limit(
+                5, {"max_queries_per_hour": 3}, None))
+            R._QUERY_TIMES = {"k": ["nope", time.time()]}
+            self.assertTrue(R.check_rate_limit(
+                "k", {"max_queries_per_hour": 3}, None))
+        finally:
+            R._QUERY_TIMES = saved
+        path = os.path.join(tempfile.mkdtemp(), "chmod.json")
+        with unittest.mock.patch("runner.runner.os.chmod",
+                                 side_effect=OSError("mode")):
+            R._write_json(path, {"a": 1})
+        self.assertTrue(os.path.exists(path))
+        with unittest.mock.patch("runner.runner.os.fdopen",
+                                 side_effect=OSError("fd")), \
+                unittest.mock.patch("runner.runner.os.close",
+                                    side_effect=OSError("close")):
+            R._write_json(os.path.join(tempfile.mkdtemp(), "no.json"),
+                          {"a": 1})
+        with unittest.mock.patch("runner.runner.os.unlink",
+                                 side_effect=OSError("unlink")):
+            R._write_json(os.path.join(tempfile.mkdtemp(), "no2.json"),
+                          {"a": 1})
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
