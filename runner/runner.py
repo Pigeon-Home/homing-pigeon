@@ -7218,7 +7218,7 @@ def oracle_page(token: str, model: str, ready: bool) -> str:
   nothing leaves it.</p>
   <div id="log"></div>
   <form id="f">
-    <textarea id="q" rows="2" autofocus placeholder="Ask what it thinks is going on">Give me a summary of the job status of what you found on this system.</textarea>
+    <textarea id="q" rows="2" autofocus placeholder="Ask what it thinks is going on — e.g. Give me a summary of the job status of what you found on this system."></textarea>
     <button id="send" type="submit">Send</button>
   </form>
 </main>

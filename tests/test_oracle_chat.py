@@ -2,6 +2,7 @@
 """Loopback Oracle chat. No browser, no live model."""
 import json
 import os
+import re
 import sys
 import tempfile
 import threading
@@ -611,12 +612,20 @@ class OracleAgentTest(unittest.TestCase):
         self.assertEqual(text.count('PROTOCOL.md;pigeon-docs'), 1)
         self.assertEqual(text.count('PROTOCOL.md:pigeon-docs'), 2)
 
-    def test_oracle_page_prefills_job_summary_prompt(self):
+    def test_oracle_page_starts_with_an_empty_box(self):
+        # The example question is a placeholder hint, never content.
+        # A prefilled box impersonates an already-asked question:
+        # in the field (2026-10-18) the page was re-served after a
+        # restart still wearing the example text, and the operator
+        # waited on an ask that had never been sent.
         page = oracle_page("tok", "llama3.2:3b", True)
+        m = re.search(r'<textarea id="q"[^>]*>(.*?)</textarea>',
+                      page, re.S)
+        self.assertIsNotNone(m)
+        self.assertEqual("", m.group(1))
         self.assertIn(
             "Give me a summary of the job status of what you found "
-            "on this system.",
-            page)
+            "on this system.", page)
 
     def test_oracle_page_describes_oracle_role(self):
         page = oracle_page("tok", "llama3.2:3b", True)
