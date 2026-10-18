@@ -660,16 +660,19 @@ class _ModelResp:
 class HandedToTheModelTest(unittest.TestCase):
     """The notable line is in the message the model actually receives."""
 
-    def _ask(self, question, ctx, base):
+    def _ask(self, question, ctx, base, replies=("noted",), max_chars=2000):
         seen = []
+        script = list(replies)
 
         def opener(req, timeout=60):
             seen.append(json.loads(req.data.decode("utf-8")))
-            return _ModelResp({"role": "assistant", "content": "noted"})
+            msg = script.pop(0) if script else replies[-1]
+            return _ModelResp({"role": "assistant", "content": msg})
 
         ans = R.ask_model_agent(
-            {"endpoint": "http://127.0.0.1:11434/v1", "model": "m"},
-            question, ctx, 2000, opener=opener, base_dir=base)
+            {"endpoint": "http://127.0.0.1:11434/v1", "model": "m",
+             "max_answer_chars": 12},
+            question, ctx, max_chars, opener=opener, base_dir=base)
         return ans, seen
 
     def test_flag_record_is_the_user_message(self):
@@ -704,6 +707,106 @@ class HandedToTheModelTest(unittest.TestCase):
             user = seen[0]["messages"][1]["content"]
             self.assertIn("notable: SUSPICIOUS ACCESS", user)
             self.assertIn(question or "?", user)
+
+
+_KEY = "AKIAIOSFODNN7EXAMPLE"
+
+
+class ReplyGateTest(unittest.TestCase):
+    """What comes back. The runner does not overrule the model."""
+
+    def setUp(self):
+        self.base = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self.base, "retained"))
+        R.save_retained(self.base, "jobflag1",
+                        _record(FLAG, stdout=_KEY + "\n"))
+        self.ctx = R.oracle_context(self.base, watch=False)
+        self.ask = HandedToTheModelTest()._ask
+
+    def test_a_denial_is_returned_unchanged(self):
+        ans, seen = self.ask(
+            "which jobs are malicious?", self.ctx, self.base,
+            replies=("none of the jobs are malicious.",))
+        self.assertEqual(ans.get("answer"),
+                         "none of the jobs are malicious.")
+        self.assertIn("notable: SUSPICIOUS ACCESS",
+                      seen[0]["messages"][1]["content"])
+        self.assertIn(_KEY, seen[0]["messages"][1]["content"])
+
+    def test_repeating_the_secret_is_rejected(self):
+        ans, seen = self.ask(
+            "what did it read?", self.ctx, self.base,
+            replies=("the file held " + _KEY,))
+        self.assertEqual(ans.get("rejected"), "sanitization")
+        self.assertNotIn("answer", ans)
+        self.assertIn("notable:", seen[0]["messages"][1]["content"])
+
+    def test_a_slice_of_the_secret_is_rejected(self):
+        import random
+        rng = random.Random(321)
+        for _ in range(20):
+            i = rng.randint(0, len(_KEY) - 8)
+            slice_ = _KEY[i:i + 8]
+            ans, _seen = self.ask(
+                "what did it read?", self.ctx, self.base,
+                replies=("saw " + slice_,))
+            self.assertEqual(ans.get("rejected"), "sanitization", slice_)
+
+    def test_clean_replies_pass_while_the_secret_stays_in_context(self):
+        import random
+        rng = random.Random(321)
+        words = ["none", "malicious", "jobflag1", "read", "a", "file",
+                 "outside", "the", "workspace", "321"]
+        for _ in range(30):
+            reply = " ".join(rng.choice(words)
+                             for _ in range(rng.randint(3, 8)))
+            ans, seen = self.ask(
+                "which jobs are malicious?", self.ctx, self.base,
+                replies=(reply,))
+            self.assertEqual(ans.get("answer"), reply)
+            self.assertIn(_KEY, seen[0]["messages"][1]["content"])
+
+    def test_a_json_dump_is_withheld_and_the_line_survives_the_reask(self):
+        dump = json.dumps({
+            "job_status": "ok", "newest_job_index": "0",
+            "job_ids": "jobflag1",
+        })
+        ans, seen = self.ask(
+            "which jobs are malicious?", self.ctx, self.base,
+            replies=(dump, "jobflag1 read a file outside its workspace."))
+        self.assertEqual(
+            ans.get("answer"),
+            "jobflag1 read a file outside its workspace.")
+        self.assertEqual(len(seen), 2)
+        for call in seen:
+            self.assertIn("notable: SUSPICIOUS ACCESS",
+                          call["messages"][1]["content"])
+        self.assertIn("plain sentences", call["messages"][-1]["content"])
+
+    def test_two_dumps_become_the_fallback(self):
+        dump = json.dumps({
+            "job_status": "ok", "newest_job_index": "0",
+            "job_ids": "jobflag1",
+        })
+        ans, seen = self.ask(
+            "which jobs are malicious?", self.ctx, self.base,
+            replies=(dump, dump))
+        self.assertIn("withheld both replies", ans.get("answer", ""))
+        self.assertEqual(len(seen), 2)
+        self.assertIn("notable:", seen[1]["messages"][1]["content"])
+
+    def test_a_bad_cap_uses_the_configured_one(self):
+        ans, seen = self.ask(
+            "which jobs are malicious?", self.ctx, self.base,
+            replies=("abcdefghijklmnopqrstuvwxyz",), max_chars="nope")
+        self.assertEqual(ans.get("answer"), "abcdefghijkl")
+        self.assertIn("notable:", seen[0]["messages"][1]["content"])
+
+    def test_a_negative_cap_returns_an_empty_answer(self):
+        ans, _seen = self.ask(
+            "which jobs are malicious?", self.ctx, self.base,
+            replies=("none malicious",), max_chars=-1)
+        self.assertEqual(ans.get("answer"), "")
 
 
 if __name__ == "__main__":
