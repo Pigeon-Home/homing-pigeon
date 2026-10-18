@@ -1,5 +1,41 @@
 # Changelog
 
+## 3.7.24 - 2026-10-17
+
+### Build
+
+- The frozen executables ship the whole runner again. Since the
+  import-loader reface, runner.py loads its sibling modules through
+  importlib, which PyInstaller's static analysis cannot see, so the
+  one-file builds silently omitted them: --version printed
+  "unknown", and the senses, review, security, and sandbox modules
+  would have degraded without a word. Every dynamically loaded
+  module is now a --hidden-import on all three platforms, Linux and
+  macOS smoke the built binaries' --version (only Windows did),
+  and a guard test keeps the hidden imports in sync with the
+  loader.
+
+### Hardening
+
+- Linux state files are opened no-follow throughout: a symlink
+  planted in place of the config, the canary, the detection
+  baseline, the DRI state, the security audit files, retained
+  jobs, the replay and board temp files, the OAuth token, the
+  install receipt, the systemd unit, posture snapshots, or the
+  alert files is refused rather than read or written through.
+- Path containment: a retained job id can no longer leave its
+  directory, a sandbox script name must be a single path segment,
+  and the Oracle's file tools stay inside the state directory.
+
+### Internal
+
+- The import fallback and the job-user privilege drop were refaced
+  behind a single loader and a syscall face. The test suite grew
+  to 1,954 tests, pinning the Linux confinement, posture, and
+  rate-limit decisions; the query-limit contract is pinned as
+  documented (a cap that is present but not a number refuses the
+  query).
+
 ## 3.7.23 - 2026-10-17
 
 ### Oracle
