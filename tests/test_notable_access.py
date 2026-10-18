@@ -860,5 +860,180 @@ class ReplyGateTest(unittest.TestCase):
         self.assertIn("notable:", seen[0]["messages"][1]["content"])
 
 
+def _wire_call(name, args, call_id="call-1"):
+    return {
+        "role": "assistant", "content": "",
+        "tool_calls": [{
+            "id": call_id, "type": "function",
+            "function": {"name": name, "arguments": json.dumps(args)},
+        }],
+    }
+
+
+class ToolRoundTest(unittest.TestCase):
+    """A tool round does not drop the notable line, and does not run it."""
+
+    def setUp(self):
+        self.base = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self.base, "retained"))
+        R.save_retained(self.base, "jobflag1",
+                        _record(FLAG, stdout=_KEY + "\n"))
+        self.ctx = R.oracle_context(self.base, watch=False)
+
+    def _ask(self, replies, tool_text="listed"):
+        seen = []
+        queue = list(replies)
+
+        def opener(req, timeout=60):
+            seen.append(json.loads(req.data.decode("utf-8")))
+            msg = queue.pop(0) if queue else replies[-1]
+            return _ModelResp(msg)
+
+        with unittest.mock.patch(
+                "runner.runner._run_oracle_tool", return_value=tool_text):
+            ans = R.ask_model_agent(
+                {"endpoint": "http://127.0.0.1:11434/v1", "model": "m"},
+                "which jobs are malicious?", self.ctx, 2000,
+                opener=opener, base_dir=self.base)
+        return ans, seen
+
+    def test_a_wire_call_keeps_the_line_and_does_not_run(self):
+        ans, seen = self._ask([
+            _wire_call("read_file", {"path": "flag.txt"}),
+            {"role": "assistant", "content": "jobflag1 is the one."},
+        ])
+        self.assertEqual(ans.get("answer"), "jobflag1 is the one.")
+        self.assertIn("notable:", seen[0]["messages"][1]["content"])
+        self.assertIn("notable:", seen[1]["messages"][1]["content"])
+        roles = [m["role"] for m in seen[1]["messages"]]
+        self.assertIn("tool", roles)
+        self.assertIn("listed", seen[1]["messages"][-1]["content"])
+
+    def test_a_content_call_is_replayed_as_chat(self):
+        ans, seen = self._ask([
+            {"role": "assistant",
+             "content": json.dumps(
+                 {"name": "list_dir", "parameters": {"path": "."}})},
+            {"role": "assistant", "content": "jobflag1 is the one."},
+        ])
+        self.assertEqual(ans.get("answer"), "jobflag1 is the one.")
+        self.assertIn("notable:", seen[1]["messages"][1]["content"])
+        self.assertIn("Tool 'list_dir' returned:",
+                      seen[1]["messages"][-1]["content"])
+        self.assertNotIn("tool_calls", seen[1]["messages"][2])
+
+    def test_tool_output_that_repeats_the_secret_is_rejected(self):
+        ans, seen = self._ask([
+            _wire_call("read_file", {"path": "flag.txt"}),
+            {"role": "assistant", "content": "saw " + _KEY[:8]},
+        ], tool_text="secret " + _KEY)
+        self.assertEqual(ans.get("rejected"), "sanitization")
+        self.assertIn("notable:", seen[0]["messages"][1]["content"])
+
+    def test_the_round_budget_stops_the_loop(self):
+        ans, seen = self._ask([_wire_call("list_dir", {"path": "."})])
+        self.assertEqual(ans.get("rejected"), "tool_budget")
+        self.assertEqual(len(seen), R._ORACLE_AGENT_MAX_ROUNDS)
+        self.assertIn("notable:", seen[0]["messages"][1]["content"])
+
+    def test_a_failed_call_still_sent_the_line(self):
+        seen = []
+
+        def opener(req, timeout=60):
+            seen.append(json.loads(req.data.decode("utf-8")))
+            raise RuntimeError("model down")
+
+        ans = R.ask_model_agent(
+            {"endpoint": "http://127.0.0.1:11434/v1", "model": "m"},
+            "which jobs are malicious?", self.ctx, 2000,
+            opener=opener, base_dir=self.base)
+        self.assertEqual(ans.get("rejected"), "inference_error")
+        self.assertIn("notable:", seen[0]["messages"][1]["content"])
+
+    def test_random_tools_keep_the_line(self):
+        import random
+        rng = random.Random(321)
+        names = sorted(R._ORACLE_TOOL_NAMES)
+        for _ in range(8):
+            name = rng.choice(names)
+            ans, seen = self._ask([
+                _wire_call(name, {"path": "x"}),
+                {"role": "assistant", "content": "jobflag1 is the one."},
+            ], tool_text="ok")
+            self.assertEqual(ans.get("answer"), "jobflag1 is the one.", name)
+            self.assertIn("notable:", seen[0]["messages"][1]["content"])
+            self.assertIn("notable:", seen[1]["messages"][1]["content"])
+
+    def test_an_empty_error_gets_the_stock_detail(self):
+        ans, seen = self._ask([{"role": "error", "content": ""}])
+        self.assertEqual(ans.get("rejected"), "inference_error")
+        self.assertEqual(ans.get("detail"), "The local model did not answer.")
+        self.assertIn("notable:", seen[0]["messages"][1]["content"])
+
+    def test_a_non_string_reply_is_stringified(self):
+        ans, seen = self._ask([{"role": "assistant", "content": 3}])
+        self.assertEqual(ans.get("answer"), "3")
+        self.assertIn("notable:", seen[0]["messages"][1]["content"])
+
+    def test_out_of_time_still_has_the_line(self):
+        seen = []
+        queue = [
+            _wire_call("list_dir", {"path": "."}),
+            {"role": "assistant", "content": "jobflag1 is the one."},
+        ]
+        clock = {"n": 0}
+
+        def opener(req, timeout=60):
+            seen.append(json.loads(req.data.decode("utf-8")))
+            return _ModelResp(queue.pop(0))
+
+        def mono():
+            clock["n"] += 1
+            return 0 if clock["n"] == 1 else 100000
+
+        progress = {}
+        with unittest.mock.patch("runner.runner.time.monotonic", mono), \
+                unittest.mock.patch(
+                    "runner.runner._run_oracle_tool", return_value="listed"):
+            ans = R.ask_model_agent(
+                {"endpoint": "http://127.0.0.1:11434/v1", "model": "m"},
+                "which jobs are malicious?", self.ctx, 2000,
+                opener=opener, base_dir=self.base, progress=progress)
+        self.assertEqual(ans.get("answer"), "jobflag1 is the one.")
+        self.assertIn("notable:", seen[0]["messages"][1]["content"])
+        self.assertIn("out of investigation time",
+                      seen[-1]["messages"][-1]["content"])
+        self.assertEqual(progress.get("step"),
+                         "Writing the answer from what it has")
+
+    def _out_of_time(self, second):
+        queue = [_wire_call("list_dir", {"path": "."}), second]
+        clock = {"n": 0}
+
+        def opener(req, timeout=60):
+            return _ModelResp(queue.pop(0))
+
+        def mono():
+            clock["n"] += 1
+            return 0 if clock["n"] == 1 else 100000
+
+        with unittest.mock.patch("runner.runner.time.monotonic", mono), \
+                unittest.mock.patch(
+                    "runner.runner._run_oracle_tool", return_value="listed"):
+            return R.ask_model_agent(
+                {"endpoint": "http://127.0.0.1:11434/v1", "model": "m"},
+                "which jobs are malicious?", self.ctx, 2000,
+                opener=opener, base_dir=self.base)
+
+    def test_out_of_time_and_the_model_errors(self):
+        ans = self._out_of_time({"role": "error", "content": ""})
+        self.assertEqual(ans.get("rejected"), "inference_error")
+        self.assertEqual(ans.get("detail"), "The local model did not answer.")
+
+    def test_out_of_time_reply_that_is_not_text(self):
+        ans = self._out_of_time({"role": "assistant", "content": 3})
+        self.assertEqual(ans.get("answer"), "3")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
