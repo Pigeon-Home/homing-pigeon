@@ -167,6 +167,8 @@ def _save_state(base_dir, state):
             flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
             if hasattr(os, "O_NOFOLLOW"):
                 flags |= os.O_NOFOLLOW
+            if hasattr(os, "O_BINARY"):
+                flags |= os.O_BINARY
             fd = os.open(tmp, flags, 0o600)
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 fd = None

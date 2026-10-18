@@ -278,6 +278,8 @@ def _write_private(path: str, data: bytes, append: bool) -> None:
     flags = os.O_WRONLY | os.O_CREAT | (os.O_APPEND if append else os.O_TRUNC)
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
+    if hasattr(os, "O_BINARY"):
+        flags |= os.O_BINARY
     fd = os.open(path, flags, 0o600)
     try:
         os.write(fd, data)

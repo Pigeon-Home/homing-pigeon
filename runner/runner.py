@@ -124,6 +124,8 @@ def _append_security_event(base_dir: str, event: dict) -> None:
         flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
+        if hasattr(os, "O_BINARY"):
+            flags |= os.O_BINARY
         fd = os.open(path, flags, 0o600)
         try:
             os.write(fd, (json.dumps(event, ensure_ascii=False) + "\n").encode("utf-8"))
@@ -139,6 +141,8 @@ def _append_security_event(base_dir: str, event: dict) -> None:
             flags = os.O_WRONLY | os.O_TRUNC
             if hasattr(os, "O_NOFOLLOW"):
                 flags |= os.O_NOFOLLOW
+            if hasattr(os, "O_BINARY"):
+                flags |= os.O_BINARY
             fd = os.open(path, flags)
             try:
                 os.write(fd, "".join(lines[-5000:]).encode("utf-8"))
@@ -2159,6 +2163,8 @@ def _run_oracle_tool(name, args, base_dir=None) -> str:
             flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
             if hasattr(os, "O_NOFOLLOW"):
                 flags |= os.O_NOFOLLOW
+            if hasattr(os, "O_BINARY"):
+                flags |= os.O_BINARY
             fd = os.open(path, flags, 0o600)
             try:
                 os.write(fd, content.encode("utf-8"))
@@ -2787,6 +2793,8 @@ def _write_json(path, obj):
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
+        if hasattr(os, "O_BINARY"):
+            flags |= os.O_BINARY
         fd = os.open(tmp, flags, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             fd = None
@@ -2964,6 +2972,8 @@ def save_retained(base_dir, job_id, payload):
             flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
             if hasattr(os, "O_NOFOLLOW"):
                 flags |= os.O_NOFOLLOW
+            if hasattr(os, "O_BINARY"):
+                flags |= os.O_BINARY
             fd = os.open(tmp, flags, 0o600)
             safe = _json_safe(payload) if isinstance(payload, dict) else {}
             with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -3081,6 +3091,8 @@ class Board:
             flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
             if hasattr(os, "O_NOFOLLOW"):
                 flags |= os.O_NOFOLLOW
+            if hasattr(os, "O_BINARY"):
+                flags |= os.O_BINARY
             fd = os.open(tmp, flags, 0o600)
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 fd = None
@@ -4030,6 +4042,8 @@ def append_bounded_log(path, text, max_bytes=2_097_152, backups=1):
             flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
             if hasattr(os, "O_NOFOLLOW"):
                 flags |= os.O_NOFOLLOW
+            if hasattr(os, "O_BINARY"):
+                flags |= os.O_BINARY
             fd = os.open(path, flags, 0o600)
             try:
                 os.write(fd, raw)
@@ -5036,6 +5050,8 @@ def save_seen(path: str, seen: dict):
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
+        if hasattr(os, "O_BINARY"):
+            flags |= os.O_BINARY
         fd = os.open(tmp, flags, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fd = None
@@ -5896,6 +5912,8 @@ def _plant_canary(path):
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
+    if hasattr(os, "O_BINARY"):
+        flags |= os.O_BINARY
     fd = None
     try:
         fd = os.open(path, flags, 0o600)

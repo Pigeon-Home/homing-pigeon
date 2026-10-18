@@ -335,6 +335,8 @@ def _bump_counts(base_dir, feature, decision):
             flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
             if hasattr(os, "O_NOFOLLOW"):
                 flags |= os.O_NOFOLLOW
+            if hasattr(os, "O_BINARY"):
+                flags |= os.O_BINARY
             fd = os.open(tmp, flags, 0o600)
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 fd = None
@@ -402,6 +404,8 @@ def write_audit_entry(base_dir, feature, decision, reason,
         flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
+        if hasattr(os, "O_BINARY"):
+            flags |= os.O_BINARY
         fd = os.open(path, flags, 0o600)
         try:
             os.write(fd, line)
