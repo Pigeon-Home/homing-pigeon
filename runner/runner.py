@@ -3759,7 +3759,7 @@ def sha384_of(path: str) -> str:
     return h.hexdigest()
 
 
-_SAFE_JOB_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+_SAFE_JOB_ID = re.compile(r"\A[A-Za-z0-9._-]{1,128}\Z")
 
 
 def _safe_job_id(job_id: str) -> str:
