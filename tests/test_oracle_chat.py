@@ -116,6 +116,18 @@ class OracleChatTest(unittest.TestCase):
         self.assertIn("textContent", page)
         self.assertIn("Ask what it thinks is going on", page)
 
+    def test_page_sends_on_enter_and_shows_thinking(self):
+        """Finding: the chat box is a textarea. Enter inserts a newline
+        and does not submit, so pressing send did nothing and the log
+        stayed quiet. Clicking Send disabled the button with no pending
+        state, so a slow model looked like a hang. Enter now submits,
+        and a thinking line is shown until the answer arrives.
+        """
+        page = oracle_page("tok", "llama3.2:3b", True)
+        self.assertIn('e.key === "Enter"', page)
+        self.assertIn("Working", page)
+        self.assertIn("requestSubmit", page)
+
     def test_ask_needs_the_token_and_stays_on_loopback(self):
         with tempfile.TemporaryDirectory() as d:
             kept = os.path.join(d, "retained")

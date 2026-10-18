@@ -1221,7 +1221,7 @@ def build_attestations(queries, ctx):
                     key = "pattern"
                 safe_items.append((key, v))
             atts.append({"predicate": pred,
-                         "ok": not secret_scan(ctx.get("text", ""), pats),
+                         "ok": not secret_scan(text, pats),
                          "patterns_sha384": hashlib.sha384(json.dumps(sorted(safe_items)).encode()).hexdigest()})
         elif _is("output_digest"):
             atts.append({"predicate": pred, "digest": ctx.get("digest")})
@@ -2618,6 +2618,10 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                    already_spent=0, base_dir=None):
     """Answer declared queries. Every query spends 1, answered or rejected."""
     answers = []
+    # A non-dict result is bad data from an extension or a corrupt retain.
+    # Do not let it abort the query or the mail cycle.
+    if not isinstance(exec_result, dict):
+        exec_result = {}
     try:
         spent = int(already_spent or 0)
     except (TypeError, ValueError, OverflowError):
@@ -2721,6 +2725,10 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                         inf, q.get("question") or "", text, max_chars, patterns,
                         instructions=(cfg or {}).get("owner_instructions"),
                     ))
+                    # A non-dict return is bad inference data. Do not let
+                    # it become an answer that later .get calls crash on.
+                    if not isinstance(answers[-1], dict):
+                        answers[-1] = {"op": "ask", "rejected": "inference_error"}
                 except Exception as e:
                     log(f"ask failed: {e}", "WARN")
                     answers.append({"op": "ask", "rejected": "inference_error"})
@@ -2740,10 +2748,22 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                     until=q.get("until") if isinstance(q.get("until"), str) else None,
                     limit=q.get("limit") if isinstance(q.get("limit"), int) else 20,
                 )
+                # Extension may return None or a non-iterable under fault.
+                # Do not let that abort the query or the mail cycle.
+                if not isinstance(recs, list):
+                    log("senses load_alerts returned unusable data; ignoring", "WARN")
+                    answers.append({"op": "senses", "rejected": "senses_unavailable"})
+                    spent += 1
+                    continue
                 items = []
                 for rec in recs:
-                    weight = (sensors.get(rec.get("sensor")) or {}).get(
-                        "weight", rec.get("weight", 1.0))
+                    # A non-dict in the list is bad extension data, not fatal.
+                    if not isinstance(rec, dict):
+                        continue
+                    scfg = sensors.get(rec.get("sensor")) if isinstance(sensors, dict) else None
+                    if not isinstance(scfg, dict):
+                        scfg = {}
+                    weight = scfg.get("weight", rec.get("weight", 1.0))
                     try:
                         weight = float(weight)
                     except (TypeError, ValueError, OverflowError):
@@ -2773,8 +2793,13 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                         "received_at": rec.get("received_at"),
                         "job_id_hint": rec.get("job_id_hint"),
                         "weight": weight,
-                        "score": _senses.alert_score(rec, weight),
                     })
+                    try:
+                        items[-1]["score"] = _senses.alert_score(rec, weight)
+                    except Exception:
+                        # A raising scorer is bad extension data. Keep the
+                        # alert with a neutral score rather than abort.
+                        items[-1]["score"] = 0.0
                 items.sort(key=lambda a: a["score"], reverse=True)
                 answers.append({"op": "senses", "alerts": items,
                                 "count": len(items)})
@@ -3990,6 +4015,12 @@ def _preview(text, n=80) -> str:
     """One line, capped. For the runner log, not for email."""
     if not isinstance(text, str):
         text = _as_str(text)
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        n = 80
+    if n < 1:
+        n = 80
     line = text.replace("\r", " ").replace("\n", " ").strip()
     if len(line) > n:
         line = line[:n] + "..."
@@ -4601,10 +4632,10 @@ def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
         return
     name = job["sensor"]
     scfg = sensors.get(name)
-    if scfg is None:
+    if not isinstance(scfg, dict):
         done(f"rejected: unknown sensor {name!r}")
         return
-    if not scfg["enabled"]:
+    if not scfg.get("enabled"):
         done(f"rejected: sensor {name!r} is not enabled")
         return
     bound = _senses.sensor_for_key(sensors, key_id)
@@ -7281,6 +7312,15 @@ function add(who, text, cls, note) {
   wrap.scrollIntoView({block: "nearest"});
   return wrap;
 }
+// Enter sends. Shift+Enter is a newline. A bare Enter in a textarea
+// does not submit the form, so the button looked dead and the log
+// stayed quiet.
+q.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById("f").requestSubmit();
+  }
+});
 document.getElementById("f").onsubmit = async (e) => {
   e.preventDefault();
   const text = q.value.trim();
