@@ -1,6 +1,6 @@
 # DRI playbook ("presence of mind")
 
-> **Status: implemented, off by default (v3.x).** `runner/dri.py`
+> **Status: implemented, off by default.** `runner/dri.py`
 > evaluates triggers every poll cycle (`maybe_page`), with per-trigger
 > cooldown and digest batching in `dri-state.json`. The only channel
 > the runner accepts is Telegram (`send_telegram`, Bot API over HTTPS).
@@ -136,7 +136,7 @@ you, not in this repo. Template for when the time comes:
    keys, take the box offline).
 5. Write down what you changed, so the next page is smarter.
 
-## Relationship to v9
+## The dashboard is not built
 
-The dashboard (v9) is not built. `--oracle` is a loopback chat, not
+The dashboard spec is not built. `--oracle` is a loopback chat, not
 a page history. Ack by reply keyword is the path that exists today.

@@ -1,15 +1,15 @@
-# Oracle Dashboard — v9 Spec (draft)
+# Oracle Dashboard (draft)
 
-**Status:** not started. v9 makes the Oracle visible as a dashboard.
+**Status:** not started. This spec makes the Oracle visible as a dashboard.
 `--oracle` already opens a loopback chat in the browser and writes
 `oracle-chat.jsonl`. That chat is not this dashboard. Do not treat
 this file as something the runner serves.
-**Identity:** watch the Oracle think. (v9 is the project's single placeholder label for unwritten future work.)
+**Identity:** watch the Oracle think. This file is unwritten work. It is not something the runner serves.
 
 ## 1. Vision
 
 The Oracle currently does its work invisibly — verdicts, attestations,
-budget burn, all buried in a log file. v9 gives the runner owner a
+budget burn, all buried in a log file. This spec gives the runner owner a
 window into what the Oracle decided about each job and why. It is a
 local operator console, not a cloud service: it shows what the box's
 owner could already see, in a form a human can actually read.
@@ -56,7 +56,7 @@ A reverse-chronological list of jobs. Each entry shows, at a glance:
 
 A job that burned its entire privacy budget is visually loud —
 budget exhaustion is a tripwire (§11), and the timeline is where
-the human sees it. Jobs with `ask` answers (v3.0) show the plain-
+the human sees it. Jobs with `ask` answers show the plain-
 language answer inline on the card.
 
 ### 3.2 Job detail
@@ -79,7 +79,7 @@ Every Oracle config key, editable, with plain-language explanations:
   see what gets redacted)
 - `worker_allowlist`, `worker_compartments`, `dag_mode`,
   `task_timeout`, `require_review`
-- inference endpoint/model (v3.0)
+- inference endpoint/model (already shipped)
 
 **Parity rule:** everything the dashboard configures must be
 expressible in `config.json`, and everything in `config.json` must
@@ -146,21 +146,21 @@ published.
 
 ## 6. Scope
 
-**In v9:** dashboard server, the five views above, profiles,
+**In this spec:** dashboard server, the five views above, profiles,
 "Configuring the Oracle" documentation (GUI-or-CLI parity,
 per-deployment profiles, worked Pi example), and confidentiality
 for transport messages.
 
-**Out of v9:** new transports, any native GUI toolkit, multi-user
+**Out of this spec:** new transports, any native GUI toolkit, multi-user
 or remote access (the dashboard is single-owner, loopback-only, by
-design). The `ask` op is v3.0 and is already implemented; the
+design). The `ask` op is already implemented; the
 timeline shows its answers.
 
 ### 6.1 Confidentiality for transport messages
 
 TLS protects the pipe. It does not protect the message from the
 transport operator. A mailbox provider, or a queue operator, can
-read the signed JSON today. v9 encrypts the message body so the
+read the signed JSON today. This spec encrypts the message body so the
 pipe carries ciphertext.
 
 - Cipher: AES-256-GCM, as named in PROTOCOL section 8.
@@ -174,7 +174,8 @@ pipe carries ciphertext.
   at rest on the transport, not a replacement for TLS.
 - Fail closed: a message that claims to be encrypted and does not
   decrypt is rejected. A deployment that has not turned this on
-  still accepts plaintext, so v3 keep working.
+  still accepts plaintext, so a runner that has not turned this on
+  keeps working.
 
 ## 7. Decisions
 

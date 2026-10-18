@@ -1,7 +1,10 @@
 # Homing Pigeon Protocol
 
-The frozen wire description, written as an informational individual
-draft, is `docs/ietf/draft-homing-pigeon-00.md`.
+The frozen description of protocol 1 is
+`docs/ietf/draft-homing-pigeon-00.md`. It is not updated to track
+the runner. Examples in this file use `"v": 2`, which is what the
+runner accepts. A `"v": 1` message is rejected unless that process
+was started with `--allow-protocol-v1`. Replies are always `"v": 2`.
 
 ## 1. Actors
 
@@ -63,7 +66,7 @@ gets done without you knowing how any of it works.
 
 ```json
 {
-  "v": 1,
+  "v": 2,
   "type": "job",
   "job_id": "3f9a1c2e-...-uuid",
   "issued_at": "2026-10-13T12:00:00Z",
@@ -119,7 +122,7 @@ gets done without you knowing how any of it works.
 
 ```json
 {
-  "v": 1,
+  "v": 2,
   "type": "result",
   "job_id": "3f9a1c2e-...-uuid",
   "kind": "exec",
@@ -231,9 +234,9 @@ send stays unseen and will be retried (re-executed) on the next cycle.
   target host. VM snapshots give instant rollback, and the guest
   boundary contains everything a signed job can reach.
 - IMAP/SMTP over TLS (993/587). File downloads over HTTPS only.
-- Hardening roadmap (v2): encrypted credentials at rest, ack messages,
-  per-job encryption, result file upload for large outputs,
-  privacy-preserving result policies (implemented in v3 below).
+- Still open: encrypted credentials at rest, ack messages,
+  per-job encryption, and result file upload for large outputs.
+  Result policies are specified below.
 
 ## 8. Cryptography — Suite B alignment (384-bit tier)
 
@@ -249,17 +252,18 @@ transitioned to CNSA; the symmetric/hash primitives carry over unchanged):
 - **Payload encryption:** AES-256-GCM is the designated cipher for
   confidentiality beyond TLS.
 
-v1 does not encrypt payloads: confidentiality in transit comes from TLS;
-authenticity and integrity come from HMAC-SHA-384.
+The protocol does not encrypt payloads: confidentiality in transit
+comes from TLS; authenticity and integrity come from HMAC-SHA-384.
 
 ---
 
-# Protocol v3: the Oracle
+# The Oracle
 
-**Paradigm: the runner as the Oracle.** In v1 the SI receives full job
-output (stdout/stderr) by email. v3 inverts this: the runner keeps the
-output on its own (trusted) disk and answers only the questions the
-result policy allows, with HMAC-signed attestations.
+**Paradigm: the runner as the Oracle.** Without a result policy the
+SI receives full job output (stdout/stderr) by email. The Oracle
+inverts this: the runner keeps the output on its own (trusted) disk
+and answers only the questions the result policy allows, with
+HMAC-signed attestations.
 
 The SI learns predicates about the output — never the output itself
 unless the policy permits it. This is the interactive-proof shape
@@ -283,12 +287,16 @@ four duties, three across a job's lifetime and one above it:
   deal work to pulling workers, and compartmentalize what each worker
   may see.
 
-v3 adds a second direction without removing the first. In v1 the SI pushes jobs to the runner, and that keeps working unchanged. The Oracle can also run the other way: it holds a task board and worker SIs pull tasks by asking what to work on next (section 13). Push and pull coexist; a deployment uses either or both.
+The Oracle adds a second direction without removing the first. The SI
+pushes jobs to the runner, and that keeps working unchanged. The
+Oracle can also run the other way: it holds a task board and worker
+SIs pull tasks by asking what to work on next (section 13). Push and
+pull coexist; a deployment uses either or both.
 
 It is governed by runner-owner flags. They are config-only, never job
 fields — no job field can disable the Oracle, otherwise the SI could
 switch off its own restraints. Section 13 adds dispatch-specific flags
-under the same rule. In v3 the Oracle is unconditional: there is no
+under the same rule. The Oracle is unconditional: there is no
 flag to disable it. `result_policy` is always honored, results are
 shaped by the owner-configured ceiling, and `query` messages are
 always accepted.
@@ -310,7 +318,7 @@ The job gains an optional `result_policy` object:
 }
 ```
 
-- `view`: one of `full` (v1 behavior), `redacted`, `summary`, `attested`.
+- `view`: one of `full` (stdout and stderr), `redacted`, `summary`, `attested`.
   Default: `full` (backward compatible).
 - `redact_patterns`: named secret families to scrub in `redacted` view
   (runner ships a built-in set; config may extend it).
@@ -331,7 +339,7 @@ user's box decides what leaves it.
 
 ### 9.1 View definitions
 
-- `full`: the v1 result message, unchanged.
+- `full`: stdout and stderr, as in section 3.2.
 - `redacted`: full result with every `redact_patterns` match replaced by
   `[REDACTED:<family>]`. The message lists which families were applied.
 - `summary`: no raw output. Contains `exit_code`, `timed_out`,
@@ -367,7 +375,7 @@ Built-in predicates (extensible by runner config):
   `{"reason": "unconfigured"}`.
 
 Each attestation is covered by the message HMAC (section 4), so a
-predicate answer carries the same authenticity as v1 results.
+predicate answer carries the same authenticity as any other result.
 
 ### 9.3 Pre-execution judgment (optional)
 
@@ -588,7 +596,7 @@ their first failed job gets:
 None of this replaces reading the output. It tells you *where to
 look* — which, for most debugging sessions, is the expensive part.
 
-## 12. v3 security properties
+## 12. Oracle security properties
 
 - **Non-escalation:** neither the job's `result_policy` nor any query
   can widen disclosure past the runner owner's `max_result_view`.
@@ -596,13 +604,13 @@ look* — which, for most debugging sessions, is the expensive part.
   the hidden output to the signed claims about it.
 - **Bounded extraction:** single-round declaration + privacy budget +
   rate limiting (section 11).
-- **Same transport trust as v1:** queries are HMAC-signed emails subject
+- **Same transport trust as any other message:** queries are HMAC-signed emails subject
   to the signature; a third party without the secret can neither ask nor answer.
 - **Data lifetime:** retained outputs age out per config; nothing about
-  v3 weakens the v1 rule that the runner host itself is fully trusted —
-  v3 protects data *from the SI*, not from the machine's owner.
+  the Oracle weakens the rule that the runner host itself is fully trusted —
+  the Oracle protects data *from the SI*, not from the machine's owner.
 - **Worker authentication:** task requests and results are HMAC-signed
-  with the same shared secret as v1 jobs. Without it, a third party can
+  with the same shared secret as any other job. Without it, a third party can
   neither pull tasks nor submit results.
 - **Compartmentalization is opt-in:** by default a pulling worker sees
   the full task. Restriction is configuration (section 13.3), never the
@@ -612,8 +620,8 @@ look* — which, for most debugging sessions, is the expensive part.
 
 ## 13. Task dispatch: the Oracle as work queue
 
-This section adds a direction; it removes none. v3 does everything v2
-does: push a signed job, the runner verifies and executes, results come
+This section adds a direction; it removes none. A signed job still
+pushes, the runner still verifies and executes, and results still come
 back. Identical wire behavior, identical auth. The Oracle, dispatch
 included, is purely additive. It can additionally deal tasks from its
 board at the request of anyone holding the shared secret.
@@ -634,7 +642,7 @@ A task is a job the Oracle has not assigned yet:
   what the work needs. Workers claim capabilities when they pull;
   matching is by tag equality.
 - `priority`: higher first. Ties break by arrival order.
-- `body`: the work itself, usually a v1 job body or a declared query set.
+- `body`: the work itself, usually a job body or a declared query set.
 
 Dependency enforcement follows the same three-mode pattern as
 pre-execution judgment (section 9.3): `dag_mode: off` (default; the
@@ -654,9 +662,9 @@ Workers ask; the Oracle deals. The worker sends a signed `task_request`:
 
 The Oracle replies with a `task_offer` (the task plus its description)
 or `empty`. Both messages are HMAC-signed emails under the same shared
-secret as v1 jobs. The pull direction matters: workers initiate, so the
-runner needs no inbound connections and the firewall story from v1
-survives unchanged.
+secret as any other job. The pull direction matters: workers initiate, so the
+runner needs no inbound connections and the firewall story from the
+push direction survives unchanged.
 
 Anyone holding the shared secret can pull. A `worker_allowlist` in
 config restricts pulls to named `worker_id` values. Off by default.
@@ -687,8 +695,8 @@ workers on the same board and expect labels to save you.
 
 ### 13.4 Results and the review gate
 
-Workers return `task_result` messages shaped like v1 results (section
-3.2), or attested answers where the task used a result policy (sections
+Workers return `task_result` messages shaped like the results in
+section 3.2, or attested answers where the task used a result policy (sections
 9, 10). Results carry the `task_id`; duplicates are deduped, so
 at-least-once redelivery is safe.
 
@@ -738,7 +746,7 @@ not a distributed Oracle.
 
 ## 14. Multiple shared secrets
 
-v2 has one shared secret. v3 keeps it and adds more. Config gains an
+One shared secret is the default. Config may name more. Config gains an
 optional `additional_secrets` object mapping key IDs to secrets:
 
 ```json
@@ -752,11 +760,10 @@ Every secret in the map faces the same entropy gate as `shared_secret`
 Any signed message — job, query, task_request, task_result — may carry
 a top-level `key_id` naming which secret verifies it. The field sits
 inside the signed body, so the signature covers it. When `key_id` is
-absent, the runner uses `shared_secret`: exactly the v2 path. A v2
-sender works against a v3 runner with zero changes. This is backward
-compatible by construction — the single-secret default never moves.
-Operators adding secrets keep the original v2 secret as `shared_secret`
-so keyless senders keep verifying.
+absent, the runner uses `shared_secret`. A sender that names no key
+keeps working. This is backward compatible by construction — the
+single-secret default never moves. Operators adding secrets keep the
+original secret as `shared_secret` so keyless senders keep verifying.
 
 Key IDs are labels, not secrets. They may appear in logs and error
 messages. Unknown key IDs are rejected before any cryptographic work,
@@ -853,7 +860,7 @@ affected by the deny flag.
 ## 15. Rollout plan
 
 This section was the work plan. The boxes below shipped. It is kept
-as the record of what v3 required. It is not a proposal.
+as the record of what the Oracle required. It is not a proposal.
 
 ### Implementation
 
@@ -893,8 +900,7 @@ as the record of what v3 required. It is not a proposal.
   correctness anchor).
 - SAFEGUARDS.md: operational guidance for running a board (timeouts,
   allowlists, when to tighten from least-restrictive defaults).
-- PROTOCOL.md: flip the status line when the runner accepts v3 message
-  types; mark implemented sections.
+- PROTOCOL.md: this file. The Oracle sections are implemented.
 - DOCKER.md: env vars for additional secrets, if supported.
 
 ### Order
@@ -905,5 +911,6 @@ board and dispatch (section 13). Then the privacy-preserving results
 (sections 9-12), the largest and most security-sensitive piece. Docs
 ship with each piece, not after.
 
-*Status: implemented. The runner accepts v3 message types. v1 jobs
-still work unchanged.*
+*Status: implemented. The runner accepts `"v": 2`. A `"v": 1`
+message is accepted only when that process was started with
+`--allow-protocol-v1`. Replies are always `"v": 2`.*

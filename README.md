@@ -207,9 +207,8 @@ The Oracle ships two confinement capabilities:
   machine is not Linux, the job runs normally and the audit log records
   the fallback. See SECURITY.md.
 
-Full spec in PROTOCOL.md (sections 9–12). Note the doc's "Protocol v1"
-is the *message* version, not the product release — v3.x features ride
-on v1 messages as optional fields.
+Full spec in PROTOCOL.md (sections 9–12). Oracle fields are optional
+members of a `"v": 2` message. They are not a separate message version.
 
 ## Layout
 
@@ -514,53 +513,21 @@ End-to-end without your SI:
   and a query budget, so a cloud SI learns *answers* about your output
   without ever seeing it.
 
-## Roadmap
+## Not built yet
 
-- 2.0 = who signs (shipped)
-- 3.0 = what comes back — the Oracle: result policies, attestations, task dispatch, multi-secret, and the ask op (shipped as 3.0.0). The ask endpoint must be loopback or the op stays off.
-- v9 = watch the Oracle think — the loopback dashboard, and confidentiality for transport messages (spec in ORACLE_DASHBOARD.md, not started)
+- A loopback dashboard for the Oracle, and encryption of the message
+  body on the transport. The sketch is
+  [ORACLE_DASHBOARD.md](ORACLE_DASHBOARD.md). The runner does not
+  serve that page.
+- Cloudflare Queues as a second transport.
 
-Product and protocol versions are separate numbers: the product is
-at 3.7.x; the wire protocol implemented is v2, with PROTOCOL.md
-keeping the v1 specification of record. Unwritten future work
-takes the single placeholder label v9.
-
-Later:
-- Cloudflare Queues as Transport #2
+The download version and the message field `"v"` are different
+numbers. The runner is 3.7.x and speaks `"v": 2`.
 
 ## Status
 
-v3.7.2. The runner's state dir now follows the config file, not the
-user running it: the installed service (often SYSTEM) and a manual
-`--oracle` chat on the same `--config` finally see the same jobs.
-Also: `--oracle` prints which config it loaded and whether a model is
-set, and Ctrl+C on the frozen exe exits quietly.
-
-v3.7.1. Test attribution cleanup; no functional changes since v3.7.0.
-
-v3.7.0. Jobs can now ask for their result to be emailed back to the
-requester: set `reply_to` in the signed job body (or
-`send_job.py new --reply-to you@example.com`) and the result skips
-the runner mailbox and lands in your inbox. The address must come
-from inside the signed body — the email's `From` header is never
-trusted — so a spoofed sender can't steer results at anyone. Omit
-it and results behave as before.
-
-v3.6.1. Optional hardening controls, all off unless you turn them on:
-key policy for env, files, and args (including the dangerous-env
-gate and `allow_file_urls`/`max_args`); audience binding
-(`runner_id`, 128-bit, `--aud` on send_job.py); a security audit log
-with per-key `key_policies` fragments via `--audit-report`;
-Linux bubblewrap confinement; running a job as another POSIX user;
-and `secret_files`. See SECURITY.md. `--posture` and
-`--audit-report` read that state without opening the mailbox.
-
-v3.6.0 shipped the M0–M11 hardening pass this builds on. v3.0.0
-shipped the Oracle: result policies, signed attestations, task
-dispatch, multi-secret installs, and the `ask` op. Later 3.x releases
-added the loopback Oracle chat (`--oracle`), the Raspberry Pi
-inference profile (`llama3.2:1b`), and the hardening above. The
-package version lives in `pyproject.toml`.
+The current release is in [CHANGELOG.md](CHANGELOG.md). The download
+version is the number in `pyproject.toml`.
 
 Still true from earlier releases. Any sender may submit a job, and the
 HMAC is the only gate. `config.json` hot-reloads poll interval,

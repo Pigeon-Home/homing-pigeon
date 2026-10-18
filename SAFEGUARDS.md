@@ -67,7 +67,7 @@ Defense in depth, cheapest first:
 
 ## 4. The Oracle as a safeguard
 
-v1 sends full job output back to your (cloud, third-party) SI. If
+A `full` view sends stdout and stderr back to your (cloud, third-party) SI. If
 your jobs touch anything sensitive, that's the leak surface. The
 Oracle — implemented, specified in PROTOCOL.md — is the
 mitigation:

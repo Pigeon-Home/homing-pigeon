@@ -103,21 +103,21 @@ you. You start them by making a **release**. All point and click:
 1. Go to **github.com/Pigeon-Home/homing-pigeon**.
 2. On the right side, click **Releases**.
 3. Click the **Draft a new release** button.
-4. Click **Choose a tag**, then type `v3.6.1` and click
-   **Create new tag: v3.6.1**.
-5. Type a title like `Version 3.6.1`.
+4. Click **Choose a tag**, then type the tag you are cutting, such as
+   `v3.7.24`, and click **Create new tag**.
+5. Type a title like `Version 3.7.24`. The number is the one in
+   `pyproject.toml`, not a guess.
 6. Click the big green **Publish release** button.
 7. Now click the **Actions** tab at the top. You will see the robots
    working. It takes about 10 minutes.
 8. When they finish, go back to **Releases**. Your version is there
-   with files to download (each file and folder name carries the
-   version, e.g. `homing-pigeon-windows-x86_64-3.7.2.zip`):
+   with files to download (each file and folder name carries that
+   same number):
    - `homing-pigeon-windows-x86_64-<version>.zip` — for Windows computers
    - `homing-pigeon-linux-x86_64-<version>.tar.gz` — for Linux computers
    - `homing-pigeon-macos-arm64-<version>.tar.gz` — for Mac computers
 
-For the next version, do the same thing with `v3.6.2`, then `v3.6.3`,
-and so on. Bigger number = newer. The current release is v3.6.0.
+The next release uses the next number. Bigger number = newer.
 Do not reuse a tag that already exists.
 
 After the robots finish, the Python packages go to PyPI automatically:
@@ -257,13 +257,12 @@ machine, it passed. If nothing comes back, the SI failed somewhere:
 wrong signature, wrong subject, wrong address. The clock does not
 lie.
 
-### Run that same clock check the way v2 did
+### Run that same clock check with the full output
 
-v2 executed the job as the runner's user and sent the full stdout
-back. There was no Oracle view, no judge, and no local model. The
-wire message is still `"v": 1`. You do not send a v2 body. You send
-the same clock job and you keep the v3 switches at their loose
-settings.
+The job runs as the runner's user and the full stdout comes back.
+There is no narrower result view, no judge, and no local model.
+The message is `"v": 2`. Do not send `"v": 1` unless you started
+the runner with `--allow-protocol-v1`. Leave the result policy off.
 
 A current install does not start that way. `install.py` applies the
 `password-only` profile unless you pass `--no-profile`. That profile
@@ -277,8 +276,8 @@ Install, or re-apply, like this:
 python3 install.py --no-profile --no-inference
 ```
 
-On a config that already exists, set these keys. They are the whole
-v2-shaped run. Leave the mailbox and `shared_secret` alone.
+On a config that already exists, set these keys. Leave the mailbox
+and `shared_secret` alone.
 
 ```json
 {
@@ -295,7 +294,7 @@ v2-shaped run. Leave the mailbox and `shared_secret` alone.
 Also leave every `security.modes` value at `off`, leave `sensors`
 disabled, and do not start the runner with `--oracle`.
 
-The clock job itself must be a normal exec: `"v": 1`, `"type":
+The clock job itself must be a normal exec: `"v": 2`, `"type":
 "job"`, `"kind": "exec"`, a script that prints the date, and no
 `result_policy`, no `queries`, and no `key_id`. Omit `interpreter`
 unless you know the machine. Windows prints the clock with
@@ -305,8 +304,7 @@ What you still get, because the Oracle code is unconditional: the
 result carries `view` (`full`) and `output_digest`, and it may carry
 a `review` note. Those fields do not hide `stdout`. With the keys
 above, `stdout` is the clock, the job is not blocked, nothing is
-paged, and no model is called. That is as close to v2 as this runner
-can be configured. There is no flag that deletes the Oracle.
+paged, and no model is called. There is no flag that deletes the Oracle.
 
 ---
 
@@ -321,7 +319,7 @@ can be configured. There is no flag that deletes the Oracle.
 - **Nothing happens after sending a job message** — check that the
   runner computer is turned on, and that the job was signed with the
   right secret. Any sender address works (the HMAC signature is the
-  sole gate since v1.4.0); a "bad signature" rejection means the
+  only gate); a "bad signature" rejection means the
   secret didn't match.
 - **The robots (Actions) show a red X** — click the X, click the
   failed job, read the red text at the bottom. It usually says

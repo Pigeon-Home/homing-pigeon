@@ -74,7 +74,7 @@ homing-pigeon --config ~/.homing-pigeon/config.json --once
 
 **Install:** download and extract. Every default OS ships a
 downloader — no extra tools needed. Release file names carry the
-version (e.g. `homing-pigeon-linux-x86_64-3.7.2.tar.gz`), and
+version (for example `homing-pigeon-linux-x86_64-<version>.tar.gz`), and
 extracting creates a folder with the same name, so several releases
 can live side by side.
 

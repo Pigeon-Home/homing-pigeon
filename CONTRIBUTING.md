@@ -107,7 +107,7 @@ same feature, they do not share code, and the old one is gone.
 
 | Name | What it was | Status |
 | --- | --- | --- |
-| `oracle_enabled` in `config.json` | When false, the runner skipped the v3 result policy, board mail, and query follow-ups and behaved like v1. Default was true. | Removed in `8f0719f`. |
+| `oracle_enabled` in `config.json` | When false, the runner skipped the result policy, board mail, and query follow-ups and returned full output. Default was true. | Removed in `8f0719f`. |
 | `--no-oracle` on the CLI | The command-line way to set that same off switch. The installer could forward it into the boot service. | Removed in `8f0719f`. |
 | `--oracle` on the CLI | Opens a loopback browser chat that asks the local model through the Oracle path. | Added in `15025c7`. This is the flag that exists today. |
 | `--oracle-port` | Port for that chat. Default `11436`. Bound to `127.0.0.1` only. | Added with `--oracle`. |
@@ -124,8 +124,8 @@ so the flag table matches the binary.
 Commit `8f0719f` (author ctf-gooo-003, message "v3: the Oracle is
 unconditional - remove oracle_enabled flag") on 2026-10-15.
 
-The Oracle had already shipped in v3. A flag that turned it off was
-a way to get a v1 result path back. That escape hatch was the thing
+The Oracle had already shipped. A flag that turned it off was
+a way to get full output back without the Oracle. That escape hatch was the thing
 the project had decided not to keep. The commit deleted:
 
 - the `oracle_enabled` key (it had defaulted to true)
@@ -139,7 +139,7 @@ the project had decided not to keep. The commit deleted:
 After that commit the Oracle is not optional. A signed job still goes
 through the result policy, the judge, redaction, and the board if
 those are configured. There is no config key and no CLI flag that
-puts the runner back into a v1-only result path.
+puts the runner back onto a path that skips the Oracle.
 
 `tests/test_protocol_and_edges.py` still asserts that a generated
 unit file does not contain the string `--no-oracle`. That test is a
@@ -151,7 +151,7 @@ satisfy it.
 
 The owner wanted one way, for the rest of the project, to ask the
 Oracle on a box what it thinks is going on. They were explicit that
-this is not the v9 loopback dashboard in `ORACLE_DASHBOARD.md`. That
+this is not the loopback dashboard in `ORACLE_DASHBOARD.md`. That
 dashboard is a later product: job tables, controls, a frontend over
 config. Do not grow `--oracle` into that page.
 
@@ -427,7 +427,7 @@ do not open a browser.
   belongs to the local SI test harness on `feat/local-si-test`, not
   to this flag.
 - Do not put `--oracle` in the installed service command.
-- Do not turn this page into the v9 dashboard.
+- Do not turn this page into the dashboard in `ORACLE_DASHBOARD.md`.
 - Do not remove the size cap on `oracle-chat.jsonl` or `runner.log`.
 
 ## How to run it

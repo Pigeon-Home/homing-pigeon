@@ -62,7 +62,7 @@ Why it fits so well it feels designed for this:
 - **HTTP polling API.** The runner long-polls over HTTPS — outbound
   only, NAT-indifferent, no IMAP client, no mailbox quirks. The
   polling loop gets *simpler*, not more complex.
-- **Retries and dead-letter queues are built in.** v1's at-least-once
+- **Retries and dead-letter queues are built in.** Email's at-least-once
   story is "leave the email unseen and hope the flag semantics hold."
   Queues give you redelivery counts, backoff, and a DLQ for poison
   messages as first-class concepts. The delivery guarantees stop

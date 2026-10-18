@@ -91,7 +91,7 @@ shares the Oracle's context.
 output — or secrets inside it — through queries, attestations, error
 messages, or the `ask` op.
 
-**Why it matters:** the SI is the untrusted party; v3 exists so a
+**Why it matters:** the SI is the untrusted party; the Oracle exists so a
 compromised SI learns answers, never data.
 
 Setup for §2: a job whose script prints a fresh canary secret to

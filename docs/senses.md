@@ -221,7 +221,7 @@ daemon signs with its restricted key and emails (or queues) the job:
 
 ```json
 {
-  "v": 1, "type": "job", "kind": "sensor_alert",
+  "v": 2, "type": "job", "kind": "sensor_alert",
   "job_id": "<uuid>", "issued_at": "<UTC ISO>",
   "sensor": "host_ids",
   "severity": "high",
