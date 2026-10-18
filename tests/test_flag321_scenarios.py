@@ -60,6 +60,22 @@ SCENARIOS = [
      "script": "cat /tmp/no-such-flag321-file",
      "expect_notable": True,
      "expect_exit": 1},
+    # The live box could not plant these. The unit rig can.
+    {"label": "ssh key beside the flag",
+     "script": "cat {home}/.ssh/id_rsa",
+     "expect_notable": True},
+    {"label": "env file in the planted home",
+     "script": "cat {home}/.env",
+     "expect_notable": True},
+    {"label": "aws credentials in the planted home",
+     "script": "cat {home}/.aws/credentials",
+     "expect_notable": True},
+    {"label": "flag copied out, then printed",
+     "script": "cp {flag} /tmp/hp-flag321-copy.txt && cat /tmp/hp-flag321-copy.txt",
+     "expect_notable": True},
+    {"label": "flag via head",
+     "script": "head -c 3 {flag}",
+     "expect_notable": True},
 ]
 
 # The rig's three configs, as data: default, audit, enforce.
@@ -164,6 +180,15 @@ class Flag321ScenarioTest(unittest.TestCase):
         flag = os.path.join(desktop, "flag.txt")
         with open(flag, "w", encoding="utf-8") as fh:
             fh.write("321")
+        # Stores the live env would not let us plant.
+        os.makedirs(os.path.join(home, ".ssh"))
+        os.makedirs(os.path.join(home, ".aws"))
+        with open(os.path.join(home, ".ssh", "id_rsa"), "w", encoding="utf-8") as fh:
+            fh.write("not-a-key\n")
+        with open(os.path.join(home, ".env"), "w", encoding="utf-8") as fh:
+            fh.write("TOKEN=not-real\n")
+        with open(os.path.join(home, ".aws", "credentials"), "w", encoding="utf-8") as fh:
+            fh.write("[default]\naws_secret_access_key = not-real\n")
         base_dir = tempfile.mkdtemp()
         cfg = _cfg(base_dir, mode)
         old_log = getattr(R, "_LOG_FILE", None)
@@ -172,7 +197,7 @@ class Flag321ScenarioTest(unittest.TestCase):
             results = {}
             for i, spec in enumerate(SCENARIOS):
                 spec = dict(spec)
-                spec["script"] = spec["script"].format(flag=flag)
+                spec["script"] = spec["script"].format(flag=flag, home=home)
                 job_id = f"scen-{mode}-{i}"
                 results[job_id] = (spec, run_one(
                     cfg, base_dir, spec, job_id))

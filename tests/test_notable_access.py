@@ -147,6 +147,66 @@ _REASON_CASES = [
 ]
 
 
+
+# Paths a locked-down live box would not let the field rig open.
+# The analyzer still has to name them, so the Oracle gets the line
+# without the live read. (script, fragment of the reason)
+LIVE_BLOCKED = [
+    ("cat /root/.ssh/id_rsa", "credential"),
+    ("cat /root/.aws/credentials", "credential"),
+    ("cat /etc/sudoers", "system configuration"),
+    ("cat /etc/security/opasswd", "system configuration"),
+    ("cat ~/.gnupg/private-keys-v1.d/x", "credential"),
+    ("cat ~/.kube/config", "credential"),
+    ("cat ~/.azure/accessTokens.json", "credential"),
+    ("cat ~/.config/gcloud/credentials.db", "credential"),
+    ("cat ~/.docker/config.json", "home"),
+    ("cat ~/.npmrc", "home"),
+    ("cat ~/.netrc", "home"),
+    ("cat ~/.config/gh/hosts.yml", "home"),
+    ("cat /home/u/.local/share/keyrings/login.keyring", "credential"),
+    ("cat /home/u/.mozilla/firefox/x/logins.json", "home"),
+    ("cat /home/u/.config/google-chrome/Default/Cookies", "home"),
+    ("cat /home/u/.password-store/x.gpg", "home"),
+    ("cat /srv/keys/deploy.pem", "credential"),
+    ("cat /opt/app/server.key", "credential"),
+    ("openssl rsa -in /var/lib/acme/site.key", "credential"),
+    ("cat /home/u/.ansible/vault_pass", "home"),
+    ("cat /home/u/.terraform.d/credentials.tfrc.json", "credential"),
+    ("type C:\\Users\\DRU\\AppData\\Roaming\\Microsoft\\Credentials\\x", "credential"),
+    ("type C:\\Users\\DRU\\AppData\\Roaming\\Microsoft\\Protect\\x", "home"),
+    ("type C:\\Users\\DRU\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Cookies", "home"),
+    ("type C:\\Users\\DRU\\.ssh\\id_ed25519", "credential"),
+    ("cat /Users/dru/Library/Keychains/login.keychain-db", "credential"),
+    ("cat /Users/dru/.ssh/id_ed25519", "credential"),
+    ("cat /home/u/.config/Code/User/globalStorage/state.vscdb", "home"),
+    ("tar czf /home/u/.ssh/id_rsa /home/u/.aws/credentials /home/u/.gnupg/pubring.kbx", "credential"),
+    ("python3 -c \"open('/etc/shadow').read()\"", "credential"),
+]
+
+
+class LiveBlockedStoreTest(unittest.TestCase):
+    """The field rig could not open these. The unit test still pins them.
+
+    Each path is a credential store, a home file, or a system file
+    a locked-down VM refuses. The notable line is what the Oracle
+    gets instead of the live read.
+    """
+
+    def test_each_blocked_store_is_named(self):
+        for script, fragment in LIVE_BLOCKED:
+            got = findings(script)
+            self.assertTrue(got, script)
+            self.assertIn(fragment, got[0][1], script)
+
+    def test_the_line_rides_on_the_summary(self):
+        for script, _fragment in LIVE_BLOCKED[:8]:
+            data = {"kind": "exec", "script": script, "stdout": ""}
+            summary = R._retained_job_summary(data, "jobx", BASE)
+            self.assertIn("notable: SUSPICIOUS ACCESS", summary, script)
+            self.assertIn(script.split()[-1].strip("\"'"), summary, script)
+
+
 class ReasonMatrixTest(unittest.TestCase):
     def test_each_path_lands_on_its_reason(self):
         for script, fragment in _REASON_CASES:
