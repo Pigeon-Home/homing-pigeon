@@ -6405,6 +6405,20 @@ def _firewall_posture():
     return None
 
 
+def _read_posture_line(path):
+    """Previous posture line, or None. A symlink is not followed."""
+    if os.path.islink(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            old = json.load(fh)
+        if isinstance(old, dict) and isinstance(old.get("line"), str):
+            return old["line"]
+    except Exception:
+        return None
+    return None
+
+
 def _firewall_watch(base_dir):
     """Posture line, plus whether it changed since the last look.
 
@@ -6412,19 +6426,12 @@ def _firewall_watch(base_dir):
     None and does not overwrite a previous reading. Never raises.
     """
     line = _firewall_posture()
-    if not line:
+    if not isinstance(line, str) or not line:
         return None
     if not isinstance(base_dir, str) or not base_dir:
         return line
     path = os.path.join(base_dir, "oracle-firewall.json")
-    prev = None
-    try:
-        with open(path, encoding="utf-8") as fh:
-            old = json.load(fh)
-        if isinstance(old, dict) and isinstance(old.get("line"), str):
-            prev = old["line"]
-    except Exception:
-        prev = None
+    prev = _read_posture_line(path)
     try:
         _write_json(path, {"line": line, "saved_at": time.time()})
     except Exception:
@@ -6510,19 +6517,12 @@ def _av_watch(base_dir):
     A baseline is not an alert. Never raises.
     """
     line = _av_posture()
-    if not line:
+    if not isinstance(line, str) or not line:
         return None
     if not isinstance(base_dir, str) or not base_dir:
         return line
     path = os.path.join(base_dir, "oracle-av.json")
-    prev = None
-    try:
-        with open(path, encoding="utf-8") as fh:
-            old = json.load(fh)
-        if isinstance(old, dict) and isinstance(old.get("line"), str):
-            prev = old["line"]
-    except Exception:
-        prev = None
+    prev = _read_posture_line(path)
     try:
         _write_json(path, {"line": line, "saved_at": time.time()})
     except Exception:
