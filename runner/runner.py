@@ -5980,13 +5980,14 @@ def _file_fresh_lines(base_dir, sensor, text):
         text = ""
     path = os.path.join(base_dir, "oracle-logseen.json")
     seen = {}
-    try:
-        with open(path, encoding="utf-8") as fh:
-            loaded = json.load(fh)
-        if isinstance(loaded, dict):
-            seen = loaded
-    except Exception:
-        seen = {}
+    if not os.path.islink(path):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                loaded = json.load(fh)
+            if isinstance(loaded, dict):
+                seen = loaded
+        except Exception:
+            seen = {}
     prior = seen.get(sensor)
     first = not isinstance(prior, list)
     known = set(prior) if isinstance(prior, list) else set()
