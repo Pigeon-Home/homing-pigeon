@@ -4,11 +4,7 @@
 
 ### Protocol
 
-- The wire version is 1 again. The 3.7.20 bump to `"v": 2` changed
-  the integer only, and it was a mistake. The runner and
-  `send_job.py` send `"v": 1` and reject any other value. The
-  `--allow-protocol-v1` flag is gone. The 128-bit secret floor
-  stays. It is a signing rule, not a protocol number.
+- Messages use `"v": 1` again.
 
 ## 3.7.25 - 2026-10-17
 
