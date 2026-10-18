@@ -22,8 +22,8 @@ Ideas...
   the message changes.
 - The job still runs as sent. The Oracle has local context the
   sender does not, and files a suggestion on the result. Or a
-  "help me, local agent" job kind, where the Oracle is allowed
-  to modify the job before it runs.
+  "help me, local agent Kenobi..." job kind, where the Oracle is
+  allowed to modify the job before it runs.
 - A remote agent rarely knows the box: the OS, the tools on
   PATH, the versions, what is installed. An Oracle option
   attaches full platform metadata to every result, so the
