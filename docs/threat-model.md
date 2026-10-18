@@ -60,5 +60,3 @@ Gemini's pitch: Homing Pigeon should pivot from "secure runner" into an "Autonom
 4. **"Datadog for Autonomous Ops"** — centralized SaaS telemetry/forensics stream for background task execution.
 
 Playbook: wedge (today's runner) → Year 1 productize as Agentic Security Gateway → Year 2 add continuous compliance upsell → exit to a security incumbent.
-
-Caveats, kept next to it on purpose: Gemini cited modules that do not exist in this repo (`sandbox.py`, `posture.py`, `auditreport.py`) — it was riffing on the idea, not the code. Pivots 2–4 point at an always-on SaaS enforcement product, which contradicts this project's local-first, off-by-default, fail-open design (see above). Only Pivot 1 connects to what is actually being built (Oracle review, gates before hands). Filed here for the record, not as a plan.
