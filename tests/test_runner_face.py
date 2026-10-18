@@ -438,7 +438,7 @@ class FasterFlagTest(unittest.TestCase):
             code = runner.main()
         self.assertEqual(code, 7)
         cfg = oracle.call_args[0][0]
-        self.assertEqual(cfg["inference"]["model"], "qwen2.5:1.5b")
+        self.assertEqual(cfg["inference"]["model"], "qwen2.5:3b")
         self.assertIn("127.0.0.1", cfg["inference"]["endpoint"])
 
 

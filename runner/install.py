@@ -1024,7 +1024,7 @@ def do_install_home(args, home, bin_dir, cfg_path, state_dir, src_dir) -> int:
     print("  install.exe --oracle   the Oracle chat")
     print("  install.exe --logs     tail the runner log (--follow to watch)")
     print("  install.exe --wipe     back up and remove everything")
-    print("  install.exe --faster   pull qwen2.5:1.5b, the faster small model")
+    print("  install.exe --faster   pull qwen2.5:3b, the faster small model")
     return 0
 
 
@@ -1215,19 +1215,24 @@ BUILTIN_PROFILES = {
 
 DEFAULT_INFERENCE_MODEL = "llama3.2:3b"
 
-# --faster's model: a small Qwen. Chosen 2026-10-17 after field runs
-# on a 2-core laptop showed llama3.2:1b echoing the job index as raw
-# JSON instead of answering; qwen2.5:1.5b follows format instructions
-# far better at comparable speed, and shorter answers mean fewer
-# generated tokens. The raspberry-pi-home profile keeps llama3.2:1b.
-FASTER_INFERENCE_MODEL = "qwen2.5:1.5b"
+# --faster's model. qwen2.5:1.5b held this slot first: it follows
+# format instructions far better than llama3.2:1b (which echoed the
+# job index as raw JSON in field runs on a 2-core laptop). But in
+# the Flag321 eval battery (2026-10-17, hp-vmtest EVAL.md) the
+# 1.5B's verdicts were inconsistent across paraphrases -- flagging
+# every job as malicious under one phrasing and none under another.
+# qwen2.5:3b was the smallest model whose catch stayed steady in
+# the field tests and the battery. The owner's rule for this slot:
+# the faster option must still work when it ships. The
+# raspberry-pi-home profile keeps llama3.2:1b.
+FASTER_INFERENCE_MODEL = "qwen2.5:3b"
 
 
 def inference_model_for(profile, explicit=None, faster=False) -> str:
     """Which Ollama tag to pull.
 
     An explicit --inference-model always wins. --faster pulls
-    FASTER_INFERENCE_MODEL (qwen2.5:1.5b). Otherwise the
+    FASTER_INFERENCE_MODEL (qwen2.5:3b). Otherwise the
     raspberry-pi-home profile, whether detected or passed with
     --profile, pulls its lighter Llama, and every other install
     keeps the 3B default.
@@ -1636,11 +1641,11 @@ def main() -> int:
                     help="do not apply any deployment profile")
     ap.add_argument("--inference-model", default=None,
                     help="Ollama model to pull when inference is enabled "
-                         "(default llama3.2:3b, qwen2.5:1.5b with "
+                         "(default llama3.2:3b, qwen2.5:3b with "
                          "--faster, llama3.2:1b with the "
                          "raspberry-pi-home profile)")
     ap.add_argument("--faster", action="store_true",
-                    help="pull qwen2.5:1.5b, a smaller faster model. "
+                    help="pull qwen2.5:3b, a smaller faster model. "
                          "Does not change protected paths. "
                          "--inference-model still wins.")
     ap.add_argument("--additional-secret", action="append", default=[],

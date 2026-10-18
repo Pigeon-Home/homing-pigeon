@@ -7767,7 +7767,7 @@ def main() -> int:
                     help="chat with the Oracle in the terminal "
                          "(same chat, no browser)")
     ap.add_argument("--faster", action="store_true",
-                    help="use qwen2.5:1.5b for this process, the "
+                    help="use qwen2.5:3b for this process, the "
                          "faster small model. The model in "
                          "config.json is left as it is.")
     ap.add_argument("--oracle-port", type=int, default=11436, metavar="PORT",
@@ -7906,10 +7906,10 @@ def main() -> int:
             cfg["inference"] = inf
         # --faster's model; keep in step with
         # install.FASTER_INFERENCE_MODEL. This process only.
-        inf["model"] = "qwen2.5:1.5b"
+        inf["model"] = "qwen2.5:3b"
         if not inf.get("endpoint"):
             inf["endpoint"] = "http://127.0.0.1:11434/v1"
-        log("inference: --faster, using qwen2.5:1.5b")
+        log("inference: --faster, using qwen2.5:3b")
     # Log bounds (and the oracle.log switch) load before any daemon
     # is spawned, so a spawned daemon can write into oracle.log.
     _refresh_log_settings(cfg, _base_dir_for(cfg, args.config))
