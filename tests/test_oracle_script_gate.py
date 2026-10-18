@@ -161,6 +161,8 @@ function make(id) {
     children: [],
     childNodes: [],
     appendChild(child) { this.childNodes.push(child); this.children.push(child); return child; },
+    addEventListener() {},
+    requestSubmit() {},
     removeChild() {},
     insertBefore() {},
     scrollIntoView() {},

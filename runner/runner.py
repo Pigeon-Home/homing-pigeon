@@ -1220,6 +1220,7 @@ def build_attestations(queries, ctx):
                 except Exception:
                     key = "pattern"
                 safe_items.append((key, v))
+            text = ctx.get("text", "") if isinstance(ctx, dict) else ""
             atts.append({"predicate": pred,
                          "ok": not secret_scan(text, pats),
                          "patterns_sha384": hashlib.sha384(json.dumps(sorted(safe_items)).encode()).hexdigest()})

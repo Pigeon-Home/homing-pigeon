@@ -16,6 +16,9 @@
   Some Windows WebViews omit it, and rejecting it made the
   button look dead while the runner log kept moving. A
   non-loopback Origin is still refused.
+- The no_secrets attestation scans the job output again. A
+  merge dropped the line that bound that text, so the
+  predicate raised NameError instead of scanning.
 
 ### Tests
 
