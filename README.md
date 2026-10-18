@@ -23,7 +23,7 @@ Then try this prompt in your cloud SI, it should return in less than 30 seconds.
 
 ```
 Send an email to YOUR_RUNNER_EMAIL
-Use this protocol: https://github.com/Pigeon-Home/homing-pigeon/blob/main/PROTOCOL.md
+Use this protocol: https://pigeon-home.com/PROTOCOLv1
 Shared Secret: "YOUR_SECRET_STRING"
 I have a Windows computer. Retrieve the system clock from it and display it here.
 ```
