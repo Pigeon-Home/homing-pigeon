@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.7.32 - 2026-10-18
 
 ### Oracle
 
