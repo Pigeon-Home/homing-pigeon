@@ -10,6 +10,17 @@
   `INSTALL.md not found` before any mutant ran. Those manuals are
   now part of the mutation copy.
 
+### Oracle
+
+- The interactive Oracle's charter is restored: she is the owner's
+  local debugging partner, not only a watcher. The agent prompt
+  again gives her full hands -- answer questions about the system,
+  and carry out the owner's instructions on it, launching programs
+  and doing basic operating-system tasks -- under the two rules
+  that never moved: never invent an event, never reveal secrets.
+  The mailbox query prompt keeps its disclosure-boundary role.
+  tests/test_oracle_charter.py pins both sides of the split.
+
 ## 3.7.29 - 2026-10-18
 
 ### Fixes

@@ -599,7 +599,7 @@ class OracleAgentTest(unittest.TestCase):
         self.assertEqual(_bundled_doc_path("NO-SUCH-DOC.md"), "")
         self.assertEqual(_bundled_doc_path(""), "")
 
-    def test_agent_system_frames_admin_and_points_at_protocol(self):
+    def test_agent_system_frames_the_debugger_charter_and_points_at_protocol(self):
         from runner.runner import ask_model_agent, _bundled_doc_path
         proto = _bundled_doc_path("PROTOCOL.md")
         self.assertTrue(proto)
@@ -611,7 +611,7 @@ class OracleAgentTest(unittest.TestCase):
                             base_dir=d)
         self.assertTrue(seen)
         system = seen[0]["messages"][0]["content"]
-        self.assertIn("over-the-shoulder administrator", system)
+        self.assertIn("local debugging partner", system)
         self.assertIn("signed emails", system)
         self.assertIn(proto, system)
         self.assertIn("stays on this machine", system)
