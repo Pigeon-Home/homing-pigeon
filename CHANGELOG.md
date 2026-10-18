@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.7.41 - 2026-10-18
+
+### Tests
+
+- The local-signal fixture joins the oracle-brief thread before
+  removing its temp dir. On Windows the brief file was still
+  open at cleanup, so a passing test died with WinError 145.
+  The cleanup now retries briefly before giving up.
+
 ## 3.7.40 - 2026-10-18
 
 ### Features
@@ -26,12 +35,6 @@
   progress); the assessment is appended to `oracle-briefs.jsonl`
   and the runner log, with a deterministic note when no local
   model is configured.
-
-### Tests
-
-- The local-signal fixture joins the oracle-brief thread before
-  removing its temp dir. On Windows the brief file was still
-  open at cleanup, so a passing test died with WinError 145.
 
 ## 3.7.39 - 2026-10-18
 
