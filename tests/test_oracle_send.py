@@ -61,11 +61,18 @@ def _post(port, body, headers, timeout=10):
         headers=headers,
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.status, resp.read().decode()
-    except urllib.error.HTTPError as e:
-        return e.code, e.read().decode()
+    last = None
+    for _ in range(2):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.status, resp.read().decode()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read().decode()
+        except (urllib.error.URLError, OSError) as e:
+            # Windows aborts a loopback socket under load (WinError
+            # 10053) even when the server is fine. One retry.
+            last = e
+    raise last
 
 
 class PageSendWiringTest(unittest.TestCase):

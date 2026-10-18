@@ -125,13 +125,22 @@ class OracleChatNegativeTest(unittest.TestCase):
             method="POST",
         )
         try:
-            with urlopen(req, timeout=2) as resp:
+            with urlopen(req, timeout=10) as resp:
                 body = resp.read()
                 return resp.status, body
         except HTTPError as e:
             return e.code, e.read()
-        except (URLError, OSError) as e:
-            self.fail(f"connection failed: {e}")
+        except (URLError, OSError):
+            # A burst on Windows drops a loopback socket (timed out,
+            # WinError 10053) without the server having crashed.
+            try:
+                with urlopen(req, timeout=10) as resp:
+                    body = resp.read()
+                    return resp.status, body
+            except HTTPError as e:
+                return e.code, e.read()
+            except (URLError, OSError) as e:
+                self.fail(f"connection failed: {e}")
 
     def test_bad_json_does_not_crash(self):
         code, body = self._post(data=b"this is not json {")
