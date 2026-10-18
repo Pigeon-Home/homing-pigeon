@@ -944,3 +944,50 @@ class OracleAgentTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class ChatWindowTest(unittest.TestCase):
+    """A continuing investigation gets a window, not the whole chat.
+
+    The field loop is many turns. The model sees the last four,
+    cut at 2000 characters. Older turns stay in the log. The page
+    and the terminal never receive more than 4000 of one answer.
+    """
+
+    def test_recent_chat_keeps_the_last_four(self):
+        from runner.runner import recent_chat, record_oracle_turn
+        with tempfile.TemporaryDirectory() as d:
+            for i in range(7):
+                record_oracle_turn(
+                    d, {}, f"q{i}", {"answer": f"a{i}"})
+            got = recent_chat(d)
+            self.assertIn("q6", got)
+            self.assertIn("a6", got)
+            self.assertNotIn("q0", got)
+            self.assertNotIn("q2", got)
+            self.assertLessEqual(len(got), 2000)
+
+    def test_the_agent_is_handed_the_window(self):
+        from runner.runner import ask_model_agent, record_oracle_turn
+        seen = {}
+
+        def opener(req, timeout=60):
+            seen["body"] = json.loads(req.data.decode("utf-8"))
+            class R:
+                def read(self):
+                    return b'{"choices":[{"message":{"content":"ok"}}]}'
+                def __enter__(self):
+                    return self
+                def __exit__(self, *a):
+                    return False
+            return R()
+
+        with tempfile.TemporaryDirectory() as d:
+            record_oracle_turn(d, {}, "what ran", {"answer": "the flag job"})
+            ask_model_agent(
+                {"endpoint": "http://127.0.0.1:9/v1", "model": "m"},
+                "and then", "", 2000, opener=opener, base_dir=d)
+        user = seen["body"]["messages"][1]["content"]
+        self.assertIn("Recent chat, older turns dropped", user)
+        self.assertIn("what ran", user)
+        self.assertIn("the flag job", user)

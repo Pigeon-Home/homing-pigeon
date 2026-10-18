@@ -2479,10 +2479,14 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             "\n\nThe Homing Pigeon protocol reference is at: " + proto +
             "\nRead it with your file tools when you need exact message "
             "shapes; it is the authoritative spec.")
+    prior = recent_chat(base_dir)
+    user = "Question:\n" + _as_text(question) + "\n\nOutput:\n" + _as_text(output_text)
+    if prior:
+        user = ("Recent chat, older turns dropped:\n" + prior
+                + "\n\n" + user)
     messages = [
         {"role": "system", "content": system},
-        {"role": "user", "content":
-         "Question:\n" + _as_text(question) + "\n\nOutput:\n" + _as_text(output_text)},
+        {"role": "user", "content": user},
     ]
     scan_text = _as_text(output_text)
     tool_rounds = 0
@@ -7352,6 +7356,59 @@ _ORACLE_REJECTS = {
 _ORACLE_CHAT_MAX = 1_048_576
 
 
+_CHAT_WINDOW_TURNS = 4
+_CHAT_WINDOW_CHARS = 2000
+
+
+def recent_chat(base_dir, turns=_CHAT_WINDOW_TURNS, max_chars=_CHAT_WINDOW_CHARS):
+    """The last few Oracle turns, for a continuing investigation.
+
+    A long chat is not sent whole. The model gets the last few ask
+    events, cut to max_chars. Older turns stay in oracle-chat.jsonl.
+    """
+    if not isinstance(base_dir, str) or not base_dir:
+        return ""
+    try:
+        n = int(turns)
+    except (TypeError, ValueError, OverflowError):
+        n = _CHAT_WINDOW_TURNS
+    if n < 1:
+        return ""
+    try:
+        cap = int(max_chars)
+    except (TypeError, ValueError, OverflowError):
+        cap = _CHAT_WINDOW_CHARS
+    if cap < 1:
+        return ""
+    path = os.path.join(base_dir, "oracle-chat.jsonl")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.readlines()
+    except OSError:
+        return ""
+    rows = []
+    for line in lines:
+        try:
+            rec = json.loads(line)
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(rec, dict) or rec.get("event") != "ask":
+            continue
+        q = rec.get("question") if isinstance(rec.get("question"), str) else ""
+        a = rec.get("answer") if isinstance(rec.get("answer"), str) else ""
+        if not q and not a:
+            continue
+        rows.append((q[:300], a[:300]))
+    rows = rows[-n:]
+    if not rows:
+        return ""
+    parts = [f"You: {q}\nOracle: {a}" for q, a in rows]
+    blob = "\n\n".join(parts)
+    if len(blob) > cap:
+        blob = blob[-cap:]
+    return blob
+
+
 def record_oracle_turn(base_dir, cfg, question, ans, event="ask"):
     """One chat line on disk. Secrets are redacted. The file rolls at 1 MiB."""
     if not base_dir or not isinstance(base_dir, str):
@@ -7517,7 +7574,7 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
             if not isinstance(ans, dict):
                 ans = {"rejected": "inference_error"}
             if isinstance(ans.get("answer"), str) and ans.get("answer"):
-                payload = {"answer": ans["answer"]}
+                payload = {"answer": ans["answer"][:4000]}
             else:
                 why = ans.get("rejected") if isinstance(ans.get("rejected"), str) else ""
                 why = why or "inference_error"
@@ -7719,7 +7776,7 @@ def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
             except Exception as e:
                 log(f"oracle chat log failed: {e}", "WARN")
             if isinstance(ans.get("answer"), str) and ans.get("answer"):
-                print_fn(ans["answer"])
+                print_fn(ans["answer"][:4000])
             else:
                 why = ans.get("rejected") \
                     if isinstance(ans.get("rejected"), str) else ""
