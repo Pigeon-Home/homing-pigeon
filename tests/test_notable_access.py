@@ -808,6 +808,57 @@ class ReplyGateTest(unittest.TestCase):
             replies=("none malicious",), max_chars=-1)
         self.assertEqual(ans.get("answer"), "")
 
+    def test_tool_call_fragments_are_withheld(self):
+        # A parseable {"name", "parameters"} object is executed, not
+        # withheld. These are fragments: the name is there, the JSON
+        # is not a call.
+        import random
+        rng = random.Random(321)
+        shapes = ['{"parameters": {"command": "id"}}']
+        for name in sorted(R._ORACLE_TOOL_NAMES):
+            shapes.append('see {"name": "%s", "parameters": "nope"}' % name)
+            shapes.append('see {"name": "%s", "arguments": "nope"}' % name)
+        for _ in range(8):
+            name = rng.choice(sorted(R._ORACLE_TOOL_NAMES))
+            shapes.append("note " + '{"name": "%s", "parameters": "x"}' % name)
+        for shape in shapes:
+            self.assertTrue(R._answer_format_problem(shape), shape)
+            ans, seen = self.ask(
+                "which jobs are malicious?", self.ctx, self.base,
+                replies=(shape, "jobflag1 is the one."))
+            self.assertEqual(ans.get("answer"), "jobflag1 is the one.", shape)
+            self.assertIn("notable:", seen[0]["messages"][1]["content"])
+            self.assertIn("notable:", seen[-1]["messages"][1]["content"])
+        self.assertEqual(R._answer_format_problem("{not json"), "")
+
+    def test_two_index_fields_are_a_dump(self):
+        dump = json.dumps({"job_status": "ok", "job_ids": "jobflag1"})
+        ans, seen = self.ask(
+            "which jobs are malicious?", self.ctx, self.base,
+            replies=(dump, "jobflag1 is the one."))
+        self.assertEqual(ans.get("answer"), "jobflag1 is the one.")
+        self.assertIn("notable:", seen[0]["messages"][1]["content"])
+
+    def test_a_blank_reask_comes_back_empty(self):
+        dump = json.dumps({
+            "job_status": "ok", "newest_job_index": "0",
+            "job_ids": "jobflag1",
+        })
+        ans, seen = self.ask(
+            "which jobs are malicious?", self.ctx, self.base,
+            replies=(dump, None))
+        self.assertEqual(ans.get("answer"), "")
+        self.assertIn("notable:", seen[1]["messages"][1]["content"])
+
+    def test_redaction_that_creates_a_secret_is_rejected(self):
+        with unittest.mock.patch(
+                "runner.runner.redact_text", return_value=(_KEY, [])):
+            ans, seen = self.ask(
+                "which jobs are malicious?", self.ctx, self.base,
+                replies=("the jobs look ordinary.",))
+        self.assertEqual(ans.get("rejected"), "sanitization")
+        self.assertIn("notable:", seen[0]["messages"][1]["content"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
