@@ -1,5 +1,45 @@
 # Changelog
 
+## 3.7.37 - 2026-10-18
+
+### Security
+
+- `output_retention_days: 0` now means no expiry everywhere. The
+  prune path already treated 0 as "keep forever"; the expiry check
+  treated an explicit 0 as the 7-day default through `or 7`, so a
+  record the prune would keep was reported expired after a week.
+  Absent, None, or unparseable still falls back to 7. A negative
+  value still never expires and prunes nothing.
+
+### Tests
+
+- A coverage-guided campaign over the parser surfaces. Each
+  candidate is exercised under a line tracer scoped to `runner/`,
+  and it joins the corpus only when it adds coverage. The in-suite
+  run is 150 rounds. Growth past the seeds is required on Linux,
+  where it was measured; every platform keeps the construction
+  contracts (coverage includes the seeds-only baseline, the corpus
+  never drops a seated seed or passes the cap, same seed gives the
+  same corpus). The tracer matches a runner path case-insensitively,
+  because Windows does not always spell the path the way `abspath`
+  does.
+
+### CI
+
+- The Windows sharded-suite reporter can no longer be crashed by
+  shard output. Printing a failed shard used to raise
+  UnicodeEncodeError on the cp1252 console, the reporting loop
+  aborted with a log still open, and tempdir cleanup then died
+  with a sharing violation, so the real failure never appeared.
+  Shard output is written as UTF-8, a shard is counted failed
+  before its log is printed, and cleanup tolerates a directory it
+  cannot remove.
+- Shard children write UTF-8 on stdio. The reporter reads their
+  logs as UTF-8; a Windows child on the ANSI code page either
+  failed while printing a character outside that page or delivered
+  the dump as backslash escapes. `PYTHONIOENCODING=utf-8` is stdio
+  only, so `open()` keeps the locale encoding.
+
 ## 3.7.36 - 2026-10-18
 
 ### Security
