@@ -487,13 +487,14 @@ are semantic instead of regex-shaped. Config (all under an
   **Must resolve to loopback** — the Oracle refuses to enable inference
   against a non-local endpoint (fail closed; inference that leaves the
   box defeats the entire purpose).
-- `model`: model id, e.g. `"llama3.1:8b"`.
+- `model`: model id, e.g. `"qwen3:1.7b"`.
 - `max_answer_chars` (default 2000), `timeout_sec` (default 180).
 
-**Reference stack.** A Llama model (e.g. `llama3.1:8b`) served on
-loopback via Ollama (`http://127.0.0.1:11434/v1`). Any
-OpenAI-compatible server bound to loopback works — LM Studio and vLLM
-are equivalents — but Llama is what the Oracle is tested against. The
+**Reference stack.** `qwen3:1.7b` served on loopback via Ollama
+(`http://127.0.0.1:11434/v1`). Any OpenAI-compatible server bound to
+loopback works — LM Studio and vLLM are equivalents — but qwen3:1.7b
+is what the Oracle is tested against: it is the model the project's
+evaluation battery selected, and the installer's default. The
 Oracle refuses non-loopback endpoints.
 
 A general-purpose local agent such as OpenClaw may share the same
