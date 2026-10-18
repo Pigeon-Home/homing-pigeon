@@ -25,7 +25,7 @@ Then try this prompt in your cloud SI, it should return in less than 30 seconds.
 Send an email to YOUR_RUNNER_EMAIL@gmail.com
 Use this protocol: https://github.com/Pigeon-Home/homing-pigeon/blob/main/PROTOCOL.md
 Shared Secret: "YOUR_SECRET_STRING"
-Get the system clock and display it here.
+I have a Windows computer. Retrieve the system clock from it and display it here.
 ```
 IETF Homing Pigeon Draft: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-homing-pigeon-00.md
 
