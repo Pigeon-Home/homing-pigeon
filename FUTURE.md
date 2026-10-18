@@ -1,40 +1,31 @@
 # Future
 
-This is the only list of work that is not built. A design file
-describes the work. It does not keep a second status.
+Ideas...
 
 ## The message
 
-- Encrypted credentials at rest.
-- Ack messages.
-- Per-job encryption.
-- Uploading a large result as a file instead of a mail body.
-- Encrypting the message body on the transport. The sketch is
-  ORACLE_DASHBOARD.md, section 6.1.
+- Encrypted credentials at rest
+- Ack messages
+- Per-job encryption & transport enc
 
 ## The pipe
 
-- Cloudflare Queues. Email is the only transport in the runner.
-  The design notes are TRANSPORTS.md.
+- Cloudflare Queues: The design notes are TRANSPORTS.md
 
 ## Before a job runs
 
-- A human says yes before the job runs.
-  `docs/approval-gate-design.md`.
-- The semantic judge: ask the local model for a verdict before
-  execution. The deterministic checks are already shipped.
-  PROTOCOL.md, section 9.3.
+- A approval-only req user to say yes before the job runs: `docs/approval-gate-design.md`
+- User can discuss job with Oracle and modifications could be made or suggested with minor addition to proto field
 
 ## Who signs
 
 - Ed25519 signatures instead of the shared HMAC secret.
-  `docs/asymmetric-signing-design.md`.
+  `docs/asymmetric-signing-design.md`
 
 ## What you see
 
 - A loopback dashboard for the Oracle. ORACLE_DASHBOARD.md.
-  `--oracle` and `--oracle-cli` are the chat. They are not
-  this dashboard.
+  `--oracle` and `--oracle-cli` are the current.
 
 ## What the box notices
 
@@ -60,10 +51,7 @@ describes the work. It does not keep a second status.
 - The local test chat waits for the result email.
   `docs/handoff-local-si.md`.
 
-## Not a queue
-
-These are written down so they are not mistaken for the list
-above.
+## Misc
 
 - NATS, MQTT, Redis, Postgres, Durable Objects, and the local
   socket. Cut. TRANSPORTS.md.
