@@ -7260,7 +7260,7 @@ function trimLog() {
 }
 function fit(text) {
   if (text.length <= BUBBLE) return text;
-  return text.slice(0, BUBBLE) + "\n… cut. The full answer is in oracle-chat.jsonl.";
+  return text.slice(0, BUBBLE) + "\\n… cut. The full answer is in oracle-chat.jsonl.";
 }
 function add(who, text, cls, note) {
   const wrap = document.createElement("div");

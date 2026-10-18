@@ -66,6 +66,18 @@ class PageWindowTest(unittest.TestCase):
     oracle-chat.jsonl.
     """
 
+    def test_the_page_script_is_one_string(self):
+        """A real newline in the cut-message killed Send.
+
+        The script did not parse, so the form never attached and
+        the button did nothing. The cut notice stays one JS string.
+        """
+        page = R.oracle_page("tok", "llama3.2:3b", True)
+        js = page[page.find("<script>") + 8:page.find("</script>")]
+        fit = js[js.find("function fit"):js.find("function add")]
+        self.assertNotIn("\n…", fit)
+        self.assertIn("\\n…", fit)
+
     def test_the_page_windows_itself(self):
         page = R.oracle_page("tok", "llama3.2:3b", True)
         self.assertIn("const KEEP = 40", page)
