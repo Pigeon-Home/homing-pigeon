@@ -6869,12 +6869,14 @@ _SENSITIVE_MARKERS = (
 )
 
 # Absolute paths under these prefixes are ordinary system-command
-# territory (a binary's own path, device nodes, runtime state) and
-# are not findings on their own. Sensitive markers are checked
-# first and always win.
+# territory (a binary's own path, device nodes, kernel interfaces)
+# and are not findings on their own. Sensitive markers are checked
+# first and always win. Everything else absolute -- /tmp, /var,
+# /opt, /srv, another job's directory -- is outside the job's own
+# workspace, which is the finding.
 _ORDINARY_PREFIXES = (
     "/usr/", "/bin/", "/sbin/", "/lib/", "/lib64/", "/proc/",
-    "/sys/", "/dev/", "/tmp/", "/var/", "/opt/",
+    "/sys/", "/dev/",
 )
 
 _PATH_SPLITTERS = " \t\r\n'\"`;|&<>(){}[]"
@@ -6887,9 +6889,11 @@ def _script_path_findings(script, base_dir=None, job_id=None):
     absolute path (POSIX, ~/, or a Windows drive path, possibly the
     value side of a --flag=value). Findings: a credential store or
     key material anywhere; a path under a user home directory; a
-    path under /etc/. Paths inside the job's own workspace (or the
-    runner's state directory) are its own business and never
-    findings. Capped at 3, in script order.
+    path under /etc/; and any other absolute path outside the
+    ordinary system prefixes -- /tmp staging included. Paths
+    inside the job's own workspace (or the runner's state
+    directory) are its own business and never findings. Capped
+    at 3, in script order.
     """
     if not isinstance(script, str) or not script:
         return []
@@ -6943,10 +6947,11 @@ def _script_path_findings(script, base_dir=None, job_id=None):
         elif norm.startswith("/etc/"):
             reason = "a system configuration file, outside the " \
                      "job's own workspace"
-        elif not norm.startswith(_ORDINARY_PREFIXES) \
-                and not norm.startswith("/home/") \
-                and ":/" not in norm[:4]:
+        elif norm.startswith(_ORDINARY_PREFIXES) \
+                or ":/windows/" in low or ":/program files" in low:
             continue
+        else:
+            reason = "a file outside the job's own workspace"
         if reason is None:
             continue
         if token in seen:

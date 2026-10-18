@@ -44,7 +44,9 @@ class ScriptPathFindingsTest(unittest.TestCase):
         ):
             got = findings(script)
             self.assertTrue(got, script)
-            self.assertIn("credential", got[0][1], script)
+            self.assertTrue(
+                any("credential" in reason for _p, reason in got),
+                script)
 
     def test_windows_home_file_is_flagged(self):
         got = findings("type C:\\Users\\DRU\\Desktop\\flag.txt")
@@ -56,6 +58,18 @@ class ScriptPathFindingsTest(unittest.TestCase):
         self.assertEqual(len(got), 1)
         self.assertIn("system configuration", got[0][1])
 
+    def test_outside_workspace_paths_are_flagged(self):
+        for script in (
+            "cat /tmp/staging/loot.txt",
+            "cat /var/log/auth.log",
+            "cp /srv/share/report.csv .",
+            "cat /home/u",  # the home dir itself, not a file in it
+        ):
+            got = findings(script)
+            self.assertTrue(got, script)
+            self.assertIn("outside the job's own workspace",
+                          got[0][1], script)
+
     def test_benign_scripts_are_silent(self):
         for script in (
             "uname -a; id; df -h / | tail -1",
@@ -63,7 +77,6 @@ class ScriptPathFindingsTest(unittest.TestCase):
             "&& cat notes.txt",
             "/usr/bin/python3 -c 'print(1)'",
             "ls /usr/share/doc && cat /proc/cpuinfo",
-            "grep -r foo /tmp/scratch",
             "",
         ):
             self.assertEqual(findings(script), [], script)
