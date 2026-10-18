@@ -6227,8 +6227,11 @@ _SYS_LOG_MARKERS = ("error", "fatal", "fault", "fail")
 def _tail_marked(path, markers, max_lines=20):
     """Last matching lines of a log file, or None if it cannot be read.
 
-    Reads at most 4KB from the end. Never raises.
+    Reads at most 4KB from the end. A symlink is not followed.
+    Never raises.
     """
+    if not isinstance(path, str) or os.path.islink(path):
+        return None
     try:
         size = os.path.getsize(path)
     except OSError:
