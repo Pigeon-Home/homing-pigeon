@@ -112,6 +112,84 @@ class SeenMutations(unittest.TestCase):
             self.assertEqual(load_seen(path), {"kept": True})
 
 
+class SeenReadTest(unittest.TestCase):
+    def test_a_symlink_cache_is_not_the_replay_set(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "seen.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(["id-1", "id-2"], fh)
+            self.assertEqual(load_seen(path), {"id-1": True, "id-2": True})
+            target = os.path.join(d, "target")
+            with open(target, "w", encoding="utf-8") as fh:
+                json.dump(["secret-job", "id-9"], fh)
+            os.remove(path)
+            os.symlink(target, path)
+            self.assertEqual(load_seen(path), {})
+            with open(target, encoding="utf-8") as fh:
+                self.assertIn("secret-job", fh.read())
+            self.assertTrue(os.path.islink(path))
+
+    def test_shapes_that_are_not_a_cache_are_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "seen.json")
+            for body in ("[]", "null", "1", "\"x\"", "not json"):
+                with open(path, "w", encoding="utf-8") as fh:
+                    fh.write(body)
+                self.assertEqual(load_seen(path), {})
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"1": True, "ok": 1}, fh)
+            self.assertEqual(set(load_seen(path)), {"1", "ok"})
+            self.assertEqual(load_seen(""), {})
+            self.assertEqual(load_seen(None), {})
+            self.assertEqual(load_seen(os.path.join(d, "missing.json")), {})
+
+
+class SeenReadFuzzTest(unittest.TestCase):
+    def test_random_json_does_not_follow_a_symlink(self):
+        rng = random.Random(20261017)
+        crashes = []
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "seen.json")
+            target = os.path.join(d, "target")
+            with open(target, "w", encoding="utf-8") as fh:
+                fh.write('["secret-job"]')
+            for i in range(80):
+                body = rng.choice([
+                    json.dumps(["id-%d" % i, i]),
+                    json.dumps({"id-%d" % i: True}),
+                    "null",
+                    "[]",
+                    "nope",
+                    json.dumps([None, "ok"]),
+                ])
+                try:
+                    with open(path, "w", encoding="utf-8") as fh:
+                        fh.write(body)
+                    loaded = load_seen(path)
+                except Exception as exc:
+                    crashes.append(type(exc).__name__)
+                    break
+                if not isinstance(loaded, dict):
+                    crashes.append(type(loaded).__name__)
+                    break
+                if any(not isinstance(key, str) for key in loaded):
+                    crashes.append("key")
+                    break
+            os.remove(path)
+            os.symlink(target, path)
+            try:
+                if load_seen(path) != {}:
+                    crashes.append("read")
+            except Exception as exc:
+                crashes.append(type(exc).__name__)
+            with open(target, encoding="utf-8") as fh:
+                if "secret-job" not in fh.read():
+                    crashes.append("followed")
+            if not os.path.islink(path):
+                crashes.append("replaced")
+        self.assertEqual(crashes, [])
+
+
 class SeenFuzzTest(unittest.TestCase):
     def test_random_keys_stay_capped_and_owner_only(self):
         rng = random.Random(20261017)

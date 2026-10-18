@@ -4983,7 +4983,13 @@ def load_config(path: str) -> dict:
 
 
 def load_seen(path: str) -> dict:
+    """Replay cache. A symlink is not followed.
+
+    A missing or unreadable file is an empty cache. Never raises.
+    """
     try:
+        if not isinstance(path, str) or not path or os.path.islink(path):
+            return {}
         with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
         if isinstance(data, list):
