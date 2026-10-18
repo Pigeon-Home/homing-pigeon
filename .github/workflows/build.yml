@@ -48,6 +48,15 @@ jobs:
     # not a block; the tag build is where the signal is wanted. The
     # rule lives here so nobody has to remember to ask for it --
     # the ref decides.
+    # continue-on-error makes the comment above true in the one
+    # place it was not: a failed mutation job used to stamp the
+    # whole run 'failure', and the mirror publishers key off the
+    # run conclusion, so one signal job silently held the
+    # SourceForge and GitLab publishes hostage (v3.7.29 never
+    # reached either mirror that way). The job still shows failed
+    # in the run when it fails -- the signal stays loud; it just
+    # cannot block a publish any more.
+    continue-on-error: true
     if: startsWith(github.ref, 'refs/tags/v')
     needs: test
     runs-on: ubuntu-latest

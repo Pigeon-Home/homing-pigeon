@@ -130,6 +130,15 @@ and pushes `ghcr.io/pigeon-home/homing-pigeon` with the version tag
 and `latest`. You can also trigger a manual build from the Actions tab
 ("Publish Docker image") any time.
 
+**Releasing through your SI instead:** say "tag and publish
+everything." That one sentence is the whole instruction set. The SI
+bumps the version in the three places it lives, waits for the
+branch build to go green at every job, tags that commit, watches
+the tag build job by job (mutation included), and then checks
+every outlet by name -- GitHub Release, PyPI, Docker, SourceForge,
+GitLab -- before reporting. You get one report when all of it is
+confirmed, or one report naming the exact outlet that failed.
+
 ---
 
 ## Job 5: Put the runner on a computer

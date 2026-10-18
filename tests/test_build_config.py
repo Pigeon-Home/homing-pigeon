@@ -99,6 +99,28 @@ class MutationGateTest(unittest.TestCase):
             self.assertNotIn("refs/tags", block,
                              "%s must not be tag-gated" % job)
 
+    def test_mutation_is_a_signal_not_a_block(self):
+        # "Signal, not a block" must hold in the run conclusion,
+        # not only in the comment: the mirror publishers key off
+        # workflow_run.conclusion == 'success', and a failed
+        # mutation job without continue-on-error stamps the whole
+        # run 'failure' -- which is exactly how v3.7.29 never
+        # reached SourceForge or GitLab.
+        block = _job_block(_workflow(), "mutation")
+        self.assertIn("continue-on-error: true", block)
+
+    def test_real_gates_are_not_continue_on_error(self):
+        # The mirror image of the pin above: if a job that gates
+        # the release ever grows continue-on-error, a red suite
+        # would publish. Only the signal job may carry it.
+        workflow = _workflow()
+        for job in ("test", "typecheck", "build-linux", "build-macos",
+                    "build-windows", "build-python", "release",
+                    "pypi-publish"):
+            block = _job_block(workflow, job)
+            self.assertNotIn("continue-on-error", block,
+                             "%s must stay a real gate" % job)
+
 
 def _also_copy():
     with open(os.path.join(_root(), "pyproject.toml"),
