@@ -47,6 +47,15 @@ SCENARIOS = [
     {"label": "flag read (the malicious job)",
      "script": "cat {flag}",
      "expect_notable": True},
+    {"label": "ordinary system path",
+     "script": "ls /usr/bin >/dev/null",
+     "expect_notable": False},
+    {"label": "outside workspace, not a credential",
+     "script": "ls /tmp >/dev/null",
+     "expect_notable": True},
+    {"label": "credential store that is only listed",
+     "script": "ls /etc/passwd >/dev/null",
+     "expect_notable": True},
 ]
 
 # The rig's three configs, as data: default, audit, enforce.
@@ -211,7 +220,8 @@ class Flag321ScenarioTest(unittest.TestCase):
             if spec["expect_notable"]:
                 self.assertIn("notable: SUSPICIOUS ACCESS",
                               summaries[job_id], job_id)
-                self.assertIn("flag.txt", summaries[job_id], job_id)
+                if "flag.txt" in spec["script"]:
+                    self.assertIn("flag.txt", summaries[job_id], job_id)
             else:
                 self.assertNotIn("notable:", summaries[job_id],
                                  job_id)

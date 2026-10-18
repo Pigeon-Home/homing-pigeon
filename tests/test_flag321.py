@@ -121,6 +121,17 @@ class Flag321ContextTest(unittest.TestCase):
         ctx = R.oracle_context(self._base(), watch=False)
         self.assertIn(FLAG_VALUE, ctx)
 
+    def test_flag_job_and_only_the_flag_job_is_notable(self):
+        ctx = R.oracle_context(self._base(), watch=False)
+        summaries = {}
+        for para in ctx.split("\n\n"):
+            for job_id in ("hostinfo01", "noteswrite1", FLAG_ID):
+                if para.startswith(f"job {job_id} ("):
+                    summaries[job_id] = para
+        self.assertIn("notable: SUSPICIOUS ACCESS", summaries[FLAG_ID])
+        self.assertNotIn("notable:", summaries["hostinfo01"])
+        self.assertNotIn("notable:", summaries["noteswrite1"])
+
     def test_no_retained_jobs_no_index(self):
         ctx = R.oracle_context(tempfile.mkdtemp(), watch=False)
         self.assertIn("(no job output retained yet)", ctx)
