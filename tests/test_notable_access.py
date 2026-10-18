@@ -513,5 +513,133 @@ class BoundaryTest(unittest.TestCase):
             self.assertIn("credential", got[0][1])
 
 
+_WATCH = (
+    "_canary_watch", "_host_log_tail", "_firewall_watch", "_av_watch",
+    "_eventlog_tail", "_registry_watch",
+)
+
+
+def _watch_context(base, values, platform=None, **kwargs):
+    """oracle_context with the collectors replaced by plain values."""
+    patches = [
+        unittest.mock.patch("runner.runner." + name, return_value=values.get(name, ""))
+        for name in _WATCH
+    ]
+    if platform is not None:
+        patches.append(unittest.mock.patch("runner.runner.sys.platform", platform))
+    for p in patches:
+        p.start()
+    try:
+        return R.oracle_context(base, watch=True, **kwargs)
+    finally:
+        for p in patches:
+            p.stop()
+
+
+class WatchRecordTest(unittest.TestCase):
+    """The notable line stays put when the watch sections are appended."""
+
+    def setUp(self):
+        self.base = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self.base, "retained"))
+        R.save_retained(self.base, "jobflag1", _record(FLAG))
+
+    def test_each_collector_state_keeps_the_notable_line(self):
+        states = (None, "", "sense-hit")
+        for can in states:
+            for host in states:
+                for fw in states:
+                    for av in states:
+                        ctx = _watch_context(self.base, {
+                            "_canary_watch": can,
+                            "_host_log_tail": host,
+                            "_firewall_watch": fw,
+                            "_av_watch": av,
+                        })
+                        self.assertIn("notable:", ctx)
+                        self.assertIn("Desktop/flag.txt", ctx)
+                        self.assertIn("SUSPICIOUS ACCESS", ctx)
+                        if can:
+                            self.assertIn("Canary watch", ctx)
+                            self.assertIn(can, ctx)
+                        else:
+                            self.assertNotIn("Canary watch", ctx)
+                        if host is None:
+                            self.assertIn("Host log tail: unreadable", ctx)
+                        elif host:
+                            self.assertIn(host, ctx)
+                        else:
+                            self.assertIn("no matching auth failures", ctx)
+                        if fw is None:
+                            self.assertIn("Firewall posture: unreadable", ctx)
+                        elif fw:
+                            self.assertIn("Firewall posture:\n" + fw, ctx)
+                        else:
+                            self.assertNotIn("Firewall posture", ctx)
+                        if av is None:
+                            self.assertIn("AV posture: unreadable", ctx)
+                        elif av:
+                            self.assertIn("AV posture:\n" + av, ctx)
+                        else:
+                            self.assertNotIn("AV posture", ctx)
+
+    def test_windows_collectors(self):
+        for ev in (None, "", "evt-1"):
+            for reg in (None, "", "reg-1"):
+                ctx = _watch_context(
+                    self.base,
+                    {"_eventlog_tail": ev, "_registry_watch": reg},
+                    platform="win32")
+                self.assertIn("notable:", ctx)
+                self.assertNotIn("Host log tail", ctx)
+                if ev is None:
+                    self.assertIn("Event Log: unreadable", ctx)
+                elif ev:
+                    self.assertIn("evt-1", ctx)
+                else:
+                    self.assertIn("no Critical, Error", ctx)
+                if reg is None:
+                    self.assertIn("registry watch: unreadable", ctx)
+                elif reg:
+                    self.assertIn("reg-1", ctx)
+                else:
+                    self.assertNotIn("Windows registry watch", ctx)
+
+    def test_a_full_job_budget_skips_the_watch(self):
+        called = []
+
+        def _no(*_a, **_k):
+            called.append(1)
+            return "should-not-appear"
+
+        with unittest.mock.patch("runner.runner._canary_watch", _no), \
+                unittest.mock.patch("runner.runner._host_log_tail", _no), \
+                unittest.mock.patch("runner.runner._firewall_watch", _no), \
+                unittest.mock.patch("runner.runner._av_watch", _no):
+            ctx = R.oracle_context(self.base, max_chars=40, watch=True)
+        self.assertEqual(called, [])
+        self.assertLessEqual(len(ctx), 40)
+        self.assertNotIn("should-not-appear", ctx)
+
+    def test_watch_text_is_cut_by_the_final_cap(self):
+        ctx = _watch_context(
+            self.base, {"_canary_watch": "C" * 2000}, max_chars=500)
+        self.assertEqual(len(ctx), 500)
+        self.assertTrue(ctx.startswith("Job index"))
+        self.assertIn("notable:", ctx)
+
+    def test_denylist_failure_still_carries_the_line(self):
+        script = "rm -rf /; cat /etc/shadow"
+        verdict, reasons = R.judge_job({"judge": "advisory"}, {"script": script})
+        self.assertEqual(verdict, "fail")
+        self.assertIn("denylist: rm -rf /", reasons)
+        s = R._retained_job_summary(_record(script), "jobx", BASE)
+        self.assertIn("notable:", s)
+        self.assertIn("/etc/shadow", s)
+        verdict, reasons = R.judge_job({"judge": "enforce"}, {"script": script})
+        self.assertEqual(verdict, "fail")
+        self.assertTrue(reasons)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
