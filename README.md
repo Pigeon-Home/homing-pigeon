@@ -15,8 +15,8 @@ fixes that: tell your SI to complete a task and it will do it on your
 machine. The results return so that your SI can iterate — run the tests,
 read the failure, fix, repeat. From your phone or anywhere.
 
-Similar to a GitHub self-hosted runner. The is one of many optional
-transport methods. (See TRANSPORTS.md.)
+The agent bares similary to GitHub self-hosted runners. Email is the
+default option. But others are supported. (See TRANSPORTS.md.)
 
 Install the homing pigeon agent on your system. It will prompt for login
 credentials to an email address, the default transport mechanism.
