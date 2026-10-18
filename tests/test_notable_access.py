@@ -557,7 +557,7 @@ class WatchRecordTest(unittest.TestCase):
                             "_host_log_tail": host,
                             "_firewall_watch": fw,
                             "_av_watch": av,
-                        })
+                        }, platform="linux")
                         self.assertIn("notable:", ctx)
                         self.assertIn("Desktop/flag.txt", ctx)
                         self.assertIn("SUSPICIOUS ACCESS", ctx)
