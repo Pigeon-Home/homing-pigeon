@@ -104,8 +104,8 @@ you. You start them by making a **release**. All point and click:
 2. On the right side, click **Releases**.
 3. Click the **Draft a new release** button.
 4. Click **Choose a tag**, then type the tag you are cutting, such as
-   `v3.7.24`, and click **Create new tag**.
-5. Type a title like `Version 3.7.24`. The number is the one in
+   `v3.7.26`, and click **Create new tag**.
+5. Type a title like `Version 3.7.26`. The number is the one in
    `pyproject.toml`, not a guess.
 6. Click the big green **Publish release** button.
 7. Now click the **Actions** tab at the top. You will see the robots
@@ -261,8 +261,7 @@ lie.
 
 The job runs as the runner's user and the full stdout comes back.
 There is no narrower result view, no judge, and no local model.
-The message is `"v": 2`. Do not send `"v": 1` unless you started
-the runner with `--allow-protocol-v1`. Leave the result policy off.
+The message is `"v": 1`. Leave the result policy off.
 
 A current install does not start that way. `install.py` applies the
 `password-only` profile unless you pass `--no-profile`. That profile
@@ -294,7 +293,7 @@ and `shared_secret` alone.
 Also leave every `security.modes` value at `off`, leave `sensors`
 disabled, and do not start the runner with `--oracle`.
 
-The clock job itself must be a normal exec: `"v": 2`, `"type":
+The clock job itself must be a normal exec: `"v": 1`, `"type":
 "job"`, `"kind": "exec"`, a script that prints the date, and no
 `result_policy`, no `queries`, and no `key_id`. Omit `interpreter`
 unless you know the machine. Windows prints the clock with

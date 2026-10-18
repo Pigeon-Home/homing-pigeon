@@ -190,24 +190,17 @@ report_event = _load_attr(
 
 SUBJECT_JOB = "[HOMING-PIGEON] job "
 SUBJECT_RESULT = "[HOMING-PIGEON] result "
-PROTOCOL_VERSION = 2
-
-# Protocol v2 is not backward compatible: a v1 message is rejected
-# unless the operator opted in with --allow-protocol-v1 (main() sets
-# this). Replies always carry PROTOCOL_VERSION, never the version
-# of the message being answered.
-_ALLOW_PROTOCOL_V1 = False
+PROTOCOL_VERSION = 1
 
 
 def _version_ok(v) -> bool:
     """True when a message's protocol version may be accepted.
 
-    The current version always passes. Version 1 passes only under
-    the operator's --allow-protocol-v1 opt-in.
+    Only 1 is a protocol version. The 2026-10-17 bump to 2 changed
+    the integer and nothing else, and it was reverted. Replies carry
+    PROTOCOL_VERSION.
     """
-    if v == PROTOCOL_VERSION:
-        return True
-    return v == 1 and _ALLOW_PROTOCOL_V1
+    return v == PROTOCOL_VERSION
 SEEN_CAP = 2000
 
 
@@ -7655,10 +7648,6 @@ def main() -> int:
                     metavar="SEC",
                     help="with --diagnose: seconds to wait for the "
                          "round-trip result (default 120)")
-    ap.add_argument("--allow-protocol-v1", action="store_true",
-                    help="accept protocol v1 messages (default: "
-                         "rejected; protocol v2 is not backward "
-                         "compatible)")
     ap.add_argument("--job-id", default=None,
                     help="job id for --inspect job")
     ap.add_argument("--setup", action="store_true",
@@ -7774,8 +7763,6 @@ def main() -> int:
         base_dir = _base_dir_for(cfg, args.config)
         return _harness.main(cfg, base_dir, cfg_path=args.config,
                              roundtrip_timeout=args.diagnose_timeout)
-    global _ALLOW_PROTOCOL_V1
-    _ALLOW_PROTOCOL_V1 = bool(args.allow_protocol_v1)
     if args.faster:
         inf = cfg.get("inference")
         if not isinstance(inf, dict):

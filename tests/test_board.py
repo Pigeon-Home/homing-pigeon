@@ -115,16 +115,16 @@ class BoardE2ETest(unittest.TestCase):
         issued = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         mails = [
             _board_mail("[HOMING-PIGEON] task_submit t-e2e", {
-                "v": 2, "type": "task_submit", "task_id": "t-e2e",
+                "v": 1, "type": "task_submit", "task_id": "t-e2e",
                 "issued_at": issued, "priority": 3, "capabilities": ["py"],
                 "payload": {"kind": "ping"},
             }),
             _board_mail("[HOMING-PIGEON] task_request w1", {
-                "v": 2, "type": "task_request", "issued_at": issued,
+                "v": 1, "type": "task_request", "issued_at": issued,
                 "capabilities": ["py"],
             }),
             _board_mail("[HOMING-PIGEON] task_result t-e2e", {
-                "v": 2, "type": "task_result", "issued_at": issued,
+                "v": 1, "type": "task_result", "issued_at": issued,
                 "result": {"ok": True},
             }),
         ]

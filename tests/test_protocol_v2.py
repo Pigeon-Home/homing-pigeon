@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""Protocol v2: version gates, the v1 opt-in, and the sender floor.
+"""Protocol version is 1. The sender still refuses a weak secret.
 
-Covers the operator's 2026-10-17 directive: PROTOCOL_VERSION is 2;
-a v1 message (job, query, board) is rejected by default and is
-accepted only under --allow-protocol-v1 (the module flag main()
-sets from that argument); replies always carry the current
-version; cloud/send_job.py emits v2 and refuses to sign with a
-sub-128-bit or patterned secret, while verification stays
-signature-only (the floor is a signing rule, not a verify rule).
+The 2026-10-17 bump to version 2 changed the integer only and was
+reverted the same day. A job, query, or board message with any other
+`v` is rejected. Replies carry 1. cloud/send_job.py emits 1 and
+refuses to sign with a sub-128-bit or patterned secret. Verification
+stays signature-only: the floor is a signing rule, not a verify rule.
 """
 
 import contextlib
@@ -46,14 +44,14 @@ def _mail(subject, payload):
     return msg.as_bytes()
 
 
-def _job(v, job_id="v2-job"):
+def _job(v, job_id="ver-job"):
     return {"v": v, "type": "job", "job_id": job_id,
             "issued_at": _now(), "kind": "ping"}
 
 
 class VersionGateTest(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.mkdtemp(prefix="hp-v2-")
+        self.tmp = tempfile.mkdtemp(prefix="hp-v1-")
         self.cfg = {
             "mailbox_user": "si@example.com",
             "mailbox_password": "test-password",
@@ -64,11 +62,6 @@ class VersionGateTest(unittest.TestCase):
             "default_timeout_sec": 30,
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
-        self._saved_flag = R._ALLOW_PROTOCOL_V1
-        R._ALLOW_PROTOCOL_V1 = False
-
-    def tearDown(self):
-        R._ALLOW_PROTOCOL_V1 = self._saved_flag
 
     def _poll(self, mails):
         smtp = FakeSMTP()
@@ -77,62 +70,49 @@ class VersionGateTest(unittest.TestCase):
         return smtp
 
     def test_version_ok_matrix(self):
-        self.assertTrue(R._version_ok(2))
-        self.assertFalse(R._version_ok(1))
+        self.assertTrue(R._version_ok(1))
+        self.assertFalse(R._version_ok(2))
         self.assertFalse(R._version_ok(3))
         self.assertFalse(R._version_ok(None))
-        self.assertFalse(R._version_ok("2"))
-        R._ALLOW_PROTOCOL_V1 = True
-        self.assertTrue(R._version_ok(1))
-        self.assertTrue(R._version_ok(2))
-        self.assertFalse(R._version_ok(3))
+        self.assertFalse(R._version_ok("1"))
 
-    def test_v2_job_accepted_by_default(self):
-        smtp = self._poll([_mail("[HOMING-PIGEON] job v2-job", _job(2))])
+    def test_v1_job_accepted_reply_is_v1(self):
+        smtp = self._poll([_mail("[HOMING-PIGEON] job ver-job", _job(1))])
         self.assertEqual(len(smtp.sent), 1)
         body = verify_body(smtp.sent[0].get_content(), SECRET)
         self.assertEqual(body["type"], "result")
-        self.assertEqual(body["v"], 2)
+        self.assertEqual(body["v"], 1)
 
-    def test_v1_job_rejected_by_default(self):
-        smtp = self._poll([_mail("[HOMING-PIGEON] job v2-job", _job(1))])
+    def test_v2_job_rejected(self):
+        smtp = self._poll([_mail("[HOMING-PIGEON] job ver-job", _job(2))])
         self.assertEqual(len(smtp.sent), 0)
 
-    def test_v1_job_accepted_with_opt_in_reply_still_v2(self):
-        R._ALLOW_PROTOCOL_V1 = True
-        smtp = self._poll([_mail("[HOMING-PIGEON] job v2-job", _job(1))])
-        self.assertEqual(len(smtp.sent), 1)
-        body = verify_body(smtp.sent[0].get_content(), SECRET)
-        self.assertEqual(body["type"], "result")
-        self.assertEqual(body["v"], 2)
-
-    def test_v1_query_rejected_by_default(self):
+    def test_v1_query_passes_the_version_gate(self):
         q = {"v": 1, "type": "query", "query_id": "q-v1",
              "job_id": "no-such-job", "issued_at": _now(),
              "queries": [{"op": "grep", "pattern": "x"}]}
         smtp = self._poll([_mail("[HOMING-PIGEON] query q-v1", q)])
+        self.assertEqual(len(smtp.sent), 1)
+        body = verify_body(smtp.sent[0].get_content(), SECRET)
+        self.assertEqual(body["type"], "qresult")
+        self.assertEqual(body["rejected"], "unknown_job")
+        self.assertEqual(body["v"], 1)
+
+    def test_v2_query_rejected(self):
+        q = {"v": 2, "type": "query", "query_id": "q-v2",
+             "job_id": "no-such-job", "issued_at": _now(),
+             "queries": [{"op": "grep", "pattern": "x"}]}
+        smtp = self._poll([_mail("[HOMING-PIGEON] query q-v2", q)])
         self.assertEqual(len(smtp.sent), 1)
         body = verify_body(smtp.sent[0].get_content(), SECRET)
         self.assertEqual(body["type"], "qresult")
         self.assertEqual(body["rejected"], "unsupported")
-        self.assertEqual(body["v"], 2)
+        self.assertEqual(body["v"], 1)
 
-    def test_v1_query_with_opt_in_passes_the_version_gate(self):
-        R._ALLOW_PROTOCOL_V1 = True
-        q = {"v": 1, "type": "query", "query_id": "q-v1",
-             "job_id": "no-such-job", "issued_at": _now(),
-             "queries": [{"op": "grep", "pattern": "x"}]}
-        smtp = self._poll([_mail("[HOMING-PIGEON] query q-v1", q)])
-        self.assertEqual(len(smtp.sent), 1)
-        body = verify_body(smtp.sent[0].get_content(), SECRET)
-        self.assertEqual(body["type"], "qresult")
-        # Past the version gate; rejected for the missing job instead.
-        self.assertEqual(body["rejected"], "unknown_job")
-
-    def test_v1_board_submit_rejected_by_default(self):
+    def test_v2_board_submit_rejected(self):
         issued = _now()
-        mail = _mail("[HOMING-PIGEON] task_submit t-v1", {
-            "v": 1, "type": "task_submit", "task_id": "t-v1",
+        mail = _mail("[HOMING-PIGEON] task_submit t-v2", {
+            "v": 2, "type": "task_submit", "task_id": "t-v2",
             "issued_at": issued, "priority": 3, "capabilities": ["py"],
             "payload": {"kind": "ping"},
         })
@@ -142,10 +122,9 @@ class VersionGateTest(unittest.TestCase):
         board_path = os.path.join(self.tmp, "board.json")
         if os.path.exists(board_path):
             with open(board_path, encoding="utf-8") as fh:
-                self.assertNotIn("t-v1", fh.read())
+                self.assertNotIn("t-v2", fh.read())
 
-    def test_v1_board_submit_with_opt_in_ack_is_v2(self):
-        R._ALLOW_PROTOCOL_V1 = True
+    def test_v1_board_submit_ack_is_v1(self):
         issued = _now()
         mail = _mail("[HOMING-PIGEON] task_submit t-v1", {
             "v": 1, "type": "task_submit", "task_id": "t-v1",
@@ -157,7 +136,7 @@ class VersionGateTest(unittest.TestCase):
         self.assertEqual(len(acks), 1)
         body = verify_body(acks[0].get_content(), SECRET)
         self.assertEqual(body["type"], "task_ack")
-        self.assertEqual(body["v"], 2)
+        self.assertEqual(body["v"], 1)
 
 
 class SenderFloorTest(unittest.TestCase):
@@ -172,12 +151,12 @@ class SenderFloorTest(unittest.TestCase):
             rc = send_job.cmd_new(args)
         return rc, buf.getvalue()
 
-    def test_send_job_emits_v2(self):
+    def test_send_job_emits_v1(self):
         rc, out = self._cmd_new(SECRET)
         self.assertEqual(rc, 0)
         body = out.split("\n\n", 1)[1]
         payload = send_job.verify_body(body, SECRET)
-        self.assertEqual(payload["v"], 2)
+        self.assertEqual(payload["v"], 1)
         self.assertEqual(payload["v"], send_job.PROTOCOL_VERSION)
 
     def test_sign_refuses_short_secret(self):

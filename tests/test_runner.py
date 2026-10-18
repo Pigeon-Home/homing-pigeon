@@ -74,7 +74,7 @@ class FakeSMTP:
 
 def job_payload(job_id, **kw):
     p = {
-        "v": 2, "type": "job", "job_id": job_id,
+        "v": 1, "type": "job", "job_id": job_id,
         "issued_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "kind": "ping",
     }

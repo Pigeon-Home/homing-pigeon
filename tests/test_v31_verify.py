@@ -424,7 +424,7 @@ class QueryMailVerifyTest(unittest.TestCase):
             "queries": [{"op": "attest", "predicate": "exit_zero"}],
         })
         follow = {
-            "v": 2, "type": "query", "query_id": "q-follow",
+            "v": 1, "type": "query", "query_id": "q-follow",
             "job_id": jid, "issued_at": _now(),
             "queries": [{"op": "grep", "pattern": "^pong$"}],
         }
@@ -450,7 +450,7 @@ class QueryMailVerifyTest(unittest.TestCase):
             "patterns": {}, "saved_at": time.time() - 30 * 86400,
         })
         payload = {
-            "v": 2, "type": "query", "query_id": "q-old",
+            "v": 1, "type": "query", "query_id": "q-old",
             "job_id": "old-job", "issued_at": _now(),
             "queries": [{"op": "tail", "lines": 1}],
         }
@@ -469,7 +469,7 @@ class QueryMailVerifyTest(unittest.TestCase):
         })
         self.cfg["max_queries_per_hour"] = 1
         first = {
-            "v": 2, "type": "query", "query_id": "q-r1",
+            "v": 1, "type": "query", "query_id": "q-r1",
             "job_id": "rate-job", "issued_at": _now(),
             "queries": [{"op": "grep", "pattern": "pong"}],
         }
@@ -492,7 +492,7 @@ class QueryMailVerifyTest(unittest.TestCase):
         self.cfg["max_queries_per_hour"] = 0
         rr._QUERY_TIMES.clear()
         att = {
-            "v": 2, "type": "query", "query_id": "q-att",
+            "v": 1, "type": "query", "query_id": "q-att",
             "job_id": "att-job", "issued_at": _now(),
             "queries": [{"op": "grep", "pattern": "hidden"}],
         }
@@ -516,7 +516,7 @@ class QueryMailVerifyTest(unittest.TestCase):
         self.assertNotIn("query:q-bad", seen)
 
         stale = {
-            "v": 2, "type": "query", "query_id": "q-stale",
+            "v": 1, "type": "query", "query_id": "q-stale",
             "job_id": "missing", "issued_at": "2001-01-01T00:00:00Z",
             "queries": [{"op": "tail", "lines": 1}],
         }
@@ -528,7 +528,7 @@ class QueryMailVerifyTest(unittest.TestCase):
         self.assertIn("1", imap.flagged)
 
         bad_type = {
-            "v": 2, "type": "job", "query_id": "q-type",
+            "v": 1, "type": "job", "query_id": "q-type",
             "job_id": "missing", "issued_at": _now(),
         }
         _, smtp, _ = self.cycle([
@@ -538,7 +538,7 @@ class QueryMailVerifyTest(unittest.TestCase):
         self.assertEqual(body["rejected"], "unsupported")
 
         trav = {
-            "v": 2, "type": "query", "query_id": "q-trav",
+            "v": 1, "type": "query", "query_id": "q-trav",
             "job_id": "../config", "issued_at": _now(),
             "queries": [{"op": "tail", "lines": 1}],
         }
@@ -554,7 +554,7 @@ class QueryMailVerifyTest(unittest.TestCase):
             "patterns": {}, "saved_at": time.time(),
         })
         dup = {
-            "v": 2, "type": "query", "query_id": "q-dup",
+            "v": 1, "type": "query", "query_id": "q-dup",
             "job_id": "dup-job", "issued_at": _now(),
             "queries": [{"op": "grep", "pattern": "pong"}],
         }
@@ -579,7 +579,7 @@ class QueryMailVerifyTest(unittest.TestCase):
         rr._default_inference_open = opener
         try:
             payload = {
-                "v": 2, "type": "query", "query_id": "q-ask",
+                "v": 1, "type": "query", "query_id": "q-ask",
                 "job_id": "ask-job", "issued_at": _now(),
                 "queries": [{"op": "ask", "question": "what failed?"}],
             }
@@ -707,19 +707,19 @@ class BoardVerifyTest(unittest.TestCase):
         issued = _now()
         mails = [
             _signed("[HOMING-PIGEON] task_submit t-one", {
-                "v": 2, "type": "task_submit", "task_id": "t-one",
+                "v": 1, "type": "task_submit", "task_id": "t-one",
                 "issued_at": issued, "capabilities": ["py"],
             }),
             _signed("[HOMING-PIGEON] task_request w1", {
-                "v": 2, "type": "task_request", "issued_at": issued,
+                "v": 1, "type": "task_request", "issued_at": issued,
                 "capabilities": ["py"],
             }),
             _signed("[HOMING-PIGEON] task_request w2", {
-                "v": 2, "type": "task_request", "issued_at": issued,
+                "v": 1, "type": "task_request", "issued_at": issued,
                 "capabilities": ["py"],
             }),
             _signed("[HOMING-PIGEON] task_submit t-one", {
-                "v": 2, "type": "task_submit", "task_id": "t-one",
+                "v": 1, "type": "task_submit", "task_id": "t-one",
                 "issued_at": issued,
             }),
         ]
@@ -746,7 +746,7 @@ class BoardVerifyTest(unittest.TestCase):
         raw.set_content("nope")
         issued = _now()
         result = _signed("[HOMING-PIGEON] task_result t-missing", {
-            "v": 2, "type": "task_result", "issued_at": issued,
+            "v": 1, "type": "task_result", "issued_at": issued,
             "result": {"ok": True},
         })
         imap = FakeIMAP([raw.as_bytes(), result])

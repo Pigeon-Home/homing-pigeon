@@ -113,7 +113,7 @@ def job_email(payload, secret=SECRET, sender=SENDER, subject_id=None):
 
 def base_job(jid, **kw):
     p = {
-        "v": 2, "type": "job", "job_id": jid,
+        "v": 1, "type": "job", "job_id": jid,
         "issued_at": now_iso(), "kind": "ping",
     }
     p.update(kw)
@@ -406,7 +406,7 @@ class SeenAndHelpersTests(unittest.TestCase):
             self.assertEqual(interp, ["sh"])
 
     def test_cloud_runner_sign_compatible(self):
-        p = {"v": 2, "type": "job", "job_id": "c", "kind": "ping"}
+        p = {"v": 1, "type": "job", "job_id": "c", "kind": "ping"}
         self.assertEqual(sign_payload(p, SECRET), cloud_sign(p, SECRET))
         self.assertEqual(verify_body(cloud_sign(p, SECRET), SECRET)["job_id"], "c")
 
@@ -1220,7 +1220,7 @@ class ReplyToTests(unittest.TestCase):
         body = buf.getvalue().split("\n\n", 1)[1]
         payload = send_job.verify_body(body, SECRET)
         self.assertEqual(payload["reply_to"], "owner@example.com")
-        self.assertEqual(payload["v"], 2)
+        self.assertEqual(payload["v"], 1)
 
     def test_send_job_omits_reply_to_when_unset(self):
         import send_job

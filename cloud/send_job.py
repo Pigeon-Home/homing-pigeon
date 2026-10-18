@@ -54,7 +54,7 @@ if not __version__:
         __version__ = "unknown"
 
 
-PROTOCOL_VERSION = 2
+PROTOCOL_VERSION = 1
 
 
 def normalize(text: str) -> str:

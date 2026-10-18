@@ -80,7 +80,7 @@ def _pings(n=6):
     out = []
     for i in range(n):
         body = sign_payload({
-            "v": 2, "type": "job", "job_id": f"ping-{i}",
+            "v": 1, "type": "job", "job_id": f"ping-{i}",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         out.append(_mail(f"[HOMING-PIGEON] job ping-{i}", body))
@@ -231,7 +231,7 @@ class ReviewAndAgeTest(unittest.TestCase):
         raws = []
         for jid in ("good", "reviewed"):
             body = sign_payload({
-                "v": 2, "type": "job", "job_id": jid,
+                "v": 1, "type": "job", "job_id": jid,
                 "issued_at": _now(), "kind": "ping",
             }, SECRET)
             raws.append(_mail(f"[HOMING-PIGEON] job {jid}", body))
@@ -292,7 +292,7 @@ class ImapAndBudgetTest(unittest.TestCase):
 
     def test_one_bad_fetch_does_not_drop_the_sibling(self):
         body = sign_payload({
-            "v": 2, "type": "job", "job_id": "kept",
+            "v": 1, "type": "job", "job_id": "kept",
             "issued_at": _now(), "kind": "ping",
         }, SECRET)
         good = _mail("[HOMING-PIGEON] job kept", body)
@@ -339,7 +339,7 @@ class ImapAndBudgetTest(unittest.TestCase):
             raws = []
             for qid in ("q1", "q2"):
                 body = sign_payload({
-                    "v": 2, "type": "query", "query_id": qid,
+                    "v": 1, "type": "query", "query_id": qid,
                     "job_id": "job-b", "issued_at": _now(),
                     "queries": [{"op": "grep", "pattern": "flag"}],
                 }, SECRET)

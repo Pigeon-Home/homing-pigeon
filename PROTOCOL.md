@@ -1,10 +1,9 @@
 # Homing Pigeon Protocol
 
 The frozen description of protocol 1 is
-`docs/ietf/draft-homing-pigeon-00.md`. It is not updated to track
-the runner. Examples in this file use `"v": 2`, which is what the
-runner accepts. A `"v": 1` message is rejected unless that process
-was started with `--allow-protocol-v1`. Replies are always `"v": 2`.
+`docs/ietf/draft-homing-pigeon-00.md`. Examples in this file use
+`"v": 1`, which is the only value the runner accepts. Any other
+`"v"` is rejected. Replies are `"v": 1`.
 
 ## 1. Actors
 
@@ -66,7 +65,7 @@ gets done without you knowing how any of it works.
 
 ```json
 {
-  "v": 2,
+  "v": 1,
   "type": "job",
   "job_id": "3f9a1c2e-...-uuid",
   "issued_at": "2026-10-13T12:00:00Z",
@@ -122,7 +121,7 @@ gets done without you knowing how any of it works.
 
 ```json
 {
-  "v": 2,
+  "v": 1,
   "type": "result",
   "job_id": "3f9a1c2e-...-uuid",
   "kind": "exec",
@@ -911,6 +910,5 @@ board and dispatch (section 13). Then the privacy-preserving results
 (sections 9-12), the largest and most security-sensitive piece. Docs
 ship with each piece, not after.
 
-*Status: implemented. The runner accepts `"v": 2`. A `"v": 1`
-message is accepted only when that process was started with
-`--allow-protocol-v1`. Replies are always `"v": 2`.*
+*Status: implemented. The runner accepts `"v": 1` and rejects any
+other value.*

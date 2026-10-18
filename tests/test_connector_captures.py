@@ -122,15 +122,10 @@ class ConnectorCaptureTests(unittest.TestCase):
             "shared_secret": SECRET,
             "max_job_age_sec": 10**9,  # captured issued_at is in the past
         }
-        # The capture is genuine v1 traffic. Since protocol v2 it is
-        # accepted only under the operator's --allow-protocol-v1
-        # opt-in, which is what this replay exercises.
-        _runner._ALLOW_PROTOCOL_V1 = True
-        try:
-            poll_once(cfg, base, seen, os.path.join(base, "seen.json"),
-                      imap=imap, smtp=smtp)
-        finally:
-            _runner._ALLOW_PROTOCOL_V1 = False
+        # The capture is genuine protocol 1 traffic, which is what
+        # the runner accepts.
+        poll_once(cfg, base, seen, os.path.join(base, "seen.json"),
+                  imap=imap, smtp=smtp)
         self.assertEqual(len(smtp.sent), 1)
         result = verify_body(smtp.sent[0].get_content(), SECRET)
         self.assertEqual(result["exit_code"], 0)

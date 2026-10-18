@@ -210,7 +210,7 @@ class BoardTailTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             board = Board(os.path.join(d, "board.json"))
             board.tasks["t1"] = {"task_id": "t1", "state": "pending_review"}
-            body = sign_payload({"v": 2, "type": "task_approve"}, SECRET)
+            body = sign_payload({"v": 1, "type": "task_approve"}, SECRET)
             msg = EmailMessage()
             msg["Subject"] = "[HOMING-PIGEON] task_approve t1"
             msg.set_content(body)

@@ -26,10 +26,10 @@ from runner.runner import (  # noqa: E402
 
 # Test-only shared secret. Used solely for unit tests in this file.
 # Never deployed or used outside of testing.
-# Valid under the secret rules (unchanged by protocol v2): 44-char
+# Valid under the secret rules: 44-char
 # base64 of 32 bytes, ~222 bits estimated entropy, no weak pattern.
-# The protocol message version was 1 until the v2 change of
-# 2026-10-17; the secret format did not change with it.
+# A same-day bump to protocol 2 on 2026-10-17 was reverted. The
+# secret format did not change with either edit.
 SECRET = "wmKK+9avPLN9rSsETqH5E1SrXXzdS3YCQQePMRj8e3A="
 
 
@@ -41,14 +41,12 @@ class ProtocolVersionTest(unittest.TestCase):
     features (result_policy, summary, attest, queries) are additive
     fields on a v=1 message, not a version bump.
 
-    Update (2026-10-17): the operator obsoleted v1 and aligned the
-    project to protocol v2. The version is now fixed at 2, v1 is
-    rejected unless the operator opts in with --allow-protocol-v1,
-    and v3 remains not a protocol version.
+    Update (2026-10-17): a bump to protocol 2 was reverted the same
+    day. The version is 1. v3 remains not a protocol version.
     """
 
-    def test_protocol_version_is_2(self):
-        self.assertEqual(PROTOCOL_VERSION, 2)
+    def test_protocol_version_is_1(self):
+        self.assertEqual(PROTOCOL_VERSION, 1)
 
     def test_v3_is_not_protocol_version(self):
         self.assertNotEqual(3, PROTOCOL_VERSION)
@@ -152,9 +150,8 @@ class SignatureEdgeCasesTest(unittest.TestCase):
 
     def test_signed_body_verifies_regardless_of_version(self):
         # verify_body is the signature layer only: it verifies any
-        # well-signed body. Version acceptance is gated separately
-        # in the mail handlers (v1 is rejected there by default
-        # since protocol v2), so this v1-shaped body still verifies.
+        # well-signed body. Version acceptance is a separate gate
+        # in the mail handlers.
         payload = {
             "v": 1, "type": "job", "kind": "exec",
             "script": "Get-Date\n", "timeout_sec": 30,
@@ -166,7 +163,7 @@ class SignatureEdgeCasesTest(unittest.TestCase):
         self.assertEqual(job["kind"], "exec")
 
     def test_truncated_signature_tail_rejected(self):
-        payload = {"v": 2, "type": "job", "kind": "ping", "job_id": "x"}
+        payload = {"v": 1, "type": "job", "kind": "ping", "job_id": "x"}
         body = self._signed(payload)
         # Truncate the signature hex
         truncated = body[:-10]
@@ -184,7 +181,7 @@ class SignatureEdgeCasesTest(unittest.TestCase):
         self.assertTrue("invalid JSON" in msg or "malformed" in msg or "signature" in msg.lower())
 
     def test_unknown_key_id_rejected_before_crypto(self):
-        payload = {"v": 2, "type": "job", "key_id": "no-such-key", "job_id": "x"}
+        payload = {"v": 1, "type": "job", "key_id": "no-such-key", "job_id": "x"}
         body = sign_payload(payload, SECRET)
         with self.assertRaises(ValueError) as cm:
             verify_body_keyed(body, {"": SECRET})

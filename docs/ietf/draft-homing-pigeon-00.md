@@ -57,7 +57,9 @@ Two things are out of scope for this document and are established out of band: t
 
 ### Relationship to later versions
 
-This document specifies version 1 and is not updated to track the implementation. The reference implementation has moved to protocol version 2. Version 2 changes the `v` value and adds a minimum-entropy requirement for the shared secret (Section 16.3); its receivers reject version 1 messages unless the operator explicitly opts in to accepting them. Nothing else in the version 1 exchange changes shape.
+This document specifies version 1. The reference implementation speaks version 1. On 2026-10-17 the implementation briefly required `v` = 2. That bump changed the integer only, and it was reverted the same day. A receiver following this document rejects any `v` other than 1.
+
+The sender also requires the shared secret to meet a minimum-entropy floor (Section 16.3). That floor is not a protocol version. Nothing else in the version 1 exchange changes shape.
 
 Later work also layers behavior this document scopes out (Section 4) onto the base exchange: a local disclosure policy on results, queries against retained output, attestations, and task boards. Those behaviors ride in extra members (Section 8); they do not redefine any message specified here. One consequence a submitter needs: a receiver layered with a disclosure policy can withhold result output that a version 1 receiver would send, so the guidance in Section 13.2 binds only where no such policy is in force.
 

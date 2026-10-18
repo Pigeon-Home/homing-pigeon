@@ -26,9 +26,8 @@ Homing Pigeon connector pipeline test. Safe to ignore or delete.
 {"v":1,"type":"job","job_id":"c142d598-261a-4000-8a41-b8cb7d28bf38","issued_at":"2026-10-14T01:35:25Z","kind":"ping","sig":"3e175d607fe637e5ba40bf0e104dd402253cc1a76869de6ef09d921e3dd13f6b68673b1719edf84025a19562fd8c876f"}
 ```
 
-This capture is a protocol 1 message, and the signature is over those
-bytes. The runner now expects `"v": 2` unless it was started with
-`--allow-protocol-v1`. Do not edit the captured line to match.
+This capture is a protocol 1 message, which is what the runner
+accepts. The signature is over those bytes. Do not edit the line.
 
 Notes:
 

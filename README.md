@@ -208,7 +208,7 @@ The Oracle ships two confinement capabilities:
   the fallback. See SECURITY.md.
 
 Full spec in PROTOCOL.md (sections 9–12). Oracle fields are optional
-members of a `"v": 2` message. They are not a separate message version.
+members of a `"v": 1` message. They are not a separate message version.
 
 ## Layout
 
@@ -522,7 +522,7 @@ End-to-end without your SI:
 - Cloudflare Queues as a second transport.
 
 The download version and the message field `"v"` are different
-numbers. The runner is 3.7.x and speaks `"v": 2`.
+numbers. The runner is 3.7.x and speaks `"v": 1`.
 
 ## Status
 

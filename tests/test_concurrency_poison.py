@@ -115,25 +115,25 @@ class ConcurrencyPoisonTest(unittest.TestCase):
             jobs = []
             for i in range(6):
                 body = sign_payload({
-                    "v": 2, "type": "job", "job_id": f"ping-{i}",
+                    "v": 1, "type": "job", "job_id": f"ping-{i}",
                     "issued_at": _now(), "kind": "ping",
                 }, SECRET)
                 jobs.append(_mail(f"[HOMING-PIGEON] job ping-{i}", body))
             bad_script = sign_payload({
-                "v": 2, "type": "job", "job_id": "bad-script",
+                "v": 1, "type": "job", "job_id": "bad-script",
                 "issued_at": _now(), "kind": "exec",
                 "script": {"not": "text"}, "interpreter": "sh",
             }, SECRET)
             jobs.append(_mail("[HOMING-PIGEON] job bad-script", bad_script))
             costume = sign_payload({
-                "v": 2, "type": "job", "kind": "sensor_alert",
+                "v": 1, "type": "job", "kind": "sensor_alert",
                 "job_id": "costume", "issued_at": _now(),
                 "sensor": "../outside", "severity": 5, "title": None,
                 "detail": FLAG, "script": "echo pwned",
             }, SECRET)
             jobs.append(_mail("[HOMING-PIGEON] job costume", costume))
             qbody = sign_payload({
-                "v": 2, "type": "query", "query_id": "q-poison",
+                "v": 1, "type": "query", "query_id": "q-poison",
                 "job_id": "poison-job", "issued_at": _now(),
                 "queries": [{"op": "tail"}, "not-an-object", {"op": "senses", "sensor": 1}],
             }, SECRET)
@@ -203,7 +203,7 @@ class ConcurrencyPoisonTest(unittest.TestCase):
             good = []
             for i in range(3):
                 body = sign_payload({
-                    "v": 2, "type": "job", "job_id": f"sib-{i}",
+                    "v": 1, "type": "job", "job_id": f"sib-{i}",
                     "issued_at": _now(), "kind": "ping",
                 }, SECRET)
                 good.append(_mail(f"[HOMING-PIGEON] job sib-{i}", body))
@@ -214,7 +214,7 @@ class ConcurrencyPoisonTest(unittest.TestCase):
                         "stderr": "", "stdout_truncated": False,
                         "stderr_truncated": False, "duration_sec": 0.01}
             boom = sign_payload({
-                "v": 2, "type": "job", "job_id": "boom",
+                "v": 1, "type": "job", "job_id": "boom",
                 "issued_at": _now(), "kind": "exec", "script": "echo hi",
             }, SECRET)
             mails = good + [_mail("[HOMING-PIGEON] job boom", boom)]
@@ -246,14 +246,14 @@ class ConcurrentQueryAndDriTest(unittest.TestCase):
             mails = []
             for i in range(4):
                 body = sign_payload({
-                    "v": 2, "type": "query", "query_id": f"q{i}",
+                    "v": 1, "type": "query", "query_id": f"q{i}",
                     "job_id": "poison-job", "issued_at": _now(),
                     "queries": [{"op": "grep", "pattern": "("}, {"op": "tail", "n": "many"},
                                 "not-an-object", {"op": "senses", "sensor": None, "limit": -5}],
                 }, SECRET)
                 mails.append(_mail(f"[HOMING-PIGEON] query q{i}", body))
             ping = sign_payload({
-                "v": 2, "type": "job", "job_id": "still-alive",
+                "v": 1, "type": "job", "job_id": "still-alive",
                 "issued_at": _now(), "kind": "ping",
             }, SECRET)
             mails.append(_mail("[HOMING-PIGEON] job still-alive", ping))
@@ -285,7 +285,7 @@ class ConcurrentQueryAndDriTest(unittest.TestCase):
             resources.check_resources(cfg, d)
             review.review_job({"review_patterns_extra": "nope"}, {"kind": "ping", "script": None})
             ping = sign_payload({
-                "v": 2, "type": "job", "job_id": "after-hammer",
+                "v": 1, "type": "job", "job_id": "after-hammer",
                 "issued_at": _now(), "kind": "ping",
             }, SECRET)
             seen = {}
@@ -312,7 +312,7 @@ class MoreExtensionPoisonTest(unittest.TestCase):
             with mock.patch.object(dri, "_send", return_value=False):
                 dri.maybe_page(cfg, d)  # must not raise
             ping = sign_payload({
-                "v": 2, "type": "job", "job_id": "float-ok",
+                "v": 1, "type": "job", "job_id": "float-ok",
                 "issued_at": _now(), "kind": "ping",
             }, SECRET)
             seen = {}
@@ -421,18 +421,18 @@ class StateFileRaceAndResourcesTest(unittest.TestCase):
             mails = []
             for i in range(4):
                 body = sign_payload({
-                    "v": 2, "type": "job", "job_id": f"final-{i}",
+                    "v": 1, "type": "job", "job_id": f"final-{i}",
                     "issued_at": _now(), "kind": "ping",
                 }, SECRET)
                 mails.append(_mail(f"[HOMING-PIGEON] job final-{i}", body))
             costume = sign_payload({
-                "v": 2, "type": "job", "kind": "sensor_alert",
+                "v": 1, "type": "job", "kind": "sensor_alert",
                 "job_id": "final-costume", "issued_at": _now(),
                 "sensor": "../x", "severity": 5, "title": None, "detail": FLAG,
             }, SECRET)
             mails.append(_mail("[HOMING-PIGEON] job final-costume", costume))
             q = sign_payload({
-                "v": 2, "type": "query", "query_id": "final-q",
+                "v": 1, "type": "query", "query_id": "final-q",
                 "job_id": "nope", "issued_at": _now(),
                 "queries": ["bad", {"op": "senses", "sensor": 1}],
             }, SECRET)
@@ -657,11 +657,11 @@ class RedactPatternsAndQueryRateTest(unittest.TestCase):
         self.assertIsInstance(_redact_patterns({"redact_patterns_extra": None}), dict)
         with tempfile.TemporaryDirectory() as d:
             bad = sign_payload({
-                "v": 2, "type": "job", "job_id": "redact-bad",
+                "v": 1, "type": "job", "job_id": "redact-bad",
                 "issued_at": _now(), "kind": "ping",
             }, SECRET)
             good = sign_payload({
-                "v": 2, "type": "job", "job_id": "redact-ok",
+                "v": 1, "type": "job", "job_id": "redact-ok",
                 "issued_at": _now(), "kind": "ping",
             }, SECRET)
             cfg = {
