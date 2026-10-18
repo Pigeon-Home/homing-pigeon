@@ -387,6 +387,139 @@ class NotableLineTest(unittest.TestCase):
         self.assertIn("Desktop/flag.txt", ctx)
 
 
+class NotableBindingTest(unittest.TestCase):
+    """The notable line names its own job.
+
+    The eval battery (hp-vmtest/EVAL.md) found misbinding was the
+    dominant catch failure across small models: llama3.2:3b
+    transplanted the flagged job's notable line onto the
+    neighbouring benign job, because the line was bound to its job
+    only by sitting under that job's block header. Both ask
+    prompts already directed the model to report the finding with
+    the job's id -- a fact the line itself did not carry. The line
+    now carries the id inside itself, and the withheld marker
+    binds the same way, so the attribution survives the line
+    being read out of order or quoted on its own.
+    """
+
+    FLAG_ID = "jobflag9"
+    BENIGN_ID = "jobok009"
+
+    def _flag_summary(self, script=FLAG, job_id=None, stdout="321\n"):
+        return R._retained_job_summary(
+            _record(script, stdout=stdout), job_id or self.FLAG_ID,
+            BASE)
+
+    def _notable_lines(self, blob):
+        return [line for line in blob.splitlines()
+                if "SUSPICIOUS ACCESS" in line]
+
+    def test_the_notable_line_carries_its_own_job_id(self):
+        lines = self._notable_lines(self._flag_summary())
+        self.assertEqual(len(lines), 1)
+        self.assertTrue(lines[0].startswith(
+            "notable: SUSPICIOUS ACCESS -- job " + self.FLAG_ID
+            + ":"), lines[0])
+
+    def test_the_withheld_line_carries_the_same_id(self):
+        self.assertIn(
+            "output: (withheld -- job " + self.FLAG_ID
+            + " carries a notable finding", self._flag_summary())
+
+    def test_block_header_and_line_name_the_same_job(self):
+        s = self._flag_summary()
+        self.assertTrue(s.startswith("job " + self.FLAG_ID + " ("))
+        for line in self._notable_lines(s):
+            self.assertIn("job " + self.FLAG_ID + ":", line)
+
+    def test_an_isolated_notable_line_still_names_its_job(self):
+        # The transplant shape: read alone, away from its block,
+        # the line must convict its own job and no other.
+        line = self._notable_lines(self._flag_summary())[0]
+        self.assertIn(self.FLAG_ID, line)
+        self.assertNotIn(self.BENIGN_ID, line)
+
+    def test_adjacent_blocks_keep_the_finding_on_the_flagged_job(self):
+        flag = self._flag_summary()
+        benign = R._retained_job_summary(
+            _record("uname -a; id"), self.BENIGN_ID, BASE)
+        for blob in (flag + "\n\n" + benign, benign + "\n\n" + flag):
+            blocks = {part.split(" ", 2)[1]: part
+                      for part in blob.split("\n\n")}
+            self.assertNotIn("notable:", blocks[self.BENIGN_ID])
+            self.assertNotIn("SUSPICIOUS ACCESS",
+                             blocks[self.BENIGN_ID])
+            lines = self._notable_lines(blocks[self.FLAG_ID])
+            self.assertEqual(len(lines), 1)
+            self.assertIn(self.FLAG_ID, lines[0])
+            self.assertNotIn(self.BENIGN_ID, lines[0])
+            for line in self._notable_lines(blob):
+                self.assertIn(self.FLAG_ID, line)
+                self.assertNotIn(self.BENIGN_ID, line)
+
+    def test_context_blocks_bind_the_finding_to_the_flagged_job(self):
+        d = tempfile.mkdtemp()
+        R.save_retained(d, self.FLAG_ID, _record(FLAG, stdout="321\n"))
+        R.save_retained(d, self.BENIGN_ID, _record("uname -a"))
+        ctx = R.oracle_context(d, watch=False)
+        blocks = {}
+        for part in ctx.split("\n\n"):
+            if part.startswith("job "):
+                blocks[part.split(" ", 2)[1]] = part
+        self.assertIn(self.FLAG_ID, blocks)
+        self.assertIn(self.BENIGN_ID, blocks)
+        self.assertNotIn("notable:", blocks[self.BENIGN_ID])
+        self.assertNotIn("output: (withheld", blocks[self.BENIGN_ID])
+        lines = self._notable_lines(blocks[self.FLAG_ID])
+        self.assertEqual(len(lines), 1)
+        self.assertIn(self.FLAG_ID, lines[0])
+        self.assertIn("output: (withheld -- job " + self.FLAG_ID,
+                      blocks[self.FLAG_ID])
+
+    def test_binding_holds_across_finding_kinds(self):
+        # Family of variations: POSIX home path, Windows drive
+        # path, credential-store marker, system file. Whatever
+        # the finding, the line names the job it belongs to.
+        cases = [
+            ("cat /home/hatch/workspace/hp-vmtest/Desktop/flag.txt",
+             "jobposix1"),
+            ("type C:\\Users\\dru\\Desktop\\flag.txt", "jobwin001"),
+            ("cat /home/u/.ssh/id_rsa", "jobcred01"),
+            ("cat /etc/shadow", "jobetc001"),
+        ]
+        for script, job_id in cases:
+            s = R._retained_job_summary(
+                _record(script, stdout="x\n"), job_id, BASE)
+            lines = self._notable_lines(s)
+            self.assertEqual(len(lines), 1, script)
+            self.assertTrue(lines[0].startswith(
+                "notable: SUSPICIOUS ACCESS -- job " + job_id + ":"),
+                (script, lines[0]))
+            self.assertIn(
+                "output: (withheld -- job " + job_id
+                + " carries a notable finding", s, script)
+
+    def test_two_flagged_jobs_each_carry_their_own_id(self):
+        a = R._retained_job_summary(
+            _record(FLAG, stdout="1\n"), "jobflagA", BASE)
+        b = R._retained_job_summary(
+            _record("cat /etc/shadow", stdout="2\n"), "jobflagB",
+            BASE)
+        lines = self._notable_lines(a + "\n\n" + b)
+        self.assertEqual(len(lines), 2)
+        named = {line.split("-- job ", 1)[1].split(":", 1)[0]
+                 for line in lines}
+        self.assertEqual(named, {"jobflagA", "jobflagB"})
+
+    def test_the_prompts_ask_for_the_id_the_line_now_carries(self):
+        # The demand side of the binding: both prompts direct the
+        # model to report the finding "in detail: its id". That
+        # instruction predates the fix; the line now supplies
+        # what it asks for.
+        for prompt in (R.ASK_SYSTEM, R.ASK_AGENT_SYSTEM):
+            self.assertIn("its id", prompt)
+
+
 class PromptDirectiveTest(unittest.TestCase):
     def test_both_prompts_carry_the_notable_directive(self):
         for prompt in (R.ASK_SYSTEM, R.ASK_AGENT_SYSTEM):

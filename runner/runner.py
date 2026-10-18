@@ -7351,9 +7351,14 @@ def _retained_job_summary(data, job_id, base_dir=None) -> str:
         lines.append("script: " + script.strip()[:400])
         findings = _script_path_findings(script, base_dir, job_id)
         if findings:
+            # The line carries its own job id. Both ask prompts
+            # direct the model to report the finding with the job's
+            # id, and the battery showed small models binding the
+            # line to a neighbouring benign block when the only
+            # binding was its position under the block header.
             lines.append(
-                "notable: SUSPICIOUS ACCESS -- this job's script "
-                "references "
+                "notable: SUSPICIOUS ACCESS -- job " + job_id
+                + ": this job's script references "
                 + "; ".join(f"{path} ({reason})"
                             for path, reason in findings)
                 + ". Reading files outside the job's own workspace "
@@ -7374,8 +7379,8 @@ def _retained_job_summary(data, job_id, base_dir=None) -> str:
         digest = data.get("digest") if isinstance(
             data.get("digest"), str) else ""
         lines.append(
-            "output: (withheld -- this job carries a notable "
-            "finding, so its output may contain the material it "
+            "output: (withheld -- job " + job_id + " carries a "
+            "notable finding, so its output may contain the material it "
             "accessed and is not shown to the Oracle"
             + (f"; {len(text)} chars, digest {digest[:16]}"
                if text else "; output was empty")
