@@ -169,6 +169,23 @@ def shard_modules(counts, jobs):
     return [s for s in shards if s]
 
 
+def _child_env():
+    """UTF-8 stdio for shard children, without UTF-8 mode.
+
+    The parent decodes each shard log as UTF-8. A Windows child
+    whose stdout is the ANSI code page cannot print a character
+    outside that page, so the shard fails on the print itself, and
+    a failure dump that does get out arrives as backslash escapes
+    instead of the text the reporter is supposed to carry.
+    PYTHONIOENCODING changes the stdio encoding only. It does not
+    enable UTF-8 mode, so open() keeps the locale encoding the
+    suite already runs under.
+    """
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    return env
+
+
 def run_shards(shards, top_level_dir):
     """Run each shard as a unittest subprocess; return exit code.
 
@@ -198,7 +215,8 @@ def run_shards(shards, top_level_dir):
                 proc = subprocess.Popen(
                     [sys.executable, "-m", "unittest"] + shard,
                     cwd=top_level_dir, stdout=fh,
-                    stderr=subprocess.STDOUT)
+                    stderr=subprocess.STDOUT,
+                    env=_child_env())
             except Exception:
                 fh.close()
                 raise
