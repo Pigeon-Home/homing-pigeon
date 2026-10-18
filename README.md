@@ -105,8 +105,7 @@ part that writes the next attempt.
 
 ## The Oracle: answers, not output
 
-v1 sends full job output back to the SI. v3 flips this: your machine becomes
-**the Oracle** — a black box the SI can question but never inspect.
+**the Oracle** is a black box the SI can question but never inspect.
 
 The SI asks "did the tests pass?" or "does the output contain secrets?"
 and gets back HMAC-signed *attestations*: proofs about the output that
