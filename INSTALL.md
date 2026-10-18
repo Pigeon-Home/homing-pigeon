@@ -15,7 +15,7 @@ docker pull ghcr.io/pigeon-home/homing-pigeon:latest
 
 ```bash
 docker run -d --name pigeon --restart unless-stopped \
-  -e PIGEON_MAILBOX_USER="your-runner@gmail.com" \
+  -e PIGEON_MAILBOX_USER="your-runner@example.com" \
   -e PIGEON_MAILBOX_PASSWORD="your-app-password" \
   -e PIGEON_SHARED_SECRET="your-256-bit-shared-secret" \
   -v pigeon-data:/data \
@@ -148,6 +148,119 @@ Oracle chat says so and tells you how to fix it — re-running
 setup, leaving the rest of your install alone. Pass
 `--no-inference` to skip it entirely.
 
+## 4. The full walkthrough
+
+By default the installer also sets up local inference for the Oracle `ask` op: it installs Ollama (if missing) and pulls a model (`llama3.2:3b` by default). A Raspberry Pi install, detected automatically or selected with `--profile raspberry-pi-home`, pulls the lighter `llama3.2:1b` instead. `--faster` pulls `qwen2.5:3b`, a smaller faster model, on any machine. Pass `--inference-model` to choose a tag yourself, or `--no-inference` to skip the model entirely. The runner itself never bundles the model; Ollama runs separately on loopback. `homing-pigeon --faster` uses `qwen2.5:3b` for that process only and leaves `config.json` unchanged.
+
+**Easiest: download a release.** No Python needed — each release ships
+standalone binaries built by GitHub Actions:
+
+| Platform | Download |
+|----------|----------|
+| Windows (x64) | `homing-pigeon-windows-x86_64-<version>.zip` → `homing-pigeon.exe` + `install.exe` |
+| Linux (x64, Debian/RHEL/Ubuntu/…) | `homing-pigeon-linux-x86_64-<version>.tar.gz` → `homing-pigeon` + `install` |
+| macOS (ARM64) | `homing-pigeon-macos-arm64-<version>.tar.gz` → `homing-pigeon` + `install` |
+
+Every archive carries the version in its file name, and extracting it
+creates a folder with the same name — so several releases can sit side
+by side without overwriting each other. `homing-pigeon --version` (or
+`install --version`) reports the build's version.
+
+The Linux binary is built on ubuntu-22.04 (glibc ~2.35). It runs on
+Ubuntu 22.04+, recent Debian, and most current distros. We don't ship
+binaries for older systems (Debian 11, Ubuntu 20.04, RHEL 8) because of
+their older glibc, but the runner itself is stdlib-only Python and runs
+fine there: use `pip install pigeon-home-runner` or build from source.
+
+1. Extract the archive on the target machine.
+2. Run `install` (or `install.exe` on Windows, from an elevated
+   PowerShell). It copies the runner binary, registers the boot-start
+   service (systemd / launchd / cron @reboot / Scheduled Task), and —
+   on a console — offers the Thunderbird-style setup: browser sign-in,
+   a fresh shared secret shown once for you to give your SI, config
+   written. No hand-edited JSON needed. On Windows everything lives in
+   one home, `C:\homing-pigeon` (`bin/`, `config.json`, `state/`,
+   `install-receipt.json`); re-running `install.exe` upgrades the
+   binaries in place without touching your config or state. The
+   day-to-day commands live there too: `install.exe --check` (doctor),
+   `install.exe --console` (run the agent in your terminal),
+   `install.exe --oracle` (the chat), `install.exe --logs` (the log).
+3. If you skipped it (or run headless), do it later with
+   `homing-pigeon --setup`. On an existing config `--setup` offers
+   re-login and shared-secret rotation.
+4. Prefer to wire it by hand? Edit `config.json` instead. Two ways to
+   sign in:
+   - **Password** (default): `mailbox_user` + `mailbox_password` (the
+     mailbox's app password, plaintext, on purpose). The HMAC shared secret is a separate
+     `shared_secret` value — generate one with `openssl rand -hex 32`.
+   - **Browser, like Thunderbird**: no Google password anywhere. Create a
+     Desktop OAuth client in [Google Cloud
+     Console](https://console.cloud.google.com/) (APIs & Services →
+     Credentials → Create OAuth client ID → Desktop app), then in
+     `config.json` set `"auth": "oauth"`, put the client id in
+     `oauth_client_id` (and `oauth_client_secret` if Google gave you one),
+     and set `shared_secret` to a random string — that's the HMAC key your
+     SI uses to sign jobs. Then run `homing-pigeon-auth` (or
+     `python runner/oauth.py --config config.json` from source): a browser
+     opens, you sign in and grant access, and the refresh token is stored.
+     IMAP and SMTP then use XOAUTH2. Tested end to end on Windows 11.
+     One gotcha: in the Cloud Console, set the OAuth consent screen to
+     "Publish app" (status "In production"). Left in "Testing", Google
+     expires the refresh token after 7 days and the runner dies weekly.
+     No verification needed — the app stays unverified with the usual
+     first-consent warning.
+   (your explicit choice for this throwaway account).
+5. When you want an SI to send jobs, make sure `shared_secret` in
+   config.json matches the string you pasted to the SI in chat
+   (the wizard shows you a fresh one; `openssl rand -hex 32` works too).
+
+**From source** (needs Python 3.9+):
+
+1. Create a **dedicated** mail account for the runner, e.g.
+   `myname-runner@example.com`. Never use a personal inbox.
+2. Enable two-step verification on the account, then create an
+   **app password** for the runner in the provider's security
+   settings.
+3. Copy `runner/` to the target machine.
+4. Copy `config.example.json` to `config.json` and fill in `mailbox_user`
+   and `mailbox_password` as above. Replace the `shared_secret`
+   placeholder with a generated secret (`openssl rand -hex 32`) — this is
+   the HMAC key your SI signs jobs with, separate from the mailbox
+   password. (`python3 install.py` generates one for you if the
+   placeholder is still there.)
+5. Test one cycle: `python3 runner.py --config config.json --once`.
+6. `python3 install.py` registers the boot-start service for your
+   platform (see below).
+
+### Per-platform install
+
+| Platform | Mechanism | Notes |
+|----------|-----------|-------|
+| Linux | systemd user unit (`--system` for system-wide) | `systemctl --user enable --now homing-pigeon` |
+| macOS | launchd agent | `~/Library/LaunchAgents/com.homing-pigeon.runner.plist` |
+| FreeBSD | cron `@reboot` | simple; wrap in rc.d if you prefer |
+| Windows | Scheduled Task | runs at startup as SYSTEM |
+
+`install.py --dir DIR` chooses the install location (default
+`~/.homing-pigeon`); `install.py --uninstall` removes the service.
+
+## Run it in a VM
+
+For testing — and honestly for everyday use — run the agent inside a
+Linux VM on your own hardware rather than directly on the host:
+
+- **Snapshots beat regret.** About to hand an SI the keys to a machine?
+  Snapshot first. If a job goes sideways, roll back in seconds.
+- **Containment.** The agent only sees what the VM sees. Your host, your
+  files, and your other projects stay out of reach of anything a job does.
+- **Disposability.** Experiment freely: spin up a fresh VM for a new
+  idea, tear it down when you're done. Nothing lingers on the host.
+
+Any hypervisor works — KVM/QEMU, VirtualBox, Hyper-V, VMware. Give the
+VM internet access (NAT is fine) so it can reach the mailbox's IMAP/SMTP
+servers, install the Linux release binary inside the guest, and point your jobs
+at it. The host never needs to know.
+
 ### Working scenario
 
 Checked against a working simulation (Windows-shaped profile, no live
@@ -158,9 +271,10 @@ the simulation used.
 1. First launch with no `config.json`, and no console, exits 2 and
    tells you to run `--setup`. There is no traceback.
 2. `homing-pigeon --setup`. Choice `[1]` opens the browser sign-in.
-   Choice `[2]` asks for a Gmail app password. Either way the written
-   config has `imap.gmail.com:993` and `smtp.gmail.com:587`, even
-   when the example file was not next to the binary. A failed mailbox
+   Choice `[2]` asks for an app password for the mailbox. Either
+   way the written config pre-fills the recommended provider's
+   IMAP and SMTP hosts (ports 993 and 587), even when the example
+   file was not next to the binary. A failed mailbox
    probe prints a warning and still saves the file. Closing the
    window mid-prompt exits with "setup needs a console".
 3. Put `flag.txt` on the Desktop. Tell the Oracle it is a password:

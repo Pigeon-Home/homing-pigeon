@@ -27,7 +27,7 @@ contained; set it up casually and it isn't.
 
 Do all of these before the first job:
 
-1. **Dedicated mailbox account.** `you-runner@gmail.com`, never your
+1. **Dedicated mailbox account.** `you-runner@example.com`, never your
    personal inbox. Nothing personal should ever be reachable from
    this mailbox.
 2. **2-Step Verification + app password.** The app password is the

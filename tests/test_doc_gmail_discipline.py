@@ -1,20 +1,17 @@
-"""Docs name Gmail only where Gmail is the concrete fact.
+"""Live docs carry no provider name at all.
 
-The transport is email (IMAP/SMTP, any provider). Gmail is the
-recommended easy path for the runner's dedicated mailbox, the cloud
-connector's current identity, and the hostnames the installer
-writes by default -- and the live docs may name it only for those
-specific things (owner's call, 2026-10-18; audit in the goal
-workspace, gmail-doc-audit.md). Everywhere else the docs say
-"mailbox" / "mail account" / "mailbox provider".
+Andrew's directive (2026-10-18, superseding the same day's
+sanctioned-mentions regime): the term for the recommended mail
+provider appears in NO live document -- not in examples, not in
+hostnames, not in walkthroughs. The transport is email over
+IMAP/SMTP with any provider; the concrete defaults live in code
+(the installer's constants and config.example.json), which is
+where a reader who needs them finds them. His manual passes kept
+being stepped on by later edits, so this guard is the sift: any
+live doc that reintroduces the term fails the build.
 
-This guard keeps the discipline from rotting: PROTOCOL.md (the
-specification of record), TRANSPORTS.md, SECURITY.md and FUTURE.md
-must stay provider-free, and in the remaining live docs every
-Gmail-mentioning line must match one of the sanctioned shapes
-below. Adding an offhand mention fails here; adding a genuinely
-specific one means extending SANCTIONED with its shape, in the
-open, in the same commit.
+Dated records are exempt by design and stay exempt: CHANGELOG.md
+and docs/archive/ describe what was true when they were written.
 """
 
 import os
@@ -27,61 +24,52 @@ def _root():
     return os.path.dirname(os.path.dirname(os.path.abspath(runner.__file__)))
 
 
-# Live docs that must not mention Gmail at all.
-PROVIDER_FREE = ("PROTOCOL.md", "TRANSPORTS.md", "SECURITY.md",
-                 "FUTURE.md")
-
-# Live docs that may mention Gmail in sanctioned shapes only.
-SANCTIONED_FILES = ("README.md", "RUNBOOK.md", "INSTALL.md",
-                    "AGENTS.md")
-
-# Each pattern describes one specific, factual use:
-SANCTIONED = (
-    # Example addresses (your-runner@gmail.com) and the installer's
-    # default hostnames (imap.gmail.com:993, smtp.gmail.com:587).
-    re.compile(r"gmail\.com"),
-    # The cloud connector's current identity, stated as a current
-    # fact in AGENTS.md.
-    re.compile(r"currently Gmail"),
-    # The app-password walkthrough addresses the runner's account at
-    # the provider the walkthrough documents.
-    re.compile(r"runner's Gmail account"),
-    # INSTALL.md describes the setup wizard's actual prompt.
-    re.compile(r"Gmail app password"),
-    # README's recommended-account walkthrough.
-    re.compile(r"dedicated\*\* Gmail account"),
-)
+_TERM = re.compile(r"gmail", re.IGNORECASE)
 
 
-def _gmail_lines(name):
-    with open(os.path.join(_root(), name), encoding="utf-8") as fh:
-        return [ln for ln in fh.read().splitlines()
-                if "gmail" in ln.lower()]
+def _live_docs():
+    root = _root()
+    found = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        rel = os.path.relpath(dirpath, root)
+        parts = set(rel.split(os.sep))
+        if ".git" in parts or "__pycache__" in parts:
+            dirnames[:] = []
+            continue
+        if "archive" in parts and "docs" in parts:
+            dirnames[:] = []
+            continue
+        for name in filenames:
+            if name.endswith(".md") and name != "CHANGELOG.md":
+                found.append(os.path.join(dirpath, name))
+    return sorted(found)
 
 
-class ProviderFreeDocsTest(unittest.TestCase):
-    def test_provider_free_docs_stay_provider_free(self):
-        for name in PROVIDER_FREE:
-            self.assertEqual([], _gmail_lines(name),
-                             "%s must not mention Gmail" % name)
+def _hits(path):
+    with open(path, encoding="utf-8") as fh:
+        return [ln.strip() for ln in fh.read().splitlines()
+                if _TERM.search(ln)]
 
 
-class SanctionedMentionsTest(unittest.TestCase):
+class NoProviderNameInLiveDocsTest(unittest.TestCase):
     def test_scan_is_not_vacuous(self):
-        # If the docs move or empty out, this guard must fail loudly
-        # rather than pass over nothing.
-        for name in SANCTIONED_FILES:
-            self.assertTrue(_gmail_lines(name),
-                            "no Gmail lines found in %s -- has the "
-                            "file moved?" % name)
+        docs = _live_docs()
+        self.assertGreater(len(docs), 15)
+        names = {os.path.basename(p) for p in docs}
+        for expected in ("README.md", "INSTALL.md", "AGENTS.md",
+                         "PROTOCOL.md", "RUNBOOK.md"):
+            self.assertIn(expected, names)
 
-    def test_every_mention_matches_a_sanctioned_shape(self):
-        for name in SANCTIONED_FILES:
-            for line in _gmail_lines(name):
-                self.assertTrue(
-                    any(p.search(line) for p in SANCTIONED),
-                    "%s has an unsanctioned Gmail mention: %s"
-                    % (name, line.strip()))
+    def test_no_live_doc_names_the_provider(self):
+        offenders = {}
+        for path in _live_docs():
+            hits = _hits(path)
+            if hits:
+                offenders[os.path.relpath(path, _root())] = hits
+        self.assertEqual({}, offenders,
+                         "live docs must not name the mail provider; "
+                         "say mailbox / mail account / provider instead: "
+                         "%s" % (offenders,))
 
 
 if __name__ == "__main__":

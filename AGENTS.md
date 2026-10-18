@@ -6,7 +6,7 @@ There are two sides. They do not share credentials.
 
 | Side | Who | How it talks to mail | What it must never do |
 |------|-----|----------------------|------------------------|
-| **Cloud SI** (this agent, Grok, or any assistant) | Holds a connected mail account | The connector is currently Gmail (`gmail_send_message`, `gmail_search`, `gmail_get_message`) | Ask the user for a mailbox login or password. Paste credentials into chat. Store an app password. |
+| **Cloud SI** (this agent, Grok, or any assistant) | Holds a connected mail account | The connector is a connected mail account (its send, search, and get-message tools) | Ask the user for a mailbox login or password. Paste credentials into chat. Store an app password. |
 | **Runner** (homing-pigeon on the host) | Dedicated throwaway mailbox | IMAP + SMTP with an app password in `config.json` on that machine | Be given the user's personal inbox. Trust the From header (signatures only). |
 
 The connector is already authenticated. The SI uses it. The runner keeps using IMAP. That is the whole design.

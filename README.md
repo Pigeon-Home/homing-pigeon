@@ -22,7 +22,7 @@ similarity to GitHub self-hosted runners.
 Then try this prompt in your cloud SI, it should return in less than 30 seconds.
 
 ```
-Send an email to YOUR_RUNNER_EMAIL@gmail.com
+Send an email to YOUR_RUNNER_EMAIL
 Use this protocol: https://github.com/Pigeon-Home/homing-pigeon/blob/main/PROTOCOL.md
 Shared Secret: "YOUR_SECRET_STRING"
 I have a Windows computer. Retrieve the system clock from it and display it here.
@@ -234,164 +234,10 @@ members of a `"v": 1` message. They are not a separate message version.
 
 ## Setup
 
-By default the installer also sets up local inference for the Oracle `ask` op: it installs Ollama (if missing) and pulls a model (`llama3.2:3b` by default). A Raspberry Pi install, detected automatically or selected with `--profile raspberry-pi-home`, pulls the lighter `llama3.2:1b` instead. `--faster` pulls `qwen2.5:3b`, a smaller faster model, on any machine. Pass `--inference-model` to choose a tag yourself, or `--no-inference` to skip the model entirely. The runner itself never bundles the model; Ollama runs separately on loopback. `homing-pigeon --faster` uses `qwen2.5:3b` for that process only and leaves `config.json` unchanged.
-
-**Easiest: download a release.** No Python needed — each release ships
-standalone binaries built by GitHub Actions:
-
-| Platform | Download |
-|----------|----------|
-| Windows (x64) | `homing-pigeon-windows-x86_64-<version>.zip` → `homing-pigeon.exe` + `install.exe` |
-| Linux (x64, Debian/RHEL/Ubuntu/…) | `homing-pigeon-linux-x86_64-<version>.tar.gz` → `homing-pigeon` + `install` |
-| macOS (ARM64) | `homing-pigeon-macos-arm64-<version>.tar.gz` → `homing-pigeon` + `install` |
-
-Every archive carries the version in its file name, and extracting it
-creates a folder with the same name — so several releases can sit side
-by side without overwriting each other. `homing-pigeon --version` (or
-`install --version`) reports the build's version.
-
-The Linux binary is built on ubuntu-22.04 (glibc ~2.35). It runs on
-Ubuntu 22.04+, recent Debian, and most current distros. We don't ship
-binaries for older systems (Debian 11, Ubuntu 20.04, RHEL 8) because of
-their older glibc, but the runner itself is stdlib-only Python and runs
-fine there: use `pip install pigeon-home-runner` or build from source.
-
-1. Extract the archive on the target machine.
-2. Run `install` (or `install.exe` on Windows, from an elevated
-   PowerShell). It copies the runner binary, registers the boot-start
-   service (systemd / launchd / cron @reboot / Scheduled Task), and —
-   on a console — offers the Thunderbird-style setup: browser sign-in,
-   a fresh shared secret shown once for you to give your SI, config
-   written. No hand-edited JSON needed. On Windows everything lives in
-   one home, `C:\homing-pigeon` (`bin/`, `config.json`, `state/`,
-   `install-receipt.json`); re-running `install.exe` upgrades the
-   binaries in place without touching your config or state. The
-   day-to-day commands live there too: `install.exe --check` (doctor),
-   `install.exe --console` (run the agent in your terminal),
-   `install.exe --oracle` (the chat), `install.exe --logs` (the log).
-3. If you skipped it (or run headless), do it later with
-   `homing-pigeon --setup`. On an existing config `--setup` offers
-   re-login and shared-secret rotation.
-4. Prefer to wire it by hand? Edit `config.json` instead. Two ways to
-   sign in:
-   - **Password** (default): `mailbox_user` + `mailbox_password` (the
-     mailbox's app password, plaintext, on purpose). The HMAC shared secret is a separate
-     `shared_secret` value — generate one with `openssl rand -hex 32`.
-   - **Browser, like Thunderbird**: no Google password anywhere. Create a
-     Desktop OAuth client in [Google Cloud
-     Console](https://console.cloud.google.com/) (APIs & Services →
-     Credentials → Create OAuth client ID → Desktop app), then in
-     `config.json` set `"auth": "oauth"`, put the client id in
-     `oauth_client_id` (and `oauth_client_secret` if Google gave you one),
-     and set `shared_secret` to a random string — that's the HMAC key your
-     SI uses to sign jobs. Then run `homing-pigeon-auth` (or
-     `python runner/oauth.py --config config.json` from source): a browser
-     opens, you sign in and grant access, and the refresh token is stored.
-     IMAP and SMTP then use XOAUTH2. Tested end to end on Windows 11.
-     One gotcha: in the Cloud Console, set the OAuth consent screen to
-     "Publish app" (status "In production"). Left in "Testing", Google
-     expires the refresh token after 7 days and the runner dies weekly.
-     No verification needed — the app stays unverified with the usual
-     first-consent warning.
-   (your explicit choice for this throwaway account).
-5. When you want an SI to send jobs, make sure `shared_secret` in
-   config.json matches the string you pasted to the SI in chat
-   (the wizard shows you a fresh one; `openssl rand -hex 32` works too).
-
-**From Docker** — the fastest path, no Python or git needed:
-
-```sh
-docker run -d --name pigeon --restart unless-stopped \
-  -e PIGEON_MAILBOX_USER="your-runner@gmail.com" \
-  -e PIGEON_MAILBOX_PASSWORD="your-app-password" \
-  -v pigeon-data:/data \
-  ghcr.io/pigeon-home/homing-pigeon:latest
-```
-
-See [DOCKER.md](docs/archive/DOCKER.md) for the full guide — dry-run mode, config
-file mounting, updating, and security notes.
-
-**From PyPI** (needs Python 3.9+) — the easiest path on machines where
-Python is preinstalled, like a Raspberry Pi. A Pi is the ideal box
-for this: always on, sips power, and a machine you can afford to lose
-— which is this project's whole security posture:
-
-```sh
-pip install pigeon-home-runner
-```
-
-This installs three commands: `homing-pigeon`, `homing-pigeon-install`,
-and `homing-pigeon-send-job` (the cloud-side helper). Then:
-
-1. `homing-pigeon-install` copies the runner, writes a default
-   `config.json`, and registers the boot-start service.
-2. The installer generates a random `shared_secret` and stores it in
-   `config.json` (or pass your own with `--shared-secret`). Copy that
-   string out of `config.json` and give it to your SI — it is the HMAC
-   key the SI signs jobs with, and it is separate from the mailbox app
-   password.
-
-**From the release files** (same Python requirement): each GitHub
-release also ships an sdist (`.tar.gz`) and a universal wheel (`.whl`),
-plus standalone binaries (below) and a `SHA384SUMS` file so you can
-verify your download:
-
-1. Download the `.whl` from the release.
-2. `pip install pigeon_home_runner-*-py3-none-any.whl` — same three
-   commands as above.
-3. `homing-pigeon-install` copies the runner, writes a default
-   `config.json`, and registers the boot-start service.
-4. The installer generates a random `shared_secret` and stores it in
-   `config.json` (or pass your own with `--shared-secret`). Copy that
-   string out of `config.json` and give it to your SI — it is the HMAC
-   key the SI signs jobs with, and it is separate from the mailbox app
-   password.
-
-**From source** (needs Python 3.9+):
-
-1. Create a **dedicated** Gmail account for the runner, e.g.
-   `myname-runner@gmail.com`. Never use a personal inbox.
-2. Enable 2-Step Verification, then create an **app password**
-   (Google Account → Security → 2-Step Verification → App passwords).
-3. Copy `runner/` to the target machine.
-4. Copy `config.example.json` to `config.json` and fill in `mailbox_user`
-   and `mailbox_password` as above. Replace the `shared_secret`
-   placeholder with a generated secret (`openssl rand -hex 32`) — this is
-   the HMAC key your SI signs jobs with, separate from the mailbox
-   password. (`python3 install.py` generates one for you if the
-   placeholder is still there.)
-5. Test one cycle: `python3 runner.py --config config.json --once`.
-6. `python3 install.py` registers the boot-start service for your
-   platform (see below).
-
-### Per-platform install
-
-| Platform | Mechanism | Notes |
-|----------|-----------|-------|
-| Linux | systemd user unit (`--system` for system-wide) | `systemctl --user enable --now homing-pigeon` |
-| macOS | launchd agent | `~/Library/LaunchAgents/com.homing-pigeon.runner.plist` |
-| FreeBSD | cron `@reboot` | simple; wrap in rc.d if you prefer |
-| Windows | Scheduled Task | runs at startup as SYSTEM |
-
-`install.py --dir DIR` chooses the install location (default
-`~/.homing-pigeon`); `install.py --uninstall` removes the service.
-
-## Run it in a VM
-
-For testing — and honestly for everyday use — run the agent inside a
-Linux VM on your own hardware rather than directly on the host:
-
-- **Snapshots beat regret.** About to hand an SI the keys to a machine?
-  Snapshot first. If a job goes sideways, roll back in seconds.
-- **Containment.** The agent only sees what the VM sees. Your host, your
-  files, and your other projects stay out of reach of anything a job does.
-- **Disposability.** Experiment freely: spin up a fresh VM for a new
-  idea, tear it down when you're done. Nothing lingers on the host.
-
-Any hypervisor works — KVM/QEMU, VirtualBox, Hyper-V, VMware. Give the
-VM internet access (NAT is fine) so it can reach the mailbox's IMAP/SMTP
-servers, install the Linux release binary inside the guest, and point your jobs
-at it. The host never needs to know.
+Setup lives in [INSTALL.md](INSTALL.md): the three install
+paths (Docker, pip, release binary) and the full first-run
+walkthrough — dedicated mail account, app password, shared
+secret, first job.
 
 ## How scripts run
 

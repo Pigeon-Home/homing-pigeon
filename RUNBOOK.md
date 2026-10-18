@@ -153,7 +153,7 @@ virtual machine is a good idea).
      paste the same string to your SI when you want it to send jobs.
 
    How to get an app password:
-   1. Log into the runner's Gmail account.
+   1. Log into the runner's mail account.
    2. Go to **myaccount.google.com** → **Security**.
    3. Turn on **2-Step Verification** (Google makes you do this first).
    4. Go back to Security, click **App passwords**.
@@ -243,7 +243,7 @@ Copy this, fill in your own email and secret, and paste it to the
 new SI:
 
 ```
-Send an email to YOUR_RUNNER_EMAIL@gmail.com
+Send an email to YOUR_RUNNER_EMAIL
 Use this protocol: https://github.com/Pigeon-Home/homing-pigeon/blob/main/PROTOCOL.md
 The shared secret for authentication in the protocol is "YOUR_SECRET_STRING"
 Execute a job which obtains the value of the system clock and show me the value here.
