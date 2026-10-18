@@ -1560,5 +1560,123 @@ class CliNotableTest(unittest.TestCase):
         self.assertNotIn(_KEY, text)
 
 
+class ExchangeLogTest(unittest.TestCase):
+    """oracle.log is the full inference record. The chat log is not."""
+
+    def setUp(self):
+        self._saved = (
+            R._ORACLE_LOG_ENABLED, R._ORACLE_LOG_PATH,
+            R._ORACLE_LOG_ANNOUNCED, R._LOG_FILE)
+        self.base = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self.base, "retained"))
+        R.save_retained(self.base, "jobflag1",
+                        _record(FLAG, stdout=_KEY + "\n"))
+        self.ctx = R.oracle_context(self.base, watch=False)
+        R._LOG_FILE = os.path.join(self.base, "runner.log")
+
+    def tearDown(self):
+        (R._ORACLE_LOG_ENABLED, R._ORACLE_LOG_PATH,
+         R._ORACLE_LOG_ANNOUNCED, R._LOG_FILE) = self._saved
+
+    def _ask(self, replies=("noted",)):
+        queue = list(replies)
+
+        def opener(req, timeout=60):
+            msg = queue.pop(0) if queue else replies[-1]
+            return _ModelResp(msg)
+
+        return R.ask_model_agent(
+            {"endpoint": "http://127.0.0.1:11434/v1", "model": "m"},
+            "which jobs are malicious?", self.ctx, 2000,
+            opener=opener, base_dir=self.base)
+
+    def _oracle_log(self):
+        path = os.path.join(self.base, "oracle.log")
+        with open(path, encoding="utf-8") as fh:
+            return [json.loads(line) for line in fh if line.strip()]
+
+    def test_off_by_default_writes_nothing(self):
+        R._refresh_log_settings({}, self.base)
+        ans = self._ask()
+        self.assertEqual(ans.get("answer"), "noted")
+        self.assertFalse(os.path.exists(
+            os.path.join(self.base, "oracle.log")))
+
+    def test_when_enabled_the_record_is_complete(self):
+        R._refresh_log_settings({"oracle_log": True}, self.base)
+        R._announce_oracle_log()
+        R._announce_oracle_log()
+        ans = self._ask()
+        self.assertEqual(ans.get("answer"), "noted")
+        rec = self._oracle_log()[0]
+        blob = json.dumps(rec)
+        self.assertIn("notable: SUSPICIOUS ACCESS", blob)
+        self.assertIn(_KEY, blob)
+        self.assertIn("noted", blob)
+        with open(R._LOG_FILE, encoding="utf-8") as fh:
+            runner = fh.read()
+        self.assertEqual(runner.count("oracle log enabled"), 1)
+
+    def test_a_failed_call_is_recorded_too(self):
+        R._refresh_log_settings({"oracle_log": "yes"}, self.base)
+
+        def opener(req, timeout=60):
+            raise RuntimeError("model down")
+
+        ans = R.ask_model_agent(
+            {"endpoint": "http://127.0.0.1:11434/v1", "model": "m"},
+            "which jobs are malicious?", self.ctx, 2000,
+            opener=opener, base_dir=self.base)
+        self.assertEqual(ans.get("rejected"), "inference_error")
+        rec = self._oracle_log()[0]
+        blob = json.dumps(rec)
+        self.assertIn("notable:", blob)
+        self.assertIn(_KEY, blob)
+        self.assertIn("error", rec)
+
+    def test_the_flag_is_only_those_words(self):
+        for value in (True, 1, "yes", "on", "true", "1", " YES "):
+            R._refresh_log_settings({"oracle_log": value}, self.base)
+            self.assertTrue(R._ORACLE_LOG_ENABLED, value)
+        for value in (False, 0, "no", "off", "", None, 2, "maybe"):
+            R._refresh_log_settings({"oracle_log": value}, self.base)
+            self.assertFalse(R._ORACLE_LOG_ENABLED, value)
+        R._refresh_log_settings("nope", self.base)
+        self.assertFalse(R._ORACLE_LOG_ENABLED)
+
+    def test_a_circular_record_is_dropped(self):
+        R._refresh_log_settings({"oracle_log": True}, self.base)
+        rec = {}
+        rec["self"] = rec
+        R._oracle_log_record(rec)
+        self.assertFalse(os.path.exists(
+            os.path.join(self.base, "oracle.log")))
+
+    def test_random_switches_match_the_flag(self):
+        import random
+        rng = random.Random(321)
+        on = [True, 1, "yes", "on", "true", "1"]
+        off = [False, 0, "no", None, "", "off", "maybe"]
+        for _ in range(30):
+            value = rng.choice(on + off)
+            R._refresh_log_settings({"oracle_log": value}, self.base)
+            self.assertEqual(R._ORACLE_LOG_ENABLED, value in on, value)
+
+    def test_a_disabled_record_is_dropped_and_an_error_body_is_kept(self):
+        R._refresh_log_settings({}, self.base)
+        R._oracle_log_record({"request": _KEY})
+        self.assertFalse(os.path.exists(
+            os.path.join(self.base, "oracle.log")))
+        R._refresh_log_settings({"oracle_log": True}, self.base)
+        R._oracle_log_exchange(
+            "http://127.0.0.1:11434/v1", "m",
+            {"messages": [{"content": self.ctx}]}, 0,
+            error="HTTP 400", error_body="body " + _KEY)
+        rec = self._oracle_log()[0]
+        self.assertEqual(rec["error"], "HTTP 400")
+        self.assertIn(_KEY, rec["error_body"])
+        self.assertIn("notable:", json.dumps(rec["request"]))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
