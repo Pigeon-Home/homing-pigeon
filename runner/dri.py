@@ -194,6 +194,8 @@ def _recent_events(base_dir, since_ts):
     if not isinstance(base_dir, str) or not base_dir:
         return []
     path = os.path.join(base_dir, EVENTS_FILE)
+    if os.path.islink(path):
+        return []
     try:
         with open(path, "r", encoding="utf-8") as f:
             lines = f.readlines()
@@ -229,8 +231,11 @@ def _recent_retained(base_dir, since_ts):
     for name in names:
         if not name.endswith(".json"):
             continue
+        path = os.path.join(d, name)
+        if os.path.islink(path):
+            continue
         try:
-            with open(os.path.join(d, name), encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 payload = json.load(f)
         except (OSError, ValueError):
             continue
