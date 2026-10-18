@@ -32,8 +32,6 @@ Get the system clock and display it here.
 ```
 IETF Homing Pigeon Draft: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-homing-pigeon-00.md
 
-Once approved as an IETF standard, you will not need to include the protocol specification link in the prompt.
-
 ## What this is for
 
 Homing Pigeon is a personal remote-development agent. The point is not
