@@ -136,6 +136,10 @@ def _check_service_unit(results):
         results.append(("OK", "service",
                         "no homing-pigeon systemd unit found"))
         return
+    if os.path.islink(found):
+        results.append(("WARN", "service",
+                        "unit %s is a symlink" % found))
+        return
     try:
         with open(found, encoding="utf-8", errors="replace") as fh:
             text = fh.read()
