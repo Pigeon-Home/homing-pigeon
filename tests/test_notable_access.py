@@ -2501,5 +2501,180 @@ class ArtifactNoteTest(unittest.TestCase):
             self.assertEqual(R._yara_hits(work, [path]), [])
 
 
+class OracleToolTest(unittest.TestCase):
+    """The model may read the retained record. It may not leave the state dir."""
+
+    def setUp(self):
+        self.base = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self.base, "retained"))
+        R.save_retained(self.base, "jobflag1",
+                        _record(FLAG, stdout=_KEY + "\n"))
+        self.outside = os.path.join(tempfile.mkdtemp(), "shadow")
+        with open(self.outside, "w", encoding="utf-8") as fh:
+            fh.write("secret-outside")
+
+    def test_it_can_read_the_record_and_not_the_outside_file(self):
+        text = R._run_oracle_tool(
+            "read_file", {"path": "retained/jobflag1.json"}, self.base)
+        self.assertIn(_KEY, text)
+        self.assertIn("Desktop/flag.txt", text)
+        for path in (self.outside, "/etc/shadow", "../shadow",
+                     os.path.join(self.base, "..", "shadow")):
+            got = R._run_oracle_tool(
+                "read_file", {"path": path}, self.base)
+            self.assertIn("leaves the state dir", got, path)
+            self.assertNotIn("secret-outside", got)
+
+    def test_with_no_state_dir_an_absolute_path_is_allowed(self):
+        text = R._run_oracle_tool(
+            "read_file", {"path": self.outside}, None)
+        self.assertEqual(text, "secret-outside")
+        self.assertIn("args must be an object",
+                      R._run_oracle_tool("read_file", "nope", self.base))
+        self.assertIn("path must be",
+                      R._run_oracle_tool("read_file", {"path": ""}, self.base))
+        self.assertIn("unknown tool",
+                      R._run_oracle_tool("rm", {"path": "x"}, self.base))
+
+    def test_read_edges(self):
+        got = R._run_oracle_tool(
+            "read_file", {"path": "missing.txt", "max_chars": True}, self.base)
+        self.assertIn("cannot read", got)
+        path = os.path.join(self.base, "big.txt")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("abcdefghij")
+        got = R._run_oracle_tool(
+            "read_file", {"path": "big.txt", "max_chars": 4}, self.base)
+        self.assertTrue(got.startswith("abcd"))
+        self.assertIn("truncated", got)
+        got = R._run_oracle_tool(
+            "read_file", {"path": "big.txt", "max_chars": "nope"}, self.base)
+        self.assertIn("abcdefghij", got)
+        empty = os.path.join(self.base, "empty.txt")
+        open(empty, "w", encoding="utf-8").close()
+        self.assertEqual(
+            R._run_oracle_tool("read_file", {"path": "empty.txt"}, self.base),
+            "(empty file)")
+
+    def test_list_dir_stays_inside(self):
+        listed = R._run_oracle_tool("list_dir", {"path": "."}, self.base)
+        self.assertIn("retained/", listed)
+        self.assertIn("leaves the state dir", R._run_oracle_tool(
+            "list_dir", {"path": self.outside}, self.base))
+        empty = os.path.join(self.base, "empty")
+        os.makedirs(empty)
+        self.assertEqual(
+            R._run_oracle_tool("list_dir", {"path": "empty"}, self.base),
+            "(empty directory)")
+        self.assertIn("cannot list", R._run_oracle_tool(
+            "list_dir", {"path": "missing"}, self.base))
+        many = os.path.join(self.base, "many")
+        os.makedirs(many)
+        for i in range(201):
+            open(os.path.join(many, f"f{i:03d}"), "w", encoding="utf-8").close()
+        listed = R._run_oracle_tool("list_dir", {"path": "many"}, self.base)
+        self.assertIn("more]", listed)
+
+    def test_write_file_cannot_leave(self):
+        got = R._run_oracle_tool(
+            "write_file", {"path": "note.txt", "content": "hello"}, self.base)
+        self.assertIn("wrote 5 chars", got)
+        with open(os.path.join(self.base, "note.txt"), encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "hello")
+        self.assertIn("leaves the state dir", R._run_oracle_tool(
+            "write_file", {"path": self.outside, "content": _KEY}, self.base))
+        with open(self.outside, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "secret-outside")
+        self.assertIn("content must be", R._run_oracle_tool(
+            "write_file", {"path": "note.txt", "content": 5}, self.base))
+        self.assertIn("too large", R._run_oracle_tool(
+            "write_file", {"path": "note.txt", "content": "x" * 200001},
+            self.base))
+        link = os.path.join(self.base, "link")
+        os.symlink(self.outside, link)
+        got = R._run_oracle_tool(
+            "write_file", {"path": "link", "content": "pwned"}, self.base)
+        self.assertIn("leaves the state dir", got)
+        with open(self.outside, encoding="utf-8") as fh:
+            self.assertNotIn("pwned", fh.read())
+        os.makedirs(os.path.join(self.base, "dir"))
+        got = R._run_oracle_tool(
+            "write_file", {"path": "dir", "content": "x"}, self.base)
+        self.assertIn("cannot write", got)
+
+    def test_run_stays_a_string_and_is_bounded(self):
+        import subprocess
+        got = R._run_oracle_tool(
+            "run", {"command": "echo hi", "timeout_sec": "nope"}, self.base)
+        self.assertIn("exit=0", got)
+        self.assertIn("hi", got)
+        self.assertIn("command must be", R._run_oracle_tool(
+            "run", {"command": "  "}, self.base))
+        self.assertIn("too long", R._run_oracle_tool(
+            "run", {"command": "a" * 8001}, self.base))
+        with unittest.mock.patch(
+                "runner.runner.subprocess.run",
+                side_effect=subprocess.TimeoutExpired("sleep", 1)):
+            self.assertIn("timed out", R._run_oracle_tool(
+                "run", {"command": "sleep 9"}, self.base))
+
+        class Proc:
+            returncode = 3
+            stdout = b"x" * 9000
+            stderr = b""
+
+        with unittest.mock.patch(
+                "runner.runner.subprocess.run", return_value=Proc()):
+            got = R._run_oracle_tool("run", {"command": "echo"}, self.base)
+        self.assertIn("truncated", got)
+        self.assertLessEqual(len(got), 8100)
+
+    def test_random_paths_outside_are_refused(self):
+        import random
+        rng = random.Random(321)
+        outs = [self.outside, "/etc/passwd", "/tmp", "..", "../x"]
+        ins = [".", "retained", "retained/jobflag1.json", "missing.txt"]
+        for _ in range(24):
+            path = rng.choice(outs + ins)
+            got = R._run_oracle_tool(
+                rng.choice(["read_file", "list_dir"]),
+                {"path": path}, self.base)
+            if path in outs:
+                self.assertIn("leaves the state dir", got, path)
+                self.assertNotIn("secret-outside", got)
+
+    def test_bad_paths_and_calls_that_raise(self):
+        self.assertIn("leaves the state dir", R._run_oracle_tool(
+            "read_file", {"path": "a\x00b"}, self.base))
+        self.assertIn("path must be", R._run_oracle_tool(
+            "list_dir", {"path": ""}, self.base))
+        self.assertIn("path must be", R._run_oracle_tool(
+            "write_file", {"path": "", "content": "x"}, self.base))
+        with unittest.mock.patch("runner.runner.os.path.realpath",
+                                 side_effect=OSError("no")):
+            self.assertIn("leaves the state dir", R._run_oracle_tool(
+                "read_file", {"path": "note.txt"}, self.base))
+        with unittest.mock.patch("builtins.open",
+                                 side_effect=RuntimeError("boom")):
+            self.assertIn("cannot read", R._run_oracle_tool(
+                "read_file", {"path": "retained/jobflag1.json"}, self.base))
+        with unittest.mock.patch("runner.runner.os.path.isdir",
+                                 side_effect=OSError("stat")):
+            listed = R._run_oracle_tool("list_dir", {"path": "."}, self.base)
+        self.assertNotIn("error:", listed.splitlines()[0])
+        with unittest.mock.patch("runner.runner.os.listdir",
+                                 side_effect=RuntimeError("boom")):
+            self.assertIn("cannot list", R._run_oracle_tool(
+                "list_dir", {"path": "."}, self.base))
+        with unittest.mock.patch("runner.runner.os.open",
+                                 side_effect=RuntimeError("boom")):
+            self.assertIn("cannot write", R._run_oracle_tool(
+                "write_file", {"path": "n.txt", "content": "x"}, self.base))
+        with unittest.mock.patch("runner.runner.subprocess.run",
+                                 side_effect=RuntimeError("boom")):
+            self.assertIn("cannot run", R._run_oracle_tool(
+                "run", {"command": "echo hi"}, self.base))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
