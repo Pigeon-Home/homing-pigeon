@@ -100,5 +100,52 @@ class MutationGateTest(unittest.TestCase):
                              "%s must not be tag-gated" % job)
 
 
+def _also_copy():
+    with open(os.path.join(_root(), "pyproject.toml"),
+              encoding="utf-8") as fh:
+        src = fh.read()
+    m = re.search(r"^also_copy = \[(.*?)\]", src, re.M | re.S)
+    assert m, "no also_copy list in pyproject.toml [tool.mutmut]"
+    return set(re.findall(r'"([^"]+)"', m.group(1)))
+
+
+class MutationTreeTest(unittest.TestCase):
+    """mutmut runs the suite in a copied tree, not the checkout.
+
+    Only source_paths, tests, and also_copy make the trip. A test
+    that reads repo files the copy does not carry fails mutmut's
+    baseline stats collection before a single mutant runs -- which
+    is exactly how the v3.7.29 tag build's mutation job died: the
+    live-docs guard asserts INSTALL.md and friends are scanned,
+    but also_copy carried only docs/ and PROTOCOL.md, so the guard
+    (correctly, in the real tree) reported them missing there.
+    The doc guards' world and the mutant tree must stay the same
+    world; these tests pin that.
+    """
+
+    def test_every_root_live_doc_is_copied(self):
+        copied = _also_copy()
+        root = _root()
+        for name in sorted(os.listdir(root)):
+            if name.endswith(".md") and name != "CHANGELOG.md":
+                self.assertIn(name, copied,
+                              "%s is a live root doc the mutant tree "
+                              "never sees; add it to also_copy" % name)
+
+    def test_the_doc_guards_expected_docs_are_copied(self):
+        copied = _also_copy()
+        for expected in ("README.md", "INSTALL.md", "AGENTS.md",
+                         "PROTOCOL.md", "RUNBOOK.md"):
+            self.assertIn(expected, copied)
+
+    def test_also_copy_file_entries_exist(self):
+        root = _root()
+        for entry in _also_copy():
+            if not entry.endswith("/"):
+                self.assertTrue(
+                    os.path.exists(os.path.join(root, entry)),
+                    "also_copy names %s, which is not on disk" % entry)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
