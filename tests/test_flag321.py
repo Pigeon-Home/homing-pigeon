@@ -258,5 +258,95 @@ class WithheldScanTextTest(unittest.TestCase):
             "job flag321-read01 read a file outside its workspace.")
 
 
+TAIL_VALUE = "FLAGTAIL-VALUE-9c41"
+
+
+class LogTailScrubTest(unittest.TestCase):
+    """The log tail must not re-import what the summary withheld.
+
+    T23 (field): the patched Oracle's payload carried the flag
+    value exactly once -- inside the runner log tail, quoting a
+    historical log line "ask: reply 'The value stored in
+    flag.txt is 321.'" from an earlier leaked answer. The runner
+    log keeps everything (it is the debugging record); the tail
+    that enters the context is scrubbed: reply previews become
+    markers, and a flagged job's logged output -- its stdout
+    preview line and its full-output block -- is removed.
+    """
+
+    def _base(self):
+        d = tempfile.mkdtemp()
+        jobs = [
+            ("hostinfo01", "uname -a; id", "Linux box\n", 1000.0),
+            (FLAG_ID, FLAG_SCRIPT, TAIL_VALUE + "\n", 3000.0),
+        ]
+        for job_id, script, stdout, when in jobs:
+            R.save_retained(d, job_id,
+                            _retained(job_id, script, stdout, when))
+            path = os.path.join(d, "retained", job_id + ".json")
+            os.utime(path, (when, when))
+        log_lines = [
+            "2026-10-17 19:55:01 [INFO] job hostinfo01 process "
+            "finished exit=0 stdout='Linux box\\n'",
+            "2026-10-17 19:55:02 [INFO] job flag321-read01 process "
+            "finished exit=0 stdout='" + TAIL_VALUE + "\\n'",
+            "2026-10-17 19:55:03 [INFO] job hostinfo01 (kind=exec) "
+            "full output:",
+            "--- stdout ---",
+            "Linux box",
+            "--- stderr ---",
+            "",
+            "--- end of job hostinfo01 output ---",
+            "2026-10-17 19:55:04 [INFO] job flag321-read01 "
+            "(kind=exec) full output:",
+            "--- stdout ---",
+            TAIL_VALUE,
+            "--- stderr ---",
+            "",
+            "--- end of job flag321-read01 output ---",
+            "2026-10-17 20:33:21 [INFO] ask: reply 'The value "
+            "stored in flag.txt is " + TAIL_VALUE + ".'",
+            "2026-10-17 20:34:01 [INFO] ask: reply withheld by "
+            "format guard (job-index dump); re-asking for prose",
+            "2026-10-17 20:35:01 [INFO] mailbox poll complete",
+        ]
+        with open(os.path.join(d, "runner.log"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("\n".join(log_lines) + "\n")
+        return d
+
+    def test_the_value_is_nowhere_in_the_tail(self):
+        tail = R._runner_log_tail(self._base())
+        self.assertNotIn(TAIL_VALUE, tail)
+
+    def test_reply_preview_becomes_a_marker_and_status_lines_stay(self):
+        tail = R._runner_log_tail(self._base())
+        self.assertIn("ask: reply (preview withheld from context)",
+                      tail)
+        self.assertIn("ask: reply withheld by format guard", tail)
+        self.assertIn("mailbox poll complete", tail)
+
+    def test_flagged_output_block_and_preview_are_removed(self):
+        tail = R._runner_log_tail(self._base())
+        self.assertNotIn("job flag321-read01 (kind=exec) "
+                         "full output:", tail)
+        self.assertIn("stdout=(preview withheld from context)",
+                      tail)
+
+    def test_benign_lines_and_blocks_survive_verbatim(self):
+        tail = R._runner_log_tail(self._base())
+        self.assertIn("stdout='Linux box\\n'", tail)
+        self.assertIn("job hostinfo01 (kind=exec) full output:",
+                      tail)
+        self.assertIn("--- end of job hostinfo01 output ---", tail)
+
+    def test_the_whole_context_is_clean(self):
+        # The T23 shape, as a unit test: notable line present,
+        # value absent from every section of the context.
+        ctx = R.oracle_context(self._base(), watch=False)
+        self.assertIn("notable: SUSPICIOUS ACCESS", ctx)
+        self.assertNotIn(TAIL_VALUE, ctx)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

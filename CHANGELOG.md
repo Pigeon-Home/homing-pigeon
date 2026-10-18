@@ -15,6 +15,14 @@
   model -- so a reply repeating a pattern-shaped secret from a
   flagged job is still rejected. The retained record on disk is
   unchanged, and unflagged jobs keep their output in context.
+- The runner log tail that enters the Oracle's context no longer
+  re-imports quoted material: model reply previews are replaced
+  with a marker, and a flagged job's logged output (its stdout
+  preview line and its full-output block) is removed from the
+  tail. A field re-ask after the withholding change found the
+  flag value riding back into the payload inside a quoted
+  historical reply in the log tail. runner.log itself keeps
+  everything, unchanged -- only the context feed is scrubbed.
 
 ### CI
 

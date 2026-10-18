@@ -5661,12 +5661,94 @@ def _is_loopback_ip(host: str) -> bool:
         return False
 
 
+_REPLY_PREVIEW = re.compile(r"ask: reply '.*'$")
+_JOB_FINISHED = re.compile(r"job (\S+) process finished exit=")
+_STDOUT_PREVIEW = re.compile(r"stdout='.*'$")
+_FULL_OUTPUT_HEAD = re.compile(r"job (\S+) \(kind=.*\) full output:$")
+
+
+def _flagged_job_ids(base_dir):
+    """Job ids whose retained records carry script-path findings.
+
+    The log tail uses the set to keep a flagged job's logged
+    output out of the Oracle's context, the same withholding the
+    retained summary applies. A job whose record is gone cannot
+    be classified here; retention governs both channels alike.
+    """
+    ids = set()
+    # The tail window is the last 30 lines; a job whose logged
+    # output can sit in it is among the newest retained records
+    # by a wide margin. 25 is that margin.
+    for _mtime, path, job_id in _chosen_retained_rows(base_dir, 25):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except Exception:
+            continue
+        if not isinstance(data, dict):
+            continue
+        script = data.get("script") if isinstance(
+            data.get("script"), str) else ""
+        if script.strip() and _script_path_findings(
+                script, base_dir, job_id):
+            ids.add(job_id)
+    return ids
+
+
+def _scrub_log_tail_lines(lines, base_dir):
+    """Remove quoted material from the tail before it becomes context.
+
+    runner.log is the debugging record and keeps everything; the
+    tail that enters the Oracle's context is a different surface.
+    Two kinds of quoted material must not ride it back in:
+
+    - Model reply previews ("ask: reply '...'"). A reply can
+      quote anything the model once saw -- including, in the
+      Flag321 field tests, a credential value an earlier answer
+      leaked, which the tail then re-imported into every later
+      context. The line stays; the quote becomes a marker.
+    - A flagged job's logged output: its one-line stdout preview
+      and its full-output block. The retained summary withholds
+      that output (see _retained_job_summary); the tail must not
+      hand it back. Blocks are recognized by their header line,
+      so a block whose header scrolled out of the tail window
+      can still expose a fragment -- the window is bounded (last
+      30 lines, capped chars), and the retained summary remains
+      the withholding of record.
+    """
+    flagged = _flagged_job_ids(base_dir)
+    out = []
+    skipping = False
+    for line in lines:
+        if skipping:
+            if line.startswith("--- end of job "):
+                skipping = False
+            continue
+        head = _FULL_OUTPUT_HEAD.search(line)
+        if head and head.group(1) in flagged:
+            skipping = True
+            continue
+        if _REPLY_PREVIEW.search(line):
+            line = _REPLY_PREVIEW.sub(
+                "ask: reply (preview withheld from context)", line)
+        else:
+            fin = _JOB_FINISHED.search(line)
+            if fin and fin.group(1) in flagged:
+                line = _STDOUT_PREVIEW.sub(
+                    "stdout=(preview withheld from context)", line)
+        out.append(line)
+    return out
+
+
 def _runner_log_tail(base_dir, max_chars=2000) -> str:
     """Last lines of the runner log, for the Oracle's context.
 
     The chat process cannot see the console, and the model must not
     invent log events. Giving it the real tail lets it answer "did
     this happen?" honestly. Bounded; a missing log yields "".
+    Quoted reply previews and flagged jobs' logged output are
+    scrubbed first (see _scrub_log_tail_lines); the log file
+    itself is never altered.
     """
     if not isinstance(base_dir, str) or not base_dir:
         return ""
@@ -5697,6 +5779,7 @@ def _runner_log_tail(base_dir, max_chars=2000) -> str:
     lines = raw.decode("utf-8", errors="replace").splitlines()
     if size > 4096 and lines:
         lines = lines[1:]  # partial first line from the seek
+    lines = _scrub_log_tail_lines(lines, base_dir)
     tail = "\n".join(lines[-30:]).strip()
     if max_chars < 1:
         return ""
