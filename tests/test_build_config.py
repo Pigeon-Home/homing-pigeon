@@ -106,7 +106,20 @@ def _also_copy():
         src = fh.read()
     m = re.search(r"^also_copy = \[(.*?)\]", src, re.M | re.S)
     assert m, "no also_copy list in pyproject.toml [tool.mutmut]"
-    return set(re.findall(r'"([^"]+)"', m.group(1)))
+    # Strip TOML comments before harvesting the quoted entries: the
+    # block's own comments quote a filename ("INSTALL.md not found"
+    # is prose about the v3.7.29 failure, not an entry).
+    body = []
+    for line in m.group(1).splitlines():
+        out, in_str = [], False
+        for ch in line:
+            if ch == '"':
+                in_str = not in_str
+            if ch == "#" and not in_str:
+                break
+            out.append(ch)
+        body.append("".join(out))
+    return set(re.findall(r'"([^"]+)"', "\n".join(body)))
 
 
 class MutationTreeTest(unittest.TestCase):
