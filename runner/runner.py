@@ -4978,6 +4978,9 @@ def _validate_size_caps(cfg):
 
 
 def load_config(path: str) -> dict:
+    """Load a config object. A symlink is not followed."""
+    if isinstance(path, str) and path and os.path.islink(path):
+        raise RuntimeError("config error: refusing to follow a symlink")
     with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
     if not isinstance(data, dict):
