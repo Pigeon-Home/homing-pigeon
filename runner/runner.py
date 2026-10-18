@@ -5487,6 +5487,8 @@ def _runner_log_tail(base_dir, max_chars=2000) -> str:
     if not isinstance(base_dir, str) or not base_dir:
         return ""
     path = os.path.join(base_dir, "runner.log")
+    if os.path.islink(path):
+        return ""
     if isinstance(max_chars, bool):
         max_chars = 2000
     else:
