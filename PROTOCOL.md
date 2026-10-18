@@ -1,23 +1,8 @@
-# Homing Pigeon Protocol v1
+# Homing Pigeon Protocol
 
 The frozen wire description, written as an informational individual
 draft, is `docs/ietf/draft-homing-pigeon-00.md`. This file
 remains the living spec.
-
-> **Two different versions — don't mix them up.** This document
-> describes the *message protocol*, currently v1: the shape of the
-> signed JSON in every job and result email. It is independent of the
-> *product release* version (v3.6.1, v3.5.2, … — the thing you
-> download). New product releases add capabilities as new *optional
-> fields* on the v1 message; they do not bump the message version. A
-> job using v3.x product features (result policies, views, queries,
-> attestations) still says `"v": 1`. Any `"v"` other than 1 is
-> rejected outright (`unsupported version/type`) — there is no v2 or
-> v3 message format.
-
-Email-based control protocol between a cloud SI and a self-hosted
-runner. Email carries only signed control metadata; large
-payloads travel as cloud-hosted file URLs that the runner downloads.
 
 ## 1. Actors
 
