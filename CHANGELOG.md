@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Oracle
+
+- Instructions now dispatch. A deterministic classifier marks
+  an owner message to the interactive Oracle as an action or a
+  question; for an action, her first reply must be a tool call --
+  a prose-only reply is returned once with a directive to call
+  the tool or name the one thing that blocks her. Questions,
+  including the summary fast path, keep the free path. The
+  charter gave permission; this gives the permission a dispatch
+  path, the way a cloud SI request becomes a job.
+  tests/test_oracle_charter.py pins the classifier table and the
+  re-ask behavior.
+
 ## 3.7.31 - 2026-10-18
 
 ### Fixes

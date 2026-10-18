@@ -2009,6 +2009,10 @@ ASK_AGENT_SYSTEM = (
     "and when no file can answer a question they asked. Carry out "
     "the instruction, then report what happened. Never use run to "
     "search or read files; list_dir and read_file do that.\n"
+    "- When the owner gives an instruction, your first reply is a "
+    "tool call that starts carrying it out; a reply that only "
+    "talks about the instruction is sent back to you for the "
+    "tool call.\n"
     "- A kind of 'kind not recorded' means the type was not saved. It does "
     "not mean the job failed. Read the file. The script, the output, and "
     "the exit code are the status.\n"
@@ -2438,6 +2442,76 @@ def _unparsed_tool_note(content):
     return " ".join(content.split())[:160]
 
 
+# The action dispatch (owner-approved 2026-10-18). The charter
+# gives the interactive Oracle permission to act, but permission
+# is not dispatch: a small local model handed an instruction in
+# free-text chat may elect to talk about it instead -- the field
+# failures were an answer to an unasked question, step-by-step
+# instructions for the owner, and prose where an action was
+# asked. The cloud SI's requests do not suffer this because they
+# enter a structured path (a request becomes a signed job, and
+# the job runs). The interactive door gets its equivalent here:
+# a deterministic classifier marks an owner message as an action
+# or a question, and in ask_model_agent an action's first reply
+# MUST be a tool call -- a prose-only reply is returned once with
+# a directive to call the tool or name the one blocking thing.
+# Questions keep the free path, including the summary fast path.
+_ORACLE_ACTION_VERBS = frozenset({
+    "launch", "open", "start", "run", "execute", "create", "write",
+    "make", "delete", "remove", "change", "set", "install",
+    "uninstall", "kill", "stop", "restart", "reboot", "copy",
+    "move", "rename", "download", "enable", "disable", "fix",
+    "repair", "clean", "clear", "empty", "update", "upgrade",
+    "send", "shut", "turn",
+})
+_ORACLE_REPORT_VERBS = frozenset({
+    "give", "show", "tell", "list", "summarize", "summarise",
+    "describe", "explain", "report",
+})
+_ORACLE_POLITE_PREFIXES = (
+    "please ", "can you ", "could you ", "would you ",
+    "will you ", "i want you to ", "i need you to ",
+    "go ahead and ",
+)
+
+
+def _oracle_instruction_kind(text):
+    """Classify an owner message as "action" or "question".
+
+    Deterministic and conservative: any sentence whose lead word
+    (after a politeness prefix) is an action verb makes the whole
+    message an action; report leads (give/show/tell/...) and
+    interrogatives stay questions, so the summary fast path and
+    ordinary questions are never forced through a tool call.
+    """
+    if not isinstance(text, str):
+        return "question"
+    clauses = []
+    for sentence in re.split(r"[.!?\n;]+", text.lower()):
+        clauses.extend(
+            re.split(r",?\s+(?:and\s+then|and|then)\s+", sentence))
+    for clause in clauses:
+        words = clause.split()
+        if not words:
+            continue
+        lead = " ".join(words)
+        for prefix in _ORACLE_POLITE_PREFIXES:
+            if lead.startswith(prefix):
+                lead = lead[len(prefix):]
+                words = lead.split()
+                break
+        if not words:
+            continue
+        first = words[0].strip(",")
+        if first in _ORACLE_REPORT_VERBS:
+            continue  # a report clause never dispatches by itself
+        if first == "make" and len(words) > 1 and words[1] == "sure":
+            continue  # "make sure X" is a verification ask
+        if first in _ORACLE_ACTION_VERBS:
+            return "action"
+    return "question"
+
+
 def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
                     opener=None, instructions=None, base_dir=None,
                     progress=None):
@@ -2511,6 +2585,8 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
     ]
     scan_text = _as_text(output_text)
     tool_rounds = 0
+    kind = _oracle_instruction_kind(question)
+    reasked = False
     started = time.monotonic()
 
     def _progress(step):
@@ -2552,6 +2628,28 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
                 detail = "The local model did not answer."
             return {"op": "ask", "rejected": "inference_error", "detail": detail}
         calls = _parse_tool_calls(msg)
+        if not calls and kind == "action" and not reasked \
+                and tool_rounds == 0:
+            # Action dispatch: an instruction's first reply must
+            # be a tool call. Return the prose once with the
+            # directive; a second prose reply is accepted as the
+            # answer (the model naming what blocks it is a
+            # legitimate outcome, endlessly re-asking is not).
+            reasked = True
+            log("oracle agent: instruction drew a prose reply; "
+                "re-asking for the tool call")
+            _progress("Asking her to act on the instruction")
+            messages.append({"role": "assistant",
+                             "content": msg.get("content") or ""})
+            messages.append({
+                "role": "user",
+                "content": "(That was an instruction, not a "
+                           "question. Call the tool that carries "
+                           "it out now -- run, write_file, or "
+                           "whichever fits. If one specific thing "
+                           "blocks you, name that thing instead.)",
+            })
+            continue
         if not calls:
             note = _unparsed_tool_note(msg.get("content"))
             if note:

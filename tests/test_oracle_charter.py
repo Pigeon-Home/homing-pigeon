@@ -205,5 +205,154 @@ class CharterActionSubstrateTest(unittest.TestCase):
             self.assertIn("created", ans["answer"])
 
 
+class InstructionKindTest(unittest.TestCase):
+    """The dispatch classifier: conservative and deterministic.
+    Cases drawn from the owner's real asks (2026-10-18) plus the
+    shapes around them."""
+
+    ACTION = [
+        "Launch the windows calculator app for me.",
+        "Launch the calculator app.",
+        "Create a file named charter-probe.txt containing the "
+        "word launched, and tell me when it is done.",
+        "Please restart the runner.",
+        "Can you open the log folder?",
+        "I need you to create a backup of the config.",
+        "Set the timeout to 300.",
+        "Tell me about the failed job, and then delete its "
+        "output.",
+        "Shut down the oracle.",
+    ]
+    QUESTION = [
+        "Give me a summary of the jobs on the system.",
+        "Give me a summary of the job status of what you found "
+        "on this system.",
+        "What jobs failed?",
+        "Why did the last job fail?",
+        "How many jobs ran today?",
+        "Is the runner service running?",
+        "Make sure the service is running.",
+        "Show me the recent jobs.",
+    ]
+
+    def test_actions_classify_as_action(self):
+        from runner.runner import _oracle_instruction_kind
+        for text in self.ACTION:
+            with self.subTest(text=text):
+                self.assertEqual(_oracle_instruction_kind(text),
+                                 "action")
+
+    def test_questions_classify_as_question(self):
+        from runner.runner import _oracle_instruction_kind
+        for text in self.QUESTION:
+            with self.subTest(text=text):
+                self.assertEqual(_oracle_instruction_kind(text),
+                                 "question")
+
+    def test_non_string_is_a_question(self):
+        from runner.runner import _oracle_instruction_kind
+        self.assertEqual(_oracle_instruction_kind(None), "question")
+        self.assertEqual(_oracle_instruction_kind(""), "question")
+
+
+def _seen_opener(script, seen):
+    state = {"i": 0}
+
+    def opener(req, timeout=60):
+        try:
+            seen.append(json.loads(req.data.decode("utf-8")))
+        except Exception:
+            pass
+        msg = script[min(state["i"], len(script) - 1)]
+        state["i"] += 1
+        return _FakeResp(msg)
+
+    return opener
+
+
+class ActionDispatchTest(unittest.TestCase):
+    """Field failure shape, pinned: an instruction answered with
+    prose is returned once for the tool call; questions are never
+    re-asked."""
+
+    _CFG = {"endpoint": "http://127.0.0.1:11434/v1",
+            "model": "qwen2.5:3b"}
+    _DIRECTIVE = "That was an instruction, not a question"
+
+    def _run(self, script, question, base_dir):
+        seen = []
+        ans = ask_model_agent(self._CFG, question, "", 2000,
+                              opener=_seen_opener(script, seen),
+                              base_dir=base_dir)
+        return ans, seen
+
+    def test_prose_to_an_instruction_is_reasked_once(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = os.path.join(d, "charter-probe.txt")
+            script = [
+                {"role": "assistant",
+                 "content": "Sure, I can make that file for you."},
+                _tool_msg("write_file",
+                          {"path": target, "content": "launched"}),
+                {"role": "assistant",
+                 "content": "The file has been created."},
+            ]
+            ans, seen = self._run(
+                script,
+                "Create a file named charter-probe.txt containing "
+                "the word launched.", d)
+            self.assertEqual(len(seen), 3)
+            second = json.dumps(seen[1])
+            self.assertIn(self._DIRECTIVE, second)
+            with open(target, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), "launched")
+            self.assertEqual(ans.get("tool_rounds"), 1)
+            self.assertIn("created", ans["answer"])
+
+    def test_tool_call_first_is_not_reasked(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = os.path.join(d, "charter-probe.txt")
+            script = [
+                _tool_msg("write_file",
+                          {"path": target, "content": "launched"}),
+                {"role": "assistant",
+                 "content": "The file has been created."},
+            ]
+            ans, seen = self._run(
+                script, "Create the probe file.", d)
+            self.assertEqual(len(seen), 2)
+            self.assertNotIn(self._DIRECTIVE, json.dumps(seen))
+
+    def test_second_prose_is_accepted(self):
+        with tempfile.TemporaryDirectory() as d:
+            script = [
+                {"role": "assistant",
+                 "content": "I could do that."},
+                {"role": "assistant",
+                 "content": "Blocked: the tool is unavailable."},
+            ]
+            ans, seen = self._run(
+                script, "Launch the calculator app for me.", d)
+            self.assertEqual(len(seen), 2)
+            self.assertIn(self._DIRECTIVE, json.dumps(seen[1]))
+            self.assertIn("Blocked", ans["answer"])
+
+    def test_question_is_never_reasked(self):
+        with tempfile.TemporaryDirectory() as d:
+            script = [{"role": "assistant",
+                       "content": "Two jobs ran; both exited 0."}]
+            ans, seen = self._run(
+                script, "Give me a summary of the jobs on the "
+                        "system.", d)
+            self.assertEqual(len(seen), 1)
+            self.assertIn("Two jobs", ans["answer"])
+
+    def test_prompt_states_the_dispatch(self):
+        self.assertIn("your first reply is a tool call",
+                      ASK_AGENT_SYSTEM)
+        self.assertIn("sent back to you for the tool call",
+                      ASK_AGENT_SYSTEM)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
