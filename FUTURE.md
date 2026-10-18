@@ -16,6 +16,11 @@ Ideas...
 
 - A approval-only req user to say yes before the job runs: `docs/approval-gate-design.md`
 - User can discuss job with Oracle and modifications could be made or suggested with minor addition to proto field
+- Also, the job can be run, but since the oracle has local knowledge and context, could give the runner a suggestion
+- to file in it's return, or there could be a job "help me, local agent" mode, where modifications are permitted.
+- agents have a hard time knowing what env they are in, what tools are the system, etc.
+- an oracle could have a mode or option where it always includes full platform meta information to the runner
+- to tack on to all responses.
 
 ## Who signs
 
