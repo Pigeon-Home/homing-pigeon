@@ -7399,6 +7399,27 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
     return httpd
 
 
+def _warm_oracle_model(inf):
+    """One tiny inference call so the first real question is not the
+    cold start. Runs on a daemon thread; logs, never raises."""
+    t0 = time.monotonic()
+    try:
+        msg = _inference_chat(
+            inf,
+            [{"role": "user",
+              "content": "Reply with the single word: ok"}],
+            None, None, 120)
+    except Exception as e:
+        log(f"oracle model warm-up failed: {e}", "WARN")
+        return
+    if isinstance(msg, dict) and msg.get("role") == "error":
+        log("oracle model warm-up did not answer: "
+            + str(msg.get("content") or ""), "WARN")
+    else:
+        log(f"oracle model warm-up finished in "
+            f"{time.monotonic() - t0:.0f}s")
+
+
 def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
     """Open the Oracle chat and wait. Does not poll the mailbox."""
     try:
@@ -7444,24 +7465,8 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
     except Exception as e:
         log(f"oracle open not recorded: {e}", "WARN")
     if inf.get("model"):
-        def _warm_model():
-            t0 = time.monotonic()
-            try:
-                msg = _inference_chat(
-                    inf,
-                    [{"role": "user",
-                      "content": "Reply with the single word: ok"}],
-                    None, None, 120)
-            except Exception as e:
-                log(f"oracle model warm-up failed: {e}", "WARN")
-                return
-            if isinstance(msg, dict) and msg.get("role") == "error":
-                log("oracle model warm-up did not answer: "
-                    + str(msg.get("content") or ""), "WARN")
-            else:
-                log(f"oracle model warm-up finished in "
-                    f"{time.monotonic() - t0:.0f}s")
-        warm_thread = threading.Thread(target=_warm_model, daemon=True)
+        warm_thread = threading.Thread(
+            target=_warm_oracle_model, args=(inf,), daemon=True)
         warm_thread.start()
     else:
         warm_thread = None
@@ -7483,6 +7488,110 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
             warm_thread.join(timeout=5)
         record_oracle_turn(base, cfg, "", {}, event="close")
         httpd.server_close()
+    return 0
+
+
+def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
+    """Chat with the Oracle in the terminal. Does not poll the mailbox.
+
+    The same ask pipeline as the --oracle window -- ask_model_agent
+    over the live Oracle context, answers and rejects rendered the
+    same way, turns recorded to the same chat log -- with no HTTP
+    server and no browser. /quit or /exit ends it, as do EOF and
+    Ctrl+C. input_fn / print_fn are seams for tests.
+    """
+    if input_fn is None:
+        input_fn = input
+    if print_fn is None:
+        print_fn = print
+    if not isinstance(cfg, dict):
+        cfg = {}
+    base = _base_dir_for(cfg, cfg_path)
+    global _LOG_FILE
+    _LOG_FILE = os.path.join(base, "runner.log")
+    _refresh_log_settings(cfg, base)
+    _announce_oracle_log()
+    print_fn(f"homing-pigeon {__version__} --oracle-cli")
+    print_fn(f"Chat log: {os.path.join(base, 'oracle-chat.jsonl')}")
+    if cfg_path:
+        print_fn(f"Config: {os.path.abspath(cfg_path)}")
+    inf = inference_config(cfg) or {}
+    if inf.get("model"):
+        print_fn(f"Inference: local model {inf['model']} "
+                 f"({inf['endpoint']})")
+        warm_thread = threading.Thread(
+            target=_warm_oracle_model, args=(inf,), daemon=True)
+        warm_thread.start()
+    else:
+        print_fn("Inference: not configured (Ask stays off)")
+        warm_thread = None
+    print_fn("Terminal chat; the Oracle may run tools on this box. "
+             "/quit ends it.")
+    try:
+        record_oracle_turn(base, cfg, "", {}, event="open")
+    except Exception as e:
+        log(f"oracle open not recorded: {e}", "WARN")
+    try:
+        while True:
+            try:
+                line = input_fn("oracle> ")
+            except (EOFError, KeyboardInterrupt):
+                print_fn("")
+                break
+            question = (line or "").strip()
+            if not question:
+                continue
+            if question in ("/quit", "/exit"):
+                break
+            if question == "/help":
+                print_fn("Ask a question and the Oracle answers with "
+                         "this box's board, jobs, and host state as "
+                         "context. /quit ends the chat.")
+                continue
+            question = question[:4000]
+            try:
+                ans = ask_model_agent(
+                    inf, question,
+                    oracle_context(base,
+                                   watch=_oracle_watch_enabled(cfg)),
+                    (inf or {}).get("max_answer_chars") or 2000,
+                    _redact_patterns(cfg),
+                    instructions=cfg.get("owner_instructions"),
+                    base_dir=base,
+                )
+            except Exception as e:
+                log(f"oracle ask failed: {e}", "WARN")
+                ans = None
+            if not isinstance(ans, dict):
+                ans = {"rejected": "inference_error"}
+            try:
+                record_oracle_turn(base, cfg, question, ans)
+            except Exception as e:
+                log(f"oracle chat log failed: {e}", "WARN")
+            if isinstance(ans.get("answer"), str) and ans.get("answer"):
+                print_fn(ans["answer"])
+            else:
+                why = ans.get("rejected") \
+                    if isinstance(ans.get("rejected"), str) else ""
+                why = why or "inference_error"
+                detail = _ORACLE_REJECTS.get(
+                    why, "The Oracle did not answer.")
+                if why == "inference_error" \
+                        and isinstance(ans.get("detail"), str) \
+                        and ans["detail"]:
+                    detail = ans["detail"]
+                print_fn(detail)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if warm_thread is not None:
+            # Same courtesy as the window: never leave the warm-up
+            # writing into a directory being torn down.
+            warm_thread.join(timeout=5)
+        try:
+            record_oracle_turn(base, cfg, "", {}, event="close")
+        except Exception:
+            pass
     return 0
 
 
@@ -7525,6 +7634,9 @@ def main() -> int:
                     help="read local Oracle state and exit; no mailbox")
     ap.add_argument("--oracle", action="store_true",
                     help="open a loopback chat with the Oracle in your browser")
+    ap.add_argument("--oracle-cli", action="store_true",
+                    help="chat with the Oracle in the terminal "
+                         "(same chat, no browser)")
     ap.add_argument("--faster", action="store_true",
                     help="use qwen2.5:1.5b for this process, the "
                          "faster small model. The model in "
@@ -7642,7 +7754,8 @@ def main() -> int:
     # Mailbox auth gate, before any model work. On a TTY the runner
     # offers the Thunderbird-style setup instead of dying; headless
     # (service, automation) keeps the fail-fast config error.
-    if not args.local_test and not args.oracle and _setup is not None:
+    if not args.local_test and not args.oracle and not args.oracle_cli \
+            and _setup is not None:
         reason = _setup.needs_setup(cfg)
         if reason:
             if _setup.is_tty() and _setup.prompt_yes_no(
@@ -7682,6 +7795,8 @@ def main() -> int:
     update_llama_from_config(cfg)
     if args.oracle:
         return oracle_window(cfg, args.oracle_port, cfg_path=args.config)
+    if args.oracle_cli:
+        return oracle_cli(cfg, cfg_path=args.config)
     if args.local_test:
         _lt = _load_mod("runner.local_test", "local_test")
         return _lt.main(cfg, browser=args.browser)
