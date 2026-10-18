@@ -12,6 +12,10 @@
 - The Oracle chat box starts empty. The example question is a
   placeholder hint, not content: a prefilled box impersonated
   an already-asked question.
+- A loopback Send with no Origin header reaches the model.
+  Some Windows WebViews omit it, and rejecting it made the
+  button look dead while the runner log kept moving. A
+  non-loopback Origin is still refused.
 
 ### Tests
 

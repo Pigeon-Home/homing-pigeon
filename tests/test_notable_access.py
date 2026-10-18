@@ -1279,8 +1279,10 @@ class HttpAskTest(unittest.TestCase):
             "Content-Type": "application/json",
             "X-Oracle-Token": token,
         }
-        if origin:
+        if origin is True:
             headers["Origin"] = f"http://127.0.0.1:{self.port}"
+        elif origin:
+            headers["Origin"] = origin
         req = urllib.request.Request(
             f"http://127.0.0.1:{self.port}/ask",
             data=data, headers=headers, method="POST")
@@ -1340,10 +1342,16 @@ class HttpAskTest(unittest.TestCase):
             self.assertEqual(body.get("detail"), "Ask something first.")
         self.assertEqual(called, [])
 
-    def test_the_token_and_the_origin_are_required(self):
+    def test_a_bad_token_is_rejected_and_a_missing_origin_is_not(self):
+        # A bad token is still refused. A missing Origin on loopback
+        # is not: Windows WebViews omit it, and rejecting it made
+        # Send look dead. A present non-loopback Origin stays refused.
         status, _body = self._post("which jobs?", token="nope")
         self.assertEqual(status, 403)
-        status, _body = self._post("which jobs?", origin=False)
+        status, body = self._post("which jobs?", origin=False)
+        self.assertEqual(status, 200)
+        self.assertIn("rejected", body)
+        status, _body = self._post("which jobs?", origin="http://evil.example")
         self.assertEqual(status, 403)
 
     def test_a_crashing_model_and_a_crashing_log_still_answer(self):
