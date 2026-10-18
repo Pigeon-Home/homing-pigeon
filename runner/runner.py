@@ -6847,6 +6847,8 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
             if not _SAFE_JOB_ID.match(job_id) or job_id in (".", ".."):
                 continue
             path = os.path.join(d, name)
+            if os.path.islink(path):
+                continue
             try:
                 rows.append((os.path.getmtime(path), path, job_id))
             except OSError:
