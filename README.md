@@ -27,8 +27,8 @@ Then try this prompt in your cloud SI, it should return in 30 seconds.
 ```
 Send an email to YOUR_RUNNER_EMAIL@gmail.com
 Use this protocol: https://github.com/Pigeon-Home/homing-pigeon/blob/main/PROTOCOL.md
-The shared secret for authentication in the protocol is "YOUR_SECRET_STRING"
-Execute a job which obtains the value of the system clock and then display it for me here.
+Shared Secret: "YOUR_SECRET_STRING"
+Get the system clock and display it here.
 ```
 
 ## What this is for
