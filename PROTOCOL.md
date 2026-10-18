@@ -896,7 +896,7 @@ as the record of what the Oracle required. It is not a proposal.
 - SAFEGUARDS.md: operational guidance for running a board (timeouts,
   allowlists, when to tighten from least-restrictive defaults).
 - PROTOCOL.md: this file. The Oracle sections are implemented.
-- DOCKER.md: env vars for additional secrets, if supported.
+- docs/archive/DOCKER.md: env vars for additional secrets, if supported.
 
 ### Order
 

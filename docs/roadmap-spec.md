@@ -88,7 +88,7 @@ directly — it drafts, you confirm.
 
 ### 4.1 Learning loop
 
-When a job fails, the Oracle proposes a new `known-failures.md` entry —
+When a job fails, the Oracle proposes a new `docs/archive/known-failures.md` entry —
 symptom, cause, fix, match pattern — and the owner approves it. The
 advisory reviewer (`runner/review.py`, `docs/job-review.md`) then gets
 better with every failure instead of staying frozen at whatever was
@@ -102,7 +102,7 @@ senses saw. Cheap, private, no cloud involved.
 ### 4.3 Environment diff
 
 The runner already snapshots files outside the workspace
-(`docs/audit-2026-10-15.md` re-sweep). Show "what this job changed on my
+(`docs/archive/audit-2026-10-15.md` re-sweep). Show "what this job changed on my
 disk" as a diff view in the dashboard. Turns "what did it just do?"
 from a log-reading exercise into a glance.
 

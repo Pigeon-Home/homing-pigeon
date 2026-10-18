@@ -22,7 +22,7 @@ docker run -d --name pigeon --restart unless-stopped \
   ghcr.io/pigeon-home/homing-pigeon:latest
 ```
 
-No Python, no git, nothing else. See [DOCKER.md](DOCKER.md) for
+No Python, no git, nothing else. See [DOCKER.md](docs/archive/DOCKER.md) for
 dry-run mode, config options, and updating.
 
 ## 2. pip (best for Raspberry Pi)

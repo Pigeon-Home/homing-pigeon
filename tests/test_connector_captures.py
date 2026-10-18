@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Replay bodies captured from the live Gmail round-trip.
 
-These are the real payloads from docs/connector-roundtrip.md. They lock
+These are the real payloads from docs/archive/connector-roundtrip.md. They lock
 in: a happy-path ping verifies and runs, a signature marker inside a
 script field does not confuse the verifier, preambles/trailers around
 the signed object are ignored, and tampering is rejected. The

@@ -11,7 +11,7 @@ machine (Ubuntu, usr-merged, overlayfs):
   /proc mount (AppArmor/seccomp); without it --proc mounts fine.
 
 Divergences and the machine's real paths are recorded in
-HARDENING_REPORT.md.
+docs/archive/HARDENING_REPORT.md.
 """
 import os
 import shutil

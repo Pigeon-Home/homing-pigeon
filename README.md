@@ -308,7 +308,7 @@ docker run -d --name pigeon --restart unless-stopped \
   ghcr.io/pigeon-home/homing-pigeon:latest
 ```
 
-See [DOCKER.md](DOCKER.md) for the full guide — dry-run mode, config
+See [DOCKER.md](docs/archive/DOCKER.md) for the full guide — dry-run mode, config
 file mounting, updating, and security notes.
 
 **From PyPI** (needs Python 3.9+) — the easiest path on machines where

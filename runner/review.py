@@ -23,7 +23,7 @@ The output is an authenticated opinion, not a new signature scheme:
 notes ride in the already-HMAC-signed result message, bound to the
 job_id. A dedicated Oracle signing key is the v4 upgrade path.
 
-Known failures are filed in docs/known-failures.md — symptom,
+Known failures are filed in docs/archive/known-failures.md — symptom,
 cause, fix, and the pattern the reviewer matches. Every diagnosed
 failure makes future reviews smarter.
 

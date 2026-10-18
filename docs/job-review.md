@@ -51,11 +51,11 @@ outside the result envelope (e.g., to the DRI playbook channel).
 | dangling_file_ref | content | warn | script names a file not in `files[]` |
 
 Operator patterns go in `review_patterns_extra` (see
-`docs/known-failures.md` for the format and the filing process).
+`docs/archive/known-failures.md` for the format and the filing process).
 
 ## The learning loop
 
 Every diagnosed recurring failure gets filed in
-`docs/known-failures.md` with its pattern. The reviewer matches new
+`docs/archive/known-failures.md` with its pattern. The reviewer matches new
 jobs against the filed patterns. The Oracle gets smarter the way
 an on-call engineer does: by writing down what broke.

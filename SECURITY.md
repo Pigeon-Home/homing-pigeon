@@ -189,7 +189,7 @@ each secret from a file at startup (whitespace-stripped). A secret
 given both inline and via file is a startup error, as is a missing or
 empty file. File secrets pass the same entropy gate.
 
-See the hardening report (`HARDENING_REPORT.md`) for per-milestone
+See the hardening report (`docs/archive/HARDENING_REPORT.md`) for per-milestone
 status, and the threat model (`docs/threat-model.md`) for the
 overall posture: the Oracle reviews while the operating system
 contains.

@@ -112,7 +112,7 @@ same feature, they do not share code, and the old one is gone.
 | `--oracle` on the CLI | Opens a loopback browser chat that asks the local model through the Oracle path. | Added in `15025c7`. This is the flag that exists today. |
 | `--oracle-port` | Port for that chat. Default `11436`. Bound to `127.0.0.1` only. | Added with `--oracle`. |
 
-If you find `oracle_enabled=false` in `docs/verify-v31.md`, that file
+If you find `oracle_enabled=false` in `docs/archive/verify-v31.md`, that file
 is an older verification runbook. Those checks describe a flag that
 the code no longer reads. Do not reintroduce `oracle_enabled` or
 `--no-oracle` to make that runbook pass. The README row for

@@ -8,7 +8,7 @@ CONFIG="${CONFIG_PATH:-/data/config.json}"
 if [ ! -f "$CONFIG" ]; then
   if [ -z "$PIGEON_MAILBOX_USER" ] || [ -z "$PIGEON_MAILBOX_PASSWORD" ]; then
     echo "error: $CONFIG not found and PIGEON_MAILBOX_USER / PIGEON_MAILBOX_PASSWORD not set" >&2
-    echo "Mount a config.json at /data/config.json or set the env vars. See DOCKER.md." >&2
+    echo "Mount a config.json at /data/config.json or set the env vars. See docs/archive/DOCKER.md." >&2
     exit 1
   fi
   python3 - "$CONFIG" <<'PYEOF'

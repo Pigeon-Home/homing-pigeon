@@ -1,7 +1,7 @@
 # Coverage findings
 
 This report belongs to package 3.7.22. The previous measurement is
-[v3.5.2](../v3.5.2/coverage.md). No new tag was cut for this measurement.
+[v3.5.2](../../archive/v3.5.2/coverage.md). No new tag was cut for this measurement.
 
 ![85.5 percent of statements covered](overall.png)
 
