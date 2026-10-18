@@ -1,4 +1,4 @@
-# Agents and the Gmail connector
+# Agents and the message/email connector
 
 ## The split
 
