@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.7.34 - 2026-10-18
 
 ### Oracle
 
@@ -13,6 +13,13 @@
   also passed history and detail. `--faster` still pulls
   `qwen2.5:3b`; the Raspberry Pi profile still pulls
   `llama3.2:1b`; `--inference-model` still wins over both.
+
+### CI
+
+- The Windows suite run is sharded. `tools/run_tests_parallel.py`
+  splits the same unittest discover across four workers, each
+  test exactly once. The Linux test job stays the serial
+  reference run.
 
 ## 3.7.33 - 2026-10-18
 
