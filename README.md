@@ -20,7 +20,7 @@ Think "GitHub self-hosted runner, but the control plane is email." Python
 transport — the protocol doesn't care about the pipe. See TRANSPORTS.md.)
 
 Install the homing pigeon agent on your system. It will prompt for login
-credentials to an email address. The default transport mechnism.
+credentials to an email address, the default transport mechanism.
 
 Then try this prompt in your cloud SI, it should return in 30 seconds.
 
