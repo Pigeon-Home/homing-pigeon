@@ -274,6 +274,9 @@
   the connector's current identity); a guard test holds the
   line. Evergreen procedures use version placeholders instead
   of the current version, guarded likewise.
+  *(Audit note, 2026-10-18: the naming policy has since tightened —
+  live docs now carry zero mentions of the provider's name; see the
+  current guard test.)*
 - PROTOCOL.md updates.
 
 ## 3.7.28 - 2026-10-18
