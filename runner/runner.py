@@ -6592,10 +6592,29 @@ _YARA_RULES = (
     "  condition:\n"
     "    $php and ($sys or $sh)\n"
     "}\n"
+    "rule hp_cred_dump {\n"
+    "  strings:\n"
+    "    $a = \"sekurlsa::logonpasswords\" nocase\n"
+    "    $b = \"sekurlsa::wdigest\" nocase\n"
+    "    $c = \"mimikatz\" nocase\n"
+    "  condition:\n"
+    "    any of them\n"
+    "}\n"
+    "rule hp_reverse_shell {\n"
+    "  strings:\n"
+    "    $a = \"/dev/tcp/\" nocase\n"
+    "    $b = \"bash -i >&\" nocase\n"
+    "    $c = \"nc -e \" nocase\n"
+    "    $d = \"ncat -e \" nocase\n"
+    "  condition:\n"
+    "    any of them\n"
+    "}\n"
 )
 _YARA_ATTACK = {
     "hp_encoded_exec": "T1059",
     "hp_webshell": "T1505.003",
+    "hp_cred_dump": "T1003.001",
+    "hp_reverse_shell": "T1071",
 }
 
 
@@ -6730,7 +6749,7 @@ def _yara_hits(work, targets, cfg=None):
                 if not parts:
                     continue
                 rule = parts[0]
-                if rule.lower() in ("error", "warning"):
+                if rule.rstrip(":").lower() in ("error", "warning"):
                     continue
                 attack = _YARA_ATTACK.get(rule, "T1204.002")
                 hits.append(
