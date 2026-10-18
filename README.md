@@ -2,6 +2,14 @@
 
 **Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, etc.**
 
+> ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative control**
+> of the machine to whoever holds the shared secret. It reads email
+> and executes what it finds — blindly, as a privileged user. Anyone who can
+> produce a correctly-signed email owns the box: install software, read
+> files, add users, pivot to your network. Only run this with a dedicated
+> throwaway account on a machine you can afford to lose, and read
+> PROTOCOL.md before you deploy it.
+
 Your cloud SI is smart, but it can't touch your computer. Homing Pigeon
 fixes that: tell your SI to complete a task and it will do it on your
 machine (Linux/macOS/FreeBSD/Windows). The results return so that your
@@ -11,14 +19,6 @@ phone, so from anywhere.
 Think "GitHub self-hosted runner, but the control plane is email." Python
 3.9+, standard library only, no dependencies. (Email is just the first
 transport — the protocol doesn't care about the pipe. See TRANSPORTS.md.)
-
-> ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative control**
-> of the machine to whoever holds the shared secret. It reads email
-> and executes what it finds — blindly, as a privileged user. Anyone who can
-> produce a correctly-signed email owns the box: install software, read
-> files, add users, pivot to your network. Only run this with a dedicated
-> throwaway account on a machine you can afford to lose, and read
-> PROTOCOL.md before you deploy it.
 
 Install the agent and then try this prompt in your cloud SI. It should return in less than a minute.
 
