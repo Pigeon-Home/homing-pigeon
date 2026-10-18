@@ -32,7 +32,7 @@ Get the system clock and display it here.
 ```
 IETF Homing Pigeon Draft: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-homing-pigeon-00.md
 
-Once approved as an IETF standard, you could say "Send an email to XYZ using Homing Pigeon..." instead of providing the long project link.
+Once approved as an IETF standard, you could say "Send an email to XYZ and use Homing Pigeon to..." instead of providing the long project link.
 
 ## What this is for
 
