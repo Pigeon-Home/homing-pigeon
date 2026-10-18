@@ -1678,5 +1678,203 @@ class ExchangeLogTest(unittest.TestCase):
         self.assertIn("notable:", json.dumps(rec["request"]))
 
 
+class _BadEq:
+    def __eq__(self, other):
+        raise RuntimeError("no")
+
+
+class _BadStr:
+    def __str__(self):
+        raise RuntimeError("no")
+
+
+class _BadBool:
+    def __bool__(self):
+        raise RuntimeError("no")
+
+
+class ResultPolicyTest(unittest.TestCase):
+    """What of a flag job is retained, and what a later query can see."""
+
+    def _job(self, view="attested", queries=None):
+        policy = {"view": view}
+        if queries is not None:
+            policy["queries"] = queries
+        return {"job_id": "jobflag1", "kind": "exec",
+                "script": FLAG, "result_policy": policy}
+
+    def _ran(self, exit_code=0):
+        return {"stdout": _KEY + "\n", "stderr": "", "exit_code": exit_code,
+                "timed_out": False, "duration_sec": 0.01}
+
+    def test_full_is_not_retained_and_keeps_the_secret(self):
+        result, retain = R.apply_result_policy(
+            {}, self._job("full"), self._ran(),
+            R.BUILTIN_REDACT_PATTERNS, None)
+        self.assertFalse(retain)
+        self.assertIn(_KEY, result["stdout"])
+
+    def test_redacted_keeps_the_job_and_hides_the_secret(self):
+        patterns = dict(R.BUILTIN_REDACT_PATTERNS)
+        patterns["broken"] = "["
+        patterns["not-a-pattern"] = 5
+        result, retain = R.apply_result_policy(
+            {"max_result_view": "redacted"}, self._job("full"),
+            self._ran(), patterns, None)
+        self.assertTrue(retain)
+        self.assertEqual(result["view"], "redacted")
+        self.assertNotIn(_KEY, result["stdout"])
+        self.assertIn("[REDACTED:aws_key]", result["stdout"])
+        self.assertIn("aws_key", result["redacted_families"])
+
+    def test_summary_counts_bytes_and_does_not_keep_the_text(self):
+        result, retain = R.apply_result_policy(
+            {"max_result_view": "summary"}, self._job("full"),
+            self._ran(), {}, None)
+        self.assertTrue(retain)
+        self.assertNotIn("stdout", result)
+        self.assertEqual(result["result_class"], "ok")
+        self.assertGreater(result["stdout_bytes"], 0)
+        failed, _retain = R.apply_result_policy(
+            {"max_result_view": "summary"}, self._job("summary"),
+            self._ran(_BadEq()), {}, None)
+        self.assertEqual(failed["result_class"], "fail")
+
+    def test_attested_answers_the_declared_questions(self):
+        queries = [
+            {"op": "attest", "predicate": "exit_zero"},
+            {"op": "attest", "predicate": "no_secrets"},
+            {"op": "attest", "predicate": "output_digest"},
+            {"op": "attest", "predicate": "confined_to_workspace"},
+            {"op": "attest", "predicate": "made_up"},
+            "not-a-query",
+            {"op": "nope", "predicate": "exit_zero"},
+        ]
+        result, retain = R.apply_result_policy(
+            {"max_result_view": "attested"}, self._job("full", queries),
+            self._ran(), R.BUILTIN_REDACT_PATTERNS, None)
+        self.assertTrue(retain)
+        self.assertEqual(result["stdout"], "")
+        by_pred = {a["predicate"]: a for a in result["attestations"]
+                   if isinstance(a, dict)}
+        self.assertTrue(by_pred["exit_zero"]["ok"])
+        self.assertFalse(by_pred["no_secrets"]["ok"])
+        self.assertIn("digest", by_pred["output_digest"])
+        self.assertEqual(by_pred["confined_to_workspace"]["reason"],
+                         "unconfigured")
+        self.assertEqual(by_pred["made_up"]["reason"], "unknown")
+
+    def test_bad_shapes_fall_closed(self):
+        result, retain = R.apply_result_policy(
+            "nope", "nope", "nope", "nope", None)
+        self.assertFalse(retain)
+        self.assertEqual(result["view"], "full")
+        result, retain = R.apply_result_policy(
+            {"max_result_view": 5},
+            {"result_policy": {"view": 5}},
+            self._ran(), {}, None)
+        self.assertFalse(retain)
+        self.assertEqual(result["view"], "full")
+
+    def test_a_path_past_the_saved_script_cut_is_not_notable(self):
+        early = "echo " + ("a" * 400) + " && cat /etc/shadow"
+        late = "echo " + ("a" * 500) + " && cat /etc/shadow"
+        for script, notable in ((early, True), (late, False)):
+            saved = script[:500]
+            summary = R._retained_job_summary(
+                _record(saved, stdout=_KEY + "\n"), "jobx", BASE)
+            self.assertEqual("notable:" in summary, notable, len(script))
+            if notable:
+                self.assertIn("/etc/shadow", summary)
+
+    def test_no_log_file_writes_nothing(self):
+        saved = R._LOG_FILE
+        try:
+            R._LOG_FILE = ""
+            R._log_job_output("jobflag1", "exec", _KEY, "", {})
+        finally:
+            R._LOG_FILE = saved
+
+    def test_the_job_log_redacts_the_secret(self):
+        saved = R._LOG_FILE
+        path = os.path.join(tempfile.mkdtemp(), "runner.log")
+        try:
+            R._LOG_FILE = path
+            R._log_job_output("jobflag1", "exec", _KEY + "\n", "err", {})
+        finally:
+            R._LOG_FILE = saved
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        self.assertNotIn(_KEY, text)
+        self.assertIn("[REDACTED:aws_key]", text)
+        self.assertIn("jobflag1", text)
+
+    def test_attestation_edges(self):
+        ctx = {
+            "exit_code": _BadEq(), "text": _KEY, "digest": "d",
+            "confined": _BadBool(),
+            "patterns": {
+                _BadStr(): "AKIA[0-9A-Z]{16}", "ok": 5,
+                "aws_key": R.BUILTIN_REDACT_PATTERNS["aws_key"],
+            },
+        }
+        queries = [
+            {"op": "attest", "predicate": _BadEq()},
+            {"op": "attest", "predicate": "exit_zero"},
+            {"op": "attest", "predicate": "no_secrets"},
+            {"op": "attest", "predicate": "confined_to_workspace"},
+        ]
+        atts = R.build_attestations(queries, ctx)
+        self.assertEqual(atts[0]["reason"], "unknown")
+        self.assertFalse(atts[1]["ok"])
+        self.assertFalse(atts[2]["ok"])
+        self.assertEqual(atts[3]["reason"], "unconfigured")
+        self.assertEqual(R.build_attestations("nope", {}), [])
+        self.assertEqual(R.build_attestations([], "nope"), [])
+
+        class On:
+            def __bool__(self):
+                return True
+
+        class Off:
+            def __bool__(self):
+                return False
+
+        on = R.build_attestations(
+            [{"op": "attest", "predicate": "confined_to_workspace"}],
+            {"confined": On()})
+        off = R.build_attestations(
+            [{"op": "attest", "predicate": "confined_to_workspace"}],
+            {"confined": Off()})
+        self.assertTrue(on[0]["ok"])
+        self.assertEqual(off[0]["reason"], "violation_detected")
+        bare = R.build_attestations(
+            [{"op": "attest", "predicate": "no_secrets"}],
+            {"text": _KEY, "patterns": "nope"})
+        self.assertFalse(bare[0]["ok"])
+
+    def test_random_predicates_do_not_raise(self):
+        import random
+        rng = random.Random(321)
+        names = ["exit_zero", "no_secrets", "output_digest",
+                 "confined_to_workspace", "made_up", "", _BadEq()]
+        for _ in range(40):
+            queries = [
+                {"op": rng.choice(["attest", "nope"]),
+                 "predicate": rng.choice(names)}
+                for _ in range(rng.randint(0, 5))
+            ]
+            if rng.random() < 0.3:
+                queries.append("junk")
+            atts = R.build_attestations(queries, {
+                "exit_code": rng.choice([0, 1, None]),
+                "text": rng.choice(["ok", _KEY]),
+                "digest": "d",
+                "confined": rng.choice([None, True, False]),
+                "patterns": R.BUILTIN_REDACT_PATTERNS,
+            })
+            self.assertIsInstance(atts, list)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
