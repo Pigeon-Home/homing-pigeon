@@ -13,6 +13,7 @@ script and classic credential stores are flagged).
 import os
 import tempfile
 import unittest
+import unittest.mock
 
 from runner import runner as R
 
@@ -335,6 +336,144 @@ class PromptDirectiveTest(unittest.TestCase):
         s = R._retained_job_summary(_record(FLAG), "jobx", BASE)
         self.assertIn("SUSPICIOUS ACCESS", s)
         self.assertIn("malicious-job behavior", s)
+
+
+class SummaryFactTest(unittest.TestCase):
+    def test_timed_out_and_unknown_status(self):
+        record = _record("true")
+        record["timed_out"] = True
+        record["exit_code"] = "nope"
+        s = R._retained_job_summary(record, "jobx", BASE)
+        self.assertIn("timed out", s)
+        record["timed_out"] = False
+        s = R._retained_job_summary(record, "jobx", BASE)
+        self.assertIn("status unknown", s)
+
+    def test_bad_timestamp_stays_unknown(self):
+        record = _record("true")
+        record["saved_at"] = "yesterday"
+        s = R._retained_job_summary(record, "jobx", BASE)
+        self.assertIn("time unknown", s)
+
+    def test_non_string_output_is_stringified(self):
+        record = _record("true", stdout=321)
+        s = R._retained_job_summary(record, "jobx", BASE)
+        self.assertIn("321", s)
+        self.assertNotIn("notable:", s)
+
+
+class ContextGateTest(unittest.TestCase):
+    """What reaches the Oracle record, and what is dropped first."""
+
+    def _dir(self):
+        d = tempfile.mkdtemp()
+        os.makedirs(os.path.join(d, "retained"))
+        return d
+
+    def _plant(self, d, job_id, script=FLAG):
+        R.save_retained(d, job_id, _record(script))
+        return d
+
+    def test_non_string_base_is_empty(self):
+        self.assertEqual(R.oracle_context(None, watch=False), "")
+        self.assertEqual(R.oracle_context(3, watch=False), "")
+
+    def test_junk_names_symlink_and_bad_json_are_skipped(self):
+        d = self._plant(self._dir(), "jobflag1")
+        retained = os.path.join(d, "retained")
+        with open(os.path.join(retained, "notes.txt"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("not a job")
+        with open(os.path.join(retained, "bad id.json"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("{}")
+        with open(os.path.join(retained, "corrupt1.json"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("{")
+        with open(os.path.join(retained, "notdict1.json"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("[1]")
+        os.symlink(os.path.join(retained, "jobflag1.json"),
+                   os.path.join(retained, "linkjob1.json"))
+        ctx = R.oracle_context(d, watch=False)
+        self.assertIn("jobflag1", ctx)
+        self.assertIn("notable:", ctx)
+        self.assertNotIn("bad id", ctx)
+        self.assertNotIn("corrupt1", ctx)
+        self.assertNotIn("notdict1", ctx)
+        self.assertNotIn("linkjob1", ctx)
+
+    def test_unreadable_mtime_is_skipped(self):
+        d = self._plant(self._dir(), "jobflag1")
+        real = os.path.getmtime
+
+        def boom(path):
+            if path.endswith("jobflag1.json"):
+                raise OSError("gone")
+            return real(path)
+
+        with unittest.mock.patch("runner.runner.os.path.getmtime", boom):
+            ctx = R.oracle_context(d, watch=False)
+        self.assertNotIn("jobflag1", ctx)
+        self.assertIn("(no job output retained yet)", ctx)
+
+    def test_limit_and_cap_edges(self):
+        d = self._dir()
+        for i in range(4):
+            self._plant(d, f"job{i:04d}", "true" if i else FLAG)
+            path = os.path.join(d, "retained", f"job{i:04d}.json")
+            os.utime(path, (1000 + i, 1000 + i))
+        all_of_them = R.oracle_context(d, limit=None, watch=False)
+        for i in range(4):
+            self.assertIn(f"job{i:04d}", all_of_them)
+        newest = R.oracle_context(d, limit=1, watch=False)
+        self.assertIn("job0003", newest)
+        self.assertNotIn("job0000", newest)
+        self.assertEqual(R.oracle_context(d, limit=-5, watch=False),
+                         "(no job output retained yet)")
+        self.assertEqual(R.oracle_context(d, max_chars=0, watch=False), "")
+        self.assertEqual(R.oracle_context(d, max_chars=-3, watch=False), "")
+        # A bool is not a number. Both fall back to the defaults,
+        # and the notable line is still in the record.
+        ctx = R.oracle_context(d, limit=True, max_chars=True, watch=False)
+        self.assertIn("notable:", ctx)
+        ctx = R.oracle_context(d, limit="many", max_chars="lots",
+                               watch=False)
+        self.assertIn("notable:", ctx)
+
+    def test_runner_log_rides_with_the_notable_line(self):
+        d = self._plant(self._dir(), "jobflag1")
+        with open(os.path.join(d, "runner.log"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("jobflag1 done\n")
+        ctx = R.oracle_context(d, watch=False)
+        self.assertIn("notable:", ctx)
+        self.assertIn("Recent runner log", ctx)
+        self.assertIn("jobflag1 done", ctx)
+
+
+class MarkerFuzzTest(unittest.TestCase):
+    """Case and splitter mutations around one credential path."""
+
+    def test_case_and_splitters_keep_the_marker(self):
+        import random
+        rng = random.Random(321)
+        path = "/etc/shadow"
+        splitters = list(" \t\r\n'\"`;|&<>(){}[]")
+        for _ in range(200):
+            noise = "".join(rng.choice(splitters) for _ in range(3))
+            shown = "".join(rng.choice((c, c.upper())) for c in path)
+            script = f"cat{noise}{shown}{noise}echo"
+            got = findings(script)
+            self.assertTrue(got, script)
+            self.assertIn("credential", got[0][1], script)
+            self.assertLessEqual(len(got), 3)
+
+    def test_uppercase_home_prefix_is_not_the_home_reason(self):
+        got = findings("cat /HOME/u/Desktop/flag.txt")
+        self.assertEqual(len(got), 1)
+        self.assertIn("outside the job's own workspace", got[0][1])
+        self.assertNotIn("home", got[0][1])
 
 
 if __name__ == "__main__":
