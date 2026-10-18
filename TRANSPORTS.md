@@ -78,7 +78,7 @@ Why it fits so well it feels designed for this:
   million operations a month. Your agent would have to be
   extraordinarily busy to cost you anything.
 - **Edge presence.** The queue lives milliseconds from wherever the
-  SI is, instead of inside one specific Gmail datacenter.
+  SI is, instead of inside one specific provider's datacenter.
 
 The shape of it: two queues, `pigeon-jobs` and `pigeon-results`.
 The SI's `send_job` drops a signed blob on `pigeon-jobs`. The runner
@@ -211,7 +211,7 @@ notes. There is no setting that switches the runner onto them.
 
 | Transport | NAT-friendly | Auth story | At-least-once | Self-hostable | Free tier | In the runner |
 |---|---|---|---|---|---|---|
-| Email | poll | HMAC on the body | Unseen flag | n/a (Gmail) | yes | yes, the only one |
+| Email | poll | HMAC on the body | Unseen flag | n/a (hosted) | yes | yes, the only one |
 | Cloudflare Queues | HTTPS poll | API token | Retries + DLQ | no | yes | no |
 | NATS JetStream | yes | NKey/JWT | Consumer acks | tiny binary | self-host | no |
 | MQTT | yes | TLS + creds | QoS 1 | Mosquitto | self-host | no |
@@ -244,7 +244,7 @@ mailbox/queue when the job names nothing.
 ## Bootstrapping
 
 Email is the only pipe you can turn on today. Get that running (a
-dedicated Gmail account), and stop there. What is not built, and
+dedicated mailbox account), and stop there. What is not built, and
 what was cut, is listed in FUTURE.md. There is no config
 key that flips the runner onto another pipe. A runbook that says
 "install the dependency and switch the transport" will not find that

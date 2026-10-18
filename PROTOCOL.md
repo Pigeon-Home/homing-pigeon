@@ -28,20 +28,21 @@ gets done without you knowing how any of it works.
 
 ## 2. Transport
 
-- One dedicated mailbox (Gmail recommended). Both directions use it:
+- One dedicated mailbox. Both directions use it:
   The cloud SI sends jobs *to* it; the runner reads them and sends results back
   to the same address — unless the signed job sets `reply_to`, in which
   case the result email goes to that address instead (see §3.1).
 - Runner access: IMAP (read, port 993) + SMTP (send, port 587). Two
   authentication methods, both transport-level — the protocol (message
   format, signatures, verification) is identical either way:
-  - **Password** (default): Gmail username + app password from `config.json`
+  - **Password** (default): mailbox username + app password from `config.json`
     **in plaintext** — the user's explicit choice (dedicated throwaway
     account, fresh machine, nothing personal). They are never written to
     the log or into any email, but they ARE on disk: do not use this setup
     with an account you care about. The runner exits with an error if
-    `mailbox_user` or `mailbox_password` is missing from config. Gmail
-    requires 2-Step Verification before an app password can be created.
+    `mailbox_user` or `mailbox_password` is missing from config. Providers
+    that offer app passwords generally require two-factor authentication
+    to be enabled on the account before one can be created.
   - **OAuth** (`"auth": "oauth"`): Thunderbird-style browser sign-in
     (PKCE + loopback redirect, `homing-pigeon-auth`). The runner stores a
     refresh token and uses XOAUTH2 for IMAP and SMTP. The Google password
@@ -165,7 +166,7 @@ Verification:
    presented signature using a constant-time comparison.
 
 The shared secret is a dedicated high-entropy string in the `shared_secret`
-config field, separate from the mailbox password (which is only a Gmail
+config field, separate from the mailbox password (which is only a mailbox
 credential). Both sides use its UTF-8 bytes directly as the HMAC-SHA-384 key —
 no hashing or derivation, the SI uses it as-is. The user gives the same string
 to the cloud side when they want jobs sent. It never travels in email; only job
@@ -217,13 +218,13 @@ send stays unseen and will be retried (re-executed) on the next cycle.
 
 - The runner host is a **full-trust execution environment**: anyone who
   can produce a valid signed job message owns the box.
-- This deployment deliberately stores the Gmail app password in
+- This deployment deliberately stores the mailbox app password in
   **plaintext** in config.json (user's explicit choice: dedicated
   throwaway account on a fresh machine with nothing personal). Anyone
-  holding the password gets both Gmail access and the ability to sign
+  holding the password gets both mailbox access and the ability to sign
   jobs. Do not use this setup with an account you care about.
   (With `"auth": "oauth"` there is no password on disk — only a refresh
-  token — but the token still grants Gmail access, and `shared_secret`
+  token — but the token still grants mailbox access, and `shared_secret`
   still signs jobs. Same caution applies.)
 - Use a dedicated mailbox, never a personal inbox. Use an app password,
   never the account password.

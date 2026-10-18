@@ -65,7 +65,7 @@ pip3 install pigeon-home-runner
 
 ```bash
 homing-pigeon-install
-# edit ~/.homing-pigeon/config.json — add your Gmail + app password
+# edit ~/.homing-pigeon/config.json — add your mailbox address + app password
 # (the installer generates a shared_secret for you; give that string to your SI)
 homing-pigeon --config ~/.homing-pigeon/config.json --once
 ```
@@ -136,7 +136,7 @@ Then sign in: run the app once with `homing-pigeon --setup` (or let
 `install.py` offer it) — Thunderbird-style browser sign-in, a fresh
 shared secret shown once for you to give to your cloud SI, config
 written. No hand-edited JSON needed. If you'd rather wire it by hand,
-edit `config.json` (add your Gmail + app password) instead, then send
+edit `config.json` (add your mailbox address + app password) instead, then send
 the clock check below.
 
 The installer also sets up the Oracle's local model: it installs
@@ -151,7 +151,7 @@ setup, leaving the rest of your install alone. Pass
 ### Working scenario
 
 Checked against a working simulation (Windows-shaped profile, no live
-Gmail, no live model). The same steps are locked in
+mailbox, no live model). The same steps are locked in
 `tests/test_first_run_scenario.py`. The strings there are the ones
 the simulation used.
 

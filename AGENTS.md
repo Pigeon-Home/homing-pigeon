@@ -6,7 +6,7 @@ There are two sides. They do not share credentials.
 
 | Side | Who | How it talks to mail | What it must never do |
 |------|-----|----------------------|------------------------|
-| **Cloud SI** (this agent, Grok, or any assistant) | Holds a connected Gmail account | Gmail connector (`gmail_send_message`, `gmail_search`, `gmail_get_message`) | Ask the user for a mailbox login or password. Paste credentials into chat. Store an app password. |
+| **Cloud SI** (this agent, Grok, or any assistant) | Holds a connected mail account | The mail connector (currently Gmail: `gmail_send_message`, `gmail_search`, `gmail_get_message`) | Ask the user for a mailbox login or password. Paste credentials into chat. Store an app password. |
 | **Runner** (homing-pigeon on the host) | Dedicated throwaway mailbox | IMAP + SMTP with an app password in `config.json` on that machine | Be given the user's personal inbox. Trust the From header (signatures only). |
 
 The connector is already authenticated. The SI uses it. The runner keeps using IMAP. That is the whole design.
@@ -33,11 +33,11 @@ Those values live on the runner host. They do not travel through the SI chat.
 
 ## Rules for any agent working on this project
 
-1. Use the Gmail connector for all cloud-side mail. Do not request or accept mailbox credentials in conversation.
+1. Use the mail connector for all cloud-side mail. Do not request or accept mailbox credentials in conversation.
 2. The runner's IMAP/SMTP config is an install-time concern for the host, not a chat concern.
 3. The shared secret for HMAC is the only secret the SI needs, and only so it can sign jobs. It is not a login.
 4. If a live round-trip is required, send the signed job with the connector to the runner's dedicated address. The result is delivered to the runner's mailbox, not to the connector account (see 'Result location' below); to verify it, ask the user to forward it, then read the forward with the connector. Do not log into the runner's mailbox.
-5. If the connector is not connected, ask the user to connect Gmail. Do not fall back to asking for a password.
+5. If the connector is not connected, ask the user to connect their mail account. Do not fall back to asking for a password.
 
 
 ## Sending a job
@@ -78,7 +78,7 @@ body. Do not log into the runner's mailbox.
 
 ## Personal account is not the runner
 
-The connector is attached to a personal Gmail account. Rules:
+The connector is attached to a personal mail account. Rules:
 
 - **Allowed:** send a clearly marked test email to that same address, read it back, verify the signature, exercise the cloud pipeline.
 - **Not allowed:** point the runner at that account, poll it with IMAP, or use it as the job mailbox for end-to-end execution tests.
@@ -86,7 +86,7 @@ The connector is attached to a personal Gmail account. Rules:
 
 ## Current connector
 
-The connected send-as address is the primary Gmail account on the connector. Jobs the SI sends come from that address. The runner accepts signed jobs from any sender; the signature is the only gate.
+The connector is currently Gmail. The connected send-as address is the primary account on it. Jobs the SI sends come from that address. The runner accepts signed jobs from any sender; the signature is the only gate.
 
 ## Platform-safe job construction (real failure)
 
@@ -99,5 +99,5 @@ The job is rejected with `cannot start interpreter: [WinError 2] The system cann
 
 ## Result location
 
-Result emails are sent **to the runner's mailbox** (`mailbox_user`), not to the SI's connected Gmail account. Searching the connector for `[HOMING-PIGEON] result <job_id>` will not find them unless the result was forwarded or the runner is configured to deliver elsewhere. Check the runner console or ask the user to forward the result if verification is needed.
+Result emails are sent **to the runner's mailbox** (`mailbox_user`), not to the SI's connected mail account. Searching the connector for `[HOMING-PIGEON] result <job_id>` will not find them unless the result was forwarded or the runner is configured to deliver elsewhere. Check the runner console or ask the user to forward the result if verification is needed.
 

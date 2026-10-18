@@ -38,7 +38,7 @@ In scope: the runner (`runner/runner.py`), the installer
 protocol itself (PROTOCOL.md), and the build/release pipeline
 (`.github/workflows/`).
 
-Out of scope: the security of Gmail itself, the secrecy of a
+Out of scope: the security of the mailbox provider itself, the secrecy of a
 shared secret the user chose to share, and deployments that ignore
 the documented threat model (e.g., running the agent on a machine
 with irreplaceable data and no VM snapshot).

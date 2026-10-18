@@ -27,7 +27,7 @@ contained; set it up casually and it isn't.
 
 Do all of these before the first job:
 
-1. **Dedicated Gmail account.** `you-runner@gmail.com`, never your
+1. **Dedicated mailbox account.** `you-runner@gmail.com`, never your
    personal inbox. Nothing personal should ever be reachable from
    this mailbox.
 2. **2-Step Verification + app password.** The app password is the
@@ -102,12 +102,12 @@ mitigation:
 
 - Don't point the runner at a mailbox anyone else can access
   (shared inboxes, delegated accounts).
-- Don't reuse the runner's Gmail for anything else. It's not an
+- Don't reuse the runner's mailbox for anything else. It's not an
   email account; it's a control channel wearing an email costume.
 - Don't run jobs you don't understand on machines you care about.
   The SI writes the script; you own the consequences.
 - Don't assume TLS means private. Email content is encrypted in
-  transit, but the *mailbox itself* (Gmail) sees everything. The
+  transit, but the *mailbox provider itself* sees everything. The
   Oracle (§4) exists precisely because "the SI" and "the
   infrastructure" are both third parties.
 

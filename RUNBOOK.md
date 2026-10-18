@@ -146,10 +146,10 @@ virtual machine is a good idea).
    `config.json`. (Copy, paste, rename.)
 5. Open `config.json` in Notepad (Windows) or TextEdit (Mac).
    Fill in these lines:
-   - `mailbox_user` — the Gmail address you made just for the runner.
-   - `mailbox_password` — the app password for that Gmail account.
+   - `mailbox_user` — the email address you made just for the runner.
+   - `mailbox_password` — the app password for that account.
    - `shared_secret` — a long random string (generate one: `openssl rand -hex 32`).
-     This is the HMAC signing key, separate from the Gmail password. You'll
+     This is the HMAC signing key, separate from the mailbox password. You'll
      paste the same string to your SI when you want it to send jobs.
 
    How to get an app password:
@@ -198,7 +198,7 @@ It checks the mailbox one time and then stops. Watch what it prints.
 
 You need two things: the **shared secret** (the `shared_secret` string
 from `config.json` in Job 5 — not the app password) and a way to send
-email as the runner's Gmail account. The easiest way is to just paste
+email to the runner's mailbox. The easiest way is to just paste
 the secret string to your SI in chat and tell it what you want done —
 it writes the email, signs it, and sends it for you.
 
@@ -213,8 +213,9 @@ python3 cloud/send_job.py new --kind ping --secret PASTE_YOUR_SECRET_HERE
 
 3. It prints three things: a subject line, an empty line, and a big
    block of text. Copy **all** of it.
-4. Open Gmail, logged in as the runner's account. Write a new email:
-   - **To:** the runner's own Gmail address.
+4. Open the runner's mailbox (webmail or a mail app), logged in as the
+   runner's account. Write a new email:
+   - **To:** the runner's own email address.
    - **Subject:** paste the subject line.
    - **Body:** paste the big block of text.
    - Send it.
@@ -333,7 +334,7 @@ paged, and no model is called. There is no flag that deletes the Oracle.
 
 ### Where results go
 
-Result emails are sent **to the runner's own mailbox** (the account in `mailbox_user`) — unless the signed job sets `reply_to`, in which case the result goes to that address instead (e.g. `send_job.py new --reply-to you@example.com`). The address must live inside the signed body; the email's `From` header is never trusted for this. They do not automatically appear in the cloud SI's connected Gmail account. To see them from the SI side you must either:
+Result emails are sent **to the runner's own mailbox** (the account in `mailbox_user`) — unless the signed job sets `reply_to`, in which case the result goes to that address instead (e.g. `send_job.py new --reply-to you@example.com`). The address must live inside the signed body; the email's `From` header is never trusted for this. They do not automatically appear in the cloud SI's connected mail account. To see them from the SI side you must either:
 - set `reply_to` on the job so the result is emailed straight to you, or
 - forward the result message to the connected account, or
 - have the runner configured so results are delivered somewhere the SI can read, or

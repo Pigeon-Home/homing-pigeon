@@ -74,5 +74,5 @@ Ideas...
 - Statistical anomaly baselining. `docs/industry-map.md`.
 - Turning the default hardening on. It stays opt-in.
   `docs/security-gaps.md`.
-- The security of Gmail, and a secret that has already leaked.
+- The security of the mailbox provider, and a secret that has already leaked.
   SECURITY.md.

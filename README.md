@@ -274,8 +274,8 @@ fine there: use `pip install pigeon-home-runner` or build from source.
    re-login and shared-secret rotation.
 4. Prefer to wire it by hand? Edit `config.json` instead. Two ways to
    sign in:
-   - **Password** (default): `mailbox_user` + `mailbox_password` (Gmail app
-     password, plaintext, on purpose). The HMAC shared secret is a separate
+   - **Password** (default): `mailbox_user` + `mailbox_password` (the
+     mailbox's app password, plaintext, on purpose). The HMAC shared secret is a separate
      `shared_secret` value — generate one with `openssl rand -hex 32`.
    - **Browser, like Thunderbird**: no Google password anywhere. Create a
      Desktop OAuth client in [Google Cloud
@@ -328,7 +328,7 @@ and `homing-pigeon-send-job` (the cloud-side helper). Then:
 2. The installer generates a random `shared_secret` and stores it in
    `config.json` (or pass your own with `--shared-secret`). Copy that
    string out of `config.json` and give it to your SI — it is the HMAC
-   key the SI signs jobs with, and it is separate from the Gmail app
+   key the SI signs jobs with, and it is separate from the mailbox app
    password.
 
 **From the release files** (same Python requirement): each GitHub
@@ -344,7 +344,7 @@ verify your download:
 4. The installer generates a random `shared_secret` and stores it in
    `config.json` (or pass your own with `--shared-secret`). Copy that
    string out of `config.json` and give it to your SI — it is the HMAC
-   key the SI signs jobs with, and it is separate from the Gmail app
+   key the SI signs jobs with, and it is separate from the mailbox app
    password.
 
 **From source** (needs Python 3.9+):
@@ -389,8 +389,8 @@ Linux VM on your own hardware rather than directly on the host:
   idea, tear it down when you're done. Nothing lingers on the host.
 
 Any hypervisor works — KVM/QEMU, VirtualBox, Hyper-V, VMware. Give the
-VM internet access (NAT is fine) so it can reach Gmail's IMAP/SMTP,
-install the Linux release binary inside the guest, and point your jobs
+VM internet access (NAT is fine) so it can reach the mailbox's IMAP/SMTP
+servers, install the Linux release binary inside the guest, and point your jobs
 at it. The host never needs to know.
 
 ## How scripts run
@@ -404,8 +404,8 @@ in the job (`send_job.py new --interpreter '["bash"]'`).
 
 ## Sending a job (any SI)
 
-The runner is SI-agnostic: anything that can send email *as* the runner's
-Gmail account and sign the body can drive it — your SI of choice, a cron
+The runner is SI-agnostic: anything that can send email to the runner's
+mailbox and sign the body can drive it — your SI of choice, a cron
 script, whatever. The SI needs the `shared_secret` string from your
 `config.json` — the random value the installer generated, not the
 mailbox password. Then:
@@ -490,7 +490,7 @@ End-to-end without your SI:
 - The runner is a **full-trust execution environment**: a valid signed
   job message means arbitrary code as a privileged user. The app password sits in
   **plaintext** in config.json (your explicit
-  choice: throwaway account, fresh box). Anyone holding it gets Gmail access.
+  choice: throwaway account, fresh box). Anyone holding it gets mailbox access.
   The HMAC shared secret is a separate value — anyone holding *it* can sign jobs.
   Don't use this setup with an account you care about.
 - Every job is HMAC-SHA-384 signed; the signature is the sole
