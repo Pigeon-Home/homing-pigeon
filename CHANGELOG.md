@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.7.39 - 2026-10-18
+
+### Docs
+
+- The README prompt now points at the published protocol,
+  `https://pigeon-home.com/PROTOCOLv1`, instead of the blob on
+  `main`.
+
 ## 3.7.38 - 2026-10-18
 
 ### Features
