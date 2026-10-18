@@ -37,9 +37,14 @@ refused, reported, and the agent runs without it.
 This module is deliberately free of runner imports, like senses.py:
 runner.py calls in here.
 """
+import hashlib
+import hmac
 import json
 import os
 import re
+import socket
+import uuid
+from datetime import datetime, timezone
 
 EXTENSION_API_VERSION = 1
 MANIFEST_FILE = "extension.json"
@@ -277,3 +282,139 @@ def load_extensions(ext_dir):
             s["name"]: s["description"] for s in manifest["signals"]}
         registry[name] = manifest
     return registry, problems
+
+
+# ---------------------------------------------------------------------------
+# Producing signals: the local delivery helpers.
+#
+# An extension author codes against the ENVELOPE, not the pipe.
+# build_sensor_alert composes the one envelope; sign_envelope
+# seals it with the sense's restricted key, byte-for-byte the
+# scheme the agent verifies (the same construction as
+# cloud/send_job.py). Two interchangeable front-ends then carry
+# the identical signed text to a runner on the same machine:
+#
+# - drop_local_signal: the periodic style. The signed envelope
+#   lands as one file in <base_dir>/local-inbox/ and the runner
+#   files it within about a second. The filename is the
+#   envelope's job_id, so re-dropping the same envelope rewrites
+#   the same file: a producer on a timer needs no state beyond
+#   its key, and each pass just builds fresh envelopes and drops
+#   them.
+# - send_local_signal: the direct style. The signed envelope is
+#   pushed over one loopback TCP connection to the runner's
+#   listener, for extensions whose own event machinery fires and
+#   sends at once. No file is involved.
+#
+# Both envelopes carry "api_version": the extension API contract
+# they were written against, validated by the agent on arrival
+# exactly as a manifest's is (newer refused, older accepted). A
+# future transport is new plumbing under the same contract; it
+# changes nothing an author has written.
+
+LOCAL_INBOX_DIRNAME = "local-inbox"
+LOCAL_SIGNAL_DEFAULT_PORT = 39271
+
+
+def _normalize(text: str) -> str:
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def sign_envelope(payload, secret) -> str:
+    """Sign a payload dict; returns the signed envelope text.
+
+    The signature is HMAC-SHA-384 over the compact JSON body,
+    carried in the body itself as a trailing ,"sig":"..." field --
+    the exact construction the agent's verify accepts on every
+    path (mail included). Kept in step with cloud/send_job.py.
+    """
+    if not isinstance(payload, dict):
+        raise ValueError("envelope payload must be an object")
+    if not isinstance(secret, str) or not secret:
+        raise ValueError("a signing secret is required")
+    body = _normalize(json.dumps(payload, separators=(",", ":"),
+                                 ensure_ascii=False, allow_nan=False))
+    if not body.endswith("}"):
+        raise ValueError("envelope payload must serialize to a JSON object")
+    sig = hmac.new(secret.encode("utf-8"), body.encode("utf-8"),
+                   hashlib.sha384).hexdigest()
+    return body[:-1] + ',"sig":"' + sig + '"}'
+
+
+def build_sensor_alert(sensor, severity, title, *, key_id="",
+                       signal=None, detail=None, observed_at=None,
+                       job_id=None, api_version=None) -> dict:
+    """Compose one sensor_alert envelope payload (unsigned).
+
+    The fields are the contract's fields: the protocol version
+    ("v", the message protocol's number -- not the extension's,
+    not the API's), the job envelope every delivery path carries,
+    and the alert itself. "api_version" states the extension API
+    the envelope was written against; it defaults to this
+    module's EXTENSION_API_VERSION. Sign the result with
+    sign_envelope, then deliver it by either front-end.
+    """
+    payload = {
+        "v": 1,
+        "type": "job",
+        "job_id": job_id or uuid.uuid4().hex,
+        "issued_at": datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"),
+        "kind": "sensor_alert",
+        "api_version": EXTENSION_API_VERSION
+        if api_version is None else api_version,
+        "sensor": sensor,
+        "severity": severity,
+        "title": title,
+    }
+    if key_id:
+        payload["key_id"] = key_id
+    if signal:
+        payload["signal"] = signal
+    if detail is not None:
+        payload["detail"] = detail
+    if observed_at:
+        payload["observed_at"] = observed_at
+    return payload
+
+
+def drop_local_signal(base_dir, payload, secret) -> str:
+    """Periodic style: drop the signed envelope into the inbox.
+
+    Writes <base_dir>/local-inbox/<job_id>.json (atomically, via a
+    temp file in the same directory) and returns its path. The
+    producer's whole state is its key and this base_dir; dropping
+    is safe to repeat on any cadence.
+    """
+    if not isinstance(base_dir, str) or not base_dir:
+        raise ValueError("base_dir must be the runner's base directory")
+    text = sign_envelope(payload, secret)
+    inbox = os.path.join(base_dir, LOCAL_INBOX_DIRNAME)
+    os.makedirs(inbox, exist_ok=True)
+    job_id = payload.get("job_id") if isinstance(payload, dict) else None
+    if not isinstance(job_id, str) or not _NAME_RE.match(job_id):
+        job_id = uuid.uuid4().hex
+    path = os.path.join(inbox, job_id + ".json")
+    tmp = os.path.join(inbox, "." + job_id + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    os.replace(tmp, path)
+    return path
+
+
+def send_local_signal(payload, secret, port=LOCAL_SIGNAL_DEFAULT_PORT,
+                      host="127.0.0.1", timeout=5.0) -> None:
+    """Direct style: push the signed envelope to the listener.
+
+    One connection, the envelope text, write side closed, done.
+    Raises OSError when the runner is not listening, so the
+    producer learns the delivery failed instead of assuming it.
+    """
+    text = sign_envelope(payload, secret)
+    with socket.create_connection((host, int(port)),
+                                  timeout=timeout) as conn:
+        conn.sendall(text.encode("utf-8"))
+        try:
+            conn.shutdown(socket.SHUT_WR)
+        except OSError:
+            pass

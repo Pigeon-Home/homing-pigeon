@@ -4824,76 +4824,71 @@ def _report_extensions(cfg, base_dir) -> None:
         log(f"extensions: {problem}", "WARN")
 
 
-def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
-                         secrets, opts, base_dir, seen):
-    """File a signed sensor alert. Alerts are stored, never executed.
+def _sensor_alert_core(cfg, job, key_id, base_dir, dry=False, extra=None):
+    """Validate and file one sensor_alert job. The one ingest core.
 
-    The signing key must be bound to the sensor it files for
-    (sensors.<name>.key_id), and the key's key_policies entry should
-    allow only kind "sensor_alert". The sense profile gates what is
-    kept; drops are logged, not errors.
+    Every delivery path -- a mailed job (via _ingest_sensor_alert)
+    and the local front-ends (via _ingest_local_envelope) -- files
+    alerts through here, so the chain is identical by construction:
+    senses shape checks, the sensor must exist and be enabled, the
+    signing key must be the key bound to that sensor, the extension
+    declared-signal gate, then the sense profile's own gates at
+    store time.
+
+    Returns (status, why, record):
+      "stored"   -- filed; record is the stored alert dict.
+      "dropped"  -- the sense profile dropped it; why says so.
+      "rejected" -- refused; why says why. Nothing stored.
+      "config"   -- the sensors config itself is broken (why is the
+                    config error); the mail path logs this at ERROR.
+      "dry"      -- dry run: validated, nothing stored.
+    `extra` fields are merged into the stored record before filing
+    (the local path marks its records source="local"). Never
+    raises: bad sensor or extension data answers, it does not abort.
     """
-    dry = opts is not None and opts.dry_run
-
-    def done(why):
-        log(f"sensor alert {job_id}: {why}")
-        if not dry:
-            with _MAIL_LOCK:
-                seen[_seen_key(cfg, job_id)] = True
-                mark_seen(imap, seq)
-
     if _senses is None:
-        done("rejected: senses module unavailable")
-        return
+        return ("rejected", "rejected: senses module unavailable", None)
     try:
         sensors = _senses.parse_sensors(cfg)
     except RuntimeError as e:
-        log(f"sensor alert {job_id}: rejected: {e}", "ERROR")
-        if not dry:
-            with _MAIL_LOCK:
-                seen[_seen_key(cfg, job_id)] = True
-                mark_seen(imap, seq)
-        return
+        return ("config", str(e), None)
     bad = _senses.validate_sensor_alert(job)
     if bad:
-        done(f"rejected: {bad}")
-        return
+        return ("rejected", f"rejected: {bad}", None)
     name = job["sensor"]
     scfg = sensors.get(name)
     if not isinstance(scfg, dict):
-        done(f"rejected: unknown sensor {name!r}")
-        return
+        return ("rejected", f"rejected: unknown sensor {name!r}", None)
     if not scfg.get("enabled"):
-        done(f"rejected: sensor {name!r} is not enabled")
-        return
+        return ("rejected", f"rejected: sensor {name!r} is not enabled",
+                None)
     bound = _senses.sensor_for_key(sensors, key_id)
     if bound != name:
-        done(f"rejected: key {key_id!r} is not bound to sensor {name!r}")
-        return
+        return ("rejected",
+                f"rejected: key {key_id!r} is not bound to sensor {name!r}",
+                None)
     # An extension-backed sense files DECLARED signals only. The
     # manifest is the contract: the Oracle receives the declaration
     # as context, so a signal nobody declared is refused here and
-    # logged (via done), never stored and never passed through.
+    # logged (via the caller), never stored and never passed through.
     manifest = _extension_registry(cfg, base_dir).get(name)
     signal = job.get("signal")
     signal_description = None
     if manifest is not None:
         if not isinstance(signal, str) or not signal:
-            done(f"rejected: sensor {name!r} is backed by extension "
-                 f"{manifest.get('name')!r} v{manifest.get('version')}; "
-                 f"alerts must name a declared signal")
-            return
+            return ("rejected",
+                    f"rejected: sensor {name!r} is backed by extension "
+                    f"{manifest.get('name')!r} v{manifest.get('version')}; "
+                    f"alerts must name a declared signal", None)
         signal_description = _extensions.signal_description(manifest, signal)
         if signal_description is None:
             declared = ", ".join(
                 sorted(manifest.get("signal_descriptions") or {}))
-            done(f"rejected: undeclared signal {signal!r} for extension "
-                 f"{name!r} (declared: {declared})")
-            return
+            return ("rejected",
+                    f"rejected: undeclared signal {signal!r} for extension "
+                    f"{name!r} (declared: {declared})", None)
     if dry:
-        log(f"dry-run: would ingest sensor alert {job_id} "
-            f"({name}/{job.get('severity', 'info')}: {job.get('title')})")
-        return
+        return ("dry", "", None)
     alert = {
         "sensor": name,
         "severity": job.get("severity") or "info",
@@ -4917,12 +4912,627 @@ def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
         record["extension_version"] = manifest.get("version")
     if signal_description is not None:
         record["signal_description"] = signal_description
+    if isinstance(extra, dict):
+        record.update(extra)
     drop = _senses.file_sensor_alert(base_dir, scfg, record)
     if drop:
-        done(f"dropped by profile: {drop} "
-             f"({name}/{alert['severity']}: {alert['title']})")
+        return ("dropped",
+                f"dropped by profile: {drop} "
+                f"({name}/{alert['severity']}: {alert['title']})", None)
+    return ("stored",
+            f"stored ({name}/{alert['severity']}: {alert['title']})",
+            record)
+
+
+def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
+                         secrets, opts, base_dir, seen):
+    """File a signed sensor alert. Alerts are stored, never executed.
+
+    The signing key must be bound to the sensor it files for
+    (sensors.<name>.key_id), and the key's key_policies entry should
+    allow only kind "sensor_alert". The sense profile gates what is
+    kept; drops are logged, not errors.
+
+    The signature was verified by the caller (handle_mail); the
+    validation and filing live in _sensor_alert_core, shared with
+    the local delivery path.
+    """
+    dry = opts is not None and opts.dry_run
+    status, why, _record = _sensor_alert_core(
+        cfg, job, key_id, base_dir, dry=dry)
+    if status == "dry":
+        log(f"dry-run: would ingest sensor alert {job_id} "
+            f"({job.get('sensor')}/{job.get('severity', 'info')}: "
+            f"{job.get('title')})")
         return
-    done(f"stored ({name}/{alert['severity']}: {alert['title']})")
+    if status == "config":
+        log(f"sensor alert {job_id}: rejected: {why}", "ERROR")
+    else:
+        log(f"sensor alert {job_id}: {why}")
+    if not dry:
+        with _MAIL_LOCK:
+            seen[_seen_key(cfg, job_id)] = True
+            mark_seen(imap, seq)
+
+
+# ---------------------------------------------------------------------------
+# Local signals: same-box delivery for senses and extensions.
+#
+# A sensor or extension running on the SAME machine as the runner
+# delivers its alerts directly instead of mailing them. Two
+# front-ends, one ingest core: a producer either drops a signed
+# envelope file into <base_dir>/local-inbox/ (the periodic style --
+# the producer's own cadence, the watcher scans about once a
+# second), or pushes the identical envelope over a loopback TCP
+# connection (the direct style -- fire and send, no file). The
+# envelope is the extension contract: the same fields, the same
+# api_version statement, the same HMAC signature the mail path
+# verifies. A transport is replaceable plumbing under that
+# contract, never a new contract; an author codes against the
+# envelope, not the pipe. Everything after the transport is the
+# mail path's chain unchanged (verify_body_keyed, the envelope
+# checks, check_key_policy, then _sensor_alert_core). A bad
+# signature is a rejection exactly as on the mail path; local
+# delivery adds no trust, it removes a mailbox.
+#
+# A locally filed alert also faces the wake gate: a high or
+# critical alert can wake the Oracle, which writes an assessment
+# into oracle-briefs.jsonl. The gate is deterministic (severity,
+# per-(sensor, signal) cooldown, single flight) so a noisy sense
+# cannot keep the model -- and the box -- busy.
+
+LOCAL_INBOX_DIRNAME = "local-inbox"
+LOCAL_BRIEFS_FILE = "oracle-briefs.jsonl"
+LOCAL_SIGNAL_DEFAULT_PORT = 39271
+_LOCAL_ENVELOPE_MAX_BYTES = 262144
+_LOCAL_BRIEFS_CAP = 1000
+_LOCAL_BRIEFS_KEEP = 500
+
+
+def _local_signals_enabled(cfg) -> bool:
+    """Top-level local_signals switch; default on."""
+    if not isinstance(cfg, dict):
+        return True
+    v = cfg.get("local_signals", True)
+    if v is False or v == 0:
+        return False
+    if isinstance(v, str) and v.strip().lower() in ("false", "no", "off", "0"):
+        return False
+    return True
+
+
+def _local_signal_port(cfg) -> int:
+    """Loopback listener port; 0 means the listener is off.
+
+    Default LOCAL_SIGNAL_DEFAULT_PORT. False/None/0 turn it off;
+    a value that is not a usable port number reads as off, so a
+    typo silences the listener instead of binding a surprise port.
+    """
+    if not isinstance(cfg, dict):
+        return LOCAL_SIGNAL_DEFAULT_PORT
+    v = cfg.get("local_signal_port", LOCAL_SIGNAL_DEFAULT_PORT)
+    if v is None or v is False:
+        return 0
+    if v is True:
+        return LOCAL_SIGNAL_DEFAULT_PORT
+    try:
+        p = int(v)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+    if p < 0 or p > 65535:
+        return 0
+    return p
+
+
+def _local_wake_cooldown(cfg) -> float:
+    """Seconds between wakes for one (sensor, signal). Default 900."""
+    raw = cfg.get("local_wake_cooldown_sec", 900) \
+        if isinstance(cfg, dict) else 900
+    try:
+        n = float(raw)
+    except (TypeError, ValueError, OverflowError):
+        return 900.0
+    if n != n or n < 0 or n in (float("inf"), float("-inf")):
+        return 900.0
+    return n
+
+
+def _ingest_local_envelope(cfg, base_dir, text, source):
+    """Verify and file one locally delivered sensor_alert envelope.
+
+    `source` is the front-end's name ("file" or "socket") and is
+    used in log lines only. Returns the stored record, or None.
+    Never raises.
+    """
+    try:
+        return _ingest_local_envelope_inner(cfg, base_dir, text, source)
+    except Exception as e:  # the front-ends must survive any envelope
+        log(f"local signal ({source}): ingest failed: {e}", "WARN")
+        return None
+
+
+def _ingest_local_envelope_inner(cfg, base_dir, text, source):
+    def reject(why):
+        log(f"local signal ({source}): rejected: {why}", "WARN")
+        return None
+
+    if not isinstance(text, str) or not text.strip():
+        return reject("empty envelope")
+    if len(text.encode("utf-8", "replace")) > _LOCAL_ENVELOPE_MAX_BYTES:
+        return reject("envelope too large")
+    try:
+        secrets = build_secrets(cfg)
+        key_policies = build_key_policies(cfg)
+    except RuntimeError as e:
+        return reject(str(e))
+    try:
+        job, key_id = verify_body_keyed(text, secrets)
+    except ValueError as e:
+        log(f"local signal ({source}): rejected: bad signature: {e}",
+            "WARN")
+        _append_security_event(base_dir, {
+            "type": "auth_rejection",
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "reason": "bad_signature",
+            "feature": "local_signals",
+        })
+        return None
+    job_id = job.get("job_id")
+    if not isinstance(job_id, str) or not _SAFE_JOB_ID.match(job_id) \
+            or job_id in (".", ".."):
+        return reject("job_id missing or not a safe id")
+    # The envelope states the extension contract it was written
+    # against, and the statement is validated exactly as the
+    # manifest's is: newer than this agent provides is refused,
+    # older is accepted under the additive-only promise.
+    if _extensions is not None:
+        refusal = _extensions.api_refusal(
+            {"api_version": job.get("api_version")})
+        if refusal:
+            return reject(f"envelope api_version: {refusal}")
+    if job.get("kind") != "sensor_alert":
+        return reject(f"kind {job.get('kind')!r} is not sensor_alert; "
+                      f"local delivery files alerts only")
+    if not _version_ok(job.get("v")) or job.get("type") != "job":
+        return reject("unsupported version/type")
+    try:
+        issued = datetime.fromisoformat(
+            job["issued_at"].replace("Z", "+00:00"))
+    except Exception:
+        return reject("unparseable issued_at")
+    if issued.tzinfo is None or issued.tzinfo.utcoffset(issued) is None:
+        return reject("issued_at missing timezone (must be UTC / end with Z)")
+    age = (datetime.now(timezone.utc) - issued).total_seconds()
+    try:
+        max_age = int(cfg.get("max_job_age_sec", 3600))
+    except (TypeError, ValueError, OverflowError):
+        max_age = 3600
+    if age < -300 or age > max_age:
+        return reject(f"issued_at outside allowed window (age {age:.0f}s)")
+    violation = check_key_policy(key_policies, key_id, cfg, job)
+    if violation:
+        _append_security_event(base_dir, {
+            "type": "auth_rejection",
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "reason": "key_policy",
+            "feature": "local_signals",
+        })
+        return reject(f"key policy: {violation}")
+    status, why, record = _sensor_alert_core(
+        cfg, job, key_id, base_dir, extra={"source": "local"})
+    log(f"local sensor alert {job_id} via {source}: {why}")
+    if status == "stored" and record is not None:
+        _maybe_wake_oracle(cfg, base_dir, record)
+        return record
+    return None
+
+
+# --- the wake gate and the briefing ----------------------------------------
+
+_LOCAL_WAKE_LOCK = threading.Lock()
+_LOCAL_WAKE_LAST = {}
+_LOCAL_WAKE_INFLIGHT = False
+
+
+def _wake_gate_decide(cfg, record, now=None) -> bool:
+    """True when this locally filed alert may wake the Oracle now.
+
+    Deterministic: severity high or critical, no other briefing in
+    flight, and the (sensor, signal) pair has not woken within the
+    cooldown. Deciding marks the wake (cooldown starts, flight
+    begins); _wake_gate_release ends the flight. Pure state plus
+    the injected clock -- tests drive it without threads.
+    """
+    global _LOCAL_WAKE_INFLIGHT
+    if not isinstance(record, dict) or _senses is None:
+        return False
+    sev = record.get("severity")
+    score = _senses.SEVERITY_SCORES.get(sev, 0.0) \
+        if isinstance(sev, str) else 0.0
+    if score < _senses.SEVERITY_SCORES["high"]:
+        return False
+    try:
+        t = float(time.monotonic() if now is None else now)
+    except (TypeError, ValueError, OverflowError):
+        t = time.monotonic()
+    sensor = record.get("sensor")
+    signal = record.get("signal") or record.get("title")
+    key = (sensor if isinstance(sensor, str) else "",
+           signal if isinstance(signal, str) else "")
+    cooldown = _local_wake_cooldown(cfg)
+    with _LOCAL_WAKE_LOCK:
+        if _LOCAL_WAKE_INFLIGHT:
+            return False
+        last = _LOCAL_WAKE_LAST.get(key)
+        if last is not None and t - last < cooldown:
+            return False
+        _LOCAL_WAKE_LAST[key] = t
+        _LOCAL_WAKE_INFLIGHT = True
+    return True
+
+
+def _wake_gate_release() -> None:
+    global _LOCAL_WAKE_INFLIGHT
+    with _LOCAL_WAKE_LOCK:
+        _LOCAL_WAKE_INFLIGHT = False
+
+
+def _maybe_wake_oracle(cfg, base_dir, record, now=None) -> bool:
+    """Wake the Oracle for one locally filed alert, if the gate allows."""
+    if not _wake_gate_decide(cfg, record, now=now):
+        return False
+    _start_brief_thread(cfg, base_dir, record)
+    return True
+
+
+def _start_brief_thread(cfg, base_dir, record):
+    def _go():
+        try:
+            _oracle_brief(cfg, base_dir, record)
+        except Exception:
+            pass
+        finally:
+            _wake_gate_release()
+
+    th = threading.Thread(target=_go, name="oracle-brief", daemon=True)
+    th.start()
+    return th
+
+
+_BRIEF_LOCK = threading.Lock()
+
+
+def _append_brief(base_dir, brief) -> None:
+    """Append one brief record to oracle-briefs.jsonl. Best effort."""
+    if not isinstance(base_dir, str) or not base_dir:
+        return
+    path = os.path.join(base_dir, LOCAL_BRIEFS_FILE)
+    try:
+        line = json.dumps(_json_safe(brief), ensure_ascii=False,
+                          allow_nan=False) + "\n"
+    except (TypeError, ValueError):
+        return
+    with _BRIEF_LOCK:
+        try:
+            flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            if hasattr(os, "O_BINARY"):
+                flags |= os.O_BINARY
+            fd = os.open(path, flags, 0o600)
+            try:
+                os.write(fd, line.encode("utf-8"))
+            finally:
+                os.close(fd)
+            try:
+                os.chmod(path, 0o600)
+            except OSError:
+                pass
+            if os.path.islink(path):
+                return
+            with open(path, "r", encoding="utf-8") as fh:
+                lines = fh.readlines()
+            if len(lines) > _LOCAL_BRIEFS_CAP:
+                body = "".join(lines[-_LOCAL_BRIEFS_KEEP:]).encode("utf-8")
+                fd = os.open(path, os.O_WRONLY | os.O_TRUNC
+                             | (os.O_NOFOLLOW if hasattr(os, "O_NOFOLLOW")
+                                else 0), 0o600)
+                try:
+                    os.write(fd, body)
+                finally:
+                    os.close(fd)
+        except OSError:
+            pass
+
+
+def _oracle_brief(cfg, base_dir, record, opener=None):
+    """Assess one woken signal and file the brief. Never raises.
+
+    Runs on a daemon thread after the wake gate fires. With a local
+    model configured, the Oracle itself (ask_model_agent, the same
+    path the interactive doors use) assesses the signal against the
+    box's current context. Without one, the brief is a deterministic
+    note saying so -- the mechanism stays honest and testable with
+    no model. The brief lands in oracle-briefs.jsonl and in the
+    runner log, where later Oracle context reads it back.
+    """
+    record = record if isinstance(record, dict) else {}
+    sensor = record.get("sensor")
+    sensor = sensor if isinstance(sensor, str) and sensor else "?"
+    signal = record.get("signal")
+    signal = signal if isinstance(signal, str) and signal else None
+    severity = record.get("severity")
+    severity = severity if isinstance(severity, str) else "info"
+    title = record.get("title")
+    title = title if isinstance(title, str) else ""
+    brief = {
+        "time": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "sensor": sensor,
+        "signal": signal,
+        "severity": severity,
+        "title": title,
+        "status": "no_inference",
+        "assessment": "",
+    }
+    try:
+        inf = inference_config(cfg)
+        if inf is None:
+            brief["assessment"] = (
+                "No local model is configured on this box, so the "
+                "Oracle made no assessment. The alert was filed in "
+                "the senses store; review it there.")
+        else:
+            lines = [
+                "A sensor signal just arrived on this box and crossed "
+                "the wake threshold.",
+                f"Sensor: {sensor}",
+                f"Signal: {signal or '(no signal named)'}",
+            ]
+            desc = record.get("signal_description")
+            if isinstance(desc, str) and desc:
+                lines.append(
+                    f"What the signal means (declared by its "
+                    f"extension): {desc}")
+            lines.append(f"Severity: {severity}")
+            lines.append(f"Title: {title}")
+            lines.append(
+                "Assess what happened, using the box context "
+                "provided, and state plainly what happened and what, "
+                "if anything, the owner should do.")
+            ans = ask_model_agent(
+                inf, "\n".join(lines),
+                oracle_context(base_dir,
+                               watch=_oracle_watch_enabled(cfg)),
+                inf.get("max_answer_chars") or 2000,
+                _redact_patterns(cfg),
+                opener=opener,
+                instructions=cfg.get("owner_instructions")
+                if isinstance(cfg, dict) else None,
+                base_dir=base_dir,
+            )
+            if isinstance(ans, dict) and isinstance(ans.get("answer"), str) \
+                    and ans["answer"]:
+                brief["status"] = "assessed"
+                brief["assessment"] = ans["answer"]
+            else:
+                why = ans.get("rejected") if isinstance(ans, dict) else None
+                brief["status"] = "inference_failed"
+                brief["assessment"] = (
+                    "The local model produced no assessment"
+                    + (f" ({why})" if isinstance(why, str) and why else "")
+                    + ". The alert was filed in the senses store.")
+    except Exception as e:
+        brief["status"] = "inference_failed"
+        brief["assessment"] = (
+            f"The briefing attempt failed: {e}. "
+            f"The alert was filed in the senses store.")
+    _append_brief(base_dir, brief)
+    log(f"oracle brief ({sensor}/{signal or '-'}): {brief['assessment']}")
+    return brief
+
+
+# --- front-end 1: the inbox watcher ----------------------------------------
+
+_LOCAL_INBOX_LOCK = threading.Lock()
+
+
+def _local_inbox_dir(base_dir):
+    if not isinstance(base_dir, str) or not base_dir:
+        return ""
+    return os.path.join(base_dir, LOCAL_INBOX_DIRNAME)
+
+
+def _scan_local_inbox(cfg, base_dir) -> int:
+    """File every envelope currently in the local inbox.
+
+    Each .json file is read once, handed to the ingest core, and
+    removed either way: a rejected envelope is logged there, and a
+    file left behind would be re-processed every second forever.
+    Non-.json entries are not envelopes and are left alone. Returns
+    how many files were handled. Never raises.
+    """
+    inbox = _local_inbox_dir(base_dir)
+    if not inbox:
+        return 0
+    handled = 0
+    with _LOCAL_INBOX_LOCK:
+        try:
+            names = sorted(os.listdir(inbox))
+        except OSError:
+            return 0
+        for name in names:
+            if not name.endswith(".json"):
+                continue
+            path = os.path.join(inbox, name)
+            try:
+                if os.path.islink(path):
+                    log(f"local signal (file): {name}: symlink refused",
+                        "WARN")
+                else:
+                    with open(path, "rb") as fh:
+                        raw = fh.read(_LOCAL_ENVELOPE_MAX_BYTES + 1)
+                    try:
+                        text = raw.decode("utf-8")
+                    except UnicodeDecodeError:
+                        log(f"local signal (file): {name}: envelope is "
+                            f"not UTF-8; dropped", "WARN")
+                    else:
+                        _ingest_local_envelope(cfg, base_dir, text, "file")
+            except Exception as e:
+                log(f"local signal (file): {name}: failed: {e}", "WARN")
+            finally:
+                try:
+                    os.unlink(path)
+                except OSError:
+                    pass
+            handled += 1
+    return handled
+
+
+# The local front-end threads pace themselves on this event
+# rather than time.sleep: the runner's own poll cadence is a
+# tested behavior, and a background thread must not show up in it.
+_LOCAL_TICK = threading.Event()
+
+
+def _local_inbox_watcher(cfg, base_dir) -> None:
+    """Daemon loop: one inbox scan about once a second.
+
+    Independent of the mail poll on purpose: local delivery is the
+    fast path, and its cadence must not inherit the mailbox's.
+    Failure-isolated: nothing in here may kill the thread or the
+    runner, so every scan is wrapped and the loop always waits.
+    """
+    while True:
+        try:
+            if _local_signals_enabled(cfg):
+                _scan_local_inbox(cfg, base_dir)
+        except Exception:
+            pass
+        _LOCAL_TICK.wait(1.0)
+
+
+# --- front-end 2: the loopback listener -------------------------------------
+
+
+def _local_signal_server(cfg, base_dir):
+    """A bound, listening loopback socket, or None. Never raises."""
+    port = _local_signal_port(cfg)
+    if not port:
+        return None
+    srv = None
+    try:
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind(("127.0.0.1", port))
+        srv.listen(16)
+        srv.settimeout(1.0)
+    except OSError as e:
+        log(f"local signals: cannot listen on 127.0.0.1:{port}: {e}",
+            "WARN")
+        if srv is not None:
+            try:
+                srv.close()
+            except OSError:
+                pass
+        return None
+    return srv
+
+
+def _handle_local_signal_conn(cfg, base_dir, conn) -> None:
+    """Read one envelope from one connection and file it. Never raises."""
+    try:
+        conn.settimeout(5.0)
+    except OSError:
+        return
+    chunks = []
+    total = 0
+    while total <= _LOCAL_ENVELOPE_MAX_BYTES:
+        try:
+            data = conn.recv(65536)
+        except socket.timeout:
+            break  # the producer went quiet; what arrived is the envelope
+        except OSError:
+            return
+        if not data:
+            break
+        chunks.append(data)
+        total += len(data)
+    if total > _LOCAL_ENVELOPE_MAX_BYTES:
+        log("local signal (socket): envelope too large; dropped", "WARN")
+        return
+    if not chunks:
+        return
+    if not _local_signals_enabled(cfg):
+        log("local signal (socket): dropped; local_signals is off",
+            "WARN")
+        return
+    try:
+        text = b"".join(chunks).decode("utf-8")
+    except UnicodeDecodeError:
+        log("local signal (socket): envelope is not UTF-8; dropped",
+            "WARN")
+        return
+    _ingest_local_envelope(cfg, base_dir, text, "socket")
+
+
+def _serve_local_signals(cfg, base_dir, srv) -> None:
+    """Accept loop for the loopback listener. Failure-isolated."""
+    while True:
+        try:
+            conn, _addr = srv.accept()
+        except socket.timeout:
+            continue
+        except OSError:
+            _LOCAL_TICK.wait(0.2)
+            continue
+        try:
+            _handle_local_signal_conn(cfg, base_dir, conn)
+        except Exception:
+            pass
+        finally:
+            try:
+                conn.close()
+            except OSError:
+                pass
+
+
+def _start_local_signals(cfg, base_dir) -> None:
+    """Start the local signal front-ends (daemon threads). Never raises.
+
+    Called once from main() on the runner path. Whether the
+    front-ends are on is read from the config as loaded at startup:
+    local_signals and local_signal_port are startup settings, like
+    the mailbox credentials, not hot keys. The listener socket is
+    bound here, synchronously, so a bind failure is one startup
+    log line from this thread -- the daemon threads then only
+    scan and accept, and write nothing on their idle paths.
+    """
+    try:
+        if not _local_signals_enabled(cfg):
+            log("local signals: off (local_signals=false)")
+            return
+        inbox = _local_inbox_dir(base_dir)
+        if inbox:
+            try:
+                os.makedirs(inbox, exist_ok=True)
+            except OSError:
+                pass
+        port = _local_signal_port(cfg)
+        srv = _local_signal_server(cfg, base_dir) if port else None
+        threading.Thread(target=_local_inbox_watcher,
+                         args=(cfg, base_dir),
+                         name="local-inbox", daemon=True).start()
+        if srv is not None:
+            threading.Thread(target=_serve_local_signals,
+                             args=(cfg, base_dir, srv),
+                             name="local-signals", daemon=True).start()
+        log(f"local signals: on; inbox {inbox or '(none)'} scanned "
+            f"every second"
+            + (f"; direct push on 127.0.0.1:{port}" if srv is not None
+               else "; socket listener off"))
+    except Exception as e:
+        log(f"local signals: failed to start: {e}", "WARN")
 
 
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
@@ -8490,6 +9100,12 @@ def main() -> int:
 
     log_startup(cfg, args, base_dir)
     _report_extensions(cfg, base_dir)
+    # Local signal front-ends (inbox watcher + loopback listener).
+    # Dry-run observes and changes nothing, so it starts neither.
+    if getattr(args, "dry_run", False):
+        log("local signals: not started (dry-run)")
+    else:
+        _start_local_signals(cfg, base_dir)
     auth_failed = False  # latch: report auth death once, not every 20s
     # Connection credentials (mailbox_user/password, oauth_*) are not
     # hot. Those still need a restart. CLI flags pin their key so a

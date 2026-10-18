@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Local signal delivery for senses and extensions. A sensor or
+  extension running on the same machine as the runner no longer
+  mails its alerts: it drops a signed envelope into
+  `<base_dir>/local-inbox/` (scanned about once a second), or
+  pushes the identical envelope over a loopback TCP connection
+  (`local_signal_port`, default 39271; 0/false turns the listener
+  off; `local_signals: false` turns both front-ends off). One
+  ingest core serves every path: the envelope states its
+  `api_version` and is validated under the same contract as a
+  manifest, the signature, envelope, and key-policy checks are
+  the mail path's, and the declared-signal gate applies
+  unchanged. Locally filed alerts are stored with
+  `source: "local"`. Producer helpers (`build_sensor_alert`,
+  `sign_envelope`, `drop_local_signal`, `send_local_signal`)
+  live in `runner/extensions.py`; the Lab Results example drives
+  both styles via `--local-dir` / `--local-port`. A high or
+  critical locally filed alert can wake the Oracle through a
+  deterministic gate (per sensor + signal cooldown,
+  `local_wake_cooldown_sec`, default 900, single flight in
+  progress); the assessment is appended to `oracle-briefs.jsonl`
+  and the runner log, with a deterministic note when no local
+  model is configured.
+
 ## 3.7.39 - 2026-10-18
 
 ### Docs

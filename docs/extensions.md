@@ -191,6 +191,103 @@ run jobs. Weights, severity floors, cooldowns, and hourly caps
 tune per sense in the sensor's `profile`, exactly as
 [docs/senses.md](senses.md) describes.
 
+## Local delivery: two transports, one envelope
+
+Everything above describes the envelope and the contract. How
+the envelope travels is a separate choice, and it is yours.
+
+The default path is the mail path: your daemon signs the
+envelope and sends it as a job to the runner's mailbox, and the
+runner files it on its next poll. That path works from any
+machine and needs nothing else running.
+
+When your daemon runs on the **same machine** as the runner,
+the mailbox round trip buys nothing, and two local front-ends
+are built in. Both carry the identical envelope — same fields,
+same `api_version` statement, same signature, verified by the
+same chain, gated by the same declared-signal contract, stored
+in the same senses store (with `source: "local"` on the record).
+A transport is replaceable plumbing under the contract, never a
+new contract: you code against the envelope, and you can switch
+pipes without touching your signal code. The envelope carries
+its `api_version` for exactly this reason — the statement rides
+with the message, so any transport, present or future, is
+validated against the same promise as the manifest.
+
+**Periodic style — file drop.** Your producer writes one signed
+envelope per signal into `<base_dir>/local-inbox/`, one `.json`
+file per envelope. A watcher in the runner scans the inbox
+about once a second, files what verifies, and removes each file
+either way (a rejected envelope is logged, never retried
+forever). This style serves producers that already work in
+passes — a watcher diffing a folder, a cron-driven collector.
+The producer helper writes the file atomically under the
+envelope's job_id as its name, so re-dropping an envelope
+rewrites the same file: the producer keeps no delivery state
+beyond its key, and each pass builds fresh envelopes and drops
+them.
+
+**Direct style — socket push.** Your producer opens a TCP
+connection to `127.0.0.1` on the runner's local signal port
+(default `39271`), sends the signed envelope text, and closes
+its write side. One envelope per connection, size-capped, read
+with a short timeout, the connection closed after ingest. This
+style serves extensions with their own event machinery that
+fires and sends at once; no file is involved. The listener
+binds loopback only — it is not a network service — and an
+unsigned or malformed connection is logged and dropped without
+disturbing the listener.
+
+The producer helpers live in `runner/extensions.py`:
+`build_sensor_alert(...)` composes the envelope,
+`sign_envelope(payload, secret)` seals it, and
+`drop_local_signal(base_dir, payload, secret)` /
+`send_local_signal(payload, secret, port=...)` deliver it. The
+Lab Results example drives both styles: run it with
+`--local-dir <runner base dir> --key-id <its key id>` and the
+signing secret in the environment variable named by
+`--secret-env` (default `HOMING_PIGEON_SENSOR_SECRET`); add
+`--local-port 39271` to push instead of dropping files.
+
+Config keys (all read at startup):
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `local_signals` | `true` | Master switch for both local front-ends. `false` starts neither. |
+| `local_signal_port` | `39271` | Loopback port for the direct style. `0` or `false` turns the listener off; the inbox still works. |
+| `local_wake_cooldown_sec` | `900` | Minimum seconds between Oracle briefings for the same sensor + signal. |
+
+Local delivery changes latency, not trust. A bad signature is
+a rejection exactly as on the mail path; the signing key must
+still be the key bound to the sensor, and its key policy must
+still allow `sensor_alert` only. What local delivery removes is
+the mailbox, not the checks.
+
+### The wake
+
+A locally filed alert does one thing a mailed alert does not:
+it can wake the Oracle. The gate is deterministic — no model
+judgment is involved in deciding:
+
+- the alert's severity is `high` or `critical`,
+- no other briefing is currently in flight, and
+- this sensor + signal pair has not woken within
+  `local_wake_cooldown_sec`.
+
+When the gate fires, a briefing thread asks the Oracle — the
+same local model path the interactive chat uses — to assess the
+signal against the box's current context and state what
+happened and what, if anything, the owner should do. The
+assessment is appended to `oracle-briefs.jsonl` in the base dir
+(one JSON object per brief: time, sensor, signal, severity,
+assessment) and written to the runner log, so a later question
+to the Oracle reads it back as part of the log. If no local
+model is configured, the brief is a deterministic note saying
+so; if the model fails, the brief records the failure. The
+briefing never blocks ingest, and a sense that fires constantly
+wakes the Oracle at most once per cooldown per signal — the
+gate exists so enthusiasm cannot spend the box.
+
 ## Failure posture
 
 Extensions fail closed and fail quiet:
