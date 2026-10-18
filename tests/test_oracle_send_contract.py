@@ -76,11 +76,10 @@ class OracleSendContractTest(unittest.TestCase):
     def test_thinking_line_is_shown_before_the_fetch(self):
         # Order matters. The pending line must be added before fetch,
         # or a slow model looks like a hang again.
-        thinking = self.script.find("thinking")
-        fetch = self.script.find("fetch(")
+        thinking = self.script.find('add("Oracle", "Working')
+        fetch = self.script.find('fetch("/ask"')
         self.assertGreater(thinking, 0)
         self.assertGreater(fetch, thinking)
-        self.assertIn('add("Oracle", "thinking', self.script)
 
     def test_button_is_disabled_while_waiting_and_reenabled_after(self):
         self.assertIn("send.disabled = true", self.script)
@@ -95,7 +94,7 @@ class OracleSendContractTest(unittest.TestCase):
         self.assertGreater(enable, catch)
 
     def test_pending_line_is_replaced_not_left_forever(self):
-        self.assertIn("pending.lastChild.textContent", self.script)
+        self.assertIn("pending.remove()", self.script)
         self.assertIn("data.answer", self.script)
         self.assertIn("data.detail", self.script)
         self.assertIn("The page could not reach the local Oracle.", self.script)
@@ -122,7 +121,7 @@ class OracleSendContractTest(unittest.TestCase):
         script = _script(page)
         self.assertIn("No loopback model is configured", page)
         self.assertIn('e.key === "Enter"', script)
-        self.assertIn("thinking", script)
+        self.assertIn("Working", script)
         self.assertIn("requestSubmit()", script)
 
     def test_page_does_not_use_innerhtml(self):
@@ -166,7 +165,7 @@ class OracleSendServerTest(unittest.TestCase):
             return e.code, e.read().decode()
 
     def test_good_ask_returns_json_answer(self):
-        with mock.patch("runner.runner.ask_model",
+        with mock.patch("runner.runner.ask_model_agent",
                         return_value={"op": "ask", "answer": "quiet"}):
             code, body = self._post("what is going on")
         self.assertEqual(code, 200)
@@ -175,7 +174,7 @@ class OracleSendServerTest(unittest.TestCase):
     def test_model_raise_returns_json_not_a_hang(self):
         def boom(*a, **k):
             raise RuntimeError("model exploded")
-        with mock.patch("runner.runner.ask_model", side_effect=boom):
+        with mock.patch("runner.runner.ask_model_agent", side_effect=boom):
             code, body = self._post()
         self.assertEqual(code, 200)
         parsed = json.loads(body)
@@ -184,7 +183,7 @@ class OracleSendServerTest(unittest.TestCase):
 
     def test_non_dict_model_return_is_rejected_not_leaked(self):
         for bad in (None, "string", 1, ["x"]):
-            with mock.patch("runner.runner.ask_model", return_value=bad):
+            with mock.patch("runner.runner.ask_model_agent", return_value=bad):
                 code, body = self._post()
             self.assertEqual(code, 200, bad)
             parsed = json.loads(body)
@@ -196,7 +195,7 @@ class OracleSendServerTest(unittest.TestCase):
             time.sleep(0.4)
             return {"op": "ask", "answer": "late"}
         t0 = time.time()
-        with mock.patch("runner.runner.ask_model", side_effect=slow):
+        with mock.patch("runner.runner.ask_model_agent", side_effect=slow):
             code, body = self._post()
         self.assertLess(time.time() - t0, 5)
         self.assertEqual(code, 200)
@@ -210,8 +209,20 @@ class OracleSendServerTest(unittest.TestCase):
             self.assertEqual(code, 200)
             self.assertIn("Ask something first", body)
 
-    def test_missing_origin_is_forbidden(self):
-        code, body = self._post(headers={"Origin": ""})
+    def test_missing_origin_is_answered(self):
+        # Superseded contract (feed560): a missing Origin used to be
+        # a 403, and on some Windows WebViews and same-origin POSTs
+        # that made Send look dead. Loopback Host + valid token is
+        # the gate; a missing Origin is answered.
+        with mock.patch("runner.runner.ask_model_agent",
+                        return_value={"op": "ask", "answer": "quiet"}):
+            code, body = self._post(headers={"Origin": ""})
+        self.assertEqual(code, 200)
+        self.assertEqual(json.loads(body)["answer"], "quiet")
+
+    def test_foreign_origin_is_forbidden(self):
+        # A PRESENT Origin that is not loopback is still rejected.
+        code, body = self._post(headers={"Origin": "http://evil.example"})
         self.assertEqual(code, 403)
         self.assertIn("forbidden", body)
 
@@ -234,7 +245,7 @@ class OracleSendServerTest(unittest.TestCase):
             {"Host": "127.0.0.1",
              "Origin": f"http://127.0.0.1:{self.port}"},
         ]
-        with mock.patch("runner.runner.ask_model",
+        with mock.patch("runner.runner.ask_model_agent",
                         return_value={"op": "ask", "answer": "ok"}):
             for hdrs in variants:
                 code, body = self._post(headers=hdrs)
@@ -275,7 +286,7 @@ class OracleSendServerTest(unittest.TestCase):
             code, body = self._post(f"q{i}")
             results.append((code, json.loads(body).get("answer")))
 
-        with mock.patch("runner.runner.ask_model",
+        with mock.patch("runner.runner.ask_model_agent",
                         return_value={"op": "ask", "answer": "ok"}):
             threads = [threading.Thread(target=one, args=(i,)) for i in range(8)]
             for t in threads:

@@ -256,11 +256,10 @@ def file_sensor_alert(base_dir, sensor_cfg, record):
             return f"gate failed: {e}"
         if drop:
             return drop
-        try:
-            store_alert(base_dir, record)
-        except OSError as e:
+        err = _store_alert_report(base_dir, record)
+        if err is not None:
             # Missing directory or unwritable store must not abort ingest.
-            return f"store failed: {e}"
+            return f"store failed: {err}"
         return None
 
 
@@ -306,9 +305,16 @@ def store_alert(base_dir: str, record: dict) -> None:
     """Append one alert record; keep the file capped at MAX_STORED lines.
 
     Concurrent senses must not tear a line or drop each other's alerts.
+    Never raises: a failed store is silent here. Callers that need to
+    know (file_sensor_alert) use _store_alert_report.
     """
+    _store_alert_report(base_dir, record)
+
+
+def _store_alert_report(base_dir: str, record: dict):
+    """store_alert's body. Returns the OSError a store hit, else None."""
     if not isinstance(base_dir, str) or not base_dir:
-        return
+        return None
     if not isinstance(record, dict):
         return
     try:
@@ -328,8 +334,9 @@ def store_alert(base_dir: str, record: dict) -> None:
                 return
             body = "".join(lines[-MAX_STORED:]).encode("utf-8")
             _write_private(path, body, False)
-        except OSError:
-            return
+        except OSError as e:
+            return e
+    return None
 
 
 def load_alerts(base_dir: str, sensor=None, severity_floor=None,
