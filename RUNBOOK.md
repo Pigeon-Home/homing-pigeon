@@ -104,8 +104,8 @@ you. You start them by making a **release**. All point and click:
 2. On the right side, click **Releases**.
 3. Click the **Draft a new release** button.
 4. Click **Choose a tag**, then type the tag you are cutting, such as
-   `v3.7.26`, and click **Create new tag**.
-5. Type a title like `Version 3.7.26`. The number is the one in
+   `v3.7.27`, and click **Create new tag**.
+5. Type a title like `Version 3.7.27`. The number is the one in
    `pyproject.toml`, not a guess.
 6. Click the big green **Publish release** button.
 7. Now click the **Actions** tab at the top. You will see the robots

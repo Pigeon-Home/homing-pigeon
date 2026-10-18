@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.7.27 - 2026-10-17
+
+### Install
+
+- `--faster` pulls qwen2.5:3b. The 1.5B model's Flag321
+  verdicts did not stay steady across paraphrases; 3b was
+  the smallest model whose catch did.
+
 ## 3.7.26 - 2026-10-17
 
 ### Protocol
