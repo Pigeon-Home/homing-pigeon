@@ -7527,7 +7527,11 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
             if self.path.split("?", 1)[0] != "/ask":
                 self._send(404, "not found", "text/plain; charset=utf-8")
                 return
-            if not _oracle_host_ok(self) or not (self.headers.get("Origin") or "").strip():
+            # A missing Origin is allowed on loopback: some Windows
+            # WebViews and same-origin POSTs omit it, and rejecting
+            # them made Send look dead. A present Origin that is not
+            # loopback still fails in _oracle_host_ok.
+            if not _oracle_host_ok(self):
                 self._send(403, "forbidden", "text/plain; charset=utf-8")
                 return
             got = self.headers.get("X-Oracle-Token") or ""
