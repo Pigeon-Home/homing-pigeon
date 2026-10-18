@@ -7,11 +7,14 @@
 # silent green) is pinned against fake packages on disk, driven
 # through the same discovery and subprocess paths CI will use.
 
+import contextlib
 import importlib.util
+import io
 import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _spec = importlib.util.spec_from_file_location(
@@ -43,6 +46,19 @@ _FAIL = (
     "        self.assertTrue(False)\n"
 )
 _BROKEN = "raise RuntimeError('import boom')\n"
+_FAIL_UNICODE = (
+    "import unittest\n\n"
+    "class T(unittest.TestCase):\n"
+    "    def test_bad(self):\n"
+    "        self.fail('boom \\u2713 \\u6f22\\u5b57 \\U0001f389')\n"
+)
+_PASS_UNICODE = (
+    "import unittest\n\n"
+    "class T(unittest.TestCase):\n"
+    "    def test_one(self):\n"
+    "        print('\\u2713 \\u6f22\\u5b57 \\U0001f389')\n"
+    "        self.assertTrue(True)\n"
+)
 
 
 class ShardModulesTest(unittest.TestCase):
@@ -111,6 +127,117 @@ class DiscoveryCountsTest(unittest.TestCase):
             second = rtp.module_test_counts(b, b)
         self.assertEqual(first.get("test_alpha"), 1)
         self.assertEqual(second.get("test_alpha"), 2)
+
+
+class _BufferStdout:
+    """A stdout whose text layer is cp1252 but whose buffer works.
+
+    The Windows CI console shape. Writing exotic text through the
+    text layer raises UnicodeEncodeError, exactly like the real
+    console; the raw buffer takes utf-8 bytes fine.
+    """
+
+    def __init__(self):
+        self.buffer = io.BytesIO()
+
+    def write(self, text):
+        text.encode("cp1252")
+        return len(text)
+
+    def flush(self):
+        pass
+
+
+class _RaisingStdout:
+    """A stdout with no buffer whose write raises on non-cp1252 text."""
+
+    def __init__(self):
+        self.written = []
+
+    def write(self, text):
+        text.encode("cp1252")
+        self.written.append(text)
+        return len(text)
+
+    def flush(self):
+        pass
+
+
+class ReporterRobustnessTest(unittest.TestCase):
+    """The reporter must survive the output it exists to print.
+
+    The 9d8cdac Windows run: a failed shard's dump carried
+    characters cp1252 cannot encode, print() raised
+    UnicodeEncodeError, the reporting loop aborted with a shard
+    handle still open, and TemporaryDirectory cleanup converted
+    that into PermissionError [WinError 32]. Red build, zero
+    usable failure detail. These tests pin the three layers of
+    the fix: buffer-encoded output, per-shard fault isolation,
+    and cleanup that tolerates refusal.
+    """
+
+    def test_unencodable_shard_output_is_reported_via_the_buffer(self):
+        fake = _BufferStdout()
+        with tempfile.TemporaryDirectory() as d:
+            _write(d, "test_alpha.py", _PASS)
+            _write(d, "test_gamma.py", _FAIL_UNICODE)
+            with contextlib.redirect_stdout(fake):
+                rc = rtp.main(["--jobs", "2", "--top-level-dir", d,
+                               "test_alpha", "test_gamma"])
+        self.assertEqual(rc, 1)
+        text = fake.buffer.getvalue().decode("utf-8", "replace")
+        # The failure detail survived whole, exotic characters and
+        # all, and the run still named the failed shard.
+        self.assertIn("boom ✓ 漢字 🎉", text)
+        self.assertIn("=== shard 1 FAILED (exit 1) ===", text)
+        self.assertIn("FAILED shard(s): 1", text)
+        self.assertIn("shard 0: OK", text)
+
+    def test_a_raising_stdout_loses_no_shard_and_no_verdict(self):
+        fake = _RaisingStdout()
+        with tempfile.TemporaryDirectory() as d:
+            _write(d, "test_alpha.py", _PASS)
+            _write(d, "test_gamma.py", _FAIL_UNICODE)
+            with contextlib.redirect_stdout(fake):
+                rc = rtp.main(["--jobs", "2", "--top-level-dir", d,
+                               "test_alpha", "test_gamma"])
+        # The exotic dump itself cannot be written to this stream,
+        # but the exit code, the passing shard's report, and the
+        # failed-shard accounting all survive its failure.
+        self.assertEqual(rc, 1)
+        written = "".join(fake.written)
+        self.assertIn("shard 0: OK", written)
+        self.assertIn("could not be printed", written)
+        self.assertIn("FAILED shard(s): 1", written)
+
+    def test_unencodable_output_in_a_passing_shard_is_safe(self):
+        fake = _BufferStdout()
+        with tempfile.TemporaryDirectory() as d:
+            _write(d, "test_alpha.py", _PASS_UNICODE)
+            with contextlib.redirect_stdout(fake):
+                rc = rtp.main(["--jobs", "1", "--top-level-dir", d,
+                               "test_alpha"])
+        self.assertEqual(rc, 0)
+        text = fake.buffer.getvalue().decode("utf-8", "replace")
+        self.assertIn("shard 0: OK", text)
+
+    def test_cleanup_failure_does_not_crash_a_finished_run(self):
+        real_td = tempfile.TemporaryDirectory
+
+        class BadCleanup(real_td):
+            def cleanup(self):
+                if getattr(self, "_raised", False):
+                    return super().cleanup()
+                self._raised = True
+                raise OSError("simulated locked temp directory")
+
+        with tempfile.TemporaryDirectory() as d:
+            _write(d, "test_alpha.py", _PASS)
+            with mock.patch.object(
+                    tempfile, "TemporaryDirectory", BadCleanup):
+                rc = rtp.main(["--jobs", "1", "--top-level-dir", d,
+                               "test_alpha"])
+        self.assertEqual(rc, 0)
 
 
 class MainContractTest(unittest.TestCase):

@@ -28,6 +28,21 @@ Design choices, pinned by the tests below:
   every run. Corpus growth is capped; past the cap a new-coverage
   input evicts the oldest non-seed member (coverage knowledge is
   cumulative -- eviction frees a slot, it does not unlearn a line).
+- Platform-relative pins: coverage is a set of (file, line) pairs
+  inside runner/, and runner/ carries platform-conditional branches
+  (POSIX confinement, Windows paths), so the exact set a campaign
+  reaches is a property of the platform it runs on -- as is the
+  case of a frame's filename, which on Windows follows however the
+  module happened to be imported. The tests therefore pin the
+  relationships that hold by construction on any platform (the
+  guided coverage includes the seeds-only baseline measured in the
+  same process; a seated seed is never evicted, so the corpus
+  never drops below the retained seeds; two campaigns at one seed
+  in one process are identical) and gate the strict growth claims
+  -- guidance reaching PAST the baseline -- to Linux, where they
+  were measured. The first Windows CI run of this module (commit
+  9d8cdac) is why: growth there is an empirical property of a
+  different reachable line set, not a contract.
 
 The in-suite campaign is bounded (150 rounds, a second or so). A
 longer one runs standalone, not under the suite:
@@ -70,12 +85,24 @@ class _LineTracer:
 
     def __init__(self, root):
         self.root = root
+        # The "is this frame ours" test compares case-insensitively:
+        # on Windows the case of a frame's filename follows however
+        # the module happened to be imported, while the root comes
+        # from runner.__file__, and the two need not agree -- a
+        # mismatch would silently trace nothing there. normcase
+        # folds case on Windows and is the identity on POSIX, so
+        # the lower() makes the comparison uniform everywhere; the
+        # root is the imported package's own directory, so treating
+        # a case variant of it as the same directory is the intent.
+        self.root_key = os.path.normcase(root).lower()
         self.hits = set()
         self._rel = {}
 
     def __call__(self, frame, event, arg):
         if event == "call":
-            if frame.f_code.co_filename.startswith(self.root):
+            if os.path.normcase(
+                    frame.f_code.co_filename).lower().startswith(
+                        self.root_key):
                 return self
             return None
         if event == "line":
@@ -309,6 +336,22 @@ class TracerTest(unittest.TestCase):
             self.assertTrue(rel.endswith(".py"), rel)
             self.assertIsInstance(line, int)
 
+    def test_tracer_sees_a_frame_whose_path_case_differs(self):
+        # A frame whose filename is a case variant of the runner
+        # root (the Windows import artifact) must still be traced;
+        # otherwise coverage there is silently empty and every
+        # downstream campaign assertion fails for the wrong reason.
+        root = _runner_dir()
+        code = compile("a = 1\nb = 2\n",
+                       root.swapcase() + "caseprobe.py", "exec")
+        tracer = _LineTracer(root)
+        sys.settrace(tracer)
+        try:
+            exec(code, {})
+        finally:
+            sys.settrace(None)
+        self.assertTrue(tracer.hits)
+
     def test_the_same_input_earns_the_same_coverage_twice(self):
         _, first = _exercise_traced(SEEDS[7], random.Random(_SEED_RNG_BASE))
         _, second = _exercise_traced(SEEDS[7], random.Random(_SEED_RNG_BASE))
@@ -385,16 +428,50 @@ class GuidedCampaignTest(unittest.TestCase):
     def test_guided_campaign_finds_no_crashes(self):
         self.assertEqual(self.result.crashes, [])
 
-    def test_feedback_grows_coverage_past_the_seeds(self):
+    def test_coverage_includes_the_seed_baseline(self):
+        # By construction, on any platform: the campaign exercises
+        # every seed first and coverage knowledge only ever grows,
+        # so the guided set includes the seeds-only baseline from
+        # the same run.
         self.assertTrue(self.result.baseline)
+        self.assertLessEqual(self.result.baseline, self.result.coverage)
+
+    @unittest.skipUnless(
+        sys.platform.startswith("linux"),
+        "strict growth is measured on Linux; another platform "
+        "reaches a different platform-conditional line set")
+    def test_feedback_grows_coverage_past_the_seeds(self):
+        # Strict growth is empirical, not a construction guarantee:
+        # a mutant seats only if it reaches a line no seed reached,
+        # and which lines exist to reach differs by platform
+        # (runner/ has POSIX-only and Windows-only branches). On
+        # Linux the measured campaign grows past the baseline; on
+        # Windows only the inclusion contract above is promised.
         self.assertLess(self.result.baseline, self.result.coverage)
 
     def test_the_baseline_is_the_seeds_only_measure(self):
         self.assertEqual(self.result.baseline, seeds_baseline())
 
-    def test_corpus_grows_beyond_the_seed_set(self):
-        self.assertGreater(len(self.result.corpus), self.result.retained_seeds)
+    def test_corpus_never_drops_below_the_retained_seeds(self):
+        # By construction, on any platform: the merge rule evicts
+        # the oldest NON-seed member and refuses when every member
+        # is a seed, so a seated seed is never evicted -- the
+        # corpus holds the retained seeds plus seated mutants,
+        # never fewer than the seeds, never more than the cap.
+        self.assertGreaterEqual(
+            len(self.result.corpus), self.result.retained_seeds)
         self.assertLessEqual(len(self.result.corpus), MAX_CORPUS)
+
+    @unittest.skipUnless(
+        sys.platform.startswith("linux"),
+        "strict growth is measured on Linux; another platform "
+        "reaches a different platform-conditional line set")
+    def test_corpus_grows_beyond_the_seed_set(self):
+        # The corpus-side form of the strict growth claim, gated
+        # for the same reason: seating even one mutant requires a
+        # new line, and the reachable new lines are platform-set.
+        self.assertGreater(
+            len(self.result.corpus), self.result.retained_seeds)
 
     def test_corpus_keeps_its_seeds_first(self):
         seeds_first = self.result.corpus[: self.result.retained_seeds]

@@ -37,6 +37,76 @@ import time
 import unittest
 
 
+def _emit(text):
+    """Write one block of parent output to stdout.
+
+    Shard output is utf-8 text and may carry characters the
+    parent's stdout cannot encode -- a Windows CI console is
+    cp1252, and a shard dump of test names and failure text is
+    exactly where an exotic character lands. The v3.7.36-era
+    Windows run of 9d8cdac died here: printing a failed shard's
+    output raised UnicodeEncodeError, the reporter destroyed the
+    failure report it existed to print, and the shards after it
+    were never reported at all. Writing the block to the raw
+    buffer as utf-8 with replacement keeps a shard's output from
+    ever crashing the reporter. Streams without a buffer
+    (StringIO under tests) take the plain text path; if even that
+    raises, run_shards isolates the failure per shard.
+    """
+    if not text.endswith("\n"):
+        text += "\n"
+    buffer = getattr(sys.stdout, "buffer", None)
+    if buffer is not None:
+        buffer.write(text.encode("utf-8", "replace"))
+        buffer.flush()
+    else:
+        sys.stdout.write(text)
+        sys.stdout.flush()
+
+
+def _emit_quietly(text):
+    """_emit for last-resort notes: reporting must never crash the run."""
+    try:
+        _emit(text)
+    except Exception:
+        pass
+
+
+def _harden_streams():
+    """Best-effort: make stdout/stderr replace unencodable characters.
+
+    Guarded for streams that cannot be reconfigured (StringIO and
+    other stand-ins have no reconfigure). _emit's buffer path is
+    the primary defense and does not depend on this succeeding.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(errors="replace")
+        except (OSError, ValueError):
+            pass
+
+
+def _discard_tmpdir(tmp):
+    """Clean up the shard-log directory; failure here is litter only.
+
+    Every shard handle is closed before this runs, so cleanup has
+    nothing held open. A platform that still refuses (an indexer
+    or scanner holding a log, say) must not turn finished
+    reporting into a crash -- the 9d8cdac Windows run ended in
+    PermissionError [WinError 32] from exactly this cleanup after
+    the reporter's exception left a handle open. On 3.10+ the
+    directory is also created with ignore_cleanup_errors=True;
+    this wrapper is the equivalent tolerance on 3.9.
+    """
+    try:
+        tmp.cleanup()
+    except Exception:
+        pass
+
+
 def module_test_counts(start_dir, top_level_dir):
     """Discover the suite and return {module_name: test_count}.
 
@@ -106,38 +176,68 @@ def run_shards(shards, top_level_dir):
     finishes (full output for failures, the unittest summary tail
     for passes), so the CI log stays readable without interleaving
     four workers' dots into soup.
+
+    Reporting is fault-isolated per shard. A shard is counted
+    failed the moment its exit code is known, before anything is
+    printed, and a failure to print one shard's output never skips
+    the shards after it or changes the verdict. Every file handle
+    is closed in a finally, whatever printing does, and the temp
+    directory's cleanup tolerates refusal instead of crashing.
     """
+    kwargs = {}
+    if sys.version_info >= (3, 10):
+        kwargs["ignore_cleanup_errors"] = True
+    tmp = tempfile.TemporaryDirectory(prefix="hp-test-shards-", **kwargs)
     procs = []
-    with tempfile.TemporaryDirectory(prefix="hp-test-shards-") as tmp:
+    failed = []
+    try:
         for i, shard in enumerate(shards):
-            out_path = os.path.join(tmp, "shard-%d.log" % i)
+            out_path = os.path.join(tmp.name, "shard-%d.log" % i)
             fh = open(out_path, "wb")
-            proc = subprocess.Popen(
-                [sys.executable, "-m", "unittest"] + shard,
-                cwd=top_level_dir, stdout=fh, stderr=subprocess.STDOUT)
-            procs.append((i, shard, proc, fh, out_path))
-            print("shard %d: %d module(s): %s"
-                  % (i, len(shard), ", ".join(shard)), flush=True)
-        failed = []
-        for i, shard, proc, fh, out_path in procs:
-            rc = proc.wait()
-            fh.close()
-            with open(out_path, encoding="utf-8", errors="replace") as rf:
-                output = rf.read()
+            try:
+                proc = subprocess.Popen(
+                    [sys.executable, "-m", "unittest"] + shard,
+                    cwd=top_level_dir, stdout=fh,
+                    stderr=subprocess.STDOUT)
+            except Exception:
+                fh.close()
+                raise
+            procs.append((i, proc, fh, out_path))
+            _emit("shard %d: %d module(s): %s"
+                  % (i, len(shard), ", ".join(shard)))
+        for i, proc, fh, out_path in procs:
+            try:
+                rc = proc.wait()
+            except Exception:
+                rc = None
+            finally:
+                fh.close()
             if rc != 0:
                 failed.append(i)
-                print("=== shard %d FAILED (exit %d) ===\n%s"
-                      % (i, rc, output), flush=True)
-            else:
-                tail = "\n".join(output.strip().splitlines()[-4:])
-                print("shard %d: OK\n%s" % (i, tail), flush=True)
+            try:
+                with open(out_path, encoding="utf-8",
+                          errors="replace") as rf:
+                    output = rf.read()
+                if rc != 0:
+                    _emit("=== shard %d FAILED (exit %s) ===\n%s"
+                          % (i, rc, output))
+                else:
+                    tail = "\n".join(output.strip().splitlines()[-4:])
+                    _emit("shard %d: OK\n%s" % (i, tail))
+            except Exception:
+                _emit_quietly(
+                    "shard %d: its captured output could not be printed"
+                    % i)
+    finally:
+        _discard_tmpdir(tmp)
     if failed:
-        print("FAILED shard(s): %s" % ", ".join(str(i) for i in failed))
+        _emit("FAILED shard(s): %s" % ", ".join(str(i) for i in failed))
         return 1
     return 0
 
 
 def main(argv=None):
+    _harden_streams()
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--jobs", type=int,
                         default=os.cpu_count() or 1,
@@ -159,11 +259,11 @@ def main(argv=None):
         return 2
     shards = shard_modules(counts, args.jobs)
     total = sum(counts.values())
-    print("running %d test(s) from %d module(s) in %d shard(s)"
-          % (total, len(counts), len(shards)), flush=True)
+    _emit("running %d test(s) from %d module(s) in %d shard(s)"
+          % (total, len(counts), len(shards)))
     started = time.monotonic()
     rc = run_shards(shards, args.top_level_dir)
-    print("sharded run finished in %.1fs (exit %d)"
+    _emit("sharded run finished in %.1fs (exit %d)"
           % (time.monotonic() - started, rc))
     return rc
 
