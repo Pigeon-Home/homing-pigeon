@@ -79,14 +79,12 @@ the Oracle actually says", on one machine, with no mailbox in the way.
 11435. The Oracle keeps using its configured endpoint (usually 11434).
 Separate process, separate port, separate context.
 
-The page has two buttons:
-
-- **talk to SI** — your message goes to the SI model only.
-- **ask the Oracle** — your message is sent through the Oracle path
-  to the other model.
-
-The SI never sees the Oracle's context, and the Oracle never sees the
-SI's chat. That is the point of two instances.
+The page has no mode buttons — it is the plain chat described above,
+one text box and one send button. The separation is structural, not
+a button: the SI chat runs against the second instance (port 11435),
+the Oracle against its configured endpoint. The SI never sees the
+Oracle's context, and the Oracle never sees the SI's chat. That is
+the point of two instances.
 
 ## Transports the mock SI can use
 

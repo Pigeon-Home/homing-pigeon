@@ -91,7 +91,7 @@ and operate.
 Large inputs don't go through email: your SI uploads them to file hosting
 and the job message carries download URLs (with optional SHA-384).
 
-**Why email?** Because it's the only transport with all five properties
+**Why email?** Because it's the only transport with all four properties
 on day one: reachable from anywhere, outbound-only polling (no inbound
 ports — NAT-proof), at-least-once delivery, and
 zero infrastructure to operate. The protocol does not care about the
@@ -253,7 +253,8 @@ lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
 - `tests/test_runner.py` — end-to-end tests with fake IMAP/SMTP servers.
 - `RUNBOOK.md` — step-by-step instructions (written for a 5-year-old):
   cloning, pushing, cutting a release, installing, sending a job.
-- `examples/hello-world.json` — unsigned example job payload.
+- `examples/extensions/` — the worked extension example: a lab-results
+  sense with its manifest, daemon, and README.
 
 ## Setup
 
