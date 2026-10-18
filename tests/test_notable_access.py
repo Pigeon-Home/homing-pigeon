@@ -1362,6 +1362,203 @@ class HttpAskTest(unittest.TestCase):
             _status, body = self._post("which jobs are malicious?")
         self.assertEqual(body["detail"], "disk full")
 
+    def test_the_page_and_status_do_not_carry_the_record(self):
+        import urllib.request
+        page = urllib.request.urlopen(
+            f"http://127.0.0.1:{self.port}/", timeout=5).read().decode()
+        self.assertNotIn(_KEY, page)
+        self.assertNotIn("notable:", page)
+        self.assertNotIn("SUSPICIOUS", page)
+        self.assertIn(self.httpd.oracle_token, page)
+
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{self.port}/status",
+            headers={"X-Oracle-Token": self.httpd.oracle_token})
+        status = json.loads(urllib.request.urlopen(req, timeout=5).read())
+        self.assertIn("active", status)
+        self.assertNotIn(_KEY, json.dumps(status))
+
+        import urllib.error
+        bad = urllib.request.Request(
+            f"http://127.0.0.1:{self.port}/status",
+            headers={"X-Oracle-Token": "nope"})
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            urllib.request.urlopen(bad, timeout=5)
+        self.assertEqual(caught.exception.code, 403)
+
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            urllib.request.urlopen(
+                f"http://127.0.0.1:{self.port}/nope", timeout=5)
+        self.assertEqual(caught.exception.code, 404)
+
+
+class PageTextTest(unittest.TestCase):
+    def test_non_text_fields_do_not_leak(self):
+        class Bad:
+            def __str__(self):
+                raise RuntimeError("no")
+
+        page = R.oracle_page(None, Bad(), True)
+        self.assertNotIn(_KEY, page)
+        self.assertIn('"model": ""', page)
+        page = R.oracle_page(3, 4, False)
+        self.assertIn('"model": "4"', page)
+        self.assertNotIn("notable:", page)
+
+
+class CliNotableTest(unittest.TestCase):
+    def test_the_terminal_is_handed_the_notable_line(self):
+        base = tempfile.mkdtemp()
+        os.makedirs(os.path.join(base, "retained"))
+        R.save_retained(base, "jobflag1",
+                        _record(FLAG, stdout=_KEY + "\n"))
+        seen = []
+        out = []
+        lines = ["", "  ", "/help", "which jobs are malicious?", "/quit"]
+
+        def fake_input(prompt=""):
+            if not lines:
+                raise EOFError
+            return lines.pop(0)
+
+        def fake_ask(inf, question, output_text, max_chars, patterns=None,
+                     opener=None, instructions=None, base_dir=None,
+                     progress=None):
+            seen.append((question, output_text))
+            return {"answer": "jobflag1 is the one.", "model": "m"}
+
+        cfg = {"base_dir": base, "inference": {
+            "endpoint": "http://127.0.0.1:11434/v1", "model": "m"}}
+        with unittest.mock.patch("runner.runner.ask_model_agent", fake_ask), \
+                unittest.mock.patch("runner.runner._warm_oracle_model"):
+            rc = R.oracle_cli(cfg, input_fn=fake_input, print_fn=out.append)
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(seen), 1)
+        self.assertEqual(seen[0][0], "which jobs are malicious?")
+        self.assertIn("notable: SUSPICIOUS ACCESS", seen[0][1])
+        self.assertIn(_KEY, seen[0][1])
+        self.assertIn("jobflag1 is the one.", out)
+        self.assertTrue(any("/quit ends" in line for line in out))
+        blob = json.dumps(_chat_lines(base))
+        self.assertNotIn(_KEY, blob)
+        self.assertIn("jobflag1 is the one.", blob)
+
+    def test_random_terminal_questions_keep_the_line(self):
+        import random
+        rng = random.Random(321)
+        base = tempfile.mkdtemp()
+        os.makedirs(os.path.join(base, "retained"))
+        R.save_retained(base, "jobflag1", _record(FLAG, stdout=_KEY + "\n"))
+        words = ["which", "jobs", "malicious", "none", "jobflag1"]
+        questions = [
+            " ".join(rng.choice(words) for _ in range(rng.randint(1, 4)))
+            for _ in range(8)
+        ]
+        lines = list(questions) + ["/exit"]
+        seen = []
+
+        def fake_input(prompt=""):
+            return lines.pop(0)
+
+        def fake_ask(inf, question, output_text, max_chars, patterns=None,
+                     opener=None, instructions=None, base_dir=None,
+                     progress=None):
+            seen.append(output_text)
+            return {"answer": "jobflag1 is the one."}
+
+        cfg = {"base_dir": base, "inference": {
+            "endpoint": "http://127.0.0.1:11434/v1", "model": "m"}}
+        with unittest.mock.patch("runner.runner.ask_model_agent", fake_ask), \
+                unittest.mock.patch("runner.runner._warm_oracle_model"):
+            rc = R.oracle_cli(cfg, input_fn=fake_input, print_fn=lambda _s: None)
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(seen), 8)
+        for output in seen:
+            self.assertIn("notable:", output)
+            self.assertIn(_KEY, output)
+        self.assertNotIn(_KEY, json.dumps(_chat_lines(base)))
+
+    def _base(self):
+        base = tempfile.mkdtemp()
+        os.makedirs(os.path.join(base, "retained"))
+        R.save_retained(base, "jobflag1",
+                        _record(FLAG, stdout=_KEY + "\n"))
+        return base
+
+    def test_eof_and_interrupt_end_the_chat(self):
+        out = []
+        cfg = {"base_dir": self._base()}
+        rc = R.oracle_cli(
+            cfg, input_fn=lambda prompt="": (_ for _ in ()).throw(EOFError),
+            print_fn=out.append)
+        self.assertEqual(rc, 0)
+        self.assertTrue(any("not configured" in line for line in out))
+
+        def interrupt(prompt=""):
+            raise KeyboardInterrupt
+
+        out = []
+        cfg = {"base_dir": self._base(), "inference": {
+            "endpoint": "http://127.0.0.1:11434/v1", "model": "m"}}
+        with unittest.mock.patch("runner.runner._warm_oracle_model"):
+            rc = R.oracle_cli(cfg, cfg_path=__file__,
+                              input_fn=interrupt, print_fn=out.append)
+        self.assertEqual(rc, 0)
+        self.assertTrue(any("Config:" in line for line in out))
+        rc = R.oracle_cli(
+            "nope",
+            input_fn=lambda prompt="": (_ for _ in ()).throw(EOFError),
+            print_fn=lambda _s: None)
+        self.assertEqual(rc, 0)
+        rc = R.oracle_cli(
+            {"base_dir": self._base()},
+            input_fn=lambda prompt="": (_ for _ in ()).throw(EOFError))
+        self.assertEqual(rc, 0)
+
+    def test_a_refusal_a_crash_and_a_broken_log(self):
+        base = self._base()
+        cfg = {"base_dir": base, "inference": {
+            "endpoint": "http://127.0.0.1:11434/v1", "model": "m"}}
+        answers = [
+            {"rejected": "sanitization"},
+            {"rejected": "inference_error", "detail": "disk full"},
+            "not-a-record",
+        ]
+        seen = []
+
+        def fake_input(prompt=""):
+            if not answers:
+                raise EOFError
+            return "which jobs are malicious?"
+
+        def fake_ask(inf, question, output_text, max_chars, patterns=None,
+                     opener=None, instructions=None, base_dir=None,
+                     progress=None):
+            seen.append(output_text)
+            ans = answers.pop(0)
+            if ans == "raise":
+                raise RuntimeError("down")
+            return ans
+
+        answers.append("raise")
+        out = []
+        with unittest.mock.patch("runner.runner.ask_model_agent", fake_ask), \
+                unittest.mock.patch(
+                    "runner.runner.record_oracle_turn",
+                    side_effect=RuntimeError("disk")), \
+                unittest.mock.patch("runner.runner._warm_oracle_model"):
+            rc = R.oracle_cli(cfg, input_fn=fake_input, print_fn=out.append)
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(seen), 4)
+        for output in seen:
+            self.assertIn("notable:", output)
+            self.assertIn(_KEY, output)
+        text = "\n".join(out)
+        self.assertIn("protected material", text)
+        self.assertIn("disk full", text)
+        self.assertIn("did not answer", text)
+        self.assertNotIn(_KEY, text)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
