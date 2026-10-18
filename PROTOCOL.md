@@ -1,6 +1,6 @@
 # Homing Pigeon Protocol
 
-The protocol description can be found here:
+The technical protocol description can be found here:
 `docs/ietf/draft-homing-pigeon-00.md`
 
 ## 1. Actors
