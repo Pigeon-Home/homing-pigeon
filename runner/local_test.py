@@ -78,12 +78,18 @@ def start_si_instance() -> bool:
     env = os.environ.copy()
     env["OLLAMA_HOST"] = f"127.0.0.1:{SI_PORT}"
     try:
+        # start_new_session is POSIX-only. On Windows it raises
+        # ValueError before the process is created, so the SI never
+        # starts and the browser page never opens. Use the same
+        # Windows-safe kwargs the installer uses.
+        try:
+            from runner.install import daemon_popen_kwargs
+        except ImportError:
+            from install import daemon_popen_kwargs
         subprocess.Popen(
             ["ollama", "serve"],
             env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
+            **daemon_popen_kwargs(os.name == "nt"),
         )
     except Exception as e:
         print(f"could not start SI instance: {e}")

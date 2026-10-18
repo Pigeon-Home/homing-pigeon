@@ -3334,7 +3334,17 @@ function add(who, text, cls) {
   wrap.appendChild(document.createTextNode(text));
   log.appendChild(wrap);
   wrap.scrollIntoView({block: "nearest"});
+  return wrap;
 }
+// Enter sends. Shift+Enter is a newline. A bare Enter in a textarea
+// does not submit the form, so the button looked dead and the log
+// stayed quiet.
+q.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById("f").requestSubmit();
+  }
+});
 document.getElementById("f").onsubmit = async (e) => {
   e.preventDefault();
   const text = q.value.trim();
@@ -3342,6 +3352,7 @@ document.getElementById("f").onsubmit = async (e) => {
   add("You", text, "you");
   q.value = "";
   send.disabled = true;
+  const pending = add("Oracle", "thinking…", "oracle");
   try {
     const r = await fetch("/ask", {
       method: "POST",
@@ -3352,10 +3363,10 @@ document.getElementById("f").onsubmit = async (e) => {
       body: JSON.stringify({question: text})
     });
     const data = await r.json();
-    if (data.answer) add("Oracle", data.answer, "oracle");
-    else add("Oracle", data.detail || "The Oracle did not answer.", "oracle");
+    pending.lastChild.textContent = data.answer
+      || data.detail || "The Oracle did not answer.";
   } catch (err) {
-    add("Oracle", "The page could not reach the local Oracle.", "oracle");
+    pending.lastChild.textContent = "The page could not reach the local Oracle.";
   }
   send.disabled = false;
   q.focus();
