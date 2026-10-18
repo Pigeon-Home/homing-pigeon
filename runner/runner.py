@@ -7238,6 +7238,26 @@ function took(ms) {
   const s = Math.max(0, Math.round(ms / 1000));
   return Math.floor(s / 60) + "m " + String(s % 60).padStart(2, "0") + "s";
 }
+const KEEP = 40;
+const BUBBLE = 4000;
+function trimLog() {
+  while (log.children.length > KEEP) log.removeChild(log.firstChild);
+  let note = document.getElementById("cut");
+  if (log.children.length >= KEEP) {
+    if (!note) {
+      note = document.createElement("p");
+      note.id = "cut";
+      note.className = "note";
+      note.textContent = "Older turns were dropped from this page. "
+        + "The full exchange is in oracle-chat.jsonl.";
+      log.parentNode.insertBefore(note, log);
+    }
+  }
+}
+function fit(text) {
+  if (text.length <= BUBBLE) return text;
+  return text.slice(0, BUBBLE) + "\n… cut. The full answer is in oracle-chat.jsonl.";
+}
 function add(who, text, cls, note) {
   const wrap = document.createElement("div");
   wrap.className = "bubble " + cls;
@@ -7251,8 +7271,9 @@ function add(who, text, cls, note) {
     label.appendChild(st);
   }
   wrap.appendChild(label);
-  wrap.appendChild(document.createTextNode(text));
+  wrap.appendChild(document.createTextNode(fit(text)));
   log.appendChild(wrap);
+  trimLog();
   wrap.scrollIntoView({block: "nearest"});
   return wrap;
 }

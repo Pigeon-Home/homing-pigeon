@@ -55,3 +55,22 @@ class PageStampsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PageWindowTest(unittest.TestCase):
+    """A long Oracle investigation must not blow the page.
+
+    The field loop is many turns. The page used to keep every
+    bubble forever. It now keeps the last 40 and cuts a single
+    bubble at 4000 characters. The full exchange stays in
+    oracle-chat.jsonl.
+    """
+
+    def test_the_page_windows_itself(self):
+        page = R.oracle_page("tok", "llama3.2:3b", True)
+        self.assertIn("const KEEP = 40", page)
+        self.assertIn("const BUBBLE = 4000", page)
+        self.assertIn("function trimLog()", page)
+        self.assertIn("function fit(text)", page)
+        self.assertIn("oracle-chat.jsonl", page)
+        self.assertIn("trimLog();", page)
