@@ -156,6 +156,10 @@ def validate_sensor_alert(job: dict):
     if "job_id_hint" in job and job["job_id_hint"] is not None \
             and not isinstance(job["job_id_hint"], str):
         return "job_id_hint must be a string"
+    if "signal" in job and job["signal"] is not None \
+            and (not isinstance(job["signal"], str)
+                 or not job["signal"].strip()):
+        return "signal must be a non-empty string"
     return None
 
 

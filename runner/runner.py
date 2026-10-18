@@ -106,6 +106,7 @@ class _OAuthRefreshErrorFallback(RuntimeError):
 OAuthRefreshError = _load_attr(
     "runner.oauth", "oauth", "OAuthRefreshError", _OAuthRefreshErrorFallback)
 _senses = _load_mod("runner.senses", "senses")
+_extensions = _load_mod("runner.extensions", "extensions")
 _review = _load_mod("runner.review", "review")
 _resources = _load_mod("runner.resources", "resources")
 _dri = _load_mod("runner.dri", "dri")
@@ -2908,6 +2909,9 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                         clean_detail, _ = redact_text(detail, patterns)
                     else:
                         clean_detail = ""
+                    sig_desc = rec.get("signal_description")
+                    if isinstance(sig_desc, str):
+                        sig_desc, _ = redact_text(sig_desc, patterns)
                     items.append({
                         "sensor": rec.get("sensor"),
                         "severity": rec.get("severity"),
@@ -2917,6 +2921,9 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                         "received_at": rec.get("received_at"),
                         "job_id_hint": rec.get("job_id_hint"),
                         "weight": weight,
+                        "signal": rec.get("signal"),
+                        "signal_description": sig_desc,
+                        "extension_version": rec.get("extension_version"),
                     })
                     try:
                         items[-1]["score"] = _senses.alert_score(rec, weight)
@@ -2925,8 +2932,40 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                         # alert with a neutral score rather than abort.
                         items[-1]["score"] = 0.0
                 items.sort(key=lambda a: a["score"], reverse=True)
-                answers.append({"op": "senses", "alerts": items,
-                                "count": len(items)})
+                # The declaration is context: for each extension-
+                # backed sense in this answer, say which signals it
+                # may send and what each one means, so the reader is
+                # never handed a signal nobody defined.
+                declared_signals = {}
+                ext_registry = _extension_registry(cfg, base_dir)
+                wanted = set()
+                if isinstance(q.get("sensor"), str):
+                    wanted.add(q["sensor"])
+                wanted.update(it.get("sensor") for it in items)
+                for sname in sorted(n for n in wanted
+                                    if isinstance(n, str)):
+                    m = ext_registry.get(sname)
+                    if not isinstance(m, dict):
+                        continue
+                    sigs = []
+                    for s in m.get("signals") or []:
+                        if not isinstance(s, dict):
+                            continue
+                        desc = s.get("description")
+                        if isinstance(desc, str):
+                            desc, _ = redact_text(desc, patterns)
+                        sigs.append({"name": s.get("name"),
+                                     "description": desc})
+                    declared_signals[sname] = {
+                        "extension": m.get("name"),
+                        "extension_version": m.get("version"),
+                        "signals": sigs,
+                    }
+                senses_answer = {"op": "senses", "alerts": items,
+                                 "count": len(items)}
+                if declared_signals:
+                    senses_answer["declared_signals"] = declared_signals
+                answers.append(senses_answer)
         else:
             answers.append({"rejected": "unknown_op"})
         spent += 1
@@ -4744,6 +4783,47 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
     return True
 
 
+def _extension_registry(cfg, base_dir) -> dict:
+    """Loaded user extensions, keyed by sensor name. Never raises.
+
+    A broken or incompatible extension is refused by the loader and
+    simply absent here; the refusal is read at startup
+    (_report_extensions), not re-litigated on the alert path.
+    """
+    if _extensions is None:
+        return {}
+    try:
+        registry, _problems = _extensions.load_extensions(
+            _extensions.extensions_dir_for(cfg, base_dir))
+    except Exception:
+        return {}
+    return registry if isinstance(registry, dict) else {}
+
+
+def _report_extensions(cfg, base_dir) -> None:
+    """Startup report: which user extensions loaded, which were refused."""
+    if _extensions is None:
+        return
+    try:
+        registry, problems = _extensions.load_extensions(
+            _extensions.extensions_dir_for(cfg, base_dir))
+    except Exception as e:
+        log(f"extensions: loader failed: {e}", "WARN")
+        return
+    if not isinstance(registry, dict):
+        registry = {}
+    for name in sorted(registry):
+        m = registry[name]
+        if not isinstance(m, dict):
+            continue
+        log(f"extension loaded: {m.get('name')} v{m.get('version')} "
+            f"(extension API v{m.get('api_version')}, kind "
+            f"{m.get('kind')}, {len(m.get('signals') or [])} declared "
+            f"signal(s)) from {m.get('dir')}")
+    for problem in problems if isinstance(problems, list) else []:
+        log(f"extensions: {problem}", "WARN")
+
+
 def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
                          secrets, opts, base_dir, seen):
     """File a signed sensor alert. Alerts are stored, never executed.
@@ -4790,6 +4870,26 @@ def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
     if bound != name:
         done(f"rejected: key {key_id!r} is not bound to sensor {name!r}")
         return
+    # An extension-backed sense files DECLARED signals only. The
+    # manifest is the contract: the Oracle receives the declaration
+    # as context, so a signal nobody declared is refused here and
+    # logged (via done), never stored and never passed through.
+    manifest = _extension_registry(cfg, base_dir).get(name)
+    signal = job.get("signal")
+    signal_description = None
+    if manifest is not None:
+        if not isinstance(signal, str) or not signal:
+            done(f"rejected: sensor {name!r} is backed by extension "
+                 f"{manifest.get('name')!r} v{manifest.get('version')}; "
+                 f"alerts must name a declared signal")
+            return
+        signal_description = _extensions.signal_description(manifest, signal)
+        if signal_description is None:
+            declared = ", ".join(
+                sorted(manifest.get("signal_descriptions") or {}))
+            done(f"rejected: undeclared signal {signal!r} for extension "
+                 f"{name!r} (declared: {declared})")
+            return
     if dry:
         log(f"dry-run: would ingest sensor alert {job_id} "
             f"({name}/{job.get('severity', 'info')}: {job.get('title')})")
@@ -4808,6 +4908,15 @@ def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
         "key_id": key_id,
         "weight": scfg.get("weight", 1.0) if isinstance(scfg, dict) else 1.0,
     })
+    if isinstance(signal, str) and signal:
+        record["signal"] = signal
+    if manifest is not None:
+        # The extension's own version rides with the alert, so the
+        # record shows which build of the extension filed it.
+        record["extension"] = manifest.get("name")
+        record["extension_version"] = manifest.get("version")
+    if signal_description is not None:
+        record["signal_description"] = signal_description
     drop = _senses.file_sensor_alert(base_dir, scfg, record)
     if drop:
         done(f"dropped by profile: {drop} "
@@ -8375,6 +8484,7 @@ def main() -> int:
     seen = load_seen(seen_path)
 
     log_startup(cfg, args, base_dir)
+    _report_extensions(cfg, base_dir)
     auth_failed = False  # latch: report auth death once, not every 20s
     # Connection credentials (mailbox_user/password, oauth_*) are not
     # hot. Those still need a restart. CLI flags pin their key so a

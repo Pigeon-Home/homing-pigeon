@@ -57,7 +57,9 @@ pytest_add_cli_args = [
 pytest_add_cli_args_test_selection = ["tests/"]
 mutate_only_covered_lines = true
 also_copy = [
-    "cloud/", "docs/", "hardening/", ".github/",
+    # examples/ carries the shipped example extension, which
+    # tests/test_extensions.py loads from the tree.
+    "cloud/", "docs/", "examples/", "hardening/", ".github/",
     # Root manuals. The doc guards locate the tree from the runner
     # package, and mutmut's copy is only source_paths plus this list
     # (plus tests/ and pyproject.toml, which it adds itself). Without

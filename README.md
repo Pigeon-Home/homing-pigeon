@@ -209,6 +209,31 @@ The Oracle ships two confinement capabilities:
 Full spec in PROTOCOL.md (sections 9–12). Oracle fields are optional
 members of a `"v": 1` message. They are not a separate message version.
 
+## Extending the agent: your own senses
+
+Extensions let you teach the agent a new sense without forking it.
+An extension is a folder with a manifest (`extension.json`) that
+declares, in advance, the signals it may send the Oracle — each
+signal named, with a one-line description. That declaration is the
+context the Oracle receives alongside the alerts: a signal the
+manifest does not declare is rejected at ingest and logged, never
+passed through, so the Oracle is never asked to interpret a signal
+nobody defined.
+
+The research loop is the point. Clone the repo, copy the example
+extension, and iterate on your own package — your data, your
+heuristics, your version number, revved as often as you like. The
+extension API the manifest is written against is version 1 and is
+designed to stay there: fields may be added, never removed or
+reinterpreted, so an extension written today keeps loading. An
+extension binds to its own signing key, exactly like the built-in
+senses, and files alerts the Oracle fuses with job activity.
+
+The example is a lab-results sense: it watches a folder where
+experiment runs drop result files and files signals like
+`experiment_finished` and `metric_threshold_crossed` when a run
+lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
+
 ## Layout
 
 - `PROTOCOL.md` — the full wire protocol (message formats, signatures,
