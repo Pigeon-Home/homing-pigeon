@@ -1187,5 +1187,181 @@ class ChatLogTest(unittest.TestCase):
                 self.assertIn("[REDACTED:aws_key]", blob)
 
 
+class HttpAskTest(unittest.TestCase):
+    """POST /ask hands the model the notable line, then logs the answer."""
+
+    def setUp(self):
+        import threading
+        self.base = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self.base, "retained"))
+        R.save_retained(self.base, "jobflag1",
+                        _record(FLAG, stdout=_KEY + "\n"))
+        self.httpd = R.make_oracle_server(
+            {}, "127.0.0.1", 0, base_dir=self.base)
+        self.port = self.httpd.socket.getsockname()[1]
+        self.thread = threading.Thread(
+            target=self.httpd.serve_forever, daemon=True)
+        self.thread.start()
+
+    def tearDown(self):
+        self.httpd.shutdown()
+        self.httpd.server_close()
+
+    def _post(self, question, token=None, origin=True, raw=None):
+        import urllib.error
+        import urllib.request
+        if token is None:
+            token = self.httpd.oracle_token
+        data = raw if raw is not None else json.dumps(
+            {"question": question}).encode("utf-8")
+        headers = {
+            "Content-Type": "application/json",
+            "X-Oracle-Token": token,
+        }
+        if origin:
+            headers["Origin"] = f"http://127.0.0.1:{self.port}"
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{self.port}/ask",
+            data=data, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                return resp.status, json.loads(resp.read().decode())
+        except urllib.error.HTTPError as e:
+            return e.code, e.read().decode()
+
+    def test_the_model_is_handed_the_notable_line(self):
+        seen = {}
+
+        def fake_ask(inf, question, output_text, max_chars, patterns=None,
+                     opener=None, instructions=None, base_dir=None,
+                     progress=None):
+            seen["question"] = question
+            seen["output"] = output_text
+            return {"op": "ask", "answer": "jobflag1 is the one.",
+                    "model": "m"}
+
+        with unittest.mock.patch("runner.runner.ask_model_agent", fake_ask):
+            status, body = self._post("which jobs are malicious?")
+        self.assertEqual(status, 200)
+        self.assertEqual(body, {"answer": "jobflag1 is the one."})
+        self.assertEqual(seen["question"], "which jobs are malicious?")
+        self.assertIn("notable: SUSPICIOUS ACCESS", seen["output"])
+        self.assertIn(_KEY, seen["output"])
+        rec = _chat_lines(self.base)[0]
+        self.assertEqual(rec["answer"], "jobflag1 is the one.")
+        self.assertNotIn(_KEY, json.dumps(rec))
+
+    def test_a_dropped_reply_is_the_sanitization_sentence(self):
+        def fake_ask(*_a, **_k):
+            return {"op": "ask", "rejected": "sanitization"}
+
+        with unittest.mock.patch("runner.runner.ask_model_agent", fake_ask):
+            status, body = self._post("what did it read?")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["rejected"], "sanitization")
+        self.assertIn("protected material", body["detail"])
+        self.assertNotIn(_KEY, json.dumps(body))
+        self.assertNotIn(_KEY, json.dumps(_chat_lines(self.base)[0]))
+
+    def test_empty_and_junk_questions_do_not_ask(self):
+        called = []
+
+        def fake_ask(*_a, **_k):
+            called.append(1)
+            return {"answer": "no"}
+
+        with unittest.mock.patch("runner.runner.ask_model_agent", fake_ask):
+            for question in ("", "   ", 5, None, ["x"]):
+                status, body = self._post(question)
+                self.assertEqual(status, 200, question)
+                self.assertEqual(body.get("detail"), "Ask something first.")
+            status, body = self._post("q", raw=b"not json")
+            self.assertEqual(body.get("detail"), "Ask something first.")
+        self.assertEqual(called, [])
+
+    def test_the_token_and_the_origin_are_required(self):
+        status, _body = self._post("which jobs?", token="nope")
+        self.assertEqual(status, 403)
+        status, _body = self._post("which jobs?", origin=False)
+        self.assertEqual(status, 403)
+
+    def test_a_crashing_model_and_a_crashing_log_still_answer(self):
+        def boom(*_a, **_k):
+            raise RuntimeError("down")
+
+        with unittest.mock.patch("runner.runner.ask_model_agent", boom):
+            status, body = self._post("which jobs are malicious?")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["rejected"], "inference_error")
+
+        def fine(*_a, **_k):
+            return {"answer": "jobflag1 is the one."}
+
+        def log_boom(*_a, **_k):
+            raise RuntimeError("disk")
+
+        with unittest.mock.patch("runner.runner.ask_model_agent", fine), \
+                unittest.mock.patch("runner.runner.record_oracle_turn", log_boom):
+            status, body = self._post("which jobs are malicious?")
+        self.assertEqual(body, {"answer": "jobflag1 is the one."})
+
+    def test_random_questions_all_carry_the_line(self):
+        import random
+        rng = random.Random(321)
+        words = ["which", "jobs", "malicious", "none", "jobflag1", "?"]
+        seen = []
+
+        def fake_ask(inf, question, output_text, max_chars, patterns=None,
+                     opener=None, instructions=None, base_dir=None,
+                     progress=None):
+            seen.append(output_text)
+            return {"answer": "jobflag1 is the one."}
+
+        with unittest.mock.patch("runner.runner.ask_model_agent", fake_ask):
+            for _ in range(12):
+                question = " ".join(rng.choice(words)
+                                    for _ in range(rng.randint(1, 5)))
+                status, body = self._post(question)
+                self.assertEqual(status, 200)
+                self.assertEqual(body["answer"], "jobflag1 is the one.")
+        self.assertEqual(len(seen), 12)
+        for output in seen:
+            self.assertIn("notable: SUSPICIOUS ACCESS", output)
+            self.assertIn(_KEY, output)
+
+    def test_the_handler_rejects_a_bad_request(self):
+        import http.client
+        headers = {
+            "Origin": f"http://127.0.0.1:{self.port}",
+            "X-Oracle-Token": self.httpd.oracle_token,
+            "Content-Type": "application/json",
+        }
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        conn.request("POST", "/nope", b"{}", headers)
+        self.assertEqual(conn.getresponse().status, 404)
+        conn.close()
+
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        bad = dict(headers)
+        bad["Content-Length"] = "nope"
+        conn.request("POST", "/ask", b"", bad)
+        resp = conn.getresponse()
+        body = json.loads(resp.read().decode())
+        conn.close()
+        self.assertEqual(body.get("detail"), "Ask something first.")
+
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        conn.request("POST", "/ask", b"x" * 8001, headers)
+        self.assertEqual(conn.getresponse().status, 400)
+        conn.close()
+
+        def fake(*_a, **_k):
+            return {"rejected": "inference_error", "detail": "disk full"}
+
+        with unittest.mock.patch("runner.runner.ask_model_agent", fake):
+            _status, body = self._post("which jobs are malicious?")
+        self.assertEqual(body["detail"], "disk full")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
