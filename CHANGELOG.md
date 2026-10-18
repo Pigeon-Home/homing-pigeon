@@ -1,5 +1,42 @@
 # Changelog
 
+## 3.7.25 - 2026-10-17
+
+### Features
+
+- `--oracle-cli`: a terminal Oracle chat on the identical ask
+  pipeline as the `--oracle` web window -- same context, same
+  reject table, same `oracle-chat.jsonl` record with open/close
+  events. Questions are capped at 4000 chars; `/quit`, `/exit`,
+  `/help`, EOF, and Ctrl+C end the session; the mailbox setup
+  gate is skipped exactly as with `--oracle`. The model warm-up
+  is shared by both front ends.
+
+### Detection
+
+- Artifact scan build-out: the post-job YARA/ClamAV scan gains a
+  dedicated cross-platform test suite (it was previously covered
+  only inside the Linux-gated tests), and two new built-in YARA
+  rules -- `hp_cred_dump` (T1003.001) and `hp_reverse_shell`
+  (T1071) -- with a consistency test keeping the shipped rules
+  and their ATT&CK tags in agreement. A YARA `error:` line is no
+  longer filed as a hit named "error:".
+
+### Tests
+
+- Flag321: the fake-credential field scenario pinned as unit
+  tests -- the retention contract (a job is retained for the
+  Oracle only when its effective result view is not "full", so a
+  "full" ceiling leaves the Oracle answering from the runner-log
+  tail) and the context contract (the job index lists every
+  retained job; each summary carries the job's script and raw
+  local output).
+
+### Docs
+
+- VR.MD is deleted at the owner's word; ORACLE_DASHBOARD.md
+  stays. Version nicknames are no longer used for behavior.
+
 ## 3.7.24 - 2026-10-17
 
 ### Build
