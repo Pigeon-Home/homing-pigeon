@@ -73,5 +73,32 @@ class UnixVersionSmokeTest(unittest.TestCase):
                           "%s never runs the built installer" % job)
 
 
+class MutationGateTest(unittest.TestCase):
+    """Mutation is release-only (owner's call, 2026-10-17).
+
+    The job takes ~5 minutes and is a signal, not a block, so it is
+    gated on the ref: version tags run it, branch pushes and PRs
+    skip it. The rule lives in build.yml so nobody has to remember
+    to ask for it -- and this test is the proof of work for the
+    change that put it there (verified live on run 39101780439:
+    mutation skipped on a branch push, everything else green).
+    """
+
+    def test_mutation_runs_only_on_version_tags(self):
+        block = _job_block(_workflow(), "mutation")
+        self.assertIn("if: startsWith(github.ref, 'refs/tags/v')", block)
+
+    def test_the_gate_jobs_stay_ungated(self):
+        # The jobs that gate everything else must run on every push;
+        # a stray tag-only condition on one of them would silently
+        # stop branch CI from meaning anything.
+        workflow = _workflow()
+        for job in ("test", "typecheck", "build-linux", "build-macos",
+                    "build-windows", "build-python"):
+            block = _job_block(workflow, job)
+            self.assertNotIn("refs/tags", block,
+                             "%s must not be tag-gated" % job)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
