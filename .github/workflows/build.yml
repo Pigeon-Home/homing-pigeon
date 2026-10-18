@@ -67,7 +67,7 @@ jobs:
       - run: pip install hypothesis
       - run: python -m unittest discover -s tests -t .
       - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
-      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md;pigeon-docs"
+      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md;pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.review --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
       - name: smoke the built windows binaries
         shell: pwsh
@@ -145,8 +145,18 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
-      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs"
+      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.review --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
+      - name: smoke the built linux binaries
+        run: |
+          set -euo pipefail
+          ver=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          out=$(./dist/homing-pigeon --version)
+          echo "$out"
+          case "$out" in *"$ver"*) ;; *) echo "homing-pigeon --version printed '$out', expected $ver"; exit 1;; esac
+          out=$(./dist/install --version)
+          echo "$out"
+          case "$out" in *"$ver"*) ;; *) echo "install --version printed '$out', expected $ver"; exit 1;; esac
       - name: package linux binaries
         run: |
           set -euo pipefail
@@ -172,8 +182,18 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
-      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs"
+      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.review --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
+      - name: smoke the built macos binaries
+        run: |
+          set -euo pipefail
+          ver=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          out=$(./dist/homing-pigeon --version)
+          echo "$out"
+          case "$out" in *"$ver"*) ;; *) echo "homing-pigeon --version printed '$out', expected $ver"; exit 1;; esac
+          out=$(./dist/install --version)
+          echo "$out"
+          case "$out" in *"$ver"*) ;; *) echo "install --version printed '$out', expected $ver"; exit 1;; esac
       - name: package macos binaries
         run: |
           set -euo pipefail
