@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.7.33 - 2026-10-18
+
+### CI
+
+- A failed mutation job no longer fails the whole tag build.
+  The job still shows failed, so the signal stays, but
+  SourceForge and GitLab key off the run conclusion and were
+  skipping a release when only mutation was red (v3.7.29).
+
 ## 3.7.32 - 2026-10-18
 
 ### Oracle
