@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pigeon-home-runner"
-version = "3.7.29"
+version = "3.7.30"
 description = "Self-hosted, email-driven agent: tell your cloud SI to send signed jobs via email that execute on your machine."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -56,4 +56,14 @@ pytest_add_cli_args = [
 ]
 pytest_add_cli_args_test_selection = ["tests/"]
 mutate_only_covered_lines = true
-also_copy = ["cloud/", "docs/", "hardening/", ".github/", "PROTOCOL.md"]
+also_copy = [
+    "cloud/", "docs/", "hardening/", ".github/",
+    # Root manuals. The doc guards locate the tree from the runner
+    # package, and mutmut's copy is only source_paths plus this list
+    # (plus tests/ and pyproject.toml, which it adds itself). Without
+    # these, stats collection dies on "INSTALL.md not found" before
+    # any mutant runs.
+    "AGENTS.md", "CONTRIBUTING.md", "FUTURE.md", "INSTALL.md",
+    "ORACLE_DASHBOARD.md", "PROTOCOL.md", "README.md", "RUNBOOK.md",
+    "SAFEGUARDS.md", "SECURITY.md", "TRANSPORTS.md",
+]

@@ -60,6 +60,22 @@ class NoProviderNameInLiveDocsTest(unittest.TestCase):
                          "PROTOCOL.md", "RUNBOOK.md"):
             self.assertIn(expected, names)
 
+    def test_mutmut_copies_the_root_manuals(self):
+        # mutmut runs the suite from mutants/, which contains the
+        # runner package plus also_copy. The scan above is rooted
+        # there, so a manual missing from also_copy is invisible
+        # and the vacuous check fails the baseline (tag v3.7.29).
+        with open(os.path.join(_root(), "pyproject.toml"),
+                  encoding="utf-8") as fh:
+            text = fh.read()
+        m = re.search(r"also_copy\s*=\s*\[(.*?)\]", text, re.S)
+        self.assertIsNotNone(m, "no also_copy list in pyproject.toml")
+        body = m.group(1)
+        for name in ("README.md", "INSTALL.md", "AGENTS.md",
+                     "PROTOCOL.md", "RUNBOOK.md"):
+            self.assertIn('"%s"' % name, body,
+                          "mutmut will not copy %s" % name)
+
     def test_no_live_doc_names_the_provider(self):
         offenders = {}
         for path in _live_docs():

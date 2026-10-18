@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.7.30 - 2026-10-18
+
+### CI
+
+- Mutation collects a baseline again. The live-doc guard looks for
+  the root manuals next to the runner package, and mutmut's copy of
+  the tree did not include them, so the tag job died on
+  `INSTALL.md not found` before any mutant ran. Those manuals are
+  now part of the mutation copy.
+
 ## 3.7.29 - 2026-10-18
 
 ### Fixes
