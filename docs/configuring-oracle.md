@@ -30,7 +30,7 @@ Everything the dashboard configures must be expressible in `config.json`, and ev
 - `max_result_view` — the narrowest view the runner will ever return (`full`, `redacted`, `summary`, or `attested`). A job can request a narrower view; it can never request a wider one.
 - `max_query_budget` — the most queries that may be answered for any single job. The job's own `query_budget` can only lower this number.
 - `max_queries_per_hour` — rate limit on query follow-ups. Zero means no limit.
-- `output_retention_days` — how long retained outputs are kept for later queries. Default 7.
+- `output_retention_days` — how long retained outputs are kept for later queries. Default 7. Zero (or negative) keeps them indefinitely: nothing is pruned and no retained output is reported expired.
 - `judge` — `off` (default), `advisory` (attach reasons, still run), or `enforce` (block denylisted jobs before execution).
 - `workspace_root` — directory the confinement snapshot treats as the job's allowed workspace. Empty means the snapshot is unconfigured. That snapshot does not stop a write. Linux bubblewrap is a separate switch, `security.modes.confinement`, off by default. See SECURITY.md.
 - `protected_paths` — list of absolute paths the confinement snapshot watches closely. Any create/modify/delete under these paths is reported in the attestation detail even if the overall `confined_to_workspace` verdict is unchanged. Default empty (least restrictive).

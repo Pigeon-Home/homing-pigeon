@@ -2063,8 +2063,9 @@ class LaterQueryTest(unittest.TestCase):
         old = {"saved_at": time.time() - 10 * 86400}
         self.assertFalse(R.retained_expired(fresh, {}))
         self.assertTrue(R.retained_expired(old, {}))
-        # 0 is falsy, so it falls through to the 7-day default.
-        self.assertTrue(R.retained_expired(old, {"output_retention_days": 0}))
+        # 0 is explicit: it disables expiry, and prune_retained
+        # agrees (it prunes nothing at 0).
+        self.assertFalse(R.retained_expired(old, {"output_retention_days": 0}))
         self.assertFalse(R.retained_expired(
             old, {"output_retention_days": -1}))
         self.assertTrue(R.retained_expired({"saved_at": "nope"}, {}))

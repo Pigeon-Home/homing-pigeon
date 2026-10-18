@@ -242,17 +242,97 @@ class RetainedExpiredTest(unittest.TestCase):
         self.assertTrue(R.retained_expired(old, {}))
         self.assertFalse(R.retained_expired(fresh, {}))
 
-    def test_zero_days_fall_back_to_seven_and_negative_never_expires(self):
-        # The `or 7` default idiom swallows an explicit 0 before the
-        # days <= 0 check runs, so 0 behaves as the 7-day default;
-        # only a negative value reaches the never-expire branch.
-        # (prune_retained treats 0 as "prune nothing" -- the two
-        # readers of the retention window disagree about 0.)
+    def test_zero_days_means_no_expiry(self):
+        # 0 is the operator turning retention off: no record is too
+        # old. (The two readers of this key once disagreed about 0 --
+        # retained_expired read it as the 7-day default through the
+        # `or 7` idiom while prune_retained read it as "prune
+        # nothing". Both now take the window from _retention_days.)
+        for age_days in (0, 7, 8, 365):
+            record = {"saved_at": self.NOW - age_days * 86400}
+            self.assertFalse(R.retained_expired(
+                record, {"output_retention_days": 0}),
+                f"age {age_days}d must not expire at 0 days")
+        self.assertFalse(R.retained_expired(
+            {"saved_at": 1}, {"output_retention_days": 0}))
+
+    def test_negative_days_never_expire(self):
         ancient = {"saved_at": 1}
-        self.assertTrue(R.retained_expired(
-            ancient, {"output_retention_days": 0}))
         self.assertFalse(R.retained_expired(
             ancient, {"output_retention_days": -5}))
+        self.assertFalse(R.retained_expired(
+            ancient, {"output_retention_days": -1}))
+
+    def test_zero_as_a_string_means_no_expiry(self):
+        ancient = {"saved_at": 1}
+        self.assertFalse(R.retained_expired(
+            ancient, {"output_retention_days": "0"}))
+
+    def test_absent_and_none_days_use_the_seven_day_default(self):
+        old = {"saved_at": self.NOW - 8 * 86400}
+        fresh = {"saved_at": self.NOW - 6 * 86400}
+        for cfg in ({}, {"output_retention_days": None}):
+            self.assertTrue(R.retained_expired(old, cfg))
+            self.assertFalse(R.retained_expired(fresh, cfg))
+
+    def test_retention_days_reading(self):
+        # The shared reader's table: absent/None/garbage fall back
+        # to 7; explicit values pass through, 0 and negatives
+        # included.
+        cases = [
+            ({}, 7),
+            ({"output_retention_days": None}, 7),
+            ({"output_retention_days": "soon"}, 7),
+            ({"output_retention_days": float("inf")}, 7),
+            ({"output_retention_days": float("nan")}, 7),
+            ({"output_retention_days": 7}, 7),
+            ({"output_retention_days": 3}, 3),
+            ({"output_retention_days": "3"}, 3),
+            ({"output_retention_days": 0}, 0),
+            ({"output_retention_days": "0"}, 0),
+            ({"output_retention_days": -5}, -5),
+            (None, 7),
+            ("nope", 7),
+        ]
+        for cfg, expected in cases:
+            self.assertEqual(R._retention_days(cfg), expected, repr(cfg))
+
+    def test_expired_and_prune_agree_about_zero(self):
+        # The agreement itself, through the production path: the
+        # window poll_once derives from the config feeds
+        # prune_retained, and retained_expired reads the same
+        # config. At 0, neither reader may drop a record, at any age.
+        cfg = {"output_retention_days": 0}
+        with tempfile.TemporaryDirectory() as base:
+            rdir = os.path.join(base, "retained")
+            os.makedirs(rdir)
+            for age_days in (0, 7, 8, 365):
+                name = f"job{age_days}.json"
+                path = os.path.join(rdir, name)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write("{}")
+                when = time.time() - age_days * 86400
+                os.utime(path, (when, when))
+                record = {"saved_at": when}
+                self.assertFalse(R.retained_expired(record, cfg))
+            self.assertEqual(
+                R.prune_retained(base, R._retention_days(cfg)), 0)
+            self.assertEqual(len(os.listdir(rdir)), 4)
+
+    def test_expired_and_prune_agree_about_a_positive_window(self):
+        cfg = {"output_retention_days": 7}
+        with tempfile.TemporaryDirectory() as base:
+            rdir = os.path.join(base, "retained")
+            os.makedirs(rdir)
+            path = os.path.join(rdir, "old.json")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("{}")
+            when = time.time() - 8 * 86400
+            os.utime(path, (when, when))
+            self.assertTrue(R.retained_expired({"saved_at": when}, cfg))
+            self.assertEqual(
+                R.prune_retained(base, R._retention_days(cfg)), 1)
+            self.assertFalse(os.path.exists(path))
 
     def test_garbage_days_fall_back_to_seven(self):
         old = {"saved_at": self.NOW - 8 * 86400}

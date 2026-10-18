@@ -374,9 +374,11 @@ class RetainedEdgeTest(unittest.TestCase):
         old = {"saved_at": time.time() - 10 * 86400}
         self.assertFalse(retained_expired(fresh, {"output_retention_days": 7}))
         self.assertTrue(retained_expired(old, {"output_retention_days": 7}))
-        # 0 is falsy, so retained_expired falls back to the 7 day default.
-        self.assertTrue(retained_expired(old, {"output_retention_days": 0}))
-        # A negative value is explicit and disables expiry.
+        # 0 is explicit: it disables expiry, and prune_retained
+        # agrees (it prunes nothing at 0). The two readers of the
+        # key once disagreed about 0; they now share one reading.
+        self.assertFalse(retained_expired(old, {"output_retention_days": 0}))
+        # A negative value also disables expiry.
         self.assertFalse(retained_expired(old, {"output_retention_days": -1}))
         self.assertTrue(retained_expired({"saved_at": "yesterday"}, {}))
         self.assertTrue(retained_expired({}, {}))

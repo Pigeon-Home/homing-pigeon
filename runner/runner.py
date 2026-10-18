@@ -3079,6 +3079,29 @@ def budget_status(path, cfg):
     return out
 
 
+def _retention_days(cfg):
+    """The output_retention_days window, read once for every reader.
+
+    Absent, None, or unparseable values fall back to 7. An explicit
+    0 or negative value is returned as-is and means no expiry: a
+    record is never too old, and prune_retained deletes nothing.
+    Every reader of the key takes the window from here --
+    retained_expired and the prune call in poll_once. (The two once
+    disagreed about 0: `int(cfg.get(...) or 7)` swallowed an
+    explicit 0 into the 7-day default while prune_retained read 0
+    as "prune nothing".)
+    """
+    if not isinstance(cfg, dict):
+        return 7
+    raw = cfg.get("output_retention_days")
+    if raw is None:
+        return 7
+    try:
+        return int(raw)
+    except (TypeError, ValueError, OverflowError):
+        return 7
+
+
 def prune_retained(base_dir, days):
     """Delete retained outputs older than output_retention_days."""
     if not isinstance(base_dir, str) or not base_dir:
@@ -3190,13 +3213,14 @@ def load_retained(base_dir, job_id):
 
 
 def retained_expired(data, cfg):
-    """True when saved_at is older than output_retention_days."""
+    """True when saved_at is older than output_retention_days.
+
+    A window of 0 or less never expires -- 0 is the operator turning
+    retention off, and prune_retained agrees (it prunes nothing).
+    """
     if not isinstance(data, dict) or not isinstance(cfg, dict):
         return True
-    try:
-        days = int(cfg.get("output_retention_days") or 7)
-    except (TypeError, ValueError, OverflowError):
-        days = 7
+    days = _retention_days(cfg)
     if days <= 0:
         return False
     try:
@@ -5370,10 +5394,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     # as-is.
     secrets = build_secrets(cfg)
     key_policies = build_key_policies(cfg)
-    try:
-        retain_days = int(cfg.get("output_retention_days") or 7)
-    except (TypeError, ValueError, OverflowError):
-        retain_days = 7
+    retain_days = _retention_days(cfg)
     prune_retained(base_dir, retain_days)
     # Built-in resource monitor: on by default. Threshold crossings
     # become security events for the DRI trigger evaluation.
