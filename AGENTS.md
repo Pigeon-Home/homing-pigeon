@@ -6,7 +6,7 @@ There are two sides. They do not share credentials.
 
 | Side | Who | How it talks to mail | What it must never do |
 |------|-----|----------------------|------------------------|
-| **Cloud SI** (this agent, Grok, or any assistant) | Holds a connected mail account | The mail connector (currently Gmail: `gmail_send_message`, `gmail_search`, `gmail_get_message`) | Ask the user for a mailbox login or password. Paste credentials into chat. Store an app password. |
+| **Cloud SI** (this agent, Grok, or any assistant) | Holds a connected mail account | The connector currently email: `gmail_send_message`, `gmail_search`, `gmail_get_message`) | Ask the user for a mailbox login or password. Paste credentials into chat. Store an app password. |
 | **Runner** (homing-pigeon on the host) | Dedicated throwaway mailbox | IMAP + SMTP with an app password in `config.json` on that machine | Be given the user's personal inbox. Trust the From header (signatures only). |
 
 The connector is already authenticated. The SI uses it. The runner keeps using IMAP. That is the whole design.
@@ -86,7 +86,7 @@ The connector is attached to a personal mail account. Rules:
 
 ## Current connector
 
-The connector is currently Gmail. The connected send-as address is the primary account on it. Jobs the SI sends come from that address. The runner accepts signed jobs from any sender; the signature is the only gate.
+The connected send-as address is the primary account on it. Jobs the SI sends come from that address. The runner accepts signed jobs from any sender; the signature is the only gate.
 
 ## Platform-safe job construction (real failure)
 
