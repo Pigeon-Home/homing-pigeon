@@ -99,6 +99,19 @@ class DiscoveryCountsTest(unittest.TestCase):
         # silently vanishing from every shard.
         self.assertEqual(counts.get("test_broken"), 1)
 
+    def test_a_second_tree_may_reuse_the_module_name(self):
+        # Discover caches imports in this process. Two temp trees
+        # both named test_alpha must both count; the second must
+        # not die with "incorrectly imported".
+        with tempfile.TemporaryDirectory() as a:
+            _write(a, "test_alpha.py", _PASS)
+            first = rtp.module_test_counts(a, a)
+        with tempfile.TemporaryDirectory() as b:
+            _write(b, "test_alpha.py", _PASS2)
+            second = rtp.module_test_counts(b, b)
+        self.assertEqual(first.get("test_alpha"), 1)
+        self.assertEqual(second.get("test_alpha"), 2)
+
 
 class MainContractTest(unittest.TestCase):
     def test_zero_discovered_is_an_error_not_a_green(self):

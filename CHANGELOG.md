@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.7.36 - 2026-10-18
 
 ### Security
 
@@ -12,6 +12,15 @@
   flag value riding back into the payload inside a quoted
   historical reply in the log tail. runner.log itself keeps
   everything, unchanged -- only the context feed is scrubbed.
+
+### CI
+
+- Mutation can count the sharded suite more than once in one
+  process. unittest discover caches an imported module by name,
+  and the stats run and the clean run share that process, so
+  the second discover of `test_alpha` died with "incorrectly
+  imported" on the v3.7.35 tag. Names a count added are dropped
+  when the count returns.
 
 ## 3.7.35 - 2026-10-18
 

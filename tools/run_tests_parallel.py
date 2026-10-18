@@ -47,25 +47,36 @@ def module_test_counts(start_dir, top_level_dir):
     the parent quietly dropping the module from every shard.
     """
     loader = unittest.TestLoader()
-    suite = loader.discover(start_dir, top_level_dir=top_level_dir)
-    counts = {}
-    failed_prefix = "unittest.loader._FailedTest."
+    # Discover imports every module it finds into this process.
+    # A later discover of another tree that reuses a module name
+    # (the tests do this with test_alpha) raises ImportError
+    # unless those imports are dropped. The v3.7.35 tag's clean
+    # run hit that after stats left the import cached.
+    before = set(sys.modules)
+    try:
+        suite = loader.discover(start_dir, top_level_dir=top_level_dir)
+        counts = {}
+        failed_prefix = "unittest.loader._FailedTest."
 
-    def walk(node):
-        for item in node:
-            if isinstance(item, unittest.TestSuite):
-                walk(item)
-            elif isinstance(item, unittest.loader._FailedTest):
-                mod = item.id()
-                if mod.startswith(failed_prefix):
-                    mod = mod[len(failed_prefix):]
-                counts[mod] = counts.get(mod, 0) + 1
-            else:
-                mod = type(item).__module__
-                counts[mod] = counts.get(mod, 0) + 1
+        def walk(node):
+            for item in node:
+                if isinstance(item, unittest.TestSuite):
+                    walk(item)
+                elif isinstance(item, unittest.loader._FailedTest):
+                    mod = item.id()
+                    if mod.startswith(failed_prefix):
+                        mod = mod[len(failed_prefix):]
+                    counts[mod] = counts.get(mod, 0) + 1
+                else:
+                    mod = type(item).__module__
+                    counts[mod] = counts.get(mod, 0) + 1
 
-    walk(suite)
-    return counts
+        walk(suite)
+        return counts
+    finally:
+        for name in list(sys.modules):
+            if name not in before:
+                sys.modules.pop(name, None)
 
 
 def shard_modules(counts, jobs):
