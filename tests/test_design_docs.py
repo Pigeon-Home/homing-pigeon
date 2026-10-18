@@ -22,7 +22,7 @@ class DesignDocsTest(unittest.TestCase):
             self.assertTrue(os.path.exists(path), name)
             with open(path, encoding="utf-8") as fh:
                 text = fh.read()
-            self.assertIn("Design only. Not implemented.", text, name)
+            self.assertIn("Not built. See FUTURE.md.", text, name)
 
     def test_no_code_implements_them(self):
         # If these ever get implemented, this test should be updated
