@@ -14,6 +14,10 @@
   macOS smoke the built binaries' --version (only Windows did),
   and a guard test keeps the hidden imports in sync with the
   loader.
+- Dependency bumps folded in (Dependabot): GitHub Actions
+  (setup-python 7, download-artifact 8, action-gh-release 3,
+  dependency-review-action 5, docker/login-action 4), and the
+  Docker base image moves to python:3.14-slim.
 
 ### Hardening
 
