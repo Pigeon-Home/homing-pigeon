@@ -24,10 +24,20 @@ Ideas...
   extension -- no second (v2) document is needed for it,
   and neither version axis moves: the protocol stays
   version 1 and the application version keeps its own
-  cadence. In the software it ships behind a command-line
-  parameter (opt-in, default off) so anyone who wants it
-  can turn it on while the spec text matures -- the
-  feature-flag-ahead-of-standardization pattern.
+  cadence.
+  Default posture (Andrew, 2026-10-19, reversing the
+  usual feature-flag pattern): encryption is ON BY
+  DEFAULT in the software. A command-line parameter
+  turns it off -- clear text -- for anyone who wants the
+  old behavior. The parameter doubles as the interop
+  escape: a sender talking to a runner too old to read
+  encrypted jobs uses it to drop to clear text
+  deliberately, never silently. When this ships, the
+  default install's confidentiality story flips, and the
+  documentation sweep that revises the claims (above)
+  covers README, TRANSPORTS.md, and the configuring docs
+  in the same change -- live docs describe shipped state,
+  so until the build lands, this entry is the record.
 
 ## The pipe
 
