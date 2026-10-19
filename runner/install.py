@@ -1444,15 +1444,50 @@ def apply_instruction_flags(cfg_path: str, replace, add) -> None:
         set_instructions(cfg_path, replace, append=False)
 
 
+# A release archive can bake in its default profile: the staged
+# tree carries this marker file next to the installer, naming the
+# profile to apply when the user names none. The pi-light archive
+# ships one (its content is "pi-light"); the ordinary archives and
+# the source tree carry none, so their defaults are exactly what
+# they were before the marker existed.
+PROFILE_MARKER = "default_profile"
+
+
+def _bundled_default_profile(src_dir=None):
+    """Profile named by the default_profile marker, or None.
+
+    The marker lives beside the installer, in its own directory:
+    the extracted archive folder for the release binary, runner/
+    for a source checkout. Only a known built-in profile name is
+    honored; a missing, empty, or unknown marker changes nothing.
+    """
+    if src_dir is None:
+        src_dir = _src_dir()
+    try:
+        with open(os.path.join(src_dir, PROFILE_MARKER),
+                  encoding="utf-8") as fh:
+            name = fh.read().strip()
+    except Exception:
+        return None
+    if name in BUILTIN_PROFILES:
+        return name
+    return None
+
+
 def chosen_profile(explicit, skip: bool):
     """Profile name or path to apply. None when --no-profile is set.
 
-    An explicit --profile wins. Otherwise detect_default_profile() picks.
+    An explicit --profile wins. Otherwise the archive's bundled
+    default (the default_profile marker), if it carries one.
+    Otherwise detect_default_profile() picks.
     """
     if skip:
         return None
     if explicit:
         return explicit
+    bundled = _bundled_default_profile()
+    if bundled:
+        return bundled
     return detect_default_profile()
 
 
