@@ -434,6 +434,7 @@ class PackageFetchTest(unittest.TestCase):
                 self.assertTrue(inst.install_ollama_and_model(
                     cfg, "qwen3:1.7b", False))
             self.assertEqual(cmds[0][0], "winget")
+            self.assertEqual(cmds[0][3], "Ollama.Ollama")
 
     def test_the_bpf_and_service_probes_fail_closed(self):
         with mock.patch.object(inst.subprocess, "run",

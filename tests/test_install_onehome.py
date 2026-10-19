@@ -386,6 +386,12 @@ class LogsTest(unittest.TestCase):
             out = buf.getvalue().splitlines()
             self.assertEqual(len(out), 10)
             self.assertEqual(out[-1], "log line 59")
+            buf2 = io.StringIO()
+            with redirect_stdout(buf2):
+                self.assertEqual(do_logs(cfg), 0)
+            default = buf2.getvalue().splitlines()
+            self.assertEqual(len(default), 50)
+            self.assertEqual(default[-1], "log line 59")
 
     def test_log_path_defaults_next_to_config(self):
         with tempfile.TemporaryDirectory() as t:

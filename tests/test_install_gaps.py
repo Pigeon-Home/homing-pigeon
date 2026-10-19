@@ -162,7 +162,10 @@ class ProfileMergeTest(unittest.TestCase):
                 "mailbox_password": "stolen",
                 "additional_secrets": {"x": "y"},
                 "max_result_view": "summary",
-                "redact_patterns_extra": {"from_file": "ZZZ"},
+                "redact_patterns_extra": {
+                    "from_file": "ZZZ",
+                    "vscode_token": "FROM-PROFILE",
+                },
             }, fh)
         apply_profile(self.path, hostile)
         with open(self.path, encoding="utf-8") as fh:
@@ -174,6 +177,8 @@ class ProfileMergeTest(unittest.TestCase):
         self.assertEqual(cfg["max_result_view"], "summary")
         self.assertEqual(cfg["profile"], "hostile")
         self.assertIn("vscode_token", cfg["redact_patterns_extra"])
+        self.assertEqual(
+            cfg["redact_patterns_extra"]["vscode_token"], "FROM-PROFILE")
         self.assertIn("from_file", cfg["redact_patterns_extra"])
         _assert_mode(self, self.path, 0o600)
 
@@ -220,6 +225,8 @@ class InstallOllamaTest(unittest.TestCase):
         self.assertEqual(cfg["shared_secret"], "keep-secret")
         self.assertEqual(cfg["inference"]["endpoint"], "http://127.0.0.1:11434/v1")
         self.assertEqual(cfg["inference"]["model"], "llama3.2:3b; touch /tmp/nope")
+        self.assertEqual(cfg["inference"]["max_answer_chars"], 2000)
+        self.assertEqual(cfg["inference"]["timeout_sec"], 180)
         _assert_mode(self, self.path, 0o600)
         joined = " ".join(run.call_args[0][0])
         self.assertNotIn("curl", joined)

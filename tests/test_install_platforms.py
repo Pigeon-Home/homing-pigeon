@@ -372,6 +372,7 @@ class DarwinPackageEnvTest(unittest.TestCase):
         self.assertIn("/var/osquery/osquery.conf", pkg.files)
         self.assertEqual(launched[0][0], "launchctl")
         self.assertEqual(launched[0][1], "bootout")
+        self.assertEqual(launched[0][2], "system")
 
     def test_no_brew_and_no_channel_are_reported(self):
         with mock.patch.object(inst.shutil, "which", return_value=None):
@@ -399,6 +400,8 @@ class WindowsPackageEnvTest(unittest.TestCase):
         self.assertIn("light pack", line)
         self.assertEqual(pkg.cmds[0][:4],
                          ["winget", "install", "--id", "osquery.osquery"])
+        self.assertTrue(any(
+            "Restart-Service osqueryd" in " ".join(c) for c in pkg.cmds))
         home = r"C:\Program Files\osquery"
         self.assertIn(os.path.join(home, "osquery.conf"), pkg.files)
 
@@ -681,14 +684,20 @@ class SecretAndOllamaEnvTest(unittest.TestCase):
                     mock.patch.object(inst.sys, "platform", "darwin"):
                 self.assertFalse(inst.install_ollama_and_model(
                     cfg, "m", False))
+            seen = []
+
+            def brew(cmd, **_k):
+                seen.append(list(cmd))
+                raise RuntimeError("brew")
+
             with mock.patch.object(inst, "_ollama_bin", return_value=None), \
                     mock.patch.object(inst, "_which",
                                       return_value="/usr/bin/brew"), \
-                    mock.patch.object(inst, "run",
-                                      side_effect=RuntimeError("brew")), \
+                    mock.patch.object(inst, "run", brew), \
                     mock.patch.object(inst.sys, "platform", "darwin"):
                 self.assertFalse(inst.install_ollama_and_model(
                     cfg, "m", False))
+            self.assertEqual(seen, [["brew", "install", "ollama"]])
             with mock.patch.object(inst, "_ollama_bin", return_value=None), \
                     mock.patch.object(inst, "_which", return_value=None), \
                     mock.patch.object(inst.sys, "platform", "win32"):
