@@ -15,8 +15,17 @@ What the surface changes (apply_surface):
 
   identity    os.name -> "nt", sys.platform -> "win32",
               platform.system()/release()/version()/machine()
-              -> Windows / 10 / 10.0.22621 / AMD64,
-              os.sep -> "\\", os.altsep -> "/".
+              -> Windows / 10 / 10.0.22621 / AMD64.
+              os.sep is deliberately NOT patched: it must stay
+              consistent with os.path (posixpath here, ntpath on
+              a real Windows interpreter). Product code builds
+              `root + os.sep` prefixes and compares them with
+              os.path results (the runner's protected-path and
+              state-dir checks); patching sep without ntpath
+              manufactures mismatches that occur on neither real
+              platform -- the first full-suite sim run produced a
+              whole cluster of exactly those false failures
+              ("path leaves the state dir").
   absence     Attributes a Windows interpreter does not have are
               deleted for the duration: os.sysconf,
               os.getloadavg, os.fork, os.posix_spawn,
@@ -81,8 +90,6 @@ import sys
 _IDENTITY = {
     "os.name": "nt",
     "sys.platform": "win32",
-    "os.sep": "\\",
-    "os.altsep": "/",
 }
 
 _PLATFORM_FUNCS = {
@@ -166,6 +173,9 @@ def surface_description():
         "not_simulated": [
             "os.path separator semantics (ntpath rebinding would "
             "corrupt the test harness's own filesystem use)",
+            "os.sep/os.altsep (kept consistent with the unpatched "
+            "os.path; patching sep alone manufactures prefix "
+            "mismatches that occur on neither real platform)",
             "/proc absence (platform dispatch, which IS "
             "simulated, is what steers product code away)",
             "os.linesep",
@@ -195,8 +205,6 @@ def apply_surface():
     try:
         _set(os, "name", _IDENTITY["os.name"])
         _set(sys, "platform", _IDENTITY["sys.platform"])
-        _set(os, "sep", _IDENTITY["os.sep"])
-        _set(os, "altsep", _IDENTITY["os.altsep"])
         for func_name, result in _PLATFORM_FUNCS.items():
             _set(platform, func_name, (lambda r: lambda *a, **k: r)(result))
         for attr in _ABSENT:
