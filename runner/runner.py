@@ -6291,6 +6291,78 @@ def _worker_count(cfg, opts) -> int:
     return max(1, min(n, 32))
 
 
+# --- one-process CLI overrides ----------------------------------------------
+#
+# Every flag in this table replaces one config value for this
+# process only. config.json is never rewritten, and main() pins
+# the applied keys so a hot reload of config.json cannot undo a
+# flag mid-run. The families mirror the config file's own shape:
+# polling and timeouts, freshness and retention, query budgets,
+# modes, local signals, and the log bounds.
+
+_CLI_OVERRIDES = (
+    # (argparse dest, config key)
+    ("poll_interval", "poll_interval_sec"),
+    ("timeout", "default_timeout_sec"),
+    ("max_output_bytes", "max_output_bytes"),
+    ("max_job_age", "max_job_age_sec"),
+    ("retention_days", "output_retention_days"),
+    ("task_timeout", "task_timeout"),
+    ("max_query_budget", "max_query_budget"),
+    ("max_queries_per_hour", "max_queries_per_hour"),
+    ("max_result_view", "max_result_view"),
+    ("judge", "judge"),
+    ("dag_mode", "dag_mode"),
+    ("oracle_mode", "oracle_mode"),
+    ("oracle_opinion", "oracle_opinion_mode"),
+    ("require_review", "require_review"),
+    ("local_signals", "local_signals"),
+    ("local_signal_port", "local_signal_port"),
+    ("wake_cooldown", "local_wake_cooldown_sec"),
+    ("log_max_bytes", "log_max_bytes"),
+    ("log_backups", "log_backups"),
+    ("oracle_log", "oracle_log"),
+)
+
+# Dests whose value must be a non-negative whole number. The
+# readers clamp most of these anyway; rejecting a negative here
+# keeps a typo on the command line from becoming a silent edit.
+_CLI_OVERRIDE_COUNTS = frozenset(
+    dest for dest, _key in _CLI_OVERRIDES
+    if dest not in ("max_result_view", "judge", "dag_mode",
+                    "oracle_mode", "require_review", "local_signals",
+                    "oracle_log"))
+
+
+def apply_cli_overrides(cfg, args) -> list:
+    """Apply the one-process CLI overrides to cfg, in place.
+
+    Returns the config keys that were set (main() pins them).
+    Raises ValueError on a value that cannot mean anything, so a
+    bad flag is a startup error, not a surprise at poll time.
+    """
+    applied = []
+    if not isinstance(cfg, dict):
+        return applied
+    for dest, key in _CLI_OVERRIDES:
+        val = getattr(args, dest, None)
+        if val is None:
+            continue
+        if dest in _CLI_OVERRIDE_COUNTS:
+            if not isinstance(val, int) or isinstance(val, bool) \
+                    or val < 0:
+                raise ValueError(
+                    f"--{dest.replace('_', '-')} must be a whole "
+                    f"number >= 0 (got {val!r})")
+            if dest == "local_signal_port" and val > 65535:
+                raise ValueError(
+                    "--local-signal-port must be <= 65535 "
+                    f"(got {val})")
+        cfg[key] = val
+        applied.append(key)
+    return applied
+
+
 # Env vars the runner itself uses for credentials. Never leak these into
 # job subprocesses: a job can print its environment, and job output goes
 # back to the SI.
@@ -9218,6 +9290,96 @@ def main() -> int:
     ap.add_argument("--posture", action="store_true",
                     help="report the runner's security posture and "
                          "exit; no mailbox needed")
+    # One-process overrides, one flag per config key (see
+    # apply_cli_overrides). Each replaces the config value for
+    # this process only; config.json is never rewritten.
+    ap.add_argument("--max-job-age", type=int, default=None,
+                    metavar="SECONDS",
+                    help="reject jobs older than this many seconds "
+                         "(overrides config max_job_age_sec; "
+                         "default 3600)")
+    ap.add_argument("--retention-days", type=int, default=None,
+                    metavar="DAYS",
+                    help="keep retained job outputs this many days "
+                         "(overrides config output_retention_days; "
+                         "default 7; 0 keeps them forever)")
+    ap.add_argument("--task-timeout", type=int, default=None,
+                    metavar="SECONDS",
+                    help="seconds before a claimed board task "
+                         "returns to open (overrides config "
+                         "task_timeout; default 86400)")
+    ap.add_argument("--max-query-budget", type=int, default=None,
+                    metavar="COUNT",
+                    help="most follow-up queries answered for one "
+                         "job (overrides config max_query_budget; "
+                         "default 8)")
+    ap.add_argument("--max-queries-per-hour", type=int, default=None,
+                    metavar="COUNT",
+                    help="rate limit on follow-up queries "
+                         "(overrides config max_queries_per_hour; "
+                         "default 0 = no limit)")
+    ap.add_argument("--max-result-view",
+                    choices=["full", "redacted", "summary", "attested"],
+                    default=None, metavar="MODE",
+                    help="narrowest result view the runner will "
+                         "return (overrides config max_result_view)")
+    ap.add_argument("--judge", choices=["off", "advisory", "enforce"],
+                    default=None, metavar="MODE",
+                    help="pre-execution judge mode (overrides "
+                         "config judge)")
+    ap.add_argument("--dag-mode",
+                    choices=["off", "advisory", "enforce"],
+                    default=None, metavar="MODE",
+                    help="board dependency mode (overrides config "
+                         "dag_mode)")
+    ap.add_argument("--oracle-mode",
+                    choices=["llm", "deterministic"],
+                    default=None, metavar="MODE",
+                    help="Oracle mode (overrides config "
+                         "oracle_mode; deterministic is the Pi "
+                         "Light mode: no model is called)")
+    ap.add_argument("--require-review", action="store_true",
+                    default=None,
+                    help="completed board tasks wait for review "
+                         "(overrides config require_review)")
+    ap.add_argument("--no-require-review", action="store_false",
+                    dest="require_review",
+                    help="completed board tasks finish without "
+                         "review (overrides --require-review and "
+                         "config)")
+    ap.add_argument("--local-signals", action="store_true",
+                    default=None,
+                    help="accept signed local signals on this box "
+                         "(overrides config local_signals)")
+    ap.add_argument("--no-local-signals", action="store_false",
+                    dest="local_signals",
+                    help="do not accept local signals (overrides "
+                         "--local-signals and config)")
+    ap.add_argument("--local-signal-port", type=int, default=None,
+                    metavar="PORT",
+                    help="loopback port for direct local signals "
+                         "(overrides config local_signal_port; "
+                         "default 39271; 0 turns the listener off)")
+    ap.add_argument("--wake-cooldown", type=int, default=None,
+                    metavar="SECONDS",
+                    help="minimum seconds between Oracle wake "
+                         "briefings (overrides config "
+                         "local_wake_cooldown_sec; default 900)")
+    ap.add_argument("--log-max-bytes", type=int, default=None,
+                    metavar="BYTES",
+                    help="rotate runner.log at this size (overrides "
+                         "config log_max_bytes; default 33554432)")
+    ap.add_argument("--log-backups", type=int, default=None,
+                    metavar="COUNT",
+                    help="rotated runner.log files to keep "
+                         "(overrides config log_backups; default 4)")
+    ap.add_argument("--oracle-log", action="store_true", default=None,
+                    help="record full inference exchanges in "
+                         "oracle.log (overrides config oracle_log)")
+    ap.add_argument("--no-oracle-log", action="store_false",
+                    dest="oracle_log",
+                    help="do not write oracle.log (overrides "
+                         "--oracle-log and config)")
     args = ap.parse_args()
 
     if args.workers is not None and args.workers < 1:
@@ -9324,6 +9486,16 @@ def main() -> int:
         if not inf.get("endpoint"):
             inf["endpoint"] = "http://127.0.0.1:11434/v1"
         log("inference: --faster, using qwen2.5:3b")
+    # One-process CLI overrides land before the log bounds load,
+    # so the logging family (--log-max-bytes, --log-backups,
+    # --oracle-log) takes effect for this process too. The keys
+    # are pinned further down, next to the poll loop, so a hot
+    # reload cannot undo a flag.
+    try:
+        overridden = apply_cli_overrides(cfg, args)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
     # Log bounds (and the oracle.log switch) load before any daemon
     # is spawned, so a spawned daemon can write into oracle.log.
     _refresh_log_settings(cfg, _base_dir_for(cfg, args.config))
@@ -9346,17 +9518,8 @@ def main() -> int:
     except RuntimeError as e:
         print(e, file=sys.stderr)
         return 2
-    # CLI overrides config.
-    if args.oracle_opinion is not None:
-        cfg["oracle_opinion_mode"] = args.oracle_opinion
-        log(f"oracle opinion: --oracle-opinion, latitude "
-            f"{args.oracle_opinion} for this process")
-    if args.poll_interval is not None:
-        cfg["poll_interval_sec"] = args.poll_interval
-    if args.max_output_bytes is not None:
-        cfg["max_output_bytes"] = args.max_output_bytes
-    if args.timeout is not None:
-        cfg["default_timeout_sec"] = args.timeout
+    # CLI overrides were applied to cfg above, before the log
+    # bounds loaded; `overridden` names the keys they set.
     global _VERBOSE
     _VERBOSE = args.verbose
     base_dir = _base_dir_for(cfg, args.config)
@@ -9383,13 +9546,7 @@ def main() -> int:
     # Connection credentials (mailbox_user/password, oauth_*) are not
     # hot. Those still need a restart. CLI flags pin their key so a
     # later edit of config.json cannot silently undo them.
-    pinned = set()
-    if args.poll_interval is not None:
-        pinned.add("poll_interval_sec")
-    if args.max_output_bytes is not None:
-        pinned.add("max_output_bytes")
-    if args.timeout is not None:
-        pinned.add("default_timeout_sec")
+    pinned = set(overridden)
     if args.workers is not None:
         pinned.add("workers")
     reload_state = {"mtime": os.path.getmtime(args.config)}
