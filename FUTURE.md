@@ -10,6 +10,18 @@ Ideas...
 
 ## The pipe
 
+- DTLS/TLS with the shared secret as an external pre-shared
+  key (PSK): a future direct binding (DTLS 1.3, RFC 9147;
+  connection ID so NAT rebinding does not kill the session)
+  where the channel itself provides confidentiality and
+  authentication. The existing 128-bit entropy floor already
+  sizes the secret for PSK use. On such a binding the HMAC
+  becomes defense in depth rather than the sole gate. The
+  hop caveat survives: anywhere a store-and-forward
+  intermediary terminates the channel, confidentiality ends
+  at that hop (Section 16.2 of the draft). Channel security
+  is not delivery -- the result/ack flow is unchanged.
+
 - Cloudflare Queues: The design notes are TRANSPORTS.md
 
 ## Before a job runs
