@@ -27,12 +27,7 @@ IETF Homing Pigeon Draft: https://github.com/Pigeon-Home/homing-pigeon/blob/main
 > control** of the machine to whoever holds the shared secret. The
 > runner verifies a message's signature and then executes what the
 > signed job says, as a privileged user — it can install software,
-> read files, add users, and pivot to your network. That is the
-> product working as designed, so treat it that way: keep the secret
-> like a password, use a dedicated throwaway mail account, install
-> only on machines you own and operate, and review PROTOCOL.md
-> before you deploy. The threat model is stated once, here; the
-> long form is [docs/threat-model.md](docs/threat-model.md).
+> read files, add users, and pivot to your network.
 
 ## What this is for
 
