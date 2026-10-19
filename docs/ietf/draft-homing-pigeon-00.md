@@ -1,6 +1,6 @@
 # draft-homing-pigeon-00
 
-Homing Pigeon Message Protocol, Versions 1 and 2
+Homing Pigeon Message Protocol, Version 1
 
 Workgroup: Individual
 Intended status: Informational
@@ -9,13 +9,13 @@ Author: Pigeon-Home (editor)
 
 This document is not an IETF standard and is not the product of a working group. Publication as an RFC, if it happens, would be on the Independent Stream.
 
-This document specifies both versions of the protocol in a single text: Part I specifies version 1 (the on-wire messages, the receiver checks, and the store-and-forward bindings) and Part II specifies version 2 (a direct DTLS session binding for the same messages). An earlier text of this document specified version 1 alone, and version 2 was drafted as a companion document (draft-homing-pigeon-v2-00); this file consolidates the two and is the canonical document. The -00 name is the document's name and does not change as the text evolves; the revision history is the repository's. The living implementation notes are in `PROTOCOL.md` in the homing-pigeon repository. Product release numbers are not protocol versions.
+This document specifies version 1 of the protocol in a single text: the on-wire messages, the receiver checks, and the bindings that carry them -- email (Section 5), file (Section 5.1), NATS (Section 5.2), and a direct DTLS session binding (Section 19). The protocol has one version; a binding is a carrier, not a version, and the messages are the same on every binding. An earlier text of this document specified the email binding alone, and the DTLS binding was drafted as a companion document, draft-homing-pigeon-v2-00 (since removed; its text is consolidated in this document); this file consolidates the two and is the canonical document. The -00 name is the document's name and does not change as the text evolves; the revision history is the repository's. The living implementation notes are in `PROTOCOL.md` in the homing-pigeon repository. Product release numbers are not protocol versions.
 
 ## Abstract
 
-This document specifies the Homing Pigeon message protocol in two versions. Version 1 (Part I) is signed JSON job and result objects exchanged over a store-and-forward transport. This document binds the protocol to email. A submitter sends one HMAC-SHA-384 signed JSON object to a mailbox. A runner polls that mailbox, verifies the signature, executes the job, and returns a signed result. The signature is the only authorization. The message is not encrypted. There is no inbound listener on the host that runs the job.
+This document specifies the Homing Pigeon message protocol, version 1: signed JSON job and result objects exchanged over a transport binding. This document binds the protocol to email. A submitter sends one HMAC-SHA-384 signed JSON object to a mailbox. A runner polls that mailbox, verifies the signature, executes the job, and returns a signed result. The signature is the only authorization. The job object is protected end to end by per-job AEAD encryption (Section 16), a required part of the protocol: implementations MUST support it, the reference software sends encrypted by default, and cleartext is sent only by a sender's explicit choice. The store-and-forward bindings open no inbound listener on the host that runs the job.
 
-Version 2 (Part II) changes the binding and not the messages: the same signed objects travel inside a direct DTLS 1.3 session between the submitter and the runner. The shared secret is the session's external pre-shared key; key exchange is ephemeral-only, so sessions have perfect forward secrecy; and once the handshake has authenticated the submitter, the runner opens the session with a greeting that discloses a tiered, responder-chosen summary of its platform. Version 2 is an addition, never a replacement: the version 1 bindings remain the ones every submitter can reach.
+The DTLS binding (Section 19) changes the binding and not the messages: the same signed objects travel inside a direct DTLS 1.3 session between the submitter and the runner. It is a binding of version 1, not a new version of the protocol. The shared secret is the session's external pre-shared key; key exchange is ephemeral-only, so sessions have perfect forward secrecy; and once the handshake has authenticated the submitter, the runner opens the session with a greeting that discloses a tiered, responder-chosen summary of its platform. The binding opens an inbound listener on the runner's host and is off unless the owner enables it. It is an addition, never a replacement: the store-and-forward bindings remain the ones every submitter can reach.
 
 ## Status of This Memo
 
@@ -59,13 +59,13 @@ Two things are out of scope for this document and are established out of band: t
 
 ### Versions in this document
 
-This document specifies both versions of the protocol. Part I specifies version 1: the messages and their store-and-forward bindings. Part II specifies version 2: a direct DTLS session binding for the same messages, and the session greeting. It consolidates this document's earlier text, which specified version 1 alone, and draft-homing-pigeon-v2-00, which specified version 2 as a companion document.
+This document specifies one version of the protocol: version 1. Its bindings are the email binding (Section 5), the file binding (Section 5.1), the NATS binding (Section 5.2), and the DTLS session binding (Section 19), which also carries the session greeting (Section 20). It consolidates this document's earlier text, which specified the email binding alone, and draft-homing-pigeon-v2-00 (since removed; its text is consolidated in this document), which specified the DTLS binding as a companion document.
 
-Version 2 versions the binding, not the messages. The job and result objects of Part II are the Part I objects, byte for byte; their `v` member remains 1, and a receiver MUST NOT reject a session-carried object for carrying `v` = 1. A receiver that implements only version 1 is not non-conformant; it simply does not offer the Part II binding.
+A binding does not version the messages. The job and result objects are the same objects on every binding, byte for byte; their `v` member is 1, and a receiver MUST NOT reject an object for carrying `v` = 1 on any binding. A receiver that does not offer a binding is not non-conformant; it simply does not offer that binding. An earlier framing treated the DTLS binding as a second version of the protocol. That framing is withdrawn: there is no version 2, and the protocol's version is 1 on every binding this document specifies.
 
-The reference implementation speaks version 1. On 2026-10-17 the implementation briefly required `v` = 2. That bump changed the integer only, and it was reverted the same day. A receiver following this document rejects any message `v` other than 1.
+The reference implementation speaks version 1, and it implements the bindings this document specifies, including the DTLS session binding of Section 19. On 2026-10-17 the implementation briefly required `v` = 2. That bump changed the integer only, and it was reverted the same day. A receiver following this document rejects any message `v` other than 1.
 
-The sender also requires the shared secret to meet a minimum-entropy floor (Section 17.3). That floor is not a protocol version. Nothing else in the version 1 exchange changes shape.
+The sender also requires the shared secret to meet a minimum-entropy floor (Section 17.3). That floor is not a protocol version; it is a requirement of this protocol, and it binds version 1 senders and runners today (Section 17.3). Nothing else in the exchange changes shape.
 
 Later work also layers behavior this document scopes out (Section 4) onto the base exchange: a local disclosure policy on results, queries against retained output, attestations, and task boards. Those behaviors ride in extra members (Section 8); they do not redefine any message specified here. One consequence a submitter needs: a receiver layered with a disclosure policy can withhold result output that a version 1 receiver would send, so the guidance in Section 13.2 binds only where no such policy is in force.
 
@@ -93,15 +93,13 @@ Preamble: text in the message body before the signed JSON object. It is not sign
 
 LOCAL: a parameter or a check this document allows a receiver to set for itself. It is not negotiated.
 
-Session: one DTLS association between a submitter (the initiator, in the DTLS client role) and a runner (the responder, in the DTLS server role). Defined in Part II.
+Session: one DTLS association between a submitter (the initiator, in the DTLS client role) and a runner (the responder, in the DTLS server role). Defined in Section 19.
 
 Greeting: the first application message of a session, sent by the runner after authentication completes (Section 20).
 
 PSK identity: the `pre_shared_key` identity under which a secret is offered. The default secret's identity is `homing-pigeon`; an additional secret's is `homing-pigeon:` followed by its `key_id`.
 
 Ticket: the opaque resumption identity a runner issues in a NewSessionTicket message.
-
-# Part I: Version 1
 
 ## 4. Scope
 
@@ -111,11 +109,15 @@ This document does not specify disclosure policy, queries, attestations, task bo
 
 ## 5. Transport Binding
 
-This document binds the protocol to email. The protocol itself needs only the store-and-forward queue from Section 1; a future binding could carry the same messages over a different transport. Two further bindings of this version are specified in Sections 5.1 and 5.2; both carry the same messages, unchanged. A direct session binding, in which the same messages travel inside a DTLS session and the runner greets the submitter after authentication, is specified as version 2 in Part II of this document (Section 19).
+This document binds the protocol to email. The protocol itself needs only the store-and-forward queue from Section 1; a future binding could carry the same messages over a different transport. Two further bindings are specified in Sections 5.1 and 5.2; both carry the same messages, unchanged. A direct session binding, in which the same messages travel inside a DTLS session and the runner greets the submitter after authentication, is specified in Section 19.
+
+The binding layer is abstract. A binding is an interchangeable carrier of the same messages: the objects, the MAC, the per-job encryption of Section 16, and the receiver checks of this document are identical on every binding. An implementation MAY substitute one binding for another, or add a binding, without changing the protocol; two parties interoperate on any binding both offer.
 
 The runner reads the mailbox with IMAP and writes with SMTP. Mail authentication is out of band. The signature check does not change with the mail credential.
 
 IMAP and SMTP MUST be used over TLS. An implementation MUST NOT carry this protocol over a cleartext IMAP or SMTP session. The TLS version MUST be 1.2 or higher; TLS 1.0 and TLS 1.1 MUST NOT be used [RFC8996]. The recommendations of [RFC9325] apply. Cleartext mail access is obsolete [RFC8314]: implicit TLS is preferred, and where STARTTLS is used it MUST be required rather than opportunistic, and the peer certificate MUST be verified. TLS protects a hop. It does not hide the message from the mailbox provider (Section 17.2).
+
+An implementation MAY additionally support PGP/MIME protection of the mail on this binding. Such support is not required, and it is not this protocol's confidentiality mechanism: that mechanism is the per-job encryption of Section 16, which travels with the object on every binding.
 
 The body is UTF-8 text in a `text/plain` part. This document does not register a media type. If the message is multipart, the receiver uses the first `text/plain` part that is not an attachment.
 
@@ -441,9 +443,9 @@ Submitters MUST treat `exec` as repeatable. A job that is not safe to run twice 
 
 A job marked seen is not executed again, including `exit_code` -2 and every no-result reject in Section 14.
 
-## 16. Per-Job Encryption (Optional Extension)
+## 16. Per-Job Encryption
 
-This section defines an OPTIONAL extension: encrypting the job object itself, so the binding's store-and-forward hops carry ciphertext instead of the signed body. It changes no version 1 processing for cleartext messages, and the protocol version remains 1. The reference software implements this extension and enables it by default on the sending side; a sender MAY send cleartext instead, by explicit choice.
+This section defines per-job encryption: encrypting the job object itself, so the binding's store-and-forward hops carry ciphertext instead of the signed body. It is a required part of version 1. Implementations MUST support receiving and decrypting objects encrypted as this section specifies. Senders SHOULD encrypt; the reference software encrypts by default on the sending side. A sender MAY send cleartext only by explicit choice, and encryption MUST NOT fail silently into cleartext: where encryption cannot be applied, the sender MUST NOT send the object in clear unless that explicit choice has been made. The reference sender's `--cleartext` parameter and the `job_encryption` configuration are that explicit choice. Cleartext messages are processed exactly as they were before this section, and the protocol version remains 1.
 
 ### 16.1. Construction
 
@@ -468,7 +470,7 @@ An envelope is processed inside Section 14's steps, not beside them:
 3. Decrypt. Any failure — an unknown `alg`, a malformed member, a tag mismatch — is a rejection with no result, marked seen, as in step 5. No partial plaintext is processed.
 4. The recovered body re-enters Section 14 at step 4, as if it had arrived directly; its own MAC is verified again, and its `key_id` MUST match the envelope's.
 
-A receiver that does not implement this section sees an object without `v` or `type` and rejects it at step 7. A sender who needs such a receiver MUST send cleartext.
+Support of this section is REQUIRED (Section 16). A receiver that does not implement it is not conformant; presented with an envelope, it sees an object without `v` or `type` and rejects it at step 7.
 
 ### 16.3. Results
 
@@ -476,7 +478,7 @@ The result for an encrypted job SHOULD be encrypted in the same construction, wi
 
 ### 16.4. No forward secrecy
 
-This extension provides confidentiality against observers of the transport. It provides NO forward secrecy, and the two statements travel together wherever the extension is described: the key derives from the static shared secret, so compromise of the secret exposes every recorded encrypted job and result, past and future. Encryption also raises the value of a captured secret under Section 17.3's analysis; it does not lower it.
+Per-job encryption provides confidentiality against observers of the transport. It provides NO forward secrecy, and the two statements travel together wherever the mechanism is described: the key derives from the static shared secret, so compromise of the secret exposes every recorded encrypted job and result, past and future. Encryption also raises the value of a captured secret under Section 17.3's analysis; it does not lower it.
 
 ## 17. Security Considerations
 
@@ -486,11 +488,11 @@ A valid MAC is permission to run as the runner's account. Anyone who holds the s
 
 ### 17.2. Confidentiality and its limits
 
-The base protocol provides none. HMAC authenticates; it does not encrypt. Without the Section 16 extension, the transport operator (in this binding, the mailbox provider) can read every job and every result, and an observer who can read the transport learns the script, the arguments, the environment, and the output.
+HMAC authenticates; it does not encrypt. The protocol's confidentiality is Section 16, and nothing else in this document provides it. Where a sender has sent cleartext -- which Section 16 permits only as an explicit choice -- the transport operator (in this binding, the mailbox provider) can read every job and every result, and an observer who can read the transport learns the script, the arguments, the environment, and the output.
 
-With the extension in use, the job and result bodies are encrypted end to end on the binding: an observer of the transport learns the subject (which names the `job_id`), the timing, and the size, and nothing of the content. The reference software encrypts by default; cleartext remains possible by the sender's explicit choice, and the choice is visible — the reference receiver logs a cleartext arrival.
+With per-job encryption in use, the job and result bodies are encrypted end to end on the binding: an observer of the transport learns the subject (which names the `job_id`), the timing, and the size, and nothing of the content. The reference software encrypts by default; cleartext remains possible by the sender's explicit choice, and the choice is visible — the reference receiver logs a cleartext arrival.
 
-The extension provides NO forward secrecy. Its key derives from the static shared secret, so compromise of the secret exposes every recorded encrypted job and result, past and future. A confidentiality claim for this protocol MUST be read with that limit attached.
+Per-job encryption provides NO forward secrecy. Its key derives from the static shared secret, so compromise of the secret exposes every recorded encrypted job and result, past and future. A confidentiality claim for this protocol MUST be read with that limit attached.
 
 ### 17.3. Offline guessing
 
@@ -498,7 +500,7 @@ One captured message is enough to test candidate secrets. More messages do not r
 
 The secret SHOULD be 32 octets from a cryptographic generator, stored as characters and used as UTF-8. Sixty-four hexadecimal characters are the usual form. A long human sentence is not a substitute. The secret SHOULD NOT be the mailbox password.
 
-Version 2 of this protocol makes a floor normative: the shared secret MUST carry at least 128 bits of entropy, estimated as the secret's length times log2 of its alphabet size, and a sender MUST refuse to sign with a secret below that floor. The requirement answers the offline-guessing attack above. It does not change version 1 processing.
+The floor is normative for this protocol: the shared secret MUST carry at least 128 bits of entropy, estimated as the secret's length times log2 of its alphabet size, and a sender MUST refuse to sign with a secret below that floor. The requirement answers the offline-guessing attack above, and it binds version 1 today: the reference runner refuses to start with a secret below the floor, and the reference sender refuses to sign with one.
 
 ### 17.4. Headers are not authentication
 
@@ -534,19 +536,17 @@ This document has no IANA actions.
 
 No new port, service name, media type, TLS extension, or object identifier is required. HMAC-SHA-384 is already named by [RFC2104] and [FIPS180-4]. The algorithm OID `hmacWithSHA384` (`1.2.840.113549.2.10`) already exists. This protocol identifies the algorithm by name, not by OID.
 
-The reference port for the Part II binding (Section 19), UDP 20220, is a LOCAL default of the reference implementation, not a registered assignment; deployments may use any port, and submitters learn the port out of band, with the address and the secret.
-
-# Part II: Version 2
-
-This part specifies version 2. The delta over Part I is one binding and one behavior on it: a direct DTLS 1.3 session between submitter and runner, with the shared secret as the session's pre-shared key (Section 19), and the session greeting the runner sends once the handshake has authenticated the submitter (Section 20). The messages do not change; everything in Part I that this part does not explicitly take up applies unchanged.
-
-Version 1 needs no path between submitter and runner: a mailbox both can reach is enough, and the runner opens no listener. That is the right default, and it is also a ceiling. Where a direct path does exist -- the submitter can open a UDP flow to the runner's host -- a session buys three things the mailbox cannot: latency measured in round trips instead of poll cycles, confidentiality of the job and result objects themselves (not merely of one mail hop), and that confidentiality with forward secrecy.
-
-The cost is real, and it falls on the submitter. The version 1 bindings ask the submitter only to produce a signed object and hand it to a store-and-forward system it already speaks. This binding asks the submitter to terminate DTLS itself: the handshake, retransmission timers, connection IDs, session resumption -- a network stack obligation, discharged in the submitter's own environment. Many submitter environments cannot open a UDP socket at all. That is why this binding is version 2 and optional, why the greeting (Section 20) hangs on the session existing rather than on anything version 1 does, and why the email binding of version 1 remains the binding every submitter reaches. Section 21 states the conformance burden plainly.
-
-Two consequences of a direct binding deserve emphasis up front. First, the runner listens: enabling this binding opens an inbound UDP listener on the runner's host, a posture version 1 deliberately never takes. The binding is therefore off unless an owner enables it; nothing about installing or running version 1 opens it. Second, channel security is not delivery. A session protects what crosses it while it lives; it acknowledges nothing at the protocol layer. Delivery, retry, and deduplication remain the protocol's own machinery (Sections 19.3 and 22.5).
+The reference port for the DTLS binding (Section 19), UDP 20220, is a LOCAL default of the reference implementation, not a registered assignment; deployments may use any port, and submitters learn the port out of band, with the address and the secret.
 
 ## 19. The DTLS Binding
+
+This section and the three that follow it specify one further binding of version 1 and one behavior on it: a direct DTLS 1.3 session between submitter and runner, with the shared secret as the session's pre-shared key (this section), and the session greeting the runner sends once the handshake has authenticated the submitter (Section 20). The messages do not change on this binding; everything this document specifies for them applies unchanged.
+
+The store-and-forward bindings need no path between submitter and runner: a mailbox both can reach is enough, and the runner opens no listener. That is the right default, and it is also a ceiling. Where a direct path does exist -- the submitter can open a UDP flow to the runner's host -- a session buys three things the mailbox cannot: latency measured in round trips instead of poll cycles, confidentiality of the job and result objects themselves (not merely of one mail hop), and that confidentiality with forward secrecy.
+
+The cost is real, and it falls on the submitter. The store-and-forward bindings ask the submitter only to produce a signed object and hand it to a store-and-forward system it already speaks. This binding asks the submitter to terminate DTLS itself: the handshake, retransmission timers, connection IDs, session resumption -- a network stack obligation, discharged in the submitter's own environment. Many submitter environments cannot open a UDP socket at all. That is why this binding is optional, why the greeting (Section 20) hangs on the session existing, and why the email binding remains the binding every submitter reaches. Section 21 states the conformance burden plainly.
+
+Two consequences of a direct binding deserve emphasis up front. First, the runner listens: enabling this binding opens an inbound UDP listener on the runner's host, a posture the store-and-forward bindings deliberately never take. The binding is therefore off unless an owner enables it; nothing about installing or running the runner opens it. Second, channel security is not delivery. A session protects what crosses it while it lives; it acknowledges nothing at the protocol layer. Delivery, retry, and deduplication remain the protocol's own machinery (Sections 19.3 and 22.5).
 
 ### 19.1. Shape
 
@@ -558,7 +558,7 @@ This binding is a bounded profile of DTLS 1.3 [RFC9147]. An implementation of th
 
 - Transport: DTLS 1.3 [RFC9147] over UDP. DTLS 1.2 MUST NOT be negotiated.
 - Ciphersuite: TLS_CHACHA20_POLY1305_SHA256 [RFC8446] only. No other suite is offered or accepted.
-- Authentication: pre-shared key only. The external PSK is the shared secret of version 1, under the identities of Section 3. Certificates are not part of this profile, in either direction. The shared secret MUST meet the minimum-entropy floor of version 1 (Section 17.3); a secret below the floor MUST NOT be offered as a PSK.
+- Authentication: pre-shared key only. The external PSK is the shared secret, under the identities of Section 3. Certificates are not part of this profile, in either direction. The shared secret MUST meet the minimum-entropy floor of this protocol (Section 17.3); a secret below the floor MUST NOT be offered as a PSK.
 - Key exchange: `psk_dhe_ke` only. The `psk_key_exchange_modes` extension MUST offer mode 1 and MUST NOT offer mode 0 (`psk_ke`); a responder MUST refuse a handshake that does not offer `psk_dhe_ke`. An ephemeral X25519 [RFC7748] key share MUST ride every handshake, full or resumed. Section 22.1 gives the reason: this is the profile's perfect-forward-secrecy requirement, and it is not negotiable within the profile.
 - Address validation: the responder MUST perform the HelloRetryRequest cookie exchange of [RFC9147] before allocating session state, and MUST NOT send any flight larger than the retry itself before the cookie returns. The cookie is stateless and is bound to the initiator's address.
 - Connection ID: both sides MUST negotiate the `connection_id` extension [RFC9146] and MUST accept records under the negotiated IDs from a changed source address, so that a NAT rebinding does not kill a session.
@@ -570,13 +570,13 @@ This binding is a bounded profile of DTLS 1.3 [RFC9147]. An implementation of th
 
 ### 19.3. Carrying the Messages
 
-Inside a session, application data is a stream of messages, each framed by a four-octet big-endian length prefix. Each message is one protocol envelope in the version 1 form: the subject line, a blank line, then the signed body, exactly as the email binding carries it. A job message is answered, in due course, by its result message on the same session.
+Inside a session, application data is a stream of messages, each framed by a four-octet big-endian length prefix. Each message is one protocol envelope in the same form the store-and-forward bindings carry: the subject line, a blank line, then the signed body, exactly as the email binding carries it. A job message is answered, in due course, by its result message on the same session.
 
 Acknowledgement and deduplication are the protocol's own, unchanged: the runner's seen-set governs whether a job executes (Section 14), the submitter retries per Section 15, and DTLS record protection contributes neither an acknowledgement nor a duplicate suppression at the protocol layer. A result produced after its session has died cannot be delivered on that session; the submitter learns of the loss by timeout, re-asks on a fresh session, and the seen-set makes the repeat safe.
 
 ### 19.4. Composition with Per-Job Encryption
 
-The per-job encryption extension of version 1 (Section 16; the `hp_enc` envelope) composes with this binding unchanged. A cleartext signed job inside a session and an encrypted job inside a session are both conforming; the layers are independent -- the envelope protects the object end to end including at rest, the session protects it in transit and adds forward secrecy to that transit. Neither layer's presence relaxes the other's checks: the envelope signature is verified before decryption, and the object signature is verified before execution, session or no session.
+The per-job encryption of Section 16 (the `hp_enc` envelope) composes with this binding unchanged. A cleartext signed job inside a session and an encrypted job inside a session are both conforming; the layers are independent -- the envelope protects the object end to end including at rest, the session protects it in transit and adds forward secrecy to that transit. Neither layer's presence relaxes the other's checks: the envelope signature is verified before decryption, and the object signature is verified before execution, session or no session.
 
 ## 20. The Session Greeting
 
@@ -593,10 +593,10 @@ The greeting is a JSON object [RFC8259] in the protocol's idiom:
  "platform": {"os_family": "linux"},
  "transport": "dtls",
  "type": "greeting",
- "v": 2}
+ "v": 1}
 ```
 
-The members `type` (always `greeting`), `transport` (always `dtls`), `v` (the binding version, 2), and `disclosure` (the tier in force) are always present. The `platform` member is present unless the tier is `none`, and its members depend on the tier:
+The members `type` (always `greeting`), `transport` (always `dtls`), `v` (the protocol version, 1), and `disclosure` (the tier in force) are always present. The `platform` member is present unless the tier is `none`, and its members depend on the tier:
 
 - `none`: no `platform` member. The greeting still goes out; it says the session exists and nothing about the host.
 - `family`: `os_family` only -- one of `windows`, `macos`, `linux`, `other`. This is the reference default.
@@ -611,21 +611,21 @@ A resumed session is a new session for this section: the greeting MUST be sent a
 
 ## 21. The Submitter's Conformance Burden
 
-This section is candid because the version 1 Introduction's promise -- that a submitter needs nothing but the specification and tools it already has -- does not survive contact with a session binding, and a specification that hides its costs invites broken deployments.
+This section is candid because the Introduction's promise -- that a submitter needs nothing but the specification and tools it already has -- does not survive contact with a session binding, and a specification that hides its costs invites broken deployments.
 
-A conforming version 2 submitter implements DTLS 1.3 in the profile of Section 19.2 for itself: the handshake state machine, PSK binders, the cookie exchange, handshake retransmission timers (a UDP peer that cannot retransmit cannot finish a handshake on a lossy path), connection IDs, and resumption. It needs a UDP path to the runner, which is an environment property, not a code property: a submitter running inside a hosted tool that offers only HTTPS egress, or no raw sockets at all, cannot use this binding no matter how correct its implementation is.
+A conforming submitter for this binding implements DTLS 1.3 in the profile of Section 19.2 for itself: the handshake state machine, PSK binders, the cookie exchange, handshake retransmission timers (a UDP peer that cannot retransmit cannot finish a handshake on a lossy path), connection IDs, and resumption. It needs a UDP path to the runner, which is an environment property, not a code property: a submitter running inside a hosted tool that offers only HTTPS egress, or no raw sockets at all, cannot use this binding no matter how correct its implementation is.
 
-None of this is required of a version 1 submitter. Version 1 conformance is untouched by this document, a version 1 runner is a complete deployment, and an owner enables version 2 as an additional door on a host they choose, for submitters that can reach it. The bindings coexist: the same runner, the same secrets, the same objects; the session is a faster, confidential carriage for submitters equipped for it, and the mailbox remains for those that are not.
+None of this is required of a submitter that uses only the store-and-forward bindings. The conformance of the messages and their checks is untouched by this section, a runner without this binding is a complete deployment, and an owner enables the binding as an additional door on a host they choose, for submitters that can reach it. The bindings coexist: the same runner, the same secrets, the same objects; the session is a faster, confidential carriage for submitters equipped for it, and the mailbox remains for those that are not.
 
-## 22. Security Considerations (Part II)
+## 22. Security Considerations (DTLS Binding)
 
 ### 22.1. Forward secrecy is a requirement, not a property
 
-The profile's load-bearing rule is that `psk_ke` is prohibited. In `psk_ke`, session keys derive from the pre-shared key alone; anyone who later obtains the secret and has recorded the session decrypts it in full. Because this protocol's shared secret is long-lived and is also the job-signing key, that failure mode would be catastrophic and silent. In `psk_dhe_ke`, every session -- full or resumed -- mixes a fresh ephemeral X25519 secret into its keys, so a later compromise of the shared secret yields the ability to impersonate going forward (which the version 1 analysis already grants a secret-holder) but decrypts no recorded session. An implementation MUST NOT offer, accept, or fall back to `psk_ke`, including on resumption and including when a peer insists. One limit is stated plainly: forward secrecy here is not post-quantum secrecy. The ephemeral exchange is X25519, so a recorded session is exposed to a future cryptographically relevant quantum computer in a way the symmetric constructions of Part I are not. A hybrid post-quantum key exchange is the known remedy and is future work for this profile.
+The profile's load-bearing rule is that `psk_ke` is prohibited. In `psk_ke`, session keys derive from the pre-shared key alone; anyone who later obtains the secret and has recorded the session decrypts it in full. Because this protocol's shared secret is long-lived and is also the job-signing key, that failure mode would be catastrophic and silent. In `psk_dhe_ke`, every session -- full or resumed -- mixes a fresh ephemeral X25519 secret into its keys, so a later compromise of the shared secret yields the ability to impersonate going forward (which the version 1 analysis already grants a secret-holder) but decrypts no recorded session. An implementation MUST NOT offer, accept, or fall back to `psk_ke`, including on resumption and including when a peer insists. One limit is stated plainly: forward secrecy here is not post-quantum secrecy. The ephemeral exchange is X25519, so a recorded session is exposed to a future cryptographically relevant quantum computer in a way the symmetric constructions of this protocol (the object MAC of Section 7.1 and the per-job encryption of Section 16) are not. A hybrid post-quantum key exchange is the known remedy and is future work for this profile.
 
 ### 22.2. One secret, two constructions
 
-The shared secret does two jobs in version 2: it is the DTLS external PSK, and it remains the HMAC key of the job and result objects. These are independent constructions (the TLS key schedule's HKDF derivation chain, and HMAC-SHA-384 over the object), and neither's outputs feed the other. The composition does not weaken the version 1 analysis: the session authenticates the channel, the signature authorizes the object, and a job's authority comes from the signature alone, so a job captured anywhere -- a mailbox, a session recording -- is exactly as powerful as it was in version 1, and replay is governed by the same seen-set and freshness rules. The offline-guessing analysis of Section 17.3 applies to the PSK unchanged: the entropy floor is normative for the secret in both roles.
+The shared secret does two jobs on this binding: it is the DTLS external PSK, and it remains the HMAC key of the job and result objects. These are independent constructions (the TLS key schedule's HKDF derivation chain, and HMAC-SHA-384 over the object), and neither's outputs feed the other. The composition does not weaken the analysis of Section 17: the session authenticates the channel, the signature authorizes the object, and a job's authority comes from the signature alone, so a job captured anywhere -- a mailbox, a session recording -- is exactly as powerful as it is on any other binding, and replay is governed by the same seen-set and freshness rules. The offline-guessing analysis of Section 17.3 applies to the PSK unchanged: the entropy floor is normative for the secret in both roles.
 
 ### 22.3. The greeting discloses
 
@@ -635,15 +635,15 @@ The greeting is a deliberate, bounded disclosure to an authenticated peer. Its b
 
 A UDP listener is a reflection surface. The cookie exchange is the mitigation this profile adopts: the responder is stateless and sends nothing larger than the retry flight until the initiator proves it can receive at its claimed address, so the binding cannot be used to amplify traffic at a third party beyond that small, fixed flight. The listener's other exposure is computational: handshakes cost more than datagrams. The stateless cookie keeps pre-authentication cost to one MAC verification per first hello; malformed datagrams are dropped at parse, and per-session failure is contained to the session.
 
-Enabling this binding changes the host's posture from version 1's no-listener stance, and this document does not minimize that: the listener is off unless enabled, its port is LOCAL, and an owner who does not need the session binding should leave it off and lose nothing.
+Enabling this binding changes the host's posture from the store-and-forward bindings' no-listener stance, and this document does not minimize that: the listener is off unless enabled, its port is LOCAL, and an owner who does not need the session binding should leave it off and lose nothing.
 
 ### 22.5. Channel security is not delivery
 
-DTLS authenticates and encrypts records; it does not promise that a job arrived, ran, or was answered. This profile deliberately keeps the protocol's at-least-once semantics (Section 19.3) rather than letting a reliable-looking channel imply reliable delivery: sessions die (reboots, NAT timeouts past the connection ID's rescue, key exhaustion), and when one dies mid-exchange the loss is visible as a timeout, recoverable by a retry the seen-set makes safe. An implementation MUST NOT treat session establishment as job acceptance, nor session delivery of a result as its acknowledgement; the signed result message is the acknowledgement, as in version 1.
+DTLS authenticates and encrypts records; it does not promise that a job arrived, ran, or was answered. This profile deliberately keeps the protocol's at-least-once semantics (Section 19.3) rather than letting a reliable-looking channel imply reliable delivery: sessions die (reboots, NAT timeouts past the connection ID's rescue, key exhaustion), and when one dies mid-exchange the loss is visible as a timeout, recoverable by a retry the seen-set makes safe. An implementation MUST NOT treat session establishment as job acceptance, nor session delivery of a result as its acknowledgement; the signed result message is the acknowledgement, as on every binding.
 
 ### 22.6. Termination in the middle
 
-The confidentiality claim is end to end between the submitter and the runner process. A middlebox that terminates DTLS -- an inspecting proxy the path forces traffic through -- ends the claim at that box: the session is then confidential in two hops, and the operator of the middlebox can read job and result objects in clear, though the per-job encryption extension (Section 19.4) still protects an encrypted object past it. Deployments that route this binding through such a box should enable the object layer and understand which guarantee each layer is carrying.
+The confidentiality claim is end to end between the submitter and the runner process. A middlebox that terminates DTLS -- an inspecting proxy the path forces traffic through -- ends the claim at that box: the session is then confidential in two hops, and the operator of the middlebox can read job and result objects in clear, though per-job encryption (Section 19.4) still protects an encrypted object past it. Deployments that route this binding through such a box should enable the object layer and understand which guarantee each layer is carrying.
 
 ## 23. References
 
