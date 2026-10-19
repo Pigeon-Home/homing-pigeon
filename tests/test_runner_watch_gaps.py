@@ -5,7 +5,6 @@ XML collector are what get pinned: a baseline, an added value, a
 removed value, a changed hash, and a tagged audit event.
 """
 
-import json
 import os
 import sys
 import tempfile

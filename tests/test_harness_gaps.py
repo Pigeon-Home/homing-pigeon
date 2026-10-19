@@ -3,7 +3,6 @@
 No live IMAP, SMTP, or model. Each of those is a stand-in
 that answers the way a broken or a half-configured box does.
 """
-import json
 import os
 import sys
 import tempfile

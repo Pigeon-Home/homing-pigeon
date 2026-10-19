@@ -1,5 +1,11 @@
 """Pin the remediation branches the main suite never reaches."""
-import io, json, os, sys, tempfile, time, unittest
+import io
+import json
+import os
+import sys
+import tempfile
+import time
+import unittest
 from unittest import mock
 from runner import remediation as rem
 

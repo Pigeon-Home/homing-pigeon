@@ -6,7 +6,6 @@ taskkill, and systemctl are recorded, not run.
 """
 import json
 import os
-import socket
 import sys
 import tempfile
 import unittest

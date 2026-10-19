@@ -6,7 +6,6 @@ A user systemd unit and a launchd agent land in a fake home.
 """
 import json
 import os
-import subprocess
 import sys
 import tempfile
 import unittest
