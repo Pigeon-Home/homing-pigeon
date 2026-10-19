@@ -3392,6 +3392,34 @@ class Board:
             self.save()
         return True, "ok"
 
+    def _dag_incomplete(self, t):
+        """(blocked, names) for a task's requires (PROTOCOL 13.1).
+
+        Blocked when any requirement is not a done task on this
+        board. names lists the incomplete requirement ids, in
+        requires order; a corrupt non-string entry blocks without
+        contributing a name, exactly as enforce has always treated
+        it. Shared by the enforce and advisory modes so the two
+        can never disagree about what "incomplete" means.
+        """
+        reqs = t.get("requires") or []
+        if not isinstance(reqs, list):
+            reqs = []
+        blocked = False
+        names = []
+        for req in reqs:
+            # A dict in requires raises TypeError on get.
+            # A corrupt board file must not stop the offer.
+            if not isinstance(req, str):
+                blocked = True
+                continue
+            dep = self.tasks.get(req)
+            if not isinstance(dep, dict) or dep.get("state") != "done":
+                blocked = True
+                if req not in names:
+                    names.append(req)
+        return blocked, names
+
     def offer(self, worker_id, capabilities, key_id="", cfg=None):
         with _BOARD_LOCK:
             return self._offer_unlocked(worker_id, capabilities, key_id, cfg)
@@ -3434,6 +3462,8 @@ class Board:
                     same = False
                 if same:
                     return t
+        dag_mode = cfg.get("dag_mode") or "off"
+        incomplete_by_id = {}
         candidates = []
         for t in list(self.tasks.values()):
             if not isinstance(t, dict) or t.get("state") != "open":
@@ -3460,24 +3490,16 @@ class Board:
             need = {x for x in need if isinstance(x, str)}
             if need and not need <= set(capabilities or []):
                 continue
-            # DAG
-            if cfg.get("dag_mode") == "enforce":
-                reqs = t.get("requires") or []
-                if not isinstance(reqs, list):
-                    reqs = []
-                blocked = False
-                for req in reqs:
-                    # A dict in requires raises TypeError on get.
-                    # A corrupt board file must not stop the offer.
-                    if not isinstance(req, str):
-                        blocked = True
-                        break
-                    dep = self.tasks.get(req)
-                    if not isinstance(dep, dict) or dep.get("state") != "done":
-                        blocked = True
-                        break
+            # DAG (PROTOCOL 13.1): enforce withholds a task whose
+            # dependencies are incomplete; advisory hands it out
+            # anyway, with the warning on the offer. Any other
+            # dag_mode value is off, like an unknown judge value.
+            if dag_mode in ("advisory", "enforce"):
+                blocked, incomplete = self._dag_incomplete(t)
                 if blocked:
-                    continue
+                    if dag_mode == "enforce":
+                        continue
+                    incomplete_by_id[id(t)] = incomplete
             candidates.append(t)
         if not candidates:
             return None
@@ -3491,6 +3513,20 @@ class Board:
             return (-priority, _as_str(task.get("submitted_at")))
         candidates.sort(key=_rank)
         chosen = candidates[0]
+        incomplete = incomplete_by_id.get(id(chosen))
+        if incomplete is not None:
+            # Advisory hand-out (PROTOCOL 13.1): the task goes out
+            # with its warning on the offer itself, and the warning
+            # stays on the board record of the hand-out.
+            chosen["dag_warning"] = {"incomplete_requires": incomplete}
+            log(f"board: advisory: {_as_str(chosen.get('task_id'))} handed "
+                f"out with incomplete dependencies: "
+                f"{', '.join(incomplete) or 'unreadable requirement'}",
+                "WARN")
+        elif "dag_warning" in chosen:
+            # A warning from an earlier hand-out must not outlive
+            # the dependencies it named.
+            del chosen["dag_warning"]
         chosen["state"] = "claimed"
         chosen["claimed_by"] = worker_id
         log(f"board: {_as_str(worker_id)} claimed {_as_str(chosen.get('task_id'))}")

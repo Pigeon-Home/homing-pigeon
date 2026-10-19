@@ -100,6 +100,7 @@
     "yara_rules": ""
   },
   "judge": "off",
+  "_dag_mode": "off (the default) lists a task's dependencies in its description and trusts the worker. advisory hands a task out even when its requires are incomplete, with a dag_warning naming them on the offer and in the log. enforce withholds the task until every requirement is done. Any other value behaves as off.",
   "dag_mode": "off",
   "task_timeout": 86400,
   "require_review": false,
