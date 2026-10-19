@@ -71,7 +71,7 @@ class ProfileSelectionTest(unittest.TestCase):
             raise OSError(path)
 
         with mock.patch("builtins.open", side_effect=open_pi):
-            self.assertEqual(detect_default_profile(), "raspberry-pi-home")
+            self.assertEqual(detect_default_profile(), "pi-light")
 
         def open_other(path, *args, **kwargs):
             if path == "/proc/device-tree/model":
@@ -94,9 +94,16 @@ class ProfileSelectionTest(unittest.TestCase):
         # exist first.
         self.assertEqual(DEFAULT_INFERENCE_MODEL, "qwen3:1.7b")
 
-    def test_pi_profile_pulls_the_lighter_llama(self):
+    def test_pi_profile_selects_no_model(self):
+        # Pi Light: neither Pi profile name carries a model. The
+        # selector falls through to the project default, and the
+        # install never reaches the pull at all (tests/test_pi_light
+        # pins that install_ollama_and_model is not called). The
+        # old pin -- the Pi pulls llama3.2:1b -- is gone on purpose.
+        self.assertEqual(inference_model_for("pi-light", None),
+                         "qwen3:1.7b")
         self.assertEqual(inference_model_for("raspberry-pi-home", None),
-                         "llama3.2:1b")
+                         "qwen3:1.7b")
         self.assertEqual(inference_model_for("password-only", None),
                          "qwen3:1.7b")
         self.assertEqual(inference_model_for(None, None), "qwen3:1.7b")
@@ -111,7 +118,7 @@ class ProfileSelectionTest(unittest.TestCase):
             path = os.path.join(d, "box.json")
             with open(path, "w", encoding="utf-8") as fh:
                 json.dump({"profile": "raspberry-pi-home"}, fh)
-            self.assertEqual(inference_model_for(path, None), "llama3.2:1b")
+            self.assertEqual(inference_model_for(path, None), "qwen3:1.7b")
             self.assertEqual(inference_model_for(path, "other:1b"), "other:1b")
 
 
@@ -136,6 +143,8 @@ class ProfileMergeTest(unittest.TestCase):
         self.assertEqual(cfg["additional_secrets"]["lane"], "keep-lane")
         self.assertEqual(cfg["max_result_view"], "attested")
         self.assertEqual(cfg["judge"], "advisory")
+        # Pi Light rides along under the former name too.
+        self.assertEqual(cfg["oracle_mode"], "deterministic")
         self.assertIn("/home/pi/docs/manuals", cfg["protected_paths"])
         self.assertIn("vscode_token", cfg["redact_patterns_extra"])
         self.assertIn("shadow_hash", cfg["redact_patterns_extra"])
