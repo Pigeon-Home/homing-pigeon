@@ -134,6 +134,84 @@ middle editing someone else's message.
   environment, and the format carries `no_opinion` because "I
   don't know" is a legitimate answer.
 
+## Self-learning: the loop closes (2026-10-19)
+
+Andrew's direction, built in `runner/learning.py`: the Oracle
+compares what it said about a job with what the job actually
+did, saves the comparison immediately, and reads it fresh when
+the next job arrives — so a later job can be assessed, and
+where the latitude allows repaired, with the box's own history
+in view. This is auditable episodic learning, not model
+retraining: no weights change; what persists is a ledger
+(`oracle-learning.jsonl` in the base dir) of predictions,
+reconciliations, and lessons, every entry keyed to this host.
+
+The loop, per job:
+
+1. **Freeze.** When the opinion machinery forms its
+   pre-execution call, the call is frozen to the ledger: job
+   id, received digest, host fingerprint, the tier-1 findings,
+   any proposed repair, the effective mode.
+2. **Reconcile.** The moment execution completes — before the
+   result is sent — the frozen call is scored against the
+   verified outcome: correct, incorrect, partial (a repair
+   that ran but did not save the job, or was refused on
+   re-judgment), or no-prediction. A learning-write failure is
+   logged and never blocks or delays the result.
+3. **Learn, through two channels.** *Verified facts* are
+   derived by code from the execution record — an interpreter
+   absent and the repair succeeding, a named tool missing and
+   the job failing — keyed by (host, feature), trusted, with
+   a support count and last-seen time. *Model candidates* are
+   distilled by the local model from a failed or mispredicted
+   job's outcome and output, only when both model gates are
+   on (`oracle_learning_model` and `oracle_opinion_model`,
+   with inference configured; deterministic mode has no model
+   channel, so a Pi Light box learns facts only). A candidate
+   must pass a strict schema — a bounded declarative claim,
+   feature keys, an expected outcome, a confidence — and it
+   is labeled uncorroborated wherever it surfaces. It is
+   promoted to corroborated only when later *verified*
+   outcomes match what it expects (`oracle_learning_promote_after`,
+   default 2, no intervening contradiction); a contradiction
+   retires it as negative evidence. Repetition of a claim is
+   not corroboration — only a verified outcome counts.
+4. **Refresh.** Each new job's opinion evaluation reads the
+   ledger fresh from disk — no cached copy, no restart — and
+   only the lessons relevant to that job (same host, same
+   interpreter/tool/path keys) are folded into its note,
+   bounded. A fresh probe supersedes a stale fact at use
+   time: a lesson that a tool was absent is not surfaced for
+   a job where the tool probes present today.
+
+The authority rule, unchanged by learning: **a lesson never
+authorizes anything by itself.** What a lesson may do follows
+the same latitude ladder as the opinion — at `off` nothing is
+recorded or used; at `diagnose` lessons record and explain;
+at `advise` facts and labeled candidates may inform
+predictions, and nothing is modified; at `repair` a
+corroborated lesson may *select* among the existing
+mechanical repairs, and even then only when the repair's
+preconditions are re-verified on this job, on this host, now,
+and the repaired job is re-judged as always. A candidate
+never drives a repair, and no lesson lets the model invent a
+novel executable rewrite.
+
+Poisoning discipline: raw job output is evidence, never
+instruction. Facts are derived by code from verified probes
+and outcomes, never from output text. A candidate claim
+phrased as an instruction ("ignore previous instructions",
+"always approve", …) fails validation and is dropped: a job
+cannot appoint itself the Oracle's teacher.
+
+The ledger is local state, not wire format: PROTOCOL is
+untouched and the `oracle_opinion` result member is exactly
+what it was — learning changes what the Oracle knows when it
+forms the member, never the member's shape. `oracle_learning`
+(default true) turns the whole loop off; nothing is recorded
+or used while it is off, or while the opinion latitude is
+`off`.
+
 ## Open questions — resolved in the build (2026-10-18)
 
 Each question was resolved as a default plus a config option,

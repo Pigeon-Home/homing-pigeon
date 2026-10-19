@@ -226,6 +226,24 @@ and the `ask` op stays off. The mode reads live from `config.json`;
 flipping it is the upgrade path when a box gains a model worth
 running. See `docs/configuring-oracle.md`.
 
+**The Oracle learns from its own calls.** Before a job runs, its
+opinion — *this will probably succeed here; this will faceplant,
+and here is why* — is frozen. The moment the job finishes, the call
+is compared against what actually happened, and the comparison is
+written to a local ledger (`oracle-learning.jsonl`) immediately;
+the next job's opinion is formed with that ledger read fresh, no
+restart. Two kinds of lessons accumulate: **verified facts**,
+derived by code from execution records (an interpreter was absent
+and the fix worked; a named tool is not on this box), and — only
+when the owner enables the model channel — **model candidates**,
+distilled from a job's outcome and output, labeled uncorroborated
+wherever they surface until later verified outcomes corroborate
+them. A lesson never authorizes anything by itself: a repair still
+requires the repair latitude, the mismatch re-verified on the
+current job, and the repaired job judged again before it runs.
+Set `oracle_learning` to false to turn the loop off. Design:
+`docs/oracle-opinion-design.md`.
+
 Full spec in PROTOCOL.md (sections 9–12). Oracle fields are optional
 members of a `"v": 1` message. They are not a separate message version.
 
