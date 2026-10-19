@@ -108,6 +108,7 @@ OAuthRefreshError = _load_attr(
 _senses = _load_mod("runner.senses", "senses")
 _extensions = _load_mod("runner.extensions", "extensions")
 _review = _load_mod("runner.review", "review")
+_opinion = _load_mod("runner.opinion", "opinion")
 _resources = _load_mod("runner.resources", "resources")
 _dri = _load_mod("runner.dri", "dri")
 _detection = _load_mod("runner.detection", "detection", broad=True)
@@ -5606,6 +5607,53 @@ def _start_local_signals(cfg, base_dir) -> None:
         log(f"local signals: failed to start: {e}", "WARN")
 
 
+def _opinion_env_facts(cfg, job):
+    """Environment facts for the tier-1 opinion checks.
+
+    The interpreter is resolved exactly the way execute_job will
+    resolve it (job value, else configured default, else the
+    platform default), so the opinion reads the job the box will
+    actually run.
+    """
+    interpreter = job.get("interpreter") or cfg.get("default_interpreter") \
+        or platform_interpreter()
+    if not isinstance(interpreter, list) or not interpreter \
+            or not all(isinstance(x, str) for x in interpreter):
+        interpreter = platform_interpreter()
+    return _opinion.gather_facts(job, interpreter, platform_interpreter())
+
+
+def _opinion_model_note(cfg, job):
+    """Tier-2 opinion note from the local model, or None.
+
+    Only when the owner opted in (oracle_opinion_model) and
+    inference is configured. inference_config is None in
+    deterministic Oracle mode, so on a Pi Light box this never
+    reaches a model. The caller asks only when tier 1 found
+    nothing: the tiers are never blended into one claim.
+    """
+    if not _opinion.model_enabled(cfg):
+        return None
+    inf = inference_config(cfg)
+    if inf is None:
+        return None
+    try:
+        res = ask_model(
+            inf,
+            "Will this job succeed on this host? Answer in one or "
+            "two plain sentences; if it will fail, say the obvious "
+            "reason.",
+            _describe_job(job), 400, _redact_patterns(cfg))
+    except Exception:
+        return None
+    if not isinstance(res, dict):
+        return None
+    text = res.get("answer")
+    if not isinstance(text, str) or not text.strip():
+        return None
+    return text.strip()[:240]
+
+
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 seen: dict, secrets: dict, opts=None, key_policies=None):
     msg = email.message_from_bytes(raw)
@@ -5812,17 +5860,64 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 return
             send_mail(smtp, cfg, subject, body, to=_valid_reply_to(job))
 
+        op_plan = None
+        op_member = None
+        run_job = job
         try:
             verdict, reasons = judge_job(cfg, job)
             if cfg.get("judge") == "enforce" and reasons:
                 raise JobRejected("judge blocked: " + "; ".join(reasons))
+            # The Oracle's opinion (PROTOCOL 3.2; runner/opinion.py):
+            # tier-1 deterministic checks, an optional repair, and a
+            # member on the result. Advisory by construction -- the
+            # opinion never blocks a job by itself. The one refusal
+            # it can produce is the re-judgment of a repaired job,
+            # and then the sender gets the original job's failure
+            # result with the opinion explaining.
+            if _opinion is not None and job.get("kind") == "exec":
+                try:
+                    op_plan = _opinion.plan_before(
+                        cfg, job, _opinion_env_facts(cfg, job))
+                except Exception as e:
+                    log(f"oracle opinion failed for {job_id}: {e}",
+                        "WARN")
+                    op_plan = None
+            if op_plan is not None and op_plan.get("repair_action"):
+                repaired_job = dict(job)
+                repaired_job["interpreter"] = platform_interpreter()
+                # Rejudge (oracle_opinion_repair=rejudge, the
+                # default): the repaired job goes back through the
+                # dealing path exactly as a received job would.
+                r_verdict, r_reasons = judge_job(cfg, repaired_job)
+                r_violation = check_key_policy(
+                    key_policies or {}, key_id, cfg, repaired_job)
+                if r_violation or (cfg.get("judge") == "enforce"
+                                   and r_reasons):
+                    why = r_violation or (
+                        "judge blocked: " + "; ".join(r_reasons))
+                    op_member = _opinion.repair_member(
+                        op_plan, job, applied=False, refusal=why)
+                    raise JobRejected(
+                        "repaired job refused on re-judgment: " + why)
+                run_job = repaired_job
+                op_member = _opinion.repair_member(
+                    op_plan, job, applied=True)
+                log(f"job {job_id}: oracle opinion repaired the "
+                    f"interpreter to the platform default")
+            elif op_plan is not None and op_plan.get("attach") is not None:
+                op_member = op_plan["attach"]
+                if not op_plan["findings"]:
+                    mnote = _opinion_model_note(cfg, job)
+                    if mnote:
+                        op_member = _opinion.with_model_note(
+                            op_member, mnote)
             # Confinement snapshots exclude the runner's own base_dir so
             # retained/, board.json, and seen.json do not false-positive.
             ws = cfg.get("workspace_root") or ""
             if not isinstance(ws, str):
                 ws = ""
             before = snapshot_outside(ws, exclude=[base_dir]) if ws else {}
-            r = execute_job(cfg, job, base_dir)
+            r = execute_job(cfg, run_job, base_dir)
             after = snapshot_outside(ws, exclude=[base_dir]) if ws else {}
             # Three states: None (unconfigured), True (confined),
             # False (violation detected). Never conflate the first and last.
@@ -5849,6 +5944,33 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             scan = r.get("artifact_scan")
             if isinstance(scan, list) and scan:
                 result["artifact_scan"] = [str(item)[:200] for item in scan[:20]]
+            # The opinion member rides the result, signed with it.
+            # A prediction already formed rides as formed (a wrong
+            # likely_success gains the post-run sentence, never a
+            # rewrite); with no member formed, the diagnose
+            # latitude speaks after a failure and stays silent
+            # after a success.
+            job_failed = _as_int(r.get("exit_code"), -1) != 0 \
+                or bool(r.get("timed_out"))
+            if op_member is not None:
+                if job_failed and op_plan is not None:
+                    op_member = _opinion.extend_member_outcome(
+                        op_member, op_plan["findings"])
+                result["oracle_opinion"] = op_member
+            elif op_plan is not None and op_plan.get("active") \
+                    and job_failed:
+                findings = op_plan["findings"]
+                if not op_plan.get("checks_run"):
+                    try:
+                        findings = _opinion.tier1_findings(
+                            job, _opinion_env_facts(cfg, job))
+                    except Exception:
+                        findings = []
+                mnote = None
+                if not findings:
+                    mnote = _opinion_model_note(cfg, job)
+                result["oracle_opinion"] = _opinion.diagnosis_member(
+                    op_plan["mode"], findings, model_note=mnote)
             # Optional low-overhead detection (rules, baseline, ATT&CK tags).
             # Canaries are handled separately by _canary_watch. Never raises.
             if _detection is not None and isinstance(base_dir, str) and base_dir:
@@ -5939,6 +6061,26 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     "duration_sec": 0.0, "runner": socket.gethostname(),
                     "review": review,
                 }
+                # A rejection is a failure the sender sees: a formed
+                # opinion rides it, and the diagnose latitude gets
+                # its say (an unstartable interpreter is the classic
+                # obvious cause).
+                if op_member is not None:
+                    result["oracle_opinion"] = op_member
+                elif op_plan is not None and op_plan.get("active") \
+                        and _opinion is not None:
+                    try:
+                        findings = _opinion.tier1_findings(
+                            job, _opinion_env_facts(cfg, job))
+                        mnote = None
+                        if not findings:
+                            mnote = _opinion_model_note(cfg, job)
+                        result["oracle_opinion"] = \
+                            _opinion.diagnosis_member(
+                                op_plan["mode"], findings,
+                                model_note=mnote)
+                    except Exception:
+                        pass
                 with _MAIL_LOCK:
                     maybe_send(f"{SUBJECT_RESULT}{job_id}",
                               sign_payload(result, secret))
@@ -9033,6 +9175,11 @@ def main() -> int:
     ap.add_argument("--oracle-cli", action="store_true",
                     help="chat with the Oracle in the terminal "
                          "(same chat, no browser)")
+    ap.add_argument("--oracle-opinion", default=None, metavar="MODE",
+                    choices=["off", "diagnose", "advise", "repair"],
+                    help="Oracle opinion latitude for this process "
+                         "only (off, diagnose, advise, repair); "
+                         "overrides config oracle_opinion_mode.")
     ap.add_argument("--faster", action="store_true",
                     help="use qwen2.5:3b for this process, the "
                          "faster small model. The model in "
@@ -9200,6 +9347,10 @@ def main() -> int:
         print(e, file=sys.stderr)
         return 2
     # CLI overrides config.
+    if args.oracle_opinion is not None:
+        cfg["oracle_opinion_mode"] = args.oracle_opinion
+        log(f"oracle opinion: --oracle-opinion, latitude "
+            f"{args.oracle_opinion} for this process")
     if args.poll_interval is not None:
         cfg["poll_interval_sec"] = args.poll_interval
     if args.max_output_bytes is not None:
