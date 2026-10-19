@@ -83,7 +83,8 @@
         "threshold": 5,
         "window_sec": 3600
       },
-      "resource_pressure": true
+      "resource_pressure": true,
+      "remediation": true
     },
     "cooldown_sec": 3600,
     "digest_window_sec": 300
@@ -98,6 +99,18 @@
   "_oracle_opinion_model": "tier-2 opinion: when true and inference is configured, the local model may add a labeled note ('Model-formed note:') to an opinion tier 1 had nothing to say about. Default false. In deterministic oracle_mode no model is ever called, so tier-1 opinions still file on a Pi Light box and tier 2 stays dark.",
   "oracle_opinion_repair": "rejudge",
   "_oracle_opinion_repair": "how a repair is authorized: rejudge (default; the repaired job goes back through the judge and the key policy exactly as a received job would, and if it is refused the original job's failure result is returned with the opinion explaining) | refuse (repairs are never executed; the opinion degrades to advise and describes the proposed fix).",
+  "remediation_mode": "deterministic",
+  "_remediation_mode": "remediation (docs/remediation-design.md): what the runner does when a running job diverges from the intent envelope its opinion recorded. off | deterministic (default) | oracle. off watches, records, and pages only -- the human decides. deterministic arms the closed tripwire list (confinement escape, process storm past the ceiling, an undeclared credential-store reference in a produced artifact): those kill the job's tree on sight, quarantine its outputs, refer suspect files to the box's antivirus, and page the owner. oracle additionally lets the local model order a kill for a lesser divergence; anything short of an affirmative order is an abstention and never kills. A job cannot request, widen, or narrow remediation; it is owner configuration only. The runner flag --remediation-mode overrides it for one process.",
+  "remediation_storm_ceiling": 64,
+  "_remediation_storm_ceiling": "the process-storm tripwire: a job whose process tree grows past this many processes is killed on sight. A named constant with a config knob, not a heuristic.",
+  "remediation_sample_sec": 1,
+  "_remediation_sample_sec": "how often the per-job remediation monitor samples the running job's process tree and workdir, in seconds. Deliberately independent of the mailbox poll cadence: most jobs are shorter than one poll cycle.",
+  "remediation_oracle_timeout_sec": 20,
+  "_remediation_oracle_timeout_sec": "the bound on the Oracle's remediation judgment call in oracle mode. A timeout is an abstention: the job keeps running, and the abstention is recorded.",
+  "remediation_quarantine_max_jobs": 50,
+  "_remediation_quarantine_max_jobs": "quarantine bounds: at most this many seized jobs are held in <base_dir>/quarantine; older seizures are archived (moved, never deleted) to quarantine-archive/.",
+  "remediation_quarantine_max_bytes": 536870912,
+  "_remediation_quarantine_max_bytes": "quarantine bounds: at most this many bytes of seized outputs are held before the oldest are archived (moved, never deleted).",
   "inference": {
     "endpoint": "",
     "model": "",

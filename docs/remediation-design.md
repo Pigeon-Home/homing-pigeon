@@ -2,10 +2,12 @@
 
 Status: design, recorded 2026-10-18, expanded the same evening
 at the owner's direction to incorporate the full discussion.
-Not yet built. This document is the design of record: when the
-build happens, it is a transcription of this text, and any
-place the code must depart from it is a delta written here
-first, in the open.
+Built 2026-10-18 (`runner/remediation.py`, wired into
+`execute_job`; tests in `tests/test_remediation.py`). This
+document is the design of record: the build is a transcription
+of this text, and every place the code departs from it is a
+delta written in the "As built" section at the end, in the
+open.
 
 ## Why this exists
 
@@ -256,3 +258,106 @@ act**:
   timeout as `deterministic` would) — the design's
   inclination, recorded here so the build argues with it
   explicitly if it argues at all.
+
+
+## As built (2026-10-18): deltas and closed open items
+
+The open items above, as the build closed them:
+
+- **Observation loop (closed).** Each running exec job gets a
+  monitor thread sampling on `remediation_sample_sec`
+  (default 1s) — deliberately *not* tied to
+  `poll_interval_sec`, because most jobs are shorter than one
+  mailbox poll cycle and a monitor that samples once per poll
+  would watch nothing. Per-sample cost is one walk of the
+  job's process subtree (via `/proc`, or a Toolhelp32 snapshot
+  on Windows) plus a stat of its workdir. Correlation rule,
+  as built: the box's own clock is the only clock; an event
+  belongs to a job's window when its timestamp falls inside
+  the run and it names the job — by job id, by workdir path,
+  or by a pid in the job's tree. `resource_pressure` events
+  inside the window are box-level evidence and need no
+  naming. Sense alerts are read through the same store the
+  wake gate reads.
+- **What mid-run observation can honestly see (delta).** The
+  monitor sees the job's process tree and the files it writes
+  *in its workdir*, whose contents are scanned with the
+  `_script_path_findings` semantics against the envelope's
+  declared paths. Writes outside the workdir are not visible
+  mid-run with stdlib-only means; they are caught by the
+  post-run confinement snapshot where `workspace_root` is
+  configured, and an escape found there is handled as the
+  escape tripwire at result time (quarantine, referral, page
+  — the job has finished; there is nothing left to kill).
+  The cage's only live report today is its startup audit
+  entry; a `fallback` decision (enforce requested, job
+  running uncaged) files as the `confinement_strain`
+  divergence, and the monitor consumes any confinement
+  decision a future cage files for the running job — a
+  `denied` decision is wired as the escape tripwire the day
+  a producer exists.
+- **Saturation tells are named constants.** Tree CPU at 95%
+  of one core across 3 consecutive samples
+  (`tree_saturation`), tree resident memory at 50% of the
+  box's RAM across 2 (`tree_memory`), workdir growth of
+  256 MiB inside the run (`disk_fill`). They are divergences
+  for the authority layer, never tripwires. The storm
+  ceiling is the one tunable tripwire number:
+  `remediation_storm_ceiling` (default 64).
+- **Windows sampling, honestly.** Tree membership via a
+  Toolhelp32 snapshot is reliable. Per-process CPU and
+  working set come from `OpenProcess` +
+  `GetProcessTimes`/`GetProcessMemoryInfo` and are
+  best-effort: a protected or more-privileged process
+  refuses the open and then counts toward membership (the
+  storm ceiling) with usage unknown, so saturation math
+  simply has no vote from it. On every platform, a process
+  that starts and exits between samples is invisible; the
+  design's evidence standard accepts this rather than
+  pretending to an audit the stdlib cannot give.
+- **The Defender path (narrowed, still open).** `MpCmdRun.exe`
+  is located across the standard layouts — PATH, the classic
+  `%ProgramFiles%\Windows Defender` folder, and the
+  `%ProgramData%\Microsoft\Windows Defender\Platform\<version>`
+  folders, newest first. The exit-code mapping (0 = clean,
+  2 = confirmed, anything else is not read as a verdict)
+  follows the vendor documentation; the referral itself is
+  code-complete, but the mapping remains unverified on a
+  real Windows box — this item stays open in that narrowed
+  form. The ClamAV mapping is `clamdscan`'s documented
+  0/1/2, and a box with no antivirus records `unavailable`,
+  exactly as designed.
+- **The Oracle's call (resolved).** Synchronous at divergence
+  time, on the monitor thread (so the job's pipes keep
+  draining while it thinks), bounded by
+  `remediation_oracle_timeout_sec` (default 20s) clamped over
+  the inference timeout. On timeout or error the Oracle
+  *abstains* — and this is the inclination recorded above,
+  made precise: "act on timeout as `deterministic` would"
+  cannot mean a kill, because for a non-tripwire divergence
+  the deterministic layer's act is no act. An abstention
+  never kills; it is written to the audit log like every
+  other decision in this design. One call per divergence
+  kind per job, so a chatty divergence cannot turn into a
+  model bill.
+- **The final scan (addition).** When a job exits, the
+  monitor scans its workdir once more before the result is
+  assembled. A short job can write a tripping artifact and
+  finish inside one sample interval; without the final scan
+  the fastest jobs would be the least watched. The recorded
+  act for a final-scan tripwire is `quarantined`. The same
+  honesty rule applies to a mid-run kill order that loses
+  the race with a job already exiting on its own (POSIX:
+  the exit was not the SIGKILL): the act that landed is
+  recorded — the quarantine, not the kill.
+- **The release door.** `--remediation-release <job_id>` is
+  the one door; the Oracle chat reaches the same code path
+  through its `run` tool. There is deliberately no second
+  release implementation to keep honest.
+- **The record, as built.** The result member is exactly the
+  shape above; the same member rides the retained record.
+  Audit decisions: `acted`, `abstained`, `spared`,
+  `observed`, `released`. The page rides a new DRI trigger
+  (`dri.triggers.remediation`, on in the example config);
+  a page about an act taken no longer closes with "the
+  Oracle took no action."

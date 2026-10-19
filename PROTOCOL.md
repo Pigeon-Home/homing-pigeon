@@ -145,6 +145,10 @@ gets done without you knowing how any of it works.
   "runner": "DESKTOP-ABC123",
   "oracle_opinion": {"mode": "diagnose", "verdict": "likely_failure",
                      "note": "..."},
+  "remediation": {"mode": "deterministic", "authority": "tripwire",
+                  "divergence": "process_storm: ...", "act": "killed",
+                  "av_verdict": "unavailable",
+                  "received_digest": "<hex sha384>"},
   "sig": "<hex hmac>"
 }
 ```
@@ -196,6 +200,35 @@ gets done without you knowing how any of it works.
   before it runs (or, under the runner's `refuse` setting, is never
   executed and the opinion degrades to `advise` with the proposed fix
   described in the note).
+- `remediation`: OPTIONAL. Present only when remediation acted on
+  the job or its outputs -- the runner stopped a running job whose
+  observed behavior diverged from the intent envelope its opinion
+  recorded, or seized the outputs afterwards (see
+  docs/remediation-design.md). Receivers MUST ignore it if they
+  do not implement it. When present it is an object with these
+  members:
+  - `mode`: the runner's `remediation_mode` the act was taken
+    under: `deterministic` or `oracle`. (Under `off` nothing
+    acts, and the member is absent.)
+  - `authority`: `tripwire` (a deterministic tripwire from the
+    closed list fired) or `oracle` (the runner's local model
+    ordered the act for a divergence no tripwire covers).
+  - `divergence`: a short string naming what was observed --
+    the divergence kind and its basis.
+  - `act`: `killed` (the job's process tree was killed),
+    `quarantined` (the job's outputs were seized into the
+    runner's quarantine area, releasable by the owner), or
+    `referred` (suspect files were referred to the box's
+    antivirus; see `av_verdict`).
+  - `av_verdict`: the antivirus's own verdict on the referred
+    files: `confirmed`, `clean`, or `unavailable` (no antivirus
+    on the box, or no verdict read). Unavailable is a fact, not
+    an error.
+  - `received_digest`: the SHA-384 hex digest of the job as
+    received, computed as for `oracle_opinion` above.
+  Remediation is owner configuration only: a job member of the
+  same name has no meaning, and a sender cannot request, widen,
+  narrow, or appeal it.
 
 ## 4. Signatures (no canonicalization needed)
 

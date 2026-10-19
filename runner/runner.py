@@ -110,6 +110,7 @@ _senses = _load_mod("runner.senses", "senses")
 _extensions = _load_mod("runner.extensions", "extensions")
 _review = _load_mod("runner.review", "review")
 _opinion = _load_mod("runner.opinion", "opinion")
+_remediation = _load_mod("runner.remediation", "remediation")
 _resources = _load_mod("runner.resources", "resources")
 _dri = _load_mod("runner.dri", "dri")
 _detection = _load_mod("runner.detection", "detection", broad=True)
@@ -3889,7 +3890,7 @@ def windows_reserved_name(name: str) -> bool:
     return leaf.split(".", 1)[0].upper() in _WIN_DEVICES
 
 
-def kill_tree(proc: subprocess.Popen):
+def kill_tree(proc: subprocess.Popen, extra_pids=None):
     try:
         if os.name == "nt":
             subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
@@ -3901,6 +3902,16 @@ def kill_tree(proc: subprocess.Popen):
             proc.kill()
         except Exception:
             pass
+    # Remediation's tree kill: processes the monitor sampled in
+    # the job's tree that escaped the process group (a detached
+    # grandchild that called setsid) still die. Best effort.
+    if os.name != "nt" and extra_pids:
+        for pid in extra_pids:
+            try:
+                if pid and int(pid) != proc.pid:
+                    os.kill(int(pid), signal.SIGKILL)
+            except Exception:
+                pass
 
 
 MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024  # 100 MiB
@@ -4028,6 +4039,295 @@ def _staged_dest(work, name):
     if not dest.startswith(prefix):
         raise JobRejected("unsafe file name: %s" % (name,))
     return dest
+
+
+# ---------------------------------------------------------------- remediation
+# The acts are core (docs/remediation-design.md): only the runner
+# holds the process tree, the workdir, and the result channel.
+# runner/remediation.py holds the policy; the glue below wires
+# the live probes in. Everything here is best-effort: a broken
+# monitor must never break the job it watches.
+
+def _remediation_audit(base_dir, cfg, st, job_id, decision, div,
+                       detail=""):
+    if _security is None or _remediation is None:
+        return
+    try:
+        reason = div if isinstance(div, str) else \
+            _remediation.divergence_text(div)
+        _security.write_audit_entry(
+            base_dir, "remediation", decision, reason,
+            job_id=str(job_id), detail=str(detail), cfg=cfg,
+            mode=st["mode"])
+    except Exception:
+        pass
+
+
+def _remediation_event(base_dir, st, job_id, div, act, authority,
+                       av_verdict, quarantine_path, digest,
+                       envelope_note=""):
+    """One security-events record: the DRI channel's copy of the
+    story (its `remediation` trigger turns it into a page)."""
+    try:
+        _append_security_event(base_dir, {
+            "type": "remediation",
+            "at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "job_id": job_id,
+            "mode": st["mode"],
+            "authority": authority,
+            "divergence": _remediation.divergence_text(div),
+            "act": act,
+            "av_verdict": av_verdict,
+            "quarantine": quarantine_path,
+            "envelope": envelope_note,
+            "received_digest": digest,
+        })
+    except Exception:
+        pass
+
+
+def _remediation_ask_fn(cfg, st):
+    """The Oracle's judgment call, wired for oracle mode only.
+
+    Returns None when inference is not configured (Pi Light
+    included): the monitor then records abstentions and only
+    the reflexes act. The call is ask_model with the timeout
+    clamped to remediation_oracle_timeout_sec.
+    """
+    inf = inference_config(cfg)
+    if inf is None:
+        return None
+    bounded = dict(inf)
+    try:
+        base_timeout = int(inf.get("timeout_sec")
+                           or st["oracle_timeout_sec"])
+    except (TypeError, ValueError, OverflowError):
+        base_timeout = st["oracle_timeout_sec"]
+    bounded["timeout_sec"] = min(base_timeout,
+                                 st["oracle_timeout_sec"])
+    patterns = _redact_patterns(cfg)
+
+    def ask(question, context):
+        res = ask_model(bounded, question, context, 400, patterns)
+        if not isinstance(res, dict):
+            return None
+        ans = res.get("answer")
+        return ans if isinstance(ans, str) and ans.strip() else None
+
+    return ask
+
+
+def _start_job_monitor(cfg, st, job_id, proc, work, base_dir,
+                       script_path, before_files):
+    """Build and start the per-job monitor. None on any failure."""
+    if _remediation is None:
+        return None
+    script_text = ""
+    try:
+        with open(script_path, "rb") as fh:
+            script_text = fh.read(512 * 1024).decode(
+                "utf-8", errors="replace")
+    except OSError:
+        script_text = ""
+    declared_paths = []
+    if _opinion is not None and script_text:
+        try:
+            hints = _opinion.script_hints(script_text)
+            declared_paths = hints.get("paths") or []
+        except Exception:
+            declared_paths = []
+    script_findings = _script_path_findings(
+        script_text, base_dir, job_id) if script_text else []
+    declared_cred = [p for p, r in script_findings
+                     if r == _remediation.CREDENTIAL_REASON]
+    envelope_note = "declared paths: " + (
+        ", ".join(declared_paths[:8]) if declared_paths else "none")
+    if script_findings:
+        envelope_note += "; script findings: " + "; ".join(
+            f"{p} ({r})" for p, r in script_findings)
+
+    def alerts_fn(since_iso):
+        if _senses is None:
+            return []
+        try:
+            return _senses.load_alerts(base_dir, since=since_iso,
+                                       limit=200)
+        except Exception:
+            return []
+
+    monitor = _remediation.JobMonitor(
+        st, job_id, proc.pid, work,
+        declared_paths=declared_paths,
+        declared_credential_paths=declared_cred,
+        initial_files=set((before_files or {}).keys()),
+        kill_fn=lambda extra: kill_tree(proc, extra),
+        ask_fn=_remediation_ask_fn(cfg, st)
+        if st["mode"] == "oracle" else None,
+        findings_fn=lambda text: _script_path_findings(
+            text, base_dir, job_id),
+        alerts_fn=alerts_fn,
+        base_dir=base_dir,
+        envelope_note=envelope_note)
+    monitor.start()
+    return monitor
+
+
+def _finish_remediation(cfg, st, monitor, job, job_id, work,
+                        base_dir, script_path, proc=None):
+    """Close out a monitored job: acts, record, member.
+
+    Called after the process has exited (or been killed). A
+    mid-run act is already in the monitor's outcome; a tripwire
+    the final scan turns up still earns quarantine, referral,
+    and the page -- there is just nothing left to kill, so the
+    recorded act is the quarantine. The same honesty applies to
+    a mid-run kill order that lost the race with a job already
+    exiting on its own (POSIX: the exit was not the SIGKILL):
+    the act that landed is the quarantine. Returns the result
+    member or None when nothing acted.
+    """
+    outcome = monitor.outcome
+    try:
+        monitor.final_scan()
+    except Exception:
+        pass
+    mode = st["mode"]
+    digest = _remediation.received_digest(job)
+    envelope_note = getattr(monitor, "_envelope_note", "")
+    for div in outcome.get("divergences") or []:
+        vlog(f"remediation: job {job_id}: divergence "
+             f"{_remediation.divergence_text(div)}")
+    for rec in outcome.get("oracle") or []:
+        decision = rec.get("decision")
+        _remediation_audit(
+            base_dir, cfg, st, job_id,
+            "abstained" if decision == "abstain" else "spared",
+            rec.get("divergence") or "", rec.get("reason") or "")
+    if mode == "off":
+        page_div = outcome.get("page")
+        if page_div is not None:
+            _remediation_event(base_dir, st, job_id, page_div,
+                               "none", "none", "unavailable", "",
+                               digest)
+            _remediation_audit(base_dir, cfg, st, job_id,
+                               "observed", page_div,
+                               "mode off: recorded and paged only")
+        return None
+    acted = outcome.get("acted")
+    post_tripwire = None
+    if acted is None:
+        for div in outcome.get("divergences") or []:
+            if div.get("tripwire"):
+                post_tripwire = div
+                break
+    if acted is None and post_tripwire is None:
+        return None
+    if acted is not None:
+        authority = acted["authority"]
+        div = acted["divergence"]
+        tree_killed = os.name == "nt" or (
+            proc is not None and proc.returncode is not None
+            and proc.returncode == -signal.SIGKILL)
+        act = "killed" if tree_killed else "quarantined"
+    else:
+        authority = "tripwire"
+        div = post_tripwire
+        act = "quarantined"
+    log(f"job {job_id}: remediation {act} "
+        f"({_remediation.divergence_text(div)}; "
+        f"authority {authority})", "WARN")
+    marker = {"job_id": job_id, "mode": mode, "authority": authority,
+              "divergence": _remediation.divergence_text(div),
+              "act": act, "received_digest": digest}
+    qdir = _remediation.quarantine_job(base_dir, job_id, work, marker)
+    refer = []
+    if qdir:
+        qwork = os.path.join(qdir, "work")
+        for rel in outcome.get("suspects") or []:
+            refer.append(os.path.join(qwork, rel))
+        try:
+            script_rel = os.path.relpath(script_path, work)
+            refer.append(os.path.join(qwork, script_rel))
+        except ValueError:
+            pass
+    else:
+        for rel in outcome.get("suspects") or []:
+            refer.append(os.path.join(work, rel))
+        refer.append(script_path)
+    av_verdict, av_detail = _remediation.av_referral(refer)
+    member = _remediation.result_member(
+        mode, authority, div, act, av_verdict, digest)
+    _remediation.enforce_quarantine_bounds(base_dir, st)
+    _remediation_audit(
+        base_dir, cfg, st, job_id, "acted", div,
+        f"act={act} authority={authority} av={av_verdict} "
+        f"({av_detail})")
+    _remediation_event(base_dir, st, job_id, div, act, authority,
+                       av_verdict, qdir or "", digest, envelope_note)
+    return member
+
+
+def _remediation_confinement_followup(cfg, job, job_id, base_dir):
+    """The escape tripwire at result time.
+
+    The mid-run monitor cannot see writes outside the workdir
+    with stdlib-only means; the confinement snapshot in the
+    ingest handler can, after the fact. An escape found there
+    is handled as what it is -- a tripwire -- with the acts
+    that still apply: quarantine, referral, page. Returns the
+    result member, or None in off mode / on failure.
+    """
+    if _remediation is None:
+        return None
+    st = _remediation.settings(cfg)
+    div = _remediation.divergence(
+        "confinement_escape",
+        "job wrote outside its workspace (post-run confinement "
+        "snapshot)")
+    digest = _remediation.received_digest(job)
+    if st["mode"] == "off":
+        _remediation_event(base_dir, st, job_id, div, "none", "none",
+                           "unavailable", "", digest)
+        _remediation_audit(base_dir, cfg, st, job_id, "observed",
+                           div, "mode off: recorded and paged only")
+        return None
+    work = os.path.join(base_dir, "work", job_id)
+    marker = {"job_id": job_id, "mode": st["mode"],
+              "authority": "tripwire",
+              "divergence": _remediation.divergence_text(div),
+              "act": "quarantined", "received_digest": digest}
+    qdir = _remediation.quarantine_job(base_dir, job_id, work, marker)
+    refer = []
+    if qdir:
+        qwork = os.path.join(qdir, "work")
+        for dirpath, _dirs, names in os.walk(qwork):
+            for name in sorted(names):
+                path = os.path.join(dirpath, name)
+                try:
+                    if os.path.getsize(path) <= 1024 * 1024:
+                        refer.append(path)
+                except OSError:
+                    continue
+                if len(refer) >= _remediation.AV_MAX_FILES:
+                    break
+            if len(refer) >= _remediation.AV_MAX_FILES:
+                break
+    av_verdict, av_detail = _remediation.av_referral(refer)
+    member = _remediation.result_member(
+        st["mode"], "tripwire", div, "quarantined", av_verdict,
+        digest)
+    _remediation.enforce_quarantine_bounds(base_dir, st)
+    _remediation_audit(
+        base_dir, cfg, st, job_id, "acted", div,
+        f"act=quarantined authority=tripwire av={av_verdict} "
+        f"({av_detail})")
+    _remediation_event(base_dir, st, job_id, div, "quarantined",
+                       "tripwire", av_verdict, qdir or "", digest)
+    log(f"job {job_id}: remediation quarantined "
+        f"({_remediation.divergence_text(div)}; authority "
+        f"tripwire)", "WARN")
+    return member
 
 
 def execute_job(cfg, job: dict, base_dir: str) -> dict:
@@ -4197,6 +4497,19 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         # Missing binary, a null in argv, or an unusable interpreter
         # fails the same way every cycle. Poison, not transient.
         raise JobRejected(f"cannot start interpreter: {e}")
+    # Remediation watches the run (docs/remediation-design.md).
+    # A monitor that fails to start changes nothing: the job runs
+    # exactly as it did before remediation existed.
+    monitor = None
+    rem_st = None
+    if _remediation is not None:
+        try:
+            rem_st = _remediation.settings(cfg)
+            monitor = _start_job_monitor(
+                cfg, rem_st, job_id, proc, work, base_dir,
+                script_path, before_files)
+        except Exception:
+            monitor = None
     try:
         outs, errs = proc.communicate(timeout=timeout)
         timed_out = False
@@ -4205,6 +4518,12 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         kill_tree(proc)
         outs, errs = proc.communicate()
         timed_out = True
+    finally:
+        if monitor is not None:
+            try:
+                monitor.stop()
+            except Exception:
+                pass
     duration = round(time.monotonic() - t0, 3)
 
     stdout = outs.decode("utf-8", errors="replace") if isinstance(outs, (bytes, bytearray)) else ""
@@ -4229,12 +4548,25 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
             "WARN")
         _file_artifact_hits(base_dir, job.get("job_id"), findings)
 
-    return {"stdout": stdout, "stderr": stderr,
-            "exit_code": -1 if timed_out else (proc.returncode if proc.returncode is not None else -1),
-            "timed_out": timed_out,
-            "stdout_truncated": trunc_out, "stderr_truncated": trunc_err,
-            "duration_sec": duration,
-            "artifact_scan": findings}
+    rem_member = None
+    if monitor is not None:
+        try:
+            rem_member = _finish_remediation(
+                cfg, rem_st, monitor, job, job_id,
+                work, base_dir, script_path, proc=proc)
+        except Exception as e:
+            log(f"job {job_id} remediation failed: {e}", "WARN")
+            rem_member = None
+
+    result = {"stdout": stdout, "stderr": stderr,
+              "exit_code": -1 if timed_out else (proc.returncode if proc.returncode is not None else -1),
+              "timed_out": timed_out,
+              "stdout_truncated": trunc_out, "stderr_truncated": trunc_err,
+              "duration_sec": duration,
+              "artifact_scan": findings}
+    if rem_member is not None:
+        result["remediation"] = rem_member
+    return result
 
 
 # ---------------------------------------------------------------- job handling
@@ -6042,6 +6374,34 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             scan = r.get("artifact_scan")
             if isinstance(scan, list) and scan:
                 result["artifact_scan"] = [str(item)[:200] for item in scan[:20]]
+            # Remediation (PROTOCOL 3.2): the member rides the
+            # result when remediation acted on the job or its
+            # outputs. A confinement escape the post-run snapshot
+            # caught is handled here, as the escape tripwire at
+            # result time (see _remediation_confinement_followup).
+            rem = r.get("remediation")
+            if isinstance(rem, dict):
+                # execute_job saw the job it ran (post-repair, if
+                # any); the member's digest must name the job as
+                # RECEIVED. Correct it here, and in the quarantine
+                # marker, when a repair made them differ.
+                if _remediation is not None:
+                    want = _remediation.received_digest(job)
+                    if rem.get("received_digest") != want:
+                        rem = dict(rem)
+                        rem["received_digest"] = want
+                        _remediation.fix_marker_digest(
+                            base_dir, job_id, want)
+                result["remediation"] = rem
+            if _remediation is not None and (confined is False
+                                             or protected_changed):
+                try:
+                    esc = _remediation_confinement_followup(
+                        cfg, job, job_id, base_dir)
+                    if esc is not None and "remediation" not in result:
+                        result["remediation"] = esc
+                except Exception:
+                    pass
             # The opinion member rides the result, signed with it.
             # A prediction already formed rides as formed (a wrong
             # likely_success gains the post-run sentence, never a
@@ -6131,6 +6491,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     "saved_at": time.time(),
                     "judgment": result.get("judgment"),
                     "artifact_scan": r.get("artifact_scan") or [],
+                    "remediation": result.get("remediation"),
                 })
             else:
                 note = _artifact_note(job_id, job, r)
@@ -6416,6 +6777,7 @@ _CLI_OVERRIDES = (
     ("dag_mode", "dag_mode"),
     ("oracle_mode", "oracle_mode"),
     ("oracle_opinion", "oracle_opinion_mode"),
+    ("remediation_mode", "remediation_mode"),
     ("require_review", "require_review"),
     ("local_signals", "local_signals"),
     ("local_signal_port", "local_signal_port"),
@@ -6433,8 +6795,9 @@ _CLI_OVERRIDES = (
 _CLI_OVERRIDE_COUNTS = frozenset(
     dest for dest, _key in _CLI_OVERRIDES
     if dest not in ("max_result_view", "judge", "dag_mode",
-                    "oracle_mode", "require_review", "local_signals",
-                    "oracle_log"))
+                    "oracle_mode", "oracle_opinion",
+                    "remediation_mode", "require_review",
+                    "local_signals", "oracle_log"))
 
 
 def apply_cli_overrides(cfg, args) -> list:
@@ -9477,6 +9840,12 @@ def main() -> int:
                    help="Oracle opinion latitude for this process: "
                         "off, diagnose, advise, repair "
                         "(default: diagnose)")
+    g.add_argument("--remediation-mode", default=None, metavar="MODE",
+                   choices=["off", "deterministic", "oracle"],
+                   help="remediation for this process: off (watch, "
+                        "record, page), deterministic (tripwires "
+                        "act), oracle (the model may also order a "
+                        "kill) (default: deterministic)")
     g.add_argument("--require-review", action="store_true",
                    default=None,
                    help="completed board tasks wait in "
@@ -9572,6 +9941,11 @@ def main() -> int:
     g.add_argument("--audit-report", action="store_true",
                    help="print a summary of the security audit "
                         "log and exit; no mailbox needed")
+    g.add_argument("--remediation-release", default=None,
+                   metavar="JOB_ID",
+                   help="release a quarantined job's outputs "
+                        "back out of quarantine (one recorded "
+                        "act) and exit; no mailbox needed")
     g.add_argument("--since", default=None, metavar="WINDOW",
                    help="with --audit-report: only entries from "
                         "the last window, e.g. 14d or 48h "
@@ -9671,6 +10045,38 @@ def main() -> int:
         _posture = _load_mod("runner.posture", "posture")
         base_dir = _base_dir_for(cfg, args.config)
         return _posture.main(cfg, cfg_path, base_dir)
+    if args.remediation_release:
+        # The owner's release door: restore a quarantined job's
+        # outputs as one deliberate, recorded act. The Oracle
+        # chat reaches the same door through its run tool --
+        # one code path, one record, either way in.
+        if _remediation is None:
+            print("error: remediation module unavailable",
+                  file=sys.stderr)
+            return 2
+        base_dir = _base_dir_for(cfg, args.config)
+        info = _remediation.release_quarantine(
+            base_dir, args.remediation_release)
+        if info is None:
+            print(f"no quarantined job "
+                  f"{args.remediation_release!r} to release",
+                  file=sys.stderr)
+            return 1
+        if _security is not None:
+            _security.write_audit_entry(
+                base_dir, "remediation", "released", "owner_release",
+                job_id=str(args.remediation_release),
+                detail=str(info["restored_to"]), cfg=cfg)
+        _append_security_event(base_dir, {
+            "type": "remediation_release",
+            "at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "job_id": args.remediation_release,
+            "restored_to": info["restored_to"],
+        })
+        print(f"released job {args.remediation_release} -> "
+              f"{info['restored_to']}")
+        return 0
     # Mailbox auth gate, before any model work. On a TTY the runner
     # offers the Thunderbird-style setup instead of dying; headless
     # (service, automation) keeps the fail-fast config error.

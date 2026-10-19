@@ -84,7 +84,8 @@ def parse_dri(cfg) -> dict:
             raise RuntimeError(
                 "config error: dri.triggers.sensor_fused_score "
                 "threshold/window_sec must be numbers")
-    for name in ("confinement_violation", "judge_block", "resource_pressure"):
+    for name in ("confinement_violation", "judge_block",
+                 "resource_pressure", "remediation"):
         if triggers.get(name) is not None:
             clean_triggers[name] = bool(triggers[name])
     kp = triggers.get("key_probe")
@@ -342,8 +343,33 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
 
     kp = trig.get("key_probe")
     rp = trig.get("resource_pressure")
-    if kp or rp:
+    rem = trig.get("remediation")
+    if kp or rp or rem:
         for ev in _recent_events(base_dir, since_ts):
+            if rem and ev.get("type") == "remediation":
+                jid = _page_text(ev.get("job_id")) or "?"
+                act = _page_text(ev.get("act")) or "none"
+                authority = _page_text(ev.get("authority")) or "?"
+                divergence = _page_text(ev.get("divergence")) or "?"
+                av = _page_text(ev.get("av_verdict")) or "unavailable"
+                bits = [f"divergence: {divergence}",
+                        f"authority: {authority}", f"act: {act}",
+                        f"antivirus: {av}"]
+                envelope = _page_text(ev.get("envelope"))
+                if envelope:
+                    bits.append("intent envelope: " + envelope)
+                quarantine = _page_text(ev.get("quarantine"))
+                if quarantine:
+                    bits.append("quarantined at: " + quarantine)
+                events.append({
+                    "trigger": "remediation",
+                    "at": ev.get("at") or _now_iso(),
+                    "title": f"remediation: job {jid} {act} "
+                             f"({divergence})",
+                    "detail": "; ".join(bits)[:600],
+                    "signals": [],
+                    "acted": act != "none",
+                })
             if rp and ev.get("type") == "resource_pressure":
                 parts = []
                 resources = ev.get("resources") if isinstance(ev.get("resources"), dict) else {}
@@ -416,7 +442,17 @@ def format_page(events):
         for sig in sigs:
             lines.append("  - " + (_page_text(sig) or "?"))
         lines.append("")
-    lines.append("the Oracle took no action.")
+    acted = any(isinstance(ev, dict)
+                and ev.get("trigger") == "remediation"
+                and ev.get("acted") for ev in events)
+    if acted:
+        # A remediation page is a report of an act already taken,
+        # not a request for permission that arrives too late.
+        lines.append("remediation acted as recorded above; the "
+                     "full record is in the audit log and the "
+                     "job's result.")
+    else:
+        lines.append("the Oracle took no action.")
     lines.append("ack by investigating; open the dashboard for the "
                  "full context.")
     return "\n".join(lines).strip()

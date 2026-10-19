@@ -64,12 +64,6 @@ Ideas...
   credentials that phone home. `docs/networking.md`.
 - File-integrity monitoring. No design yet.
   `docs/networking.md`.
-- Remediation: stopping a job that goes bad mid-run, when its
-  observed behavior diverges from the intent envelope its
-  opinion recorded — deterministic tripwires below, the
-  Oracle's judgment above, kill/quarantine/refer-to-antivirus
-  as the acts, the owner paged with the whole story.
-  `docs/remediation-design.md`.
 - Signal and WhatsApp paging. Telegram is the channel that
   exists. `docs/dri-playbook.md`.
 - An Oracle action log, and a policy on the Oracle's own tool
