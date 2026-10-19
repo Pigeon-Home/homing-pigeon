@@ -1,11 +1,14 @@
-"""The fifteen career-and-watchers examples: catalog-level pins.
+"""The twenty-three catalog examples: catalog-level pins.
 
 Per-extension behavior lives in tests/test_<name>.py (decide()
 fixtures, state discipline, and the end-to-ends). This module
 pins the slate AS a slate -- the thing a reader of
-docs/extensions.md is promised:
+docs/extensions.md is promised. The slate is the fifteen
+career-and-watchers examples plus the eight IDS collector
+feed adapters (falco-feed through wazuh-feed), which follow
+the same producer pattern over a collector's output artifact:
 
-- every one of the fifteen folders loads through the real
+- every one of the twenty-three folders loads through the real
   extension loader under its declared sensor name,
 - the declared signal names match this catalog table exactly
   (a signal renamed in a manifest without updating the catalog
@@ -73,6 +76,23 @@ CATALOG = [
     ("job-watcher", "job_watcher.py", "job_watcher",
      ["job_failing_repeatedly", "job_flaky",
       "job_duration_anomaly", "failure_cluster"]),
+    ("falco-feed", "falco_feed.py", "falco_feed",
+     ["falco_critical", "falco_warning"]),
+    ("suricata-feed", "suricata_feed.py", "suricata_feed",
+     ["suricata_alert", "suricata_anomaly"]),
+    ("zeek-feed", "zeek_feed.py", "zeek_feed",
+     ["zeek_new_external_peers", "zeek_dns_anomaly"]),
+    ("osquery-feed", "osquery_feed.py", "osquery_feed",
+     ["osquery_added", "osquery_removed"]),
+    ("sysmon-feed", "sysmon_feed.py", "sysmon_feed",
+     ["sysmon_process_from_temp", "sysmon_encoded_command"]),
+    ("aide-feed", "aide_feed.py", "aide_feed",
+     ["aide_changed", "aide_removed", "aide_added"]),
+    ("softflowd-feed", "softflowd_feed.py", "softflowd_feed",
+     ["flow_new_external_peer", "flow_high_volume",
+      "flow_long_lived"]),
+    ("wazuh-feed", "wazuh_feed.py", "wazuh_feed",
+     ["wazuh_alert_high", "wazuh_alert"]),
 ]
 
 
@@ -92,7 +112,7 @@ def _load_producer(folder, filename):
 
 
 class CatalogManifestTest(unittest.TestCase):
-    def test_all_fifteen_load_through_the_real_loader(self):
+    def test_all_twenty_three_load_through_the_real_loader(self):
         registry, problems = E.load_extensions(EXAMPLES_DIR)
         for folder, _fname, sensor, _signals in CATALOG:
             with self.subTest(sensor=sensor):
@@ -123,13 +143,26 @@ class CatalogManifestTest(unittest.TestCase):
                                       (int, float))
 
 
-# The one documented exception to the read_live entry point:
-# failed-login-watch is a log tailer whose offsets live in the
-# producer state, so its reading step takes the reader state --
+# The documented exceptions to the read_live entry point:
+# the log tailers' offsets live in the producer state, so
+# their reading step takes the reader state --
 # read_new_events(paths, reader_state) -- instead of a bare
-# read_live(manifest). decide() and main() are uniform.
-READER_PLUMBING = {"failed-login-watch": ("read_new_events",
-                                          "parse_event")}
+# read_live(manifest). aide-feed is a batch reader over a
+# report file (read_report_file + parse_report), and
+# softflowd-feed IS the collector: it listens for NetFlow /
+# IPFIX datagrams itself (collect_flows + decode_datagram).
+# decide() and main() are uniform across all of them.
+READER_PLUMBING = {
+    "failed-login-watch": ("read_new_events", "parse_event"),
+    "falco-feed": ("read_new_events", "parse_event"),
+    "suricata-feed": ("read_new_events", "parse_event"),
+    "zeek-feed": ("read_new_events", "parse_event"),
+    "osquery-feed": ("read_new_events", "parse_event"),
+    "sysmon-feed": ("read_new_events", "parse_event"),
+    "wazuh-feed": ("read_new_events", "parse_event"),
+    "aide-feed": ("read_report_file", "parse_report"),
+    "softflowd-feed": ("collect_flows", "decode_datagram"),
+}
 
 
 class CatalogProducerTest(unittest.TestCase):
