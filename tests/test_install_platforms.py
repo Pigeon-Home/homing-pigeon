@@ -22,6 +22,15 @@ def _args(**kw):
     return mock.Mock(**kw)
 
 
+def _home_env(home):
+    return {"HOME": home, "USERPROFILE": home}
+
+
+def _linux():
+    """Run main() down the Linux branch on any host platform."""
+    return mock.patch.object(inst.sys, "platform", "linux")
+
+
 class _Pkg:
     """A simulated package environment. Records commands and files."""
 
@@ -44,8 +53,9 @@ class ServiceEnvTest(unittest.TestCase):
     def test_linux_user_unit_lands_in_the_home(self):
         pkg = _Pkg()
         with tempfile.TemporaryDirectory() as home:
-            with mock.patch.dict(os.environ, {
-                    "HOME": home, "USERPROFILE": home}), \
+            # HOME for posixpath.expanduser, USERPROFILE for ntpath's,
+            # so the unit lands in the fake home on every platform.
+            with mock.patch.dict(os.environ, _home_env(home)), \
                     mock.patch.object(inst, "run", pkg.run):
                 inst.install_linux(
                     "/opt/hp", "/opt/hp/config.json", False,
@@ -85,7 +95,7 @@ class ServiceEnvTest(unittest.TestCase):
 
     def test_a_newline_in_an_extra_arg_is_refused(self):
         with tempfile.TemporaryDirectory() as home:
-            with mock.patch.dict(os.environ, {"HOME": home}):
+            with mock.patch.dict(os.environ, _home_env(home)):
                 for bad in ("ok\nbad", "ok\rbad", "ok\x00bad"):
                     with self.assertRaises(ValueError):
                         inst.install_linux("/opt/hp", "/c", False, [bad])
@@ -93,8 +103,11 @@ class ServiceEnvTest(unittest.TestCase):
     def test_macos_agent_bootstraps_the_gui_domain(self):
         pkg = _Pkg()
         with tempfile.TemporaryDirectory() as home:
-            with mock.patch.dict(os.environ, {
-                    "HOME": home, "USERPROFILE": home}), \
+            # os.getuid does not exist on Windows; create=True lets
+            # the launchd path run there too.
+            with mock.patch.dict(os.environ, _home_env(home)), \
+                    mock.patch.object(os, "getuid", create=True,
+                                      return_value=501), \
                     mock.patch.object(inst, "run", pkg.run):
                 inst.install_macos("/opt/hp", "/opt/hp/c.json",
                                    ["--quiet"])
@@ -176,7 +189,10 @@ class FrozenEnvTest(unittest.TestCase):
             self.skipTest("frozen tree layout differs on Windows")
         with tempfile.TemporaryDirectory() as src, \
                 tempfile.TemporaryDirectory() as dst:
-            for name in ("homing-pigeon", "install",
+            # The frozen names follow the host: homing-pigeon.exe
+            # and install.exe on Windows.
+            installer = "install.exe" if os.name == "nt" else "install"
+            for name in (inst.RUNNER_BIN, installer,
                          "config.example.json"):
                 with open(os.path.join(src, name), "w",
                           encoding="utf-8") as fh:
@@ -185,12 +201,13 @@ class FrozenEnvTest(unittest.TestCase):
             with mock.patch.object(inst, "FROZEN", True):
                 self.assertTrue(inst.install_files(src, dst, cfg))
                 self.assertTrue(os.path.isfile(
-                    os.path.join(dst, "homing-pigeon")))
+                    os.path.join(dst, inst.RUNNER_BIN)))
                 self.assertTrue(os.path.isfile(cfg))
                 self.assertFalse(inst.install_files(
                     os.path.join(src, "missing"), dst, cfg))
 
 
+@unittest.skipIf(sys.platform == "win32", "POSIX installer path")
 class LinuxPackageEnvTest(unittest.TestCase):
     def test_osquery_apt_env_writes_the_light_pack(self):
         pkg = _Pkg()
@@ -498,7 +515,7 @@ class MainDispatchTest(unittest.TestCase):
         mig.assert_called()
 
     def test_the_one_home_commands_refuse_on_linux(self):
-        with mock.patch.object(inst.sys, "platform", "linux"):
+        with _linux():
             for flag in ("--check", "--console", "--oracle"):
                 with _argv(flag):
                     self.assertEqual(inst.main(), 2)
@@ -545,7 +562,7 @@ class MainDispatchTest(unittest.TestCase):
 
     def test_a_fresh_linux_install_bakes_the_flags(self):
         with tempfile.TemporaryDirectory() as dst:
-            with mock.patch.object(inst.sys, "platform", "linux"), \
+            with _linux(), \
                     mock.patch.object(inst, "install_linux") as linux, \
                     mock.patch.object(
                         inst, "install_ollama_and_model",
@@ -571,7 +588,7 @@ class MainDispatchTest(unittest.TestCase):
 
     def test_pi_light_installs_no_model_and_no_collector(self):
         with tempfile.TemporaryDirectory() as dst:
-            with mock.patch.object(inst.sys, "platform", "linux"), \
+            with _linux(), \
                     mock.patch.object(inst, "install_linux"), \
                     mock.patch.object(
                         inst, "install_ollama_and_model") as ollama, \
@@ -584,26 +601,30 @@ class MainDispatchTest(unittest.TestCase):
             cfg = os.path.join(dst, "config.json")
             with open(cfg, "w", encoding="utf-8") as fh:
                 fh.write("{}\n")
-            with mock.patch.object(inst, "install_collectors",
-                                   return_value=["ok"]) as cols, \
+            with _linux(), \
+                    mock.patch.object(inst, "install_collectors",
+                                      return_value=["ok"]) as cols, \
                     _argv("--dir", dst, "--collector", "aide"):
                 self.assertEqual(inst.main(), 0)
             cols.assert_called()
 
     def test_inference_only_reports_ready_or_not(self):
         with tempfile.TemporaryDirectory() as dst:
-            with mock.patch.object(
-                    inst, "install_ollama_and_model",
-                    return_value=False), \
+            with _linux(), \
+                    mock.patch.object(
+                        inst, "install_ollama_and_model",
+                        return_value=False), \
                     _argv("--dir", dst, "--inference-only",
                           "--no-profile"):
                 self.assertEqual(inst.main(), 0)
-            with _argv("--dir", dst, "--inference-only",
-                       "--profile", "pi-light"):
+            with _linux(), \
+                    _argv("--dir", dst, "--inference-only",
+                          "--profile", "pi-light"):
                 self.assertEqual(inst.main(), 0)
 
     def test_a_failed_copy_stops_the_install(self):
-        with mock.patch.object(inst, "install_files", return_value=False), \
+        with _linux(), \
+                mock.patch.object(inst, "install_files", return_value=False), \
                 _argv("--dir", "/tmp/does-not-matter-hp"):
             self.assertEqual(inst.main(), 1)
 

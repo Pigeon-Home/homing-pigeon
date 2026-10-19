@@ -3,6 +3,7 @@
 Health judgments, the one-home install, the ACL call, and
 the fetches. Package commands are fake. Nothing is installed.
 """
+import contextlib
 import json
 import os
 import socket
@@ -281,8 +282,12 @@ class FetchAndConfigTest(unittest.TestCase):
         self.assertEqual(inst._split_host_port(None), (None, None))
         self.assertIsNone(inst._which("this-binary-is-not-real-hp"))
         with tempfile.TemporaryDirectory() as home:
-            with mock.patch.dict(os.environ, {
-                    "HOME": home, "USERPROFILE": home}), \
+            # USERPROFILE is what ntpath.expanduser reads; os.getuid
+            # is POSIX-only, so create it for a Windows host.
+            with mock.patch.dict(os.environ,
+                                 {"HOME": home, "USERPROFILE": home}), \
+                    mock.patch.object(os, "getuid", create=True,
+                                      return_value=501), \
                     mock.patch.object(inst, "run"):
                 inst.uninstall_macos()
         with tempfile.TemporaryDirectory() as d:
@@ -437,18 +442,34 @@ class LastBranchesTest(unittest.TestCase):
                 faster=False, no_inference=True, no_collector=False,
                 collector=None, instructions=None, instructions_add=None,
                 wazuh_manager=None)
-            import runner.setup as wizard
-            with mock.patch.object(sys.stdin, "isatty",
-                                   return_value=True), \
-                    mock.patch.object(wizard, "needs_setup",
-                                      return_value="no mailbox"), \
-                    mock.patch.object(wizard, "prompt_yes_no",
-                                      return_value=True), \
-                    mock.patch.object(wizard, "run_setup_wizard") as wiz, \
-                    mock.patch.object(inst, "install_collectors",
-                                      return_value=["ok"]) as cols:
+            # install.py prefers `from runner import setup` and only
+            # falls back to the top-level `setup`; the two are separate
+            # module objects. Load both, then patch every loaded copy,
+            # so the real wizard never reaches input() whichever one
+            # the installer picks (in the full suite runner.setup is
+            # usually imported already).
+            import setup  # noqa: F401
+            try:
+                import runner.setup  # noqa: F401
+            except ImportError:
+                pass
+            copies = [sys.modules[n] for n in ("setup", "runner.setup")
+                      if n in sys.modules]
+            wizards = []
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(mock.patch.object(
+                    sys.stdin, "isatty", return_value=True))
+                for mod in copies:
+                    stack.enter_context(mock.patch.object(
+                        mod, "needs_setup", return_value="no mailbox"))
+                    stack.enter_context(mock.patch.object(
+                        mod, "prompt_yes_no", return_value=True))
+                    wizards.append(stack.enter_context(
+                        mock.patch.object(mod, "run_setup_wizard")))
+                cols = stack.enter_context(mock.patch.object(
+                    inst, "install_collectors", return_value=["ok"]))
                 inst._setup_fresh_config(args, cfg)
-            wiz.assert_called()
+            self.assertTrue(any(w.called for w in wizards))
             cols.assert_called()
 
     def test_a_fresh_home_prints_the_baked_flags(self):

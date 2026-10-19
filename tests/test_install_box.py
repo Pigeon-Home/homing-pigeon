@@ -54,7 +54,11 @@ class WipeMigrateTest(unittest.TestCase):
             quiet = []
             for plat in ("darwin", "linux", "win32"):
                 os.makedirs(state, exist_ok=True)
+                # os.getuid is POSIX-only; create=True lets the darwin
+                # branch run on a Windows host too.
                 with mock.patch.object(inst.sys, "platform", plat), \
+                        mock.patch.object(os, "getuid", create=True,
+                                          return_value=501), \
                         mock.patch.object(
                             inst, "_candidate_state_dirs",
                             return_value=[state]), \
@@ -68,7 +72,7 @@ class WipeMigrateTest(unittest.TestCase):
             self.assertFalse(os.path.exists(state))
             self.assertIn(
                 ["launchctl", "bootout",
-                 "gui/%s" % os.getuid(),
+                 "gui/501",
                  os.path.expanduser(
                      "~/Library/LaunchAgents/"
                      "com.homing-pigeon.runner.plist")],
