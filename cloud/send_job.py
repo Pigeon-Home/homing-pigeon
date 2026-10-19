@@ -242,6 +242,16 @@ def cmd_new(args) -> int:
             payload["interpreter"] = json.loads(args.interpreter)
         payload["timeout_sec"] = args.timeout
     body = sign_payload(payload, args.secret)
+    if getattr(args, "to_file", None):
+        # The file transport's envelope is exactly what would
+        # have been printed; write it instead of printing.
+        with open(args.to_file, "w", encoding="utf-8") as f:
+            f.write(f"[HOMING-PIGEON] job {payload['job_id']}\n\n")
+            f.write(body)
+            if not body.endswith("\n"):
+                f.write("\n")
+        print(f"wrote {args.to_file}", file=sys.stderr)
+        return 0
     print(f"[HOMING-PIGEON] job {payload['job_id']}")
     print()
     print(body)
@@ -358,6 +368,11 @@ def main() -> int:
     g.add_argument("--secret", required=True, metavar="SECRET",
                    help="the shared secret, used as-is as the "
                         "HMAC key; never logged")
+    g = n.add_argument_group("delivery")
+    g.add_argument("--to-file", default=None, metavar="PATH",
+                   help="write the envelope (subject, blank line, "
+                        "signed body) to PATH for the runner's "
+                        "file transport instead of printing it")
     n.set_defaults(func=cmd_new)
 
     ts = sub.add_parser(
