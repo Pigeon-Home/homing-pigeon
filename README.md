@@ -138,19 +138,21 @@ attestation shape is there when you want it; it is not the posture
 the box ships in.
 
 ```
-  Cloud SI                                Your machine
-  --------                                --------------------
-  "Did the tests pass?" --signed------> +-------------+
-                                        |  The Oracle |
-  "Any secrets in there?" ------------> |             |
-                                        | output stays|
-   +---------------------+             | on your disk|
-   | signed attestation   | <--signed-- |             |
-   | { exit_zero: true,   |             | answers only|
-   |   no_secrets: true } |             | what policy |
-   +---------------------+             | allows      |
-                                        +------------+
-   The SI learns what your ceiling allows.
+  Cloud SI                                  Your machine
+  --------                                  ------------
+
+  "Did the tests pass?" --signed-------> +-----------------+
+                                         | The Oracle      |
+  "Any secrets in there?" -------------> |                 |
+                                         | output stays    |
+                                         | on your disk    |
+  +------------------------+             |                 |
+  | signed attestation     | <--signed-- | answers only    |
+  | { exit_zero: true,     |             | what policy     |
+  |   no_secrets: true }   |             | allows          |
+  +------------------------+             +-----------------+
+
+  The SI learns what your ceiling allows.
 ```
 
 Queries are declared upfront (no adaptive probing), each job gets a
@@ -160,9 +162,9 @@ set by *you* in config — never by the SI.
 Your machine runs two roles in one box:
 
 ```
-+-----------------------------+-----------------------------+
++------------------------------+------------------------------+
 | RUNNER (faces the SI)        | ORACLE (faces you)           |
-+-----------------------------+-----------------------------+
++------------------------------+------------------------------+
 | polls the mailbox            | watches jobs as they run;    |
 | verifies HMAC + key policy   | its opinions ride results    |
 | judge: an opt-in gate        | fuses sensor alerts          |
@@ -170,7 +172,7 @@ Your machine runs two roles in one box:
 | answers queries at the       | pages you when a             |
 | ceiling you set -- the       | threshold trips              |
 | default is full output       | orders kills in oracle mode  |
-+-----------------------------+-----------------------------+
++------------------------------+------------------------------+
 ```
 
 The runner does what the SI asks. The Oracle watches what happens
