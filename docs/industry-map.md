@@ -92,8 +92,10 @@ product; standalone NDR as a growth story; chat-only copilots; pre-LLM
 - **Full AV scan hooks** — on demand, never resident.
 - **Guard-model triage (Llama Guard shape)** — only when a model is already
   loaded. Costs RAM/VRAM otherwise.
-- **Statistical anomaly baselining** — Microsoft retired its own low-quality
-  ML detections in 2026. Don't ship this until it's good. Honestly not built.
+- **Statistical anomaly baselining** — even Microsoft has been retiring
+  Defender for Cloud Apps' legacy anomaly-detection alerts in waves
+  since 2025, migrating them to a newer detection model. Don't ship
+  this until it's good. Honestly not built.
 
 ### Heavy / out of scope
 
