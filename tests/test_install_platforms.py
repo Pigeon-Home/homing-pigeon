@@ -4,6 +4,7 @@ No apt, no brew, no schtasks, no launchctl. The commands are
 recorded. Files that would land in /etc are recorded too.
 A user systemd unit and a launchd agent land in a fake home.
 """
+import json
 import os
 import subprocess
 import sys
@@ -391,3 +392,237 @@ class OtherPlatformTest(unittest.TestCase):
                 self.assertEqual(fh.read(), b"not-armored")
         with mock.patch("builtins.open", side_effect=OSError):
             self.assertEqual(inst._os_release_version(), "")
+
+
+def _argv(*args):
+    return mock.patch.object(sys, "argv", ["install.py", *args])
+
+
+class MainDispatchTest(unittest.TestCase):
+    def test_uninstall_follows_the_platform(self):
+        cases = (
+            ("linux", "uninstall_linux"),
+            ("darwin", "uninstall_macos"),
+            ("win32", "uninstall_windows"),
+            ("freebsd14", "uninstall_freebsd"),
+        )
+        for plat, name in cases:
+            with mock.patch.object(inst.sys, "platform", plat), \
+                    mock.patch.object(inst, name) as fn, \
+                    _argv("--uninstall"):
+                self.assertEqual(inst.main(), 0)
+            fn.assert_called()
+        with mock.patch.object(inst.sys, "platform", "haiku"), \
+                _argv("--uninstall"):
+            self.assertEqual(inst.main(), 2)
+
+    def test_wipe_and_migrate_return_the_helper(self):
+        with mock.patch.object(inst, "do_wipe", return_value=3) as wipe, \
+                _argv("--wipe", "--no-backup"):
+            self.assertEqual(inst.main(), 3)
+        wipe.assert_called()
+        with mock.patch.object(inst, "do_migrate", return_value=4) as mig, \
+                _argv("--migrate"):
+            self.assertEqual(inst.main(), 4)
+        mig.assert_called()
+
+    def test_the_one_home_commands_refuse_on_linux(self):
+        for flag in ("--check", "--console", "--oracle"):
+            with _argv(flag):
+                self.assertEqual(inst.main(), 2)
+        with _argv("--follow"):
+            self.assertEqual(inst.main(), 2)
+
+    def test_windows_home_dispatches_each_command(self):
+        with tempfile.TemporaryDirectory() as home:
+            cfg = os.path.join(home, "config.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                fh.write("{}\n")
+            with mock.patch.object(inst.sys, "platform", "win32"):
+                with mock.patch.object(inst, "do_check", return_value=0), \
+                        _argv("--home", home, "--check"):
+                    self.assertEqual(inst.main(), 0)
+                with mock.patch.object(inst, "do_console", return_value=0), \
+                        _argv("--home", home, "--console"):
+                    self.assertEqual(inst.main(), 0)
+                with mock.patch.object(inst, "do_logs", return_value=0), \
+                        _argv("--home", home, "--logs"):
+                    self.assertEqual(inst.main(), 0)
+                with mock.patch.object(inst, "do_oracle", return_value=0), \
+                        _argv("--home", home, "--oracle"):
+                    self.assertEqual(inst.main(), 0)
+                with _argv("--home", home, "--follow"):
+                    self.assertEqual(inst.main(), 2)
+                with mock.patch.object(
+                        inst, "install_ollama_and_model",
+                        return_value=True), \
+                        _argv("--home", home, "--inference-only",
+                              "--no-profile"):
+                    self.assertEqual(inst.main(), 0)
+                with mock.patch.object(
+                        inst, "install_collectors",
+                        return_value=["ok"]) as cols, \
+                        _argv("--home", home, "--collector", "osquery"):
+                    self.assertEqual(inst.main(), 0)
+                cols.assert_called()
+                with mock.patch.object(inst, "do_install_home",
+                                       return_value=0) as home_install, \
+                        _argv("--home", home):
+                    self.assertEqual(inst.main(), 0)
+                home_install.assert_called()
+
+    def test_a_fresh_linux_install_bakes_the_flags(self):
+        with tempfile.TemporaryDirectory() as dst:
+            with mock.patch.object(inst, "install_linux") as linux, \
+                    mock.patch.object(
+                        inst, "install_ollama_and_model",
+                        return_value=True), \
+                    _argv("--dir", dst, "--no-profile", "--no-collector",
+                          "--quiet", "--poll-interval", "30",
+                          "--workers", "2", "--dry-run", "--pdb",
+                          "--instructions", "be kind"):
+                self.assertEqual(inst.main(), 0)
+            extra = linux.call_args[0][3]
+            for flag in ("--quiet", "--poll-interval", "30",
+                         "--workers", "2", "--dry-run", "--pdb"):
+                self.assertIn(flag, extra)
+            cfg = os.path.join(dst, "config.json")
+            with open(cfg, encoding="utf-8") as fh:
+                data = json.load(fh)
+            self.assertEqual(data["owner_instructions"], "be kind")
+            self.assertGreaterEqual(len(data["shared_secret"]), 64)
+
+    def test_pi_light_installs_no_model_and_no_collector(self):
+        with tempfile.TemporaryDirectory() as dst:
+            with mock.patch.object(inst, "install_linux"), \
+                    mock.patch.object(
+                        inst, "install_ollama_and_model") as ollama, \
+                    _argv("--dir", dst, "--profile", "pi-light"):
+                self.assertEqual(inst.main(), 0)
+            ollama.assert_not_called()
+
+    def test_an_existing_config_only_installs_the_named_collector(self):
+        with tempfile.TemporaryDirectory() as dst:
+            cfg = os.path.join(dst, "config.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                fh.write("{}\n")
+            with mock.patch.object(inst, "install_collectors",
+                                   return_value=["ok"]) as cols, \
+                    _argv("--dir", dst, "--collector", "aide"):
+                self.assertEqual(inst.main(), 0)
+            cols.assert_called()
+
+    def test_inference_only_reports_ready_or_not(self):
+        with tempfile.TemporaryDirectory() as dst:
+            with mock.patch.object(
+                    inst, "install_ollama_and_model",
+                    return_value=False), \
+                    _argv("--dir", dst, "--inference-only",
+                          "--no-profile"):
+                self.assertEqual(inst.main(), 0)
+            with _argv("--dir", dst, "--inference-only",
+                       "--profile", "pi-light"):
+                self.assertEqual(inst.main(), 0)
+
+    def test_a_failed_copy_stops_the_install(self):
+        with mock.patch.object(inst, "install_files", return_value=False), \
+                _argv("--dir", "/tmp/does-not-matter-hp"):
+            self.assertEqual(inst.main(), 1)
+
+    def test_an_unknown_platform_copies_and_says_start_by_hand(self):
+        with tempfile.TemporaryDirectory() as dst:
+            with mock.patch.object(inst.sys, "platform", "haiku"), \
+                    mock.patch.object(
+                        inst, "install_ollama_and_model",
+                        return_value=False), \
+                    _argv("--dir", dst, "--no-inference",
+                          "--no-profile", "--no-collector"):
+                self.assertEqual(inst.main(), 0)
+
+
+class SecretAndOllamaEnvTest(unittest.TestCase):
+    def test_a_weak_or_patterned_secret_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = os.path.join(d, "config.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                fh.write('{"shared_secret": "changeme"}\n')
+            with self.assertRaises(SystemExit) as caught:
+                inst.ensure_shared_secret(cfg, "abc" * 50)
+            self.assertEqual(caught.exception.code, 2)
+            inst.ensure_shared_secret(cfg, None)
+            with open(cfg, encoding="utf-8") as fh:
+                first = json.load(fh)["shared_secret"]
+            inst.ensure_shared_secret(cfg, None)
+            with open(cfg, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh)["shared_secret"], first)
+            with self.assertRaises(SystemExit):
+                inst.store_additional_secret(cfg, "bad id")
+            inst.store_additional_secret(cfg, "si.1")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                fh.write('{"additional_secrets": []}\n')
+            with self.assertRaises(SystemExit):
+                inst.store_additional_secret(cfg, "si.1")
+
+    def test_instructions_replace_append_and_refuse_a_symlink(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = os.path.join(d, "config.json")
+            inst.set_instructions(cfg, "   ", False)
+            self.assertFalse(os.path.exists(cfg))
+            inst.set_instructions(cfg, "one", False)
+            inst.set_instructions(cfg, "two", True)
+            with open(cfg, encoding="utf-8") as fh:
+                text = json.load(fh)["owner_instructions"]
+            self.assertEqual(text, "one\n\ntwo")
+            link = os.path.join(d, "link.json")
+            os.symlink(cfg, link)
+            with self.assertRaises(OSError):
+                inst.set_instructions(link, "nope", False)
+
+    def test_each_ollama_package_env(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = os.path.join(d, "config.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                fh.write("{}\n")
+            bins = iter([None, "/usr/bin/ollama"])
+            with mock.patch.object(inst, "_ollama_bin",
+                                   side_effect=lambda: next(bins)), \
+                    mock.patch.object(inst, "run") as run, \
+                    mock.patch.object(inst, "ensure_ollama_running",
+                                      return_value=True), \
+                    mock.patch.object(inst.sys, "platform", "linux"):
+                self.assertTrue(inst.install_ollama_and_model(
+                    cfg, "qwen3:1.7b", False))
+            self.assertIn("curl", " ".join(run.call_args_list[0].args[0]))
+            with open(cfg, encoding="utf-8") as fh:
+                self.assertEqual(
+                    json.load(fh)["inference"]["model"], "qwen3:1.7b")
+
+            with mock.patch.object(inst, "_ollama_bin", return_value=None), \
+                    mock.patch.object(inst, "_which", return_value=None), \
+                    mock.patch.object(inst.sys, "platform", "darwin"):
+                self.assertFalse(inst.install_ollama_and_model(
+                    cfg, "m", False))
+            with mock.patch.object(inst, "_ollama_bin", return_value=None), \
+                    mock.patch.object(inst, "_which",
+                                      return_value="/usr/bin/brew"), \
+                    mock.patch.object(inst, "run",
+                                      side_effect=RuntimeError("brew")), \
+                    mock.patch.object(inst.sys, "platform", "darwin"):
+                self.assertFalse(inst.install_ollama_and_model(
+                    cfg, "m", False))
+            with mock.patch.object(inst, "_ollama_bin", return_value=None), \
+                    mock.patch.object(inst, "_which", return_value=None), \
+                    mock.patch.object(inst.sys, "platform", "win32"):
+                self.assertFalse(inst.install_ollama_and_model(
+                    cfg, "m", False))
+            with mock.patch.object(inst, "_ollama_bin", return_value=None), \
+                    mock.patch.object(inst.sys, "platform", "haiku"):
+                self.assertFalse(inst.install_ollama_and_model(
+                    cfg, "m", False))
+
+    def test_the_bpf_probe_answers_or_declines(self):
+        answer = inst._bpf_loadable()
+        self.assertIn(answer, (True, False, None))
+        with mock.patch.object(inst.sys, "platform", "haiku"):
+            self.assertIsNone(inst._bpf_loadable())
+
