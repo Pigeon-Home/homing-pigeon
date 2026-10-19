@@ -198,6 +198,7 @@ standalone binaries built by GitHub Actions:
 | Windows (x64) | `homing-pigeon-windows-x86_64-<version>.zip` → `homing-pigeon.exe` + `install.exe` |
 | Linux (x64, Debian/RHEL/Ubuntu/…) | `homing-pigeon-linux-x86_64-<version>.tar.gz` → `homing-pigeon` + `install` |
 | macOS (ARM64) | `homing-pigeon-macos-arm64-<version>.tar.gz` → `homing-pigeon` + `install` |
+| Raspberry Pi (ARM64, Pi Light) | `homing-pigeon-pi-light-arm64-<version>.tar.gz` → `homing-pigeon` + `install` |
 
 Every archive carries the version in its file name, and extracting it
 creates a folder with the same name — so several releases can sit side

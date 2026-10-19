@@ -116,6 +116,11 @@ you. You start them by making a **release**. All point and click:
    - `homing-pigeon-windows-x86_64-<version>.zip` — for Windows computers
    - `homing-pigeon-linux-x86_64-<version>.tar.gz` — for Linux computers
    - `homing-pigeon-macos-arm64-<version>.tar.gz` — for Mac computers
+   - `homing-pigeon-pi-light-arm64-<version>.tar.gz` — for Raspberry Pi (Pi Light)
+
+   The release also carries the Python wheel and source
+   distribution, `SHA384SUMS`, the SBOM, and the build-provenance
+   record -- nine files in all.
 
 The next release uses the next number. Bigger number = newer.
 Do not reuse a tag that already exists.
