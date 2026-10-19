@@ -7,10 +7,13 @@ alert on its own; it fuses the alert with what it already knows —
 which job was running, what the job was supposed to do, whether it
 stayed confined — and that fusion is what makes the signal useful.
 
-Alerts are advisory. Nothing in this path executes, pages, or
-blocks. (Outbound reach to the owner — the DRI playbook — is a
-separate extension: `docs/dri-playbook.md`. It consumes these
-alerts through the fused-score trigger.)
+Ingest is advisory: filing an alert executes nothing, pages
+no one, and blocks nothing by itself. What consumes the
+filed alerts can act on them — the DRI evaluation pages the
+owner when its triggers trip on the fused score
+(`docs/dri-playbook.md`), and remediation counts some
+alerts among the divergences it watches a running job
+against (`docs/remediation-design.md`).
 
 ## Why this shape
 
