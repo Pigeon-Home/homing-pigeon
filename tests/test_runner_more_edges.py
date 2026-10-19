@@ -289,8 +289,11 @@ class LogAndSeenTest(unittest.TestCase):
         import argparse
         self.assertEqual(rr._transports_arg("file, email"),
                          ["file", "email"])
+        # Names are shape-checked only: an unregistered drop-in
+        # extension name is valid; discovery decides at start.
+        self.assertEqual(rr._transports_arg("nope"), ["nope"])
         with self.assertRaises(argparse.ArgumentTypeError):
-            rr._transports_arg("nope")
+            rr._transports_arg("bad name!")
         with self.assertRaises(argparse.ArgumentTypeError):
             rr._transports_arg(" , ")
 

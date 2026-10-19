@@ -225,61 +225,66 @@ class FinishRemediationTest(unittest.TestCase):
 
 
 class TransportCycleTest(unittest.TestCase):
-    def test_a_bad_start_a_bad_fetch_and_a_bad_message_are_isolated(self):
-        good = mock.Mock()
-        good.fetch.return_value = [mock.Mock(
-            subject="s", body="b", ident="m1")]
-        good.fetch.return_value[0].reply = mock.Mock()
-        bad_msg = mock.Mock(subject="s", body="b", ident="")
-        bad_msg.ack.side_effect = OSError("ack")
-        flaky = mock.Mock()
-        flaky.fetch.return_value = [bad_msg]
-        dead = mock.Mock()
-        dead.fetch.side_effect = RuntimeError("down")
-        dead.close.side_effect = OSError("close")
+    """The core services each enabled transport extension's channel
+    (transports.service_channel); one bad channel never fails the
+    others, and dry-run is handed through to the channel."""
 
-        def build(name, cfg, base, log=None):
-            if name == "nope":
-                raise RuntimeError("missing")
+    def test_a_failing_channel_is_isolated_from_the_others(self):
+        calls = []
+
+        def service(base_dir, name, process, log=None, dry_run=False):
+            calls.append((name, dry_run))
             if name == "dead":
-                return dead
-            if name == "flaky":
-                return flaky
-            return good
+                raise RuntimeError("down")
+            return 1
 
         opts = types.SimpleNamespace(dry_run=False)
-        with mock.patch.object(rr._transports, "build_transport",
-                               side_effect=build), \
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        path = os.path.join(tmp.name, "seen.json")
+        with mock.patch.object(rr._transports, "service_channel",
+                               side_effect=service), \
+                mock.patch.object(rr, "log") as log:
+            rr._service_transports(
+                {}, tmp.name, {}, path,
+                ["dead", "flaky", "file"], {}, {}, opts)
+        self.assertEqual([n for n, _ in calls], ["dead", "flaky", "file"])
+        self.assertTrue(all(d is False for _, d in calls))
+        warned = " ".join(str(c.args[0]) for c in log.call_args_list)
+        self.assertIn("dead transport: channel service failed", warned)
+        self.assertTrue(os.path.isfile(path))
+
+    def test_the_channel_process_hook_runs_the_mail_core(self):
+        seen_process = []
+
+        def service(base_dir, name, process, log=None, dry_run=False):
+            seen_process.append(process("s", "b"))
+            return 1
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with mock.patch.object(rr._transports, "service_channel",
+                               side_effect=service), \
                 mock.patch.object(
                     rr, "process_transport_message",
-                    side_effect=[
-                        RuntimeError("boom"),
-                        [("re", "body")],
-                    ]):
+                    return_value=[("re", "body")]) as ptm:
             rr._service_transports(
-                {}, "/tmp", {}, "/tmp/seen.json",
-                ["nope", "dead", "flaky", "file"],
-                {}, {}, opts)
-        good.fetch.return_value[0].reply.assert_called_once()
-        good.fetch.return_value[0].ack.assert_called_once()
-        bad_msg.ack.assert_called_once()
+                {}, tmp.name, {}, os.path.join(tmp.name, "seen.json"),
+                ["file"], {}, {}, None)
+        self.assertEqual(seen_process, [[("re", "body")]])
+        ptm.assert_called_once()
 
-    def test_dry_run_does_not_ack_and_seen_is_capped(self):
-        msg = mock.Mock(subject="s", body="b", ident="m")
-        transport = mock.Mock()
-        transport.fetch.return_value = [msg]
+    def test_dry_run_is_handed_to_the_channel_and_seen_is_capped(self):
         opts = types.SimpleNamespace(dry_run=True)
         seen = {str(i): 1 for i in range(rr.SEEN_CAP + 3)}
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         path = os.path.join(tmp.name, "seen.json")
-        with mock.patch.object(rr._transports, "build_transport",
-                               return_value=transport), \
-                mock.patch.object(
-                    rr, "process_transport_message", return_value=[]):
+        with mock.patch.object(rr._transports, "service_channel",
+                               return_value=0) as svc:
             rr._service_transports(
                 {}, tmp.name, seen, path, ["file"], {}, {}, opts)
-        msg.ack.assert_not_called()
+        self.assertTrue(svc.call_args.kwargs["dry_run"])
         self.assertEqual(len(seen), rr.SEEN_CAP)
         self.assertTrue(os.path.isfile(path))
 
