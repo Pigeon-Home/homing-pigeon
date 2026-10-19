@@ -109,7 +109,7 @@ you. You start them by making a **release**. All point and click:
    `pyproject.toml`, not a guess.
 6. Click the big green **Publish release** button.
 7. Now click the **Actions** tab at the top. You will see the robots
-   working. It takes about 10 minutes.
+   working. It typically takes about 10 minutes.
 8. When they finish, go back to **Releases**. Your version is there
    with files to download (each file and folder name carries that
    same number):
@@ -228,7 +228,9 @@ python3 cloud/send_job.py new --kind ping --secret PASTE_YOUR_SECRET_HERE
    - **Subject:** paste the subject line.
    - **Body:** paste the big block of text.
    - Send it.
-5. Within a minute or two, a reply email arrives with the result.
+5. Typically within a minute or two, a reply email arrives with the
+   result — the wait rides on the runner's poll interval and your
+   mail provider's delivery time.
    For a ping, the result says `pong`.
 
 To run a script instead of a ping:
