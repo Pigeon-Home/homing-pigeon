@@ -68,6 +68,9 @@ class PureEdgeTest(_Binary, unittest.TestCase):
             rr._report_extensions({}, "/b")
 
     def test_the_real_job_user_face_calls_the_syscalls(self):
+        if os.name == "nt":
+            self.skipTest("Unix-only behavior")
+
         face = rr._JobUserFace()
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -137,6 +140,9 @@ class IoEdgeTest(_Binary, unittest.TestCase):
             rr._append_brief(tmp.name, {"n": 8})
 
     def test_seen_and_retained_close_failures_are_swallowed(self):
+        if os.name == "nt":
+            self.skipTest("Unix-only behavior")
+
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         seen = os.path.join(tmp.name, "seen.json")

@@ -273,6 +273,9 @@ class FetchAndConfigTest(unittest.TestCase):
                 self.assertEqual(inst.main(), 0)
 
     def test_small_failures_stay_small(self):
+        if os.name == "nt":
+            self.skipTest("Unix-only behavior")
+
         with mock.patch.object(inst.subprocess, "run",
                                side_effect=OSError("no")):
             inst._run_quiet(["pkill", "-f", "x"])
@@ -922,6 +925,9 @@ class CleanupTest(unittest.TestCase):
                              inst.DEFAULT_INFERENCE_MODEL)
 
     def test_a_write_that_dies_midway_closes_and_unlinks(self):
+        if os.name == "nt":
+            self.skipTest("Unix-only behavior")
+
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "c.json")
             had = hasattr(os, "O_NOFOLLOW")

@@ -170,6 +170,9 @@ class FinishRemediationTest(unittest.TestCase):
             {}, {"mode": "off"}, mon, {}, "j", "/w", "/b", "/w/a.sh"))
 
     def test_a_sigkill_is_killed_and_a_tripwire_is_quarantined(self):
+        if os.name == "nt":
+            self.skipTest("Unix-only behavior")
+
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         work = os.path.join(tmp.name, "work")

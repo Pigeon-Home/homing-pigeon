@@ -156,6 +156,9 @@ class InfinityFromFileTest(unittest.TestCase):
     )
 
     def test_the_poll_sleeps_the_default_and_the_worker_count_stays_one(self):
+        if os.name == "nt":
+            self.skipTest("Unix-only behavior")
+
         import sys
         from runner import runner
         from runner import setup
@@ -413,6 +416,9 @@ class SensorRecordTest(unittest.TestCase):
 
 class OAuthLatchTest(unittest.TestCase):
     def test_a_dead_token_is_shouted_once_and_recovery_is_logged(self):
+        if os.name == "nt":
+            self.skipTest("Unix-only behavior")
+
         from runner import runner
         from runner import setup
         from runner.oauth import OAuthRefreshError

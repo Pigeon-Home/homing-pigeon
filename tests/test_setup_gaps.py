@@ -33,6 +33,9 @@ def go(path, cfg, inputs, probe=None, gp=None, consent="tok"):
 
 class SetupGapsTest(unittest.TestCase):
     def test_gaps(self):
+        if os.name == "nt":
+            self.skipTest("Unix-only behavior")
+
         with mock.patch("builtins.input",
                         side_effect=["", "yes", "no", EOFError]):
             self.assertTrue(SU.prompt_yes_no("q") and SU.prompt_yes_no("q"))
