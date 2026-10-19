@@ -478,7 +478,7 @@ End-to-end without your SI:
   (seen-set) are enforced before anything runs; the sender
   address is logged but never trusted.
 - Jobs are also **encrypted by default**: `send_job.py` wraps the
-  signed body in a AES-256-GCM envelope keyed from the
+  signed body in an AES-256-GCM envelope keyed from the
   shared secret, so the mailbox provider — and anyone else who
   can read the transport — sees ciphertext, not your script or
   its output. Results mirror the job: encrypted job, encrypted

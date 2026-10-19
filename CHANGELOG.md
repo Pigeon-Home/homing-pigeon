@@ -4,6 +4,15 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.0 - 2026-10-19
+
+- **AES-256-GCM.** Per-job encryption is AES-256-GCM (NIST SP
+  800-38D). The envelope algorithm id is
+  `aes-256-gcm/hkdf-sha384`. The DTLS ciphersuite on the wire
+  is TLS_AES_256_GCM_SHA384 (`0x1302`). ChaCha20-Poly1305 is
+  gone: a job or result encrypted by 3.10.1 or earlier does
+  not decrypt.
+
 ## 3.10.1 - 2026-10-19
 
 - **One protocol, version 1.** This release supersedes the
