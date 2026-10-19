@@ -748,5 +748,114 @@ class RunnerHelpDocumentTest(unittest.TestCase):
                 self.assertIn(text, flat)
 
 
+class InstallHelpDocumentTest(unittest.TestCase):
+    """install.py --help: same hand as the runner's page."""
+
+    GROUPS = ["where it installs", "instead of installing",
+              "what gets installed", "inference",
+              "baked into the service"]
+    FLAGS = [
+        "--help", "--version",
+        "--dir", "--home", "--config", "--system", "--run-as",
+        "--check", "--console", "--logs", "--follow", "--lines",
+        "--oracle", "--migrate", "--uninstall", "--wipe",
+        "--backup-dir", "--no-backup",
+        "--shared-secret", "--instructions", "--instructions-add",
+        "--profile", "--no-profile", "--additional-secret",
+        "--no-inference", "--inference-only", "--inference-model",
+        "--faster",
+        "--dry-run", "--workers", "--poll-interval",
+        "--max-output-bytes", "--no-send", "--timeout",
+        "--verbose", "--quiet", "--pdb",
+    ]
+    EXAMPLES = [
+        "install.py",
+        "install.py --verbose --poll-interval 30",
+        "install.py --check",
+        "install.py --logs --follow",
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        cls.proc = _help_output(
+            os.path.join("runner", "install.py"), "--help")
+        cls.out = cls.proc.stdout
+
+    def test_help_exits_0(self):
+        self.assertEqual(self.proc.returncode, 0, self.proc.stderr)
+
+    def test_every_flag_is_listed(self):
+        for flag in self.FLAGS:
+            with self.subTest(flag=flag):
+                self.assertIn(flag, self.out)
+
+    def test_group_titles_appear_in_order(self):
+        positions = []
+        for title in self.GROUPS:
+            at = self.out.find(f"\n{title}:\n")
+            self.assertGreaterEqual(at, 0, title)
+            positions.append(at)
+        self.assertEqual(positions, sorted(positions))
+
+    def test_examples_are_verbatim(self):
+        self.assertIn("Install Homing Pigeon as a service on this "
+                      "machine.", self.out)
+        for example in self.EXAMPLES:
+            with self.subTest(example=example):
+                self.assertIn(f"  {example}\n", self.out)
+
+
+class SendJobHelpDocumentTest(unittest.TestCase):
+    """send_job.py --help and `new --help`: same hand again."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.proc = _help_output(
+            os.path.join("cloud", "send_job.py"), "--help")
+        cls.out = cls.proc.stdout
+
+    def test_help_exits_0(self):
+        self.assertEqual(self.proc.returncode, 0, self.proc.stderr)
+
+    def test_top_level_document(self):
+        self.assertIn("If it isn't signed, it isn't sent.",
+                      self.out)
+        for example in (
+                "send_job.py new --kind ping --secret <secret>",
+                "send_job.py verify --secret <secret> < result.txt"):
+            with self.subTest(example=example):
+                self.assertIn(f"  {example}\n", self.out)
+        for cmd in ("new", "task-submit", "task-request", "verify"):
+            self.assertIn(cmd, self.out)
+
+    def test_new_help_groups_and_flags(self):
+        proc = _help_output(os.path.join("cloud", "send_job.py"),
+                            "new", "--help")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        out = proc.stdout
+        positions = []
+        for title in ("the job", "files, arguments, environment",
+                      "addressing and signing"):
+            at = out.find(f"\n{title}:\n")
+            self.assertGreaterEqual(at, 0, title)
+            positions.append(at)
+        self.assertEqual(positions, sorted(positions))
+        for flag in ("--kind", "--job-id", "--script-file",
+                     "--script-url", "--script-sha384",
+                     "--interpreter", "--timeout", "--file",
+                     "--arg", "--env", "--key-id", "--aud",
+                     "--reply-to", "--secret"):
+            with self.subTest(flag=flag):
+                self.assertIn(flag, out)
+
+    def test_every_subcommand_help_exits_0(self):
+        for cmd in ("task-submit", "task-request", "verify"):
+            with self.subTest(cmd=cmd):
+                proc = _help_output(
+                    os.path.join("cloud", "send_job.py"), cmd,
+                    "--help")
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

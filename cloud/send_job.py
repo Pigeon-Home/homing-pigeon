@@ -279,50 +279,109 @@ def cmd_task_request(args) -> int:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="homing-pigeon cloud-side helper")
+    # --help is a document here too, same hand as the runner's:
+    # a description in the project's voice, worked examples in
+    # the epilog, and chapters inside `new`.
+    ap = argparse.ArgumentParser(
+        description=(
+            "Build signed Homing Pigeon job emails and verify\n"
+            "signed results -- the cloud side of the protocol.\n"
+            "If it isn't signed, it isn't sent."),
+        epilog=(
+            "examples:\n"
+            "  send_job.py new --kind ping --secret <secret>\n"
+            "      a signed liveness check\n"
+            "  send_job.py new --kind exec --script-file "
+            "job.ps1 \\\n"
+            "      --timeout 300 --secret <secret>\n"
+            "      a signed script job\n"
+            "  send_job.py verify --secret <secret> < "
+            "result.txt\n"
+            "      check a result body and pretty-print it\n"
+            "\n"
+            "new prints the subject line, a blank line, then "
+            "the\n"
+            "signed body: stdout is the email, so keep it "
+            "clean."),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--version", action="version",
                     version="%(prog)s " + (__version__ or "unknown"))
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    n = sub.add_parser("new", help="build a signed job email")
-    n.add_argument("--kind", choices=["exec", "ping"], default="exec")
-    n.add_argument("--job-id", default=None)
-    n.add_argument("--script-file", default=None)
-    n.add_argument("--script-url", default=None)
-    n.add_argument("--script-sha384", default=None)
-    n.add_argument("--file", action="append", default=[],
-                   help="name=url, repeatable")
-    n.add_argument("--arg", action="append", default=[],
+    n = sub.add_parser(
+        "new", help="build a signed job email",
+        description="Build a signed job email. Prints the "
+                    "subject line, a blank line, then the "
+                    "signed body.",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    g = n.add_argument_group("the job")
+    g.add_argument("--kind", choices=["exec", "ping"], default="exec",
+                   help="job kind (default: exec)")
+    g.add_argument("--job-id", default=None, metavar="ID",
+                   help="job id (default: a fresh UUID)")
+    g.add_argument("--script-file", default=None, metavar="PATH",
+                   help="read the script from this file")
+    g.add_argument("--script-url", default=None, metavar="URL",
+                   help="the runner downloads the script from "
+                        "this URL")
+    g.add_argument("--script-sha384", default=None, metavar="HEX",
+                   help="expected SHA-384 of the script")
+    g.add_argument("--interpreter", default=None, metavar="JSON",
+                   help='JSON list overriding the runner\'s '
+                        'interpreter, e.g. \'["pwsh", "-File"]\' '
+                        'or \'["bash"]\'')
+    g.add_argument("--timeout", type=int, default=300,
+                   metavar="SECONDS",
+                   help="per-job timeout in seconds "
+                        "(default: 300)")
+    g = n.add_argument_group("files, arguments, environment")
+    g.add_argument("--file", action="append", default=[],
+                   metavar="NAME=URL",
+                   help="input file as name=url, repeatable")
+    g.add_argument("--arg", action="append", default=[],
+                   metavar="ARG",
                    help="script argument, repeatable")
-    n.add_argument("--env", action="append", default=[],
-                   help="KEY=value, repeatable")
-    n.add_argument("--interpreter", default=None,
-                   help='JSON list overriding the runner\'s interpreter, e.g. '
-                        '\'["pwsh", "-File"]\' or \'["bash"]\'')
-    n.add_argument("--timeout", type=int, default=300)
-    n.add_argument("--key-id", default=None, help="key_id for multi-secret (Piece 1)")
-    n.add_argument("--aud", default=None,
-                   help="audience: runner_id the job is addressed to (M5)")
-    n.add_argument("--reply-to", default=None, metavar="ADDRESS",
-                   help="email the result to this address instead of the "
-                        "runner mailbox (must be inside the signed body)")
-    n.add_argument("--secret", required=True)
+    g.add_argument("--env", action="append", default=[],
+                   metavar="KEY=VALUE",
+                   help="environment entry as KEY=value, "
+                        "repeatable")
+    g = n.add_argument_group("addressing and signing")
+    g.add_argument("--key-id", default=None, metavar="KEY_ID",
+                   help="key_id for multi-secret setups")
+    g.add_argument("--aud", default=None, metavar="RUNNER_ID",
+                   help="audience: the runner_id this job is "
+                        "addressed to")
+    g.add_argument("--reply-to", default=None, metavar="ADDRESS",
+                   help="email the result to this address "
+                        "instead of the runner mailbox (must be "
+                        "inside the signed body)")
+    g.add_argument("--secret", required=True, metavar="SECRET",
+                   help="the shared secret, used as-is as the "
+                        "HMAC key; never logged")
     n.set_defaults(func=cmd_new)
 
-
-    ts = sub.add_parser("task-submit", help="build a signed task_submit email")
-    ts.add_argument("--task-id", required=True)
-    ts.add_argument("--priority", type=int, default=0)
-    ts.add_argument("--secret", required=True)
+    ts = sub.add_parser(
+        "task-submit", help="build a signed task_submit email",
+        description="Build a signed board task_submit email.")
+    ts.add_argument("--task-id", required=True, metavar="ID")
+    ts.add_argument("--priority", type=int, default=0,
+                    help="task priority (default: 0)")
+    ts.add_argument("--secret", required=True, metavar="SECRET")
     ts.set_defaults(func=cmd_task_submit)
 
-    tr = sub.add_parser("task-request", help="build a signed task_request email")
-    tr.add_argument("--worker-id", required=True)
-    tr.add_argument("--secret", required=True)
+    tr = sub.add_parser(
+        "task-request", help="build a signed task_request email",
+        description="Build a signed board task_request email.")
+    tr.add_argument("--worker-id", required=True, metavar="ID")
+    tr.add_argument("--secret", required=True, metavar="SECRET")
     tr.set_defaults(func=cmd_task_request)
-    v = sub.add_parser("verify", help="verify a signed result body")
-    v.add_argument("--secret", required=True)
-    v.add_argument("file", nargs="?", default=None)
+    v = sub.add_parser(
+        "verify", help="verify a signed result body",
+        description="Verify a signed result body and "
+                    "pretty-print it.")
+    v.add_argument("--secret", required=True, metavar="SECRET")
+    v.add_argument("file", nargs="?", default=None, metavar="PATH",
+                   help="file to read (default: stdin)")
     v.set_defaults(func=cmd_verify)
 
     args = ap.parse_args()

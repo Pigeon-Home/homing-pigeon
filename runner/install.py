@@ -1693,99 +1693,175 @@ def install_ollama_and_model(cfg_path: str, model: str, skip: bool) -> bool:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Install homing-pigeon as a service")
+    # --help is a document here too, same hand as the runner's:
+    # chapters in reading order, worked examples in the epilog.
+    ap = argparse.ArgumentParser(
+        description=(
+            "Install Homing Pigeon as a service on this machine.\n"
+            "Copies the runner into place, writes config.json,\n"
+            "and registers the service so the agent starts at\n"
+            "boot and runs the jobs your cloud SI signs."),
+        epilog=(
+            "examples:\n"
+            "  install.py\n"
+            "      install with the defaults\n"
+            "  install.py --verbose --poll-interval 30\n"
+            "      bake the flags you tested with into the "
+            "service\n"
+            "  install.py --check\n"
+            "      verify an existing install; change nothing\n"
+            "  install.py --logs --follow\n"
+            "      watch the runner log\n"
+            "\n"
+            "The flags in the last group are written into the\n"
+            "service command, so the installed agent runs with\n"
+            "exactly the flags you tested with."),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--version", action="version",
                     version="%(prog)s " + __version__)
-    ap.add_argument("--dir", default=None,
-                    help="binary install dir (default <home>/bin on Windows, "
-                         "~/.homing-pigeon elsewhere). On Windows, --dir "
-                         "without --home keeps the legacy layout: binaries "
-                         "and config.json both land in --dir.")
-    ap.add_argument("--home", default=None, metavar="DIR",
-                    help="Windows: the one-home root (default "
-                         "C:\\homing-pigeon). Holds bin/, config.json, "
-                         "state/, install-receipt.json.")
-    ap.add_argument("--check", action="store_true",
-                    help="doctor: verify the one-home layout, receipt, "
-                         "service task, config, and inference endpoint")
-    ap.add_argument("--console", action="store_true",
-                    help="Windows: stop the HomingPigeon task, run the agent "
-                         "in this terminal with live logs, restart the task "
-                         "on exit")
-    ap.add_argument("--logs", action="store_true",
-                    help="print the tail of the runner log")
-    ap.add_argument("--follow", action="store_true",
-                    help="with --logs: keep following the log (Ctrl+C stops)")
-    ap.add_argument("--lines", type=int, default=50, metavar="N",
-                    help="with --logs: how many lines to print (default 50)")
-    ap.add_argument("--oracle", action="store_true",
-                    help="open the Oracle chat against the home config")
-    ap.add_argument("--config", default=None,
-                    help="config file to use (default <dir>/config.json)")
-    ap.add_argument("--system", action="store_true",
-                    help="Linux: install a system-wide systemd unit (needs root)")
-    ap.add_argument("--run-as", default=None, metavar="USER",
-                    help="Windows: run the scheduled task as USER instead "
-                         "of SYSTEM (least privilege; schtasks prompts "
-                         "for the account password unless it is a "
-                         "service account)")
-    ap.add_argument("--uninstall", action="store_true")
-    ap.add_argument("--wipe", action="store_true",
-                    help="back up every pigeon state dir on this box into one "
-                         "zip, then delete the state dirs, the scheduled "
-                         "task/service, and running processes")
-    ap.add_argument("--backup-dir", default=None, metavar="DIR",
-                    help="where --wipe writes its backup zip "
-                         "(default: system temp dir)")
-    ap.add_argument("--no-backup", action="store_true",
-                    help="with --wipe, delete without backing up first")
-    ap.add_argument("--migrate", action="store_true",
-                    help="copy state found in other locations into --dir "
-                         "(never overwrites) and report what moved")
-    ap.add_argument("--shared-secret", default=None, metavar="SECRET",
-                    help="shared secret to write into config.json "
-                         "(default: generate a random one)")
+    g = ap.add_argument_group(
+        "where it installs",
+        "The one-home layout on Windows puts binaries, config,\n"
+        "and state under one root; elsewhere the runner lives\n"
+        "in ~/.homing-pigeon.")
+    g.add_argument("--dir", default=None, metavar="DIR",
+                   help="binary install dir (default: <home>/bin on "
+                        "Windows, ~/.homing-pigeon elsewhere). On "
+                        "Windows, --dir without --home keeps the "
+                        "legacy layout: binaries and config.json "
+                        "both land in --dir.")
+    g.add_argument("--home", default=None, metavar="DIR",
+                   help="Windows: the one-home root (default: "
+                        "C:\\homing-pigeon). Holds bin/, config.json, "
+                        "state/, install-receipt.json.")
+    g.add_argument("--config", default=None, metavar="PATH",
+                   help="config file to use "
+                        "(default: <dir>/config.json)")
+    g.add_argument("--system", action="store_true",
+                   help="Linux: install a system-wide systemd unit "
+                        "(needs root)")
+    g.add_argument("--run-as", default=None, metavar="USER",
+                   help="Windows: run the scheduled task as USER "
+                        "instead of SYSTEM (least privilege; "
+                        "schtasks prompts for the account password "
+                        "unless it is a service account)")
+    g = ap.add_argument_group(
+        "instead of installing",
+        "Do one of these and exit; nothing is installed.")
+    g.add_argument("--check", action="store_true",
+                   help="doctor: verify the one-home layout, "
+                        "receipt, service task, config, and "
+                        "inference endpoint")
+    g.add_argument("--console", action="store_true",
+                   help="Windows: stop the HomingPigeon task, run "
+                        "the agent in this terminal with live logs, "
+                        "restart the task on exit")
+    g.add_argument("--logs", action="store_true",
+                   help="print the tail of the runner log")
+    g.add_argument("--follow", action="store_true",
+                   help="with --logs: keep following the log "
+                        "(Ctrl+C stops)")
+    g.add_argument("--lines", type=int, default=50, metavar="COUNT",
+                   help="with --logs: how many lines to print "
+                        "(default: 50)")
+    g.add_argument("--oracle", action="store_true",
+                   help="open the Oracle chat against the home "
+                        "config")
+    g.add_argument("--migrate", action="store_true",
+                   help="copy state found in other locations into "
+                        "--dir (never overwrites) and report what "
+                        "moved")
+    g.add_argument("--uninstall", action="store_true",
+                   help="remove the service and the installed files")
+    g.add_argument("--wipe", action="store_true",
+                   help="back up every pigeon state dir on this box "
+                        "into one zip, then delete the state dirs, "
+                        "the scheduled task/service, and running "
+                        "processes")
+    g.add_argument("--backup-dir", default=None, metavar="DIR",
+                   help="where --wipe writes its backup zip "
+                        "(default: system temp dir)")
+    g.add_argument("--no-backup", action="store_true",
+                   help="with --wipe, delete without backing up "
+                        "first")
+    g = ap.add_argument_group(
+        "what gets installed",
+        "The config and identity written on a fresh install.")
+    g.add_argument("--shared-secret", default=None, metavar="SECRET",
+                   help="shared secret to write into config.json "
+                        "(default: generate a random one)")
+    g.add_argument("--instructions", default=None, metavar="TEXT",
+                   help="human-readable instructions for this box "
+                        "(replaces any existing)")
+    g.add_argument("--instructions-add", default=None, metavar="TEXT",
+                   help="append a paragraph to the existing "
+                        "instructions")
+    g.add_argument("--profile", default=None, metavar="NAME_OR_PATH",
+                   help="apply a deployment profile (pi-light, "
+                        "password-only, or a JSON file; "
+                        "raspberry-pi-home is pi-light's former "
+                        "name). If omitted, a profile is chosen "
+                        "automatically.")
+    g.add_argument("--no-profile", action="store_true",
+                   help="do not apply any deployment profile")
+    g.add_argument("--additional-secret", action="append", default=[],
+                   metavar="KEY_ID",
+                   help="register an additional key under KEY_ID "
+                        "(generates a 256-bit secret, never printed)")
+    g = ap.add_argument_group(
+        "inference",
+        "The local model the Oracle thinks with.")
+    g.add_argument("--no-inference", action="store_true",
+                   help="do not install Ollama or pull a model "
+                        "(ask stays off)")
+    g.add_argument("--inference-only", action="store_true",
+                   help="only install Ollama / pull the model and "
+                        "write the inference block; leaves the rest "
+                        "of the install alone. Safe to re-run when "
+                        "a previous install did not finish the "
+                        "model setup.")
+    g.add_argument("--inference-model", default=None, metavar="MODEL",
+                   help="Ollama model to pull when inference is "
+                        "enabled (default: qwen3:1.7b, qwen2.5:3b "
+                        "with --faster; the pi-light profile "
+                        "installs no model at all)")
+    g.add_argument("--faster", action="store_true",
+                   help="pull qwen2.5:3b, a smaller faster model. "
+                        "Does not change protected paths. "
+                        "--inference-model still wins.")
     # Runner flags forwarded into the installed service command, so the
     # installed agent runs with exactly the flags you tested with.
-    ap.add_argument("--dry-run", action="store_true",
-                    help="install with --dry-run baked into the service")
-    ap.add_argument("--workers", type=int, default=None, metavar="N",
-                    help="concurrent job executions")
-    ap.add_argument("--poll-interval", type=int, default=None, metavar="SEC")
-    ap.add_argument("--no-inference", action="store_true",
-                    help="do not install Ollama or pull a model (ask stays off)")
-    ap.add_argument("--inference-only", action="store_true",
-                    help="only install Ollama / pull the model and write the "
-                         "inference block; leaves the rest of the install alone. "
-                         "Safe to re-run when a previous install did not finish "
-                         "the model setup.")
-    ap.add_argument("--instructions", default=None, metavar="TEXT",
-                    help="human-readable instructions for this box (replaces any existing)")
-    ap.add_argument("--instructions-add", default=None, metavar="TEXT",
-                    help="append a paragraph to the existing instructions")
-    ap.add_argument("--profile", default=None, metavar="NAME_OR_PATH",
-                    help="apply a deployment profile (pi-light, password-only, or a JSON file; "
-                         "raspberry-pi-home is pi-light's former name). "
-                         "If omitted, a profile is chosen automatically.")
-    ap.add_argument("--no-profile", action="store_true",
-                    help="do not apply any deployment profile")
-    ap.add_argument("--inference-model", default=None,
-                    help="Ollama model to pull when inference is enabled "
-                         "(default qwen3:1.7b, qwen2.5:3b with "
-                         "--faster; the pi-light profile installs "
-                         "no model at all)")
-    ap.add_argument("--faster", action="store_true",
-                    help="pull qwen2.5:3b, a smaller faster model. "
-                         "Does not change protected paths. "
-                         "--inference-model still wins.")
-    ap.add_argument("--additional-secret", action="append", default=[],
-                    help="KEY_ID (generates 256-bit secret, never printed)")
-    ap.add_argument("--max-output-bytes", type=int, default=None, metavar="N")
-    ap.add_argument("--no-send", action="store_true")
-    ap.add_argument("--timeout", type=int, default=None, metavar="SEC")
-    ap.add_argument("--verbose", action="store_true", default=True)
-    ap.add_argument("--quiet", action="store_false", dest="verbose")
-    ap.add_argument("--pdb", action="store_true")
+    g = ap.add_argument_group(
+        "baked into the service",
+        "Runner flags written into the installed service\n"
+        "command; the agent on boot runs what you tested.")
+    g.add_argument("--dry-run", action="store_true",
+                   help="install with --dry-run baked into the "
+                        "service")
+    g.add_argument("--workers", type=int, default=None,
+                   metavar="COUNT",
+                   help="concurrent job executions")
+    g.add_argument("--poll-interval", type=int, default=None,
+                   metavar="SECONDS",
+                   help="seconds between poll cycles")
+    g.add_argument("--max-output-bytes", type=int, default=None,
+                   metavar="BYTES",
+                   help="truncate stdout/stderr beyond this many "
+                        "bytes")
+    g.add_argument("--no-send", action="store_true",
+                   help="install with --no-send baked into the "
+                        "service")
+    g.add_argument("--timeout", type=int, default=None,
+                   metavar="SECONDS",
+                   help="default per-job timeout in seconds")
+    g.add_argument("--verbose", action="store_true", default=True,
+                   help="bake verbose logging into the service "
+                        "(the default)")
+    g.add_argument("--quiet", action="store_false", dest="verbose",
+                   help="bake quiet logging into the service")
+    g.add_argument("--pdb", action="store_true",
+                   help="drop the runner into pdb on unhandled "
+                        "exceptions")
     args = ap.parse_args()
 
     print(f"install {__version__}")
