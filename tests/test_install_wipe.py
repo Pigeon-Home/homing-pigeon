@@ -75,7 +75,12 @@ class WipeMigrateTest(unittest.TestCase):
             self.assertFalse(os.path.exists(d2))
             zips = [f for f in os.listdir(bdir) if f.endswith(".zip")]
             self.assertEqual(len(zips), 1)
-            names = zipfile.ZipFile(os.path.join(bdir, zips[0])).namelist()
+            self.assertTrue(zips[0].startswith("homing-pigeon-backup-"))
+            with zipfile.ZipFile(os.path.join(bdir, zips[0])) as zf:
+                names = zf.namelist()
+                self.assertTrue(zf.infolist())
+                self.assertEqual(zf.infolist()[0].compress_type,
+                                 zipfile.ZIP_DEFLATED)
             self.assertEqual(len(names), 3)
             text = out.getvalue()
             self.assertIn("backed up", text)

@@ -65,9 +65,26 @@ class WipeMigrateTest(unittest.TestCase):
                     self.assertEqual(
                         inst.do_wipe(backup_dir=d, no_backup=True), 0)
             self.assertFalse(os.path.exists(state))
-            self.assertTrue(any(c[0] == "launchctl" for c in quiet))
-            self.assertTrue(any(c[0] == "systemctl" for c in quiet))
-            self.assertTrue(any(c[0] == "schtasks" for c in quiet))
+            self.assertIn(
+                ["launchctl", "bootout",
+                 "gui/%s" % os.getuid(),
+                 os.path.expanduser(
+                     "~/Library/LaunchAgents/"
+                     "com.homing-pigeon.runner.plist")],
+                quiet)
+            self.assertIn(
+                ["systemctl", "--user", "disable", "--now",
+                 "homing-pigeon.service"], quiet)
+            self.assertIn(
+                ["sudo", "-n", "systemctl", "disable", "--now",
+                 "homing-pigeon.service"], quiet)
+            self.assertIn(
+                ["pkill", "-f", "[h]oming-pigeon"], quiet)
+            self.assertIn(
+                ["taskkill", "/F", "/IM", "homing-pigeon.exe"], quiet)
+            self.assertIn(
+                ["schtasks", "/Delete", "/TN", "HomingPigeon", "/F"],
+                quiet)
 
     def test_a_backup_that_cannot_be_made_deletes_nothing(self):
         with tempfile.TemporaryDirectory() as d:

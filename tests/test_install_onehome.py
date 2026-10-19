@@ -264,6 +264,51 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("WARN: inference", buf.getvalue())
 
+    def test_a_missing_receipt_fails_and_a_missing_secret_warns(self):
+        tree = _HomeTree(self)
+        os.remove(os.path.join(tree.home, "install-receipt.json"))
+        buf = io.StringIO()
+        with mock.patch.object(install, "_task_exists",
+                               return_value=True), \
+                mock.patch.object(
+                    install, "_task_command",
+                    return_value=os.path.join(
+                        tree.bin, install.RUNNER_BIN)), \
+                redirect_stdout(buf):
+            rc = do_check(tree.home, tree.bin, tree.cfg, tree.state)
+        self.assertEqual(rc, 1)
+        self.assertIn("FAIL: install-receipt.json", buf.getvalue())
+
+        _write_receipt(tree.home, fresh=True)
+        _seed(tree.cfg, json.dumps({"base_dir": tree.state}))
+        buf = io.StringIO()
+        with mock.patch.object(install, "_task_exists",
+                               return_value=True), \
+                mock.patch.object(
+                    install, "_task_command",
+                    return_value=os.path.join(
+                        tree.bin, install.RUNNER_BIN)), \
+                redirect_stdout(buf):
+            rc = do_check(tree.home, tree.bin, tree.cfg, tree.state)
+        self.assertEqual(rc, 0)
+        self.assertIn("WARN: shared_secret", buf.getvalue())
+
+        _seed(tree.cfg, json.dumps({
+            "shared_secret": "s" * 64,
+            "base_dir": os.path.join(tree.tmp.name, "elsewhere"),
+        }))
+        buf = io.StringIO()
+        with mock.patch.object(install, "_task_exists",
+                               return_value=True), \
+                mock.patch.object(
+                    install, "_task_command",
+                    return_value=os.path.join(
+                        tree.bin, install.RUNNER_BIN)), \
+                redirect_stdout(buf):
+            rc = do_check(tree.home, tree.bin, tree.cfg, tree.state)
+        self.assertEqual(rc, 0)
+        self.assertIn("WARN: base_dir", buf.getvalue())
+
 
 class ConsoleTest(unittest.TestCase):
     def _tree(self):
@@ -451,6 +496,7 @@ class AclTest(unittest.TestCase):
             self.assertTrue(_acl_home("C:\\homing-pigeon"))
         cmd = mr.call_args[0][0]
         self.assertEqual(cmd[0], "icacls")
+        self.assertIn("/inheritance:r", cmd)
         self.assertIn("SYSTEM:(OI)(CI)F", cmd)
         self.assertIn("Administrators:(OI)(CI)F", cmd)
 
