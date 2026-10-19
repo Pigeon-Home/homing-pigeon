@@ -217,6 +217,12 @@ class MutationTreeTest(unittest.TestCase):
                          "PROTOCOL.md", "RUNBOOK.md"):
             self.assertIn(expected, copied)
 
+    def test_the_ci_pin_file_is_copied(self):
+        # PipelineLiftsTest reads requirements-ci.txt from the tree;
+        # without a copy the v3.8.5 tag build's mutation job died in
+        # baseline stats collection on exactly that missing file.
+        self.assertIn("requirements-ci.txt", _also_copy())
+
     def test_the_sharded_runner_is_copied(self):
         # test_parallel_runner imports this file at load time.
         # A missing copy fails stats collection before any mutant.

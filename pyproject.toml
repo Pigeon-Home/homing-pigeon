@@ -69,6 +69,7 @@ also_copy = [
     "INSTALL.md",
     "PROTOCOL.md", "README.md", "RUNBOOK.md",
     "SAFEGUARDS.md", "SECURITY.md", "STYLE.md", "TRANSPORTS.md",
+    "requirements-ci.txt",
     # The CI pin file. tests/test_build_config.py reads it, and
     # mutmut's stats run dies if the mutant tree does not have it.
     "requirements-ci.txt",

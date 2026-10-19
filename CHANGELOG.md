@@ -49,7 +49,7 @@
   action is pinned to a commit SHA, workflow tokens are
   default-deny with exact per-job grants, each archive
   carries a BUILD-PROVENANCE.json, an SBOM (SPDX) joins
-  the release assets -- eight now -- covered by the same
+  the release assets -- nine now -- covered by the same
   SHA384SUMS and attestation, CI tooling is pinned via
   requirements-ci.txt, and docs/verification.md walks a
   verifier from the tag to the bits on every outlet.
