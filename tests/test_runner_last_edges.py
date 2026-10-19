@@ -366,11 +366,24 @@ class LocalSignalTest(unittest.TestCase):
             holder["s"] = s
             return s
 
-        with mock.patch.object(rr.socket, "socket", side_effect=fake_socket):
-            # Port 1 is privileged; bind will fail and close.
-            bound = rr._local_signal_server(
-                {"local_signal_port": 1}, "/tmp")
-        self.assertIsNone(bound)
+        # Occupy an ephemeral port, then ask the server for the
+        # same one: the bind fails with EADDRINUSE on every
+        # platform and at every privilege level. (The previous
+        # shape bound port 1 and relied on it being privileged --
+        # true for CI's unprivileged runners, false when the suite
+        # runs as root, where the bind succeeds and the server
+        # comes up.)
+        squatter = real_socket()
+        squatter.bind(("127.0.0.1", 0))
+        taken_port = squatter.getsockname()[1]
+        try:
+            with mock.patch.object(rr.socket, "socket",
+                                   side_effect=fake_socket):
+                bound = rr._local_signal_server(
+                    {"local_signal_port": taken_port}, "/tmp")
+            self.assertIsNone(bound)
+        finally:
+            squatter.close()
 
         srv = mock.Mock()
         calls = {"n": 0}
