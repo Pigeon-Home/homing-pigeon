@@ -85,7 +85,7 @@ Ideas...
   ciphersuite, PSK-only, stateless cookie exchange,
   Connection IDs), `runner/transport_extensions/dtls/`,
   client `cloud/send_dtls.py`, specified in
-  `docs/ietf/draft-homing-pigeon-01.md` (Part II). Perfect
+  `docs/ietf/draft-homing-pigeon.md` (Part II). Perfect
   forward secrecy is a hard requirement of the profile
   as built: psk_dhe_ke only, a fresh X25519 ephemeral on
   every handshake and every resumption, and psk_ke
@@ -95,7 +95,7 @@ Ideas...
   the binding's one quantum-exposed element (a recorded
   session falls to a future cryptographically relevant
   quantum computer; Part I's symmetric constructions do
-  not). Draft-homing-pigeon-01 Section 22.1 states the
+  not). Draft-homing-pigeon Section 22.1 states the
   limit; the hybrid exchange is the remedy when the
   ecosystem's post-quantum pieces are askable.
 
@@ -132,7 +132,7 @@ Ideas...
   the runner's `dtls_greeting` config (none / family,
   the default / standard / full), chosen by the
   responder; a resumed session re-runs it. Specified in
-  draft-homing-pigeon-01 Section 20.
+  draft-homing-pigeon Section 20.
 
 - Cloudflare Queues: The design notes are TRANSPORTS.md
 

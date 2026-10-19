@@ -44,7 +44,8 @@ facts a reader may need to cite. Git history carries the rest.
   construction. The opt-out relaxes verification only; no
   setting enables cleartext mail.
 - **One draft.** The IETF documents consolidated into
-  `draft-homing-pigeon-01`: Part I specifies version 1, Part II
+  `draft-homing-pigeon` (one canonical file, no revision
+  number in the name): Part I specifies version 1, Part II
   version 2, one numbering, one reference list. The -00 file
   remains as a pointer so its URI resolves. The draft's mail
   binding now requires TLS (MUST, RFC 8314/8996/9325).
