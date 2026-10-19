@@ -549,15 +549,17 @@ python3 sky_watcher.py --samples recorded-passes.json
 on the equator at midnight: all three stages fire at corridor
 entry, because the window opens inside the lead time.)
 
-## The catalog: thirteen examples from the workbench
+## The catalog: fifteen examples from the workbench
 
-Thirteen more working senses, each one a small diffing
+Fifteen more working senses, each one a small diffing
 watcher in the same shape as the three above — a manifest, a
 boring producer with one platform-reading function and a
-pure `decide()`, a state file, and a README. Each is rooted
-in a trade its author practiced: fuzzing, PKI, network
-engineering, penetration testing, kernel work, code signing,
-operations. Powerful-desktop senses are the center of
+pure `decide()`, a state file, and a README. Thirteen are
+rooted in trades their author practiced: fuzzing, PKI,
+network engineering, penetration testing, kernel work,
+code signing, operations; the last two watch the machine's
+resource trends and the runner's own job history instead.
+Powerful-desktop senses are the center of
 gravity; every one also declares how it tunes down for a Pi
 Light install (its README's Light mode section has the
 detail — only knobs the code implements).
@@ -577,6 +579,8 @@ detail — only knobs the code implements).
 | `backup-freshness` | A backup folder's newest artifact: stale past the threshold (medium), twice it (high), a fresh one lands (info) | Cadence to six hours; this sense is already nearly free |
 | `usb-arrivals` | USB/serial device arrivals: a new device (info); a new storage-class device (medium) | Cadence to 1800s, USB kinds only |
 | `airwaves` | The Pi's wireless neighborhood (full section above): new AP (medium), evil-twin suspect (high), AP gone (info), own link degraded (medium) | Cadence is the knob — 300s to 1800s; it only ever reads |
+| `resource-sentinel` | The machine's counters, judged as rates and trends, never single samples: CPU held saturated across the window (high), disk free space shrinking too fast (high), process count storm (medium), memory falling steadily to the floor (medium) | Cadence to 300s, window down — the trends it hunts play out over minutes |
+| `job-watcher` | The runner's retained job history: the same job failing repeatedly (medium), a job alternating pass/fail (info), a run far beyond the job's own duration baseline (medium, and never before a baseline exists), many distinct jobs failing at once (high) | Cadence to 900s; history does not move fast |
 
 Two honest limits, stated once for the whole catalog.
 Tripwire over a huge tree cannot be made cheap — hashing

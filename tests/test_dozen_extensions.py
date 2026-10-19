@@ -1,11 +1,11 @@
-"""The thirteen career examples: catalog-level pins.
+"""The fifteen career-and-watchers examples: catalog-level pins.
 
 Per-extension behavior lives in tests/test_<name>.py (decide()
 fixtures, state discipline, and the end-to-ends). This module
 pins the slate AS a slate -- the thing a reader of
 docs/extensions.md is promised:
 
-- every one of the thirteen folders loads through the real
+- every one of the fifteen folders loads through the real
   extension loader under its declared sensor name,
 - the declared signal names match this catalog table exactly
   (a signal renamed in a manifest without updating the catalog
@@ -67,6 +67,12 @@ CATALOG = [
     ("airwaves", "airwaves.py", "airwaves",
      ["new_access_point", "evil_twin_suspect", "access_point_gone",
       "link_degraded"]),
+    ("resource-sentinel", "resource_sentinel.py", "resource_sentinel",
+     ["cpu_saturation_sustained", "disk_fill_velocity",
+      "process_storm", "memory_exhaustion_trend"]),
+    ("job-watcher", "job_watcher.py", "job_watcher",
+     ["job_failing_repeatedly", "job_flaky",
+      "job_duration_anomaly", "failure_cluster"]),
 ]
 
 
@@ -86,7 +92,7 @@ def _load_producer(folder, filename):
 
 
 class CatalogManifestTest(unittest.TestCase):
-    def test_all_thirteen_load_through_the_real_loader(self):
+    def test_all_fifteen_load_through_the_real_loader(self):
         registry, problems = E.load_extensions(EXAMPLES_DIR)
         for folder, _fname, sensor, _signals in CATALOG:
             with self.subTest(sensor=sensor):
