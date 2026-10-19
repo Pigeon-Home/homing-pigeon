@@ -99,7 +99,7 @@ This document binds the protocol to email. The protocol itself needs only the st
 
 The runner reads the mailbox with IMAP and writes with SMTP. Mail authentication is out of band. The signature check does not change with the mail credential.
 
-IMAP and SMTP SHOULD be used over TLS. TLS protects a hop. It does not hide the message from the mailbox provider (Section 16.2).
+IMAP and SMTP MUST be used over TLS. An implementation MUST NOT carry this protocol over a cleartext IMAP or SMTP session. The TLS version MUST be 1.2 or higher; TLS 1.0 and TLS 1.1 MUST NOT be used [RFC8996]. The recommendations of [RFC9325] apply. Cleartext mail access is obsolete [RFC8314]: implicit TLS is preferred, and where STARTTLS is used it MUST be required rather than opportunistic, and the peer certificate MUST be verified. TLS protects a hop. It does not hide the message from the mailbox provider (Section 16.2).
 
 The body is UTF-8 text in a `text/plain` part. This document does not register a media type. If the message is multipart, the receiver uses the first `text/plain` part that is not an attachment.
 
@@ -464,6 +464,12 @@ No new port, service name, media type, TLS extension, or object identifier is re
 [RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174, May 2017, <https://www.rfc-editor.org/info/rfc8174>.
 
 [RFC8259] Bray, T., Ed., "The JavaScript Object Notation (JSON) Data Interchange Format", STD 90, RFC 8259, DOI 10.17487/RFC8259, December 2017, <https://www.rfc-editor.org/info/rfc8259>.
+
+[RFC8314] Newman, C. and A. Melnikov, "Cleartext Considered Obsolete: Use of Transport Layer Security (TLS) for Email Submission and Access", RFC 8314, DOI 10.17487/RFC8314, January 2018, <https://www.rfc-editor.org/info/rfc8314>.
+
+[RFC8996] Moriarty, K. and S. Farrell, "Deprecating TLS 1.0 and TLS 1.1", BCP 195, RFC 8996, DOI 10.17487/RFC8996, March 2021, <https://www.rfc-editor.org/info/rfc8996>.
+
+[RFC9325] Sheffer, Y., Saint-Andre, P., and T. Fossati, "Recommendations for Secure Use of Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)", BCP 195, RFC 9325, DOI 10.17487/RFC9325, November 2022, <https://www.rfc-editor.org/info/rfc9325>.
 
 [FIPS180-4] National Institute of Standards and Technology, "Secure Hash Standard (SHS)", FIPS PUB 180-4, DOI 10.6028/NIST.FIPS.180-4, August 2015, <https://doi.org/10.6028/NIST.FIPS.180-4>.
 
