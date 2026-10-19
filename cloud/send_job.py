@@ -51,6 +51,8 @@ except ImportError:  # run by path: load the one implementation by file
         "runner", "jobcrypto.py")
     _jc_spec = importlib.util.spec_from_file_location(
         "hp_jobcrypto", _jc_path)
+    if _jc_spec is None or _jc_spec.loader is None:
+        raise ImportError("runner/jobcrypto.py not loadable")
     jobcrypto = importlib.util.module_from_spec(_jc_spec)
     _jc_spec.loader.exec_module(jobcrypto)
 
