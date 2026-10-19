@@ -1,5 +1,31 @@
 # Changelog
 
+## 3.8.8 - 2026-10-19
+
+### Fixes
+
+- Opinion predictions ride only on the effective latitude.
+  The attachment decision read the job's raw request instead
+  of the clamped mode, so a prediction was attached under a
+  `diagnose` ceiling (claims audit round 2, B46).
+
+### Changed
+
+- SourceForge and GitLab publish as jobs in the tag build,
+  beside PyPI, instead of waking as separate workflows after
+  it. A push to main now builds and stops; a mirror failure
+  shows in the same run as everything else.
+
+### Docs
+
+- Claims audit round 2: 196 claims re-inventoried against the
+  tree and resolved -- every live document corrected to the
+  code where the two disagreed, including PROTOCOL 3.1
+  (script naming), 5 (the verification pipeline as it
+  actually runs), 9.2 (attestation member names), the FAQ
+  repair entry, the DRI playbook, senses, and the security
+  set. External facts re-verified; the satire kept.
+
 ## 3.8.7 - 2026-10-18
 
 ### Features
