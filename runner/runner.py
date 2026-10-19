@@ -4096,9 +4096,11 @@ def _finish_remediation(cfg, st, monitor, job, job_id, work,
     if acted is not None:
         authority = acted["authority"]
         div = acted["divergence"]
+        _sigkill = getattr(signal, "SIGKILL", None)
         tree_killed = os.name == "nt" or (
-            proc is not None and proc.returncode is not None
-            and proc.returncode == -signal.SIGKILL)
+            _sigkill is not None
+            and proc is not None and proc.returncode is not None
+            and proc.returncode == -_sigkill)
         act = "killed" if tree_killed else "quarantined"
     else:
         authority = "tripwire"
@@ -10497,67 +10499,75 @@ def main() -> int:
         # a later config edit of "verbose" must not undo it.
         pinned.add("verbose")
     reload_state = {"mtime": os.path.getmtime(args.config)}
-    while True:
-        # Re-read config if the file changed. Edit config.json all you
-        # want — the runner picks it up within one poll interval.
-        try:
-            previous = {"inference": cfg.get("inference")}
-            changed = reload_hot_config(cfg, args.config, reload_state,
-                                        pinned)
-            if changed:
-                log(f"config reloaded: {', '.join(changed)} updated, "
-                    f"no restart needed")
-                # Pull only when the model id changed. A poll-interval
-                # edit must not re-download the model.
-                if "inference" in changed:
-                    update_llama_from_config(cfg, previous=previous)
-                # A live "verbose" edit re-resolves the level (the
-                # flag, if any was given, pinned the key, so this
-                # only fires for config-driven verbosity).
-                if "verbose" in changed:
-                    _set_verbosity(_resolve_verbosity(cfg, args.verbose))
-                    args.verbose_level = _VERBOSE_LEVEL
-        except Exception as e:
-            log(f"config reload failed (keeping old values): {e}", "WARN")
-        try:
-            poll_once(cfg, base_dir, seen, seen_path, opts=args)
-            if auth_failed:
-                auth_failed = False
-                # WARN, not INFO. The per-minute cap drops INFO once a
-                # busy process is full, which hid this line from the
-                # mutation job's clean pytest run and can hide a real
-                # recovery on a chatty box.
-                log("gmail authentication recovered", "WARN")
-        except OAuthRefreshError as e:
-            # The refresh token is dead; only a human browser login fixes
-            # it. Log locally every cycle, but shout to the Event Log once.
-            log(f"poll cycle failed: {e}", "ERROR")
-            if not auth_failed:
-                auth_failed = True
-                report_event(
-                    f"Homing Pigeon: Gmail sign-in failed ({e}). "
-                    f"The runner cannot fetch or send mail until someone "
-                    f"signs in again on this machine (run the app with "
-                    f"--setup, or re-run the OAuth browser login).")
-            if args.pdb:
-                import pdb
-                pdb.post_mortem(sys.exc_info()[2])
-        except Exception as e:
-            log(f"poll cycle failed: {e}", "ERROR")
-            if args.pdb:
-                import pdb
-                pdb.post_mortem(sys.exc_info()[2])
-        if args.once:
-            break
-        try:
-            delay = int(cfg.get("poll_interval_sec", 20))
-        except (TypeError, ValueError, OverflowError):
-            delay = 20
-        if delay < 1:
-            delay = 20
-        time.sleep(delay)
-    if _transports is not None:
-        _transports.stop_supervisors(base_dir)
+    try:
+        while True:
+            # Re-read config if the file changed. Edit config.json all you
+            # want — the runner picks it up within one poll interval.
+            try:
+                previous = {"inference": cfg.get("inference")}
+                changed = reload_hot_config(cfg, args.config, reload_state,
+                                            pinned)
+                if changed:
+                    log(f"config reloaded: {', '.join(changed)} updated, "
+                        f"no restart needed")
+                    # Pull only when the model id changed. A poll-interval
+                    # edit must not re-download the model.
+                    if "inference" in changed:
+                        update_llama_from_config(cfg, previous=previous)
+                    # A live "verbose" edit re-resolves the level (the
+                    # flag, if any was given, pinned the key, so this
+                    # only fires for config-driven verbosity).
+                    if "verbose" in changed:
+                        _set_verbosity(_resolve_verbosity(cfg, args.verbose))
+                        args.verbose_level = _VERBOSE_LEVEL
+            except Exception as e:
+                log(f"config reload failed (keeping old values): {e}", "WARN")
+            try:
+                poll_once(cfg, base_dir, seen, seen_path, opts=args)
+                if auth_failed:
+                    auth_failed = False
+                    # WARN, not INFO. The per-minute cap drops INFO once a
+                    # busy process is full, which hid this line from the
+                    # mutation job's clean pytest run and can hide a real
+                    # recovery on a chatty box.
+                    log("gmail authentication recovered", "WARN")
+            except OAuthRefreshError as e:
+                # The refresh token is dead; only a human browser login fixes
+                # it. Log locally every cycle, but shout to the Event Log once.
+                log(f"poll cycle failed: {e}", "ERROR")
+                if not auth_failed:
+                    auth_failed = True
+                    report_event(
+                        f"Homing Pigeon: Gmail sign-in failed ({e}). "
+                        f"The runner cannot fetch or send mail until someone "
+                        f"signs in again on this machine (run the app with "
+                        f"--setup, or re-run the OAuth browser login).")
+                if args.pdb:
+                    import pdb
+                    pdb.post_mortem(sys.exc_info()[2])
+            except Exception as e:
+                log(f"poll cycle failed: {e}", "ERROR")
+                if args.pdb:
+                    import pdb
+                    pdb.post_mortem(sys.exc_info()[2])
+            if args.once:
+                break
+            try:
+                delay = int(cfg.get("poll_interval_sec", 20))
+            except (TypeError, ValueError, OverflowError):
+                delay = 20
+            if delay < 1:
+                delay = 20
+            time.sleep(delay)
+    finally:
+        # KeyboardInterrupt from the poll sleep (Ctrl+C, and the tests
+        # that raise it) skips the statements after the loop. The
+        # supervisor holds extension.log open for the child's stdout.
+        # On Windows a still-open file cannot be deleted, so a test
+        # TemporaryDirectory — and a real shutdown that removes state —
+        # fails with WinError 32. atexit does not run inside a test.
+        if _transports is not None:
+            _transports.stop_supervisors(base_dir)
     log("homing-pigeon exiting")
     return 0
 

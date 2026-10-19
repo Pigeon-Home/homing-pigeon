@@ -69,8 +69,7 @@ class PureEdgeTest(_Binary, unittest.TestCase):
 
     def test_the_real_job_user_face_calls_the_syscalls(self):
         if os.name == "nt":
-            self.skipTest("Unix-only behavior")
-
+            self.skipTest("job_user face is POSIX syscalls")
         face = rr._JobUserFace()
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -140,22 +139,42 @@ class IoEdgeTest(_Binary, unittest.TestCase):
             rr._append_brief(tmp.name, {"n": 8})
 
     def test_seen_and_retained_close_failures_are_swallowed(self):
-        if os.name == "nt":
-            self.skipTest("Unix-only behavior")
-
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         seen = os.path.join(tmp.name, "seen.json")
-        with mock.patch.object(rr.os, "fdopen", side_effect=OSError("fd")), \
+        real_open = os.open
+        real_close = os.close
+        opened = []
+
+        def tracking_open(*args, **kwargs):
+            fd = real_open(*args, **kwargs)
+            opened.append(fd)
+            return fd
+
+        def release():
+            for fd in opened:
+                try:
+                    real_close(fd)
+                except OSError:
+                    pass
+            opened.clear()
+
+        with mock.patch.object(rr.os, "open", tracking_open), \
+                mock.patch.object(rr.os, "fdopen", side_effect=OSError("fd")), \
                 mock.patch.object(rr.os, "close", side_effect=OSError("c")):
             rr.save_seen(seen, {"a": True})
+        # close() was simulated as broken. Windows cannot delete the
+        # still-open temp file (WinError 32) when the directory goes.
+        release()
         with mock.patch.object(rr.os, "unlink", side_effect=OSError("u")):
             rr.save_seen(seen, {"a": True})
         rr.save_retained(tmp.name, "job-1", {"a": 1})
-        with mock.patch.object(rr.os, "fdopen", side_effect=OSError("fd")), \
+        with mock.patch.object(rr.os, "open", tracking_open), \
+                mock.patch.object(rr.os, "fdopen", side_effect=OSError("fd")), \
                 mock.patch.object(rr.os, "close", side_effect=OSError("c")), \
                 mock.patch.object(rr.os, "unlink", side_effect=OSError("u")):
             rr.save_retained(tmp.name, "job-2", {"a": 1})
+        release()
         self.assertIsNone(rr.load_retained(tmp.name, "missing-job"))
 
     def test_a_canary_close_and_chmod_failure_still_returns(self):

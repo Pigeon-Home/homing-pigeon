@@ -603,6 +603,7 @@ class TransportSupervisor:
         rec = {"manifest": manifest, "restarts": 0,
                "next_restart": None, "started": self._clock(),
                "argv": argv, "settled": False}
+        logfh = None
         try:
             logfh = open(log_path, "ab")
             kw = {"cwd": manifest["dir"], "env": env,
@@ -615,7 +616,13 @@ class TransportSupervisor:
                     subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
             rec["proc"] = self._popen(argv, **kw)
             rec["logfh"] = logfh
+            logfh = None
         except Exception as e:
+            if logfh is not None:
+                try:
+                    logfh.close()
+                except Exception:
+                    pass
             self.log(f"transport {name}: cannot start "
                      f"{manifest['entry']}: {e}", "ERROR")
             rec["proc"] = None
@@ -685,34 +692,53 @@ class TransportSupervisor:
         self.stopped = True
         for name, rec in list(self.processes.items()):
             proc = rec.get("proc")
-            if proc is None:
-                continue
             try:
-                if proc.poll() is None:
-                    proc.terminate()
+                if proc is not None and proc.poll() is None:
                     try:
-                        proc.wait(timeout=3)
+                        proc.terminate()
                     except Exception:
+                        pass
+                    if not _wait_down(proc, 3):
                         try:
                             proc.kill()
                         except Exception:
                             pass
-                        try:
-                            proc.wait(timeout=1)
-                        except Exception:
-                            pass
-            except Exception:
-                pass
-            try:
-                rec["logfh"].close()
-            except Exception:
-                pass
-        self.processes.clear()
+                        _wait_down(proc, 1)
+            finally:
+                # Close even when shutdown is interrupted. The child
+                # and this handle both keep extension.log open, and
+                # Windows will not delete it until both are gone.
+                logfh = rec.get("logfh")
+                if logfh is not None:
+                    try:
+                        logfh.close()
+                    except Exception:
+                        pass
+            self.processes.pop(name, None)
 
 
 # One supervisor per (base dir, config signature) in this
 # process: main() starts it, poll cycles reuse it, tests start
 # and stop their own.
+_SLEEP = time.sleep
+
+
+def _wait_down(proc, seconds):
+    """Wait until proc exits, without calling time.sleep by name.
+
+    proc.wait(timeout) polls through time.sleep. Tests replace that
+    with a sleep that raises KeyboardInterrupt, which used to abort
+    shutdown before extension.log was closed. A saved function is not
+    the patched one. Returns False if the process is still alive.
+    """
+    deadline = time.monotonic() + seconds
+    while proc.poll() is None:
+        if time.monotonic() >= deadline:
+            return False
+        _SLEEP(0.05)
+    return True
+
+
 _ACTIVE_SUPERVISORS = {}
 
 

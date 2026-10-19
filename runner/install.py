@@ -375,7 +375,7 @@ def do_wipe(backup_dir=None, no_backup=False):
                     "homing-pigeon.service"])
         print("wipe: systemd units disabled (if they existed)")
     elif sys.platform == "darwin":
-        _run_quiet(["launchctl", "bootout", "gui/%s" % os.getuid(),
+        _run_quiet(["launchctl", "bootout", "gui/%s" % _posix_uid(),
                     os.path.expanduser(
                         "~/Library/LaunchAgents/com.homing-pigeon.runner.plist")])
         print("wipe: launchd job unloaded (if it existed)")
@@ -1147,6 +1147,19 @@ def uninstall_linux(system: bool):
         run(["systemctl", "--user", "daemon-reload"])
 
 
+def _posix_uid() -> int:
+    """Uid for a launchd gui domain.
+
+    Windows has no getuid. These functions are not what the installer
+    dispatches to there, but tests call them directly; 0 keeps the
+    command shape instead of raising AttributeError.
+    """
+    getuid = getattr(os, "getuid", None)
+    if getuid is None:
+        return 0
+    return getuid()
+
+
 def install_macos(dst_dir: str, cfg_path: str, extra=()):
     pargs = "\n".join(
         f"    <string>{escape(a)}</string>"
@@ -1173,14 +1186,14 @@ def install_macos(dst_dir: str, cfg_path: str, extra=()):
     path = os.path.join(adir, "com.homing-pigeon.runner.plist")
     with open(path, "w") as fh:
         fh.write(plist)
-    uid = os.getuid()
+    uid = _posix_uid()
     run(["launchctl", "bootstrap", f"gui/{uid}", path])
     print(f"installed: launchd agent at {path}")
 
 
 def uninstall_macos():
     path = os.path.expanduser("~/Library/LaunchAgents/com.homing-pigeon.runner.plist")
-    uid = os.getuid()
+    uid = _posix_uid()
     run(["launchctl", "bootout", f"gui/{uid}", path])
     try:
         os.remove(path)

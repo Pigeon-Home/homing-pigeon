@@ -853,9 +853,6 @@ class RunnerMainOnceTest(unittest.TestCase):
         self.assertTrue(post.called)
 
     def test_a_bad_poll_interval_falls_back_to_twenty(self):
-        if os.name == "nt":
-            self.skipTest("Unix-only behavior")
-
         import contextlib
         from runner import runner
         from runner import setup

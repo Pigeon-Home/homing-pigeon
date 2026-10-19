@@ -273,9 +273,6 @@ class FetchAndConfigTest(unittest.TestCase):
                 self.assertEqual(inst.main(), 0)
 
     def test_small_failures_stay_small(self):
-        if os.name == "nt":
-            self.skipTest("Unix-only behavior")
-
         with mock.patch.object(inst.subprocess, "run",
                                side_effect=OSError("no")):
             inst._run_quiet(["pkill", "-f", "x"])
@@ -284,7 +281,8 @@ class FetchAndConfigTest(unittest.TestCase):
         self.assertEqual(inst._split_host_port(None), (None, None))
         self.assertIsNone(inst._which("this-binary-is-not-real-hp"))
         with tempfile.TemporaryDirectory() as home:
-            with mock.patch.dict(os.environ, {"HOME": home}), \
+            with mock.patch.dict(os.environ, {
+                    "HOME": home, "USERPROFILE": home}), \
                     mock.patch.object(inst, "run"):
                 inst.uninstall_macos()
         with tempfile.TemporaryDirectory() as d:
@@ -787,7 +785,8 @@ class TailTest(unittest.TestCase):
 
     def test_main_says_not_configured_when_the_model_did_not_install(self):
         with tempfile.TemporaryDirectory() as dst:
-            with mock.patch.object(inst, "install_files",
+            with mock.patch.object(inst.sys, "platform", "linux"), \
+                    mock.patch.object(inst, "install_files",
                                    return_value=True), \
                     mock.patch.object(
                         inst, "_setup_fresh_config",
@@ -925,9 +924,6 @@ class CleanupTest(unittest.TestCase):
                              inst.DEFAULT_INFERENCE_MODEL)
 
     def test_a_write_that_dies_midway_closes_and_unlinks(self):
-        if os.name == "nt":
-            self.skipTest("Unix-only behavior")
-
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "c.json")
             had = hasattr(os, "O_NOFOLLOW")
@@ -948,10 +944,28 @@ class CleanupTest(unittest.TestCase):
             def close(_fd):
                 raise OSError("close")
 
-            with mock.patch.object(os, "fdopen", fdopen), \
+            real_open = os.open
+            real_close = os.close
+            opened = []
+
+            def tracking_open(*args, **kwargs):
+                fd = real_open(*args, **kwargs)
+                opened.append(fd)
+                return fd
+
+            with mock.patch.object(os, "open", tracking_open), \
+                    mock.patch.object(os, "fdopen", fdopen), \
                     mock.patch.object(os, "close", close):
                 with self.assertRaises(OSError):
                     inst._write_json(path, {"b": 2})
+            # close() was simulated as broken, so the fd is still
+            # open. Windows refuses to delete an open file
+            # (WinError 32) and TemporaryDirectory then errors.
+            for fd in opened:
+                try:
+                    real_close(fd)
+                except OSError:
+                    pass
 
             def unlink(_p):
                 raise OSError("unlink")

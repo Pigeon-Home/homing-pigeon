@@ -43,12 +43,10 @@ class _Pkg:
 
 class ServiceEnvTest(unittest.TestCase):
     def test_linux_user_unit_lands_in_the_home(self):
-        if os.name == "nt":
-            self.skipTest("Unix-only behavior")
-
         pkg = _Pkg()
         with tempfile.TemporaryDirectory() as home:
-            with mock.patch.dict(os.environ, {"HOME": home}), \
+            with mock.patch.dict(os.environ, {
+                    "HOME": home, "USERPROFILE": home}), \
                     mock.patch.object(inst, "run", pkg.run):
                 inst.install_linux(
                     "/opt/hp", "/opt/hp/config.json", False,
@@ -94,12 +92,10 @@ class ServiceEnvTest(unittest.TestCase):
                         inst.install_linux("/opt/hp", "/c", False, [bad])
 
     def test_macos_agent_bootstraps_the_gui_domain(self):
-        if os.name == "nt":
-            self.skipTest("Unix-only behavior")
-
         pkg = _Pkg()
         with tempfile.TemporaryDirectory() as home:
-            with mock.patch.dict(os.environ, {"HOME": home}), \
+            with mock.patch.dict(os.environ, {
+                    "HOME": home, "USERPROFILE": home}), \
                     mock.patch.object(inst, "run", pkg.run):
                 inst.install_macos("/opt/hp", "/opt/hp/c.json",
                                    ["--quiet"])
@@ -223,9 +219,6 @@ class LinuxPackageEnvTest(unittest.TestCase):
                              "/opt/osquery/bin/osqueryd")
 
     def test_falco_apt_env_routes_json_when_a_unit_exists(self):
-        if os.name == "nt":
-            self.skipTest("Unix-only behavior")
-
         pkg = _Pkg()
         with mock.patch.object(inst, "_apt_repo") as repo, \
                 mock.patch.object(inst, "_apt_install"), \
@@ -240,7 +233,9 @@ class LinuxPackageEnvTest(unittest.TestCase):
         self.assertIn(inst.FALCO_ALERTS_LOG, line)
         self.assertIn("download.falco.org/packages/deb stable main",
                       repo.call_args[0][1])
-        drop = "/etc/systemd/system/falco.service.d/10-homing-pigeon.conf"
+        drop = os.path.join(
+            "/etc/systemd/system/falco.service.d",
+            "10-homing-pigeon.conf")
         text = pkg.files[drop][0]
         self.assertIn("ExecStart=\n", text)
         self.assertIn("json_output=true", text)
@@ -550,11 +545,9 @@ class MainDispatchTest(unittest.TestCase):
                 home_install.assert_called()
 
     def test_a_fresh_linux_install_bakes_the_flags(self):
-        if os.name == "nt":
-            self.skipTest("Unix-only behavior")
-
         with tempfile.TemporaryDirectory() as dst:
-            with mock.patch.object(inst, "install_linux") as linux, \
+            with mock.patch.object(inst.sys, "platform", "linux"), \
+                    mock.patch.object(inst, "install_linux") as linux, \
                     mock.patch.object(
                         inst, "install_ollama_and_model",
                         return_value=True), \
@@ -579,7 +572,8 @@ class MainDispatchTest(unittest.TestCase):
 
     def test_pi_light_installs_no_model_and_no_collector(self):
         with tempfile.TemporaryDirectory() as dst:
-            with mock.patch.object(inst, "install_linux"), \
+            with mock.patch.object(inst.sys, "platform", "linux"), \
+                    mock.patch.object(inst, "install_linux"), \
                     mock.patch.object(
                         inst, "install_ollama_and_model") as ollama, \
                     _argv("--dir", dst, "--profile", "pi-light"):

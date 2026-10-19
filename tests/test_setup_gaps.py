@@ -33,9 +33,6 @@ def go(path, cfg, inputs, probe=None, gp=None, consent="tok"):
 
 class SetupGapsTest(unittest.TestCase):
     def test_gaps(self):
-        if os.name == "nt":
-            self.skipTest("Unix-only behavior")
-
         with mock.patch("builtins.input",
                         side_effect=["", "yes", "no", EOFError]):
             self.assertTrue(SU.prompt_yes_no("q") and SU.prompt_yes_no("q"))
@@ -114,11 +111,29 @@ class SetupGapsTest(unittest.TestCase):
                     raise OSError("u")
                 return real(p)
 
-            with mock.patch("os.fdopen", side_effect=OSError("f")), \
+            real_open, real_close = os.open, os.close
+            opened = []
+
+            def tracking_open(*args, **kwargs):
+                fd = real_open(*args, **kwargs)
+                opened.append(fd)
+                return fd
+
+            with mock.patch("os.open", tracking_open), \
+                    mock.patch("os.fdopen", side_effect=OSError("f")), \
                     mock.patch("os.close", side_effect=OSError("c")), \
                     mock.patch("os.unlink", side_effect=unlink), \
                     self.assertRaises(OSError):
                 SU._write_config(path, {"a": 6})
+            # close() was simulated as broken, so the fd is still
+            # open. Windows refuses to delete an open file
+            # (WinError 32): the next write and TemporaryDirectory
+            # both fail.
+            for fd in opened:
+                try:
+                    real_close(fd)
+                except OSError:
+                    pass
             n["u"] = 0
             with mock.patch("os.open", side_effect=OSError("o")), \
                     mock.patch("os.unlink", side_effect=unlink), \
