@@ -403,12 +403,15 @@ class PackageFetchTest(unittest.TestCase):
                 mock.patch.object(inst.subprocess, "Popen",
                                   side_effect=OSError("no")):
             self.assertFalse(inst.ensure_ollama_running())
+        started = mock.Mock()
         with mock.patch.object(inst, "_ollama_up", return_value=False), \
                 mock.patch.object(inst, "_ollama_bin",
                                   return_value="/usr/bin/ollama"), \
-                mock.patch.object(inst.subprocess, "Popen"), \
+                mock.patch.object(inst.subprocess, "Popen", started), \
                 mock.patch.object(inst.time, "sleep"):
             self.assertFalse(inst.ensure_ollama_running())
+        self.assertEqual(started.call_args[0][0],
+                         ["/usr/bin/ollama", "serve"])
 
     def test_windows_winget_installs_ollama(self):
         bins = iter([None, r"C:\Ollama\ollama.exe"])

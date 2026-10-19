@@ -209,6 +209,8 @@ class CollectorHealthRowsTest(unittest.TestCase):
             service_active={"wazuh": True}))
         self.assertEqual(_states(rows)["wazuh"],
                          "INSTALLED-BUT-CANNOT-RUN")
+        detail = {n: d for n, _, d in rows}["wazuh"]
+        self.assertIn("forwards to nothing", detail)
 
     def test_wazuh_with_manager_works(self):
         rows = collector_health_rows(_facts(
@@ -230,6 +232,9 @@ class CollectorHealthRowsTest(unittest.TestCase):
             installed={"zeek": True, "softflowd": True}))
         self.assertEqual(_states(rows)["zeek"],
                          "INSTALLED-BUT-CANNOT-RUN")
+        detail = {n: d for n, _, d in rows}["zeek"]
+        self.assertIn("230 MB", detail)
+        self.assertIn("never a default", detail)
         rows = collector_health_rows(_facts(
             installed={"zeek": True, "softflowd": True},
             running={"zeek": True, "softflowd": True}))

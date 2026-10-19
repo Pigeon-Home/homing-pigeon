@@ -217,7 +217,25 @@ class LinuxPackageEnvTest(unittest.TestCase):
         self.assertIn("vendor apt repo", line)
         self.assertIn(inst.FALCO_ALERTS_LOG, line)
         drop = "/etc/systemd/system/falco.service.d/10-homing-pigeon.conf"
-        self.assertIn("json_output=true", pkg.files[drop][0])
+        text = pkg.files[drop][0]
+        self.assertIn("ExecStart=\n", text)
+        self.assertIn("json_output=true", text)
+        self.assertIn("file_output.enabled=true", text)
+        self.assertIn("file_output.filename=" + inst.FALCO_ALERTS_LOG, text)
+        self.assertIn("stdout_output.enabled=false", text)
+
+    def test_a_falco_drop_in_dir_is_not_the_unit(self):
+        pkg = _Pkg()
+        with mock.patch.object(inst, "_apt_repo"), \
+                mock.patch.object(inst, "_apt_install"), \
+                mock.patch.object(inst, "_write_text", pkg.write_text), \
+                mock.patch.object(inst, "run", pkg.run), \
+                mock.patch.object(inst.os, "makedirs", pkg.makedirs), \
+                mock.patch("glob.glob", return_value=[
+                    "/lib/systemd/system/falco.service.d"]):
+            line = inst._install_falco_linux()
+        self.assertNotIn("JSON alerts routed", line)
+        self.assertEqual(pkg.files, {})
 
     def test_falco_falls_back_to_the_vendor_deb(self):
         pkg = _Pkg()
