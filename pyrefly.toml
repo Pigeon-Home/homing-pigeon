@@ -10,6 +10,7 @@ project-includes = [
 # statically; treat them as Any instead of erroring.
 ignore-missing-imports = [
     "oauth",
+    "send_job",
     "_version",
     "install",
     "setup",

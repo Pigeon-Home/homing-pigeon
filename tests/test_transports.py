@@ -218,7 +218,7 @@ class ManifestContractTest(unittest.TestCase):
                 {}, tempfile.mkdtemp(prefix="hp-test-"))
         self.assertEqual(problems, [])
         self.assertEqual(sorted(registry),
-                         ["email", "file", "nats"])
+                         ["dtls", "email", "file", "nats"])
         for name, manifest in registry.items():
             self.assertEqual(manifest["api_version"], 1, name)
             self.assertEqual(manifest["kind"], "transport", name)
