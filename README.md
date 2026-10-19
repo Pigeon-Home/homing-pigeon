@@ -208,6 +208,16 @@ The Oracle ships two confinement capabilities:
   machine is not Linux, the job runs normally and the audit log records
   the fallback. See SECURITY.md.
 
+**Two Oracle modes.** With `oracle_mode: "llm"` (the default) the
+Oracle narrates with the local model above. With `"deterministic"` —
+the Pi Light mode, for a box with no model worth running — no model
+is installed or ever called: the watch, the wake gate, and the briefs
+still run, but briefs and answers are assembled from the box's own
+records (the job index, retained jobs, notable lines, the log tail),
+and the `ask` op stays off. The mode reads live from `config.json`;
+flipping it is the upgrade path when a box gains a model worth
+running. See `docs/configuring-oracle.md`.
+
 Full spec in PROTOCOL.md (sections 9–12). Oracle fields are optional
 members of a `"v": 1` message. They are not a separate message version.
 
