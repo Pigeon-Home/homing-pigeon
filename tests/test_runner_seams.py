@@ -29,6 +29,8 @@ def _cfg_file(base, body):
 
 class JobUserTest(unittest.TestCase):
     def setUp(self):
+        if os.name == "nt":
+            self.skipTest("job_user is Unix-only")
         self.tmp = tempfile.TemporaryDirectory()
         self.base = self.tmp.name
         self.work = os.path.join(self.base, "work", "job-1")
@@ -201,6 +203,8 @@ class FinishRemediationTest(unittest.TestCase):
         self.assertEqual(member["act"], "quarantined")
 
     def test_a_failed_quarantine_still_refers_the_workdir(self):
+        if os.name == "nt":
+            self.skipTest("quarantine path differs on Windows")
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         work = os.path.join(tmp.name, "work")

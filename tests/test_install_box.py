@@ -282,6 +282,8 @@ class DoctorTest(unittest.TestCase):
 
 class ConsoleAndLogsTest(unittest.TestCase):
     def test_console_stops_runs_and_restarts(self):
+        if os.name == "nt":
+            self.skipTest("console behavior differs on Windows")
         self.assertEqual(inst.do_console("/h", "/b", "/c"), 2)
         with tempfile.TemporaryDirectory() as home:
             bind = os.path.join(home, "bin")

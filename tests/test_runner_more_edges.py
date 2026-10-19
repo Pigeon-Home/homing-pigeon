@@ -191,6 +191,8 @@ class InspectAndContextTest(unittest.TestCase):
         self.assertIn("fw on", text)
 
     def test_a_host_log_is_unreadable_empty_or_shown(self):
+        if sys.platform == "win32":
+            self.skipTest("Windows shows registry watch")
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         for value, needle in ((None, "unreadable"),

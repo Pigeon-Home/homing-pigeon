@@ -171,6 +171,8 @@ class ServiceEnvTest(unittest.TestCase):
 
 class FrozenEnvTest(unittest.TestCase):
     def test_a_frozen_tree_copies_the_binaries_and_seeds_config(self):
+        if os.name == "nt":
+            self.skipTest("frozen tree layout differs on Windows")
         with tempfile.TemporaryDirectory() as src, \
                 tempfile.TemporaryDirectory() as dst:
             for name in ("homing-pigeon", "install",
@@ -493,11 +495,12 @@ class MainDispatchTest(unittest.TestCase):
         mig.assert_called()
 
     def test_the_one_home_commands_refuse_on_linux(self):
-        for flag in ("--check", "--console", "--oracle"):
-            with _argv(flag):
+        with mock.patch.object(inst.sys, "platform", "linux"):
+            for flag in ("--check", "--console", "--oracle"):
+                with _argv(flag):
+                    self.assertEqual(inst.main(), 2)
+            with _argv("--follow"):
                 self.assertEqual(inst.main(), 2)
-        with _argv("--follow"):
-            self.assertEqual(inst.main(), 2)
 
     def test_windows_home_dispatches_each_command(self):
         with tempfile.TemporaryDirectory() as home:

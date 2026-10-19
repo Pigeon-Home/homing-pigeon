@@ -111,9 +111,10 @@ class OracleToolTest(unittest.TestCase):
         with open(os.path.join(self.base, "nest", "a.txt"),
                   encoding="utf-8") as fh:
             self.assertEqual(fh.read(), "hello")
-        mode = stat.S_IMODE(os.stat(
-            os.path.join(self.base, "nest", "a.txt")).st_mode)
-        self.assertEqual(mode & 0o777, 0o600)
+        if sys.platform != "win32":
+            mode = stat.S_IMODE(os.stat(
+                os.path.join(self.base, "nest", "a.txt")).st_mode)
+            self.assertEqual(mode & 0o777, 0o600)
 
     def test_a_write_over_200000_chars_is_refused(self):
         got = rr._run_oracle_tool(

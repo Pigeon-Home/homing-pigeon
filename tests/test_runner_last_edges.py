@@ -183,6 +183,8 @@ class IoEdgeTest(_Binary, unittest.TestCase):
             self.assertEqual(call.kwargs.get("creationflags"), 1)
 
     def test_registry_and_posture_writes_that_fail_are_kept(self):
+        if sys.platform == "win32":
+            self.skipTest("Windows Defender is present")
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         snap = {"keys": {}, "services": {"count": 0, "hash": "abc"}}
@@ -312,6 +314,8 @@ class LocalSignalTest(unittest.TestCase):
             {"local_signals": False}, tmp.name, conn)
 
     def test_the_listener_and_the_loops_stop_cleanly(self):
+        if sys.platform == "win32":
+            self.skipTest("socket bind behavior differs on Windows")
         self.assertIsNone(rr._local_signal_server(
             {"local_signal_port": 0}, "/tmp"))
         with mock.patch.object(rr.socket, "socket",

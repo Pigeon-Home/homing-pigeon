@@ -102,6 +102,8 @@ class RegistryParseTest(unittest.TestCase):
         self.assertEqual(list(snap["keys"][win[0] + "\x00raw"]), ["Shell"])
 
     def test_watch_is_none_off_windows(self):
+        if sys.platform == "win32":
+            self.skipTest("Windows reads the registry")
         self.assertIsNone(rr._registry_watch("/tmp"))
 
     def test_the_first_look_records_a_baseline_and_the_second_diffs(self):
@@ -158,6 +160,8 @@ class RegistryParseTest(unittest.TestCase):
 
 class EventLogTest(unittest.TestCase):
     def test_eventlog_is_none_off_windows(self):
+        if sys.platform == "win32":
+            self.skipTest("Windows reads the event log")
         self.assertIsNone(rr._eventlog_tail())
 
     def test_a_wevtutil_failure_is_none_and_empty_stdout_is_empty(self):
