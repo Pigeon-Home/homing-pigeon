@@ -89,6 +89,8 @@ class Gaps(unittest.TestCase):
             {"detail": B(), "title": "pid 9"}, "zz", "/absent", [9]))
 
     def test_proc_memory_and_windows(self):
+        if os.name == "nt":
+            self.skipTest("proc parsing is POSIX")
         real = open
         def opn(path, mode="r", *a, **k):
             path = str(path)
@@ -189,6 +191,8 @@ class Gaps(unittest.TestCase):
                 self.assertEqual(rem.sample_tree(7)[7][1], 999)
 
     def test_jsonl_av_and_quarantine(self):
+        if os.name == "nt":
+            self.skipTest("AV path finding differs on Windows")
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "log")
             blob = (b"Z" * 200 + b"\n\nnot-json\n[]\n"
