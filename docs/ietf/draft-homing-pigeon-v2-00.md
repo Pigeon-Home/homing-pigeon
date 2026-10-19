@@ -27,6 +27,8 @@ This Internet-Draft will expire on 19 April 2027.
 
 ## 1. Introduction
 
+Version 1 of the Homing Pigeon message protocol is specified in [HP-V1] (draft-homing-pigeon-v1-00): the signed job and result objects, and their bindings to email and other store-and-forward transports. This document specifies version 2. The delta is one binding and one behavior on it: a direct DTLS 1.3 session between submitter and runner, with the shared secret as the session's pre-shared key (Section 4), and the session greeting the runner sends once the handshake has authenticated the submitter (Section 5). The messages do not change; everything in [HP-V1] that this document does not explicitly take up applies unchanged.
+
 Version 1 needs no path between submitter and runner: a mailbox both can reach is enough, and the runner opens no listener. That is the right default, and it is also a ceiling. Where a direct path does exist -- the submitter can open a UDP flow to the runner's host -- a session buys three things the mailbox cannot: latency measured in round trips instead of poll cycles, confidentiality of the job and result objects themselves (not merely of one mail hop), and that confidentiality with forward secrecy.
 
 Version 2 is exactly that trade, and nothing else. The job and result objects are the version 1 objects, byte for byte; their `v` member remains 1, and a receiver MUST NOT reject a session-carried object for carrying `v` = 1. What versions here is the binding. A receiver that implements only version 1 is not non-conformant; it simply does not offer this binding.
