@@ -4,15 +4,16 @@ How the commercial security world moved from 2021 to 2026.
 
 ## The footprint rule
 
-The design goal: stuff in every security technology that doesn't cost much
-CPU or compute on a local box. Target: runs on a laptop with a few gigabytes
-of RAM — potentially slow, but workable. Stripped-down installs skip the
-extras.
+The design goal: prefer security technologies that cost little CPU or
+compute on a local box, and include them by default where they fit.
+Target: runs on a laptop with a few gigabytes of RAM — potentially
+slow, but workable. Stripped-down installs skip the extras.
 
-Corollary: **if the kernel gives it to you, take it.** ACLs, capabilities,
-seccomp, namespaces, audit, integrity levels — these are nearly free because
-the OS does the work. Anything that needs a resident daemon, line-rate
-processing, or a second model running 24/7 has to justify itself.
+Corollary: **where the kernel already does the work, use it.** ACLs,
+capabilities, seccomp, namespaces, audit, integrity levels — these
+are nearly free because the OS does the work. Anything that needs a
+resident daemon, line-rate processing, or a second model running 24/7
+has to justify itself.
 
 ## The five-year arc, in plain terms
 
