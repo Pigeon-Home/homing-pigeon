@@ -1,5 +1,47 @@
 # Changelog
 
+## 3.8.2 - 2026-10-18
+
+### Features
+
+- The Oracle's opinion is built. A job may request a latitude
+  (`off`, `diagnose`, `advise`, `repair`); the runner's
+  `oracle_opinion_mode` caps it. Tier-1 checks are deterministic
+  (platform, interpreter, tools, paths, script shape). At
+  `repair` an obvious environment mismatch can be fixed before
+  the run, never silently: the result's `oracle_opinion` member
+  carries `repaired` and `received_digest`. PROTOCOL 3.1 and 3.2
+  specify the member.
+- Two Oracle modes. `oracle_mode: "llm"` (the default) narrates
+  with the local model. `"deterministic"` — Pi Light, for a box
+  with no model worth running — installs nothing and calls no
+  model. The watch, the wake gate, and the briefs still run,
+  assembled from the box's own records. The mode is read live
+  from `config.json`.
+- A Pi Light release archive. The ARM64 Linux build is staged
+  with a `default_profile` marker, so installing from that
+  archive selects Pi Light without anyone passing `--profile`.
+  Ordinary archives carry no marker and keep the old defaults.
+- `dag_mode: advisory` (PROTOCOL 13.1). The board can warn that
+  a dependency is not done yet and still offer the job, instead
+  of only the enforce behavior that withholds it.
+- Thirteen worked senses under `examples/extensions/`, including
+  Pi Health, Sky Watcher, Crash Watch, Release Drop, Cert
+  Sentinel, Wire Arrivals, Tripwire, Log Sentinel, and the DRI
+  pair Service Watch and Backup Freshness. Pi Health reads what
+  the machine actually has; it is not Pi-only.
+
+### CI
+
+- The Pi Light PyInstaller line names `runner.opinion`, the same
+  hidden import the other OS builds already had. Without it the
+  one-file binary ships without the opinion module.
+- `STYLE.md` is on the mutmut copy list. The new style gate
+  reads it, and a mutant tree that lacks it fails stats
+  collection before any mutant runs.
+
+## 3.8.1 - 2026-10-18
+
 ## 3.8.1 - 2026-10-18
 
 ### Docs
