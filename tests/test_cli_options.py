@@ -119,9 +119,12 @@ class ApplyCliOverridesTest(unittest.TestCase):
     def test_log_bounds_family(self):
         cfg = {}
         apply_cli_overrides(cfg, _override_args(
-            log_max_bytes=1024, log_backups=2))
+            log_max_bytes=1024, log_backups=2,
+            oracle_log_max_bytes=2048, oracle_log_backups=3))
         self.assertEqual(cfg["log_max_bytes"], 1024)
         self.assertEqual(cfg["log_backups"], 2)
+        self.assertEqual(cfg["oracle_log_max_bytes"], 2048)
+        self.assertEqual(cfg["oracle_log_backups"], 3)
 
     def test_absent_flags_change_nothing(self):
         cfg = {"judge": "off", "poll_interval_sec": 20}
@@ -691,7 +694,8 @@ class RunnerHelpDocumentTest(unittest.TestCase):
         "--local-signals", "--no-local-signals",
         "--local-signal-port", "--wake-cooldown",
         "--verbose", "--quiet", "--log-max-bytes", "--log-backups",
-        "--oracle-log", "--no-oracle-log",
+        "--oracle-log", "--no-oracle-log", "--oracle-log-max-bytes",
+        "--oracle-log-backups",
         "--oracle", "--oracle-cli", "--oracle-port",
         "--inspect", "--job-id", "--audit-report", "--since",
         "--key", "--feature", "--posture", "--diagnose",

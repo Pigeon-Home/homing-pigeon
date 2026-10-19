@@ -5281,7 +5281,7 @@ def _wake_gate_decide(cfg, record, now=None) -> bool:
     key = (sensor if isinstance(sensor, str) else "",
            signal if isinstance(signal, str) else "")
     cooldown = _local_wake_cooldown(cfg)
-    last = None
+    age = 0.0
     with _LOCAL_WAKE_LOCK:
         if _LOCAL_WAKE_INFLIGHT:
             outcome = "inflight"
@@ -5289,6 +5289,7 @@ def _wake_gate_decide(cfg, record, now=None) -> bool:
             last = _LOCAL_WAKE_LAST.get(key)
             if last is not None and t - last < cooldown:
                 outcome = "cooldown"
+                age = t - last
             else:
                 _LOCAL_WAKE_LAST[key] = t
                 _LOCAL_WAKE_INFLIGHT = True
@@ -5299,7 +5300,7 @@ def _wake_gate_decide(cfg, record, now=None) -> bool:
         return False
     if outcome == "cooldown":
         vlog(f"wake gate: {sensor}/{signal} score={score:g}: "
-             f"woke {t - last:.0f}s ago, cooldown is "
+             f"woke {age:.0f}s ago, cooldown is "
              f"{cooldown:.0f}s: no wake")
         return False
     vlog(f"wake gate: {sensor}/{signal} severity={sev} "
@@ -6422,6 +6423,8 @@ _CLI_OVERRIDES = (
     ("log_max_bytes", "log_max_bytes"),
     ("log_backups", "log_backups"),
     ("oracle_log", "oracle_log"),
+    ("oracle_log_max_bytes", "oracle_log_max_bytes"),
+    ("oracle_log_backups", "oracle_log_backups"),
 )
 
 # Dests whose value must be a non-negative whole number. The
@@ -9535,6 +9538,14 @@ def main() -> int:
                    dest="oracle_log",
                    help="do not write oracle.log; overrides "
                         "--oracle-log")
+    g.add_argument("--oracle-log-max-bytes", type=int, default=None,
+                   metavar="BYTES",
+                   help="rotate oracle.log at this size "
+                        "(default: 536870912)")
+    g.add_argument("--oracle-log-backups", type=int, default=None,
+                   metavar="COUNT",
+                   help="rotated oracle.log files to keep "
+                        "(default: 4)")
     g = ap.add_argument_group(
         "the Oracle",
         "Talk to the Oracle instead of polling the mailbox.")

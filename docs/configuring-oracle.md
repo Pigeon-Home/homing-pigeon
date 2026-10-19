@@ -78,6 +78,8 @@ Every flag below replaces one config value for that process only. `config.json` 
 | `--log-max-bytes BYTES` | `log_max_bytes` |
 | `--log-backups COUNT` | `log_backups` |
 | `--oracle-log` / `--no-oracle-log` | `oracle_log` |
+| `--oracle-log-max-bytes BYTES` | `oracle_log_max_bytes` |
+| `--oracle-log-backups COUNT` | `oracle_log_backups` |
 | `-v` / `--quiet` | `verbose` |
 
 `--workers COUNT` and `--faster` are the two older one-process switches of the same kind: workers is read from the command line first, and `--faster` swaps the inference model for the process without touching the file.
