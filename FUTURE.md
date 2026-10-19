@@ -81,7 +81,7 @@ Ideas...
   BUILT (DRU's order: implement the
   future now). Shipped as the dtls transport extension:
   `runner/dtlsproto.py` (the bounded profile: one
-  ciphersuite, PSK-only, stateless cookie exchange,
+  ciphersuite, psk_dhe_ke only, stateless cookie exchange,
   Connection IDs), `runner/transport_extensions/dtls/`,
   client `cloud/send_dtls.py`, specified in
   `docs/ietf/draft-homing-pigeon-00.md` (Sections 19-22).

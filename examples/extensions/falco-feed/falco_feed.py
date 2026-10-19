@@ -10,8 +10,8 @@ file. This sense tails the file named in the log_paths tunable
 Falco's file_output) and files, per distinct episode, the two
 signals declared in extension.json:
 
-- falco_critical a rule fired at Emergency, Alert, or Critical
-                  priority (severity high)
+- falco_critical a rule fired at Emergency, Alert, Critical,
+                  or Error priority (severity high)
 - falco_warning  a rule fired at Warning or Notice priority
                   (severity medium)
 
@@ -84,6 +84,7 @@ _PRIORITY_SIGNALS = {
     "Emergency": ("falco_critical", "high"),
     "Alert": ("falco_critical", "high"),
     "Critical": ("falco_critical", "high"),
+    "Error": ("falco_critical", "high"),
     "Warning": ("falco_warning", "medium"),
     "Notice": ("falco_warning", "medium"),
 }

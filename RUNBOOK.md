@@ -160,8 +160,9 @@ virtual machine is a good idea).
 
 1. Download the right file from **Releases** (see Job 4).
 2. Unzip it. (Double-click it. That is unzipping.)
-3. You will see three things: `homing-pigeon`, `install`, and
-   `config.example.json`.
+3. Three things in it matter: `homing-pigeon`, `install`, and
+   `config.example.json` (on Windows the first two names end
+   in `.exe`).
 4. Make a copy of `config.example.json` and name the copy
    `config.json`. (Copy, paste, rename.)
 5. Open `config.json` in Notepad (Windows) or TextEdit (Mac).

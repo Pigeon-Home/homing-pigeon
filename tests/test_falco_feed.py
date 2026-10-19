@@ -119,9 +119,19 @@ class ParseEventTest(unittest.TestCase):
                          ["fields_digest"], ev["fields_digest"])
 
     def test_all_critical_family_priorities_map_high(self):
-        for priority in ("Emergency", "Alert", "Critical"):
+        for priority in ("Emergency", "Alert", "Critical", "Error"):
             ev = FF.parse_event(_line(priority=priority))
             self.assertEqual(ev["signal"], "falco_critical", priority)
+
+    def test_every_documented_priority_is_accounted_for(self):
+        # Falco documents eight priority names; each must
+        # parse to an event (none may fall into the malformed
+        # bucket reserved for names outside the eight).
+        for priority in ("Emergency", "Alert", "Critical",
+                         "Error", "Warning", "Notice",
+                         "Informational", "Debug"):
+            self.assertIsNotNone(
+                FF.parse_event(_line(priority=priority)), priority)
 
     def test_warning_and_notice_map_to_the_warning_signal(self):
         for priority in ("Warning", "Notice"):

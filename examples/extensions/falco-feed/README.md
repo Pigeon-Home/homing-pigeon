@@ -55,7 +55,7 @@ Two facts about Falco belong in plain sight:
 
 | Signal | Fires when |
 |--------|------------|
-| `falco_critical` | A rule fires at `Emergency`, `Alert`, or `Critical` priority (high severity), once per episode |
+| `falco_critical` | A rule fires at `Emergency`, `Alert`, `Critical`, or `Error` priority (high severity), once per episode |
 | `falco_warning` | A rule fires at `Warning` or `Notice` priority (medium severity), once per episode |
 
 `Informational` and `Debug` alerts are parsed but never

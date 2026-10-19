@@ -43,7 +43,7 @@ OS, the interpreter, the tools on PATH, the files the job names —
 and forms an opinion: *this will probably succeed here*, or *this
 will faceplant, and the reason is obvious*. Today the sender learns
 a job failed from the result and nothing more. The opinion closes
-that gap in three ways, under three sender-granted latitudes.
+that gap in three ways, under a sender-granted latitude.
 
 ## The modes
 
@@ -67,6 +67,9 @@ and priced in from the first proposal.
   not just the crash: missing interpreter, wrong-OS script shape,
   a path that does not exist on this box, a tool that is not
   installed. This mode changes nothing and blocks nothing.
+- **off** — no opinion is formed, nothing is recorded, and the
+  result carries no member. The latitude ladder the self-learning
+  loop (below) climbs starts here.
 
 ## The member
 

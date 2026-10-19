@@ -4,6 +4,36 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.3 - 2026-10-19
+
+- **falco-feed files `Error`-priority rules.** The sense
+  named all eight of Falco's priorities but mapped only
+  seven; an `Error` alert fell into the malformed bucket
+  and was ignored. `Error` now files as `falco_critical`
+  (high) — the error-and-above tier — and a test accounts
+  for all eight names.
+- **Inline `script_sha384` is verified.** `execute_job`
+  checked the digest only for `script_url` downloads; an
+  inline script carrying `script_sha384` ran unverified.
+  The digest of the script's UTF-8 bytes is now checked
+  before staging, as PROTOCOL §3.2's −2 class always
+  claimed.
+- **Documentation consistency pass.** PROTOCOL.md's
+  internal contradictions are resolved (the freeze was
+  lifted for these deltas): §5 verification is stated
+  per message type and names the job-shape checks behind
+  the −2 class; the redacted view carries
+  `output_digest`; task IDs state their own rule; "seen"
+  distinguishes the mail flag from the seen-set; budget
+  accounting is per key ID throughout; the confinement
+  predicate excludes the runner's own tree. The same
+  internal-consistency pass ran over every live document
+  — README, INSTALL, RUNBOOK, TRANSPORTS, the security
+  docs, `docs/`, the IETF draft (envelope steps now
+  select the key before verifying the MAC; the
+  SP 800-38D reference cites the right document),
+  hardening, and the extension READMEs.
+
 ## 3.11.2 - 2026-10-19
 
 - **Coverage report.** Statement coverage on the 3.11.1 tree

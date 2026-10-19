@@ -52,6 +52,7 @@ gets done without you knowing how any of it works.
 - Subject lines (exact prefixes):
   - Job: contains `[HOMING-PIGEON]` then `job <job_id>` (a word like `TEST` or a `Re:` prefix is fine)
   - Result: `[HOMING-PIGEON] result <job_id>`
+  - Query: `[HOMING-PIGEON] query <query_id>` (section 10.1)
   - `<job_id>` is a UUID (no spaces).
 
 ## 3. Message format
@@ -112,6 +113,12 @@ gets done without you knowing how any of it works.
   ignored, as if the member were absent. Runners that do not implement
   the opinion ignore the member, per the unknown-fields rule below.
 
+- `result_policy`: optional; the disclosure policy the result is
+  shaped by (section 9).
+
+- `key_id`: optional; names which shared secret verifies this
+  message (section 14). Absent means the default secret.
+
 - `kind`: `exec` or `ping`. A `ping` job carries no script; the runner
   answers with a `pong` result (health check).
 - For `exec`, exactly one of `script` / `script_url` is required.
@@ -158,7 +165,11 @@ gets done without you knowing how any of it works.
 - `timed_out: true` implies the process tree was killed; `exit_code` is -1.
 - `exit_code` -2 means the job was rejected before execution (validation
   failure: unknown kind, SHA384 mismatch, unsafe file name...); details in
-  `stderr`. Rejected jobs are marked seen and do not retry.
+  `stderr`. Rejected jobs do not retry — the mail is marked seen
+  (section 5).
+- `answers[]` / `attestations[]`: present when the job declared a
+  `result_policy` with queries — the answers to its declared
+  questions (section 10) and the attestations of section 9.2.
 - `stdout`/`stderr` are truncated at a configurable byte limit
   (default 100_000); the `*_truncated` flags say so.
 - `oracle_opinion`: OPTIONAL. The Oracle's opinion of the job, formed
@@ -273,6 +284,12 @@ looked up in the seen-set, and the raw mail is bounded by
 and deduplicate; they authorize nothing, and the seen-set
 lookup cannot poison the set — an id is recorded only for a
 job that verified and ran, once its result is safely sent.
+Two senses of *seen* are kept apart throughout: *marking the
+mail seen* is the channel-level flag — the message will not
+be reprocessed — while *recording the id in the seen-set* is
+the replay state just described. Where a later section says
+a message is "marked seen" without qualification, it means
+the mail flag.
 Nothing is executed, answered, or acted on before the
 signature verifies.
 
@@ -290,13 +307,19 @@ Authorization then runs in this order, and all of it must pass:
    jobs, queries (including the `ask` op), board messages, and sensor
    alerts.
 3. The signed script is bounded by `max_script_bytes`.
-4. `v == 1` and `type == "job"`, and the body's `job_id` equals the
-   subject's.
+4. `v == 1`; `type` is the message type the subject announces; and
+   the body's identifier (`job_id`, `query_id`, or `task_id`) equals
+   the subject's.
 5. `issued_at` parses, carries a timezone, and is within
    `max_job_age_sec` (default 3600) of the runner's clock
    (replay / stale protection).
 6. `job_id` not in the seen-set (replay protection). The seen-set key
    is namespaced by `runner_id` when one is configured.
+7. **Job-shape validation** (job messages): `kind` is `exec` or
+   `ping`; `script_sha384`, when present, matches the script — for
+   `script_url`, the downloaded bytes, checked before anything
+   runs; and every `files[]` name stays inside the workdir.
+   Failures here produce the -2 rejection result of section 3.2.
 
 Failures are logged, the mail is marked seen, and the job is **never**
 executed. Delivery is at-least-once: a job whose result email fails to
@@ -446,6 +469,7 @@ user's box decides what leaves it.
 - `full`: stdout and stderr, as in section 3.2.
 - `redacted`: full result with every `redact_patterns` match replaced by
   `[REDACTED:<family>]`. The message lists which families were applied.
+  Like every non-`full` view it carries `output_digest` (section 12).
 - `summary`: no raw output. Contains `exit_code`, `timed_out`,
   `duration_sec`, `stdout_bytes`, `stderr_bytes`, `result_class`
   (`ok`/`fail`), and `output_digest`
@@ -519,6 +543,10 @@ write. An optional Linux sandbox does. Config for the snapshot:
   working directory is always `<base_dir>/work/<job_id>`; the Oracle
   snapshots file metadata outside `workspace_root` before and after.
   The walk stops at 50000 files and logs that the result is partial.
+  The job's own working tree never counts against it: the snapshot
+  excludes `<base_dir>` — the workdir included — so
+  `confined_to_workspace` reports only files outside both
+  `workspace_root` and the runner's own tree.
 
 The snapshot is a record, not a cage. `confined_to_workspace` means
 no file outside `workspace_root` was created or modified during the
@@ -660,6 +688,8 @@ Defenses, in order of importance:
    gone. Zero-knowledge proofs went non-interactive (SNARKs/STARKs) for
    the same reason: a fixed proof artifact can't be probed.
 2. **Privacy budget.** `query_budget` bounds *total* leakage per job.
+   Accounting is per key ID (section 14), so one key cannot spend
+   another key's budget.
    Each answered or policy-rejected query spends 1; exhaustion silences
    the Oracle for that job. A budget bounds what rate limiting cannot:
    the total, not just the speed.
@@ -672,7 +702,7 @@ Defenses, in order of importance:
    human look — even when there is no security concern at all.
 3. **Rate limiting.** Before committing expensive work, demand proof
    of seriousness — the challenge-cookie pattern: `max_queries_per_hour`
-   per sender in runner config, on top of the freshness and seen-set
+   per key ID in runner config, on top of the freshness and seen-set
    checks every query already passes. This slows automated probing;
    the budget is what stops it.
 
@@ -740,7 +770,7 @@ never the default. The disclaimers below say what that choice costs.
 
 A task is a job the Oracle has not assigned yet:
 
-- `task_id`: same charset and length rules as `job_id` (section 3.1).
+- `task_id`: a UUID (no spaces), the same form as `job_id` (section 2).
 - `requires[]`: task IDs that should complete first. A DAG, not a flat
   queue.
 - `capabilities[]`: free-form tags (`code`, `review`, `prose`) describing
@@ -761,8 +791,10 @@ until dependencies complete). Config-only, like `judge`.
 Workers ask; the Oracle deals. The worker sends a signed `task_request`:
 
 ```json
-{"worker_id": "grok-4", "capabilities": ["code", "review"],
- "last_completed": "task-9f2"}
+{"v": 1, "type": "task_request", "worker_id": "grok-4",
+ "capabilities": ["code", "review"],
+ "last_completed": "7c4a2b1e-3f5d-4a6b-9c8d-1e2f3a4b5c6d",
+ "sig": "<hex hmac>"}
 ```
 
 The Oracle replies with a `task_offer` (the task plus its description)
@@ -788,7 +820,7 @@ aggregates. This is opt-in per task via `compartments[]` labels, matched
 against a `worker_compartments` map in config. Tasks without labels are
 fully visible to any pulling worker.
 
-Two bounds apply regardless. The per-task privacy budget (section 11)
+Two bounds apply regardless. The privacy budget (section 11)
 limits what a worker can extract across repeated pulls, and the
 two-phase query exchange (section 10) governs what workers may ask about
 retained outputs. Compartmentalization decides *which* work a worker
@@ -948,7 +980,7 @@ the gate shut). The test suite backs this: a pinned script smuggling
 
 A policy may also be attached to the default key under the empty-string
 key ID (`"": {...}`). Violations are rejected like any other bad job:
-logged, marked seen, never retried. Keys without a policy entry behave
+logged, the mail marked seen, never retried. Keys without a policy entry behave
 exactly as before — unrestricted.
 
 Two guards against a forgotten entry. At startup the runner logs a

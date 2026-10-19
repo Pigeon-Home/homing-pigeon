@@ -79,14 +79,18 @@ logged.
   "version": "0.3.0",
   "api_version": 1,
   "kind": "sense",
-  "description": "Watches a folder of experiment result files.",
+  "description": "Watches a folder of experiment result files and files lab events as Oracle signals.",
   "signals": [
     {"name": "experiment_finished",
      "description": "A run in the watched folder reached a finished state."},
     {"name": "metric_threshold_crossed",
-     "description": "A finished run's headline metric crossed the threshold declared in this extension's tunables."}
+     "description": "A finished run's headline metric crossed the threshold declared in this extension's tunables."},
+    {"name": "result_anomaly",
+     "description": "A finished run's headline metric sits far outside this folder's earlier results."}
   ],
-  "tunables": {"metric": "accuracy", "threshold": 0.9}
+  "tunables": {"watch_dir": "results", "metric": "accuracy",
+               "threshold": 0.9, "anomaly_band": 0.25,
+               "anomaly_min_history": 3}
 }
 ```
 

@@ -212,7 +212,7 @@ Config (same adjustable-everything posture as the senses):
 
 Open questions, deliberately unresolved: whether the verdict
 should carry a numeric score the Oracle can fuse with sensor
-weights (§1's `score = weight × severity`), and whether the
+weights (`score = weight × severity`), and whether the
 sub-model should also screen job *scripts* pre-execution
 (advisory reviewer input, `docs/job-review.md`) or only
 post-hoc incidents. Both are config-shaped, not code-shaped,

@@ -41,8 +41,9 @@ not code, and every trigger can be disabled.
   weights pay off: turning a sensor's weight down quiets its paging
   without touching ingest.
 - **Confinement violation.** A job wrote outside `workspace_root`
-  (the Oracle already detects this; see PROTOCOL.md). Always page:
-  this is the one signal that means the attested boundary broke.
+  (the Oracle already detects this; see PROTOCOL.md). Pages on
+  every occurrence: this is the one signal that means the
+  attested boundary broke.
 - **Judge block.** The judge refused a job in enforce mode. Page;
   include the reasons.
 - **Key probing.** Repeated key-policy or signature rejections from
@@ -68,8 +69,8 @@ evaluate_page_triggers(cfg, base_dir) -> list[PageEvent]
 
 ## Channels
 
-Telegram is the only channel the runner accepts. Signal, WhatsApp,
-and SMS are listed in FUTURE.md. Do not set `dri.channel` to
+Telegram is the only channel the runner accepts. Signal and
+WhatsApp are listed in FUTURE.md. Do not set `dri.channel` to
 anything but `"telegram"`.
 
 - **Telegram.** This is the channel the runner implements. Bot API

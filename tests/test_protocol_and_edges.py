@@ -318,6 +318,62 @@ class ExecutionEdgeTests(unittest.TestCase):
                 execute_job(self.cfg, job, self.tmp)
             self.assertIn("SHA384 mismatch", str(cm.exception))
 
+    def test_inline_script_sha384_mismatch(self):
+        # script_sha384 is verified for inline scripts too, not only
+        # for script_url downloads: a mismatch rejects before the
+        # script is staged or run (PROTOCOL section 3.2's -2 class).
+        job = {
+            "job_id": "inlinesha",
+            "kind": "exec",
+            "script": "echo should-not-run",
+            "interpreter": ["sh"],
+            "script_sha384": "0" * 96,
+        }
+        with self.assertRaises(JobRejected) as cm:
+            execute_job(self.cfg, job, self.tmp)
+        self.assertIn("script SHA384 mismatch", str(cm.exception))
+
+    def test_inline_script_sha384_match(self):
+        import hashlib
+        script = "echo inline-ok"
+        job = {
+            "job_id": "inlineshaok",
+            "kind": "exec",
+            "script": script,
+            "interpreter": ["sh"],
+            "script_sha384": hashlib.sha384(
+                script.encode("utf-8")).hexdigest(),
+        }
+        r = execute_job(self.cfg, job, self.tmp)
+        self.assertEqual(r["exit_code"], 0)
+        self.assertIn("inline-ok", r["stdout"])
+
+    def test_inline_script_sha384_uppercase_accepted(self):
+        import hashlib
+        script = "echo inline-upper"
+        job = {
+            "job_id": "inlineshaup",
+            "kind": "exec",
+            "script": script,
+            "interpreter": ["sh"],
+            "script_sha384": hashlib.sha384(
+                script.encode("utf-8")).hexdigest().upper(),
+        }
+        r = execute_job(self.cfg, job, self.tmp)
+        self.assertEqual(r["exit_code"], 0)
+        self.assertIn("inline-upper", r["stdout"])
+
+    def test_inline_script_no_sha384_unaffected(self):
+        job = {
+            "job_id": "inlineshanone",
+            "kind": "exec",
+            "script": "echo no-digest",
+            "interpreter": ["sh"],
+        }
+        r = execute_job(self.cfg, job, self.tmp)
+        self.assertEqual(r["exit_code"], 0)
+        self.assertIn("no-digest", r["stdout"])
+
     def test_sha384_match_mocked(self):
         content = b"hello-file"
         job = {

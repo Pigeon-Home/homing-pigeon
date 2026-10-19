@@ -4306,6 +4306,10 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         # retried forever. A script that is not a string can never run.
         if not isinstance(script, str):
             raise JobRejected("script must be a string")
+        if job.get("script_sha384") and \
+                hashlib.sha384(script.encode("utf-8")).hexdigest() \
+                != job["script_sha384"].lower():
+            raise JobRejected("script SHA384 mismatch")
         with open(script_path, "w", encoding="utf-8") as fh:
             fh.write(script)
     else:

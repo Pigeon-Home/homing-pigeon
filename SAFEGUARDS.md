@@ -119,7 +119,9 @@ mitigation:
 **Secret leaked or suspected leaked:**
 1. Revoke the mailbox credential *now* (Google Account → Security → App
    passwords, or revoke the OAuth token). Without mailbox access the runner
-   can't receive jobs — this instantly stops all job delivery.
+   can't receive jobs — this instantly stops all mail-borne job
+   delivery. (Same-box producers can still deliver `sensor_alert`
+   envelopes through the local inbox; see SECURITY.md.)
 2. Generate a fresh shared secret (`openssl rand -hex 32`), update
    `shared_secret` in `config.json`.
 3. Paste the new string to your SI.

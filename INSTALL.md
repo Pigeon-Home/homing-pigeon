@@ -166,12 +166,12 @@ cd "homing-pigeon-windows-x86_64-$ver"
   --logs [--follow]` (tail or watch the runner log), and `install.exe
   --wipe` (backs everything up into one zip, then removes the home,
   the task, and every scattered state dir).
-- **Linux:** run `python3 install.py` — registers a systemd service
+- **Linux:** run `./install` — registers a systemd service
   (or cron `@reboot` fallback).
-- **macOS:** run `python3 install.py` — registers a launchd agent.
+- **macOS:** run `./install` — registers a launchd agent.
 
 Then sign in: run the app once with `homing-pigeon --setup` (or let
-`install.py` offer it) — Thunderbird-style browser sign-in, a fresh
+`install` offer it) — Thunderbird-style browser sign-in, a fresh
 shared secret shown once for you to give to your cloud SI, config
 written. No hand-edited JSON needed. If you'd rather wire it by hand,
 edit `config.json` (add your mailbox address + app password) instead, then send

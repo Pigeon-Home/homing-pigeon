@@ -480,8 +480,10 @@ them at shutdown. One extension's death never takes the
 runner or the other transports down. Each extension is handed
 a runtime config file (0600) holding only its own config —
 its `transport_<name>` block, and for email the mailbox keys —
-never the shared secret: verification is the core's job, not
-the pipe's. The extension's own output lands in
+never the shared secret, with one exception: the dtls
+extension terminates PSK authentication, so it is handed the
+secret material it authenticates with (see "DTLS — shipped").
+Verification is the core's job, not the pipe's. The extension's own output lands in
 `<channel>/extension.log`.
 
 The pipe itself is a pair of directories, the channel, at

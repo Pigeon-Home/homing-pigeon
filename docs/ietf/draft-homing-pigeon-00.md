@@ -29,7 +29,7 @@ This Internet-Draft will expire on 19 April 2027.
 
 ## 1. Introduction
 
-Some hosts cannot accept inbound connections. The protocol needs a store-and-forward queue so neither side opens a connection to the other. The binding in this document is a mailbox: the submitter does not open a connection to the runner, and the runner does not open a connection to the submitter except to read and write that mailbox.
+Some hosts cannot accept inbound connections. The protocol needs a store-and-forward queue so neither side opens a connection to the other. The first binding this document specifies is a mailbox: the submitter does not open a connection to the runner, and the runner does not open a connection to the submitter except to read and write that mailbox.
 
 The exchange is two messages:
 
@@ -105,7 +105,7 @@ Ticket: the opaque resumption identity a runner issues in a NewSessionTicket mes
 
 This document specifies subjects, the signed object, the MAC, `key_id`, `reply_to`, replay, freshness, the `job` message, and the `result` message.
 
-This document does not specify disclosure policy, queries, attestations, task boards, sensors, confinement, installers, or local models. A job MAY carry extra members for those uses. Receivers that do not implement them MUST ignore unknown members (Section 8) and MUST still reject an unknown `v` or an unknown job `kind` (Section 12). Section 1 describes how those uses relate to this document.
+This document does not specify disclosure policy, queries, attestations, task boards, sensors, confinement, installers, or local models. A job MAY carry extra members for those uses. Receivers that do not implement them MUST ignore unknown members (Section 8) and MUST still reject an unknown `v` or an unknown job `kind` (Sections 8 and 12). Section 1 describes how those uses relate to this document.
 
 ## 5. Transport Binding
 
@@ -475,8 +475,8 @@ The transmitted body is a JSON envelope object, signed exactly as Section 7 spec
 
 An envelope is processed inside Section 14's steps, not beside them:
 
-1. The envelope's MAC is verified — step 5 applied to the envelope. On failure, reject as step 5 specifies. A receiver MUST NOT attempt decryption before the MAC verifies.
-2. The envelope's `key_id` selects the secret (Section 10), exactly as for a cleartext body.
+1. The envelope's `key_id` selects the secret (Section 10), exactly as for a cleartext body.
+2. The envelope's MAC is verified — step 5 applied to the envelope. On failure, reject as step 5 specifies. A receiver MUST NOT attempt decryption before the MAC verifies.
 3. Decrypt. Any failure — an unknown `alg`, a malformed member, a tag mismatch — is a rejection with no result, marked seen, as in step 5. No partial plaintext is processed.
 4. The recovered body re-enters Section 14 at step 4, as if it had arrived directly; its own MAC is verified again, and its `key_id` MUST match the envelope's.
 
@@ -673,7 +673,7 @@ The confidentiality claim is end to end between the submitter and the runner pro
 
 [RFC8259] Bray, T., Ed., "The JavaScript Object Notation (JSON) Data Interchange Format", STD 90, RFC 8259, DOI 10.17487/RFC8259, December 2017, <https://www.rfc-editor.org/info/rfc8259>.
 
-[SP800-38D] Nir, Y. and A. Langley, "AES-256 and GCM for IETF Protocols", NIST SP 800-38D, DOI 10.17487/SP800-38D, May 2018, <https://www.rfc-editor.org/info/rfc8439>.
+[SP800-38D] Dworkin, M., "Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC", NIST SP 800-38D, DOI 10.6028/NIST.SP.800-38D, November 2007, <https://doi.org/10.6028/NIST.SP.800-38D>.
 
 [RFC8446] Rescorla, E., "The Transport Layer Security (TLS) Protocol Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018, <https://www.rfc-editor.org/info/rfc8446>.
 

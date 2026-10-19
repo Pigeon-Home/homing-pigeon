@@ -28,7 +28,7 @@ policies, and the audience binding in M5 all still bottom out at
 
 The SI holds an Ed25519 private key. The runner holds only public
 keys, one per `key_id`. The wire format does not change shape: the
-`signed body + hex sig` envelope stays, but `sig` becomes an Ed25519
+`signed body + sig` envelope stays, but `sig` becomes an Ed25519
 signature over the same normalized body bytes, and `key_id` resolves
 to a public key instead of a secret.
 
@@ -145,6 +145,6 @@ stdlib-only story intact, outsources the crypto, and the costs
 system's message rates. The vendored pure-Python verifier remains
 the fallback if OpenSSH is ever unavailable on a target. Either
 way, the `alg` field in the signed body would record which scheme
-verified each message, so the audit log stays unambiguous during
+signed each message, so the audit log stays unambiguous during
 rotation. (No `alg` field exists today; it arrives with the
 scheme.)
