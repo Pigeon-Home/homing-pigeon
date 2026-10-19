@@ -62,8 +62,6 @@ Ideas...
   encryption, as senses. `docs/senses.md`.
 - A real netmon collector, a per-job DNS log, and canary
   credentials that phone home. `docs/networking.md`.
-- File-integrity monitoring. No design yet.
-  `docs/networking.md`.
 - Signal and WhatsApp paging. Telegram is the channel that
   exists. `docs/dri-playbook.md`.
 - An Oracle action log, and a policy on the Oracle's own tool
