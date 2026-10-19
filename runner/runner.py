@@ -117,6 +117,7 @@ _detection = _load_mod("runner.detection", "detection", broad=True)
 _setup = _load_mod("runner.setup", "setup")
 _security = _load_mod("runner.security", "security")
 _sandbox = _load_mod("runner.sandbox", "sandbox")
+_transports = _load_mod("runner.transports", "transports")
 
 
 def _append_security_event(base_dir: str, event: dict) -> None:
@@ -6786,6 +6787,7 @@ _CLI_OVERRIDES = (
     ("wake_cooldown", "local_wake_cooldown_sec"),
     ("log_max_bytes", "log_max_bytes"),
     ("log_backups", "log_backups"),
+    ("transports", "transports"),
     ("oracle_log", "oracle_log"),
     ("oracle_log_max_bytes", "oracle_log_max_bytes"),
     ("oracle_log_backups", "oracle_log_backups"),
@@ -6799,7 +6801,38 @@ _CLI_OVERRIDE_COUNTS = frozenset(
     if dest not in ("max_result_view", "judge", "dag_mode",
                     "oracle_mode", "oracle_opinion",
                     "remediation_mode", "require_review",
-                    "local_signals", "oracle_log"))
+                    "local_signals", "oracle_log", "transports"))
+
+
+def _transports_arg(text):
+    """argparse type for --transports: 'file,nats' -> ['file',
+    'nats']. A bad name is a usage error here, at startup, not a
+    surprise at poll time."""
+    names = [p.strip() for p in str(text).split(",") if p.strip()]
+    known = _transports.TRANSPORT_NAMES if _transports is not None \
+        else ("email", "file", "nats")
+    for name in names:
+        if name not in known:
+            raise argparse.ArgumentTypeError(
+                f"unknown transport {name!r}: expected one of "
+                f"{', '.join(known)}")
+    if not names:
+        raise argparse.ArgumentTypeError(
+            "name at least one transport")
+    return names
+
+
+def _enabled_transports(cfg):
+    """Validated transport names for this config (runner-side
+    wrapper so a missing transports module degrades to a clear
+    error instead of a NameError at poll time)."""
+    if _transports is not None:
+        return _transports.enabled_transports(cfg)
+    raw = cfg.get("transports") if isinstance(cfg, dict) else None
+    if raw is None or raw == ["email"] or raw == "email":
+        return ["email"]
+    raise ValueError("transports module unavailable; only the "
+                     "email transport can run")
 
 
 def apply_cli_overrides(cfg, args) -> list:
@@ -6858,6 +6891,107 @@ def _scrub_env(env: dict) -> dict:
     return out
 
 
+class _NullIMAP:
+    """Stand-in for the mail path's mark_seen calls: a transported
+    message has no mailbox flags to set."""
+
+    def store(self, *args):
+        return ("OK", [])
+
+
+class _CaptureSMTP:
+    """Stand-in collecting what send_mail would have sent, so a
+    transport can carry the results out its own pipe."""
+
+    def __init__(self):
+        self.sent = []
+
+    def send_message(self, msg):
+        body = ""
+        try:
+            body = msg.get_content()
+        except Exception:
+            payload = msg.get_payload(decode=True)
+            if isinstance(payload, bytes):
+                body = payload.decode("utf-8", errors="replace")
+        self.sent.append((str(msg["Subject"] or ""), body))
+
+
+def process_transport_message(cfg, base_dir, seen, secrets,
+                              key_policies, subject, body_text,
+                              opts=None):
+    """Run one transported envelope through the mail core.
+
+    The envelope becomes a synthetic RFC822 message and handle_mail
+    does everything it does for real mail -- query and board
+    dispatch, the signature gate, execution, the result -- with a
+    null IMAP and a capturing SMTP standing in for the mailbox.
+    Returns the (subject, body) messages the core sent.
+    """
+    cap = _CaptureSMTP()
+    safe_subject = str(subject).replace("\r", " ").replace("\n", " ")
+    raw = ("Subject: " + safe_subject + "\r\n"
+           "From: transport\r\n"
+           'Content-Type: text/plain; charset="utf-8"\r\n'
+           "\r\n" + str(body_text)).encode("utf-8")
+    handle_mail(cfg, _NullIMAP(), cap, "transport", raw, base_dir,
+                seen, secrets, opts, key_policies)
+    return cap.sent
+
+
+def _service_transports(cfg, base_dir, seen, seen_path, names,
+                        secrets, key_policies, opts):
+    """One cycle for each enabled non-mail transport, in config
+    order. A transport that fails its cycle is logged plainly and
+    retried next cycle; one bad pipe never fails the others."""
+    dry_run = opts is not None and getattr(opts, "dry_run", False)
+    for name in names:
+        try:
+            transport = _transports.build_transport(
+                name, cfg, base_dir, log=log)
+        except Exception as e:
+            log(f"{name} transport: cannot start: {e}", "ERROR")
+            continue
+        try:
+            try:
+                messages = transport.fetch()
+            except Exception as e:
+                log(f"{name} transport: fetch failed: {e} "
+                    f"(will retry next cycle)", "WARN")
+                continue
+            vlog(f"transports: {name}: {len(messages)} message(s)")
+            for msg in messages:
+                try:
+                    replies = process_transport_message(
+                        cfg, base_dir, seen, secrets, key_policies,
+                        msg.subject, msg.body, opts)
+                    for rsubject, rbody in replies:
+                        msg.reply(rsubject, rbody)
+                except Exception as e:
+                    log(f"{name} transport: message "
+                        f"{msg.ident or '?'} failed: {e!r}",
+                        "ERROR")
+                finally:
+                    # Dry-run changes nothing: a file job stays in
+                    # the inbox, exactly as mail stays unseen.
+                    if not dry_run:
+                        try:
+                            msg.ack()
+                        except Exception as e:
+                            log(f"{name} transport: ack failed "
+                                f"for {msg.ident or '?'}: {e}",
+                                "WARN")
+        finally:
+            try:
+                transport.close()
+            except Exception:
+                pass
+    if len(seen) > SEEN_CAP:
+        for k in list(seen.keys())[:-SEEN_CAP]:
+            del seen[k]
+    save_seen(seen_path, seen)
+
+
 def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
               imap=None, smtp=None, opts=None):
     """One poll cycle. imap/smtp may be injected (tests)."""
@@ -6895,57 +7029,66 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     if not getattr(log, "identity_logged", False):
         log(f"runner identity: {cfg.get('mailbox_user') or '(unset)'} -- accepting signed jobs from any sender")
         log.identity_logged = True  # pyrefly: ignore[missing-attribute]  # intentional monkey-patch: one log line per process
-    own_imap = imap is None
-    own_smtp = smtp is None
-    try:
-        if own_imap:
-            imap = connect_imap(cfg)
-        if own_smtp:
-            smtp = connect_smtp(cfg)
+    transport_names = _enabled_transports(cfg)
+    if "email" in transport_names or imap is not None \
+            or smtp is not None:
+        own_imap = imap is None
+        own_smtp = smtp is None
         try:
-            mails = fetch_job_mails(imap)
-            if mails:
-                log(f"poll: {len(mails)} message(s)")
-                workers = _worker_count(cfg, opts)
-                if workers > 1:
-                    log(f"poll: {workers} workers")
-            else:
-                workers = _worker_count(cfg, opts)
-                vlog(f"poll: no new messages "
-                     f"(seen holds {len(seen)})")
-            with ThreadPoolExecutor(max_workers=workers) as ex:
-                futs = [ex.submit(handle_mail, cfg, imap, smtp, seq, raw,
-                                  base_dir, seen, secrets, opts,
-                                  key_policies)
-                        for seq, raw in mails]
-                for f in as_completed(futs):
-                    exc = f.exception()
-                    # One worker blowing up must not fail the cycle or
-                    # throw away the messages the other workers finished.
-                    if exc is not None:
-                        log(f"worker raised: {exc!r}", "ERROR")
-            if len(seen) > SEEN_CAP:
-                # save_seen caps the disk copy; keep memory in step.
-                for k in list(seen.keys())[:-SEEN_CAP]:
-                    del seen[k]
-            save_seen(seen_path, seen)
-            vlog(f"poll: {len(mails)} message(s) handled by "
-                 f"{workers} worker(s) in "
-                 f"{time.monotonic() - t0:.1f}s; "
-                 f"seen holds {len(seen)} job id(s)")
-        finally:
             if own_imap:
+                imap = connect_imap(cfg)
+            if own_smtp:
+                smtp = connect_smtp(cfg)
+            try:
+                mails = fetch_job_mails(imap)
+                if mails:
+                    log(f"poll: {len(mails)} message(s)")
+                    workers = _worker_count(cfg, opts)
+                    if workers > 1:
+                        log(f"poll: {workers} workers")
+                else:
+                    workers = _worker_count(cfg, opts)
+                    vlog(f"poll: no new messages "
+                         f"(seen holds {len(seen)})")
+                with ThreadPoolExecutor(max_workers=workers) as ex:
+                    futs = [ex.submit(handle_mail, cfg, imap, smtp, seq, raw,
+                                      base_dir, seen, secrets, opts,
+                                      key_policies)
+                            for seq, raw in mails]
+                    for f in as_completed(futs):
+                        exc = f.exception()
+                        # One worker blowing up must not fail the cycle or
+                        # throw away the messages the other workers finished.
+                        if exc is not None:
+                            log(f"worker raised: {exc!r}", "ERROR")
+                if len(seen) > SEEN_CAP:
+                    # save_seen caps the disk copy; keep memory in step.
+                    for k in list(seen.keys())[:-SEEN_CAP]:
+                        del seen[k]
+                save_seen(seen_path, seen)
+                vlog(f"poll: {len(mails)} message(s) handled by "
+                     f"{workers} worker(s) in "
+                     f"{time.monotonic() - t0:.1f}s; "
+                     f"seen holds {len(seen)} job id(s)")
+            finally:
+                if own_imap:
+                    try:
+                        imap.logout()
+                    except Exception:
+                        pass
+        finally:
+            if own_smtp and smtp is not None:
                 try:
-                    imap.logout()
+                    smtp.quit()
                 except Exception:
                     pass
-    finally:
-        if own_smtp and smtp is not None:
-            try:
-                smtp.quit()
-            except Exception:
-                pass
 
+
+    other_transports = [n for n in transport_names if n != "email"]
+    if other_transports:
+        _service_transports(cfg, base_dir, seen, seen_path,
+                            other_transports, secrets, key_policies,
+                            opts)
 
 
 
@@ -9917,6 +10060,11 @@ def main() -> int:
                    metavar="COUNT",
                    help="rotated oracle.log files to keep "
                         "(default: 4)")
+    g.add_argument("--transports", type=_transports_arg, default=None,
+                   metavar="LIST",
+                   help="job transports for this process, "
+                        "comma-separated: email, file, nats "
+                        "(default: email)")
     g = ap.add_argument_group(
         "the Oracle",
         "Talk to the Oracle instead of polling the mailbox.")
@@ -10120,6 +10268,10 @@ def main() -> int:
     # reload cannot undo a flag.
     try:
         overridden = apply_cli_overrides(cfg, args)
+        # An unknown transport name is a startup error, not a
+        # surprise at poll time (checked after the overrides so a
+        # --transports flag is validated too).
+        _enabled_transports(cfg)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
