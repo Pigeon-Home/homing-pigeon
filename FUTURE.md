@@ -6,7 +6,19 @@ Ideas...
 
 - Encrypted credentials at rest
 - Ack messages
-- Per-job encryption & transport enc
+- Per-job encryption & transport enc -- CHOSEN DIRECTION
+  (Andrew, 2026-10-19, over the DTLS-session alternative):
+  encrypt the job object itself to the runner -- an AEAD
+  under a key derived from the shared secret (HKDF) --
+  riding the existing email binding. Confidentiality
+  without a channel: no UDP, no handshake, no listener, no
+  new burden on the SI, and it reaches every SI email
+  reaches. Honest scope: this gives the job (and, applied
+  symmetrically, the result) confidentiality end-to-end
+  across store-and-forward hops, which hop TLS never can;
+  it does not create a session, so the v2 greeting work
+  stays future. The change that ships it MUST revise the
+  confidentiality claims (draft Section 16.2) in step.
 
 ## The pipe
 
