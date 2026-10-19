@@ -90,6 +90,13 @@ class OsqueryPackTest(unittest.TestCase):
             self.assertIn("interval", entry)
             # Removals are results too; osquery-feed files them.
             self.assertIs(entry["removed"], True)
+        sched = cfg["schedule"]
+        self.assertEqual(sched["hp_processes"]["interval"], 300)
+        self.assertEqual(sched["hp_users"]["interval"], 3600)
+        self.assertEqual(sched["hp_listening_ports"]["interval"], 300)
+        self.assertIn("cmdline", sched["hp_processes"]["query"])
+        self.assertIn("username", sched["hp_users"]["query"])
+        self.assertIn("address", sched["hp_listening_ports"]["query"])
         self.assertIn("listening_ports",
                       cfg["schedule"]["hp_listening_ports"]["query"])
         self.assertIn("FROM processes",
@@ -104,6 +111,8 @@ class OsqueryPackTest(unittest.TestCase):
                                   "/var/run/osqueryd.pidfile")
         self.assertIn("--logger_plugin=filesystem", text)
         self.assertIn("--logger_path=/var/log/osquery", text)
+        self.assertIn("--pidfile=/var/run/osqueryd.pidfile", text)
+        self.assertIn("--watchdog_level=1", text)
         self.assertIn("--config_path=/etc/osquery/osquery.conf",
                       text)
 

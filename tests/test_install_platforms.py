@@ -132,6 +132,8 @@ class ServiceEnvTest(unittest.TestCase):
             inst.install_freebsd(
                 "/opt/homing-pigeon", "/opt/homing-pigeon/c.json")
             self.assertEqual(state["listing"].count("@reboot"), 1)
+            self.assertTrue(state["listing"].startswith("@reboot "))
+            self.assertIn("/opt/homing-pigeon/c.json", state["listing"])
             self.assertIn("--quiet", state["listing"])
             inst.uninstall_freebsd()
         self.assertNotIn("homing-pigeon", state["listing"])
@@ -150,6 +152,11 @@ class ServiceEnvTest(unittest.TestCase):
         limited = pkg.cmds[0]
         self.assertEqual(limited[limited.index("/RL") + 1], "LIMITED")
         self.assertEqual(limited[limited.index("/RU") + 1], "pigeon")
+        self.assertEqual(limited[limited.index("/SC") + 1], "ONSTART")
+        self.assertEqual(limited[-1], "/F")
+        self.assertEqual(
+            pkg.cmds[1],
+            ["schtasks", "/Run", "/TN", "HomingPigeon"])
         self.assertIn("--quiet", limited[limited.index("/TR") + 1])
         self.assertEqual(
             pkg.cmds[2][pkg.cmds[2].index("/RL") + 1], "HIGHEST")
