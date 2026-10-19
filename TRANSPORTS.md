@@ -1,7 +1,7 @@
 # Transports: beyond email
 
 > **Status.** Only email is implemented, in `runner/runner.py` directly.
-> Anything not built is listed in FUTURE.md. NATS, MQTT, Redis,
+> Anything not built is listed in FUTURE.md: NATS, MQTT, Redis,
 > Postgres, Durable Objects, and the local-socket. The sections below
 are design notes, not implementation.
 
