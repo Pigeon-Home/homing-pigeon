@@ -66,7 +66,7 @@ also_copy = [
     # these, stats collection dies on "INSTALL.md not found" before
     # any mutant runs.
     "AGENTS.md", "CONTRIBUTING.md", "FUTURE.md", "INSTALL.md",
-    "ORACLE_DASHBOARD.md", "PROTOCOL.md", "README.md", "RUNBOOK.md",
+    "PROTOCOL.md", "README.md", "RUNBOOK.md",
     "SAFEGUARDS.md", "SECURITY.md", "TRANSPORTS.md",
     # The Windows shard runner. tests/test_parallel_runner.py
     # imports it at load time, so stats collection dies if the
