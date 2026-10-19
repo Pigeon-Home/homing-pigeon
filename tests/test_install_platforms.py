@@ -549,6 +549,18 @@ class SecretAndOllamaEnvTest(unittest.TestCase):
             with self.assertRaises(SystemExit) as caught:
                 inst.ensure_shared_secret(cfg, "abc" * 50)
             self.assertEqual(caught.exception.code, 2)
+            with open(cfg, encoding="utf-8") as fh:
+                before = fh.read()
+            # Not a repeat and not a placeholder word, but under
+            # 128 bits. The pattern check must not be what refuses it.
+            with self.assertRaises(SystemExit) as caught:
+                inst.ensure_shared_secret(cfg, "abcdefghij0123456789")
+            self.assertEqual(caught.exception.code, 2)
+            with self.assertRaises(SystemExit):
+                inst.ensure_shared_secret(
+                    cfg, "please-generate-a-real-secret-value-now")
+            with open(cfg, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), before)
             inst.ensure_shared_secret(cfg, None)
             with open(cfg, encoding="utf-8") as fh:
                 first = json.load(fh)["shared_secret"]
