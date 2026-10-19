@@ -145,10 +145,8 @@
 - A job carrying a notable (suspicious-access) finding no longer
   has its raw output placed in the Oracle's context: the summary
   carries the finding, the script, and an attestation-shaped
-  withheld marker (length and digest) instead. Field tests
-  showed small models handing a flagged job's output back on
-  request and unprompted, and the reply gate cannot catch an
-  arbitrary short value. The withheld outputs still feed the
+  withheld marker (length and digest) instead: the reply gate
+  cannot catch an arbitrary short value. The withheld outputs still feed the
   reply gate as scan-only watch text -- never shown to the
   model -- so a reply repeating a pattern-shaped secret from a
   flagged job is still rejected. The retained record on disk is
@@ -317,7 +315,7 @@
 - The Oracle's job summaries now carry a "notable:" line when a
   job's script referenced a credential store or a file outside
   the job's own workspace -- a deterministic finding computed from
-  the script, after field tests showed small local models miss
+  the script, because small local models miss
   that reasoning even when the script is in front of them. Both
   ask prompts direct the Oracle to name every such job, in
   detail, when asked about malicious or suspicious jobs.
@@ -518,7 +516,7 @@
 
 ### Summary questions stay out of the tools
 
-- Field fix from the testing loop: the model answered summary
+- The model answered summary
   questions correctly from the new job index, but still spent
   extra rounds listing directories first. The chat instructions
   now ban tools outright for summary, count, and status questions
@@ -572,7 +570,7 @@
 
 ### A summary comes from a job index, not the log
 
-- Field report: asked for a summary of the job status, the Oracle
+- Asked for a summary of the job status, the Oracle
   narrated the runner log tail instead — mailbox authentication
   warnings and startup lines — and never named a job. The context
   it was handed had no index to read back: detailed job blocks
