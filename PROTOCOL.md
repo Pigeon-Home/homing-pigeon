@@ -119,8 +119,10 @@ gets done without you knowing how any of it works.
 - `timeout_sec`: default 300, maximum 3600.
 - `interpreter`: optional list whose first element is the executable and
   the rest are its arguments, e.g. `["pwsh", "-File"]` or `["bash"]`. The
-  script is written to `<workdir>/script` and run as
-  `<interpreter...> <workdir>/script <args...>`. If absent, the runner's
+  script is written into the workdir under a name taken from
+  the interpreter -- `script.ps1` for PowerShell, `script.py`
+  for Python, plain `script` otherwise -- and run as
+  `<interpreter...> <workdir>/<name> <args...>`. If absent, the runner's
   `default_interpreter` config applies, else the platform default:
   PowerShell (`powershell -NoProfile -NonInteractive -ExecutionPolicy
   Bypass -File`) on Windows, `sh` elsewhere.
