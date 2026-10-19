@@ -4,6 +4,21 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.4 - 2026-10-19
+
+- **PROTOCOL.md names the AEAD primitive.** The crypto
+  section still claimed "exactly two cryptographic
+  primitives" and "the protocol does not encrypt
+  payloads" — text from before per-job encryption
+  shipped. It now names the third primitive (AES-256-GCM,
+  keyed per job by HKDF-SHA-384, the signed `hp_enc`
+  envelope, verify-before-decrypt, receiver MUST accept)
+  and states the shipped posture: confidentiality is a
+  property of the signed object, the reference senders
+  encrypt by default, and cleartext is an explicit
+  sender choice, never a silent fallback. Documentation
+  only; no behavior change.
+
 ## 3.11.3 - 2026-10-19
 
 - **falco-feed files `Error`-priority rules.** The sense

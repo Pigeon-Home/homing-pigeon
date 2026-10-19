@@ -365,22 +365,33 @@ send stays unseen and will be retried (re-executed) on the next cycle.
 
 ## 8. Cryptography
 
-The protocol uses exactly two cryptographic primitives:
+The protocol uses exactly three cryptographic primitives:
 
 - **Message authentication:** HMAC-SHA-384, keyed with the shared
   secret. This is the protocol's authentication mechanism; sender
   identity asserted by the transport (for email, the From header)
   carries no weight.
 - **Hashing:** SHA-384, used for file and script integrity checks.
+- **Payload encryption:** AES-256-GCM (AEAD), keyed per job by
+  HKDF-SHA-384 from the shared secret. A signed body MAY be sent
+  as an encrypted envelope — an `hp_enc` member carrying the
+  algorithm (`aes-256-gcm/hkdf-sha384`), a 12-byte nonce, and
+  the ciphertext — and the envelope is itself signed as
+  transmitted; the receiver verifies the envelope's signature
+  before decrypting. A receiver MUST accept the encrypted form.
+  A result mirrors the form of the job it answers.
 
-Both are the CNSA-listed choices at the 384-bit tier.
+These are the CNSA-listed choices: the 384-bit tier for the
+hash-based primitives, AES-256 at the matching symmetric tier.
 
-The protocol does not encrypt payloads, and it designates no payload
-cipher. Confidentiality in transit is a property of the transport
-binding — for email, the TLS sessions between each endpoint and its
-mail provider. Authenticity and integrity come from HMAC-SHA-384.
-A future version that adds payload encryption will name its cipher
-in this section when it exists.
+Confidentiality is a property of the signed object, not only of
+the transport: the reference senders encrypt by default, and
+cleartext is an explicit sender choice — the interop escape for
+pre-encryption runners — never a silent fallback. Where a job
+travels in cleartext, confidentiality in transit rests on the
+transport binding (for email, the TLS sessions between each
+endpoint and its mail provider). Authenticity and integrity
+come from HMAC-SHA-384 in both forms.
 
 ---
 
