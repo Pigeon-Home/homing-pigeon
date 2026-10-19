@@ -30,6 +30,18 @@
   Sentinel, Wire Arrivals, Tripwire, Log Sentinel, and the DRI
   pair Service Watch and Backup Freshness. Pi Health reads what
   the machine actually has; it is not Pi-only.
+- One-process CLI overrides for the runtime knobs that had
+  none (`--judge`, `--dag-mode`, `--oracle-mode`, the log
+  bounds, the local-signal switches, and the rest of that
+  family). A flag replaces the config value for this process
+  only; `config.json` is never rewritten, and a hot reload
+  cannot undo it. `-v` is now a count: level 2 narrates
+  decisions (`verbose:` lines), level 3 is the noisier
+  per-item trace, and `--quiet` still wins. The startup block
+  opens with the exact invocation, shell-quoted, so a run can
+  be repeated from its own log. `--help` on the runner, the
+  installer, and `send_job` is a designed page: chapters,
+  metavars, and real invocations. No flag changed meaning.
 
 ### CI
 
