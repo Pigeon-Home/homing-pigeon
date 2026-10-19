@@ -1,0 +1,1 @@
+{"api_version":1,"description":"Watched-folder transport: envelope files in an inbox directory are the jobs; results land in an outbox directory.","entry":["{python}","-m","runner.transport_extensions.file","{channel_dir}","{runtime_config}"],"kind":"transport","name":"file","publisher":"Homing Pigeon","startup_settle_ms":700,"version":"1.0.0"}
