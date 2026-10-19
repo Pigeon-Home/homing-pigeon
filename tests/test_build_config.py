@@ -54,7 +54,7 @@ class HiddenImportSyncTest(unittest.TestCase):
         workflow = _workflow()
         build_lines = [ln for ln in workflow.splitlines()
                        if "pyinstaller" in ln and "runner/runner.py" in ln]
-        self.assertEqual(len(build_lines), 3,
+        self.assertEqual(len(build_lines), 4,
                          "expected one runner build line per OS job")
         for line in build_lines:
             for mod in sorted(_dynamic_runner_modules()):
@@ -94,7 +94,7 @@ class MutationGateTest(unittest.TestCase):
         # stop branch CI from meaning anything.
         workflow = _workflow()
         for job in ("test", "typecheck", "build-linux", "build-macos",
-                    "build-windows", "build-python"):
+                    "build-windows", "build-python", "build-pi-light"):
             block = _job_block(workflow, job)
             self.assertNotIn("refs/tags", block,
                              "%s must not be tag-gated" % job)
@@ -115,11 +115,55 @@ class MutationGateTest(unittest.TestCase):
         # would publish. Only the signal job may carry it.
         workflow = _workflow()
         for job in ("test", "typecheck", "build-linux", "build-macos",
-                    "build-windows", "build-python", "release",
-                    "pypi-publish"):
+                    "build-windows", "build-python", "build-pi-light",
+                    "release", "pypi-publish"):
             block = _job_block(workflow, job)
             self.assertNotIn("continue-on-error", block,
                              "%s must stay a real gate" % job)
+
+
+class PiLightArchiveTest(unittest.TestCase):
+    """The release ships an archive that IS Pi Light, not only one
+    that can be told to be (owner's ask, 2026-10-18: an artifact
+    specifically called raspberry pi light). The build-pi-light
+    job stages the ARM64 Linux tree with a default_profile marker
+    naming pi-light; the installer honors the marker when the user
+    names no profile (pinned in tests/test_pi_light.py). These
+    pins keep the job, the marker, the archive name, and the
+    release job's dependency from drifting apart.
+    """
+
+    def test_the_job_stages_the_marker_in_the_archive(self):
+        block = _job_block(_workflow(), "build-pi-light")
+        self.assertIn('name="homing-pigeon-pi-light-arm64-$ver"', block)
+        self.assertIn('printf \'pi-light\\n\' > "pkg/$name/default_profile"',
+                      block)
+        self.assertIn("path: ${{ env.PKG_NAME }}.tar.gz", block)
+
+    def test_the_job_builds_for_arm(self):
+        head = _job_block(_workflow(), "build-pi-light").split("steps:")[0]
+        self.assertIn("arm", head)
+
+    def test_the_release_needs_the_job(self):
+        # Without the dependency the release job can run before
+        # the pi-light artifact exists and silently ship without it.
+        block = _job_block(_workflow(), "release")
+        self.assertIn("build-pi-light", block)
+
+    def test_the_archive_name_trips_no_mirror_classifier(self):
+        # sourceforge.yml marks a release file as a platform's
+        # default download when its name contains windows, linux,
+        # or macos/darwin, and expects exactly 3 marks. The
+        # pi-light archive must contain none of those words, or
+        # the mirror publish fails on the next tag.
+        for word in ("windows", "linux", "macos", "darwin"):
+            self.assertNotIn(word, "homing-pigeon-pi-light-arm64-")
+
+    def test_the_mirrors_count_four_install_archives(self):
+        for wf in ("sourceforge.yml", "gitlab.yml"):
+            with open(os.path.join(_root(), ".github", "workflows", wf),
+                      encoding="utf-8") as fh:
+                self.assertIn("the four install archives", fh.read(), wf)
 
 
 def _also_copy():

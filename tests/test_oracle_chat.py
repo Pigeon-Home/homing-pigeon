@@ -622,7 +622,7 @@ class OracleAgentTest(unittest.TestCase):
         with open(yml, encoding="utf-8") as fh:
             text = fh.read()
         self.assertEqual(text.count('PROTOCOL.md;pigeon-docs'), 1)
-        self.assertEqual(text.count('PROTOCOL.md:pigeon-docs'), 2)
+        self.assertEqual(text.count('PROTOCOL.md:pigeon-docs'), 3)
 
     def test_oracle_page_starts_with_an_empty_box(self):
         # The example question is a placeholder hint, never content.

@@ -788,3 +788,73 @@ class PiHealthEndToEndTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(len(self._inbox_names()), 1)
         self.assertTrue(os.path.exists(self.state_path))
+
+
+class BundledDefaultProfileTest(unittest.TestCase):
+    """The pi-light release archive carries a default_profile
+    marker next to the installer; chosen_profile honors it when
+    the user names no profile, so installing from that archive is
+    Pi Light without a --profile flag. The ordinary archives and
+    the source tree carry no marker, and their defaults are the
+    ones they always had.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.dir = self._tmp.name
+
+    def _marker(self, text):
+        with open(os.path.join(self.dir, I.PROFILE_MARKER), "w",
+                  encoding="utf-8") as fh:
+            fh.write(text)
+
+    def test_marker_names_the_profile(self):
+        self._marker("pi-light\n")
+        self.assertEqual(I._bundled_default_profile(self.dir), "pi-light")
+
+    def test_marker_tolerates_surrounding_whitespace(self):
+        self._marker("  pi-light \n")
+        self.assertEqual(I._bundled_default_profile(self.dir), "pi-light")
+
+    def test_no_marker_no_bundled_default(self):
+        self.assertIsNone(I._bundled_default_profile(self.dir))
+
+    def test_unknown_marker_is_ignored(self):
+        self._marker("no-such-profile\n")
+        self.assertIsNone(I._bundled_default_profile(self.dir))
+
+    def test_empty_marker_is_ignored(self):
+        self._marker("\n")
+        self.assertIsNone(I._bundled_default_profile(self.dir))
+
+    def test_marker_beats_detection(self):
+        # Even where detection would pick the ordinary default,
+        # the archive's bundled default wins: that is the point
+        # of shipping the marker.
+        self._marker("pi-light\n")
+        with unittest.mock.patch.object(I, "_src_dir",
+                                        return_value=self.dir), \
+                unittest.mock.patch.object(
+                    I, "detect_default_profile",
+                    return_value="password-only"):
+            self.assertEqual(I.chosen_profile(None, False), "pi-light")
+
+    def test_explicit_profile_beats_marker(self):
+        self._marker("pi-light\n")
+        with unittest.mock.patch.object(I, "_src_dir",
+                                        return_value=self.dir):
+            self.assertEqual(I.chosen_profile("password-only", False),
+                             "password-only")
+
+    def test_no_profile_flag_beats_marker(self):
+        self._marker("pi-light\n")
+        with unittest.mock.patch.object(I, "_src_dir",
+                                        return_value=self.dir):
+            self.assertIsNone(I.chosen_profile(None, True))
+
+    def test_the_source_tree_carries_no_marker(self):
+        # The marker is a release-staging artifact, never a repo
+        # file: a source checkout must keep the old defaults.
+        self.assertFalse(os.path.exists(
+            os.path.join(REPO, "runner", I.PROFILE_MARKER)))
