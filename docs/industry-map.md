@@ -119,8 +119,9 @@ The two candidates are listed in FUTURE.md.
    never let the model or the docs overclaim. The anti-fabrication rule in
    the Oracle's instructions is the right shape; keep it sharp.
 
-## What we will not become
+## What it is not trying to be
 
-Not an XDR, not a UEBA product, not a deception vendor. Standalone categories
-fizzle; features win. The architecture — thin senses, Oracle fusion, DRI
-playbook — is the right shape precisely because it's a pipeline, not a suite.
+Not an XDR, not a UEBA product, not a deception vendor — those are
+standalone categories, and standalone categories fizzle; features win.
+The architecture — thin senses, Oracle fusion, DRI playbook — fits
+because it's a pipeline, not a suite.
