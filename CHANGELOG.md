@@ -2,6 +2,21 @@
 
 ## 3.8.3 - 2026-10-18
 
+### Features
+
+- Two more senses, and the catalog now says fifteen.
+  Resource Sentinel rates a rolling window (sustained CPU,
+  disk-fill velocity, process storms, memory falling to the
+  floor) instead of one sample. Job Watcher reads `retained/`
+  and learns per-job baselines: repeated failure, flakiness,
+  duration anomalies, and cross-job failure clusters. No
+  baseline means no anomaly call.
+- FUTURE.md records the remediation design: a divergence
+  between a job's opinion and what it actually did, answered
+  by reflexes (kill, quarantine, hand the file to the
+  platform antivirus) under the Oracle's judgment. Design
+  only; nothing is built.
+
 ### Tests
 
 - The invocation-line pin resets the log minute before it
