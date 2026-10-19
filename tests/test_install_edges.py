@@ -873,4 +873,150 @@ class TailTest(unittest.TestCase):
                 del os.O_BINARY
 
 
+class CleanupTest(unittest.TestCase):
+    def test_a_platform_with_no_service_still_wipes(self):
+        with mock.patch.object(inst.sys, "platform", "freebsd"), \
+                mock.patch.object(inst, "_candidate_state_dirs",
+                                  return_value=[]), \
+                mock.patch.object(inst, "_run_quiet"):
+            self.assertEqual(inst.do_wipe(no_backup=True), 0)
+
+    def test_no_setup_module_and_an_unreadable_config(self):
+        import builtins
+        real = builtins.__import__
+
+        def guarded(name, *a, **k):
+            if name in ("runner", "setup") or name.startswith("runner."):
+                raise ImportError(name)
+            return real(name, *a, **k)
+
+        with tempfile.TemporaryDirectory() as d:
+            cfg = os.path.join(d, "config.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                fh.write("{}\n")
+            args = mock.Mock(
+                shared_secret=None, additional_secret=["si.1"],
+                profile=None, no_profile=True, inference_model=None,
+                faster=False, no_inference=True, no_collector=True,
+                collector=None, instructions=None,
+                instructions_add=None, wazuh_manager=None)
+            with mock.patch("builtins.__import__", guarded):
+                inst._setup_fresh_config(args, cfg)
+            with open(cfg, encoding="utf-8") as fh:
+                self.assertIn("si.1", json.load(fh)["additional_secrets"])
+            args.additional_secret = []
+            with mock.patch.object(inst, "ensure_shared_secret"):
+                inst._setup_fresh_config(args, os.path.join(d, "missing"))
+
+    def test_a_profile_file_without_a_name_keeps_the_default(self):
+        with tempfile.TemporaryDirectory() as d:
+            prof = os.path.join(d, "p.json")
+            with open(prof, "w", encoding="utf-8") as fh:
+                fh.write('{"profile": 1}\n')
+            self.assertEqual(inst.inference_model_for(prof),
+                             inst.DEFAULT_INFERENCE_MODEL)
+
+    def test_a_write_that_dies_midway_closes_and_unlinks(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "c.json")
+            had = hasattr(os, "O_NOFOLLOW")
+            saved = getattr(os, "O_NOFOLLOW", None)
+            if had:
+                delattr(os, "O_NOFOLLOW")
+            try:
+                inst._write_json(path, {"a": 1})
+            finally:
+                if had:
+                    os.O_NOFOLLOW = saved
+            with open(path, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh)["a"], 1)
+
+            def fdopen(*_a, **_k):
+                raise OSError("fd")
+
+            def close(_fd):
+                raise OSError("close")
+
+            with mock.patch.object(os, "fdopen", fdopen), \
+                    mock.patch.object(os, "close", close):
+                with self.assertRaises(OSError):
+                    inst._write_json(path, {"b": 2})
+
+            def unlink(_p):
+                raise OSError("unlink")
+
+            with mock.patch.object(os, "unlink", unlink):
+                with self.assertRaises(OSError):
+                    inst._write_json(path, {"c": 3})
+
+    def test_collectors_when_the_package_leaves_nothing_behind(self):
+        args = mock.Mock(wazuh_manager=None)
+        with mock.patch.object(inst, "_apt_install"), \
+                mock.patch.object(inst, "run"), \
+                mock.patch.object(inst.os, "makedirs"), \
+                mock.patch.object(inst, "_write_text"), \
+                mock.patch.object(inst.os.path, "isfile",
+                                  return_value=False):
+            line = inst._install_collector_linux("aide", args)
+        self.assertIn("aide", line)
+        with mock.patch.object(inst.shutil, "which",
+                               return_value="/usr/local/bin/brew"), \
+                mock.patch.object(inst, "run"), \
+                mock.patch.object(inst.os, "makedirs"), \
+                mock.patch.object(inst, "_write_text"), \
+                mock.patch.object(inst.os.path, "isfile",
+                                  return_value=False):
+            line = inst._install_collector_darwin("osquery", args)
+        self.assertIn("light pack", line)
+        with mock.patch.object(inst.shutil, "which",
+                               return_value="winget"), \
+                mock.patch.object(inst, "run"), \
+                mock.patch.object(inst.os.path, "isdir",
+                                  return_value=False):
+            line = inst._install_collector_windows("osquery", args)
+        self.assertIn("light pack", line)
+
+    def test_health_sees_a_falco_unit_and_a_wazuh_manager(self):
+        import io
+
+        def globber(pat):
+            if "falco" in pat:
+                return ["/lib/systemd/system/falco-bpf.service"]
+            return []
+
+        def which(binary):
+            return "/usr/bin/sysmon" if binary == "sysmon" else None
+
+        real_open = open
+
+        def opener(path, *a, **k):
+            if path == "/var/ossec/etc/ossec.conf":
+                return io.StringIO("<address>10.1.1.1</address>\n")
+            return real_open(path, *a, **k)
+
+        with mock.patch("glob.glob", globber), \
+                mock.patch.object(inst, "_which_safe", which), \
+                mock.patch.object(inst.subprocess, "run",
+                                  side_effect=OSError("no journal")), \
+                mock.patch.object(inst.os.path, "isfile",
+                                  return_value=False), \
+                mock.patch.object(inst.os.path, "isdir",
+                                  return_value=False), \
+                mock.patch.object(inst.os.path, "exists",
+                                  return_value=False), \
+                mock.patch("builtins.open", opener):
+            facts = inst.collector_health_facts()
+        self.assertEqual(facts["service_active"].get("falco"), False)
+        self.assertTrue(facts["wazuh_manager"])
+        self.assertFalse(facts["sysmon_telemetry_error"])
+
+    def test_running_the_file_as_main_exits(self):
+        import runpy
+        with mock.patch.object(sys, "argv", ["install.py", "--version"]):
+            with self.assertRaises(SystemExit) as caught:
+                runpy.run_path(inst.__file__, run_name="__main__")
+        self.assertEqual(caught.exception.code, 0)
+
+
+
 
