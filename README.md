@@ -5,7 +5,7 @@
 > ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative
 > control** of the machine to whoever holds the shared secret. The
 > runner verifies a message's signature and then executes the
-> signed job, as a privileged user — it can install software,
+> job, as a privileged user. It can install software,
 > read files, add users, and pivot to your network.
 
 Your cloud SI is smart, but it can't touch your computer. Homing Pigeon
