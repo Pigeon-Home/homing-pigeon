@@ -206,7 +206,18 @@ class SetupGapsTest(unittest.TestCase):
                 raise ImportError(name)
             if name not in ("oauth", "install"):
                 return real(name, g, loc, frm, level)
-            mod = sys.modules.setdefault(name, types.ModuleType(name))
+            # Always a FRESH stub module, registered for the
+            # duration of the reload. setdefault here returned
+            # the real module whenever one was already imported,
+            # and the attribute writes below then scribbled on
+            # it: install._looks_like_placeholder and
+            # install._looks_patterned are the installer's
+            # shared-secret gate, and stubbing them to False on
+            # the real module silently disabled that gate for
+            # every test that ran later in the process (the
+            # shuffled-order failures in test_install_platforms).
+            mod = types.ModuleType(name)
+            sys.modules[name] = mod
             mod.browser_consent = lambda c: "t"
             mod.refresh_access_token = lambda c: "t"
             mod.xoauth2_raw = lambda u, t: "a"
@@ -214,6 +225,16 @@ class SetupGapsTest(unittest.TestCase):
             mod._looks_patterned = lambda s: False
             return mod
 
+        # The pops in the finally below must not leak: other
+        # modules hold the real "install" module object (bound at
+        # their import) while string-form mock.patch("install...")
+        # resolves through sys.modules at patch time. Leaving
+        # "install" popped makes a later patch import a SECOND
+        # module object and silently miss the first -- the
+        # shuffled-order failures in test_install_gaps /
+        # test_install_platforms. Capture and restore.
+        previous = {name: sys.modules.get(name)
+                    for name in ("oauth", "install")}
         try:
             for fail in (False, True):
                 def importer(*a, _f=fail, **k):
@@ -226,6 +247,11 @@ class SetupGapsTest(unittest.TestCase):
             sys.modules.pop("oauth", None)
             sys.modules.pop("install", None)
             importlib.reload(SU)
+            for name, module in previous.items():
+                if module is None:
+                    sys.modules.pop(name, None)
+                else:
+                    sys.modules[name] = module
 
         def blocked(name, g=None, loc=None, frm=(), level=0):
             if name in ("runner.oauth", "oauth"):
