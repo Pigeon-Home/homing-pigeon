@@ -311,3 +311,266 @@ class FetchAndConfigTest(unittest.TestCase):
         with mock.patch("builtins.open", mock.mock_open(
                 read_data="not-a-real-profile\n")):
             self.assertIsNone(inst._bundled_default_profile(marker))
+
+
+class LastBranchesTest(unittest.TestCase):
+    def test_a_provided_secret_is_written_and_a_non_string_is_not_one(self):
+        self.assertFalse(inst._looks_like_placeholder(None))
+        self.assertFalse(inst._looks_patterned(None))
+        self.assertTrue(inst._looks_like_placeholder("changeme"))
+        self.assertTrue(inst._looks_patterned("abcabcabcabc"))
+        with tempfile.TemporaryDirectory() as d:
+            cfg = os.path.join(d, "config.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                fh.write("{}\n")
+            provided = "k9" + __import__("secrets").token_hex(40)
+            inst.ensure_shared_secret(cfg, provided)
+            with open(cfg, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh)["shared_secret"], provided)
+
+    def test_a_frozen_tree_that_cannot_replace_its_binary(self):
+        with tempfile.TemporaryDirectory() as src:
+            for name in ("homing-pigeon", "install",
+                         "config.example.json"):
+                with open(os.path.join(src, name), "w",
+                          encoding="utf-8") as fh:
+                    fh.write("x")
+            with mock.patch.object(inst, "FROZEN", True):
+                self.assertTrue(inst._src_dir())
+                self.assertTrue(inst._runner_argv(src)[0].endswith(
+                    "homing-pigeon"))
+                with mock.patch.object(inst.shutil, "copy2",
+                                       side_effect=OSError("busy")):
+                    self.assertFalse(inst.install_files(src, src))
+
+    def test_the_doctor_names_corrupt_and_unreadable_pieces(self):
+        with tempfile.TemporaryDirectory() as root:
+            home = os.path.join(root, "home")
+            bind = os.path.join(home, "bin")
+            os.makedirs(bind)
+            os.symlink(os.path.join(root, "nope"),
+                       os.path.join(home, "install-receipt.json"))
+            cfg = os.path.join(home, "config.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                fh.write("{")
+            with mock.patch.object(inst, "FROZEN", True), \
+                    mock.patch.object(inst, "collector_health_rows",
+                                      return_value=[]):
+                self.assertEqual(inst.do_check(
+                    home, bind, cfg, os.path.join(home, "state")), 1)
+            with open(cfg, "w", encoding="utf-8") as fh:
+                fh.write("{}\n")
+            os.remove(os.path.join(home, "install-receipt.json"))
+            with open(os.path.join(home, "install-receipt.json"), "w",
+                      encoding="utf-8") as fh:
+                fh.write('{"version": "3"}\n')
+            with mock.patch.object(inst.sys, "platform", "win32"), \
+                    mock.patch.object(inst, "_task_exists",
+                                      return_value=True), \
+                    mock.patch.object(inst, "_task_command",
+                                      return_value=None), \
+                    mock.patch.object(inst, "collector_health_rows",
+                                      return_value=[]):
+                self.assertEqual(inst.do_check(
+                    home, bind, cfg, os.path.join(home, "state")), 1)
+
+    def test_console_without_a_config_and_a_follow_that_waits(self):
+        with tempfile.TemporaryDirectory() as home:
+            bind = os.path.join(home, "bin")
+            os.makedirs(bind)
+            exe = os.path.join(bind, inst.RUNNER_BIN)
+            with open(exe, "w", encoding="utf-8") as fh:
+                fh.write("x")
+            with mock.patch.object(inst.sys, "platform", "win32"):
+                self.assertEqual(inst.do_console(
+                    home, bind, os.path.join(home, "missing.json")), 1)
+
+        class _FH:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def seek(self, *_a):
+                return None
+
+            def readline(self):
+                return ""
+
+        with mock.patch("builtins.open", return_value=_FH()), \
+                mock.patch.object(inst.time, "sleep",
+                                  side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                inst._follow_file("/tmp/no-log")
+
+    def test_pi_light_yields_to_an_explicit_model(self):
+        self.assertFalse(inst._pi_light_skip(
+            mock.Mock(inference_model="qwen3:1.7b", faster=False),
+            "pi-light"))
+        self.assertFalse(inst._pi_light_skip(
+            mock.Mock(inference_model=None, faster=True), "pi-light"))
+        self.assertTrue(inst._acl_home("/tmp", None))
+
+    def test_the_wizard_runs_only_when_the_owner_says_yes(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = os.path.join(d, "config.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                fh.write("{}\n")
+            args = mock.Mock(
+                shared_secret=None, additional_secret=[],
+                profile=None, no_profile=True, inference_model=None,
+                faster=False, no_inference=True, no_collector=False,
+                collector=None, instructions=None, instructions_add=None,
+                wazuh_manager=None)
+            import setup
+            with mock.patch.object(sys.stdin, "isatty",
+                                   return_value=True), \
+                    mock.patch.object(setup, "needs_setup",
+                                      return_value="no mailbox"), \
+                    mock.patch.object(setup, "prompt_yes_no",
+                                      return_value=True), \
+                    mock.patch.object(setup, "run_setup_wizard") as wiz, \
+                    mock.patch.object(inst, "install_collectors",
+                                      return_value=["ok"]) as cols:
+                inst._setup_fresh_config(args, cfg)
+            wiz.assert_called()
+            cols.assert_called()
+
+    def test_a_fresh_home_prints_the_baked_flags(self):
+        with tempfile.TemporaryDirectory() as home:
+            with mock.patch.object(inst.sys, "platform", "win32"), \
+                    mock.patch.object(inst, "_is_admin",
+                                      return_value=True), \
+                    mock.patch.object(inst, "_acl_home",
+                                      return_value=True), \
+                    mock.patch.object(inst, "install_files",
+                                      return_value=True), \
+                    mock.patch.object(inst, "_setup_fresh_config",
+                                      return_value=(False, None, False)), \
+                    mock.patch.object(inst, "_ensure_base_dir"), \
+                    mock.patch.object(inst, "_write_receipt"), \
+                    mock.patch.object(inst, "install_windows"):
+                code = inst.do_install_home(
+                    mock.Mock(
+                        run_as=None, no_inference=False, faster=False,
+                        dry_run=True, no_send=False, pdb=False,
+                        verbose=True, poll_interval=None,
+                        max_output_bytes=None, timeout=None,
+                        workers=None),
+                    home, os.path.join(home, "bin"),
+                    os.path.join(home, "config.json"),
+                    os.path.join(home, "state"), "/src")
+            self.assertEqual(code, 0)
+
+    def test_each_platform_install_from_main_and_a_home_note(self):
+        with tempfile.TemporaryDirectory() as dst:
+            for plat, name in (("win32", "install_windows"),
+                               ("darwin", "install_macos"),
+                               ("freebsd14", "install_freebsd")):
+                with mock.patch.object(inst.sys, "platform", plat), \
+                        mock.patch.object(inst, "install_files",
+                                          return_value=True), \
+                        mock.patch.object(
+                            inst, "_setup_fresh_config",
+                            return_value=(False, None, True)), \
+                        mock.patch.object(inst, name) as fn, \
+                        mock.patch.object(
+                            sys, "argv",
+                            ["install.py", "--dir", dst, "--no-collector"]):
+                    self.assertEqual(inst.main(), 0)
+                fn.assert_called()
+            with mock.patch.object(inst, "install_files",
+                                   return_value=False), \
+                    mock.patch.object(
+                        sys, "argv",
+                        ["install.py", "--home", dst, "--dir", dst]):
+                self.assertEqual(inst.main(), 1)
+            with mock.patch.object(inst.sys, "platform", "win32"), \
+                    mock.patch.object(
+                        inst, "install_ollama_and_model",
+                        return_value=False), \
+                    mock.patch.object(
+                        sys, "argv",
+                        ["install.py", "--home", dst,
+                         "--inference-only", "--no-profile"]):
+                self.assertEqual(inst.main(), 0)
+            with mock.patch.object(
+                    sys, "argv",
+                    ["install.py", "--dir", dst, "--logs"]):
+                self.assertEqual(inst.main(), 1)
+
+    def test_a_key_that_fails_over_and_a_daemon_that_comes_up(self):
+        with tempfile.TemporaryDirectory() as d:
+            dest = os.path.join(d, "k.gpg")
+
+            def download(url):
+                if "bad" in url:
+                    raise OSError("no")
+                return b"key"
+
+            with mock.patch.object(inst, "_download", download):
+                self.assertEqual(inst._write_keyring(
+                    ["https://example.test/bad",
+                     "https://example.test/good"], dest), dest)
+            with mock.patch.object(inst, "run") as run:
+                inst._apt_install(["osquery"])
+            run.assert_called()
+
+        answers = iter([False, True])
+        with mock.patch.object(inst, "_ollama_up",
+                               side_effect=lambda *a: next(answers)), \
+                mock.patch.object(inst, "_ollama_bin",
+                                  return_value="/usr/bin/ollama"), \
+                mock.patch.object(inst.subprocess, "Popen"), \
+                mock.patch.object(inst.time, "sleep"):
+            self.assertTrue(inst.ensure_ollama_running())
+        with mock.patch.object(inst, "_ollama_bin",
+                               return_value="/usr/bin/ollama"), \
+                mock.patch.object(inst, "ensure_ollama_running",
+                                  return_value=False), \
+                mock.patch.object(inst.sys, "platform", "linux"):
+            self.assertFalse(inst.install_ollama_and_model(
+                os.path.join(d, "nope.json"), "m", False))
+
+    def test_probes_that_fail_closed(self):
+        with mock.patch.object(inst.sys, "platform", "linux"), \
+                mock.patch("platform.machine", return_value="mips"):
+            self.assertIsNone(inst._bpf_loadable())
+        with mock.patch.object(inst.sys, "platform", "linux"), \
+                mock.patch("ctypes.CDLL", side_effect=OSError("no")):
+            self.assertIsNone(inst._bpf_loadable())
+
+        class _C:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def read(self):
+                return "zeek\n"
+
+        def opener(path, *a, **k):
+            return _C()
+
+        with mock.patch.object(os, "listdir", return_value=["5"]), \
+                mock.patch("builtins.open", opener):
+            self.assertTrue(inst._proc_running("zeek"))
+        with mock.patch.object(os, "listdir", side_effect=OSError):
+            self.assertFalse(inst._proc_running("zeek"))
+
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "unit.txt")
+            had = hasattr(os, "O_NOFOLLOW")
+            saved = getattr(os, "O_NOFOLLOW", None)
+            if had:
+                delattr(os, "O_NOFOLLOW")
+            try:
+                with mock.patch.object(os, "chmod", side_effect=OSError):
+                    inst._write_text(path, "unit\n")
+            finally:
+                if had:
+                    os.O_NOFOLLOW = saved
+            self.assertTrue(os.path.isfile(path))
+
