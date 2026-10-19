@@ -834,6 +834,7 @@ class DtlsClientCore(_Endpoint):
         self._res_master = None
         self.finished_received = False
         self.finished_sent = False
+        self._ee_seen = False
         self.greeting = None
         self._ticket_out = None
 
@@ -984,8 +985,10 @@ class DtlsClientCore(_Endpoint):
             return []
         if msg_type == HS_ENCRYPTED_EXTENSIONS:
             # No extensions this profile acts on, but the
-            # message is part of the transcript.
-            self.transcript.add(raw)
+            # message is part of the transcript -- once.
+            if not self._ee_seen:
+                self._ee_seen = True
+                self.transcript.add(raw)
             return []
         if msg_type == HS_KEY_UPDATE:
             return self._handle_key_update(epoch, body)
@@ -1006,6 +1009,10 @@ class DtlsClientCore(_Endpoint):
                 cookie_ext[0:2], "big")]
             self.transcript.apply_hrr(self._ch1, raw)
             return self._start_after_hrr(now)
+        if self.state not in ("wait-hrr-or-sh", "wait-sh"):
+            # A retransmitted ServerHello for a handshake that
+            # has already moved on: not an error, not news.
+            return []
         if fields["suite"] != SUITE_CHACHA20:
             raise DtlsError("server picked a foreign ciphersuite")
         if int.from_bytes(exts.get(EXT_SUPPORTED_VERSIONS, b""),
@@ -1038,6 +1045,8 @@ class DtlsClientCore(_Endpoint):
         return []
 
     def _on_server_finished(self, body, raw, now):
+        if self.state != "handshake-keys":
+            return []      # a retransmitted Finished; we moved on
         expect = _finished_verify(self._s_hs,
                                   self.transcript.hash())
         if not hmac.compare_digest(expect, body):
@@ -1357,6 +1366,8 @@ class _ServerSession(_Endpoint):
                 return []
         msg_type, msg_seq, body, raw = parsed
         if msg_type == HS_FINISHED:
+            if self.established:
+                return []  # retransmitted Finished; session is up
             return self._on_client_finished(body, raw, now)
         if msg_type == HS_KEY_UPDATE:
             return self._handle_key_update(epoch, body)
