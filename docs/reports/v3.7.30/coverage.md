@@ -1,7 +1,8 @@
 # Coverage findings
 
 This report belongs to package 3.7.30. The previous measurement is
-[v3.7.22](../v3.7.22/coverage.md). No new tag was cut for this
+[v3.7.22](../v3.7.22/coverage.md). The next measurement is
+[v3.11.1](../v3.11.1/coverage.md). No new tag was cut for this
 measurement. The tree measured is `reports/coverage-mutation-3.7.30`
 at e3d88e4, which is main plus one fix: a job id that ends in a
 newline is rejected. Python's `$` matches just before a final
