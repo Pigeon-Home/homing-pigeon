@@ -70,6 +70,29 @@ homing-pigeon-install
 homing-pigeon --config ~/.homing-pigeon/config.json --once
 ```
 
+### Raspberry Pi: Pi Light
+
+A Pi install — detected automatically from the device tree, or
+chosen anywhere with `--profile pi-light` — is the light package.
+You get the full runner and the full protocol: your cloud SI
+pings signed jobs in, jobs run, results and attestations go back,
+the senses and local signals work, and the Oracle still watches,
+wakes on a serious signal, and files its briefs.
+
+What the Pi does **not** get is a local model. The installer
+installs no Ollama and downloads no model — nothing for
+inference touches the box. The Oracle runs in deterministic mode
+(`oracle_mode: "deterministic"` in `config.json`): briefs and
+answers are assembled from the box's own records — the job
+index, retained jobs and their notable lines, the log tail —
+instead of a model's narration. The diagnosis is the
+deterministic kind: what ran, what failed, what the records say.
+
+When Pis ship with neural accelerator chips worth using, the
+same install upgrades in place: set `oracle_mode` to `llm` in
+`config.json` and re-run the installer with `--inference-only` to
+pull a model. Nothing reinstalls and nothing else changes.
+
 ## 3. Release binary
 
 **Install:** download and extract. Every default OS ships a
@@ -150,7 +173,7 @@ setup, leaving the rest of your install alone. Pass
 
 ## 4. The full walkthrough
 
-By default the installer also sets up local inference for the Oracle `ask` op: it installs Ollama (if missing) and pulls a model (`qwen3:1.7b` by default). A Raspberry Pi install, detected automatically or selected with `--profile raspberry-pi-home`, pulls the lighter `llama3.2:1b` instead. `--faster` pulls `qwen2.5:3b`, a smaller faster model, on any machine. Pass `--inference-model` to choose a tag yourself, or `--no-inference` to skip the model entirely. The runner itself never bundles the model; Ollama runs separately on loopback. `homing-pigeon --faster` uses `qwen2.5:3b` for that process only and leaves `config.json` unchanged.
+By default the installer also sets up local inference for the Oracle `ask` op: it installs Ollama (if missing) and pulls a model (`qwen3:1.7b` by default). A Raspberry Pi install, detected automatically or selected with `--profile pi-light`, is Pi Light instead: no model is installed or downloaded, and the Oracle runs deterministically (see "Raspberry Pi: Pi Light" in §2). `--faster` pulls `qwen2.5:3b`, a smaller faster model, on any machine. Pass `--inference-model` to choose a tag yourself, or `--no-inference` to skip the model entirely. The runner itself never bundles the model; Ollama runs separately on loopback. `homing-pigeon --faster` uses `qwen2.5:3b` for that process only and leaves `config.json` unchanged.
 
 **Easiest: download a release.** No Python needed — each release ships
 standalone binaries built by GitHub Actions:

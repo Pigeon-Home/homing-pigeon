@@ -279,7 +279,8 @@ A current install does not start that way. `install.py` applies the
 `password-only` profile unless you pass `--no-profile`. That profile
 sets `max_result_view` to `attested` and `judge` to `advisory`, so
 the clock string never comes back. A Raspberry Pi gets
-`raspberry-pi-home`, which does the same and also pulls a model.
+`pi-light`, which does the same and pulls no model at all — its
+Oracle runs deterministically.
 
 Install, or re-apply, like this:
 

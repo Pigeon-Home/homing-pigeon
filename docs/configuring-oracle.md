@@ -40,7 +40,8 @@ Everything the dashboard configures must be expressible in `config.json`, and ev
 - `dag_mode` — `off` (default) or `enforce`. When enforce, a task is offered only after all of its `requires` are done.
 - `task_timeout` — seconds before a claimed task is returned to open. Default 86400.
 - `require_review` — when true, completed tasks go to `pending_review` instead of `done` until approved.
-- `inference` — endpoint and model for the `ask` op. The endpoint must be loopback or the op stays off. A non-loopback host is refused and `ask` stays disabled. The installer sets this up by default (Ollama + a model); pass `--no-inference` to skip. The default model is `qwen3:1.7b`. The `raspberry-pi-home` profile uses `llama3.2:1b`, the lighter Llama. `--faster` uses `qwen2.5:3b`, a smaller faster model. `--inference-model` overrides either. On the runner, `--faster` uses `qwen2.5:3b` for one process and does not rewrite config.json. Sub-keys: `endpoint` (loopback URL, required), `model` (tag, required), `max_answer_chars` (default 2000 — answers are truncated past this), `timeout_sec` (default 180, per-question model timeout; a cold model on a laptop often needs more than 60, and the default model thinks before answering, so long questions can need the full budget).
+- `inference` — endpoint and model for the `ask` op. The endpoint must be loopback or the op stays off. A non-loopback host is refused and `ask` stays disabled. The installer sets this up by default (Ollama + a model); pass `--no-inference` to skip. The default model is `qwen3:1.7b`. The `pi-light` profile (the Raspberry Pi install) sets up no inference at all — see `oracle_mode` below. `--faster` uses `qwen2.5:3b`, a smaller faster model. `--inference-model` overrides either. On the runner, `--faster` uses `qwen2.5:3b` for one process and does not rewrite config.json. Sub-keys: `endpoint` (loopback URL, required), `model` (tag, required), `max_answer_chars` (default 2000 — answers are truncated past this), `timeout_sec` (default 180, per-question model timeout; a cold model on a laptop often needs more than 60, and the default model thinks before answering, so long questions can need the full budget).
+- `oracle_mode` — `llm` (default) or `deterministic`. Deterministic is the Pi Light mode: no local model is installed or ever called, and the Oracle's duties still run — the watch, the wake gate, briefs, answers — with briefs and answers assembled from the box's own records (the job index, retained jobs, notable lines, the log tail) instead of a model's narration. The `ask` op stays off in this mode. Read live: editing `config.json` flips the mode without a restart, which is the upgrade path when a box gains a model worth running.
 - `log_max_bytes` — size at which `runner.log` rotates. Default 33554432 (32 MiB). An invalid value falls back to the default.
 - `log_backups` — rotated `runner.log` files kept (`runner.log.1` … `runner.log.N`, oldest dropped). Default 4, clamped to 1–10.
 - `oracle_log` — when true, every inference exchange is recorded in full in `oracle.log` in the state dir (request payload, reply, error bodies, elapsed time), and a spawned inference daemon writes its output there too. A debugging aid; off by default, and no `oracle.log` is created while off.
@@ -55,7 +56,7 @@ Worked example: a Raspberry Pi running a VS Code server. The owner wants the Ora
 
 ```json
 {
-  "profile": "raspberry-pi-home",
+  "profile": "pi-light",
   "description": "Pi running VS Code server; watch repo creds and root hash",
   "redact_patterns_extra": {
     "vscode_token": "ghp_[A-Za-z0-9]{36}",
@@ -63,7 +64,8 @@ Worked example: a Raspberry Pi running a VS Code server. The owner wants the Ora
   },
   "protected_paths": ["/home/pi/docs/manuals"],
   "max_result_view": "attested",
-  "judge": "advisory"
+  "judge": "advisory",
+  "oracle_mode": "deterministic"
 }
 ```
 
@@ -71,20 +73,20 @@ The result is a normal config file. It can be edited by hand or loaded through t
 
 ## Applying a profile
 
-The installer applies a profile automatically. On a Raspberry Pi it selects `raspberry-pi-home`; everywhere else it selects `password-only` (watch the password hash, attested view). Pass `--profile NAME` to override, or `--no-profile` to skip.
+The installer applies a profile automatically. On a Raspberry Pi it selects `pi-light`; everywhere else it selects `password-only` (watch the password hash, attested view). Pass `--profile NAME` to override, or `--no-profile` to skip.
 
 You can still name one explicitly:
 
 ```
 homing-pigeon-install --profile password-only
-homing-pigeon-install --profile raspberry-pi-home
+homing-pigeon-install --profile pi-light
 homing-pigeon-install --profile ./my-box.json
 ```
 
 Built-in profiles:
 
 - `password-only` — treats password hashes and `password=` style assignments as secrets, watches `/etc/shadow`, sets `max_result_view` to `attested`. Inference stays on the default model, `qwen3:1.7b`.
-- `raspberry-pi-home` — same password-hash watch, plus `/home/pi/docs/manuals` as a protected path. This is the Pi-specific install: the device tree or `/proc/cpuinfo` selects it automatically, and it pulls `llama3.2:1b` instead of the default model. `--inference-model` still wins if you name a tag.
+- `pi-light` — same password-hash watch, plus `/home/pi/docs/manuals` as a protected path. This is the Pi-specific install: the device tree or `/proc/cpuinfo` selects it automatically. It is the light package — it sets `oracle_mode` to `deterministic` and installs no model at all: no Ollama, no download. Naming `--inference-model` or `--faster` by hand overrides that and installs a model as usual. (`raspberry-pi-home` is this profile's former name and still works.)
 
 A profile JSON file uses the same keys. Extra redact patterns and worker compartments are merged with what is already in the file. A profile entry wins when the name clashes. Other profile keys replace the previous value. Mailbox credentials and `shared_secret` are never written by a profile. The runner already honors `redact_patterns_extra`, `protected_paths`, and `max_result_view` from `config.json`, so the profile takes effect on the next start. `owner_instructions` and `inference` are re-read when the file changes, without a restart.
 

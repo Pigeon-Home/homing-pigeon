@@ -79,6 +79,17 @@ Ideas...
 - The local test chat waits for the result email.
   `docs/handoff-local-si.md`.
 
+## The hardware
+
+- Accelerator Pis. Pi Light ships the deterministic Oracle
+  because current Pis have no neural accelerator worth loading
+  a model on, so the install downloads nothing. When a Pi
+  generation ships an integrated NPU — or an AI-HAT-class
+  board is on the box — the same install flips `oracle_mode`
+  to `llm` and pulls a model. The mode is config, not
+  architecture: the runner, the protocol, the briefs, and the
+  records do not change.
+
 ## Misc
 
 - NATS, MQTT, Redis, Postgres, Durable Objects, and the local
