@@ -1,0 +1,11 @@
+#separator \x09
+#set_separator	,
+#empty_field	(empty)
+#unset_field	-
+#path	dns
+#fields	ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	proto	trans_id	rtt	query	qclass	qclass_name	qtype	qtype_name	rcode	rcode_name	AA	TC	RD	RA	Z	answers	TTLs	rejected
+#types	time	string	addr	port	addr	port	enum	count	interval	string	count	string	count	string	count	string	bool	bool	bool	bool	count	set[string]	vector[interval]	bool
+1792382505.100000	CdnS00000000000001	192.168.1.20	53111	8.8.8.8	53	udp	42137	0.012	example.com	1	IN	1	A	0	NOERROR	F	F	T	T	0	93.184.216.34	300.0	F
+1792382510.200000	CdnS00000000000002	192.168.1.20	53111	8.8.8.8	53	udp	42137	0.012	a-very-long-subdomain-label-for-tunneling.example.net	1	IN	1	A	0	NOERROR	F	F	T	T	0	-	-	F
+1792382515.300000	CdnS00000000000003	192.168.1.20	53111	8.8.8.8	53	udp	42137	0.012	notes.example.org	1	IN	16	TXT	0	NOERROR	F	F	T	T	0	some text record	3600.0	F
+1792382520.400000	CdnS00000000000004	192.168.1.20	53111	8.8.8.8	53	udp	42137	0.012	one.two.three.four.five.example.com	1	IN	1	A	0	NOERROR	F	F	T	T	0	93.184.216.34	300.0	F
