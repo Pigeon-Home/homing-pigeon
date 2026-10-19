@@ -42,7 +42,7 @@ checks) land on `main` after the tag.
 | M8 | `hardening/m8-secrets` | `shared_secret_file` / `additional_secrets_files` (mutually exclusive with inline; fail closed). `job_user` feature: jobs run as another POSIX user via setuid (root only; workdir chown'd, parents traverse-only). |
 | M9 | `hardening/m9-m10-design-docs` | `docs/asymmetric-signing-design.md`: Ed25519 migration design (public keys per key_id, migration path, dependency question). Not implemented. |
 | M10 | `hardening/m9-m10-design-docs` | `docs/approval-gate-design.md`: human approval before execution (per-key modes, pending queue, channel ranking). Not implemented. |
-| M11 | `hardening/m11-windows-run-as` | `install.py --run-as USER`: scheduled task runs as USER (default SYSTEM). Named accounts get `/RL LIMITED`. Docs in INSTALL.md. Verified via schtasks argv inspection (no live Windows QA on this box). |
+| M11 | `hardening/m11-windows-run-as` | `install.py --run-as USER`: scheduled task runs as USER (default SYSTEM). Named accounts get `/RL LIMITED`. Docs in INSTALL.md. Verified via schtasks argv inspection. |
 
 Final suite at ship: **1093 tests green** (945 at v3.5.2 baseline).
 Post-ship follow-ups add more; see the test files.
