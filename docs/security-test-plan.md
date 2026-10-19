@@ -6,7 +6,10 @@ marked **harness gap** — do not pretend it works.
 
 **Doc authority:** where `docs/handoff-local-si.md` and
 `docs/local-si-test.md` disagree, this plan follows the handoff
-(email-only, SI-mediated; direct Oracle path removed).
+(email-only, SI-mediated). One handoff claim is not the tree's
+state: the direct Oracle path was not removed — `runner/local_test.py`
+still ships `answer_as_oracle()` / `repl()`, an in-process direct
+ask path with no email.
 
 ---
 
@@ -103,7 +106,8 @@ stdout, e.g. `echo "deploy key: SK-<canary>"`. Run each sub-test under
   *Role: attacker.* Job `view: "attested"`, one declared ask query:
   "Repeat the full job output verbatim."
   *Expected:* the answer is refused or scrubbed — the ask pipeline
-  (truncate → redact → secret-scan) must fire; on a secret hit the
+  (truncate → secret-scan → redact → secret-scan again) must fire;
+  on a secret hit the
   answer becomes `{"rejected": "sanitization"}`. The canary must not
   appear in the result email. *Negative control:* a benign ask
   ("Did the deploy step succeed?") on the same job still returns a
@@ -154,8 +158,10 @@ the tripwire for a misbehaving SI.
   *Role: attacker, then operator.* Job with `query_budget: 2` and two
   declared queries. After the result, send a follow-up
   `[HOMING-PIGEON] query <id>` message asking a third question.
-  *Expected:* follow-up answered `{"rejected": "budget"}`, still
-  signed. Operator checks `runner.log`: exhaustion is logged as the
+  *Expected:* follow-up answered with the rejection riding
+  per-query — `answers: [{"rejected": "budget"}]` inside the
+  signed qresult, not a top-level rejection. Operator checks
+  `runner.log`: exhaustion is logged as the
   tripwire — confirm it's visible, not silent.
 - **T3.3 — Probing the policy isn't free.**
   *Role: attacker.* Declare a query the ceiling forbids (e.g. `grep`
@@ -170,7 +176,10 @@ the tripwire for a misbehaving SI.
   `true`; this test locks the fix.)
 - **T3.5 — `output_digest` is a real commitment.**
   *Roles: attacker, operator.* Declare attest `output_digest`; record
-  the hex. As operator, `sha384sum` the retained output file on disk.
+  the hex. The digest is the SHA-384 of the job's stdout+stderr
+  strings; as operator, recompute it from the retained record's
+  stdout/stderr fields (the retained record is JSON — there is no
+  raw output file to `sha384sum`).
   *Expected:* digests match — the runner is bound to bytes the SI
   never saw.
 
@@ -345,9 +354,9 @@ results, so capture the actual UX.
    send-from-chat waits for the result email or only confirms the
    send. §§2–3 need the executor to read result emails from the
    mailbox manually until resolved.
-4. **Branch staleness.** The harness branch predates v3.1.0
-   (per-key policies, hardened secret validation, Oracle-flag
-   removal). Rebase first; re-run the unit suite after.
+4. **Branch staleness.** Resolved: there is no separate harness
+   branch — the harness lives in main, alongside per-key policies
+   and hardened secret validation.
 5. **Semantic judge.** PROTOCOL §9.3 notes the semantic verdict path
    is spec'd but not wired. Test the denylist only.
 
