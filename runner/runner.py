@@ -1483,11 +1483,31 @@ def _endpoint_is_loopback(endpoint: str) -> bool:
     return True
 
 
+def _oracle_mode(cfg) -> str:
+    """Which Oracle this box runs: "deterministic" or "llm" (default).
+
+    Config key oracle_mode. Deterministic is the Pi Light mode: the
+    Oracle's duties -- the watch, the wake gate, briefs, answers --
+    all run, but no local model is installed or ever called, so
+    inference_config returns None and every model path stays dark.
+    Briefs and answers are assembled from the box's own records
+    instead. Anything but the exact string "deterministic" is the
+    default llm mode, where a configured model does the narrating.
+    """
+    if isinstance(cfg, dict) and cfg.get("oracle_mode") == "deterministic":
+        return "deterministic"
+    return "llm"
+
+
 def inference_config(cfg):
     """Return the inference dict when endpoint+model are set and loopback.
 
     Fail closed: missing fields or a non-loopback host yield None.
+    Deterministic Oracle mode (Pi Light) also yields None, even when
+    an endpoint is configured: no model is ever called in that mode.
     """
+    if _oracle_mode(cfg) == "deterministic":
+        return None
     inf = cfg.get("inference") if isinstance(cfg, dict) else None
     if not isinstance(inf, dict):
         return None
@@ -5253,8 +5273,11 @@ def _oracle_brief(cfg, base_dir, record, opener=None):
     path the interactive doors use) assesses the signal against the
     box's current context. Without one, the brief is a deterministic
     note saying so -- the mechanism stays honest and testable with
-    no model. The brief lands in oracle-briefs.jsonl and in the
-    runner log, where later Oracle context reads it back.
+    no model. In deterministic mode (Pi Light) the brief is
+    explicitly that note, labeled as such, and no model is called
+    even if one is configured. The brief lands in
+    oracle-briefs.jsonl and in the runner log, where later Oracle
+    context reads it back.
     """
     record = record if isinstance(record, dict) else {}
     sensor = record.get("sensor")
@@ -5275,13 +5298,25 @@ def _oracle_brief(cfg, base_dir, record, opener=None):
         "assessment": "",
     }
     try:
-        inf = inference_config(cfg)
-        if inf is None:
+        if _oracle_mode(cfg) == "deterministic":
+            brief["status"] = "deterministic"
+            brief["mode"] = "deterministic"
+            brief["assessment"] = (
+                "Deterministic brief (Pi Light): the Oracle on this "
+                "box runs without a local model, so this brief is "
+                "assembled from the alert itself, not a model "
+                f"assessment. {severity} alert from sensor {sensor}"
+                + (f", signal {signal}" if signal else "")
+                + (f": {title}" if title else "")
+                + ". The alert was filed in the senses store; "
+                "review it there.")
+        elif inference_config(cfg) is None:
             brief["assessment"] = (
                 "No local model is configured on this box, so the "
                 "Oracle made no assessment. The alert was filed in "
                 "the senses store; review it there.")
         else:
+            inf = inference_config(cfg)
             lines = [
                 "A sensor signal just arrived on this box and crossed "
                 "the wake threshold.",
@@ -5988,7 +6023,7 @@ HOT_KEYS = ("poll_interval_sec", "workers", "default_timeout_sec",
             "max_output_bytes", "max_job_age_sec")
 # Strings and objects the Oracle reads live. Not integers, so they do not
 # go through _valid_hot. Credentials stay out of this list.
-LIVE_KEYS = ("owner_instructions", "inference")
+LIVE_KEYS = ("owner_instructions", "inference", "oracle_mode")
 
 
 def _valid_hot(key: str, value):
@@ -6047,6 +6082,9 @@ def reload_hot_config(cfg: dict, path: str, state: dict,
             log(f"config reload: ignoring invalid {key}", "WARN")
             continue
         if key == "inference" and not isinstance(val, dict):
+            log(f"config reload: ignoring invalid {key}", "WARN")
+            continue
+        if key == "oracle_mode" and not isinstance(val, str):
             log(f"config reload: ignoring invalid {key}", "WARN")
             continue
         if val != cfg.get(key):
@@ -8084,6 +8122,34 @@ def _withheld_scan_text(base_dir, limit=6) -> str:
     return "\n".join(blobs)
 
 
+def _deterministic_oracle_answer(cfg, base_dir, watch=None) -> str:
+    """The Pi Light answer: the box's records, un-narrated.
+
+    In deterministic mode there is no model to read the context, so
+    the context itself is the answer -- the job index first, then
+    the retained job summaries (notable lines included), the log
+    tail, and the watch sections, exactly as oracle_context builds
+    them. The header says plainly what the reader is looking at.
+    """
+    if watch is None:
+        watch = _oracle_watch_enabled(cfg)
+    ctx = oracle_context(base_dir, watch=watch)
+    return ("Deterministic Oracle (Pi Light): no local model runs on "
+            "this box, so here is the current record, un-narrated.\n\n"
+            + ctx)
+
+
+def _report_oracle_mode(cfg) -> None:
+    """Startup report: one line when the Oracle is deterministic.
+
+    The llm default stays silent -- no new noise on boxes that did
+    not choose Pi Light. Mirrors _report_extensions' shape.
+    """
+    if _oracle_mode(cfg) == "deterministic":
+        log("oracle: deterministic mode (Pi Light) -- no local model; "
+            "briefs and answers are assembled from the box's records")
+
+
 def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
                    watch=True) -> str:
     """Recent retained job output plus the runner log tail, for a local
@@ -8584,7 +8650,13 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
                 self._send(403, "forbidden", "text/plain; charset=utf-8")
                 return
             inf = inference_config(cfg) or {}
-            page = oracle_page(token, inf.get("model") or "", bool(inf))
+            if _oracle_mode(cfg) == "deterministic":
+                page = oracle_page(
+                    token, "deterministic (Pi Light), no local model",
+                    True)
+            else:
+                page = oracle_page(token, inf.get("model") or "",
+                                   bool(inf))
             self._send(200, page, "text/html; charset=utf-8")
 
         def do_POST(self):
@@ -8626,18 +8698,21 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
             progress["active"] = True
             progress["step"] = "Thinking"
             progress["started"] = time.time()
-            try:
-                ans = ask_model_agent(
-                    inf, question, oracle_context(base, watch=_oracle_watch_enabled(cfg)),
-                    (inf or {}).get("max_answer_chars") or 2000,
-                    _redact_patterns(cfg),
-                    instructions=cfg.get("owner_instructions"),
-                    base_dir=base,
-                    progress=progress,
-                )
-            except Exception as e:
-                log(f"oracle ask failed: {e}", "WARN")
-                ans = None
+            if _oracle_mode(cfg) == "deterministic":
+                ans = {"answer": _deterministic_oracle_answer(cfg, base)}
+            else:
+                try:
+                    ans = ask_model_agent(
+                        inf, question, oracle_context(base, watch=_oracle_watch_enabled(cfg)),
+                        (inf or {}).get("max_answer_chars") or 2000,
+                        _redact_patterns(cfg),
+                        instructions=cfg.get("owner_instructions"),
+                        base_dir=base,
+                        progress=progress,
+                    )
+                except Exception as e:
+                    log(f"oracle ask failed: {e}", "WARN")
+                    ans = None
             progress["active"] = False
             if not isinstance(ans, dict):
                 ans = {"rejected": "inference_error"}
@@ -8728,7 +8803,10 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
     if cfg_path:
         print(f"Config: {os.path.abspath(cfg_path)}")
     inf = inference_config(cfg) or {}
-    if inf.get("model"):
+    if _oracle_mode(cfg) == "deterministic":
+        print("Oracle mode: deterministic (Pi Light) -- no local model; "
+              "answers are this box's records, un-narrated")
+    elif inf.get("model"):
         print(f"Inference: local model {inf['model']} ({inf['endpoint']})")
     else:
         print("Inference: not configured (Ask stays off)")
@@ -8791,7 +8869,11 @@ def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
     if cfg_path:
         print_fn(f"Config: {os.path.abspath(cfg_path)}")
     inf = inference_config(cfg) or {}
-    if inf.get("model"):
+    if _oracle_mode(cfg) == "deterministic":
+        print_fn("Oracle mode: deterministic (Pi Light) -- no local "
+                 "model; answers are this box's records, un-narrated")
+        warm_thread = None
+    elif inf.get("model"):
         print_fn(f"Inference: local model {inf['model']} "
                  f"({inf['endpoint']})")
         warm_thread = threading.Thread(
@@ -8824,19 +8906,22 @@ def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
                          "context. /quit ends the chat.")
                 continue
             question = question[:4000]
-            try:
-                ans = ask_model_agent(
-                    inf, question,
-                    oracle_context(base,
-                                   watch=_oracle_watch_enabled(cfg)),
-                    (inf or {}).get("max_answer_chars") or 2000,
-                    _redact_patterns(cfg),
-                    instructions=cfg.get("owner_instructions"),
-                    base_dir=base,
-                )
-            except Exception as e:
-                log(f"oracle ask failed: {e}", "WARN")
-                ans = None
+            if _oracle_mode(cfg) == "deterministic":
+                ans = {"answer": _deterministic_oracle_answer(cfg, base)}
+            else:
+                try:
+                    ans = ask_model_agent(
+                        inf, question,
+                        oracle_context(base,
+                                       watch=_oracle_watch_enabled(cfg)),
+                        (inf or {}).get("max_answer_chars") or 2000,
+                        _redact_patterns(cfg),
+                        instructions=cfg.get("owner_instructions"),
+                        base_dir=base,
+                    )
+                except Exception as e:
+                    log(f"oracle ask failed: {e}", "WARN")
+                    ans = None
             if not isinstance(ans, dict):
                 ans = {"rejected": "inference_error"}
             try:
@@ -9100,6 +9185,7 @@ def main() -> int:
 
     log_startup(cfg, args, base_dir)
     _report_extensions(cfg, base_dir)
+    _report_oracle_mode(cfg)
     # Local signal front-ends (inbox watcher + loopback listener).
     # Dry-run observes and changes nothing, so it starts neither.
     if getattr(args, "dry_run", False):
