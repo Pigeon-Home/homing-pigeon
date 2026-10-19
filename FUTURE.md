@@ -61,6 +61,14 @@ Ideas...
   environments cannot open a UDP socket at all, so v2's
   binding would be an addition, never a replacement: the
   email binding stays the one every SI can already reach.
+  Hard requirement (Andrew, 2026-10-19): if this binding
+  is ever built, it MUST enforce perfect forward secrecy.
+  PSK-only key exchange (psk_ke) is prohibited -- sessions
+  are established and resumed only with ephemeral
+  (EC)DHE in the loop (psk_dhe_ke), resumption included,
+  so a later compromise of the shared secret decrypts no
+  recorded session. A DTLS extension without forward
+  secrecy is not worth building.
 
 - A session's first acknowledgment carries the platform:
   a direct v2 binding (above) gives the two sides a real
