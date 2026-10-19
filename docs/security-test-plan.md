@@ -172,7 +172,7 @@ the tripwire for a misbehaving SI.
   *Role: attacker.* Job output contains a string matching a redact
   pattern (e.g. `AKIAIOSFODNN7EXAMPLE`). Declare attest
   `no_secrets`.
-  *Expected:* `value: false`. (This predicate was once hardcoded
+  *Expected:* `ok: false`. (This predicate was once hardcoded
   `true`; this test locks the fix.)
 - **T3.5 — `output_digest` is a real commitment.**
   *Roles: attacker, operator.* Declare attest `output_digest`; record
