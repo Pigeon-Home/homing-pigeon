@@ -2,6 +2,12 @@
 
 **Works with Muse, Grok, ChatGPT, Claude, Gem..., Copilot, etc.**
 
+> ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative
+> control** of the machine to whoever holds the shared secret. The
+> runner verifies a message's signature and then executes what the
+> signed job says, as a privileged user — it can install software,
+> read files, add users, and pivot to your network.
+
 Your cloud SI is smart, but it can't touch your computer. Homing Pigeon
 fixes that: tell your SI to complete a task and it will do it on your
 machine. The results return so that your SI can iterate — run the tests,
@@ -22,12 +28,6 @@ Shared Secret: "YOUR_SECRET_STRING"
 I have a Windows computer. Retrieve the system clock from it and display it here.
 ```
 IETF Homing Pigeon Draft: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-homing-pigeon-00.md
-
-> ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative
-> control** of the machine to whoever holds the shared secret. The
-> runner verifies a message's signature and then executes what the
-> signed job says, as a privileged user — it can install software,
-> read files, add users, and pivot to your network.
 
 ## What this is for
 
