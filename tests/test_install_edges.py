@@ -808,7 +808,9 @@ class TailTest(unittest.TestCase):
             return real(name, *a, **k)
 
         try:
-            with mock.patch("builtins.__import__", guarded):
+            with mock.patch("builtins.__import__", guarded), \
+                    mock.patch.object(importlib, "import_module",
+                                      side_effect=ImportError("blocked")):
                 importlib.reload(inst)
             self.assertEqual(inst.__version__, "unknown")
         finally:
