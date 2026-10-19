@@ -1,5 +1,30 @@
 # Changelog
 
+## 3.8.0 - 2026-10-18
+
+### Docs
+
+- Documentation claims audit. Every claim in the live docs was
+  inventoried (106 claims) and decided by the maintainer, one by
+  one. Factual corrections landed across PROTOCOL.md, README.md,
+  CONTRIBUTING.md, RUNBOOK.md, TRANSPORTS.md, and the archived
+  hardening report, including external facts verified online for
+  this release: Mandiant was Google's acquisition, not
+  Microsoft's; the million-operations figure for Cloudflare
+  Queues is the paid plan, not the free tier; and SP 800-57
+  recommends, rather than caps, the under-2-year
+  originator-usage period for symmetric authentication keys.
+- PROTOCOL.md §8 (Cryptography) corrected: the section now names
+  the two primitives the protocol actually uses
+  (HMAC-SHA-384, SHA-384) and states plainly that the protocol
+  does not encrypt payloads and designates no payload cipher.
+  §10.1 names qwen3:1.7b — the evaluation battery's selection
+  and the installer default — as the tested reference model.
+  §13.5's one-box disclaimer removed.
+- ORACLE_DASHBOARD.md removed: the unbuilt dashboard spec is no
+  longer carried in the tree, and the mutmut copy list no longer
+  names it.
+
 ## 3.7.41 - 2026-10-18
 
 ### Tests
