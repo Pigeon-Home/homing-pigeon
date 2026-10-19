@@ -62,15 +62,15 @@ class ModeMatrixTests(unittest.TestCase):
                 job = {} if request is None else {"oracle_opinion": request}
                 self.assertEqual(op.effective_mode(cfg, job), want)
 
-    def test_default_ceiling_is_diagnose(self):
-        self.assertEqual(op.ceiling_mode({}), "diagnose")
-        self.assertEqual(op.effective_mode({}, {}), "diagnose")
+    def test_default_ceiling_is_repair(self):
+        self.assertEqual(op.ceiling_mode({}), "repair")
+        self.assertEqual(op.effective_mode({}, {}), "repair")
 
     def test_invalid_values_fall_back(self):
         self.assertEqual(op.ceiling_mode({"oracle_opinion_mode": "max"}),
-                         "diagnose")
+                         "repair")
         self.assertEqual(op.ceiling_mode({"oracle_opinion_mode": 3}),
-                         "diagnose")
+                         "repair")
         self.assertEqual(op.requested_mode({"oracle_opinion": "max"}), None)
         self.assertEqual(op.requested_mode({"oracle_opinion": 3}), None)
         self.assertEqual(op.requested_mode({}), None)
@@ -265,8 +265,20 @@ class PlanTests(unittest.TestCase):
         self.assertFalse(plan["checks_run"])
         self.assertIsNone(plan["attach"])
 
-    def test_diagnose_default_runs_no_prediction(self):
+    def test_default_plan_is_repair(self):
+        # A fresh config defaults to the repair latitude: tier-1
+        # checks run before the job and the one mechanical fix is
+        # planned without the job having to ask.
         plan = op.plan_before({}, self.bad_job, self.bad_facts)
+        self.assertEqual(plan["mode"], "repair")
+        self.assertTrue(plan["active"])
+        self.assertTrue(plan["checks_run"])
+        self.assertIsNotNone(plan["repair_action"])
+        self.assertIsNone(plan["attach"])
+
+    def test_diagnose_ceiling_runs_no_prediction(self):
+        plan = op.plan_before({"oracle_opinion_mode": "diagnose"},
+                              self.bad_job, self.bad_facts)
         self.assertEqual(plan["mode"], "diagnose")
         self.assertTrue(plan["active"])
         self.assertFalse(plan["checks_run"])
@@ -495,17 +507,17 @@ class HandleMailOpinionTests(unittest.TestCase):
                            _exec_payload(), exit_code=1)
         self.assertNotIn("oracle_opinion", result)
 
-    def test_diagnose_absent_on_success(self):
+    def test_member_absent_on_success(self):
         result, _ = _drive({}, _exec_payload(), exit_code=0)
         self.assertNotIn("oracle_opinion", result)
 
-    def test_diagnose_present_on_failure(self):
+    def test_default_diagnosis_present_on_failure(self):
         result, _ = _drive({}, _exec_payload(), exit_code=3)
         member = result["oracle_opinion"]
-        self.assertEqual(member["mode"], "diagnose")
+        self.assertEqual(member["mode"], "repair")
         self.assertEqual(member["verdict"], "no_opinion")
 
-    def test_diagnose_names_missing_tool(self):
+    def test_failure_diagnosis_names_missing_tool(self):
         # A nonsense tool name is the fixture for "not on PATH".
         result, _ = _drive({}, _exec_payload("frobnicate-op-test --all"),
                            exit_code=1)
@@ -529,10 +541,18 @@ class HandleMailOpinionTests(unittest.TestCase):
         self.assertEqual(member["verdict"], "likely_success")
         self.assertIn("failed anyway", member["note"])
 
-    def test_job_request_clamped_to_ceiling(self):
-        # Ceiling diagnose (the default): the job asks repair and
-        # gets diagnose -- the member says so.
+    def test_job_request_honored_at_default_ceiling(self):
+        # The default ceiling is repair: a job asking for repair
+        # is formed at repair.
         result, _ = _drive({}, _exec_payload(oracle_opinion="repair"),
+                           exit_code=1)
+        self.assertEqual(result["oracle_opinion"]["mode"], "repair")
+
+    def test_job_request_clamped_to_owner_ceiling(self):
+        # The owner set the ceiling to diagnose: the job asks
+        # repair and gets diagnose -- the member says so.
+        result, _ = _drive({"oracle_opinion_mode": "diagnose"},
+                           _exec_payload(oracle_opinion="repair"),
                            exit_code=1)
         self.assertEqual(result["oracle_opinion"]["mode"], "diagnose")
 
@@ -603,6 +623,114 @@ class RepairHandleMailTests(unittest.TestCase):
         self.assertEqual(member["received_digest"],
                          op.received_digest(job))
         self.assertEqual(calls, [])  # nothing executed
+
+
+class DefaultRepairTests(unittest.TestCase):
+    """The default latitude is repair (raised from diagnose
+    2026-10-19 at the owner's direction). A fresh config -- no
+    oracle_opinion_mode key at all -- therefore repairs the one
+    mechanical mismatch, because the config key is both the
+    default latitude for jobs that grant none and the ceiling:
+    a job that grants none is formed AT the ceiling, and in
+    repair mode the repair does not wait to be asked (see
+    PlanTests.test_repair_runs_without_job_request). A job may
+    still narrow itself with its own member, and an owner who
+    sets the ceiling back to diagnose restores the old behavior
+    exactly. The model tier is untouched by the default: it
+    stays gated by oracle_opinion_model, default false."""
+
+    def _repairable(self, **kw):
+        return _exec_payload(interpreter=["pwsh-op-test"], **kw)
+
+    def test_fresh_config_repairs_a_requesting_job(self):
+        if runner.shutil.which("pwsh-op-test"):
+            self.skipTest("fixture interpreter unexpectedly present")
+        job = self._repairable(oracle_opinion="repair")
+        result, calls = _drive({}, job, exit_code=0)
+        member = result["oracle_opinion"]
+        self.assertEqual(member["mode"], "repair")
+        self.assertIs(member["repaired"], True)
+        self.assertEqual(member["received_digest"],
+                         op.received_digest(job))
+        self.assertEqual(calls[0]["interpreter"],
+                         runner.platform_interpreter())
+
+    def test_fresh_config_repairs_an_unrequested_job(self):
+        # No oracle_opinion member at all: the default latitude
+        # IS the job's latitude, so the certain fix still runs --
+        # re-judged, executed, and recorded with the digest.
+        if runner.shutil.which("pwsh-op-test"):
+            self.skipTest("fixture interpreter unexpectedly present")
+        job = self._repairable()
+        self.assertNotIn("oracle_opinion", job)
+        result, calls = _drive({}, job, exit_code=0)
+        member = result["oracle_opinion"]
+        self.assertEqual(member["mode"], "repair")
+        self.assertIs(member["repaired"], True)
+        self.assertEqual(member["received_digest"],
+                         op.received_digest(job))
+        self.assertEqual(calls[0]["interpreter"],
+                         runner.platform_interpreter())
+
+    def test_fresh_config_job_may_narrow_itself(self):
+        # A job that grants only diagnose is never repaired,
+        # even under the repair default: the member can only
+        # narrow what the owner allows.
+        if runner.shutil.which("pwsh-op-test"):
+            self.skipTest("fixture interpreter unexpectedly present")
+        job = self._repairable(oracle_opinion="diagnose")
+        result, calls = _drive({}, job, exit_code=1)
+        member = result["oracle_opinion"]
+        self.assertEqual(member["mode"], "diagnose")
+        self.assertNotIn("repaired", member)
+        self.assertIn("pwsh-op-test", member["note"])
+        self.assertEqual(calls[0]["interpreter"], ["pwsh-op-test"])
+
+    def test_owner_diagnose_ceiling_restores_old_behavior(self):
+        # Ceiling back at diagnose: a job asking for repair is
+        # clamped, nothing is repaired, the job runs as sent,
+        # and the opinion speaks at diagnose latitude.
+        if runner.shutil.which("pwsh-op-test"):
+            self.skipTest("fixture interpreter unexpectedly present")
+        cfg = {"oracle_opinion_mode": "diagnose"}
+        job = self._repairable(oracle_opinion="repair")
+        result, calls = _drive(cfg, job, exit_code=1)
+        member = result["oracle_opinion"]
+        self.assertEqual(member["mode"], "diagnose")
+        self.assertNotIn("repaired", member)
+        self.assertEqual(calls[0]["interpreter"], ["pwsh-op-test"])
+
+    def test_fresh_config_tier2_stays_dark(self):
+        # Inference configured, but oracle_opinion_model still
+        # defaults to false: the model is never consulted, on
+        # either the prediction path or the repair path.
+        cfg = {"inference": {"endpoint": "http://127.0.0.1:11434",
+                             "model": "llama3.2:1b"}}
+        ask = mock.Mock(side_effect=AssertionError("model called"))
+        with mock.patch.object(runner, "ask_model", ask):
+            result, _ = _drive(cfg,
+                               _exec_payload(oracle_opinion="advise"),
+                               exit_code=0)
+            self.assertEqual(result["oracle_opinion"]["verdict"],
+                             "likely_success")
+            self.assertNotIn("Model-formed",
+                             result["oracle_opinion"]["note"])
+            if not runner.shutil.which("pwsh-op-test"):
+                job = self._repairable(oracle_opinion="repair")
+                result, _ = _drive(cfg, job, exit_code=0)
+                self.assertIs(result["oracle_opinion"]["repaired"],
+                              True)
+        ask.assert_not_called()
+        self.assertFalse(op.model_enabled({}))
+
+    def test_unrecognized_request_is_no_request(self):
+        # An unrecognized latitude is ignored as if the member
+        # were absent (PROTOCOL 3.1), so the job is formed at
+        # the default ceiling -- there is nothing above repair
+        # to clamp to.
+        job = {"oracle_opinion": "max"}
+        self.assertIsNone(op.requested_mode(job))
+        self.assertEqual(op.effective_mode({}, job), "repair")
 
 
 class DeterministicModeTests(unittest.TestCase):

@@ -2,7 +2,9 @@
 
 Status: implemented 2026-10-18. The member is specified in
 PROTOCOL 3.1/3.2 and built in `runner/opinion.py` (latitude
-ceiling `oracle_opinion_mode`, default diagnose; prediction and
+ceiling `oracle_opinion_mode`, default repair — diagnose at
+first build, raised 2026-10-19 at the owner's direction;
+prediction and
 repair behavior under `oracle_opinion_predict` /
 `oracle_opinion_repair` / `oracle_opinion_model`). Andrew's
 proposal (2026-10-15), elaborated 2026-10-18; recorded in
@@ -137,7 +139,11 @@ middle editing someone else's message.
 Each question was resolved as a default plus a config option,
 not left open:
 
-- Default latitude: `diagnose`. The runner config key
+- Default latitude: `diagnose` at the first build; raised to
+  `repair` 2026-10-19 at the owner's direction (the one
+  mechanical fix is mechanically certain, so it runs by
+  default; the model tier stays separately gated). The runner
+  config key
   `oracle_opinion_mode` is both the default for jobs that grant
   none and the owner's ceiling; a job's own `oracle_opinion`
   member requests a latitude and is clamped to the ceiling.

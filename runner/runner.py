@@ -9839,7 +9839,7 @@ def main() -> int:
                    choices=["off", "diagnose", "advise", "repair"],
                    help="Oracle opinion latitude for this process: "
                         "off, diagnose, advise, repair "
-                        "(default: diagnose)")
+                        "(default: repair)")
     g.add_argument("--remediation-mode", default=None, metavar="MODE",
                    choices=["off", "deterministic", "oracle"],
                    help="remediation for this process: off (watch, "

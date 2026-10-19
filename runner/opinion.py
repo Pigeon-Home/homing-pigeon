@@ -14,7 +14,10 @@ Latitude is a small lattice, off < diagnose < advise < repair:
   default latitude for jobs that grant none and the owner's
   ceiling. A job may request a latitude with its own
   `oracle_opinion` member; a request above the ceiling is
-  clamped to the ceiling. Default: diagnose.
+  clamped to the ceiling. Default: repair (raised from
+  diagnose 2026-10-19 at the owner's direction: the one
+  mechanical fix below is mechanically certain, so it runs
+  by default; the model tier stays separately gated).
 - diagnose speaks only after a failure, attaching the obvious
   cause. It changes nothing and blocks nothing.
 - advise computes a tier-1 prediction before the job runs; the
@@ -55,7 +58,7 @@ import re
 import shutil
 
 LEVELS = {"off": 0, "diagnose": 1, "advise": 2, "repair": 3}
-DEFAULT_MODE = "diagnose"
+DEFAULT_MODE = "repair"
 PREDICT_VALUES = ("requested", "always", "never")
 DEFAULT_PREDICT = "requested"
 REPAIR_VALUES = ("rejudge", "refuse")

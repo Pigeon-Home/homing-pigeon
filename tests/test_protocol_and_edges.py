@@ -43,6 +43,7 @@ from runner.runner import (  # noqa: E402
     SEEN_CAP,
 )
 from runner import install as install_mod  # noqa: E402
+from runner import opinion as opinion_mod  # noqa: E402
 from send_job import sign_payload as cloud_sign  # noqa: E402
 
 SECRET = "f293c686da58b28fc08f44e13d722e6c0533a94e08c0ae6cb20f2aa1be1a74bf"
@@ -556,8 +557,15 @@ class InfiniteRetryBugs(unittest.TestCase):
 
 
     def test_missing_interpreter_is_poison_not_retried(self):
+        # The interpreter is absent AND the script's shape does
+        # not fit the platform default, so the opinion's one
+        # mechanical repair cannot apply (see the companion test
+        # below for the repairable case): the job stays poison.
         jid = str(uuid.uuid4())
-        p = base_job(jid, kind="exec", script="echo hi",
+        script = ("#!/bin/sh\nexport HP_X=1\necho hi"
+                  if os.name == "nt" else
+                  "Get-ChildItem\necho $env:PATH")
+        p = base_job(jid, kind="exec", script=script,
                      interpreter=["/no/such/homing-pigeon-binary"])
         imap, smtp, seen = self.cycle([job_email(p)])
         self.assertEqual(len(smtp.sent), 1)
@@ -566,6 +574,29 @@ class InfiniteRetryBugs(unittest.TestCase):
         self.assertIn("cannot start interpreter", r["stderr"])
         self.assertIn(jid, seen)
         self.assertIn("1", imap.flagged)
+        # second cycle must not re-execute
+        imap2, smtp2, seen2 = self.cycle([job_email(p)], seen=seen)
+        self.assertEqual(len(smtp2.sent), 0)
+        self.assertIn(jid, seen2)
+
+    def test_missing_interpreter_repaired_by_default_not_retried(self):
+        # The default opinion latitude is repair: an absent
+        # interpreter whose script shape fits the platform
+        # default is swapped for it, re-judged, and the job runs
+        # -- recorded on the result with the received digest.
+        jid = str(uuid.uuid4())
+        p = base_job(jid, kind="exec", script="echo hi",
+                     interpreter=["/no/such/homing-pigeon-binary"])
+        imap, smtp, seen = self.cycle([job_email(p)])
+        self.assertEqual(len(smtp.sent), 1)
+        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        self.assertEqual(r["exit_code"], 0)
+        member = r["oracle_opinion"]
+        self.assertEqual(member["mode"], "repair")
+        self.assertIs(member["repaired"], True)
+        self.assertEqual(member["received_digest"],
+                         opinion_mod.received_digest(p))
+        self.assertIn(jid, seen)
         # second cycle must not re-execute
         imap2, smtp2, seen2 = self.cycle([job_email(p)], seen=seen)
         self.assertEqual(len(smtp2.sent), 0)
