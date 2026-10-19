@@ -21,6 +21,15 @@ Ideas...
   intermediary terminates the channel, confidentiality ends
   at that hop (Section 16.2 of the draft). Channel security
   is not delivery -- the result/ack flow is unchanged.
+  This is protocol version 2 scope (the draft already seeds
+  v2 with the normative entropy floor). It also asks
+  something real of the cloud SI: the SI would have to
+  terminate DTLS itself -- handshake, sessions, connection
+  IDs, retransmission -- where today its whole burden is
+  signing JSON and handing it to a connector. Many SI
+  environments cannot open a UDP socket at all, so v2's
+  binding would be an addition, never a replacement: the
+  email binding stays the one every SI can already reach.
 
 - Cloudflare Queues: The design notes are TRANSPORTS.md
 
