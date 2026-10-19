@@ -398,7 +398,8 @@ End-to-end without your SI:
   without ever seeing it.
 
 The download version and the message field `"v"` are different
-numbers. The runner is 3.7.x and speaks `"v": 1`.
+numbers: the runner's release number and the protocol's `v`
+move on separate tracks.
 
 ## Not built
 
