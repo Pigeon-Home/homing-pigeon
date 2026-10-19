@@ -4,6 +4,36 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.10.1 - 2026-10-19
+
+- **One protocol, version 1.** This release supersedes the
+  3.10.0 tree, which was tagged before the no-v2 restructure
+  landed. There is no protocol version 2: the DTLS session
+  support is a binding of version 1, specified in the same
+  IETF draft, and the DTLS greeting's `v` field carries the
+  protocol version (1). Per-job AEAD encryption is a
+  required capability of version 1 — implementations MUST
+  support it, the reference sender encrypts by default, and
+  cleartext is sent only by a sender's explicit choice.
+- **Conformance is per binding.** The draft now states the
+  security requirements as properties: object authentication
+  (the signature/MAC) is REQUIRED on every binding and never
+  moves to the transport; confidentiality is REQUIRED as a
+  property on every binding and may be satisfied by the
+  binding itself. On the DTLS binding the session provides
+  it, so per-job encryption is OPTIONAL for the sender there
+  (receiver support stays REQUIRED everywhere); on email and
+  NATS the per-job encryption carries it; on the file binding
+  it is local policy. A runner MUST offer the email binding.
+- **Pipeline hardening.** The transport and encryption parser
+  surfaces were fuzz-campaigned; the Windows surface is now
+  simulated locally (path separators, SSL stores) so platform
+  failures surface before CI; test-isolation fixes keep the
+  suite green under shuffled order and unprivileged runs;
+  `jobcrypto` validates key and nonce sizes in its own
+  vocabulary; the audit report reads UTC stamps as UTC. The
+  ruff gate is green on the whole tree.
+
 ## 3.10.0 - 2026-10-19
 
 - **Transports are extensions.** The runner core is
