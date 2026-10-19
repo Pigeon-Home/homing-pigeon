@@ -112,6 +112,9 @@ class OsqueryPackTest(unittest.TestCase):
         self.assertIn("ExecStart=/opt/osquery/bin/osqueryd "
                       "--flagfile=/etc/osquery/osquery.flags", unit)
         self.assertIn("WantedBy=multi-user.target", unit)
+        self.assertIn("Restart=on-failure", unit)
+        self.assertIn("RestartSec=10", unit)
+        self.assertIn("After=network-online.target", unit)
 
 
 class AidePackTest(unittest.TestCase):

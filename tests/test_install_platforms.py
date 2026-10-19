@@ -60,6 +60,10 @@ class ServiceEnvTest(unittest.TestCase):
         self.assertIn("default.target", unit)
         self.assertIn("--quiet", unit)
         self.assertIn("runner.py", unit)
+        self.assertIn("Restart=always", unit)
+        self.assertIn("RestartSec=10", unit)
+        self.assertIn("After=network-online.target", unit)
+        self.assertIn("Wants=network-online.target", unit)
         self.assertIn(
             ["systemctl", "--user", "enable", "--now",
              "homing-pigeon.service"], pkg.cmds)
@@ -80,8 +84,9 @@ class ServiceEnvTest(unittest.TestCase):
             pkg.cmds)
 
     def test_a_newline_in_an_extra_arg_is_refused(self):
-        with self.assertRaises(ValueError):
-            inst.install_linux("/opt/hp", "/c", False, ["ok\nbad"])
+        for bad in ("ok\nbad", "ok\rbad", "ok\x00bad"):
+            with self.assertRaises(ValueError):
+                inst.install_linux("/opt/hp", "/c", False, [bad])
 
     def test_macos_agent_bootstraps_the_gui_domain(self):
         pkg = _Pkg()
@@ -99,6 +104,8 @@ class ServiceEnvTest(unittest.TestCase):
             self.assertFalse(os.path.exists(path))
         self.assertIn("--quiet", plist)
         self.assertIn("com.homing-pigeon.runner", plist)
+        self.assertIn("<key>RunAtLoad</key><true/>", plist)
+        self.assertIn("<key>KeepAlive</key><true/>", plist)
         self.assertEqual(pkg.cmds[0][0], "launchctl")
         self.assertEqual(pkg.cmds[0][1], "bootstrap")
         self.assertEqual(pkg.cmds[1][1], "bootout")
@@ -480,11 +487,15 @@ class MainDispatchTest(unittest.TestCase):
                     _argv("--dir", dst, "--no-profile", "--no-collector",
                           "--quiet", "--poll-interval", "30",
                           "--workers", "2", "--dry-run", "--pdb",
+                          "--no-send", "--timeout", "15",
+                          "--max-output-bytes", "1000",
                           "--instructions", "be kind"):
                 self.assertEqual(inst.main(), 0)
             extra = linux.call_args[0][3]
             for flag in ("--quiet", "--poll-interval", "30",
-                         "--workers", "2", "--dry-run", "--pdb"):
+                         "--workers", "2", "--dry-run", "--pdb",
+                         "--no-send", "--timeout", "15",
+                         "--max-output-bytes", "1000"):
                 self.assertIn(flag, extra)
             cfg = os.path.join(dst, "config.json")
             with open(cfg, encoding="utf-8") as fh:
