@@ -23,11 +23,14 @@ a firewall — as sense or as enforcement — watches or bites.
 
 ## Trust boundaries
 
-**1. The mailbox is untrusted transport.** The provider reads
-every job and every result (IETF draft §16.2). The HMAC is the
-only thing that crosses it safely. Nothing in the design needs
-the transport to be honest — and nothing secret should assume
-otherwise.
+**1. The mailbox is untrusted transport.** The HMAC crosses
+it safely, and per-job encryption — the default — means the
+provider holds ciphertext for job and result bodies; it can
+still read subjects, timing, and sizes (IETF draft §16,
+§17.2). Nothing in the design needs the transport to be
+honest — and nothing secret should assume otherwise. A job
+sent `--cleartext` is the exception: the provider can read
+that one end to end.
 
 **2. Loopback is the perimeter for local services.** Inference
 and the Oracle page bind 127.0.0.1 and the runner refuses

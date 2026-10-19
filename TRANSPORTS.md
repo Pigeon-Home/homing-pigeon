@@ -110,6 +110,16 @@ Email remains the default anyway — it is the most universal
 pipe and the project's test transport. Here, "default" does
 not mean "most secure".
 
+One more layer rides above every pipe, unchanged: per-job
+encryption. `send_job.py` encrypts the signed job body by
+default (ChaCha20-Poly1305 under a key derived from the
+shared secret), the core unwraps it after the signature
+verifies, and the result mirrors the job's form. A transport
+carries the envelope exactly as it carried the cleartext
+body — it is an opaque blob either way — so encryption is
+identical on email, NATS, and file, and no transport code
+knows it exists.
+
 ---
 
 ## Cloudflare Queues ⭐ — the pick

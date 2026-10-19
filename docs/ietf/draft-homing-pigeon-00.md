@@ -59,7 +59,7 @@ Two things are out of scope for this document and are established out of band: t
 
 This document specifies version 1. The reference implementation speaks version 1. On 2026-10-17 the implementation briefly required `v` = 2. That bump changed the integer only, and it was reverted the same day. A receiver following this document rejects any `v` other than 1.
 
-The sender also requires the shared secret to meet a minimum-entropy floor (Section 16.3). That floor is not a protocol version. Nothing else in the version 1 exchange changes shape.
+The sender also requires the shared secret to meet a minimum-entropy floor (Section 17.3). That floor is not a protocol version. Nothing else in the version 1 exchange changes shape.
 
 Later work also layers behavior this document scopes out (Section 4) onto the base exchange: a local disclosure policy on results, queries against retained output, attestations, and task boards. Those behaviors ride in extra members (Section 8); they do not redefine any message specified here. One consequence a submitter needs: a receiver layered with a disclosure policy can withhold result output that a version 1 receiver would send, so the guidance in Section 13.2 binds only where no such policy is in force.
 
@@ -99,7 +99,7 @@ This document binds the protocol to email. The protocol itself needs only the st
 
 The runner reads the mailbox with IMAP and writes with SMTP. Mail authentication is out of band. The signature check does not change with the mail credential.
 
-IMAP and SMTP MUST be used over TLS. An implementation MUST NOT carry this protocol over a cleartext IMAP or SMTP session. The TLS version MUST be 1.2 or higher; TLS 1.0 and TLS 1.1 MUST NOT be used [RFC8996]. The recommendations of [RFC9325] apply. Cleartext mail access is obsolete [RFC8314]: implicit TLS is preferred, and where STARTTLS is used it MUST be required rather than opportunistic, and the peer certificate MUST be verified. TLS protects a hop. It does not hide the message from the mailbox provider (Section 16.2).
+IMAP and SMTP MUST be used over TLS. An implementation MUST NOT carry this protocol over a cleartext IMAP or SMTP session. The TLS version MUST be 1.2 or higher; TLS 1.0 and TLS 1.1 MUST NOT be used [RFC8996]. The recommendations of [RFC9325] apply. Cleartext mail access is obsolete [RFC8314]: implicit TLS is preferred, and where STARTTLS is used it MUST be required rather than opportunistic, and the peer certificate MUST be verified. TLS protects a hop. It does not hide the message from the mailbox provider (Section 17.2).
 
 The body is UTF-8 text in a `text/plain` part. This document does not register a media type. If the message is multipart, the receiver uses the first `text/plain` part that is not an attachment.
 
@@ -387,6 +387,8 @@ For each unseen message:
 15. Send the result to `reply_to` if that member is valid, otherwise to the runner mailbox.
 16. If the send succeeds, mark seen. If the send fails, leave the job unseen. A later poll will execute it again (Section 15).
 
+If the object verified at step 5 is an encryption envelope, Section 16 applies: decrypt after step 5 and process the recovered body from step 4. The envelope's verification never substitutes for the body's own.
+
 The email `From` address MAY be logged after step 5. It MUST NOT authorize the job. It MUST NOT choose the result address.
 
 ## 15. Retry
@@ -399,17 +401,58 @@ Submitters MUST treat `exec` as repeatable. A job that is not safe to run twice 
 
 A job marked seen is not executed again, including `exit_code` -2 and every no-result reject in Section 14.
 
-## 16. Security Considerations
+## 16. Per-Job Encryption (Optional Extension)
 
-### 16.1. The signer controls the host
+This section defines an OPTIONAL extension: encrypting the job object itself, so the binding's store-and-forward hops carry ciphertext instead of the signed body. It changes no version 1 processing for cleartext messages, and the protocol version remains 1. The reference software implements this extension and enables it by default on the sending side; a sender MAY send cleartext instead, by explicit choice.
+
+### 16.1. Construction
+
+The plaintext is the complete signed job body in its Section 7 form — the payload object with the signature spliced in. The cipher is ChaCha20-Poly1305 [RFC8439]:
+
+- Key: HKDF [RFC5869] with HMAC-SHA-384. The input keying material is the UTF-8 octets of the secret selected per Section 10. The salt is the nonce. The info string is "homing-pigeon job-encryption v1". The output is 32 octets.
+- Nonce: 12 octets, freshly random for each message.
+- Additional authenticated data: the `job_id`, the `key_id` (empty for the default secret), and the algorithm string, each UTF-8, joined by single NUL (0x00) octets, in that order.
+
+The transmitted body is a JSON envelope object, signed exactly as Section 7 specifies — the MAC covers the envelope as transmitted:
+
+{"hp_enc": {"alg": "chacha20-poly1305/hkdf-sha384", "nonce": "<base64>", "ct": "<base64>"}}
+
+`ct` is the ciphertext with the 16-octet Poly1305 tag appended, base64-encoded. When the selected secret is not the default, the envelope carries the same `key_id` member a cleartext body would. `hp_enc` is a reserved member name: a body whose members are exactly the envelope's is an envelope, and senders MUST NOT use `hp_enc` for any other purpose.
+
+### 16.2. Receiver processing
+
+An envelope is processed inside Section 14's steps, not beside them:
+
+1. The envelope's MAC is verified — step 5 applied to the envelope. On failure, reject as step 5 specifies. A receiver MUST NOT attempt decryption before the MAC verifies.
+2. The envelope's `key_id` selects the secret (Section 10), exactly as for a cleartext body.
+3. Decrypt. Any failure — an unknown `alg`, a malformed member, a tag mismatch — is a rejection with no result, marked seen, as in step 5. No partial plaintext is processed.
+4. The recovered body re-enters Section 14 at step 4, as if it had arrived directly; its own MAC is verified again, and its `key_id` MUST match the envelope's.
+
+A receiver that does not implement this section sees an object without `v` or `type` and rejects it at step 7. A sender who needs such a receiver MUST send cleartext.
+
+### 16.3. Results
+
+The result for an encrypted job SHOULD be encrypted in the same construction, with the job's `job_id` in the additional data, so an exchange is encrypted in both directions or neither. A receiver's local policy MAY override in either direction; the reference receiver exposes that policy as configuration and defaults to mirroring the job.
+
+### 16.4. No forward secrecy
+
+This extension provides confidentiality against observers of the transport. It provides NO forward secrecy, and the two statements travel together wherever the extension is described: the key derives from the static shared secret, so compromise of the secret exposes every recorded encrypted job and result, past and future. Encryption also raises the value of a captured secret under Section 17.3's analysis; it does not lower it.
+
+## 17. Security Considerations
+
+### 17.1. The signer controls the host
 
 A valid MAC is permission to run as the runner's account. Anyone who holds the secret can operate the host. This protocol does not define a sandbox. LOCAL confinement MUST NOT be assumed by the submitter.
 
-### 16.2. No confidentiality
+### 17.2. Confidentiality and its limits
 
-HMAC authenticates. It does not encrypt. The transport operator (in this binding, the mailbox provider) can read every job and every result. An observer who can read the transport learns the script, the arguments, the environment, and the output. Confidentiality needs a mechanism this document does not define.
+The base protocol provides none. HMAC authenticates; it does not encrypt. Without the Section 16 extension, the transport operator (in this binding, the mailbox provider) can read every job and every result, and an observer who can read the transport learns the script, the arguments, the environment, and the output.
 
-### 16.3. Offline guessing
+With the extension in use, the job and result bodies are encrypted end to end on the binding: an observer of the transport learns the subject (which names the `job_id`), the timing, and the size, and nothing of the content. The reference software encrypts by default; cleartext remains possible by the sender's explicit choice, and the choice is visible — the reference receiver logs a cleartext arrival.
+
+The extension provides NO forward secrecy. Its key derives from the static shared secret, so compromise of the secret exposes every recorded encrypted job and result, past and future. A confidentiality claim for this protocol MUST be read with that limit attached.
+
+### 17.3. Offline guessing
 
 One captured message is enough to test candidate secrets. More messages do not reduce that search. HMAC-SHA-384 does not yield the key from the tags.
 
@@ -417,53 +460,57 @@ The secret SHOULD be 32 octets from a cryptographic generator, stored as charact
 
 Version 2 of this protocol makes a floor normative: the shared secret MUST carry at least 128 bits of entropy, estimated as the secret's length times log2 of its alphabet size, and a sender MUST refuse to sign with a secret below that floor. The requirement answers the offline-guessing attack above. It does not change version 1 processing.
 
-### 16.4. Headers are not authentication
+### 17.4. Headers are not authentication
 
 `From`, `Reply-To`, `Sender`, and `To` MUST NOT satisfy the MAC and MUST NOT select `reply_to`. An invalid MAC MUST NOT cause any result to be sent.
 
-### 16.5. Unknown key identifiers
+### 17.5. Unknown key identifiers
 
 Failing closed before the MAC stops a message from verifying under the default secret because of a typo, and it avoids using MAC time as a probe of which identifiers exist.
 
-### 16.6. Replay
+### 17.6. Replay
 
 The past window rejects stale `issued_at`. The seen-set rejects a repeated `job_id`. A receiver with a wrong clock will accept stale jobs or reject fresh ones. A receiver whose seen-set is cleared will accept a replay that is still inside the past window. Jobs MUST be safe to repeat, because a lost result already causes a second execution.
 
-### 16.7. Two secrets
+### 17.7. Two secrets
 
 The transport credential reads and deletes mail. The HMAC secret authorizes jobs. Neither substitutes for the other. A store that holds both has lost both when it is copied.
 
-### 16.8. Marker collision
+### 17.8. Marker collision
 
 The splitter uses the last `,"sig":"`. A string value that contains that sequence will not verify as the sender intended. Senders MUST keep that sequence out of values.
 
-### 16.9. Output
+### 17.9. Output
 
 Version 1 results carry `stdout` and `stderr` up to the truncation limit. A receiver that wants to withhold output is implementing a different policy. That policy is not signaled by `v`. How that layering relates to this document is stated in Section 1.
 
-### 16.10. At-least-once
+### 17.10. At-least-once
 
 An attacker who can drop the result mail can cause another execution. That is the same outcome as a failed send. Idempotent jobs bound the damage. This protocol does not add a separate ack.
 
-## 17. IANA Considerations
+## 18. IANA Considerations
 
 This document has no IANA actions.
 
 No new port, service name, media type, TLS extension, or object identifier is required. HMAC-SHA-384 is already named by [RFC2104] and [FIPS180-4]. The algorithm OID `hmacWithSHA384` (`1.2.840.113549.2.10`) already exists. This protocol identifies the algorithm by name, not by OID.
 
-## 18. References
+## 19. References
 
-### 18.1. Normative References
+### 19.1. Normative References
 
 [RFC2104] Krawczyk, H., Bellare, M., and R. Canetti, "HMAC: Keyed-Hashing for Message Authentication", RFC 2104, DOI 10.17487/RFC2104, February 1997, <https://www.rfc-editor.org/info/rfc2104>.
 
 [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/RFC2119, March 1997, <https://www.rfc-editor.org/info/rfc2119>.
+
+[RFC5869] Krawczyk, H. and P. Eronen, "HMAC-based Extract-and-Expand Key Derivation Function (HKDF)", RFC 5869, DOI 10.17487/RFC5869, May 2010, <https://www.rfc-editor.org/info/rfc5869>.
 
 [RFC5234] Crocker, D., Ed., and P. Overell, "Augmented BNF for Syntax Specifications: ABNF", STD 68, RFC 5234, DOI 10.17487/RFC5234, January 2008, <https://www.rfc-editor.org/info/rfc5234>.
 
 [RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174, May 2017, <https://www.rfc-editor.org/info/rfc8174>.
 
 [RFC8259] Bray, T., Ed., "The JavaScript Object Notation (JSON) Data Interchange Format", STD 90, RFC 8259, DOI 10.17487/RFC8259, December 2017, <https://www.rfc-editor.org/info/rfc8259>.
+
+[RFC8439] Nir, Y. and A. Langley, "ChaCha20 and Poly1305 for IETF Protocols", RFC 8439, DOI 10.17487/RFC8439, May 2018, <https://www.rfc-editor.org/info/rfc8439>.
 
 [RFC8314] Newman, C. and A. Melnikov, "Cleartext Considered Obsolete: Use of Transport Layer Security (TLS) for Email Submission and Access", RFC 8314, DOI 10.17487/RFC8314, January 2018, <https://www.rfc-editor.org/info/rfc8314>.
 
@@ -473,7 +520,7 @@ No new port, service name, media type, TLS extension, or object identifier is re
 
 [FIPS180-4] National Institute of Standards and Technology, "Secure Hash Standard (SHS)", FIPS PUB 180-4, DOI 10.6028/NIST.FIPS.180-4, August 2015, <https://doi.org/10.6028/NIST.FIPS.180-4>.
 
-### 18.2. Informative References
+### 19.2. Informative References
 
 [RFC3552] Rescorla, E. and B. Korver, "Guidelines for Writing RFC Text on Security Considerations", BCP 72, RFC 3552, DOI 10.17487/RFC3552, July 2003, <https://www.rfc-editor.org/info/rfc3552>.
 

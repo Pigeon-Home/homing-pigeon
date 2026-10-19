@@ -478,6 +478,18 @@ End-to-end without your SI:
   *Why email?*, above). Timestamp window and replay protection
   (seen-set) are enforced before anything runs; the sender
   address is logged but never trusted.
+- Jobs are also **encrypted by default**: `send_job.py` wraps the
+  signed body in a ChaCha20-Poly1305 envelope keyed from the
+  shared secret, so the mailbox provider — and anyone else who
+  can read the transport — sees ciphertext, not your script or
+  its output. Results mirror the job: encrypted job, encrypted
+  result. `--cleartext` sends the plain signed body instead
+  (deliberately, never silently), and a runner that receives a
+  cleartext job logs that it arrived in clear text. One honest
+  limit, stated wherever this is described: there is **no
+  forward secrecy** — the key derives from the static shared
+  secret, so a compromised secret exposes every recorded
+  encrypted job and result, past and future.
 - Delivery is at-least-once: if a result email fails to send, the job
   stays unseen and will be re-executed next cycle. Make jobs idempotent
   or check the seen behavior accordingly.

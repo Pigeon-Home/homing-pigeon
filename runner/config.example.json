@@ -4,6 +4,8 @@
   "default_timeout_sec": 300,
   "imap_host": "imap.gmail.com",
   "imap_port": 993,
+  "job_encryption": true,
+  "_job_encryption": "per-job encryption for RESULT bodies (runner/jobcrypto.py). Absent or true: results mirror the arriving job -- encrypted job, encrypted result; with true set explicitly, every result is encrypted, even a cleartext job's. Only literal false encrypts no results. Incoming jobs are accepted either way whenever the signature verifies; a cleartext arrival is logged. This key governs results only; it never gates acceptance.",
   "mailbox_password": "paste-app-password-here-in-plaintext",
   "mailbox_user": "homing-pigeon-runner@gmail.com",
   "mail_tls_required": true,

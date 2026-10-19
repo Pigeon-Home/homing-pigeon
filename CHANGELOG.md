@@ -2,6 +2,31 @@
 
 ## 3.10.0 - 2026-10-19
 
+### Added
+
+- Per-job encryption, on by default. `cloud/send_job.py` now
+  wraps the signed job body in an encryption envelope
+  (ChaCha20-Poly1305 AEAD under an HKDF-SHA-384 key derived
+  from the job's selected shared secret; new stdlib-only
+  module `runner/jobcrypto.py`, shared by sender and runner).
+  The envelope is signed as transmitted; the runner verifies
+  the signature before decrypting, then runs the recovered
+  body through the unchanged verification path, second
+  signature check included. Results mirror the job's form —
+  encrypted job, encrypted result — and the runner config key
+  `job_encryption` overrides that explicitly in either
+  direction. Cleartext jobs are still accepted (the HMAC gate
+  is unchanged) and the runner logs that a job arrived in
+  clear text; `send_job.py --cleartext` sends the plain
+  signed body, which is also the deliberate interop escape
+  for pre-encryption runners. Specified as an optional
+  extension in the IETF draft (new Section 16; the
+  confidentiality discussion moved to Section 17.2 and was
+  revised in step). Stated plainly wherever the feature is
+  described: there is no forward secrecy — the key derives
+  from the static shared secret, so a compromised secret
+  exposes every recorded encrypted job and result.
+
 ### Changed
 
 - Every transport is now a transport extension. The runner

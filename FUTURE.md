@@ -18,7 +18,17 @@ Ideas...
   across store-and-forward hops, which hop TLS never can;
   it does not create a session, so the v2 greeting work
   stays future. The change that ships it MUST revise the
-  confidentiality claims (draft Section 16.2) in step.
+  confidentiality claims (then draft Section 16.2) in
+  step -- BUILT 2026-10-19: runner/jobcrypto.py
+  (pure-Python ChaCha20-Poly1305 per RFC 8439, HKDF-SHA-384
+  per RFC 5869, stdlib only); cloud/send_job.py encrypts by
+  default and takes --cleartext; the runner unwraps after
+  the signature verifies and before the recovered body's own
+  verification; results mirror the job's form, with the
+  job_encryption config key as the explicit override;
+  specified in the draft's Section 16 (the confidentiality
+  discussion moved to Section 17.2, revised in step, the
+  no-forward-secrecy limit stated in both places).
   Placement (Andrew, 2026-10-19): the feature is
   specified in the current IETF draft as an optional
   extension -- no second (v2) document is needed for it,
@@ -50,7 +60,7 @@ Ideas...
   becomes defense in depth rather than the sole gate. The
   hop caveat survives: anywhere a store-and-forward
   intermediary terminates the channel, confidentiality ends
-  at that hop (Section 16.2 of the draft). Channel security
+  at that hop (Section 17.2 of the draft). Channel security
   is not delivery -- the result/ack flow is unchanged.
   This is protocol version 2 scope (the draft already seeds
   v2 with the normative entropy floor). It also asks
@@ -92,9 +102,11 @@ Ideas...
   email-era relative is the platform-metadata-on-results
   idea under "Before a job runs"). The same change that
   adds any confidentiality mechanism MUST revise the
-  documentation's confidentiality claims in step -- today
-  the draft's Section 16.2 correctly says there is none
-  beyond the hops, and claims describe shipped state only.
+  documentation's confidentiality claims in step -- the
+  draft's confidentiality discussion (Section 17.2 since
+  the per-job encryption extension landed as Section 16)
+  says what exists and what does not, and claims describe
+  shipped state only.
 
 - Cloudflare Queues: The design notes are TRANSPORTS.md
 
