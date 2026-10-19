@@ -193,6 +193,50 @@ jobs:
           name: ${{ env.PKG_NAME }}
           path: ${{ env.PKG_NAME }}.tar.gz
 
+  build-pi-light:
+    # The Pi Light release archive: the same build for ARM64 Linux
+    # (a Pi runs no x86_64 binary), staged with a default_profile
+    # marker naming pi-light, so installing from this archive
+    # selects Pi Light -- no model, deterministic Oracle -- without
+    # anyone passing --profile. The ordinary archives carry no
+    # marker and keep the defaults they always had.
+    needs: test
+    runs-on: ubuntu-22.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
+      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.review --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test
+      - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
+      - name: smoke the built pi-light binaries
+        run: |
+          set -euo pipefail
+          ver=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          out=$(./dist/homing-pigeon --version)
+          echo "$out"
+          case "$out" in *"$ver"*) ;; *) echo "homing-pigeon --version printed '$out', expected $ver"; exit 1;; esac
+          out=$(./dist/install --version)
+          echo "$out"
+          case "$out" in *"$ver"*) ;; *) echo "install --version printed '$out', expected $ver"; exit 1;; esac
+      - name: package pi-light binaries
+        run: |
+          set -euo pipefail
+          ver=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          name="homing-pigeon-pi-light-arm64-$ver"
+          mkdir -p "pkg/$name"
+          cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
+          printf 'pi-light\n' > "pkg/$name/default_profile"
+          tar czf "$name.tar.gz" -C pkg "$name"
+          bad=$(tar tzf "$name.tar.gz" | grep -v "^$name/" || true)
+          [ -z "$bad" ] || { echo "tarball has entries outside '$name/': $bad"; exit 1; }
+          echo "PKG_NAME=$name" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PKG_NAME }}
+          path: ${{ env.PKG_NAME }}.tar.gz
+
   build-macos:
     needs: test
     runs-on: macos-14
@@ -247,7 +291,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-windows, build-linux, build-macos]
+    needs: [build-windows, build-linux, build-macos, build-pi-light]
     runs-on: ubuntu-latest
     permissions:
       contents: write

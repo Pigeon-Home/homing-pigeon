@@ -2,7 +2,7 @@ name: gitlab
 
 # After a tagged build publishes a GitHub Release, mirror the release
 # to GitLab: push main and all tags to the GitLab repo, upload every
-# published release asset (the three install archives, the Python
+# published release asset (the four install archives, the Python
 # wheel and sdist, and SHA384SUMS) to the project's generic
 # package registry, and create a GitLab Release on the tag linking
 # those packages. Skips until the repo secret exists, so a release

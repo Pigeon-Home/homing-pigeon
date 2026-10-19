@@ -1,8 +1,8 @@
 name: sourceforge
 
 # After a tagged build publishes a GitHub Release, copy every
-# published release asset to SourceForge — the three install
-# archives, the Python wheel and sdist, and SHA384SUMS — and mark
+# published release asset to SourceForge — the four install archives,
+# the Python wheel and sdist, and SHA384SUMS — and mark
 # each install archive as the default download for its OS. The same run also mirrors the source to
 # the project's SourceForge git repo (main + all tags), so the code
 # lives there too, updated only when a tag ships. Skips until the repo
