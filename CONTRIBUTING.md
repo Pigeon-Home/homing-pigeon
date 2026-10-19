@@ -193,9 +193,10 @@ poll (`homing-pigeon` with no `--oracle`) is unchanged.
 
 ## What the chat can see
 
-`oracle_context` builds the model's context from two sources in the
-base dir: the retained job records (id, kind, script, output) and the
-tail of `runner.log`. The log tail is what lets the Oracle answer
+`oracle_context` builds the model's context from the base dir: the
+retained job records (id, kind, script, output), the tail of
+`runner.log`, and — by default — the watch sections (canary state,
+Windows Event Log, registry diff, host log). The log tail is what lets the Oracle answer
 "did this happen?" instead of inventing log events. `ASK_AGENT_SYSTEM`
 (the window's prompt; `ASK_SYSTEM` is the mailbox door's) tells the model to quote from what it was given and to say it cannot
 see something when it is not there.
@@ -279,7 +280,7 @@ above. (A signed `ask` query uses the separate single-shot
 - The "output" is not the raw mailbox. `oracle_context` reads
   `<base_dir>/retained/*.json`, keeps ids that match the safe job-id
   pattern, takes the six newest, and caps each stdout+stderr at 800
-  characters and the whole blob at 4000. If nothing is retained, the
+  characters and the whole blob at 8000. If nothing is retained, the
   output text is `(no job output retained yet)` and the model is
   supposed to say it cannot answer from the output.
 - The endpoint must already be loopback. `inference_config` returns
@@ -402,7 +403,7 @@ placeholder back into that workflow.
 - A live loopback server: GET does not contain the mailbox password
   or the shared secret. POST without the token is 403. POST with an
   `Origin` of another host is 403. POST with the token reaches
-  `ask_model` with the retained stdout and the owner instructions.
+  `ask_model_agent` with the retained stdout and the owner instructions.
   A question that is itself a flagged secret is answered with
   `sanitization`, and neither the HTTP body nor `oracle-chat.jsonl`
   contains the raw flag.

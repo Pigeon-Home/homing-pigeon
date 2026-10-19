@@ -188,7 +188,7 @@ setup, leaving the rest of your install alone. Pass
 
 ## 4. The full walkthrough
 
-By default the installer also sets up local inference for the Oracle `ask` op: it installs Ollama (if missing) and pulls a model (`qwen3:1.7b` by default). A Raspberry Pi install, detected automatically or selected with `--profile pi-light`, is Pi Light instead: no model is installed or downloaded, and the Oracle runs deterministically (see "Raspberry Pi: Pi Light" in §2). `--faster` pulls `qwen2.5:3b`, a smaller faster model, on any machine. Pass `--inference-model` to choose a tag yourself, or `--no-inference` to skip the model entirely. The runner itself never bundles the model; Ollama runs separately on loopback. `homing-pigeon --faster` uses `qwen2.5:3b` for that process only and leaves `config.json` unchanged.
+By default the installer also sets up local inference for the Oracle `ask` op: it installs Ollama (if missing) and pulls a model (`qwen3:1.7b` by default). A Raspberry Pi install, detected automatically or selected with `--profile pi-light`, is Pi Light instead: no model is installed or downloaded, and the Oracle runs deterministically (see "Raspberry Pi: Pi Light" in §2). `--faster` pulls `qwen2.5:3b`, a faster model, on any machine. Pass `--inference-model` to choose a tag yourself, or `--no-inference` to skip the model entirely. The runner itself never bundles the model; Ollama runs separately on loopback. `homing-pigeon --faster` uses `qwen2.5:3b` for that process only and leaves `config.json` unchanged.
 
 **Easiest: download a release.** No Python needed — each release ships
 standalone binaries built by GitHub Actions:
@@ -281,7 +281,8 @@ fine there: use `pip install pigeon-home-runner` or build from source.
 | Windows | Scheduled Task | runs at startup as SYSTEM |
 
 `install.py --dir DIR` chooses the install location (default
-`~/.homing-pigeon`); `install.py --uninstall` removes the service.
+`~/.homing-pigeon`; on Windows the one-home default is
+`C:\homing-pigeon`); `install.py --uninstall` removes the service.
 
 ## Run it in a VM
 
