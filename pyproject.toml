@@ -65,7 +65,8 @@ also_copy = [
     # (plus tests/ and pyproject.toml, which it adds itself). Without
     # these, stats collection dies on "INSTALL.md not found" before
     # any mutant runs.
-    "AGENTS.md", "CONTRIBUTING.md", "FUTURE.md", "INSTALL.md",
+    "AGENTS.md", "CONTRIBUTING.md", "ENTERPRISE.md", "FUTURE.md",
+    "INSTALL.md",
     "PROTOCOL.md", "README.md", "RUNBOOK.md",
     "SAFEGUARDS.md", "SECURITY.md", "STYLE.md", "TRANSPORTS.md",
     # The Windows shard runner. tests/test_parallel_runner.py
