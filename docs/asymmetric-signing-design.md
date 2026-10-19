@@ -64,7 +64,7 @@ do not change.
 
 ## Open questions
 
-- **Dependency.** The stdlib has no Ed25519 (as of Python 3.12). Options:
+- **Dependency.** Options:
   `cryptography` (C extension, heavy for the minimal-install story),
   `PyNaCl` (same), or a vendored pure-Python Ed25519 (~200 lines,
   slow but fine at job-submission rates). The pure-Python route fits
