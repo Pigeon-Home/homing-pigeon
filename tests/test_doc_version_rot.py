@@ -6,8 +6,9 @@ forever (field catch, 2026-10-18: the release procedure in
 RUNBOOK.md carried the then-current version as its example).
 Evergreen docs use placeholders (X.Y.Z) and point at
 pyproject.toml for the number. Dated records are exempt by
-design: CHANGELOG.md, docs/archive/, and the IETF draft under
-docs/ietf/ are supposed to carry the versions they describe.
+design: CHANGELOG.md, docs/archive/, the dated reports under
+docs/reports/, and the IETF draft under docs/ietf/ are supposed
+to carry the versions they describe.
 """
 
 import os
@@ -34,7 +35,9 @@ def _evergreen_docs():
         if ".git" in parts or "__pycache__" in parts:
             dirnames[:] = []
             continue
-        if parts & {"archive", "ietf"}:
+        # Dated reports under docs/reports/ are snapshots of a
+        # measured run, like the archive: exempt, not evergreen.
+        if parts & {"archive", "ietf", "reports"}:
             dirnames[:] = []
             continue
         for name in filenames:
