@@ -5,6 +5,20 @@ source of signals for the Oracle. You package your work as a folder with one man
 in your own loop at your own pace, and the agent loads the
 manifest and holds your package to it.
 
+Because the package is only a folder and a manifest, extensions
+travel well — and that is the larger point. A researcher who
+teaches the agent to watch a telescope, a fermenter, or a
+rooftop weather station can hand that folder to anyone, and a
+lab, a network crew, or an observatory can assemble the folders
+that fit its work into a pack: a bench pack, a network pack, a
+sky pack. Packs can circulate the way editor themes and rulesets
+do — small, inspectable, and held to exactly the signals they
+declared in advance. The agent does not care whose sense it is;
+it cares that the manifest said what the sense would do and that
+the sense did that. That indifference is what makes an ecosystem
+possible: anyone can publish a sense, anyone can run one, and
+the Oracle's trust never has to stretch past the envelope.
+
 One kind of extension exists today: `sense`. A sense files signed
 alerts with the Oracle, which fuses them with job activity. The
 plumbing underneath — alert shape, ingest gates, storage, the
