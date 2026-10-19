@@ -196,8 +196,14 @@ class LinuxPackageEnvTest(unittest.TestCase):
                 mock.patch.object(inst.os, "makedirs", pkg.makedirs):
             line = inst._install_osquery_linux()
         self.assertIn("light pack", line)
+        self.assertIn("/var/log/osquery/osqueryd.results.log", line)
         apt.assert_called_once_with(["osquery"])
         repo.assert_called_once()
+        self.assertIn("pkg.osquerypackages.com/deb deb main",
+                      repo.call_args[0][1])
+        self.assertIn(
+            "https://pkg.osquerypackages.com/deb/pubkey.gpg",
+            repo.call_args[0][2])
         self.assertIn("/etc/osquery/osquery.conf", pkg.files)
         self.assertIn(
             ["systemctl", "enable", "--now", "osqueryd.service"],
@@ -205,7 +211,7 @@ class LinuxPackageEnvTest(unittest.TestCase):
 
     def test_falco_apt_env_routes_json_when_a_unit_exists(self):
         pkg = _Pkg()
-        with mock.patch.object(inst, "_apt_repo"), \
+        with mock.patch.object(inst, "_apt_repo") as repo, \
                 mock.patch.object(inst, "_apt_install"), \
                 mock.patch.object(inst, "_write_text", pkg.write_text), \
                 mock.patch.object(inst, "run", pkg.run), \
@@ -216,6 +222,8 @@ class LinuxPackageEnvTest(unittest.TestCase):
             line = inst._install_falco_linux()
         self.assertIn("vendor apt repo", line)
         self.assertIn(inst.FALCO_ALERTS_LOG, line)
+        self.assertIn("download.falco.org/packages/deb stable main",
+                      repo.call_args[0][1])
         drop = "/etc/systemd/system/falco.service.d/10-homing-pigeon.conf"
         text = pkg.files[drop][0]
         self.assertIn("ExecStart=\n", text)
@@ -271,6 +279,11 @@ class LinuxPackageEnvTest(unittest.TestCase):
         def repo(name, line, urls):
             seen["repo"] = (name, line, urls)
 
+        replaced = []
+
+        def replace(src, dst):
+            replaced.append((src, dst))
+
         with mock.patch.object(inst, "_apt_install", apt), \
                 mock.patch.object(inst, "_apt_repo", repo), \
                 mock.patch.object(inst, "run", pkg.run), \
@@ -280,25 +293,33 @@ class LinuxPackageEnvTest(unittest.TestCase):
                 mock.patch.object(inst, "_write_text", pkg.write_text), \
                 mock.patch.object(inst.os.path, "isfile",
                                   return_value=True), \
-                mock.patch.object(inst.os, "replace"):
+                mock.patch.object(inst.os, "replace", replace):
             sur = inst._install_collector_linux("suricata", _args())
             zeek = inst._install_collector_linux("zeek", _args())
             self.assertEqual(seen["repo"][0], "zeek")
             self.assertIn("xUbuntu_24.04", seen["repo"][1])
             aide = inst._install_collector_linux("aide", _args())
             flow = inst._install_collector_linux("softflowd", _args())
-        self.assertIn("suricata", sur)
-        self.assertIn("zeek", zeek)
-        self.assertIn("aide", aide)
-        self.assertIn("/etc/cron.daily/homing-pigeon-aide", pkg.files)
-        self.assertIn("softflowd", flow)
+        self.assertIn("/var/log/suricata/eve.json", sur)
+        self.assertIn("/opt/zeek/bin/zeek", zeek)
+        self.assertIn("daily check", aide)
+        self.assertIn("127.0.0.1:2055", flow)
+        self.assertEqual(
+            pkg.files["/etc/cron.daily/homing-pigeon-aide"][1], 0o755)
+        self.assertEqual(replaced[0][1], "/var/lib/aide/aide.db.gz")
         self.assertIn(
             ["systemctl", "enable", "--now", "suricata"], pkg.cmds)
         self.assertIn(["aide", "--init"], pkg.cmds)
 
     def test_sysmon_and_wazuh_use_their_vendor_packages(self):
         pkg = _Pkg()
-        with mock.patch.object(inst, "_download", return_value=b"deb"), \
+        downloaded = []
+
+        def download(url):
+            downloaded.append(url)
+            return b"deb"
+
+        with mock.patch.object(inst, "_download", download), \
                 mock.patch.object(inst, "_os_release_version",
                                   return_value="24.04"), \
                 mock.patch.object(inst, "_apt_install") as apt, \
@@ -309,9 +330,11 @@ class LinuxPackageEnvTest(unittest.TestCase):
             wazuh = inst._install_collector_linux(
                 "wazuh", _args(wazuh_manager="10.0.0.8"))
         self.assertIn("Microsoft", sysmon)
+        self.assertIn("/config/ubuntu/24.04/", downloaded[0])
         apt.assert_any_call(["sysmonforlinux"])
         self.assertIn("10.0.0.8", wazuh)
-        repo.assert_called()
+        self.assertIn("packages.wazuh.com/4.x/apt/",
+                      repo.call_args[0][1])
         self.assertTrue(any(
             c[:4] == ["apt-get", "install", "-y", "wazuh-agent"]
             for c in pkg.cmds))
@@ -374,7 +397,8 @@ class WindowsPackageEnvTest(unittest.TestCase):
                 mock.patch.object(inst.subprocess, "run", pkg.run):
             line = inst._install_collector_windows("osquery", _args())
         self.assertIn("light pack", line)
-        self.assertEqual(pkg.cmds[0][:3], ["winget", "install", "--id"])
+        self.assertEqual(pkg.cmds[0][:4],
+                         ["winget", "install", "--id", "osquery.osquery"])
         home = r"C:\Program Files\osquery"
         self.assertIn(os.path.join(home, "osquery.conf"), pkg.files)
 
@@ -400,6 +424,7 @@ class WindowsPackageEnvTest(unittest.TestCase):
                 "wazuh", _args(wazuh_manager="10.0.0.8"))
         self.assertIn("10.0.0.8", line)
         self.assertEqual(pkg.cmds[0][0], "msiexec")
+        self.assertEqual(pkg.cmds[0][3], "/q")
         self.assertIn("WAZUH_MANAGER=10.0.0.8", pkg.cmds[0])
 
 
