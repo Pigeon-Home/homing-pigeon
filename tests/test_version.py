@@ -81,5 +81,32 @@ class VersionFlagTest(unittest.TestCase):
                           buf.getvalue())
 
 
+class FrozenPackageImportsTest(unittest.TestCase):
+    """The release `install` binary is PyInstaller-built from
+    runner/install.py with no --hidden-import list, so it bundles only
+    what static imports reach. `import runner` re-exports names that
+    runner.runner takes from runner.mailbox, which runner.runner loads
+    dynamically; if nothing imports runner.mailbox statically, the
+    frozen `import runner` fails (install --version printed 'unknown'
+    and the setup wizard was skipped). modulefinder traces static
+    imports the way PyInstaller's analysis does."""
+
+    def test_import_runner_statically_reaches_mailbox(self):
+        import modulefinder
+        import sys
+        import runner
+        root = os.path.dirname(os.path.dirname(
+            os.path.abspath(runner.__file__)))
+        rest = [p for p in sys.path
+                if os.path.abspath(p or os.curdir) != root]
+        finder = modulefinder.ModuleFinder(path=[root] + rest)
+        finder.import_hook("runner")
+        for name in ("runner.runner", "runner.mailbox"):
+            self.assertIn(name, finder.modules,
+                          f"{name} is not statically reachable from "
+                          f"`import runner`; a frozen build without a "
+                          f"--hidden-import list would not bundle it")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
