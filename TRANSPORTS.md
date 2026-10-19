@@ -1,9 +1,11 @@
 # Transports: beyond email
 
-> **Status.** Only email is implemented, in `runner/runner.py` directly.
-> Anything not built is listed in FUTURE.md: NATS, MQTT, Redis,
-> Postgres, Durable Objects, and the local-socket. The sections below
-> are design notes, not implementation.
+> **Status.** Only email is implemented as a job transport, in
+> `runner/runner.py` directly. Anything not built is listed in
+> FUTURE.md: NATS, MQTT, Redis, Postgres, Durable Objects. (A
+> loopback local-signal socket IS shipped — it carries signed
+> `sensor_alert` envelopes from same-box producers, not jobs.)
+> The sections below are design notes, not implementation.
 
 ## Yes, email. We know.
 
@@ -13,8 +15,11 @@ we couldn't think of anything better, so we reached for the protocol
 grandpa uses.
 
 Here's the thing: email was the right *first* transport, and not by
-accident. The runner lives on your machine, behind NAT, with no
-inbound ports — it can only *poll outward*. Email gives us a
+accident. The runner lives on your machine, behind NAT — for jobs
+it can only *poll outward*. (It does bind two loopback-only
+listeners: the local-signal socket on 127.0.0.1:39271 and the
+Oracle page on 127.0.0.1:11436. Neither is reachable off the box,
+and neither carries jobs.) Email gives us a
 store-and-forward mailbox reachable from anywhere, with at-least-once
 semantics (the IMAP unseen flag), authentication (the HMAC signature
 on every message), and zero infrastructure to operate. Every SI on earth can
@@ -33,10 +38,12 @@ Anything that wants to carry homing-pigeon must provide:
 1. **Async store-and-forward.** The SI sends a job and walks away; the
    runner picks it up on its own schedule. No rendezvous, no open
    connections.
-2. **Outbound-only polling.** The runner never opens an inbound port.
-   It reaches *out* to collect jobs and deliver results. This is
-   non-negotiable — it's what lets the runner live behind NAT on a
-   home machine or a Pi.
+2. **Outbound-only polling for jobs.** The runner opens no inbound
+   port to the network. It reaches *out* to collect jobs and
+   deliver results. (Loopback-only listeners on the same box —
+   the signal socket and the Oracle page — are not network ports
+   and carry no jobs.) This is non-negotiable — it's what lets
+   the runner live behind NAT on a home machine or a Pi.
 3. **Authenticated sender identity.** The transport must tell the
    runner *who sent this* in a way the runner can verify — the
    equivalent of the HMAC signature check, ideally stronger.

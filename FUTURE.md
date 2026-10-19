@@ -87,8 +87,9 @@ Ideas...
 
 ## Misc
 
-- NATS, MQTT, Redis, Postgres, Durable Objects, and the local
-  socket. Cut. TRANSPORTS.md.
+- NATS, MQTT, Redis, Postgres, and Durable Objects. Cut.
+  (The local-signal socket shipped — signed `sensor_alert`
+  envelopes only, not a job transport.) TRANSPORTS.md.
 - SMS paging. `docs/dri-playbook.md`.
 - TLS inspection and a WAF. `docs/networking.md`.
 - Line-rate network detection, a 24/7 ML pipeline, and adopting
