@@ -220,7 +220,12 @@ class SimulationScenarioTest(unittest.TestCase):
         self.assertNotIn(cfg["shared_secret"], blob)
         self.assertNotIn(REFRESH, blob)
         self.assertIn("auth=oauth", got.stdout)
-        self.assertIn("poll cycle failed", blob)
+        # A dry run starts no transport extensions and never
+        # opens the mailbox (the email extension owns it), so
+        # the dead fake mailbox cannot fail the cycle any more.
+        self.assertIn("transport extensions: not started "
+                      "(dry-run)", blob)
+        self.assertNotIn("poll cycle failed", blob)
 
     def test_denylist_and_powershell_name_from_the_simulation(self):
         verdict, reasons = judge_job(

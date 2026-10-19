@@ -1,15 +1,20 @@
 # Transports: beyond email
 
-> **Status.** Three job transports are implemented, in
-> `runner/transports.py`, selected by the `transports` config
-> key (default `["email"]`): **email** (the default, and the
-> project's test transport), the **file** transport (a watched
-> folder), and **core NATS** pub/sub. Everything else below —
-> Cloudflare Queues, NATS JetStream, MQTT, Redis, Postgres,
-> Durable Objects — is design notes, not implementation, and is
-> listed in FUTURE.md. (A loopback local-signal socket IS also
-> shipped — it carries signed `sensor_alert` envelopes from
-> same-box producers, not jobs.)
+> **Status.** Three job transports are implemented, and all
+> three are **transport extensions**: standalone programs the
+> runner supervises as child processes, selected by the
+> `transports` config key (default `["email"]`): **email** (the
+> default, and the project's test transport), the **file**
+> transport (a watched folder), and **core NATS** pub/sub. The
+> runner core is transport-blind — it imports no transport code
+> and talks to each extension through a file channel (job
+> envelopes in, result envelopes out; see "Writing a new
+> transport"). Everything else below — Cloudflare Queues, NATS
+> JetStream, MQTT, Redis, Postgres, Durable Objects — is design
+> notes, not implementation, and is listed in FUTURE.md. (A
+> loopback local-signal socket IS also shipped — it carries
+> signed `sensor_alert` envelopes from same-box producers, not
+> jobs.)
 
 ## Yes, email. We know.
 
@@ -136,9 +141,10 @@ protocol. Queues give it a spine."*
 
 ## NATS (core) — shipped
 
-The runner ships a minimal core-NATS transport: a hand-rolled
-client in the standard library (`runner/transports.py`) that
-speaks INFO/CONNECT/SUB/MSG/PUB/PING/PONG. No JetStream, no
+The NATS transport extension ships a minimal core-NATS
+client: hand-rolled on the standard library (in the extension,
+`runner/transport_extensions/nats/`), speaking
+INFO/CONNECT/SUB/MSG/PUB/PING/PONG. No JetStream, no
 clustering, no persistence.
 
 - Jobs arrive on `homing-pigeon.jobs` (config
@@ -146,12 +152,14 @@ clustering, no persistence.
   line, blank line, signed body. Results publish to
   `homing-pigeon.results.<job_id>`
   (`transport_nats.result_subject_prefix`).
-- One connection per poll cycle: connect, subscribe, drain
-  what is waiting, publish the results, disconnect. A dead
-  connection fails the cycle; the next poll reconnects.
+- The extension holds one persistent connection: subscribe,
+  deliver jobs to the runner's channel as they arrive,
+  publish results as they come back. A dead connection is
+  re-established with backoff; the runner and the other
+  transports never notice.
 - Broker authentication is required by default: user/password
   or a token, from the `transport_nats` config keys (which
-  win) or the URL userinfo. With no credentials the transport
+  win) or the URL userinfo. With no credentials the extension
   refuses to start unless `allow_unauthenticated: true` is
   set — see "Authorization gates" above.
 - Core NATS is a dumb pipe: it does not store-and-forward. A
@@ -186,21 +194,24 @@ it sounds like a pager going off, see Cloudflare Queues.
 
 ## File — shipped
 
-The file transport is a watched folder pair, for local
-harnesses, CI, and SI integrations that share a filesystem or
-a sync folder with the runner — no account, no broker, nothing
-to sign up for.
+The file transport extension is a watched folder pair, for
+local harnesses, CI, and SI integrations that share a
+filesystem or a sync folder with the runner — no account, no
+broker, nothing to sign up for.
 
 - A job is a file dropped in the inbox (default
   `<base_dir>/transport-file/inbox`): first line the subject
   line, blank line, then the signed body — exactly what
   `cloud/send_job.py new ... --to-file <path>` writes.
-- The runner processes each file once and moves it to a
-  `done/` subfolder — never deletes. Results land in the
-  outbox as `<job_id>.result.txt`, same envelope shape.
+- The extension processes each file once: after the result
+  comes back it moves the job file to a `done/` subfolder —
+  never deletes. Results land in the outbox as
+  `<job_id>.result.txt`, same envelope shape. A redelivered
+  copy of a finished job is acked, not re-executed.
 - Refusals mirror the local-inbox discipline: symlinks are
   refused unread, files over 4 MiB are refused unread, and a
-  malformed envelope is logged and still consumed.
+  malformed envelope is refused with the reason left in a
+  `.refused.txt` note in `done/` — never silently dropped.
 - Its first gate is the inbox folder's OS access control:
   only principals the owner grants write access can submit.
   The signature is the second gate (see "Authorization
@@ -295,8 +306,9 @@ notification is genuinely nicer than a 30-second poll.
 
 ## Comparison
 
-Email, File, and core NATS run in the runner today, selected by
-the `transports` config key. The other rows are design notes.
+Email, File, and core NATS run today as transport extensions,
+selected by the `transports` config key. The other rows are
+design notes.
 
 | Transport | NAT-friendly | Auth story | At-least-once | Self-hostable | Free tier | In the runner |
 |---|---|---|---|---|---|---|
@@ -319,31 +331,75 @@ signature as the only gate. See "Authorization gates".
 
 ## Writing a new transport
 
-The protocol is deliberately transport-agnostic, and the seam
-is real: transports live in `runner/transports.py`. A transport
-provides:
+The protocol is deliberately transport-agnostic, and transports
+are now *extensions*: a new transport is a new program, not a
+patch to the runner. The contract is versioned at one —
+`TRANSPORT_API_VERSION = 1` in `runner/transports.py`.
 
-- `fetch() -> [IncomingMessage]` — collect waiting job
-  envelopes as (subject, body, reply, ack) messages,
-  outbound-only
-- a `reply(subject, body)` on each message — carry one result
-  back out
-- an `ack()` on each message — mark it consumed (or don't, for
-  redelivery)
+A transport extension is a folder with an `extension.json`
+manifest:
 
-The runner hands every fetched message to the same
-verification/execution core the mail path uses, services each
-transport named in the `transports` config key (or the
-`--transports` flag) once per poll cycle, and routes each
-result through the message's own `reply`. The blob does not
-change between transports. The signatures do not change. The
-Oracle does not know the difference.
+```json
+{"name": "smoke", "kind": "transport", "api_version": 1,
+ "version": "0.1.0", "publisher": "Your Name",
+ "entry": ["{python}", "smoke.py", "{channel_dir}",
+           "{runtime_config}"]}
+```
+
+`entry` is the argv the runner launches (tokens `{python}`,
+`{extension_dir}`, `{channel_dir}`, `{runtime_config}`,
+`{base_dir}`, `{name}` are substituted). The manifest's
+identity fields — name, publisher, version — are carried from
+day one so a future lockdown has something to pin; this build
+has no signature enforcement, no allowlist, no registry check.
+
+**Registration is never a permission to run.** Drop the folder
+into the runner's extensions directory (default
+`<base_dir>/extensions`, or `extensions_dir` in config) and
+name it in `transports`: the runner loads and uses it, no
+catalog consulted, registered or not. That is deliberate —
+test transports, private experiments, and pipes nobody
+catalogued are first-class. A folder in the extensions
+directory shadows a shipped transport of the same name.
+First-party extensions ship under
+`runner/transport_extensions/` and are found the same way. A
+manifest declaring any `api_version` other than 1 is refused
+with a log line; the runner keeps running without it.
+
+The runner supervises each enabled extension as a child
+process: it starts them with the runner, restarts a dead one
+with backoff (1s doubling to 30s) and a log line, and stops
+them at shutdown. One extension's death never takes the
+runner or the other transports down. Each extension is handed
+a runtime config file (0600) holding only its own config —
+its `transport_<name>` block, and for email the mailbox keys —
+never the shared secret: verification is the core's job, not
+the pipe's. The extension's own output lands in
+`<channel>/extension.log`.
+
+The pipe itself is a pair of directories, the channel, at
+`<base_dir>/transport-extensions/<name>/`:
+
+- `inbox/` — job envelopes, extension → runner. An envelope
+  is a subject line, a blank line, then the signed body; drop
+  it as `<ident>.job.txt`, where `<ident>` is your stable id
+  for the job.
+- `outbox/` — result envelopes, runner → extension, same
+  shape, named `<ident>.result.txt` for the job's ident.
+
+Ack is consumption: whichever side has taken a file moves it
+into the sibling `done/` directory. The runner services each
+channel once per poll cycle and hands every envelope to the
+same verification/execution core the mail path uses. The
+blob does not change between transports. The signatures do
+not change. The Oracle does not know the difference. (v1
+ships the file channel only; there is no socket variant.)
 
 Result routing travels with the job. A signed job may name
 where its result goes — on email that's the `reply_to` field.
-On the shipped non-mail transports the result returns over the
-same transport that carried the job in (the file outbox, the
-NATS result subject). The transport never invents a
+On the shipped non-mail transports the result returns over
+the same transport that carried the job in (the file outbox,
+the NATS result subject). The transport never invents a
 destination.
 
 ## Bootstrapping
@@ -354,8 +410,9 @@ else — set `transports` to include `file` and drop envelopes
 in the inbox. NATS needs a broker you run (or one you already
 have) plus credentials for it. The `transports` config key
 (or `--transports` for one process) is the switch; several
-transports can run side by side in one process. What is not
-built, and what was cut, is listed in FUTURE.md.
+transport extensions run side by side, each supervised by
+the one runner. What is not built, and what was cut, is
+listed in FUTURE.md.
 
 ## Local socket — cut
 

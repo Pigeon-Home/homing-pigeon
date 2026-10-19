@@ -100,8 +100,9 @@ and the job message carries download URLs (with optional SHA-384).
 on day one: reachable from anywhere, outbound-only polling (no inbound
 ports — NAT-proof), at-least-once delivery, and
 zero infrastructure to operate. The protocol does not care about the
-pipe — a watched-folder transport and core NATS are wired for jobs
-too — but email stays the default; a credentialed transport adds
+pipe — every transport is an extension the runner supervises (a
+watched folder and core NATS ship alongside email) — but email
+stays the default; a credentialed transport adds
 its own required gate beside the signature, which makes it the
 more secure option even though it is not the default. (A
 sensor on the same box also delivers its signed alerts directly,
@@ -341,8 +342,12 @@ lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
   design records (opinions and self-learning, remediation).
 - `runner/runner.py` — the agent. Polls, verifies, executes,
   replies. No dependencies beyond the Python 3.9+ standard library.
-- `runner/transports.py` — the job transports: email, the watched
-  folder, and core NATS, selected by the `transports` config key.
+- `runner/transports.py` — the transport-extension contract
+  (v1), discovery, and supervision: the core is transport-blind,
+  and email, the watched folder, and core NATS all run as
+  supervised extension programs under
+  `runner/transport_extensions/`, enabled by the `transports`
+  config key.
 - `runner/opinion.py` — the Oracle's opinion: the pre-run checks,
   the prediction, and the one mechanical repair.
 - `runner/learning.py` — the self-learning ledger: frozen calls,
