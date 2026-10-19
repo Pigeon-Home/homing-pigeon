@@ -110,9 +110,10 @@ files what the platform's AV already found as `sensor_alert`s.
   detections in the unified log and Gatekeeper assessments.
 
 Profile knobs: `severity_floor` (Defender "severe" maps to
-critical), `scan_schedule` for on-demand sweeps, and the usual
-cooldown/cap gates — AV products love to re-report the same
-quarantined file.
+critical) and the usual cooldown/cap gates — AV products love
+to re-report the same quarantined file. (Scheduled on-demand
+sweeps are not wired: there is no `scan_schedule` knob in the
+profile today.)
 
 ### Basic hygiene senses
 
@@ -130,7 +131,8 @@ question "is the boring stuff actually on?"
 - `firewall` — host firewall state per platform (Windows
   Firewall profiles, `ufw`/nftables, macOS `pf`/Application
   Firewall). Reports profile changes, not every dropped packet.
-  Full spec below — it also verifies the job's network cage.
+  Full spec below; the cage-verification job in that spec is
+  future work, listed in FUTURE.md.
 
 ### `firewall` — host firewall state, rule changes, and cage verification
 
@@ -165,23 +167,26 @@ file an alert on a new allow rule, never on every dropped packet:
 - **macOS:** `pfctl -sr` plus the Application Firewall state
   (`socketfilterfw --getglobalstate`).
 
-Profile knobs: `watch_rules` (bool, default true — diff the
-ruleset, not just on/off), `severity_inbound_allow` (default
-high), `poll_interval_sec` for the collector daemon.
+Profile knobs (future, arriving with the collector):
+`watch_rules` (bool, default true — diff the ruleset, not just
+on/off), `severity_inbound_allow` (default high),
+`poll_interval_sec` for the collector daemon. None of these
+names exists in the profile today.
 
 **2. Cage verification: did the job's network cage hold?**
-The runner can already cage a job's network on Linux: bwrap
+Future work — listed in FUTURE.md; no collector performs this
+check today. The runner can already cage a job's network on Linux: bwrap
 runs with `--unshare-net`, so the job gets loopback only —
 but only in enforce mode (M6); by default the job's network
 edge is unrestricted. The firewall sense is how the Oracle
-*checks* the cage claim instead of trusting it: the collector
-watches for what a caged job must never do — an outbound
-connection from a job UID, a new listener inside a job
-window — and files it with `job_id_hint` set, so the Oracle
-correlates directly instead of by timestamp. On Windows the
-cage is per-user WFP rules tied to the job identity
-(M8 `--run-as`); the collector reads the effective rules for
-that user the same way.
+*would check* the cage claim instead of trusting it: the
+collector would watch for what a caged job must never do — an
+outbound connection from a job UID, a new listener inside a
+job window — and file it with `job_id_hint` set, so the
+Oracle correlates directly instead of by timestamp. On
+Windows the cage is per-user WFP rules tied to the job
+identity (M8 `--run-as`); the collector would read the
+effective rules for that user the same way.
 
 This keeps the architecture's split clean: the *cage* is
 enforcement (runner, opt-in), the *verification* is sensing
@@ -195,20 +200,23 @@ cannot see: a job that phones home prints nothing, so there
 is no output to scan. This is deliberately not part of the
 sense. Senses never enforce. The design lives in
 `docs/networking.md`.
-- `patch_level` — pending security updates (Windows Update
-  status, unattended-upgrades/dnf-automatic state, macOS
+- `patch_level` — *(future sense, listed in FUTURE.md)*
+  pending security updates (Windows Update status,
+  unattended-upgrades/dnf-automatic state, macOS
   softwareupdate). Info-level; the Oracle correlates "unpatched
   for 90 days" with everything else.
-- `listening_sockets` — listening ports vs the expected
-  baseline in profile (`expected_ports`). A new listener is
-  medium by default; the Oracle decides if it matters.
-- `persistence` — autorun/persistence locations: Windows
-  autoruns (Run keys, services, scheduled tasks), Linux systemd
-  units + cron, macOS LaunchAgents/LaunchDaemons. A new entry
-  outside a job window is the classic backdoor shape.
-- `disk_encryption` — BitLocker / LUKS / FileVault status.
-  Info-level posture, mostly for the "is this box actually
-  hardened" question.
+- `listening_sockets` — *(future sense, listed in FUTURE.md)*
+  listening ports vs the expected baseline in profile
+  (`expected_ports`). A new listener is medium by default; the
+  Oracle decides if it matters.
+- `persistence` — *(future sense, listed in FUTURE.md)*
+  autorun/persistence locations: Windows autoruns (Run keys,
+  services, scheduled tasks), Linux systemd units + cron,
+  macOS LaunchAgents/LaunchDaemons. A new entry outside a job
+  window is the classic backdoor shape.
+- `disk_encryption` — *(future sense, listed in FUTURE.md)*
+  BitLocker / LUKS / FileVault status. Info-level posture,
+  mostly for the "is this box actually hardened" question.
 
 None of these remediate. They file alerts; the Oracle fuses
 them with job activity the same way it fuses IDS alerts. A
