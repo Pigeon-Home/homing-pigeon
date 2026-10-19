@@ -21,6 +21,7 @@ the two halves of that stance:
   called at all.
 """
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -538,6 +539,136 @@ class PiHealthDecideTest(unittest.TestCase):
         alerts, _ = self.mod.decide(dict(COOL, temp_c=51.2), manifest, {})
         self.assertEqual([a["signal"] for a in alerts],
                          ["board_overheating"])
+
+    def test_laptop_fixture_never_files_undervoltage(self):
+        # A laptop: thermal zone, disk and memory all exposed,
+        # throttled None forever (no vcgencmd off a Pi). Every
+        # other signal can fire; undervoltage cannot, even with
+        # everything else wrong at once -- there is no mask to
+        # misread, only an absent source.
+        laptop = {"temp_c": 62.0, "throttled": None,
+                  "disk_pct": {"/": 55.0}, "mem_avail_pct": 48.0}
+        self.assertEqual(self.signals(laptop), [])
+        alerts = self.signals(dict(laptop, temp_c=88.0,
+                                   disk_pct={"/": 97.0},
+                                   mem_avail_pct=4.0))
+        self.assertEqual(sorted(a["signal"] for a in alerts),
+                         ["board_overheating", "disk_pressure",
+                          "memory_pressure"])
+
+    def test_barren_machine_only_disk_can_fire(self):
+        # Almost nothing exposed: no thermal zone, no vcgencmd,
+        # no memory figure. The disk is still watched, and it is
+        # the only thing that can ever speak.
+        barren = {"temp_c": None, "throttled": None,
+                  "disk_pct": {"/": 96.5}, "mem_avail_pct": None}
+        self.assertEqual([a["signal"] for a in self.signals(barren)],
+                         ["disk_pressure"])
+        self.assertEqual(
+            self.signals(dict(barren, disk_pct={"/": 40.0})), [])
+        self.assertEqual(
+            self.signals(dict(barren, disk_pct={})), [])
+
+    def test_none_readings_never_signal(self):
+        # None is "the machine does not expose this", at any
+        # threshold: an unmeasurable mount, an absent sensor.
+        readings = {"temp_c": None, "throttled": None,
+                    "disk_pct": {"/": None}, "mem_avail_pct": None}
+        self.assertEqual(self.signals(readings), [])
+
+
+class PiHealthReadersTest(unittest.TestCase):
+    """The capability reads: each source answers where the
+    machine exposes it and reports None where it does not."""
+
+    def setUp(self):
+        self.mod = _load_pi_health()
+
+    def _temp_with_zones(self, files):
+        """_read_temp_c() against a fake thermal sysfs."""
+        temps = sorted(p for p in files if p.endswith("/temp"))
+
+        def fake_glob(_pattern):
+            return temps
+
+        def fake_open(path, *args, **kwargs):
+            if path in files:
+                return io.StringIO(files[path])
+            raise OSError("no such file")
+
+        with unittest.mock.patch.object(self.mod.glob, "glob",
+                                        fake_glob), \
+             unittest.mock.patch("builtins.open", fake_open):
+            return self.mod._read_temp_c()
+
+    def test_laptop_zones_pick_the_cpu_package(self):
+        files = {
+            "/sys/class/thermal/thermal_zone0/type": "acpitz",
+            "/sys/class/thermal/thermal_zone0/temp": "45000",
+            "/sys/class/thermal/thermal_zone1/type": "x86_pkg_temp",
+            "/sys/class/thermal/thermal_zone1/temp": "84000",
+            "/sys/class/thermal/thermal_zone2/type": "iwlwifi_1",
+            "/sys/class/thermal/thermal_zone2/temp": "40000",
+        }
+        self.assertEqual(self._temp_with_zones(files), 84.0)
+
+    def test_pi_zone_wins_over_other_sensors(self):
+        files = {
+            "/sys/class/thermal/thermal_zone0/type": "acpitz",
+            "/sys/class/thermal/thermal_zone0/temp": "60000",
+            "/sys/class/thermal/thermal_zone1/type": "cpu-thermal",
+            "/sys/class/thermal/thermal_zone1/temp": "51200",
+        }
+        self.assertEqual(self._temp_with_zones(files), 51.2)
+
+    def test_unfamiliar_zones_fall_back_to_the_first(self):
+        files = {
+            "/sys/class/thermal/thermal_zone0/type": "acpitz",
+            "/sys/class/thermal/thermal_zone0/temp": "47000",
+        }
+        self.assertEqual(self._temp_with_zones(files), 47.0)
+
+    def test_no_readable_zone_is_none_not_an_error(self):
+        self.assertIsNone(self._temp_with_zones({}))
+        junk = {"/sys/class/thermal/thermal_zone0/temp": "warm"}
+        self.assertIsNone(self._temp_with_zones(junk))
+
+    def test_memory_falls_back_past_each_absent_source(self):
+        mod = self.mod
+        with unittest.mock.patch.object(
+                mod, "_mem_avail_pct_meminfo", return_value=44.4), \
+             unittest.mock.patch.object(
+                mod, "_mem_avail_pct_sysconf",
+                side_effect=AssertionError("sysconf reached")):
+            self.assertEqual(mod._read_mem_avail_pct(), 44.4)
+        with unittest.mock.patch.object(
+                mod, "_mem_avail_pct_meminfo", return_value=None), \
+             unittest.mock.patch.object(
+                mod, "_mem_avail_pct_windows", return_value=None), \
+             unittest.mock.patch.object(
+                mod, "_mem_avail_pct_sysconf", return_value=33.3):
+            self.assertEqual(mod._read_mem_avail_pct(), 33.3)
+
+    def test_memory_sysconf_counts_pages(self):
+        pages = {"SC_PHYS_PAGES": 1000, "SC_AVPHYS_PAGES": 250}
+        with unittest.mock.patch.object(
+                os, "sysconf", lambda name: pages[name]):
+            self.assertEqual(self.mod._mem_avail_pct_sysconf(), 25.0)
+        with unittest.mock.patch.object(os, "sysconf_names", {}):
+            self.assertIsNone(self.mod._mem_avail_pct_sysconf())
+
+    @unittest.skipIf(os.name == "nt", "off-Windows check")
+    def test_memory_windows_source_is_none_off_windows(self):
+        self.assertIsNone(self.mod._mem_avail_pct_windows())
+
+    def test_read_board_shape_on_any_machine(self):
+        board = self.mod.read_board()
+        self.assertEqual(sorted(board), ["disk_pct", "mem_avail_pct",
+                                         "temp_c", "throttled"])
+        for key in ("temp_c", "mem_avail_pct"):
+            self.assertTrue(board[key] is None or
+                            isinstance(board[key], float), key)
+        self.assertIsInstance(board["disk_pct"], dict)
 
 
 class PiHealthEndToEndTest(unittest.TestCase):
