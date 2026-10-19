@@ -95,7 +95,7 @@ This document does not specify disclosure policy, queries, attestations, task bo
 
 ## 5. Transport Binding
 
-This document binds the protocol to email. The protocol itself needs only the store-and-forward queue from Section 1; a future binding could carry the same messages over a different transport.
+This document binds the protocol to email. The protocol itself needs only the store-and-forward queue from Section 1; a future binding could carry the same messages over a different transport. Two further bindings of this version are specified in Sections 5.1 and 5.2; both carry the same messages, unchanged. A direct session binding, in which the same messages travel inside a DTLS session and the runner greets the submitter after authentication, is specified as version 2 in the companion document draft-homing-pigeon-v2-00.
 
 The runner reads the mailbox with IMAP and writes with SMTP. Mail authentication is out of band. The signature check does not change with the mail credential.
 
@@ -104,6 +104,30 @@ IMAP and SMTP MUST be used over TLS. An implementation MUST NOT carry this proto
 The body is UTF-8 text in a `text/plain` part. This document does not register a media type. If the message is multipart, the receiver uses the first `text/plain` part that is not an attachment.
 
 The message MUST be rejected before the MAC if the raw RFC822 object exceeds the receiver's size cap. The RECOMMENDED cap is 4194304 octets. A cap of 0 means no limit. This cap is LOCAL.
+
+### 5.1. The File Binding
+
+The file binding carries the same envelope as a file in a pair of watched directories on a filesystem both parties can reach. It exists for deployments where the submitter and the runner share a filesystem (a mounted volume, a synchronized folder, a removable medium) and for testing: it is the email binding's envelope with the mailbox removed, and nothing else changes.
+
+The envelope mapping is byte-for-byte the email form: a subject line in the shape of Section 6, a blank line, then the signed body. A job is a file named `<ident>.job.txt` in the inbox directory, where `<ident>` is the binding-local name of the job (the `job_id` serves). A result is a file named `<ident>.result.txt` in the outbox directory. A receiver polls the directories on its ordinary poll cycle.
+
+Acknowledgement is consumption. Whichever side has taken a file moves it into a sibling `done/` directory; files are never deleted by the binding. A redelivery of the same job rewrites the same file name, and the seen-set (Sections 14 and 16.6) deduplicates the repeat: delivery is at-least-once, exactly as on the email binding (Section 16.10).
+
+Two gates stand in series on this binding. The first is the inbox directory's operating-system access control: only principals the owner has given write access can present envelopes at all. The second is the signature, which remains the authorization, unchanged. A deployment MUST treat the directory's access control as a real gate and set it deliberately; the signature check does not excuse a world-writable inbox.
+
+The binding's limits are the filesystem's. Both parties need access to the same directories, so the binding does not cross a network by itself (a network filesystem under it is the deployment's own affair, with its own failure modes). There is no store-and-forward beyond the disk, no ordering beyond arrival, and the size cap of Section 5 applies to envelope files.
+
+### 5.2. The NATS Binding
+
+The NATS binding carries the same envelope over core NATS publish/subscribe. It exists for deployments where submitter and runner already share a NATS broker: a low-latency pipe with no store-and-forward pretensions.
+
+The envelope mapping is the email form carried as a message payload: the subject line of Section 6, a blank line, then the signed body, as one payload. Jobs are published on a jobs subject (a LOCAL name; the reference default is `homing-pigeon.jobs`). Results are published on a per-job subject formed from a LOCAL prefix and the `job_id` (the reference default is `homing-pigeon.results.<job_id>`).
+
+Core NATS is at-most-once: the broker acknowledges nothing and retains nothing. A job published while no runner is subscribed is lost, and a result published while no submitter is subscribed is lost. The protocol's own machinery is the recovery: the submitter retries per Section 15, and the seen-set makes a repeat harmless. A deployment that needs broker-side retention needs a persistence layer this binding does not specify.
+
+Two gates stand in series. The first is the broker's own authentication: broker authentication is REQUIRED by default -- a conforming receiver MUST NOT consume jobs over an unauthenticated broker connection, and the credential is supplied in configuration or in the broker URL's userinfo. A deployment MAY relax this by an explicit local setting (LOCAL), in which case the signature is the only gate and the deployment MUST NOT claim the two-gate posture. The second gate is the signature, unchanged. A required-auth NATS deployment is, for this reason, the more strongly gated of the bindings in this document: email's mailbox login authorizes the runner's reading, never the sender, so email stands on the signature alone.
+
+The binding's limits are the broker's: payload sizes are bounded by the broker's maximum and by the cap of Section 5, and ordering is per-subject arrival only.
 
 ## 6. Subjects
 
