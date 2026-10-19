@@ -79,6 +79,17 @@ Ideas...
   so a later compromise of the shared secret decrypts no
   recorded session. A DTLS extension without forward
   secrecy is not worth building.
+  BUILT 2026-10-19 (Andrew's order: implement the
+  future now). Shipped as the dtls transport extension:
+  `runner/dtlsproto.py` (the bounded profile: one
+  ciphersuite, PSK-only, stateless cookie exchange,
+  Connection IDs), `runner/transport_extensions/dtls/`,
+  client `cloud/send_dtls.py`, specified in
+  `docs/ietf/draft-homing-pigeon-v2-00.md`. Perfect
+  forward secrecy is a hard requirement of the profile
+  as built: psk_dhe_ke only, a fresh X25519 ephemeral on
+  every handshake and every resumption, and psk_ke
+  never offered or accepted.
 
 - A session's first acknowledgment carries the platform:
   a direct v2 binding (above) gives the two sides a real
@@ -107,6 +118,13 @@ Ideas...
   the per-job encryption extension landed as Section 16)
   says what exists and what does not, and claims describe
   shipped state only.
+  BUILT 2026-10-19 with the DTLS binding above: the
+  greeting is the session's first application message,
+  sent only after authentication completes, tiered by
+  the runner's `dtls_greeting` config (none / family,
+  the default / standard / full), chosen by the
+  responder; a resumed session re-runs it. Specified in
+  draft-homing-pigeon-v2-00 Section 5.
 
 - Cloudflare Queues: The design notes are TRANSPORTS.md
 

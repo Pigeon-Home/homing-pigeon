@@ -101,7 +101,8 @@ on day one: reachable from anywhere, outbound-only polling (no inbound
 ports — NAT-proof), at-least-once delivery, and
 zero infrastructure to operate. The protocol does not care about the
 pipe — every transport is an extension the runner supervises (a
-watched folder and core NATS ship alongside email) — but email
+watched folder, core NATS, and a direct DTLS session binding
+ship alongside email) — but email
 stays the default; a credentialed transport adds
 its own required gate beside the signature, which makes it the
 more secure option even though it is not the default. (A
@@ -332,8 +333,9 @@ lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
   verification rules, security model).
 - `FUTURE.md` — work that is not built. The only list.
 - `TRANSPORTS.md` — the job transports as shipped: email (default),
-  file, and core NATS. Everything past those in that file is design
-  notes, not code.
+  file, core NATS, and the DTLS session binding (off unless
+  enabled — it is the one transport that listens). Everything
+  past those in that file is design notes, not code.
 - `SAFEGUARDS.md` — how to run this without getting burned: the
   non-negotiables, containment, the Oracle as a safeguard, and what
   to do when something goes wrong.
@@ -344,8 +346,8 @@ lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
   replies. No dependencies beyond the Python 3.9+ standard library.
 - `runner/transports.py` — the transport-extension contract
   (v1), discovery, and supervision: the core is transport-blind,
-  and email, the watched folder, and core NATS all run as
-  supervised extension programs under
+  and email, the watched folder, core NATS, and the DTLS
+  listener all run as supervised extension programs under
   `runner/transport_extensions/`, enabled by the `transports`
   config key.
 - `runner/opinion.py` — the Oracle's opinion: the pre-run checks,
@@ -507,7 +509,7 @@ The list is [FUTURE.md](FUTURE.md).
 ## Status
 
 What ships today is what's described above: the agent, the Oracle
-(opinions, self-learning, remediation), three job transports, and
+(opinions, self-learning, remediation), four job transports, and
 the example senses. The current release is in
 [CHANGELOG.md](CHANGELOG.md); the version number lives in
 `pyproject.toml`, and the message field `"v"` is a different

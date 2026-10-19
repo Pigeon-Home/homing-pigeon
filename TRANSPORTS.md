@@ -52,7 +52,11 @@ Anything that wants to carry homing-pigeon must provide:
    deliver results. (Loopback-only listeners on the same box —
    the signal socket and the Oracle page — are not network ports
    and carry no jobs.) This is non-negotiable — it's what lets
-   the runner live behind NAT on a home machine or a Pi.
+   the runner live behind NAT on a home machine or a Pi. One
+   deliberate exception exists, and it does not hide: the DTLS
+   session binding (below) is not a store-and-forward transport
+   at all — it listens on a UDP port, only when the owner
+   enables it. Every transport that polls keeps this rule.
 3. **Authenticated sender identity.** The transport must tell the
    runner *who sent this* in a way the runner can verify — the
    equivalent of the HMAC signature check, ideally stronger.
@@ -101,14 +105,22 @@ required gate in front of the signature — not a formality:
 - **File** has two: the inbox folder's OS access control —
   only principals the owner grants write access can submit a
   job file at all — and then the signature.
+- **DTLS** has two, and a property none of the others have.
+  The session is authenticated before any job crosses it —
+  the shared secret itself is the session's pre-shared key,
+  so the transport's authentication is the same secret doing
+  a second job, not a separate credential — and the signature
+  is checked on every job inside the session, as always. On
+  top of the two gates, the session is confidential with
+  perfect forward secrecy (see "DTLS — shipped" below).
 
 That makes a credentialed broker transport, in its default
 required-auth posture, the more secure option of the shipped
-three: submitting a job must pass transport authentication
-AND the signature, where email checks the signature alone.
-Email remains the default anyway — it is the most universal
-pipe and the project's test transport. Here, "default" does
-not mean "most secure".
+store-and-forward three: submitting a job must pass transport
+authentication AND the signature, where email checks the
+signature alone. Email remains the default anyway — it is the
+most universal pipe and the project's test transport. Here,
+"default" does not mean "most secure".
 
 One more layer rides above every pipe, unchanged: per-job
 encryption. `send_job.py` encrypts the signed job body by
@@ -244,6 +256,67 @@ broker, nothing to sign up for.
   The signature is the second gate (see "Authorization
   gates").
 
+## DTLS — shipped (the session binding)
+
+The DTLS transport extension is not a store-and-forward
+transport: it is the protocol's version 2 binding from
+`docs/ietf/draft-homing-pigeon-v2-00.md` — a direct DTLS 1.3
+session between the SI and the runner, specified there and
+implemented as a bounded pure-Python profile
+(`runner/dtlsproto.py`, stdlib only) in the extension at
+`runner/transport_extensions/dtls/`.
+
+- **Off unless enabled, and it listens.** Add `"dtls"` to
+  `transports` and the extension binds a UDP port
+  (`transport_dtls.port`, default 20220;
+  `transport_dtls.bind`, default `0.0.0.0`). This is the one
+  shipped transport that opens an inbound port — the
+  deliberate exception to the contract's outbound-only rule
+  above, taken by the owner's explicit choice.
+- **One profile, enforced.** DTLS 1.3, one ciphersuite
+  (TLS_CHACHA20_POLY1305_SHA256), PSK-only authentication
+  with the shared secret as the external PSK (identity
+  `homing-pigeon`, or `homing-pigeon:<key_id>` for an
+  additional secret). Key exchange is `psk_dhe_ke` only: a
+  fresh X25519 ephemeral rides every handshake and every
+  resumption, and `psk_ke` is never offered or accepted —
+  perfect forward secrecy is a requirement of the profile,
+  not a negotiated option. A stateless cookie exchange
+  proves the peer's address before the extension keeps any
+  state, Connection IDs keep a session alive across a NAT
+  rebinding, session resumption uses fresh tickets with
+  fresh DHE, and there is no 0-RTT, ever.
+- **The greeting.** After the handshake authenticates — never
+  before — the runner sends the session's first application
+  message: a greeting carrying platform information tiered
+  by the runner's `dtls_greeting` config (`none` / `family`,
+  the default: OS family only / `standard`: plus OS release
+  and Python version / `full`: plus a bounded PATH-tools
+  summary). The SI initiates; the runner chooses what it
+  discloses; the client cannot widen it. Jobs are accepted
+  only after the greeting has been sent.
+- **Inside the session**, each message is the same signed
+  envelope every other binding carries; the per-job
+  encryption extension composes with it unchanged (a
+  cleartext job in DTLS and an encrypted job in DTLS are
+  both legal). Ack/dedup is still the protocol's seen-set —
+  channel security is not delivery. Results return on the
+  session; a result that lands after its session is gone is
+  logged loudly and acked, and the SI re-asks on a fresh
+  session.
+- **The client** is `cloud/send_dtls.py`: it signs exactly
+  like `send_job.py` (per-job encryption on by default,
+  `--cleartext` selects the plain signed form), prints the
+  greeting, sends the job, prints the verified result, and
+  can persist the resumption ticket between runs.
+- **One supervisor deviation, stated plainly:** the dtls
+  extension is the one pipe the supervisor hands the shared
+  secret to — because this pipe terminates PSK
+  authentication with it. A pipe that merely carries
+  envelopes (email, file, NATS) is still never handed a
+  secret, and every job that arrives over DTLS still faces
+  the core's signature check like any other transport's.
+
 ## MQTT — the IoT pick
 
 MQTT is the protocol your smart lightbulbs speak, and that's not an
@@ -333,15 +406,16 @@ notification is genuinely nicer than a 30-second poll.
 
 ## Comparison
 
-Email, File, and core NATS run today as transport extensions,
-selected by the `transports` config key. The other rows are
-design notes.
+Email, File, core NATS, and DTLS run today as transport
+extensions, selected by the `transports` config key. The
+other rows are design notes.
 
 | Transport | NAT-friendly | Auth story | At-least-once | Self-hostable | Free tier | In the runner |
 |---|---|---|---|---|---|---|
 | Email | poll | HMAC signature only | Unseen flag | n/a (hosted) | yes | yes, the default |
 | File | n/a (local folder) | Folder OS ACL, then HMAC | Process-once + done/ | n/a | n/a | yes |
 | NATS (core) | outbound connect | Broker auth (required), then HMAC | Sender resend + seen-set | tiny binary | self-host | yes |
+| DTLS | no — listens (opt-in) | PSK session (the shared secret), then HMAC | Sender resend + seen-set | n/a | n/a | yes, off by default |
 | Cloudflare Queues | HTTPS poll | API token | Retries + DLQ | no | yes | no |
 | NATS JetStream | yes | NKey/JWT | Consumer acks | tiny binary | self-host | no |
 | MQTT | yes | TLS + creds | QoS 1 | Mosquitto | self-host | no |
@@ -354,7 +428,11 @@ required-auth posture is the more secure option over email —
 two gates (broker authentication, then the signature) against
 email's one (the signature). A deployment with
 `allow_unauthenticated: true` is not: it falls back to the
-signature as the only gate. See "Authorization gates".
+signature as the only gate. DTLS stands apart from the
+count: its session is authenticated with the shared secret
+itself and is confidential with perfect forward secrecy, and
+the signature still checks every job inside it. See
+"Authorization gates".
 
 ## Writing a new transport
 
