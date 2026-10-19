@@ -2,11 +2,52 @@
 
 ## 3.8.4 - 2026-10-18
 
+### Features
+
+- IDS collector support, measured before it was built.
+  Eight adapters in the extension catalog -- Falco,
+  Suricata, Zeek, osquery, Sysmon, AIDE, softflowd,
+  Wazuh -- each filing the signals its artifact honestly
+  supports. osquery is the install default (27 MB idle in
+  measurement; the installer writes the config and unit
+  the package ships without). `--check` reports each
+  collector as works, installed-but-cannot-run, or absent;
+  the BPF-dependent two are capability-probed, because
+  installed is not the same as sensing. Pi Light installs
+  none by default. Zeek measured too heavy to default
+  (230 MB idle) and is opt-in.
+- Remediation, built to the design recorded the same
+  day. A job whose observed behavior diverges from its
+  opinion envelope can be stopped mid-run: deterministic
+  tripwires (process storm, undeclared credential
+  artifact, confinement escape) kill on sight; with
+  `remediation_mode: oracle` the Oracle may order a kill
+  for unlisted divergences, and its abstention on timeout
+  is recorded, never converted into a kill. Outputs are
+  quarantined (moved, never deleted), suspect files are
+  referred to the box's antivirus for its own verdict,
+  and every act lands in the result as a `remediation`
+  member. Default mode is `deterministic`; `off` restores
+  page-only.
+- Training Watch joins the catalog: a sense for ML
+  training runs -- checkpoint arrivals, stalls (quiet log
+  or a parsed loss curve gone flat), crash markers,
+  GPU heat and memory pressure. The catalog now says
+  twenty-four.
+
+### Fixes
+
+- `--oracle-opinion` no longer exits at startup (a string
+  flag was sitting in the numeric overrides set).
+- Every root live doc is in the mutation tree's copy
+  list again (ENTERPRISE.md had landed without one).
+
 ### Docs
 
-- The remediation design is written out in full. It stays a
-  design: divergence between a job's opinion and what it did,
-  reflexes underneath, the Oracle's judgment above.
+- The remediation design is written out in full, then
+  amended with its as-built deltas.
+- FAQs.md opens with the Oracle watch question: it polls,
+  and a serious local signal can also pass the wake gate.
 - STYLE.md is the short page: the preamble and the closing
   "changing this guide" section are gone.
 - TRANSPORTS.md names the unbuilt transports in the status
