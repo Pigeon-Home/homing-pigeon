@@ -420,6 +420,7 @@ _MAILBOX_KEYS = (
     "mailbox_user", "mailbox_password", "imap_host", "imap_port",
     "smtp_host", "smtp_port", "auth", "oauth_client_id",
     "oauth_client_secret", "oauth_refresh_token",
+    "mail_tls_required",
 )
 
 

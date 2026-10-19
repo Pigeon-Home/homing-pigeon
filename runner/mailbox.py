@@ -12,12 +12,20 @@ mailbox directly for their own round-trips.
 Stdlib only. The module-level `log` is a stderr fallback; the
 runner replaces it with its own log at startup, and the email
 extension replaces it with its channel log.
+
+TLS posture: the protocol draft's Transport Binding requires
+IMAP and SMTP over TLS 1.2 or higher, with the peer certificate
+verified. The runner expresses that requirement as the
+`mail_tls_required` config option (see mail_tls_required()
+below): required by default, with an explicit, logged escape
+hatch -- never a cleartext path.
 """
 
 import base64
 import imaplib
 import re
 import smtplib
+import ssl
 import sys
 import threading
 from email.message import EmailMessage
@@ -98,10 +106,66 @@ def _mailbox(cfg):
     return user.strip()
 
 
+def mail_tls_required(cfg) -> bool:
+    """Whether this installation requires verified TLS on the
+    mailbox connections.
+
+    The draft's Transport Binding makes TLS a MUST: IMAP and
+    SMTP over TLS 1.2 or higher, the peer certificate verified.
+    `mail_tls_required` is that requirement expressed as a
+    runner option whose default requires it. Only the literal
+    boolean false opens the escape hatch -- the same
+    literal-boolean discipline the NATS gate applies with
+    `is True`. An absent key, a string "false", 0, or any other
+    value keeps the requirement.
+    """
+    if not isinstance(cfg, dict):
+        return True
+    return cfg.get("mail_tls_required") is not False
+
+
+def _verified_tls_context() -> ssl.SSLContext:
+    """A context that actually verifies: the system trust store,
+    hostname checking, and a TLS 1.2 floor -- the floor the
+    draft states, stated in the code as well."""
+    ctx = ssl.create_default_context()
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+    return ctx
+
+
+_TLS_HATCH_WARNED = False
+
+
+def _note_tls_hatch(cfg) -> None:
+    """Log, once per process, that the owner opened the hatch.
+
+    The hatch relaxes verification to the posture that predates
+    this option (STARTTLS attempted, certificate unverified).
+    It must never be silent, and it never adds a cleartext path:
+    IMAP stays implicit-TLS and SMTP still upgrades, in both
+    modes.
+    """
+    global _TLS_HATCH_WARNED
+    if _TLS_HATCH_WARNED or mail_tls_required(cfg):
+        return
+    _TLS_HATCH_WARNED = True
+    log("mail TLS is not required by owner configuration "
+        "(mail_tls_required: false): STARTTLS proceeds without "
+        "certificate verification. This installation cannot "
+        "claim the draft's confidentiality posture.", "WARN")
+
+
 def connect_imap(cfg) -> imaplib.IMAP4_SSL:
+    _note_tls_hatch(cfg)
+    # IMAP is implicit TLS in both modes -- there is no plaintext
+    # constructor path. Required mode additionally hands the
+    # connection a verifying context with the TLS 1.2 floor
+    # instead of the stdlib's unverified default context.
+    ctx = _verified_tls_context() if mail_tls_required(cfg) \
+        else None
     conn = imaplib.IMAP4_SSL(
         _host(cfg, "imap_host"), _port(cfg, "imap_port", 993),
-        timeout=30)
+        ssl_context=ctx, timeout=30)
     user = _mailbox(cfg)
     if _use_oauth(cfg):
         _imap_xoauth2(conn, user, _xoauth2_raw(cfg))
@@ -119,10 +183,19 @@ def connect_imap(cfg) -> imaplib.IMAP4_SSL:
 
 
 def connect_smtp(cfg) -> smtplib.SMTP:
+    _note_tls_hatch(cfg)
     smtp = smtplib.SMTP(
         _host(cfg, "smtp_host"), _port(cfg, "smtp_port", 587),
         timeout=30)
-    smtp.starttls()
+    if mail_tls_required(cfg):
+        # A verifying context, not smtplib's default: bare
+        # starttls() encrypts but never checks the peer
+        # certificate. A refused or unavailable STARTTLS raises
+        # here and the connection fails -- required means
+        # required, never an opportunistic downgrade.
+        smtp.starttls(context=_verified_tls_context())
+    else:
+        smtp.starttls()
     if _use_oauth(cfg):
         # smtplib.auth base64-encodes the return value, and calls the
         # callback with no args for the initial response. Return the raw

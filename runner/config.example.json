@@ -6,6 +6,8 @@
   "imap_port": 993,
   "mailbox_password": "paste-app-password-here-in-plaintext",
   "mailbox_user": "homing-pigeon-runner@gmail.com",
+  "mail_tls_required": true,
+  "_mail_tls_required": "the draft's Transport Binding requirement (IMAP/SMTP over TLS 1.2+, peer certificate verified) as an option: required by default -- IMAP is implicit TLS with a verifying context, SMTP STARTTLS must verify or the connection fails. Only literal false opens the escape hatch (STARTTLS attempted, certificate unverified, WARN logged); an install with false does not carry the draft's confidentiality posture. No value enables cleartext mail.",
   "max_job_age_sec": 3600,
   "max_output_bytes": 100000,
   "max_job_bytes": 4194304,

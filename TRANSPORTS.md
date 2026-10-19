@@ -74,6 +74,20 @@ required gate in front of the signature — not a formality:
 - **Email** has one gate: the signature. The mailbox login
   authorizes the runner's *reading*; it says nothing about any
   sender.
+
+  The pipe itself is TLS, as the draft's Transport Binding
+  requires: IMAP and SMTP over TLS 1.2 or higher, the peer
+  certificate verified. The runner expresses that requirement
+  as the `mail_tls_required` config option, required by
+  default — IMAP is implicit TLS only, and SMTP's STARTTLS
+  runs with a verifying context (a refused upgrade fails the
+  connection). Setting `mail_tls_required: false` is an
+  explicit escape hatch: STARTTLS is still attempted but the
+  certificate is unverified — the posture that predates the
+  option — a WARN is logged, and an installation with the
+  hatch open does not carry the draft's confidentiality
+  posture. There is no cleartext mail path in either mode;
+  the hatch relaxes verification, never encryption.
 - **NATS**, configured in its default posture, has two:
   broker authentication (user/password or token) is required
   before the runner will even start the transport, and the

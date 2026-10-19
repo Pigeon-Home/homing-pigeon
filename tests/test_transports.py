@@ -15,9 +15,12 @@ broker, no mailbox.
 """
 
 import argparse
+import imaplib
 import json
 import os
+import smtplib
 import socket
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -27,12 +30,13 @@ import unittest
 import uuid
 from datetime import datetime, timezone
 from types import SimpleNamespace
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "cloud"))
 
-from runner import transports  # noqa: E402
+from runner import mailbox, transports  # noqa: E402
 from runner.runner import (  # noqa: E402
     _transports_arg, apply_cli_overrides, poll_once)
 from runner.transport_extensions.email import (  # noqa: E402
@@ -920,6 +924,169 @@ class EmailTransportExtensionTest(unittest.TestCase):
         pipe2.pass_once()
         self.assertEqual(smtp2.sent, [])
         self.assertEqual(imap2.flagged, ["1"])
+
+
+_NO_CONTEXT = object()
+
+
+class _FakeIMAPSSL:
+    """Stands in for imaplib.IMAP4_SSL: records the constructor
+    arguments, then behaves just enough for connect_imap."""
+
+    instances = []
+
+    def __init__(self, host, port, **kw):
+        self.host, self.port, self.kw = host, port, kw
+        self.login_args = None
+        _FakeIMAPSSL.instances.append(self)
+
+    def login(self, user, password):
+        self.login_args = (user, password)
+        return "OK", []
+
+    def select(self, _name):
+        return "OK", [b"0"]
+
+
+class _FakeSMTPConn:
+    """Stands in for smtplib.SMTP: records whether starttls got
+    a context (and which), or no context at all."""
+
+    instances = []
+    starttls_error = None
+
+    def __init__(self, host, port, timeout=None):
+        self.host, self.port = host, port
+        self.starttls_context = _NO_CONTEXT
+        self.login_args = None
+        _FakeSMTPConn.instances.append(self)
+
+    def starttls(self, context=_NO_CONTEXT):
+        if _FakeSMTPConn.starttls_error is not None:
+            raise _FakeSMTPConn.starttls_error
+        self.starttls_context = context
+
+    def login(self, user, password):
+        self.login_args = (user, password)
+
+
+class MailTlsRequiredTest(unittest.TestCase):
+    """`mail_tls_required`: the draft's TLS MUST expressed as a
+    runner option. Default (anything but literal false) requires
+    verified TLS 1.2+ on both mailbox connections; literal
+    false opens a logged escape hatch that relaxes verification
+    only -- no cleartext path exists in either mode."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-test-")
+        _FakeIMAPSSL.instances = []
+        _FakeSMTPConn.instances = []
+        _FakeSMTPConn.starttls_error = None
+        self.logs = []
+        self._orig_log = mailbox.log
+        mailbox.set_logger(
+            lambda msg, level="INFO": self.logs.append(
+                (level, msg)))
+        mailbox._TLS_HATCH_WARNED = False
+
+    def tearDown(self):
+        mailbox.set_logger(self._orig_log)
+        mailbox._TLS_HATCH_WARNED = False
+        _FakeSMTPConn.starttls_error = None
+
+    def _connect_both(self, cfg):
+        with mock.patch.object(imaplib, "IMAP4_SSL",
+                               _FakeIMAPSSL), \
+                mock.patch.object(smtplib, "SMTP",
+                                  _FakeSMTPConn):
+            mailbox.connect_imap(cfg)
+            mailbox.connect_smtp(cfg)
+        return (_FakeIMAPSSL.instances[-1],
+                _FakeSMTPConn.instances[-1])
+
+    def _assert_verifying(self, ctx):
+        self.assertIsInstance(ctx, ssl.SSLContext)
+        self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(ctx.check_hostname)
+        self.assertEqual(ctx.minimum_version,
+                         ssl.TLSVersion.TLSv1_2)
+
+    def test_only_literal_false_opens_the_hatch(self):
+        cases = [
+            ({}, True),
+            ({"mail_tls_required": True}, True),
+            ({"mail_tls_required": False}, False),
+            ({"mail_tls_required": "false"}, True),
+            ({"mail_tls_required": "no"}, True),
+            ({"mail_tls_required": 0}, True),
+            ({"mail_tls_required": None}, True),
+        ]
+        for extra, expected in cases:
+            with self.subTest(extra=extra):
+                self.assertIs(mailbox.mail_tls_required(extra),
+                              expected)
+        self.assertIs(mailbox.mail_tls_required(None), True)
+
+    def test_default_mode_verifies_both_connections(self):
+        imap, smtp = self._connect_both(_cfg(self.tmp))
+        self._assert_verifying(imap.kw["ssl_context"])
+        self._assert_verifying(smtp.starttls_context)
+        self.assertEqual(self.logs, [])
+
+    def test_hatch_mode_keeps_the_previous_unverified_posture(
+            self):
+        cfg = _cfg(self.tmp, mail_tls_required=False)
+        imap, smtp = self._connect_both(cfg)
+        # Previous posture exactly: no context object handed to
+        # either constructor/call -- the stdlib defaults apply.
+        self.assertIsNone(imap.kw["ssl_context"])
+        self.assertIs(smtp.starttls_context, _NO_CONTEXT)
+
+    def test_hatch_warns_once_and_names_the_lost_claim(self):
+        cfg = _cfg(self.tmp, mail_tls_required=False)
+        self._connect_both(cfg)
+        self._connect_both(cfg)
+        warns = [m for level, m in self.logs if level == "WARN"]
+        self.assertEqual(len(warns), 1)
+        self.assertIn("mail_tls_required", warns[0])
+        self.assertIn("cannot claim the draft's "
+                      "confidentiality posture", warns[0])
+
+    def test_starttls_refusal_fails_the_connect_when_required(
+            self):
+        _FakeSMTPConn.starttls_error = smtplib.SMTPException(
+            "STARTTLS refused")
+        with mock.patch.object(smtplib, "SMTP", _FakeSMTPConn):
+            with self.assertRaises(smtplib.SMTPException):
+                mailbox.connect_smtp(_cfg(self.tmp))
+        # The failure is at the upgrade: login was never reached
+        # over a plaintext or unverified session.
+        self.assertIsNone(_FakeSMTPConn.instances[-1].login_args)
+
+    def test_no_plaintext_imap_constructor_in_either_mode(self):
+        def _boom(*a, **kw):
+            raise AssertionError("plaintext IMAP4 constructed")
+
+        for extra in ({}, {"mail_tls_required": False}):
+            with self.subTest(extra=extra):
+                cfg = _cfg(self.tmp, **extra)
+                with mock.patch.object(imaplib, "IMAP4", _boom), \
+                        mock.patch.object(imaplib, "IMAP4_SSL",
+                                          _FakeIMAPSSL):
+                    mailbox.connect_imap(cfg)
+
+    def test_the_key_reaches_the_email_extension(self):
+        cfg = _cfg(self.tmp, mail_tls_required=False)
+        handed = transports._runtime_config(
+            cfg, "email", self.tmp,
+            transports.channel_paths(self.tmp, "email"))
+        self.assertIs(handed["mail_tls_required"], False)
+        # Absent stays absent: the extension applies the same
+        # default (required) on its side of the channel.
+        handed = transports._runtime_config(
+            _cfg(self.tmp), "email", self.tmp,
+            transports.channel_paths(self.tmp, "email"))
+        self.assertNotIn("mail_tls_required", handed)
 
 
 class MultipleTransportsTest(unittest.TestCase):

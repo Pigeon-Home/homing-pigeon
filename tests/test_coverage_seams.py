@@ -576,11 +576,13 @@ class _FakeIMAP:
     tagged = ("OK", [b"ok"])
     built = []
 
-    def __init__(self, host, port=993, timeout=30):
+    def __init__(self, host, port=993, timeout=30,
+                 ssl_context=None):
         _FakeIMAP.built.append(self)
         self.host = host
         self.port = port
         self.timeout = timeout
+        self.ssl_context = ssl_context
         self.state = "NONAUTH"
         self.login_args = None
         self.selected = None
