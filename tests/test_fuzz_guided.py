@@ -345,11 +345,12 @@ class TracerTest(unittest.TestCase):
         code = compile("a = 1\nb = 2\n",
                        root.swapcase() + "caseprobe.py", "exec")
         tracer = _LineTracer(root)
+        saved = sys.gettrace()
         sys.settrace(tracer)
         try:
             exec(code, {})
         finally:
-            sys.settrace(None)
+            sys.settrace(saved)
         self.assertTrue(tracer.hits)
 
     def test_the_same_input_earns_the_same_coverage_twice(self):
@@ -363,6 +364,8 @@ class TracerTest(unittest.TestCase):
         self.assertIs(sys.gettrace(), before)
 
     def test_a_preexisting_trace_function_survives(self):
+        saved = sys.gettrace()
+
         def dummy(frame, event, arg):
             return None
 
@@ -371,7 +374,7 @@ class TracerTest(unittest.TestCase):
             _exercise_traced(SEEDS[0], random.Random(1))
             self.assertIs(sys.gettrace(), dummy)
         finally:
-            sys.settrace(None)
+            sys.settrace(saved)
 
     def test_threading_trace_is_untouched(self):
         if not hasattr(threading, "gettrace"):
