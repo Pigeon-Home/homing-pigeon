@@ -21,7 +21,7 @@ Use this protocol: https://pigeon-home.com/PROTOCOLv1
 Shared Secret: "YOUR_SECRET_STRING"
 I have a Windows computer. Retrieve the system clock from it and display it here.
 ```
-IETF Homing Pigeon Draft: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-homing-pigeon-00.md
+IETF Homing Pigeon Draft: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-homing-pigeon-01.md
 
 > ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative
 > control** of the machine to whoever holds the shared secret. The
