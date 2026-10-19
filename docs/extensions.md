@@ -444,6 +444,46 @@ the local wake gate, so on a Pi Light install a hot or
 power-starved board wakes the deterministic Oracle, which
 files its brief from the alert itself — sensor, signal,
 severity, title — with no inference involved at any step.
+
+## The Pi Light example: Airwaves
+
+`examples/extensions/airwaves/` is the Pi's wireless
+neighborhood watch, and the second Pi Light showcase: a Pi
+sits on a desk with its radio on anyway, so it may as well
+keep the baseline of what the air around it normally looks
+like. The watcher reads the scan results the platform
+already has — cached `nmcli` output first, an `iw` scan dump
+as the fallback — and the box's own connected link. It is a
+read-only consumer: it never associates to a network, never
+deauthenticates anyone, never injects frames.
+
+- `extension.json` — the manifest. Name `airwaves`, four
+  declared signals, tunables: `poll_interval_sec`,
+  `gone_after_scans`, `link_drop_db`, `iface`.
+- `airwaves.py` — the watcher. `read_live()` is the only
+  function that touches the platform; the scan parsers and
+  `decide()` are pure, and baselines (known BSSIDs per SSID,
+  the best security each SSID advertises, the AP set, the
+  link's reference signal) live in the state file.
+  `--readings FILE` feeds a scan from JSON instead.
+- `README.md` — the short version, including why BLE is
+  out of scope: no clean standard-library source exists.
+
+The declared signals:
+
+| Signal | Fires when | Severity |
+|--------|------------|----------|
+| `new_access_point` | A BSSID never seen before broadcasts a network this box does not know | medium |
+| `evil_twin_suspect` | A known SSID appears from a NEW BSSID, or a known network suddenly advertises weaker security than its baseline — the wireless form of the ARP-spoof tell | high |
+| `access_point_gone` | A long-known AP is missing across `gone_after_scans` consecutive scans (default 3) | info |
+| `link_degraded` | The box's own link signal drops by `link_drop_db` or more from its reference, or the link roams to another BSSID unexpectedly | medium |
+
+The evil-twin signal is the point of the example, the same
+way `mac_moved` is the point of Wire Arrivals below: an
+identifier the baseline trusts is suddenly being answered
+by different hardware. On a Pi Light install the high signal
+wakes the deterministic Oracle exactly as Pi Health's does.
+
 ## The example: Sky Watcher
 
 `examples/extensions/sky-watcher/` is a working sense for
@@ -503,4 +543,41 @@ entry, because the window opens inside the lead time.)
 Fork it the same way: the manifest pattern, the declared
 signals, and the boring state machine are the parts worth
 keeping; the satellite is yours to replace.
+
+## The catalog: thirteen examples from the workbench
+
+Thirteen more working senses, each one a small diffing
+watcher in the same shape as the three above — a manifest, a
+boring producer with one platform-reading function and a
+pure `decide()`, a state file, and a README. Each is rooted
+in a trade its author practiced: fuzzing, PKI, network
+engineering, penetration testing, kernel work, code signing,
+operations. Powerful-desktop senses are the center of
+gravity; every one also declares how it tunes down for a Pi
+Light install (its README's Light mode section has the
+detail — only knobs the code implements).
+
+| Extension | Watches | Light mode, in one line |
+|-----------|---------|-------------------------|
+| `crash-watch` | Crash/core dump folders: a new dump (medium); the same binary crashing again inside the window (high) | Cadence to 600s, fewer folders, `max_files_per_pass` down |
+| `release-drop` | A drop folder: each artifact arrives with its SHA-384 digest in the alert (info); the same name with a different digest (high) | `max_hash_mb` down (oversize artifacts wait), cadence up |
+| `cert-sentinel` | Certificate files and TLS endpoints: expiry inside 30 days (medium), inside 7 or expired (high), issuer/subject/serial change (info) | Already daily; files-only means zero network probes |
+| `wire-arrivals` | The ARP/neighbor table: a MAC never seen on this LAN (medium); a known IP answering from new hardware (high) | Cadence to 900s, one interface only |
+| `latency-post` | Gateway and target latency by TCP probe: spike over the rolling median (medium), target unreachable (high) | Cadence to 600s, gateway only |
+| `port-watch` | Listening sockets: a new listener (medium); one on a wildcard address or well-known port (high) | Cadence up; `high_only` files only the street-facing doors |
+| `failed-login-watch` | Auth logs: a failure burst inside the window (medium); a success right after a burst (high) | Cadence up, one log file, `burst_count` up |
+| `tripwire` | A file tree's SHA-384 baseline: file appeared or vanished (medium), content changed (high) | Narrower root and excludes, `max_file_mb` down — hashing still costs the bytes it reads |
+| `log-sentinel` | Kernel/system log tails: OOM, panic, segfault, filesystem distress (high); configured patterns (medium) | `tail_bytes` bounds the cost per pass, not the log's size; fewer pattern groups |
+| `service-watch` | Named processes: an expected one dies (high), restart flapping (medium), it comes back (info) | Cadence to 300s, fewer services, flap thresholds up |
+| `backup-freshness` | A backup folder's newest artifact: stale past the threshold (medium), twice it (high), a fresh one lands (info) | Cadence to six hours; this sense is already nearly free |
+| `usb-arrivals` | USB/serial device arrivals: a new device (info); a new storage-class device (medium) | Cadence to 1800s, USB kinds only |
+| `airwaves` | The Pi's wireless neighborhood (full section above): new AP (medium), evil-twin suspect (high), AP gone (info), own link degraded (medium) | Cadence is the knob — 300s to 1800s; it only ever reads |
+
+Two honest limits, stated once for the whole catalog.
+Tripwire over a huge tree cannot be made cheap — hashing
+costs the bytes it reads, so light mode there means a
+narrower tree, not a faster one. And log-sentinel cannot
+watch less than the tail it reads; its knobs bound that
+tail (`tail_bytes`, the pattern groups), which is the real
+cost either way.
 
