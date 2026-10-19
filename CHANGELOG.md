@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.8.3 - 2026-10-18
+
+### Tests
+
+- The invocation-line pin resets the log minute before it
+  looks. mutmut runs the whole suite in one process, the
+  per-minute cap was already spent, and the only line the pin
+  saw was the suppression notice, so stats collection died
+  before any mutant ran.
+
 ## 3.8.2 - 2026-10-18
 
 ### Features

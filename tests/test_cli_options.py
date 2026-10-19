@@ -633,13 +633,20 @@ class InvocationLineTest(_VerbosityGuard):
     def _startup_first_line(self, argv):
         args = Namespace(dry_run=False, no_send=False, once=False,
                          verbose=False)
+        # The suite shares one process, and log() drops INFO past
+        # the per-minute cap. mutmut's stats run hits that cap, so
+        # the line under test was the suppression notice instead
+        # of the invocation. This call is a fresh start.
+        runner._LOG_MINUTE = 0.0
+        runner._LOG_COUNT = 0
+        runner._LOG_DROPPED = 0
         with tempfile.TemporaryDirectory() as d:
             with mock.patch.object(sys, "argv", argv):
                 with _captured_log() as buf:
                     runner.log_startup({"mailbox_user": "a@b.c"},
                                        args, d)
         lines = [ln for ln in buf.getvalue().splitlines()
-                 if ln.strip()]
+                 if ln.strip() and "suppressed this minute" not in ln]
         return lines[0] if lines else ""
 
     def test_first_line_carries_version_and_exact_flags(self):
