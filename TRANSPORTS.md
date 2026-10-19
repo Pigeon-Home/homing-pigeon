@@ -1,11 +1,15 @@
 # Transports: beyond email
 
-> **Status.** Only email is implemented as a job transport, in
-> `runner/runner.py` directly. Anything not built is listed in
-> FUTURE.md: NATS, MQTT, Redis, Postgres, Durable Objects. (A
-> loopback local-signal socket IS shipped — it carries signed
-> `sensor_alert` envelopes from same-box producers, not jobs.)
-> The sections below are design notes, not implementation.
+> **Status.** Three job transports are implemented, in
+> `runner/transports.py`, selected by the `transports` config
+> key (default `["email"]`): **email** (the default, and the
+> project's test transport), the **file** transport (a watched
+> folder), and **core NATS** pub/sub. Everything else below —
+> Cloudflare Queues, NATS JetStream, MQTT, Redis, Postgres,
+> Durable Objects — is design notes, not implementation, and is
+> listed in FUTURE.md. (A loopback local-signal socket IS also
+> shipped — it carries signed `sensor_alert` envelopes from
+> same-box producers, not jobs.)
 
 ## Yes, email. We know.
 
@@ -55,6 +59,35 @@ Anything that wants to carry homing-pigeon must provide:
 
 Meet those five, and you're a transport. Here's the bench.
 
+## Authorization gates
+
+The HMAC signature on the job body is checked by the runner's
+core on every transport, after the pipe delivers. Where a
+transport has credentials of its own, they are a second,
+required gate in front of the signature — not a formality:
+
+- **Email** has one gate: the signature. The mailbox login
+  authorizes the runner's *reading*; it says nothing about any
+  sender.
+- **NATS**, configured in its default posture, has two:
+  broker authentication (user/password or token) is required
+  before the runner will even start the transport, and the
+  signature is checked on every job after that. A deployment
+  that sets `transport_nats.allow_unauthenticated: true` gives
+  the first gate up — it falls back to the signature as the
+  only gate, and the startup log says so.
+- **File** has two: the inbox folder's OS access control —
+  only principals the owner grants write access can submit a
+  job file at all — and then the signature.
+
+That makes a credentialed broker transport, in its default
+required-auth posture, the more secure option of the shipped
+three: submitting a job must pass transport authentication
+AND the signature, where email checks the signature alone.
+Email remains the default anyway — it is the most universal
+pipe and the project's test transport. Here, "default" does
+not mean "most secure".
+
 ---
 
 ## Cloudflare Queues ⭐ — the pick
@@ -101,7 +134,33 @@ protocol. Queues give it a spine."*
 
 ---
 
-## NATS JetStream — the purist's choice
+## NATS (core) — shipped
+
+The runner ships a minimal core-NATS transport: a hand-rolled
+client in the standard library (`runner/transports.py`) that
+speaks INFO/CONNECT/SUB/MSG/PUB/PING/PONG. No JetStream, no
+clustering, no persistence.
+
+- Jobs arrive on `homing-pigeon.jobs` (config
+  `transport_nats.subject`) as the usual envelope: subject
+  line, blank line, signed body. Results publish to
+  `homing-pigeon.results.<job_id>`
+  (`transport_nats.result_subject_prefix`).
+- One connection per poll cycle: connect, subscribe, drain
+  what is waiting, publish the results, disconnect. A dead
+  connection fails the cycle; the next poll reconnects.
+- Broker authentication is required by default: user/password
+  or a token, from the `transport_nats` config keys (which
+  win) or the URL userinfo. With no credentials the transport
+  refuses to start unless `allow_unauthenticated: true` is
+  set — see "Authorization gates" above.
+- Core NATS is a dumb pipe: it does not store-and-forward. A
+  job published while no runner is subscribed is gone.
+  At-least-once rests on the sender re-sending jobs it never
+  saw a result for, and on the runner's seen-set refusing to
+  run the same job twice.
+
+## NATS JetStream — the purist's choice (design notes)
 
 NATS describes itself as "the connective tissue for distributed
 systems," and it is not exaggerating. This is the transport for
@@ -124,6 +183,28 @@ infrastructure, not a SaaS billing line.
 The tradeoff: you're operating infrastructure now. If "I run my own
 NATS cluster" sounds like a fun weekend, this is your transport. If
 it sounds like a pager going off, see Cloudflare Queues.
+
+## File — shipped
+
+The file transport is a watched folder pair, for local
+harnesses, CI, and SI integrations that share a filesystem or
+a sync folder with the runner — no account, no broker, nothing
+to sign up for.
+
+- A job is a file dropped in the inbox (default
+  `<base_dir>/transport-file/inbox`): first line the subject
+  line, blank line, then the signed body — exactly what
+  `cloud/send_job.py new ... --to-file <path>` writes.
+- The runner processes each file once and moves it to a
+  `done/` subfolder — never deletes. Results land in the
+  outbox as `<job_id>.result.txt`, same envelope shape.
+- Refusals mirror the local-inbox discipline: symlinks are
+  refused unread, files over 4 MiB are refused unread, and a
+  malformed envelope is logged and still consumed.
+- Its first gate is the inbox folder's OS access control:
+  only principals the owner grants write access can submit.
+  The signature is the second gate (see "Authorization
+  gates").
 
 ## MQTT — the IoT pick
 
@@ -214,12 +295,14 @@ notification is genuinely nicer than a 30-second poll.
 
 ## Comparison
 
-Only the Email row runs in the runner. The other rows are design
-notes. There is no setting that switches the runner onto them.
+Email, File, and core NATS run in the runner today, selected by
+the `transports` config key. The other rows are design notes.
 
 | Transport | NAT-friendly | Auth story | At-least-once | Self-hostable | Free tier | In the runner |
 |---|---|---|---|---|---|---|
-| Email | poll | HMAC on the body | Unseen flag | n/a (hosted) | yes | yes, the only one |
+| Email | poll | HMAC signature only | Unseen flag | n/a (hosted) | yes | yes, the default |
+| File | n/a (local folder) | Folder OS ACL, then HMAC | Process-once + done/ | n/a | n/a | yes |
+| NATS (core) | outbound connect | Broker auth (required), then HMAC | Sender resend + seen-set | tiny binary | self-host | yes |
 | Cloudflare Queues | HTTPS poll | API token | Retries + DLQ | no | yes | no |
 | NATS JetStream | yes | NKey/JWT | Consumer acks | tiny binary | self-host | no |
 | MQTT | yes | TLS + creds | QoS 1 | Mosquitto | self-host | no |
@@ -227,36 +310,52 @@ notes. There is no setting that switches the runner onto them.
 | Postgres | yes | DB creds | Transactions | yes | Neon/Supabase | no |
 | Durable Objects | push | Token | Txn storage | no | yes | no |
 
+On gates: a credentialed NATS deployment in its default
+required-auth posture is the more secure option over email —
+two gates (broker authentication, then the signature) against
+email's one (the signature). A deployment with
+`allow_unauthenticated: true` is not: it falls back to the
+signature as the only gate. See "Authorization gates".
+
 ## Writing a new transport
 
-The protocol is deliberately transport-agnostic. A future transport
-would implement three operations and nothing else:
+The protocol is deliberately transport-agnostic, and the seam
+is real: transports live in `runner/transports.py`. A transport
+provides:
 
-- `send(queue, blob)` — put an opaque signed JSON blob somewhere
-- `poll(queue) -> [blob]` — retrieve unprocessed blobs, outbound-only
-- `ack(blob_id)` — mark processed (or don't, for redelivery)
+- `fetch() -> [IncomingMessage]` — collect waiting job
+  envelopes as (subject, body, reply, ack) messages,
+  outbound-only
+- a `reply(subject, body)` on each message — carry one result
+  back out
+- an `ack()` on each message — mark it consumed (or don't, for
+  redelivery)
 
-The blob would not change. The signatures would not change. The
-Oracle would not know the difference. The runner does not load a
-transport module today. Email is hardcoded in `runner/runner.py`.
-A pull request is how a second pipe would land. There is no plugin
-hook.
+The runner hands every fetched message to the same
+verification/execution core the mail path uses, services each
+transport named in the `transports` config key (or the
+`--transports` flag) once per poll cycle, and routes each
+result through the message's own `reply`. The blob does not
+change between transports. The signatures do not change. The
+Oracle does not know the difference.
 
-Result routing travels with the job. A signed job may name where its
-result goes — on email that's the `reply_to` field; on a future
-transport it would be the equivalent (a reply queue or address inside
-the signed blob). The transport never invents a destination: it
-delivers where the signed job says, and falls back to the shared
-mailbox/queue when the job names nothing.
+Result routing travels with the job. A signed job may name
+where its result goes — on email that's the `reply_to` field.
+On the shipped non-mail transports the result returns over the
+same transport that carried the job in (the file outbox, the
+NATS result subject). The transport never invents a
+destination.
 
 ## Bootstrapping
 
-Email is the only pipe you can turn on today. Get that running (a
-dedicated mailbox account), and stop there. What is not built, and
-what was cut, is listed in FUTURE.md. There is no config
-key that flips the runner onto another pipe. A runbook that says
-"install the dependency and switch the transport" will not find that
-switch.
+Email is the pipe to turn on first: get that running (a
+dedicated mailbox account). The file transport needs nothing
+else — set `transports` to include `file` and drop envelopes
+in the inbox. NATS needs a broker you run (or one you already
+have) plus credentials for it. The `transports` config key
+(or `--transports` for one process) is the switch; several
+transports can run side by side in one process. What is not
+built, and what was cut, is listed in FUTURE.md.
 
 ## Local socket — cut
 

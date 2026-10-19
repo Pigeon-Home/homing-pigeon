@@ -79,7 +79,8 @@ Ideas...
 
 ## Misc
 
-- NATS, MQTT, Redis, Postgres, and Durable Objects. Cut.
+- NATS JetStream, MQTT, Redis, Postgres, and Durable Objects. Cut.
+  (Core NATS pub/sub shipped as a job transport — TRANSPORTS.md.)
   (The local-signal socket shipped — signed `sensor_alert`
   envelopes only, not a job transport.) TRANSPORTS.md.
 - SMS paging. `docs/dri-playbook.md`.
