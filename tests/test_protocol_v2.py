@@ -145,7 +145,7 @@ class SenderFloorTest(unittest.TestCase):
             kind="ping", job_id="sj-1", key_id=None, aud=None,
             reply_to=None, timeout=300, script_url=None,
             script_sha384=None, script_file=None, file=[], arg=[],
-            env=[], interpreter=None, secret=secret)
+            env=[], interpreter=None, secret=secret, cleartext=True)
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             rc = send_job.cmd_new(args)

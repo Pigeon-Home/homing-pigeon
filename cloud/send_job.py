@@ -22,6 +22,13 @@ Usage:
 
 `new` prints the email subject on the first line, a blank line, then the body.
 `verify` reads a signed body from stdin (or a file), verifies it, and pretty-prints.
+
+Jobs are ENCRYPTED by default (per-job encryption: the signed body is
+wrapped in a signed ChaCha20-Poly1305 envelope keyed from the shared
+secret -- see runner/jobcrypto.py). `new --cleartext` produces the
+plain signed body instead, for runners too old to read envelopes.
+Encryption has no forward secrecy: the secret is static, so anyone
+who later learns it can read every recorded envelope.
 """
 
 import argparse
@@ -34,6 +41,18 @@ import re
 import sys
 import uuid
 from datetime import datetime, timezone
+
+try:
+    from runner import jobcrypto
+except ImportError:  # run by path: load the one implementation by file
+    import importlib.util
+    _jc_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "runner", "jobcrypto.py")
+    _jc_spec = importlib.util.spec_from_file_location(
+        "hp_jobcrypto", _jc_path)
+    jobcrypto = importlib.util.module_from_spec(_jc_spec)
+    _jc_spec.loader.exec_module(jobcrypto)
 
 try:
     from runner._version import __version__
@@ -242,6 +261,12 @@ def cmd_new(args) -> int:
             payload["interpreter"] = json.loads(args.interpreter)
         payload["timeout_sec"] = args.timeout
     body = sign_payload(payload, args.secret)
+    if not getattr(args, "cleartext", False):
+        # Per-job encryption is the default: encrypt the signed
+        # body whole, then sign the envelope as transmitted.
+        body = jobcrypto.encrypt_body(
+            body, args.secret, job_id=payload["job_id"],
+            key_id=args.key_id or "", sign=sign_payload)
     if getattr(args, "to_file", None):
         # The file transport's envelope is exactly what would
         # have been printed; write it instead of printing.
@@ -262,6 +287,20 @@ def cmd_verify(args) -> int:
     text = open(args.file, encoding="utf-8").read() if args.file else sys.stdin.read()
     try:
         payload = verify_body(text, args.secret)
+        if jobcrypto.is_envelope(payload):
+            # An encrypted result (or job): the envelope's
+            # signature has just verified. Decryption needs the
+            # job_id, which lives in the message subject, not the
+            # envelope -- hence --job-id.
+            if not args.job_id:
+                print("INVALID: body is an encryption envelope; "
+                      "pass --job-id <id> (from the subject) to "
+                      "decrypt it", file=sys.stderr)
+                return 1
+            inner = jobcrypto.decrypt_body(
+                payload, args.secret, job_id=args.job_id,
+                key_id=payload.get("key_id") or "")
+            payload = verify_body(inner, args.secret)
     except ValueError as e:
         print(f"INVALID: {e}", file=sys.stderr)
         return 1
@@ -373,6 +412,11 @@ def main() -> int:
                    help="write the envelope (subject, blank line, "
                         "signed body) to PATH for the runner's "
                         "file transport instead of printing it")
+    g.add_argument("--cleartext", action="store_true",
+                   help="do NOT encrypt the job: send the plain "
+                        "signed body, readable by every hop and "
+                        "by runners too old for per-job "
+                        "encryption (the default is encrypted)")
     n.set_defaults(func=cmd_new)
 
     ts = sub.add_parser(
@@ -395,6 +439,9 @@ def main() -> int:
         description="Verify a signed result body and "
                     "pretty-print it.")
     v.add_argument("--secret", required=True, metavar="SECRET")
+    v.add_argument("--job-id", default=None, metavar="ID",
+                   help="job id from the message subject; "
+                        "required to decrypt an encrypted body")
     v.add_argument("file", nargs="?", default=None, metavar="PATH",
                    help="file to read (default: stdin)")
     v.set_defaults(func=cmd_verify)

@@ -1246,7 +1246,7 @@ class ReplyToTests(unittest.TestCase):
             reply_to="owner@example.com", timeout=300,
             script_url=None, script_sha384=None, script_file=None,
             file=[], arg=[], env=[], interpreter=None,
-            secret=SECRET)
+            secret=SECRET, cleartext=True)
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             self.assertEqual(send_job.cmd_new(args), 0)
@@ -1263,7 +1263,7 @@ class ReplyToTests(unittest.TestCase):
             reply_to=None, timeout=300,
             script_url=None, script_sha384=None, script_file=None,
             file=[], arg=[], env=[], interpreter=None,
-            secret=SECRET)
+            secret=SECRET, cleartext=True)
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             self.assertEqual(send_job.cmd_new(args), 0)
