@@ -100,12 +100,12 @@ class MutationGateTest(unittest.TestCase):
                              "%s must not be tag-gated" % job)
 
     def test_mutation_is_a_signal_not_a_block(self):
-        # "Signal, not a block" must hold in the run conclusion,
-        # not only in the comment: the mirror publishers key off
-        # workflow_run.conclusion == 'success', and a failed
-        # mutation job without continue-on-error stamps the whole
-        # run 'failure' -- which is exactly how v3.7.29 never
-        # reached SourceForge or GitLab.
+        # "Signal, not a block" must hold in the run conclusion.
+        # The mirror jobs need the release, not this job, so a
+        # failed mutation cannot hold SourceForge or GitLab. It
+        # still must not stamp the whole tag run 'failure' --
+        # that is how v3.7.29 never reached either mirror, back
+        # when they keyed off workflow_run.conclusion.
         block = _job_block(_workflow(), "mutation")
         self.assertIn("continue-on-error: true", block)
 
@@ -116,7 +116,7 @@ class MutationGateTest(unittest.TestCase):
         workflow = _workflow()
         for job in ("test", "typecheck", "build-linux", "build-macos",
                     "build-windows", "build-python", "build-pi-light",
-                    "release", "pypi-publish"):
+                    "release", "pypi-publish", "sourceforge", "gitlab"):
             block = _job_block(workflow, job)
             self.assertNotIn("continue-on-error", block,
                              "%s must stay a real gate" % job)
@@ -151,7 +151,7 @@ class PiLightArchiveTest(unittest.TestCase):
         self.assertIn("build-pi-light", block)
 
     def test_the_archive_name_trips_no_mirror_classifier(self):
-        # sourceforge.yml marks a release file as a platform's
+        # The sourceforge job marks a release file as a platform's
         # default download when its name contains windows, linux,
         # or macos/darwin, and expects exactly 3 marks. The
         # pi-light archive must contain none of those words, or
@@ -160,10 +160,10 @@ class PiLightArchiveTest(unittest.TestCase):
             self.assertNotIn(word, "homing-pigeon-pi-light-arm64-")
 
     def test_the_mirrors_count_four_install_archives(self):
-        for wf in ("sourceforge.yml", "gitlab.yml"):
-            with open(os.path.join(_root(), ".github", "workflows", wf),
-                      encoding="utf-8") as fh:
-                self.assertIn("the four install archives", fh.read(), wf)
+        workflow = _workflow()
+        for job in ("sourceforge", "gitlab"):
+            self.assertIn("the four install archives",
+                          _job_block(workflow, job), job)
 
 
 def _also_copy():
@@ -264,8 +264,7 @@ class PipelineLiftsTest(unittest.TestCase):
     pins keep the six lifts from quietly un-landing.
     """
 
-    WORKFLOWS = ("build.yml", "docker.yml", "security.yml",
-                 "gitlab.yml", "sourceforge.yml")
+    WORKFLOWS = ("build.yml", "docker.yml", "security.yml")
 
     def _wf(self, name):
         with open(os.path.join(_root(), ".github", "workflows", name),
@@ -318,11 +317,13 @@ class PipelineLiftsTest(unittest.TestCase):
             {("contents", "read"), ("packages", "write"),
              ("id-token", "write"), ("attestations", "write")},
             _perm_entries(_job_block(docker, "build-and-push")))
-        for name in ("gitlab.yml", "sourceforge.yml"):
-            self.assertEqual(
-                {("contents", "read"), ("actions", "read")},
-                _perm_entries(_job_block(self._wf(name), "publish")),
-                name)
+        workflow = _workflow()
+        for job in ("sourceforge", "gitlab"):
+            block = _job_block(workflow, job)
+            self.assertEqual({("contents", "read")},
+                             _perm_entries(block), job)
+            self.assertIn("refs/tags/v", block)
+            self.assertIn("needs: [release]", block)
 
     # Lift 6: CI installs resolve through the one pin file.
     def test_ci_installs_come_from_the_pin_file(self):

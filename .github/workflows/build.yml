@@ -357,3 +357,193 @@ jobs:
           path: dist
       - run: rm -f dist/BUILD-PROVENANCE.json
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+
+  sourceforge:
+    # Uploads the four install archives, the wheel, the sdist,
+    # SHA384SUMS, and the SBOM. Runs only after the GitHub Release
+    # only on a tag push, so a push to main never starts it.
+    # Skips until the repo secrets exist, so a release is never
+    # blocked on SourceForge. Upload user: dru555444, unless
+    # SOURCEFORGE_USER is set. Secrets: SOURCEFORGE_SSH_KEY,
+    # SOURCEFORGE_API_KEY. Variable or secret: SOURCEFORGE_PROJECT.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: publish release files to SourceForge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SF_USER: ${{ secrets.SOURCEFORGE_USER }}
+          SF_KEY: ${{ secrets.SOURCEFORGE_SSH_KEY }}
+          SF_API: ${{ secrets.SOURCEFORGE_API_KEY }}
+          SF_PROJECT: ${{ vars.SOURCEFORGE_PROJECT || secrets.SOURCEFORGE_PROJECT }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          SF_USER="${SF_USER:-dru555444}"
+          if [ -z "${SF_KEY}" ] || [ -z "${SF_API}" ] || [ -z "${SF_PROJECT}" ]; then
+            echo "::warning::SourceForge publish skipped. Set secrets SOURCEFORGE_SSH_KEY and SOURCEFORGE_API_KEY, and variable SOURCEFORGE_PROJECT."
+            exit 0
+          fi
+          case "$SF_PROJECT" in
+            *[!A-Za-z0-9-]*|""|[-]*) echo "SOURCEFORGE_PROJECT must be a SourceForge unix name"; exit 1 ;;
+          esac
+          if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            SHA="${{ github.sha }}"
+            case "$SHA" in
+              *[!0-9a-f]*|"") echo "no commit sha for this run"; exit 1 ;;
+            esac
+            TAG=$(gh api --paginate "repos/$REPO/git/matching-refs/tags/v" --jq ".[] | select(.object.sha==\"$SHA\") | .ref" | sed 's#refs/tags/##' | head -n 1)
+            [ -n "$TAG" ] || { echo "no v* tag on $SHA"; exit 1; }
+          fi
+          case "$TAG" in
+            v[0-9A-Za-z._+-]*) ;;
+            *) echo "refusing tag $TAG"; exit 1 ;;
+          esac
+          mkdir -p publish
+          gh release download "$TAG" --repo "$REPO" --dir publish
+          test -f publish/SHA384SUMS
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$SF_KEY" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          printf '%s\n' 'frs.sourceforge.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOQD35Ujalhh+JJkPvMckDlhu4dS7WH6NsOJ15iGCJLC' >> "$HOME/.ssh/known_hosts"
+          ssh-keygen -lf "$HOME/.ssh/known_hosts" | grep -q 'SHA256:209BDmH3jsRyO9UeGPPgLWPSegKmYCBIya0nR/AWWCY'
+          sftp -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o IdentitiesOnly=yes -b - "${SF_USER}@frs.sourceforge.net" <<EOF
+          -mkdir /home/frs/project/${SF_PROJECT}/${TAG}
+          EOF
+          rsync -av \
+            -e "ssh -i $HOME/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes" \
+            publish/ "${SF_USER}@frs.sourceforge.net:/home/frs/project/${SF_PROJECT}/${TAG}/"
+          python3 - <<'PY'
+          import os, pathlib, subprocess, urllib.parse
+          project = os.environ["SF_PROJECT"]
+          tag = os.environ["TAG"]
+          key = os.environ["SF_API"]
+          marked = 0
+          for path in sorted(pathlib.Path("publish").iterdir()):
+              name = path.name
+              low = name.lower()
+              if "windows" in low and low.endswith(".zip"):
+                  platforms = ["windows"]
+              elif "linux" in low and low.endswith((".tar.gz", ".tgz")):
+                  platforms = ["linux"]
+              elif ("macos" in low or "darwin" in low) and low.endswith((".tar.gz", ".tgz", ".zip")):
+                  platforms = ["mac"]
+              else:
+                  continue
+              quoted = "/".join(urllib.parse.quote(part) for part in (tag, name))
+              url = f"https://sourceforge.net/projects/{urllib.parse.quote(project)}/files/{quoted}"
+              data = "&".join(f"default={item}" for item in platforms)
+              subprocess.check_call([
+                  "curl", "-fsS", "-H", "Accept: application/json", "-X", "PUT",
+                  "--data", data,
+                  "--data-urlencode", f"api_key={key}",
+                  url,
+              ])
+              marked += 1
+              print(f"default {platforms[0]} -> {name}")
+          if marked != 3:
+              raise SystemExit(f"expected 3 default downloads, marked {marked}")
+          PY
+          git clone --mirror "https://github.com/${REPO}.git" sf-src
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git -C sf-src push "ssh://${SF_USER}@git.code.sf.net/p/${SF_PROJECT}/code" refs/heads/main:refs/heads/main
+          git -C sf-src push --force "ssh://${SF_USER}@git.code.sf.net/p/${SF_PROJECT}/code" 'refs/tags/*:refs/tags/*'
+          echo "source mirrored to SourceForge git (main + tags)"
+
+  gitlab:
+    # Uploads the four install archives, the wheel, the sdist,
+    # SHA384SUMS, and the SBOM, plus a GitLab Release linking
+    # as SourceForge: tag push, after the GitHub Release. Skips
+    # until GITLAB_TOKEN exists. Variable or secret:
+    # GITLAB_PROJECT (default pigeon-home/homing-pigeon),
+    # GITLAB_USER (default pigeon-home).
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: publish release to GitLab
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GL_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          GL_PROJECT: ${{ vars.GITLAB_PROJECT || secrets.GITLAB_PROJECT || 'pigeon-home/homing-pigeon' }}
+          GL_USER: ${{ vars.GITLAB_USER || secrets.GITLAB_USER || 'pigeon-home' }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GL_TOKEN}" ]; then
+            echo "::warning::GitLab publish skipped. Set the GITLAB_TOKEN secret."
+            exit 0
+          fi
+          if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            SHA="${{ github.sha }}"
+            case "$SHA" in
+              *[!0-9a-f]*|"") echo "no commit sha for this run"; exit 1 ;;
+            esac
+            TAG=$(gh api --paginate "repos/$REPO/git/matching-refs/tags/v" --jq ".[] | select(.object.sha==\"$SHA\") | .ref" | sed 's#refs/tags/##' | head -n 1)
+            [ -n "$TAG" ] || { echo "no v* tag on $SHA"; exit 1; }
+          fi
+          case "$TAG" in
+            v[0-9A-Za-z._+-]*) ;;
+            *) echo "refusing tag $TAG"; exit 1 ;;
+          esac
+          GL_ENC=$(printf '%s' "$GL_PROJECT" | sed 's|/|%2F|g')
+          export GL_API="https://gitlab.com/api/v4/projects/${GL_ENC}"
+          git clone --mirror "https://github.com/${REPO}.git" gl-src
+          git -C gl-src push "https://${GL_USER}:${GL_TOKEN}@gitlab.com/${GL_PROJECT}.git" refs/heads/main:refs/heads/main
+          git -C gl-src push --force "https://${GL_USER}:${GL_TOKEN}@gitlab.com/${GL_PROJECT}.git" 'refs/tags/*:refs/tags/*'
+          echo "source mirrored to GitLab (main + tags)"
+          mkdir -p publish
+          gh release download "$TAG" --repo "$REPO" --dir publish
+          test -f publish/SHA384SUMS
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess, urllib.parse
+          token = os.environ["GL_TOKEN"]
+          api = os.environ["GL_API"]
+          project = os.environ["GL_PROJECT"]
+          tag = os.environ["TAG"]
+
+          def call(method, url, data=None):
+              cmd = ["curl", "-fsS", "-X", method,
+                     "-H", f"PRIVATE-TOKEN: {token}", url]
+              if data is not None:
+                  cmd += ["-H", "Content-Type: application/json",
+                          "--data", json.dumps(data)]
+              return subprocess.check_call(cmd)
+
+          links = []
+          for path in sorted(pathlib.Path("publish").iterdir()):
+              url = (f"{api}/packages/generic/homing-pigeon/"
+                     f"{urllib.parse.quote(tag, safe='')}/{path.name}")
+              subprocess.check_call([
+                  "curl", "-fsS", "-X", "PUT",
+                  "-H", f"PRIVATE-TOKEN: {token}",
+                  "--upload-file", str(path), url])
+              print(f"uploaded {path.name}")
+              links.append({
+                  "name": path.name,
+                  "url": url,
+                  "link_type": "package",
+              })
+          body = {
+              "tag_name": tag,
+              "name": f"homing-pigeon {tag}",
+              "description": ("Mirrored from the GitHub release. "
+                              "Release files are in the package "
+                              "registry, linked below."),
+              "assets": {"links": links},
+          }
+          try:
+              call("POST", f"{api}/releases", body)
+              print(f"gitlab release {tag} created")
+          except subprocess.CalledProcessError:
+              call("PUT", f"{api}/releases/{urllib.parse.quote(tag, safe='')}",
+                   body)
+              print(f"gitlab release {tag} updated")
+          PY
