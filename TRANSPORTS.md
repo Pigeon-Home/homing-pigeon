@@ -1,11 +1,13 @@
 # Transports: beyond email
 
-> **Status.** Three job transports are implemented, and all
-> three are **transport extensions**: standalone programs the
+> **Status.** Four job transports are implemented, and all
+> four are **transport extensions**: standalone programs the
 > runner supervises as child processes, selected by the
 > `transports` config key (default `["email"]`): **email** (the
 > default, and the project's test transport), the **file**
-> transport (a watched folder), and **core NATS** pub/sub. The
+> transport (a watched folder), **core NATS** pub/sub, and the
+> **DTLS** session binding (shipped below; off unless enabled).
+> The
 > runner core is transport-blind — it imports no transport code
 > and talks to each extension through a file channel (job
 > envelopes in, result envelopes out; see "Writing a new
@@ -134,7 +136,7 @@ knows it exists.
 
 ---
 
-## Cloudflare Queues ⭐ — the pick
+## Cloudflare Queues — design notes (not built; deferred)
 
 If email is the carrier pigeon, Cloudflare Queues is the freight
 rail. This is the transport the protocol *wants* to grow into, and
@@ -259,8 +261,8 @@ broker, nothing to sign up for.
 ## DTLS — shipped (the session binding)
 
 The DTLS transport extension is not a store-and-forward
-transport: it is the protocol's version 2 binding from
-`docs/ietf/draft-homing-pigeon-00.md` — a direct DTLS 1.3
+transport: it is the DTLS session binding of protocol
+version 1 from `docs/ietf/draft-homing-pigeon-00.md` — a direct DTLS 1.3
 session between the SI and the runner, specified there and
 implemented as a bounded pure-Python profile
 (`runner/dtlsproto.py`, stdlib only) in the extension at

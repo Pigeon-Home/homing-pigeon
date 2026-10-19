@@ -138,8 +138,10 @@ Run down the alternatives a sender-side SI actually has:
    the connection: an inbound webhook needs the agent to
    expose a publicly reachable endpoint and accept
    connections from the internet. This design deliberately
-   has the agent dial out and poll, so the box needs no
-   listening port at all.
+   has the agent dial out and poll, so on the email binding
+   the box needs no listening port at all — the one
+   listening transport, DTLS, is off unless the owner
+   enables it, and the loopback listeners are local only.
 3. **Chat platforms are partial and gated.** Slack, Telegram,
    and their kin show up as human chat integrations in some
    ecosystems only. Each is gated on its own account and API
@@ -170,8 +172,17 @@ And it is not needed. Confidentiality belongs to the layer
 that can actually provide it: a job is encrypted as an
 object, under a key derived from the shared secret, and
 that encryption is on by default; each mail hop runs over
-TLS as a requirement, not an option. The mail system is
+TLS, which the draft requires — the one owner option,
+`mail_tls_required: false`, exists for the hop posture
+only, and an installation that sets it does not carry the
+draft's confidentiality posture. The mail system is
 transport, not a security layer.
+
+For the record, the protocol also permits the other
+arrangement: an implementation MAY support PGP on the
+mail binding (the draft, Section 5). It is not required,
+and the reference implementation does not do it, because
+the job encrypts itself (the draft, Section 16).
 
 ## Why does the protocol use no public-key (asymmetric) cryptography?
 
@@ -190,8 +201,8 @@ recorded traffic. The symmetric constructions do not: the
 generic quantum speedup is answered by key size, and the
 shared secret's floor is 128 bits, with 256-bit generation.
 
-The one deliberate exception proves the rule. The version
-2 DTLS binding uses ephemeral Diffie-Hellman to get
+The one deliberate exception proves the rule. The DTLS
+binding uses ephemeral Diffie-Hellman to get
 forward secrecy, and the draft's security considerations
 say plainly that recorded sessions of that binding do not
 share the core protocol's quantum posture. Post-quantum

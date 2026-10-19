@@ -16,8 +16,7 @@ Ideas...
   reaches. Honest scope: this gives the job (and, applied
   symmetrically, the result) confidentiality end-to-end
   across store-and-forward hops, which hop TLS never can;
-  it does not create a session, so the v2 greeting work
-  stays future. The change that ships it MUST revise the
+  it does not create a session. The change that ships it MUST revise the
   confidentiality claims (then draft Section 16.2) in
   step -- BUILT: runner/jobcrypto.py
   (pure-Python ChaCha20-Poly1305 per RFC 8439, HKDF-SHA-384
@@ -30,11 +29,11 @@ Ideas...
   discussion moved to Section 17.2, revised in step, the
   no-forward-secrecy limit stated in both places).
   Placement (DRU): the feature is
-  specified in the current IETF draft as an optional
-  extension -- no second (v2) document is needed for it,
-  and neither version axis moves: the protocol stays
-  version 1 and the application version keeps its own
-  cadence.
+  specified in the current IETF draft (Section 16) as a
+  requirement of the protocol -- no second document is
+  needed for it, and neither version axis moves: the
+  protocol stays version 1 and the application version
+  keeps its own cadence.
   Default posture (DRU, reversing the
   usual feature-flag pattern): encryption is ON BY
   DEFAULT in the software. A command-line parameter
@@ -46,33 +45,33 @@ Ideas...
   default install's confidentiality story flips, and the
   documentation sweep that revises the claims (above)
   covers README, TRANSPORTS.md, and the configuring docs
-  in the same change -- live docs describe shipped state,
-  so until the build lands, this entry is the record.
+  in the same change. (Live docs describe shipped state;
+  this entry remains as the record of the decision.)
 
 ## The pipe
 
-- DTLS/TLS with the shared secret as an external pre-shared
-  key (PSK): a future direct binding (DTLS 1.3, RFC 9147;
-  connection ID so NAT rebinding does not kill the session)
-  where the channel itself provides confidentiality and
-  authentication. The existing 128-bit entropy floor already
+- DTLS with the shared secret as an external pre-shared
+  key (PSK) -- BUILT as a binding of protocol version 1
+  (details at the end of this entry). A direct binding
+  (DTLS 1.3, RFC 9147; connection ID so NAT rebinding does
+  not kill the session) where the channel itself provides
+  confidentiality and authentication. The existing 128-bit entropy floor already
   sizes the secret for PSK use. On such a binding the HMAC
   becomes defense in depth rather than the sole gate. The
   hop caveat survives: anywhere a store-and-forward
   intermediary terminates the channel, confidentiality ends
   at that hop (Section 17.2 of the draft). Channel security
   is not delivery -- the result/ack flow is unchanged.
-  This is protocol version 2 scope (the draft already seeds
-  v2 with the normative entropy floor). It also asks
+  It also asks
   something real of the cloud SI: the SI would have to
   terminate DTLS itself -- handshake, sessions, connection
   IDs, retransmission -- where today its whole burden is
   signing JSON and handing it to a connector. Many SI
-  environments cannot open a UDP socket at all, so v2's
-  binding would be an addition, never a replacement: the
+  environments cannot open a UDP socket at all, so the
+  binding is an addition, never a replacement: the
   email binding stays the one every SI can already reach.
-  Hard requirement (DRU): if this binding
-  is ever built, it MUST enforce perfect forward secrecy.
+  Hard requirement (DRU): this binding
+  MUST enforce perfect forward secrecy, and as built it does.
   PSK-only key exchange (psk_ke) is prohibited -- sessions
   are established and resumed only with ephemeral
   (EC)DHE in the loop (psk_dhe_ke), resumption included,
@@ -85,7 +84,8 @@ Ideas...
   ciphersuite, PSK-only, stateless cookie exchange,
   Connection IDs), `runner/transport_extensions/dtls/`,
   client `cloud/send_dtls.py`, specified in
-  `docs/ietf/draft-homing-pigeon-00.md` (Part II). Perfect
+  `docs/ietf/draft-homing-pigeon-00.md` (Sections 19-22).
+  Perfect
   forward secrecy is a hard requirement of the profile
   as built: psk_dhe_ke only, a fresh X25519 ephemeral on
   every handshake and every resumption, and psk_ke
@@ -94,13 +94,14 @@ Ideas...
   key exchange for the profile. The X25519 ephemeral is
   the binding's one quantum-exposed element (a recorded
   session falls to a future cryptographically relevant
-  quantum computer; Part I's symmetric constructions do
-  not). Draft-homing-pigeon-00 Section 22.1 states the
+  quantum computer; the core protocol's symmetric
+  constructions do not). Draft-homing-pigeon-00 Section 22.1 states the
   limit; the hybrid exchange is the remedy when the
   ecosystem's post-quantum pieces are askable.
 
-- A session's first acknowledgment carries the platform:
-  a direct v2 binding (above) gives the two sides a real
+- A session's first acknowledgment carries the platform --
+  BUILT with the DTLS binding (details at the end of this
+  entry): the direct binding (above) gives the two sides a real
   session, which store-and-forward email never has. The
   runner's first acknowledgment in such a session SHOULD
   carry rudimentary platform information -- the OS family
@@ -114,18 +115,18 @@ Ideas...
   necessities at the tightest posture to versions and
   PATH tools at the open ones. Disclosure happens only
   after authentication completes; an unauthenticated peer
-  harvests nothing. Development note: this
-  hangs on the v2 session existing; when and if IETF
-  version 2 of the protocol is supported, how the software
-  deals with platform identity gets revised around it (the
-  email-era relative is the platform-metadata-on-results
-  idea under "Before a job runs"). The same change that
-  adds any confidentiality mechanism MUST revise the
-  documentation's confidentiality claims in step -- the
-  draft's confidentiality discussion (Section 17.2 since
-  the per-job encryption extension landed as Section 16)
-  says what exists and what does not, and claims describe
-  shipped state only.
+  harvests nothing. Development note (history): the
+  greeting hangs on the DTLS session existing -- a
+  store-and-forward binding has no session to hang it on
+  (the email-era relative is the
+  platform-metadata-on-results idea under "Before a job
+  runs"). The same change that adds any confidentiality
+  mechanism MUST revise the documentation's
+  confidentiality claims in step -- the draft's
+  confidentiality discussion (Section 17.2, with per-job
+  encryption specified as Section 16) says what exists
+  and what does not, and claims describe shipped state
+  only.
   BUILT with the DTLS binding above: the
   greeting is the session's first application message,
   sent only after authentication completes, tiered by
@@ -185,10 +186,13 @@ Ideas...
 - A check that the runner binary has not changed, a hash chain
   on the audit log, and checking SHA384SUMS during install.
   `docs/security-gaps.md`.
-- Job review once message bodies are encrypted, and a separate
-  Oracle signing key. `docs/job-review.md`.
-- The local test chat waits for the result email.
-  `docs/handoff-local-si.md`.
+- A separate Oracle signing key. (Job review once message
+  bodies are encrypted is BUILT -- runner/review.py, and
+  bodies are encrypted by default now; this entry remains
+  for the signing key alone.) `docs/job-review.md`.
+- The local test chat runs the whole exchange on one box:
+  it acts as the cloud SI in-process and reads the result
+  directly -- no email is sent. `docs/handoff-local-si.md`.
 
 ## The hardware
 
@@ -207,7 +211,8 @@ Ideas...
   (Core NATS pub/sub shipped as a job transport — TRANSPORTS.md.)
   (The local-signal socket shipped — signed `sensor_alert`
   envelopes only, not a job transport.) TRANSPORTS.md.
-- SMS paging. `docs/dri-playbook.md`.
+- SMS paging -- decided against (DRU; see runner/dri.py).
+  `docs/dri-playbook.md`.
 - TLS inspection and a WAF. `docs/networking.md`.
 - Line-rate network detection, a 24/7 ML pipeline, and adopting
   MCP. `docs/industry-map.md`.

@@ -69,7 +69,8 @@ There is no adapter module. Status: `docs/transports-status.md`.
   direct path itself still ships: `runner/local_test.py`'s
   `answer_as_oracle()` / `repl()` run asks in-process. Separately,
   the runner's own Oracle window serves its page at `/` with
-  `POST /ask`; only other paths 404.
+  `POST /ask`, and a token-gated `GET /status` (200 with the
+  token, 403 without); all other paths 404.
 - Extra buttons. A chatbot has one text box and one send button.
 - Homemade chat page. Replaced by Open WebUI.
 

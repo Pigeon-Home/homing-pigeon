@@ -14,14 +14,16 @@ facts a reader may need to cite. Git history carries the rest.
   3.9.0 config works unchanged; the shared secret is never
   handed to a carrying pipe. Anyone can drop in a transport —
   a valid manifest loads, registered or not.
-- **DTLS session binding (protocol version 2).** A new `dtls`
+- **DTLS session binding.** A new `dtls`
   transport extension terminates DTLS 1.3 sessions directly:
   the shared secret as external PSK, `psk_dhe_ke` only
   (forward secrecy is a hard requirement, resumption
   included; `psk_ke` is never offered or accepted),
   connection IDs so NAT rebinding survives, a stateless cookie
   exchange before any large flight. Off until the owner
-  enables it — the product's first inbound listener. The
+  enables it — the product's first network-facing inbound
+  listener (the loopback local-signal socket and the Oracle
+  page predate it). The
   session's first message is the greeting: platform
   information tiered by the responder's own configuration
   (`none` / `family` / `standard` / `full`, default family),
@@ -43,12 +45,16 @@ facts a reader may need to cite. Git history carries the rest.
   suites, so the hops are forward-secret as 1.3 is by
   construction. The opt-out relaxes verification only; no
   setting enables cleartext mail.
-- **One draft.** The IETF documents consolidated into
-  `draft-homing-pigeon-00` (the one canonical file): Part I
-  specifies version 1, Part II
-  version 2, one numbering, one reference list. The -00 file
-  remains as a pointer so its URI resolves. The draft's mail
-  binding now requires TLS (MUST, RFC 8314/8996/9325).
+- **One draft, one version.** The IETF documents
+  consolidated into `draft-homing-pigeon-00` (the one
+  canonical file): one protocol version, with the email,
+  file, NATS, and DTLS bindings in one numbering and one
+  reference list — the DTLS work is a binding of version 1,
+  not a second version. The short-lived pointer files are
+  removed; the -00 file is the document itself. The draft's
+  mail binding now requires TLS (MUST, RFC 8314/8996/9325),
+  and per-job encryption is a requirement of the protocol,
+  not an optional extension.
 - FAQs gained the email-binding census and two refusals with
   reasons: no PGP/S/MIME (a cloud SI has a connector, not a
   mail client), and no public-key cryptography in the core

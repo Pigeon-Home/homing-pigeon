@@ -13,8 +13,9 @@ scoped keys, CI runners, containers, or a proper agent sandbox. Still,
 configuring those repeatedly for every provider and chat interface is
 cumbersome, and this cuts through that noise.
 
-Jobs are gated before they run by deterministic code — the judge
-and the opinion's tier-1 checks. The Oracle, backed by a local
+Jobs are gated before they run by deterministic code — the
+opinion's tier-1 checks, which run by default (and the judge,
+when the owner sets it to enforce). The Oracle, backed by a local
 model (the installer's default is qwen3:1.7b), reviews the results
 after the fact. The operating system can carry the rest of the load,
 with SELinux or AppArmor, locked-down users, containers, filesystem
