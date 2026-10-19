@@ -1,5 +1,38 @@
 # Changelog
 
+## 3.10.0 - 2026-10-19
+
+### Changed
+
+- Every transport is now a transport extension. The runner
+  core is transport-blind: email, the watched folder, and
+  core NATS each run as a standalone extension program
+  under one contract (TRANSPORT_API_VERSION = 1), supervised
+  by the runner and spoken to through per-extension file
+  channels. Email remains the default -- a fresh install
+  behaves exactly as before, and a 3.9.0 config.json works
+  unchanged. The mailbox credentials live with the email
+  extension; the core's shared secret is never handed to a
+  pipe. Anyone can drop in their own transport: a folder
+  with a valid manifest loads and runs, registered or not --
+  registration is for discovery, never permission. The
+  two-gate rule is unchanged: a transport's own required
+  authentication still counts as the second gate beside the
+  HMAC signature.
+
+### Documentation
+
+- The IETF draft's Transport Binding now REQUIRES TLS:
+  IMAP and SMTP MUST be used over TLS 1.2 or higher, a
+  cleartext session MUST NOT carry the protocol, and
+  STARTTLS, where used, is required rather than
+  opportunistic with the peer certificate verified
+  (RFC 8314, RFC 8996, RFC 9325).
+- FAQs: why the protocol is bound to email -- it is the
+  one channel every major cloud SI provider already
+  reaches through its connectors; the alternatives are
+  partial, gated, or invert the connection.
+
 ## 3.9.0 - 2026-10-19
 
 ### Added
