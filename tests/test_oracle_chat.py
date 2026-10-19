@@ -286,7 +286,6 @@ class OracleWindowDiagnosticsTest(unittest.TestCase):
 
     def _run_window(self, cfg, cfg_path):
         from unittest import mock
-        from runner.runner import oracle_window
 
         class FakeServer:
             socket = type("S", (), {"getsockname": lambda self: ("127.0.0.1", 11436)})()
@@ -404,7 +403,6 @@ class BaseDirForTest(unittest.TestCase):
 
     def test_oracle_window_passes_resolved_base_to_server(self):
         from unittest import mock
-        from runner.runner import oracle_window
 
         class FakeServer:
             socket = type("S", (), {"getsockname": lambda self: ("127.0.0.1", 11436)})()

@@ -16,7 +16,6 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 from runner.runner import (
-    ASK_SYSTEM,
     ask_model,
     ensure_inference_ready,
     inference_config,

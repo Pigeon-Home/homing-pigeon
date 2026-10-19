@@ -74,12 +74,11 @@ from runner.runner import (  # noqa: E402
     make_oracle_server,
     poll_once,
     answer_queries,
-    handle_mail,
     build_attestations,
     script_filename,
     _preview,
 )
-from runner import senses, resources, review, dri  # noqa: E402
+from runner import senses, dri  # noqa: E402
 
 
 SECRET = "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"
@@ -238,9 +237,9 @@ class ExtensionBadReturnTest(unittest.TestCase):
     """
 
     def test_resources_string_return_does_not_stop_poll(self):
+        seen = {}
         tmp = tempfile.mkdtemp()
         cfg = {"mailbox_user": "a@b.c", "shared_secret": SECRET}
-        seen = {}
         with mock.patch("runner.resources.check_resources", return_value="not a dict"), \
              mock.patch("runner.runner.connect_imap", side_effect=OSError("no")), \
              mock.patch("runner.runner.connect_smtp", side_effect=OSError("no")):
@@ -254,8 +253,6 @@ class ExtensionBadReturnTest(unittest.TestCase):
     def test_review_raise_is_contained_by_handle_mail(self):
         # review is called inside handle_mail; a raise must not escape
         # the worker so the cycle continues.
-        tmp = tempfile.mkdtemp()
-        cfg = {"mailbox_user": "a@b.c", "shared_secret": SECRET}
         # Minimal signed job body is hard; just assert the call site is
         # wrapped by looking at the source path used in other tests.
         # We pin that review.review_job itself does not raise on hostile

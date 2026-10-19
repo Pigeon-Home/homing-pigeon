@@ -577,7 +577,7 @@ class InstallMainGapTest(unittest.TestCase):
             do_oracle=mock.DEFAULT,
             do_install_home=mock.DEFAULT,
         )
-        with stack as patched, mock.patch.object(sys, "argv", ["install", *argv]):
+        with stack, mock.patch.object(sys, "argv", ["install", *argv]):
             if plat is None:
                 return self._run_install_main(install, patches)
             with mock.patch.object(sys, "platform", plat):

@@ -11,7 +11,6 @@ import os
 import sys
 import threading
 import unittest
-from io import BytesIO
 from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -283,7 +283,6 @@ class ParityWithRunnerIdTest(unittest.TestCase):
     runner_id configured, outcomes must match the no-block baseline."""
 
     def test_off_with_runner_id_matches_baseline(self):
-        import copy
         corpus = build_corpus()
         base = run_variant(None, corpus)
 

@@ -5,7 +5,6 @@ Covers config parsing, alert validation, profile gates, storage,
 weighting, the ingest path, and the "senses" query op. Run with:
     python3 -m unittest discover -s tests
 """
-import json
 import os
 import sys
 import tempfile

@@ -615,7 +615,6 @@ class InferenceGracefulTest(unittest.TestCase):
 
     def test_ask_model_weird_reply(self):
         from runner.runner import ask_model
-        import json
 
         class Resp:
             def read(self, n):

@@ -5,7 +5,6 @@ Finding: bad Content-Length, non-JSON body, missing token, oversized
 payload, and concurrent bad POSTs must not crash the server or the
 process. The handler returns 4xx and continues.
 """
-import json
 import os
 import sys
 import tempfile

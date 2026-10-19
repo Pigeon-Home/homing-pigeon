@@ -30,7 +30,6 @@ _spec.loader.exec_module(install)
 from install_onehome_under_test import (  # noqa: E402
     _acl_home,
     _default_home,
-    _ensure_base_dir,
     _is_admin,
     _read_receipt,
     _resolve_home,

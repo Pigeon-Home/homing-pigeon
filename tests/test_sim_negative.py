@@ -5,7 +5,6 @@ These cases were found by feeding poisoned stores and concurrent bad messages
 into poll_once / oracle paths. Documented here so regressions are caught.
 All must complete without raising; processing of subsequent good jobs continues.
 """
-import json
 import os
 import sys
 import tempfile
@@ -26,7 +25,7 @@ from runner.runner import (  # noqa: E402
     answer_queries,
     _redact_patterns,
 )
-from runner import senses, resources, dri  # noqa: E402
+from runner import resources, dri  # noqa: E402
 
 SECRET = "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"
 

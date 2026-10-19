@@ -28,8 +28,8 @@ def _render(name):
     with open(path, encoding="utf-8") as fh:
         lines = fh.read().splitlines()
     # Drop comment lines: they document, they don't configure.
-    lines = [l for l in lines
-             if not l.lstrip().startswith(("#", "!"))]
+    lines = [line for line in lines
+             if not line.lstrip().startswith(("#", "!"))]
     text = "\n".join(lines)
     return (text
             .replace("@RUNNER_DIR@", PREFIX + "/runner")

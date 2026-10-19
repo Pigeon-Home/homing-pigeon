@@ -3,7 +3,6 @@
 Unit cases, one-field mutations, and a deterministic fuzz.
 Nothing here starts a process. A planted symlink is not opened.
 """
-import json
 import os
 import random
 import tempfile

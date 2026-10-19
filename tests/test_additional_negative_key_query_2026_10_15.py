@@ -16,7 +16,6 @@ Findings from virtual-environment simulation (2026-10-15, third pass):
    lists, and extreme timeout values rejects cleanly and does not stop
    sibling workers. Extension state remains readable afterward.
 """
-import json
 import os
 import sys
 import tempfile

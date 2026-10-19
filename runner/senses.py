@@ -325,7 +325,8 @@ def _store_alert_report(base_dir: str, record: dict):
         try:
             from runner.runner import _json_safe
         except ImportError:
-            _json_safe = lambda v: v
+            def _json_safe(v):
+                return v
         line = json.dumps(_json_safe(record), ensure_ascii=False, allow_nan=False) + "\n"
     except (TypeError, ValueError):
         return

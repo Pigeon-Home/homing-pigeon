@@ -4,9 +4,6 @@
 
 Confirmed on a Windows runner via signed email jobs to slutsky5544@gmail.com.
 """
-import hmac
-import hashlib
-import json
 import os
 import sys
 import unittest
@@ -214,7 +211,7 @@ class ResultViewTest(unittest.TestCase):
 
 
 
-class InboxVerifiedResultShapesTest(unittest.TestCase):
+class InboxVerifiedResultShapesEarlyTest(unittest.TestCase):
     """Exact shapes observed in result emails delivered to slutsky5544@gmail.com
     via signed reply_to (2026-10-15 21:53-21:55, runner 3.7.0).
 

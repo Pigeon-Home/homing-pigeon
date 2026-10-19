@@ -2242,7 +2242,7 @@ class LaterQueryTest(unittest.TestCase):
                 rng.choice([0, 1, 8, "nope"]),
                 view=rng.choice(["full", "redacted", "attested", "summary", ""]))
             self.assertEqual(spent, len(queries))
-            blob = json.dumps(answers)
+            json.dumps(answers)
             if queries and all(
                     isinstance(q, dict) and q.get("op") in ("grep", "tail")
                     for q in queries):

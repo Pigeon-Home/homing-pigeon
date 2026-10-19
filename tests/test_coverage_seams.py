@@ -182,7 +182,6 @@ class CatchHandlerTest(unittest.TestCase):
         self.assertIn(b"unknown", handler.wfile.getvalue())
 
     def test_log_message_is_silent(self):
-        from runner.oauth import _Catch
         handler = self._handler("/")
         self.assertIsNone(handler.log_message("x"))
 

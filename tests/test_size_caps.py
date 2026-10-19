@@ -14,7 +14,6 @@ sys.path.insert(0, os.path.join(REPO, "tests"))
 from runner.runner import poll_once  # noqa: E402
 from tests.security_parity import (  # noqa: E402
     EXTRA_SECRET,
-    SECRET,
     FakeIMAP,
     FakeSMTP,
     _email,

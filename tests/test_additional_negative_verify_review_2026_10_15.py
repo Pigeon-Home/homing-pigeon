@@ -21,7 +21,6 @@ Findings from virtual-environment simulation (2026-10-15, fourth pass):
    completes without the poll itself raising, even while extension
    files are being corrupted in parallel.
 """
-import json
 import os
 import sys
 import tempfile

@@ -6,7 +6,6 @@ a Windows box produces: backslash paths, CRLF, PowerShell-shaped
 scripts, no /proc, a missing winlog. None of them may crash the
 Oracle path.
 """
-import json
 import os
 import sys
 import tempfile

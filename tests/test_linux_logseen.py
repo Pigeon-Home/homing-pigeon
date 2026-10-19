@@ -10,7 +10,6 @@ import os
 import random
 import tempfile
 import unittest
-from unittest import mock
 
 from runner.runner import _file_fresh_lines
 from runner.senses import load_alerts

@@ -7,7 +7,6 @@ stopped processing or raised out of the public entry points.
 
 Documented so future regressions are caught.
 """
-import json
 import os
 import sys
 import tempfile

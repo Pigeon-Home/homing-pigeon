@@ -788,7 +788,6 @@ class ConcurrencyAndExtensionFaultTest(unittest.TestCase):
         }
 
     def test_duplicate_job_id_executes_once(self):
-        from runner.runner import execute_job
         calls = []
 
         def once(cfg, job, base_dir):
@@ -1213,12 +1212,11 @@ class AskInstructionFaultTest(unittest.TestCase):
     """
 
     def test_numeric_instructions_do_not_crash_ask(self):
-        from runner.runner import ask_model, answer_queries, inference_config
+        from runner.runner import ask_model, answer_queries
         cfg = {"endpoint": "http://127.0.0.1:11434/v1", "model": "m"}
         got = ask_model(cfg, "q", "out", 20, opener=lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no")),
                         instructions=5)
         self.assertEqual(got.get("rejected"), "inference_error")
-        inf = inference_config({"inference": cfg})
         answers, spent = answer_queries(
             [{"op": "ask", "question": "why"}],
             {"stdout": "ok", "stderr": ""}, {}, 4,
@@ -1343,7 +1341,6 @@ class OAuthShapeFaultTest(unittest.TestCase):
 
     def test_list_token_response_is_auth_dead(self):
         from runner.oauth import refresh_access_token, OAuthRefreshError
-        import io
         class R:
             def read(self):
                 return b"[1, 2, 3]"
@@ -1597,10 +1594,10 @@ class WorkerCapFaultTest(unittest.TestCase):
 
     def test_huge_worker_count_is_capped(self):
         from runner.runner import _worker_count
-        class O:
+        class FakeArgs:
             workers = 1000000
         self.assertEqual(_worker_count({"workers": 1000000}, None), 32)
-        self.assertEqual(_worker_count({}, O()), 32)
+        self.assertEqual(_worker_count({}, FakeArgs()), 32)
         self.assertEqual(_worker_count({"workers": 0}, None), 1)
         self.assertEqual(_worker_count({"workers": "nope"}, None), 1)
 
@@ -2163,7 +2160,8 @@ class RedirectFaultTest(unittest.TestCase):
 
     def test_ftp_redirect_is_rejected(self):
         from runner.runner import download, JobRejected
-        import http.server, threading
+        import http.server
+        import threading
         class H(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
                 self.send_response(302)

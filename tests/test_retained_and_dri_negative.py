@@ -5,7 +5,6 @@ Findings: save_retained / load_retained of non-serializable payloads
 or unsafe job_ids do not raise. Concurrent DRI maybe_page with a
 poisoned state file and bad config returns 0 and continues.
 """
-import json
 import os
 import sys
 import tempfile

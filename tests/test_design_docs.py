@@ -2,7 +2,6 @@
 """M9/M10 tests: the design docs exist, are marked unimplemented,
 and no code claims otherwise."""
 import os
-import re
 import sys
 import unittest
 

@@ -21,7 +21,6 @@ Findings from virtual-environment simulation (2026-10-15, second pass):
    poisoned state files (empty, list, truncated, binary) do not raise
    and do not stop a subsequent poll_once.
 """
-import json
 import os
 import sys
 import tempfile
@@ -38,7 +37,7 @@ sys.path.insert(0, REPO)
 
 from runner import dri, resources
 from runner.runner import (
-    Board, check_rate_limit, load_retained, save_retained,
+    check_rate_limit, load_retained, save_retained,
     snapshot_outside, confinement_violated, poll_once, sign_payload
 )
 
@@ -176,8 +175,10 @@ class ConcurrentExtensionTest(unittest.TestCase):
                 except Exception as e:
                     errors.append(repr(e))
             threads = [threading.Thread(target=ext_worker) for _ in range(6)]
-            for t in threads: t.start()
-            for t in threads: t.join()
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
             self.assertEqual(errors, [])
             # still can poll
             body = sign_payload({

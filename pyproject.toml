@@ -73,3 +73,27 @@ also_copy = [
     # mutant tree does not have it.
     "tools/",
 ]
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+# Day-one set (STYLE.md): pyflakes everywhere (F) plus pycodestyle
+# errors (E) outside the grandfathered files below. The list grows
+# only with a commit that keeps the gate green.
+select = ["E", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# Grandfathered E501 debt, counted 2026-10-18: runner/runner.py 64,
+# runner/install.py 10, cloud/send_job.py 3, runner/senses.py 1,
+# runner/dri.py 1. New files conform from birth; these shrink as
+# their files are touched. Do not add files to this list.
+"runner/runner.py" = ["E501"]
+"runner/install.py" = ["E501"]
+"cloud/send_job.py" = ["E501"]
+"runner/senses.py" = ["E501"]
+"runner/dri.py" = ["E501"]
+# The test suite's idiom: sys.path setup before imports (E402) and
+# long scenario/fixture lines (E501) are deliberate there.
+"tests/**" = ["E402", "E501"]

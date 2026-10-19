@@ -25,14 +25,12 @@ Findings documented here (2026-10-15 simulation in virtual environment):
 All cases below are expected to pass (graceful). Failures indicate
 a real crash path that must be hardened.
 """
-import io
 import json
 import os
 import sys
 import tempfile
 import time
 import unittest
-from contextlib import redirect_stdout
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from unittest import mock
@@ -1139,7 +1137,7 @@ class AttestStoreResourcesBoardPoisonTest(unittest.TestCase):
     """
 
     def test_attest_store_resources_board_tolerate_poison(self):
-        from runner.runner import answer_queries, Board, build_attestations
+        from runner.runner import answer_queries, Board
         from runner import senses, resources
         answers, spent = answer_queries(
             [{"op": "attest", "predicate": "no_secrets"}],

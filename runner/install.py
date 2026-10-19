@@ -16,7 +16,6 @@ import argparse
 import datetime
 import json
 import os
-import platform
 import re
 import secrets
 import shlex
@@ -1190,8 +1189,8 @@ def install_freebsd(dst_dir: str, cfg_path: str, extra=()):
 
 def uninstall_freebsd():
     p = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
-    lines = [l for l in (p.stdout if p.returncode == 0 else "").splitlines()
-             if "homing-pigeon" not in l]
+    lines = [line for line in (p.stdout if p.returncode == 0 else "").splitlines()
+             if "homing-pigeon" not in line]
     subprocess.run(["crontab", "-"], input="\n".join(lines) + "\n", text=True,
                    check=True)
 

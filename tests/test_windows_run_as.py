@@ -59,7 +59,6 @@ class RunAsTest(unittest.TestCase):
         self.assertEqual(calls[1][:3], ["schtasks", "/Run", "/TN"])
 
     def test_cli_flag_exists(self):
-        import argparse
         # --run-as is wired into the installer's parser; check help text.
         import io
         from contextlib import redirect_stdout

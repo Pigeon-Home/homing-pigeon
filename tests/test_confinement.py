@@ -60,7 +60,6 @@ class BuildCommandTest(unittest.TestCase):
         wi = argv.index("--bind")
         self.assertEqual(argv[wi + 1:wi + 3], ["/tmp/w", "/work"])
         self.assertIn("--clearenv", argv)
-        si = argv.index("--setenv")
         self.assertIn("FOO", argv)
         # resolved interpreter, script under /work, args at the end
         base = os.path.basename(argv[-3]).lower()

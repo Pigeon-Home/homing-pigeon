@@ -787,7 +787,9 @@ class AdversarialTests(unittest.TestCase):
         base = self.tmp
         work = os.path.join(base, "work", jid)
         os.makedirs(work)
-        fh = open(os.path.join(work, "leftover"), "w"); fh.write("stale"); fh.close()
+        fh = open(os.path.join(work, "leftover"), "w")
+        fh.write("stale")
+        fh.close()
         p = base_job(jid, kind="exec", script="ls")
         imap, smtp, seen = self.cycle([job_email(p)])
         self.assertEqual(len(smtp.sent), 1)

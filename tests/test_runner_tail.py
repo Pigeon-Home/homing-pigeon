@@ -244,7 +244,6 @@ class WatchTailTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             runner._canary_watch(d)
             name = runner._CANARY_NAMES[0]
-            path = os.path.join(d, "canaries", name)
             snap = os.path.join(d, "canary-watch.json")
             with open(snap, encoding="utf-8") as fh:
                 old = json.load(fh)

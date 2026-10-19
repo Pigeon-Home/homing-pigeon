@@ -5,7 +5,6 @@ import os
 import sys
 import tempfile
 import unittest
-import uuid
 from datetime import datetime, timezone
 from email.message import EmailMessage
 
@@ -15,7 +14,7 @@ sys.path.insert(0, os.path.join(REPO, "cloud"))
 
 from runner.runner import Board, poll_once
 from send_job import sign_payload
-from tests.test_runner import SECRET, SENDER, FakeIMAP, FakeSMTP
+from tests.test_runner import FakeIMAP, FakeSMTP
 
 SECRET = "2d2d42b99b668d4bcc0120c172c09e1059cdf4dd94d3422524519e3708937be4"
 SENDER = "runner@example.com"

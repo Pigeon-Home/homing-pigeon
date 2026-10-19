@@ -24,7 +24,6 @@ import hashlib
 import json
 import os
 import socket
-import sys
 import tempfile
 import time
 import unittest

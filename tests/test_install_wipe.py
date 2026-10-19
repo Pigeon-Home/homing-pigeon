@@ -7,7 +7,6 @@ platform task removal are mocked. Filesystem work happens in temp dirs.
 import importlib.util
 import io
 import os
-import sys
 import tempfile
 import unittest
 import zipfile

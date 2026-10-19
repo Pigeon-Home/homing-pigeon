@@ -6,7 +6,6 @@ alerts, malformed board messages, and concurrent writers to senses/
 board/resources/query_times must not crash the cycle. A trailing good
 job still produces a result.
 """
-import json
 import os
 import sys
 import tempfile

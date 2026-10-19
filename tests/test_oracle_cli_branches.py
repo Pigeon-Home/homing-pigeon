@@ -9,9 +9,7 @@ one turn only, and the exact arguments the CLI hands the ask.
 """
 
 import builtins
-import os
 import tempfile
-import threading
 import unittest
 from unittest import mock
 
@@ -115,7 +113,6 @@ class OracleCliSeamsTest(unittest.TestCase):
 
     def test_non_dict_cfg_is_treated_as_empty(self):
         out = []
-        queue = []
         with mock.patch.object(R, "record_oracle_turn"), \
                 mock.patch.object(R, "_refresh_log_settings"), \
                 mock.patch.object(R, "_announce_oracle_log"), \

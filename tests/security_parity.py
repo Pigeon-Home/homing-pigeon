@@ -7,7 +7,6 @@ and compares normalized outputs. Later milestones extend the corpus
 with jobs that exercise their features.
 """
 import copy
-import json
 import os
 import re
 import secrets

@@ -6,7 +6,6 @@ no Gmail. Run with:  python3 -m unittest discover -s tests
 or:                  python3 tests/test_runner.py
 """
 
-import json
 import os
 import sys
 import tempfile

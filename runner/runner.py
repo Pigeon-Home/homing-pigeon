@@ -58,7 +58,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import NoReturn
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 def _load_attr(package, local, attr, default):
     """package.attr, else the sibling import used when this file is __main__.
@@ -4575,7 +4575,7 @@ def _describe_job(job: dict) -> str:
     kind = job.get("kind")
     if kind == "ping":
         return "kind=ping (would reply pong)"
-    parts = [f"kind=exec"]
+    parts = ["kind=exec"]
     if job.get("script"):
         parts.append(f"inline script ({len(_as_str(job['script']))} chars)")
     if job.get("script_url"):

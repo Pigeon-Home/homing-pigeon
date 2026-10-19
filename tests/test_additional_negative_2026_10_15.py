@@ -22,7 +22,6 @@ Findings from virtual-environment negative testing (2026-10-15):
    extension state files (resources.json, dri-state.json, retained/*.json)
    are corrupted. Rejected jobs are logged and the poll completes.
 """
-import json
 import os
 import sys
 import tempfile
@@ -32,14 +31,13 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from email.message import EmailMessage
-from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
 from runner import senses
 from runner.runner import (
-    Board, answer_queries, ask_model, poll_once, sign_payload
+    Board, ask_model, poll_once, sign_payload
 )
 
 SECRET = "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"

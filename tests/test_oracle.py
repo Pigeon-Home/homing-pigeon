@@ -11,7 +11,7 @@ from io import StringIO
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
-from runner.runner import apply_result_policy, _redact_patterns, VIEW_ORDER
+from runner.runner import apply_result_policy, _redact_patterns
 
 class OracleTest(unittest.TestCase):
     def test_full_view_default(self):

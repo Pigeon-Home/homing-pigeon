@@ -5,7 +5,6 @@ Findings: concurrent check_rate_limit with a poisoned query_times.json,
 non-string key_ids, and concurrent save_seen of mixed types must not
 raise or stop subsequent checks. The poll continues.
 """
-import json
 import os
 import sys
 import tempfile

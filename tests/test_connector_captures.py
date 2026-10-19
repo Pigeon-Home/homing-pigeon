@@ -20,7 +20,6 @@ from email.message import EmailMessage
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
-from runner import runner as _runner  # noqa: E402
 from runner.runner import (  # noqa: E402
     execute_job,
     poll_once,
