@@ -449,7 +449,7 @@ This section defines per-job encryption: encrypting the job object itself, so th
 
 ### 16.1. Construction
 
-The plaintext is the complete signed job body in its Section 7 form — the payload object with the signature spliced in. The cipher is ChaCha20-Poly1305 [RFC8439]:
+The plaintext is the complete signed job body in its Section 7 form — the payload object with the signature spliced in. The cipher is AES-256-GCM [SP800-38D]:
 
 - Key: HKDF [RFC5869] with HMAC-SHA-384. The input keying material is the UTF-8 octets of the secret selected per Section 10. The salt is the nonce. The info string is "homing-pigeon job-encryption v1". The output is 32 octets.
 - Nonce: 12 octets, freshly random for each message.
@@ -457,9 +457,9 @@ The plaintext is the complete signed job body in its Section 7 form — the payl
 
 The transmitted body is a JSON envelope object, signed exactly as Section 7 specifies — the MAC covers the envelope as transmitted:
 
-{"hp_enc": {"alg": "chacha20-poly1305/hkdf-sha384", "nonce": "<base64>", "ct": "<base64>"}}
+{"hp_enc": {"alg": "aes-256-gcm/hkdf-sha384", "nonce": "<base64>", "ct": "<base64>"}}
 
-`ct` is the ciphertext with the 16-octet Poly1305 tag appended, base64-encoded. When the selected secret is not the default, the envelope carries the same `key_id` member a cleartext body would. `hp_enc` is a reserved member name: a body whose members are exactly the envelope's is an envelope, and senders MUST NOT use `hp_enc` for any other purpose.
+`ct` is the ciphertext with the 16-octet GCM tag appended, base64-encoded. When the selected secret is not the default, the envelope carries the same `key_id` member a cleartext body would. `hp_enc` is a reserved member name: a body whose members are exactly the envelope's is an envelope, and senders MUST NOT use `hp_enc` for any other purpose.
 
 ### 16.2. Receiver processing
 
@@ -557,7 +557,7 @@ The submitter initiates. The runner listens on a UDP port (LOCAL; the reference 
 This binding is a bounded profile of DTLS 1.3 [RFC9147]. An implementation of this binding implements exactly this profile; a peer proposing anything outside it is refused, and the refusal ends that handshake, not the listener.
 
 - Transport: DTLS 1.3 [RFC9147] over UDP. DTLS 1.2 MUST NOT be negotiated.
-- Ciphersuite: TLS_CHACHA20_POLY1305_SHA256 [RFC8446] only. No other suite is offered or accepted.
+- Ciphersuite: TLS_AES_256_GCM_SHA384 [RFC8446] only. No other suite is offered or accepted.
 - Authentication: pre-shared key only. The external PSK is the shared secret, under the identities of Section 3. Certificates are not part of this profile, in either direction. The shared secret MUST meet the minimum-entropy floor of this protocol (Section 17.3); a secret below the floor MUST NOT be offered as a PSK.
 - Key exchange: `psk_dhe_ke` only. The `psk_key_exchange_modes` extension MUST offer mode 1 and MUST NOT offer mode 0 (`psk_ke`); a responder MUST refuse a handshake that does not offer `psk_dhe_ke`. An ephemeral X25519 [RFC7748] key share MUST ride every handshake, full or resumed. Section 22.1 gives the reason: this is the profile's perfect-forward-secrecy requirement, and it is not negotiable within the profile.
 - Address validation: the responder MUST perform the HelloRetryRequest cookie exchange of [RFC9147] before allocating session state, and MUST NOT send any flight larger than the retry itself before the cookie returns. The cookie is stateless and is bound to the initiator's address.
@@ -663,7 +663,7 @@ The confidentiality claim is end to end between the submitter and the runner pro
 
 [RFC8259] Bray, T., Ed., "The JavaScript Object Notation (JSON) Data Interchange Format", STD 90, RFC 8259, DOI 10.17487/RFC8259, December 2017, <https://www.rfc-editor.org/info/rfc8259>.
 
-[RFC8439] Nir, Y. and A. Langley, "ChaCha20 and Poly1305 for IETF Protocols", RFC 8439, DOI 10.17487/RFC8439, May 2018, <https://www.rfc-editor.org/info/rfc8439>.
+[SP800-38D] Nir, Y. and A. Langley, "AES-256 and GCM for IETF Protocols", NIST SP 800-38D, DOI 10.17487/SP800-38D, May 2018, <https://www.rfc-editor.org/info/rfc8439>.
 
 [RFC8446] Rescorla, E., "The Transport Layer Security (TLS) Protocol Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018, <https://www.rfc-editor.org/info/rfc8446>.
 

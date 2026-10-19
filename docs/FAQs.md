@@ -190,7 +190,7 @@ Short answer: it has no strangers to introduce. Public-key
 cryptography exists to establish trust and keys between
 parties who share nothing. The two endpoints here already
 share a secret, installed out of band — so authentication
-is HMAC-SHA-384, and confidentiality is ChaCha20-Poly1305
+is HMAC-SHA-384, and confidentiality is AES-256-GCM
 under a key the shared secret derives. Symmetric, end to
 end.
 

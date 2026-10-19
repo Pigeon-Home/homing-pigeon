@@ -19,7 +19,7 @@ Ideas...
   it does not create a session. The change that ships it MUST revise the
   confidentiality claims (then draft Section 16.2) in
   step -- BUILT: runner/jobcrypto.py
-  (pure-Python ChaCha20-Poly1305 per RFC 8439, HKDF-SHA-384
+  (pure-Python AES-256-GCM per NIST SP 800-38D, HKDF-SHA-384
   per RFC 5869, stdlib only); cloud/send_job.py encrypts by
   default and takes --cleartext; the runner unwraps after
   the signature verifies and before the recovered body's own

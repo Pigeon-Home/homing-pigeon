@@ -8,8 +8,8 @@ extension on the runner side, cloud/send_dtls.py on the SI
 side), and the profile is deliberately narrow:
 
 - DTLS 1.3 (RFC 9147) records and handshake, ONE ciphersuite:
-  TLS_CHACHA20_POLY1305_SHA256. The AEAD is
-  runner.jobcrypto's RFC 8439 ChaCha20-Poly1305, reused as-is;
+  TLS_AES_256_GCM_SHA384. The AEAD is
+  runner.jobcrypto's AES-256-GCM, reused as-is;
   DTLS differs from the per-job envelope in its key schedule,
   which needs raw HKDF-Expand against derived secrets (the
   envelope module's hkdf() is extract+expand for its own
@@ -71,7 +71,7 @@ except Exception:  # pragma: no cover - sibling context
 
 DTLS_1_3 = 0xFEFC            # supported_versions value for DTLS 1.3
 LEGACY_VERSION = 0xFEFD      # the version field every record carries
-SUITE_CHACHA20 = 0x1303      # TLS_CHACHA20_POLY1305_SHA256
+SUITE_AES256 = 0x1302      # TLS_AES_256_GCM_SHA384
 GROUP_X25519 = 0x001D
 HASH = hashlib.sha256
 HASH_LEN = 32
@@ -863,7 +863,7 @@ class DtlsClientCore(_Endpoint):
                 + b"\x00"                    # session_id: empty
                 + b"\x00"                    # cookie: empty
                 + (2).to_bytes(2, "big")
-                + SUITE_CHACHA20.to_bytes(2, "big")
+                + SUITE_AES256.to_bytes(2, "big")
                 + b"\x01\x00"                # compression: [null]
                 )
         partial_exts = exts  # psk extension is appended last
@@ -1014,7 +1014,7 @@ class DtlsClientCore(_Endpoint):
             # A retransmitted ServerHello for a handshake that
             # has already moved on: not an error, not news.
             return []
-        if fields["suite"] != SUITE_CHACHA20:
+        if fields["suite"] != SUITE_AES256:
             raise DtlsError("server picked a foreign ciphersuite")
         if int.from_bytes(exts.get(EXT_SUPPORTED_VERSIONS, b""),
                           "big") != DTLS_1_3:
@@ -1129,7 +1129,7 @@ def _hello_retry_request(cookie, msg_seq=0):
     bytes for the transcript when the cookie comes back."""
     body = (LEGACY_VERSION.to_bytes(2, "big") + HRR_RANDOM
             + b"\x00"                       # session_id: empty
-            + SUITE_CHACHA20.to_bytes(2, "big") + b"\x00"
+            + SUITE_AES256.to_bytes(2, "big") + b"\x00"
             + _extensions_bytes([
                 (EXT_SUPPORTED_VERSIONS,
                  DTLS_1_3.to_bytes(2, "big")),
@@ -1187,7 +1187,7 @@ class _ServerSession(_Endpoint):
             return [_plaintext_record(
                 CT_ALERT, 0, 0, bytes([ALERT_FATAL, code]))]
 
-        if SUITE_CHACHA20 not in fields["suites"]:
+        if SUITE_AES256 not in fields["suites"]:
             return refuse(ALERT_HANDSHAKE_FAILURE)
         modes = exts.get(EXT_PSK_MODES)
         if modes is None:
@@ -1268,7 +1268,7 @@ class _ServerSession(_Endpoint):
         ]
         sh_body = (LEGACY_VERSION.to_bytes(2, "big")
                    + self.core.rng(32)
-                   + b"\x00" + SUITE_CHACHA20.to_bytes(2, "big")
+                   + b"\x00" + SUITE_AES256.to_bytes(2, "big")
                    + b"\x00" + _extensions_bytes(sh_exts))
         sh_raw = _hs_message(HS_SERVER_HELLO, sh_body,
                              self._alloc_seq())
