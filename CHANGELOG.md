@@ -33,6 +33,9 @@ facts a reader may need to cite. Git history carries the rest.
   `jobcrypto` validates key and nonce sizes in its own
   vocabulary; the audit report reads UTC stamps as UTC. The
   ruff gate is green on the whole tree.
+- The Windows-surface simulator overlays `windll` even when the
+  host already has one — an elevated runner's `IsUserAnAdmin`
+  returns 1 — and restores the host objects afterwards.
 
 ## 3.10.0 - 2026-10-19
 
