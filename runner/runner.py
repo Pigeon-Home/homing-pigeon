@@ -100,6 +100,15 @@ def _load_mod(package, local, broad=False):
 __version__ = _load_attr("runner._version", "_version", "__version__", "unknown")
 
 
+class _JobCryptoErrorFallback(ValueError):
+    """Fallback when jobcrypto.py is unavailable; never raised."""
+
+
+JobCryptoError = _load_attr(
+    "runner.jobcrypto", "jobcrypto", "JobCryptoError",
+    _JobCryptoErrorFallback)
+
+
 class _OAuthRefreshErrorFallback(RuntimeError):
     """Fallback when oauth.py is unavailable; never raised."""
 
@@ -119,6 +128,7 @@ _setup = _load_mod("runner.setup", "setup")
 _security = _load_mod("runner.security", "security")
 _sandbox = _load_mod("runner.sandbox", "sandbox")
 _transports = _load_mod("runner.transports", "transports")
+_jobcrypto = _load_mod("runner.jobcrypto", "jobcrypto")
 _mailbox_lib = _load_mod("runner.mailbox", "mailbox")
 if _mailbox_lib is not None:
     # The mailbox client library lives in runner/mailbox.py; the
@@ -1100,6 +1110,33 @@ def verify_body_keyed(body_text: str, secrets: dict):
     if isinstance(last_err, ValueError) and "bad signature" in str(last_err):
         raise last_err
     raise ValueError(f"invalid JSON: {last_err}")
+
+
+def _job_encryption_setting(cfg):
+    """The owner's job_encryption choice for RESULT encryption:
+    True or False when the key is present in config, None when it
+    is absent. Only the literal False counts as false (the same
+    discipline as mail_tls_required). Absent means results mirror
+    the job's own form: an encrypted job gets an encrypted result,
+    a cleartext job a cleartext one. An explicit true encrypts
+    every result (even a cleartext job's); an explicit false
+    encrypts none."""
+    if not isinstance(cfg, dict) or "job_encryption" not in cfg:
+        return None
+    return cfg.get("job_encryption") is not False
+
+
+def _outgoing_result_body(result, secret, encrypt, job_id, key_id):
+    """Sign a result body, and encrypt it when this job's result
+    travels encrypted. The encrypted form encrypts the signed
+    body whole and signs the envelope, exactly as job senders
+    do, so a receiver verifies before it decrypts."""
+    body = sign_payload(result, secret)
+    if encrypt and _jobcrypto is not None:
+        body = _jobcrypto.encrypt_body(body, secret, job_id=job_id,
+                                       key_id=key_id,
+                                       sign=sign_payload)
+    return body
 
 
 
@@ -6131,9 +6168,36 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject(f"mail exceeds max_job_bytes ({len(raw)} > {max_job_bytes})")
         return
 
+    job_was_encrypted = False
     try:
         job, key_id = verify_body_keyed(get_text_body(msg), secrets)
         secret = secrets[key_id]
+        if isinstance(job, dict) \
+                and isinstance(job.get("hp_enc"), dict):
+            # Per-job encryption (runner/jobcrypto.py): the
+            # signature just verified covers the envelope as
+            # transmitted, so decryption happens only after that
+            # gate. The recovered signed body then goes through
+            # the same verification a cleartext job faces -- its
+            # own signature check included.
+            if _jobcrypto is None or not _jobcrypto.is_envelope(job):
+                raise ValueError("malformed encryption envelope")
+            inner_text = _jobcrypto.decrypt_body(
+                job, secret, job_id=job_id, key_id=key_id)
+            job, inner_key_id = verify_body_keyed(inner_text, secrets)
+            if inner_key_id != key_id:
+                raise ValueError(
+                    "encrypted envelope key_id does not match its body")
+            secret = secrets[key_id]
+            job_was_encrypted = True
+    except JobCryptoError as e:
+        reject(f"bad encrypted envelope: {e}")
+        _append_security_event(base_dir, {
+            "type": "auth_rejection",
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "reason": "bad_encryption",
+        })
+        return
     except ValueError as e:
         reject(f"bad signature: {e}")
         _append_security_event(base_dir, {
@@ -6147,6 +6211,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         # one; job.get below would raise AttributeError -> transient retry.
         reject("job body must be a JSON object")
         return
+    if not job_was_encrypted:
+        # Authentication is unchanged -- the HMAC still gates --
+        # but a job that arrived readable by every hop is worth
+        # a line in the log.
+        log(f"job {job_id}: received in clear text (not encrypted)")
     # Hardening M5: audience binding. The expected runner_id comes from
     # the loaded config, never from the signed body.
     if not audience_allows(cfg, base_dir, job, key_id, job_id):
@@ -6269,6 +6338,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         log(f"dry-run: would execute job {job_id}: {desc}")
         return
     no_send = opts is not None and opts.no_send
+    # Result encryption mirrors this job's own form unless the
+    # owner set job_encryption explicitly (_job_encryption_setting).
+    _enc_setting = _job_encryption_setting(cfg)
+    encrypt_result = job_was_encrypted \
+        if _enc_setting is None else _enc_setting
 
     # Claim the job_id so a duplicate delivery on another worker thread
     # cannot double-execute it. The check-and-add is atomic under the lock.
@@ -6548,7 +6622,9 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 result["judgment"] = {"verdict": verdict, "reasons": reasons}
             with _MAIL_LOCK:
                 maybe_send(f"{SUBJECT_RESULT}{job_id}",
-                          sign_payload(result, secret))
+                          _outgoing_result_body(
+                              result, secret, encrypt_result,
+                              job_id, key_id))
                 log(f"job {job_id} done (exit={r['exit_code']})")
                 seen[skey] = True  # only after the result is safely sent (at-least-once)
                 mark_seen(imap, seq)
@@ -6602,7 +6678,9 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                         op_facts, op_diag_facts)
                 with _MAIL_LOCK:
                     maybe_send(f"{SUBJECT_RESULT}{job_id}",
-                              sign_payload(result, secret))
+                              _outgoing_result_body(
+                                  result, secret, encrypt_result,
+                                  job_id, key_id))
                     seen[skey] = True
                     mark_seen(imap, seq)
             except Exception as e2:
