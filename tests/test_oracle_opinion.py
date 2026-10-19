@@ -733,6 +733,114 @@ class DefaultRepairTests(unittest.TestCase):
         self.assertEqual(op.effective_mode({}, job), "repair")
 
 
+class PredictDisciplineTests(unittest.TestCase):
+    """Claims audit round 2, B46: predictions ride only on an
+    advise-or-repair EFFECTIVE latitude -- the job's request
+    clamped to the owner's ceiling (docs/configuring-oracle.md:
+    "only when the job requests advise or repair within the
+    ceiling"). The leak: plan_before keyed want_attach off the
+    raw request, so with the ceiling at diagnose a job asking
+    for repair still got a prediction member -- the owner's
+    deliberate narrowing was violated. Diagnose's post-run
+    diagnosis is a different path and is untouched by this
+    discipline."""
+
+    def setUp(self):
+        self.bad_job = {"script": "echo hi"}
+        self.bad_facts = staged_facts(self.bad_job, ["cobol"], ["sh"],
+                                      which_map={})
+        self.good_facts = staged_facts(self.bad_job, ["sh"], ["sh"],
+                                       which_map={"sh": "/bin/sh"})
+
+    def test_diagnose_ceiling_repair_request_no_prediction(self):
+        # The reproduction: ceiling diagnose, request repair,
+        # predict at its default (requested).
+        cfg = {"oracle_opinion_mode": "diagnose"}
+        job = dict(self.bad_job, oracle_opinion="repair")
+        plan = op.plan_before(cfg, job, self.bad_facts)
+        self.assertEqual(plan["mode"], "diagnose")
+        self.assertTrue(plan["active"])
+        self.assertIsNone(plan["attach"])
+        self.assertIsNone(plan["repair_action"])
+
+    def test_diagnose_ceiling_predict_always_no_prediction(self):
+        cfg = {"oracle_opinion_mode": "diagnose",
+               "oracle_opinion_predict": "always"}
+        job = dict(self.bad_job, oracle_opinion="repair")
+        plan = op.plan_before(cfg, job, self.bad_facts)
+        self.assertIsNone(plan["attach"])
+
+    def test_request_narrowed_to_diagnose_no_prediction_even_always(self):
+        # Effective latitude is diagnose (the job narrowed
+        # itself under a repair ceiling): "always" means every
+        # job under advise semantics, and this job is not.
+        cfg = {"oracle_opinion_mode": "repair",
+               "oracle_opinion_predict": "always"}
+        job = dict(self.bad_job, oracle_opinion="diagnose")
+        plan = op.plan_before(cfg, job, self.good_facts)
+        self.assertEqual(plan["mode"], "diagnose")
+        self.assertIsNone(plan["attach"])
+
+    def test_effective_advise_predicts_under_always_without_request(self):
+        cfg = {"oracle_opinion_mode": "advise",
+               "oracle_opinion_predict": "always"}
+        plan = op.plan_before(cfg, self.bad_job, self.bad_facts)
+        self.assertEqual(plan["attach"]["verdict"], "likely_failure")
+        self.assertEqual(plan["attach"]["mode"], "advise")
+
+    def test_effective_repair_predicts_under_always_without_request(self):
+        cfg = {"oracle_opinion_mode": "repair",
+               "oracle_opinion_predict": "always"}
+        plan = op.plan_before(cfg, self.bad_job, self.good_facts)
+        self.assertEqual(plan["attach"]["verdict"], "likely_success")
+        self.assertEqual(plan["attach"]["mode"], "repair")
+
+    def test_predict_never_suppresses_prediction_but_not_repair(self):
+        cfg = {"oracle_opinion_mode": "repair",
+               "oracle_opinion_predict": "never"}
+        job = dict(self.bad_job, oracle_opinion="repair")
+        plan = op.plan_before(cfg, job, self.good_facts)
+        self.assertIsNone(plan["attach"])
+        # never governs predictions; the mechanical fix is not
+        # a prediction and is still planned.
+        plan = op.plan_before(cfg, job, self.bad_facts)
+        self.assertIsNone(plan["attach"])
+        self.assertIsNotNone(plan["repair_action"])
+
+    def test_no_member_on_success_under_diagnose_ceiling(self):
+        # Wire level: the leak left a likely_success prediction
+        # riding a successful result on a diagnose-only box.
+        # The discipline leaves no member at all -- diagnose
+        # speaks only after a failure.
+        result, _ = _drive({"oracle_opinion_mode": "diagnose"},
+                           _exec_payload(oracle_opinion="repair"),
+                           exit_code=0)
+        self.assertNotIn("oracle_opinion", result)
+
+    def test_failure_under_diagnose_ceiling_gets_diagnosis(self):
+        # The hard constraint: the post-run diagnosis still
+        # attaches on failure -- as a diagnosis (no_opinion on a
+        # clean box), not as an extended prediction.
+        result, _ = _drive({"oracle_opinion_mode": "diagnose"},
+                           _exec_payload(oracle_opinion="repair"),
+                           exit_code=1)
+        member = result["oracle_opinion"]
+        self.assertEqual(member["mode"], "diagnose")
+        self.assertEqual(member["verdict"], "no_opinion")
+        self.assertNotIn("failed anyway", member["note"])
+
+    def test_failure_diagnosis_still_names_the_cause(self):
+        result, _ = _drive(
+            {"oracle_opinion_mode": "diagnose"},
+            _exec_payload("frobnicate-op-test --all",
+                          oracle_opinion="repair"),
+            exit_code=1)
+        member = result["oracle_opinion"]
+        self.assertEqual(member["mode"], "diagnose")
+        self.assertEqual(member["verdict"], "likely_failure")
+        self.assertIn("frobnicate-op-test", member["note"])
+
+
 class DeterministicModeTests(unittest.TestCase):
     def test_tier1_files_without_a_model(self):
         # Pi Light: deterministic Oracle, no inference configured.

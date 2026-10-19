@@ -546,7 +546,16 @@ def plan_before(cfg, job, facts):
     if not plan["active"]:
         return plan
     setting = predict_setting(cfg)
-    if setting == "always":
+    # A prediction rides only on an advise-or-repair EFFECTIVE
+    # latitude: the request must survive the owner's ceiling
+    # (claims audit r2, B46). Keying this off the raw request
+    # leaked a prediction onto diagnose-ceiling boxes whose
+    # owner had deliberately narrowed them. Diagnose needs no
+    # prediction -- it speaks after a failure, on a path this
+    # gate does not touch.
+    if mode not in ("advise", "repair"):
+        want_attach = False
+    elif setting == "always":
         want_attach = True
     elif setting == "requested":
         want_attach = plan["requested"] in ("advise", "repair")
