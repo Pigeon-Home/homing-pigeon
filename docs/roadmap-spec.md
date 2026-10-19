@@ -7,7 +7,9 @@ the Oracle's `ask`, the board, and the DRI Telegram channel.
 
 Design constraints that apply to everything below: minimal-install
 (stdlib first), the Oracle stays advisory-only (it pages, it never
-remediates), sensor daemons get restricted keys that may only file for
+remediates — a 2026-10-15 constraint, since superseded: remediation
+shipped as a runner-core mechanism; see docs/remediation-design.md),
+sensor daemons get restricted keys that may only file for
 their own bound sensor, alert detail is redacted before leaving the
 box, and anything interactive is TTY-gated so services never block.
 

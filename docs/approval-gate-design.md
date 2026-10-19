@@ -6,8 +6,11 @@ up without re-deriving the tradeoffs.*
 
 ## The problem it solves
 
-Today a valid signature is the sole gate: any signed job executes
-(PROTOCOL.md section 5). The signature says *who* sent it, not
+The starting point this design argues from: a valid signature as
+the sole gate — any signed job executes (PROTOCOL.md section 5).
+That is no longer the whole truth: the judge in enforce mode, key
+policy, and the security-policy modes also refuse signed jobs; the
+M2 constraints noted below are part of that. The signature says *who* sent it, not
 whether the owner would approve *this* job. The advisory reviewer
 (`runner/review.py`) notes concerns but never blocks, and the M2
 policy constraints bound *how* a key may act but not *whether* a

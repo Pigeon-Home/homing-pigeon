@@ -56,6 +56,8 @@ Operator patterns go in `review_patterns_extra` (see
 ## The learning loop
 
 Every diagnosed recurring failure gets filed in
-`docs/archive/known-failures.md` with its pattern. The reviewer matches new
-jobs against the filed patterns. The Oracle gets smarter the way
+`docs/archive/known-failures.md` with its pattern. Filing alone
+changes no matching: the reviewer matches new jobs only against
+patterns supplied via `review_patterns_extra` in config — an
+operator copies a filed pattern there to arm it. The Oracle gets smarter the way
 an on-call engineer does: by writing down what broke.

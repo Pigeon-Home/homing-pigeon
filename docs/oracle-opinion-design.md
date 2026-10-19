@@ -70,7 +70,7 @@ and priced in from the first proposal.
 
 ## The member
 
-The result message (PROTOCOL §13) gains one OPTIONAL member:
+The result message (PROTOCOL §3.2) gains one OPTIONAL member:
 
 ```json
 "oracle_opinion": {

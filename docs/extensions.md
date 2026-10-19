@@ -293,7 +293,8 @@ signal against the box's current context and state what
 happened and what, if anything, the owner should do. The
 assessment is appended to `oracle-briefs.jsonl` in the base dir
 (one JSON object per brief: time, sensor, signal, severity,
-assessment) and written to the runner log, so a later question
+title, status, assessment — plus `mode` in deterministic mode)
+and written to the runner log, so a later question
 to the Oracle reads it back as part of the log. If no local
 model is configured, the brief is a deterministic note saying
 so; if the model fails, the brief records the failure. The
@@ -551,8 +552,13 @@ entry, because the window opens inside the lead time.)
 
 ## The catalog: twenty-four examples from the workbench
 
+Twenty-seven extension folders ship in all; this catalog pins
+twenty-four. `lab-results`, `pi-health`, and `sky-watcher` are
+standalone examples outside the pinned table, and `airwaves`
+appears both as a full section above and as a row below.
+
 Sixteen more working senses, each one a small diffing
-watcher in the same shape as the three above — a manifest, a
+watcher in the same shape as the four above — a manifest, a
 boring producer with one platform-reading function and a
 pure `decide()`, a state file, and a README. Thirteen are
 rooted in trades their author practiced: fuzzing, PKI,

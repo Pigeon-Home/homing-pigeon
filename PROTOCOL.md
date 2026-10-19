@@ -325,8 +325,9 @@ send stays unseen and will be retried (re-executed) on the next cycle.
 - This deployment deliberately stores the mailbox app password in
   **plaintext** in config.json (user's explicit choice: dedicated
   throwaway account on a fresh machine with nothing personal). Anyone
-  holding the password gets both mailbox access and the ability to sign
-  jobs. Do not use this setup with an account you care about.
+  holding the password gets mailbox access — not the ability to sign
+  jobs: signing needs the separate `shared_secret`, which the
+  password does not contain. Do not use this setup with an account you care about.
   (With `"auth": "oauth"` there is no password on disk — only a refresh
   token — but the token still grants mailbox access, and `shared_secret`
   still signs jobs. Same caution applies.)
@@ -447,7 +448,7 @@ user's box decides what leaves it.
   `[REDACTED:<family>]`. The message lists which families were applied.
 - `summary`: no raw output. Contains `exit_code`, `timed_out`,
   `duration_sec`, `stdout_bytes`, `stderr_bytes`, `result_class`
-  (`success`/`failure`/`timeout`/`rejected`), and `output_digest`
+  (`ok`/`fail`), and `output_digest`
   (SHA-384 of the complete untruncated stdout+stderr).
 - `attested`: `summary` fields plus an `attestations` array — and nothing
   else. No output bytes cross the boundary at all.
@@ -514,8 +515,9 @@ what its results may reveal. The snapshot below does not stop a
 write. An optional Linux sandbox does. Config for the snapshot:
 
 - `workspace_root`: absolute path (e.g. `/home/user/workspace`). When
-  set, the job's working directory is created under it. The Oracle
-  snapshots file metadata outside that directory before and after.
+  set, it names the root the confinement snapshot watches. The job's
+  working directory is always `<base_dir>/work/<job_id>`; the Oracle
+  snapshots file metadata outside `workspace_root` before and after.
   The walk stops at 50000 files and logs that the result is partial.
 
 The snapshot is a record, not a cage. `confined_to_workspace` means
@@ -825,8 +827,9 @@ consensus problem: one writer, many readers. Concurrency reduces to
 three rules.
 
 1. **Claims are exclusive.** A task has one state: open, claimed, or
-   done. Dealing moves open to claimed; only the claiming worker's
-   `task_result` moves claimed to done. No two workers ever hold the
+   done. Dealing moves open to claimed; a `task_result` for a claimed
+   task moves claimed to done — completion checks the task's state,
+   not which worker claimed it. No two workers ever hold the
    same task.
 2. **Claims are leases, not locks.** A claim lapses after `task_timeout`
    (config, default 24h) with no result, and the task returns to open.
@@ -978,9 +981,10 @@ as the record of what the Oracle required. It is not a proposal.
   `compartments` / `worker_compartments`, `require_review`,
   `task_timeout`: config parsing and enforcement.
 - Per-key-ID rate limits and privacy budgets (section 11).
-- `install.py`: generate and print additional secrets on request
-  (`--additional-secret <key-id>`), same 256-bit generation as the
-  primary secret.
+- `install.py`: generate additional secrets on request
+  (`--additional-secret <key-id>`) and store them in config.json —
+  a generated secret is never printed — same 256-bit generation as
+  the primary secret.
 - Tests: multi-secret verification, key_id fallback, claim exclusivity
   under concurrent pulls, lease expiry re-offer, result dedup, DAG
   modes, allowlist, compartment filtering.

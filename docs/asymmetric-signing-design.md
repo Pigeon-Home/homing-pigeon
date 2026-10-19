@@ -144,6 +144,7 @@ stdlib-only story intact, outsources the crypto, and the costs
 (subprocess per verify, bulky armor) are irrelevant at this
 system's message rates. The vendored pure-Python verifier remains
 the fallback if OpenSSH is ever unavailable on a target. Either
-way, the `alg` field in the signed body records which scheme
+way, the `alg` field in the signed body would record which scheme
 verified each message, so the audit log stays unambiguous during
-rotation.
+rotation. (No `alg` field exists today; it arrives with the
+scheme.)
