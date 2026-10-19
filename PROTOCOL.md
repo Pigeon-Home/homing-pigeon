@@ -438,10 +438,10 @@ user's box decides what leaves it.
 
 ```json
 "attestations": [
-  {"predicate": "exit_zero", "value": true},
-  {"predicate": "no_secrets", "value": true,
+  {"predicate": "exit_zero", "ok": true},
+  {"predicate": "no_secrets", "ok": true,
    "patterns_sha384": "<hex of the pattern set used>"},
-  {"predicate": "output_digest", "value": "<hex sha384 of full output>"}
+  {"predicate": "output_digest", "digest": "<hex sha384 of full output>"}
 ]
 ```
 
@@ -456,8 +456,8 @@ Built-in predicates (extensible by runner config):
   wider view is ever granted later, the SI can verify the digest.
 - `confined_to_workspace`: the job created or modified no file outside
   `workspace_root` (section 9.4). Only meaningful when confinement is
-  configured; otherwise the predicate is answered `false` with
-  `{"reason": "unconfigured"}`.
+  configured; otherwise the predicate is answered with `ok`
+  false and `{"reason": "unconfigured"}`.
 
 Each attestation is covered by the message HMAC (section 4), so a
 predicate answer carries the same authenticity as any other result.
