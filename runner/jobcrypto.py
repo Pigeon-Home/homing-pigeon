@@ -176,6 +176,9 @@ def _pad16(data):
 
 def aead_encrypt(key, nonce, plaintext, aad):
     """Return ciphertext || tag (16-octet tag appended)."""
+    if len(key) != _KEY_LEN or len(nonce) != _NONCE_LEN:
+        raise JobCryptoError(
+            "aead key must be 32 octets and nonce 12")
     poly_key = _chacha20_block(key, 0, nonce)[:32]
     ciphertext = _chacha20_xor(key, nonce, 1, plaintext)
     mac_data = (aad + _pad16(aad) + ciphertext + _pad16(ciphertext)
@@ -189,6 +192,9 @@ def aead_decrypt(key, nonce, ct_and_tag, aad):
 
     Raises JobCryptoError on any failure; nothing partial escapes.
     """
+    if len(key) != _KEY_LEN or len(nonce) != _NONCE_LEN:
+        raise JobCryptoError(
+            "aead key must be 32 octets and nonce 12")
     if len(ct_and_tag) < _TAG_LEN:
         raise JobCryptoError("ciphertext shorter than its tag")
     ciphertext, tag = ct_and_tag[:-_TAG_LEN], ct_and_tag[-_TAG_LEN:]

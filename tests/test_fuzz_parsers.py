@@ -343,16 +343,19 @@ def _exercise_jobcrypto(rng, blob):
         except Exception as e:
             crashes.append(
                 f"decrypt_body: {type(e).__name__}: {e!r}")
-    # Raw AEAD with mutated ciphertext/AAD, at the construction's
-    # own sizes (32-octet key, 12-octet nonce -- the only sizes
-    # decrypt_body can ever present: the key comes from the HKDF
-    # at _KEY_LEN and the nonce is length-checked before the
-    # call). Out-of-size keys/nonces are a separate, reported
-    # finding: aead_decrypt raises IndexError from the block
-    # function's word packing instead of JobCryptoError, outside
-    # the envelope path (which never presents such sizes).
-    key = bytes(rng.randrange(256) for _ in range(32))
-    nonce = bytes(rng.randrange(256) for _ in range(12))
+    # Raw AEAD with mutated key/nonce/ciphertext/AAD sizes.
+    # aead_encrypt/aead_decrypt validate the key and nonce
+    # lengths and raise JobCryptoError for anything but the
+    # construction's 32/12 -- an earlier build let the block
+    # function's word packing raise IndexError on short keys
+    # and silently truncate oversized ones, outside the
+    # module's documented one-error vocabulary. Small sizes
+    # only: the pure-Python cipher makes oversized inputs a
+    # hang risk, which the size cap, not a timeout, keeps out.
+    key = bytes(rng.randrange(256) for _ in range(rng.choice(
+        [0, 16, 31, 32, 33, 64])))
+    nonce = bytes(rng.randrange(256) for _ in range(rng.choice(
+        [0, 11, 12, 13, 24])))
     ct = bytes(rng.randrange(256) for _ in range(rng.choice(
         [0, 8, 15, 16, 17, 64, 256])))
     aad = blob[:64]
@@ -456,6 +459,24 @@ class FuzzParsersTest(unittest.TestCase):
         for blob in SEEDS:
             crashes.extend(_exercise_jobcrypto(rng, blob))
         self.assertEqual(crashes, [])
+
+    @unittest.skipUnless(_jobcrypto, "jobcrypto not landed yet")
+    def test_jobcrypto_aead_rejects_bad_sizes_in_vocabulary(self):
+        jc = _jobcrypto
+        for key_len in (0, 16, 31, 33, 64):
+            with self.assertRaises(jc.JobCryptoError):
+                jc.aead_decrypt(b"\x00" * key_len, b"\x00" * 12,
+                                b"\x00" * 32, b"")
+            with self.assertRaises(jc.JobCryptoError):
+                jc.aead_encrypt(b"\x00" * key_len, b"\x00" * 12,
+                                b"x", b"")
+        for nonce_len in (0, 11, 13, 24):
+            with self.assertRaises(jc.JobCryptoError):
+                jc.aead_decrypt(b"\x00" * 32, b"\x00" * nonce_len,
+                                b"\x00" * 32, b"")
+            with self.assertRaises(jc.JobCryptoError):
+                jc.aead_encrypt(b"\x00" * 32, b"\x00" * nonce_len,
+                                b"x", b"")
 
     @unittest.skipUnless(_jobcrypto, "jobcrypto not landed yet")
     def test_jobcrypto_roundtrip_and_tamper(self):
