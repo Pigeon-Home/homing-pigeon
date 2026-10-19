@@ -119,3 +119,39 @@ with two meanings: where a shape tell *contradicts* the
 platform default, no repair happens — and where the tier-1
 evidence itself is inconclusive, the system does not
 improvise. It diagnoses, and talks.
+
+## Why is the protocol bound to email — what other transports do SI providers actually support?
+
+Short answer: email is the one channel every major cloud SI
+provider already reaches out of the box. The binding is a fact
+about the ecosystem, not a preference.
+
+Run down the alternatives a sender-side SI actually has:
+
+1. **Email is universal.** Every major provider's connector
+   set includes sending and reading mail. A signed job needs
+   no new account, no API registration, and no setup on the
+   sender's side beyond the shared secret — the pipe is
+   already there before Homing Pigeon enters the picture.
+2. **HTTPS and webhooks are not universal.** Some ecosystems
+   offer general HTTP calls; others do not. They also invert
+   the connection: an inbound webhook needs the agent to
+   expose a publicly reachable endpoint and accept
+   connections from the internet. This design deliberately
+   has the agent dial out and poll, so the box needs no
+   listening port at all.
+3. **Chat platforms are partial and gated.** Slack, Telegram,
+   and their kin show up as human chat integrations in some
+   ecosystems only. Each is gated on its own account and API
+   registration, and none is offered by every provider — a
+   binding to any of them would exclude the senders who
+   cannot reach it.
+
+So the protocol is married to email because email is what
+the providers have in common. That is a statement about
+today's connectors, not a law of the design: the protocol's
+messages are transport-agnostic, and where another pipe
+exists the same signed jobs can ride it unchanged — the
+runner already carries a watched-folder transport and a
+NATS transport as extensions, with email simply the default
+binding.
