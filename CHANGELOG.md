@@ -12,8 +12,10 @@
 - TRANSPORTS.md names the unbuilt transports in the status
   note. The last line of that note is back inside the
   blockquote.
-
-## 3.8.3 - 2026-10-18
+- The front page no longer sells the lockdown posture as
+  the one the box ships in. The default ceiling is full
+  output, the judge and the cage are opt-in, and the
+  remediation design does not lean on the denylist.
 
 ## 3.8.3 - 2026-10-18
 
