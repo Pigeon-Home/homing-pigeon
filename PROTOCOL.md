@@ -145,7 +145,7 @@ gets done without you knowing how any of it works.
   "stderr_truncated": false,
   "duration_sec": 12.345,
   "runner": "DESKTOP-ABC123",
-  "oracle_opinion": {"mode": "diagnose", "verdict": "likely_failure",
+  "oracle_opinion": {"mode": "repair", "verdict": "likely_failure",
                      "note": "..."},
   "remediation": {"mode": "deterministic", "authority": "tripwire",
                   "divergence": "process_storm: ...", "act": "killed",

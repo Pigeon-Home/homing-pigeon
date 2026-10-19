@@ -74,7 +74,7 @@ The result message (PROTOCOL §13) gains one OPTIONAL member:
 
 ```json
 "oracle_opinion": {
-  "mode": "diagnose",
+  "mode": "repair",
   "verdict": "likely_failure",
   "note": "interpreter ['sh'] is not present on this Windows host;
              the platform default was used in the repaired run",
