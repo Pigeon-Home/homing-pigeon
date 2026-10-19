@@ -35,6 +35,17 @@
   GPU heat and memory pressure. The catalog now says
   twenty-four.
 
+### Release pipeline
+
+- The OneFuzz audit lifts, first six: every workflow
+  action is pinned to a commit SHA, workflow tokens are
+  default-deny with exact per-job grants, each archive
+  carries a BUILD-PROVENANCE.json, an SBOM (SPDX) joins
+  the release assets -- eight now -- covered by the same
+  SHA384SUMS and attestation, CI tooling is pinned via
+  requirements-ci.txt, and docs/verification.md walks a
+  verifier from the tag to the bits on every outlet.
+
 ### Fixes
 
 - `--oracle-opinion` no longer exits at startup (a string
