@@ -82,7 +82,7 @@ def normalize(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
-# Protocol v2 requires the shared secret to carry at least 128 bits
+# The protocol requires the shared secret to carry at least 128 bits
 # of entropy on the sender as well as the runner. The estimator and
 # the pattern check mirror runner/security.py (validate_shared_
 # secret); the two implementations must stay in step.

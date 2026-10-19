@@ -1,4 +1,5 @@
-"""Tests for the DTLS session binding (protocol version 2).
+"""Tests for the DTLS session binding (a binding of
+protocol version 1).
 
 Layers, mirroring how the profile is built:
 
@@ -41,7 +42,7 @@ sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "cloud"))
 
 from runner import dtlsproto, jobcrypto, transports  # noqa: E402
-from runner.runner import poll_once  # noqa: E402
+from runner.runner import PROTOCOL_VERSION, poll_once  # noqa: E402
 from runner.transport_extensions import channel as ch  # noqa: E402
 import send_dtls  # noqa: E402
 from send_job import sign_payload, verify_body  # noqa: E402
@@ -164,7 +165,7 @@ def _pump(client, server, addr=ADDR, now=NOW):
     return out
 
 
-def _established_pair(greeting=b'{"type":"greeting","v":2}'):
+def _established_pair(greeting=b'{"type":"greeting","v":1}'):
     server = dtlsproto.DtlsServerCore(
         secret_lookup=dtlsproto.make_secret_lookup(SECRET),
         greeting_for=lambda s: greeting)
@@ -391,7 +392,7 @@ class CoreProfileTest(unittest.TestCase):
     def test_greeting_only_after_finished(self):
         server = dtlsproto.DtlsServerCore(
             secret_lookup=dtlsproto.make_secret_lookup(SECRET),
-            greeting_for=lambda s: b'{"type":"greeting","v":2}')
+            greeting_for=lambda s: b'{"type":"greeting","v":1}')
         client = dtlsproto.DtlsClientCore(SECRET)
         # Nothing can be sent before the session exists.
         with self.assertRaises(dtlsproto.DtlsError):
@@ -426,7 +427,7 @@ class CoreProfileTest(unittest.TestCase):
     def test_resumption_uses_fresh_dhe_and_regreets(self):
         server = dtlsproto.DtlsServerCore(
             secret_lookup=dtlsproto.make_secret_lookup(SECRET),
-            greeting_for=lambda s: b'{"type":"greeting","v":2}')
+            greeting_for=lambda s: b'{"type":"greeting","v":1}')
         client = dtlsproto.DtlsClientCore(SECRET)
         ch2_first = self._full_handshake(client, server)
         self.assertIsNotNone(client.ticket)
@@ -534,9 +535,19 @@ class GreetingTest(unittest.TestCase):
         obj = json.loads(dtls_ext.build_greeting("none"))
         self.assertEqual(obj["type"], "greeting")
         self.assertEqual(obj["transport"], "dtls")
-        self.assertEqual(obj["v"], 2)
+        self.assertEqual(obj["v"], 1)
         self.assertEqual(obj["disclosure"], "none")
         self.assertNotIn("platform", obj)
+
+    def test_greeting_v_is_the_protocol_version_on_every_tier(self):
+        # There is no protocol version 2: the greeting rides a
+        # binding of version 1, so its `v` member carries the
+        # protocol version itself -- the runner's PROTOCOL_VERSION
+        # -- at every disclosure tier.
+        self.assertEqual(PROTOCOL_VERSION, 1)
+        for tier in dtls_ext.GREETING_TIERS:
+            obj = json.loads(dtls_ext.build_greeting(tier))
+            self.assertEqual(obj["v"], PROTOCOL_VERSION)
 
     def test_family_tier_is_the_default_shape(self):
         obj = json.loads(dtls_ext.build_greeting("family"))

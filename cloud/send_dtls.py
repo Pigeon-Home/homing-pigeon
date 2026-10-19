@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Cloud-side client for the DTLS session binding (protocol v2).
+"""Cloud-side client for the DTLS session binding
+(a binding of protocol version 1).
 
 Signs a job exactly as send_job.py does, opens a DTLS 1.3
 session to the runner's dtls transport extension, prints the

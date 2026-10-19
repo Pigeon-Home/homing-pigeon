@@ -1,5 +1,5 @@
 """The DTLS transport extension: a direct DTLS 1.3 session
-binding (the protocol's version-2 binding).
+binding (a binding of protocol version 1).
 
 Config (handed over by the runner):
     transport_dtls block:
@@ -82,7 +82,7 @@ def build_greeting(tier):
     as bytes. The object always goes out (it is the session's
     first application message at every tier); `tier` decides
     how much platform information rides in it."""
-    obj = {"type": "greeting", "transport": "dtls", "v": 2,
+    obj = {"type": "greeting", "transport": "dtls", "v": 1,
            "disclosure": tier}
     if tier != "none":
         plat = {"os_family": _os_family()}

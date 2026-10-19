@@ -21,7 +21,7 @@
   "_transport_file": "file transport folders; empty means <base_dir>/transport-file/inbox and <base_dir>/transport-file/outbox; relative paths resolve against base_dir",
   "transport_nats": {"url": "nats://127.0.0.1:4222", "subject": "homing-pigeon.jobs", "result_subject_prefix": "homing-pigeon.results", "user": "", "password": "", "token": "", "allow_unauthenticated": false},
   "transport_dtls": {"port": 20220, "bind": "0.0.0.0"},
-  "_transport_dtls": "the DTLS session binding (protocol v2): a UDP listener, off unless \"dtls\" is in transports; the shared secret is the session PSK; ephemeral-only key exchange (forward secrecy enforced)",
+  "_transport_dtls": "the DTLS session binding (a binding of protocol version 1): a UDP listener, off unless \"dtls\" is in transports; the shared secret is the session PSK; ephemeral-only key exchange (forward secrecy enforced)",
   "dtls_greeting": "family",
   "_dtls_greeting": "DTLS greeting disclosure tier: none / family (default) / standard / full; the runner chooses, the client cannot widen it",
   "_transport_nats": "core NATS only (no JetStream): job envelopes arrive on the subject; results publish to <result_subject_prefix>.<job_id>. Broker credentials (user/password or token; config keys win over URL userinfo) are this transport's first authorization gate and are REQUIRED unless allow_unauthenticated is true; the HMAC body signature is the second gate",

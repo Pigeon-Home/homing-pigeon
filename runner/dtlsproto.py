@@ -1,4 +1,5 @@
-"""A bounded DTLS 1.3 profile: the version-2 direct binding.
+"""A bounded DTLS 1.3 profile: the DTLS direct binding of
+protocol version 1.
 
 This module implements exactly the profile the IETF draft's
 DTLS binding section specifies -- no more. Both endpoints of
