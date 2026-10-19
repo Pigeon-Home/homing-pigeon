@@ -4,6 +4,20 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.1 - 2026-10-19
+
+- **DTLS key schedule uses the suite's hash.** Suite
+  0x1302 fixes SHA-384; the AES change had left the
+  handshake hash on SHA-256, with the PSK binder splice
+  and the stateless cookie sized for a 32-octet digest.
+  Transcript, HKDF schedule, Finished, binder, and cookie
+  now ride SHA-384 end to end, pinned by tests including
+  the in-test RFC 8446 recomputation.
+- **No mandatory binding.** The draft no longer requires
+  the email binding: conformance is per binding, an
+  implementation offers at least one binding, and email
+  is the default by guidance, not by mandate.
+
 ## 3.11.0 - 2026-10-19
 
 - **AES-256-GCM.** Per-job encryption is AES-256-GCM (NIST SP

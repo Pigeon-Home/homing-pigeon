@@ -151,8 +151,7 @@ def _aes256_expand(key):
 
 def _aes_encrypt_block(block, round_keys):
     """Encrypt one 16-byte block with pre-expanded round keys."""
-    s = [list(block[i:i+4]) for i in range(0, 16, 4)]  # column-major? use state as 4x4 row-major list of lists
-    # Use flat 16-byte state, column-major indexing: state[r + 4*c]
+    # Flat 16-byte state, column-major indexing: state[r + 4*c]
     state = list(block)
     # AddRoundKey
     def add_round_key(st, rk):
@@ -203,7 +202,6 @@ def _ghash(h, data):
         return r
     h_ref = reflect128(int.from_bytes(h, "big"))
     y = 0
-    R = 0xe1000000000000000000000000000000
     for i in range(0, len(data), 16):
         block = reflect128(int.from_bytes(data[i:i+16], "big"))
         y ^= block
@@ -244,7 +242,9 @@ def aead_encrypt(key, nonce, plaintext, aad):
     def pad(d):
         r = len(d) % 16
         return d if r == 0 else d + b"\x00"*(16-r)
-    g_in = pad(aad) + pad(ct) + (len(aad)*8).to_bytes(8,"big") + (len(ct)*8).to_bytes(8,"big")
+    g_in = (pad(aad) + pad(ct)
+            + (len(aad)*8).to_bytes(8, "big")
+            + (len(ct)*8).to_bytes(8, "big"))
     s = _ghash(h, g_in)
     tag = bytes(a ^ b for a, b in zip(s, _aes_encrypt_block(j0, rk)))
     return ct + tag
@@ -262,7 +262,9 @@ def aead_decrypt(key, nonce, ct_and_tag, aad):
     def pad(d):
         r = len(d) % 16
         return d if r == 0 else d + b"\x00"*(16-r)
-    g_in = pad(aad) + pad(ct) + (len(aad)*8).to_bytes(8,"big") + (len(ct)*8).to_bytes(8,"big")
+    g_in = (pad(aad) + pad(ct)
+            + (len(aad)*8).to_bytes(8, "big")
+            + (len(ct)*8).to_bytes(8, "big"))
     s = _ghash(h, g_in)
     expect = bytes(a ^ b for a, b in zip(s, _aes_encrypt_block(j0, rk)))
     if not hmac.compare_digest(expect, tag):
