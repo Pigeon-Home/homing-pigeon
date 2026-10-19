@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.8.7 - 2026-10-18
+
+### Features
+
+- The Oracle's opinion defaults to `repair`. An unrequested
+  job with the one certain environment mismatch is fixed
+  before it runs, re-judged, and recorded with the digest of
+  the job as received. The model tier stays off unless
+  `oracle_opinion_model` is set. An owner who sets the
+  ceiling to `diagnose` gets the old behavior back.
+
+### Tests
+
+- The Oracle status test joins the chat server and retries
+  the temp-dir remove. On Windows the ask handler still
+  held the chat log, so a passing test died with WinError
+  145.
+
 ## 3.8.6 - 2026-10-18
 
 ### Fixes

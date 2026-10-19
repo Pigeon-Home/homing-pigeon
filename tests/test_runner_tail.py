@@ -611,10 +611,17 @@ class StartupTailTest(unittest.TestCase):
         import time
         import urllib.request
         from runner import runner
-        with tempfile.TemporaryDirectory() as d:
+        # The ask handler writes the chat log in this directory.
+        # On Windows that handle outlives serve_forever, so a
+        # context-manager cleanup dies with WinError 145. Shut
+        # the server down, then retry the remove.
+        tmp = tempfile.TemporaryDirectory()
+        d = tmp.name
+        try:
             httpd = runner.make_oracle_server({"base_dir": d}, "127.0.0.1", 0, base_dir=d)
             port = httpd.server_address[1]
-            threading.Thread(target=httpd.serve_forever, daemon=True).start()
+            server = threading.Thread(target=httpd.serve_forever, daemon=True)
+            server.start()
             time.sleep(0.05)
             try:
                 def hang(*a, **k):
@@ -649,6 +656,15 @@ class StartupTailTest(unittest.TestCase):
                 self.assertIn("elapsed_sec", body)
             finally:
                 httpd.shutdown()
+                httpd.server_close()
+                server.join(timeout=5)
+        finally:
+            for _ in range(20):
+                try:
+                    tmp.cleanup()
+                    break
+                except OSError:
+                    time.sleep(0.05)
         with mock.patch.object(runner, "_is_loopback_ip", return_value=False):
             with self.assertRaises(ValueError):
                 runner.make_oracle_server({}, "127.0.0.1", 0)
