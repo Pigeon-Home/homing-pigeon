@@ -9,6 +9,31 @@ proposal (2026-10-15), elaborated 2026-10-18; recorded in
 FUTURE.md under "Before a job runs". This document remains the
 design record the build started from.
 
+## Why repair is the default
+
+A job that arrives written for the wrong platform — a POSIX
+shell idiom aimed at a Windows box, an interpreter name this
+machine doesn't carry — is usually a fat-finger, not an
+attack. The sender's intent is legible and the mismatch is
+mechanical. A system that refuses such a job teaches the
+sender nothing except that the box is brittle, and it spends
+the one resource a development loop cannot refill: the
+engineer's momentum.
+
+Repair converts the hard stop into a recorded correction.
+The job runs; the result states plainly what was sent, what
+was changed, and the digest of what was received, so the
+sender discovers the mistake as a footnote in a result they
+already have — *oops, wrong platform* — and fixes it in
+thirty seconds when it suits them, instead of mid-flow at
+the moment of failure. The discipline that makes this safe
+rather than reckless is that repair never guesses: it acts
+only where the deterministic tier can *prove* the job
+cannot run as sent, the fix is the one mechanical change in
+scope, and the corrected job is judged again before it
+executes. Where the evidence is inconclusive, the system
+does not improvise — it diagnoses, and talks.
+
 ## The idea
 
 The Oracle reads a job against the box it is about to run on — the
