@@ -69,3 +69,45 @@ One sentence version, for when someone asks quickly:
 > you, or the wake gate lets a signal through, and that's
 > deliberate: a watcher that only runs when an LLM feels like
 > it isn't a watcher."
+
+## If the default latitude is repair, can't a malicious job use repair to get itself run?
+
+Short answer: no — repair never grants a sender anything they
+didn't already have, and it never waves a job past the judge.
+
+The chain, in order:
+
+1. **Admission comes first.** The opinion layer only ever sees
+   jobs that already passed the HMAC signature check. An
+   unsigned job never reaches it. So the only jobs repair can
+   touch come from key-holders — senders who could already
+   send any job they want, written correctly.
+2. **The fix adds no capability.** The one mechanical repair is
+   narrow: an absent interpreter is replaced by the platform
+   default, and only when the script's shape provably fits
+   that interpreter. The result is a job the sender was always
+   authorized to send — repair just absorbs their typo.
+3. **Judgment runs after repair, not before.** A repaired job
+   goes back through the judge and the key policy before it
+   executes (`oracle_opinion_repair: rejudge`, the default;
+   `refuse` turns a repair finding into a refusal instead).
+4. **The opinion never claims to detect malice.** Its question
+   is "will this run here?", not "is this good?" Malice is
+   carried by the layers that always carried it: the
+   signature, the judge, the post-run findings, remediation's
+   tripwires. A bad job stopped only because its interpreter
+   was misspelled was stopped by accident, and an accident is
+   not a control.
+5. **The owner holds the ceiling.** `oracle_opinion_mode` is
+   both the default latitude and the owner's cap: set it to
+   `diagnose` and nothing on the box is ever repaired, whatever
+   a job requests. A job may narrow its own latitude, never
+   widen it. The model-formed tier stays off unless the owner
+   separately enables `oracle_opinion_model`.
+
+Every repair that does happen is recorded on the result —
+what changed, and the digest of the job as received — so
+"what ran versus what was sent" is always answerable. The
+honest edge is polyglot scripts, valid under two interpreters
+with two meanings: where the shape check cannot *prove* the
+fit, no repair happens. Inconclusive means diagnose, and talk.
