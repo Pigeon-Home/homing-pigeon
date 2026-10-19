@@ -19,6 +19,15 @@ Ideas...
   it does not create a session, so the v2 greeting work
   stays future. The change that ships it MUST revise the
   confidentiality claims (draft Section 16.2) in step.
+  Placement (Andrew, 2026-10-19): the feature is
+  specified in the current IETF draft as an optional
+  extension -- no second (v2) document is needed for it,
+  and neither version axis moves: the protocol stays
+  version 1 and the application version keeps its own
+  cadence. In the software it ships behind a command-line
+  parameter (opt-in, default off) so anyone who wants it
+  can turn it on while the spec text matures -- the
+  feature-flag-ahead-of-standardization pattern.
 
 ## The pipe
 
