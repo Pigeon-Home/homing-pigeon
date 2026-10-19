@@ -38,7 +38,15 @@ Ideas...
   carry rudimentary platform information -- the OS family
   at minimum, on anything Python runs on -- so the SI
   knows what it is talking to before the first job, instead
-  of learning it from a failure. Development note: this
+  of learning it from a failure. How much it hands out is
+  the responder's choice, tiered by the owner's configured
+  mode and posture: in the TLS exchange the SI initiates,
+  but the host agent selects -- so the greeting's disclosure
+  level is set on the host, from nothing beyond protocol
+  necessities at the tightest posture to versions and
+  PATH tools at the open ones. Disclosure happens only
+  after authentication completes; an unauthenticated peer
+  harvests nothing. Development note: this
   hangs on the v2 session existing; when and if IETF
   version 2 of the protocol is supported, how the software
   deals with platform identity gets revised around it (the
