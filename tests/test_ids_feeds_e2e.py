@@ -164,9 +164,16 @@ class OsqueryFeedEndToEndTest(FeedFixture):
             by_kind.setdefault(detail.get("kind"), []).append(rec)
         # The new user and the new listener are the mediums; the
         # process add and the listener removal ride at info.
+        # Select by signal, never by position: the two listener
+        # records arrive in inbox order, which is not stable.
         self.assertEqual(by_kind["user"][0]["signal"], "osquery_added")
         self.assertEqual(by_kind["user"][0]["severity"], "medium")
-        self.assertEqual(by_kind["listener"][0]["severity"], "medium")
+        listener_by_signal = {r["signal"]: r for r in by_kind["listener"]}
+        self.assertEqual(
+            listener_by_signal["osquery_added"]["severity"], "medium")
+        self.assertEqual(
+            listener_by_signal["osquery_removed"]["severity"], "info")
+        self.assertEqual(by_kind["process"][0]["severity"], "info")
         # Nothing the light pack reports reaches high, so the
         # wake gate stays shut -- by design, not by accident.
         for rec in recs:
