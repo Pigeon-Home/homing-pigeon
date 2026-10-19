@@ -2,9 +2,8 @@
 
 ## Base
 
-- **PEP 8**, at **88 columns**. The tree already lives there: when
-  this guide was adopted, 99.4% of `runner/` lines were ≤88. A short
-  grandfather list in `pyproject.toml` (`per-file-ignores`) carries
+- **PEP 8**, at **88 columns**. A short grandfather list in
+- `pyproject.toml` (`per-file-ignores`) carries
   the exceptions that existed on day one — 79 lines, counted, in
   five files. New files conform from birth; the list only shrinks,
   and no file is ever added to it.
