@@ -110,6 +110,7 @@ _senses = _load_mod("runner.senses", "senses")
 _extensions = _load_mod("runner.extensions", "extensions")
 _review = _load_mod("runner.review", "review")
 _opinion = _load_mod("runner.opinion", "opinion")
+_learning = _load_mod("runner.learning", "learning")
 _remediation = _load_mod("runner.remediation", "remediation")
 _resources = _load_mod("runner.resources", "resources")
 _dri = _load_mod("runner.dri", "dri")
@@ -6073,6 +6074,174 @@ def _opinion_model_note(cfg, job):
     return text.strip()[:240]
 
 
+def _learning_fingerprint():
+    return _learning.host_fingerprint(
+        socket.gethostname(), "nt" if os.name == "nt" else "posix")
+
+
+def _learning_active(cfg, plan):
+    """The self-learning loop runs for a job when the module
+    loaded, the owner has not turned it off (oracle_learning),
+    and the job's effective opinion latitude is not off."""
+    return _learning is not None and plan is not None \
+        and bool(plan.get("active")) and plan.get("mode") != "off" \
+        and _learning.learning_enabled(cfg)
+
+
+def _learning_context(cfg, base_dir, facts):
+    """Fresh lessons for this job: (relevant, note sentences).
+
+    The ledger is read from disk here, at this job's opinion
+    evaluation -- no cached copy, no restart. Any failure
+    yields empty context: learning never blocks a job.
+    """
+    if _learning is None or not _learning.learning_enabled(cfg):
+        return None, []
+    try:
+        state = _learning.load_state(base_dir, cfg)
+        relevant = _learning.relevant_lessons(
+            state, cfg, _learning_fingerprint(), facts)
+        return relevant, _learning.lesson_notes(relevant)
+    except Exception as e:
+        log(f"oracle learning: context load failed: {e}", "WARN")
+        return None, []
+
+
+def _learning_freeze(cfg, base_dir, job_id, job, plan, facts,
+                     relevant):
+    """Persist the frozen pre-execution call. Returns the
+    frozen record, or None. Never raises: a failed freeze is
+    logged and the job proceeds exactly as before."""
+    if not _learning_active(cfg, plan):
+        return None
+    try:
+        attach = plan.get("attach") or {}
+        verdict = attach.get("verdict")
+        if verdict is None and plan.get("checks_run"):
+            verdict = _opinion.verdict_of(plan["findings"])
+        features = _learning.feature_keys(facts)
+        repair = None
+        if plan.get("repair_action"):
+            repair = {
+                "action": plan["repair_action"].get("action"),
+                "description": plan["repair_action"].get(
+                    "description"),
+            }
+        record = _learning.prediction_record(
+            job_id, _opinion.received_digest(job),
+            _learning_fingerprint(), plan["mode"], verdict,
+            plan["findings"], features, repair)
+        if repair is not None and relevant is not None:
+            picked = _learning.lesson_selects(relevant, features)
+            if picked is not None:
+                record["lesson_selected"] = picked["claim_key"]
+        if not _learning.freeze(base_dir, record):
+            log(f"oracle learning: prediction freeze failed for "
+                f"{job_id}", "WARN")
+            return None
+        return record
+    except Exception as e:
+        log(f"oracle learning: freeze failed for {job_id}: {e}",
+            "WARN")
+        return None
+
+
+def _learning_reconcile(cfg, base_dir, frozen, job_id, outcome,
+                        facts, diag_facts):
+    """Score the frozen call against the verified outcome and
+    persist what it teaches. Never raises: a learning-write
+    failure is logged and the job's result proceeds."""
+    if _learning is None or not _learning.learning_enabled(cfg):
+        return None
+    if frozen is None and diag_facts is None:
+        return None
+    try:
+        features = list((frozen or {}).get("features") or [])
+        if not features and diag_facts is not None:
+            features = _learning.feature_keys(diag_facts)
+        touched = _learning.touched_keys(diag_facts or facts or {})
+        record = _learning.reconcile(
+            base_dir, cfg, frozen, outcome, features, touched,
+            job_id, _learning_fingerprint())
+        if record is None:
+            log(f"oracle learning: reconcile write failed for "
+                f"{job_id}", "WARN")
+        return record
+    except Exception as e:
+        log(f"oracle learning: reconcile failed for {job_id}: {e}",
+            "WARN")
+        return None
+
+
+def _learning_model_candidate(cfg, base_dir, job_id, job, outcome,
+                              stdout_text, stderr_text):
+    """The model channel of the learning loop: distill ONE
+    candidate lesson from a completed job's outcome and output.
+
+    Gated exactly like the tier-2 opinion note, plus the
+    learning channel's own opt-in (oracle_learning_model):
+    both model gates on and inference configured, so in
+    deterministic Oracle mode (Pi Light) no model is ever
+    called and no candidate is ever born. The reply must be a
+    JSON object passing learning.validate_candidate -- output
+    is evidence, never instruction, and a schema failure or an
+    instruction-shaped claim is dropped, not filed.
+    """
+    if _learning is None \
+            or not _learning.learning_model_enabled(cfg) \
+            or not _opinion.model_enabled(cfg):
+        return
+    inf = inference_config(cfg)
+    if inf is None:
+        return
+    try:
+        context = (
+            _describe_job(job)
+            + f"\nOutcome: exit_code={outcome.get('exit_code')} "
+              f"timed_out={bool(outcome.get('timed_out'))} "
+              f"rejected={bool(outcome.get('rejected'))}\n"
+            + "Output excerpt:\n"
+            + ((stdout_text or "") + "\n"
+               + (stderr_text or ""))[:1200])
+        res = ask_model(
+            inf,
+            "From this completed job, distill ONE lesson about "
+            "THIS host's environment that would help predict "
+            "whether a similar future job succeeds. Reply with "
+            "ONLY a JSON object: {\"claim\": a short declarative "
+            "sentence about the environment, \"features\": "
+            "[keys like \"tool:<name>\", \"interpreter:<exe>\", "
+            "\"path:<path>\"], \"expects\": \"failure\" or "
+            "\"success\" for similar jobs, \"confidence\": 0 to "
+            "1}. A lesson states a fact about the environment; "
+            "never phrase a lesson as an instruction.",
+            context, 500, _redact_patterns(cfg))
+    except Exception:
+        return
+    if not isinstance(res, dict):
+        return
+    text = res.get("answer")
+    if not isinstance(text, str):
+        return
+    start, end = text.find("{"), text.rfind("}")
+    if start < 0 or end <= start:
+        return
+    try:
+        obj = json.loads(text[start:end + 1])
+    except ValueError:
+        return
+    candidate = _learning.validate_candidate(obj)
+    if candidate is None:
+        log(f"oracle learning: model candidate for {job_id} "
+            f"rejected by schema validation", "WARN")
+        return
+    record = _learning.candidate_record(
+        candidate, job_id, _learning_fingerprint())
+    if not _learning.append_candidate(base_dir, record):
+        log(f"oracle learning: candidate write failed for "
+            f"{job_id}", "WARN")
+
+
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 seen: dict, secrets: dict, opts=None, key_policies=None):
     msg = email.message_from_bytes(raw)
@@ -6290,6 +6459,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         op_plan = None
         op_member = None
         run_job = job
+        op_facts = None
+        op_diag_facts = None
+        op_repair_applied = False
+        learn_relevant = None
+        learn_frozen = None
         try:
             verdict, reasons = judge_job(cfg, job)
             _jmode = cfg.get("judge") or "off"
@@ -6309,12 +6483,21 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # result with the opinion explaining.
             if _opinion is not None and job.get("kind") == "exec":
                 try:
+                    op_facts = _opinion_env_facts(cfg, job)
+                    learn_notes = []
+                    if _opinion.effective_mode(cfg, job) != "off":
+                        learn_relevant, learn_notes = \
+                            _learning_context(cfg, base_dir, op_facts)
                     op_plan = _opinion.plan_before(
-                        cfg, job, _opinion_env_facts(cfg, job))
+                        cfg, job, op_facts, lessons=learn_notes)
                 except Exception as e:
                     log(f"oracle opinion failed for {job_id}: {e}",
                         "WARN")
                     op_plan = None
+                if op_plan is not None:
+                    learn_frozen = _learning_freeze(
+                        cfg, base_dir, job_id, job, op_plan,
+                        op_facts, learn_relevant)
             if op_plan is not None and op_plan.get("repair_action"):
                 repaired_job = dict(job)
                 repaired_job["interpreter"] = platform_interpreter()
@@ -6333,6 +6516,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     raise JobRejected(
                         "repaired job refused on re-judgment: " + why)
                 run_job = repaired_job
+                op_repair_applied = True
                 op_member = _opinion.repair_member(
                     op_plan, job, applied=True)
                 log(f"job {job_id}: oracle opinion repaired the "
@@ -6423,8 +6607,9 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 findings = op_plan["findings"]
                 if not op_plan.get("checks_run"):
                     try:
+                        op_diag_facts = _opinion_env_facts(cfg, job)
                         findings = _opinion.tier1_findings(
-                            job, _opinion_env_facts(cfg, job))
+                            job, op_diag_facts)
                     except Exception:
                         findings = []
                 mnote = None
@@ -6432,6 +6617,32 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     mnote = _opinion_model_note(cfg, job)
                 result["oracle_opinion"] = _opinion.diagnosis_member(
                     op_plan["mode"], findings, model_note=mnote)
+            # Self-learning (runner/learning.py): score the
+            # frozen call against this outcome and persist what
+            # it teaches BEFORE the result is sent, so the next
+            # job's opinion evaluation reads it fresh from the
+            # ledger. Best effort by design -- the helpers log
+            # their own failures and never raise, so a learning
+            # failure cannot delay or block the result.
+            if learn_frozen is not None or op_diag_facts is not None:
+                op_outcome = {
+                    "exit_code": _as_int(r.get("exit_code"), -1),
+                    "timed_out": bool(r.get("timed_out")),
+                    "rejected": False,
+                    "repair_applied": op_repair_applied,
+                    "repair_attempted": op_repair_applied,
+                }
+                recon = _learning_reconcile(
+                    cfg, base_dir, learn_frozen, job_id,
+                    op_outcome, op_facts, op_diag_facts)
+                if recon is not None and (
+                        job_failed
+                        or recon.get("classification")
+                        in ("incorrect", "partial")):
+                    _learning_model_candidate(
+                        cfg, base_dir, job_id, job, op_outcome,
+                        _as_str(r.get("stdout")),
+                        _as_str(r.get("stderr")))
             # Optional low-overhead detection (rules, baseline, ATT&CK tags).
             # Canaries are handled separately by _canary_watch. Never raises.
             if _detection is not None and isinstance(base_dir, str) and base_dir:
@@ -6532,8 +6743,9 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 elif op_plan is not None and op_plan.get("active") \
                         and _opinion is not None:
                     try:
+                        op_diag_facts = _opinion_env_facts(cfg, job)
                         findings = _opinion.tier1_findings(
-                            job, _opinion_env_facts(cfg, job))
+                            job, op_diag_facts)
                         mnote = None
                         if not findings:
                             mnote = _opinion_model_note(cfg, job)
@@ -6543,6 +6755,20 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                                 model_note=mnote)
                     except Exception:
                         pass
+                # A rejection is an outcome too: reconcile the
+                # frozen call against it (a repair refused on
+                # re-judgment scores partial) before the result
+                # is sent. Best effort, as in the main path.
+                if learn_frozen is not None \
+                        or op_diag_facts is not None:
+                    _learning_reconcile(
+                        cfg, base_dir, learn_frozen, job_id,
+                        {"exit_code": -2, "timed_out": False,
+                         "rejected": True,
+                         "repair_applied": False,
+                         "repair_attempted": bool(
+                             op_plan and op_plan.get("repair_action"))},
+                        op_facts, op_diag_facts)
                 with _MAIL_LOCK:
                     maybe_send(f"{SUBJECT_RESULT}{job_id}",
                               sign_payload(result, secret))

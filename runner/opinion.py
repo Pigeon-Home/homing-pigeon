@@ -471,6 +471,22 @@ def with_model_note(member, model_note):
     return out
 
 
+def with_lesson_notes(member, notes):
+    """Return the member with learned-context sentences
+    appended (runner/learning.py). Lessons inform the note;
+    they never change the verdict the tiers formed, and a
+    candidate lesson arrives already labeled uncorroborated
+    in its sentence."""
+    if not isinstance(member, dict) or not notes:
+        return member
+    out = dict(member)
+    text = out.get("note") or ""
+    extra = " ".join(str(n) for n in notes if n)
+    if extra:
+        out["note"] = ((text + " " + extra) if text else extra)[:NOTE_CAP]
+    return out
+
+
 def diagnosis_member(mode, findings, model_note=None):
     """The diagnose member: a cause when tier 1 finds one, an
     honest no_opinion when it does not."""
@@ -523,14 +539,17 @@ def extend_member_outcome(member, findings):
 
 # ------------------------------------------------------------ planning
 
-def plan_before(cfg, job, facts):
+def plan_before(cfg, job, facts, lessons=None):
     """Pure pre-execution plan for one job.
 
     Returns the effective mode, whether tier-1 checks ran, their
     findings, a member to attach (prediction, or the advise
     degradation of a refused repair), and the repair action the
     runner may apply. Side effects (applying the repair,
-    re-judging, asking the model) are the runner's.
+    re-judging, asking the model) are the runner's. `lessons`
+    is an optional list of learned-context sentences from
+    runner/learning.py, appended to an attached prediction's
+    note; lessons never alter findings, verdicts, or repairs.
     """
     mode = effective_mode(cfg, job)
     plan = {
@@ -576,10 +595,12 @@ def plan_before(cfg, job, facts):
                 f"is refuse): {desc}.")
             plan["attach"] = form_member("advise", "likely_failure",
                                          note)
+            plan["attach"] = with_lesson_notes(plan["attach"], lessons)
             return plan
         plan["repair_action"] = repairable["repair"]
         return plan
     if want_attach:
         note = _note_text(findings) or _CLEAN_NOTE
         plan["attach"] = form_member(mode, verdict_of(findings), note)
+        plan["attach"] = with_lesson_notes(plan["attach"], lessons)
     return plan
