@@ -664,5 +664,89 @@ class InvocationLineTest(_VerbosityGuard):
                          ["runner.py", "--config", "my cfg.json"])
 
 
+def _help_output(*argv):
+    env = dict(os.environ, COLUMNS="80")
+    return subprocess.run([sys.executable, *argv],
+                          capture_output=True, text=True, timeout=60,
+                          cwd=REPO, env=env)
+
+
+class RunnerHelpDocumentTest(unittest.TestCase):
+    """--help is a designed document: chapters in order, every
+    flag present, the worked examples verbatim."""
+
+    GROUPS = ["running", "one-process overrides", "modes",
+              "local signals", "logging", "the Oracle",
+              "reports and harnesses"]
+    FLAGS = [
+        "--help", "--version",
+        "--config", "--once", "--dry-run", "--no-send", "--setup",
+        "--pdb",
+        "--workers", "--poll-interval", "--timeout",
+        "--max-output-bytes", "--max-job-age", "--retention-days",
+        "--task-timeout", "--max-query-budget",
+        "--max-queries-per-hour", "--max-result-view",
+        "--judge", "--dag-mode", "--oracle-mode", "--require-review",
+        "--no-require-review", "--faster",
+        "--local-signals", "--no-local-signals",
+        "--local-signal-port", "--wake-cooldown",
+        "--verbose", "--quiet", "--log-max-bytes", "--log-backups",
+        "--oracle-log", "--no-oracle-log",
+        "--oracle", "--oracle-cli", "--oracle-port",
+        "--inspect", "--job-id", "--audit-report", "--since",
+        "--key", "--feature", "--posture", "--diagnose",
+        "--diagnose-timeout", "--local-test", "--browser",
+    ]
+    EXAMPLES = [
+        "runner.py --config config.json",
+        "runner.py --config config.json --once --dry-run -v",
+        "runner.py --oracle-mode deterministic --inspect board",
+        "runner.py --oracle",
+        "runner.py --oracle-cli",
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        cls.proc = _help_output(
+            os.path.join("runner", "runner.py"), "--help")
+        cls.out = cls.proc.stdout
+
+    def test_help_exits_0(self):
+        self.assertEqual(self.proc.returncode, 0, self.proc.stderr)
+
+    def test_every_flag_is_listed(self):
+        for flag in self.FLAGS:
+            with self.subTest(flag=flag):
+                self.assertIn(flag, self.out)
+        self.assertIn("-v, --verbose", self.out)
+
+    def test_group_titles_appear_in_order(self):
+        positions = []
+        for title in self.GROUPS:
+            at = self.out.find(f"\n{title}:\n")
+            self.assertGreaterEqual(at, 0, title)
+            positions.append(at)
+        self.assertEqual(positions, sorted(positions))
+
+    def test_description_and_examples_are_verbatim(self):
+        self.assertIn("Your cloud SI is smart, but it can't touch "
+                      "your computer.", self.out)
+        self.assertIn("The signature is the only gate.", self.out)
+        for example in self.EXAMPLES:
+            with self.subTest(example=example):
+                self.assertIn(f"  {example}\n", self.out)
+
+    def test_defaults_shown_match_the_example_config(self):
+        # Whitespace-normalized: at 80 columns argparse may wrap
+        # "(default:" and its value onto separate lines.
+        flat = " ".join(self.out.split())
+        for text in ("(default: 20)", "(default: 300)",
+                     "(default: 100000)", "(default: 3600)",
+                     "(default: 86400)", "(default: 39271;",
+                     "(default: 33554432)", "(default: 11436"):
+            with self.subTest(text=text):
+                self.assertIn(text, flat)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
