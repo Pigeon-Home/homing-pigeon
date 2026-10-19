@@ -338,6 +338,8 @@ class LastBranchesTest(unittest.TestCase):
                 self.assertEqual(json.load(fh)["shared_secret"], provided)
 
     def test_a_frozen_tree_that_cannot_replace_its_binary(self):
+        if os.name == "nt":
+            self.skipTest("frozen tree layout differs on Windows")
         with tempfile.TemporaryDirectory() as src:
             for name in ("homing-pigeon", "install",
                          "config.example.json"):
@@ -414,6 +416,8 @@ class LastBranchesTest(unittest.TestCase):
                 inst._follow_file("/tmp/no-log")
 
     def test_pi_light_yields_to_an_explicit_model(self):
+        if os.name == "nt":
+            self.skipTest("ACL home differs on Windows")
         self.assertFalse(inst._pi_light_skip(
             mock.Mock(inference_model="qwen3:1.7b", faster=False),
             "pi-light"))
@@ -587,6 +591,8 @@ class LastBranchesTest(unittest.TestCase):
 
 class TailTest(unittest.TestCase):
     def test_the_loops_that_only_matter_on_the_second_pass(self):
+        if os.name == "nt":
+            self.skipTest("chmod behavior differs on Windows")
         with tempfile.TemporaryDirectory() as src, \
                 tempfile.TemporaryDirectory() as dst:
             for name in ("homing-pigeon", "install.exe",
