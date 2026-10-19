@@ -124,12 +124,41 @@ def mail_tls_required(cfg) -> bool:
     return cfg.get("mail_tls_required") is not False
 
 
+# TLS <= 1.2 suites for the required posture: ephemeral
+# Diffie-Hellman key exchange only, AEAD only. TLS 1.3 suites
+# are forward-secret by construction and are NOT governed by
+# set_ciphers (they ride along untouched); what this string
+# pins is the 1.2 floor's key exchange, where static-RSA
+# suites would otherwise still be negotiable.
+_ECDHE_CIPHERS = (
+    "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:"
+    "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:"
+    "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305")
+
+_PFS_PIN_WARNED = False
+
+
 def _verified_tls_context() -> ssl.SSLContext:
     """A context that actually verifies: the system trust store,
     hostname checking, and a TLS 1.2 floor -- the floor the
-    draft states, stated in the code as well."""
+    draft states, stated in the code as well. The 1.2 suites
+    are pinned to ECDHE key exchange so a required-posture
+    session is forward-secret on either protocol version.
+    A platform whose OpenSSL rejects the pin keeps the
+    default suites instead: the connection never fails over
+    the cipher policy, but the shortfall is logged."""
+    global _PFS_PIN_WARNED
     ctx = ssl.create_default_context()
     ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+    try:
+        ctx.set_ciphers(_ECDHE_CIPHERS)
+    except ssl.SSLError as e:
+        if not _PFS_PIN_WARNED:
+            _PFS_PIN_WARNED = True
+            log("could not pin TLS 1.2 cipher suites to ECDHE "
+                f"({e}); continuing with the default suites -- "
+                "forward secrecy is not guaranteed on TLS 1.2 "
+                "mail-hop connections on this platform.", "WARN")
     return ctx
 
 

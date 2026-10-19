@@ -86,7 +86,10 @@ required gate in front of the signature — not a formality:
   certificate is unverified — the posture that predates the
   option — a WARN is logged, and an installation with the
   hatch open does not carry the draft's confidentiality
-  posture. There is no cleartext mail path in either mode;
+  posture. In the required posture, TLS 1.2 sessions are
+  further restricted to ECDHE cipher suites, so mail-hop
+  connections are forward-secret — as TLS 1.3 connections
+  are inherently. There is no cleartext mail path in either mode;
   the hatch relaxes verification, never encryption.
 - **NATS**, configured in its default posture, has two:
   broker authentication (user/password or token) is required

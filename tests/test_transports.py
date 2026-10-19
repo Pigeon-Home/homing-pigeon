@@ -1089,6 +1089,108 @@ class MailTlsRequiredTest(unittest.TestCase):
         self.assertNotIn("mail_tls_required", handed)
 
 
+class MailForwardSecrecyTest(unittest.TestCase):
+    """Forward secrecy on the mail hops, required posture:
+    the verifying context pins TLS <= 1.2 suites to ECDHE key
+    exchange, so a 1.2 session cannot fall back to a
+    static-RSA suite without it. TLS 1.3 suites are
+    forward-secret by construction and not governed by
+    set_ciphers. The escape hatch keeps the old posture
+    exactly -- no context, no pin -- and a platform that
+    rejects the pin falls back to default suites with a
+    WARN rather than losing its mail."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-test-")
+        _FakeIMAPSSL.instances = []
+        _FakeSMTPConn.instances = []
+        _FakeSMTPConn.starttls_error = None
+        self.logs = []
+        self._orig_log = mailbox.log
+        mailbox.set_logger(
+            lambda msg, level="INFO": self.logs.append(
+                (level, msg)))
+        mailbox._TLS_HATCH_WARNED = False
+        mailbox._PFS_PIN_WARNED = False
+
+    def tearDown(self):
+        mailbox.set_logger(self._orig_log)
+        mailbox._TLS_HATCH_WARNED = False
+        mailbox._PFS_PIN_WARNED = False
+        _FakeSMTPConn.starttls_error = None
+
+    def _connect_both(self, cfg):
+        with mock.patch.object(imaplib, "IMAP4_SSL",
+                               _FakeIMAPSSL), \
+                mock.patch.object(smtplib, "SMTP",
+                                  _FakeSMTPConn):
+            mailbox.connect_imap(cfg)
+            mailbox.connect_smtp(cfg)
+        return (_FakeIMAPSSL.instances[-1],
+                _FakeSMTPConn.instances[-1])
+
+    def _assert_ecdhe_only_below_tls13(self, ctx):
+        names = [c["name"] for c in ctx.get_ciphers()]
+        below13 = [n for n in names if not n.startswith("TLS_")]
+        self.assertTrue(below13)
+        for name in below13:
+            self.assertTrue(
+                name.startswith("ECDHE"),
+                f"non-ECDHE TLS<=1.2 suite enabled: {name}")
+
+    def test_required_posture_pins_ecdhe_on_both_connections(
+            self):
+        imap, smtp = self._connect_both(_cfg(self.tmp))
+        self._assert_ecdhe_only_below_tls13(
+            imap.kw["ssl_context"])
+        self._assert_ecdhe_only_below_tls13(
+            smtp.starttls_context)
+        self.assertEqual(self.logs, [])
+
+    def test_hatch_mode_applies_no_cipher_pin(self):
+        calls = []
+        real_pin = ssl.SSLContext.set_ciphers
+
+        def _recording_pin(self, ciphers):
+            calls.append(ciphers)
+            return real_pin(self, ciphers)
+
+        with mock.patch.object(ssl.SSLContext, "set_ciphers",
+                               _recording_pin):
+            imap, smtp = self._connect_both(
+                _cfg(self.tmp, mail_tls_required=False))
+        self.assertEqual(calls, [])
+        self.assertIsNone(imap.kw["ssl_context"])
+        self.assertIs(smtp.starttls_context, _NO_CONTEXT)
+
+    def test_rejected_pin_falls_back_to_default_suites_and_warns(
+            self):
+        def _no_pin(self, _ciphers):
+            raise ssl.SSLError("no cipher match")
+
+        with mock.patch.object(ssl.SSLContext, "set_ciphers",
+                               _no_pin):
+            imap, smtp = self._connect_both(_cfg(self.tmp))
+            # A second pair: the warning fires once per process.
+            self._connect_both(_cfg(self.tmp))
+        ctx = imap.kw["ssl_context"]
+        # The fallback context still verifies and keeps the
+        # TLS 1.2 floor; only the pin is missing, so default
+        # (non-ECDHE) suites are present again.
+        self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
+        self.assertEqual(ctx.minimum_version,
+                         ssl.TLSVersion.TLSv1_2)
+        names = [c["name"] for c in ctx.get_ciphers()]
+        self.assertTrue(any(not n.startswith(("ECDHE", "TLS_"))
+                            for n in names))
+        self.assertIs(smtp.starttls_context.verify_mode,
+                      ssl.CERT_REQUIRED)
+        warns = [m for level, m in self.logs if level == "WARN"]
+        self.assertEqual(len(warns), 1)
+        self.assertIn("forward secrecy", warns[0])
+        self.assertIn("ECDHE", warns[0])
+
+
 class MultipleTransportsTest(unittest.TestCase):
     def test_file_and_nats_in_one_supervised_run(self):
         tmp = tempfile.mkdtemp(prefix="hp-test-")
