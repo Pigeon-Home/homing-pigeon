@@ -444,3 +444,63 @@ the local wake gate, so on a Pi Light install a hot or
 power-starved board wakes the deterministic Oracle, which
 files its brief from the alert itself — sensor, signal,
 severity, title — with no inference involved at any step.
+## The example: Sky Watcher
+
+`examples/extensions/sky-watcher/` is a working sense for
+people who like looking up. It polls the International Space
+Station's position from the free wheretheiss.at feed (no API
+key) and files the passes over one observer that are worth
+stepping outside for — the fun counterpart to Lab Results'
+earnestness, exercising the same contract in the open air.
+
+- `extension.json` — the manifest. Name `sky_watcher`, three
+  declared signals, tunables: `observer_lat`, `observer_lon`
+  (unset by default — the watcher files nothing until they are
+  set), `approach_radius_km`, `visible_min_elevation_deg`,
+  `bright_min_elevation_deg`, `visible_lead_sec`,
+  `dark_sun_elevation_deg`, `poll_interval_sec`.
+- `sky_watcher.py` — the producer. One invocation takes one
+  position sample; a one-minute timer (cron, systemd) drives
+  the cadence. `fetch_position()` is the only network code;
+  the pass logic is pure geometry plus a state machine, and
+  `--samples FILE` replays recorded feed responses offline.
+- `README.md` — the short version, with the cron line and the
+  wheretheiss.at attribution.
+
+The declared signals:
+
+| Signal | Fires when | Severity |
+|--------|------------|----------|
+| `station_approaching` | The station enters the approach corridor (`approach_radius_km`, default 5000 km) around the observer — every pass, visible or not | info |
+| `visible_pass_starting` | A sunlit pass over a dark sky begins within `visible_lead_sec` (default 600), culminating above `visible_min_elevation_deg` (default 10°) | medium |
+| `bright_pass` | That pass culminates at or above `bright_min_elevation_deg` (default 65°) — near zenith | high |
+
+How a pass is read, in brief. The central angle between the
+observer and the station's sub-point gives the elevation
+directly; two successive sub-points define the orbit plane,
+so the pass's culmination is estimated before it happens and
+the heads-up fires inside the lead time, never after the
+fact. The station being sunlit is the feed's own `visibility`
+field; the observer's sky being dark is a small solar
+calculation (the NOAA approximation) against the
+`dark_sun_elevation_deg` threshold, -6° by default. A pass
+walks out → approaching → visible → out, each stage files
+once per pass, and the state resets as the station leaves the
+corridor. A feed outage is a quiet no-op: nothing files, the
+state is untouched, the next minute retries.
+
+```bash
+python3 sky_watcher.py --samples recorded-passes.json
+{"detail": {"culmination_deg": 90.0, "elevation_deg": -16.7, "ground_distance_km": 4748, "observer_lat": 0.0, "observer_lon": 0.0}, "sensor": "sky_watcher", "severity": "info", "signal": "station_approaching", "title": "ISS entering the approach corridor -- culmination ~90 deg"}
+{"detail": {"culmination_deg": 90.0, "elevation_deg": -16.7, "starts_in_sec": 467}, "sensor": "sky_watcher", "severity": "medium", "signal": "visible_pass_starting", "title": "visible ISS pass starting in ~8 min -- culmination 90 deg"}
+{"detail": {"culmination_deg": 90.0, "elevation_deg": -16.7, "starts_in_sec": 467}, "sensor": "sky_watcher", "severity": "high", "signal": "bright_pass", "title": "bright ISS pass overhead -- culmination 90 deg"}
+```
+
+(The sample output is a replayed zenith pass over an observer
+on the equator at midnight: all three stages fire at corridor
+entry, because the window opens inside the lead time.)
+
+Fork it the same way: the manifest pattern, the declared
+signals, and the boring state machine are the parts worth
+keeping; the satellite is yours to replace.
+
