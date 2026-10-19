@@ -64,13 +64,13 @@ def _ext(prk, info, n):
     out, block, c = b"", b"", 1
     while len(out) < n:
         block = hmac.new(prk, block + info + bytes([c]),
-                         hashlib.sha256).digest()
+                         hashlib.sha384).digest()
         out += block
         c += 1
     return out[:n]
 
 
-def _label(secret, label, ctx, n=32):
+def _label(secret, label, ctx, n=48):
     full = b"tls13 " + label
     info = (n.to_bytes(2, "big") + bytes([len(full)]) + full
             + bytes([len(ctx)]) + ctx)
@@ -78,7 +78,7 @@ def _label(secret, label, ctx, n=32):
 
 
 def _extract(salt, ikm):
-    return hmac.new(salt, ikm, hashlib.sha256).digest()
+    return hmac.new(salt, ikm, hashlib.sha384).digest()
 
 
 def _ch_exts(datagram):
@@ -277,18 +277,18 @@ class KeyScheduleFromTheWireTest(unittest.TestCase):
         sh_raw, sh_exts = _ch_exts(flight[0])
 
         # The schedule, from the RFC text only.
-        empty = hashlib.sha256(b"").digest()
-        early = _extract(b"\x00" * 32, SECRET.encode())
+        empty = hashlib.sha384(b"").digest()
+        early = _extract(b"\x00" * 48, SECRET.encode())
         derived = _label(early, b"derived", empty)
         share = sh_exts[dtlsproto.EXT_KEY_SHARE]
         server_pub = share[4:4 + 32]
         shared = dtlsproto.x25519(bytes(range(32, 64)), server_pub)
         hs = _extract(derived, shared)
-        synth = (bytes([254]) + (32).to_bytes(3, "big")
+        synth = (bytes([254]) + (48).to_bytes(3, "big")
                  + (0).to_bytes(2, "big") + (0).to_bytes(3, "big")
-                 + (32).to_bytes(3, "big")
-                 + hashlib.sha256(ch1_raw).digest())
-        th_sh = hashlib.sha256(
+                 + (48).to_bytes(3, "big")
+                 + hashlib.sha384(ch1_raw).digest())
+        th_sh = hashlib.sha384(
             synth + hrr_raw + ch2_raw + sh_raw).digest()
         c_hs = _label(hs, b"c hs traffic", th_sh)
         s_hs = _label(hs, b"s hs traffic", th_sh)
@@ -300,10 +300,10 @@ class KeyScheduleFromTheWireTest(unittest.TestCase):
         # then the Finished, whose MAC the test computes.
         ctype, ee_raw = _open_record_in_test(s_hs, 2, flight[1])
         self.assertEqual(ctype, 22)
-        th_ee = hashlib.sha256(
+        th_ee = hashlib.sha384(
             synth + hrr_raw + ch2_raw + sh_raw + ee_raw).digest()
         fin_key = _label(s_hs, b"finished", b"")
-        expect = hmac.new(fin_key, th_ee, hashlib.sha256).digest()
+        expect = hmac.new(fin_key, th_ee, hashlib.sha384).digest()
         ctype, sfin_raw = _open_record_in_test(s_hs, 2, flight[2])
         self.assertEqual(ctype, 22)
         self.assertEqual(sfin_raw[0], 20)          # Finished
@@ -315,6 +315,19 @@ class KeyScheduleFromTheWireTest(unittest.TestCase):
 # ------------------------------------------------------------------
 
 class CoreProfileTest(unittest.TestCase):
+    def test_schedule_hash_is_the_suites_hash(self):
+        # TLS_AES_256_GCM_SHA384 (0x1302) fixes SHA-384 as the
+        # suite's hash: the transcript, the HKDF key schedule,
+        # and the Finished computation all ride HASH/HASH_LEN,
+        # so the pair must name the suite's hash, not another
+        # suite's. (Pinned in review of the AES-256-GCM switch:
+        # the suite constant moved and the hash did not.)
+        self.assertEqual(dtlsproto.SUITE_AES256, 0x1302)
+        self.assertIs(dtlsproto.HASH, hashlib.sha384)
+        self.assertEqual(dtlsproto.HASH_LEN, 48)
+        self.assertEqual(dtlsproto.HASH().digest_size,
+                         dtlsproto.HASH_LEN)
+
     def test_cookie_gate_stateless_and_small(self):
         server = dtlsproto.DtlsServerCore(
             secret_lookup=dtlsproto.make_secret_lookup(SECRET))

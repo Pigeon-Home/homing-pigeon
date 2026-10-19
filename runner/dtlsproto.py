@@ -73,8 +73,8 @@ DTLS_1_3 = 0xFEFC            # supported_versions value for DTLS 1.3
 LEGACY_VERSION = 0xFEFD      # the version field every record carries
 SUITE_AES256 = 0x1302      # TLS_AES_256_GCM_SHA384
 GROUP_X25519 = 0x001D
-HASH = hashlib.sha256
-HASH_LEN = 32
+HASH = hashlib.sha384
+HASH_LEN = 48
 
 CT_ALERT = 21
 CT_HANDSHAKE = 22
@@ -869,15 +869,20 @@ class DtlsClientCore(_Endpoint):
         partial_exts = exts  # psk extension is appended last
         id_entry = (len(self._identity).to_bytes(2, "big")
                     + self._identity + (0).to_bytes(4, "big"))
+        # The binder is one HASH_LEN value: the binders vector
+        # is 1 length octet + the value, the value's own length
+        # octet, then HASH_LEN placeholder octets the binder
+        # computation replaces.
         psk_ext = (len(id_entry).to_bytes(2, "big") + id_entry
-                   + bytes([33]) + bytes([32]) + b"\x00" * 32)
+                   + bytes([1 + HASH_LEN]) + bytes([HASH_LEN])
+                   + b"\x00" * HASH_LEN)
         body_full = body + _extensions_bytes(
             partial_exts + [(EXT_PRE_SHARED_KEY, psk_ext)])
         message = _hs_message(HS_CLIENT_HELLO, body_full, msg_seq)
-        partial = message[:-32]              # minus binder value
+        partial = message[:-HASH_LEN]        # minus binder value
         binder = _binder(self._psk, self._binder_label,
                          self.transcript.hash(extra=partial))
-        return message[:-32] + binder
+        return message[:-HASH_LEN] + binder
 
     def _our_cid(self):
         if not hasattr(self, "_cid"):
@@ -1467,9 +1472,9 @@ class DtlsServerCore:
         return ch1_hash + mac
 
     def _check_cookie(self, cookie, addr):
-        if len(cookie) != 48:
+        if len(cookie) != HASH_LEN + 16:
             return None
-        ch1_hash, mac = cookie[:32], cookie[32:]
+        ch1_hash, mac = cookie[:HASH_LEN], cookie[HASH_LEN:]
         expect = hmac.new(self.cookie_secret,
                           _addr_bytes(addr) + ch1_hash,
                           HASH).digest()[:16]

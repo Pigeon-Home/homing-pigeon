@@ -47,10 +47,12 @@ class DraftConformanceTest(unittest.TestCase):
         versions = self.sec["### Versions in this document"]
         self.assertIn("there is no version 2", versions)
 
-    def test_section_5_conformance_and_email_mti(self):
+    def test_section_5_conformance_no_mti_binding(self):
         sec5 = self.sec["## 5. Transport Binding"]
         self.assertIn("Conformance is per binding", sec5)
-        self.assertIn("A runner MUST offer the email binding", sec5)
+        self.assertIn("no binding is mandatory to implement", sec5)
+        self.assertIn("offers at least one binding", sec5)
+        self.assertNotIn("MUST offer the email binding", sec5)
 
     def test_authentication_attaches_to_the_object(self):
         sec5 = self.sec["## 5. Transport Binding"]

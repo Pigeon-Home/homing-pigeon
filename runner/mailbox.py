@@ -131,9 +131,8 @@ def mail_tls_required(cfg) -> bool:
 # pins is the 1.2 floor's key exchange, where static-RSA
 # suites would otherwise still be negotiable.
 _ECDHE_CIPHERS = (
-    "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:"
     "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:"
-    "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384")
+    "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256")
 
 _PFS_PIN_WARNED = False
 
