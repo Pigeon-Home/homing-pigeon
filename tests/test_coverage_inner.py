@@ -169,7 +169,12 @@ class Tier1Edges(unittest.TestCase):
 
 class RemediationProbeEdges(unittest.TestCase):
     def test_clock_and_page_fall_back_when_sysconf_fails(self):
-        with mock.patch.object(os, "sysconf", side_effect=AttributeError):
+        # os.sysconf is POSIX-only: create=True installs the
+        # failing probe on platforms (Windows) that have no
+        # such attribute, so the product's AttributeError
+        # fallback is what is under test everywhere.
+        with mock.patch.object(os, "sysconf", create=True,
+                               side_effect=AttributeError):
             self.assertEqual(rem._clk_tck(), 100.0)
             self.assertEqual(rem._page_size(), 4096)
 
@@ -235,12 +240,39 @@ class RemediationProbeEdges(unittest.TestCase):
         self.assertEqual(usage[0], 0.11)
         self.assertEqual(usage[1], 4 * 4096)
         with mock.patch("builtins.open", opener), \
-                mock.patch.object(os, "sysconf",
-                                  side_effect=OSError("no")):
+                mock.patch.object(os, "sysconf", create=True,
+                                  side_effect=OSError("no")), \
+                mock.patch.object(rem, "_win_total_memory",
+                                  return_value=None):
             self.assertIsNone(rem.total_memory_bytes())
 
     def test_sample_tree_without_proc_is_just_the_root(self):
+        if os.name == "nt":
+            # Windows never consults /proc: sample_tree
+            # dispatches to the Toolhelp sampler instead.
+            windows_tree = {4: (0.0, None), 5: (1.5, 4096)}
+            with mock.patch.object(
+                    rem, "sample_tree_windows",
+                    return_value=windows_tree) as sampler:
+                self.assertEqual(rem.sample_tree(4), windows_tree)
+            sampler.assert_called_once_with(4)
+            return
         with mock.patch.object(os.path, "isdir", return_value=False):
+            self.assertEqual(rem.sample_tree(4), {4: (0.0, None)})
+
+    def test_sample_tree_dispatch_keys_off_os_name(self):
+        # Simulated on any host: "nt" must select the Windows
+        # sampler even though this process is not on Windows.
+        windows_tree = {4: (0.0, None), 5: (1.5, 4096)}
+        with mock.patch.object(os, "name", "nt"), \
+                mock.patch.object(
+                    rem, "sample_tree_windows",
+                    return_value=windows_tree) as sampler:
+            self.assertEqual(rem.sample_tree(4), windows_tree)
+        sampler.assert_called_once_with(4)
+        with mock.patch.object(os, "name", "posix"), \
+                mock.patch.object(os.path, "isdir",
+                                   return_value=False):
             self.assertEqual(rem.sample_tree(4), {4: (0.0, None)})
 
 
