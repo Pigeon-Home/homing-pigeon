@@ -432,14 +432,14 @@ class LastBranchesTest(unittest.TestCase):
                 faster=False, no_inference=True, no_collector=False,
                 collector=None, instructions=None, instructions_add=None,
                 wazuh_manager=None)
-            import setup
+            import runner.setup as wizard
             with mock.patch.object(sys.stdin, "isatty",
                                    return_value=True), \
-                    mock.patch.object(setup, "needs_setup",
+                    mock.patch.object(wizard, "needs_setup",
                                       return_value="no mailbox"), \
-                    mock.patch.object(setup, "prompt_yes_no",
+                    mock.patch.object(wizard, "prompt_yes_no",
                                       return_value=True), \
-                    mock.patch.object(setup, "run_setup_wizard") as wiz, \
+                    mock.patch.object(wizard, "run_setup_wizard") as wiz, \
                     mock.patch.object(inst, "install_collectors",
                                       return_value=["ok"]) as cols:
                 inst._setup_fresh_config(args, cfg)

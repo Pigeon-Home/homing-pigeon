@@ -84,9 +84,11 @@ class ServiceEnvTest(unittest.TestCase):
             pkg.cmds)
 
     def test_a_newline_in_an_extra_arg_is_refused(self):
-        for bad in ("ok\nbad", "ok\rbad", "ok\x00bad"):
-            with self.assertRaises(ValueError):
-                inst.install_linux("/opt/hp", "/c", False, [bad])
+        with tempfile.TemporaryDirectory() as home:
+            with mock.patch.dict(os.environ, {"HOME": home}):
+                for bad in ("ok\nbad", "ok\rbad", "ok\x00bad"):
+                    with self.assertRaises(ValueError):
+                        inst.install_linux("/opt/hp", "/c", False, [bad])
 
     def test_macos_agent_bootstraps_the_gui_domain(self):
         pkg = _Pkg()
