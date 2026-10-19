@@ -95,8 +95,10 @@ and the job message carries download URLs (with optional SHA-384).
 on day one: reachable from anywhere, outbound-only polling (no inbound
 ports — NAT-proof), at-least-once delivery, and
 zero infrastructure to operate. The protocol does not care about the
-pipe, but email is the only transport wired in today. Anything else
-is in [FUTURE.md](FUTURE.md).
+pipe, but email is the only transport wired for jobs today. (A
+sensor on the same box also delivers its signed alerts directly,
+by local inbox or loopback socket -- alerts, not jobs.) Anything
+else is in [FUTURE.md](FUTURE.md).
 
 **Runbooks, not prompts.** The SI doesn't chat about the task — it ships
 a runbook: deterministic steps, each with a check that proves the step
@@ -254,7 +256,7 @@ lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
 - `PROTOCOL.md` — the full wire protocol (message formats, signatures,
   verification rules, security model).
 - `FUTURE.md` — work that is not built. The only list.
-- `TRANSPORTS.md` — email is the only transport in the runner.
+- `TRANSPORTS.md` — email is the only job transport in the runner.
   The rest of that file is design notes, not code.
 - `SAFEGUARDS.md` — how to run this without getting burned: the
   non-negotiables, containment, the Oracle as a safeguard, and what
