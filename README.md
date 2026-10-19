@@ -156,7 +156,7 @@ Your machine runs two roles in one box:
 | executes jobs; cage opt-in   | watches resources            |
 | answers queries at the       | pages you when a             |
 | ceiling you set -- the       | threshold trips              |
-| default is full output       | never remediates             |
+| default is full output       | orders kills in oracle mode  |
 +-----------------------------+-----------------------------+
 ```
 

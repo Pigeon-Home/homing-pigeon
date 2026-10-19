@@ -18,9 +18,15 @@ tap you on the shoulder. "Presence of mind" is the owner's name for
 it: the system keeps watch so you don't have to, and speaks up when
 it matters.
 
-This is advisory by design. The Oracle pages; it never remediates.
-It does not kill jobs, revoke keys, or touch the box on the basis
-of a page. The human decides.
+The page itself is advisory: a page never kills a job, revokes
+a key, or touches the box -- the human decides what a page
+means. Remediation is a separate, runner-side mechanism
+(docs/remediation-design.md): on a closed list of tripwires
+the runner's reflexes kill and quarantine without asking
+anyone, and in oracle mode the Oracle may order a kill for a
+divergence off the list. Every remediation act is recorded
+on the job's result and paged after the fact; quarantine is
+reversible by the owner's hand.
 
 ## Triggers (all adjustable)
 
