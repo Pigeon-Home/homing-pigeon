@@ -9689,8 +9689,10 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
             try:
                 n = int(self.headers.get("Content-Length") or 0)
             except (TypeError, ValueError):
-                self.close_connection = True
-                return None
+                # Same as the old handler: a garbage length is an
+                # empty body, and the ask answers "Ask something
+                # first" instead of a bare 400.
+                n = 0
             if n < 0:
                 self.close_connection = True
                 return None
