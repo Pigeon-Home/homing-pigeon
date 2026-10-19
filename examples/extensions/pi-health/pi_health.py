@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
 """Pi Health: a Homing Pigeon user extension (example sense).
 
-Watches the Raspberry Pi board itself -- SoC temperature,
-undervoltage and throttling state, disk usage, memory pressure
--- and files what it finds as sensor alerts for the Oracle.
-This is the Pi Light showcase sense: it runs happily on a box
-with no local model anywhere in the loop. Its two serious
-signals are high severity, so on a Pi Light install a hot or
-starving board wakes the (deterministic) Oracle, which files
-its brief from the alert alone.
+Watches the health of the machine it runs on -- CPU/SoC
+temperature, undervoltage and throttling state, disk usage,
+memory pressure -- and files what it finds as sensor alerts
+for the Oracle. Born as the Pi Light showcase sense, it runs
+on any machine: a Raspberry Pi exposes the fullest picture
+(it alone reports undervoltage), a laptop exposes temperature,
+disk and memory where its OS offers them, and a machine that
+exposes almost nothing still gets its disk watched. It runs
+happily on a box with no local model anywhere in the loop.
+Its two serious signals are high severity, so on a Pi Light
+install a hot or starving board wakes the (deterministic)
+Oracle, which files its brief from the alert alone -- and the
+same extension on a laptop with a model-backed Oracle yields
+the same signals, which is what makes the pair useful for
+A/B testing across platforms and Oracle configurations.
 
 Each alert names one of the signals declared in extension.json:
 
@@ -33,16 +40,26 @@ when its condition appears (or its reading changes), not on
 every pass: a board that stays hot files one alert, and files
 again when the reading moves.
 
-Sources, all optional -- a missing source is a normal case,
-never an error:
+Sources, all optional and capability-based -- a source the
+machine does not expose reports None, which never yields a
+signal and is never an error:
 
-- temperature: /sys/class/thermal/thermal_zone*/temp
-  (millidegrees Celsius)
-- throttled: `vcgencmd get_throttled` (the firmware tool;
-  absent off a Pi, or on a Pi OS install without it)
+- temperature: the Linux thermal sysfs
+  (/sys/class/thermal/thermal_zone*/temp, millidegrees
+  Celsius). A machine can expose several zones; the read
+  prefers the zone whose type names the SoC or the CPU
+  package ("cpu-thermal" on a Pi, "x86_pkg_temp" on Intel
+  laptops), then any cpu/soc/pkg-flavoured type, then the
+  first readable zone.
+- throttled: `vcgencmd get_throttled` (the Pi firmware tool;
+  Pi-only by nature -- absent everywhere else, where power
+  simply has nothing to say)
 - disk: the disk_mount tunable (default "/"), via
-  shutil.disk_usage
-- memory: /proc/meminfo (MemAvailable over MemTotal)
+  shutil.disk_usage (portable)
+- memory: available memory as a percent of the total --
+  /proc/meminfo (MemAvailable over MemTotal) on Linux,
+  os.sysconf physical/available pages on other POSIX
+  systems, GlobalMemoryStatusEx on Windows
 
 Run on the same machine as the runner, it delivers locally:
 --local-dir <runner base dir> signs each payload with this
@@ -55,8 +72,8 @@ differs (docs/extensions.md, "Local delivery"). Without
 and delivery follow the standard senses flow.
 
 --readings FILE reads a readings dict from a JSON file instead
-of the board: the way to try the sense (and test it) on a
-machine that is not a Pi.
+of the machine: the way to try the sense (and test it) against
+known readings, on any box at all.
 """
 import argparse
 import glob
@@ -88,27 +105,68 @@ def _is_number(value):
 
 # --- the live reads: the only platform-touching code -----------------
 
+# Thermal zone types that name the SoC or the CPU package, in
+# preference order: the Pi's SoC zone first, then Intel's
+# package zone, then other SoC-flavoured names. A machine with
+# several zones (most laptops) also exposes sensors for the
+# motherboard, the wifi card, and so on; the package temperature
+# is the one this sense means by "the board's temperature".
+_TEMP_TYPE_PREFERENCE = (
+    "cpu-thermal", "cpu_thermal",       # Raspberry Pi SoC
+    "x86_pkg_temp",                     # Intel CPU package
+    "soc_thermal", "soc-thermal",
+)
+
+
 def _read_temp_c():
-    """SoC temperature in Celsius from the thermal sysfs, or None."""
+    """SoC/CPU temperature in Celsius from the thermal sysfs.
+
+    Every readable zone is collected with its type; the zone
+    this sense reports is chosen by _TEMP_TYPE_PREFERENCE,
+    then any cpu/soc/pkg-flavoured type, then the first
+    readable zone. None when the sysfs exposes no zone at
+    all (most non-Linux machines, some VMs).
+    """
     try:
         paths = sorted(glob.glob("/sys/class/thermal/thermal_zone*/temp"))
     except OSError:
         return None
+    zones = []  # (zone type, temperature C) in sysfs order
     for path in paths:
         try:
             with open(path, encoding="utf-8") as fh:
-                return int(fh.read().strip()) / 1000.0
+                temp = int(fh.read().strip()) / 1000.0
         except (OSError, ValueError):
             continue
-    return None
+        ztype = ""
+        try:
+            with open(os.path.join(os.path.dirname(path), "type"),
+                      encoding="utf-8") as fh:
+                ztype = fh.read().strip()
+        except OSError:
+            pass
+        zones.append((ztype, temp))
+    if not zones:
+        return None
+    for wanted in _TEMP_TYPE_PREFERENCE:
+        for ztype, temp in zones:
+            if ztype == wanted:
+                return temp
+    for ztype, temp in zones:
+        low = ztype.lower()
+        if "cpu" in low or "soc" in low or "pkg" in low:
+            return temp
+    return zones[0][1]
 
 
 def _read_throttled():
     """The board's throttled bitmask as an int, or None.
 
-    vcgencmd is the Pi firmware tool. Its absence -- off a Pi,
-    or a Pi without the package -- is a normal case: the sense
-    simply has nothing to say about power on that pass.
+    vcgencmd is the Pi firmware tool, so this source is
+    Pi-only by nature. Its absence -- every other machine, or
+    a Pi without the package -- is a normal case: the sense
+    simply has nothing to say about power on that pass, and
+    the undervoltage signal never fires there.
     """
     exe = shutil.which("vcgencmd")
     if not exe:
@@ -138,7 +196,7 @@ def _read_disk_pct(mount):
     return round(100.0 * usage.used / usage.total, 1)
 
 
-def _read_mem_avail_pct():
+def _mem_avail_pct_meminfo():
     """MemAvailable as a percent of MemTotal from /proc/meminfo."""
     try:
         with open("/proc/meminfo", encoding="utf-8") as fh:
@@ -157,11 +215,87 @@ def _read_mem_avail_pct():
     return round(100.0 * avail / total, 1)
 
 
-def read_board(disk_mount="/"):
-    """One live snapshot of the board, as a readings dict.
+def _mem_avail_pct_sysconf():
+    """Available memory as a percent of the total, via os.sysconf.
 
-    Every value may be None (source absent on this machine);
-    decide() treats None as "no evidence", never as a fault.
+    The fallback for POSIX systems without /proc/meminfo
+    (macOS, the BSDs): physical pages against available pages.
+    On those systems "available pages" counts free pages
+    rather than Linux's cache-aware MemAvailable -- a blunter
+    number, but a real one.
+    """
+    try:
+        names = os.sysconf_names
+        if "SC_PHYS_PAGES" not in names or "SC_AVPHYS_PAGES" not in names:
+            return None
+        total = os.sysconf("SC_PHYS_PAGES")
+        avail = os.sysconf("SC_AVPHYS_PAGES")
+    except (AttributeError, ValueError, OSError):
+        return None
+    if not _is_number(total) or not _is_number(avail) or total <= 0:
+        return None
+    return round(100.0 * avail / total, 1)
+
+
+def _mem_avail_pct_windows():
+    """Available memory as a percent of the total, on Windows.
+
+    GlobalMemoryStatusEx via ctypes -- the standard library's
+    way to ask Windows itself. None everywhere else.
+    """
+    if os.name != "nt":
+        return None
+    try:
+        import ctypes
+
+        class _MemoryStatusEx(ctypes.Structure):
+            _fields_ = [
+                ("dwLength", ctypes.c_ulong),
+                ("dwMemoryLoad", ctypes.c_ulong),
+                ("ullTotalPhys", ctypes.c_ulonglong),
+                ("ullAvailPhys", ctypes.c_ulonglong),
+                ("ullTotalPageFile", ctypes.c_ulonglong),
+                ("ullAvailPageFile", ctypes.c_ulonglong),
+                ("ullTotalVirtual", ctypes.c_ulonglong),
+                ("ullAvailVirtual", ctypes.c_ulonglong),
+                ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+            ]
+
+        status = _MemoryStatusEx()
+        status.dwLength = ctypes.sizeof(_MemoryStatusEx)
+        if not ctypes.windll.kernel32.GlobalMemoryStatusEx(
+                ctypes.byref(status)):
+            return None
+        total = status.ullTotalPhys
+        if total <= 0:
+            return None
+        return round(100.0 * status.ullAvailPhys / total, 1)
+    except Exception:
+        return None
+
+
+def _read_mem_avail_pct():
+    """Available memory as a percent of the total, or None.
+
+    /proc/meminfo where it exists (Linux, with the best
+    semantics), then Windows' own report, then the POSIX
+    sysconf page counts (macOS, the BSDs).
+    """
+    pct = _mem_avail_pct_meminfo()
+    if pct is not None:
+        return pct
+    pct = _mem_avail_pct_windows()
+    if pct is not None:
+        return pct
+    return _mem_avail_pct_sysconf()
+
+
+def read_board(disk_mount="/"):
+    """One live snapshot of this machine, as a readings dict.
+
+    Every value may be None (source not exposed by this
+    machine); decide() treats None as "no evidence", never
+    as a fault.
     """
     pct = _read_disk_pct(disk_mount)
     return {
@@ -339,7 +473,7 @@ def _deliver_local(alerts, args):
 def main(argv=None):
     here = os.path.dirname(os.path.abspath(__file__))
     ap = argparse.ArgumentParser(
-        description="Pi Health extension watcher: read the board's "
+        description="Pi Health extension watcher: read the machine's "
                     "vitals once and file sensor alert payloads for "
                     "what needs attention.")
     ap.add_argument("--manifest", default=os.path.join(here, "extension.json"),
@@ -350,8 +484,8 @@ def main(argv=None):
                          "next to this script)")
     ap.add_argument("--readings", default=None,
                     help="read the readings dict from this JSON file "
-                         "instead of the board (trying the sense on "
-                         "a machine that is not a Pi)")
+                         "instead of the machine (trying the sense "
+                         "against known readings, on any box)")
     ap.add_argument("--local-dir", default=None,
                     help="runner base dir: deliver alerts locally "
                          "(signed, into its local inbox) instead of "
