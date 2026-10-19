@@ -20,8 +20,10 @@ the two halves of that stance:
   merely "no model selected": the download function is not
   called at all.
 """
+import importlib.util
 import json
 import os
+import shutil
 import sys
 import tempfile
 import time
@@ -34,6 +36,11 @@ sys.path.insert(0, REPO)
 
 from runner import runner as R  # noqa: E402
 from runner import install as I  # noqa: E402
+from runner import senses as S  # noqa: E402
+from runner import extensions as E  # noqa: E402
+
+PI_HEALTH_DIR = os.path.join(REPO, "examples", "extensions", "pi-health")
+PI_SECRET = "c06e9f8a2b4d47f1a3e5b6c7d8f9a0b1" + "2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f"
 
 INF = {"endpoint": "http://127.0.0.1:11434/v1", "model": "qwen3:1.7b"}
 
@@ -406,3 +413,247 @@ class InstallPiLightTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# --- the Pi Health example extension -----------------------------------
+
+def _load_pi_health():
+    spec = importlib.util.spec_from_file_location(
+        "pi_health_example", os.path.join(PI_HEALTH_DIR, "pi_health.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _pi_manifest():
+    with open(os.path.join(PI_HEALTH_DIR, "extension.json"),
+              encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+COOL = {"temp_c": 51.2, "throttled": 0, "disk_pct": {"/": 41.0},
+        "mem_avail_pct": 63.0}
+
+
+class PiHealthDecideTest(unittest.TestCase):
+    def setUp(self):
+        self.mod = _load_pi_health()
+        self.manifest = _pi_manifest()
+
+    def signals(self, readings, state=None):
+        alerts, _new = self.mod.decide(readings, self.manifest,
+                                       state or {})
+        return alerts
+
+    def test_manifest_is_valid_through_the_real_loader(self):
+        clean = E.parse_manifest(_pi_manifest())
+        self.assertEqual(clean["name"], "pi_health")
+        self.assertEqual(clean["api_version"], 1)
+        self.assertEqual(
+            sorted(s["name"] for s in clean["signals"]),
+            ["board_overheating", "disk_pressure", "memory_pressure",
+             "undervoltage_detected"])
+        with tempfile.TemporaryDirectory() as d:
+            shutil.copytree(PI_HEALTH_DIR, os.path.join(d, "pi-health"))
+            registry, problems = E.load_extensions(d)
+        self.assertEqual(problems, [])
+        self.assertIn("pi_health", registry)
+        self.assertEqual(registry["pi_health"]["version"], "0.1.0")
+
+    def test_cool_nominal_board_files_nothing(self):
+        self.assertEqual(self.signals(COOL), [])
+        self.assertEqual(self.signals({}), [])
+        self.assertEqual(self.signals(None), [])
+
+    def test_missing_sources_are_not_faults(self):
+        readings = {"temp_c": None, "throttled": None,
+                    "disk_pct": {}, "mem_avail_pct": None}
+        self.assertEqual(self.signals(readings), [])
+
+    def test_hot_board_files_overheating_only(self):
+        alerts = self.signals(dict(COOL, temp_c=84.1))
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["board_overheating"])
+        self.assertEqual(alerts[0]["severity"], "high")
+        self.assertEqual(alerts[0]["sensor"], "pi_health")
+        self.assertEqual(alerts[0]["detail"]["temp_c"], 84.1)
+        # Just under the tunable: nothing.
+        self.assertEqual(self.signals(dict(COOL, temp_c=79.9)), [])
+
+    def test_throttled_bit_files_undervoltage(self):
+        for bits in (0x1, 0x4, 0x10000, 0x50005):
+            alerts = self.signals(dict(COOL, throttled=bits))
+            self.assertEqual([a["signal"] for a in alerts],
+                             ["undervoltage_detected"], hex(bits))
+            self.assertEqual(alerts[0]["severity"], "high")
+        detail = self.signals(dict(COOL, throttled=0x50005))[0]["detail"]
+        self.assertTrue(detail["undervoltage_now"])
+        self.assertTrue(detail["undervoltage_since_boot"])
+        self.assertTrue(detail["throttled_since_boot"])
+        # A clean mask files nothing.
+        self.assertEqual(self.signals(dict(COOL, throttled=0)), [])
+
+    def test_disk_and_memory_pressure_are_medium(self):
+        alerts = self.signals(dict(COOL, disk_pct={"/": 95.0},
+                                   mem_avail_pct=5.0))
+        by_signal = {a["signal"]: a for a in alerts}
+        self.assertEqual(sorted(by_signal),
+                         ["disk_pressure", "memory_pressure"])
+        self.assertEqual(by_signal["disk_pressure"]["severity"],
+                         "medium")
+        self.assertEqual(by_signal["memory_pressure"]["severity"],
+                         "medium")
+
+    def test_combined_faults_file_together(self):
+        readings = {"temp_c": 90.0, "throttled": 0x1,
+                    "disk_pct": {"/": 99.0}, "mem_avail_pct": 2.0}
+        self.assertEqual(
+            sorted(a["signal"] for a in self.signals(readings)),
+            ["board_overheating", "disk_pressure", "memory_pressure",
+             "undervoltage_detected"])
+
+    def test_state_suppresses_repeats_until_the_reading_moves(self):
+        hot = dict(COOL, temp_c=84.1)
+        alerts, state = self.mod.decide(hot, self.manifest, {})
+        self.assertEqual(len(alerts), 1)
+        alerts, state = self.mod.decide(hot, self.manifest, state)
+        self.assertEqual(alerts, [])
+        # The reading moved: file again.
+        alerts, state = self.mod.decide(dict(COOL, temp_c=85.5),
+                                        self.manifest, state)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["board_overheating"])
+        # Cleared, then hot again: a fresh occurrence files fresh.
+        alerts, state = self.mod.decide(COOL, self.manifest, state)
+        self.assertEqual(alerts, [])
+        alerts, state = self.mod.decide(hot, self.manifest, state)
+        self.assertEqual(len(alerts), 1)
+
+    def test_tunables_steer_the_thresholds(self):
+        manifest = _pi_manifest()
+        manifest["tunables"] = dict(manifest["tunables"],
+                                    temp_high_c=50)
+        alerts = self.signals(dict(COOL, temp_c=51.2), )
+        self.assertEqual(alerts, [])  # default manifest: 51.2 is fine
+        alerts, _ = self.mod.decide(dict(COOL, temp_c=51.2), manifest, {})
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["board_overheating"])
+
+
+class PiHealthEndToEndTest(unittest.TestCase):
+    """The Pi Light proof, end to end: producer -> local inbox ->
+    the real ingest -> the wake gate -> a DETERMINISTIC brief.
+    No inference anywhere in the loop."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.base = os.path.join(self._tmp.name, "base")
+        os.makedirs(self.base)
+        self.ext_root = os.path.join(self._tmp.name, "exts")
+        os.makedirs(self.ext_root)
+        shutil.copytree(PI_HEALTH_DIR,
+                        os.path.join(self.ext_root, "pi-health"))
+        self.cfg = {
+            "shared_secret": "a11ce" + "0" * 59,
+            "oracle_mode": "deterministic",
+            "inference": dict(INF),  # configured, and still never used
+            "additional_secrets": {"pi-key": PI_SECRET},
+            "key_policies": {
+                "pi-key": {"allowed_kinds": ["sensor_alert"]},
+            },
+            "sensors": {
+                "pi_health": {"enabled": True, "key_id": "pi-key",
+                              "weight": 1.0, "profile": {}},
+            },
+            "extensions_dir": self.ext_root,
+        }
+        R._LOCAL_WAKE_LAST.clear()
+        R._wake_gate_release()
+        self.addCleanup(R._LOCAL_WAKE_LAST.clear)
+        self.addCleanup(R._wake_gate_release)
+        self.state_path = os.path.join(self._tmp.name, "state.json")
+
+    def _run_producer(self, readings, with_secret=True):
+        readings_path = os.path.join(self._tmp.name, "readings.json")
+        with open(readings_path, "w", encoding="utf-8") as fh:
+            json.dump(readings, fh)
+        mod = _load_pi_health()
+        env = {"HOMING_PIGEON_SENSOR_SECRET": PI_SECRET} \
+            if with_secret else {}
+        with unittest.mock.patch.dict(os.environ, env):
+            if not with_secret:
+                os.environ.pop("HOMING_PIGEON_SENSOR_SECRET", None)
+            return mod.main(["--readings", readings_path,
+                             "--local-dir", self.base,
+                             "--key-id", "pi-key",
+                             "--state", self.state_path])
+
+    def _inbox_names(self):
+        inbox = os.path.join(self.base, "local-inbox")
+        if not os.path.isdir(inbox):
+            return []
+        return sorted(os.listdir(inbox))
+
+    def _briefs(self):
+        path = os.path.join(self.base, "oracle-briefs.jsonl")
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            if os.path.exists(path) and not R._LOCAL_WAKE_INFLIGHT:
+                break
+            time.sleep(0.02)
+        if not os.path.exists(path):
+            return []
+        with open(path, encoding="utf-8") as fh:
+            return [json.loads(ln) for ln in fh if ln.strip()]
+
+    def test_hot_board_wakes_a_deterministic_brief(self):
+        with unittest.mock.patch.object(
+                R, "ask_model_agent",
+                side_effect=AssertionError("model called")), \
+             unittest.mock.patch.object(
+                R, "_inference_chat",
+                side_effect=AssertionError("model called")):
+            rc = self._run_producer(dict(COOL, temp_c=87.3))
+            self.assertEqual(rc, 0)
+            self.assertEqual(len(self._inbox_names()), 1)
+            filed = R._scan_local_inbox(self.cfg, self.base)
+            self.assertEqual(filed, 1)
+            self.assertEqual(self._inbox_names(), [])
+            alerts = S.load_alerts(self.base)
+            self.assertEqual(len(alerts), 1)
+            rec = alerts[0]
+            self.assertEqual(rec["signal"], "board_overheating")
+            self.assertEqual(rec["severity"], "high")
+            self.assertEqual(rec["source"], "local")
+            self.assertEqual(rec["extension"], "pi_health")
+            self.assertIn("SoC temperature", rec["signal_description"])
+            briefs = self._briefs()
+        self.assertEqual(len(briefs), 1)
+        self.assertEqual(briefs[0]["status"], "deterministic")
+        self.assertEqual(briefs[0]["sensor"], "pi_health")
+        self.assertEqual(briefs[0]["signal"], "board_overheating")
+        self.assertIn("Pi Light", briefs[0]["assessment"])
+
+    def test_repeat_pass_files_nothing_new(self):
+        self.assertEqual(self._run_producer(dict(COOL, temp_c=87.3)), 0)
+        self.assertEqual(len(self._inbox_names()), 1)
+        R._scan_local_inbox(self.cfg, self.base)
+        # Same board, same state file: the condition already
+        # reported, so this pass drops no envelope at all.
+        self.assertEqual(self._run_producer(dict(COOL, temp_c=87.3)), 0)
+        self.assertEqual(self._inbox_names(), [])
+
+    def test_failed_delivery_does_not_mark_state_reported(self):
+        # No secret in the environment: delivery cannot happen,
+        # the pass fails, and the state file is never written --
+        # so a later, working pass still reports the hot board.
+        rc = self._run_producer(dict(COOL, temp_c=87.3),
+                                with_secret=False)
+        self.assertEqual(rc, 2)
+        self.assertFalse(os.path.exists(self.state_path))
+        self.assertEqual(self._inbox_names(), [])
+        rc = self._run_producer(dict(COOL, temp_c=87.3))
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(self._inbox_names()), 1)
+        self.assertTrue(os.path.exists(self.state_path))

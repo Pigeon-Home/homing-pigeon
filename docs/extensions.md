@@ -396,3 +396,39 @@ python3 lab_results.py --watch-dir path/to/results
 Fork it without ceremony: the manifest pattern, the state
 diffing, and the declared-signal discipline are the parts worth
 keeping; the metrics are yours to replace.
+
+## The Pi Light example: Pi Health
+
+`examples/extensions/pi-health/` is a working sense for the
+board itself, and the Pi Light showcase: it runs on a
+Raspberry Pi with no local model anywhere in the loop. The
+watcher reads the board's vitals and files what needs
+attention.
+
+- `extension.json` — the manifest. Name `pi_health`, four
+  declared signals, tunables: `temp_high_c`, `disk_high_pct`,
+  `disk_mount`, `mem_avail_low_pct`.
+- `pi_health.py` — the watcher daemon. `read_board()` is the
+  only function that touches the machine (thermal sysfs,
+  `vcgencmd get_throttled`, the mount's disk usage,
+  `/proc/meminfo`); `decide()` turns one readings dict into
+  alerts and is pure, so the decision surface is testable on
+  any machine. Every source is optional — a missing
+  `vcgencmd` is a normal case, not an error. `--readings FILE`
+  feeds a readings dict from JSON instead of the board.
+- `README.md` — the short version, with the readings shape.
+
+The declared signals:
+
+| Signal | Fires when | Severity |
+|--------|------------|----------|
+| `board_overheating` | SoC temperature reaches `temp_high_c` (default 80) | high |
+| `undervoltage_detected` | The firmware throttled bitmask shows undervoltage or throttling, now or since boot | high |
+| `disk_pressure` | The `disk_mount` mount reaches `disk_high_pct` (default 90) | medium |
+| `memory_pressure` | Available memory falls to `mem_avail_low_pct` (default 10) | medium |
+
+The two high signals are the point of the example: they cross
+the local wake gate, so on a Pi Light install a hot or
+power-starved board wakes the deterministic Oracle, which
+files its brief from the alert itself — sensor, signal,
+severity, title — with no inference involved at any step.
