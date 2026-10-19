@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.8.4 - 2026-10-18
+## 3.8.5 - 2026-10-18
 
 ### Features
 
@@ -53,12 +53,26 @@
 - Every root live doc is in the mutation tree's copy
   list again (ENTERPRISE.md had landed without one).
 
+### Tests
+
+- The AIDE feed fingerprint pin writes its report with
+  `\n` only. On Windows text mode each newline was a
+  `\r\n`, so a correct file compared 1016 bytes to 980.
+
 ### Docs
 
-- The remediation design is written out in full, then
-  amended with its as-built deltas.
-- FAQs.md opens with the Oracle watch question: it polls,
-  and a serious local signal can also pass the wake gate.
+- The remediation design is amended with its as-built
+  deltas. FAQs.md opens with the Oracle watch question:
+  it polls, and a serious local signal can also pass the
+  wake gate.
+
+## 3.8.4 - 2026-10-18
+
+### Docs
+
+- The remediation design is written out in full. It stays a
+  design: divergence between a job's opinion and what it did,
+  reflexes underneath, the Oracle's judgment above.
 - STYLE.md is the short page: the preamble and the closing
   "changing this guide" section are gone.
 - TRANSPORTS.md names the unbuilt transports in the status

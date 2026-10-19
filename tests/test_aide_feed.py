@@ -160,7 +160,7 @@ class ReaderTest(unittest.TestCase):
     def test_new_report_reads_once_then_is_quiet(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "aide.log")
-            with open(path, "w", encoding="utf-8") as fh:
+            with open(path, "w", encoding="utf-8", newline="\n") as fh:
                 fh.write(REPORT)
             text, reader = AF.read_report_file([path], {})
             self.assertEqual(text, REPORT)
@@ -173,7 +173,7 @@ class ReaderTest(unittest.TestCase):
             self.assertIsNone(text)
             self.assertEqual(reader2, reader)
             # A changed report (size differs) is new again.
-            with open(path, "a", encoding="utf-8") as fh:
+            with open(path, "a", encoding="utf-8", newline="\n") as fh:
                 fh.write("\n")
             text, _reader = AF.read_report_file([path], reader)
             self.assertIsNotNone(text)
