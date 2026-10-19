@@ -223,7 +223,7 @@ members of a `"v": 1` message. They are not a separate message version.
 
 ## Extending the agent: your own senses
 
-Extensions let you teach the agent a new sense without forking it.
+Extensions let you teach the agent a new sense.
 An extension is a folder with a manifest (`extension.json`) that
 declares, in advance, the signals it may send the Oracle — each
 signal named, with a one-line description. That declaration is the

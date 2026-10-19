@@ -1,8 +1,7 @@
 # User extensions
 
 An extension is a way to teach the agent a new sense — a new
-source of signals for the Oracle — without forking the agent. You
-package your work as a folder with one manifest file, develop it
+source of signals for the Oracle. You package your work as a folder with one manifest file, develop it
 in your own loop at your own pace, and the agent loads the
 manifest and holds your package to it.
 
@@ -393,10 +392,6 @@ python3 lab_results.py --watch-dir path/to/results
 {"detail": {"metric": "accuracy", "run": "exp-041", "threshold": 0.9, "value": 0.95}, "sensor": "lab_results", "severity": "medium", "signal": "metric_threshold_crossed", "title": "experiment exp-041: accuracy 0.95 crossed threshold 0.9"}
 ```
 
-Fork it without ceremony: the manifest pattern, the state
-diffing, and the declared-signal discipline are the parts worth
-keeping; the metrics are yours to replace.
-
 ## The Pi Light example: Pi Health
 
 `examples/extensions/pi-health/` is a working sense for the
@@ -539,10 +534,6 @@ python3 sky_watcher.py --samples recorded-passes.json
 (The sample output is a replayed zenith pass over an observer
 on the equator at midnight: all three stages fire at corridor
 entry, because the window opens inside the lead time.)
-
-Fork it the same way: the manifest pattern, the declared
-signals, and the boring state machine are the parts worth
-keeping; the satellite is yours to replace.
 
 ## The catalog: thirteen examples from the workbench
 
