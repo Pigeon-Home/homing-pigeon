@@ -48,6 +48,13 @@ not code, and every trigger can be disabled.
 - **Key probing.** Repeated key-policy or signature rejections from
   the mail flow within a window — someone is knocking. Adjustable
   threshold and window.
+- **Resource pressure.** A resource event crossed its threshold
+  (CPU, memory, or disk as recorded by the built-in resource
+  monitor). Boolean trigger (`triggers.resource_pressure`).
+- **Remediation.** A remediation event was recorded: the page is
+  the after-the-fact report of an act (divergence, authority, act,
+  antivirus verdict, and the quarantine path when one was taken).
+  Boolean trigger (`triggers.remediation`).
 
 `evaluate_page_triggers` is implemented in `runner/dri.py`. It
 consumes stored senses, retained job results, and the mail-flow
@@ -76,24 +83,30 @@ Twilio-style provider, no per-message cost, no carrier metadata.
 
 ## The page
 
-One message per event, plain text, no secrets, redacted with the
-Oracle's standard patterns before sending:
+All pending events are batched into one plain-text message
+(`format_page` in `runner/dri.py`). The renderer applies no
+redaction step; the message carries only what the events carry —
+per event a title line, a detail line, and one line per signal:
 
 ```
-homing-pigeon: confinement violation
-job 3fa8… (kind=exec) wrote outside workspace_root at 14:02:11Z
-top signals: host_ids critical "unexpected setuid" (score 4.0),
-             netmon high "outbound to 203.0.113.7" (score 2.1)
-the Oracle took no action. ack with "ack 3fa8" or open the dashboard.
+homing-pigeon: confinement violation in job 3fa8…
+job wrote outside workspace_root
+
+the Oracle took no action.
+ack by investigating; open the dashboard for the full context.
 ```
 
-The runner's real page text says "open the dashboard for the full
-context." That dashboard is not built. The useful half of the line
-is "the Oracle took no action." Investigate from the log.
+The closing is always the same two lines. The first states what
+the Oracle did *not* do — unless the batch contains a remediation
+event that acted, in which case it reads instead: "remediation
+acted as recorded above; the full record is in the audit log and
+the job's result." The second line's dashboard is not built; the
+page itself, plus the runner log, is the full context today.
 
-Pages include: what tripped, when, the top weighted signals behind
-it, the job context if any, and an explicit statement of what the
-Oracle did *not* do.
+The rendered text has no timestamp line and no separate
+job-context field: a remediation event's detail line names the
+job, divergence, authority, act, antivirus verdict, and
+quarantine path when recorded.
 
 ## Anti-spam
 
@@ -102,9 +115,10 @@ Oracle did *not* do.
 - **Digest mode** (`digest_window_sec`): within the window, further
   events are batched into one follow-up message instead of paging
   individually.
-- **Owner contact is singular and explicit** (`dri.owner_contact`).
-  Pages go to the owner and no one else. There is no multi-recipient
-  mode in this spec.
+- **The destination is singular by configuration.** Pages go to
+  the one chat named by `dri.telegram_bot_token` and
+  `dri.telegram_chat_id` — the owner and no one else. There is no
+  multi-recipient mode.
 
 ## Config sketch
 
@@ -112,12 +126,15 @@ Oracle did *not* do.
 "dri": {
   "enabled": false,
   "channel": "telegram",
-  "owner_contact": {"telegram_chat_id": "..."},
+  "telegram_bot_token": "",
+  "telegram_chat_id": "",
   "triggers": {
     "sensor_fused_score": {"threshold": 6.0, "window_sec": 600},
     "confinement_violation": true,
     "judge_block": true,
-    "key_probe": {"threshold": 5, "window_sec": 3600}
+    "key_probe": {"threshold": 5, "window_sec": 3600},
+    "resource_pressure": true,
+    "remediation": true
   },
   "cooldown_sec": 3600,
   "digest_window_sec": 300
@@ -125,7 +142,7 @@ Oracle did *not* do.
 ```
 
 `enabled` defaults false. Nothing pages until the owner turns it on
-and configures a channel and contact.
+and sets a bot token and chat id.
 
 ## The human half
 
@@ -133,7 +150,9 @@ The machine config above is half the playbook. The other half is
 the owner's runbook — what *you* do when paged — and it lives with
 you, not in this repo. Template for when the time comes:
 
-1. Ack the page (so the cooldown logic knows a human saw it).
+1. Note the page. There is no ack input — nothing you send back
+   changes the runner's state; the per-trigger cooldown is purely
+   time-based on the last page sent.
 2. Read the runner log and the senses around the event. There is
    no dashboard and no headset to open.
 3. Correlate: which job, which sensor, fused score, confinement state.
@@ -145,4 +164,7 @@ you, not in this repo. Template for when the time comes:
 ## The dashboard
 
 Listed in FUTURE.md. `--oracle` is a loopback chat, not
-a page history. Ack by reply keyword is the path that exists today.
+a page history. There is no ack path at all today: no reply
+keyword is read, and the page's "ack by investigating" line
+means exactly that — the acknowledgement is the investigation
+itself.
