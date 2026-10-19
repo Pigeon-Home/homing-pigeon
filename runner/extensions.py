@@ -49,14 +49,15 @@ from datetime import datetime, timezone
 EXTENSION_API_VERSION = 1
 MANIFEST_FILE = "extension.json"
 
-KINDS = ("sense",)
+KINDS = ("sense", "transport")
 
 _NAME_RE = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
 _VERSION_RE = re.compile(
     r"\A\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\Z")
 
-_REQUIRED_FIELDS = ("name", "version", "api_version", "kind", "signals")
-_OPTIONAL_FIELDS = ("description", "tunables")
+_REQUIRED_FIELDS = ("name", "version", "api_version", "kind")
+_OPTIONAL_FIELDS = ("description", "tunables", "signals", "entry",
+                    "publisher", "startup_settle_ms")
 MAX_SIGNALS = 64
 MAX_DESCRIPTION_CHARS = 200
 
@@ -76,6 +77,13 @@ def parse_manifest(data, where=MANIFEST_FILE) -> dict:
             f"{where}: unknown field(s) {', '.join(unknown)} "
             f"(known: {', '.join(sorted(_REQUIRED_FIELDS + _OPTIONAL_FIELDS))})")
     missing = [f for f in _REQUIRED_FIELDS if f not in data]
+    kind_peek = data.get("kind")
+    if kind_peek == "sense" and "signals" not in data:
+        missing.append("signals")
+    if kind_peek == "transport":
+        for field in ("entry", "publisher"):
+            if field not in data:
+                missing.append(field)
     if missing:
         raise ValueError(
             f"{where}: missing required field(s) {', '.join(missing)}")
@@ -96,8 +104,7 @@ def parse_manifest(data, where=MANIFEST_FILE) -> dict:
     kind = data["kind"]
     if kind not in KINDS:
         raise ValueError(
-            f"{where}: kind must be one of {sorted(KINDS)} "
-            f"(the only extension kind today)")
+            f"{where}: kind must be one of {sorted(KINDS)}")
     description = data.get("description", "")
     if not isinstance(description, str) \
             or len(description) > MAX_DESCRIPTION_CHARS \
@@ -108,18 +115,18 @@ def parse_manifest(data, where=MANIFEST_FILE) -> dict:
     tunables = data.get("tunables", {})
     if not isinstance(tunables, dict):
         raise ValueError(f"{where}: tunables must be an object")
-    signals = data["signals"]
-    if not isinstance(signals, list) or not signals:
+    signals = data.get("signals") if kind == "sense" else []
+    if kind == "sense" and (not isinstance(signals, list) or not signals):
         raise ValueError(
             f"{where}: signals must be a non-empty list of "
             f"{{name, description}} objects")
-    if len(signals) > MAX_SIGNALS:
+    if isinstance(signals, list) and len(signals) > MAX_SIGNALS:
         raise ValueError(
             f"{where}: signals is capped at {MAX_SIGNALS} entries; "
             f"the list is Oracle context, keep it small")
     clean_signals = []
     seen = set()
-    for i, entry in enumerate(signals):
+    for i, entry in enumerate(signals or []):
         ewhere = f"{where}: signals[{i}]"
         if not isinstance(entry, dict):
             raise ValueError(ewhere + " must be an object")
@@ -146,6 +153,31 @@ def parse_manifest(data, where=MANIFEST_FILE) -> dict:
                 f"at most {MAX_DESCRIPTION_CHARS} characters; it is "
                 "the context the Oracle receives for this signal")
         clean_signals.append({"name": sname, "description": sdesc})
+    entry = data.get("entry")
+    publisher = data.get("publisher", "")
+    startup_settle_ms = data.get("startup_settle_ms", 0)
+    if kind == "transport":
+        if not isinstance(entry, list) or not entry or len(entry) > 16:
+            raise ValueError(
+                f"{where}: entry must be a non-empty argv list")
+        for part in entry:
+            if not isinstance(part, str) or not part or "\x00" in part \
+                    or len(part) > 500:
+                raise ValueError(
+                    f"{where}: entry items must be non-empty strings "
+                    f"of at most 500 characters, without NUL bytes")
+        if not isinstance(publisher, str) or not publisher.strip() \
+                or len(publisher) > MAX_DESCRIPTION_CHARS \
+                or "\n" in publisher or "\r" in publisher:
+            raise ValueError(
+                f"{where}: publisher must be one non-empty line of "
+                f"at most {MAX_DESCRIPTION_CHARS} characters")
+        if isinstance(startup_settle_ms, bool) \
+                or not isinstance(startup_settle_ms, int) \
+                or not 0 <= startup_settle_ms <= 5000:
+            raise ValueError(
+                f"{where}: startup_settle_ms must be an integer "
+                f"between 0 and 5000")
     return {
         "name": name,
         "version": version,
@@ -154,6 +186,11 @@ def parse_manifest(data, where=MANIFEST_FILE) -> dict:
         "description": description,
         "tunables": dict(tunables),
         "signals": clean_signals,
+        "entry": list(entry) if isinstance(entry, list) else [],
+        "publisher": publisher if isinstance(publisher, str) else "",
+        "startup_settle_ms": startup_settle_ms
+        if isinstance(startup_settle_ms, int)
+        and not isinstance(startup_settle_ms, bool) else 0,
     }
 
 
@@ -216,15 +253,17 @@ def extensions_dir_for(cfg, base_dir):
     return ""
 
 
-def load_extensions(ext_dir):
+def load_extensions(ext_dir, kinds=("sense",)):
     """Discover and validate every extension under ext_dir.
 
-    Returns (registry, problems): registry maps sensor name ->
+    Returns (registry, problems): registry maps extension name ->
     cleaned manifest (plus "dir" and "signal_descriptions");
     problems is a list of readable refusal lines, one per folder
-    that was skipped. A missing directory is normal -- most
-    installs have no extensions -- and reports nothing. Never
-    raises: extension data must not be able to abort the agent.
+    that was skipped. Folders whose declared kind is not in
+    `kinds` are not this loader's business and are skipped
+    silently. A missing directory is normal -- most installs
+    have no extensions -- and reports nothing. Never raises:
+    extension data must not be able to abort the agent.
     """
     registry = {}
     problems = []
@@ -235,7 +274,7 @@ def load_extensions(ext_dir):
     except OSError:
         return registry, problems
     for entry in entries:
-        if entry.startswith("."):
+        if entry.startswith(".") or entry == "__pycache__":
             continue
         folder = os.path.join(ext_dir, entry)
         try:
@@ -259,6 +298,9 @@ def load_extensions(ext_dir):
             continue
         except ValueError as e:
             problems.append(f"{where}: {MANIFEST_FILE} is not valid JSON: {e}")
+            continue
+        if isinstance(data, dict) and data.get("kind") in KINDS \
+                and data.get("kind") not in kinds:
             continue
         try:
             manifest = parse_manifest(data, where=MANIFEST_FILE)

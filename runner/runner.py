@@ -31,11 +31,11 @@ Usage:
 
 import ipaddress
 import argparse
-import base64
+import base64  # noqa: F401  (re-exported: tests patch it here)
 import email
 import hashlib
 import hmac
-import imaplib
+import imaplib  # noqa: F401  (re-exported: tests patch it here)
 import json
 import os
 import re
@@ -43,7 +43,7 @@ import secrets
 import shlex
 import shutil
 import signal
-import smtplib
+import smtplib  # noqa: F401  (re-exported: tests patch it here)
 import socket
 import subprocess
 import sys
@@ -53,7 +53,7 @@ import time
 import webbrowser
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from email.message import EmailMessage
+from email.message import EmailMessage  # noqa: F401  (re-export)
 from email.utils import parseaddr
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import NoReturn
@@ -119,6 +119,24 @@ _setup = _load_mod("runner.setup", "setup")
 _security = _load_mod("runner.security", "security")
 _sandbox = _load_mod("runner.sandbox", "sandbox")
 _transports = _load_mod("runner.transports", "transports")
+_mailbox_lib = _load_mod("runner.mailbox", "mailbox")
+if _mailbox_lib is not None:
+    # The mailbox client library lives in runner/mailbox.py; the
+    # email transport extension owns its lifecycle. These names
+    # stay on this module because handle_mail, the harness, and
+    # the local SI test address a mailbox-shaped client directly.
+    _use_oauth = _mailbox_lib._use_oauth
+    _xoauth2_raw = _mailbox_lib._xoauth2_raw
+    _imap_xoauth2 = _mailbox_lib._imap_xoauth2
+    _port = _mailbox_lib._port
+    _host = _mailbox_lib._host
+    _mailbox = _mailbox_lib._mailbox
+    connect_imap = _mailbox_lib.connect_imap
+    connect_smtp = _mailbox_lib.connect_smtp
+    fetch_job_mails = _mailbox_lib.fetch_job_mails
+    mark_seen = _mailbox_lib.mark_seen
+    send_mail = _mailbox_lib.send_mail
+    _valid_reply_to = _mailbox_lib._valid_reply_to
 
 
 def _append_security_event(base_dir: str, event: dict) -> None:
@@ -3640,198 +3658,9 @@ class JobRejected(Exception):
     """Validly signed job that can never succeed (poison)."""
 
 
-# ---------------------------------------------------------------- mail
-def _use_oauth(cfg) -> bool:
-    return str(cfg.get("auth") or "password").lower() == "oauth"
-
-
-def _xoauth2_raw(cfg) -> str:
-    oauth = _load_mod("runner.oauth", "oauth")
-    return oauth.xoauth2_raw(cfg["mailbox_user"], oauth.refresh_access_token(cfg))
-
-
-def _imap_xoauth2(conn, user: str, raw: str) -> None:
-    # Gmail requires the SASL initial response on the AUTHENTICATE line.
-    # imaplib.authenticate() sends a bare AUTHENTICATE and waits for a
-    # challenge; Gmail answers BAD "Invalid SASL argument". Send it ourselves.
-    blob = base64.b64encode(raw.encode("ascii"))
-    tag = conn._new_tag()
-    conn.send(tag + b" AUTHENTICATE XOAUTH2 " + blob + b"\r\n")
-    typ, dat = conn._get_tagged_response(tag)
-    if typ != "OK":
-        raise imaplib.IMAP4.error("IMAP XOAUTH2 failed: %s %s" % (typ, dat))
-    # Bypassed authenticate(), so the state machine still says NONAUTH.
-    conn.state = "AUTH"
-
-
-def _port(cfg, key, default):
-    """A missing or non-numeric port is a config error, not a crash."""
-    if not isinstance(cfg, dict):
-        raise RuntimeError("config error: config is not an object")
-    try:
-        return int(cfg.get(key, default))
-    except (TypeError, ValueError, OverflowError):
-        raise RuntimeError("config error: " + key + " must be a number")
-
-
-def _host(cfg, key):
-    """A missing or non-string host is a config error, not a KeyError."""
-    if not isinstance(cfg, dict):
-        raise RuntimeError("config error: config is not an object")
-    host = cfg.get(key)
-    if not isinstance(host, str) or not host.strip():
-        raise RuntimeError("config error: " + key + " must be a host name")
-    host = host.strip()
-    if any(c.isspace() or c == "\x00" for c in host):
-        raise RuntimeError("config error: " + key + " must not contain whitespace")
-    return host
-
-
-def _mailbox(cfg):
-    """A missing user is a config error, not a KeyError mid-poll."""
-    if not isinstance(cfg, dict):
-        raise RuntimeError("config error: config is not an object")
-    user = cfg.get("mailbox_user")
-    if not isinstance(user, str) or not user.strip():
-        raise RuntimeError("config error: mailbox_user must be set")
-    return user.strip()
-
-
-def connect_imap(cfg) -> imaplib.IMAP4_SSL:
-    conn = imaplib.IMAP4_SSL(_host(cfg, "imap_host"), _port(cfg, "imap_port", 993), timeout=30)
-    user = _mailbox(cfg)
-    if _use_oauth(cfg):
-        _imap_xoauth2(conn, user, _xoauth2_raw(cfg))
-    else:
-        # Password travels inside LOGIN, but only over the TLS session.
-        # It is never logged or written anywhere.
-        password = cfg.get("mailbox_password")
-        if not isinstance(password, str):
-            raise RuntimeError("config error: mailbox_password must be a string")
-        conn.login(user, password)
-    typ, _ = conn.select("INBOX")
-    if typ != "OK":
-        raise RuntimeError("IMAP SELECT INBOX failed")
-    return conn
-
-
-def connect_smtp(cfg) -> smtplib.SMTP:
-    smtp = smtplib.SMTP(_host(cfg, "smtp_host"), _port(cfg, "smtp_port", 587), timeout=30)
-    smtp.starttls()
-    if _use_oauth(cfg):
-        # smtplib.auth base64-encodes the return value, and calls the
-        # callback with no args for the initial response. Return the raw
-        # string. A lambda that requires an argument crashes here.
-        raw = _xoauth2_raw(cfg)
-        smtp.auth("XOAUTH2", lambda challenge=None: raw)
-    else:
-        password = cfg.get("mailbox_password")
-        if not isinstance(password, str):
-            raise RuntimeError("config error: mailbox_password must be a string")
-        smtp.login(_mailbox(cfg), password)
-    return smtp
-
-
-def fetch_job_mails(imap):
-    """Return [(seq, raw_bytes)] for unseen mails with the job subject prefix.
-
-    A bad SEARCH or one bad FETCH is skipped. The rest of the poll
-    still runs.
-    """
-    # Search broad: the subject regex accepts decorated subjects
-    # ("[HOMING-PIGEON] TEST job <id>", "Re: ..."), which do not contain
-    # the exact "[HOMING-PIGEON] job" substring. handle_mail filters.
-    try:
-        typ, data = imap.search(None, "UNSEEN", "SUBJECT", '"[HOMING-PIGEON]"')
-    except Exception as e:
-        log(f"IMAP SEARCH failed: {e}", "WARN")
-        return []
-    if typ != "OK":
-        log("IMAP SEARCH failed", "WARN")
-        return []
-    if not isinstance(data, (list, tuple)) or not data:
-        return []
-    blob = data[0]
-    if blob is None:
-        return []
-    if isinstance(blob, str):
-        blob = blob.encode("ascii", "replace")
-    if not isinstance(blob, (bytes, bytearray)):
-        log(f"IMAP SEARCH returned {type(blob).__name__}; ignoring", "WARN")
-        return []
-    mails = []
-    for num in blob.split():
-        try:
-            seq = num.decode("ascii") if isinstance(num, (bytes, bytearray)) else str(num)
-        except Exception:
-            continue
-        try:
-            typ, fetched = imap.fetch(num, "(RFC822)")
-        except Exception as e:
-            log(f"IMAP FETCH {seq} failed: {e}", "WARN")
-            continue
-        if typ != "OK" or not fetched:
-            continue
-        raw = None
-        try:
-            parts = list(fetched)
-        except TypeError:
-            continue
-        for part in parts:
-            if isinstance(part, tuple) and len(part) == 2 and isinstance(part[1], bytes):
-                raw = part[1]
-                break
-        if raw is not None:
-            mails.append((seq, raw))
-    return mails
-
-
-def mark_seen(imap, seq):
-    # IMAP connections are not thread-safe; serialize STORE.
-    with _MAIL_LOCK:
-        try:
-            imap.store(seq, "+FLAGS", "\\Seen")
-        except Exception as e:
-            log(f"STORE \\Seen failed for {seq}: {e}", "WARN")
-
-
-def send_mail(smtp, cfg, subject: str, body: str, to: str | None = None):
-    # SMTP connections are not thread-safe. Always serialize, even if
-    # the caller already holds the lock (it is an RLock).
-    # A newline in a header raises ValueError. That must not retry
-    # the job forever.
-    msg = EmailMessage()
-    try:
-        msg["From"] = str(cfg.get("mailbox_user") or "")
-        msg["To"] = to or str(cfg.get("mailbox_user") or "")
-        msg["Subject"] = str(subject or "").replace("\r", " ").replace("\n", " ")
-        msg.set_content("" if body is None else str(body))
-    except Exception as e:
-        log(f"result message not built: {e}", "WARN")
-        return
-    with _MAIL_LOCK:
-        smtp.send_message(msg)
-
-
-_REPLY_TO_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
-
-
-def _valid_reply_to(job) -> str | None:
-    """The job's reply_to address, or None.
-
-    Only a single plain address from inside the *signed* job body is
-    honored, so a spoofed From header can never steer results at
-    someone. Anything else falls back to the runner's own mailbox.
-    """
-    rt = job.get("reply_to") if isinstance(job, dict) else None
-    if not isinstance(rt, str):
-        return None
-    rt = rt.strip()
-    if len(rt) > 254 or not _REPLY_TO_RE.match(rt):
-        return None
-    return rt
-
-
+# ------------------------------------------------- mail handling
+# (the IMAP/SMTP client library lives in runner/mailbox.py; the
+# email transport extension owns its lifecycle)
 def get_text_body(msg) -> str:
     if msg.is_multipart():
         for part in msg.walk():
@@ -4733,6 +4562,8 @@ def log(msg: str, level: str = "INFO"):
 
 
 _LOG_FILE = None
+if _mailbox_lib is not None:
+    _mailbox_lib.set_logger(log)
 _VERBOSE = False
 _LOG_MINUTE = 0.0
 _LOG_COUNT = 0
@@ -7032,16 +6863,19 @@ _CLI_OVERRIDE_COUNTS = frozenset(
 
 def _transports_arg(text):
     """argparse type for --transports: 'file,nats' -> ['file',
-    'nats']. A bad name is a usage error here, at startup, not a
-    surprise at poll time."""
+    'nats']. Names are transport EXTENSION names: shape is
+    checked here, at startup; whether a name has a loadable
+    extension is discovery's question at supervisor start (any
+    valid drop-in manifest counts, registered or not)."""
     names = [p.strip() for p in str(text).split(",") if p.strip()]
-    known = _transports.TRANSPORT_NAMES if _transports is not None \
-        else ("email", "file", "nats")
-    for name in names:
-        if name not in known:
-            raise argparse.ArgumentTypeError(
-                f"unknown transport {name!r}: expected one of "
-                f"{', '.join(known)}")
+    probe = {"transports": names}
+    try:
+        if _transports is not None:
+            _transports.enabled_transports(probe)
+        elif not names:
+            raise ValueError("empty")
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(str(e)) from None
     if not names:
         raise argparse.ArgumentTypeError(
             "name at least one transport")
@@ -7167,51 +7001,29 @@ def process_transport_message(cfg, base_dir, seen, secrets,
 
 def _service_transports(cfg, base_dir, seen, seen_path, names,
                         secrets, key_policies, opts):
-    """One cycle for each enabled non-mail transport, in config
-    order. A transport that fails its cycle is logged plainly and
-    retried next cycle; one bad pipe never fails the others."""
+    """One cycle for each enabled transport extension's channel,
+    in config order. The core is transport-blind: it reads job
+    envelopes from each extension's channel inbox, runs them
+    through the mail core, and drops the result envelopes in the
+    extension's channel outbox. A channel that fails its cycle
+    is logged plainly and retried next cycle; one bad pipe never
+    fails the others. Dry-run changes nothing: a channel job
+    stays in the inbox, exactly as mail stays unseen."""
     dry_run = opts is not None and getattr(opts, "dry_run", False)
+
+    def process(subject, body_text):
+        return process_transport_message(
+            cfg, base_dir, seen, secrets, key_policies,
+            subject, body_text, opts)
+
     for name in names:
         try:
-            transport = _transports.build_transport(
-                name, cfg, base_dir, log=log)
+            count = _transports.service_channel(
+                base_dir, name, process, log=log, dry_run=dry_run)
+            vlog(f"transports: {name}: {count} message(s)")
         except Exception as e:
-            log(f"{name} transport: cannot start: {e}", "ERROR")
-            continue
-        try:
-            try:
-                messages = transport.fetch()
-            except Exception as e:
-                log(f"{name} transport: fetch failed: {e} "
-                    f"(will retry next cycle)", "WARN")
-                continue
-            vlog(f"transports: {name}: {len(messages)} message(s)")
-            for msg in messages:
-                try:
-                    replies = process_transport_message(
-                        cfg, base_dir, seen, secrets, key_policies,
-                        msg.subject, msg.body, opts)
-                    for rsubject, rbody in replies:
-                        msg.reply(rsubject, rbody)
-                except Exception as e:
-                    log(f"{name} transport: message "
-                        f"{msg.ident or '?'} failed: {e!r}",
-                        "ERROR")
-                finally:
-                    # Dry-run changes nothing: a file job stays in
-                    # the inbox, exactly as mail stays unseen.
-                    if not dry_run:
-                        try:
-                            msg.ack()
-                        except Exception as e:
-                            log(f"{name} transport: ack failed "
-                                f"for {msg.ident or '?'}: {e}",
-                                "WARN")
-        finally:
-            try:
-                transport.close()
-            except Exception:
-                pass
+            log(f"{name} transport: channel service failed: {e} "
+                f"(will retry next cycle)", "WARN")
     if len(seen) > SEEN_CAP:
         for k in list(seen.keys())[:-SEEN_CAP]:
             del seen[k]
@@ -7256,8 +7068,13 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
         log(f"runner identity: {cfg.get('mailbox_user') or '(unset)'} -- accepting signed jobs from any sender")
         log.identity_logged = True  # pyrefly: ignore[missing-attribute]  # intentional monkey-patch: one log line per process
     transport_names = _enabled_transports(cfg)
-    if "email" in transport_names or imap is not None \
-            or smtp is not None:
+    if imap is not None or smtp is not None:
+        # Injected-client compatibility path: the diagnostic
+        # harness and the local SI test hand poll_once a mailbox
+        # pair directly and expect the mail core to run on it.
+        # Production never reaches here -- the email transport
+        # extension owns the mailbox and jobs arrive through its
+        # channel like every other transport's.
         own_imap = imap is None
         own_smtp = smtp is None
         try:
@@ -7308,12 +7125,30 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
                     smtp.quit()
                 except Exception:
                     pass
-
-
-    other_transports = [n for n in transport_names if n != "email"]
-    if other_transports:
+    elif not (opts is not None and getattr(opts, "dry_run", False)):
+        # Production path: the supervisor (started by main())
+        # owns the transport extension processes. A bare
+        # poll_once without one still services the channels --
+        # the envelopes are the contract, the processes are the
+        # supervisor's concern -- but nothing new will arrive
+        # until the extensions run.
+        if _transports is not None:
+            sup = _transports.active_supervisor(cfg, base_dir)
+            if sup is not None:
+                try:
+                    sup.check()
+                    sup.settle()
+                except Exception as e:
+                    log(f"transport supervisor check failed: {e}",
+                        "WARN")
+            else:
+                vlog("transports: no supervisor in this process; "
+                     "servicing channels only")
+    # Every enabled transport, email included, is serviced
+    # through its channel. The core never opens a pipe itself.
+    if transport_names and _transports is not None:
         _service_transports(cfg, base_dir, seen, seen_path,
-                            other_transports, secrets, key_policies,
+                            transport_names, secrets, key_policies,
                             opts)
 
 
@@ -10550,6 +10385,28 @@ def main() -> int:
         log("local signals: not started (dry-run)")
     else:
         _start_local_signals(cfg, base_dir)
+    # Transport extensions: this process supervises the enabled
+    # ones for its whole life -- starts them, restarts the dead,
+    # stops them at exit. Dry-run observes and starts nothing:
+    # a dry run does not even open the mailbox (the email
+    # extension owns it now), so a dead mailbox cannot fail one.
+    if getattr(args, "dry_run", False):
+        log("transport extensions: not started (dry-run)")
+    if not getattr(args, "dry_run", False) \
+            and _transports is not None:
+        try:
+            _transports.start_supervisor(cfg, base_dir, log=log)
+            # Extensions live in their own sessions so a dead
+            # one cannot take the runner down; the price is that
+            # an abrupt exit (Ctrl+C converted by _run, say)
+            # would orphan them without this hook. The normal
+            # path stops them explicitly at the loop's end.
+            import atexit
+            atexit.register(_transports.stop_supervisors,
+                            base_dir)
+        except Exception as e:
+            log(f"transport supervisor failed to start: {e}",
+                "ERROR")
     auth_failed = False  # latch: report auth death once, not every 20s
     # Connection credentials (mailbox_user/password, oauth_*) are not
     # hot. Those still need a restart. CLI flags pin their key so a
@@ -10621,6 +10478,8 @@ def main() -> int:
         if delay < 1:
             delay = 20
         time.sleep(delay)
+    if _transports is not None:
+        _transports.stop_supervisors(base_dir)
     log("homing-pigeon exiting")
     return 0
 
@@ -10634,6 +10493,17 @@ def _run() -> "NoReturn":
     except KeyboardInterrupt:
         sys.exit(0)
 
+
+if __name__ == "__main__" and len(sys.argv) > 2 \
+        and sys.argv[1] == "--transport-extension-module":
+    # Frozen-exe dispatch: the supervisor launches first-party
+    # transport extensions as [exe, -m, <module>, ...]; a frozen
+    # exe has no -m, so it re-enters here and runs the module's
+    # main() with the remaining argv.
+    import importlib
+    _ext_mod = importlib.import_module(sys.argv[2] + ".__main__")
+    sys.argv = [sys.argv[2]] + sys.argv[3:]
+    raise SystemExit(_ext_mod.main())
 
 if __name__ == "__main__":
     _run()

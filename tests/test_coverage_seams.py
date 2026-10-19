@@ -683,7 +683,7 @@ class ConnectMailTest(unittest.TestCase):
         import base64
         from runner import runner
         with mock.patch.object(runner.imaplib, "IMAP4_SSL", _FakeIMAP), \
-             mock.patch.object(runner, "_xoauth2_raw", return_value="raw-token"):
+             mock.patch("runner.mailbox._xoauth2_raw", return_value="raw-token"):
             conn = runner.connect_imap(self._imap_cfg(auth="oauth"))
         sent = b"".join(conn.sent)
         self.assertIn(b"AUTHENTICATE XOAUTH2", sent)
@@ -696,7 +696,7 @@ class ConnectMailTest(unittest.TestCase):
         from runner import runner
         _FakeIMAP.tagged = ("NO", [b"bad"])
         with mock.patch.object(runner.imaplib, "IMAP4_SSL", _FakeIMAP), \
-             mock.patch.object(runner, "_xoauth2_raw", return_value="raw-token"):
+             mock.patch("runner.mailbox._xoauth2_raw", return_value="raw-token"):
             with self.assertRaises(imaplib.IMAP4.error):
                 runner.connect_imap(self._imap_cfg(auth="oauth"))
 
@@ -711,7 +711,7 @@ class ConnectMailTest(unittest.TestCase):
     def test_smtp_oauth_calls_the_callback_with_no_arguments(self):
         from runner import runner
         with mock.patch.object(runner.smtplib, "SMTP", _FakeSMTP), \
-             mock.patch.object(runner, "_xoauth2_raw", return_value="raw-token"):
+             mock.patch("runner.mailbox._xoauth2_raw", return_value="raw-token"):
             smtp = runner.connect_smtp(self._smtp_cfg(auth="oauth"))
         self.assertEqual(smtp.auth_mech, "XOAUTH2")
         self.assertEqual(smtp.callback_result, "raw-token")

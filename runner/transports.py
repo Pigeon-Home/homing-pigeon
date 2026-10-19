@@ -1,46 +1,80 @@
-"""Job transports: the pipes that carry signed jobs to the runner.
+"""Transport extensions: the contract, discovery, and supervision.
 
-Email is transport #1 and stays the default. This module is the
-seam the other pipes hang off: a transport delivers envelopes --
-a subject line, a blank line, then the signed body, exactly the
-shape cloud/send_job.py prints -- into the runner's one
-verification/execution core, and carries the core's result
-messages back out. A transport never replaces the signature:
-the HMAC on the body is checked by the core on every transport,
-after the pipe delivers. Where a pipe has credentials of its
-own they count as a first gate, not a formality -- the NATS
-transport requires broker authentication by default, and the
-file transport's first gate is the inbox folder's OS access
-control.
+The runner core is transport-blind. Every job transport -- email,
+the watched folder, core NATS, and any pipe an owner drops in --
+is a standalone extension program living in a folder with an
+`extension.json` manifest of kind "transport". The runner never
+imports extension code. It discovers enabled transport
+extensions, supervises them as child processes, and talks to
+them through one file channel per extension under the base dir:
 
-Ships here: the file transport (a watched inbox folder, for
-local harnesses, CI, and anything that can share a folder) and a
-core-NATS transport (plain pub/sub; no JetStream, no clustering).
-The mail transport needs no class -- the runner's IMAP/SMTP path
-predates the seam and is wired in runner.py directly.
+    <base_dir>/transport-extensions/<name>/inbox/
+        Job envelopes, extension -> runner. A job envelope is a
+        subject line, a blank line, then the signed body -- the
+        exact shape cloud/send_job.py prints.
+    <base_dir>/transport-extensions/<name>/outbox/
+        Result envelopes, runner -> extension, same shape. The
+        extension carries each result home over its own pipe.
+
+Ack is consumption: the runner moves a processed job file into
+inbox/done/ (never deletes), and an extension moves a delivered
+result into outbox/done/. The HMAC signature on the body is
+checked by the runner's core for every job on every transport,
+after the pipe delivers; a transport's own credentials, where it
+has them, are a first gate in front of that check (the NATS
+extension requires broker authentication by default).
+
+The contract is versioned at one: TRANSPORT_API_VERSION = 1.
+Every transport manifest declares `api_version`; the runner
+refuses (logs, skips, keeps running) a transport extension
+declaring any other version. There is no negotiation machinery:
+one version number, stated in the manifest, checked once.
+
+Registration is for discovery and for a future lockdown to pin;
+it is never a permission to run. The loader consults NO catalog
+or registry: a folder with a valid transport manifest in the
+extensions directory loads and runs, registered or not. The
+first-party transports (email, file, nats) ship as extension
+folders under runner/transport_extensions/ and are found the
+same way; a same-named folder in the owner's extensions
+directory wins over the shipped one.
 
 Stdlib only, like the rest of the runner. This module imports
 nothing from runner.py; the runner passes its log function in.
 """
 
+import json
 import os
 import re
-import socket
+import subprocess
+import sys
 import time
-from urllib.parse import unquote, urlparse
+import uuid
 
-# Every transport name the runner will accept in the `transports`
-# config key. Unknown names are a startup error, never a silent
-# skip: a typo'd pipe must not look like a quiet cycle.
-TRANSPORT_NAMES = ("email", "file", "nats")
+try:  # package context (runner.transports)
+    from runner import extensions as _extensions
+except Exception:  # pragma: no cover - sibling context
+    try:
+        from . import extensions as _extensions  # type: ignore
+    except Exception:
+        import extensions as _extensions  # type: ignore
+
+TRANSPORT_API_VERSION = 1
+
+# First-party transport names (also the names a fresh install's
+# discovery finds under runner/transport_extensions/). Enabled
+# names are NOT limited to these: any valid transport manifest
+# in the extensions directory is loadable, registered or not.
+FIRST_PARTY_TRANSPORTS = ("email", "file", "nats")
 
 DEFAULT_TRANSPORTS = ["email"]
 
-# The file transport refuses job files larger than this, unread.
-# It matches the mail path's default max_job_bytes so a job that
+# A channel job file larger than this is refused unread. It
+# matches the mail path's default max_job_bytes so a job that
 # fits one pipe fits the other.
 FILE_MAX_BYTES = 4 * 1024 * 1024
 
+_NAME_RE = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
 _RESULT_ID_RE = re.compile(
     r"\[HOMING-PIGEON\](?:\s+\S+)*\s+(?:result|qresult)\s+(\S+)", re.I)
 _JOB_ID_RE = re.compile(
@@ -48,64 +82,16 @@ _JOB_ID_RE = re.compile(
 
 
 class TransportError(Exception):
-    """A transport failed this cycle; the next cycle retries."""
-
-
-class _Idle(Exception):
-    """The read deadline passed with nothing more to read."""
-
-
-# Gate notices are logged once per process, not once per poll
-# cycle: transports are rebuilt every cycle, and a line repeated
-# every 20 seconds would bury the log it is meant to inform.
-_NOTICE_LOGGED = set()
-
-
-def _notice_once(key, log, msg, level="INFO"):
-    if key in _NOTICE_LOGGED:
-        return
-    _NOTICE_LOGGED.add(key)
-    log(msg, level)
+    """A transport failed; the runner logs it and carries on."""
 
 
 def _silent_log(msg, level="INFO"):
     pass
 
 
-def enabled_transports(cfg):
-    """The validated transport names for this config.
-
-    `transports` may be a list or a comma-separated string.
-    Absent means the default, ["email"]. Raises ValueError on an
-    unknown name or a value of the wrong shape -- main() turns
-    that into a startup error, and poll_once lets it surface as a
-    failed cycle rather than guessing.
-    """
-    raw = cfg.get("transports") if isinstance(cfg, dict) else None
-    if raw is None:
-        return list(DEFAULT_TRANSPORTS)
-    if isinstance(raw, str):
-        names = [p.strip() for p in raw.split(",")]
-    elif isinstance(raw, (list, tuple)):
-        names = [str(p).strip() for p in raw]
-    else:
-        raise ValueError(
-            f"transports must be a list of names or a "
-            f"comma-separated string (got {type(raw).__name__})")
-    out = []
-    for name in names:
-        if not name:
-            continue
-        if name not in TRANSPORT_NAMES:
-            raise ValueError(
-                f"unknown transport {name!r}: expected one of "
-                f"{', '.join(TRANSPORT_NAMES)}")
-        if name not in out:
-            out.append(name)
-    if not out:
-        raise ValueError("transports names no transport")
-    return out
-
+# ------------------------------------------------------------------
+# The envelope
+# ------------------------------------------------------------------
 
 def parse_envelope(text):
     """Split an envelope into (subject, body_text), or None.
@@ -130,13 +116,191 @@ def format_envelope(subject, body):
     return f"{subject}\n\n{body}"
 
 
-class IncomingMessage:
-    """One delivered envelope, plus where its results go.
+# ------------------------------------------------------------------
+# Configuration: which transport extensions are enabled
+# ------------------------------------------------------------------
 
-    reply(subject, body) carries one result message back out the
-    pipe. ack() marks the delivery consumed (the file transport
-    moves the job file to done/); transports with nothing to ack
-    leave it a no-op. `ident` names the delivery in log lines.
+def enabled_transports(cfg):
+    """The enabled transport extension names for this config.
+
+    `transports` may be a list or a comma-separated string.
+    Absent means the default, ["email"] -- email is the default
+    transport, as the default-enabled transport extension. Names
+    are validated for shape only; whether a name has a loadable
+    extension is discovery's question (see
+    discover_transport_extensions), because an unregistered
+    drop-in is a first-class citizen here. Raises ValueError on
+    a malformed value.
+    """
+    raw = cfg.get("transports") if isinstance(cfg, dict) else None
+    if raw is None:
+        return list(DEFAULT_TRANSPORTS)
+    if isinstance(raw, str):
+        names = [p.strip() for p in raw.split(",")]
+    elif isinstance(raw, (list, tuple)):
+        names = [str(p).strip() for p in raw]
+    else:
+        raise ValueError(
+            f"transports must be a list of names or a "
+            f"comma-separated string (got {type(raw).__name__})")
+    out = []
+    for name in names:
+        if not name:
+            continue
+        if not _NAME_RE.match(name):
+            raise ValueError(
+                f"invalid transport name {name!r}: names are "
+                f"letters, digits, '.', '_' or '-', starting with "
+                f"a letter or digit")
+        if name not in out:
+            out.append(name)
+    if not out:
+        raise ValueError("transports names no transport")
+    return out
+
+
+# ------------------------------------------------------------------
+# Discovery: manifests, no catalog, no registry check
+# ------------------------------------------------------------------
+
+def _extensions_dir_for(cfg, base_dir):
+    raw = cfg.get("extensions_dir") if isinstance(cfg, dict) else None
+    if isinstance(raw, str) and raw.strip():
+        if os.path.isabs(raw) or not base_dir:
+            return raw
+        return os.path.join(base_dir, raw)
+    if base_dir:
+        return os.path.join(base_dir, "extensions")
+    return ""
+
+
+def builtin_transport_roots():
+    """Where the shipped first-party transport extensions live."""
+    roots = []
+    here = os.path.dirname(os.path.abspath(__file__))
+    roots.append(os.path.join(here, "transport_extensions"))
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        roots.append(os.path.join(meipass,
+                                  "pigeon-transport-extensions"))
+        roots.append(os.path.join(meipass, "transport_extensions"))
+    exe = getattr(sys, "executable", "") or ""
+    if exe:
+        roots.append(os.path.join(
+            os.path.dirname(os.path.abspath(exe)),
+            "transport_extensions"))
+    return roots
+
+
+def discover_transport_extensions(cfg, base_dir):
+    """Find every loadable transport extension, by manifest name.
+
+    Returns (registry, problems): registry maps name -> cleaned
+    manifest (plus "dir"). Two roots are scanned: the owner's
+    extensions directory FIRST (a same-named drop-in wins over a
+    shipped transport), then the shipped first-party folders.
+    No catalog or registry is consulted for either root: a valid
+    manifest with api_version == TRANSPORT_API_VERSION is
+    sufficient. A manifest declaring any other transport API
+    version is refused with a readable problem line; the runner
+    keeps running without it.
+    """
+    registry = {}
+    problems = []
+    roots = []
+    user_dir = _extensions_dir_for(cfg, base_dir)
+    if user_dir:
+        roots.append(user_dir)
+    roots.extend(builtin_transport_roots())
+    for root in roots:
+        found, probs = _extensions.load_extensions(
+            root, kinds=("transport",))
+        for prob in probs:
+            problems.append(f"{root}: {prob}")
+        for name, manifest in found.items():
+            if manifest.get("api_version") != TRANSPORT_API_VERSION:
+                problems.append(
+                    f"transport extension {name!r}: refused: it "
+                    f"declares transport API "
+                    f"v{manifest.get('api_version')}; this runner "
+                    f"speaks v{TRANSPORT_API_VERSION}")
+                continue
+            if name in registry:
+                continue  # an earlier root already claimed the name
+            registry[name] = manifest
+    return registry, problems
+
+
+# ------------------------------------------------------------------
+# The channel: one inbox/outbox pair per extension
+# ------------------------------------------------------------------
+
+def channel_root(base_dir, name):
+    return os.path.join(base_dir, "transport-extensions", name)
+
+
+def channel_paths(base_dir, name):
+    root = channel_root(base_dir, name)
+    return {
+        "root": root,
+        "inbox": os.path.join(root, "inbox"),
+        "inbox_done": os.path.join(root, "inbox", "done"),
+        "outbox": os.path.join(root, "outbox"),
+        "outbox_done": os.path.join(root, "outbox", "done"),
+    }
+
+
+def ensure_channel_dirs(base_dir, name):
+    paths = channel_paths(base_dir, name)
+    for key in ("inbox", "inbox_done", "outbox", "outbox_done"):
+        os.makedirs(paths[key], exist_ok=True)
+    return paths
+
+
+def _atomic_write(path, text):
+    tmp = path + ".tmp-" + uuid.uuid4().hex[:8]
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(text)
+    os.replace(tmp, path)
+
+
+def write_channel_result(base_dir, name, job_subject, subject, body,
+                         ident_hint=None):
+    """Drop one result envelope into an extension's outbox.
+
+    The result file is named for the job that produced it: the
+    channel ident the extension delivered the job under when
+    there is one (the contract's correlation key), else the job
+    id parsed from the subjects."""
+    paths = ensure_channel_dirs(base_dir, name)
+    rid = None
+    if ident_hint:
+        rid = str(ident_hint)
+    if not rid:
+        m = _RESULT_ID_RE.search(subject or "")
+        if m:
+            rid = m.group(1)
+    if not rid:
+        m = _JOB_ID_RE.search(job_subject or "")
+        rid = m.group(1) if m else "unknown"
+    rid = re.sub(r"[^A-Za-z0-9._-]", "_", rid)
+    base = os.path.join(paths["outbox"], f"{rid}.result.txt")
+    path = base
+    n = 2
+    while os.path.exists(path):
+        path = os.path.join(paths["outbox"], f"{rid}.result-{n}.txt")
+        n += 1
+    text = format_envelope(subject, body)
+    if body and not body.endswith("\n"):
+        text += "\n"
+    _atomic_write(path, text)
+    return path
+
+
+class IncomingMessage:
+    """One job envelope delivered through a channel, plus where
+    its results go. reply() drops a result envelope in the
+    extension's outbox; ack() moves the job file to inbox/done.
     """
 
     def __init__(self, subject, body, reply, ack=None, ident=""):
@@ -154,436 +318,392 @@ class IncomingMessage:
             self._ack()
 
 
-def _config_block(cfg, key):
-    block = cfg.get(key) if isinstance(cfg, dict) else None
-    return block if isinstance(block, dict) else {}
+def fetch_channel_messages(base_dir, name, log=None):
+    """Every job envelope waiting in one extension's channel
+    inbox, as IncomingMessages. Refusals mirror the local-inbox
+    discipline: symlinks and oversize files are refused unread,
+    malformed envelopes are consumed with the reason logged --
+    each refusal still returns an ack-only message so a poison
+    file cannot wedge the channel."""
+    log = log or _silent_log
+    paths = ensure_channel_dirs(base_dir, name)
+    out = []
+    for fname in sorted(os.listdir(paths["inbox"])):
+        if fname == "done":
+            continue
+        path = os.path.join(paths["inbox"], fname)
+        if not os.path.isfile(path) and not os.path.islink(path):
+            continue
 
-
-def _resolve_dir(base_dir, value, default_parts):
-    if value:
-        path = str(value)
-        if not os.path.isabs(path):
-            path = os.path.join(base_dir, path)
-        return path
-    return os.path.join(base_dir, *default_parts)
-
-
-class FileTransport:
-    """Jobs as files in a watched inbox folder.
-
-    Layout under the base dir unless configured otherwise:
-    <base_dir>/transport-file/inbox holds job files,
-    <base_dir>/transport-file/outbox receives results as
-    <job_id>.result.txt, and processed job files move to
-    inbox/done -- never deleted, so a run can be audited after
-    the fact. A job file is the envelope: first line the subject
-    line, a blank line, then the signed body.
-
-    Discipline mirrors the local-signal inbox: symlinks are
-    refused unread, files over FILE_MAX_BYTES are refused
-    unread, and every file is processed exactly once -- refused
-    and malformed files still move to done/, with the reason
-    logged, so a poison file cannot wedge the folder.
-    """
-
-    name = "file"
-
-    def __init__(self, cfg, base_dir, log=None):
-        block = _config_block(cfg, "transport_file")
-        self.inbox_dir = _resolve_dir(
-            base_dir, block.get("inbox_dir"),
-            ("transport-file", "inbox"))
-        self.outbox_dir = _resolve_dir(
-            base_dir, block.get("outbox_dir"),
-            ("transport-file", "outbox"))
-        self.done_dir = os.path.join(self.inbox_dir, "done")
-        self.log = log or _silent_log
-
-    def fetch(self):
-        os.makedirs(self.inbox_dir, exist_ok=True)
-        os.makedirs(self.outbox_dir, exist_ok=True)
-        os.makedirs(self.done_dir, exist_ok=True)
-        out = []
-        for name in sorted(os.listdir(self.inbox_dir)):
-            if name == "done":
-                continue
-            path = os.path.join(self.inbox_dir, name)
-            # Files and symlinks (refused unread, in _message)
-            # are deliveries; directories and anything else are
-            # not the transport's business.
-            if not os.path.isfile(path) and not os.path.islink(path):
-                continue
-            out.append(self._message(name, path))
-        return out
-
-    def _message(self, name, path):
-        state = {"job_id": None}
-
-        def ack():
+        def ack(path=path, fname=fname):
             try:
-                os.replace(path, os.path.join(self.done_dir, name))
+                os.replace(path, os.path.join(paths["inbox_done"],
+                                              fname))
             except OSError as e:
-                self.log(f"file transport: cannot move {name} "
-                         f"to done: {e}", "WARN")
+                log(f"transport {name}: cannot move {fname} to "
+                    f"done: {e}", "WARN")
 
-        def refuse(why):
-            self.log(f"file transport: {name}: refused: {why}",
-                     "WARN")
+        def refuse(why, fname=fname):
+            log(f"transport {name}: {fname}: refused: {why}",
+                "WARN")
             return IncomingMessage("", "", lambda s, b: None,
-                                   ack=ack, ident=name)
+                                   ack=ack, ident=fname)
 
         if os.path.islink(path):
-            return refuse("symlink job files are not read")
+            out.append(refuse("symlink job files are not read"))
+            continue
         try:
             size = os.path.getsize(path)
         except OSError as e:
-            return refuse(f"cannot stat: {e}")
+            out.append(refuse(f"cannot stat: {e}"))
+            continue
         if size > FILE_MAX_BYTES:
-            return refuse(f"{size} bytes exceeds the "
-                          f"{FILE_MAX_BYTES}-byte cap")
+            out.append(refuse(f"{size} bytes exceeds the "
+                              f"{FILE_MAX_BYTES}-byte cap"))
+            continue
         try:
             with open(path, encoding="utf-8") as f:
                 text = f.read()
         except (OSError, UnicodeDecodeError) as e:
-            return refuse(f"cannot read as UTF-8: {e}")
+            out.append(refuse(f"cannot read as UTF-8: {e}"))
+            continue
         parsed = parse_envelope(text)
         if parsed is None:
-            return refuse("malformed envelope (no blank line "
-                          "between subject and body)")
+            out.append(refuse("malformed envelope (no blank line "
+                              "between subject and body)"))
+            continue
         subject, body = parsed
-        m = _JOB_ID_RE.search(subject)
-        state["job_id"] = m.group(1) if m else None
+        stem = fname[:-len(".job.txt")] \
+            if fname.endswith(".job.txt") else fname
 
-        def reply(rsubject, rbody):
-            self._write_result(state["job_id"], rsubject, rbody)
+        def reply(rsubject, rbody, job_subject=subject, stem=stem):
+            write_channel_result(base_dir, name, job_subject,
+                                 rsubject, rbody, ident_hint=stem)
 
-        return IncomingMessage(subject, body, reply, ack=ack,
-                               ident=name)
-
-    def _write_result(self, job_id, subject, body):
-        rid = None
-        m = _RESULT_ID_RE.search(subject or "")
-        if m:
-            rid = m.group(1)
-        if not rid:
-            rid = job_id or "unknown"
-        rid = re.sub(r"[^A-Za-z0-9._-]", "_", rid)
-        base = os.path.join(self.outbox_dir, f"{rid}.result.txt")
-        path = base
-        n = 2
-        while os.path.exists(path):
-            path = os.path.join(self.outbox_dir,
-                                f"{rid}.result-{n}.txt")
-            n += 1
-        tmp = path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            f.write(format_envelope(subject, body))
-            if body and not body.endswith("\n"):
-                f.write("\n")
-        os.replace(tmp, path)
-        self.log(f"file transport: result for {rid} -> "
-                 f"{os.path.basename(path)}")
-
-    def close(self):
-        pass
+        out.append(IncomingMessage(subject, body, reply, ack=ack,
+                                   ident=fname))
+    return out
 
 
-class NatsClient:
-    """A minimal core-NATS client, hand-rolled on stdlib sockets.
+def service_channel(base_dir, name, process_message, log=None,
+                    dry_run=False):
+    """One runner cycle for one extension's channel: hand every
+    waiting job envelope to process_message(subject, body) ->
+    [(subject, body)], route the replies into the outbox, and
+    ack each job in a finally (dry-run acks nothing). Returns the
+    number of messages serviced."""
+    log = log or _silent_log
+    messages = fetch_channel_messages(base_dir, name, log=log)
+    for msg in messages:
+        try:
+            replies = process_message(msg.subject, msg.body)
+            for rsubject, rbody in replies:
+                msg.reply(rsubject, rbody)
+        except Exception as e:
+            log(f"transport {name}: message {msg.ident or '?'} "
+                f"failed: {e!r}", "ERROR")
+        finally:
+            if not dry_run:
+                try:
+                    msg.ack()
+                except Exception as e:
+                    log(f"transport {name}: ack failed for "
+                        f"{msg.ident or '?'}: {e}", "WARN")
+    return len(messages)
 
-    Speaks just enough of the text protocol: reads the server's
-    INFO, sends CONNECT and PING (expecting PONG), SUBscribes,
-    reads MSG frames, PUBs, and answers server PINGs with PONG.
-    No JetStream, no clustering, no reconnect smarts -- the
-    transport fails the cycle and the next poll reconnects.
+
+# ------------------------------------------------------------------
+# Supervision: enabled transport extensions as child processes
+# ------------------------------------------------------------------
+
+_MAILBOX_KEYS = (
+    "mailbox_user", "mailbox_password", "imap_host", "imap_port",
+    "smtp_host", "smtp_port", "auth", "oauth_client_id",
+    "oauth_client_secret", "oauth_refresh_token",
+)
+
+
+def _runtime_config(cfg, name, base_dir, paths):
+    """The config one extension process is handed: its own
+    transport block (transport_<name>), the mailbox keys for the
+    email extension, and the shared cadence keys. The core's
+    other config -- above all the shared secret -- is NOT handed
+    over: verification is the core's job, never the pipe's."""
+    out = {
+        "name": name,
+        "base_dir": base_dir,
+        "channel_dir": paths["root"],
+        "poll_interval_sec": cfg.get("poll_interval_sec", 20)
+        if isinstance(cfg, dict) else 20,
+    }
+    if isinstance(cfg, dict):
+        block = cfg.get(f"transport_{name}")
+        if isinstance(block, dict):
+            out.update(block)
+            out["transport"] = dict(block)
+        if name == "email":
+            for key in _MAILBOX_KEYS:
+                if key in cfg:
+                    out[key] = cfg[key]
+    return out
+
+
+def _write_runtime_config(paths, payload):
+    path = os.path.join(paths["root"], "runtime-config.json")
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+                     0o600)
+    except OSError:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(json.dumps(payload, indent=1, sort_keys=True))
+        return path
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(json.dumps(payload, indent=1, sort_keys=True))
+    return path
+
+
+def _substitute(token, subs):
+    out = token
+    for key, value in subs.items():
+        out = out.replace("{" + key + "}", value)
+    return out
+
+
+class TransportSupervisor:
+    """Starts, watches, and restarts the enabled transport
+    extension processes for one runner.
+
+    A dead extension is restarted with backoff (1s doubling to
+    a 30s cap) and a log line; its death never takes the runner
+    or the other transports down -- each extension is its own
+    process with its own channel, and every failure here is
+    caught, logged, and left for the next check.
     """
 
-    def __init__(self, url, log=None, timeout=10.0,
-                 user=None, password=None, token=None):
+    def __init__(self, cfg, base_dir, log=None, popen=None,
+                 clock=None):
+        self.cfg = cfg if isinstance(cfg, dict) else {}
+        self.base_dir = base_dir
         self.log = log or _silent_log
-        parsed = urlparse(url or "nats://127.0.0.1:4222")
-        self.host = parsed.hostname or "127.0.0.1"
-        self.port = parsed.port or 4222
-        self._connect_opts = {"verbose": False, "pedantic": False,
-                              "name": "homing-pigeon",
-                              "lang": "python-stdlib", "version": "1"}
-        # Authentication for the CONNECT: explicit credentials
-        # (the transport_nats config keys) win over any userinfo
-        # embedded in the URL.
-        if token:
-            self._connect_opts["auth_token"] = str(token)
-        elif user:
-            self._connect_opts["user"] = str(user)
-            self._connect_opts["pass"] = str(password or "")
-        elif parsed.password:
-            self._connect_opts["user"] = unquote(parsed.username or "")
-            self._connect_opts["pass"] = unquote(parsed.password)
-        elif parsed.username:
-            self._connect_opts["auth_token"] = unquote(parsed.username)
-        self.timeout = timeout
-        self.sock = None
-        self._buf = b""
-        self._sid = 0
+        self._popen = popen or subprocess.Popen
+        self._clock = clock or time.monotonic
+        self.names = enabled_transports(self.cfg)
+        self.registry, self.problems = \
+            discover_transport_extensions(self.cfg, base_dir)
+        self.missing = [n for n in self.names
+                        if n not in self.registry]
+        self.processes = {}   # name -> record dict
+        self.stopped = False
 
-    # -- line/frame IO ------------------------------------------------
-    def _fill(self, deadline):
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            raise _Idle()
-        self.sock.settimeout(remaining)
-        try:
-            chunk = self.sock.recv(65536)
-        except socket.timeout:
-            raise _Idle()
-        except OSError as e:
-            raise TransportError(f"nats: read failed: {e}")
-        if not chunk:
-            raise TransportError("nats: server closed the "
-                                   "connection")
-        self._buf += chunk
-
-    def _readline(self, deadline):
-        while b"\r\n" not in self._buf:
-            self._fill(deadline)
-        line, self._buf = self._buf.split(b"\r\n", 1)
-        return line.decode("utf-8", errors="replace")
-
-    def _read_exact(self, n, deadline):
-        while len(self._buf) < n:
-            try:
-                self._fill(deadline)
-            except _Idle:
-                raise TransportError("nats: timed out "
-                                     "mid-message")
-        out, self._buf = self._buf[:n], self._buf[n:]
-        return out
-
-    def _send(self, data):
-        try:
-            self.sock.sendall(data)
-        except OSError as e:
-            raise TransportError(f"nats: send failed: {e}")
-
-    # -- protocol -----------------------------------------------------
-    def connect(self):
-        import json as _json
-        try:
-            self.sock = socket.create_connection(
-                (self.host, self.port), timeout=self.timeout)
-        except OSError as e:
-            raise TransportError(
-                f"nats: cannot connect to "
-                f"{self.host}:{self.port}: {e}")
-        deadline = time.monotonic() + self.timeout
-        try:
-            line = self._readline(deadline)
-        except _Idle:
-            raise TransportError("nats: timed out waiting for "
-                                   "the server INFO")
-        if not line.startswith("INFO "):
-            raise TransportError(f"nats: expected INFO, got "
-                                 f"{line[:40]!r}")
-        self._send(b"CONNECT "
-                   + _json.dumps(self._connect_opts).encode()
-                   + b"\r\nPING\r\n")
-        try:
-            line = self._readline(deadline)
-        except _Idle:
-            raise TransportError("nats: timed out waiting for "
-                                   "PONG")
-        if line.startswith("-ERR"):
-            raise TransportError(f"nats: server error: "
-                                 f"{line[5:].strip()}")
-        if line != "PONG":
-            raise TransportError(f"nats: expected PONG, got "
-                                 f"{line[:40]!r}")
+    # -- lifecycle ------------------------------------------------
+    def start(self):
+        for prob in self.problems:
+            self.log(f"transport extensions: {prob}", "WARN")
+        for name in self.missing:
+            self.log(f"transport {name}: no loadable transport "
+                     f"extension found with that name", "ERROR")
+        for name in self.names:
+            if name in self.registry:
+                self._start_one(name)
         return self
 
-    def subscribe(self, subject):
-        self._sid += 1
-        self._send(f"SUB {subject} {self._sid}\r\n".encode())
-        return self._sid
+    def _start_one(self, name):
+        manifest = self.registry[name]
+        paths = ensure_channel_dirs(self.base_dir, name)
+        config_path = _write_runtime_config(
+            paths, _runtime_config(self.cfg, name, self.base_dir,
+                                   paths))
+        subs = {
+            "python": sys.executable,
+            "self": sys.executable,
+            "extension_dir": manifest["dir"],
+            "channel_dir": paths["root"],
+            "runtime_config": config_path,
+            "base_dir": self.base_dir,
+            "name": name,
+        }
+        argv = [_substitute(str(part), subs)
+                for part in manifest["entry"]]
+        if getattr(sys, "frozen", False) and len(argv) >= 2 \
+                and argv[0] == sys.executable and argv[1] == "-m":
+            argv = [sys.executable, "--transport-extension-module",
+                    argv[2]] + argv[3:]
+        env = dict(os.environ)
+        if not getattr(sys, "frozen", False):
+            # First-party entries run as `-m runner...`: the
+            # package parent must be importable from the child's
+            # cwd (the extension folder).
+            pkg_parent = os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))
+            existing = env.get("PYTHONPATH", "")
+            parts = existing.split(os.pathsep) if existing else []
+            if pkg_parent not in parts:
+                env["PYTHONPATH"] = os.pathsep.join(
+                    [pkg_parent] + parts)
+        env["HOMING_PIGEON_TRANSPORT_NAME"] = name
+        env["HOMING_PIGEON_TRANSPORT_CHANNEL"] = paths["root"]
+        env["HOMING_PIGEON_TRANSPORT_CONFIG"] = config_path
+        env["HOMING_PIGEON_BASE_DIR"] = self.base_dir
+        log_path = os.path.join(paths["root"], "extension.log")
+        rec = {"manifest": manifest, "restarts": 0,
+               "next_restart": None, "started": self._clock(),
+               "argv": argv, "settled": False}
+        try:
+            logfh = open(log_path, "ab")
+            kw = {"cwd": manifest["dir"], "env": env,
+                  "stdin": subprocess.DEVNULL, "stdout": logfh,
+                  "stderr": subprocess.STDOUT}
+            if os.name == "posix":
+                kw["start_new_session"] = True
+            elif os.name == "nt":
+                kw["creationflags"] = getattr(
+                    subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+            rec["proc"] = self._popen(argv, **kw)
+            rec["logfh"] = logfh
+        except Exception as e:
+            self.log(f"transport {name}: cannot start "
+                     f"{manifest['entry']}: {e}", "ERROR")
+            rec["proc"] = None
+            rec["next_restart"] = self._clock() + 1.0
+        self.processes[name] = rec
+        if rec.get("proc") is not None:
+            self.log(f"transport {name}: extension "
+                     f"{manifest['name']} v{manifest['version']} "
+                     f"by {manifest['publisher']} started "
+                     f"(pid {rec['proc'].pid})")
+        return rec
 
-    def publish(self, subject, payload):
-        if isinstance(payload, str):
-            payload = payload.encode("utf-8")
-        self._send(f"PUB {subject} {len(payload)}\r\n".encode()
-                   + payload + b"\r\n")
-
-    def ping(self):
-        self._send(b"PING\r\n")
-
-    def next_message(self, deadline):
-        """One MSG frame as (subject, payload_bytes), or None at
-        the deadline. PINGs are answered inline; other control
-        lines are skipped."""
-        while True:
-            try:
-                line = self._readline(deadline)
-            except _Idle:
-                return None
-            if line == "PING":
-                self._send(b"PONG\r\n")
+    def check(self):
+        """Restart whatever died since the last check."""
+        if self.stopped:
+            return
+        now = self._clock()
+        for name, rec in list(self.processes.items()):
+            proc = rec.get("proc")
+            if proc is not None and proc.poll() is None:
+                if now - rec["started"] > 60:
+                    rec["restarts"] = 0
                 continue
-            if line == "PONG" or line.startswith("+OK"):
-                continue
-            if line.startswith("-ERR"):
-                raise TransportError(f"nats: server error: "
-                                     f"{line[5:].strip()}")
-            if line.startswith("MSG "):
-                parts = line.split(" ")
-                # MSG <subject> <sid> [reply-to] <bytes>
-                size = int(parts[-1])
-                raw = self._read_exact(size + 2, deadline)
-                return parts[1], raw[:size]
-            # Unknown line: not fatal to a minimal client; skip.
+            if proc is not None and rec.get("reported") is not proc:
+                self.log(f"transport {name}: extension exited "
+                         f"(code {proc.poll()}); will restart "
+                         f"with backoff", "WARN")
+                rec["reported"] = proc
+                try:
+                    rec["logfh"].close()
+                except Exception:
+                    pass
+                backoff = min(30.0, float(2 ** rec["restarts"]))
+                rec["next_restart"] = now + backoff
+            if rec.get("next_restart") is not None \
+                    and now >= rec["next_restart"]:
+                rec["restarts"] += 1
+                rec["next_restart"] = None
+                self._start_one(name)
 
-    def close(self):
-        if self.sock is not None:
+    def settle(self):
+        """After a fresh start, give fast extensions a brief
+        moment to deliver what is already waiting (each manifest
+        declares its own startup_settle_ms; network transports
+        declare 0 and never hold the cycle up). Runs once per
+        process start, restarts included."""
+        for name, rec in self.processes.items():
+            if rec.get("settled"):
+                continue
+            rec["settled"] = True
+            ms = rec["manifest"].get("startup_settle_ms") or 0
+            if not ms:
+                continue
+            paths = channel_paths(self.base_dir, name)
+            deadline = time.monotonic() + ms / 1000.0
+            while time.monotonic() < deadline:
+                try:
+                    waiting = [f for f in os.listdir(paths["inbox"])
+                               if f != "done"]
+                except OSError:
+                    waiting = []
+                if waiting:
+                    break
+                time.sleep(0.02)
+
+    def stop(self):
+        self.stopped = True
+        for name, rec in list(self.processes.items()):
+            proc = rec.get("proc")
+            if proc is None:
+                continue
             try:
-                self.sock.close()
-            except OSError:
+                if proc.poll() is None:
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=3)
+                    except Exception:
+                        try:
+                            proc.kill()
+                        except Exception:
+                            pass
+                        try:
+                            proc.wait(timeout=1)
+                        except Exception:
+                            pass
+            except Exception:
                 pass
-            self.sock = None
-
-
-class NatsTransport:
-    """Core-NATS pub/sub: jobs in on one subject, results out on
-    <result_subject_prefix>.<job_id>.
-
-    The broker is a dumb pipe with no persistence: a job
-    published while no runner is subscribed is gone, exactly
-    like a shout in an empty room -- senders who need
-    store-and-forward use email or the file transport. What
-    at-least-once protection exists comes from the protocol
-    layer: the runner's seen-set dedupes redeliveries, and a
-    result the sender never saw can be re-requested by
-    re-sending the job.
-
-    One connection per poll cycle: connect, subscribe, drain
-    what is waiting (until the wire stays quiet for
-    drain_idle_sec), hand the messages to the core, publish the
-    results over the same connection, disconnect. A connection
-    that dies fails the cycle; the next poll reconnects.
-
-    Two gates guard this transport: the broker's own
-    authentication (a CONNECT user/password or token, from the
-    transport_nats config keys or the URL userinfo, config keys
-    winning) and the HMAC body signature the core checks. The
-    credentials are required: with none configured the
-    transport refuses to start unless
-    transport_nats.allow_unauthenticated is explicitly true.
-    """
-
-    name = "nats"
-    drain_idle_sec = 1.0
-
-    def __init__(self, cfg, base_dir, log=None):
-        block = _config_block(cfg, "transport_nats")
-        self.url = str(block.get("url") or "nats://127.0.0.1:4222")
-        self.subject = str(block.get("subject")
-                           or "homing-pigeon.jobs")
-        self.result_prefix = str(block.get("result_subject_prefix")
-                                 or "homing-pigeon.results")
-        self.log = log or _silent_log
-        self.client = None
-        self._user = block.get("user") or None
-        self._password = block.get("password")
-        self._token = block.get("token") or None
-        parsed = urlparse(self.url)
-        has_creds = bool(self._token or self._user
-                         or parsed.username or parsed.password)
-        allow_unauth = block.get("allow_unauthenticated") is True
-        if not has_creds and not allow_unauth:
-            raise TransportError(
-                "nats transport refuses to start: no broker "
-                "credentials configured (set transport_nats "
-                "user/password or token, or embed them in the "
-                "url) and allow_unauthenticated is not true; "
-                "broker authentication is this transport's "
-                "first authorization gate")
-        if has_creds:
-            _notice_once(
-                "nats-two-gates", self.log,
-                "nats transport: two authorization gates in "
-                "force -- broker authentication, then the HMAC "
-                "body signature")
-        else:
-            _notice_once(
-                "nats-unauthenticated", self.log,
-                "nats transport: allow_unauthenticated is set "
-                "and no broker credentials are configured, so "
-                "the HMAC body signature is the ONLY "
-                "authorization gate on this transport", "WARN")
-
-    def fetch(self):
-        self.client = NatsClient(
-            self.url, log=self.log, user=self._user,
-            password=self._password,
-            token=self._token).connect()
-        self.client.subscribe(self.subject)
-        out = []
-        idle_deadline = time.monotonic() + self.drain_idle_sec
-        while True:
             try:
-                got = self.client.next_message(idle_deadline)
-            except TransportError:
-                if not out:
-                    raise
-                self.log("nats transport: connection lost "
-                         "mid-drain; keeping what arrived", "WARN")
-                break
-            if got is None:
-                break
-            subject, payload = got
-            idle_deadline = time.monotonic() + self.drain_idle_sec
-            try:
-                text = payload.decode("utf-8")
-            except UnicodeDecodeError:
-                self.log("nats transport: dropped a non-UTF-8 "
-                         "message", "WARN")
-                continue
-            parsed = parse_envelope(text)
-            if parsed is None:
-                self.log("nats transport: dropped a malformed "
-                         "envelope (no blank line)", "WARN")
-                continue
-            esubject, ebody = parsed
-            out.append(IncomingMessage(
-                esubject, ebody,
-                reply=self._reply_for(esubject),
-                ident=f"nats:{subject}"))
-        return out
-
-    def _reply_for(self, job_subject):
-        m = _JOB_ID_RE.search(job_subject or "")
-        job_id = m.group(1) if m else "unknown"
-        target = f"{self.result_prefix}.{job_id}"
-
-        def reply(subject, body):
-            if self.client is None:
-                raise TransportError("nats: connection closed "
-                                     "before the result was sent")
-            self.client.publish(
-                target, format_envelope(subject, body))
-
-        return reply
-
-    def close(self):
-        if self.client is not None:
-            self.client.close()
-            self.client = None
+                rec["logfh"].close()
+            except Exception:
+                pass
+        self.processes.clear()
 
 
-# Names the runner services itself (the mail path predates the
-# seam); every other name builds a transport object here.
-_BUILDERS = {"file": FileTransport, "nats": NatsTransport}
+# One supervisor per (base dir, config signature) in this
+# process: main() starts it, poll cycles reuse it, tests start
+# and stop their own.
+_ACTIVE_SUPERVISORS = {}
 
 
-def build_transport(name, cfg, base_dir, log=None):
-    """A live transport object for a non-email name."""
-    cls = _BUILDERS.get(name)
-    if cls is None:
-        raise ValueError(f"transport {name!r} is not a "
-                         f"buildable pipe")
-    return cls(cfg, base_dir, log=log)
+def _config_signature(cfg, base_dir):
+    if not isinstance(cfg, dict):
+        return (base_dir, "")
+    keys = {"transports": cfg.get("transports"),
+            "extensions_dir": cfg.get("extensions_dir"),
+            "poll_interval_sec": cfg.get("poll_interval_sec")}
+    for key, value in cfg.items():
+        if key.startswith("transport_") or key in _MAILBOX_KEYS:
+            keys[key] = value
+    try:
+        blob = json.dumps(keys, sort_keys=True, default=str)
+    except (TypeError, ValueError):
+        blob = str(sorted(keys))
+    return (base_dir, blob)
+
+
+def start_supervisor(cfg, base_dir, log=None):
+    """Start (or reuse) the supervisor for this config and base
+    dir. Returns the TransportSupervisor."""
+    key = _config_signature(cfg, base_dir)
+    sup = _ACTIVE_SUPERVISORS.get(key)
+    if sup is not None and not sup.stopped:
+        return sup
+    sup = TransportSupervisor(cfg, base_dir, log=log).start()
+    _ACTIVE_SUPERVISORS[key] = sup
+    return sup
+
+
+def active_supervisor(cfg, base_dir):
+    """The running supervisor for this config, or None."""
+    sup = _ACTIVE_SUPERVISORS.get(_config_signature(cfg, base_dir))
+    if sup is not None and not sup.stopped:
+        return sup
+    return None
+
+
+def stop_supervisors(base_dir=None):
+    """Stop supervised extension processes (shutdown/tests)."""
+    for key, sup in list(_ACTIVE_SUPERVISORS.items()):
+        if base_dir is not None and key[0] != base_dir:
+            continue
+        try:
+            sup.stop()
+        except Exception:
+            pass
+        del _ACTIVE_SUPERVISORS[key]
