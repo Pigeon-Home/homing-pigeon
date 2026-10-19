@@ -28,6 +28,20 @@ Ideas...
   PATH, the versions, what is installed. An Oracle option
   attaches full platform metadata to every result, so the
   sender stops guessing.
+- The Oracle's opinion, as a result member (Andrew, 2026-10-15,
+  elaborated 2026-10-18). The Oracle reads a job against the
+  box it is about to run on and says whether it expects the
+  job to succeed in this environment. The latitude is a mode
+  the sender grants: advise only (the opinion rides the
+  result, the job runs as sent); repair (the Oracle may fix
+  an obvious environment mismatch first — the sender believes
+  the box is Linux, the job disagrees); and diagnose (when a
+  job fails, the result carries the Oracle's reading of the
+  obvious cause, so the sender gets the "why", not just the
+  crash). The Oracle can be wrong; that is accepted and
+  priced in. In a confidentiality-on mode the opinion is a
+  signed statement by the Oracle as an authenticated party,
+  never an unsigned insertion into someone else's message.
 
 ## Who signs
 
@@ -36,7 +50,8 @@ Ideas...
 
 ## What you see
 
-- A loopback dashboard for the Oracle. ORACLE_DASHBOARD.md.
+- A loopback dashboard for the Oracle (its spec was removed
+  from the tree 2026-10-18; the idea stands).
   `--oracle` and `--oracle-cli` are the current.
 
 ## What the box notices
