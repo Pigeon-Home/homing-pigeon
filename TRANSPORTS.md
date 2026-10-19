@@ -260,7 +260,7 @@ broker, nothing to sign up for.
 
 The DTLS transport extension is not a store-and-forward
 transport: it is the protocol's version 2 binding from
-`docs/ietf/draft-homing-pigeon-01.md` — a direct DTLS 1.3
+`docs/ietf/draft-homing-pigeon-00.md` — a direct DTLS 1.3
 session between the SI and the runner, specified there and
 implemented as a bounded pure-Python profile
 (`runner/dtlsproto.py`, stdlib only) in the extension at
