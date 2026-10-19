@@ -548,7 +548,7 @@
   file, and only when the question asks for that job's script,
   output, or exit code.
 - The page says "Working" as soon as the question is sent. A local
-  3B model on a laptop can take a few minutes, and the page used
+  3B model on a small laptop can take minutes to answer, and the page used
   to look frozen.
 - A finished model call logs how many seconds it took.
 
@@ -627,7 +627,7 @@
   macOS stays unreadable. A stale or stopped tool is T1562.001, and
   a flip is filed once.
 - The local model timeout defaults to 180 seconds, not 60. A cold
-  llama3.2:3b on a laptop was dying at the old cap before the first
+  small model on a laptop can exceed the old cap before the first
   token. A config that already says 60 still uses 60. The chat says
   how many seconds it waited.
 - Each model call logs the timeout it is using. A reply that names a
