@@ -262,25 +262,41 @@ signatures do. The runner refuses to start if the secret is missing or too weak:
 it must carry enough entropy to resist offline brute force against a captured
 signed message (generate with `openssl rand -hex 32`).
 
-## 5. Runner verification (all must pass, in order)
+## 5. Runner verification
+
+Two kinds of checks run, and the order between them matters.
+Routing checks run first, on the unauthenticated message: the
+subject must match `[HOMING-PIGEON] ... job <job_id>` (mail that
+does not match is marked seen and skipped), the `job_id` is
+looked up in the seen-set, and the raw mail is bounded by
+`max_job_bytes` before any signature work. These checks route
+and deduplicate; they authorize nothing, and the seen-set
+lookup cannot poison the set — an id is recorded only for a
+job that verified and ran, once its result is safely sent.
+Nothing is executed, answered, or acted on before the
+signature verifies.
+
+Authorization then runs in this order, and all of it must pass:
 
 1. **Signature valid:** the body HMAC-SHA-384 must verify against the
    shared secret. This is the sole authentication gate. The `From`
    address is not validated — any sender may submit jobs, and only a
    valid signature authorizes execution. The sender address is logged
    for audit but never trusted.
-2. Subject matches `[HOMING-PIGEON] job <job_id>`; body signature valid.
-3. `v == 1` and `type == "job"`.
-4. `issued_at` parses and is within `max_job_age_sec` (default 3600) of
-   the runner's clock (replay / stale protection).
-5. `job_id` not in the seen-set (replay protection). The seen-set key
-   is namespaced by `runner_id` when one is configured.
-6. **Audience binding** (when `security.modes.audience` is not
+2. **Audience binding** (when `security.modes.audience` is not
    `off` and the config sets `runner_id`): the body's `runner_id` must
    equal the configured one. The expected value always comes from the
    config the runner loaded, never from the signed body. Applies to
    jobs, queries (including the `ask` op), board messages, and sensor
    alerts.
+3. The signed script is bounded by `max_script_bytes`.
+4. `v == 1` and `type == "job"`, and the body's `job_id` equals the
+   subject's.
+5. `issued_at` parses, carries a timezone, and is within
+   `max_job_age_sec` (default 3600) of the runner's clock
+   (replay / stale protection).
+6. `job_id` not in the seen-set (replay protection). The seen-set key
+   is namespaced by `runner_id` when one is configured.
 
 Failures are logged, the mail is marked seen, and the job is **never**
 executed. Delivery is at-least-once: a job whose result email fails to
