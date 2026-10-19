@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.8.9 - 2026-10-19
+
+### Added
+
+- Two more job transports beside email, selected by the
+  `transports` config key (default `["email"]`; `--transports`
+  overrides for one process). The file transport takes job
+  envelopes from an inbox folder and writes results to an
+  outbox folder (`send_job.py new --to-file` writes the
+  envelope). The NATS transport speaks core NATS over a
+  hand-rolled standard-library client: publish/subscribe, no
+  JetStream, no persistence.
+- Two-gate authorization on transports that have credentials:
+  in its default posture the NATS transport refuses to start
+  without broker authentication, so a job must pass broker
+  authentication AND the HMAC signature. A credentialed
+  transport configured that way is the more secure option
+  over email, which checks the signature alone; email stays
+  the default. `allow_unauthenticated: true` is the explicit,
+  logged override, and it carries no such claim.
+
+### Tests
+
+- Transport suite: seam, file and NATS round-trips against
+  an in-process fake broker, tampered-signature rejection,
+  two-gate auth enforcement. Plus fuzz and branch pins over
+  the runner's decisions and the remediation monitor's
+  failure paths.
+
 ## 3.8.8 - 2026-10-19
 
 ### Fixes
