@@ -62,9 +62,3 @@
   per RFC 2119/8174, changes stated as deltas against the current
   specification. PROTOCOL.md is the specification of record; the
   code conforms to it, or the delta is written down in FUTURE.md.
-
-## Changing this guide
-
-Edit the document in the same commit as the practice it describes.
-A rule nobody enforces is a wish; a tool setting nobody documented
-is a trap. Keep both sides in one diff.
