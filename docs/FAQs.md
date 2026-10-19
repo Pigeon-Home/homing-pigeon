@@ -64,11 +64,11 @@ How it works, in order:
 One sentence version, for when someone asks quickly:
 
 > "It polls every 20 seconds, and a serious local signal can
-> also wake it -- the watching is ordinary deterministic code,
-> the model only runs when you ask it something, a rule pages
-> you, or the wake gate lets a signal through, and that's
-> deliberate: a watcher that only runs when an LLM feels like
-> it isn't a watcher."
+> also wake it -- the watching is ordinary deterministic code;
+> the model runs only when you ask it something or the wake
+> gate lets a signal through; a page is a rule firing, no
+> model involved; and that's deliberate: a watcher that only
+> runs when an LLM feels like it isn't a watcher."
 
 ## If the default latitude is repair, can't a malicious job use repair to get itself run?
 
