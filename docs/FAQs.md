@@ -84,13 +84,19 @@ The chain, in order:
    send any job they want, written correctly.
 2. **The fix adds no capability.** The one mechanical repair is
    narrow: an absent interpreter is replaced by the platform
-   default, and only when the script's shape provably fits
-   that interpreter. The result is a job the sender was always
-   authorized to send — repair just absorbs their typo.
-3. **Judgment runs after repair, not before.** A repaired job
-   goes back through the judge and the key policy before it
-   executes (`oracle_opinion_repair: rejudge`, the default;
-   `refuse` turns a repair finding into a refusal instead).
+   default, and only when the script's shape does not
+   contradict that interpreter — a neutral shape fits; a
+   contradicting tell (a POSIX script under a Windows
+   default, say) stops the repair. The result is a job the
+   sender was always authorized to send — repair just
+   absorbs their typo.
+3. **Judgment runs on both sides of repair.** The job as
+   received is judged first; a repaired job then goes back
+   through the judge and the key policy before it executes
+   (`oracle_opinion_repair: rejudge`, the default). The
+   `refuse` setting instead degrades a repair finding to
+   advise: the fix is proposed on the result, not applied,
+   and the job runs exactly as received.
 4. **The opinion never claims to detect malice.** Its question
    is "will this run here?", not "is this good?" Malice is
    carried by the layers that always carried it: the
@@ -109,5 +115,7 @@ Every repair that does happen is recorded on the result —
 what changed, and the digest of the job as received — so
 "what ran versus what was sent" is always answerable. The
 honest edge is polyglot scripts, valid under two interpreters
-with two meanings: where the shape check cannot *prove* the
-fit, no repair happens. Inconclusive means diagnose, and talk.
+with two meanings: where a shape tell *contradicts* the
+platform default, no repair happens — and where the tier-1
+evidence itself is inconclusive, the system does not
+improvise. It diagnoses, and talks.
