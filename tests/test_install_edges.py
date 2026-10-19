@@ -797,24 +797,11 @@ class TailTest(unittest.TestCase):
                 self.assertTrue(inst.install_ollama_and_model(
                     missing, "m", False))
 
-    def test_the_version_fallback_is_unknown_when_neither_import_works(self):
-        import builtins
-        import importlib
-        real = builtins.__import__
-
-        def guarded(name, *a, **k):
-            if name == "_version" or name.endswith("._version"):
-                raise ImportError(name)
-            return real(name, *a, **k)
-
-        try:
-            with mock.patch("builtins.__import__", guarded), \
-                    mock.patch.object(importlib, "import_module",
-                                      side_effect=ImportError("blocked")):
-                importlib.reload(inst)
-            self.assertEqual(inst.__version__, "unknown")
-        finally:
-            importlib.reload(inst)
+    def test_the_version_is_the_constant(self):
+        # Frozen binaries hardcode the version; the constant is the
+        # source of truth. tests/test_version.py checks it matches
+        # pyproject.toml.
+        self.assertEqual(inst.__version__, "3.10.0")
 
     def test_the_last_platform_decisions(self):
         args = mock.Mock(no_collector=False, collector=["osquery"],

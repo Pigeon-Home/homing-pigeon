@@ -28,21 +28,10 @@ import time
 import zipfile
 from xml.sax.saxutils import escape
 
-def _load_version():
-    """Frozen binaries and `python install.py` both need a path to the version.
-    PyInstaller collects the module under runner._version; a direct run
-    from inside runner/ sees it as _version. Try both.
-    """
-    import importlib
-    for name in ("runner._version", "_version"):
-        try:
-            mod = importlib.import_module(name)
-            return getattr(mod, "__version__")
-        except (ImportError, AttributeError):
-            continue
-    return "unknown"
-
-__version__ = _load_version()
+# Frozen binaries cannot import the package the same way a live run can.
+# The constant is the source of truth for --version; tests/test_version.py
+# fails the build if it drifts from pyproject.toml.
+__version__ = "3.10.0"
 
 SERVICE_NAME = "homing-pigeon"
 FILES = ["runner.py", "oauth.py", "winlog.py"]
