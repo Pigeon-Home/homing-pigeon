@@ -40,6 +40,7 @@ import json
 import os
 import re
 import secrets
+import shlex
 import shutil
 import signal
 import smtplib
@@ -6730,6 +6731,22 @@ def run_inspect(cfg, args) -> int:
     return 0
 
 
+def _invocation_line(argv=None) -> str:
+    """This process's command line, shell-quoted for copy-paste.
+
+    The runner's argv carries no secrets by design -- the shared
+    secret lives in config.json, never in a flag -- so the exact
+    invocation is safe to log verbatim, and for a one-liner
+    workflow the command that produced a run belongs in its log.
+    """
+    argv = list(sys.argv if argv is None else argv)
+    if not argv:
+        return "(unknown invocation)"
+    if os.name == "nt":
+        return subprocess.list2cmdline(argv)
+    return shlex.join(argv)
+
+
 def log_startup(cfg, args, base_dir):
     """One block: what is configured, what is running, what it expects.
 
@@ -6744,6 +6761,8 @@ def log_startup(cfg, args, base_dir):
     auth = "oauth" if _use_oauth(cfg) else "password"
     inf = inference_config(cfg)
     keys = sorted((cfg.get("additional_secrets") or {}).keys())
+    log(f"homing-pigeon {__version__} invocation: "
+        f"{_invocation_line()}")
     log(f"homing-pigeon {__version__} starting "
         f"(base={base_dir}, platform={sys.platform})")
     log(f"auth={auth} mailbox={cfg.get('mailbox_user')} "

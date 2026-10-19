@@ -19,6 +19,7 @@ import contextlib
 import io
 import json
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -30,6 +31,7 @@ from email.message import EmailMessage
 from unittest import mock
 
 from runner import runner
+from runner._version import __version__
 from runner.runner import (
     Board, apply_cli_overrides, handle_mail, poll_once, sign_payload,
 )
@@ -618,6 +620,48 @@ class ConfigVerboseMainTest(_VerbosityGuard):
         self.assertEqual(code, 0)
         self.assertEqual(runner._VERBOSE_LEVEL, 1)
         self.assertTrue(runner._VERBOSE)
+
+
+class InvocationLineTest(_VerbosityGuard):
+    """The startup block opens with the exact invocation:
+    version plus argv, shell-quoted so the line can be pasted
+    back into a shell to reproduce the run."""
+
+    def _startup_first_line(self, argv):
+        args = Namespace(dry_run=False, no_send=False, once=False,
+                         verbose=False)
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(sys, "argv", argv):
+                with _captured_log() as buf:
+                    runner.log_startup({"mailbox_user": "a@b.c"},
+                                       args, d)
+        lines = [ln for ln in buf.getvalue().splitlines()
+                 if ln.strip()]
+        return lines[0] if lines else ""
+
+    def test_first_line_carries_version_and_exact_flags(self):
+        first = self._startup_first_line(
+            ["runner.py", "--config", "cfg.json", "--verbose",
+             "--dag-mode", "advisory"])
+        self.assertIn(f"homing-pigeon {__version__} invocation:",
+                      first)
+        self.assertIn("--verbose", first)
+        self.assertIn("--dag-mode advisory", first)
+
+    def test_no_optional_flags_still_prints_cleanly(self):
+        first = self._startup_first_line(["runner.py"])
+        self.assertTrue(
+            first.endswith("invocation: runner.py"), first)
+
+    def test_values_with_spaces_are_shell_quoted(self):
+        if os.name == "nt":
+            self.skipTest("POSIX quoting is the live shell here")
+        first = self._startup_first_line(
+            ["runner.py", "--config", "my cfg.json"])
+        self.assertIn("'my cfg.json'", first)
+        tail = first.split("invocation: ", 1)[1]
+        self.assertEqual(shlex.split(tail),
+                         ["runner.py", "--config", "my cfg.json"])
 
 
 if __name__ == "__main__":
