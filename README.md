@@ -3,11 +3,9 @@
 **Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, etc.**
 
 > ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative control**
-> of the machine to whoever holds the shared secret. It reads email
-> and executes what it finds — blindly, as a privileged user. Anyone who can
-> produce a correctly-signed email owns the box: install software, read
-> files, add users, pivot to your network. Only run this with a dedicated
-> throwaway account on a machine you can afford to lose, and read
+> of the machine to whoever holds the shared secret. It reads inbound messages
+> and executes what it finds — blindly, as a privileged user. It can install
+> software, read, files, add users, pivot to your network.
 > PROTOCOL.md before you deploy it.
 
 Your cloud SI is smart, but it can't touch your computer. Homing Pigeon
