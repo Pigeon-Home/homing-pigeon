@@ -42,5 +42,6 @@ entry onto the new id.
 Never reuse a retired secret. Never put two values on one `key_id`.
 
 ---
-*Side note: NIST SP 800-57 caps symmetric authentication keys at under
-2 years. Ninety days sits comfortably inside that.*
+*Side note: NIST SP 800-57 recommends an originator-usage period of
+under 2 years for symmetric authentication keys. Ninety days sits
+comfortably inside that.*

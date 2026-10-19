@@ -18,10 +18,10 @@ has to justify itself.
 ## The five-year arc, in plain terms
 
 - **2021–22: the land-grab.** CrowdStrike buys Humio (~$400M) for the data
-  pipe; Microsoft buys RiskIQ (>$500M) and Mandiant ($5.4B); Palo Alto ships
+  pipe; Microsoft buys RiskIQ (>$500M); Google buys Mandiant ($5.4B); Palo Alto ships
   XSIAM (Feb 2022) selling "autonomous SOC" *before* LLMs existed.
 - **Spring 2023: the copilot wave.** Security Copilot (Mar 2023, billed at
-  $4/hr per compute unit — pricing analysts called unreasonable, and adoption
+  $4/hr per compute unit — practitioners called unreasonable, and adoption
   showed it), SentinelOne Purple AI, CrowdStrike Charlotte AI. Chat assistants
   bolted onto existing platforms.
 - **2023–24: consolidation at scale.** Cisco buys Splunk ($28B). Thoma Bravo

@@ -74,7 +74,8 @@ Why it fits so well it feels designed for this:
   relying on the message signature alone, the queue is
   addressed by a token only the SI and the runner hold. The identity
   story gets *better* than email, not just equivalent.
-- **It's cheap to the point of irrelevance.** The free tier covers a
+- **It's cheap to the point of irrelevance.** The free plan covers
+  10,000 operations a day, and the paid plan includes a
   million operations a month. Your agent would have to be
   extraordinarily busy to cost you anything.
 - **Edge presence.** The queue lives milliseconds from wherever the
