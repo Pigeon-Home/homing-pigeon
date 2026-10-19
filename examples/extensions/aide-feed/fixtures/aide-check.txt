@@ -1,0 +1,29 @@
+Start timestamp: 2026-10-19 03:48:03 +0000 (AIDE 0.18.6)
+AIDE found differences between database and filesystem!!
+
+Summary:
+  Total number of entries:	2489
+  Added entries:		1
+  Removed entries:		0
+  Changed entries:		1
+
+---------------------------------------------------
+Added entries:
+---------------------------------------------------
+
+f+++++++++++++++++: /etc/probe-aide.txt
+
+---------------------------------------------------
+Changed entries:
+---------------------------------------------------
+
+f   .       H     : /etc/adduser.conf
+
+---------------------------------------------------
+Detailed information about changes:
+---------------------------------------------------
+
+File: /etc/adduser.conf
+ SHA256    : p2L42qlbk9EDgGJcAQhPdV+yH18arqXD | 0VNk3ZmoWPDIW8oDSDSuuyZBBfDg6D+2
+
+End timestamp: 2026-10-19 03:48:05 +0000 (run time: 0m 2s)
