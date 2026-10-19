@@ -3499,10 +3499,17 @@ class Board:
                 blocked, incomplete = self._dag_incomplete(t)
                 if blocked:
                     if dag_mode == "enforce":
+                        vlog(f"board: task "
+                             f"{_as_str(t.get('task_id'))} "
+                             f"withheld (dag_mode=enforce): "
+                             f"incomplete requires: "
+                             f"{', '.join(incomplete) or 'unreadable requirement'}")
                         continue
                     incomplete_by_id[id(t)] = incomplete
             candidates.append(t)
         if not candidates:
+            vlog(f"board: nothing to offer "
+                 f"{_as_str(worker_id)} (dag_mode={dag_mode})")
             return None
         def _rank(task):
             priority = task.get("priority", 0)
@@ -3531,6 +3538,9 @@ class Board:
         chosen["state"] = "claimed"
         chosen["claimed_by"] = worker_id
         log(f"board: {_as_str(worker_id)} claimed {_as_str(chosen.get('task_id'))}")
+        vlog(f"board: offered {_as_str(chosen.get('task_id'))} "
+             f"to {_as_str(worker_id)} (dag_mode={dag_mode}, "
+             f"{len(candidates)} candidate(s))")
         chosen["claimed_at"] = datetime.now(timezone.utc).isoformat()
         chosen["claimed_key_id"] = key_id
         self.save()
@@ -4392,6 +4402,54 @@ _LOG_COUNT = 0
 _LOG_DROPPED = 0
 _LOG_WRITE_LOCK = threading.Lock()
 
+# Verbosity is a level, not a switch:
+#   0  quiet (--quiet): startup block and job results; DEBUG off,
+#      cap 50 lines/min. This is _VERBOSE False, exactly as before.
+#   1  the base level: every line the runner has always printed.
+#      _VERBOSE True; DEBUG prints; cap 200/min.
+#   2  verbose (-v, or "verbose": true in config): the base lines
+#      plus vlog() decision lines at the points where the runner
+#      decides something -- poll, ingest, the wake gate, the
+#      judge, the board.
+#   3+ (-vv and beyond): the noisier per-item lines join in.
+# _VERBOSE stays the boolean it always was (level >= 1) so log()
+# and every existing reader keep their meaning; _VERBOSE_LEVEL
+# is the finer grain only vlog() consults.
+_VERBOSE_LEVEL = 1
+
+
+def _resolve_verbosity(cfg, flag) -> int:
+    """The verbosity level for this process.
+
+    The flag wins: --quiet parses to False, -v/--verbose to a
+    count (1 for one -v, 2 for -vv). With no flag, the config
+    key speaks: "verbose": true is level 2, false is quiet.
+    With neither, the base level 1 -- the log the runner has
+    always printed.
+    """
+    if flag is not None:
+        return 0 if flag is False else 1 + int(flag)
+    if isinstance(cfg, dict) and "verbose" in cfg:
+        return 2 if _cfg_flag(cfg.get("verbose")) else 0
+    return 1
+
+
+def _set_verbosity(level) -> None:
+    global _VERBOSE, _VERBOSE_LEVEL
+    _VERBOSE_LEVEL = level
+    _VERBOSE = level >= 1
+
+
+def vlog(msg: str, level: int = 2) -> None:
+    """One verbose decision line, prefixed "verbose:".
+
+    Silent below the current level, so a base-level run's log is
+    exactly what it was before verbose had levels. The existing
+    lines never change; verbose only adds these.
+    """
+    if _VERBOSE_LEVEL >= level:
+        log(f"verbose: {msg}")
+
 # runner.log bounds, from config (log_max_bytes / log_backups).
 # Refreshed at startup by _refresh_log_settings; the defaults here
 # keep log() sane for any caller that runs before that.
@@ -5110,6 +5168,7 @@ def _ingest_local_envelope(cfg, base_dir, text, source):
 
 def _ingest_local_envelope_inner(cfg, base_dir, text, source):
     def reject(why):
+        vlog(f"local signal ({source}): rejected: {why}")
         log(f"local signal ({source}): rejected: {why}", "WARN")
         return None
 
@@ -5178,6 +5237,7 @@ def _ingest_local_envelope_inner(cfg, base_dir, text, source):
     status, why, record = _sensor_alert_core(
         cfg, job, key_id, base_dir, extra={"source": "local"})
     log(f"local sensor alert {job_id} via {source}: {why}")
+    vlog(f"local signal ({source}): job {job_id}: {status}: {why}")
     if status == "stored" and record is not None:
         _maybe_wake_oracle(cfg, base_dir, record)
         return record
@@ -5206,25 +5266,44 @@ def _wake_gate_decide(cfg, record, now=None) -> bool:
     sev = record.get("severity")
     score = _senses.SEVERITY_SCORES.get(sev, 0.0) \
         if isinstance(sev, str) else 0.0
-    if score < _senses.SEVERITY_SCORES["high"]:
+    sensor = record.get("sensor")
+    signal = record.get("signal") or record.get("title")
+    high = _senses.SEVERITY_SCORES["high"]
+    if score < high:
+        vlog(f"wake gate: {sensor}/{signal} severity={sev} "
+             f"score={score:g} < high {high:g}: no wake")
         return False
     try:
         t = float(time.monotonic() if now is None else now)
     except (TypeError, ValueError, OverflowError):
         t = time.monotonic()
-    sensor = record.get("sensor")
-    signal = record.get("signal") or record.get("title")
     key = (sensor if isinstance(sensor, str) else "",
            signal if isinstance(signal, str) else "")
     cooldown = _local_wake_cooldown(cfg)
+    last = None
     with _LOCAL_WAKE_LOCK:
         if _LOCAL_WAKE_INFLIGHT:
-            return False
-        last = _LOCAL_WAKE_LAST.get(key)
-        if last is not None and t - last < cooldown:
-            return False
-        _LOCAL_WAKE_LAST[key] = t
-        _LOCAL_WAKE_INFLIGHT = True
+            outcome = "inflight"
+        else:
+            last = _LOCAL_WAKE_LAST.get(key)
+            if last is not None and t - last < cooldown:
+                outcome = "cooldown"
+            else:
+                _LOCAL_WAKE_LAST[key] = t
+                _LOCAL_WAKE_INFLIGHT = True
+                outcome = "fire"
+    if outcome == "inflight":
+        vlog(f"wake gate: {sensor}/{signal}: a briefing is "
+             f"already in flight: no wake")
+        return False
+    if outcome == "cooldown":
+        vlog(f"wake gate: {sensor}/{signal} score={score:g}: "
+             f"woke {t - last:.0f}s ago, cooldown is "
+             f"{cooldown:.0f}s: no wake")
+        return False
+    vlog(f"wake gate: {sensor}/{signal} severity={sev} "
+         f"score={score:g} >= high {high:g}, cooldown clear: "
+         f"waking the Oracle")
     return True
 
 
@@ -5458,6 +5537,9 @@ def _scan_local_inbox(cfg, base_dir) -> int:
                 except OSError:
                     pass
             handled += 1
+    if handled:
+        vlog(f"local signals: {handled} envelope(s) filed "
+             f"from the inbox")
     return handled
 
 
@@ -5660,6 +5742,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     subject = str(msg["Subject"] or "")
     from_header = str(msg["From"] or "")
     def reject(why: str):
+        vlog(f"ingest: seq {seq}: rejected: {why}")
         log(f"rejecting seq {seq}: {why}", "WARN")
         # Dry-run is fully non-mutating: observe, change nothing.
         if opts is None or not opts.dry_run:
@@ -5677,6 +5760,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         # Result messages and other non-job traffic share the [HOMING-PIGEON]
         # prefix. Mark them seen quietly so the console is not spammed
         # with "subject does not match job pattern" on every poll.
+        vlog(f"ingest: seq {seq}: skipped; not a job message")
         if opts is None or not opts.dry_run:
             mark_seen(imap, seq)
         return
@@ -5686,6 +5770,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     skey = _seen_key(cfg, job_id)
 
     if skey in seen:
+        vlog(f"ingest: seq {seq} job {job_id}: skipped; "
+             f"already seen")
         if opts is None or not opts.dry_run:
             mark_seen(imap, seq)
         return
@@ -5836,6 +5922,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     else:
         review = None
 
+    vlog(f"ingest: job {job_id}: accepted "
+         f"(key_id={key_id}, kind={job.get('kind')})")
     log(f"executing job {job_id} (kind={job.get('kind')})")
     if opts is not None and opts.dry_run:
         # Dry run: fully non-mutating. Verify everything, change nothing:
@@ -5849,6 +5937,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # cannot double-execute it. The check-and-add is atomic under the lock.
     with _MAIL_LOCK:
         if skey in seen or skey in _IN_FLIGHT:
+            vlog(f"ingest: job {job_id}: skipped; another "
+                 f"worker claimed it first")
             mark_seen(imap, seq)
             return
         _IN_FLIGHT.add(skey)
@@ -5865,6 +5955,12 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         run_job = job
         try:
             verdict, reasons = judge_job(cfg, job)
+            _jmode = cfg.get("judge") or "off"
+            if _jmode != "off":
+                vlog(f"judge: job {job_id}: mode={_jmode} "
+                     f"verdict={verdict}"
+                     + (f" ({'; '.join(reasons)})" if reasons
+                        else ""))
             if cfg.get("judge") == "enforce" and reasons:
                 raise JobRejected("judge blocked: " + "; ".join(reasons))
             # The Oracle's opinion (PROTOCOL 3.2; runner/opinion.py):
@@ -6201,7 +6297,7 @@ HOT_KEYS = ("poll_interval_sec", "workers", "default_timeout_sec",
             "max_output_bytes", "max_job_age_sec")
 # Strings and objects the Oracle reads live. Not integers, so they do not
 # go through _valid_hot. Credentials stay out of this list.
-LIVE_KEYS = ("owner_instructions", "inference", "oracle_mode")
+LIVE_KEYS = ("owner_instructions", "inference", "oracle_mode", "verbose")
 
 
 def _valid_hot(key: str, value):
@@ -6263,6 +6359,9 @@ def reload_hot_config(cfg: dict, path: str, state: dict,
             log(f"config reload: ignoring invalid {key}", "WARN")
             continue
         if key == "oracle_mode" and not isinstance(val, str):
+            log(f"config reload: ignoring invalid {key}", "WARN")
+            continue
+        if key == "verbose" and not isinstance(val, (bool, str)):
             log(f"config reload: ignoring invalid {key}", "WARN")
             continue
         if val != cfg.get(key):
@@ -6395,6 +6494,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     """One poll cycle. imap/smtp may be injected (tests)."""
     if not isinstance(seen, dict):
         seen = {}
+    t0 = time.monotonic()
     # The HMAC shared secret is always the dedicated shared_secret field,
     # separate from the mailbox password. Both sides use its UTF-8 bytes
     # as the HMAC-SHA-384 key. No hashing or derivation — the SI uses it
@@ -6442,6 +6542,8 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
                     log(f"poll: {workers} workers")
             else:
                 workers = _worker_count(cfg, opts)
+                vlog(f"poll: no new messages "
+                     f"(seen holds {len(seen)})")
             with ThreadPoolExecutor(max_workers=workers) as ex:
                 futs = [ex.submit(handle_mail, cfg, imap, smtp, seq, raw,
                                   base_dir, seen, secrets, opts,
@@ -6458,6 +6560,10 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
                 for k in list(seen.keys())[:-SEEN_CAP]:
                     del seen[k]
             save_seen(seen_path, seen)
+            vlog(f"poll: {len(mails)} message(s) handled by "
+                 f"{workers} worker(s) in "
+                 f"{time.monotonic() - t0:.1f}s; "
+                 f"seen holds {len(seen)} job id(s)")
         finally:
             if own_imap:
                 try:
@@ -6629,6 +6735,12 @@ def log_startup(cfg, args, base_dir):
 
     Never prints a secret. Prints the absence of one.
     """
+    # The verbosity level main() resolved (flag beats config).
+    # Direct callers (tests, doors) may not carry one; fall back
+    # to the old boolean reading of args.verbose.
+    _lvl = getattr(args, "verbose_level", None)
+    if _lvl is None:
+        _lvl = 1 if getattr(args, "verbose", False) else 0
     auth = "oauth" if _use_oauth(cfg) else "password"
     inf = inference_config(cfg)
     keys = sorted((cfg.get("additional_secrets") or {}).keys())
@@ -6658,7 +6770,9 @@ def log_startup(cfg, args, base_dir):
         flags.append("no-send (will not mail results)")
     if args.once:
         flags.append("once")
-    if args.verbose:
+    if _lvl >= 2:
+        flags.append("verbose (decision lines on)")
+    elif _lvl == 1:
         flags.append("verbose")
     if flags:
         log("flags: " + ", ".join(flags))
@@ -6666,7 +6780,7 @@ def log_startup(cfg, args, base_dir):
         "Signature is the only gate. Results return to this mailbox.")
     if not cfg.get("workspace_root"):
         log("confinement is off; workspace_root is not set", "WARN")
-    if getattr(args, "verbose", False):
+    if _lvl >= 1:
         safe = {k: cfg.get(k) for k in (
             "poll_interval_sec", "workers", "default_timeout_sec",
             "max_output_bytes", "max_job_age_sec", "max_result_view",
@@ -6677,6 +6791,10 @@ def log_startup(cfg, args, base_dir):
         log(f"config: {json.dumps(safe, default=str)}")
         log("verbose: job lines, reject reasons, and query ops. "
             "Empty polls are silent. Cap is 200 lines a minute.")
+        if _lvl >= 2:
+            log("verbose: this run narrates its decisions: poll "
+                "cycles, ingest, the wake gate, judge verdicts, "
+                "and board offers.")
 
 
 def _is_loopback_ip(host: str) -> bool:
@@ -9232,12 +9350,14 @@ def main() -> int:
                          "(results go to the log only)")
     ap.add_argument("--timeout", type=int, default=None, metavar="SEC",
                     help="default per-job timeout in seconds (overrides config)")
-    ap.add_argument("--verbose", action="store_true", default=True,
-                    help="job lines, reject reasons, query ops, and the "
-                         "non-secret config (default; cap 200 lines/min)")
+    ap.add_argument("-v", "--verbose", action="count", default=None,
+                    help="narrate the decision points (poll, ingest, "
+                         "wake gate, judge, board); repeat for more "
+                         "(-vv). Overrides config \"verbose\"")
     ap.add_argument("--quiet", action="store_false", dest="verbose",
+                    default=argparse.SUPPRESS,
                     help="startup block and job results only "
-                         "(cap 50 lines/min)")
+                         "(cap 50 lines/min); overrides -v and config")
     ap.add_argument("--pdb", action="store_true",
                     help="drop into pdb on unhandled exceptions")
     ap.add_argument("--inspect", choices=["board", "budget", "job", "redact"],
@@ -9520,8 +9640,11 @@ def main() -> int:
         return 2
     # CLI overrides were applied to cfg above, before the log
     # bounds loaded; `overridden` names the keys they set.
-    global _VERBOSE
-    _VERBOSE = args.verbose
+    # Verbosity resolves here: the flag beats config "verbose",
+    # which beats the base level. log_startup reads the level
+    # back off args.
+    _set_verbosity(_resolve_verbosity(cfg, args.verbose))
+    args.verbose_level = _VERBOSE_LEVEL
     base_dir = _base_dir_for(cfg, args.config)
     os.makedirs(base_dir, exist_ok=True)
     os.makedirs(os.path.join(base_dir, "work"), exist_ok=True)
@@ -9549,6 +9672,10 @@ def main() -> int:
     pinned = set(overridden)
     if args.workers is not None:
         pinned.add("workers")
+    if args.verbose is not None:
+        # A -v/--quiet on the command line is this process's word;
+        # a later config edit of "verbose" must not undo it.
+        pinned.add("verbose")
     reload_state = {"mtime": os.path.getmtime(args.config)}
     while True:
         # Re-read config if the file changed. Edit config.json all you
@@ -9564,6 +9691,12 @@ def main() -> int:
                 # edit must not re-download the model.
                 if "inference" in changed:
                     update_llama_from_config(cfg, previous=previous)
+                # A live "verbose" edit re-resolves the level (the
+                # flag, if any was given, pinned the key, so this
+                # only fires for config-driven verbosity).
+                if "verbose" in changed:
+                    _set_verbosity(_resolve_verbosity(cfg, args.verbose))
+                    args.verbose_level = _VERBOSE_LEVEL
         except Exception as e:
             log(f"config reload failed (keeping old values): {e}", "WARN")
         try:

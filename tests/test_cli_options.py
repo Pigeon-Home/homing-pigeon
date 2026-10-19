@@ -30,7 +30,9 @@ from email.message import EmailMessage
 from unittest import mock
 
 from runner import runner
-from runner.runner import Board, apply_cli_overrides, poll_once, sign_payload
+from runner.runner import (
+    Board, apply_cli_overrides, handle_mail, poll_once, sign_payload,
+)
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET = (
@@ -240,6 +242,382 @@ class MainOverridesTest(unittest.TestCase):
             ["--once", "--local-signal-port", "70000"])
         self.assertEqual(code, 2)
         self.assertFalse(poll.called)
+
+
+def _now():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _mail(subject, body):
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = "si@example.com"
+    msg.set_content(body)
+    return msg.as_bytes()
+
+
+class _IMAP:
+    def __init__(self, raws=()):
+        self.raws = list(raws)
+
+    def search(self, *a):
+        ids = [str(i + 1).encode() for i in range(len(self.raws))]
+        return "OK", [b" ".join(ids)] if ids else [b""]
+
+    def fetch(self, num, what):
+        idx = int(num) - 1
+        if 0 <= idx < len(self.raws):
+            return "OK", [(None, self.raws[idx])]
+        return "NO", None
+
+    def store(self, *a):
+        return "OK", None
+
+    def expunge(self):
+        return "OK", None
+
+    def logout(self):
+        return "OK", None
+
+
+class _SMTP:
+    def send_message(self, *a, **k):
+        return {}
+
+    def quit(self):
+        pass
+
+
+class _Opts:
+    workers = 1
+    once = True
+    dry_run = False
+    verbose = False
+    no_send = True
+    inspect = False
+    oracle = False
+    pdb = False
+
+
+@contextlib.contextmanager
+def _captured_log():
+    """Capture log() output with a fresh per-minute budget and
+    no log file, restoring both afterwards."""
+    old_file = runner._LOG_FILE
+    old_minute, old_count = runner._LOG_MINUTE, runner._LOG_COUNT
+    runner._LOG_FILE = None
+    runner._LOG_MINUTE = 0.0
+    runner._LOG_COUNT = 0
+    buf = io.StringIO()
+    try:
+        with redirect_stdout(buf):
+            yield buf
+    finally:
+        runner._LOG_FILE = old_file
+        runner._LOG_MINUTE, runner._LOG_COUNT = old_minute, old_count
+
+
+class _VerbosityGuard(unittest.TestCase):
+    def setUp(self):
+        self._saved = (runner._VERBOSE, runner._VERBOSE_LEVEL)
+
+    def tearDown(self):
+        runner._VERBOSE, runner._VERBOSE_LEVEL = self._saved
+
+
+class ResolveVerbosityTest(unittest.TestCase):
+    def test_the_matrix(self):
+        r = runner._resolve_verbosity
+        # No flag, no config key: the base level, today's log.
+        self.assertEqual(r({}, None), 1)
+        self.assertEqual(r(None, None), 1)
+        # Config speaks when the flag is silent.
+        self.assertEqual(r({"verbose": True}, None), 2)
+        self.assertEqual(r({"verbose": "true"}, None), 2)
+        self.assertEqual(r({"verbose": False}, None), 0)
+        # The flag beats config, both ways.
+        self.assertEqual(r({"verbose": True}, False), 0)
+        self.assertEqual(r({"verbose": False}, 1), 2)
+        self.assertEqual(r({}, 1), 2)
+        self.assertEqual(r({}, 2), 3)
+        self.assertEqual(r({}, False), 0)
+
+
+class VlogGatingTest(_VerbosityGuard):
+    def test_silent_at_base_level_and_printed_at_verbose(self):
+        runner._set_verbosity(1)
+        with _captured_log() as buf:
+            runner.vlog("a decision")
+        self.assertNotIn("verbose:", buf.getvalue())
+        runner._set_verbosity(2)
+        with _captured_log() as buf:
+            runner.vlog("a decision")
+        self.assertIn("verbose: a decision", buf.getvalue())
+
+    def test_the_noisier_lines_need_the_second_v(self):
+        runner._set_verbosity(2)
+        with _captured_log() as buf:
+            runner.vlog("a whisper", level=3)
+        self.assertNotIn("whisper", buf.getvalue())
+        runner._set_verbosity(3)
+        with _captured_log() as buf:
+            runner.vlog("a whisper", level=3)
+        self.assertIn("verbose: a whisper", buf.getvalue())
+
+
+class WakeGateVerboseTest(_VerbosityGuard):
+    def setUp(self):
+        super().setUp()
+        self._saved_last = dict(runner._LOCAL_WAKE_LAST)
+        self._saved_inflight = runner._LOCAL_WAKE_INFLIGHT
+        runner._LOCAL_WAKE_LAST.clear()
+        runner._LOCAL_WAKE_INFLIGHT = False
+
+    def tearDown(self):
+        runner._LOCAL_WAKE_LAST.clear()
+        runner._LOCAL_WAKE_LAST.update(self._saved_last)
+        runner._LOCAL_WAKE_INFLIGHT = self._saved_inflight
+        super().tearDown()
+
+    def test_below_threshold_names_score_and_threshold(self):
+        runner._set_verbosity(2)
+        rec = {"sensor": "smoke", "signal": "alarm",
+               "severity": "low"}
+        with _captured_log() as buf:
+            ok = runner._wake_gate_decide({}, rec, now=1000.0)
+        self.assertFalse(ok)
+        out = buf.getvalue()
+        self.assertIn("verbose: wake gate: smoke/alarm", out)
+        self.assertIn("score=1 < high 3", out)
+        self.assertIn("no wake", out)
+
+    def test_fire_cooldown_and_inflight_each_narrate(self):
+        runner._set_verbosity(2)
+        rec = {"sensor": "smoke", "signal": "alarm",
+               "severity": "high"}
+        with _captured_log() as buf:
+            ok = runner._wake_gate_decide({}, rec, now=1000.0)
+        self.assertTrue(ok)
+        self.assertIn("score=3 >= high 3", buf.getvalue())
+        self.assertIn("waking the Oracle", buf.getvalue())
+        # Still in flight: the next alert is narrated as such.
+        with _captured_log() as buf:
+            ok = runner._wake_gate_decide({}, rec, now=1010.0)
+        self.assertFalse(ok)
+        self.assertIn("already in flight", buf.getvalue())
+        # Flight released, cooldown still running: narrated too.
+        runner._wake_gate_release()
+        with _captured_log() as buf:
+            ok = runner._wake_gate_decide({}, rec, now=1010.0)
+        self.assertFalse(ok)
+        self.assertIn("cooldown is 900s", buf.getvalue())
+
+    def test_quiet_at_base_level(self):
+        runner._set_verbosity(1)
+        rec = {"sensor": "smoke", "signal": "alarm",
+               "severity": "critical"}
+        with _captured_log() as buf:
+            runner._wake_gate_decide({}, rec, now=1000.0)
+        self.assertNotIn("verbose:", buf.getvalue())
+
+
+def _poll_setup(d):
+    with open(os.path.join(d, "resources.json"), "w") as f:
+        f.write("[]")
+    with open(os.path.join(d, "dri-state.json"), "w") as f:
+        f.write("null")
+    os.makedirs(os.path.join(d, "retained"))
+    with open(os.path.join(d, "retained", "old.json"), "w") as f:
+        f.write("not json")
+    return {"mailbox_user": "t@example.com", "shared_secret": SECRET,
+            "resources": {"enabled": True}, "dri": {"enabled": True}}
+
+
+class PollVerboseTest(_VerbosityGuard):
+    def _run_poll(self, raws, cfg=None):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = cfg if cfg is not None else _poll_setup(d)
+            with _captured_log() as buf:
+                poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
+                          imap=_IMAP(raws), smtp=_SMTP(), opts=_Opts())
+            return buf.getvalue()
+
+    def test_decision_lines_appear_at_verbose(self):
+        runner._set_verbosity(2)
+        good = sign_payload({
+            "v": 1, "type": "job", "job_id": "good1",
+            "issued_at": _now(), "kind": "ping"}, SECRET)
+        out = self._run_poll([
+            _mail("[HOMING-PIGEON] job good1", good),
+            _mail("[HOMING-PIGEON] job garbage", "not signed json"),
+            _mail("a newsletter", "hello"),
+        ])
+        self.assertIn("verbose: ingest: job good1: accepted", out)
+        self.assertIn("verbose: ingest: seq 2: rejected: "
+                      "bad signature", out)
+        self.assertIn("verbose: ingest: seq 3: skipped; "
+                      "not a job message", out)
+        self.assertIn("verbose: poll: 3 message(s) handled by "
+                      "1 worker(s)", out)
+
+    def test_no_decision_lines_at_base_level(self):
+        runner._set_verbosity(1)
+        good = sign_payload({
+            "v": 1, "type": "job", "job_id": "good1",
+            "issued_at": _now(), "kind": "ping"}, SECRET)
+        out = self._run_poll([
+            _mail("[HOMING-PIGEON] job good1", good),
+            _mail("[HOMING-PIGEON] job garbage", "not signed json"),
+        ])
+        self.assertNotIn("verbose:", out)
+        # The pre-existing lines are untouched.
+        self.assertIn("executing job good1", out)
+        self.assertIn("rejecting seq 2: bad signature", out)
+
+    def test_empty_poll_narrates_only_at_verbose(self):
+        runner._set_verbosity(2)
+        out = self._run_poll([])
+        self.assertIn("verbose: poll: no new messages", out)
+        runner._set_verbosity(1)
+        out = self._run_poll([])
+        self.assertNotIn("verbose:", out)
+
+
+class IngestVerboseTest(_VerbosityGuard):
+    def test_already_seen_is_a_verbose_line(self):
+        runner._set_verbosity(2)
+        cfg = {"mailbox_user": "t@example.com",
+               "shared_secret": SECRET}
+        body = sign_payload({
+            "v": 1, "type": "job", "job_id": "dup1",
+            "issued_at": _now(), "kind": "ping"}, SECRET)
+        seen = {runner._seen_key(cfg, "dup1"): 1}
+        with _captured_log() as buf:
+            handle_mail(cfg, _IMAP(), _SMTP(), 7,
+                        _mail("[HOMING-PIGEON] job dup1", body),
+                        tempfile.gettempdir(), seen,
+                        runner.build_secrets(cfg), _Opts())
+        self.assertIn("verbose: ingest: seq 7 job dup1: skipped; "
+                      "already seen", buf.getvalue())
+
+
+class JudgeVerboseTest(_VerbosityGuard):
+    def _handle(self, cfg, job):
+        raw = _mail(f"[HOMING-PIGEON] job {job['job_id']}",
+                    sign_payload(job, SECRET))
+        with tempfile.TemporaryDirectory() as d:
+            with _captured_log() as buf:
+                handle_mail(cfg, _IMAP(), _SMTP(), 1, raw, d, {},
+                            runner.build_secrets(cfg), _Opts())
+            return buf.getvalue()
+
+    def test_enforce_verdict_is_narrated(self):
+        runner._set_verbosity(2)
+        cfg = {"mailbox_user": "t@example.com",
+               "shared_secret": SECRET, "judge": "enforce"}
+        out = self._handle(cfg, {
+            "v": 1, "type": "job", "job_id": "bad1",
+            "issued_at": _now(), "kind": "exec",
+            "script": "rm -rf /"})
+        self.assertIn("verbose: judge: job bad1: mode=enforce "
+                      "verdict=fail", out)
+
+    def test_advisory_pass_is_narrated_and_quiet_at_base(self):
+        cfg = {"mailbox_user": "t@example.com",
+               "shared_secret": SECRET, "judge": "advisory"}
+        job = {"v": 1, "type": "job", "job_id": "ok1",
+               "issued_at": _now(), "kind": "ping"}
+        runner._set_verbosity(2)
+        out = self._handle(cfg, job)
+        self.assertIn("verbose: judge: job ok1: mode=advisory "
+                      "verdict=pass", out)
+        runner._set_verbosity(1)
+        out = self._handle(cfg, job)
+        self.assertNotIn("verbose: judge:", out)
+
+
+class BoardVerboseTest(_VerbosityGuard):
+    def _board(self, d):
+        b = Board(os.path.join(d, "board.json"))
+        b.submit({"task_id": "a"})
+        b.submit({"task_id": "b", "requires": ["a"]})
+        return b
+
+    def test_enforce_withheld_is_narrated(self):
+        runner._set_verbosity(2)
+        with tempfile.TemporaryDirectory() as d:
+            b = self._board(d)
+            with _captured_log() as buf:
+                got = b.offer("w1", [], cfg={"dag_mode": "enforce"})
+            # Only task a can go out; b is withheld, and says so.
+            self.assertEqual(got["task_id"], "a")
+            self.assertIn("verbose: board: task b withheld "
+                          "(dag_mode=enforce): incomplete "
+                          "requires: a", buf.getvalue())
+
+    def test_offer_and_empty_board_are_narrated(self):
+        runner._set_verbosity(2)
+        with tempfile.TemporaryDirectory() as d:
+            b = Board(os.path.join(d, "board.json"))
+            b.submit({"task_id": "a"})
+            # Top-ranked, so advisory hands it out first, with
+            # its incomplete dependency still pending.
+            b.submit({"task_id": "b", "requires": ["a"],
+                      "priority": 5})
+            with _captured_log() as buf:
+                got = b.offer("w1", [], cfg={"dag_mode": "advisory"})
+            self.assertEqual(got["task_id"], "b")
+            self.assertIn("dag_warning", got)
+            self.assertIn("verbose: board: offered b to w1 "
+                          "(dag_mode=advisory", buf.getvalue())
+            empty = Board(os.path.join(d, "empty.json"))
+            with _captured_log() as buf:
+                self.assertIsNone(
+                    empty.offer("w1", [], cfg={"dag_mode": "off"}))
+            self.assertIn("verbose: board: nothing to offer w1",
+                          buf.getvalue())
+
+    def test_quiet_at_base_level(self):
+        runner._set_verbosity(1)
+        with tempfile.TemporaryDirectory() as d:
+            b = self._board(d)
+            with _captured_log() as buf:
+                b.offer("w1", [], cfg={"dag_mode": "enforce"})
+            self.assertNotIn("verbose:", buf.getvalue())
+
+
+class ConfigVerboseMainTest(_VerbosityGuard):
+    def test_config_verbose_is_honored(self):
+        code, _poll, _reloads = _main_rig(
+            ["--once", "--dry-run"], cfg_extra={"verbose": True})
+        self.assertEqual(code, 0)
+        self.assertEqual(runner._VERBOSE_LEVEL, 2)
+        self.assertTrue(runner._VERBOSE)
+
+    def test_config_verbose_false_quiets(self):
+        code, _poll, _reloads = _main_rig(
+            ["--once", "--dry-run"], cfg_extra={"verbose": False})
+        self.assertEqual(code, 0)
+        self.assertEqual(runner._VERBOSE_LEVEL, 0)
+        self.assertFalse(runner._VERBOSE)
+
+    def test_flag_beats_config_both_ways(self):
+        code, _poll, _reloads = _main_rig(
+            ["--once", "--dry-run", "--quiet"],
+            cfg_extra={"verbose": True})
+        self.assertEqual(code, 0)
+        self.assertEqual(runner._VERBOSE_LEVEL, 0)
+        code, _poll, _reloads = _main_rig(
+            ["--once", "--dry-run", "-v"],
+            cfg_extra={"verbose": False})
+        self.assertEqual(code, 0)
+        self.assertEqual(runner._VERBOSE_LEVEL, 2)
+
+    def test_no_flag_no_key_is_the_base_level(self):
+        code, _poll, _reloads = _main_rig(["--once", "--dry-run"])
+        self.assertEqual(code, 0)
+        self.assertEqual(runner._VERBOSE_LEVEL, 1)
+        self.assertTrue(runner._VERBOSE)
 
 
 if __name__ == "__main__":
