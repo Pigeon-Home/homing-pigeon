@@ -83,6 +83,57 @@ class SurfaceMechanicsTest(unittest.TestCase):
         finally:
             restore()
 
+    def test_an_existing_windll_is_overlaid_then_restored(self):
+        # The 3.10.1 build-windows failure: the host already has
+        # windll (an elevated runner, IsUserAnAdmin -> 1). The
+        # surface must still answer 0 while applied, and must
+        # put that host object back afterwards.
+        class _HostShell:
+            def IsUserAnAdmin(self):
+                return 1
+
+        class _HostLoader:
+            shell32 = _HostShell()
+
+        class _HostKernel:
+            def GlobalMemoryStatusEx(self, *_args, **_kwargs):
+                return 1
+
+        def _host_factory(*_args, **_kwargs):
+            return _HostKernel()
+
+        had_windll = hasattr(ctypes, "windll")
+        had_windll_obj = getattr(ctypes, "windll", None)
+        had_win = hasattr(ctypes, "WinDLL")
+        had_win_obj = getattr(ctypes, "WinDLL", None)
+        host_loader = _HostLoader()
+        ctypes.windll = host_loader
+        ctypes.WinDLL = _host_factory
+        try:
+            restore = surface.apply_surface()
+            try:
+                self.assertEqual(
+                    ctypes.windll.shell32.IsUserAnAdmin(), 0)
+                self.assertEqual(
+                    ctypes.WinDLL("kernel32").GlobalMemoryStatusEx(None),
+                    0)
+            finally:
+                restore()
+            self.assertIs(ctypes.windll, host_loader)
+            self.assertEqual(
+                ctypes.windll.shell32.IsUserAnAdmin(), 1)
+            self.assertEqual(
+                ctypes.WinDLL("kernel32").GlobalMemoryStatusEx(None), 1)
+        finally:
+            if had_windll:
+                ctypes.windll = had_windll_obj
+            else:
+                del ctypes.windll
+            if had_win:
+                ctypes.WinDLL = had_win_obj
+            else:
+                del ctypes.WinDLL
+
     def test_double_apply_keeps_the_first_restore_in_charge(self):
         # Compare against the value captured BEFORE applying --
         # on a real Windows host (or under the sim harness, which

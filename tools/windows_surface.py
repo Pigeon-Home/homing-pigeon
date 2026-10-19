@@ -32,14 +32,20 @@ What the surface changes (apply_surface):
               os.register_at_fork, os.getuid/os.geteuid,
               os.getgid/os.getegid, os.uname, os.killpg,
               os.setsid, os.getsid, os.getpgid.
-  windll      ctypes.windll and ctypes.WinDLL, absent on POSIX,
-              are installed as neutral fakes: every function is
-              callable, accepts anything, and returns 0 -- the
-              "call failed / not an admin / snapshot refused"
-              outcome, which guarded product code already treats
-              as a normal result. Guarded Windows code therefore
-              RUNS under the simulation instead of dying on the
-              first ctypes attribute access.
+  windll      ctypes.windll and ctypes.WinDLL are overlaid with
+              neutral fakes for the duration, whether or not the
+              host already has them: every function is callable,
+              accepts anything, and returns 0 -- the "call failed
+              / not an admin / snapshot refused" outcome, which
+              guarded product code already treats as a normal
+              result. On POSIX the names are absent, so the
+              overlay is what lets that code run at all. On a
+              real Windows host the same overlay is required:
+              leaving the host windll in place makes
+              IsUserAnAdmin() answer 1 for an elevated CI runner,
+              which is not the neutral surface the pins assert.
+              Restore puts the host objects back, or deletes
+              them if the host never had them.
   ssl store   ssl.enum_certificates / ssl.enum_crls, absent on
               POSIX, are stubbed to return empty lists. This one
               matters at CALL time: ssl.create_default_context()
@@ -224,10 +230,12 @@ def apply_surface():
             _set(platform, func_name, (lambda r: lambda *a, **k: r)(result))
         for attr in _ABSENT:
             _del(os, attr)
-        if not hasattr(ctypes, "windll"):
-            _set(ctypes, "windll", _FakeWinDllLoader())
-        if not hasattr(ctypes, "WinDLL"):
-            _set(ctypes, "WinDLL", _fake_windll_factory)
+        # Unconditional. A `hasattr` guard left the real windll
+        # in place on Windows, so IsUserAnAdmin() returned 1 on
+        # the elevated build-windows runner and the neutral-fake
+        # pin failed. Restore writes the host objects back.
+        _set(ctypes, "windll", _FakeWinDllLoader())
+        _set(ctypes, "WinDLL", _fake_windll_factory)
         for store_fn in ("enum_certificates", "enum_crls"):
             if not hasattr(ssl, store_fn):
                 _set(ssl, store_fn, lambda *a, **k: [])
