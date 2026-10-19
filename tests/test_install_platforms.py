@@ -208,6 +208,9 @@ class LinuxPackageEnvTest(unittest.TestCase):
         self.assertIn(
             ["systemctl", "enable", "--now", "osqueryd.service"],
             pkg.cmds)
+        with mock.patch.object(inst.shutil, "which", return_value=None):
+            self.assertEqual(inst._osquery_binary(),
+                             "/opt/osquery/bin/osqueryd")
 
     def test_falco_apt_env_routes_json_when_a_unit_exists(self):
         pkg = _Pkg()
@@ -331,6 +334,7 @@ class LinuxPackageEnvTest(unittest.TestCase):
                 "wazuh", _args(wazuh_manager="10.0.0.8"))
         self.assertIn("Microsoft", sysmon)
         self.assertIn("/config/ubuntu/24.04/", downloaded[0])
+        self.assertIn(["apt-get", "update"], pkg.cmds)
         apt.assert_any_call(["sysmonforlinux"])
         self.assertIn("10.0.0.8", wazuh)
         self.assertIn("packages.wazuh.com/4.x/apt/",

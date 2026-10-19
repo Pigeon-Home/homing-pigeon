@@ -178,9 +178,18 @@ class FetchAndConfigTest(unittest.TestCase):
             def read(self):
                 return b"payload"
 
-        with mock.patch("urllib.request.urlopen", return_value=_Body()):
+        seen = {}
+
+        def urlopen(req, timeout=60):
+            seen["timeout"] = timeout
+            seen["ua"] = req.get_header("User-agent")
+            return _Body()
+
+        with mock.patch("urllib.request.urlopen", urlopen):
             self.assertEqual(
                 inst._download("https://example.test/a"), b"payload")
+        self.assertEqual(seen["timeout"], 180)
+        self.assertEqual(seen["ua"], "homing-pigeon-install")
 
     def test_the_os_release_version_is_the_quoted_id(self):
         text = 'NAME="Debian"\nVERSION_ID="12"\n'
@@ -515,7 +524,8 @@ class LastBranchesTest(unittest.TestCase):
                      "https://example.test/good"], dest), dest)
             with mock.patch.object(inst, "run") as run:
                 inst._apt_install(["osquery"])
-            run.assert_called()
+            run.assert_called_once_with(
+                ["apt-get", "install", "-y", "osquery"])
 
         answers = iter([False, True])
         with mock.patch.object(inst, "_ollama_up",

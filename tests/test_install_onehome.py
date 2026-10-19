@@ -309,6 +309,44 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("WARN: base_dir", buf.getvalue())
 
+    def test_an_absent_collector_passes_and_a_remote_model_warns(self):
+        tree = _HomeTree(self)
+        buf = io.StringIO()
+        with mock.patch.object(install, "collector_health_rows",
+                               return_value=[
+                                   ("osquery", "ABSENT", "not installed")]), \
+                mock.patch.object(install, "_task_exists",
+                                  return_value=True), \
+                mock.patch.object(
+                    install, "_task_command",
+                    return_value=os.path.join(
+                        tree.bin, install.RUNNER_BIN)), \
+                redirect_stdout(buf):
+            rc = do_check(tree.home, tree.bin, tree.cfg, tree.state)
+        self.assertEqual(rc, 0)
+        self.assertIn("PASS: collector osquery", buf.getvalue())
+        self.assertNotIn("WARN: collector", buf.getvalue())
+
+        _seed(tree.cfg, json.dumps({
+            "shared_secret": "s" * 64,
+            "base_dir": tree.state,
+            "inference": {"endpoint": "http://10.0.0.5:11434/v1"},
+        }))
+        buf = io.StringIO()
+        with mock.patch.object(install, "collector_health_rows",
+                               return_value=[]), \
+                mock.patch.object(install, "_task_exists",
+                                  return_value=True), \
+                mock.patch.object(
+                    install, "_task_command",
+                    return_value=os.path.join(
+                        tree.bin, install.RUNNER_BIN)), \
+                redirect_stdout(buf):
+            rc = do_check(tree.home, tree.bin, tree.cfg, tree.state)
+        self.assertEqual(rc, 0)
+        self.assertIn("not a loopback endpoint", buf.getvalue())
+        self.assertIn("WARN: inference", buf.getvalue())
+
 
 class ConsoleTest(unittest.TestCase):
     def _tree(self):

@@ -381,6 +381,8 @@ class PackageFetchTest(unittest.TestCase):
                     inst._write_keyring(["https://example.test/k"], dest),
                     dest)
             self.assertIn("--dearmor", ran[0])
+            self.assertIn("--batch", ran[0])
+            self.assertIn("--yes", ran[0])
 
     def test_the_apt_repo_line_names_the_keyring(self):
         written = {}
@@ -399,14 +401,17 @@ class PackageFetchTest(unittest.TestCase):
 
         with mock.patch.object(inst, "_write_keyring",
                                return_value="/usr/share/keyrings/z.gpg"), \
-                mock.patch.object(inst, "run"), \
+                mock.patch.object(inst, "run") as run, \
                 mock.patch("builtins.open", opener):
             inst._apt_repo(
                 "zeek", "deb [signed-by={keyring}] http://x /",
                 ["https://example.test/k"])
         text = written["/etc/apt/sources.list.d/zeek.list"]
-        self.assertIn("zeek-archive-keyring.gpg", text)
+        self.assertIn(
+            "signed-by=/usr/share/keyrings/zeek-archive-keyring.gpg",
+            text)
         self.assertNotIn("{keyring}", text)
+        run.assert_called_once_with(["apt-get", "update"])
 
     def test_ollama_starts_or_reports_why_it_did_not(self):
         with mock.patch.object(inst, "_ollama_up", return_value=True):
@@ -458,6 +463,9 @@ class PackageFetchTest(unittest.TestCase):
                                return_value=_Proc(0, "active\n")):
             self.assertTrue(inst._service_active("osqueryd"))
         with mock.patch.object(inst.subprocess, "run",
+                               return_value=_Proc(0, "activating\n")):
+            self.assertFalse(inst._service_active("osqueryd"))
+        with mock.patch.object(inst.subprocess, "run",
                                side_effect=OSError):
             self.assertFalse(inst._service_active("osqueryd"))
         with mock.patch.object(os, "listdir", return_value=["12", "self"]):
@@ -468,6 +476,10 @@ class PackageFetchTest(unittest.TestCase):
             with mock.patch("builtins.open", opener):
                 self.assertFalse(inst._proc_running("zeek"))
         self.assertIsNone(inst._artifact_age("/no/such/feed"))
+        with mock.patch.object(inst.time, "time", return_value=0), \
+                mock.patch.object(inst.os.path, "getmtime",
+                                  return_value=50):
+            self.assertEqual(inst._artifact_age("x"), 0.0)
         with mock.patch.object(inst.shutil, "which",
                                side_effect=OSError("win32")):
             self.assertIsNone(inst._which_safe("osqueryd"))
