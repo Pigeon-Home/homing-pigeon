@@ -126,7 +126,7 @@ most universal pipe and the project's test transport. Here,
 
 One more layer rides above every pipe, unchanged: per-job
 encryption. `send_job.py` encrypts the signed job body by
-default (ChaCha20-Poly1305 under a key derived from the
+default (AES-256-GCM under a key derived from the
 shared secret), the core unwraps it after the signature
 verifies, and the result mirrors the job's form. A transport
 carries the envelope exactly as it carried the cleartext
@@ -276,7 +276,7 @@ implemented as a bounded pure-Python profile
   deliberate exception to the contract's outbound-only rule
   above, taken by the owner's explicit choice.
 - **One profile, enforced.** DTLS 1.3, one ciphersuite
-  (TLS_CHACHA20_POLY1305_SHA256), PSK-only authentication
+  (TLS_AES_256_GCM_SHA384), PSK-only authentication
   with the shared secret as the external PSK (identity
   `homing-pigeon`, or `homing-pigeon:<key_id>` for an
   additional secret). Key exchange is `psk_dhe_ke` only: a

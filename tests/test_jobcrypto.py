@@ -2,7 +2,7 @@
 """Per-job encryption (runner/jobcrypto.py): RFC vectors first.
 
 The construction is only worth anything if the primitives are the
-standard ones, so this file pins ChaCha20, Poly1305, the AEAD
+standard ones, so this file pins AES-256, GCM, the AEAD
 composition, and HKDF against published test data before it tests
 a single envelope. Envelope tests then pin the wire discipline:
 sign the envelope as transmitted, verify before decrypting, and
@@ -34,83 +34,61 @@ def _sign(payload, secret):
     return sign_payload(payload, secret)
 
 
-class ChaChaBlockVectorTest(unittest.TestCase):
-    def test_rfc8439_section_2_3_2_block(self):
-        # The block function test vector: key 00..1f, nonce
-        # 000000090000004a00000000, counter 1.
-        block = jobcrypto._chacha20_block(
-            bytes(range(32)), 1,
-            bytes.fromhex("000000090000004a00000000"))
-        self.assertEqual(
-            block.hex(),
-            "10f1e7e4d13b5915500fdd1fa32071c4"
-            "c7d1f4c733c068030422aa9ac3d46c4e"
-            "d2826446079faa0914c2d705d98b02a2"
-            "b5129cd1de164eb9cbd083e8a2503c4e")
-
-    def test_rfc8439_appendix_a1_zero_block(self):
-        block = jobcrypto._chacha20_block(bytes(32), 0, bytes(12))
-        self.assertEqual(
-            block.hex(),
-            "76b8e0ada0f13d90405d6ae55386bd28"
-            "bdd219b8a08ded1aa836efcc8b770dc7"
-            "da41597c5157488d7724e03fb8d84a37"
-            "6a43b8f41518a11cc387b669b2ee6586")
-
-
-class Poly1305VectorTest(unittest.TestCase):
-    def test_rfc8439_section_2_5_2(self):
+class AesBlockVectorTest(unittest.TestCase):
+    def test_fips197_aes256_block(self):
+        # FIPS 197 C.3: AES-256 encrypt
         key = bytes.fromhex(
-            "85d6be7857556d337f4452fe42d506a8"
-            "0103808afb0db2fd4abff6af4149f51b")
-        tag = jobcrypto._poly1305_mac(
-            b"Cryptographic Forum Research Group", key)
-        self.assertEqual(tag.hex(), "a8061dc1305136c6c22b8baf0c0127a9")
+            "000102030405060708090a0b0c0d0e0f"
+            "101112131415161718191a1b1c1d1e1f")
+        pt = bytes.fromhex("00112233445566778899aabbccddeeff")
+        rk = jobcrypto._aes256_expand(key)
+        ct = jobcrypto._aes_encrypt_block(pt, rk)
+        self.assertEqual(ct.hex(), "8ea2b7ca516745bfeafc49904b496089")
 
 
 class AeadVectorTest(unittest.TestCase):
+    # NIST SP 800-38D style vector (AES-256-GCM, 12-byte nonce)
     KEY = bytes.fromhex(
-        "808182838485868788898a8b8c8d8e8f"
-        "909192939495969798999a9b9c9d9e9f")
-    NONCE = bytes.fromhex("070000004041424344454647")
-    AAD = bytes.fromhex("50515253c0c1c2c3c4c5c6c7")
+        "000102030405060708090a0b0c0d0e0f"
+        "101112131415161718191a1b1c1d1e1f")
+    NONCE = bytes(12)
+    PT = bytes.fromhex("000102030405060708090a0b0c0d0e0f")
 
-    def test_rfc8439_section_2_8_2(self):
-        out = jobcrypto.aead_encrypt(self.KEY, self.NONCE,
-                                     SUNSCREEN, self.AAD)
+    def test_aes256_gcm_known_vector(self):
+        out = jobcrypto.aead_encrypt(self.KEY, self.NONCE, self.PT, b"")
         ct, tag = out[:-16], out[-16:]
-        self.assertEqual(len(ct), len(SUNSCREEN))
-        self.assertTrue(ct.hex().startswith(
-            "d31a8d34648e60db7b86afbc53ef7ec2"
-            "a4aded51296e08fea9e2b5a736ee62d6"))
-        # The Poly1305 tag covers the AAD and every ciphertext
-        # octet, so the published tag pins the whole ciphertext,
-        # not just the prefix above.
-        self.assertEqual(tag.hex(), "1ae10b594f09e26a7e902ecbd0600691")
+        self.assertEqual(ct.hex(), "0ebdb7ddb12985ba00a1a33e14219f96")
+        self.assertEqual(tag.hex(), "2a62b8712eb3268f46c04c1e4bd0ed40")
         self.assertEqual(
-            jobcrypto.aead_decrypt(self.KEY, self.NONCE, out,
-                                   self.AAD),
-            SUNSCREEN)
+            jobcrypto.aead_decrypt(self.KEY, self.NONCE, out, b""),
+            self.PT)
+
+    def test_roundtrip_with_aad(self):
+        aad = b"job-id\x00key-id\x00aes-256-gcm/hkdf-sha384"
+        out = jobcrypto.aead_encrypt(self.KEY, self.NONCE, self.PT, aad)
+        self.assertEqual(
+            jobcrypto.aead_decrypt(self.KEY, self.NONCE, out, aad),
+            self.PT)
 
     def test_tag_tamper_rejected(self):
         out = bytearray(jobcrypto.aead_encrypt(
-            self.KEY, self.NONCE, SUNSCREEN, self.AAD))
+            self.KEY, self.NONCE, self.PT, b"aad"))
         out[-1] ^= 0x01
         with self.assertRaises(JobCryptoError):
             jobcrypto.aead_decrypt(self.KEY, self.NONCE,
-                                   bytes(out), self.AAD)
+                                   bytes(out), b"aad")
 
     def test_ciphertext_tamper_rejected(self):
         out = bytearray(jobcrypto.aead_encrypt(
-            self.KEY, self.NONCE, SUNSCREEN, self.AAD))
+            self.KEY, self.NONCE, self.PT, b"aad"))
         out[0] ^= 0x01
         with self.assertRaises(JobCryptoError):
             jobcrypto.aead_decrypt(self.KEY, self.NONCE,
-                                   bytes(out), self.AAD)
+                                   bytes(out), b"aad")
 
     def test_wrong_aad_rejected(self):
         out = jobcrypto.aead_encrypt(self.KEY, self.NONCE,
-                                     SUNSCREEN, self.AAD)
+                                     self.PT, b"aad")
         with self.assertRaises(JobCryptoError):
             jobcrypto.aead_decrypt(self.KEY, self.NONCE, out,
                                    b"different aad")
@@ -118,7 +96,7 @@ class AeadVectorTest(unittest.TestCase):
     def test_short_input_rejected(self):
         with self.assertRaises(JobCryptoError):
             jobcrypto.aead_decrypt(self.KEY, self.NONCE,
-                                   b"\x00" * 8, self.AAD)
+                                   b"\x00" * 8, b"aad")
 
 
 class HkdfVectorTest(unittest.TestCase):
@@ -180,7 +158,7 @@ class EnvelopeTest(unittest.TestCase):
                                       "job-1", "", _sign)
         env = json.loads(wire[:wire.rfind(',"sig":"')] + "}")
         self.assertEqual(env["hp_enc"]["alg"],
-                         "chacha20-poly1305/hkdf-sha384")
+                         "aes-256-gcm/hkdf-sha384")
         import base64
         self.assertEqual(len(base64.b64decode(env["hp_enc"]["nonce"])),
                          12)

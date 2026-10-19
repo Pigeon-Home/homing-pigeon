@@ -15,7 +15,7 @@ cleartext job faces.
 Construction (standard library only; the runner takes no new
 dependency):
 
-- AEAD: ChaCha20-Poly1305, RFC 8439, implemented in pure Python.
+- AEAD: AES-256-GCM, NIST SP 800-38D, implemented in pure Python.
 - KDF: HKDF, RFC 5869, over HMAC-SHA-384. The master key is the
   selected shared secret's UTF-8 octets (the same key_id
   selection verification uses). The per-job key is
@@ -47,7 +47,7 @@ import hashlib
 import hmac
 import secrets
 
-ALG = "chacha20-poly1305/hkdf-sha384"
+ALG = "aes-256-gcm/hkdf-sha384"
 _KDF_INFO = b"homing-pigeon job-encryption v1"
 _NONCE_LEN = 12
 _TAG_LEN = 16
@@ -95,122 +95,187 @@ def _aad(job_id, key_id):
 
 
 # ------------------------------------------------------------------
-# ChaCha20 (RFC 8439 section 2.3/2.4)
+# AES-256 (FIPS 197) and GCM (NIST SP 800-38D)
 # ------------------------------------------------------------------
 
-def _rotl32(v, n):
-    return ((v << n) & 0xFFFFFFFF) | (v >> (32 - n))
+_SBOX = bytes((
+    0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5,0x30,0x01,0x67,0x2b,0xfe,0xd7,0xab,0x76,
+    0xca,0x82,0xc9,0x7d,0xfa,0x59,0x47,0xf0,0xad,0xd4,0xa2,0xaf,0x9c,0xa4,0x72,0xc0,
+    0xb7,0xfd,0x93,0x26,0x36,0x3f,0xf7,0xcc,0x34,0xa5,0xe5,0xf1,0x71,0xd8,0x31,0x15,
+    0x04,0xc7,0x23,0xc3,0x18,0x96,0x05,0x9a,0x07,0x12,0x80,0xe2,0xeb,0x27,0xb2,0x75,
+    0x09,0x83,0x2c,0x1a,0x1b,0x6e,0x5a,0xa0,0x52,0x3b,0xd6,0xb3,0x29,0xe3,0x2f,0x84,
+    0x53,0xd1,0x00,0xed,0x20,0xfc,0xb1,0x5b,0x6a,0xcb,0xbe,0x39,0x4a,0x4c,0x58,0xcf,
+    0xd0,0xef,0xaa,0xfb,0x43,0x4d,0x33,0x85,0x45,0xf9,0x02,0x7f,0x50,0x3c,0x9f,0xa8,
+    0x51,0xa3,0x40,0x8f,0x92,0x9d,0x38,0xf5,0xbc,0xb6,0xda,0x21,0x10,0xff,0xf3,0xd2,
+    0xcd,0x0c,0x13,0xec,0x5f,0x97,0x44,0x17,0xc4,0xa7,0x7e,0x3d,0x64,0x5d,0x19,0x73,
+    0x60,0x81,0x4f,0xdc,0x22,0x2a,0x90,0x88,0x46,0xee,0xb8,0x14,0xde,0x5e,0x0b,0xdb,
+    0xe0,0x32,0x3a,0x0a,0x49,0x06,0x24,0x5c,0xc2,0xd3,0xac,0x62,0x91,0x95,0xe4,0x79,
+    0xe7,0xc8,0x37,0x6d,0x8d,0xd5,0x4e,0xa9,0x6c,0x56,0xf4,0xea,0x65,0x7a,0xae,0x08,
+    0xba,0x78,0x25,0x2e,0x1c,0xa6,0xb4,0xc6,0xe8,0xdd,0x74,0x1f,0x4b,0xbd,0x8b,0x8a,
+    0x70,0x3e,0xb5,0x66,0x48,0x03,0xf6,0x0e,0x61,0x35,0x57,0xb9,0x86,0xc1,0x1d,0x9e,
+    0xe1,0xf8,0x98,0x11,0x69,0xd9,0x8e,0x94,0x9b,0x1e,0x87,0xe9,0xce,0x55,0x28,0xdf,
+    0x8c,0xa1,0x89,0x0d,0xbf,0xe6,0x42,0x68,0x41,0x99,0x2d,0x0f,0xb0,0x54,0xbb,0x16,
+))
+
+_RCON = (0x00,0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1b,0x36)
 
 
-def _quarter_round(x, a, b, c, d):
-    x[a] = (x[a] + x[b]) & 0xFFFFFFFF
-    x[d] = _rotl32(x[d] ^ x[a], 16)
-    x[c] = (x[c] + x[d]) & 0xFFFFFFFF
-    x[b] = _rotl32(x[b] ^ x[c], 12)
-    x[a] = (x[a] + x[b]) & 0xFFFFFFFF
-    x[d] = _rotl32(x[d] ^ x[a], 8)
-    x[c] = (x[c] + x[d]) & 0xFFFFFFFF
-    x[b] = _rotl32(x[b] ^ x[c], 7)
+def _xtime(a):
+    return (((a << 1) ^ 0x1b) & 0xff) if (a & 0x80) else ((a << 1) & 0xff)
 
 
-def _chacha20_block(key, counter, nonce):
-    const = [0x61707865, 0x3320646E, 0x79622D32, 0x6B206574]
-
-    def words(data):
-        return [int.from_bytes(data[i:i + 4], "little")
-                for i in range(0, len(data), 4)]
-
-    state = const + words(key) + [counter] + words(nonce)
-    work = list(state)
-    for _ in range(10):
-        _quarter_round(work, 0, 4, 8, 12)
-        _quarter_round(work, 1, 5, 9, 13)
-        _quarter_round(work, 2, 6, 10, 14)
-        _quarter_round(work, 3, 7, 11, 15)
-        _quarter_round(work, 0, 5, 10, 15)
-        _quarter_round(work, 1, 6, 11, 12)
-        _quarter_round(work, 2, 7, 8, 13)
-        _quarter_round(work, 3, 4, 9, 14)
-    out = [(work[i] + state[i]) & 0xFFFFFFFF for i in range(16)]
-    return b"".join(w.to_bytes(4, "little") for w in out)
-
-
-def _chacha20_xor(key, nonce, counter, data):
-    out = bytearray()
-    ctr = counter
-    for off in range(0, len(data), 64):
-        block = _chacha20_block(key, ctr, nonce)
-        chunk = data[off:off + 64]
-        out.extend(b ^ k for b, k in zip(chunk, block))
-        ctr += 1
-    return bytes(out)
+def _aes256_expand(key):
+    """Key expansion for AES-256. Returns list of 15 16-byte round keys."""
+    assert len(key) == 32
+    # Nk=8, Nr=14, Nb=4 → 60 words
+    w = [int.from_bytes(key[i:i+4], "big") for i in range(0, 32, 4)]
+    for i in range(8, 60):
+        temp = w[i-1]
+        if i % 8 == 0:
+            # RotWord + SubWord + Rcon
+            temp = ((temp << 8) | (temp >> 24)) & 0xffffffff
+            temp = ((_SBOX[(temp >> 24) & 0xff] << 24) |
+                    (_SBOX[(temp >> 16) & 0xff] << 16) |
+                    (_SBOX[(temp >> 8) & 0xff] << 8) |
+                    _SBOX[temp & 0xff])
+            temp ^= (_RCON[i // 8] << 24)
+        elif i % 8 == 4:
+            temp = ((_SBOX[(temp >> 24) & 0xff] << 24) |
+                    (_SBOX[(temp >> 16) & 0xff] << 16) |
+                    (_SBOX[(temp >> 8) & 0xff] << 8) |
+                    _SBOX[temp & 0xff])
+        w.append(w[i-8] ^ temp)
+    return [b"".join(w[i+j].to_bytes(4, "big") for j in range(4))
+            for i in range(0, 60, 4)]
 
 
-# ------------------------------------------------------------------
-# Poly1305 (RFC 8439 section 2.5)
-# ------------------------------------------------------------------
+def _aes_encrypt_block(block, round_keys):
+    """Encrypt one 16-byte block with pre-expanded round keys."""
+    s = [list(block[i:i+4]) for i in range(0, 16, 4)]  # column-major? use state as 4x4 row-major list of lists
+    # Use flat 16-byte state, column-major indexing: state[r + 4*c]
+    state = list(block)
+    # AddRoundKey
+    def add_round_key(st, rk):
+        return [st[i] ^ rk[i] for i in range(16)]
+    state = add_round_key(state, round_keys[0])
+    for rnd in range(1, 14):
+        # SubBytes
+        state = [_SBOX[b] for b in state]
+        # ShiftRows (row r shifted left by r)
+        state = [
+            state[0], state[5], state[10], state[15],
+            state[4], state[9], state[14], state[3],
+            state[8], state[13], state[2], state[7],
+            state[12], state[1], state[6], state[11],
+        ]
+        # MixColumns
+        def mix(col):
+            a, b, c, d = col
+            return [
+                _xtime(a) ^ _xtime(b) ^ b ^ c ^ d,
+                a ^ _xtime(b) ^ _xtime(c) ^ c ^ d,
+                a ^ b ^ _xtime(c) ^ _xtime(d) ^ d,
+                _xtime(a) ^ a ^ b ^ c ^ _xtime(d),
+            ]
+        cols = [mix(state[c*4:(c+1)*4]) for c in range(4)]
+        state = [b & 0xff for col in cols for b in col]
+        state = add_round_key(state, round_keys[rnd])
+    # Final
+    state = [_SBOX[b] for b in state]
+    state = [
+        state[0], state[5], state[10], state[15],
+        state[4], state[9], state[14], state[3],
+        state[8], state[13], state[2], state[7],
+        state[12], state[1], state[6], state[11],
+    ]
+    state = add_round_key(state, round_keys[14])
+    return bytes(state)
 
-def _poly1305_mac(msg, key):
-    r = int.from_bytes(key[:16], "little") & \
-        0x0FFFFFFC0FFFFFFC0FFFFFFC0FFFFFFF
-    s = int.from_bytes(key[16:], "little")
-    p = (1 << 130) - 5
-    acc = 0
-    for off in range(0, len(msg), 16):
-        chunk = msg[off:off + 16]
-        n = int.from_bytes(chunk, "little") + (1 << (8 * len(chunk)))
-        acc = ((acc + n) * r) % p
-    tag = (acc + s) % (1 << 128)
-    return tag.to_bytes(16, "little")
+
+def _ghash(h, data):
+    """GHASH with GCM bit ordering (NIST SP 800-38D)."""
+    # Reflect H once
+    def reflect128(n):
+        r = 0
+        for i in range(128):
+            if n & (1 << i):
+                r |= 1 << (127 - i)
+        return r
+    h_ref = reflect128(int.from_bytes(h, "big"))
+    y = 0
+    R = 0xe1000000000000000000000000000000
+    for i in range(0, len(data), 16):
+        block = reflect128(int.from_bytes(data[i:i+16], "big"))
+        y ^= block
+        # Multiply y * h_ref in the reflected domain
+        z = 0
+        v = h_ref
+        for bit in range(128):
+            if y & (1 << bit):
+                z ^= v
+            if v & (1 << 127):
+                v = ((v << 1) & ((1<<128)-1)) ^ 0x87
+            else:
+                v = (v << 1) & ((1<<128)-1)
+        y = z
+    return reflect128(y).to_bytes(16, "big")
 
 
-# ------------------------------------------------------------------
-# AEAD (RFC 8439 section 2.8)
-# ------------------------------------------------------------------
-
-def _pad16(data):
-    if len(data) % 16 == 0:
-        return b""
-    return b"\x00" * (16 - len(data) % 16)
+def _inc32(block):
+    n = int.from_bytes(block[12:], "big")
+    return block[:12] + ((n + 1) & 0xffffffff).to_bytes(4, "big")
 
 
 def aead_encrypt(key, nonce, plaintext, aad):
-    """Return ciphertext || tag (16-octet tag appended)."""
     if len(key) != _KEY_LEN or len(nonce) != _NONCE_LEN:
-        raise JobCryptoError(
-            "aead key must be 32 octets and nonce 12")
-    poly_key = _chacha20_block(key, 0, nonce)[:32]
-    ciphertext = _chacha20_xor(key, nonce, 1, plaintext)
-    mac_data = (aad + _pad16(aad) + ciphertext + _pad16(ciphertext)
-                + len(aad).to_bytes(8, "little")
-                + len(ciphertext).to_bytes(8, "little"))
-    return ciphertext + _poly1305_mac(mac_data, poly_key)
+        raise JobCryptoError("aead key must be 32 octets and nonce 12")
+    rk = _aes256_expand(key)
+    h = _aes_encrypt_block(b"\x00"*16, rk)
+    j0 = nonce + b"\x00\x00\x00\x01"
+    # CTR
+    counter = _inc32(j0)
+    ct = bytearray()
+    for off in range(0, len(plaintext), 16):
+        ks = _aes_encrypt_block(counter, rk)
+        chunk = plaintext[off:off+16]
+        ct.extend(a ^ b for a, b in zip(chunk, ks))
+        counter = _inc32(counter)
+    ct = bytes(ct)
+    def pad(d):
+        r = len(d) % 16
+        return d if r == 0 else d + b"\x00"*(16-r)
+    g_in = pad(aad) + pad(ct) + (len(aad)*8).to_bytes(8,"big") + (len(ct)*8).to_bytes(8,"big")
+    s = _ghash(h, g_in)
+    tag = bytes(a ^ b for a, b in zip(s, _aes_encrypt_block(j0, rk)))
+    return ct + tag
 
 
 def aead_decrypt(key, nonce, ct_and_tag, aad):
-    """Verify the tag (constant-time) and return the plaintext.
-
-    Raises JobCryptoError on any failure; nothing partial escapes.
-    """
     if len(key) != _KEY_LEN or len(nonce) != _NONCE_LEN:
-        raise JobCryptoError(
-            "aead key must be 32 octets and nonce 12")
+        raise JobCryptoError("aead key must be 32 octets and nonce 12")
     if len(ct_and_tag) < _TAG_LEN:
         raise JobCryptoError("ciphertext shorter than its tag")
-    ciphertext, tag = ct_and_tag[:-_TAG_LEN], ct_and_tag[-_TAG_LEN:]
-    poly_key = _chacha20_block(key, 0, nonce)[:32]
-    mac_data = (aad + _pad16(aad) + ciphertext + _pad16(ciphertext)
-                + len(aad).to_bytes(8, "little")
-                + len(ciphertext).to_bytes(8, "little"))
-    expect = _poly1305_mac(mac_data, poly_key)
+    ct, tag = ct_and_tag[:-16], ct_and_tag[-16:]
+    rk = _aes256_expand(key)
+    h = _aes_encrypt_block(b"\x00"*16, rk)
+    j0 = nonce + b"\x00\x00\x00\x01"
+    def pad(d):
+        r = len(d) % 16
+        return d if r == 0 else d + b"\x00"*(16-r)
+    g_in = pad(aad) + pad(ct) + (len(aad)*8).to_bytes(8,"big") + (len(ct)*8).to_bytes(8,"big")
+    s = _ghash(h, g_in)
+    expect = bytes(a ^ b for a, b in zip(s, _aes_encrypt_block(j0, rk)))
     if not hmac.compare_digest(expect, tag):
-        raise JobCryptoError("poly1305 tag mismatch")
-    return _chacha20_xor(key, nonce, 1, ciphertext)
+        raise JobCryptoError("gcm tag mismatch")
+    counter = _inc32(j0)
+    pt = bytearray()
+    for off in range(0, len(ct), 16):
+        ks = _aes_encrypt_block(counter, rk)
+        chunk = ct[off:off+16]
+        pt.extend(a ^ b for a, b in zip(chunk, ks))
+        counter = _inc32(counter)
+    return bytes(pt)
 
-
-# ------------------------------------------------------------------
-# The envelope
-# ------------------------------------------------------------------
 
 def is_envelope(payload):
     """True when a verified payload is an encryption envelope:

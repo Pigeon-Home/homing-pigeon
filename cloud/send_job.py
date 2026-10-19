@@ -24,7 +24,7 @@ Usage:
 `verify` reads a signed body from stdin (or a file), verifies it, and pretty-prints.
 
 Jobs are ENCRYPTED by default (per-job encryption: the signed body is
-wrapped in a signed ChaCha20-Poly1305 envelope keyed from the shared
+wrapped in a signed AES-256-GCM envelope keyed from the shared
 secret -- see runner/jobcrypto.py). `new --cleartext` produces the
 plain signed body instead, for runners too old to read envelopes.
 Encryption has no forward secrecy: the secret is static, so anyone

@@ -62,7 +62,7 @@ facts a reader may need to cite. Git history carries the rest.
   (`none` / `family` / `standard` / `full`, default family),
   sent only after authentication. Client: `cloud/send_dtls.py`.
 - **Per-job encryption, on by default.** `send_job.py` wraps
-  the signed body in an AEAD envelope (ChaCha20-Poly1305,
+  the signed body in an AEAD envelope (AES-256-GCM,
   HKDF-SHA-384 key from the job's selected secret; stdlib-only
   `runner/jobcrypto.py`). The runner verifies the signature
   before decrypting; results mirror the job's form;
