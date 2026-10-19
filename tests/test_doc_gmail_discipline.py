@@ -1,6 +1,6 @@
 """Live docs carry no provider name at all.
 
-Andrew's directive (2026-10-18, superseding the same day's
+DRU's directive (2026-10-18, superseding the same day's
 sanctioned-mentions regime): the term for the recommended mail
 provider appears in NO live document -- not in examples, not in
 hostnames, not in walkthroughs. The transport is email over

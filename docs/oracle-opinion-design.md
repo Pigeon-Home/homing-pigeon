@@ -6,7 +6,7 @@ ceiling `oracle_opinion_mode`, default repair — diagnose at
 first build, raised 2026-10-19 at the owner's direction;
 prediction and
 repair behavior under `oracle_opinion_predict` /
-`oracle_opinion_repair` / `oracle_opinion_model`). Andrew's
+`oracle_opinion_repair` / `oracle_opinion_model`). DRU's
 proposal (2026-10-15), elaborated 2026-10-18; recorded in
 FUTURE.md under "Before a job runs". This document remains the
 design record the build started from.
@@ -136,7 +136,7 @@ middle editing someone else's message.
 
 ## Self-learning: the loop closes (2026-10-19)
 
-Andrew's direction, built in `runner/learning.py`: the Oracle
+DRU's direction, built in `runner/learning.py`: the Oracle
 compares what it said about a job with what the job actually
 did, saves the comparison immediately, and reads it fresh when
 the next job arrives — so a later job can be assessed, and

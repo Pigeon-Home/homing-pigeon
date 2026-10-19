@@ -1232,7 +1232,7 @@ class MultipleTransportsTest(unittest.TestCase):
 
 
 class UnregisteredDropInTest(unittest.TestCase):
-    """Andrew's requirement: an owner can drop a transport
+    """DRU's requirement: an owner can drop a transport
     extension into the local extensions folder -- a test
     transport, a private experiment, a pipe nobody catalogued
     -- and the runner loads and uses it with NO registry or

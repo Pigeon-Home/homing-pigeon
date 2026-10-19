@@ -9,7 +9,7 @@ Layers, mirroring how the profile is built:
   the test decrypts the server's handshake flight itself and
   verifies the Finished MAC byte for byte.
 - Core-to-core behavior over a hand relay: the cookie gate,
-  psk_ke refusal (Andrew's PFS rule), wrong-PSK refusal,
+  psk_ke refusal (DRU's PFS rule), wrong-PSK refusal,
   greeting ordering, resumption with fresh DHE, NAT
   rebinding by Connection ID, tampered records, flight
   retransmission.

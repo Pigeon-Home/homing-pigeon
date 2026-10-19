@@ -7,7 +7,7 @@ Ideas...
 - Encrypted credentials at rest
 - Ack messages
 - Per-job encryption & transport enc -- CHOSEN DIRECTION
-  (Andrew, 2026-10-19, over the DTLS-session alternative):
+  (DRU, over the DTLS-session alternative):
   encrypt the job object itself to the runner -- an AEAD
   under a key derived from the shared secret (HKDF) --
   riding the existing email binding. Confidentiality
@@ -19,7 +19,7 @@ Ideas...
   it does not create a session, so the v2 greeting work
   stays future. The change that ships it MUST revise the
   confidentiality claims (then draft Section 16.2) in
-  step -- BUILT 2026-10-19: runner/jobcrypto.py
+  step -- BUILT: runner/jobcrypto.py
   (pure-Python ChaCha20-Poly1305 per RFC 8439, HKDF-SHA-384
   per RFC 5869, stdlib only); cloud/send_job.py encrypts by
   default and takes --cleartext; the runner unwraps after
@@ -29,13 +29,13 @@ Ideas...
   specified in the draft's Section 16 (the confidentiality
   discussion moved to Section 17.2, revised in step, the
   no-forward-secrecy limit stated in both places).
-  Placement (Andrew, 2026-10-19): the feature is
+  Placement (DRU): the feature is
   specified in the current IETF draft as an optional
   extension -- no second (v2) document is needed for it,
   and neither version axis moves: the protocol stays
   version 1 and the application version keeps its own
   cadence.
-  Default posture (Andrew, 2026-10-19, reversing the
+  Default posture (DRU, reversing the
   usual feature-flag pattern): encryption is ON BY
   DEFAULT in the software. A command-line parameter
   turns it off -- clear text -- for anyone who wants the
@@ -71,7 +71,7 @@ Ideas...
   environments cannot open a UDP socket at all, so v2's
   binding would be an addition, never a replacement: the
   email binding stays the one every SI can already reach.
-  Hard requirement (Andrew, 2026-10-19): if this binding
+  Hard requirement (DRU): if this binding
   is ever built, it MUST enforce perfect forward secrecy.
   PSK-only key exchange (psk_ke) is prohibited -- sessions
   are established and resumed only with ephemeral
@@ -79,7 +79,7 @@ Ideas...
   so a later compromise of the shared secret decrypts no
   recorded session. A DTLS extension without forward
   secrecy is not worth building.
-  BUILT 2026-10-19 (Andrew's order: implement the
+  BUILT (DRU's order: implement the
   future now). Shipped as the dtls transport extension:
   `runner/dtlsproto.py` (the bounded profile: one
   ciphersuite, PSK-only, stateless cookie exchange,
@@ -90,7 +90,7 @@ Ideas...
   as built: psk_dhe_ke only, a fresh X25519 ephemeral on
   every handshake and every resumption, and psk_ke
   never offered or accepted.
-  Follow-on (Andrew, 2026-10-19): a hybrid post-quantum
+  Follow-on (DRU): a hybrid post-quantum
   key exchange for the profile. The X25519 ephemeral is
   the binding's one quantum-exposed element (a recorded
   session falls to a future cryptographically relevant
@@ -126,7 +126,7 @@ Ideas...
   the per-job encryption extension landed as Section 16)
   says what exists and what does not, and claims describe
   shipped state only.
-  BUILT 2026-10-19 with the DTLS binding above: the
+  BUILT with the DTLS binding above: the
   greeting is the session's first application message,
   sent only after authentication completes, tiered by
   the runner's `dtls_greeting` config (none / family,
@@ -144,8 +144,8 @@ Ideas...
   PATH, the versions, what is installed. An Oracle option
   attaches full platform metadata to every result, so the
   sender stops guessing.
-- The Oracle's opinion, as a result member — BUILT 2026-10-18
-  (Andrew, 2026-10-15, elaborated 2026-10-18). The design is
+- The Oracle's opinion, as a result member — BUILT
+  (DRU). The design is
   `docs/oracle-opinion-design.md`; the member is specified in
   PROTOCOL 3.1/3.2 and implemented in `runner/opinion.py`:
   diagnose / advise / repair latitudes under the
@@ -165,7 +165,7 @@ Ideas...
 ## What you see
 
 - A loopback dashboard for the Oracle (its spec was removed
-  from the tree 2026-10-18; the idea stands).
+  from the tree; the idea stands).
   `--oracle` and `--oracle-cli` are the current.
 
 ## What the box notices

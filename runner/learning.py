@@ -2,7 +2,7 @@
 """The Oracle's self-learning loop: episodic, auditable, local.
 
 The opinion machinery (runner/opinion.py) forms a call before a
-job runs. This module closes the loop Andrew asked for
+job runs. This module closes the loop DRU asked for
 (2026-10-19): when the job finishes, the call is compared with
 what actually happened, the comparison is written to a local
 ledger IMMEDIATELY, and the next job's opinion evaluation reads

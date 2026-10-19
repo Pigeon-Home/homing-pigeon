@@ -18,7 +18,7 @@ side), and the profile is deliberately narrow:
   external pre-shared key. Identities: "homing-pigeon" names
   the default secret, "homing-pigeon:<key_id>" names an
   additional secret; resumption tickets are opaque.
-- Key exchange is psk_dhe_ke ONLY (Andrew's hard rule): an
+- Key exchange is psk_dhe_ke ONLY (DRU's hard rule): an
   ephemeral X25519 share rides every handshake, full or
   resumed. psk_ke is never offered and never accepted, so a
   recorded session stays sealed even if the secret later

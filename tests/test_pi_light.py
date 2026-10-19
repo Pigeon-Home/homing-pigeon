@@ -1,6 +1,6 @@
 """Pi Light: the deterministic Oracle and the no-model install.
 
-Andrew's recovered original requirement: an extremely light
+DRU's recovered original requirement: an extremely light
 Raspberry Pi package a cloud SI can ping into with signed jobs --
 the full runner and protocol, but the Oracle runs
 deterministically, with no LLM on the box at all. These tests pin

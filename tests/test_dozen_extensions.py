@@ -17,7 +17,7 @@ the same producer pattern over a collector's output artifact:
   decide, main) and imports nothing outside the standard
   library plus the runner's own producer helpers,
 - every manifest declares the poll_interval_sec cost knob,
-- every README carries a "## Light mode" section (Andrew's
+- every README carries a "## Light mode" section (DRU's
   rule: an example either tunes down for a Pi Light install
   through knobs its code implements, or documents plainly
   why it cannot).
@@ -220,7 +220,7 @@ class CatalogReadmeTest(unittest.TestCase):
                     text = fh.read()
                 self.assertIn("## Light mode", text,
                               f"{folder}: README has no Light mode "
-                              f"section (Andrew's rule: tune down "
+                              f"section (DRU's rule: tune down "
                               f"through implemented knobs, or say "
                               f"plainly why it cannot)")
 
