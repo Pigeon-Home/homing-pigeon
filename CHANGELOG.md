@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.8.6 - 2026-10-18
+
+### Fixes
+
+- `requirements-ci.txt` is on the mutmut copy list. The
+  pipeline pin test reads it, and the v3.8.5 tag's mutation
+  job died during stats collection before any mutant ran.
+
 ## 3.8.5 - 2026-10-18
 
 ### Features

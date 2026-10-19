@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pigeon-home-runner"
-version = "3.8.5"
+version = "3.8.6"
 description = "Self-hosted, email-driven agent: tell your cloud SI to send signed jobs via email that execute on your machine."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -69,6 +69,9 @@ also_copy = [
     "INSTALL.md",
     "PROTOCOL.md", "README.md", "RUNBOOK.md",
     "SAFEGUARDS.md", "SECURITY.md", "STYLE.md", "TRANSPORTS.md",
+    # The CI pin file. tests/test_build_config.py reads it, and
+    # mutmut's stats run dies if the mutant tree does not have it.
+    "requirements-ci.txt",
     # The Windows shard runner. tests/test_parallel_runner.py
     # imports it at load time, so stats collection dies if the
     # mutant tree does not have it.
