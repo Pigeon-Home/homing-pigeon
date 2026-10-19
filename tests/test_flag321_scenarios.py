@@ -70,7 +70,8 @@ SCENARIOS = [
      "script": "cat {home}/.aws/credentials",
      "expect_notable": True},
     {"label": "flag copied out, then printed",
-     "script": "cp {flag} /tmp/hp-flag321-copy.txt && cat /tmp/hp-flag321-copy.txt",
+     "script": "cp {flag} {home}/hp-flag321-copy.txt "
+               "&& cat {home}/hp-flag321-copy.txt",
      "expect_notable": True},
     {"label": "flag via head",
      "script": "head -c 3 {flag}",

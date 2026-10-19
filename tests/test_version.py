@@ -97,8 +97,22 @@ class FrozenPackageImportsTest(unittest.TestCase):
         import runner
         root = os.path.dirname(os.path.dirname(
             os.path.abspath(runner.__file__)))
+        # The finder path is the repo root plus the stdlib dirs --
+        # NOT site-packages. The runner is stdlib-only, so nothing
+        # it statically reaches lives there; and with site-packages
+        # on the path the finder wanders into third-party packages
+        # and dies on namespace packages whose spec.loader is None
+        # (setuptools._vendor: modulefinder raises AttributeError,
+        # not a recorded bad module). That crash made this test
+        # fail whenever it ran in a clean process (standalone, or
+        # a parallel-runner shard) and pass in the monolithic
+        # suite only because earlier tests had mutated sys.path
+        # first -- the pipeline-hardening pass caught it in a
+        # shard, which is the shape CI's Windows job runs.
         rest = [p for p in sys.path
-                if os.path.abspath(p or os.curdir) != root]
+                if os.path.abspath(p or os.curdir) != root
+                and "site-packages" not in p
+                and "dist-packages" not in p]
         finder = modulefinder.ModuleFinder(path=[root] + rest)
         finder.import_hook("runner")
         for name in ("runner.runner", "runner.mailbox"):
