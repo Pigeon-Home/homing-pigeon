@@ -118,8 +118,11 @@ and gets back HMAC-signed *attestations*: proofs about the output that
 reveal nothing else. It's the interactive-proof shape applied at the
 trust boundary — prove things about your data without showing your
 data — without any zero-knowledge proving machinery: the attestation
-is an HMAC, and the runner itself is trusted. The raw output never
-leaves your disk.
+is an HMAC, and the runner itself is trusted. How much of that
+machinery stands between the SI and the output is the ceiling you
+set -- and the default ceiling is full output (Operating modes,
+below). The attestation shape is there when you want it; it is
+not the posture the box ships in.
 
 ```
   Cloud SI                                Your machine
@@ -134,7 +137,7 @@ leaves your disk.
    |   no_secrets: true } |             | what policy |
    +---------------------+             | allows      |
                                         +------------+
-   The SI learns answers. Never the raw output.
+   The SI learns what your ceiling allows.
 ```
 
 Queries are declared upfront (no adaptive probing), each job gets a
@@ -147,13 +150,13 @@ Your machine runs two roles in one box:
 +-----------------------------+-----------------------------+
 | RUNNER (faces the SI)        | ORACLE (faces you)           |
 +-----------------------------+-----------------------------+
-| polls the mailbox            | reviews every job            |
-| verifies HMAC + key policy   | before it runs               |
-| judge: the policy gate      | fuses sensor alerts          |
-| executes jobs, confined     | watches resources            |
-| answers queries with        | pages you when a             |
-| attestations -- never       | threshold trips              |
-| raw output                  | never remediates             |
+| polls the mailbox            | watches jobs as they run;    |
+| verifies HMAC + key policy   | its opinions ride results    |
+| judge: an opt-in gate        | fuses sensor alerts          |
+| executes jobs; cage opt-in   | watches resources            |
+| answers queries at the       | pages you when a             |
+| ceiling you set -- the       | threshold trips              |
+| default is full output       | never remediates             |
 +-----------------------------+-----------------------------+
 ```
 

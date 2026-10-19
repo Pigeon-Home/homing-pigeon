@@ -151,9 +151,11 @@ satisfy it.
 
 The owner wanted one way, for the rest of the project, to ask the
 Oracle on a box what it thinks is going on. They were explicit that
-this is not the loopback dashboard in `ORACLE_DASHBOARD.md`. That
-dashboard is a later product: job tables, controls, a frontend over
-config. Do not grow `--oracle` into that page.
+this is not a loopback dashboard. A dashboard page -- job tables,
+controls, a frontend over config -- was sketched once in a document
+the claims audit later removed from the tree; it remains a later
+product idea, not a direction for this flag. Do not grow
+`--oracle` into that page.
 
 They had also seen `feat/local-si-test`. That branch opens Open WebUI
 against a second Ollama process (the "cloud SI" on port 11435) and
@@ -194,8 +196,8 @@ poll (`homing-pigeon` with no `--oracle`) is unchanged.
 `oracle_context` builds the model's context from two sources in the
 base dir: the retained job records (id, kind, script, output) and the
 tail of `runner.log`. The log tail is what lets the Oracle answer
-"did this happen?" instead of inventing log events. `ASK_SYSTEM`
-tells the model to quote from what it was given and to say it cannot
+"did this happen?" instead of inventing log events. `ASK_AGENT_SYSTEM`
+(the window's prompt; `ASK_SYSTEM` is the mailbox door's) tells the model to quote from what it was given and to say it cannot
 see something when it is not there.
 
 The chat goes further: `ask_model_agent` runs a tool loop, so the
@@ -431,7 +433,7 @@ do not open a browser.
   belongs to the local SI test harness on `feat/local-si-test`, not
   to this flag.
 - Do not put `--oracle` in the installed service command.
-- Do not turn this page into the dashboard in `ORACLE_DASHBOARD.md`.
+- Do not turn this page into a dashboard.
 - Do not remove the size cap on `oracle-chat.jsonl` or `runner.log`.
 
 ## How to run it

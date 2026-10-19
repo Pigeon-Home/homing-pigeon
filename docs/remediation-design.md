@@ -27,8 +27,13 @@ This document gets that design right before it is code.
 Three different "fix" stories live in this project and are
 not interchangeable:
 
-- **The judge** gates *entry*: a job that should never run
-  does not run.
+- **The judge** gates *entry* -- when it is configured to
+  enforce, and then only against a short denylist of
+  known-bad shapes. It is off by default and reads for
+  strings, not intent; PROTOCOL section 9.3 says so in one
+  sentence. In the default posture there is no entry gate
+  at all, which is exactly why remediation's trigger
+  discipline (below) is not allowed to lean on one.
 - **Opinion repair** fixes the *job*: a job that would run
   wrong in this environment is corrected before it runs, and
   re-judged as corrected.
@@ -46,7 +51,9 @@ record of *what the inference system believed was going to
 happen*. Remediation watches the running job against it.
 A job doing what its envelope said — even something
 destructive the sender openly declared — is the owner's
-business, already judged at intake. A job doing what its
+business; intake let it through under whatever posture
+the owner configured -- in the default posture, nothing
+reviewed it at all. A job doing what its
 envelope did not say is the remediation case. Expectation
 versus outcome is a genuine field of research; here it is
 also simply the only honest trigger available. The system

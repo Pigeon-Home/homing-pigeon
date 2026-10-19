@@ -335,10 +335,12 @@ results, so capture the actual UX.
    view=attested, one ask query, budget 4, no `key_id`. §§3–4 and 6
    need arbitrary jobs. *Fix:* parameterize it or add a
    `--job-file` mode that signs and sends an arbitrary payload.
-2. **Doc conflict.** The handoff says the direct Oracle path was
-   removed (`/oracle` 404); `docs/local-si-test.md` still documents
-   the "ask the Oracle" button and two-button page. Reconcile before
-   executing — this plan assumes the handoff.
+2. **Doc conflict — resolved.** The handoff said the direct Oracle
+   path was removed (`/oracle` 404) while `docs/local-si-test.md`
+   still documented the two-button page. The doc has since been
+   reconciled — the page it describes is the plain chat, one text
+   box and one send button — and this plan's assumption (the
+   handoff) stands.
 3. **Result visibility.** Handoff open item: unclear whether
    send-from-chat waits for the result email or only confirms the
    send. §§2–3 need the executor to read result emails from the
