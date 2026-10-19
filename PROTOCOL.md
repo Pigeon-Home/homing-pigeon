@@ -81,6 +81,7 @@ gets done without you knowing how any of it works.
   "timeout_sec": 300,
   "runner_id": "<audience, optional>",
   "reply_to": "<result email address, optional>",
+  "oracle_opinion": "<opinion latitude, optional>",
   "sig": "<hex hmac>"
 }
 ```
@@ -101,6 +102,15 @@ gets done without you knowing how any of it works.
   sensor_alert) may carry it. A **fresh config** — one created by the
   setup wizard (`--setup`), not hand-edited — gets a random `runner_id`
   automatically.
+
+- `oracle_opinion`: optional; one of `off`, `diagnose`, `advise`,
+  `repair`. The latitude the sender requests for the Oracle's opinion
+  on this job (see 3.2). The runner's `oracle_opinion_mode` config is
+  both the default for jobs that omit the member and the ceiling: a
+  request above the ceiling is clamped to it, so the member can only
+  ever narrow what the owner already allows. An unrecognized value is
+  ignored, as if the member were absent. Runners that do not implement
+  the opinion ignore the member, per the unknown-fields rule below.
 
 - `kind`: `exec` or `ping`. A `ping` job carries no script; the runner
   answers with a `pong` result (health check).
@@ -133,6 +143,8 @@ gets done without you knowing how any of it works.
   "stderr_truncated": false,
   "duration_sec": 12.345,
   "runner": "DESKTOP-ABC123",
+  "oracle_opinion": {"mode": "diagnose", "verdict": "likely_failure",
+                     "note": "..."},
   "sig": "<hex hmac>"
 }
 ```
@@ -143,6 +155,47 @@ gets done without you knowing how any of it works.
   `stderr`. Rejected jobs are marked seen and do not retry.
 - `stdout`/`stderr` are truncated at a configurable byte limit
   (default 100_000); the `*_truncated` flags say so.
+- `oracle_opinion`: OPTIONAL. The Oracle's opinion of the job, formed
+  on the runner against the box the job ran (or was to run) on. It is
+  advisory: it never blocks, holds, or approves a job by itself, and
+  receivers MUST ignore it if they do not implement it. The member is
+  absent entirely when the effective latitude is `off`. When present
+  it is an object with these members:
+  - `mode`: the effective latitude the opinion was formed under:
+    `diagnose`, `advise`, or `repair` (see 3.1).
+  - `verdict`: `likely_success` (a prediction that the environment
+    fits the job), `likely_failure` (a named mismatch, or a failure
+    with an identified cause), or `no_opinion` (the job failed and no
+    obvious environmental cause was found).
+  - `note`: a short human-readable statement of the basis, at most
+    500 characters. Text formed by the runner's local model, when
+    any, is appended in the note prefixed `Model-formed note:` so
+    the two tiers -- deterministic checks and the model -- are never
+    blended into one unattributed claim.
+  - `repaired`: present only at `repair` latitude when a repair was
+    applied or attempted; `true` when the result is from the
+    repaired job, `false` when the repair was refused on
+    re-judgment and the result is the original job's failure result.
+  - `received_digest`: present whenever `repaired` is present. The
+    SHA-384 hex digest of the job as received, computed over the
+    compact JSON serialization (sorted keys, no insignificant
+    whitespace, UTF-8) of the job object with the `sig` member
+    removed, so the sender can diff the received job against what
+    ran.
+  At `diagnose` latitude the member appears only on a failure result
+  (including a rejection result). At `advise` latitude a prediction
+  computed before the run (when the runner's prediction setting calls
+  for one) rides the result, success or failure; a
+  prediction of `likely_success` contradicted by the run keeps its
+  verdict and gains a post-run sentence in the note. At `repair`
+  latitude the runner MAY correct the one mechanical mismatch -- a
+  named interpreter that is absent, replaced by the platform default
+  when the script's shape fits that default; a repair MUST be stated
+  in the member (`repaired`, `received_digest`) and the repaired job
+  MUST pass the same judgment and key policy as a received job
+  before it runs (or, under the runner's `refuse` setting, is never
+  executed and the opinion degrades to `advise` with the proposed fix
+  described in the note).
 
 ## 4. Signatures (no canonicalization needed)
 

@@ -28,21 +28,18 @@ Ideas...
   PATH, the versions, what is installed. An Oracle option
   attaches full platform metadata to every result, so the
   sender stops guessing.
-- The Oracle's opinion, as a result member (Andrew, 2026-10-15,
-  elaborated 2026-10-18). `docs/oracle-opinion-design.md`
-  The Oracle reads a job against the
-  box it is about to run on and says whether it expects the
-  job to succeed in this environment. The latitude is a mode
-  the sender grants: advise only (the opinion rides the
-  result, the job runs as sent); repair (the Oracle may fix
-  an obvious environment mismatch first — the sender believes
-  the box is Linux, the job disagrees); and diagnose (when a
-  job fails, the result carries the Oracle's reading of the
-  obvious cause, so the sender gets the "why", not just the
-  crash). The Oracle can be wrong; that is accepted and
-  priced in. In a confidentiality-on mode the opinion is a
-  signed statement by the Oracle as an authenticated party,
-  never an unsigned insertion into someone else's message.
+- The Oracle's opinion, as a result member — BUILT 2026-10-18
+  (Andrew, 2026-10-15, elaborated 2026-10-18). The design is
+  `docs/oracle-opinion-design.md`; the member is specified in
+  PROTOCOL 3.1/3.2 and implemented in `runner/opinion.py`:
+  diagnose / advise / repair latitudes under the
+  `oracle_opinion_mode` ceiling, deterministic tier-1 checks,
+  an optional labeled model note, and the one mechanical
+  repair (absent interpreter to platform default) re-judged
+  before it runs. What remains future here: richer repairs
+  beyond the mechanical one, and the opinion as a signed
+  statement by the Oracle as an authenticated party in a
+  confidentiality-on mode.
 
 ## Who signs
 

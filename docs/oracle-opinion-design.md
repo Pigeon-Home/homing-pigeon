@@ -1,9 +1,13 @@
 # Design: the Oracle's opinion, carried on the result
 
-Status: design only. Not built, not scheduled. Andrew's proposal
-(2026-10-15), elaborated 2026-10-18; recorded in FUTURE.md under
-"Before a job runs". This document gives the idea its full shape so
-the build, when it comes, starts from decisions rather than vibes.
+Status: implemented 2026-10-18. The member is specified in
+PROTOCOL 3.1/3.2 and built in `runner/opinion.py` (latitude
+ceiling `oracle_opinion_mode`, default diagnose; prediction and
+repair behavior under `oracle_opinion_predict` /
+`oracle_opinion_repair` / `oracle_opinion_model`). Andrew's
+proposal (2026-10-15), elaborated 2026-10-18; recorded in
+FUTURE.md under "Before a job runs". This document remains the
+design record the build started from.
 
 ## The idea
 
@@ -103,15 +107,26 @@ middle editing someone else's message.
   environment, and the format carries `no_opinion` because "I
   don't know" is a legitimate answer.
 
-## Open questions
+## Open questions — resolved in the build (2026-10-18)
 
-- The default latitude when the sender grants none: diagnose-only
-  is the natural floor (it changes nothing and speaks only after
-  a failure), but the default is a protocol decision, not an
-  implementation detail.
-- Whether `advise` predictions are computed for every job or only
-  when the sender asks — the cost is one environment read per job
-  for the deterministic tier, one model call for the second.
-- How a repaired job is re-authorized: the repair changes what
-  runs, so whether the judge sees the received job, the repaired
-  job, or both is a security decision to make explicitly.
+Each question was resolved as a default plus a config option,
+not left open:
+
+- Default latitude: `diagnose`. The runner config key
+  `oracle_opinion_mode` is both the default for jobs that grant
+  none and the owner's ceiling; a job's own `oracle_opinion`
+  member requests a latitude and is clamped to the ceiling.
+  The runner flag `--oracle-opinion <mode>` overrides for one
+  process.
+- Predictions: deterministic tier-1 only, and only at advise or
+  repair latitude. `oracle_opinion_predict` is `requested`
+  (default), `always`, or `never`. Diagnose needs no prediction
+  and runs on any failure at diagnose latitude or higher. The
+  model tier runs only when inference is configured AND
+  `oracle_opinion_model` is true (default false).
+- Repair re-authorization: `oracle_opinion_repair` is `rejudge`
+  (default — the repaired job goes back through the judge and
+  the key policy exactly as a received job would; a refusal
+  returns the original job's failure result with the opinion
+  explaining) or `refuse` (the repair is never executed; the
+  opinion degrades to advise with the proposed fix described).
