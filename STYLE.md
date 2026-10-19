@@ -3,7 +3,7 @@
 ## Base
 
 - **PEP 8**, at **88 columns**. A short grandfather list in
-- `pyproject.toml` (`per-file-ignores`) carries
+  `pyproject.toml` (`per-file-ignores`) carries
   the exceptions that existed on day one — 79 lines, counted, in
   five files. New files conform from birth; the list only shrinks,
   and no file is ever added to it.
