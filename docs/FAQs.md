@@ -155,3 +155,20 @@ exists the same signed jobs can ride it unchanged — the
 runner already carries a watched-folder transport and a
 NATS transport as extensions, with email simply the default
 binding.
+
+## Why doesn't the protocol use PGP or S/MIME encrypted email?
+
+Two reasons, either one sufficient.
+
+A cloud SI has no mail client. It has a connector with a
+send function, and mail-layer crypto would require every
+provider's connector to implement PGP or S/MIME, key
+management included — a surface that does not exist, on
+exactly the side of the wire the protocol cannot control.
+
+And it is not needed. Confidentiality belongs to the layer
+that can actually provide it: a job is encrypted as an
+object, under a key derived from the shared secret, and
+that encryption is on by default; each mail hop runs over
+TLS as a requirement, not an option. The mail system is
+transport, not a security layer.
