@@ -40,6 +40,8 @@ class _Api:
 
 class PostureGapTest(unittest.TestCase):
     def test_gaps(self):
+        if os.name == "nt":
+            self.skipTest("geteuid is POSIX")
         bare = types.ModuleType("security")
         with mock.patch.dict(sys.modules, {"security": bare}):
             self.assertIs(_load(True), bare)

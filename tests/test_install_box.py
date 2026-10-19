@@ -44,6 +44,8 @@ class WipeMigrateTest(unittest.TestCase):
                 inst._candidate_state_dirs()
 
     def test_wipe_unloads_each_platform_and_deletes_the_dirs(self):
+        if os.name == "nt":
+            self.skipTest("wipe unload differs on Windows")
         with tempfile.TemporaryDirectory() as d:
             state = os.path.join(d, "state")
             os.makedirs(state)
