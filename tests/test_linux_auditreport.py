@@ -3,6 +3,7 @@
 Unit cases, one-field mutations, and a deterministic fuzz.
 Nothing here starts a process. A planted symlink is not opened.
 """
+import contextlib
 import json
 import os
 import random
@@ -83,6 +84,63 @@ class AuditReportMutations(unittest.TestCase):
             os.remove(log)
             self.assertEqual(build_report({}, d, 3600)[0], [])
             self.assertEqual(build_report({}, d, 0)[0], [])
+
+
+@contextlib.contextmanager
+def _tz(name):
+    if not hasattr(time, "tzset"):
+        raise unittest.SkipTest("time.tzset is unavailable here")
+    saved = os.environ.get("TZ")
+    os.environ["TZ"] = name
+    time.tzset()
+    try:
+        yield
+    finally:
+        if saved is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = saved
+        time.tzset()
+
+
+class AuditReportTimezoneTest(unittest.TestCase):
+    """The report window is computed against UTC entry stamps.
+
+    _entry_ts once used time.mktime, which reads the broken-down
+    UTC stamp as LOCAL time: under a zone ahead of UTC every
+    fresh entry fell outside the window (empty report), and
+    under a zone behind UTC stale entries leaked in. CI runs on
+    UTC, where the bug is invisible; these pins set the zone
+    explicitly, in both directions.
+    """
+
+    def _report_features(self, d):
+        rows, _s, _r, _f = build_report({}, d, 3600)
+        return {row[0] for row in rows}
+
+    def test_window_edges_hold_in_zones_ahead_of_and_behind_utc(self):
+        for zone in ("Pacific/Kiritimati", "America/New_York",
+                     "UTC"):
+            with self.subTest(zone=zone), _tz(zone):
+                with tempfile.TemporaryDirectory() as d:
+                    log = os.path.join(d, "security-audit.jsonl")
+                    fresh = _line(feature="env")
+                    stale = json.dumps({
+                        "ts": time.strftime(
+                            "%Y-%m-%dT%H:%M:%SZ",
+                            time.gmtime(time.time() - 7200)),
+                        "feature": "secret", "mode": "audit",
+                        "decision": "would_deny",
+                        "reason": "env_not_allowed",
+                        "detail": "env 'LANG'", "key_id": "ops",
+                    })
+                    with open(log, "w", encoding="utf-8") as fh:
+                        fh.write(fresh + "\n")
+                        fh.write(stale + "\n")
+                    # Fresh is inside the hour, stale is not --
+                    # in every zone.
+                    self.assertEqual(self._report_features(d),
+                                     {"env"})
 
 
 class AuditReportFuzzTest(unittest.TestCase):

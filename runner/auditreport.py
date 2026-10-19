@@ -9,6 +9,7 @@ per-key suggestions, suggested key_policies fragments (audit2allow),
 and a "refused to suggest" section. Dangerous env names and URL file
 sources are never suggested.
 """
+import calendar
 import json
 import os
 import re
@@ -64,7 +65,15 @@ def _entry_ts(entry):
     if not isinstance(ts, str):
         return 0
     try:
-        return time.mktime(time.strptime(ts, "%Y-%m-%dT%H:%M:%SZ"))
+        # The stored ts is UTC ("Z"); timegm reads it as UTC.
+        # time.mktime read it as LOCAL time, which shifted every
+        # entry by the host's UTC offset: on a host ahead of UTC
+        # (e.g. Pacific/Kiritimati) fresh entries fell outside
+        # the report window and the report came back empty, and
+        # on a host behind UTC stale entries leaked in. CI runs
+        # on UTC, where the two agree, so only a TZ-varied run
+        # could see it.
+        return calendar.timegm(time.strptime(ts, "%Y-%m-%dT%H:%M:%SZ"))
     except (ValueError, OverflowError):
         return 0
 
