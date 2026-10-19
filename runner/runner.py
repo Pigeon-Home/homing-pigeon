@@ -9638,6 +9638,20 @@ def _oracle_host_ok(handler) -> bool:
         "127.0.0.1", "localhost", "::1")
 
 
+def _oracle_token_ok(got, token) -> bool:
+    """True when the presented chat token matches.
+
+    Both sides are hashed first. CPython's compare_digest walks the
+    shorter buffer for the length of the longer one, so a short or
+    empty token must not be handed to it raw.
+    """
+    if not isinstance(got, str) or not isinstance(token, str):
+        return False
+    return hmac.compare_digest(
+        hashlib.sha256(got.encode("utf-8", "replace")).digest(),
+        hashlib.sha256(token.encode("utf-8", "replace")).digest())
+
+
 def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
     """Loopback chat server. Refuses any other bind."""
     if host not in ("127.0.0.1", "::1", "localhost"):
@@ -9664,13 +9678,41 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
             self.end_headers()
             self.wfile.write(body)
 
+        def _take_body(self, limit=8000):
+            """Read the POST body before any status is sent.
+
+            On Windows, answering while the body is still unread
+            aborts the socket (WinError 10053). The browser then
+            sees silence instead of 403. Oversized bodies are
+            discarded only up to the cap and reported as None.
+            """
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+            except (TypeError, ValueError):
+                self.close_connection = True
+                return None
+            if n < 0:
+                self.close_connection = True
+                return None
+            to_read = n if n <= limit else limit
+            got = b""
+            while len(got) < to_read:
+                chunk = self.rfile.read(to_read - len(got))
+                if not chunk:
+                    break
+                got += chunk
+            if n > limit:
+                self.close_connection = True
+                return None
+            return got
+
         def do_GET(self):
             if self.path.split("?", 1)[0] == "/status":
                 if not _oracle_host_ok(self):
                     self._send(403, "forbidden", "text/plain; charset=utf-8")
                     return
                 got = self.headers.get("X-Oracle-Token") or ""
-                if not hmac.compare_digest(got, token):
+                if not _oracle_token_ok(got, token):
                     self._send(403, "forbidden", "text/plain; charset=utf-8")
                     return
                 elapsed = 0
@@ -9699,8 +9741,12 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
             self._send(200, page, "text/html; charset=utf-8")
 
         def do_POST(self):
+            raw = self._take_body()
             if self.path.split("?", 1)[0] != "/ask":
                 self._send(404, "not found", "text/plain; charset=utf-8")
+                return
+            if raw is None:
+                self._send(400, "bad request", "text/plain; charset=utf-8")
                 return
             # A missing Origin is allowed on loopback: some Windows
             # WebViews and same-origin POSTs omit it, and rejecting
@@ -9710,17 +9756,9 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
                 self._send(403, "forbidden", "text/plain; charset=utf-8")
                 return
             got = self.headers.get("X-Oracle-Token") or ""
-            if not hmac.compare_digest(got, token):
+            if not _oracle_token_ok(got, token):
                 self._send(403, "forbidden", "text/plain; charset=utf-8")
                 return
-            try:
-                n = int(self.headers.get("Content-Length") or 0)
-            except ValueError:
-                n = 0
-            if n < 0 or n > 8000:
-                self._send(400, "bad request", "text/plain; charset=utf-8")
-                return
-            raw = self.rfile.read(n)
             try:
                 body = json.loads(raw.decode("utf-8"))
                 question = body.get("question") if isinstance(body, dict) else ""

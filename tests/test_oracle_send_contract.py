@@ -163,6 +163,20 @@ class OracleSendServerTest(unittest.TestCase):
                 return resp.status, resp.read().decode()
         except urllib.error.HTTPError as e:
             return e.code, e.read().decode()
+        except (ConnectionAbortedError, ConnectionResetError,
+                BrokenPipeError):
+            # Windows delivers WinError 10053 instead of the status
+            # when the host aborts a just-refused localhost socket.
+            # One fresh request; a second abort is a real failure.
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{self.port}/ask",
+                data=data, headers=hdrs, method="POST",
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    return resp.status, resp.read().decode()
+            except urllib.error.HTTPError as e:
+                return e.code, e.read().decode()
 
     def test_good_ask_returns_json_answer(self):
         with mock.patch("runner.runner.ask_model_agent",

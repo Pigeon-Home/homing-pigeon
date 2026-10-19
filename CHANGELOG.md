@@ -54,6 +54,10 @@ facts a reader may need to cite. Git history carries the rest.
   mail client), and no public-key cryptography in the core
   protocol (no strangers to introduce; symmetric end to end,
   which is also the quantum-resistant posture).
+- Windows Oracle chat answers a refused `/ask` (bad token,
+  bad origin, oversized body) with that status. The body is
+  read first, so the socket is not aborted before the browser
+  can see it.
 
 ## 3.9.0 - 2026-10-19
 

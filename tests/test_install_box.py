@@ -254,19 +254,29 @@ class DoctorTest(unittest.TestCase):
                 "shared_secret": "x" * 64,
                 "oracle_mode": "deterministic",
             })
+            task = os.path.join(bind, inst.RUNNER_BIN)
             with mock.patch.object(
                     inst, "collector_health_rows", return_value=[
                         ("osquery", "WORKS", "running"),
                         ("falco", "INSTALLED-BUT-CANNOT-RUN", "bpf"),
-                        ("zeek", "ABSENT", "not installed")]):
+                        ("zeek", "ABSENT", "not installed")]), \
+                    mock.patch.object(inst, "_task_exists",
+                                      return_value=True), \
+                    mock.patch.object(inst, "_task_command",
+                                      return_value=task):
                 self.assertEqual(
                     inst.do_check(home, bind, cfg, state), 0)
             home, bind, cfg, state = self._home(root, {
                 "shared_secret": "x" * 64,
                 "inference": {"endpoint": "http://127.0.0.1:1/v1"},
             })
+            task = os.path.join(bind, inst.RUNNER_BIN)
             with mock.patch.object(
-                    inst, "collector_health_rows", return_value=[]):
+                    inst, "collector_health_rows", return_value=[]), \
+                    mock.patch.object(inst, "_task_exists",
+                                      return_value=True), \
+                    mock.patch.object(inst, "_task_command",
+                                      return_value=task):
                 self.assertEqual(
                     inst.do_check(home, bind, cfg, state), 0)
 
