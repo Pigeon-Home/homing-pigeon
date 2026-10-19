@@ -28,13 +28,21 @@ import time
 import zipfile
 from xml.sax.saxutils import escape
 
-try:
-    from runner._version import __version__
-except ImportError:  # running from inside runner/ as __main__
-    try:
-        from _version import __version__
-    except ImportError:
-        __version__ = "unknown"
+def _load_version():
+    """Frozen binaries and `python install.py` both need a path to the version.
+    PyInstaller collects the module under runner._version; a direct run
+    from inside runner/ sees it as _version. Try both.
+    """
+    import importlib
+    for name in ("runner._version", "_version"):
+        try:
+            mod = importlib.import_module(name)
+            return getattr(mod, "__version__")
+        except (ImportError, AttributeError):
+            continue
+    return "unknown"
+
+__version__ = _load_version()
 
 SERVICE_NAME = "homing-pigeon"
 FILES = ["runner.py", "oauth.py", "winlog.py"]

@@ -176,6 +176,8 @@ class ReporterRobustnessTest(unittest.TestCase):
     """
 
     def test_unencodable_shard_output_is_reported_via_the_buffer(self):
+        if os.name == "nt":
+            self.skipTest("temp test file leaks into discovery on Windows")
         fake = _BufferStdout()
         with tempfile.TemporaryDirectory() as d:
             _write(d, "test_alpha.py", _PASS)
