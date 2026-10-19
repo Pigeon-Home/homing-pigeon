@@ -6,7 +6,7 @@
 > of the machine to whoever holds the shared secret. It reads inbound messages
 > and executes what it finds — blindly, as a privileged user. It can install
 > software, read, files, add users, pivot to your network.
-> PROTOCOL.md before you deploy it.
+> Please review PROTOCOL.md before you deploy it.
 
 Your cloud SI is smart, but it can't touch your computer. Homing Pigeon
 fixes that: tell your SI to complete a task and it will do it on your
