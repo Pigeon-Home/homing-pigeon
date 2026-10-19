@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.2 - 2026-10-19
+
+- **Coverage report.** Statement coverage on the 3.11.1 tree
+  is 94.2% (14436 of 15326), 93.1% with branches, from 3979
+  tests. The report is `docs/reports/v3.11.1/coverage.md`.
+  No runner behavior changes in this release.
+
 ## 3.11.1 - 2026-10-19
 
 - **DTLS key schedule uses the suite's hash.** Suite
