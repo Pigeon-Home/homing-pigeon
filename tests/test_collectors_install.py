@@ -225,6 +225,21 @@ class CollectorHealthRowsTest(unittest.TestCase):
         self.assertEqual(_states(rows)["softflowd"], "WORKS")
 
 
+class CollectorHealthFactsTest(unittest.TestCase):
+    def test_facts_gather_survives_a_which_that_raises(self):
+        # Regression: the --check tests that patch sys.platform
+        # to win32 on a POSIX interpreter make shutil.which
+        # itself raise (shutil._winapi is None there). A health
+        # probe answers falsely; it never raises.
+        with mock.patch.object(
+                install.shutil, "which",
+                side_effect=AttributeError("no _winapi")):
+            facts = install.collector_health_facts()
+        self.assertEqual(set(facts["installed"]),
+                         set(install.COLLECTOR_NAMES))
+        self.assertFalse(any(facts["installed"].values()))
+
+
 class InstallCollectorsDispatchTest(unittest.TestCase):
     def test_wazuh_without_manager_is_a_skip_not_an_install(self):
         with mock.patch.object(

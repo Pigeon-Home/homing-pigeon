@@ -2203,6 +2203,17 @@ def _artifact_age(path):
         return None
 
 
+def _which_safe(binary):
+    """shutil.which that cannot raise: on a platform where the
+    interpreter's win32 helpers are absent (tests patch
+    sys.platform on a POSIX interpreter), which() itself blows
+    up -- a health probe must answer falsely instead."""
+    try:
+        return shutil.which(binary)
+    except Exception:
+        return None
+
+
 def collector_health_facts() -> dict:
     """Gather what collector_health_rows() judges. Thin and
     defensive: every probe that can fail answers falsely."""
@@ -2219,7 +2230,7 @@ def collector_health_facts() -> dict:
             continue
         binary = {"osquery": "osqueryd", "sysmon": "sysmon"}.get(
             name, name)
-        found = shutil.which(binary) is not None
+        found = _which_safe(binary) is not None
         if not found:
             found = any(os.path.isfile(p)
                         for p in paths.get(name, []))
