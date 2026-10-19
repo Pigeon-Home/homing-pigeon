@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.8.1 - 2026-10-18
+
+### Docs
+
+- FUTURE.md records the Oracle's-opinion design item: a local
+  Oracle assessment carried on the result message, so a sender
+  learns not only that a job failed but what the Oracle made of
+  the failure.
+- New docs/oracle-opinion-design.md gives the item its full
+  shape: the opinion's fields, its trust boundary, and how it
+  composes with the existing result path. Design only; nothing
+  is built.
+
 ## 3.8.0 - 2026-10-18
 
 ### Docs
