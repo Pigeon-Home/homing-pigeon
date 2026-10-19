@@ -2,20 +2,16 @@
 
 **Works with Muse, Grok, ChatGPT, Claude, Gem..., Copilot, etc.**
 
-> ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative control**
-> of the machine to whoever holds the shared secret. It reads inbound messages
-> and executes what it finds — blindly, as a privileged user. It can install
-> software, read, files, add users and pivot to your network.
-> Please review PROTOCOL.md before you deploy it.
-
 Your cloud SI is smart, but it can't touch your computer. Homing Pigeon
 fixes that: tell your SI to complete a task and it will do it on your
 machine. The results return so that your SI can iterate — run the tests,
 read the failure, fix, repeat. From your phone or anywhere.
 
-Install the Homing Pigeon agent/runner on your system. It will prompt
-for login credentials to an email address, the default. The agent bares
-similarity to GitHub self-hosted runners.
+Install the Homing Pigeon agent on a machine you own. At setup it asks
+for the login credentials of a dedicated email account — email is the
+default transport. The agent bears a resemblance to GitHub self-hosted
+runners: a small program on your hardware that takes jobs from
+somewhere else and runs them here.
 
 Then try this prompt in your cloud SI, it should return in less than 30 seconds.
 
@@ -26,6 +22,17 @@ Shared Secret: "YOUR_SECRET_STRING"
 I have a Windows computer. Retrieve the system clock from it and display it here.
 ```
 IETF Homing Pigeon Draft: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-homing-pigeon-00.md
+
+> ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative
+> control** of the machine to whoever holds the shared secret. The
+> runner verifies a message's signature and then executes what the
+> signed job says, as a privileged user — it can install software,
+> read files, add users, and pivot to your network. That is the
+> product working as designed, so treat it that way: keep the secret
+> like a password, use a dedicated throwaway mail account, install
+> only on machines you own and operate, and review PROTOCOL.md
+> before you deploy. The threat model is stated once, here; the
+> long form is [docs/threat-model.md](docs/threat-model.md).
 
 ## What this is for
 
@@ -57,10 +64,12 @@ the data, or grind through the refactor, and read the results when they
 land in your inbox.
 
 The SI systems are brilliant, but they are kept fenced off from our
-real machines. So instead we will point one at a disposable box, give
-it a signed channel, and let it do tasks from start to finish. The
-upside is an assistant that operates, not just advises. If the
-capability is real, there is very little downside to exercising it.
+real machines. Homing Pigeon gives one a signed channel to a machine
+of yours and lets it do tasks from start to finish — an assistant
+that operates, not just advises. Which machine is your choice: the
+workstation on your desk, a spare box in the corner, a Raspberry Pi.
+How much rope it gets there is also your choice — that is what the
+postures in Operating modes (below) are for.
 
 A new model claims to be good at something — robotics, automation,
 data work? Point it at a box and find out.
@@ -68,11 +77,7 @@ data work? Point it at a box and find out.
 It belongs to the same family as GitHub self-hosted runners, VS Code
 Remote tunnels, and Tailscale — legitimate tools for administering your
 own hardware remotely. And like all of those, its power is the point,
-not an accident: whoever holds the shared secret has full control of
-the machine. That's exactly why this project states its threat model
-plainly instead of burying it. Keep the secret like a password, use a
-throwaway account, and only ever install the agent on machines you own
-and operate.
+not an accident.
 
 ```
   SI (cloud)                        Your machine
@@ -112,22 +117,28 @@ debugged something by running it, reading the output, and trying again
 with what you learned — that's the whole product. The SI is just the
 part that writes the next attempt.
 
-## The Oracle: answers, not output
+## The Oracle: the witness on your side of the wire
 
-The **Oracle** is a black box the SI questions rather than inspects:
-it answers with signed attestations about the output, and hands over
-raw output only as far as the owner's view ceiling allows.
+The runner faces the SI. The **Oracle** faces you. It is the part of
+the agent that works for the owner of the box: it watches every job
+as it runs, checks each job against this machine before it runs
+(opinions, below), fuses the box's sensor alerts with job activity,
+and — in the watching postures — pages you when something trips.
+It also answers the SI's questions about job output, at the
+disclosure ceiling you set, and not one byte past it.
 
-The SI asks "did the tests pass?" or "does the output contain secrets?"
-and gets back HMAC-signed *attestations*: proofs about the output that
-reveal nothing else. It's the interactive-proof shape applied at the
-trust boundary — prove things about your data without showing your
-data — without any zero-knowledge proving machinery: the attestation
-is an HMAC, and the runner itself is trusted. How much of that
-machinery stands between the SI and the output is the ceiling you
-set -- and the default ceiling is full output (Operating modes,
-below). The attestation shape is there when you want it; it is
-not the posture the box ships in.
+That ceiling is the thing to understand. By default it is **full
+output**: the SI sees what the job printed, because that is what
+makes the runbook loop above useful. Tighten it, and the shape
+changes: the SI questions the Oracle rather than inspecting output,
+and gets back HMAC-signed *attestations* — "did the tests pass?",
+"does the output contain secrets?" — proofs about the output that
+reveal nothing else. It's the interactive-proof shape applied at
+the trust boundary — prove things about your data without showing
+your data — without any zero-knowledge proving machinery: the
+attestation is an HMAC, and the runner itself is trusted. The
+attestation shape is there when you want it; it is not the posture
+the box ships in.
 
 ```
   Cloud SI                                Your machine
@@ -168,10 +179,26 @@ Your machine runs two roles in one box:
 The runner does what the SI asks. The Oracle watches what happens
 and tells you about it.
 
+**Opinions, before anything runs.** By default the Oracle checks
+each job against this box first — is the named interpreter here?
+are the tools it invokes on PATH? does the script's shape fit this
+OS? Its default latitude is **repair**: the one mechanical fix
+those checks can prove — an absent interpreter, replaced with the
+platform default when the script's shape fits it — is applied,
+and never silently. The result says what changed and carries
+`received_digest`, the digest of the job exactly as received, and
+the repaired job is judged again before it runs. When a job asks
+for an opinion, the prediction rides its result too. The owner's
+`oracle_opinion_mode` is both the default latitude and the
+ceiling: a job may ask for less, never more. Design:
+`docs/oracle-opinion-design.md`.
+
 ### Operating modes
 
 Five knobs set the posture. They are independent — these are three
-coherent postures, not the only combinations.
+coherent postures, not the only combinations. The postures are
+choices about trust: how much you watch, and how much the box may
+refuse, is yours to pick per machine.
 
 ```
   knob                  just run it  eyes open    lockdown
@@ -183,38 +210,64 @@ coherent postures, not the only combinations.
   max_result_view       full         attested     attested
 ```
 
-**just run it** (the defaults). Runner: executes any signed job,
-answers queries with full output. Oracle: reviews every job anyway
-(notes ride in the result), logs resource pressure. Quiet — nothing
-pages, nothing blocks.
+**just run it** (the defaults) — you trust the signer, so the box
+just works. Runner: executes any signed job, answers queries with
+full output. Oracle: reviews every job anyway (its notes ride in
+the result) and logs resource pressure. Quiet by choice: nothing
+pages, and the judge never blocks a job at the door.
 
-**eyes open** (recommended). Runner: executes, attaches the policy
-verdict to each result, answers queries with attestations only.
-Oracle: reviews, fuses sensor alerts, pages you when a trigger
-trips. Still takes no action itself.
+**eyes open** (recommended) — same trust, but now you watch.
+Runner: executes, attaches the policy verdict to each result,
+answers queries with attestations only. Oracle: reviews, fuses
+sensor alerts, and pages you when a trigger trips. This posture
+is about seeing; the acting, when any happens, belongs to the
+remediation reflexes below — they answer to their own switch,
+not to this table.
 
-**lockdown**. Runner: refuses anything the policy rejects; the SI
-gets attestations. Oracle: same as eyes-open, and every refusal is
-page-worthy. Nothing moves unless the policy allows it.
+**lockdown** — the box refuses what the policy rejects. Runner:
+refuses anything the policy rejects; the SI gets attestations.
+Oracle: same as eyes-open, and every refusal is page-worthy.
+Nothing moves unless the policy allows it.
 
-The Oracle ships two confinement capabilities:
+Two more dials stand outside the table. **Remediation**
+(`remediation_mode`, default `deterministic`) watches each job
+while it runs: on a closed list of tripwires — confinement
+escape, a process storm past the ceiling, an undeclared
+credential-store reference in something the job produced — it
+kills the job's process tree, quarantines its outputs (moved,
+never deleted; you release them), refers suspect files to the
+box's own antivirus for the antivirus's verdict, and files the
+whole story with the DRI, which pages you when paging is on.
+That happens in every posture above. `oracle` mode additionally
+lets the local model order a kill for a lesser divergence;
+`off` watches and records only, and the page is all that
+happens. **The opinion latitude** (`oracle_opinion_mode`,
+default `repair`) is the other dial — it is covered under
+Opinions, above.
 
-- **Local inference.** Point it at a model running on your own box and
-  the SI can `ask` questions in plain English — *"why did the tests
-  fail?"* — answered locally, with only the answer crossing the
-  boundary. The endpoint must be loopback (fail closed), and every
-  answer is truncated, redacted, and secret-scanned before it's sent.
-  The SI gets useful answers, and your raw data never leaves the machine.
-- **Execution confinement.** Two different checks, both shipped.
-  Set `workspace_root` and the Oracle snapshots file metadata outside
-  that folder before and after the job, then attests
-  `confined_to_workspace`. That one is a snapshot, not a sandbox. The
-  walk stops at 50000 files. Separately, on Linux, set
-  `security.modes.confinement` to `enforce` and the job runs inside
-  bubblewrap (`bwrap`): `/usr` read-only, no network, and only the job
-  workdir writable. It is off by default. If `bwrap` is missing, or the
-  machine is not Linux, the job runs normally and the audit log records
-  the fallback. See SECURITY.md.
+Confinement ships in two kinds, and they are not the same kind
+of thing:
+
+- **A snapshot is not a sandbox.** The workspace check compares
+  file metadata outside the job's workspace before and after the
+  run, then attests `confined_to_workspace`: it *detects* a job
+  that reached outside, it does not prevent one. The walk stops
+  at 50000 files, so a huge tree yields a partial snapshot and
+  the log records the cap being hit. The key is `workspace_root`.
+- **The sandbox** (Linux only) actually walls the job in:
+  bubblewrap runs it with `/usr` read-only, no network, and only
+  the job workdir writable. It is off by default; if `bwrap` is
+  missing, or the machine is not Linux, the job runs normally
+  and the audit log records the fallback. The key is
+  `security.modes.confinement` set to `enforce`. See SECURITY.md.
+
+**Local inference.** Point the Oracle at a model running on your
+own box and the SI can `ask` questions in plain English — *"why
+did the tests fail?"* — answered locally, with only the answer
+crossing the boundary. The endpoint must be loopback (fail
+closed), and every answer is truncated, redacted, and
+secret-scanned before it's sent. The SI gets useful answers,
+and your raw data never leaves the machine.
 
 **Two Oracle modes.** With `oracle_mode: "llm"` (the default) the
 Oracle narrates with the local model above. With `"deterministic"` —
@@ -277,24 +330,38 @@ lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
 - `PROTOCOL.md` — the full wire protocol (message formats, signatures,
   verification rules, security model).
 - `FUTURE.md` — work that is not built. The only list.
-- `TRANSPORTS.md` — the job transports: email (default), file, and core NATS; the rest are design notes.
-  The rest of that file is design notes, not code.
+- `TRANSPORTS.md` — the job transports as shipped: email (default),
+  file, and core NATS. Everything past those in that file is design
+  notes, not code.
 - `SAFEGUARDS.md` — how to run this without getting burned: the
   non-negotiables, containment, the Oracle as a safeguard, and what
   to do when something goes wrong.
-- `runner/runner.py` — the agent. Polls IMAP, verifies, executes,
-  replies via SMTP. No dependencies beyond Python 3.9 stdlib.
+- `docs/` — the long shelf: the threat model and security gaps,
+  configuring the Oracle, the extensions walkthrough, and the
+  design records (opinions and self-learning, remediation).
+- `runner/runner.py` — the agent. Polls, verifies, executes,
+  replies. No dependencies beyond the Python 3.9+ standard library.
+- `runner/transports.py` — the job transports: email, the watched
+  folder, and core NATS, selected by the `transports` config key.
+- `runner/opinion.py` — the Oracle's opinion: the pre-run checks,
+  the prediction, and the one mechanical repair.
+- `runner/learning.py` — the self-learning ledger: frozen calls,
+  scored outcomes, and the lessons the next opinion reads.
+- `runner/remediation.py` — the running-job monitor: tripwires,
+  quarantine, antivirus referral, the page.
 - `runner/install.py` — installs it as a boot-start service: systemd
   (Linux), launchd (macOS), cron @reboot (FreeBSD), Scheduled Task
   (Windows).
 - `runner/config.example.json` — copy to `config.json` and fill in.
 - `cloud/send_job.py` — cloud-side helper: builds signed job messages,
   verifies result messages. (Your SI uses this logic when dispatching jobs.)
-- `tests/test_runner.py` — end-to-end tests with fake IMAP/SMTP servers.
+- `tests/` — the suite: the real runner driven against fake
+  IMAP/SMTP servers and a fake NATS broker.
 - `RUNBOOK.md` — step-by-step instructions (written for a 5-year-old):
   cloning, pushing, cutting a release, installing, sending a job.
-- `examples/extensions/` — the worked extension example: a lab-results
-  sense with its manifest, daemon, and README.
+- `examples/extensions/` — the example senses: 27 folders ship,
+  from the lab-results sense to the IDS feeds; 24 of them are the
+  pinned catalog in `docs/extensions.md`.
 
 ## Setup
 
@@ -389,24 +456,23 @@ End-to-end without your SI:
 ## Security notes
 
 - Honest threat model: [docs/threat-model.md](docs/threat-model.md) —
-  what this is, what it isn't, and what "anyone holding the shared
-  secret effectively owns the box" means for how you deploy it. Its
+  the long form of the warning at the top of this file. Its
   companion [docs/security-gaps.md](docs/security-gaps.md) covers
   what the defaults don't protect you from, and the order to turn
   things on.
 - Industry map: [docs/industry-map.md](docs/industry-map.md) — five years
   of commercial detection (2021–2026) read honestly against this project,
   sorted by local footprint cost.
-- The runner is a **full-trust execution environment**: a valid signed
-  job message means arbitrary code as a privileged user. The app password sits in
-  **plaintext** in config.json (your explicit
-  choice: throwaway account, fresh box). Anyone holding it gets mailbox access.
-  The HMAC shared secret is a separate value — anyone holding *it* can sign jobs.
-  Don't use this setup with an account you care about.
-- Every job is HMAC-SHA-384 signed; the signature is the sole
-  authentication gate. Timestamp window and
-  replay protection (seen-set) are enforced before anything runs; the
-  sender address is logged but never trusted.
+- The mailbox app password sits in **plaintext** in config.json
+  (your explicit choice: throwaway account, fresh box). Anyone
+  holding it gets mailbox access. The HMAC shared secret is a
+  separate value — anyone holding *it* can sign jobs. Don't use
+  this setup with an account you care about.
+- Every job is HMAC-SHA-384 signed; over email the signature is
+  the only gate (a credentialed transport adds its own — see
+  *Why email?*, above). Timestamp window and replay protection
+  (seen-set) are enforced before anything runs; the sender
+  address is logged but never trusted.
 - Delivery is at-least-once: if a result email fails to send, the job
   stays unseen and will be re-executed next cycle. Make jobs idempotent
   or check the seen behavior accordingly.
@@ -416,13 +482,6 @@ End-to-end without your SI:
   normal reject path; `0` means unlimited. A negative or non-integer
   value is a startup config error.
 - Optional hardening controls (all off by default): see [SECURITY.md](SECURITY.md).
-  The Oracle is implemented: result policies, signed attestations,
-  and a query budget, so a cloud SI learns *answers* about your output
-  without ever seeing it.
-
-The download version and the message field `"v"` are different
-numbers: the runner's release number and the protocol's `v`
-move on separate tracks.
 
 ## Not built
 
@@ -430,16 +489,20 @@ The list is [FUTURE.md](FUTURE.md).
 
 ## Status
 
-The current release is in [CHANGELOG.md](CHANGELOG.md). The download
-version is the number in `pyproject.toml`.
+What ships today is what's described above: the agent, the Oracle
+(opinions, self-learning, remediation), three job transports, and
+the example senses. The current release is in
+[CHANGELOG.md](CHANGELOG.md); the version number lives in
+`pyproject.toml`, and the message field `"v"` is a different
+number — the protocol's version and the release number move on
+separate tracks.
 
-Still true from earlier releases. Any sender may submit a job, and the
-HMAC is the only gate. `config.json` hot-reloads poll interval,
-workers, timeouts, output limits, and max job age. A `security` mode
-change still needs a restart. Thunderbird-style Google sign-in is
-shipped. PowerShell jobs stage as `script.ps1`. Release binaries carry
-Sigstore build provenance. The suite is
-`python3 -m unittest discover -s tests -t .`.
+Current-state facts worth knowing: `config.json` hot-reloads poll
+interval, workers, timeouts, output limits, and max job age (a
+`security` mode change still needs a restart). A Thunderbird-style
+OAuth sign-in is shipped for the mailbox. PowerShell jobs stage
+as `script.ps1`. Release files carry Sigstore build provenance
+(`docs/verification.md`).
 
 ## Mirrors
 
