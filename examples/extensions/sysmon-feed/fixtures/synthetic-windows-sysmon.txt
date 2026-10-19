@@ -1,0 +1,47 @@
+Log Name: Microsoft-Windows-Sysmon/Operational
+Source: Microsoft-Windows-Sysmon
+Event ID: 1
+Task Category: Process Create (rule: ProcessCreate)
+UtcTime: 2026-10-19 03:00:01.000
+ProcessGuid: {11111111-2222-3333-4444-555555555555}
+ProcessId: 4101
+Image: C:\Users\alice\AppData\Local\Temp\drop.exe
+CommandLine: C:\Users\alice\AppData\Local\Temp\drop.exe /silent
+CurrentDirectory: C:\Users\alice\
+User: CONTOSO\alice
+ParentProcessId: 900
+ParentImage: C:\Windows\explorer.exe
+ParentCommandLine: explorer.exe
+Hashes: SHA256=AAAA
+
+Log Name: Microsoft-Windows-Sysmon/Operational
+Source: Microsoft-Windows-Sysmon
+Event ID: 1
+Task Category: Process Create (rule: ProcessCreate)
+UtcTime: 2026-10-19 03:00:01.000
+ProcessGuid: {11111111-2222-3333-4444-555555555555}
+ProcessId: 4101
+Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+CommandLine: powershell.exe -EncodedCommand QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD
+CurrentDirectory: C:\Users\alice\
+User: CONTOSO\alice
+ParentProcessId: 900
+ParentImage: C:\Windows\System32\cmd.exe
+ParentCommandLine: explorer.exe
+Hashes: SHA256=AAAA
+
+Log Name: Microsoft-Windows-Sysmon/Operational
+Source: Microsoft-Windows-Sysmon
+Event ID: 1
+Task Category: Process Create (rule: ProcessCreate)
+UtcTime: 2026-10-19 03:00:01.000
+ProcessGuid: {11111111-2222-3333-4444-555555555555}
+ProcessId: 4101
+Image: C:\Windows\System32\notepad.exe
+CommandLine: notepad.exe C:\Users\alice\notes.txt
+CurrentDirectory: C:\Users\alice\
+User: CONTOSO\alice
+ParentProcessId: 900
+ParentImage: C:\Windows\explorer.exe
+ParentCommandLine: explorer.exe
+Hashes: SHA256=AAAA
