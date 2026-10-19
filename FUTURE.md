@@ -29,7 +29,8 @@ Ideas...
   attaches full platform metadata to every result, so the
   sender stops guessing.
 - The Oracle's opinion, as a result member (Andrew, 2026-10-15,
-  elaborated 2026-10-18). The Oracle reads a job against the
+  elaborated 2026-10-18). `docs/oracle-opinion-design.md`
+  The Oracle reads a job against the
   box it is about to run on and says whether it expects the
   job to succeed in this environment. The latitude is a mode
   the sender grants: advise only (the opinion rides the
