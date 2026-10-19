@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.8.4 - 2026-10-18
+
+### Docs
+
+- The remediation design is written out in full. It stays a
+  design: divergence between a job's opinion and what it did,
+  reflexes underneath, the Oracle's judgment above.
+- STYLE.md is the short page: the preamble and the closing
+  "changing this guide" section are gone.
+- TRANSPORTS.md names the unbuilt transports in the status
+  note. The last line of that note is back inside the
+  blockquote.
+
+## 3.8.3 - 2026-10-18
+
 ## 3.8.3 - 2026-10-18
 
 ### Features
