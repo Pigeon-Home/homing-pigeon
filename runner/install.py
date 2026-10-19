@@ -804,6 +804,17 @@ def do_check(home, bin_dir, cfg_path, state_dir) -> int:
             rec("WARN", "inference",
                 f"{url} is not a loopback endpoint")
 
+    # Collector health: the state word is reported verbatim
+    # (WORKS / INSTALLED-BUT-CANNOT-RUN / ABSENT). Absence is a
+    # legitimate state, not a fault, so it does not warn; a
+    # collector that is present but cannot collect does.
+    for cname, cstate, cdetail in collector_health_rows(
+            collector_health_facts()):
+        rec({"WORKS": "PASS",
+             "INSTALLED-BUT-CANNOT-RUN": "WARN",
+             "ABSENT": "PASS"}[cstate],
+            f"collector {cname}", f"{cstate} -- {cdetail}")
+
     npass = sum(1 for s, _, _ in rows if s == "PASS")
     nwarn = sum(1 for s, _, _ in rows if s == "WARN")
     nfail = sum(1 for s, _, _ in rows if s == "FAIL")
@@ -1000,6 +1011,15 @@ def _setup_fresh_config(args, cfg_path):
                                                 args.no_inference)
     if profile:
         apply_profile(cfg_path, profile)
+    collectors = chosen_collectors(args, profile)
+    if collectors:
+        install_collectors(collectors, args)
+    elif profile_oracle_mode(profile) == "deterministic" \
+            and not getattr(args, "no_collector", False) \
+            and not getattr(args, "collector", None):
+        print("collectors: none by default on Pi Light -- the "
+              "light profile installs no collector. Pass "
+              "--collector NAME to add one explicitly.")
     apply_instruction_flags(cfg_path, args.instructions, args.instructions_add)
     return inference_ok, model, pi_light
 
@@ -1552,6 +1572,826 @@ def apply_profile(cfg_path: str, profile: str) -> None:
     print(f"profile: applied {name}")
 
 
+# --- sense collectors -------------------------------------------------
+#
+# The collectors docs/senses.md names as sense suppliers: the
+# installer can set them up next to the runner, and the matching
+# examples/extensions/<name>-feed producer turns each one's
+# output into signed alerts. The measured comparison behind
+# these choices (footprints on a 2 vCPU / 7.7 GB box, next to
+# the local model) is the campaign the senses doc cites; the
+# short version: osquery is the lightest host-telemetry daemon
+# that runs on every platform this installer targets (27 MB,
+# JSON-lines differentials, no kernel privileges in scheduled-
+# query mode), so it is the default. Zeek is supported and
+# never a default (230 MB at idle). Falco and Sysmon for Linux
+# can install successfully and still not function where the
+# kernel denies BPF -- collector_health_rows() exists so
+# --check reports that state instead of install-and-pray.
+
+COLLECTOR_NAMES = ("osquery", "falco", "suricata", "zeek", "aide",
+                   "softflowd", "sysmon", "wazuh")
+COLLECTOR_DEFAULT = "osquery"
+OSQUERY_RESULTS_LOG = "/var/log/osquery/osqueryd.results.log"
+FALCO_ALERTS_LOG = "/var/log/falco/falco.json"
+SURICATA_EVE_LOG = "/var/log/suricata/eve.json"
+AIDE_REPORT_PATH = "/var/log/aide/aide.log"
+
+# The installer's light osquery pack: name -> (query, interval
+# seconds). The names are the contract osquery-feed reads: a
+# name containing "processes" is a process query, "users" a
+# user query, "listening_ports" a listener query.
+OSQUERY_LIGHT_PACK = {
+    "hp_processes": (
+        "SELECT pid, name, path, cmdline FROM processes;", 300),
+    "hp_users": (
+        "SELECT uid, gid, username, shell FROM users;", 3600),
+    "hp_listening_ports": (
+        "SELECT port, protocol, address, pid FROM listening_ports;",
+        300),
+}
+
+
+def osquery_config_text() -> str:
+    """The osquery.conf this installer writes: the light pack.
+
+    Schedule only. Logger and database settings live in the
+    flags file, not here -- several of them are flags-only and
+    a config copy is ignored with a warning (measured during
+    the collector campaign). "removed": true so the results
+    log carries removals; osquery-feed files them.
+    """
+    schedule = {}
+    for name, (query, interval) in sorted(OSQUERY_LIGHT_PACK.items()):
+        schedule[name] = {"query": query, "interval": interval,
+                          "removed": True}
+    return json.dumps({"schedule": schedule}, indent=2,
+                      sort_keys=True) + "\n"
+
+
+def osquery_flags_text(config_path, log_dir, database_path,
+                       pidfile) -> str:
+    """The osquery.flags this installer writes, one flag a line."""
+    lines = [
+        f"--config_path={config_path}",
+        f"--database_path={database_path}",
+        "--logger_plugin=filesystem",
+        f"--logger_path={log_dir}",
+        f"--pidfile={pidfile}",
+        "--watchdog_level=1",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def osquery_systemd_unit_text(binary) -> str:
+    """The systemd unit for osqueryd; the package ships none."""
+    return f"""[Unit]
+Description=osquery daemon (Homing Pigeon light pack)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart={binary} --flagfile=/etc/osquery/osquery.flags
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+"""
+
+
+AIDE_WATCH_DIRS = ("/etc", "/bin", "/sbin", "/usr/bin", "/usr/sbin",
+                   "/boot")
+
+
+def aide_rules_text() -> str:
+    """The scoped AIDE rules this installer ships.
+
+    The vendor default walks the whole tree; on the campaign
+    box its first database build did not finish in 9 minutes.
+    Cost scales with the watched tree, so the scope is the
+    system directories a tamperer cares about -- the same set
+    the campaign measured (2,489 entries, ~3 s to build).
+    """
+    lines = [
+        "# Homing Pigeon: scoped AIDE rules (see aide-feed).",
+        "# The vendor whole-tree default does not scale; this",
+        "# scope is deliberate. Add directories with the same",
+        "# HP rule if the box earns them.",
+        "HP = p+i+n+u+g+s+m+c+sha256",
+    ]
+    lines += [f"{d} HP" for d in AIDE_WATCH_DIRS]
+    return "\n".join(lines) + "\n"
+
+
+def aide_cron_text() -> str:
+    """The daily AIDE check; its report is aide-feed's input."""
+    return ("#!/bin/sh\n"
+            "# Homing Pigeon: nightly AIDE check. The report is\n"
+            "# consumed by the aide-feed extension; a nonzero\n"
+            "# exit just means differences were found.\n"
+            f"/usr/bin/aide --check > {AIDE_REPORT_PATH} 2>&1 "
+            "|| true\n")
+
+
+def chosen_collectors(args, profile) -> list:
+    """Which collectors a fresh install sets up.
+
+    An explicit --collector (repeatable) wins, even on Pi
+    Light; --no-collector means none. Otherwise the default
+    is osquery -- except a deterministic profile (Pi Light),
+    whose whole point is that nothing extra runs: there the
+    default is none and a collector is an explicit act.
+    """
+    if getattr(args, "no_collector", False):
+        return []
+    explicit = getattr(args, "collector", None)
+    if explicit:
+        out = []
+        for name in explicit:
+            if name in COLLECTOR_NAMES and name not in out:
+                out.append(name)
+        return out
+    if profile_oracle_mode(profile) == "deterministic":
+        return []
+    return [COLLECTOR_DEFAULT]
+
+
+def requested_collectors(args) -> list:
+    """Explicit --collector/--no-collector only (existing
+    installs): the names asked for, with no defaulting."""
+    if getattr(args, "no_collector", False):
+        return []
+    out = []
+    for name in getattr(args, "collector", None) or []:
+        if name in COLLECTOR_NAMES and name not in out:
+            out.append(name)
+    return out
+
+
+def install_collectors(names, args) -> list:
+    """Set up each named collector; one outcome line per name.
+
+    Returns the lines (also printed). Never raises: a failed
+    collector is a reported outcome, not an aborted install.
+    Wazuh installs only with --wazuh-manager -- the agent
+    alone produces nothing on the box, so enrolling it
+    against nothing would be a silent no-op install.
+    """
+    lines = []
+    for name in names:
+        try:
+            if name == "wazuh" and not getattr(
+                    args, "wazuh_manager", None):
+                line = ("collector wazuh: skipped -- the agent "
+                        "needs its manager; pass --wazuh-manager "
+                        "ADDRESS. Without one it enrolls against "
+                        "nothing and produces no alerts here.")
+            elif sys.platform.startswith("linux"):
+                line = _install_collector_linux(name, args)
+            elif sys.platform == "darwin":
+                line = _install_collector_darwin(name, args)
+            elif sys.platform == "win32":
+                line = _install_collector_windows(name, args)
+            else:
+                line = (f"collector {name}: no install channel "
+                        f"on this platform; see docs/senses.md")
+        except Exception as e:
+            line = f"collector {name}: install failed: {e}"
+        lines.append(line)
+        print(line)
+    return lines
+
+
+def _download(url) -> bytes:
+    import urllib.request
+    req = urllib.request.Request(
+        url, headers={"User-Agent": "homing-pigeon-install"})
+    with urllib.request.urlopen(req, timeout=180) as fh:
+        return fh.read()
+
+
+def _write_keyring(urls, dest) -> str:
+    """Fetch an apt signing key (first URL that answers) and
+    write it as a binary keyring; armored keys are dearmored."""
+    data = b""
+    for url in urls:
+        try:
+            data = _download(url)
+        except Exception:
+            data = b""
+        if data:
+            break
+    if not data:
+        raise RuntimeError(f"no signing key from {urls[0]}")
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    if data.startswith(b"-----BEGIN PGP"):
+        subprocess.run(["gpg", "--batch", "--yes", "--dearmor",
+                        "-o", dest], input=data, check=True)
+    else:
+        with open(dest, "wb") as fh:
+            fh.write(data)
+    return dest
+
+
+def _apt_repo(name, line, key_urls) -> None:
+    keyring = f"/usr/share/keyrings/{name}-archive-keyring.gpg"
+    _write_keyring(key_urls, keyring)
+    with open(f"/etc/apt/sources.list.d/{name}.list", "w",
+              encoding="utf-8") as fh:
+        fh.write(line.replace("{keyring}", keyring) + "\n")
+    run(["apt-get", "update"])
+
+
+def _apt_install(packages) -> None:
+    run(["apt-get", "install", "-y", *packages])
+
+
+def _os_release_version() -> str:
+    try:
+        with open("/etc/os-release", encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("VERSION_ID="):
+                    return line.split("=", 1)[1].strip().strip('"')
+    except OSError:
+        pass
+    return ""
+
+
+def _newest_from_listing(url, pattern):
+    """Newest versioned filename in a vendor directory listing."""
+    text = _download(url).decode("utf-8", errors="replace")
+    found = {}
+    for name, ver in re.findall(pattern, text):
+        found[tuple(int(p) for p in ver.split("."))] = name
+    if not found:
+        raise RuntimeError(f"no package matching in {url}")
+    return url + found[max(found)]
+
+
+def _osquery_binary() -> str:
+    return (shutil.which("osqueryd")
+            or "/opt/osquery/bin/osqueryd")
+
+
+def _install_osquery_linux() -> str:
+    _apt_repo(
+        "osquery",
+        "deb [arch=amd64,arm64 signed-by={keyring}] "
+        "https://pkg.osquerypackages.com/deb deb main",
+        ["https://pkg.osquerypackages.com/deb/"
+         "osquery-archive-keyring.gpg",
+         "https://pkg.osquerypackages.com/deb/pubkey.gpg"])
+    _apt_install(["osquery"])
+    for d in ("/etc/osquery", "/var/osquery", "/var/log/osquery"):
+        os.makedirs(d, exist_ok=True)
+    _write_text("/etc/osquery/osquery.conf", osquery_config_text())
+    _write_text("/etc/osquery/osquery.flags", osquery_flags_text(
+        "/etc/osquery/osquery.conf", "/var/log/osquery",
+        "/var/osquery/osquery.db", "/var/run/osqueryd.pidfile"))
+    _write_text("/etc/systemd/system/osqueryd.service",
+                osquery_systemd_unit_text(_osquery_binary()))
+    run(["systemctl", "daemon-reload"])
+    run(["systemctl", "enable", "--now", "osqueryd.service"])
+    pack = ", ".join(sorted(OSQUERY_LIGHT_PACK))
+    return (f"collector osquery: installed and enabled with the "
+            f"light pack ({pack}); results log "
+            f"{OSQUERY_RESULTS_LOG} feeds osquery-feed "
+            f"(measured ~27 MB RSS, ~0.1% CPU)")
+
+
+def _install_falco_linux() -> str:
+    import glob as _glob
+    channel = "vendor apt repo"
+    try:
+        _apt_repo(
+            "falcosecurity",
+            "deb [signed-by={keyring}] "
+            "https://download.falco.org/packages/deb stable main",
+            ["https://falco.org/repo/falcosecurity-packages.asc"])
+        _apt_install(["falco"])
+    except Exception:
+        # The repo's CDN redirect defeats some apt fetchers
+        # (measured through this project's own proxy); the
+        # vendor .deb, fetched directly, is the fallback.
+        import platform as _platform
+        arch = {"x86_64": "x86_64", "aarch64": "aarch64"}.get(
+            _platform.machine(), "x86_64")
+        url = _newest_from_listing(
+            "https://download.falco.org/packages/deb/stable/",
+            r"(falco-(\d+\.\d+\.\d+)-" + arch + r"\.deb)")
+        path = os.path.join(tempfile.gettempdir(),
+                            os.path.basename(url))
+        with open(path, "wb") as fh:
+            fh.write(_download(url))
+        try:
+            run(["dpkg", "-i", path])
+        except Exception:
+            run(["apt-get", "install", "-f", "-y"])
+            run(["dpkg", "-i", path])
+        channel = "vendor .deb (apt repo unreachable)"
+    os.makedirs("/var/log/falco", exist_ok=True)
+    units = sorted(
+        _glob.glob("/lib/systemd/system/falco*.service")
+        + _glob.glob("/etc/systemd/system/falco*.service"))
+    units = [u for u in units if not u.endswith(".d")]
+    routed = ""
+    if units:
+        unit = os.path.basename(units[0])
+        drop = f"/etc/systemd/system/{unit}.d"
+        os.makedirs(drop, exist_ok=True)
+        binary = shutil.which("falco") or "/usr/bin/falco"
+        _write_text(
+            os.path.join(drop, "10-homing-pigeon.conf"),
+            "[Service]\nExecStart=\n"
+            f"ExecStart={binary} -o json_output=true "
+            f"-o file_output.enabled=true "
+            f"-o file_output.filename={FALCO_ALERTS_LOG} "
+            f"-o stdout_output.enabled=false\n")
+        run(["systemctl", "daemon-reload"])
+        run(["systemctl", "enable", "--now", unit])
+        routed = f"; JSON alerts routed to {FALCO_ALERTS_LOG}"
+    return (f"collector falco: installed via {channel}{routed}. "
+            f"Falco runs only where the kernel allows its "
+            f"driver/BPF -- install.exe --check probes that "
+            f"and reports it; an install success here is not a "
+            f"collection guarantee.")
+
+
+def _install_collector_linux(name, args) -> str:
+    if name == "osquery":
+        return _install_osquery_linux()
+    if name == "falco":
+        return _install_falco_linux()
+    if name == "suricata":
+        _apt_install(["suricata"])
+        run(["systemctl", "enable", "--now", "suricata"])
+        return (f"collector suricata: installed and enabled; "
+                f"eve.json at {SURICATA_EVE_LOG} feeds "
+                f"suricata-feed. Measured ~52 MB RSS with the "
+                f"distro's minimal ruleset only -- a production "
+                f"ruleset is several times that (unmeasured).")
+    if name == "zeek":
+        ver = _os_release_version()
+        base = ("https://download.opensuse.org/repositories/"
+                f"security:/zeek/xUbuntu_{ver}")
+        _apt_repo("zeek",
+                  f"deb [signed-by={{keyring}}] {base}/ /",
+                  [f"{base}/Release.key"])
+        _apt_install(["zeek"])
+        return ("collector zeek: installed (vendor OBS repo). "
+                "Measured ~230 MB RSS at idle -- the heavyweight "
+                "of the slate, supported and never a default. "
+                "It starts per interface by the owner's hand: "
+                "/opt/zeek/bin/zeek -i <iface> local; logs land "
+                "in /opt/zeek/logs and feed zeek-feed.")
+    if name == "aide":
+        _apt_install(["aide"])
+        os.makedirs("/etc/aide/aide.conf.d", exist_ok=True)
+        os.makedirs("/var/lib/aide", exist_ok=True)
+        os.makedirs("/var/log/aide", exist_ok=True)
+        _write_text("/etc/aide/aide.conf.d/99-homing-pigeon",
+                    aide_rules_text())
+        _write_text("/etc/cron.daily/homing-pigeon-aide",
+                    aide_cron_text(), 0o755)
+        run(["aide", "--init"])
+        for cand in ("/var/lib/aide/aide.db.new.gz",
+                     "/var/lib/aide/aide.db.new"):
+            if os.path.isfile(cand):
+                os.replace(cand, "/var/lib/aide/aide.db"
+                           + (".gz" if cand.endswith(".gz") else ""))
+                break
+        dirs = ", ".join(AIDE_WATCH_DIRS)
+        return (f"collector aide: installed with the scoped "
+                f"config ({dirs} -- the vendor whole-tree "
+                f"default did not finish its first build in 9 "
+                f"minutes on the campaign box), database "
+                f"initialized, daily check in cron writing "
+                f"{AIDE_REPORT_PATH} for aide-feed. No daemon: "
+                f"0 MB between scans.")
+    if name == "softflowd":
+        _apt_install(["softflowd"])
+        return ("collector softflowd: installed (measured "
+                "~7 MB RSS, ~0% CPU -- the lightest always-on "
+                "collector measured). It runs per interface by "
+                "the owner's hand: softflowd -i <iface> "
+                "-n 127.0.0.1:2055 exports flows to the "
+                "softflowd-feed producer, which is the "
+                "collector that decodes them.")
+    if name == "sysmon":
+        ver = _os_release_version()
+        path = os.path.join(tempfile.gettempdir(),
+                            "packages-microsoft-prod.deb")
+        with open(path, "wb") as fh:
+            fh.write(_download(
+                "https://packages.microsoft.com/config/ubuntu/"
+                f"{ver}/packages-microsoft-prod.deb"))
+        run(["dpkg", "-i", path])
+        run(["apt-get", "update"])
+        _apt_install(["sysmonforlinux"])
+        return ("collector sysmon: Sysmon for Linux installed "
+                "from the Microsoft repo. Whether it collects "
+                "depends on the kernel allowing its BPF objects "
+                "-- install.exe --check probes that and reports "
+                "INSTALLED-BUT-CANNOT-RUN where the kernel "
+                "says no.")
+    if name == "wazuh":
+        _apt_repo("wazuh",
+                  "deb [signed-by={keyring}] "
+                  "https://packages.wazuh.com/4.x/apt/ stable main",
+                  ["https://packages.wazuh.com/key/GPG-KEY-WAZUH"])
+        env = dict(os.environ)
+        env["WAZUH_MANAGER"] = str(args.wazuh_manager)
+        print("+ apt-get install -y wazuh-agent "
+              f"(WAZUH_MANAGER={args.wazuh_manager})")
+        subprocess.run(["apt-get", "install", "-y", "wazuh-agent"],
+                       check=True, env=env)
+        run(["systemctl", "enable", "--now", "wazuh-agent"])
+        return (f"collector wazuh: agent installed and set to "
+                f"enroll against manager {args.wazuh_manager}. "
+                f"Its alerts live on that manager, not on this "
+                f"box; wazuh-feed reads an alerts.json the "
+                f"owner lands here (see docs/senses.md).")
+    return f"collector {name}: unknown collector"
+
+
+def _install_collector_darwin(name, args) -> str:
+    if name == "osquery":
+        if shutil.which("brew"):
+            run(["brew", "install", "--cask", "osquery"])
+        else:
+            return ("collector osquery: not installed -- no "
+                    "Homebrew on this box to fetch the official "
+                    "pkg. Install osquery from osquery.io, then "
+                    "the config below is all this installer "
+                    "would have added.")
+        os.makedirs("/var/osquery", exist_ok=True)
+        os.makedirs("/var/log/osquery", exist_ok=True)
+        _write_text("/var/osquery/osquery.conf",
+                    osquery_config_text())
+        _write_text("/var/osquery/osquery.flags",
+                    osquery_flags_text(
+                        "/var/osquery/osquery.conf",
+                        "/var/log/osquery",
+                        "/var/osquery/osquery.db",
+                        "/var/run/osqueryd.pidfile"))
+        for plist in ("/Library/LaunchDaemons/"
+                      "com.osquery.osqueryd.plist",
+                      "/Library/LaunchDaemons/io.osquery.agent.plist"):
+            if os.path.isfile(plist):
+                subprocess.run(["launchctl", "bootout", "system",
+                                plist], check=False)
+                subprocess.run(["launchctl", "bootstrap", "system",
+                                plist], check=False)
+                break
+        return ("collector osquery: installed with the light "
+                "pack; results log "
+                "/var/log/osquery/osqueryd.results.log feeds "
+                "osquery-feed.")
+    if name == "sysmon":
+        return ("collector sysmon: not installed -- Sysmon "
+                "for macOS is a Sysinternals download this "
+                "installer does not fetch. sysmon-feed reads "
+                "its events once it is in place.")
+    return (f"collector {name}: no first-class macOS install "
+            f"channel in this installer; see docs/senses.md "
+            f"for what upstream offers.")
+
+
+def _install_collector_windows(name, args) -> str:
+    if name == "osquery":
+        if not shutil.which("winget"):
+            return ("collector osquery: not installed -- no "
+                    "winget on this box to fetch the official "
+                    "MSI. Install osquery from osquery.io; the "
+                    "light pack config is osquery_config_text() "
+                    "in runner/install.py.")
+        run(["winget", "install", "--id", "osquery.osquery",
+             "-e", "--silent", "--accept-source-agreements",
+             "--accept-package-agreements"])
+        home = r"C:\Program Files\osquery"
+        if os.path.isdir(home):
+            _write_text(os.path.join(home, "osquery.conf"),
+                        osquery_config_text())
+            _write_text(os.path.join(home, "osquery.flags"),
+                        osquery_flags_text(
+                            os.path.join(home, "osquery.conf"),
+                            os.path.join(home, "log"),
+                            os.path.join(home, "osquery.db"),
+                            os.path.join(home, "osqueryd.pid")))
+            subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 "Restart-Service osqueryd -ErrorAction "
+                 "SilentlyContinue"], check=False)
+        return ("collector osquery: installed with the light "
+                "pack; its results log (osqueryd.results.log "
+                "in the osquery log directory) feeds "
+                "osquery-feed.")
+    if name == "sysmon":
+        return ("collector sysmon: not installed -- Sysmon is "
+                "a Sysinternals download this installer does "
+                "not fetch. sysmon-feed reads its ProcessCreate "
+                "events once it is in place; it is the original "
+                "the Linux port mirrors.")
+    if name == "wazuh":
+        url = _newest_from_listing(
+            "https://packages.wazuh.com/4.x/windows/",
+            r"(wazuh-agent-(\d+\.\d+\.\d+)-\d+\.msi)")
+        path = os.path.join(tempfile.gettempdir(),
+                            os.path.basename(url))
+        with open(path, "wb") as fh:
+            fh.write(_download(url))
+        run(["msiexec", "/i", path, "/q",
+             f"WAZUH_MANAGER={args.wazuh_manager}"])
+        return (f"collector wazuh: agent installed against "
+                f"manager {args.wazuh_manager}. Its alerts "
+                f"live on that manager; wazuh-feed reads an "
+                f"alerts.json the owner lands on this box.")
+    return (f"collector {name}: Linux/BSD-only upstream; no "
+            f"Windows install channel. See docs/senses.md.")
+
+
+# --- collector health (the --check rows) ------------------------------
+#
+# collector_health_rows() is pure: it judges a facts dict, so
+# the states are unit-tested with fakes and --check never has
+# to be run against a machine that happens to have a collector.
+# States are exactly WORKS / INSTALLED-BUT-CANNOT-RUN / ABSENT.
+# The measured reason this exists: Falco and Sysmon for Linux
+# install cleanly and then silently collect nothing where the
+# kernel denies BPF. An installer that cannot say that is
+# install-and-pray.
+
+COLLECTOR_HEALTH_STATES = ("WORKS", "INSTALLED-BUT-CANNOT-RUN",
+                           "ABSENT")
+
+
+def _bpf_loadable():
+    """Can this kernel load a trivial BPF program?
+
+    True/False on Linux when the syscall answers; None when
+    the question cannot be asked here (other platform, unknown
+    architecture, no libc). A two-instruction socket-filter
+    program: r0 = 0; exit. The probe is the measurement
+    campaign's own test -- the host denied it to a container
+    holding CAP_BPF, which is exactly the silent-failure mode
+    the health rows exist to name.
+    """
+    if not sys.platform.startswith("linux"):
+        return None
+    try:
+        import ctypes
+        import platform as _platform
+        nr = {"x86_64": 321, "amd64": 321, "aarch64": 280}.get(
+            _platform.machine())
+        if nr is None:
+            return None
+        libc = ctypes.CDLL("libc.so.6", use_errno=True)
+        insns = (ctypes.c_ubyte * 16)(
+            0xB7, 0, 0, 0, 0, 0, 0, 0,
+            0x95, 0, 0, 0, 0, 0, 0, 0)
+        license_buf = ctypes.create_string_buffer(b"GPL", 4)
+        attr = (ctypes.c_ubyte * 128)()
+        import struct as _struct
+        _struct.pack_into("<I", attr, 0, 1)  # BPF_PROG_TYPE_SOCKET_FILTER
+        _struct.pack_into("<I", attr, 4, 2)  # insn count
+        _struct.pack_into("<Q", attr, 8, ctypes.addressof(insns))
+        _struct.pack_into("<Q", attr, 16,
+                          ctypes.addressof(license_buf))
+        fd = libc.syscall(nr, 5, attr, 128)  # 5 = BPF_PROG_LOAD
+        if fd >= 0:
+            os.close(fd)
+            return True
+        return False
+    except Exception:
+        return None
+
+
+def _service_active(unit) -> bool:
+    try:
+        out = subprocess.run(["systemctl", "is-active", unit],
+                             capture_output=True, text=True,
+                             timeout=10)
+        return out.stdout.strip() == "active"
+    except Exception:
+        return False
+
+
+def _proc_running(comm) -> bool:
+    """True when a process with this exact comm name exists."""
+    try:
+        for pid in os.listdir("/proc"):
+            if not pid.isdigit():
+                continue
+            try:
+                with open(os.path.join("/proc", pid, "comm"),
+                          encoding="utf-8") as fh:
+                    if fh.read().strip() == comm:
+                        return True
+            except OSError:
+                continue
+    except OSError:
+        pass
+    return False
+
+
+def _artifact_age(path):
+    try:
+        return max(0.0, time.time() - os.path.getmtime(path))
+    except OSError:
+        return None
+
+
+def collector_health_facts() -> dict:
+    """Gather what collector_health_rows() judges. Thin and
+    defensive: every probe that can fail answers falsely."""
+    import glob as _glob
+    facts = {"installed": {}, "service_active": {},
+             "running": {}, "bpf_ok": None, "falco_device": False,
+             "sysmon_telemetry_error": False, "aide_db": False,
+             "wazuh_manager": False, "artifact_age_sec": {}}
+    paths = {"osquery": ["/opt/osquery/bin/osqueryd"],
+             "zeek": ["/opt/zeek/bin/zeek"]}
+    for name in COLLECTOR_NAMES:
+        if name == "wazuh":
+            facts["installed"][name] = os.path.isdir("/var/ossec")
+            continue
+        binary = {"osquery": "osqueryd", "sysmon": "sysmon"}.get(
+            name, name)
+        found = shutil.which(binary) is not None
+        if not found:
+            found = any(os.path.isfile(p)
+                        for p in paths.get(name, []))
+        facts["installed"][name] = found
+    units = {"osquery": "osqueryd", "suricata": "suricata",
+             "sysmon": "sysmon", "wazuh": "wazuh-agent"}
+    falco_units = [os.path.basename(u)[:-len(".service")] for u in
+                   _glob.glob("/lib/systemd/system/falco*.service")]
+    if falco_units:
+        units["falco"] = sorted(falco_units)[0]
+    for name, unit in units.items():
+        facts["service_active"][name] = _service_active(unit)
+    for name in ("zeek", "softflowd"):
+        facts["running"][name] = _proc_running(name)
+    linux = sys.platform.startswith("linux")
+    if linux and (facts["installed"].get("falco")
+                  or facts["installed"].get("sysmon")):
+        facts["bpf_ok"] = _bpf_loadable()
+    facts["falco_device"] = os.path.exists("/dev/falco0")
+    if linux and facts["installed"].get("sysmon"):
+        try:
+            out = subprocess.run(
+                ["journalctl", "-u", "sysmon", "--no-pager",
+                 "-n", "300"], capture_output=True, text=True,
+                timeout=15)
+            text = out.stdout + out.stderr
+            facts["sysmon_telemetry_error"] = (
+                "Telemetry failed" in text
+                or "bpf_object__probe_loading" in text)
+        except Exception:
+            pass
+    facts["aide_db"] = (os.path.isfile("/var/lib/aide/aide.db")
+                        or os.path.isfile(
+                            "/var/lib/aide/aide.db.gz"))
+    try:
+        with open("/var/ossec/etc/ossec.conf",
+                  encoding="utf-8") as fh:
+            text = fh.read()
+        facts["wazuh_manager"] = ("<address>" in text
+                                  and "MANAGER_IP" not in text)
+    except OSError:
+        pass
+    for name, path in (("osquery", OSQUERY_RESULTS_LOG),
+                       ("suricata", SURICATA_EVE_LOG),
+                       ("falco", FALCO_ALERTS_LOG)):
+        facts["artifact_age_sec"][name] = _artifact_age(path)
+    return facts
+
+
+def collector_health_rows(facts) -> list:
+    """Judge facts -> [(name, state, detail)] per collector.
+
+    The states are the contract: WORKS,
+    INSTALLED-BUT-CANNOT-RUN, ABSENT. Detail says why, in the
+    operator's vocabulary, including the artifact age where a
+    feed file exists.
+    """
+    inst = facts.get("installed") or {}
+    active = facts.get("service_active") or {}
+    running = facts.get("running") or {}
+    ages = facts.get("artifact_age_sec") or {}
+    bpf = facts.get("bpf_ok")
+    rows = []
+
+    def age_note(name):
+        age = ages.get(name)
+        if age is None:
+            return ""
+        return f"; last output {int(age)}s ago"
+
+    if not inst.get("osquery"):
+        rows.append(("osquery", "ABSENT",
+                     "not installed (it is the default collector "
+                     "on a fresh install)"))
+    elif active.get("osquery"):
+        rows.append(("osquery", "WORKS",
+                     "osqueryd is running the light pack"
+                     + age_note("osquery")))
+    else:
+        rows.append(("osquery", "INSTALLED-BUT-CANNOT-RUN",
+                     "installed but osqueryd is not running"))
+    if not inst.get("falco"):
+        rows.append(("falco", "ABSENT", "not installed"))
+    elif bpf is False and not facts.get("falco_device"):
+        rows.append(("falco", "INSTALLED-BUT-CANNOT-RUN",
+                     "the kernel denied its driver/BPF in this "
+                     "environment -- installed, but it cannot "
+                     "collect here"))
+    elif active.get("falco"):
+        rows.append(("falco", "WORKS",
+                     "service is running" + age_note("falco")))
+    elif facts.get("falco_device"):
+        rows.append(("falco", "INSTALLED-BUT-CANNOT-RUN",
+                     "driver device present but the service is "
+                     "not running"))
+    else:
+        rows.append(("falco", "INSTALLED-BUT-CANNOT-RUN",
+                     "service is not running (BPF capability "
+                     + ("probes OK" if bpf else "unknown") + ")"))
+    if not inst.get("suricata"):
+        rows.append(("suricata", "ABSENT", "not installed"))
+    elif active.get("suricata"):
+        rows.append(("suricata", "WORKS",
+                     "service is running" + age_note("suricata")))
+    else:
+        rows.append(("suricata", "INSTALLED-BUT-CANNOT-RUN",
+                     "installed but the service is not running"))
+    if not inst.get("zeek"):
+        rows.append(("zeek", "ABSENT", "not installed"))
+    elif running.get("zeek"):
+        rows.append(("zeek", "WORKS",
+                     "running (started per interface)"))
+    else:
+        rows.append(("zeek", "INSTALLED-BUT-CANNOT-RUN",
+                     "installed, not running -- Zeek starts per "
+                     "interface by the owner's hand, and idles "
+                     "near 230 MB: never a default"))
+    if not inst.get("aide"):
+        rows.append(("aide", "ABSENT", "not installed"))
+    elif not facts.get("aide_db"):
+        rows.append(("aide", "INSTALLED-BUT-CANNOT-RUN",
+                     "installed but its database is not "
+                     "initialized (aide --init)"))
+    else:
+        rows.append(("aide", "WORKS",
+                     "batch: checks run from the schedule; "
+                     "detection latency is the schedule, and "
+                     "idle cost is zero"))
+    if not inst.get("softflowd"):
+        rows.append(("softflowd", "ABSENT", "not installed"))
+    elif running.get("softflowd"):
+        rows.append(("softflowd", "WORKS",
+                     "running (started per interface)"))
+    else:
+        rows.append(("softflowd", "INSTALLED-BUT-CANNOT-RUN",
+                     "installed, not running -- it starts per "
+                     "interface by the owner's hand"))
+    if not inst.get("sysmon"):
+        rows.append(("sysmon", "ABSENT", "not installed"))
+    elif facts.get("sysmon_telemetry_error"):
+        rows.append(("sysmon", "INSTALLED-BUT-CANNOT-RUN",
+                     "telemetry failed to start: the kernel "
+                     "denied its BPF objects"))
+    elif bpf is False:
+        rows.append(("sysmon", "INSTALLED-BUT-CANNOT-RUN",
+                     "the kernel denies trivial BPF loads in "
+                     "this environment, which Sysmon needs"))
+    elif active.get("sysmon"):
+        rows.append(("sysmon", "WORKS", "service is running"))
+    else:
+        rows.append(("sysmon", "INSTALLED-BUT-CANNOT-RUN",
+                     "installed but the service is not running"))
+    if not inst.get("wazuh"):
+        rows.append(("wazuh", "ABSENT",
+                     "not installed (it needs a manager; see "
+                     "docs/senses.md)"))
+    elif not facts.get("wazuh_manager"):
+        rows.append(("wazuh", "INSTALLED-BUT-CANNOT-RUN",
+                     "agent installed with no manager configured: "
+                     "it forwards to nothing and produces no "
+                     "alerts on this box"))
+    elif active.get("wazuh"):
+        rows.append(("wazuh", "WORKS",
+                     "agent is running against its manager; "
+                     "alerts live on the manager, and wazuh-feed "
+                     "reads an alerts.json landed on this box"))
+    else:
+        rows.append(("wazuh", "INSTALLED-BUT-CANNOT-RUN",
+                     "manager configured but the agent service "
+                     "is not running"))
+    return rows
+
 
 def _ollama_up(port=11434) -> bool:
     import socket
@@ -1829,6 +2669,27 @@ def main() -> int:
                    help="pull qwen2.5:3b, a smaller faster model. "
                         "Does not change protected paths. "
                         "--inference-model still wins.")
+    g = ap.add_argument_group(
+        "collectors",
+        "Sense collectors (docs/senses.md) set up next to\n"
+        "the runner on a fresh install. On an existing\n"
+        "install, naming collectors performs just that\n"
+        "setup and exits, like --inference-only.")
+    g.add_argument("--collector", action="append", default=None,
+                   metavar="NAME", choices=list(COLLECTOR_NAMES),
+                   help="install this collector too (repeatable): "
+                        "osquery, falco, suricata, zeek, aide, "
+                        "softflowd, sysmon, wazuh. A fresh install "
+                        "sets up osquery by default; the pi-light "
+                        "profile sets up none by default")
+    g.add_argument("--no-collector", action="store_true",
+                   help="install no collectors, not even the "
+                        "osquery default")
+    g.add_argument("--wazuh-manager", default=None,
+                   metavar="ADDRESS",
+                   help="Wazuh manager address; --collector wazuh "
+                        "installs the agent only when this is "
+                        "given (its alerts live on the manager)")
     # Runner flags forwarded into the installed service command, so the
     # installed agent runs with exactly the flags you tested with.
     g = ap.add_argument_group(
@@ -1930,6 +2791,14 @@ def main() -> int:
                       "Re-run install.exe --inference-only to retry, or set "
                       "inference.endpoint in config.json to your local Ollama server.")
             return 0
+        if (args.collector is not None or args.no_collector) \
+                and os.path.isfile(cfg_path):
+            # Existing install + collector flags: set up just
+            # the collectors, like --inference-only. On a
+            # fresh install (no config yet) the flags flow
+            # into _setup_fresh_config instead.
+            install_collectors(requested_collectors(args), args)
+            return 0
         return do_install_home(args, home, bin_dir, cfg_path, state_dir,
                                src_dir)
 
@@ -1965,6 +2834,10 @@ def main() -> int:
             print("inference: NOT configured - ask stays off. "
                   "Re-run install.exe --inference-only to retry, or set "
                   "inference.endpoint in config.json to your local Ollama server.")
+        return 0
+    if (args.collector is not None or args.no_collector) \
+            and os.path.isfile(cfg_path):
+        install_collectors(requested_collectors(args), args)
         return 0
     if not install_files(src_dir, dst_dir, os.path.join(dst_dir,
                                                         "config.json")):
