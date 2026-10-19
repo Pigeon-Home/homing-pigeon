@@ -1,0 +1,691 @@
+# draft-homing-pigeon-01
+
+Homing Pigeon Message Protocol, Versions 1 and 2
+
+Workgroup: Individual
+Intended status: Informational
+Expires: 19 April 2027
+Author: Pigeon-Home (editor)
+
+This document is not an IETF standard and is not the product of a working group. Publication as an RFC, if it happens, would be on the Independent Stream.
+
+This revision supersedes draft-homing-pigeon-00 and consolidates draft-homing-pigeon-v2-00 into a single document: Part I specifies version 1 (the on-wire messages, the receiver checks, and the store-and-forward bindings) and Part II specifies version 2 (a direct DTLS session binding for the same messages). The living implementation notes are in `PROTOCOL.md` in the homing-pigeon repository. Product release numbers are not protocol versions.
+
+## Abstract
+
+This document specifies the Homing Pigeon message protocol in two versions. Version 1 (Part I) is signed JSON job and result objects exchanged over a store-and-forward transport. This document binds the protocol to email. A submitter sends one HMAC-SHA-384 signed JSON object to a mailbox. A runner polls that mailbox, verifies the signature, executes the job, and returns a signed result. The signature is the only authorization. The message is not encrypted. There is no inbound listener on the host that runs the job.
+
+Version 2 (Part II) changes the binding and not the messages: the same signed objects travel inside a direct DTLS 1.3 session between the submitter and the runner. The shared secret is the session's external pre-shared key; key exchange is ephemeral-only, so sessions have perfect forward secrecy; and once the handshake has authenticated the submitter, the runner opens the session with a greeting that discloses a tiered, responder-chosen summary of its platform. Version 2 is an addition, never a replacement: the version 1 bindings remain the ones every submitter can reach.
+
+## Status of This Memo
+
+This Internet-Draft is submitted in full conformance with the provisions of BCP 78 and BCP 79.
+
+Internet-Drafts are working documents of the Internet Engineering Task Force (IETF). Note that other groups may also distribute working documents as Internet-Drafts. The list of current Internet-Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+Internet-Drafts are draft documents valid for a maximum of six months and may be updated, replaced, or obsoleted by other documents at any time. It is inappropriate to use Internet-Drafts as reference material or to cite them other than as "work in progress."
+
+This Internet-Draft will expire on 19 April 2027.
+
+## 1. Introduction
+
+Some hosts cannot accept inbound connections. The protocol needs a store-and-forward queue so neither side opens a connection to the other. The binding in this document is a mailbox: the submitter does not open a connection to the runner, and the runner does not open a connection to the submitter except to read and write that mailbox.
+
+The exchange is two messages:
+
+```
+Submitter                         Mailbox                         Runner
+    |                                 |                               |
+    |  job message (signed JSON)      |                               |
+    |-------------------------------->|                               |
+    |                                 |  poll                         |
+    |                                 |<------------------------------|
+    |                                 |  result message (signed JSON) |
+    |                                 |<------------------------------|
+    |  result (same mailbox, or       |                               |
+    |   signed reply_to)              |                               |
+    |<--------------------------------|                               |
+```
+
+The deployment this protocol is written for is a person operating their own machines from a cloud-resident agent. The person holds the mailbox and the secret; the agent holds neither the host nor a network path to it. Email is the path that already exists between them. The runner is deliberately plain: it executes what the signature authorizes, on the owner's host, under the owner's account.
+
+Version negotiation is not a handshake. The message carries `v`. This document defines `v` = 1 only. A receiver that does not implement version 1 MUST reject the message.
+
+### Why specify this publicly
+
+The protocol is specified in the open so that a submitter does not need the runner's source code. Any implementation of this document can submit jobs: the subject, the JSON object, and the MAC are all specified here, and the reference transport is email, which the submitter already speaks.
+
+Two things are out of scope for this document and are established out of band: the mailbox address, and the shared secret. The sender asks the owner which address to use, and the owner provides the secret with it. Neither is discovered from the mail. Once the sender knows the address, the secret, and this specification, no further coordination is required.
+
+### Versions in this document
+
+This revision specifies both versions of the protocol in a single document. Part I specifies version 1: the messages and their store-and-forward bindings. Part II specifies version 2: a direct DTLS session binding for the same messages, and the session greeting. This revision supersedes draft-homing-pigeon-00, which specified version 1 alone, and consolidates draft-homing-pigeon-v2-00, which specified version 2 as a companion document.
+
+Version 2 versions the binding, not the messages. The job and result objects of Part II are the Part I objects, byte for byte; their `v` member remains 1, and a receiver MUST NOT reject a session-carried object for carrying `v` = 1. A receiver that implements only version 1 is not non-conformant; it simply does not offer the Part II binding.
+
+The reference implementation speaks version 1. On 2026-10-17 the implementation briefly required `v` = 2. That bump changed the integer only, and it was reverted the same day. A receiver following this document rejects any message `v` other than 1.
+
+The sender also requires the shared secret to meet a minimum-entropy floor (Section 17.3). That floor is not a protocol version. Nothing else in the version 1 exchange changes shape.
+
+Later work also layers behavior this document scopes out (Section 4) onto the base exchange: a local disclosure policy on results, queries against retained output, attestations, and task boards. Those behaviors ride in extra members (Section 8); they do not redefine any message specified here. One consequence a submitter needs: a receiver layered with a disclosure policy can withhold result output that a version 1 receiver would send, so the guidance in Section 13.2 binds only where no such policy is in force.
+
+## 2. Requirements Language
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all capitals, as shown here.
+
+## 3. Terminology
+
+Job: a signed request that the runner execute work, or answer a liveness check.
+
+Result: a signed report of what the runner did with one job.
+
+Shared secret: an octet string known to the submitter and the runner. It is the HMAC key. It is not sent on the wire.
+
+Default secret: the shared secret selected when `key_id` is absent.
+
+Key identifier: the string in `key_id`. It is a label, not a secret.
+
+Seen-set: the runner's record of `job_id` values already processed. It is local state. It is not a message.
+
+Freshness window: how far `issued_at` may be from the runner's clock before the job is rejected.
+
+Preamble: text in the message body before the signed JSON object. It is not signed.
+
+LOCAL: a parameter or a check this document allows a receiver to set for itself. It is not negotiated.
+
+Session: one DTLS association between a submitter (the initiator, in the DTLS client role) and a runner (the responder, in the DTLS server role). Defined in Part II.
+
+Greeting: the first application message of a session, sent by the runner after authentication completes (Section 20).
+
+PSK identity: the `pre_shared_key` identity under which a secret is offered. The default secret's identity is `homing-pigeon`; an additional secret's is `homing-pigeon:` followed by its `key_id`.
+
+Ticket: the opaque resumption identity a runner issues in a NewSessionTicket message.
+
+# Part I: Version 1
+
+## 4. Scope
+
+This document specifies subjects, the signed object, the MAC, `key_id`, `reply_to`, replay, freshness, the `job` message, and the `result` message.
+
+This document does not specify disclosure policy, queries, attestations, task boards, sensors, confinement, installers, or local models. A job MAY carry extra members for those uses. Receivers that do not implement them MUST ignore unknown members (Section 8) and MUST still reject an unknown `v` or an unknown job `kind` (Section 12). Section 1 describes how those uses relate to this document.
+
+## 5. Transport Binding
+
+This document binds the protocol to email. The protocol itself needs only the store-and-forward queue from Section 1; a future binding could carry the same messages over a different transport. Two further bindings of this version are specified in Sections 5.1 and 5.2; both carry the same messages, unchanged. A direct session binding, in which the same messages travel inside a DTLS session and the runner greets the submitter after authentication, is specified as version 2 in Part II of this document (Section 19).
+
+The runner reads the mailbox with IMAP and writes with SMTP. Mail authentication is out of band. The signature check does not change with the mail credential.
+
+IMAP and SMTP MUST be used over TLS. An implementation MUST NOT carry this protocol over a cleartext IMAP or SMTP session. The TLS version MUST be 1.2 or higher; TLS 1.0 and TLS 1.1 MUST NOT be used [RFC8996]. The recommendations of [RFC9325] apply. Cleartext mail access is obsolete [RFC8314]: implicit TLS is preferred, and where STARTTLS is used it MUST be required rather than opportunistic, and the peer certificate MUST be verified. TLS protects a hop. It does not hide the message from the mailbox provider (Section 17.2).
+
+The body is UTF-8 text in a `text/plain` part. This document does not register a media type. If the message is multipart, the receiver uses the first `text/plain` part that is not an attachment.
+
+The message MUST be rejected before the MAC if the raw RFC822 object exceeds the receiver's size cap. The RECOMMENDED cap is 4194304 octets. A cap of 0 means no limit. This cap is LOCAL.
+
+### 5.1. The File Binding
+
+The file binding carries the same envelope as a file in a pair of watched directories on a filesystem both parties can reach. It exists for deployments where the submitter and the runner share a filesystem (a mounted volume, a synchronized folder, a removable medium) and for testing: it is the email binding's envelope with the mailbox removed, and nothing else changes.
+
+The envelope mapping is byte-for-byte the email form: a subject line in the shape of Section 6, a blank line, then the signed body. A job is a file named `<ident>.job.txt` in the inbox directory, where `<ident>` is the binding-local name of the job (the `job_id` serves). A result is a file named `<ident>.result.txt` in the outbox directory. A receiver polls the directories on its ordinary poll cycle.
+
+Acknowledgement is consumption. Whichever side has taken a file moves it into a sibling `done/` directory; files are never deleted by the binding. A redelivery of the same job rewrites the same file name, and the seen-set (Sections 14 and 17.6) deduplicates the repeat: delivery is at-least-once, exactly as on the email binding (Section 17.10).
+
+Two gates stand in series on this binding. The first is the inbox directory's operating-system access control: only principals the owner has given write access can present envelopes at all. The second is the signature, which remains the authorization, unchanged. A deployment MUST treat the directory's access control as a real gate and set it deliberately; the signature check does not excuse a world-writable inbox.
+
+The binding's limits are the filesystem's. Both parties need access to the same directories, so the binding does not cross a network by itself (a network filesystem under it is the deployment's own affair, with its own failure modes). There is no store-and-forward beyond the disk, no ordering beyond arrival, and the size cap of Section 5 applies to envelope files.
+
+### 5.2. The NATS Binding
+
+The NATS binding carries the same envelope over core NATS publish/subscribe. It exists for deployments where submitter and runner already share a NATS broker: a low-latency pipe with no store-and-forward pretensions.
+
+The envelope mapping is the email form carried as a message payload: the subject line of Section 6, a blank line, then the signed body, as one payload. Jobs are published on a jobs subject (a LOCAL name; the reference default is `homing-pigeon.jobs`). Results are published on a per-job subject formed from a LOCAL prefix and the `job_id` (the reference default is `homing-pigeon.results.<job_id>`).
+
+Core NATS is at-most-once: the broker acknowledges nothing and retains nothing. A job published while no runner is subscribed is lost, and a result published while no submitter is subscribed is lost. The protocol's own machinery is the recovery: the submitter retries per Section 15, and the seen-set makes a repeat harmless. A deployment that needs broker-side retention needs a persistence layer this binding does not specify.
+
+Two gates stand in series. The first is the broker's own authentication: broker authentication is REQUIRED by default -- a conforming receiver MUST NOT consume jobs over an unauthenticated broker connection, and the credential is supplied in configuration or in the broker URL's userinfo. A deployment MAY relax this by an explicit local setting (LOCAL), in which case the signature is the only gate and the deployment MUST NOT claim the two-gate posture. The second gate is the signature, unchanged. A required-auth NATS deployment is, for this reason, the more strongly gated of the bindings in this document: email's mailbox login authorizes the runner's reading, never the sender, so email stands on the signature alone.
+
+The binding's limits are the broker's: payload sizes are bounded by the broker's maximum and by the cap of Section 5, and ordering is per-subject arrival only.
+
+## 6. Subjects
+
+Subjects are part of the email binding (Section 5): they are how the receiver recognizes a job message in the mailbox.
+
+Subjects are matched case-insensitively. A preamble such as `Re:` MAY appear before the marker. The marker need not be the first character of the subject.
+
+A job subject matches this pattern, in the sense of a search, not a full-string match:
+
+```
+[HOMING-PIGEON] (SP word)* SP job SP job-id
+```
+
+`word` is one or more visible characters. `job-id` is one or more visible characters with no space, further constrained below. The words between the marker and `job` are decoration. `TEST` is a legal decoration.
+
+A result subject matches:
+
+```
+[HOMING-PIGEON] SP result SP job-id
+```
+
+ABNF [RFC5234] for the identifier only:
+
+```
+job-id      = 1*128 job-id-char
+job-id-char = ALPHA / DIGIT / "." / "_" / "-"
+```
+
+The `job_id` in the subject MUST equal the `job_id` member. A mismatch MUST be rejected (Section 14).
+
+`job-id` MUST NOT be `.` or `..`.
+
+A UUID [RFC9562] is RECOMMENDED as the `job_id`.
+
+A message whose subject is not a job subject is not a job. The receiver MUST NOT execute it. The receiver MAY mark it seen so that a later poll skips it. Result messages use the result pattern above and are produced by the runner. They are not jobs.
+
+## 7. Body and Signature Marker
+
+The signed object is one JSON object [RFC8259]. The receiver ignores preamble and trailer. Verification uses the object that ends in the signature marker.
+
+Line endings are normalized before both signing and verifying: every CRLF becomes LF, then every remaining CR becomes LF. Trailing whitespace after that normalization is not part of the signed octets.
+
+The sender builds the object without `sig`, serializes it, normalizes line endings, computes the MAC over those octets (Section 7.1), and replaces the final `}` with:
+
+```
+,"sig":"<96 hex digits>"}
+```
+
+JSON member order before `sig` is the sender's choice. `sig` MUST be last. Senders SHOULD serialize with no insignificant whitespace. Receivers MUST accept insignificant whitespace inside the object, because the MAC covers the octets the sender actually produced, not a re-encoding.
+
+The receiver finds the signature as follows:
+
+1. Normalize line endings and remove trailing whitespace.
+2. Let `marker` be the last occurrence of the eight characters `,` `"` `s` `i` `g` `"` `:` `"`.
+3. If `marker` is absent, the message is malformed.
+4. The 96 characters after `marker` MUST be hexadecimal. The two characters after those MUST be `"` and `}`.
+5. The signed octets are the bytes from the `{` that opens this object through the character before `marker`, plus one `}`.
+6. That `{` is the start of the object that contains the marker, not a `{` inside a string. If no such `{` exists, the message is malformed.
+
+A sender MUST NOT place the character sequence `,"sig":"` inside any string value. The receiver uses the last occurrence.
+
+### 7.1. MAC
+
+The MAC is HMAC-SHA-384 [RFC2104] using SHA-384 [FIPS180-4].
+
+The HMAC key is the UTF-8 octets of the shared secret. Implementations MUST NOT hash, stretch, or otherwise derive that key. The secret is a string of characters. Two sides that disagree on the characters disagree on the key.
+
+`sig` is the 48-octet HMAC value encoded as 96 hexadecimal digits. Senders MUST use lowercase digits. Receivers MUST compare in constant time after mapping ASCII `A-F` to `a-f`.
+
+Receivers MUST reject a malformed tail. Receivers MUST reject a MAC mismatch. A mismatch produces no result message (Section 14).
+
+### 7.2. Constant-time compare
+
+The compare covers all 96 digits. It MUST NOT stop at the first differing digit in a way that a network observer can time. A local reject log MAY record that the MAC failed. It SHOULD NOT record the expected digest.
+
+## 8. Unknown Members
+
+A receiver MUST ignore object members it does not implement, except:
+
+* `v` other than 1 MUST be rejected
+* `type` other than `job`, on a message the receiver is executing as a job, MUST be rejected
+* `kind` other than `exec` or `ping` MUST be rejected and MUST NOT be executed
+
+Ignoring a member means the member is still covered by the MAC and has no effect on version 1 processing.
+
+## 9. Common Members
+
+| Member | JSON type | Presence | Rule |
+|---|---|---|---|
+| `v` | number | REQUIRED | Integer 1. No other value is defined. |
+| `type` | string | REQUIRED | `job` or `result`. |
+| `job_id` | string | REQUIRED | Section 6. |
+| `key_id` | string | OPTIONAL | Selects the HMAC key. Absent selects the default secret. |
+| `runner_id` | string | OPTIONAL | Audience claim. Enforcement is LOCAL. |
+| `sig` | string | REQUIRED | Section 7. Not part of the signed octets. |
+
+`key_id` is covered by the MAC. Key identifiers MAY appear in logs. An unknown `key_id` MUST be rejected before the MAC is computed. The receiver MUST NOT try another secret.
+
+If a receiver enforces `runner_id`, the expected value MUST come from the receiver's configuration. The signed value is what the submitter claimed. It is not the source of the expected value.
+
+## 10. Key Selection
+
+The receiver holds a map from `key_id` to secret. The empty identifier names the default secret.
+
+Selection, before the MAC:
+
+1. If `key_id` is absent, select the default secret.
+2. If `key_id` is present and is a string in the map, select that secret.
+3. Otherwise reject. Do not compute a MAC.
+
+How keys are stored is LOCAL. Two values MUST NOT be assigned to one `key_id`. The default identifier has one slot.
+
+## 11. Job Message
+
+`type` is `job`.
+
+```json
+{
+  "v": 1,
+  "type": "job",
+  "job_id": "3f9a1c2e-7b14-4e0a-9c2d-6f0a1b2c3d4e",
+  "issued_at": "2026-10-13T12:00:00Z",
+  "kind": "exec",
+  "script": "date\n",
+  "timeout_sec": 60,
+  "key_id": "submitter-a",
+  "reply_to": "submitter@example.com",
+  "sig": "001122...eeff"
+}
+```
+
+The `sig` line above is abbreviated. On the wire it is 96 hex digits.
+
+| Member | JSON type | Presence | Rule |
+|---|---|---|---|
+| `issued_at` | string | REQUIRED | Section 11.1. |
+| `kind` | string | REQUIRED | `exec` or `ping`. |
+| `reply_to` | string | OPTIONAL | Section 11.2. |
+| `script` | string | see 11.3 | Inline script. `exec` only. |
+| `script_url` | string | see 11.3 | `https` URL of the script. `exec` only. |
+| `script_sha384` | string | OPTIONAL | 96 lowercase hex digits over the script octets. |
+| `interpreter` | array of strings | OPTIONAL | Program, then its arguments. |
+| `args` | array of strings | OPTIONAL | Appended after the script path. |
+| `env` | object | OPTIONAL | String values merged into the environment. |
+| `files` | array | OPTIONAL | Section 11.4. |
+| `timeout_sec` | number | OPTIONAL | Positive integer. RECOMMENDED default 300. RECOMMENDED maximum 3600. |
+
+### 11.1. issued_at
+
+`issued_at` is an ISO 8601 timestamp. It MUST carry a timezone designator, `Z` or a numeric offset. A value without a timezone MUST be rejected. A value that does not parse MUST be rejected. Senders SHOULD use UTC in the form `YYYY-MM-DDTHH:MM:SSZ`.
+
+Let `age` be the runner's clock minus `issued_at`, in seconds.
+
+The receiver MUST reject the job if `age` is greater than its past window. The RECOMMENDED past window is 3600 seconds. That window is LOCAL.
+
+The receiver MUST reject the job if `issued_at` is too far in the future. The RECOMMENDED future allowance is 300 seconds.
+
+### 11.2. reply_to
+
+`reply_to` is a single address, at most 254 characters, of the form `local@domain`, with no display name, no angle brackets, and no comma. The domain contains a dot.
+
+If the member is absent, or present but invalid, the result goes to the runner's own mailbox. The job is not rejected for an invalid `reply_to`.
+
+The receiver MUST take the result address only from this member. The email `From` header and the email `Reply-To` header MUST NOT select it.
+
+### 11.3. ping and exec
+
+`kind` `ping` carries no script. The runner MUST NOT start a script. The result has `kind` `ping`.
+
+`kind` `exec` requires at least one of `script` or `script_url`. If neither is present, the receiver MUST reject the job (Section 12). If both are present, the receiver MUST use `script_url` and MUST ignore `script`.
+
+If `script_sha384` is present, the receiver MUST hash the script octets with SHA-384 and MUST reject the job if the digest differs. The digest is 96 lowercase hex digits.
+
+If `interpreter` is absent, the runner uses a LOCAL default.
+
+The script is written to a new file in a fresh directory for this `job_id` and run as:
+
+```
+<interpreter...> <script-file> <args...>
+```
+
+The working directory is that job directory. On timeout the receiver MUST kill the process tree. A `timeout_sec` above the receiver's maximum MUST be reduced to that maximum; the job MUST NOT be rejected for an excessive timeout alone. The RECOMMENDED maximum is 3600.
+
+### 11.4. files
+
+Each element is an object:
+
+| Member | JSON type | Presence | Rule |
+|---|---|---|---|
+| `name` | string | REQUIRED | File name inside the job directory. |
+| `url` | string | REQUIRED | `https` URL. |
+| `sha384` | string | OPTIONAL | 96 lowercase hex digits. |
+
+`name` MUST NOT be absolute, MUST NOT contain `..` as a path segment, and MUST NOT escape the job directory. A violation MUST be rejected before the file is used.
+
+Downloads MUST use HTTPS. If `sha384` is present, a digest mismatch MUST be rejected.
+
+## 12. Kind and Type Failures
+
+Unknown `kind` MUST NOT be executed.
+
+A job the receiver rejects after the MAC has verified, because the kind, the script hash, the file name, or a similar check failed, MUST produce a result (Section 13) with `exit_code` -2 and a short reason in `stderr`. That job MUST be marked seen and MUST NOT be retried.
+
+A job rejected before the MAC verifies produces no result. See Section 14.
+
+## 13. Result Message
+
+The result is signed with the same secret that verified the job. `key_id` on the result, if the sender includes it, MUST name that secret.
+
+`type` is `result`. The subject is the result pattern in Section 6.
+
+```json
+{
+  "v": 1,
+  "type": "result",
+  "job_id": "3f9a1c2e-7b14-4e0a-9c2d-6f0a1b2c3d4e",
+  "kind": "exec",
+  "completed_at": "2026-10-13T12:01:23Z",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": "",
+  "stderr": "",
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "duration_sec": 12.345,
+  "runner": "host.example",
+  "sig": "001122...eeff"
+}
+```
+
+| Member | JSON type | Presence | Rule |
+|---|---|---|---|
+| `completed_at` | string | REQUIRED | Same form as `issued_at`. |
+| `kind` | string | REQUIRED | The job's kind. |
+| `exit_code` | number | REQUIRED | Section 13.1. |
+| `timed_out` | boolean | REQUIRED | True if the process tree was killed for time. |
+| `stdout` | string | REQUIRED | Captured standard output. May be empty. |
+| `stderr` | string | REQUIRED | Captured standard error. May be empty. |
+| `stdout_truncated` | boolean | REQUIRED | True if `stdout` was cut. |
+| `stderr_truncated` | boolean | REQUIRED | True if `stderr` was cut. |
+| `duration_sec` | number | REQUIRED | Seconds, as a JSON number. |
+| `runner` | string | REQUIRED | Host label. Authenticated only by the result MAC. |
+
+### 13.1. exit_code
+
+| Value | Meaning |
+|---|---|
+| 0 | The process exited 0, or `ping` succeeded. |
+| -1 | `timed_out` is true. The process tree was killed. |
+| -2 | Rejected before execution. Reason in `stderr`. Not retried. |
+| other | The process exit status. |
+
+If `timed_out` is true, `exit_code` MUST be -1.
+
+### 13.2. Truncation
+
+Each stream MAY be cut at a LOCAL byte limit. The RECOMMENDED limit is 100000 octets. When a stream is cut, its `*_truncated` member MUST be true. When it is not cut, that member MUST be false.
+
+A result specified here includes the output the receiver chose to send. Omitting output for a local privacy policy is outside version 1. A submitter MUST NOT assume output will be withheld. Where a disclosure policy is layered on the exchange (Section 1), this guidance does not hold and the submitter MUST NOT rely on it.
+
+## 14. Receiver Processing
+
+The receiver maintains a seen-set. The key SHOULD be `job_id` prefixed by the receiver's configured `runner_id` when one is configured, so two runners sharing a mailbox do not treat each other's jobs as replays.
+
+For each unseen message:
+
+1. If the subject is not a job subject, do not execute. This is not an error. Stop.
+2. If the seen-set already contains this `job_id`, do not execute. Stop.
+3. If the raw message exceeds the size cap (Section 5), reject with no result. Mark seen. Stop.
+4. Select the key (Section 10). On failure, reject with no result. Mark seen. Stop.
+5. Verify the MAC (Section 7). On failure, reject with no result. Mark seen. Stop. The `From` header is not an input to this step.
+6. Parse the signed octets as one JSON object. If it is not an object, reject with no result. Mark seen. Stop.
+7. If `v` is not 1 or `type` is not `job`, reject with no result. Mark seen. Stop.
+8. If the subject `job_id` and the member `job_id` differ, or `job_id` is illegal (Section 6), reject with no result. Mark seen. Stop.
+9. Check `issued_at` (Section 11.1). On failure, reject with no result. Mark seen. Stop.
+10. LOCAL checks (audience, per-key policy) MAY reject here. A reject at this step MUST NOT execute the job. Whether a result is sent is LOCAL. The reference receiver sends no result for an audience failure.
+11. If `kind` is `ping`, go to step 13.
+12. If `kind` is `exec`, resolve the script and files (Section 11). On failure, send a result with `exit_code` -2, mark seen, stop. If `kind` is anything else, send a result with `exit_code` -2, mark seen, stop.
+13. Execute. Honor `timeout_sec`.
+14. Build the result (Section 13) and sign it with the secret from step 4.
+15. Send the result to `reply_to` if that member is valid, otherwise to the runner mailbox.
+16. If the send succeeds, mark seen. If the send fails, leave the job unseen. A later poll will execute it again (Section 15).
+
+If the object verified at step 5 is an encryption envelope, Section 16 applies: decrypt after step 5 and process the recovered body from step 4. The envelope's verification never substitutes for the body's own.
+
+The email `From` address MAY be logged after step 5. It MUST NOT authorize the job. It MUST NOT choose the result address.
+
+## 15. Retry
+
+Delivery of the result is at-least-once.
+
+If step 16 fails, the receiver MUST leave the job out of the seen-set. The next poll MUST be allowed to run the job again.
+
+Submitters MUST treat `exec` as repeatable. A job that is not safe to run twice is not a conforming job.
+
+A job marked seen is not executed again, including `exit_code` -2 and every no-result reject in Section 14.
+
+## 16. Per-Job Encryption (Optional Extension)
+
+This section defines an OPTIONAL extension: encrypting the job object itself, so the binding's store-and-forward hops carry ciphertext instead of the signed body. It changes no version 1 processing for cleartext messages, and the protocol version remains 1. The reference software implements this extension and enables it by default on the sending side; a sender MAY send cleartext instead, by explicit choice.
+
+### 16.1. Construction
+
+The plaintext is the complete signed job body in its Section 7 form — the payload object with the signature spliced in. The cipher is ChaCha20-Poly1305 [RFC8439]:
+
+- Key: HKDF [RFC5869] with HMAC-SHA-384. The input keying material is the UTF-8 octets of the secret selected per Section 10. The salt is the nonce. The info string is "homing-pigeon job-encryption v1". The output is 32 octets.
+- Nonce: 12 octets, freshly random for each message.
+- Additional authenticated data: the `job_id`, the `key_id` (empty for the default secret), and the algorithm string, each UTF-8, joined by single NUL (0x00) octets, in that order.
+
+The transmitted body is a JSON envelope object, signed exactly as Section 7 specifies — the MAC covers the envelope as transmitted:
+
+{"hp_enc": {"alg": "chacha20-poly1305/hkdf-sha384", "nonce": "<base64>", "ct": "<base64>"}}
+
+`ct` is the ciphertext with the 16-octet Poly1305 tag appended, base64-encoded. When the selected secret is not the default, the envelope carries the same `key_id` member a cleartext body would. `hp_enc` is a reserved member name: a body whose members are exactly the envelope's is an envelope, and senders MUST NOT use `hp_enc` for any other purpose.
+
+### 16.2. Receiver processing
+
+An envelope is processed inside Section 14's steps, not beside them:
+
+1. The envelope's MAC is verified — step 5 applied to the envelope. On failure, reject as step 5 specifies. A receiver MUST NOT attempt decryption before the MAC verifies.
+2. The envelope's `key_id` selects the secret (Section 10), exactly as for a cleartext body.
+3. Decrypt. Any failure — an unknown `alg`, a malformed member, a tag mismatch — is a rejection with no result, marked seen, as in step 5. No partial plaintext is processed.
+4. The recovered body re-enters Section 14 at step 4, as if it had arrived directly; its own MAC is verified again, and its `key_id` MUST match the envelope's.
+
+A receiver that does not implement this section sees an object without `v` or `type` and rejects it at step 7. A sender who needs such a receiver MUST send cleartext.
+
+### 16.3. Results
+
+The result for an encrypted job SHOULD be encrypted in the same construction, with the job's `job_id` in the additional data, so an exchange is encrypted in both directions or neither. A receiver's local policy MAY override in either direction; the reference receiver exposes that policy as configuration and defaults to mirroring the job.
+
+### 16.4. No forward secrecy
+
+This extension provides confidentiality against observers of the transport. It provides NO forward secrecy, and the two statements travel together wherever the extension is described: the key derives from the static shared secret, so compromise of the secret exposes every recorded encrypted job and result, past and future. Encryption also raises the value of a captured secret under Section 17.3's analysis; it does not lower it.
+
+## 17. Security Considerations
+
+### 17.1. The signer controls the host
+
+A valid MAC is permission to run as the runner's account. Anyone who holds the secret can operate the host. This protocol does not define a sandbox. LOCAL confinement MUST NOT be assumed by the submitter.
+
+### 17.2. Confidentiality and its limits
+
+The base protocol provides none. HMAC authenticates; it does not encrypt. Without the Section 16 extension, the transport operator (in this binding, the mailbox provider) can read every job and every result, and an observer who can read the transport learns the script, the arguments, the environment, and the output.
+
+With the extension in use, the job and result bodies are encrypted end to end on the binding: an observer of the transport learns the subject (which names the `job_id`), the timing, and the size, and nothing of the content. The reference software encrypts by default; cleartext remains possible by the sender's explicit choice, and the choice is visible — the reference receiver logs a cleartext arrival.
+
+The extension provides NO forward secrecy. Its key derives from the static shared secret, so compromise of the secret exposes every recorded encrypted job and result, past and future. A confidentiality claim for this protocol MUST be read with that limit attached.
+
+### 17.3. Offline guessing
+
+One captured message is enough to test candidate secrets. More messages do not reduce that search. HMAC-SHA-384 does not yield the key from the tags.
+
+The secret SHOULD be 32 octets from a cryptographic generator, stored as characters and used as UTF-8. Sixty-four hexadecimal characters are the usual form. A long human sentence is not a substitute. The secret SHOULD NOT be the mailbox password.
+
+Version 2 of this protocol makes a floor normative: the shared secret MUST carry at least 128 bits of entropy, estimated as the secret's length times log2 of its alphabet size, and a sender MUST refuse to sign with a secret below that floor. The requirement answers the offline-guessing attack above. It does not change version 1 processing.
+
+### 17.4. Headers are not authentication
+
+`From`, `Reply-To`, `Sender`, and `To` MUST NOT satisfy the MAC and MUST NOT select `reply_to`. An invalid MAC MUST NOT cause any result to be sent.
+
+### 17.5. Unknown key identifiers
+
+Failing closed before the MAC stops a message from verifying under the default secret because of a typo, and it avoids using MAC time as a probe of which identifiers exist.
+
+### 17.6. Replay
+
+The past window rejects stale `issued_at`. The seen-set rejects a repeated `job_id`. A receiver with a wrong clock will accept stale jobs or reject fresh ones. A receiver whose seen-set is cleared will accept a replay that is still inside the past window. Jobs MUST be safe to repeat, because a lost result already causes a second execution.
+
+### 17.7. Two secrets
+
+The transport credential reads and deletes mail. The HMAC secret authorizes jobs. Neither substitutes for the other. A store that holds both has lost both when it is copied.
+
+### 17.8. Marker collision
+
+The splitter uses the last `,"sig":"`. A string value that contains that sequence will not verify as the sender intended. Senders MUST keep that sequence out of values.
+
+### 17.9. Output
+
+Version 1 results carry `stdout` and `stderr` up to the truncation limit. A receiver that wants to withhold output is implementing a different policy. That policy is not signaled by `v`. How that layering relates to this document is stated in Section 1.
+
+### 17.10. At-least-once
+
+An attacker who can drop the result mail can cause another execution. That is the same outcome as a failed send. Idempotent jobs bound the damage. This protocol does not add a separate ack.
+
+## 18. IANA Considerations
+
+This document has no IANA actions.
+
+No new port, service name, media type, TLS extension, or object identifier is required. HMAC-SHA-384 is already named by [RFC2104] and [FIPS180-4]. The algorithm OID `hmacWithSHA384` (`1.2.840.113549.2.10`) already exists. This protocol identifies the algorithm by name, not by OID.
+
+The reference port for the Part II binding (Section 19), UDP 20220, is a LOCAL default of the reference implementation, not a registered assignment; deployments may use any port, and submitters learn the port out of band, with the address and the secret.
+
+# Part II: Version 2
+
+This part specifies version 2. The delta over Part I is one binding and one behavior on it: a direct DTLS 1.3 session between submitter and runner, with the shared secret as the session's pre-shared key (Section 19), and the session greeting the runner sends once the handshake has authenticated the submitter (Section 20). The messages do not change; everything in Part I that this part does not explicitly take up applies unchanged.
+
+Version 1 needs no path between submitter and runner: a mailbox both can reach is enough, and the runner opens no listener. That is the right default, and it is also a ceiling. Where a direct path does exist -- the submitter can open a UDP flow to the runner's host -- a session buys three things the mailbox cannot: latency measured in round trips instead of poll cycles, confidentiality of the job and result objects themselves (not merely of one mail hop), and that confidentiality with forward secrecy.
+
+The cost is real, and it falls on the submitter. The version 1 bindings ask the submitter only to produce a signed object and hand it to a store-and-forward system it already speaks. This binding asks the submitter to terminate DTLS itself: the handshake, retransmission timers, connection IDs, session resumption -- a network stack obligation, discharged in the submitter's own environment. Many submitter environments cannot open a UDP socket at all. That is why this binding is version 2 and optional, why the greeting (Section 20) hangs on the session existing rather than on anything version 1 does, and why the email binding of version 1 remains the binding every submitter reaches. Section 21 states the conformance burden plainly.
+
+Two consequences of a direct binding deserve emphasis up front. First, the runner listens: enabling this binding opens an inbound UDP listener on the runner's host, a posture version 1 deliberately never takes. The binding is therefore off unless an owner enables it; nothing about installing or running version 1 opens it. Second, channel security is not delivery. A session protects what crosses it while it lives; it acknowledges nothing at the protocol layer. Delivery, retry, and deduplication remain the protocol's own machinery (Sections 19.3 and 22.5).
+
+## 19. The DTLS Binding
+
+### 19.1. Shape
+
+The submitter initiates. The runner listens on a UDP port (LOCAL; the reference default is 20220, which is not registered -- see Section 18) only when the binding is enabled. One session carries any number of job and result messages in each direction while it lives. Roles do not reverse: the runner never initiates a session to a submitter.
+
+### 19.2. The Profile
+
+This binding is a bounded profile of DTLS 1.3 [RFC9147]. An implementation of this binding implements exactly this profile; a peer proposing anything outside it is refused, and the refusal ends that handshake, not the listener.
+
+- Transport: DTLS 1.3 [RFC9147] over UDP. DTLS 1.2 MUST NOT be negotiated.
+- Ciphersuite: TLS_CHACHA20_POLY1305_SHA256 [RFC8446] only. No other suite is offered or accepted.
+- Authentication: pre-shared key only. The external PSK is the shared secret of version 1, under the identities of Section 3. Certificates are not part of this profile, in either direction. The shared secret MUST meet the minimum-entropy floor of version 1 (Section 17.3); a secret below the floor MUST NOT be offered as a PSK.
+- Key exchange: `psk_dhe_ke` only. The `psk_key_exchange_modes` extension MUST offer mode 1 and MUST NOT offer mode 0 (`psk_ke`); a responder MUST refuse a handshake that does not offer `psk_dhe_ke`. An ephemeral X25519 [RFC7748] key share MUST ride every handshake, full or resumed. Section 22.1 gives the reason: this is the profile's perfect-forward-secrecy requirement, and it is not negotiable within the profile.
+- Address validation: the responder MUST perform the HelloRetryRequest cookie exchange of [RFC9147] before allocating session state, and MUST NOT send any flight larger than the retry itself before the cookie returns. The cookie is stateless and is bound to the initiator's address.
+- Connection ID: both sides MUST negotiate the `connection_id` extension [RFC9146] and MUST accept records under the negotiated IDs from a changed source address, so that a NAT rebinding does not kill a session.
+- Retransmission: handshake flights are retransmitted on the timers [RFC9147] specifies. Duplicate or retransmitted handshake messages are consumed exactly once per handshake; a duplicate MUST NOT corrupt the transcript or the session.
+- Early data: none. 0-RTT MUST NOT be offered, sent, or accepted; epoch 1 keys are never derived.
+- Resumption: a responder MAY issue a NewSessionTicket. A resumed session MUST use a fresh ephemeral key share (the `psk_dhe_ke` rule admits no exception for resumption), MUST be treated as a new session for greeting purposes (Section 20), and the ticket SHOULD be single-use.
+- KeyUpdate: an implementation MUST NOT initiate KeyUpdate. An implementation that receives a KeyUpdate with `update_requested` set SHOULD answer it as [RFC9147] requires; an implementation MAY instead ignore KeyUpdate, and peers MUST NOT depend on it, as this profile never initiates one.
+- Malformed input: a malformed or undecryptable datagram is dropped and logged. It MUST NOT be fatal to the listener or to any session but, at most, its own.
+
+### 19.3. Carrying the Messages
+
+Inside a session, application data is a stream of messages, each framed by a four-octet big-endian length prefix. Each message is one protocol envelope in the version 1 form: the subject line, a blank line, then the signed body, exactly as the email binding carries it. A job message is answered, in due course, by its result message on the same session.
+
+Acknowledgement and deduplication are the protocol's own, unchanged: the runner's seen-set governs whether a job executes (Section 14), the submitter retries per Section 15, and DTLS record protection contributes neither an acknowledgement nor a duplicate suppression at the protocol layer. A result produced after its session has died cannot be delivered on that session; the submitter learns of the loss by timeout, re-asks on a fresh session, and the seen-set makes the repeat safe.
+
+### 19.4. Composition with Per-Job Encryption
+
+The per-job encryption extension of version 1 (Section 16; the `hp_enc` envelope) composes with this binding unchanged. A cleartext signed job inside a session and an encrypted job inside a session are both conforming; the layers are independent -- the envelope protects the object end to end including at rest, the session protects it in transit and adds forward secrecy to that transit. Neither layer's presence relaxes the other's checks: the envelope signature is verified before decryption, and the object signature is verified before execution, session or no session.
+
+## 20. The Session Greeting
+
+When a session's handshake completes -- the responder has verified the initiator's Finished and the session keys are live -- the RUNNER sends the session's first application message: the greeting. Three properties are normative.
+
+- The greeting is post-authentication, never before. A responder MUST NOT send it before the handshake completes, and an unauthenticated peer harvests nothing from this binding: before authentication the only thing a stranger can obtain is the cookie exchange of Section 19.2.
+- The greeting precedes work. A runner MUST NOT accept a job on a session before it has sent the greeting on that session.
+- The greeting is the responder's choice. Its disclosure tier is the runner's LOCAL configuration. The initiator cannot request, negotiate, or widen it; this document defines no mechanism by which it could.
+
+The greeting is a JSON object [RFC8259] in the protocol's idiom:
+
+```
+{"disclosure": "family",
+ "platform": {"os_family": "linux"},
+ "transport": "dtls",
+ "type": "greeting",
+ "v": 2}
+```
+
+The members `type` (always `greeting`), `transport` (always `dtls`), `v` (the binding version, 2), and `disclosure` (the tier in force) are always present. The `platform` member is present unless the tier is `none`, and its members depend on the tier:
+
+- `none`: no `platform` member. The greeting still goes out; it says the session exists and nothing about the host.
+- `family`: `os_family` only -- one of `windows`, `macos`, `linux`, `other`. This is the reference default.
+- `standard`: `family` plus `os_release` (the operating system's release string) and `python_version` (the runner runtime's version).
+- `full`: `standard` plus `path_tools`, an object naming a fixed, bounded set of common tools and whether each is on the runner's PATH.
+
+The platform values above are strings on the wire; a future enterprise profile MAY map them under an OID arc.
+
+The disclosure is proportioned the way the protocol already proportions result content: a deployment that answers jobs with full output discloses more in results than one that answers with attestations, and the same owner's posture, expressed as a tier, governs the greeting. The information itself is of the kind any job the runner accepts could observe by running; the greeting gives it to the authenticated submitter up front, where it is useful for choosing what to send (an interpreter name, a script form), without spending a job to learn it.
+
+A resumed session is a new session for this section: the greeting MUST be sent again, under the tier in force at that time.
+
+## 21. The Submitter's Conformance Burden
+
+This section is candid because the version 1 Introduction's promise -- that a submitter needs nothing but the specification and tools it already has -- does not survive contact with a session binding, and a specification that hides its costs invites broken deployments.
+
+A conforming version 2 submitter implements DTLS 1.3 in the profile of Section 19.2 for itself: the handshake state machine, PSK binders, the cookie exchange, handshake retransmission timers (a UDP peer that cannot retransmit cannot finish a handshake on a lossy path), connection IDs, and resumption. It needs a UDP path to the runner, which is an environment property, not a code property: a submitter running inside a hosted tool that offers only HTTPS egress, or no raw sockets at all, cannot use this binding no matter how correct its implementation is.
+
+None of this is required of a version 1 submitter. Version 1 conformance is untouched by this document, a version 1 runner is a complete deployment, and an owner enables version 2 as an additional door on a host they choose, for submitters that can reach it. The bindings coexist: the same runner, the same secrets, the same objects; the session is a faster, confidential carriage for submitters equipped for it, and the mailbox remains for those that are not.
+
+## 22. Security Considerations (Part II)
+
+### 22.1. Forward secrecy is a requirement, not a property
+
+The profile's load-bearing rule is that `psk_ke` is prohibited. In `psk_ke`, session keys derive from the pre-shared key alone; anyone who later obtains the secret and has recorded the session decrypts it in full. Because this protocol's shared secret is long-lived and is also the job-signing key, that failure mode would be catastrophic and silent. In `psk_dhe_ke`, every session -- full or resumed -- mixes a fresh ephemeral X25519 secret into its keys, so a later compromise of the shared secret yields the ability to impersonate going forward (which the version 1 analysis already grants a secret-holder) but decrypts no recorded session. An implementation MUST NOT offer, accept, or fall back to `psk_ke`, including on resumption and including when a peer insists.
+
+### 22.2. One secret, two constructions
+
+The shared secret does two jobs in version 2: it is the DTLS external PSK, and it remains the HMAC key of the job and result objects. These are independent constructions (the TLS key schedule's HKDF derivation chain, and HMAC-SHA-384 over the object), and neither's outputs feed the other. The composition does not weaken the version 1 analysis: the session authenticates the channel, the signature authorizes the object, and a job's authority comes from the signature alone, so a job captured anywhere -- a mailbox, a session recording -- is exactly as powerful as it was in version 1, and replay is governed by the same seen-set and freshness rules. The offline-guessing analysis of Section 17.3 applies to the PSK unchanged: the entropy floor is normative for the secret in both roles.
+
+### 22.3. The greeting discloses
+
+The greeting is a deliberate, bounded disclosure to an authenticated peer. Its bounds are its defenses: it is never sent before authentication, it contains no identifiers beyond platform shape (no hostname, no addresses, no user names, no filesystem paths beyond tool presence), its richest tier names a fixed tool set rather than enumerating the system, and its tier is set by the party being described. An owner who considers even the OS family sensitive sets `none` and the greeting still satisfies Section 20. What the greeting must never become is a negotiation: a future extension that lets the initiator ask for more would invert the design and MUST NOT be added compatibly.
+
+### 22.4. Amplification and the listener
+
+A UDP listener is a reflection surface. The cookie exchange is the mitigation this profile adopts: the responder is stateless and sends nothing larger than the retry flight until the initiator proves it can receive at its claimed address, so the binding cannot be used to amplify traffic at a third party beyond that small, fixed flight. The listener's other exposure is computational: handshakes cost more than datagrams. The stateless cookie keeps pre-authentication cost to one MAC verification per first hello; malformed datagrams are dropped at parse, and per-session failure is contained to the session.
+
+Enabling this binding changes the host's posture from version 1's no-listener stance, and this document does not minimize that: the listener is off unless enabled, its port is LOCAL, and an owner who does not need the session binding should leave it off and lose nothing.
+
+### 22.5. Channel security is not delivery
+
+DTLS authenticates and encrypts records; it does not promise that a job arrived, ran, or was answered. This profile deliberately keeps the protocol's at-least-once semantics (Section 19.3) rather than letting a reliable-looking channel imply reliable delivery: sessions die (reboots, NAT timeouts past the connection ID's rescue, key exhaustion), and when one dies mid-exchange the loss is visible as a timeout, recoverable by a retry the seen-set makes safe. An implementation MUST NOT treat session establishment as job acceptance, nor session delivery of a result as its acknowledgement; the signed result message is the acknowledgement, as in version 1.
+
+### 22.6. Termination in the middle
+
+The confidentiality claim is end to end between the submitter and the runner process. A middlebox that terminates DTLS -- an inspecting proxy the path forces traffic through -- ends the claim at that box: the session is then confidential in two hops, and the operator of the middlebox can read job and result objects in clear, though the per-job encryption extension (Section 19.4) still protects an encrypted object past it. Deployments that route this binding through such a box should enable the object layer and understand which guarantee each layer is carrying.
+
+## 23. References
+
+### 23.1. Normative References
+
+[RFC2104] Krawczyk, H., Bellare, M., and R. Canetti, "HMAC: Keyed-Hashing for Message Authentication", RFC 2104, DOI 10.17487/RFC2104, February 1997, <https://www.rfc-editor.org/info/rfc2104>.
+
+[RFC2119] Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/RFC2119, March 1997, <https://www.rfc-editor.org/info/rfc2119>.
+
+[RFC5869] Krawczyk, H. and P. Eronen, "HMAC-based Extract-and-Expand Key Derivation Function (HKDF)", RFC 5869, DOI 10.17487/RFC5869, May 2010, <https://www.rfc-editor.org/info/rfc5869>.
+
+[RFC5234] Crocker, D., Ed., and P. Overell, "Augmented BNF for Syntax Specifications: ABNF", STD 68, RFC 5234, DOI 10.17487/RFC5234, January 2008, <https://www.rfc-editor.org/info/rfc5234>.
+
+[RFC7748] Langley, A., Hamburg, M., and S. Turner, "Elliptic Curves for Security", RFC 7748, DOI 10.17487/RFC7748, January 2016, <https://www.rfc-editor.org/info/rfc7748>.
+
+[RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174, May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+[RFC8259] Bray, T., Ed., "The JavaScript Object Notation (JSON) Data Interchange Format", STD 90, RFC 8259, DOI 10.17487/RFC8259, December 2017, <https://www.rfc-editor.org/info/rfc8259>.
+
+[RFC8439] Nir, Y. and A. Langley, "ChaCha20 and Poly1305 for IETF Protocols", RFC 8439, DOI 10.17487/RFC8439, May 2018, <https://www.rfc-editor.org/info/rfc8439>.
+
+[RFC8446] Rescorla, E., "The Transport Layer Security (TLS) Protocol Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018, <https://www.rfc-editor.org/info/rfc8446>.
+
+[RFC8314] Newman, C. and A. Melnikov, "Cleartext Considered Obsolete: Use of Transport Layer Security (TLS) for Email Submission and Access", RFC 8314, DOI 10.17487/RFC8314, January 2018, <https://www.rfc-editor.org/info/rfc8314>.
+
+[RFC8996] Moriarty, K. and S. Farrell, "Deprecating TLS 1.0 and TLS 1.1", BCP 195, RFC 8996, DOI 10.17487/RFC8996, March 2021, <https://www.rfc-editor.org/info/rfc8996>.
+
+[RFC9146] Thomson, M., Turner, S., and T. Reddy.K, "Connection Identifier for DTLS 1.2", RFC 9146, DOI 10.17487/RFC9146, April 2022, <https://www.rfc-editor.org/info/rfc9146>.
+
+[RFC9147] Rescorla, E., Tschofenig, H., and N. Modadugu, "Datagram Transport Layer Security Version 1.3", RFC 9147, DOI 10.17487/RFC9147, April 2022, <https://www.rfc-editor.org/info/rfc9147>.
+
+[RFC9325] Sheffer, Y., Saint-Andre, P., and T. Fossati, "Recommendations for Secure Use of Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)", BCP 195, RFC 9325, DOI 10.17487/RFC9325, November 2022, <https://www.rfc-editor.org/info/rfc9325>.
+
+[FIPS180-4] National Institute of Standards and Technology, "Secure Hash Standard (SHS)", FIPS PUB 180-4, DOI 10.6028/NIST.FIPS.180-4, August 2015, <https://doi.org/10.6028/NIST.FIPS.180-4>.
+
+### 23.2. Informative References
+
+[RFC3552] Rescorla, E. and B. Korver, "Guidelines for Writing RFC Text on Security Considerations", BCP 72, RFC 3552, DOI 10.17487/RFC3552, July 2003, <https://www.rfc-editor.org/info/rfc3552>.
+
+[RFC9562] Davis, K., Peabody, B., and P. Leach, "Universally Unique IDentifiers (UUIDs)", RFC 9562, DOI 10.17487/RFC9562, May 2024, <https://www.rfc-editor.org/info/rfc9562>.
+
+## Author's Address
+
+Pigeon-Home
+<https://github.com/Pigeon-Home/homing-pigeon>
