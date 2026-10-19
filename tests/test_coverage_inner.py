@@ -6,6 +6,7 @@ Windows snapshot is a fake kernel, so this runs on Linux.
 import os
 import shutil
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -381,3 +382,227 @@ class WindowsSnapshotEdges(unittest.TestCase):
                                lambda *a, **k: Kernel(), create=True):
             self.assertIsNone(rem._win_total_memory())
             self.assertEqual(rem._win_parents(), {})
+
+
+class MonitorErrorEdges(unittest.TestCase):
+    def _monitor(self, work, **kw):
+        st = rem.settings({
+            "remediation_mode": kw.pop("mode", "deterministic"),
+            "remediation_sample_sec": 0.01,
+            "remediation_storm_ceiling": 50,
+        })
+        kw.setdefault("sampler", lambda _pid: {7: (0.0, None)})
+        kw.setdefault("kill_fn", lambda _extra: None)
+        return rem.JobMonitor(st, "job-m", 7, work, **kw)
+
+    def test_start_is_once_and_a_broken_pass_is_recorded(self):
+        with tempfile.TemporaryDirectory() as work:
+            mon = self._monitor(work)
+            mon.start()
+            mon.start()
+            mon.stop()
+            mon.stop()
+            self.assertIsNone(mon._thread)
+
+            def boom(_pid):
+                raise OSError("sampler down")
+
+            mon = self._monitor(work, sampler=boom)
+            mon.sample_once()
+            self.assertTrue(any("sampler down" in e
+                                for e in mon.outcome["errors"]))
+
+            mon = self._monitor(work)
+            mon.sample_once = lambda: (_ for _ in ()).throw(
+                RuntimeError("pass down"))
+            mon.start()
+            mon._stop.wait(0.2)
+            mon.stop()
+            self.assertTrue(any("pass down" in e
+                                for e in mon.outcome["errors"]))
+
+    def test_a_broken_workdir_does_not_become_a_finding(self):
+        with tempfile.TemporaryDirectory() as work:
+            path = os.path.join(work, "note.txt")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("hello")
+            mon = self._monitor(work, findings_fn=lambda _t: [])
+            with mock.patch.object(os, "walk", side_effect=OSError):
+                self.assertEqual(mon._scan_workdir(), 0)
+            with mock.patch.object(os, "stat", side_effect=OSError):
+                self.assertEqual(mon._scan_workdir(), 0)
+            with mock.patch.object(
+                    os.path, "getsize",
+                    return_value=rem.ARTIFACT_READ_CAP + 1):
+                mon._scan_file(path)
+            with open(path, "wb") as fh:
+                fh.write(b"\xff\xfe")
+            mon._scan_file(path)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("hello")
+            mon = self._monitor(
+                work, findings_fn=lambda _t: (_ for _ in ()).throw(
+                    RuntimeError("parser")))
+            mon._scan_file(path)
+            self.assertTrue(any("parser" in e
+                                for e in mon.outcome["errors"]))
+
+    def test_a_relpath_failure_still_names_the_file(self):
+        with tempfile.TemporaryDirectory() as work:
+            path = os.path.join(work, "leak.txt")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("x")
+            mon = self._monitor(
+                work, findings_fn=lambda _t: [(
+                    "/home/user/.aws/credentials",
+                    rem.CREDENTIAL_REASON)])
+            with mock.patch.object(
+                    os.path, "relpath", side_effect=ValueError):
+                mon._scan_file(path)
+            self.assertEqual(mon.outcome["suspects"], ["leak.txt"])
+
+    def test_window_readers_that_raise_are_errors_not_kills(self):
+        with tempfile.TemporaryDirectory() as base:
+            work = os.path.join(base, "work")
+            os.makedirs(work)
+
+            def alerts(_since):
+                raise OSError("alerts down")
+
+            mon = self._monitor(work, base_dir=base, alerts_fn=alerts)
+            with mock.patch.object(
+                    rem, "confinement_events_in_window",
+                    side_effect=OSError("cage")), \
+                    mock.patch.object(
+                        rem, "resource_events_in_window",
+                        side_effect=OSError("res")):
+                mon.sample_once()
+            text = " ".join(mon.outcome["errors"])
+            self.assertIn("cage", text)
+            self.assertIn("res", text)
+            self.assertIn("alerts", text)
+            self.assertIsNone(mon.outcome["acted"])
+
+    def test_a_sense_that_names_the_job_is_a_divergence(self):
+        with tempfile.TemporaryDirectory() as work:
+
+            def alerts(_since):
+                return [
+                    {"title": "other box"},
+                    {"title": "saw job-m"},
+                ]
+
+            mon = self._monitor(work, base_dir=work, alerts_fn=alerts)
+            mon.sample_once()
+            kinds = [d["kind"] for d in mon.outcome["divergences"]]
+            self.assertIn("sense_alert", kinds)
+
+    def test_a_sealed_off_mode_pages_and_a_second_act_does_not_kill(self):
+        with tempfile.TemporaryDirectory() as work:
+            mon = self._monitor(work, mode="off")
+            mon._sealed = True
+            mon._handle(rem.divergence("disk_fill", "grew"))
+            self.assertEqual(mon.outcome["page"]["kind"], "disk_fill")
+            self.assertIsNone(mon.outcome["acted"])
+
+            mon = self._monitor(work)
+            mon.outcome["acted"] = {"authority": "tripwire"}
+            mon._handle(rem.divergence("disk_fill", "again"))
+            self.assertEqual(mon.outcome["acted"]["authority"],
+                             "tripwire")
+            self.assertEqual(len(mon.outcome["divergences"]), 1)
+
+            def boom(_pid):
+                raise OSError("no tree")
+
+            mon = self._monitor(
+                work, sampler=boom,
+                kill_fn=lambda _e: (_ for _ in ()).throw(
+                    OSError("kill down")))
+            mon._kill()
+            self.assertTrue(any("kill down" in e
+                                for e in mon.outcome["errors"]))
+
+
+class RecordEdges(unittest.TestCase):
+    def test_settings_reject_bools_and_infinities(self):
+        st = rem.settings({
+            "remediation_storm_ceiling": True,
+            "remediation_sample_sec": float("inf"),
+            "remediation_oracle_timeout_sec": "nope",
+        })
+        self.assertGreaterEqual(st["storm_ceiling"], 1)
+        self.assertGreater(st["sample_sec"], 0)
+        self.assertEqual(rem.divergence_text(None), "")
+        self.assertIsNone(rem._parse_iso("not-a-date"))
+        self.assertIsNone(rem._parse_iso(""))
+
+    def test_a_torn_jsonl_tail_keeps_only_the_window(self):
+        with tempfile.TemporaryDirectory() as base:
+            path = os.path.join(base, rem.SECURITY_EVENTS_FILE)
+            old = ('{"type":"resource_pressure",'
+                   '"at":"2000-01-01T00:00:00Z"}\n')
+            now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            good = ('{"type":"resource_pressure","at":"%s"}\n' % now)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(old + "\nnot-json\n[]\n" + good)
+            events = rem.resource_events_in_window(
+                base, time.time() - 60)
+            self.assertEqual(len(events), 1)
+            self.assertEqual(
+                rem.resource_events_in_window(base + "-missing", 0),
+                [])
+            with mock.patch.object(os.path, "getsize",
+                                   return_value=10 ** 9):
+                tail = rem._read_jsonl_window(path, 0, cap_bytes=80)
+            self.assertIsInstance(tail, list)
+
+    def test_an_unserializable_alert_can_still_name_a_pid(self):
+        self.assertFalse(rem.alert_names_job("nope", "j", "/w", [1]))
+        alert = {"title": "cpu", "detail": {1, 2}}
+        self.assertFalse(rem.alert_names_job(alert, "j", "/w", [1]))
+        alert = {"title": "cpu pid=7"}
+        self.assertTrue(rem.alert_names_job(
+            alert, "other", "/no", [7]))
+
+    def test_ask_that_raises_is_an_abstention(self):
+        def boom(_q, _c):
+            raise TimeoutError("slow")
+
+        decision, reason = rem.ask_oracle_order(boom, "ctx")
+        self.assertEqual(decision, "abstain")
+        self.assertIn("slow", reason)
+
+    def test_mpcmdrun_search_survives_a_broken_which(self):
+        def which(_name):
+            raise OSError("path")
+
+        self.assertIsNone(rem.find_mpcmdrun(
+            environ={}, which=which, exists=lambda _p: False,
+            listdir=lambda _p: (_ for _ in ()).throw(OSError())))
+
+        def exists(path):
+            return "Platform" in path
+
+        found = rem.find_mpcmdrun(
+            environ={"ProgramFiles": "/pf", "ProgramData": "/pd"},
+            which=lambda _n: None, exists=exists,
+            listdir=lambda _p: ["1.0", "2.0"])
+        self.assertIn("Platform", found)
+        self.assertTrue(found.endswith("MpCmdRun.exe"))
+
+    def test_release_and_bounds_fail_closed(self):
+        with tempfile.TemporaryDirectory() as base:
+            self.assertEqual(
+                rem.enforce_quarantine_bounds(base, rem.settings({})),
+                [])
+            work = os.path.join(base, "work")
+            os.makedirs(work)
+            dest = rem.quarantine_job(
+                base, "job-1", work, "not-a-dict")
+            self.assertTrue(dest)
+            with mock.patch.object(shutil, "move",
+                                   side_effect=OSError("busy")):
+                self.assertIsNone(
+                    rem.release_quarantine(base, "job-1"))
+
