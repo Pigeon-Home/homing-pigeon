@@ -67,8 +67,11 @@ Concretely, the divergences the design recognizes today:
 - **Undeclared reach.** The running job touches a credential
   store, a home file, an `/etc` path, or an outside-workspace
   path its envelope never named — the `_script_path_findings`
-  tells, evaluated against the live job and the artifacts it
-  produces, not only against the script text at intake.
+  tells, evaluated against the workdir contents the monitor
+  scans as the job runs, not only against the script text at
+  intake. (Writes outside the workdir are not visible mid-run;
+  the post-run confinement snapshot catches them there — see
+  As built.)
 - **Adversary-shaped resources.** The job's window fills with
   the signals `resource-sentinel` exists to file: sustained
   CPU saturation, disk-fill velocity, process storm,
@@ -95,17 +98,20 @@ records:
 
 - **Deterministic tripwires** — a short, enumerated list of
   divergences that kill on sight: a confinement escape; a
-  credential-store read by a job whose envelope declared no
-  such path; a process storm past the hard ceiling. These
+  produced artifact's undeclared reference to a credential
+  store (`credential_artifact` — a reference in something the
+  job wrote, not a read); a process storm past the hard
+  ceiling. These
   are the owner's pre-authorized reflexes. No model is
   consulted, the list is closed, and a new tripwire enters
   it only as a code change with a test — never as a config
   accident or a model's suggestion.
 - **The Oracle's judgment** — where inference is configured,
   the Oracle may order a kill for a divergence that is real
-  but not on the tripwire list. It judges with its full
-  charter context: the envelope, the observed behavior, the
-  box's state, the job's history as `job-watcher` knows it.
+  but not on the tripwire list. It judges with the context
+  the build assembles for it: the job id, the divergence, the
+  intent envelope's note, and the divergences observed so
+  far — not the box's state, and not the job's history.
   Its order is recorded *as its judgment* — the divergence,
   the reasoning it gave, and the act taken ride the result
   and the audit log, attributed to the Oracle the way its
@@ -145,10 +151,13 @@ the system watches, records, and pages; the human decides.
    it is a remediation actor with exactly one move and no
    knowledge of the job system. The Oracle knows things the
    AV does not: which job, whose envelope, what divergence.
-   So when a file is judged malicious, the system refers
-   that process and its associated file to the antivirus
-   *as a suspect*, and asks for the AV's own verdict on that
-   exact path: on Windows, a Defender custom scan
+   So after a kill or quarantine, the system refers the
+   suspect files — the workdir artifacts that tripped the
+   finding, plus the job's script — to the antivirus *as
+   suspects*, and asks for the AV's own verdict on those
+   exact paths. There is no prior "judged malicious" step and
+   no process is referred; the referral follows the act, on
+   divergence evidence. On Windows, a Defender custom scan
    (`MpCmdRun -Scan -ScanType 3 -File <path>`); where ClamAV
    is installed, `clamdscan` on the same path. A consumer
    antivirus accepts a scan request, not a declaration —
@@ -181,8 +190,9 @@ the system watches, records, and pages; the human decides.
 Every act lands twice. In the job's result, as a
 `remediation` member (additive, OPTIONAL, in the §3.2
 result): `{mode, authority: tripwire | oracle, divergence,
-act: killed | quarantined | referred, av_verdict,
-received_digest}` — the sender learns their job was stopped
+act: killed | quarantined, av_verdict,
+received_digest}` — referral is never an `act` value; it is
+recorded through `av_verdict`. The sender learns their job was stopped
 and why, in the signed result, like any other outcome. And
 in the audit log, as the operator's copy, with the quarantine
 path and the referral detail. A remediation the owner cannot
