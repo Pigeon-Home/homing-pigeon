@@ -84,12 +84,17 @@ class SurfaceMechanicsTest(unittest.TestCase):
             restore()
 
     def test_double_apply_keeps_the_first_restore_in_charge(self):
+        # Compare against the value captured BEFORE applying --
+        # on a real Windows host (or under the sim harness, which
+        # has a layer applied already) that value IS "nt", and a
+        # correct restore returns to it, not away from it.
+        before = os.name
         restore = surface.apply_surface()
         noop = surface.apply_surface()
         noop()
         self.assertEqual(os.name, "nt")  # still applied
         restore()
-        self.assertNotEqual(os.name, "nt")
+        self.assertEqual(os.name, before)
 
 
 class WindowsDispatchPinsTest(unittest.TestCase):
@@ -119,14 +124,20 @@ class WindowsDispatchPinsTest(unittest.TestCase):
         # where sysconf does not exist the AttributeError is the
         # documented "no route" answer, not a crash.
         from runner import remediation
-        saved = os.sysconf
-        del os.sysconf
+        # sysconf may already be absent (the sim harness deletes
+        # it for the whole process); the pin then starts from the
+        # environment it is actually testing and restores only
+        # what it took.
+        saved = getattr(os, "sysconf", None)
+        if saved is not None:
+            del os.sysconf
         try:
             with mock.patch.object(sys, "platform", "darwin"), \
                     mock.patch.object(os, "name", "posix"):
                 self.assertIsNone(remediation.total_memory_bytes())
         finally:
-            os.sysconf = saved
+            if saved is not None:
+                os.sysconf = saved
 
     def test_privilege_check_takes_the_windows_branch(self):
         from runner import posture

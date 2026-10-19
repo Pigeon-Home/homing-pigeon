@@ -40,6 +40,16 @@ What the surface changes (apply_surface):
               as a normal result. Guarded Windows code therefore
               RUNS under the simulation instead of dying on the
               first ctypes attribute access.
+  ssl store   ssl.enum_certificates / ssl.enum_crls, absent on
+              POSIX, are stubbed to return empty lists. This one
+              matters at CALL time: ssl.create_default_context()
+              branches on sys.platform when it runs, and under
+              the surface it takes the Windows branch and calls
+              enum_certificates to load the OS store. An empty
+              store is a valid Windows answer; without the stub
+              every verified-TLS mail test errors on an API the
+              host build does not have -- an artifact, found in
+              the first full-suite sim run's mail clusters.
 
 One bootstrap discipline matters: several stdlib modules branch
 on os.name/sys.platform AT IMPORT TIME (shutil imports the `nt`
@@ -85,6 +95,7 @@ Stdlib only.
 import ctypes
 import os
 import platform
+import ssl
 import sys
 
 _IDENTITY = {
@@ -170,6 +181,10 @@ def surface_description():
         "absent_os_attributes": list(_ABSENT),
         "windll": "ctypes.windll + ctypes.WinDLL installed as "
                   "neutral fakes (every function returns 0)",
+        "ssl_store": "ssl.enum_certificates / ssl.enum_crls "
+                     "stubbed to empty lists when absent, so "
+                     "create_default_context's Windows branch "
+                     "can run",
         "not_simulated": [
             "os.path separator semantics (ntpath rebinding would "
             "corrupt the test harness's own filesystem use)",
@@ -213,6 +228,9 @@ def apply_surface():
             _set(ctypes, "windll", _FakeWinDllLoader())
         if not hasattr(ctypes, "WinDLL"):
             _set(ctypes, "WinDLL", _fake_windll_factory)
+        for store_fn in ("enum_certificates", "enum_crls"):
+            if not hasattr(ssl, store_fn):
+                _set(ssl, store_fn, lambda *a, **k: [])
     except Exception:
         _restore_all(undo)
         raise

@@ -14,6 +14,29 @@ never promised), or simulation artifact (see
 tools/windows_surface.py's "not simulated" list) -- in that
 order of suspicion.
 
+Reading the results -- the boundary of what the surface can
+prove. The surface fakes the HOST IDENTITY (os.name,
+sys.platform, platform.*) and the API ABSENCES faithfully, in
+this process only. It follows that:
+
+- Failures in parsing, config, dispatch, and validation logic
+  are FINDINGS: that code sees exactly what it would see on
+  Windows, and CI's Windows job is the only other place they
+  would surface.
+- Failures in tests that EXECUTE through the faked identity --
+  running a job with the platform-default interpreter, spawning
+  a supervised child process (children are real processes and
+  do not inherit the surface), binding or timing against the
+  real OS -- are artifacts of the mismatch between the faked
+  identity and the real substrate. The first full-suite run's
+  clusters were of this kind: jobs dispatched to a "Windows"
+  default interpreter that does not exist on the host
+  (exit_code -2), and the Oracle opinion drives whose verdict
+  expectations are staged for the host they were written on.
+  Those paths are what the real build-windows job verifies;
+  the sim cannot, and its failures there are not evidence
+  against them.
+
 TMPDIR is pointed at a fresh scratch directory before the
 surface is applied: tempfile's candidate list consults TMPDIR
 on every platform, so the harness keeps a working temp root
