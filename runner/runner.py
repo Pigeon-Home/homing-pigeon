@@ -965,7 +965,9 @@ def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
     if mode == "off":
         return None
     _security.bump_evaluated(base_dir, "job_user")
-    ju = (cfg.get("security") or {}).get("job_user") or {}
+    sec = cfg.get("security")
+    sec = sec if isinstance(sec, dict) else {}
+    ju = sec.get("job_user") if isinstance(sec.get("job_user"), dict) else {}
     user = ju.get("user") if isinstance(ju, dict) else None
     if not user or not isinstance(user, str):
         return None

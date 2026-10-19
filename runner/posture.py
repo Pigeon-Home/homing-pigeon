@@ -94,9 +94,9 @@ def _check_key_policies(cfg, results):
 
 
 def _check_recommended_features(cfg, results):
-    modes = (cfg.get("security") or {}).get("modes") or {}
-    if not isinstance(modes, dict):
-        modes = {}
+    sec = cfg.get("security")
+    sec = sec if isinstance(sec, dict) else {}
+    modes = sec.get("modes") if isinstance(sec.get("modes"), dict) else {}
     for feat in RECOMMENDED_FEATURES:
         mode = modes.get(feat, "off")
         if not isinstance(mode, str) or mode.lower() == "off":
@@ -340,7 +340,9 @@ def build_posture(cfg, cfg_path, base_dir):
         results.append(("FAIL", "base dir",
                         "does not exist: %s" % base_dir))
 
-    modes = (cfg.get("security") or {}).get("modes") or {}
+    sec = cfg.get("security")
+    sec = sec if isinstance(sec, dict) else {}
+    modes = sec.get("modes") if isinstance(sec.get("modes"), dict) else {}
     on = sorted(k for k, v in modes.items()
                 if isinstance(v, str) and v.lower() != "off")
     if on:

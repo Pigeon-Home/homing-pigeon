@@ -138,6 +138,15 @@ def _exercise(rng, blob):
     from runner.review import parse_review_patterns
     from runner.sandbox import _validate_confinement_block, build_bwrap_command
     from runner.resources import parse_resources
+    from runner.opinion import (
+        effective_mode, plan_before, script_hints, script_shape,
+        tier1_findings,
+    )
+    from runner.remediation import (
+        av_referral, classify_findings, mode_of, parse_oracle_order,
+        received_digest, result_member, settings, tree_pids,
+    )
+    from runner.runner import judge_job
     from cloud.send_job import verify_body as cloud_verify
 
     expected = _expected()
@@ -197,6 +206,38 @@ def _exercise(rng, blob):
             reload_hot_config({"workers": 1}, path, {"mtime": 0})
 
     run("load_and_reload", _reload)
+
+    # Decision functions. Pure. av_referral is handed a stub
+    # runner so a hostile path never becomes a real scan.
+    cfg = value if isinstance(value, dict) else {}
+    job = value if isinstance(value, dict) else {"kind": text[:40]}
+    run("judge_job", lambda: judge_job(cfg, job))
+    run("opinion_mode", lambda: effective_mode(cfg, job))
+    run("script_shape", lambda: script_shape(text))
+    run("script_hints", lambda: script_hints(text))
+    run("tier1", lambda: tier1_findings(job, cfg))
+    run("plan_before", lambda: plan_before(cfg, job, cfg))
+    run("remediation_mode", lambda: mode_of(cfg))
+    run("remediation_settings", lambda: settings(cfg))
+    run("received_digest", lambda: received_digest(job))
+    run("parse_oracle_order", lambda: parse_oracle_order(text))
+    findings = value if isinstance(value, list) else [(text[:80], text[:40])]
+    run("classify_findings", lambda: classify_findings(
+        findings, findings, findings))
+    if isinstance(value, dict):
+        run("tree_pids", lambda: tree_pids(value.get("pid", 1), value))
+    run("result_member", lambda: result_member(
+        text[:20], text[:20], value, text[:20], text[:20], text[:20]))
+
+    def _stub_run(argv, **_k):
+        class _Proc:
+            returncode = rng.randrange(-1, 8)
+        return _Proc()
+
+    run("av_referral", lambda: av_referral(
+        value if isinstance(value, list) else [text[:80]],
+        run=_stub_run, which=lambda _name: "/no/such/av",
+        os_name="posix"))
     return crashes
 
 

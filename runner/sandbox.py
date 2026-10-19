@@ -45,7 +45,9 @@ def sandbox_available():
 
 
 def _confinement_cfg(cfg):
-    block = (cfg.get("security") or {}).get("confinement")
+    sec = cfg.get("security")
+    sec = sec if isinstance(sec, dict) else {}
+    block = sec.get("confinement")
     return block if isinstance(block, dict) else {}
 
 

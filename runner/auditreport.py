@@ -174,7 +174,9 @@ def build_report(cfg, base_dir, since_secs, key=None, feature=None):
         entries = [e for e in entries if e.get("feature") == feature]
 
     counts = _read_counts(base_dir)
-    modes_cfg = (cfg.get("security") or {}).get("modes") or {}
+    sec = cfg.get("security") if isinstance(cfg, dict) else None
+    sec = sec if isinstance(sec, dict) else {}
+    modes_cfg = sec.get("modes") if isinstance(sec.get("modes"), dict) else {}
     by_feature = {}
     for e in entries:
         f = e.get("feature", "?")
