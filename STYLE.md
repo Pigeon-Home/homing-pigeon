@@ -1,10 +1,5 @@
 # Style guide
 
-One page, deliberately. This document ratifies the style the code
-already has; it does not import a fashion. Where this guide and the
-code disagree, the code is the bug or the guide is — fix one in the
-same commit as the other, and say which.
-
 ## Base
 
 - **PEP 8**, at **88 columns**. The tree already lives there: when
