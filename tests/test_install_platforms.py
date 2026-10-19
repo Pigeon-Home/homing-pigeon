@@ -559,6 +559,12 @@ class SecretAndOllamaEnvTest(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 inst.ensure_shared_secret(
                     cfg, "please-generate-a-real-secret-value-now")
+            tail = "9f3a7c1e8b2d4f6a0c5e7b1d3"
+            for word in ("example", "placeholder", "your-secret",
+                         "your_secret", "todo", "xxx", "TODO"):
+                with self.assertRaises(SystemExit):
+                    inst.ensure_shared_secret(
+                        cfg, f"owner-{word}-value-{tail}")
             with open(cfg, encoding="utf-8") as fh:
                 self.assertEqual(fh.read(), before)
             inst.ensure_shared_secret(cfg, None)
