@@ -30,8 +30,11 @@ Do all of these before the first job:
 1. **Dedicated mailbox account.** `you-runner@example.com`, never your
    personal inbox. Nothing personal should ever be reachable from
    this mailbox.
-2. **2-Step Verification + app password.** The app password is the
-   only credential the runner ever sees. Never the account password.
+2. **2-Step Verification + app password.** In the default password
+   mode the app password is the only credential the runner ever
+   sees. Never the account password. (The alternative is
+   `"auth": "oauth"`: the runner then holds a refresh token
+   instead, Thunderbird-style.)
 3. **Disposable machine.** A Raspberry Pi, a VM, a cloud instance you
    can delete — something you can afford to lose completely. See
    "Containment" below.

@@ -13,8 +13,10 @@ scoped keys, CI runners, containers, or a proper agent sandbox. Still,
 configuring those repeatedly for every provider and chat interface is
 cumbersome, and this cuts through that noise.
 
-The Oracle, backed by a local model (the installer's default is
-qwen3:1.7b), reviews jobs and their results. The operating system can carry the rest of the load,
+Jobs are gated before they run by deterministic code — the judge
+and the opinion's tier-1 checks. The Oracle, backed by a local
+model (the installer's default is qwen3:1.7b), reviews the results
+after the fact. The operating system can carry the rest of the load,
 with SELinux or AppArmor, locked-down users, containers, filesystem
 ACLs, and role-based keys that could feed back into the Oracle and
 limit what a bad or even malicious job can touch.

@@ -76,9 +76,13 @@ auditability:
 - **Consent:** you install it on your own machine, on purpose, to run
   your own jobs. It does nothing you did not ask it to do.
 - **Control:** the shared secret is yours, the mailbox is yours, and
-  revoking the mailbox credential bricks the agent remotely in seconds —
-  without mailbox access the runner can't receive jobs, so a leaked
-  signing secret has no delivery channel. To rotate a compromised
+  revoking the mailbox credential stops mail delivery — without
+  mailbox access the runner can't receive jobs by email. It is not
+  the only channel, though: a same-box producer can still deliver
+  signed `sensor_alert` envelopes through the local inbox or the
+  loopback signal socket, so a leaked signing secret does have a
+  delivery channel on the box itself — which is why rotating the
+  secret matters more than the mailbox. To rotate a compromised
   secret, generate a new one and update `shared_secret` in config.json
   on the runner (and hand the new string to your SI).
 - **Auditability:** the runner is inspectable by design. `--dry-run`
@@ -152,8 +156,9 @@ or file contents.
 
 With `security.modes.confinement: enforce` on Linux and `bwrap`
 installed, each `exec` job runs inside a bubblewrap sandbox: `/usr`
-read-only, no network, no access to home, and only the job workdir
-writable (mounted at `/work`). The job's scrubbed env arrives via
+read-only, no network, no access to home, and the job workdir
+writable (mounted at `/work`), plus a writable tmpfs at `/tmp`.
+The job's scrubbed env arrives via
 `--setenv`. When `bwrap` is missing, or on non-Linux, the runner warns
 loudly, audits a `fallback` decision, and runs the job normally —
 availability wins over confinement, and the fallback is always

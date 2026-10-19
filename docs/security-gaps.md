@@ -39,7 +39,7 @@ readable by the runner principal and not by the job principal.
 | Linux | `job_user` (setuid), `install.py` writes owner-only `0600` | Default is still the same user. POSIX ACLs (`setfacl`) on the base dir should hide the secret from the job user when bwrap is off |
 | macOS | launchd agent as the installing user | `chmod +a` ACLs exist but nothing applies them; the real cage would be `sandbox-exec`, not an ACL |
 | FreeBSD | cron `@reboot` as the user | `setfacl` on ZFS/UFS unapplied; a jail is the real boundary |
-| Windows | Scheduled Task (SYSTEM by default, or `--run-as`); `hardening/windows.md` documents the account as the sandbox | `install.py` only chmods, which sets no real DACL on Windows — the `icacls /inheritance:r` recipe is advice in a doc, not code that runs at install. Low integrity or a restricted token is the stronger cousin |
+| Windows | Scheduled Task (SYSTEM by default, or `--run-as`); `hardening/windows.md` documents the account as the sandbox | On a fresh one-home install, `install.py`'s `_acl_home()` runs `icacls /inheritance:r /grant:r` — a real DACL set by code at install. The legacy non-one-home path remains chmod-only, which sets no real DACL. Low integrity or a restricted token is the stronger cousin |
 
 `--posture` already warns about the Windows ACL; it should warn
 about a missing POSIX ACL too.
@@ -83,19 +83,21 @@ where each one stands. Items marked absent are listed in FUTURE.md.
   every redaction rule (those only cover what comes *back* in the
   result email). Only bwrap in enforce mode (Linux, off by default)
   blocks it. Status: mechanism exists, default-off.
-- **Audit log integrity.** `security-events.jsonl` is append-only by
-  convention. The watched principal can edit or truncate it. No
-  append-only flag (`chattr +a`), no hash chain, no remote copy.
-  Status: absent.
+- **Audit log integrity.** `security-events.jsonl` is not even
+  append-only in the runner's own hands: past 5000 lines the runner
+  rewrites it to the last 5000. The watched principal can edit or
+  truncate it. No append-only flag (`chattr +a`), no hash chain,
+  no remote copy. Status: absent.
 - **Supply chain.** Releases ship `SHA384SUMS`, but nothing in the
   install path verifies them; the installer itself runs `curl | sh`
   for Ollama. PyPI trusted publishing is the one solid link.
   Status: partial.
 - **Secret revocation.** "The shared secret is root" is documented,
-  but there is no written fire drill: rotate the shared secret first
+  and a written fire drill exists — SAFEGUARDS.md §7 and
+  docs/secret-rotation.md: rotate the shared secret first
   (setup wizard or `--shared-secret`), then the mailbox credential,
   then assume every job signed with the old secret is suspect and
-  re-verify the seen-set. Status: undocumented until this paragraph.
+  re-verify the seen-set. Status: documented.
 - **Windows default privilege.** The out-of-box Scheduled Task runs
   as SYSTEM. `--run-as` exists, but the default is the
   highest-privilege account on the box and it's quiet about it.
