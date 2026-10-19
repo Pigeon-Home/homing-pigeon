@@ -17,29 +17,37 @@ on:
   pull_request:
   workflow_dispatch:
 
-env:
-  PYINSTALLER_VERSION: "6.22.3"
+# Default-deny (OneFuzz lift, 2026-10-18): no job inherits the
+# token's default permissions. Each job below grants itself
+# exactly what it uses -- contents: read to check out, and the
+# two publish jobs their scoped writes. tests/test_build_config.py
+# pins this block and the per-job grants.
+permissions: {}
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
-      - run: pip install hypothesis
+      - run: pip install -c requirements-ci.txt hypothesis
       - run: python -m unittest discover -s tests -t . -v
 
   typecheck:
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
-      - run: pip install pyrefly==1.4.0
+      - run: pip install -c requirements-ci.txt pyrefly
       - run: pyrefly check
 
   mutation:
@@ -60,12 +68,14 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
-      - run: pip install "mutmut==3.8.0" pytest hypothesis
+      - run: pip install -c requirements-ci.txt mutmut pytest hypothesis
       - run: mutmut run --max-children 4
     # NOTE: mutmut exits 0 even with surviving mutants; it only fails on
     # infra errors (broken baseline, collection failure). Survivors are
@@ -74,19 +84,21 @@ jobs:
   build-windows:
     needs: test
     runs-on: windows-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
-      - run: pip install hypothesis
+      - run: pip install -c requirements-ci.txt hypothesis
       # The suite is this job's long pole (~5 of its ~6.5 minutes
       # serial). It runs sharded across the runner's cores by
       # module test count; the shard runner discovers the same
       # suite, runs every test exactly once, and fails if any
       # shard fails or if discovery comes up empty.
       - run: python tools/run_tests_parallel.py --jobs 4
-      - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
+      - run: pip install -c requirements-ci.txt pyinstaller
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md;pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
       - name: smoke the built windows binaries
@@ -147,11 +159,12 @@ jobs:
           $stage = "stage/$name"
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item dist/homing-pigeon.exe, dist/install.exe, runner/config.example.json $stage
+          python tools/stamp_provenance.py --job build-windows --out "$stage/BUILD-PROVENANCE.json"
           Compress-Archive -Path $stage -DestinationPath "$name.zip" -Force
           python -c "import zipfile,sys; ns=zipfile.ZipFile(sys.argv[1]).namelist(); b=[n for n in ns if not n.startswith(sys.argv[2]+'/')]; sys.exit('entries outside top dir: %s' % b if b else 0)" "$name.zip" "$name"
           if ($LASTEXITCODE -ne 0) { throw "zip layout check failed: not all entries are under '$name/'" }
           "PKG_NAME=$name" >> $env:GITHUB_ENV
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ env.PKG_NAME }}
           path: ${{ env.PKG_NAME }}.zip
@@ -159,12 +172,14 @@ jobs:
   build-linux:
     needs: test
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
-      - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
+      - run: pip install -c requirements-ci.txt pyinstaller
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
       - name: smoke the built linux binaries
@@ -184,11 +199,12 @@ jobs:
           name="homing-pigeon-linux-x86_64-$ver"
           mkdir -p "pkg/$name"
           cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
+          python tools/stamp_provenance.py --job build-linux --out "pkg/$name/BUILD-PROVENANCE.json"
           tar czf "$name.tar.gz" -C pkg "$name"
           bad=$(tar tzf "$name.tar.gz" | grep -v "^$name/" || true)
           [ -z "$bad" ] || { echo "tarball has entries outside '$name/': $bad"; exit 1; }
           echo "PKG_NAME=$name" >> "$GITHUB_ENV"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ env.PKG_NAME }}
           path: ${{ env.PKG_NAME }}.tar.gz
@@ -202,12 +218,14 @@ jobs:
     # marker and keep the defaults they always had.
     needs: test
     runs-on: ubuntu-22.04-arm
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
-      - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
+      - run: pip install -c requirements-ci.txt pyinstaller
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
       - name: smoke the built pi-light binaries
@@ -228,11 +246,12 @@ jobs:
           mkdir -p "pkg/$name"
           cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
           printf 'pi-light\n' > "pkg/$name/default_profile"
+          python tools/stamp_provenance.py --job build-pi-light --out "pkg/$name/BUILD-PROVENANCE.json"
           tar czf "$name.tar.gz" -C pkg "$name"
           bad=$(tar tzf "$name.tar.gz" | grep -v "^$name/" || true)
           [ -z "$bad" ] || { echo "tarball has entries outside '$name/': $bad"; exit 1; }
           echo "PKG_NAME=$name" >> "$GITHUB_ENV"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ env.PKG_NAME }}
           path: ${{ env.PKG_NAME }}.tar.gz
@@ -240,12 +259,14 @@ jobs:
   build-macos:
     needs: test
     runs-on: macos-14
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
-      - run: pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
+      - run: pip install -c requirements-ci.txt pyinstaller
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py
       - name: smoke the built macos binaries
@@ -265,11 +286,12 @@ jobs:
           name="homing-pigeon-macos-arm64-$ver"
           mkdir -p "pkg/$name"
           cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
+          python tools/stamp_provenance.py --job build-macos --out "pkg/$name/BUILD-PROVENANCE.json"
           tar czf "$name.tar.gz" -C pkg "$name"
           bad=$(tar tzf "$name.tar.gz" | grep -v "^$name/" || true)
           [ -z "$bad" ] || { echo "tarball has entries outside '$name/': $bad"; exit 1; }
           echo "PKG_NAME=$name" >> "$GITHUB_ENV"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ env.PKG_NAME }}
           path: ${{ env.PKG_NAME }}.tar.gz
@@ -277,14 +299,17 @@ jobs:
   build-python:
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
-      - run: pip install build
+      - run: pip install -c requirements-ci.txt build
       - run: python -m build
-      - uses: actions/upload-artifact@v4
+      - run: python tools/stamp_provenance.py --job build-python --out dist/BUILD-PROVENANCE.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: homing-pigeon-python
           path: dist/*
@@ -298,18 +323,23 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           path: artifacts
           merge-multiple: true
+      # The SBOM (SPDX JSON) joins the artifact set here, before
+      # the sums: SHA384SUMS then covers it, the attestation below
+      # covers the sums, and the mirrors carry it for free.
+      - run: python3 tools/make_sbom.py --out artifacts/SBOM.spdx.json
       - run: |
           cd artifacts
           sha384sum * > SHA384SUMS
           cat SHA384SUMS
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: 'artifacts/*'
-      - uses: softprops/action-gh-release@v3
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           files: artifacts/*
           generate_release_notes: true
@@ -321,8 +351,9 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: homing-pigeon-python
           path: dist
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - run: rm -f dist/BUILD-PROVENANCE.json
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1

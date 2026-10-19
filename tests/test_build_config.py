@@ -231,5 +231,221 @@ class MutationTreeTest(unittest.TestCase):
                     "also_copy names %s, which is not on disk" % entry)
 
 
+def _load_tool(name):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        name, os.path.join(_root(), "tools", name + ".py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _perm_entries(block):
+    """The permission grants in a job block, as 'key: value'."""
+    return set(re.findall(
+        r"(?m)^\s+(contents|id-token|attestations|packages|"
+        r"security-events|actions|pull-requests):\s*(\S+)$", block))
+
+
+class PipelineLiftsTest(unittest.TestCase):
+    """The OneFuzz pipeline lifts (2026-10-18, lifts 1-6).
+
+    OneFuzz's public pipeline had locked inputs and provenance
+    stamped into the artifact; the audit found HP ahead on
+    attestation machinery but floating its action refs and tool
+    installs, granting default token permissions in build.yml,
+    shipping no SBOM, and documenting no verification path. These
+    pins keep the six lifts from quietly un-landing.
+    """
+
+    WORKFLOWS = ("build.yml", "docker.yml", "security.yml",
+                 "gitlab.yml", "sourceforge.yml")
+
+    def _wf(self, name):
+        with open(os.path.join(_root(), ".github", "workflows", name),
+                  encoding="utf-8") as fh:
+            return fh.read()
+
+    # Lift 3: every action ref is a full SHA, version in a comment.
+    def test_every_action_is_sha_pinned_with_a_version_comment(self):
+        pin = re.compile(r"uses:\s*\S+@[0-9a-f]{40}\s+#\s*\S+")
+        checked = 0
+        for name in self.WORKFLOWS:
+            for line in self._wf(name).splitlines():
+                if "uses:" in line:
+                    checked += 1
+                    self.assertRegex(
+                        line, pin,
+                        "%s: action not SHA-pinned with a version "
+                        "comment: %s" % (name, line.strip()))
+        self.assertGreaterEqual(checked, 30)
+
+    # Lift 5: default-deny everywhere; grants are per-job and exact.
+    def test_every_workflow_denies_by_default(self):
+        for name in self.WORKFLOWS:
+            top = self._wf(name).split("jobs:")[0]
+            self.assertTrue(
+                "permissions: {}" in top
+                or "permissions:\n  contents: read" in top,
+                "%s has no default-deny top-level permissions" % name)
+
+    def test_build_grants_are_exact_per_job(self):
+        workflow = _workflow()
+        read_only = {("contents", "read")}
+        for job in ("test", "typecheck", "mutation", "build-windows",
+                    "build-linux", "build-pi-light", "build-macos",
+                    "build-python"):
+            self.assertEqual(read_only,
+                             _perm_entries(_job_block(workflow, job)),
+                             "%s grants more than checkout" % job)
+        self.assertEqual(
+            {("contents", "write"), ("id-token", "write"),
+             ("attestations", "write")},
+            _perm_entries(_job_block(workflow, "release")))
+        self.assertEqual({("id-token", "write")},
+                         _perm_entries(_job_block(workflow,
+                                                  "pypi-publish")))
+
+    def test_the_other_workflows_grants_are_exact(self):
+        docker = self._wf("docker.yml")
+        self.assertEqual(
+            {("contents", "read"), ("packages", "write"),
+             ("id-token", "write"), ("attestations", "write")},
+            _perm_entries(_job_block(docker, "build-and-push")))
+        for name in ("gitlab.yml", "sourceforge.yml"):
+            self.assertEqual(
+                {("contents", "read"), ("actions", "read")},
+                _perm_entries(_job_block(self._wf(name), "publish")),
+                name)
+
+    # Lift 6: CI installs resolve through the one pin file.
+    def test_ci_installs_come_from_the_pin_file(self):
+        for line in _workflow().splitlines():
+            if "pip install" in line:
+                self.assertIn("-c requirements-ci.txt", line,
+                              "unconstrained install: %s" % line)
+        with open(os.path.join(_root(), "requirements-ci.txt"),
+                  encoding="utf-8") as fh:
+            pins = fh.read()
+        for tool in ("hypothesis", "pytest", "build", "mutmut",
+                     "pyrefly", "pyinstaller"):
+            self.assertRegex(pins, r"(?m)^%s==\d" % tool,
+                             "%s is not pinned" % tool)
+        # The version used to live in a workflow env var as a
+        # second source of truth; the pin file is the only one now.
+        self.assertNotIn("PYINSTALLER_VERSION", _workflow())
+
+    # Lift 4: provenance is stamped into every staged tree, before
+    # the archive is made, and into the Python dist.
+    def test_every_packaging_step_stamps_provenance(self):
+        workflow = _workflow()
+        for job, packer in (("build-windows", "Compress-Archive"),
+                            ("build-linux", "tar czf"),
+                            ("build-pi-light", "tar czf"),
+                            ("build-macos", "tar czf")):
+            block = _job_block(workflow, job)
+            stamp = "tools/stamp_provenance.py --job %s" % job
+            self.assertIn(stamp, block, "%s never stamps" % job)
+            self.assertLess(block.index(stamp), block.index(packer),
+                            "%s stamps after archiving" % job)
+        self.assertIn("tools/stamp_provenance.py --job build-python",
+                      _job_block(workflow, "build-python"))
+
+    def test_the_stamp_carries_the_build_identity(self):
+        import datetime
+        stamp = _load_tool("stamp_provenance")
+        env = {"GITHUB_SHA": "a" * 40, "GITHUB_REF": "refs/tags/vX",
+               "GITHUB_RUN_ID": "42", "GITHUB_RUN_ATTEMPT": "1",
+               "GITHUB_WORKFLOW": "build", "RUNNER_OS": "Linux"}
+        out = os.path.join(_root(), "pkg", "probe",
+                           "BUILD-PROVENANCE.json")
+        got = stamp.provenance(_root(), "build-linux", out, env=env,
+                               now=datetime.datetime(2026, 1, 2, 3, 4, 5))
+        self.assertEqual(got["commit"], "a" * 40)
+        self.assertEqual(got["run_id"], "42/1")
+        self.assertEqual(got["product"], "probe")
+        self.assertEqual(got["built_at"], "2026-01-02T03:04:05Z")
+        import tomllib
+        with open(os.path.join(_root(), "pyproject.toml"), "rb") as fh:
+            self.assertEqual(got["version"],
+                             tomllib.load(fh)["project"]["version"])
+
+    # Lift 2: the SBOM is generated into the artifact set before
+    # the sums, so the sums cover it and the attestation covers
+    # the sums; the publish job keeps non-distributions out.
+    def test_release_generates_the_sbom_before_the_sums(self):
+        block = _job_block(_workflow(), "release")
+        self.assertIn("tools/make_sbom.py "
+                      "--out artifacts/SBOM.spdx.json", block)
+        self.assertLess(block.index("actions/checkout@"),
+                        block.index("actions/download-artifact@"))
+        self.assertLess(block.index("make_sbom"),
+                        block.index("sha384sum"))
+        self.assertLess(block.index("sha384sum"),
+                        block.index("attest-build-provenance"))
+
+    def test_pypi_publish_keeps_the_stamp_out_of_the_upload(self):
+        block = _job_block(_workflow(), "pypi-publish")
+        self.assertIn("rm -f dist/BUILD-PROVENANCE.json", block)
+
+    def test_the_sbom_describes_the_tree(self):
+        import datetime
+        import hashlib
+        import tomllib
+        sbom = _load_tool("make_sbom")
+        doc = sbom.build_sbom(
+            _root(), env={},
+            now=datetime.datetime(2026, 1, 2, 3, 4, 5))
+        self.assertEqual(doc["spdxVersion"], "SPDX-2.3")
+        by_name = {p["name"]: p for p in doc["packages"]}
+        with open(os.path.join(_root(), "pyproject.toml"), "rb") as fh:
+            project = tomllib.load(fh)["project"]
+        root_pkg = by_name[project["name"]]
+        self.assertEqual(root_pkg["versionInfo"], project["version"])
+        self.assertEqual(root_pkg["licenseConcluded"], "Apache-2.0")
+        self.assertEqual(by_name["CPython"]["versionInfo"],
+                         project["requires-python"])
+        self.assertEqual(by_name["PyInstaller"]["versionInfo"],
+                         sbom._ci_pin(_root(), "pyinstaller"))
+        expected = set()
+        for top in ("runner", "cloud"):
+            for dirpath, _dirs, names in os.walk(
+                    os.path.join(_root(), top)):
+                for name in names:
+                    if name.endswith(".py"):
+                        expected.add("./" + os.path.relpath(
+                            os.path.join(dirpath, name),
+                            _root()).replace(os.sep, "/"))
+        files = {f["fileName"]: f for f in doc["files"]}
+        self.assertEqual(set(files), expected)
+        self.assertEqual(set(root_pkg["hasFiles"]),
+                         {f["SPDXID"] for f in doc["files"]})
+        probe = files["./runner/runner.py"]
+        with open(os.path.join(_root(), "runner", "runner.py"),
+                  "rb") as fh:
+            digest = hashlib.sha256(fh.read()).hexdigest()
+        self.assertIn({"algorithm": "SHA256", "checksumValue": digest},
+                      probe["checksums"])
+        sha1s = sorted(next(c["checksumValue"] for c in f["checksums"]
+                            if c["algorithm"] == "SHA1")
+                       for f in doc["files"])
+        code = hashlib.sha1("".join(sha1s).encode("ascii")).hexdigest()
+        self.assertEqual(
+            root_pkg["packageVerificationCode"]
+                    ["packageVerificationCodeValue"], code)
+
+    # Lift 1: the verification chain is documented, with commands.
+    def test_verification_doc_carries_the_chain(self):
+        with open(os.path.join(_root(), "docs", "verification.md"),
+                  encoding="utf-8") as fh:
+            doc = fh.read()
+        for needle in ("gh attestation verify",
+                       "sha384sum -c SHA384SUMS",
+                       "imagetools inspect",
+                       "integrity/pigeon-home-runner",
+                       "SBOM.spdx.json", "BUILD-PROVENANCE.json"):
+            self.assertIn(needle, doc)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

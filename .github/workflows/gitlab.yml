@@ -3,10 +3,12 @@ name: gitlab
 # After a tagged build publishes a GitHub Release, mirror the release
 # to GitLab: push main and all tags to the GitLab repo, upload every
 # published release asset (the four install archives, the Python
-# wheel and sdist, and SHA384SUMS) to the project's generic
+# wheel and sdist, SHA384SUMS, and the SBOM) to the project's generic
 # package registry, and create a GitLab Release on the tag linking
 # those packages. Skips until the repo secret exists, so a release
-# is never blocked on GitLab.
+# is never blocked on GitLab. Every asset the GitHub Release
+# carries comes along -- the mirror uploads whatever was
+# published, including the SBOM.
 #
 # Secret: GITLAB_TOKEN (GitLab token with api + write_repository)
 # Variable (or secret): GITLAB_PROJECT (default pigeon-home/homing-pigeon)
@@ -16,6 +18,10 @@ on:
   workflow_run:
     workflows: ["build"]
     types: [completed]
+
+# Default-deny: the one job grants itself exactly what it
+# uses, below.
+permissions: {}
 
 jobs:
   publish:

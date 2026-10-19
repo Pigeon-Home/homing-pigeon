@@ -130,6 +130,12 @@ and pushes `ghcr.io/pigeon-home/homing-pigeon` with the version tag
 and `latest`. You can also trigger a manual build from the Actions tab
 ("Publish Docker image") any time.
 
+Every release also carries its own proof: a `SHA384SUMS` over all
+the files, a build attestation tying the set to the tag build, an
+SBOM, and a `BUILD-PROVENANCE.json` stamped inside each archive.
+To check a download against all of it, on any outlet, see
+`docs/verification.md`.
+
 **Releasing through your SI instead:** say "tag and publish
 everything." That one sentence is the whole instruction set. The SI
 bumps the version in the three places it lives, waits for the
