@@ -51,6 +51,36 @@ Everything the dashboard configures must be expressible in `config.json`, and ev
 - `oracle_log` — when true, every inference exchange is recorded in full in `oracle.log` in the state dir (request payload, reply, error bodies, elapsed time), and a spawned inference daemon writes its output there too. A debugging aid; off by default, and no `oracle.log` is created while off.
 - `oracle_log_max_bytes` — size at which `oracle.log` rotates. Default 536870912 (512 MiB); with the default backups the file family stays under roughly 2.5 GiB.
 - `oracle_log_backups` — rotated `oracle.log` files kept. Default 4, clamped to 1–10.
+- `verbose` — `true` turns on the verbose decision lines in `runner.log` (poll cycles, ingest accepts and rejects with reasons, wake-gate scores against the threshold, judge verdicts, board offers), the same lines `-v` adds for one process; `false` quiets the log the way `--quiet` does. The command line (`-v` / `--quiet`) wins over the key, and editing the key live takes effect on the next poll cycle.
+
+## Command-line overrides
+
+Every flag below replaces one config value for that process only. `config.json` is never rewritten, and a flag beats a later config edit: the key is pinned for the life of the process. `runner.py --help` is the full document; this is the map.
+
+| Flag | Config key |
+|------|------------|
+| `--poll-interval SECONDS` | `poll_interval_sec` |
+| `--timeout SECONDS` | `default_timeout_sec` |
+| `--max-output-bytes BYTES` | `max_output_bytes` |
+| `--max-job-age SECONDS` | `max_job_age_sec` |
+| `--retention-days DAYS` | `output_retention_days` |
+| `--task-timeout SECONDS` | `task_timeout` |
+| `--max-query-budget COUNT` | `max_query_budget` |
+| `--max-queries-per-hour COUNT` | `max_queries_per_hour` |
+| `--max-result-view MODE` | `max_result_view` |
+| `--judge MODE` | `judge` |
+| `--dag-mode MODE` | `dag_mode` |
+| `--oracle-mode MODE` | `oracle_mode` |
+| `--require-review` / `--no-require-review` | `require_review` |
+| `--local-signals` / `--no-local-signals` | `local_signals` |
+| `--local-signal-port PORT` | `local_signal_port` |
+| `--wake-cooldown SECONDS` | `local_wake_cooldown_sec` |
+| `--log-max-bytes BYTES` | `log_max_bytes` |
+| `--log-backups COUNT` | `log_backups` |
+| `--oracle-log` / `--no-oracle-log` | `oracle_log` |
+| `-v` / `--quiet` | `verbose` |
+
+`--workers COUNT` and `--faster` are the two older one-process switches of the same kind: workers is read from the command line first, and `--faster` swaps the inference model for the process without touching the file.
 
 ## Deployment profiles
 

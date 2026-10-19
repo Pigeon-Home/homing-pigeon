@@ -327,8 +327,8 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | Flag | What it does |
 |------|--------------|
 | `--dry-run` | Verify and describe; execute nothing, send nothing |
-| `--workers N` | Concurrent job executions (default 1) |
-| `--verbose` | Debug logging: every accept/reject decision |
+| `--workers COUNT` | Concurrent job executions (default 1) |
+| `-v`, `--verbose` | Decision lines: every poll, ingest, wake-gate, judge and board call, with reasons. `-vv` adds more; `--quiet` turns them off. Also a config key: `"verbose": true` |
 | `--pdb` | Drop into pdb on unhandled exceptions |
 | `--no-send` | Execute, but log results instead of emailing them |
 | `--once` | Single poll cycle, then exit |
@@ -336,7 +336,7 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | `--audit-report [--since 14d|48h]` | Summarize the security audit log and exit; no mailbox, read-only |
 | `--posture` | Report the runner's security posture (exit 0/1/2) and exit; no mailbox |
 | `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. Turns are appended to `oracle-chat.jsonl` in the base dir (1 MiB, then one backup). See `CONTRIBUTING.md` (maintainer notes: the `--oracle` flag). |
-| `--poll-interval SEC`, `--timeout SEC`, `--max-output-bytes N` | Override config |
+| `--poll-interval SECONDS`, `--timeout SECONDS`, `--judge MODE`, `--dag-mode MODE`, `--oracle-mode MODE`, … | One-process config overrides: one flag per key, `config.json` untouched, and a flag beats a later config edit. The full map is in `--help` and `docs/configuring-oracle.md` |
 
 `install.py` accepts the same flags and bakes them into the installed
 service, so the agent on boot runs exactly what you tested:

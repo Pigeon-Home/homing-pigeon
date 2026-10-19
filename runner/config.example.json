@@ -112,6 +112,7 @@
   "dag_mode": "off",
   "task_timeout": 86400,
   "require_review": false,
+  "_verbose": "\"verbose\": true turns on the decision lines in runner.log -- poll cycles, ingest accepts and rejects with reasons, wake-gate scores against the threshold, judge verdicts, board offers -- the same lines -v adds for one process. \"verbose\": false quiets the log like --quiet. The command line (-v / --quiet) wins either way, and editing the key live takes effect on the next poll cycle. Absent (as here) is the base level: the log the runner has always printed.",
   "worker_allowlist": [],
   "worker_compartments": {},
   "protected_paths": [],
