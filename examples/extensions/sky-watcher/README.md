@@ -6,6 +6,12 @@ International Space Station's position — the free feed at
 files the passes over your house that are worth stepping
 outside for.
 
+One honesty note: this example reaches out to the internet —
+that is what an example sense is for. The runner itself never
+phones home; it only ever polls its mailbox and reads its
+local inbox. The reaching-out lives here, in the producer you
+choose to run.
+
 Most ISS passes are invisible: broad daylight, or the station
 in Earth's shadow, or a track that never climbs out of the
 haze. The watcher does the geometry — where the station is,
