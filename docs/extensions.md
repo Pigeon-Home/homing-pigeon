@@ -549,7 +549,7 @@ python3 sky_watcher.py --samples recorded-passes.json
 on the equator at midnight: all three stages fire at corridor
 entry, because the window opens inside the lead time.)
 
-## The catalog: fifteen examples from the workbench
+## The catalog: twenty-three examples from the workbench
 
 Fifteen more working senses, each one a small diffing
 watcher in the same shape as the three above — a manifest, a
@@ -563,6 +563,15 @@ Powerful-desktop senses are the center of
 gravity; every one also declares how it tunes down for a Pi
 Light install (its README's Light mode section has the
 detail — only knobs the code implements).
+
+Eight more adapters follow the same producer shape over a
+different kind of source: the output artifact of a real IDS
+collector the installer can set up (`docs/senses.md` has the
+installer story, including which one is the default and why).
+Each feed's README carries its collector's measured
+footprint; where a number is environment-bound — a ruleset,
+a kernel that denied BPF — the README says so instead of
+quoting a number it cannot stand behind.
 
 | Extension | Watches | Light mode, in one line |
 |-----------|---------|-------------------------|
@@ -581,6 +590,14 @@ detail — only knobs the code implements).
 | `airwaves` | The Pi's wireless neighborhood (full section above): new AP (medium), evil-twin suspect (high), AP gone (info), own link degraded (medium) | Cadence is the knob — 300s to 1800s; it only ever reads |
 | `resource-sentinel` | The machine's counters, judged as rates and trends, never single samples: CPU held saturated across the window (high), disk free space shrinking too fast (high), process count storm (medium), memory falling steadily to the floor (medium) | Cadence to 300s, window down — the trends it hunts play out over minutes |
 | `job-watcher` | The runner's retained job history: the same job failing repeatedly (medium), a job alternating pass/fail (info), a run far beyond the job's own duration baseline (medium, and never before a baseline exists), many distinct jobs failing at once (high) | Cadence to 900s; history does not move fast |
+| `falco-feed` | Falco's JSON alert file: Emergency/Alert/Critical rules (high); Warning/Notice rules (medium). No footprint claimed for Falco itself: it did not run in the measurement sandbox (the host denied BPF) — on a normal box the modern-eBPF driver is the zero-build path | Cadence up; the episode cooldown is the volume knob |
+| `suricata-feed` | Suricata's eve.json: alert signatures at the source's own severity (1 high, 2 medium, 3 info); protocol anomalies (medium). ~52 MB with a minimal ruleset in the measurement container — a production ruleset is several hundred MB; the rules are the weight | A trimmed ruleset is the real light mode; cadence up |
+| `zeek-feed` | Zeek's conn.log and dns.log: a burst of first-seen external peers (medium); DNS anomalies — long queries, odd qtypes, many labels (medium). ~230 MB idle measured: Zeek is never a default | Cadence up; conn.log only |
+| `osquery-feed` | osqueryd's results log for the installer's light pack: users and listening ports added (medium), processes added (info), removals (info). ~27 MB and ~0.1% CPU measured — why osquery is the default collector | Cadence up; the pack is already three queries |
+| `sysmon-feed` | Sysmon process-create events, Linux syslog XML and Windows text shapes: a process starting from a temp directory (medium); an encoded command line (medium). No footprint claimed: Sysmon for Linux did not run in the measurement sandbox (BPF denied) | Cadence up; Event ID 1 only, by design |
+| `aide-feed` | AIDE check reports: entries changed (medium), removed (medium), added (info) — one alert per class per report. No daemon: 0 MB between scans, ~21 MB during a scoped scan | A longer schedule; a narrower tree in the scoped config |
+| `softflowd-feed` | NetFlow/IPFIX from softflowd — softflowd has no file, so the adapter is the UDP listener and decoder (v5 complete; v9/IPFIX template-driven over a documented field subset): a first-seen external peer (info), a very large single flow (medium), a long-lived flow (info). softflowd itself measured ~7 MB at ~0% — the lightest of the set | A shorter collect window; higher thresholds |
+| `wazuh-feed` | A Wazuh `alerts.json` where one exists on the box — a manager export or API pull; a standalone agent produces none: rule level 10 and up (high), 5–9 (medium). A missing file is a quiet no-op, forever | Cadence up; the episode quiet window up |
 
 Two honest limits, stated once for the whole catalog.
 Tripwire over a huge tree cannot be made cheap — hashing

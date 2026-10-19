@@ -30,15 +30,55 @@ traffic. So everything is adjustable from the beginning:
 
 - `host_ids` — host intrusion detection (file integrity, suspicious
   syscalls, privilege changes). Collector: Falco, Wazuh agent, AIDE.
+  Shipped adapters: `falco-feed` (Falco's JSON alert file),
+  `aide-feed` (AIDE's check reports), and `wazuh-feed` (a Wazuh
+  `alerts.json` where one exists on the box — see the Wazuh note
+  under Collector support below).
 - `netmon` — network monitoring (flows, DNS, anomalous outbound).
-  Collector: Suricata, Zeek, softflowd.
+  Collector: Suricata, Zeek, softflowd. Shipped adapters:
+  `suricata-feed` (Suricata's eve.json), `zeek-feed` (Zeek's
+  conn.log and dns.log), and `softflowd-feed` (softflowd emits
+  NetFlow/IPFIX over UDP with no file, so the adapter is the
+  listener: it collects the flow records itself).
 - `sysmon` — system internals telemetry (process tree, CPU/memory,
   open sockets/handles, file-touch events). This is the signal that
   lets the Oracle spot *behavioral* anomalies: a new unknown process
   plus an anomalous outbound connection plus file touches outside
   the workspace, all inside one time window, is one incident, not
   three alerts. Collector: osquery (cross-platform), Sysmon
-  (Windows), `/proc` + `lsof`/`ss` scraping (Linux).
+  (Windows), `/proc` + `lsof`/`ss` scraping (Linux). Shipped
+  adapters: `osquery-feed` (osqueryd's results log for the light
+  query pack: processes, users, listening ports) and
+  `sysmon-feed` (Sysmon process-create events, Linux and Windows
+  shapes).
+
+## Collector support: installing the daemons behind the senses
+
+The adapters above are examples in `examples/extensions/`; the
+collectors themselves are third-party daemons the installer can
+set up. `install.py --collector NAME` (repeatable) installs one
+where the platform has an official channel, and reports the
+outcome per collector; `--no-collector` opts out. A fresh install
+sets up **osquery** by default on Linux, macOS, and Windows —
+measured at ~27 MB resident and ~0.1% CPU idle, the lightest
+host-telemetry daemon of the set — with a light query pack and,
+on Linux, the systemd unit the package does not ship. Pi Light
+installs no collector by default; `--collector` stays available
+there explicitly. The Wazuh agent installs only when a manager
+address is given (`--wazuh-manager`): Wazuh alerts live on the
+manager, a standalone agent produces no on-box artifact, and
+`wazuh-feed` consumes an `alerts.json` only where a manager
+export or API pull lands one on the box.
+
+Falco and Sysmon carry a capability warning the others do not:
+both can install successfully and then silently not function
+where the kernel denies BPF or the driver cannot load. The
+installer's `--check` therefore capability-probes every
+collector it knows and reports one row each — **WORKS**,
+**INSTALLED-BUT-CANNOT-RUN** (with the reason: BPF denied, no
+manager configured, daemon down), or **ABSENT**. Absence is a
+legitimate state, not a fault; installed-but-cannot-run is the
+one to act on.
 
 ## More senses: antivirus and basic hygiene
 
@@ -60,8 +100,8 @@ files what the platform's AV already found as `sensor_alert`s.
   file scanning misses.
 - **Linux:** ClamAV (`clamdscan`) on a schedule, plus the
   freshness of its signatures as its own info-level alert.
-  Sysmon for Linux (current: 1.4) feeds the `sysmon` sense on
-  the same box.
+  Sysmon for Linux (measured current: 1.5.3) feeds the `sysmon`
+  sense on the same box.
 - **macOS:** XProtect/MRT run automatically with no stable API,
   so the collector watches what the OS surfaces: XProtect
   detections in the unified log and Gatekeeper assessments.
