@@ -26,8 +26,10 @@ python3 runner/runner.py --config config.json --local-test --browser
   with a self-hosted Llama. One text box, one send button.
 - Open WebUI is pointed at the SI Ollama instance on port **11435**.
 - The Oracle stays on its configured endpoint (usually **11434**).
-- Send in the chat talks to the SI. The SI's reply is what gets
-  emailed to the Oracle.
+- Send in the chat talks to the SI. Nothing emails the SI's reply
+  anywhere: browser mode only opens Open WebUI at the SI instance.
+  (A separate harness function, `send_via_email`, sends a signed
+  ask job through the real email transport.)
 
 If Open WebUI is not installed, the harness says so and exits. It
 does not fall back to a homemade page.
@@ -63,7 +65,11 @@ There is no adapter module. Status: `docs/transports-status.md`.
 ## What was removed on purpose
 
 - Direct "ask the Oracle" button. It skipped the SI and called the
-  Oracle path in-process. Gone. `/oracle` is 404.
+  Oracle path in-process. The button is gone from the page, but the
+  direct path itself still ships: `runner/local_test.py`'s
+  `answer_as_oracle()` / `repl()` run asks in-process. Separately,
+  the runner's own Oracle window serves its page at `/` with
+  `POST /ask`; only other paths 404.
 - Extra buttons. A chatbot has one text box and one send button.
 - Homemade chat page. Replaced by Open WebUI.
 
