@@ -497,7 +497,7 @@ is what the Oracle is tested against: it is the model the project's
 evaluation battery selected, and the installer's default. The
 Oracle refuses non-loopback endpoints.
 
-A general-purpose local agent such as OpenClaw may share the same
+Another local agent may share the same
 model server for other tasks on the box, but the Oracle's `ask` calls
 the model endpoint directly under the Oracle's own instructions, so
 answers stay constrained and non-adaptive — the agent's autonomy is
