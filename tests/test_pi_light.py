@@ -651,10 +651,18 @@ class PiHealthReadersTest(unittest.TestCase):
 
     def test_memory_sysconf_counts_pages(self):
         pages = {"SC_PHYS_PAGES": 1000, "SC_AVPHYS_PAGES": 250}
+        # os.sysconf does not exist on Windows. create=True lets
+        # the pin run there; the function itself treats a missing
+        # sysconf as "this source is absent".
         with unittest.mock.patch.object(
-                os, "sysconf", lambda name: pages[name]):
+                os, "sysconf", lambda name: pages[name], create=True), \
+             unittest.mock.patch.object(
+                os, "sysconf_names",
+                {"SC_PHYS_PAGES": 0, "SC_AVPHYS_PAGES": 1},
+                create=True):
             self.assertEqual(self.mod._mem_avail_pct_sysconf(), 25.0)
-        with unittest.mock.patch.object(os, "sysconf_names", {}):
+        with unittest.mock.patch.object(os, "sysconf_names", {},
+                                        create=True):
             self.assertIsNone(self.mod._mem_avail_pct_sysconf())
 
     @unittest.skipIf(os.name == "nt", "off-Windows check")

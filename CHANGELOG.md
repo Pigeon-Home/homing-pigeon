@@ -40,6 +40,15 @@
   reads it, and a mutant tree that lacks it fails stats
   collection before any mutant runs.
 
+### Tests
+
+- The new sense pins hold on Windows. Log Sentinel's offset
+  fixtures are written with `\n` only, so a text-mode `\r\n`
+  does not move the byte count. Pi Health's thermal-zone type
+  file is addressed with the same slashes the glob used, and
+  the sysconf memory pin can run where `os.sysconf` does not
+  exist. Crash Watch's seen-path pin uses the platform join.
+
 ## 3.8.1 - 2026-10-18
 
 ## 3.8.1 - 2026-10-18

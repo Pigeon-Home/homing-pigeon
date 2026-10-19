@@ -219,7 +219,8 @@ class DecideTest(unittest.TestCase):
                 alerts, clean = CW.decide(
                     _readings([_file()]), _manifest(), state)
                 self.assertEqual(len(alerts), 1)
-                self.assertIn("./crashes/app.dmp", clean["seen"])
+                self.assertIn(os.path.join("./crashes", "app.dmp"),
+                              clean["seen"])
         alerts, _state = CW.decide(None, _manifest(), {})
         self.assertEqual(alerts, [])
 

@@ -269,7 +269,9 @@ class DecideTest(unittest.TestCase):
 
 class ReaderTest(unittest.TestCase):
     def _write(self, path, text):
-        with open(path, "w", encoding="utf-8") as fh:
+        # Byte offsets are the pin. Windows text mode would turn
+        # each \n into \r\n and move every offset.
+        with open(path, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(text)
 
     def test_missing_file_is_no_lines_no_state(self):
@@ -291,7 +293,7 @@ class ReaderTest(unittest.TestCase):
             path = os.path.join(d, "kern.log")
             self._write(path, "one\n")
             _lines, reader = LS.read_new_lines([path], {}, 65536)
-            with open(path, "a", encoding="utf-8") as fh:
+            with open(path, "a", encoding="utf-8", newline="\n") as fh:
                 fh.write("two\n")
             lines, reader = LS.read_new_lines([path], reader, 65536)
             self.assertEqual(lines, ["two"])
@@ -313,7 +315,7 @@ class ReaderTest(unittest.TestCase):
             path = os.path.join(d, "kern.log")
             self._write(path, "seed\n")
             _l, reader = LS.read_new_lines([path], {}, 10)
-            with open(path, "a", encoding="utf-8") as fh:
+            with open(path, "a", encoding="utf-8", newline="\n") as fh:
                 fh.write("x" * 25)
             first, reader = LS.read_new_lines([path], reader, 10)
             self.assertEqual(sum(len(ln) for ln in first), 10)

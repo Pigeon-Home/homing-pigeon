@@ -139,9 +139,14 @@ def _read_temp_c():
         except (OSError, ValueError):
             continue
         ztype = ""
+        # The sibling "type" file. Kept as a forward-slash path
+        # because the glob that found `path` used forward slashes;
+        # os.path.join would rewrite it on Windows and miss the
+        # file the tests (and a Linux sysfs) just named.
+        base = path.rpartition("/")[0]
+        type_path = (base + "/type") if base else path
         try:
-            with open(os.path.join(os.path.dirname(path), "type"),
-                      encoding="utf-8") as fh:
+            with open(type_path, encoding="utf-8") as fh:
                 ztype = fh.read().strip()
         except OSError:
             pass
