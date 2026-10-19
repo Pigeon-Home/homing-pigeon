@@ -1,5 +1,27 @@
 # Changelog
 
+## 3.9.0 - 2026-10-19
+
+### Added
+
+- The Oracle learns from its own calls. Every opinion is
+  frozen before the job runs and scored against the real
+  outcome -- correct, incorrect, partial -- in a local
+  learning ledger, written before the result goes out.
+  Lessons come through two channels: facts the code derives
+  from verified probes and outcomes, and model-formed
+  candidates that are born labeled uncorroborated and earn
+  weight only when later verified outcomes corroborate
+  them; one contradiction retires a candidate for good.
+  Each new job reads the ledger fresh, filtered to this
+  host and the features the job touches. A lesson never
+  authorizes anything by itself: a repair still requires
+  the repair latitude, the mismatch re-verified on the
+  current job, and the repaired job judged again before
+  it runs. Switches: `oracle_learning` (default on),
+  `oracle_learning_model` (default off),
+  `oracle_learning_promote_after` (default 2).
+
 ## 3.8.9 - 2026-10-19
 
 ### Added
