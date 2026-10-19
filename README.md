@@ -1,6 +1,6 @@
 # Homing Pigeon
 
-**Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, etc.**
+**Works with Muse, Grok, ChatGPT, Claude, Gem..., Copilot, etc.**
 
 > ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative control**
 > of the machine to whoever holds the shared secret. It reads inbound messages
