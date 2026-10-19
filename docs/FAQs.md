@@ -172,3 +172,29 @@ object, under a key derived from the shared secret, and
 that encryption is on by default; each mail hop runs over
 TLS as a requirement, not an option. The mail system is
 transport, not a security layer.
+
+## Why does the protocol use no public-key (asymmetric) cryptography?
+
+Short answer: it has no strangers to introduce. Public-key
+cryptography exists to establish trust and keys between
+parties who share nothing. The two endpoints here already
+share a secret, installed out of band — so authentication
+is HMAC-SHA-384, and confidentiality is ChaCha20-Poly1305
+under a key the shared secret derives. Symmetric, end to
+end.
+
+Asymmetric machinery would add nothing and subtract
+something. RSA and elliptic-curve schemes fall to a large
+enough quantum computer, including retroactively against
+recorded traffic. The symmetric constructions do not: the
+generic quantum speedup is answered by key size, and the
+shared secret's floor is 128 bits, with 256-bit generation.
+
+The one deliberate exception proves the rule. The version
+2 DTLS binding uses ephemeral Diffie-Hellman to get
+forward secrecy, and the draft's security considerations
+say plainly that recorded sessions of that binding do not
+share the core protocol's quantum posture. Post-quantum
+key exchange would close that too — at the cost of asking
+every provider to ship it, which, per the entry above, is
+asking a real lot.
