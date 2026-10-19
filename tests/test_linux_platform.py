@@ -877,12 +877,12 @@ class ClamAndPiTest(unittest.TestCase):
             with mock.patch("builtins.open", side_effect=_open):
                 return detect_default_profile()
 
-        self.assertEqual(detect("Raspberry Pi 5\x00", None), "raspberry-pi-home")
+        self.assertEqual(detect("Raspberry Pi 5\x00", None), "pi-light")
         self.assertEqual(detect("not a pi", "Hardware\t: Raspberry Pi"),
-                         "raspberry-pi-home")
+                         "pi-light")
         self.assertEqual(detect(None, "model name\t: intel"), "password-only")
         self.assertEqual(detect(None, None), "password-only")
-        self.assertEqual(detect("RASPBERRY PI", None), "raspberry-pi-home")
+        self.assertEqual(detect("RASPBERRY PI", None), "pi-light")
 
 
 class ProcAndClamFuzzTest(unittest.TestCase):

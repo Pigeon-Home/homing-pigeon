@@ -500,7 +500,7 @@ class DoInstallHomeTest(unittest.TestCase):
             mock.patch.object(install, "_is_admin", return_value=True),
             mock.patch.object(install, "_acl_home", return_value=True),
             mock.patch.object(install, "_setup_fresh_config",
-                              return_value=(True, "llama3.2:3b")),
+                              return_value=(True, "llama3.2:3b", False)),
             mock.patch.object(install, "install_windows"),
         ]
         started = [p.start() for p in patches]

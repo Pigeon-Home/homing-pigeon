@@ -526,7 +526,7 @@ class ShellOrderingTest(unittest.TestCase):
                  install,
                  install_files=mock.Mock(return_value=True),
                  install_linux=mock.Mock(),
-                 _setup_fresh_config=mock.Mock(return_value=(True, "m")),
+                 _setup_fresh_config=mock.Mock(return_value=(True, "m", False)),
                  do_check=mock.Mock(return_value=0)):
             with redirect_stdout(buf):
                 code = install.main()

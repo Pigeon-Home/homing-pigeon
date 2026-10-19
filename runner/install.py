@@ -785,7 +785,11 @@ def do_check(home, bin_dir, cfg_path, state_dir) -> int:
                     "exists but its command could not be read")
     inf = (cfg.get("inference") or {}) if isinstance(cfg, dict) else {}
     url = inf.get("endpoint") if isinstance(inf, dict) else None
-    if not url:
+    if isinstance(cfg, dict) and cfg.get("oracle_mode") == "deterministic":
+        rec("PASS", "oracle mode",
+            "deterministic (Pi Light): no local model by design; "
+            "briefs and answers come from the box's records")
+    elif not url:
         rec("WARN", "inference",
             "not configured; the Oracle chat stays off "
             "(install.exe --inference-only to set it up)")
@@ -926,10 +930,30 @@ def do_oracle(bin_dir, cfg_path) -> int:
     return p.returncode
 
 
+def _pi_light_skip(args, profile) -> bool:
+    """True when this install is Pi Light and must download nothing.
+
+    The profile asks for the deterministic Oracle (oracle_mode in
+    its spec). An explicit --inference-model or --faster is the
+    owner overriding that by hand; those install a model as usual.
+    """
+    if profile_oracle_mode(profile) != "deterministic":
+        return False
+    explicit = getattr(args, "inference_model", None)
+    if isinstance(explicit, str) and explicit.strip():
+        return False
+    if getattr(args, "faster", False):
+        return False
+    return True
+
+
 def _setup_fresh_config(args, cfg_path):
     """Secrets, mailbox wizard, profile, instructions, Ollama.
 
-    Fresh installs only. Returns (inference_ok, model)."""
+    Fresh installs only. Returns (inference_ok, model, pi_light).
+    pi_light marks an install that deliberately set up no model:
+    nothing was installed or downloaded for inference, and the
+    profile wrote oracle_mode deterministic into the config."""
     ensure_shared_secret(cfg_path, args.shared_secret)
     # Mailbox auth is the one thing install cannot invent. On a TTY,
     # offer the same Thunderbird-style wizard the runner uses, so a
@@ -957,13 +981,28 @@ def _setup_fresh_config(args, cfg_path):
     for kid in args.additional_secret:
         store_additional_secret(cfg_path, kid)
     profile = chosen_profile(args.profile, args.no_profile)
+    pi_light = _pi_light_skip(args, profile)
     model = inference_model_for(profile, args.inference_model,
                                 faster=getattr(args, "faster", False))
-    inference_ok = install_ollama_and_model(cfg_path, model, args.no_inference)
+    if pi_light:
+        # Pi Light: install_ollama_and_model is not called at all.
+        # No Ollama install, no model pull, nothing downloaded --
+        # the Oracle runs deterministically on the records the
+        # runner itself keeps.
+        print("inference: skipped (Pi Light) -- no model is installed "
+              "or downloaded; the Oracle runs deterministically. To "
+              "add a model later, set oracle_mode to llm in "
+              "config.json and re-run the installer with "
+              "--inference-only.")
+        inference_ok = False
+        model = None
+    else:
+        inference_ok = install_ollama_and_model(cfg_path, model,
+                                                args.no_inference)
     if profile:
         apply_profile(cfg_path, profile)
     apply_instruction_flags(cfg_path, args.instructions, args.instructions_add)
-    return inference_ok, model
+    return inference_ok, model, pi_light
 
 
 def do_install_home(args, home, bin_dir, cfg_path, state_dir, src_dir) -> int:
@@ -993,10 +1032,10 @@ def do_install_home(args, home, bin_dir, cfg_path, state_dir, src_dir) -> int:
         _stop_task_for_upgrade()
     if not install_files(src_dir, bin_dir, cfg_path):
         return 1
-    inference_ok, model = False, None
+    inference_ok, model, pi_light = False, None, False
     if fresh:
         _ensure_base_dir(cfg_path, state_dir)
-        inference_ok, model = _setup_fresh_config(args, cfg_path)
+        inference_ok, model, pi_light = _setup_fresh_config(args, cfg_path)
     elif getattr(args, "faster", False) and not args.no_inference:
         model = inference_model_for(None, args.inference_model, faster=True)
         inference_ok = install_ollama_and_model(cfg_path, model, False)
@@ -1009,7 +1048,7 @@ def do_install_home(args, home, bin_dir, cfg_path, state_dir, src_dir) -> int:
     if inference_ok:
         print(f"inference: READY - local model {model} configured; "
               "the Oracle chat will answer")
-    elif fresh and not args.no_inference:
+    elif fresh and not args.no_inference and not pi_light:
         print("inference: NOT configured - ask stays off. "
               "Re-run install.exe --inference-only to retry, or set "
               "inference.endpoint in config.json to your local Ollama server.")
@@ -1188,18 +1227,29 @@ def _ollama_bin():
 
 
 
-BUILTIN_PROFILES = {
-    "raspberry-pi-home": {
-        "description": "Pi; watch root password hash and home manuals",
-        "redact_patterns_extra": {
-            "shadow_hash": r"\$[0-9a-z]+\$[A-Za-z0-9./]{20,}",
-        },
-        "protected_paths": ["/etc/shadow", "/home/pi/docs/manuals"],
-        "max_result_view": "attested",
-        "judge": "advisory",
-        # 1B fits a Pi. The 3B default is for machines with more RAM.
-        "inference_model": "llama3.2:1b",
+_PI_HOME_SPEC = {
+    "description": "Raspberry Pi Light: full runner and protocol, "
+                   "deterministic Oracle, no local model",
+    "redact_patterns_extra": {
+        "shadow_hash": r"\$[0-9a-z]+\$[A-Za-z0-9./]{20,}",
     },
+    "protected_paths": ["/etc/shadow", "/home/pi/docs/manuals"],
+    "max_result_view": "attested",
+    "judge": "advisory",
+    # Pi Light: no model at all. Nothing for inference is installed
+    # or downloaded -- the Oracle runs deterministically (see
+    # oracle_mode in the runner). A Pi gains a model only when the
+    # owner flips oracle_mode and sets inference up by hand.
+    "oracle_mode": "deterministic",
+}
+
+
+BUILTIN_PROFILES = {
+    "pi-light": _PI_HOME_SPEC,
+    # The former name of pi-light. Kept so existing --profile
+    # invocations and written configs keep working; it now means
+    # the same light install (no model), not the old 1B pull.
+    "raspberry-pi-home": _PI_HOME_SPEC,
     "password-only": {
         "description": "Only the password hash matters on this box",
         "redact_patterns_extra": {
@@ -1236,19 +1286,50 @@ DEFAULT_INFERENCE_MODEL = "qwen3:1.7b"
 # every job as malicious under one phrasing and none under another.
 # qwen2.5:3b was the smallest model whose catch stayed steady in
 # the field tests and the battery. The owner's rule for this slot:
-# the faster option must still work when it ships. The
-# raspberry-pi-home profile keeps llama3.2:1b.
+# the faster option must still work when it ships. The pi-light
+# profile pulls no model at all.
 FASTER_INFERENCE_MODEL = "qwen2.5:3b"
+
+
+def _profile_spec(profile) -> dict:
+    """Spec dict for a builtin profile name or a JSON profile file.
+
+    Used for profile keys the installer itself reads (oracle_mode).
+    {} when the profile is unknown or unreadable.
+    """
+    if not isinstance(profile, str) or not profile:
+        return {}
+    if os.path.isfile(profile):
+        try:
+            with open(profile, encoding="utf-8") as fh:
+                data = json.load(fh)
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+    spec = BUILTIN_PROFILES.get(profile)
+    return spec if isinstance(spec, dict) else {}
+
+
+def profile_oracle_mode(profile):
+    """The oracle_mode a profile asks for, or None.
+
+    "deterministic" is Pi Light: the install must not install
+    Ollama or download any model for it (see _setup_fresh_config).
+    """
+    mode = _profile_spec(profile).get("oracle_mode")
+    if isinstance(mode, str) and mode.strip():
+        return mode.strip()
+    return None
 
 
 def inference_model_for(profile, explicit=None, faster=False) -> str:
     """Which Ollama tag to pull.
 
     An explicit --inference-model always wins. --faster pulls
-    FASTER_INFERENCE_MODEL (qwen2.5:3b). Otherwise the
-    raspberry-pi-home profile, whether detected or passed with
-    --profile, pulls its lighter Llama, and every other install
-    keeps the project default.
+    FASTER_INFERENCE_MODEL (qwen2.5:3b). Otherwise a profile's own
+    inference_model when it names one, and every other install
+    keeps the project default. The pi-light profile names none:
+    its installs skip inference entirely and never reach the pull.
     """
     if isinstance(explicit, str) and explicit.strip():
         return explicit.strip()
@@ -1378,9 +1459,10 @@ def chosen_profile(explicit, skip: bool):
 def detect_default_profile() -> str:
     """Pick a profile automatically when the user did not name one.
 
-    Raspberry Pi gets the password-focused Pi profile. Everything else
-    gets password-only so the common case (only the password matters)
-    is the default. --no-profile disables this.
+    Raspberry Pi gets pi-light (full runner, deterministic Oracle,
+    no model). Everything else gets password-only so the common
+    case (only the password matters) is the default. --no-profile
+    disables this.
     """
     # Pi detection: device-tree model or the classic cpuinfo hardware line.
     for path in ("/proc/device-tree/model", "/proc/cpuinfo"):
@@ -1388,7 +1470,7 @@ def detect_default_profile() -> str:
             with open(path, encoding="utf-8", errors="ignore") as f:
                 blob = f.read().lower()
             if "raspberry pi" in blob:
-                return "raspberry-pi-home"
+                return "pi-light"
         except Exception:
             pass
     return "password-only"
@@ -1428,7 +1510,7 @@ def apply_profile(cfg_path: str, profile: str) -> None:
         cfg[key] = merged
     for key in ("protected_paths", "max_result_view", "judge", "workspace_root",
                 "max_query_budget", "output_retention_days", "worker_allowlist",
-                "dag_mode", "require_review"):
+                "dag_mode", "require_review", "oracle_mode"):
         if key in data:
             cfg[key] = data[key]
     cfg["profile"] = name
@@ -1648,15 +1730,16 @@ def main() -> int:
     ap.add_argument("--instructions-add", default=None, metavar="TEXT",
                     help="append a paragraph to the existing instructions")
     ap.add_argument("--profile", default=None, metavar="NAME_OR_PATH",
-                    help="apply a deployment profile (raspberry-pi-home, password-only, or a JSON file). "
+                    help="apply a deployment profile (pi-light, password-only, or a JSON file; "
+                         "raspberry-pi-home is pi-light's former name). "
                          "If omitted, a profile is chosen automatically.")
     ap.add_argument("--no-profile", action="store_true",
                     help="do not apply any deployment profile")
     ap.add_argument("--inference-model", default=None,
                     help="Ollama model to pull when inference is enabled "
                          "(default qwen3:1.7b, qwen2.5:3b with "
-                         "--faster, llama3.2:1b with the "
-                         "raspberry-pi-home profile)")
+                         "--faster; the pi-light profile installs "
+                         "no model at all)")
     ap.add_argument("--faster", action="store_true",
                     help="pull qwen2.5:3b, a smaller faster model. "
                          "Does not change protected paths. "
@@ -1720,6 +1803,12 @@ def main() -> int:
             return do_oracle(bin_dir, cfg_path)
         if args.inference_only:
             profile = chosen_profile(args.profile, args.no_profile)
+            if _pi_light_skip(args, profile):
+                print("inference: Pi Light -- no model to install or "
+                      "download; the Oracle runs deterministically. "
+                      "To add a model, set oracle_mode to llm in "
+                      "config.json first.")
+                return 0
             model = inference_model_for(profile, args.inference_model,
                                          faster=args.faster)
             ok = install_ollama_and_model(cfg_path, model, args.no_inference)
@@ -1750,6 +1839,12 @@ def main() -> int:
         return do_logs(cfg_path, follow=args.follow, lines=args.lines)
     if args.inference_only:
         profile = chosen_profile(args.profile, args.no_profile)
+        if _pi_light_skip(args, profile):
+            print("inference: Pi Light -- no model to install or "
+                  "download; the Oracle runs deterministically. "
+                  "To add a model, set oracle_mode to llm in "
+                  "config.json first.")
+            return 0
         model = inference_model_for(profile, args.inference_model,
                                      faster=args.faster)
         ok = install_ollama_and_model(cfg_path, model, args.no_inference)
@@ -1764,7 +1859,7 @@ def main() -> int:
     if not install_files(src_dir, dst_dir, os.path.join(dst_dir,
                                                         "config.json")):
         return 1
-    inference_ok, model = _setup_fresh_config(args, cfg_path)
+    inference_ok, model, pi_light = _setup_fresh_config(args, cfg_path)
     extra = _forwarded_args(args)
     if extra:
         print(f"forwarding runner flags into service: {' '.join(extra)}")
@@ -1785,7 +1880,7 @@ def main() -> int:
     if inference_ok:
         print(f"inference: READY - local model {model} configured; "
               "the Oracle chat will answer")
-    elif not args.no_inference:
+    elif not args.no_inference and not pi_light:
         print("inference: NOT configured - ask stays off. "
               "Re-run install.exe --inference-only to retry, or set "
               "inference.endpoint in config.json to your local Ollama server.")

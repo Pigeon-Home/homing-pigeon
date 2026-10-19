@@ -587,7 +587,7 @@ class InstallMainGapTest(unittest.TestCase):
         install.install_files.return_value = patches.get(
             "install_files", True)
         install._setup_fresh_config.return_value = patches.get(
-            "setup", (True, "llama"))
+            "setup", (True, "llama", False))
         install.install_ollama_and_model.return_value = patches.get(
             "ollama", True)
         install.do_wipe.return_value = 0

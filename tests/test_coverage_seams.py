@@ -371,12 +371,16 @@ class InstallMainTest(unittest.TestCase):
         self.assertTrue(recorded["ollama"][0][2])
         self.assertEqual(recorded["install_count"], 1)
 
-    def test_pi_profile_selects_the_light_model(self):
-        with tempfile.TemporaryDirectory() as directory:
-            code, recorded = self._run([
-                "--dir", directory, "--profile", "raspberry-pi-home"])
-        self.assertEqual(code, 0)
-        self.assertEqual(recorded["ollama"][0][1], "llama3.2:1b")
+    def test_pi_profiles_download_no_model(self):
+        # Pi Light: the Ollama/model path is never invoked -- no
+        # Ollama install, no model pull, nothing downloaded. Both
+        # the current name and the former one mean the light install.
+        for profile in ("pi-light", "raspberry-pi-home"):
+            with tempfile.TemporaryDirectory() as directory:
+                code, recorded = self._run([
+                    "--dir", directory, "--profile", profile])
+            self.assertEqual(code, 0)
+            self.assertIsNone(recorded["ollama"])
 
     def test_uninstall_does_not_copy_files(self):
         code, recorded = self._run(["--uninstall"])
