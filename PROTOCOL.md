@@ -714,10 +714,6 @@ If a worker pulls a task and no result arrives within `task_timeout`
 silent are simply never dealt to again; there is no eviction protocol,
 just the timeout.
 
-Disclaimer: the Oracle is one box. It is the bottleneck and the single
-point of failure for the whole board. That is fine at human scale. It is
-not a distributed scheduler and does not pretend to be one.
-
 ### 13.6 Concurrency
 
 The Oracle is the sole arbiter of the board, so there is no distributed
