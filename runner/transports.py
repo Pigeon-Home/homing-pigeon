@@ -65,7 +65,7 @@ TRANSPORT_API_VERSION = 1
 # discovery finds under runner/transport_extensions/). Enabled
 # names are NOT limited to these: any valid transport manifest
 # in the extensions directory is loadable, registered or not.
-FIRST_PARTY_TRANSPORTS = ("email", "file", "nats")
+FIRST_PARTY_TRANSPORTS = ("email", "file", "nats", "dtls")
 
 DEFAULT_TRANSPORTS = ["email"]
 
@@ -424,12 +424,62 @@ _MAILBOX_KEYS = (
 )
 
 
+def _read_secret_file_quiet(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def _dtls_secret_material(cfg):
+    """The PSK material the dtls extension terminates
+    authentication with, resolved from the same sources the
+    core's build_secrets() accepts (inline values or secret
+    files). The core entropy-validates these values at
+    startup; this only resolves them for the handoff. Nothing
+    here is ever logged."""
+    out = {}
+    default = cfg.get("shared_secret")
+    if not isinstance(default, str):
+        default = ""
+    if not default and isinstance(cfg.get("shared_secret_file"),
+                                  str):
+        default = _read_secret_file_quiet(cfg["shared_secret_file"])
+    if default:
+        out["shared_secret"] = default
+    extra = {}
+    inline = cfg.get("additional_secrets")
+    if isinstance(inline, dict):
+        for kid, sec in inline.items():
+            if isinstance(kid, str) and isinstance(sec, str) \
+                    and sec:
+                extra[kid] = sec
+    files = cfg.get("additional_secrets_files")
+    if isinstance(files, dict):
+        for kid, path in files.items():
+            if isinstance(kid, str) and isinstance(path, str) \
+                    and kid not in extra:
+                sec = _read_secret_file_quiet(path)
+                if sec:
+                    extra[kid] = sec
+    if extra:
+        out["additional_secrets"] = extra
+    return out
+
+
 def _runtime_config(cfg, name, base_dir, paths):
     """The config one extension process is handed: its own
     transport block (transport_<name>), the mailbox keys for the
     email extension, and the shared cadence keys. The core's
-    other config -- above all the shared secret -- is NOT handed
-    over: verification is the core's job, never the pipe's."""
+    other config is NOT handed over: verification is the core's
+    job, never a carrying pipe's. Two exceptions are pipes that
+    terminate something themselves: the email pipe owns the
+    mailbox, so it gets the mailbox keys; the dtls pipe
+    terminates DTLS-PSK authentication, so it gets the secret
+    material it authenticates with (and the greeting posture).
+    A job arriving over dtls still faces the core's signature
+    check exactly like any other transport's."""
     out = {
         "name": name,
         "base_dir": base_dir,
@@ -446,6 +496,10 @@ def _runtime_config(cfg, name, base_dir, paths):
             for key in _MAILBOX_KEYS:
                 if key in cfg:
                     out[key] = cfg[key]
+        if name == "dtls":
+            out.update(_dtls_secret_material(cfg))
+            if "dtls_greeting" in cfg:
+                out["dtls_greeting"] = cfg["dtls_greeting"]
     return out
 
 
@@ -671,6 +725,15 @@ def _config_signature(cfg, base_dir):
     for key, value in cfg.items():
         if key.startswith("transport_") or key in _MAILBOX_KEYS:
             keys[key] = value
+    enabled = cfg.get("transports")
+    if isinstance(enabled, (list, tuple)) and "dtls" in enabled:
+        # The dtls pipe authenticates with the secret itself,
+        # so a secret or greeting change must restart it.
+        for key in ("shared_secret", "shared_secret_file",
+                    "additional_secrets", "additional_secrets_files",
+                    "dtls_greeting"):
+            if key in cfg:
+                keys[key] = cfg[key]
     try:
         blob = json.dumps(keys, sort_keys=True, default=str)
     except (TypeError, ValueError):
