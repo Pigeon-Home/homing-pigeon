@@ -109,6 +109,21 @@ tar xzf pigeon.tar.gz
 cd "homing-pigeon-linux-x86_64-$ver"
 ```
 
+Raspberry Pi (Pi Light — its own archive, ARM64 like the Pi, with
+the light profile as its baked-in default):
+```bash
+ver=$(curl -s https://api.github.com/repos/Pigeon-Home/homing-pigeon/releases/latest | python3 -c "import json,sys; print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
+curl -sL -o pigeon.tar.gz "https://github.com/Pigeon-Home/homing-pigeon/releases/latest/download/homing-pigeon-pi-light-arm64-$ver.tar.gz"
+tar xzf pigeon.tar.gz
+cd "homing-pigeon-pi-light-arm64-$ver"
+```
+Then run `install` in the folder. The archive carries a
+`default_profile` marker naming `pi-light`, so the install
+selects Pi Light by itself — no `--profile` flag to remember,
+and no model is installed or downloaded (see "Raspberry Pi:
+Pi Light" in §2). The other archives carry no marker and keep
+the ordinary defaults.
+
 macOS (same):
 ```bash
 ver=$(curl -s https://api.github.com/repos/Pigeon-Home/homing-pigeon/releases/latest | python3 -c "import json,sys; print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
