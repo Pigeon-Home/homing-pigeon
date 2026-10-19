@@ -574,3 +574,303 @@ class LastBranchesTest(unittest.TestCase):
                     os.O_NOFOLLOW = saved
             self.assertTrue(os.path.isfile(path))
 
+
+class TailTest(unittest.TestCase):
+    def test_the_loops_that_only_matter_on_the_second_pass(self):
+        with tempfile.TemporaryDirectory() as src, \
+                tempfile.TemporaryDirectory() as dst:
+            for name in ("homing-pigeon", "install.exe",
+                         "config.example.json"):
+                with open(os.path.join(src, name), "w",
+                          encoding="utf-8") as fh:
+                    fh.write("x")
+            cfg = os.path.join(dst, "config.json")
+            real = os.chmod
+
+            def chmod(path, mode, **k):
+                if "follow_symlinks" not in k and mode == 0o600:
+                    raise OSError("no")
+                return real(path, mode, **k)
+
+            with mock.patch.object(inst, "FROZEN", True), \
+                    mock.patch.object(os, "name", "nt"):
+                self.assertTrue(inst.install_files(
+                    src, os.path.join(dst, "bin"), cfg))
+            for name in inst.FILES:
+                with open(os.path.join(src, name), "w",
+                          encoding="utf-8") as fh:
+                    fh.write("x")
+            fresh = os.path.join(dst, "fresh", "config.json")
+            with mock.patch.object(os, "chmod", chmod):
+                self.assertTrue(inst.install_files(src, dst, fresh))
+
+        with mock.patch.object(os.path, "expanduser", return_value=""):
+            inst._candidate_state_dirs()
+        with mock.patch.object(os.path, "abspath",
+                               side_effect=OSError("bad")):
+            self.assertEqual(inst._candidate_state_dirs(), [])
+        with mock.patch.object(os.path, "expanduser",
+                               return_value="/root"), \
+                mock.patch.object(os.path, "isdir",
+                                  side_effect=OSError("no")):
+            self.assertEqual(inst._candidate_state_dirs(), [])
+
+        with tempfile.TemporaryDirectory() as d:
+            state = os.path.join(d, "s")
+            os.makedirs(state)
+            with open(os.path.join(state, "a"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("a")
+
+            class _Z:
+                def __init__(self, *_a, **_k):
+                    pass
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *_a):
+                    return False
+
+                def write(self, *_a, **_k):
+                    raise OSError("zip")
+
+            with mock.patch.object(inst.zipfile, "ZipFile", _Z):
+                self.assertEqual(
+                    inst._backup_dirs_to_zip([state],
+                                            os.path.join(d, "b.zip")), 0)
+
+        seen = {"n": 0}
+
+        def running(_image):
+            seen["n"] += 1
+            return seen["n"] == 1
+
+        with mock.patch.object(inst, "_process_running", running), \
+                mock.patch.object(inst.time, "sleep"):
+            self.assertTrue(inst._wait_for_exit("homing-pigeon.exe",
+                                                timeout=1))
+        self.assertEqual(inst._split_host_port(1), (None, None))
+
+        def query(cmd, **_k):
+            if "/V" in cmd:
+                return mock.Mock(returncode=0, stdout="Status: Ready\n")
+            return mock.Mock(returncode=0, stdout="")
+
+        with mock.patch.object(inst.subprocess, "run", query):
+            self.assertIsNone(inst._task_command())
+
+    def test_profile_files_instructions_and_a_key_that_never_arrives(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = os.path.join(d, "config.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                fh.write('{"base_dir": "/keep", "owner_instructions": 3}\n')
+            inst._ensure_base_dir(cfg, os.path.join(d, "state"))
+            with open(cfg, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh)["base_dir"], "/keep")
+            inst.set_instructions(cfg, "one", False)
+            inst.apply_instruction_flags(cfg, "replaced", "added")
+            with open(cfg, encoding="utf-8") as fh:
+                self.assertIn("added", json.load(fh)["owner_instructions"])
+            os.symlink(cfg, os.path.join(d, "link.json"))
+            with self.assertRaises(OSError):
+                inst._read_config(os.path.join(d, "link.json"))
+            with open(os.path.join(d, "list.json"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("[]\n")
+            with self.assertRaises(ValueError):
+                inst._read_config(os.path.join(d, "list.json"))
+            prof = os.path.join(d, "prof.json")
+            with open(prof, "w", encoding="utf-8") as fh:
+                fh.write('{"profile": "pi-light", "oracle_mode": "x"}\n')
+            self.assertEqual(
+                inst._profile_spec(prof).get("profile"), "pi-light")
+            with open(prof, "w", encoding="utf-8") as fh:
+                fh.write("{")
+            self.assertEqual(inst._profile_spec(prof), {})
+            self.assertEqual(inst.inference_model_for(prof),
+                             inst.DEFAULT_INFERENCE_MODEL)
+            with open(prof, "w", encoding="utf-8") as fh:
+                fh.write('{"profile": "pi-light"}\n')
+            inst.apply_profile(cfg, "")
+            inst.apply_profile(os.path.join(d, "fresh.json"), prof)
+            inst.apply_profile(cfg, "not-a-profile")
+            with mock.patch("builtins.open", mock.mock_open(
+                    read_data="pi-light\n")):
+                self.assertEqual(
+                    inst._bundled_default_profile("/tmp/x"), "pi-light")
+                self.assertEqual(inst.chosen_profile(None, False),
+                                 "pi-light")
+            with self.assertRaises(RuntimeError):
+                with mock.patch.object(inst, "_download",
+                                       side_effect=OSError("no")):
+                    inst._write_keyring(
+                        ["https://example.test/a"],
+                        os.path.join(d, "k.gpg"))
+
+        text = "NAME=Debian\n"
+
+        class _F:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def __iter__(self):
+                return iter(text.splitlines(True))
+
+        with mock.patch("builtins.open", return_value=_F()):
+            self.assertEqual(inst._os_release_version(), "")
+
+    def test_the_dispatch_branches_and_a_bpf_load_that_succeeds(self):
+        args = mock.Mock(no_collector=False, collector=["osquery",
+                                                        "osquery"],
+                         wazuh_manager=None)
+        self.assertEqual(inst.requested_collectors(args), ["osquery"])
+        with mock.patch.object(inst, "_install_osquery_linux",
+                               return_value="os"), \
+                mock.patch.object(inst, "_install_falco_linux",
+                                  return_value="fa"):
+            self.assertEqual(
+                inst._install_collector_linux("osquery", args), "os")
+            self.assertEqual(
+                inst._install_collector_linux("falco", args), "fa")
+        with mock.patch.object(inst.sys, "platform", "win32"), \
+                mock.patch.object(inst, "_install_collector_windows",
+                                  return_value="win"):
+            self.assertEqual(
+                inst.install_collectors(["osquery"], args), ["win"])
+
+        class _Lib:
+            def syscall(self, *_a):
+                return 3
+
+        with mock.patch.object(inst.sys, "platform", "linux"), \
+                mock.patch("platform.machine", return_value="x86_64"), \
+                mock.patch("ctypes.CDLL", return_value=_Lib()), \
+                mock.patch.object(os, "close"):
+            self.assertTrue(inst._bpf_loadable())
+
+        rows = {n: d for n, _s, d in inst.collector_health_rows({
+            "installed": {"osquery": False, "falco": False,
+                          "suricata": True, "zeek": False, "aide": False,
+                          "softflowd": False, "sysmon": True,
+                          "wazuh": False},
+            "service_active": {"suricata": True, "sysmon": True},
+            "running": {}, "bpf_ok": True, "falco_device": False,
+            "sysmon_telemetry_error": False, "aide_db": False,
+            "wazuh_manager": False,
+            "artifact_age_sec": {"suricata": 4},
+        })}
+        self.assertIn("running", rows["suricata"])
+        self.assertIn("running", rows["sysmon"])
+
+    def test_main_says_not_configured_when_the_model_did_not_install(self):
+        with tempfile.TemporaryDirectory() as dst:
+            with mock.patch.object(inst, "install_files",
+                                   return_value=True), \
+                    mock.patch.object(
+                        inst, "_setup_fresh_config",
+                        return_value=(False, None, False)), \
+                    mock.patch.object(inst, "install_linux"), \
+                    mock.patch.object(
+                        sys, "argv",
+                        ["install.py", "--dir", dst, "--no-collector"]):
+                self.assertEqual(inst.main(), 0)
+            missing = os.path.join(dst, "missing.json")
+            with mock.patch.object(inst, "_ollama_bin",
+                                   return_value="/usr/bin/ollama"), \
+                    mock.patch.object(inst, "ensure_ollama_running",
+                                      return_value=True), \
+                    mock.patch.object(inst, "run"):
+                self.assertTrue(inst.install_ollama_and_model(
+                    missing, "m", False))
+
+    def test_the_version_fallback_is_unknown_when_neither_import_works(self):
+        import builtins
+        import importlib
+        real = builtins.__import__
+
+        def guarded(name, *a, **k):
+            if name == "_version" or name.endswith("._version"):
+                raise ImportError(name)
+            return real(name, *a, **k)
+
+        try:
+            with mock.patch("builtins.__import__", guarded):
+                importlib.reload(inst)
+            self.assertEqual(inst.__version__, "unknown")
+        finally:
+            importlib.reload(inst)
+
+    def test_the_last_platform_decisions(self):
+        args = mock.Mock(no_collector=False, collector=["osquery"],
+                         wazuh_manager=None)
+        with mock.patch.object(inst.sys, "platform", "darwin"), \
+                mock.patch.object(inst, "_install_collector_darwin",
+                                  return_value="mac"):
+            self.assertEqual(
+                inst.install_collectors(["osquery"], args), ["mac"])
+
+        class _Denied:
+            def syscall(self, *_a):
+                return -1
+
+        with mock.patch.object(inst.sys, "platform", "linux"), \
+                mock.patch("platform.machine", return_value="x86_64"), \
+                mock.patch("ctypes.CDLL", return_value=_Denied()):
+            self.assertFalse(inst._bpf_loadable())
+
+        with tempfile.TemporaryDirectory() as home:
+            bind = os.path.join(home, "bin")
+            os.makedirs(bind)
+            exe = os.path.join(bind, inst.RUNNER_BIN)
+            with open(exe, "w", encoding="utf-8") as fh:
+                fh.write("x")
+            cfg = os.path.join(home, "config.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                fh.write('{"shared_secret": "x"}\n')
+            with open(os.path.join(home, "install-receipt.json"), "w",
+                      encoding="utf-8") as fh:
+                fh.write('{"version": "3"}\n')
+            os.makedirs(os.path.join(home, "state"))
+            with mock.patch.object(inst.sys, "platform", "win32"), \
+                    mock.patch.object(inst, "_task_exists",
+                                      return_value=True), \
+                    mock.patch.object(
+                        inst, "_task_command",
+                        return_value=bind + "\\homing-pigeon.exe"), \
+                    mock.patch.object(inst, "collector_health_rows",
+                                      return_value=[]):
+                self.assertEqual(
+                    inst.do_check(home, bind, cfg,
+                                  os.path.join(home, "state")), 0)
+
+        with mock.patch.object(inst.sys, "platform", "darwin"), \
+                mock.patch.object(inst.os.path, "isfile",
+                                  return_value=True):
+            self.assertTrue(str(inst._ollama_bin()).endswith("ollama"))
+        with mock.patch.object(inst.sys, "platform", "win32"), \
+                mock.patch.dict(os.environ, {"LOCALAPPDATA": ""}), \
+                mock.patch.object(inst, "_which", return_value=None):
+            self.assertIsNone(inst._ollama_bin())
+
+        with tempfile.TemporaryDirectory() as d:
+            prof = os.path.join(d, "p.json")
+            with open(prof, "w", encoding="utf-8") as fh:
+                fh.write('{"profile": "password-only"}\n')
+            self.assertEqual(
+                inst.inference_model_for(prof),
+                inst.DEFAULT_INFERENCE_MODEL)
+            path = os.path.join(d, "note.txt")
+            os.O_BINARY = 0
+            try:
+                inst._write_text(path, "n")
+                with mock.patch.object(os, "chmod", side_effect=OSError):
+                    inst._write_json(os.path.join(d, "c.json"), {"a": 1})
+            finally:
+                del os.O_BINARY
+
+
+
