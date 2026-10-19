@@ -31,6 +31,24 @@ Ideas...
   binding would be an addition, never a replacement: the
   email binding stays the one every SI can already reach.
 
+- A session's first acknowledgment carries the platform:
+  a direct v2 binding (above) gives the two sides a real
+  session, which store-and-forward email never has. The
+  runner's first acknowledgment in such a session SHOULD
+  carry rudimentary platform information -- the OS family
+  at minimum, on anything Python runs on -- so the SI
+  knows what it is talking to before the first job, instead
+  of learning it from a failure. Development note: this
+  hangs on the v2 session existing; when and if IETF
+  version 2 of the protocol is supported, how the software
+  deals with platform identity gets revised around it (the
+  email-era relative is the platform-metadata-on-results
+  idea under "Before a job runs"). The same change that
+  adds any confidentiality mechanism MUST revise the
+  documentation's confidentiality claims in step -- today
+  the draft's Section 16.2 correctly says there is none
+  beyond the hops, and claims describe shipped state only.
+
 - Cloudflare Queues: The design notes are TRANSPORTS.md
 
 ## Before a job runs
