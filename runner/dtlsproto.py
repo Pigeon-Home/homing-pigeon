@@ -437,17 +437,27 @@ class _RecordSealer:
         the last remaining octet is the content type, and the
         content keeps any trailing zeros of its own.
         """
+        if not record:
+            raise DtlsError("record too short")
         first = record[0]
         pos = 1
         if first & 0x04:
+            if pos >= len(record):
+                raise DtlsError("record too short")
             pos += 1 + record[pos]
         if first & 0x10:
+            if pos + 2 > len(record):
+                raise DtlsError("record too short")
             seq_low = int.from_bytes(record[pos:pos + 2], "big")
             pos += 2
         else:
+            if pos >= len(record):
+                raise DtlsError("record too short")
             seq_low = record[pos]
             pos += 1
         if first & 0x08:
+            if pos + 2 > len(record):
+                raise DtlsError("record too short")
             length = int.from_bytes(record[pos:pos + 2], "big")
             pos += 2
         else:
