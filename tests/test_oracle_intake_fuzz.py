@@ -1088,6 +1088,34 @@ class RingTwoBoardTest(unittest.TestCase):
         self._send(other, self._sealed(other))
         self.assertEqual(self.board.tasks[other]["state"], "open")
 
+    def test_review_holds_the_task_until_it_is_approved(self):
+        self.cfg["require_review"] = True
+        task_id = "task-review-1"
+        self._send(task_id, self._sealed(task_id))
+        self._send_kind(
+            "task_request", "w-review",
+            self._kind("task_request", "w-review", capabilities=["py"]))
+        self.assertEqual(self.board.tasks[task_id]["state"], "claimed")
+        self._send_kind(
+            "task_result", task_id,
+            self._kind("task_result", task_id, result={"ok": True}))
+        self.assertEqual(
+            self.board.tasks[task_id]["state"], "pending_review")
+        self.assertEqual(self.board.tasks[task_id]["result"], {"ok": True})
+        self._send_kind(
+            "task_result", task_id,
+            self._kind("task_result", task_id, result={"ok": False}))
+        self.assertEqual(
+            self.board.tasks[task_id]["state"], "pending_review")
+        self.assertEqual(self.board.tasks[task_id]["result"], {"ok": True})
+        self._send_kind(
+            "task_approve", task_id, self._kind("task_approve", task_id))
+        self.assertEqual(self.board.tasks[task_id]["state"], "done")
+        other = "task-review-2"
+        self._send(other, self._sealed(other))
+        self.assertEqual(self.board.tasks[other]["state"], "open")
+
+
 
 
 
