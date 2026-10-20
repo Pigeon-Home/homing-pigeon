@@ -97,7 +97,10 @@ does not get the canary either. The answer says budget.
 A query aimed at a different job does not get it either.
 The answer says unknown. The query for this job still does.
 After `max_queries_per_hour` is spent, the next query is
-answered `rate_limit` and does not get the canary.
+answered `rate_limit` and does not get the canary. An
+unknown op, even one that carries the fork bomb and an
+instruction to print the output, is `unknown_op`. It does
+not get the canary. A later grep of this job still does.
 
 An open task is not finished by a result or an approval.
 It has to be claimed first. A later submit still opens.
