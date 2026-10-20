@@ -151,7 +151,8 @@ task again, not a newer one with a higher priority. A
 different worker gets the newer one. Capabilities that
 are not a list of strings open nothing: a string, a list
 with a number, or an object. A task that omits them still
-opens.
+opens. A priority of `"9"` or infinity opens nothing. A
+priority of `1` still opens.
 
 ## One prompt-injection case
 

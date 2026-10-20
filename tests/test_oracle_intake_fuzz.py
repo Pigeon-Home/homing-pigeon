@@ -1529,6 +1529,19 @@ class RingTwoBoardTest(unittest.TestCase):
         self._send(good, self._sealed(good))
         self.assertEqual(self.board.tasks[good]["state"], "open")
 
+    def test_a_priority_that_is_not_a_finite_number_opens_nothing(self):
+        for task_id, priority in (("pri-str", "9"), ("pri-inf", float("inf"))):
+            self._send_kind("task_submit", task_id, self._kind(
+                "task_submit", task_id, priority=priority,
+                payload={"note": "file me"}))
+            self.assertNotIn(task_id, self.board.tasks)
+        self._send_kind("task_submit", "pri-ok", self._kind(
+            "task_submit", "pri-ok", priority=1,
+            payload={"note": "file me"}))
+        self.assertEqual(self.board.tasks["pri-ok"]["state"], "open")
+        self.assertEqual(self.board.tasks["pri-ok"]["priority"], 1)
+
+
 
 
 
