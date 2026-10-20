@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.27 - 2026-10-20
+
+- **Version rev.** No functional change from 3.11.26.
+  That tag and its main push both finished green,
+  Windows included. This tag is the next look.
+
 ## 3.11.26 - 2026-10-20
 
 - **Version rev.** No functional change from 3.11.25.
