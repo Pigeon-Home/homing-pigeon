@@ -392,6 +392,53 @@ class NonStringKeyFuzzTest(unittest.TestCase):
         self.assertIn("tool:curl", touched_keys(facts))
 
 
+class RingTwoAlertTest(unittest.TestCase):
+    """A message that does not verify stores nothing. The next
+    good one, in the same directory, still files."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-ring2-")
+        self.cfg = {
+            "shared_secret": SECRET,
+            "additional_secrets": {"canary-key": SENSE},
+            "mailbox_user": "runner@example.com",
+            "max_job_age_sec": 3600,
+            "sensors": {
+                "canary": {"enabled": True, "key_id": "canary-key"},
+            },
+        }
+
+    def _senses(self):
+        return os.path.join(self.tmp, "senses.jsonl")
+
+    def test_a_flipped_signature_stores_nothing(self):
+        signed = sign_envelope(build_sensor_alert(
+            "canary", "high", "tripwire", key_id="canary-key"), SENSE)
+        flipped = signed[:-2] + ("0" if signed[-2] != "0" else "1") + signed[-1]
+        got = _ingest_local_envelope_inner(
+            self.cfg, self.tmp, flipped, "fuzz")
+        self.assertIsNone(got)
+        self.assertFalse(os.path.exists(self._senses()))
+
+    def test_a_bad_alert_does_not_block_the_next_good_one(self):
+        payload = build_sensor_alert(
+            "canary", "high", "tripwire", key_id="canary-key")
+        payload["severity"] = ["high"]
+        bad = sign_envelope(payload, SENSE)
+        self.assertIsNone(_ingest_local_envelope_inner(
+            self.cfg, self.tmp, bad, "fuzz"))
+        self.assertFalse(os.path.exists(self._senses()))
+        good = sign_envelope(build_sensor_alert(
+            "canary", "high", "tripwire", key_id="canary-key"), SENSE)
+        got = _ingest_local_envelope_inner(
+            self.cfg, self.tmp, good, "fuzz")
+        self.assertEqual(got.get("sensor"), "canary")
+        with open(self._senses(), encoding="utf-8") as f:
+            stored = f.read()
+        self.assertIn("tripwire", stored)
+
+
+
 
 
 

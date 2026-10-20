@@ -38,6 +38,11 @@ before anyone checked it was a string.
   only when they have the shape a probe is supposed to
   return.
 
+Ring 2 has started for sensor alerts. A flipped signature
+stores no alert. A signed alert whose severity is a list
+stores no alert. The next good alert, in the same directory,
+still files.
+
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already
 treats as a dropped record.
