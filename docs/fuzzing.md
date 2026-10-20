@@ -103,6 +103,8 @@ instruction to print the output, is `unknown_op`. It does
 not get the canary. A later grep of this job still does.
 A pattern that does not compile is `bad_pattern` and does
 not get the canary either. A later good grep still does.
+A retained view of `summary` or `attested` does not return
+the line. The answer says policy. `full` still does.
 
 An open task is not finished by a result or an approval.
 It has to be claimed first. A later submit still opens.
