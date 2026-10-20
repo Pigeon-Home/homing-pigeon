@@ -1514,6 +1514,22 @@ class RingTwoBoardTest(unittest.TestCase):
         self.assertEqual(self.board.tasks["newer"]["state"], "claimed")
         self.assertEqual(self.board.tasks["newer"]["claimed_by"], "w-other")
 
+    def test_capabilities_that_are_not_strings_open_nothing(self):
+        cases = (
+            ("bad-caps-a", "py"),
+            ("bad-caps-b", ["py", 1]),
+            ("bad-caps-c", {"py": True}),
+        )
+        for task_id, caps in cases:
+            self._send_kind("task_submit", task_id, self._kind(
+                "task_submit", task_id, capabilities=caps,
+                payload={"note": "file me"}))
+            self.assertNotIn(task_id, self.board.tasks)
+        good = "bad-caps-ok"
+        self._send(good, self._sealed(good))
+        self.assertEqual(self.board.tasks[good]["state"], "open")
+
+
 
 
 

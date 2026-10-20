@@ -148,7 +148,10 @@ submitted second. The lower one stays open. A priority
 of `true` is stored, and it does not outrank a priority
 of `1`. A worker who already holds a claim is handed that
 task again, not a newer one with a higher priority. A
-different worker gets the newer one.
+different worker gets the newer one. Capabilities that
+are not a list of strings open nothing: a string, a list
+with a number, or an object. A task that omits them still
+opens.
 
 ## One prompt-injection case
 
