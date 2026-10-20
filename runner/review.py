@@ -68,7 +68,7 @@ DEFAULT_REVIEW_SCAN_BYTES = 65536
 
 
 def _has_filename_tail(stem):
-    """True iff some suffix of stem matches [A-Za-z0-9_][A-Za-z0-9_.\-]*.
+    r"""True iff some suffix of stem matches [A-Za-z0-9_][A-Za-z0-9_.\-]*.
 
     Linear reverse walk. Exactly mirrors the old regex's inner
     constraint: a name character followed only by name characters,

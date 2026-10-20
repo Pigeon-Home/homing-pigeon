@@ -4,6 +4,19 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.9 - 2026-10-20
+
+- **Mutation stats can finish.** mutmut's stats pass sets
+  `MUTANT_UNDER_TEST=stats` and rewrites the mutated module
+  with trampolines that need mutmut's own process. The DTLS
+  sidecar inherited that variable, hit
+  `validate_shared_secret` on startup, and died with exit 1,
+  so `pytest -x` aborted the stats run ("failed to collect
+  stats"). Transport children now drop the variable and run
+  the original module. A raw docstring in `review.py` also
+  drops the invalid-escape SyntaxWarning Python 3.12 printed
+  during that job.
+
 ## 3.11.8 - 2026-10-20
 
 - **Version rev.** No functional changes from 3.11.7; the

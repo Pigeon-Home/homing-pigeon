@@ -847,7 +847,15 @@ class ExtensionProcessTest(unittest.TestCase):
                 _wait_for(lambda: proc.poll() is None,
                           timeout=10))
             time.sleep(0.5)
-            self.assertIsNone(proc.poll())
+            log_path = os.path.join(
+                tmp, "transport-extensions", "dtls", "extension.log")
+            try:
+                with open(log_path, encoding="utf-8",
+                          errors="replace") as f:
+                    logged = f.read()[-2000:]
+            except OSError as e:
+                logged = f"no extension log: {e}"
+            self.assertIsNone(proc.poll(), logged)
         finally:
             transports.stop_supervisors(tmp)
 

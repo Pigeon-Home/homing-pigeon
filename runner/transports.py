@@ -615,6 +615,12 @@ class TransportSupervisor:
             argv = [sys.executable, "--transport-extension-module",
                     argv[2]] + argv[3:]
         env = dict(os.environ)
+        # mutmut's stats run sets MUTANT_UNDER_TEST=stats and rewrites
+        # the mutated module with trampolines. A child that inherits
+        # the variable takes the stats path, which needs mutmut's
+        # in-process context, and dies on the first call (exit 1).
+        # The extension is a sidecar. It runs the original code.
+        env.pop("MUTANT_UNDER_TEST", None)
         if not getattr(sys, "frozen", False):
             # First-party entries run as `-m runner...`: the
             # package parent must be importable from the child's

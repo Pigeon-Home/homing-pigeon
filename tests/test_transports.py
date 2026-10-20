@@ -344,6 +344,7 @@ class SupervisorTest(unittest.TestCase):
     class FakeProc:
         def __init__(self, argv, **kw):
             self.argv = argv
+            self.kw = kw
             self.pid = id(self) % 10000 + 1000
             self.dead = False
             self.code = None
@@ -394,6 +395,21 @@ class SupervisorTest(unittest.TestCase):
                       " ".join(self.procs[0].argv))
         sup.stop()
         self.assertTrue(self.procs[0].terminated)
+
+    def test_the_child_does_not_inherit_mutmuts_switch(self):
+        os.environ["MUTANT_UNDER_TEST"] = "stats"
+        try:
+            cfg = _cfg(self.tmp, transports=["dtls"],
+                       transport_dtls={"port": 20220,
+                                       "bind": "127.0.0.1"})
+            sup = self._supervisor(self.tmp, cfg)
+            sup.start()
+            self.assertEqual(len(self.procs), 1)
+            self.assertNotIn(
+                "MUTANT_UNDER_TEST", self.procs[0].kw["env"])
+            sup.stop()
+        finally:
+            os.environ.pop("MUTANT_UNDER_TEST", None)
 
     def test_default_config_starts_email(self):
         # A fresh install behaves exactly as today: email is
