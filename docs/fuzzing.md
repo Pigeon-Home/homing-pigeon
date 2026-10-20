@@ -69,7 +69,10 @@ either. The envelope still decrypts. The ids are what fail.
 A `reply_to` that is not one address does not steer the
 result. A newline, a comma, or a list falls back to the
 runner's own mailbox. One plain address is honored, because
-it was inside the signed body.
+it was inside the signed body. A job cannot put a
+`PIGEON_` variable into its own process, in either case.
+Any other name it sets is still there. The next ordinary
+job still runs.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already

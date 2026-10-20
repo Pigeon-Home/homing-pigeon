@@ -629,6 +629,42 @@ class RingTwoJobTest(unittest.TestCase):
             good_id, self._with_reply_to(good_id, "si@example.com"))
         self.assertEqual(out[0][2], "si@example.com")
 
+    def test_a_job_cannot_set_a_pigeon_variable(self):
+        job_id = uuid.uuid4().hex
+        payload = {
+            "v": 1,
+            "type": "job",
+            "job_id": job_id,
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "kind": "exec",
+            "interpreter": [sys.executable],
+            "env": {
+                "PIGEON_SECRET": "stolen",
+                "pigeon_token": "stolen",
+                "MARKER": "kept",
+            },
+            "script": (
+                "import os\n"
+                "open(%r, 'w').write("
+                "repr(os.environ.get('PIGEON_SECRET')) + ' ' +"
+                "repr(os.environ.get('pigeon_token')) + ' ' +"
+                "repr(os.environ.get('MARKER')))\n" % self.marker
+            ),
+        }
+        wire = encrypt_body(
+            sign_payload(payload, SECRET), SECRET,
+            job_id=job_id, key_id="", sign=sign_payload)
+        self._run(job_id, wire)
+        with open(self.marker, encoding="utf-8") as f:
+            text = f.read()
+        self.assertNotIn("stolen", text)
+        self.assertIn("kept", text)
+        good_id = uuid.uuid4().hex
+        self._run(good_id, self._wire(good_id))
+        with open(self.marker, encoding="utf-8") as f:
+            self.assertEqual(f.read(), "ran")
+
 
 _CANARY = "hp-canary-9f3c2a"
 
