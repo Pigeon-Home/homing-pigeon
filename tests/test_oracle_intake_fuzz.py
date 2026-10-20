@@ -1115,6 +1115,21 @@ class RingTwoBoardTest(unittest.TestCase):
         self._send(other, self._sealed(other))
         self.assertEqual(self.board.tasks[other]["state"], "open")
 
+    def test_the_wrong_capability_does_not_claim(self):
+        task_id = "task-cap-1"
+        self._send_kind("task_submit", task_id, self._kind(
+            "task_submit", task_id, capabilities=["py"],
+            payload={"note": "file me"}))
+        self.assertEqual(self.board.tasks[task_id]["state"], "open")
+        self._send_kind("task_request", "w-sh", self._kind(
+            "task_request", "w-sh", capabilities=["sh"]))
+        self.assertEqual(self.board.tasks[task_id]["state"], "open")
+        self._send_kind("task_request", "w-py", self._kind(
+            "task_request", "w-py", capabilities=["py"]))
+        self.assertEqual(self.board.tasks[task_id]["state"], "claimed")
+        self.assertEqual(self.board.tasks[task_id]["claimed_by"], "w-py")
+
+
 
 
 

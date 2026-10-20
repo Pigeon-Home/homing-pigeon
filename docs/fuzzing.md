@@ -104,7 +104,9 @@ Once a task is claimed, a result finishes it, and a second
 result does not replace that. A later submit still opens.
 With review required, a result holds the task at
 `pending_review` and a second result does not replace it.
-An approval is what marks it done.
+An approval is what marks it done. A worker whose
+capabilities do not cover the task does not claim it. The
+worker who has them does.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already
