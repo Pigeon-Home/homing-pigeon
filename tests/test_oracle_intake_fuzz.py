@@ -493,6 +493,23 @@ class RingTwoJobTest(unittest.TestCase):
         with open(self.marker, encoding="utf-8") as f:
             self.assertEqual(f.read(), "ran")
 
+    def test_a_nested_envelope_and_a_dotdot_id_do_not_run(self):
+        nested_id = uuid.uuid4().hex
+        once = self._wire(nested_id)
+        twice = encrypt_body(
+            once, SECRET, job_id=nested_id, key_id="",
+            sign=sign_payload)
+        self._run(nested_id, twice)
+        self.assertFalse(os.path.exists(self.marker))
+        self._run("..", self._wire(".."))
+        self.assertFalse(os.path.exists(self.marker))
+        self.assertFalse(os.path.isdir(
+            os.path.join(self.tmp, "work")))
+        good_id = uuid.uuid4().hex
+        self._run(good_id, self._wire(good_id))
+        self.assertTrue(os.path.isfile(self.marker))
+
+
 
 
 
