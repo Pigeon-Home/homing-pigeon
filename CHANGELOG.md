@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.11 - 2026-10-20
+
+- **Windows build can finish.** The guided-fuzz campaign
+  compared coverage across two runs in one process. On the
+  Windows runner those sets disagreed by four lines inside
+  `runner.runner.log`, the minute-rollover branch, which is
+  wall-clock gated. The tracer no longer records that
+  function, so a campaign's coverage is the parsers again.
+  v3.11.10's Windows job failed on this and never published.
+
 ## 3.11.10 - 2026-10-20
 
 - **job-fuzz: a sense that fuzzes the jobs this box

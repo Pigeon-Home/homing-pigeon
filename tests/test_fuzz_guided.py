@@ -20,8 +20,13 @@ Design choices, pinned by the tests below:
   and its rollover branch is wall-clock gated -- the same input
   covers different lines depending on when in the minute it runs.
   The harness pins those globals to a cold start for each input and
-  restores them afterwards, the same way it pins the exercise rng,
-  so an input's coverage depends only on its bytes.
+  restores them afterwards, the same way it pins the exercise rng.
+  That pin is not sufficient on its own: the Windows build (Python
+  3.12, two campaigns in one process) still recorded the rollover
+  body on the first campaign and not the second, so the coverage
+  sets disagreed and nothing else did. The tracer therefore does
+  not record runner.runner.log at all. An input's coverage depends
+  only on its bytes.
 - Determinism: one master Random for mutation and base selection,
   pinned per-round Randoms for the exercise harness, length-prefixed
   hashing for the corpus. Same seed, same corpus, same coverage,
@@ -107,6 +112,16 @@ class _LineTracer:
             return None
         if event == "line":
             code = frame.f_code
+            # runner.runner.log is wall-clock gated (the minute
+            # budget above). Recording it makes two campaigns in
+            # one process disagree on Windows. It is not parser
+            # coverage. mailbox.log is a different function and
+            # stays visible until the runner replaces it.
+            if code.co_name == "log" and os.path.normcase(
+                    code.co_filename).lower().endswith(
+                        os.path.normcase(os.sep.join(
+                            ("runner", "runner.py")))):
+                return self
             rel = self._rel.get(code)
             if rel is None:
                 rel = os.path.relpath(code.co_filename, self.root)
