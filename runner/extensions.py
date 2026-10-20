@@ -102,7 +102,7 @@ def parse_manifest(data, where=MANIFEST_FILE) -> dict:
             or api_version < 1:
         raise ValueError(f"{where}: api_version must be an integer >= 1")
     kind = data["kind"]
-    if kind not in KINDS:
+    if not isinstance(kind, str) or kind not in KINDS:
         raise ValueError(
             f"{where}: kind must be one of {sorted(KINDS)}")
     description = data.get("description", "")

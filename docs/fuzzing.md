@@ -7,7 +7,7 @@ and they load no model.
 
 ## What the first passes found
 
-Two crashes, both the same shape: a value used as a dict key
+One shape of crash, over and over: a value used as a dict key
 before anyone checked it was a string.
 
 - `check_key_policy` raised `TypeError` on a key id that was a
@@ -15,6 +15,16 @@ before anyone checked it was a string.
 - `parse_sensors` raised `TypeError` when `severity_floor` was
   not a string. A config file can carry that. It is now a
   config error, the same as any other bad floor.
+- `validate_sensor_alert` raised `TypeError` when `severity`
+  was a list. A signed alert can carry that. It is now a
+  refusal, same as any other bad severity.
+- `parse_manifest` raised `TypeError` when `kind` was not a
+  string, and `load_extensions` only catches `ValueError`, so
+  one bad `extension.json` aborted discovery. A non-string
+  kind is now a refusal.
+- The same check was open in three more lookups: a model tool
+  name, a `security.modes` value, and `dtls_greeting`. A
+  non-string is a refusal or a config error, not a crash.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already
@@ -29,8 +39,8 @@ whole surface.
 
 Ring 1 is anything already inside the process. The generator
 builds messy Python values, not just JSON. The property is:
-return a reason or `None`, and never raise. This is where the
-two `TypeError`s came from. The functions whose docstring says
+return a reason or `None`, and never raise. This is where
+those `TypeError`s came from. The functions whose docstring says
 "never raises" are the list. About fifty of them live under
 `runner/`.
 

@@ -2503,7 +2503,7 @@ def _parse_content_tool_call(content):
         if not isinstance(obj, dict):
             continue
         name = obj.get("name")
-        if name not in _ORACLE_TOOL_NAMES:
+        if not isinstance(name, str) or name not in _ORACLE_TOOL_NAMES:
             continue
         args = obj.get("parameters")
         if args is None:

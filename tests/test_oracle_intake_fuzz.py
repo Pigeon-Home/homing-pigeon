@@ -33,10 +33,12 @@ from runner.runner import (
     _ingest_local_envelope_inner,
     _local_signal_port,
     _local_signals_enabled,
+    _parse_content_tool_call,
     _run_oracle_tool,
     _scan_local_inbox,
     check_key_policy,
 )
+from runner.security import validate_security_config
 from runner.senses import (
     file_sensor_alert,
     gate_alert,
@@ -294,5 +296,75 @@ class SocketIntakeFuzzTest(unittest.TestCase):
         self.assertIsInstance(port, int)
         self.assertGreaterEqual(port, 0)
         self.assertLessEqual(port, 65535)
+
+
+class NonStringKeyFuzzTest(unittest.TestCase):
+    """The lookups a JSON value can reach. A list where a string
+    belongs is a refusal, not a TypeError."""
+
+    def test_a_list_severity_is_a_refusal(self):
+        reason = validate_sensor_alert({
+            "sensor": "canary",
+            "severity": ["high"],
+            "title": "trip",
+        })
+        self.assertIsInstance(reason, str)
+
+    def test_a_list_kind_does_not_abort_discovery(self):
+        with self.assertRaises(ValueError):
+            parse_manifest({
+                "name": "canary",
+                "version": "1.0.0",
+                "api_version": 1,
+                "kind": ["sense"],
+                "description": "x",
+                "signals": [{"name": "trip", "description": "y"}],
+            }, where="extension.json")
+        root = tempfile.mkdtemp(prefix="hp-kind-fuzz-")
+        folder = os.path.join(root, "canary")
+        os.makedirs(folder)
+        with open(os.path.join(folder, "extension.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump({
+                "name": "canary",
+                "version": "1.0.0",
+                "api_version": 1,
+                "kind": ["sense"],
+                "description": "x",
+                "signals": [{"name": "trip", "description": "y"}],
+            }, f)
+        registry, problems = load_extensions(root)
+        self.assertEqual(registry, {})
+        self.assertTrue(problems)
+
+    def test_a_list_tool_name_is_not_a_call(self):
+        text = '{"name": ["read_file"], "arguments": {"path": "a"}}'
+        self.assertEqual(_parse_content_tool_call(text), [])
+
+    def test_a_list_security_mode_is_a_config_error(self):
+        with self.assertRaises(RuntimeError):
+            validate_security_config({
+                "security": {"modes": {"audience": ["enforce"]}},
+            })
+
+    def test_a_list_greeting_tier_refuses_to_start(self):
+        from runner.transport_extensions.dtls.__main__ import main
+        root = tempfile.mkdtemp(prefix="hp-tier-fuzz-")
+        cfg_path = os.path.join(root, "runtime.json")
+        with open(cfg_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "shared_secret": SECRET,
+                "dtls_greeting": ["family"],
+                "channel_dir": root,
+            }, f)
+        os.environ["HOMING_PIGEON_TRANSPORT_CHANNEL"] = root
+        os.environ["HOMING_PIGEON_TRANSPORT_CONFIG"] = cfg_path
+        try:
+            code = main(["dtls"])
+        finally:
+            os.environ.pop("HOMING_PIGEON_TRANSPORT_CHANNEL", None)
+            os.environ.pop("HOMING_PIGEON_TRANSPORT_CONFIG", None)
+        self.assertEqual(code, 2)
+
 
 

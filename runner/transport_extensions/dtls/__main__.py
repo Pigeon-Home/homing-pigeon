@@ -224,7 +224,7 @@ def main(argv=None):
                "so the extension will not start", "ERROR")
         return 2
     tier = cfg.get("dtls_greeting", "family")
-    if tier not in GREETING_TIERS:
+    if not isinstance(tier, str) or tier not in GREETING_TIERS:
         ch.log(f"dtls transport: dtls_greeting must be one of "
                f"{GREETING_TIERS}, not {tier!r}", "ERROR")
         return 2

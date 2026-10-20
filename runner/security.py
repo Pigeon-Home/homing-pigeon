@@ -223,7 +223,7 @@ def validate_security_config(cfg):
             raise RuntimeError(
                 "config error: security.modes.%s is not a known feature"
                 % (name,))
-        if mode not in MODES:
+        if not isinstance(mode, str) or mode not in MODES:
             raise RuntimeError(
                 "config error: security.modes.%s must be one of off, audit, "
                 "enforce (got %r)" % (name, mode))

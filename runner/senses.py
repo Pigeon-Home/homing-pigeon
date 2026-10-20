@@ -143,7 +143,7 @@ def validate_sensor_alert(job: dict):
     if not isinstance(sensor, str) or not sensor:
         return "sensor must be a non-empty string"
     severity = job.get("severity") or "info"
-    if severity not in SEVERITY_SCORES:
+    if not isinstance(severity, str) or severity not in SEVERITY_SCORES:
         return f"severity must be one of {sorted(SEVERITY_SCORES)}"
     title = job.get("title")
     if not isinstance(title, str) or not title.strip():
