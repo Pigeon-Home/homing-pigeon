@@ -872,6 +872,19 @@ class RingTwoJobTest(unittest.TestCase):
         self._run(zero, self._poison(zero, timeout_sec=0))
         self.assertTrue(os.path.isfile(self.marker))
 
+    def test_args_that_are_not_a_list_do_not_run(self):
+        for args in ("ok", 1):
+            if os.path.exists(self.marker):
+                os.remove(self.marker)
+            job_id = uuid.uuid4().hex
+            out = self._run(job_id, self._poison(job_id, args=args))
+            self.assertFalse(os.path.exists(self.marker))
+            self.assertEqual(self._opened(out, job_id)["exit_code"], -2)
+        zero = uuid.uuid4().hex
+        self._run(zero, self._poison(zero, args=0))
+        self.assertTrue(os.path.isfile(self.marker))
+
+
 
 
 
