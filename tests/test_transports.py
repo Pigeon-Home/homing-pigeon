@@ -1049,8 +1049,8 @@ class MailTlsRequiredTest(unittest.TestCase):
         warns = [m for level, m in self.logs if level == "WARN"]
         self.assertEqual(len(warns), 1)
         self.assertIn("mail_tls_required", warns[0])
-        self.assertIn("cannot claim the draft's "
-                      "confidentiality posture", warns[0])
+        self.assertIn("does not meet the draft's TLS requirement",
+                      warns[0])
 
     def test_starttls_refusal_fails_the_connect_when_required(
             self):

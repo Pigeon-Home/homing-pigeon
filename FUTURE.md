@@ -1,6 +1,6 @@
 # Future
 
-Ideas...
+Ideas. An entry marked BUILT is a decision record, not work.
 
 ## The message
 

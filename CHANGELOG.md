@@ -18,6 +18,16 @@ facts a reader may need to cite. Git history carries the rest.
   encrypt by default, and cleartext is an explicit
   sender choice, never a silent fallback. Documentation
   only; no behavior change.
+- **Docs match the draft.** PROTOCOL no longer treats email
+  as the whole protocol, no longer calls `job_id` a UUID,
+  and no longer says a cleartext job's confidentiality is
+  the mail TLS hop. The FAQ, the configuring doc, the
+  example config, and the `mail_tls_required: false`
+  warning say the same thing: that switch relaxes hop
+  verification, and the confidentiality property is the
+  envelope. `STYLE.md` is gone; the mutation copy list
+  no longer names it. FUTURE.md marks BUILT entries as
+  a decision record, not work.
 
 ## 3.11.3 - 2026-10-19
 

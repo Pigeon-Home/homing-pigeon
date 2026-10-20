@@ -171,12 +171,13 @@ exactly the side of the wire the protocol cannot control.
 And it is not needed. Confidentiality belongs to the layer
 that can actually provide it: a job is encrypted as an
 object, under a key derived from the shared secret, and
-that encryption is on by default; each mail hop runs over
-TLS, which the draft requires — the one owner option,
-`mail_tls_required: false`, exists for the hop posture
-only, and an installation that sets it does not carry the
-draft's confidentiality posture. The mail system is
-transport, not a security layer.
+that encryption is on by default. Each mail hop also runs
+over TLS, which the draft requires of the email binding.
+`mail_tls_required: false` relaxes certificate verification
+on that hop. It does not turn the hop into the
+confidentiality property: the mailbox provider can still
+read a cleartext job, verified TLS or not. The mail system
+is transport, not a security layer.
 
 For the record, the protocol also permits the other
 arrangement: an implementation MAY support PGP on the

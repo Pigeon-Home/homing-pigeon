@@ -28,6 +28,12 @@ gets done without you knowing how any of it works.
 
 ## 2. Transport
 
+The draft's bindings are email, a watched folder, NATS, and DTLS.
+No binding is mandatory. A conforming runner offers at least one.
+The reference default is email only: `transports` absent means
+`["email"]`. The other bindings are in the draft (Sections 5.1,
+5.2, and 19) and in TRANSPORTS.md. This section is the email binding.
+
 - One dedicated mailbox. Both directions use it:
   The cloud SI sends jobs *to* it; the runner reads them and sends results back
   to the same address — unless the signed job sets `reply_to`, in which
@@ -39,10 +45,12 @@ gets done without you knowing how any of it works.
     **in plaintext** — the user's explicit choice (dedicated throwaway
     account, fresh machine, nothing personal). They are never written to
     the log or into any email, but they ARE on disk: do not use this setup
-    with an account you care about. The runner exits with an error if
-    `mailbox_user` or `mailbox_password` is missing from config. Providers
-    that offer app passwords generally require two-factor authentication
-    to be enabled on the account before one can be created.
+    with an account you care about. The email extension refuses to start
+    without `mailbox_user`, and it refuses to connect without
+    `mailbox_password`. A runner whose `transports` list does not include
+    email does not need either. Providers that offer app passwords
+    generally require two-factor authentication to be enabled on the
+    account before one can be created.
   - **OAuth** (`"auth": "oauth"`): Thunderbird-style browser sign-in
     (PKCE + loopback redirect, `homing-pigeon-auth`). The runner stores a
     refresh token and uses XOAUTH2 for IMAP and SMTP. The Google password
@@ -53,7 +61,8 @@ gets done without you knowing how any of it works.
   - Job: contains `[HOMING-PIGEON]` then `job <job_id>` (a word like `TEST` or a `Re:` prefix is fine)
   - Result: `[HOMING-PIGEON] result <job_id>`
   - Query: `[HOMING-PIGEON] query <query_id>` (section 10.1)
-  - `<job_id>` is a UUID (no spaces).
+  - `<job_id>` is 1–128 characters from `[A-Za-z0-9._-]`, and it
+    must not be `.` or `..`. A UUID is recommended, not required.
 
 ## 3. Message format
 
@@ -365,7 +374,7 @@ send stays unseen and will be retried (re-executed) on the next cycle.
 
 ## 8. Cryptography
 
-The protocol uses exactly three cryptographic primitives:
+The object protocol uses three cryptographic primitives:
 
 - **Message authentication:** HMAC-SHA-384, keyed with the shared
   secret. This is the protocol's authentication mechanism; sender
@@ -373,25 +382,31 @@ The protocol uses exactly three cryptographic primitives:
   carries no weight.
 - **Hashing:** SHA-384, used for file and script integrity checks.
 - **Payload encryption:** AES-256-GCM (AEAD), keyed per job by
-  HKDF-SHA-384 from the shared secret. A signed body MAY be sent
-  as an encrypted envelope — an `hp_enc` member carrying the
+  HKDF-SHA-384 from the shared secret. A signed body SHOULD be
+  sent as an encrypted envelope — an `hp_enc` member carrying the
   algorithm (`aes-256-gcm/hkdf-sha384`), a 12-byte nonce, and
   the ciphertext — and the envelope is itself signed as
   transmitted; the receiver verifies the envelope's signature
   before decrypting. A receiver MUST accept the encrypted form.
-  A result mirrors the form of the job it answers.
+  A result mirrors the form of the job it answers unless
+  `job_encryption` says otherwise: an explicit true encrypts
+  every result, and the literal false encrypts none.
+
+The DTLS binding adds one more construction, and only there:
+ephemeral X25519 inside `psk_dhe_ke`. It is not part of the
+object protocol. `psk_ke` is forbidden.
 
 These are the CNSA-listed choices: the 384-bit tier for the
 hash-based primitives, AES-256 at the matching symmetric tier.
 
-Confidentiality is a property of the signed object, not only of
-the transport: the reference senders encrypt by default, and
+Confidentiality is a property of the signed object, not of the
+mail hop. The reference senders encrypt by default, and
 cleartext is an explicit sender choice — the interop escape for
-pre-encryption runners — never a silent fallback. Where a job
-travels in cleartext, confidentiality in transit rests on the
-transport binding (for email, the TLS sessions between each
-endpoint and its mail provider). Authenticity and integrity
-come from HMAC-SHA-384 in both forms.
+pre-encryption runners — never a silent fallback. On the email
+binding a cleartext job is readable by the mailbox provider.
+TLS protects the hop and does not hide the message from that
+provider. Authenticity and integrity come from HMAC-SHA-384
+in both forms.
 
 ---
 
@@ -781,7 +796,8 @@ never the default. The disclaimers below say what that choice costs.
 
 A task is a job the Oracle has not assigned yet:
 
-- `task_id`: a UUID (no spaces), the same form as `job_id` (section 2).
+- `task_id`: the same grammar as `job_id` (section 2). A UUID
+  is recommended, not required.
 - `requires[]`: task IDs that should complete first. A DAG, not a flat
   queue.
 - `capabilities[]`: free-form tags (`code`, `review`, `prose`) describing

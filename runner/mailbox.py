@@ -179,8 +179,9 @@ def _note_tls_hatch(cfg) -> None:
     _TLS_HATCH_WARNED = True
     log("mail TLS is not required by owner configuration "
         "(mail_tls_required: false): STARTTLS proceeds without "
-        "certificate verification. This installation cannot "
-        "claim the draft's confidentiality posture.", "WARN")
+        "certificate verification. This installation does not "
+        "meet the draft's TLS requirement for the email binding. "
+        "Confidentiality of the object is the envelope, not this hop.", "WARN")
 
 
 def connect_imap(cfg) -> imaplib.IMAP4_SSL:
