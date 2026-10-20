@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pigeon-home-runner"
-version = "3.11.23"
+version = "3.11.24"
 description = "Self-hosted, email-driven agent: tell your cloud SI to send signed jobs via email that execute on your machine."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -67,7 +67,7 @@ also_copy = [
     # any mutant runs.
     "AGENTS.md", "CONTRIBUTING.md", "ENTERPRISE.md", "FUTURE.md",
     "INSTALL.md",
-    "PROTOCOL.md", "README.md", "RUNBOOK.md",
+    "PROTOCOL.md", "README.md", "RESEARCHER_IDENT.md", "RUNBOOK.md",
     "SAFEGUARDS.md", "SECURITY.md", "TRANSPORTS.md",
     "requirements-ci.txt",
     # The CI pin file. tests/test_build_config.py reads it, and

@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.24 - 2026-10-20
+
+- **RESEARCHER_IDENT.md rides with the mutant tree.** The
+  new root doc made the live-docs guard fail stats
+  collection: mutmut only copies what also_copy names, and
+  the main push of that file died in the test job before
+  any build ran. It is on the copy list now.
+
 ## 3.11.23 - 2026-10-20
 
 - **Version rev.** No functional change from 3.11.22.
