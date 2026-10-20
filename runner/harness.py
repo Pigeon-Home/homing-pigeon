@@ -415,8 +415,8 @@ def _sec_roundtrip(ctx, sec):
     }
     body = R.sign_payload(payload, secret)
     # The round-trip job travels encrypted, like every job the
-    # shipped senders build: the HMAC-only form is no longer
-    # supported, and the runner would refuse the plain body.
+    # shipped senders build: the runner refuses the HMAC-only
+    # form by default, and would refuse the plain body here.
     body = JC.encrypt_body(body, secret, job_id=job_id, key_id="",
                            sign=R.sign_payload)
     subject = f"[HOMING-PIGEON] job {job_id}"
