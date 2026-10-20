@@ -913,6 +913,25 @@ class RingTwoJobTest(unittest.TestCase):
         self._run(zero, self._poison(zero, files=0))
         self.assertTrue(os.path.isfile(self.marker))
 
+    def test_an_interpreter_that_is_not_a_list_does_not_run(self):
+        for interpreter in ("python3", 1):
+            if os.path.exists(self.marker):
+                os.remove(self.marker)
+            job_id = uuid.uuid4().hex
+            out = self._run(job_id, self._poison(
+                job_id, interpreter=interpreter))
+            self.assertFalse(os.path.exists(self.marker))
+            self.assertEqual(self._opened(out, job_id)["exit_code"], -2)
+        empty = uuid.uuid4().hex
+        out = self._run(empty, self._poison(empty, interpreter=[]))
+        self.assertFalse(os.path.exists(self.marker))
+        self.assertEqual(self._opened(out, empty)["exit_code"], 2)
+        good = uuid.uuid4().hex
+        self._run(good, self._wire(good))
+        self.assertTrue(os.path.isfile(self.marker))
+
+
+
 
 
 
