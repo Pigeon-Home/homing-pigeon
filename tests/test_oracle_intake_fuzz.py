@@ -1482,6 +1482,20 @@ class RingTwoBoardTest(unittest.TestCase):
         self.assertEqual(self.board.tasks["high-p"]["claimed_by"], "w-pri")
         self.assertEqual(self.board.tasks["low-p"]["state"], "open")
 
+    def test_a_boolean_priority_does_not_outrank_a_number(self):
+        self._send_kind("task_submit", "bool-p", self._kind(
+            "task_submit", "bool-p", priority=True,
+            payload={"note": "file me"}))
+        self._send_kind("task_submit", "num-p", self._kind(
+            "task_submit", "num-p", priority=1,
+            payload={"note": "file me"}))
+        self.assertIn("bool-p", self.board.tasks)
+        self._send_kind("task_request", "w-bool", self._kind(
+            "task_request", "w-bool", capabilities=["py"]))
+        self.assertEqual(self.board.tasks["num-p"]["state"], "claimed")
+        self.assertEqual(self.board.tasks["bool-p"]["state"], "open")
+
+
 
 
 

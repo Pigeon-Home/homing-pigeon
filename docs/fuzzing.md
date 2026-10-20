@@ -144,7 +144,9 @@ is not claimed. Once that requirement is done, a request
 claims it. Advisory hands the same shape out, and the
 record names the requirement that is not done. A
 higher `priority` is claimed first, even when it was
-submitted second. The lower one stays open.
+submitted second. The lower one stays open. A priority
+of `true` is stored, and it does not outrank a priority
+of `1`.
 
 ## One prompt-injection case
 
