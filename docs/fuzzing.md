@@ -111,7 +111,8 @@ An approval is what marks it done. A worker whose
 capabilities do not cover the task does not claim it. The
 worker who has them does. A worker who is not on
 `worker_allowlist` does not claim either. The worker who
-is on the list does.
+is on the list does. A task in a compartment the worker
+does not share stays open. The worker who shares it claims.
 
 ## One prompt-injection case
 

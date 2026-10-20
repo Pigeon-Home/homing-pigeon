@@ -1159,6 +1159,23 @@ class RingTwoBoardTest(unittest.TestCase):
         self.assertEqual(self.board.tasks[task_id]["state"], "claimed")
         self.assertEqual(self.board.tasks[task_id]["claimed_by"], "w-ok")
 
+    def test_the_wrong_compartment_does_not_claim(self):
+        self.cfg["worker_compartments"] = {
+            "w-red": ["red"], "w-blue": ["blue"],
+        }
+        task_id = "task-comp-1"
+        self._send_kind("task_submit", task_id, self._kind(
+            "task_submit", task_id, compartments=["blue"],
+            payload={"note": "file me"}))
+        self._send_kind("task_request", "w-red", self._kind(
+            "task_request", "w-red", capabilities=["py"]))
+        self.assertEqual(self.board.tasks[task_id]["state"], "open")
+        self._send_kind("task_request", "w-blue", self._kind(
+            "task_request", "w-blue", capabilities=["py"]))
+        self.assertEqual(self.board.tasks[task_id]["state"], "claimed")
+        self.assertEqual(self.board.tasks[task_id]["claimed_by"], "w-blue")
+
+
 
 
 # The fork bomb from tests/test_flag321_obfuscated.py. It pipes to
