@@ -415,10 +415,29 @@ class IdleVoteTest(unittest.TestCase):
         self.assertTrue(JF._box_idle(1000.0, 0.0, 600.0))
 
     def test_load_vote_bounds(self):
-        # A zero ceiling quiets nothing (load is never
-        # negative); an unbounded ceiling quiets everything.
-        self.assertFalse(JF._load_quiet(0.0))
+        if hasattr(os, "getloadavg"):
+            # A zero ceiling quiets nothing (load is never
+            # negative); an unbounded ceiling quiets all.
+            self.assertFalse(JF._load_quiet(0.0))
+        else:
+            # This platform offers no load average (Windows):
+            # there is no vote, and "quiet" is its only
+            # answer -- the sense must still campaign there.
+            self.assertTrue(JF._load_quiet(0.0))
         self.assertTrue(JF._load_quiet(1e18))
+
+    def test_windows_split_keeps_backslash_paths(self):
+        # POSIX shlex would eat the backslashes out of
+        # every path; the Windows split must not, and must
+        # take the quotes off a quoted program path.
+        parts = JF._split_cmd_windows(
+            r'"C:\Program Files\py.exe" C:\x\fake.py {variant}')
+        self.assertEqual(parts, [r"C:\Program Files\py.exe",
+                                 r"C:\x\fake.py", "{variant}"])
+        parts = JF._split_cmd_windows(
+            r"C:\tools\python.exe {variant}")
+        self.assertEqual(parts, [r"C:\tools\python.exe",
+                                 "{variant}"])
 
 
 class SpliceDictionaryTest(unittest.TestCase):

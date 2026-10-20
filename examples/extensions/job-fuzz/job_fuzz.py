@@ -598,6 +598,27 @@ def _load_quiet(idle_load_max):
     return load1 < idle_load_max
 
 
+def _split_cmd(cmd):
+    """Split an operator's runner_cmd for THIS platform.
+    POSIX shlex eats backslashes, which mangles every
+    Windows path in the command before it can run; the
+    Windows split keeps backslashes and leaves the quotes
+    on, so they come off here instead."""
+    if os.name != "nt":
+        return shlex.split(cmd)
+    return _split_cmd_windows(cmd)
+
+
+def _split_cmd_windows(cmd):
+    parts = []
+    for part in shlex.split(cmd, posix=False):
+        if len(part) >= 2 and part[0] == part[-1] \
+                and part[0] in "\"'":
+            part = part[1:-1]
+        parts.append(part)
+    return parts
+
+
 def _run_one_variant(runner_cmd, variant, work_dir, timeout_sec):
     """Write the variant, hand it to the runner's door, and
     read the outcome. Never raises: every failure shape is
@@ -614,7 +635,7 @@ def _run_one_variant(runner_cmd, variant, work_dir, timeout_sec):
                 "variant_file": name}
     cmd = []
     try:
-        for part in shlex.split(runner_cmd):
+        for part in _split_cmd(runner_cmd):
             cmd.append(part.replace("{variant}", path))
     except ValueError as e:
         return {"stage": "error",

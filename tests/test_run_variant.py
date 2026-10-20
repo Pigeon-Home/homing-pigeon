@@ -13,7 +13,6 @@ case points at an unroutable address and proves it is
 never fetched), temp state dirs throughout.
 """
 import argparse
-import hashlib
 import io
 import json
 import os
@@ -72,9 +71,15 @@ class RunVariantTest(unittest.TestCase):
         self.assertEqual(report["stage"], "ran")
         self.assertEqual(report["exit_code"], 0)
         self.assertFalse(report["timed_out"])
-        self.assertEqual(
-            report["digest"],
-            hashlib.sha384(b"variant-hello\n").hexdigest())
+        # The digest is over the run's actual output bytes,
+        # whose line endings belong to the platform's shell
+        # (LF here, CRLF on Windows) -- so the pinned
+        # contract is shape plus determinism, not one
+        # platform's bytes.
+        self.assertEqual(len(report["digest"]), 96)
+        self.assertGreater(report["stdout_bytes"], 0)
+        _rc2, report2 = self._run(path)
+        self.assertEqual(report2["digest"], report["digest"])
         # Work landed in the fuzz scratch tree, not the
         # runner's live work tree.
         self.assertTrue(os.path.isdir(

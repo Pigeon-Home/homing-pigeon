@@ -712,6 +712,20 @@ class PiHealthEndToEndTest(unittest.TestCase):
         self.addCleanup(R._LOCAL_WAKE_LAST.clear)
         self.addCleanup(R._wake_gate_release)
         self.state_path = os.path.join(self._tmp.name, "state.json")
+        # Registered last, so it runs FIRST among the
+        # cleanups: no brief thread may still be writing
+        # under base when the temp tree comes down.
+        self.addCleanup(self._drain_wake)
+
+    def _drain_wake(self):
+        # The wake gate briefs on a daemon thread that
+        # writes under base; cleanup racing it loses on
+        # Windows (rmdir of a directory being written into
+        # fails the test at TemporaryDirectory cleanup).
+        deadline = time.time() + 10
+        while R._LOCAL_WAKE_INFLIGHT \
+                and time.time() < deadline:
+            time.sleep(0.01)
 
     def _run_producer(self, readings, with_secret=True):
         readings_path = os.path.join(self._tmp.name, "readings.json")
@@ -773,6 +787,27 @@ class PiHealthEndToEndTest(unittest.TestCase):
         self.assertEqual(briefs[0]["sensor"], "pi_health")
         self.assertEqual(briefs[0]["signal"], "board_overheating")
         self.assertIn("Pi Light", briefs[0]["assessment"])
+
+    def test_cleanup_waits_out_an_inflight_brief(self):
+        # The drain is the contract the temp cleanup relies
+        # on: a brief still in flight when a test ends has
+        # landed before the drain returns.
+        landed = os.path.join(self.base, "brief-landed.txt")
+
+        def slow_brief(cfg, base_dir, record):
+            time.sleep(0.3)
+            with open(landed, "w", encoding="utf-8") as fh:
+                fh.write("brief")
+
+        record = {"sensor": "pi_health", "signal": "hot",
+                  "severity": "critical", "title": "hot"}
+        with unittest.mock.patch.object(
+                R, "_oracle_brief", slow_brief):
+            self.assertTrue(R._maybe_wake_oracle(
+                self.cfg, self.base, record))
+            self._drain_wake()
+        self.assertFalse(R._LOCAL_WAKE_INFLIGHT)
+        self.assertTrue(os.path.exists(landed))
 
     def test_repeat_pass_files_nothing_new(self):
         self.assertEqual(self._run_producer(dict(COOL, temp_c=87.3)), 0)
