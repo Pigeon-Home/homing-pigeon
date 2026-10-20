@@ -63,7 +63,9 @@ A job stamped two hours ago, or an hour ahead, does not
 run. The window is `max_job_age_sec`, with five minutes of
 slack into the future. The next job stamped now still runs.
 A file named `../escaped.txt` is not staged and the script
-does not run. The next ordinary job still does.
+does not run. The next ordinary job still does. A body
+whose `job_id` is not the id in the subject does not run
+either. The envelope still decrypts. The ids are what fail.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already
