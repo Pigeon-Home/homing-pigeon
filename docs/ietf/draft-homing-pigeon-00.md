@@ -7,8 +7,6 @@ Intended status: Informational
 Expires: 19 April 2027
 Author: Pigeon-Home (editor)
 
-This document is not an IETF standard and is not the product of a working group. Publication as an RFC, if it happens, would be on the Independent Stream.
-
 ## Abstract
 
 This document specifies the Homing Pigeon message protocol, version 1: signed JSON job and result objects exchanged over a transport binding. On the email binding, a submitter sends one HMAC-SHA-384 signed JSON object to a mailbox; a runner polls that mailbox, verifies the signature, executes the job, and returns a signed result; the other bindings carry the same objects unchanged. The signature is the only authorization. The job object is protected end to end by per-job AEAD encryption (Section 16), a required part of the protocol: implementations MUST support it, the reference software sends encrypted by default, and a receiver refuses a cleartext job unless the operator has explicitly enabled cleartext acceptance — in the reference software, only by a command-line parameter. The store-and-forward bindings open no inbound listener on the host that runs the job.
