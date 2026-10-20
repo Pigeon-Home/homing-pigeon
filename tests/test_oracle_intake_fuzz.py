@@ -884,6 +884,19 @@ class RingTwoJobTest(unittest.TestCase):
         self._run(zero, self._poison(zero, args=0))
         self.assertTrue(os.path.isfile(self.marker))
 
+    def test_an_env_that_is_not_an_object_does_not_run(self):
+        for env in ("PATH=/bin", ["PATH=/bin"]):
+            if os.path.exists(self.marker):
+                os.remove(self.marker)
+            job_id = uuid.uuid4().hex
+            out = self._run(job_id, self._poison(job_id, env=env))
+            self.assertFalse(os.path.exists(self.marker))
+            self.assertEqual(self._opened(out, job_id)["exit_code"], -2)
+        zero = uuid.uuid4().hex
+        self._run(zero, self._poison(zero, env=0))
+        self.assertTrue(os.path.isfile(self.marker))
+
+
 
 
 
