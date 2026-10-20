@@ -969,6 +969,21 @@ class RingTwoQueryTest(unittest.TestCase):
         self.assertIn(
             _CANARY, json.dumps(self._open_query(good, good_id)))
 
+    def test_past_the_rate_limit_the_canary_stays_put(self):
+        self.cfg["max_queries_per_hour"] = 1
+        first_id = uuid.uuid4().hex
+        first = self._ask(first_id, self._sealed(first_id))
+        self.assertIn(
+            _CANARY, json.dumps(self._open_query(first, first_id)))
+        second_id = uuid.uuid4().hex
+        second = self._ask(second_id, self._sealed(second_id))
+        raw = " ".join(body for _s, body, _t in second)
+        self.assertNotIn(_CANARY, raw)
+        opened = self._open_query(second, second_id)
+        self.assertEqual(opened["rejected"], "rate_limit")
+        self.assertNotIn(_CANARY, json.dumps(opened))
+        self.assertEqual(opened["answers"], [])
+
 
 class RingTwoBoardTest(unittest.TestCase):
     """A board message that does not verify changes nothing. The

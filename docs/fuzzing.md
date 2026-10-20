@@ -96,6 +96,9 @@ A second query, different id, after the budget is spent,
 does not get the canary either. The answer says budget.
 A query aimed at a different job does not get it either.
 The answer says unknown. The query for this job still does.
+After `max_queries_per_hour` is spent, the next query is
+answered `rate_limit` and does not get the canary.
+
 An open task is not finished by a result or an approval.
 It has to be claimed first. A later submit still opens.
 A second submit of the same task does not replace it.
