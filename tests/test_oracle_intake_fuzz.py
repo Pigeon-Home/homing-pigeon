@@ -596,6 +596,39 @@ class RingTwoJobTest(unittest.TestCase):
         self._run(good_id, self._wire(good_id))
         self.assertTrue(os.path.isfile(self.marker))
 
+    def _with_reply_to(self, job_id, reply_to):
+        payload = {
+            "v": 1,
+            "type": "job",
+            "job_id": job_id,
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "kind": "exec",
+            "interpreter": [sys.executable],
+            "script": "open(%r, 'w').write('ran')\n" % self.marker,
+            "reply_to": reply_to,
+        }
+        return encrypt_body(
+            sign_payload(payload, SECRET), SECRET,
+            job_id=job_id, key_id="", sign=sign_payload)
+
+    def test_a_reply_to_that_is_not_one_address_is_not_used(self):
+        bad = (
+            "a@b.com\r\nBcc: c@d.com",
+            "not-an-email",
+            "a@b.com, c@d.com",
+            ["si@example.com"],
+        )
+        for reply_to in bad:
+            job_id = uuid.uuid4().hex
+            out = self._run(job_id, self._with_reply_to(job_id, reply_to))
+            self.assertTrue(out)
+            self.assertTrue(all(target is None for _s, _b, target in out))
+        good_id = uuid.uuid4().hex
+        out = self._run(
+            good_id, self._with_reply_to(good_id, "si@example.com"))
+        self.assertEqual(out[0][2], "si@example.com")
+
 
 _CANARY = "hp-canary-9f3c2a"
 

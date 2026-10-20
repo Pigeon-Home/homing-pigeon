@@ -66,6 +66,10 @@ A file named `../escaped.txt` is not staged and the script
 does not run. The next ordinary job still does. A body
 whose `job_id` is not the id in the subject does not run
 either. The envelope still decrypts. The ids are what fail.
+A `reply_to` that is not one address does not steer the
+result. A newline, a comma, or a list falls back to the
+runner's own mailbox. One plain address is honored, because
+it was inside the signed body.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already
