@@ -861,6 +861,18 @@ class RingTwoJobTest(unittest.TestCase):
             good_id, script=script, script_sha384=digest))
         self.assertTrue(os.path.isfile(self.marker))
 
+    def test_a_timeout_that_is_not_a_number_does_not_run(self):
+        for timeout in ("slow", ["1"]):
+            job_id = uuid.uuid4().hex
+            out = self._run(job_id, self._poison(
+                job_id, timeout_sec=timeout))
+            self.assertFalse(os.path.exists(self.marker))
+            self.assertEqual(self._opened(out, job_id)["exit_code"], -2)
+        zero = uuid.uuid4().hex
+        self._run(zero, self._poison(zero, timeout_sec=0))
+        self.assertTrue(os.path.isfile(self.marker))
+
+
 
 
 

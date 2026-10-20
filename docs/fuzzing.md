@@ -95,7 +95,9 @@ or a list, does not run either. The next exec job still
 does. A `script_sha384` that does not match the script
 does not run. The same script with the right hash does.
 A hash that is a number does not run. The same hash in
-capitals does, because the compare folds case.
+capitals does, because the compare folds case. A timeout
+of `slow` or a list does not run. A timeout of `0` is
+read as missing, so the default is used and the job runs.
 The same query is answered
 once. The second copy, same seen set, gets nothing back.
 A second query, different id, after the budget is spent,
