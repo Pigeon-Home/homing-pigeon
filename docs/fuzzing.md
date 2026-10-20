@@ -46,7 +46,8 @@ envelope does not run, and the next good job does. A
 second wrap around an envelope does not run the script
 inside it, and a job_id of `..` does not run either. A key
 bound to sensor alerts only cannot run a script, and the
-owner's key still can.
+owner's key still can. A script over `max_script_bytes`
+does not run, and the next script that fits still does.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already

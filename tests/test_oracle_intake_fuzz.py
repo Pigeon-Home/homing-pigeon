@@ -527,6 +527,17 @@ class RingTwoJobTest(unittest.TestCase):
         self._run(good_id, self._wire(good_id), policies, secrets)
         self.assertTrue(os.path.isfile(self.marker))
 
+    def test_an_oversized_script_does_not_run(self):
+        self.cfg["max_script_bytes"] = 20
+        bad_id = uuid.uuid4().hex
+        self._run(bad_id, self._wire(bad_id))
+        self.assertFalse(os.path.exists(self.marker))
+        self.cfg["max_script_bytes"] = 1048576
+        good_id = uuid.uuid4().hex
+        self._run(good_id, self._wire(good_id))
+        self.assertTrue(os.path.isfile(self.marker))
+
+
 
 
 
