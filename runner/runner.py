@@ -4628,6 +4628,28 @@ _LOG_WRITE_LOCK = threading.Lock()
 # is the finer grain only vlog() consults.
 _VERBOSE_LEVEL = 1
 
+# Cleartext (HMAC-only) job acceptance is a per-process state,
+# like verbosity -- and, unlike verbosity, it is set from the
+# command line ONLY. There is deliberately no config key: a
+# config file must not be able to turn acceptance on, and a hot
+# reload must not be able to change it mid-run. main() sets it
+# from --allow-cleartext; every other entry point leaves
+# the default, which is to refuse.
+_ALLOW_CLEARTEXT_JOBS = False
+
+
+def _set_allow_cleartext_jobs(on) -> None:
+    global _ALLOW_CLEARTEXT_JOBS
+    _ALLOW_CLEARTEXT_JOBS = bool(on)
+
+
+def _cleartext_jobs_allowed() -> bool:
+    """True only when this process was started with
+    --allow-cleartext. The HMAC signature is required
+    either way; the flag waives the encryption requirement,
+    never authentication."""
+    return _ALLOW_CLEARTEXT_JOBS
+
 
 def _resolve_verbosity(cfg, flag) -> int:
     """The verbosity level for this process.
@@ -6218,21 +6240,39 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject("job body must be a JSON object")
         return
     if not job_was_encrypted:
-        # The signature already verified. Refusing here is the
-        # confidentiality default, not an authentication check:
-        # the shipped CLI sets allow_cleartext False. A caller
-        # that does not carry the attribute (unit tests, older
-        # in-process use) is left alone.
-        if opts is not None and getattr(
-                opts, "allow_cleartext", None) is False:
-            reject("cleartext job refused (HMAC verified, body not "
-                   "encrypted); start the runner with "
-                   "--allow-cleartext to accept it")
+        if _cleartext_jobs_allowed():
+            # This process was started with
+            # --allow-cleartext: the signature above still
+            # gated admission (cleartext never means
+            # unauthenticated), and the readable arrival is
+            # worth its line in the log, as it always was.
+            log(f"job {job_id}: received in clear text (not "
+                f"encrypted); accepted under "
+                f"--allow-cleartext")
+        else:
+            # Secure by default: the HMAC-only (cleartext) form
+            # does not admit a job. Acceptance is a command-line
+            # decision only (--allow-cleartext); there is
+            # no config key for it. The refusal mirrors a
+            # key-policy reject of a signature-valid job exactly:
+            # the reject is logged, the message is marked seen,
+            # an auth_rejection event is recorded, no result is
+            # sent, and the job_id is not recorded in the seen
+            # set. The form decides, not the channel: a cleartext
+            # object that arrived inside a DTLS session is
+            # refused here just the same.
+            reject("cleartext job refused: the HMAC-only form "
+                   "is not accepted by default; send the job "
+                   "encrypted (hp_enc), or start the runner "
+                   "with --allow-cleartext")
+            _append_security_event(base_dir, {
+                "type": "auth_rejection",
+                "at": datetime.now(timezone.utc).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"),
+                "reason": "cleartext_not_supported",
+            })
             return
-        # Authentication is unchanged -- the HMAC still gates --
-        # but a job that arrived readable by every hop is worth
-        # a line in the log.
-        log(f"job {job_id}: received in clear text (not encrypted)")
+
     # Hardening M5: audience binding. The expected runner_id comes from
     # the loaded config, never from the signed body.
     if not audience_allows(cfg, base_dir, job, key_id, job_id):
@@ -7056,10 +7096,16 @@ class _NullIMAP:
 
 class _CaptureSMTP:
     """Stand-in collecting what send_mail would have sent, so a
-    transport can carry the results out its own pipe."""
+    transport can carry the results out its own pipe. The To of
+    each send is kept alongside the (subject, body): send_mail
+    was handed the job's validated reply_to (or nothing), so the
+    header is the one place the core's routing decision survives
+    into the channel -- a pipe cannot recover it from an
+    encrypted job, and never holds the secret to try."""
 
     def __init__(self):
         self.sent = []
+        self.targets = []
 
     def send_message(self, msg):
         body = ""
@@ -7070,6 +7116,7 @@ class _CaptureSMTP:
             if isinstance(payload, bytes):
                 body = payload.decode("utf-8", errors="replace")
         self.sent.append((str(msg["Subject"] or ""), body))
+        self.targets.append(str(msg["To"] or ""))
 
 
 def process_transport_message(cfg, base_dir, seen, secrets,
@@ -7081,7 +7128,10 @@ def process_transport_message(cfg, base_dir, seen, secrets,
     does everything it does for real mail -- query and board
     dispatch, the signature gate, execution, the result -- with a
     null IMAP and a capturing SMTP standing in for the mailbox.
-    Returns the (subject, body) messages the core sent.
+    Returns the (subject, body, target) messages the core sent:
+    target is the job's validated reply_to when the send carried
+    one, else None (the send went to the runner's own mailbox,
+    which is the channel's default destination anyway).
     """
     cap = _CaptureSMTP()
     safe_subject = str(subject).replace("\r", " ").replace("\n", " ")
@@ -7091,7 +7141,17 @@ def process_transport_message(cfg, base_dir, seen, secrets,
            "\r\n" + str(body_text)).encode("utf-8")
     handle_mail(cfg, _NullIMAP(), cap, "transport", raw, base_dir,
                 seen, secrets, opts, key_policies)
-    return cap.sent
+    mailbox_addr = str(cfg.get("mailbox_user") or "")
+    out = []
+    for (sent_subject, sent_body), raw_to in zip(cap.sent,
+                                                 cap.targets):
+        # send_mail's To is the validated reply_to when the job
+        # named one and the mailbox itself otherwise; only the
+        # former is a routing decision worth handing the pipe.
+        target = raw_to if raw_to and raw_to != mailbox_addr \
+            else None
+        out.append((sent_subject, sent_body, target))
+    return out
 
 
 def _service_transports(cfg, base_dir, seen, seen_path, names,
@@ -7466,6 +7526,13 @@ def log_startup(cfg, args, base_dir):
         "Signature is the only gate. Results return to this mailbox.")
     if not cfg.get("workspace_root"):
         log("confinement is off; workspace_root is not set", "WARN")
+    if _cleartext_jobs_allowed():
+        log("cleartext (HMAC-only) jobs are ACCEPTED by this "
+            "process (--allow-cleartext): a signed job whose "
+            "body is not encrypted will execute, and its result "
+            "returns in cleartext. The HMAC signature is still "
+            "required; every hop can read job and result bodies.",
+            "WARN")
     if _lvl >= 1:
         safe = {k: cfg.get(k) for k in (
             "poll_interval_sec", "workers", "default_timeout_sec",
@@ -10510,6 +10577,12 @@ def main() -> int:
     # back off args.
     _set_verbosity(_resolve_verbosity(cfg, args.verbose))
     args.verbose_level = _VERBOSE_LEVEL
+    # Cleartext acceptance resolves here, from the flag alone:
+    # no config key is consulted, so a config file cannot turn
+    # it on and a hot reload cannot change it. log_startup
+    # announces it with a WARN line when it is on.
+    _set_allow_cleartext_jobs(
+        bool(getattr(args, "allow_cleartext", False)))
     base_dir = _base_dir_for(cfg, args.config)
     os.makedirs(base_dir, exist_ok=True)
     os.makedirs(os.path.join(base_dir, "work"), exist_ok=True)

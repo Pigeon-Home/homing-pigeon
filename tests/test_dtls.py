@@ -41,7 +41,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "cloud"))
 
-from runner import dtlsproto, jobcrypto, transports  # noqa: E402
+from runner import dtlsproto, jobcrypto, runner, transports  # noqa: E402
 from runner.runner import PROTOCOL_VERSION, poll_once  # noqa: E402
 from runner.transport_extensions import channel as ch  # noqa: E402
 import send_dtls  # noqa: E402
@@ -923,6 +923,12 @@ class SupervisedDtlsRoundTripTest(unittest.TestCase):
         return proc.returncode, out, err
 
     def test_exec_job_over_dtls_and_extension_restart(self):
+        # The sender runs with --cleartext; the runner side of
+        # this test is this process (poll_once below), so the
+        # process takes the runner's command-line-only switch
+        # the way main() sets it from --allow-cleartext-jobs.
+        runner._set_allow_cleartext_jobs(True)
+        self.addCleanup(runner._set_allow_cleartext_jobs, False)
         if not _udp_sendto_works():
             self.skipTest(
                 "unconnected UDP sends are blocked in this "

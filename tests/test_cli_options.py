@@ -30,7 +30,7 @@ from datetime import datetime, timezone
 from email.message import EmailMessage
 from unittest import mock
 
-from runner import runner
+from runner import jobcrypto, runner
 from runner._version import __version__
 from runner.runner import (
     Board, apply_cli_overrides, handle_mail, poll_once, sign_payload,
@@ -261,6 +261,14 @@ def _mail(subject, body):
     return msg.as_bytes()
 
 
+def _encrypted_body_for(job):
+    """The wire form of a job since the HMAC-only form was
+    removed: the signed body, encrypted, the envelope signed."""
+    return jobcrypto.encrypt_body(
+        sign_payload(job, SECRET), SECRET,
+        job_id=job["job_id"], key_id="", sign=sign_payload)
+
+
 class _IMAP:
     def __init__(self, raws=()):
         self.raws = list(raws)
@@ -449,9 +457,9 @@ class PollVerboseTest(_VerbosityGuard):
 
     def test_decision_lines_appear_at_verbose(self):
         runner._set_verbosity(2)
-        good = sign_payload({
+        good = _encrypted_body_for({
             "v": 1, "type": "job", "job_id": "good1",
-            "issued_at": _now(), "kind": "ping"}, SECRET)
+            "issued_at": _now(), "kind": "ping"})
         out = self._run_poll([
             _mail("[HOMING-PIGEON] job good1", good),
             _mail("[HOMING-PIGEON] job garbage", "not signed json"),
@@ -467,9 +475,9 @@ class PollVerboseTest(_VerbosityGuard):
 
     def test_no_decision_lines_at_base_level(self):
         runner._set_verbosity(1)
-        good = sign_payload({
+        good = _encrypted_body_for({
             "v": 1, "type": "job", "job_id": "good1",
-            "issued_at": _now(), "kind": "ping"}, SECRET)
+            "issued_at": _now(), "kind": "ping"})
         out = self._run_poll([
             _mail("[HOMING-PIGEON] job good1", good),
             _mail("[HOMING-PIGEON] job garbage", "not signed json"),
@@ -509,7 +517,7 @@ class IngestVerboseTest(_VerbosityGuard):
 class JudgeVerboseTest(_VerbosityGuard):
     def _handle(self, cfg, job):
         raw = _mail(f"[HOMING-PIGEON] job {job['job_id']}",
-                    sign_payload(job, SECRET))
+                    _encrypted_body_for(job))
         with tempfile.TemporaryDirectory() as d:
             with _captured_log() as buf:
                 handle_mail(cfg, _IMAP(), _SMTP(), 1, raw, d, {},

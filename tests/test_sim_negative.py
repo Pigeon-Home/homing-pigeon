@@ -25,7 +25,7 @@ from runner.runner import (  # noqa: E402
     answer_queries,
     _redact_patterns,
 )
-from runner import resources, dri  # noqa: E402
+from runner import jobcrypto, resources, dri  # noqa: E402
 
 SECRET = "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"
 
@@ -95,12 +95,17 @@ class SimNegativeTest(unittest.TestCase):
                 "sensor": "door", "severity": 999, "title": None,
                 "detail": "not a dict",
             }, SECRET)
-            good = sign_payload({
+            # Encrypted: the HMAC-only form is refused by default,
+            # and this job is expected to run.
+            good_payload = {
                 "v": 1, "type": "job", "job_id": "good-1",
                 "issued_at": _now(),
                 "kind": "exec",
                 "script": "echo ok",
-            }, SECRET)
+            }
+            good = jobcrypto.encrypt_body(
+                sign_payload(good_payload, SECRET), SECRET,
+                job_id="good-1", key_id="", sign=sign_payload)
             imap = _FakeIMAP([
                 _mail("[HOMING-PIGEON] job bad-alert", bad_alert),
                 _mail("[HOMING-PIGEON] job good-1", good),
@@ -135,12 +140,15 @@ class SimNegativeTest(unittest.TestCase):
 
             t = threading.Thread(target=poison, daemon=True)
             t.start()
-            good = sign_payload({
+            good_payload = {
                 "v": 1, "type": "job", "job_id": "concurrent-good",
                 "issued_at": _now(),
                 "kind": "exec",
                 "script": "echo survived",
-            }, SECRET)
+            }
+            good = jobcrypto.encrypt_body(
+                sign_payload(good_payload, SECRET), SECRET,
+                job_id="concurrent-good", key_id="", sign=sign_payload)
             imap = _FakeIMAP([_mail("[HOMING-PIGEON] job concurrent-good", good)])
             smtp = _FakeSMTP()
             opts = mock.Mock(dry_run=False, no_send=False)

@@ -19,6 +19,7 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
+from runner import jobcrypto  # noqa: E402
 from runner.runner import poll_once, sign_payload  # noqa: E402
 
 SECRET = "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"
@@ -86,13 +87,18 @@ class AggressivePollNegative(unittest.TestCase):
                     "detail": [1, 2],
                 }, SECRET)
                 raws.append(_mail(f"[HOMING-PIGEON] job bad-{i}", body))
-            # Good jobs
+            # Good jobs (encrypted: the HMAC-only form is refused
+            # by default, and these are expected to run)
             for i in range(3):
-                body = sign_payload({
+                payload = {
                     "v": 1, "type": "job", "job_id": f"good-{i}",
                     "kind": "exec", "issued_at": _now(),
                     "script": "echo ok",
-                }, SECRET)
+                }
+                body = jobcrypto.encrypt_body(
+                    sign_payload(payload, SECRET), SECRET,
+                    job_id=payload["job_id"], key_id="",
+                    sign=sign_payload)
                 raws.append(_mail(f"[HOMING-PIGEON] job good-{i}", body))
 
             stop = threading.Event()

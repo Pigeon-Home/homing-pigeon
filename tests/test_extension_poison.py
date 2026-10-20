@@ -23,7 +23,7 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
-from runner import dri, resources, review  # noqa: E402
+from runner import dri, jobcrypto, resources, review  # noqa: E402
 from runner.runner import (  # noqa: E402
     _redact_patterns,
     answer_queries,
@@ -31,6 +31,7 @@ from runner.runner import (  # noqa: E402
     query_budget,
     run_inspect,
     sign_payload,
+    verify_body,
 )
 
 SECRET = "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"
@@ -42,6 +43,24 @@ def _now():
 
 
 def _mail(subject, body):
+    # Job mails travel encrypted since the HMAC-only form was
+    # removed: a well-formed signed job is enveloped here so
+    # its poisoned CONTENT is what the poll meets, not the
+    # form refusal. Other mail types (query, task_*) keep the
+    # plain signed form their handlers read, and a body that
+    # does not verify (a deliberately malformed fixture)
+    # passes through byte-identical.
+    if subject.startswith("[HOMING-PIGEON] job "):
+        try:
+            payload = verify_body(body, SECRET)
+        except Exception:
+            payload = None
+        if isinstance(payload, dict) \
+                and payload.get("type") == "job":
+            body = jobcrypto.encrypt_body(
+                body, SECRET, job_id=payload.get("job_id") or "",
+                key_id=payload.get("key_id") or "",
+                sign=sign_payload)
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = "si@example.com"

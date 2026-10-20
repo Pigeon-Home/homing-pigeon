@@ -16,6 +16,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
 from runner import harness as H  # noqa: E402
+from runner import jobcrypto  # noqa: E402
 from runner import runner as R  # noqa: E402
 
 
@@ -212,6 +213,24 @@ class ModelSectionTest(unittest.TestCase):
         self.assertEqual(H._model_names({"nope": 1}), [])
 
 
+def _captured_job(captured):
+    """Recover the job dict from the captured wire body.
+
+    The harness sends its round-trip job as an hp_enc envelope
+    (the HMAC-only form is refused by default), so the fake
+    receiver unwraps it the way the runner does: verify the
+    envelope, decrypt, verify the inner signed body. Returns
+    (job_dict, was_envelope).
+    """
+    payload = R.verify_body(captured["body"], SECRET)
+    if not jobcrypto.is_envelope(payload):
+        return payload, False
+    jid = str(captured["subject"]).rsplit(" ", 1)[-1]
+    inner = jobcrypto.decrypt_body(
+        payload, SECRET, jid, payload.get("key_id") or "")
+    return R.verify_body(inner, SECRET), True
+
+
 class _FakeIMAP:
     """Serves the job mail and, once the job was 'sent', its result."""
 
@@ -225,7 +244,7 @@ class _FakeIMAP:
         return "OK", [b"1 2"]
 
     def fetch(self, num, query):
-        job = json.loads(self.captured["body"])
+        job, was_envelope = _captured_job(self.captured)
         if num == b"1":
             raw = self.captured["raw_job"]
         else:
@@ -239,7 +258,13 @@ class _FakeIMAP:
             msg["From"] = "runner@example.com"
             msg["To"] = "runner@example.com"
             msg["Subject"] = f"[HOMING-PIGEON] result {job['job_id']}"
-            msg.set_content(R.sign_payload(result, SECRET))
+            wire = R.sign_payload(result, SECRET)
+            if was_envelope:
+                # The result mirrors the job's encrypted form.
+                wire = jobcrypto.encrypt_body(
+                    wire, SECRET, job_id=job["job_id"], key_id="",
+                    sign=R.sign_payload)
+            msg.set_content(wire)
             raw = msg.as_bytes()
         return "OK", [(b"1 (BODY[] {%d}" % len(raw), raw), b")"]
 
@@ -277,7 +302,8 @@ class RoundTripSectionTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             sec, captured = self._run(d)
         self.assertEqual(sec.status, H.PASS)
-        job = json.loads(captured["body"])
+        job, was_envelope = _captured_job(captured)
+        self.assertTrue(was_envelope)
         self.assertEqual(job["v"], R.PROTOCOL_VERSION)
         self.assertEqual(job["kind"], "exec")
         self.assertIn("[HOMING-PIGEON] job ", captured["subject"])

@@ -387,7 +387,7 @@ The object protocol uses three cryptographic primitives:
   algorithm (`aes-256-gcm/hkdf-sha384`), a 12-byte nonce, and
   the ciphertext — and the envelope is itself signed as
   transmitted; the receiver verifies the envelope's signature
-  before decrypting. A receiver MUST accept the encrypted form.
+  before decrypting. A receiver MUST accept the encrypted form, and MUST NOT execute a job received in cleartext unless the operator has explicitly enabled cleartext acceptance; in the reference software that enable is the `--allow-cleartext` command-line parameter, deliberately not a configuration setting.
   A result mirrors the form of the job it answers unless
   `job_encryption` says otherwise: an explicit true encrypts
   every result, and the literal false encrypts none.
@@ -400,10 +400,10 @@ These are the CNSA-listed choices: the 384-bit tier for the
 hash-based primitives, AES-256 at the matching symmetric tier.
 
 Confidentiality is a property of the signed object, not of the
-mail hop. The reference senders encrypt by default, and
-cleartext is an explicit sender choice — the interop escape for
-pre-encryption runners — never a silent fallback. On the email
-binding a cleartext job is readable by the mailbox provider.
+mail hop. The reference senders encrypt by default, and the
+reference receiver refuses a cleartext job unless it was
+started with `--allow-cleartext`. On the email binding
+a cleartext job is readable by the mailbox provider.
 TLS protects the hop and does not hide the message from that
 provider. Authenticity and integrity come from HMAC-SHA-384
 in both forms.

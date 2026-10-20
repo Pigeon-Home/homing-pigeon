@@ -26,6 +26,7 @@ ignore-missing-imports = [
     "auditreport",
     "winlog",
     "detection",
+    "jobcrypto",
 ]
 
 # Lenient to start: only check bodies of annotated functions.

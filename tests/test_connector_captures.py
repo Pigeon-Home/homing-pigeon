@@ -20,9 +20,11 @@ from email.message import EmailMessage
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
+from runner import jobcrypto  # noqa: E402
 from runner.runner import (  # noqa: E402
     execute_job,
     poll_once,
+    sign_payload,
     verify_body,
 )
 
@@ -104,14 +106,19 @@ class ConnectorCaptureTests(unittest.TestCase):
         self.assertEqual(r["stdout"], "pong")
 
     def test_happy_ping_through_poll(self):
-        # Rebuild a runner-legal mail from the captured payload: pure JSON
-        # body and a subject the runner accepts.
+        # Rebuild a runner-legal mail from the captured payload and
+        # a subject the runner accepts. The captured body itself is
+        # genuine protocol 1 traffic; it rides inside an hp_enc
+        # envelope, the only form the runner accepts by default.
         job = verify_body(HAPPY_PING, SECRET)
+        wire = jobcrypto.encrypt_body(
+            HAPPY_PING, SECRET, job_id=job["job_id"], key_id="",
+            sign=sign_payload)
         msg = EmailMessage()
         msg["From"] = "runner@example.com"
         msg["To"] = "runner@example.com"
         msg["Subject"] = "[HOMING-PIGEON] job " + job["job_id"]
-        msg.set_content(HAPPY_PING)
+        msg.set_content(wire)
         base = tempfile.mkdtemp(prefix="hp-cap-")
         seen = {}
         imap, smtp = FakeIMAP([msg.as_bytes()]), FakeSMTP()
@@ -121,12 +128,15 @@ class ConnectorCaptureTests(unittest.TestCase):
             "shared_secret": SECRET,
             "max_job_age_sec": 10**9,  # captured issued_at is in the past
         }
-        # The capture is genuine protocol 1 traffic, which is what
-        # the runner accepts.
         poll_once(cfg, base, seen, os.path.join(base, "seen.json"),
                   imap=imap, smtp=smtp)
         self.assertEqual(len(smtp.sent), 1)
+        # The result mirrors the job's encrypted form; unwrap it.
         result = verify_body(smtp.sent[0].get_content(), SECRET)
+        self.assertTrue(jobcrypto.is_envelope(result))
+        inner = jobcrypto.decrypt_body(
+            result, SECRET, job["job_id"], result.get("key_id") or "")
+        result = verify_body(inner, SECRET)
         self.assertEqual(result["exit_code"], 0)
         self.assertEqual(result["stdout"], "pong")
         self.assertIn(job["job_id"], seen)

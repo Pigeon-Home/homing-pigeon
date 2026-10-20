@@ -19,7 +19,11 @@ Delivery discipline mirrors the pre-extension mail path:
     it is marked seen and not re-delivered;
   - results are sent to the mailbox itself unless the job's
     signed body names a valid reply_to, exactly the routing
-    the mail path has always applied.
+    the mail path has always applied. The core states that
+    decision in a <ident>.target.txt sidecar beside the result
+    (this process cannot read it out of an encrypted job, and
+    never holds the secret); the in-body parse below remains
+    the fallback for results that arrive without one.
 """
 
 import json
@@ -123,6 +127,41 @@ class EmailPipe:
             except Exception:
                 pass
 
+    def _sidecar_path(self, ident):
+        return os.path.join(self.channel, "outbox",
+                            ident + ".target.txt")
+
+    def _sidecar_target(self, ident):
+        """The core's routing decision for one result, when it
+        left one: the <ident>.target.txt beside the result file
+        carries the job's validated reply_to, which an encrypted
+        job's envelope does not show this process. The value
+        faces the core's own address rule again before it is
+        used; anything that does not pass is ignored, never
+        honored."""
+        try:
+            with open(self._sidecar_path(ident),
+                      encoding="utf-8") as f:
+                raw = f.read().strip()
+        except OSError:
+            return None
+        return _mailbox._valid_reply_to({"reply_to": raw})
+
+    def _ack_sidecar(self, ident):
+        """Move a result's sidecar into outbox/done/ beside the
+        result itself, mirroring ack_result's lifecycle: acks
+        are moves in this channel, and no orphan is left."""
+        src = self._sidecar_path(ident)
+        if not os.path.exists(src):
+            return
+        try:
+            os.replace(src, os.path.join(
+                self.channel, "outbox", "done",
+                ident + ".target.txt"))
+        except OSError as e:
+            ch.log(f"email transport: cannot move sidecar for "
+                   f"{ident} to done: {e}", "WARN")
+
     def flush_results(self, imap):
         pending = ch.pending_results(self.channel)
         if not pending:
@@ -132,10 +171,16 @@ class EmailPipe:
             for fname, subject, body in pending:
                 ident = fname[:-len(".result.txt")] \
                     if fname.endswith(".result.txt") else fname
-                to = self._targets.pop(ident, self.mailbox_addr)
+                to = self._sidecar_target(ident)
+                if to is None:
+                    to = self._targets.pop(ident,
+                                           self.mailbox_addr)
+                else:
+                    self._targets.pop(ident, None)
                 _mailbox.send_mail(smtp, self.cfg, subject, body,
                                    to=to)
                 ch.ack_result(self.channel, fname)
+                self._ack_sidecar(ident)
                 for seq, dident in list(self._delivered.items()):
                     if dident == ident:
                         _mailbox.mark_seen(imap, seq)

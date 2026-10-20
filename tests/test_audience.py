@@ -296,8 +296,10 @@ class ParityWithRunnerIdTest(unittest.TestCase):
         smtp = FakeSMTP()
         seen_path = os.path.join(tmpdir, "seen.json")
         poll_once(cfg, tmpdir, {}, seen_path, imap=imap, smtp=smtp)
-        sent = [(m["Subject"], normalize(m.get_content(), tmpdir))
-                for m in smtp.sent]
+        sent = [(m["Subject"], normalize(
+            m.get_content(), tmpdir,
+            job_id=str(m["Subject"]).rsplit(" ", 1)[-1]))
+            for m in smtp.sent]
         flagged = list(imap.flagged)
         seen = json.load(open(seen_path))
         off = {"sent": sent, "flagged": flagged, "seen": seen}

@@ -20,7 +20,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "cloud"))
 
-from runner.runner import poll_once  # noqa: E402
+from runner.runner import poll_once, verify_body  # noqa: E402
+from runner import jobcrypto  # noqa: E402
 from runner import security as _security  # noqa: E402
 from send_job import sign_payload  # noqa: E402
 from tests.test_runner import FakeIMAP, FakeSMTP  # noqa: E402
@@ -65,7 +66,13 @@ def _email(payload, secret=SECRET):
     msg["From"] = SENDER
     msg["To"] = SENDER
     msg["Subject"] = "[HOMING-PIGEON] job %s" % payload["job_id"]
-    msg.set_content(sign_payload(payload, secret))
+    # Sign-then-encrypt: the runner refuses HMAC-only (cleartext)
+    # jobs by default, so fixtures travel as hp_enc envelopes.
+    wire = jobcrypto.encrypt_body(
+        sign_payload(payload, secret), secret,
+        job_id=payload["job_id"],
+        key_id=payload.get("key_id") or "", sign=sign_payload)
+    msg.set_content(wire)
     return msg.as_bytes()
 
 
@@ -106,7 +113,37 @@ def build_corpus():
 _TS = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?")
 
 
-def normalize(text, tmpdir):
+def _unwrap_envelope(text, job_id, extra_secrets=()):
+    """Return the inner signed text of an hp_enc result envelope.
+
+    Results mirror their job's form, so an encrypted job's result is
+    an envelope whose ciphertext differs on every run; comparisons
+    must be made on the inner signed text instead. Any failure --
+    bad signature, malformed envelope, wrong job_id -- leaves the
+    text unchanged: normalize must never raise.
+    """
+    for secret in (SECRET, EXTRA_SECRET, *extra_secrets):
+        try:
+            body = verify_body(text, secret)
+        except Exception:
+            continue
+        # The signature verified with this secret; it is the only
+        # secret that can open the envelope, so stop here either way.
+        try:
+            if jobcrypto.is_envelope(body):
+                inner = jobcrypto.decrypt_body(
+                    body, secret, job_id, body.get("key_id") or "")
+                verify_body(inner, secret)
+                return inner
+        except Exception:
+            return text
+        return text
+    return text
+
+
+def normalize(text, tmpdir, job_id=None, extra_secrets=()):
+    if job_id is not None:
+        text = _unwrap_envelope(text, job_id, extra_secrets)
     # JSON escapes backslashes. Windows also rewrites the parent of
     # the temp dir (short name versus long name), so match the unique
     # directory name as well as the full path.
@@ -159,7 +196,9 @@ def run_variant(security_block, corpus):
     sent = []
     for msg in smtp.sent:
         body = msg.get_content()
-        sent.append((msg["Subject"], normalize(body, tmpdir)))
+        job_id = str(msg["Subject"]).rsplit(" ", 1)[-1]
+        sent.append((msg["Subject"], normalize(body, tmpdir,
+                                                job_id=job_id)))
     return {
         "sent": sent,
         "flagged": list(imap.flagged),

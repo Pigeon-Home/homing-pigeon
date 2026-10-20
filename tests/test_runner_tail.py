@@ -15,6 +15,24 @@ from tests.security_parity import (
     SECRET, FakeIMAP, FakeSMTP, _email, _payload, base_config)
 
 
+def _result_text(msg):
+    """Inner signed text of a result mail, unwrapping the hp_enc
+    envelope an encrypted job's result mirrors. Falls back to the
+    raw body when the mail is not a verifiable envelope."""
+    from runner import jobcrypto
+    from runner.runner import verify_body
+    text = msg.get_content()
+    try:
+        body = verify_body(text, SECRET)
+        if jobcrypto.is_envelope(body):
+            job_id = str(msg["Subject"]).rsplit(" ", 1)[-1]
+            return jobcrypto.decrypt_body(
+                body, SECRET, job_id, body.get("key_id") or "")
+    except Exception:
+        pass
+    return text
+
+
 NS = "{http://schemas.microsoft.com/win/2004/08/events/event}"
 EVENT_XML = (
     '<Events xmlns="http://schemas.microsoft.com/win/2004/08/events/event">'
@@ -138,7 +156,7 @@ class MailTailTest(unittest.TestCase):
             with mock.patch("runner.runner.execute_job", side_effect=ran):
                 poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
                           imap=imap, smtp=smtp)
-            sent = smtp.sent[-1].get_content()
+            sent = _result_text(smtp.sent[-1])
             self.assertIn("detection_hits", sent)
             self.assertIn("plan_budget", sent)
             self.assertIn("artifact_scan", sent)
@@ -837,7 +855,7 @@ class MailDetectorTailTest(unittest.TestCase):
                 poll_once(cfg, d, {}, os.path.join(d, "seen.json"),
                           imap=FakeIMAP([_email(_payload("anom-1", kind="ping"))]),
                           smtp=smtp)
-            self.assertIn("detection_anomaly", smtp.sent[-1].get_content())
+            self.assertIn("detection_anomaly", _result_text(smtp.sent[-1]))
 
             smtp = FakeSMTP()
             with mock.patch.object(runner._detection, "evaluate_rules",
@@ -846,7 +864,7 @@ class MailDetectorTailTest(unittest.TestCase):
                           imap=FakeIMAP([_email(_payload("boom-1", kind="ping"))]),
                           smtp=smtp)
             self.assertTrue(smtp.sent)
-            self.assertNotIn("detection_hits", smtp.sent[-1].get_content())
+            self.assertNotIn("detection_hits", _result_text(smtp.sent[-1]))
 
 
 class ToolParseTailTest(unittest.TestCase):

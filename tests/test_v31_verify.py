@@ -34,6 +34,7 @@ from runner.runner import (  # noqa: E402
     retained_expired,
     save_retained,
 )
+from runner import jobcrypto  # noqa: E402
 from runner.install import store_additional_secret  # noqa: E402
 from send_job import sign_payload, verify_body  # noqa: E402
 from tests.test_runner import (  # noqa: E402
@@ -52,6 +53,18 @@ def _signed(subject, payload, secret=SECRET):
     msg["Subject"] = subject
     msg.set_content(sign_payload(payload, secret))
     return msg.as_bytes()
+
+
+def _read_result(msg, secret=SECRET):
+    """Verify a job-result mail, unwrapping the hp_enc envelope
+    the result mirrors from its (encrypted) job."""
+    body = verify_body(msg.get_content(), secret)
+    if jobcrypto.is_envelope(body):
+        jid = str(msg["Subject"]).rsplit(" ", 1)[-1]
+        inner = jobcrypto.decrypt_body(
+            body, secret, jid, body.get("key_id") or "")
+        body = verify_body(inner, secret)
+    return body
 
 
 class _FakeResp:
@@ -434,7 +447,7 @@ class QueryMailVerifyTest(unittest.TestCase):
             job_email(job),
             _signed("[HOMING-PIGEON] query q-follow", follow),
         ])
-        result = verify_body(smtp.sent[0].get_content(), SECRET)
+        result = _read_result(smtp.sent[0])
         self.assertEqual(result["stdout"], "pong")
         self.assertEqual(result["stderr"], "")
         self.assertEqual(result["exit_code"], 0)
@@ -686,7 +699,7 @@ class JudgeOffPathTest(unittest.TestCase):
             imap=FakeIMAP([job_email(job_payload(jid, script="rm -rf /"))]),
             smtp=smtp,
         )
-        result = verify_body(smtp.sent[0].get_content(), SECRET)
+        result = _read_result(smtp.sent[0])
         self.assertEqual(result["stdout"], "pong")
         self.assertEqual(result["exit_code"], 0)
         self.assertNotIn("judgment", result)

@@ -56,8 +56,11 @@ def run_job(cfg_extra, payload, secret=SECRET):
     audit = []
     for line in read_audit_lines(tmpdir) or []:
         audit.append(json.loads(line))
-    sent = [(m["Subject"], normalize(m.get_content(), tmpdir))
-            for m in smtp.sent]
+    sent = [(m["Subject"], normalize(
+        m.get_content(), tmpdir,
+        job_id=str(m["Subject"]).rsplit(" ", 1)[-1],
+        extra_secrets=(EXTRA,)))
+        for m in smtp.sent]
     return executed, audit, sent
 
 

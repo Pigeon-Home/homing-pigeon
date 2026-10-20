@@ -14,6 +14,7 @@ left for retry, and processing of the rest continues.
 """
 import json
 import os
+import re
 import sys
 import tempfile
 import threading
@@ -25,7 +26,7 @@ from email.message import EmailMessage
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
-from runner import dri, resources, review, senses
+from runner import dri, jobcrypto, resources, review, senses
 from runner.runner import (
     Board,
     _IN_FLIGHT,
@@ -41,11 +42,46 @@ def _now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _wire_body(subject, body):
+    """Put a signed job body on the wire in its encrypted form.
+
+    Jobs are refused in the HMAC-only (cleartext) form by default,
+    so a signed job that is meant to reach execution must travel
+    as an hp_enc envelope: sign, encrypt, sign the envelope (the
+    pattern from tests/test_protocol_and_edges.py). The AAD job_id
+    is the one in the subject -- the id the runner decrypts
+    against -- so a body whose job_id deliberately differs from
+    the subject still decrypts and meets the check written for
+    it, with its inner bytes unchanged. Anything that is not a
+    signed job object (queries, board messages, garbage) is
+    returned byte-identical: those paths have no cleartext
+    refusal, and deliberately broken fixtures must keep the
+    exact bytes they were built with.
+    """
+    if not isinstance(body, str):
+        return body
+    try:
+        payload = json.loads(body)
+    except ValueError:
+        return body
+    if not isinstance(payload, dict) or payload.get("type") != "job":
+        return body
+    m = re.search(r"\bjob\s+(\S+)", subject or "")
+    if not m:
+        return body
+    key_id = payload.get("key_id")
+    if not isinstance(key_id, str):
+        key_id = ""
+    return jobcrypto.encrypt_body(
+        body, SECRET, job_id=m.group(1), key_id=key_id,
+        sign=sign_payload)
+
+
 def _mail(subject, body):
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = "si@example.com"
-    msg.set_content(body)
+    msg.set_content(_wire_body(subject, body))
     return msg.as_bytes()
 
 

@@ -154,6 +154,10 @@ class EncryptedMailPathTest(unittest.TestCase):
         self.assertFalse(any("clear text" in line for line in logs))
 
     def test_cleartext_job_runs_result_cleartext_and_is_logged(self):
+        # Cleartext acceptance is the runner's command-line
+        # switch only: turn it on the way main() does.
+        runner_mod._set_allow_cleartext_jobs(True)
+        self.addCleanup(runner_mod._set_allow_cleartext_jobs, False)
         jid = str(uuid.uuid4())
         logs = []
         signed = send_job.sign_payload(job_payload(jid), SECRET)
@@ -165,18 +169,22 @@ class EncryptedMailPathTest(unittest.TestCase):
                             for line in logs))
 
     def test_runner_refuses_cleartext_unless_the_flag_is_set(self):
+        # The enable is per-process state set from --allow-cleartext
+        # alone (the setter main() uses); nothing on opts carries it.
         jid = str(uuid.uuid4())
         signed = send_job.sign_payload(job_payload(jid), SECRET)
         raw = mail(jid, signed)
         seen = {}
         imap, smtp = FakeIMAP([raw]), FakeSMTP()
-        refused = type("O", (), {"allow_cleartext": False,
-                                 "dry_run": False, "no_send": False})()
+        refused = type("O", (), {"dry_run": False,
+                                 "no_send": False})()
         logs = []
 
         def fake_log(msg, level="INFO"):
             logs.append(str(msg))
         fake_log.identity_logged = True
+        runner_mod._set_allow_cleartext_jobs(False)
+        self.addCleanup(runner_mod._set_allow_cleartext_jobs, False)
         with mock.patch.object(runner_mod, "log", fake_log):
             poll_once(self.cfg, self.tmp, seen, self.seen_path,
                       imap=imap, smtp=smtp, opts=refused)
@@ -187,8 +195,9 @@ class EncryptedMailPathTest(unittest.TestCase):
 
         jid2 = str(uuid.uuid4())
         signed2 = send_job.sign_payload(job_payload(jid2), SECRET)
-        allowed = type("O", (), {"allow_cleartext": True,
-                                 "dry_run": False, "no_send": True})()
+        allowed = type("O", (), {"dry_run": False,
+                                 "no_send": True})()
+        runner_mod._set_allow_cleartext_jobs(True)
         seen2 = {}
         imap2, smtp2 = FakeIMAP([mail(jid2, signed2)]), FakeSMTP()
         poll_once(self.cfg, self.tmp, seen2, self.seen_path,
@@ -253,6 +262,8 @@ class EncryptedMailPathTest(unittest.TestCase):
         self.assertEqual(result["exit_code"], 0)
 
     def test_job_encryption_true_encrypts_cleartext_jobs_result(self):
+        runner_mod._set_allow_cleartext_jobs(True)
+        self.addCleanup(runner_mod._set_allow_cleartext_jobs, False)
         jid = str(uuid.uuid4())
         cfg = dict(self.cfg, job_encryption=True)
         signed = send_job.sign_payload(job_payload(jid), SECRET)

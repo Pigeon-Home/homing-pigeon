@@ -210,3 +210,15 @@ share the core protocol's quantum posture. Post-quantum
 key exchange would close that too — at the cost of asking
 every provider to ship it, which, per the entry above, is
 asking a real lot.
+
+## Is it safe to use the same shared secret for the HMAC signature and the job encryption?
+
+Using the one shared secret for both is not insecure. The
+AES key is not the secret itself. It is an HKDF output
+under a fixed info string and a fresh nonce, and neither
+construction's output is fed into the other. That
+composition holds if HMAC-SHA-384 is a pseudorandom
+function, which is the usual assumption for this kind of
+reuse. The real cost is the one the draft already states:
+a compromised secret opens both the signatures and every
+recorded envelope.

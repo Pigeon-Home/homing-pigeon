@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from email.message import EmailMessage
 from unittest import mock
 
+from runner import jobcrypto
 from runner import learning as L
 from runner import opinion as op
 from runner import runner
@@ -351,8 +352,25 @@ def _job_email(payload, secret=SECRET):
     msg["From"] = SENDER
     msg["To"] = SENDER
     msg["Subject"] = f"[HOMING-PIGEON] job {payload['job_id']}"
-    msg.set_content(runner.sign_payload(payload, secret))
+    wire = jobcrypto.encrypt_body(
+        runner.sign_payload(payload, secret), secret,
+        job_id=payload["job_id"],
+        key_id=payload.get("key_id") or "",
+        sign=runner.sign_payload)
+    msg.set_content(wire)
     return msg.as_bytes()
+
+
+def _read_result(msg, secret=SECRET):
+    """Verify a result mail's body, unwrapping the hp_enc
+    envelope the result mirrors from its (encrypted) job."""
+    body = runner.verify_body(msg.get_content(), secret)
+    if jobcrypto.is_envelope(body):
+        jid = str(msg["Subject"]).rsplit(" ", 1)[-1]
+        inner = jobcrypto.decrypt_body(
+            body, secret, jid, body.get("key_id") or "")
+        body = runner.verify_body(inner, secret)
+    return body
 
 
 def _exec_payload(script="echo hi", **kw):
@@ -405,8 +423,7 @@ class _Drive:
                              self.seen_path,
                              imap=_FakeIMAP([_job_email(payload)]),
                              smtp=smtp)
-        result = runner.verify_body(smtp.sent[-1].get_content(),
-                                    SECRET)
+        result = _read_result(smtp.sent[-1])
         return result, calls
 
     def records(self, rtype=None):

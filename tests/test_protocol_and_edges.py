@@ -43,6 +43,7 @@ from runner.runner import (  # noqa: E402
     SEEN_CAP,
 )
 from runner import install as install_mod  # noqa: E402
+from runner import jobcrypto  # noqa: E402
 from runner import opinion as opinion_mod  # noqa: E402
 from send_job import sign_payload as cloud_sign  # noqa: E402
 
@@ -108,8 +109,25 @@ def job_email(payload, secret=SECRET, sender=SENDER, subject_id=None):
     msg["From"] = sender
     msg["To"] = sender
     msg["Subject"] = f"[HOMING-PIGEON] job {jid}"
-    msg.set_content(sign_payload(payload, secret))
+    # Jobs travel encrypted since the HMAC-only form was
+    # removed: sign, encrypt, sign the envelope.
+    wire = jobcrypto.encrypt_body(
+        sign_payload(payload, secret), secret, job_id=jid,
+        key_id=payload.get("key_id") or "", sign=sign_payload)
+    msg.set_content(wire)
     return msg.as_bytes()
+
+
+def read_result(msg, secret=SECRET):
+    """Verify a result mail's body, unwrapping the hp_enc
+    envelope the result mirrors from its (encrypted) job."""
+    body = verify_body(msg.get_content(), secret)
+    if jobcrypto.is_envelope(body):
+        jid = str(msg["Subject"]).rsplit(" ", 1)[-1]
+        inner = jobcrypto.decrypt_body(
+            body, secret, jid, body.get("key_id") or "")
+        body = verify_body(inner, secret)
+    return body
 
 
 def base_job(jid, **kw):
@@ -225,7 +243,9 @@ class ProtocolTests(unittest.TestCase):
             msg["From"] = SENDER
             msg["To"] = SENDER
             msg["Subject"] = prefix + jid
-            msg.set_content(sign_payload(base_job(jid), SECRET))
+            msg.set_content(jobcrypto.encrypt_body(
+                sign_payload(base_job(jid), SECRET), SECRET,
+                job_id=jid, key_id="", sign=sign_payload))
             imap, smtp, seen = self.cycle([msg.as_bytes()])
             self.assertEqual(len(smtp.sent), 1, prefix)
             self.assertIn(jid, seen)
@@ -254,7 +274,7 @@ class ExecutionEdgeTests(unittest.TestCase):
         p = base_job(jid, kind="exec")
         _, smtp, seen = self.cycle([job_email(p)])
         self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        r = read_result(smtp.sent[0])
         self.assertEqual(r["exit_code"], -2)
         self.assertIn("requires script", r["stderr"])
         self.assertIn(jid, seen)
@@ -265,7 +285,7 @@ class ExecutionEdgeTests(unittest.TestCase):
         p = base_job(jid, kind="exec", script=script, interpreter=["sh"],
                      args=["zz"], env={"MYE": "yy"})
         _, smtp, _ = self.cycle([job_email(p)])
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        r = read_result(smtp.sent[0])
         self.assertEqual(r["exit_code"], 0)
         self.assertIn("A=zz", r["stdout"])
         self.assertIn("E=yy", r["stdout"])
@@ -276,7 +296,7 @@ class ExecutionEdgeTests(unittest.TestCase):
                      script="printf '%s' 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'",
                      interpreter=["sh"])
         _, smtp, _ = self.cycle([job_email(p)])
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        r = read_result(smtp.sent[0])
         self.assertTrue(r["stdout_truncated"])
         self.assertLessEqual(len(r["stdout"]), 30)
 
@@ -433,7 +453,9 @@ class SeenAndHelpersTests(unittest.TestCase):
 
     def test_multipart_prefers_plain(self):
         jid = str(uuid.uuid4())
-        signed = sign_payload(base_job(jid), SECRET)
+        signed = jobcrypto.encrypt_body(
+            sign_payload(base_job(jid), SECRET), SECRET,
+            job_id=jid, key_id="", sign=sign_payload)
         msg = MIMEMultipart()
         msg["From"] = SENDER
         msg["To"] = SENDER
@@ -604,7 +626,7 @@ class InfiniteRetryBugs(unittest.TestCase):
         p = base_job(jid, kind="exec", script="echo hi", interpreter="sh")
         imap, smtp, seen = self.cycle([job_email(p)])
         self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        r = read_result(smtp.sent[0])
         self.assertEqual(r["exit_code"], -2)
         self.assertIn("interpreter must be", r["stderr"])
         self.assertIn("1", imap.flagged)
@@ -625,7 +647,7 @@ class InfiniteRetryBugs(unittest.TestCase):
                      interpreter=["/no/such/homing-pigeon-binary"])
         imap, smtp, seen = self.cycle([job_email(p)])
         self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        r = read_result(smtp.sent[0])
         self.assertEqual(r["exit_code"], -2)
         self.assertIn("cannot start interpreter", r["stderr"])
         self.assertIn(jid, seen)
@@ -645,7 +667,7 @@ class InfiniteRetryBugs(unittest.TestCase):
                      interpreter=["/no/such/homing-pigeon-binary"])
         imap, smtp, seen = self.cycle([job_email(p)])
         self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        r = read_result(smtp.sent[0])
         self.assertEqual(r["exit_code"], 0)
         member = r["oracle_opinion"]
         self.assertEqual(member["mode"], "repair")
@@ -682,7 +704,7 @@ class PoisonShapeTests(unittest.TestCase):
         jid = payload["job_id"]
         imap, smtp, seen = self.cycle([job_email(payload)])
         self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        r = read_result(smtp.sent[0])
         self.assertEqual(r["exit_code"], -2)
         self.assertIn(needle, r["stderr"])
         self.assertIn("1", imap.flagged)
@@ -784,7 +806,7 @@ class AdversarialTests(unittest.TestCase):
         jid = payload["job_id"]
         imap, smtp, seen = self.cycle([job_email(payload)])
         self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        r = read_result(smtp.sent[0])
         self.assertEqual(r["exit_code"], -2)
         self.assertIn(needle, r["stderr"])
         self.assertIn(jid, seen)
@@ -824,7 +846,7 @@ class AdversarialTests(unittest.TestCase):
                    side_effect=JobRejected("download exceeded 104857600 bytes")):
             imap, smtp, seen = self.cycle([job_email(p)])
         self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        r = read_result(smtp.sent[0])
         self.assertEqual(r["exit_code"], -2)
         self.assertIn("download exceeded", r["stderr"])
         self.assertIn(jid, seen)
@@ -836,7 +858,7 @@ class AdversarialTests(unittest.TestCase):
                      files=[{"name": "x.bin", "url": "file:///etc/passwd"}])
         imap, smtp, seen = self.cycle([job_email(p)])
         self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        r = read_result(smtp.sent[0])
         self.assertEqual(r["exit_code"], -2)
         self.assertIn("unsupported url scheme", r["stderr"])
         self.assertIn(jid, seen)
@@ -850,7 +872,7 @@ class AdversarialTests(unittest.TestCase):
                    side_effect=URLError("Name or service not known")):
             imap, smtp, seen = self.cycle([job_email(p)])
         self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        r = read_result(smtp.sent[0])
         self.assertEqual(r["exit_code"], -2)
         self.assertIn("does not resolve", r["stderr"])
         self.assertIn(jid, seen)
@@ -864,7 +886,7 @@ class AdversarialTests(unittest.TestCase):
                    side_effect=HTTPError("https://example.com/missing", 404, "missing", {}, None)):
             imap, smtp, seen = self.cycle([job_email(p)])
         self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        r = read_result(smtp.sent[0])
         self.assertEqual(r["exit_code"], -2)
         self.assertIn("404", r["stderr"])
         self.assertIn(jid, seen)
@@ -880,7 +902,7 @@ class AdversarialTests(unittest.TestCase):
         p = base_job(jid, kind="exec", script="ls")
         imap, smtp, seen = self.cycle([job_email(p)])
         self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        r = read_result(smtp.sent[0])
         self.assertEqual(r["exit_code"], 0)
         self.assertNotIn("leftover", r["stdout"])
 
@@ -911,7 +933,7 @@ class AdversarialTests(unittest.TestCase):
                           b"[HOMING-PIGEON] TEST job ")
         imap, smtp, seen = self.cycle([raw])
         self.assertEqual(len(smtp.sent), 1)
-        r = verify_body(smtp.sent[0].get_content(), SECRET)
+        r = read_result(smtp.sent[0])
         self.assertEqual(r["stdout"], "pong")
         self.assertIn(jid, seen)
 
@@ -1302,12 +1324,18 @@ class ReplyToTests(unittest.TestCase):
             reply_to="owner@example.com", timeout=300,
             script_url=None, script_sha384=None, script_file=None,
             file=[], arg=[], env=[], interpreter=None,
-            secret=SECRET, cleartext=True)
+            secret=SECRET)
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             self.assertEqual(send_job.cmd_new(args), 0)
         body = buf.getvalue().split("\n\n", 1)[1]
         payload = send_job.verify_body(body, SECRET)
+        # cmd_new always encrypts now: the signed body under test
+        # rides inside the hp_enc envelope.
+        self.assertTrue(send_job.jobcrypto.is_envelope(payload))
+        inner = send_job.jobcrypto.decrypt_body(
+            payload, SECRET, "jid-1", "")
+        payload = send_job.verify_body(inner, SECRET)
         self.assertEqual(payload["reply_to"], "owner@example.com")
         self.assertEqual(payload["v"], 1)
 
@@ -1319,10 +1347,14 @@ class ReplyToTests(unittest.TestCase):
             reply_to=None, timeout=300,
             script_url=None, script_sha384=None, script_file=None,
             file=[], arg=[], env=[], interpreter=None,
-            secret=SECRET, cleartext=True)
+            secret=SECRET)
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             self.assertEqual(send_job.cmd_new(args), 0)
         body = buf.getvalue().split("\n\n", 1)[1]
         payload = send_job.verify_body(body, SECRET)
+        self.assertTrue(send_job.jobcrypto.is_envelope(payload))
+        inner = send_job.jobcrypto.decrypt_body(
+            payload, SECRET, "jid-2", "")
+        payload = send_job.verify_body(inner, SECRET)
         self.assertNotIn("reply_to", payload)

@@ -40,10 +40,12 @@ from urllib.request import Request
 try:
     from runner import runner as R  # package: runner/runner.py
     from runner import local_test as LT
+    from runner import jobcrypto as JC
 except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import runner as R  # script: python3 runner/harness.py
     import local_test as LT
+    import jobcrypto as JC
 
 
 PASS = "PASS"
@@ -340,7 +342,17 @@ def _find_result(conn, secret, job_id):
         if "result" not in subject or job_id not in subject:
             continue
         try:
-            return R.verify_body(R.get_text_body(msg), secret)
+            payload = R.verify_body(R.get_text_body(msg), secret)
+            if JC.is_envelope(payload):
+                # The result mirrors the (encrypted) job: verify
+                # the envelope -- just done -- then decrypt and
+                # verify the recovered signed body, exactly as
+                # send_job.py's verify does.
+                inner = JC.decrypt_body(
+                    payload, secret, job_id,
+                    payload.get("key_id") or "")
+                payload = R.verify_body(inner, secret)
+            return payload
         except Exception as e:
             raise _ResultInvalid(f"result mail for job {job_id} "
                                  f"failed verification: {e}")
@@ -402,6 +414,11 @@ def _sec_roundtrip(ctx, sec):
         "timeout_sec": 60,
     }
     body = R.sign_payload(payload, secret)
+    # The round-trip job travels encrypted, like every job the
+    # shipped senders build: the HMAC-only form is no longer
+    # supported, and the runner would refuse the plain body.
+    body = JC.encrypt_body(body, secret, job_id=job_id, key_id="",
+                           sign=R.sign_payload)
     subject = f"[HOMING-PIGEON] job {job_id}"
     t0 = time.monotonic()
     smtp = R.connect_smtp(cfg)

@@ -4,6 +4,44 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.6 - 2026-10-19
+
+- **The cleartext posture, completed.** 3.11.5 refused an
+  unencrypted job on the shipped CLI path; the refusal now
+  applies at the one acceptance point every channel
+  funnels through, so the form decides, not the channel:
+  mail, file, NATS, and DTLS deliveries are refused alike,
+  with key-policy reject semantics (message marked seen,
+  an `auth_rejection` event recorded, the job_id not
+  recorded in the seen set). `--allow-cleartext` remains
+  the only enable and there is still no configuration
+  key; `install.py` can now bake the flag into the
+  installed service command like the other run flags, the
+  startup log announces it when on, and the diagnose
+  harness sends its round-trip job encrypted so it works
+  without the flag. The spec text states the posture in
+  full: draft Sections 16, 17, and 19.4, PROTOCOL.md
+  Section 8, and the configuring doc. The test suite's
+  fixtures now send encrypted jobs end to end, which is
+  what surfaced the next fix.
+- **`reply_to` routing fixed on the email transport
+  extension.** The extension read the result's destination
+  out of the raw job body, so for encrypted jobs — the
+  default form — results fell back to the mailbox instead
+  of the job's `reply_to`. The core now states its routing
+  decision in a `<ident>.target.txt` sidecar beside the
+  channel result (additive at transport contract v1;
+  extensions that ignore it behave as before), and the
+  extension honors it after re-checking the address
+  against the same rule the direct path applies. Found by
+  the fixture migration above: cleartext fixtures had
+  been masking it.
+- **New FAQ entry:** why the one shared secret safely
+  keys both the HMAC signature and the job encryption —
+  the AES key is an HKDF output, neither construction
+  feeds the other, and the stated cost of reuse is that
+  a compromised secret opens both.
+
 ## 3.11.5 - 2026-10-19
 
 - **Cleartext is a flag, not a mode.** The runner refuses an

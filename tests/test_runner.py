@@ -18,6 +18,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "cloud"))
 
+from runner import jobcrypto  # noqa: E402
 from runner.runner import poll_once, validate_shared_secret  # noqa: E402
 from send_job import sign_payload, verify_body  # noqa: E402
 
@@ -86,12 +87,27 @@ def job_email(payload, secret=SECRET, sender=SENDER):
     msg["From"] = sender
     msg["To"] = sender
     msg["Subject"] = f"[HOMING-PIGEON] job {payload['job_id']}"
-    msg.set_content(sign_payload(payload, secret))
+    # Jobs travel encrypted since the HMAC-only form was
+    # removed: sign, encrypt, sign the envelope.
+    wire = jobcrypto.encrypt_body(
+        sign_payload(payload, secret), secret,
+        job_id=payload["job_id"],
+        key_id=payload.get("key_id") or "", sign=sign_payload)
+    msg.set_content(wire)
     return msg.as_bytes()
 
 
 def result_body(sent_msg):
-    return sent_msg.get_content()
+    body = sent_msg.get_content()
+    parsed = verify_body(body, SECRET)
+    if jobcrypto.is_envelope(parsed):
+        # The result mirrors its job's encrypted form: unwrap
+        # to the signed inner body so callers can verify_body
+        # it exactly as before.
+        jid = str(sent_msg["Subject"]).rsplit(" ", 1)[-1]
+        return jobcrypto.decrypt_body(
+            parsed, SECRET, jid, parsed.get("key_id") or "")
+    return body
 
 
 class RunnerTest(unittest.TestCase):

@@ -77,9 +77,24 @@ class VersionGateTest(unittest.TestCase):
         self.assertFalse(R._version_ok("1"))
 
     def test_v1_job_accepted_reply_is_v1(self):
-        smtp = self._poll([_mail("[HOMING-PIGEON] job ver-job", _job(1))])
+        # Jobs travel encrypted (the HMAC-only form is removed),
+        # and the result mirrors the job's form.
+        signed = sign_payload(_job(1), SECRET)
+        wire = send_job.jobcrypto.encrypt_body(
+            signed, SECRET, job_id="ver-job", key_id="",
+            sign=sign_payload)
+        msg = EmailMessage()
+        msg["From"] = "si@example.com"
+        msg["To"] = "si@example.com"
+        msg["Subject"] = "[HOMING-PIGEON] job ver-job"
+        msg.set_content(wire)
+        smtp = self._poll([msg.as_bytes()])
         self.assertEqual(len(smtp.sent), 1)
         body = verify_body(smtp.sent[0].get_content(), SECRET)
+        self.assertTrue(send_job.jobcrypto.is_envelope(body))
+        inner = send_job.jobcrypto.decrypt_body(
+            body, SECRET, "ver-job", "")
+        body = verify_body(inner, SECRET)
         self.assertEqual(body["type"], "result")
         self.assertEqual(body["v"], 1)
 
@@ -145,7 +160,7 @@ class SenderFloorTest(unittest.TestCase):
             kind="ping", job_id="sj-1", key_id=None, aud=None,
             reply_to=None, timeout=300, script_url=None,
             script_sha384=None, script_file=None, file=[], arg=[],
-            env=[], interpreter=None, secret=secret, cleartext=True)
+            env=[], interpreter=None, secret=secret)
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             rc = send_job.cmd_new(args)
@@ -156,6 +171,12 @@ class SenderFloorTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         body = out.split("\n\n", 1)[1]
         payload = send_job.verify_body(body, SECRET)
+        # The sender always encrypts: v lives in the signed body
+        # inside the hp_enc envelope.
+        self.assertTrue(send_job.jobcrypto.is_envelope(payload))
+        inner = send_job.jobcrypto.decrypt_body(
+            payload, SECRET, "sj-1", "")
+        payload = send_job.verify_body(inner, SECRET)
         self.assertEqual(payload["v"], 1)
         self.assertEqual(payload["v"], send_job.PROTOCOL_VERSION)
 

@@ -31,7 +31,7 @@ from xml.sax.saxutils import escape
 # Frozen binaries cannot import the package the same way a live run can.
 # The constant is the source of truth for --version; tests/test_version.py
 # fails the build if it drifts from pyproject.toml.
-__version__ = "3.11.5"
+__version__ = "3.11.6"
 
 SERVICE_NAME = "homing-pigeon"
 FILES = ["runner.py", "oauth.py", "winlog.py"]
@@ -59,7 +59,7 @@ def _runner_argv(dst_dir: str):
 def _forwarded_args(args) -> list:
     """Runner CLI flags to bake into the installed service command."""
     out = []
-    for name in ("dry_run", "no_send", "pdb"):
+    for name in ("dry_run", "no_send", "pdb", "allow_cleartext"):
         if getattr(args, name, False):
             out.append("--" + name.replace("_", "-"))
     # verbose is the runner default. Only bake the off switch.
@@ -2744,6 +2744,14 @@ def main() -> int:
     g.add_argument("--pdb", action="store_true",
                    help="drop the runner into pdb on unhandled "
                         "exceptions")
+    g.add_argument("--allow-cleartext", action="store_true",
+                   help="bake the runner's --allow-cleartext "
+                        "into the service: the installed runner "
+                        "accepts signed cleartext (HMAC-only) jobs. "
+                        "This is the one place the flag persists -- "
+                        "written into the service command at install "
+                        "time, exactly like the other flags in this "
+                        "group; there is no config key for it")
     args = ap.parse_args()
 
     print(f"install {__version__}")

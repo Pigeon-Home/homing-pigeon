@@ -15,6 +15,15 @@ them through one file channel per extension under the base dir:
     <base_dir>/transport-extensions/<name>/outbox/
         Result envelopes, runner -> extension, same shape. The
         extension carries each result home over its own pipe.
+        When the core knows the job's validated reply_to, a
+        sidecar <ident>.target.txt sits beside the result file
+        holding that single address: the extension sends the
+        result there instead of its own default destination.
+        (A pipe cannot always read the address out of the job
+        itself -- an encrypted job's envelope does not carry it
+        in the clear, and a pipe never holds the secret.) An
+        extension that does not read the sidecar behaves exactly
+        as before; the sidecar is additive at contract v1.
 
 Ack is consumption: the runner moves a processed job file into
 inbox/done/ (never deletes), and an extension moves a delivered
@@ -265,13 +274,21 @@ def _atomic_write(path, text):
 
 
 def write_channel_result(base_dir, name, job_subject, subject, body,
-                         ident_hint=None):
+                         ident_hint=None, target=None):
     """Drop one result envelope into an extension's outbox.
 
     The result file is named for the job that produced it: the
     channel ident the extension delivered the job under when
     there is one (the contract's correlation key), else the job
-    id parsed from the subjects."""
+    id parsed from the subjects.
+
+    `target`, when given, is the job's validated reply_to: the
+    core's own rule (mailbox._valid_reply_to), applied where the
+    job was parsed and the address verified. It is written
+    verbatim to a <ident>.target.txt sidecar beside the result
+    file; an unvalidated address must never be passed here, and
+    none is derived in this module -- transports carry, they do
+    not decide."""
     paths = ensure_channel_dirs(base_dir, name)
     rid = None
     if ident_hint:
@@ -294,6 +311,13 @@ def write_channel_result(base_dir, name, job_subject, subject, body,
     if body and not body.endswith("\n"):
         text += "\n"
     _atomic_write(path, text)
+    if isinstance(target, str) and target.strip():
+        fname = os.path.basename(path)
+        stem = fname[:-len(".result.txt")] \
+            if fname.endswith(".result.txt") else fname
+        _atomic_write(os.path.join(paths["outbox"],
+                                   stem + ".target.txt"),
+                      target.strip() + "\n")
     return path
 
 
@@ -310,8 +334,8 @@ class IncomingMessage:
         self._ack = ack
         self.ident = ident
 
-    def reply(self, subject, body):
-        self._reply(subject, body)
+    def reply(self, subject, body, target=None):
+        self._reply(subject, body, target)
 
     def ack(self):
         if self._ack is not None:
@@ -346,7 +370,8 @@ def fetch_channel_messages(base_dir, name, log=None):
         def refuse(why, fname=fname):
             log(f"transport {name}: {fname}: refused: {why}",
                 "WARN")
-            return IncomingMessage("", "", lambda s, b: None,
+            return IncomingMessage("", "",
+                                   lambda s, b, target=None: None,
                                    ack=ack, ident=fname)
 
         if os.path.islink(path):
@@ -376,9 +401,11 @@ def fetch_channel_messages(base_dir, name, log=None):
         stem = fname[:-len(".job.txt")] \
             if fname.endswith(".job.txt") else fname
 
-        def reply(rsubject, rbody, job_subject=subject, stem=stem):
+        def reply(rsubject, rbody, target=None,
+                  job_subject=subject, stem=stem):
             write_channel_result(base_dir, name, job_subject,
-                                 rsubject, rbody, ident_hint=stem)
+                                 rsubject, rbody, ident_hint=stem,
+                                 target=target)
 
         out.append(IncomingMessage(subject, body, reply, ack=ack,
                                    ident=fname))
@@ -390,15 +417,19 @@ def service_channel(base_dir, name, process_message, log=None,
     """One runner cycle for one extension's channel: hand every
     waiting job envelope to process_message(subject, body) ->
     [(subject, body)], route the replies into the outbox, and
-    ack each job in a finally (dry-run acks nothing). Returns the
-    number of messages serviced."""
+    ack each job in a finally (dry-run acks nothing). A reply may
+    carry a third element, the result's validated reply_to,
+    which is dropped beside the result as its target sidecar.
+    Returns the number of messages serviced."""
     log = log or _silent_log
     messages = fetch_channel_messages(base_dir, name, log=log)
     for msg in messages:
         try:
             replies = process_message(msg.subject, msg.body)
-            for rsubject, rbody in replies:
-                msg.reply(rsubject, rbody)
+            for reply in replies:
+                rsubject, rbody = reply[0], reply[1]
+                target = reply[2] if len(reply) > 2 else None
+                msg.reply(rsubject, rbody, target=target)
         except Exception as e:
             log(f"transport {name}: message {msg.ident or '?'} "
                 f"failed: {e!r}", "ERROR")

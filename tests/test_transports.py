@@ -36,7 +36,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "cloud"))
 
-from runner import mailbox, transports  # noqa: E402
+from runner import jobcrypto, mailbox, transports  # noqa: E402
 from runner.runner import (  # noqa: E402
     _transports_arg, apply_cli_overrides, poll_once)
 from runner.transport_extensions.email import (  # noqa: E402
@@ -80,9 +80,33 @@ def _payload(job_id, **kw):
 
 
 def _envelope(job_id, secret=SECRET, **kw):
-    body = sign_payload(_payload(job_id, **kw), secret)
+    payload = _payload(job_id, **kw)
+    # Jobs travel encrypted since the HMAC-only form was
+    # removed: sign, encrypt, sign the envelope. The wire body
+    # is the envelope whatever container carries it (channel
+    # file, NATS message, drop-in pipe).
+    body = jobcrypto.encrypt_body(
+        sign_payload(payload, secret), secret, job_id=job_id,
+        key_id=payload.get("key_id") or "", sign=sign_payload)
     return transports.format_envelope(
         f"[HOMING-PIGEON] job {job_id}", body)
+
+
+def _read_result(body, job_id, secret=SECRET):
+    """Verify a result body, unwrapping the hp_enc envelope
+    the result mirrors from its (encrypted) job."""
+    result = verify_body(body, secret)
+    if jobcrypto.is_envelope(result):
+        inner = jobcrypto.decrypt_body(
+            result, secret, job_id, result.get("key_id") or "")
+        result = verify_body(inner, secret)
+    return result
+
+
+def _tamper_envelope(env):
+    """Flip the last hex digit of the envelope's signature:
+    a tampered signature, rejected exactly as before."""
+    return env[:-3] + ("0" if env[-3] != "0" else "1") + env[-2:]
 
 
 def _wait_for(pred, timeout=20.0):
@@ -160,6 +184,43 @@ class EnvelopeTest(unittest.TestCase):
         self.assertIsNone(transports.parse_envelope(
             "subject only, no body"))
         self.assertIsNone(transports.parse_envelope(None))
+
+
+class ChannelResultTargetTest(unittest.TestCase):
+    """write_channel_result's target sidecar: the core hands a
+    pipe the job's validated reply_to as <ident>.target.txt
+    beside the result file, and only that -- no target (or an
+    empty one) writes no sidecar."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-test-")
+        self.paths = transports.channel_paths(self.tmp, "email")
+        transports.ensure_channel_dirs(self.tmp, "email")
+
+    def _drop(self, **kw):
+        return transports.write_channel_result(
+            self.tmp, "email", "[HOMING-PIGEON] job abc",
+            "[HOMING-PIGEON] result abc", "{}", ident_hint="job-1",
+            **kw)
+
+    def test_a_validated_target_writes_the_sidecar(self):
+        path = self._drop(target="ops@example.com")
+        self.assertEqual(os.path.basename(path),
+                         "job-1.result.txt")
+        sidecar = os.path.join(self.paths["outbox"],
+                               "job-1.target.txt")
+        with open(sidecar, encoding="utf-8") as f:
+            self.assertEqual(f.read().strip(), "ops@example.com")
+
+    def test_no_target_no_sidecar(self):
+        self._drop()
+        self.assertEqual(sorted(os.listdir(self.paths["outbox"])),
+                         ["done", "job-1.result.txt"])
+
+    def test_an_empty_target_no_sidecar(self):
+        self._drop(target="")
+        self.assertEqual(sorted(os.listdir(self.paths["outbox"])),
+                         ["done", "job-1.result.txt"])
 
 
 class CliTransportsTest(unittest.TestCase):
@@ -470,7 +531,7 @@ class FileTransportExtensionTest(unittest.TestCase):
                   encoding="utf-8") as f:
             subject, body = transports.parse_envelope(f.read())
         self.assertIn("result", subject)
-        result = verify_body(body, SECRET)
+        result = _read_result(body, jid)
         self.assertEqual(result["stdout"], "pong")
         # Processed exactly once: the job file moved to done/.
         self.assertEqual(os.listdir(self.inbox), ["done"])
@@ -487,7 +548,7 @@ class FileTransportExtensionTest(unittest.TestCase):
         with open(os.path.join(self.outbox, f"{jid}.result.txt"),
                   encoding="utf-8") as f:
             _subject, body = transports.parse_envelope(f.read())
-        result = verify_body(body, SECRET)
+        result = _read_result(body, jid)
         self.assertEqual(result["exit_code"], 0)
         self.assertIn("hello-from-file", result["stdout"])
 
@@ -512,7 +573,7 @@ class FileTransportExtensionTest(unittest.TestCase):
         env = _envelope(jid, kind="exec",
                         script="echo should-not-run",
                         interpreter=["sh"])
-        env = env.replace("should-not-run", "tampered-body---")
+        env = _tamper_envelope(env)
         self._drop("job.txt", env)
         self._cycle()
         self.assertEqual(self._results(), [])
@@ -600,7 +661,7 @@ class SupervisedFileRoundTripTest(unittest.TestCase):
                             "file extension")
             with open(result_path, encoding="utf-8") as f:
                 _s, body = transports.parse_envelope(f.read())
-            result = verify_body(body, SECRET)
+            result = _read_result(body, jid)
             self.assertEqual(result["exit_code"], 0)
             self.assertIn("hello-supervised", result["stdout"])
         finally:
@@ -725,7 +786,7 @@ class NatsTransportExtensionTest(unittest.TestCase):
         self.assertEqual(subject, f"homing-pigeon.results.{jid}")
         _s, body = transports.parse_envelope(
             payload.decode("utf-8"))
-        result = verify_body(body, SECRET)
+        result = _read_result(body, jid)
         self.assertEqual(result["stdout"], "pong")
 
     def test_exec_round_trip_with_token(self):
@@ -741,7 +802,7 @@ class NatsTransportExtensionTest(unittest.TestCase):
         _subject, payload = server.published[0]
         _s, body = transports.parse_envelope(
             payload.decode("utf-8"))
-        result = verify_body(body, SECRET)
+        result = _read_result(body, jid)
         self.assertEqual(result["exit_code"], 0)
         self.assertIn("hello-from-nats", result["stdout"])
 
@@ -775,7 +836,7 @@ class NatsTransportExtensionTest(unittest.TestCase):
         env = _envelope(jid, kind="exec",
                         script="echo should-not-run",
                         interpreter=["sh"])
-        env = env.replace("should-not-run", "tampered-body---")
+        env = _tamper_envelope(env)
         server = self._run([env], {"token": "tok-123"},
                            expect_publish=False)
         self.assertEqual(server.published, [])
@@ -859,7 +920,10 @@ class EmailTransportExtensionTest(unittest.TestCase):
         self.FakeSMTP = FakeSMTP
 
     def _raw_mail(self, job_id, **kw):
-        body = sign_payload(_payload(job_id, **kw), SECRET)
+        payload = _payload(job_id, **kw)
+        body = jobcrypto.encrypt_body(
+            sign_payload(payload, SECRET), SECRET, job_id=job_id,
+            key_id=payload.get("key_id") or "", sign=sign_payload)
         raw = (f"Subject: [HOMING-PIGEON] job {job_id}\r\n"
                f"From: someone@example.com\r\n"
                f'Content-Type: text/plain; charset="utf-8"\r\n'
@@ -889,7 +953,7 @@ class EmailTransportExtensionTest(unittest.TestCase):
         self.assertIn("result", str(msg["Subject"]))
         self.assertEqual(str(msg["To"]), SENDER)
         body = msg.get_content()
-        result = verify_body(body, SECRET)
+        result = _read_result(body, jid)
         self.assertEqual(result["stdout"], "pong")
         self.assertEqual(imap.flagged, ["1"])
 
@@ -905,6 +969,107 @@ class EmailTransportExtensionTest(unittest.TestCase):
         self.assertEqual(len(smtp.sent), 1)
         self.assertEqual(str(smtp.sent[0]["To"]),
                          "ops@example.com")
+
+    def _sidecars(self, where="outbox"):
+        return sorted(f for f in os.listdir(self.paths[where])
+                      if f.endswith(".target.txt"))
+
+    def test_the_core_leaves_a_sidecar_for_a_valid_reply_to(
+            self):
+        # The encrypted envelope shows the pipe no reply_to;
+        # the core, which parsed and validated the job, states
+        # its routing decision beside the result instead.
+        jid = str(uuid.uuid4())
+        imap = self.FakeIMAP([self._raw_mail(
+            jid, reply_to="ops@example.com")])
+        smtp = self.FakeSMTP()
+        pipe = self._pipe(imap, smtp)
+        pipe.pass_once()
+        poll_once(self.cfg, self.tmp, self.seen, self.seen_path)
+        sidecars = self._sidecars()
+        self.assertEqual(len(sidecars), 1)
+        with open(os.path.join(self.paths["outbox"], sidecars[0]),
+                  encoding="utf-8") as f:
+            self.assertEqual(f.read().strip(), "ops@example.com")
+        # And once the result has been sent, the sidecar has
+        # followed it into done/: nothing is left behind.
+        pipe.pass_once()
+        self.assertEqual(len(smtp.sent), 1)
+        self.assertEqual(self._sidecars(), [])
+        self.assertEqual(len(self._sidecars("outbox_done")), 1)
+
+    def test_no_reply_to_leaves_no_sidecar(self):
+        jid = str(uuid.uuid4())
+        imap = self.FakeIMAP([self._raw_mail(jid)])
+        smtp = self.FakeSMTP()
+        pipe = self._pipe(imap, smtp)
+        pipe.pass_once()
+        poll_once(self.cfg, self.tmp, self.seen, self.seen_path)
+        self.assertEqual(self._sidecars(), [])
+        pipe.pass_once()
+        self.assertEqual(str(smtp.sent[0]["To"]), SENDER)
+
+    def test_an_invalid_reply_to_leaves_no_sidecar(self):
+        # An unvalidated address is never written down as a
+        # routing instruction: the core's rule rejects it, the
+        # result falls back to the mailbox, no sidecar appears.
+        jid = str(uuid.uuid4())
+        imap = self.FakeIMAP([self._raw_mail(
+            jid, reply_to="not-an-address")])
+        smtp = self.FakeSMTP()
+        pipe = self._pipe(imap, smtp)
+        pipe.pass_once()
+        poll_once(self.cfg, self.tmp, self.seen, self.seen_path)
+        self.assertEqual(self._sidecars(), [])
+        pipe.pass_once()
+        self.assertEqual(str(smtp.sent[0]["To"]), SENDER)
+
+    def test_the_sidecar_beats_the_body_parse_fallback(self):
+        # A result the pipe is carrying, a core sidecar naming
+        # one address, and the delivery-time body parse (the
+        # cleartext-era fallback) naming another: the sidecar
+        # wins, and it is acked into done/ with its result.
+        imap = self.FakeIMAP([])
+        smtp = self.FakeSMTP()
+        pipe = self._pipe(imap, smtp)
+        ident = "mail-9"
+        with open(os.path.join(self.paths["outbox"],
+                               ident + ".result.txt"),
+                  "w", encoding="utf-8") as f:
+            f.write(transports.format_envelope(
+                "[HOMING-PIGEON] result abc", "{}"))
+        with open(os.path.join(self.paths["outbox"],
+                               ident + ".target.txt"),
+                  "w", encoding="utf-8") as f:
+            f.write("ops@example.com\n")
+        pipe._targets[ident] = "body@example.com"
+        pipe.flush_results(imap)
+        self.assertEqual(len(smtp.sent), 1)
+        self.assertEqual(str(smtp.sent[0]["To"]),
+                         "ops@example.com")
+        self.assertEqual(self._sidecars(), [])
+        self.assertEqual(self._sidecars("outbox_done"),
+                         [ident + ".target.txt"])
+
+    def test_a_sidecar_that_fails_the_address_rule_is_ignored(
+            self):
+        imap = self.FakeIMAP([])
+        smtp = self.FakeSMTP()
+        pipe = self._pipe(imap, smtp)
+        ident = "mail-9"
+        with open(os.path.join(self.paths["outbox"],
+                               ident + ".result.txt"),
+                  "w", encoding="utf-8") as f:
+            f.write(transports.format_envelope(
+                "[HOMING-PIGEON] result abc", "{}"))
+        with open(os.path.join(self.paths["outbox"],
+                               ident + ".target.txt"),
+                  "w", encoding="utf-8") as f:
+            f.write("not-an-address\n")
+        pipe._targets[ident] = "body@example.com"
+        pipe.flush_results(imap)
+        self.assertEqual(str(smtp.sent[0]["To"]),
+                         "body@example.com")
 
     def test_a_restart_does_not_redeliver_a_finished_job(self):
         jid = str(uuid.uuid4())
@@ -1325,7 +1490,7 @@ while time.time() < deadline:
                             "carried the job")
             with open(got_file, encoding="utf-8") as f:
                 _s, body = transports.parse_envelope(f.read())
-            result = verify_body(body, SECRET)
+            result = _read_result(body, jid)
             self.assertEqual(result["exit_code"], 0)
             self.assertIn("hello-drop-in", result["stdout"])
         finally:
