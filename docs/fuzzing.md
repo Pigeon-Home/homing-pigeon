@@ -96,6 +96,8 @@ A second query, different id, after the budget is spent,
 does not get the canary either. The answer says budget.
 A query aimed at a different job does not get it either.
 The answer says unknown. The query for this job still does.
+An open task is not finished by a result or an approval.
+It has to be claimed first. A later submit still opens.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already

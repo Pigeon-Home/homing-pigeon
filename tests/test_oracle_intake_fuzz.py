@@ -1020,6 +1020,40 @@ class RingTwoBoardTest(unittest.TestCase):
         self.assertNotIn("file me", raw)
         self.assertIn("task_ack", " ".join(s for s, _b, _t in out))
 
+    def _kind(self, kind, task_id, **extra):
+        payload = {
+            "v": 1,
+            "type": kind,
+            "task_id": task_id,
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+        }
+        payload.update(extra)
+        return encrypt_body(
+            sign_payload(payload, SECRET), SECRET,
+            job_id=task_id, key_id="", sign=sign_payload)
+
+    def _send_kind(self, kind, task_id, body):
+        return process_transport_message(
+            self.cfg, self.tmp, {}, {"": SECRET}, {},
+            "[HOMING-PIGEON] " + kind + " " + task_id, body)
+
+    def test_an_open_task_is_not_finished_by_a_result_or_an_approval(self):
+        task_id = "task-open-1"
+        self._send(task_id, self._sealed(task_id))
+        self.assertEqual(self.board.tasks[task_id]["state"], "open")
+        self._send_kind(
+            "task_result", task_id,
+            self._kind("task_result", task_id, result={"ok": True}))
+        self.assertEqual(self.board.tasks[task_id]["state"], "open")
+        self._send_kind(
+            "task_approve", task_id, self._kind("task_approve", task_id))
+        self.assertEqual(self.board.tasks[task_id]["state"], "open")
+        other = "task-open-2"
+        self._send(other, self._sealed(other))
+        self.assertEqual(self.board.tasks[other]["state"], "open")
+
+
 
 
 
