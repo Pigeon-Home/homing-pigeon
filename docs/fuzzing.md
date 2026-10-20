@@ -78,7 +78,9 @@ envelope signed with one key, around a body signed with
 another, does not run. The next job whose keys agree still
 does. A job aimed at a different runner, or at no runner,
 does not run when audience is enforce. The job that names
-this runner still does.
+this runner still does. A `script_url` of `file:` is not
+fetched, in either case, and the inline script does not run
+in its place. The next ordinary job still does.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already

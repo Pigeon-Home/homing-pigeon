@@ -733,6 +733,35 @@ class RingTwoJobTest(unittest.TestCase):
         self._run(good_id, self._claiming(good_id, "this-runner"))
         self.assertTrue(os.path.isfile(self.marker))
 
+    def test_a_file_url_is_not_the_script(self):
+        for url in ("file:///etc/passwd", "File:///etc/shadow"):
+            job_id = uuid.uuid4().hex
+            payload = {
+                "v": 1,
+                "type": "job",
+                "job_id": job_id,
+                "issued_at": datetime.now(timezone.utc).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"),
+                "kind": "exec",
+                "interpreter": [sys.executable],
+                "script_url": url,
+                "script": "open(%r, 'w').write('ran')\n" % self.marker,
+            }
+            wire = encrypt_body(
+                sign_payload(payload, SECRET), SECRET,
+                job_id=job_id, key_id="", sign=sign_payload)
+            self._run(job_id, wire)
+            self.assertFalse(os.path.exists(self.marker))
+            work = os.path.join(self.tmp, "work", job_id)
+            if os.path.isdir(work):
+                for name in os.listdir(work):
+                    with open(os.path.join(work, name), "rb") as f:
+                        blob = f.read()
+                    self.assertNotIn(b"root:", blob)
+        good_id = uuid.uuid4().hex
+        self._run(good_id, self._wire(good_id))
+        self.assertTrue(os.path.isfile(self.marker))
+
 
 _CANARY = "hp-canary-9f3c2a"
 
