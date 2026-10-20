@@ -848,6 +848,20 @@ class RingTwoJobTest(unittest.TestCase):
             good_id, script=script, script_sha384=digest))
         self.assertTrue(os.path.isfile(self.marker))
 
+    def test_a_script_hash_ignores_case_and_refuses_a_number(self):
+        script = "open(%r, 'w').write('ran')\n" % self.marker
+        job_id = uuid.uuid4().hex
+        out = self._run(job_id, self._poison(
+            job_id, script=script, script_sha384=1))
+        self.assertFalse(os.path.exists(self.marker))
+        self.assertEqual(self._opened(out, job_id)["exit_code"], -2)
+        digest = hashlib.sha384(script.encode("utf-8")).hexdigest().upper()
+        good_id = uuid.uuid4().hex
+        self._run(good_id, self._poison(
+            good_id, script=script, script_sha384=digest))
+        self.assertTrue(os.path.isfile(self.marker))
+
+
 
 
 
