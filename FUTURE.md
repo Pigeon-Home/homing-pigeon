@@ -221,3 +221,34 @@ Ideas. An entry marked BUILT is a decision record, not work.
   `docs/security-gaps.md`.
 - The security of the mailbox provider, and a secret that has already leaked.
   SECURITY.md.
+- In-memory fuzzing of the protocol parsers, and where
+  LLM-driven fuzzing fits it (DRU, 2026-10-19 — a research
+  front to track): the DTLS handshake parser and the
+  job-object parser are the natural targets — both take
+  attacker-controlled bytes in-process, and the handshake is
+  stateful across flights, which is where
+  in-process/persistent fuzzing with state snapshots earns
+  its keep over black-box input blasting. The open question
+  the entry holds: LLMs are not deterministic, so what is an
+  LLM's sound role in a fuzz loop — the research consensus
+  forming is that the model proposes (harnesses, seeds,
+  grammar-shaped mutations) and the deterministic machinery
+  disposes (coverage feedback, corpus distillation, crash
+  triage), with generated artifacts archived so results
+  reproduce even though generation doesn't. The repo's DTLS
+  handshake fuzz tests are the classic in-process shape; an
+  LLM layer, if it ever lands, sits at harness/seed
+  generation, never inside the coverage loop. His adoption
+  precondition: before using any of it, run a significant
+  adversarial fuzzing routine against the LLM-in-the-loop
+  itself — deliberately mess up everything that can go bad
+  with the model in that position (injected instructions
+  riding the fuzzed inputs, model-written harness code that
+  is itself wrong or hostile, coverage claims that don't
+  reproduce, corpus poisoning) — then make kernel-level
+  adjustments to the security modifications and the
+  containerization around the zero-knowledge bucket (the
+  containment that runs untrusted work holding no secrets
+  and no knowledge beyond its own block), tightened by what
+  the fuzzing found. Fuzz first, harden at the kernel layer
+  second, adopt third.
