@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.8 - 2026-10-20
+
+- **Version rev.** No functional changes from 3.11.7; the
+  tree is identical apart from the version constants and
+  this entry.
+
 ## 3.11.7 - 2026-10-19
 
 - **Strictness batch.** The protocol version field is now
