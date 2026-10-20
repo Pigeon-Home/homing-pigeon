@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.5 - 2026-10-19
+
+- **Cleartext is a flag, not a mode.** The runner refuses an
+  HMAC-signed job that is not encrypted unless it was started
+  with `--allow-cleartext`. `send_job.py --cleartext` and
+  `send_dtls.py --cleartext` still send that body, and the
+  shared secret is still required. There is no config key
+  for this. Encrypted jobs are unchanged. Protocol version
+  stays 1.
+
 ## 3.11.4 - 2026-10-19
 
 - **PROTOCOL.md names the AEAD primitive.** The crypto

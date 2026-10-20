@@ -408,6 +408,16 @@ TLS protects the hop and does not hide the message from that
 provider. Authenticity and integrity come from HMAC-SHA-384
 in both forms.
 
+### Debug: cleartext
+
+The reference tools encrypt unless a flag says otherwise.
+`send_job.py --cleartext` and `send_dtls.py --cleartext` send
+the HMAC-signed body with no envelope. The runner refuses
+that body unless it was started with `--allow-cleartext`.
+The shared secret is required either way: the flag does not
+turn authentication off. There is no config key for this.
+The protocol version stays 1.
+
 ---
 
 # The Oracle

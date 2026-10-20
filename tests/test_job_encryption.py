@@ -164,6 +164,37 @@ class EncryptedMailPathTest(unittest.TestCase):
         self.assertTrue(any("received in clear text" in line
                             for line in logs))
 
+    def test_runner_refuses_cleartext_unless_the_flag_is_set(self):
+        jid = str(uuid.uuid4())
+        signed = send_job.sign_payload(job_payload(jid), SECRET)
+        raw = mail(jid, signed)
+        seen = {}
+        imap, smtp = FakeIMAP([raw]), FakeSMTP()
+        refused = type("O", (), {"allow_cleartext": False,
+                                 "dry_run": False, "no_send": False})()
+        logs = []
+
+        def fake_log(msg, level="INFO"):
+            logs.append(str(msg))
+        fake_log.identity_logged = True
+        with mock.patch.object(runner_mod, "log", fake_log):
+            poll_once(self.cfg, self.tmp, seen, self.seen_path,
+                      imap=imap, smtp=smtp, opts=refused)
+        self.assertEqual(len(smtp.sent), 0)
+        self.assertNotIn(jid, seen)
+        self.assertTrue(any("cleartext job refused" in line
+                            for line in logs))
+
+        jid2 = str(uuid.uuid4())
+        signed2 = send_job.sign_payload(job_payload(jid2), SECRET)
+        allowed = type("O", (), {"allow_cleartext": True,
+                                 "dry_run": False, "no_send": True})()
+        seen2 = {}
+        imap2, smtp2 = FakeIMAP([mail(jid2, signed2)]), FakeSMTP()
+        poll_once(self.cfg, self.tmp, seen2, self.seen_path,
+                  imap=imap2, smtp=smtp2, opts=allowed)
+        self.assertIn(jid2, seen2)
+
     def test_tampered_envelope_rejected_no_result(self):
         jid = str(uuid.uuid4())
         signed = send_job.sign_payload(job_payload(jid), SECRET)

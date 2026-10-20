@@ -482,9 +482,10 @@ End-to-end without your SI:
   shared secret, so the mailbox provider — and anyone else who
   can read the transport — sees ciphertext, not your script or
   its output. Results mirror the job: encrypted job, encrypted
-  result. `--cleartext` sends the plain signed body instead
-  (deliberately, never silently), and a runner that receives a
-  cleartext job logs that it arrived in clear text. One honest
+  result. `--cleartext` on the sender, and `--allow-cleartext`
+  on the runner, are the only way to send or accept the plain
+  HMAC-signed body. The shared secret is still required. The
+  runner refuses a cleartext job without that flag. One honest
   limit, stated wherever this is described: there is **no
   forward secrecy** — the key derives from the static shared
   secret, so a compromised secret exposes every recorded

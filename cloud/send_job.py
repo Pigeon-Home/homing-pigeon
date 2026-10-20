@@ -26,7 +26,9 @@ Usage:
 Jobs are ENCRYPTED by default (per-job encryption: the signed body is
 wrapped in a signed AES-256-GCM envelope keyed from the shared
 secret -- see runner/jobcrypto.py). `new --cleartext` produces the
-plain signed body instead, for runners too old to read envelopes.
+plain HMAC-signed body instead. The runner refuses that body unless
+it was started with --allow-cleartext. The shared secret is required
+either way.
 Encryption has no forward secrecy: the secret is static, so anyone
 who later learns it can read every recorded envelope.
 """
@@ -416,9 +418,11 @@ def main() -> int:
                         "file transport instead of printing it")
     g.add_argument("--cleartext", action="store_true",
                    help="do NOT encrypt the job: send the plain "
-                        "signed body, readable by every hop and "
-                        "by runners too old for per-job "
-                        "encryption (the default is encrypted)")
+                        "HMAC-signed body. The shared secret is "
+                        "still required. The runner refuses this "
+                        "unless it was started with "
+                        "--allow-cleartext (the default is "
+                        "encrypted)")
     n.set_defaults(func=cmd_new)
 
     ts = sub.add_parser(

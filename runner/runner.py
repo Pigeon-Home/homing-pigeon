@@ -6218,6 +6218,17 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject("job body must be a JSON object")
         return
     if not job_was_encrypted:
+        # The signature already verified. Refusing here is the
+        # confidentiality default, not an authentication check:
+        # the shipped CLI sets allow_cleartext False. A caller
+        # that does not carry the attribute (unit tests, older
+        # in-process use) is left alone.
+        if opts is not None and getattr(
+                opts, "allow_cleartext", None) is False:
+            reject("cleartext job refused (HMAC verified, body not "
+                   "encrypted); start the runner with "
+                   "--allow-cleartext to accept it")
+            return
         # Authentication is unchanged -- the HMAC still gates --
         # but a job that arrived readable by every hop is worth
         # a line in the log.
@@ -10250,6 +10261,16 @@ def main() -> int:
                    help="job transports for this process, "
                         "comma-separated: email, file, nats "
                         "(default: email)")
+    g = ap.add_argument_group(
+        "debug: cleartext",
+        "Off unless you pass the flag. A cleartext job is still "
+        "HMAC-SHA-384 signed with the shared secret. It is "
+        "readable by every hop. There is no config key for this.")
+    g.add_argument("--allow-cleartext", action="store_true",
+                   help="accept an HMAC-signed job that is not "
+                        "encrypted. Without this flag a cleartext "
+                        "job is refused. The shared secret is "
+                        "still required.")
     g = ap.add_argument_group(
         "the Oracle",
         "Talk to the Oracle instead of polling the mailbox.")
