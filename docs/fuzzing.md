@@ -30,6 +30,13 @@ before anyone checked it was a string.
   whose counts are not numbers, or a `kind` that is a list,
   raised `TypeError`. Counts that are not finite numbers are
   skipped, and a non-string kind is treated as unknown.
+- `feature_keys` and `touched_keys` called `.items()` on
+  `tools` and `paths`, and indexed `interpreter[0]`. A probe
+  that handed back a string or a number raised
+  `AttributeError` or `TypeError`, and a string interpreter
+  was read as its first character. Those fields are used
+  only when they have the shape a probe is supposed to
+  return.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already

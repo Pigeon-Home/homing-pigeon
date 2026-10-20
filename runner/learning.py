@@ -160,12 +160,20 @@ def feature_keys(facts):
     if not isinstance(facts, dict):
         return keys
     interp = facts.get("interpreter") or []
+    if not isinstance(interp, (list, tuple)):
+        interp = []
     if interp and not facts.get("interpreter_present", True):
         keys.append("interpreter:" + str(interp[0]))
-    for name, ok in (facts.get("tools") or {}).items():
+    tools = facts.get("tools") or {}
+    if not isinstance(tools, dict):
+        tools = {}
+    for name, ok in tools.items():
         if not ok:
             keys.append("tool:" + str(name))
-    for path, exists in (facts.get("paths") or {}).items():
+    paths = facts.get("paths") or {}
+    if not isinstance(paths, dict):
+        paths = {}
+    for path, exists in paths.items():
         if exists is None:
             keys.append("pathshape:" + str(path))
         elif not exists:
@@ -181,13 +189,17 @@ def touched_keys(facts):
     if not isinstance(facts, dict):
         return keys
     interp = facts.get("interpreter") or []
-    if interp:
+    if isinstance(interp, (list, tuple)) and interp:
         keys.add("interpreter:" + str(interp[0]))
-    for name in (facts.get("tools") or {}):
-        keys.add("tool:" + str(name))
-    for path in (facts.get("paths") or {}):
-        keys.add("path:" + str(path))
-        keys.add("pathshape:" + str(path))
+    tools = facts.get("tools") or {}
+    if isinstance(tools, dict):
+        for name in tools:
+            keys.add("tool:" + str(name))
+    paths = facts.get("paths") or {}
+    if isinstance(paths, dict):
+        for path in paths:
+            keys.add("path:" + str(path))
+            keys.add("pathshape:" + str(path))
     return keys
 
 
@@ -573,7 +585,11 @@ def _fact_agrees(feature, claim_kind, facts):
     """Stale-fact supersession: when today's probe speaks about
     the feature, it wins over the ledger. Returns True only
     when the probe agrees (or does not speak)."""
+    if not isinstance(facts, dict):
+        return False
     interp = facts.get("interpreter") or []
+    if not isinstance(interp, (list, tuple)):
+        interp = []
     if claim_kind == "interpreter":
         if not interp or "interpreter:" + str(interp[0]) != feature:
             return False
@@ -581,19 +597,19 @@ def _fact_agrees(feature, claim_kind, facts):
     if claim_kind == "tool":
         name = feature.split(":", 1)[1]
         tools = facts.get("tools") or {}
-        if name not in tools:
+        if not isinstance(tools, dict) or name not in tools:
             return False
         return not tools[name]
     if claim_kind == "path":
         path = feature.split(":", 1)[1]
         paths = facts.get("paths") or {}
-        if path not in paths:
+        if not isinstance(paths, dict) or path not in paths:
             return False
         return paths[path] is False
     if claim_kind == "pathshape":
         path = feature.split(":", 1)[1]
         paths = facts.get("paths") or {}
-        if path not in paths:
+        if not isinstance(paths, dict) or path not in paths:
             return False
         return paths[path] is None
     return False

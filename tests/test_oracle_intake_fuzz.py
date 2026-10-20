@@ -20,6 +20,7 @@ from unittest import mock
 from hypothesis import given, settings, strategies as st
 
 from runner.detection import baseline_anomaly
+from runner.learning import feature_keys, touched_keys
 from runner.extensions import (
     api_refusal,
     build_sensor_alert,
@@ -376,6 +377,20 @@ class NonStringKeyFuzzTest(unittest.TestCase):
             baseline_anomaly(seen, {"kind": ["nope"]}),
             "new_job_kind")
         self.assertIsNone(baseline_anomaly(seen, {"kind": "k0"}))
+
+    def test_a_probe_with_the_wrong_shape_files_nothing(self):
+        facts = {
+            "interpreter": "python",
+            "tools": 1,
+            "paths": ["not", "a", "map"],
+        }
+        self.assertEqual(feature_keys(facts), [])
+        self.assertEqual(touched_keys(facts), set())
+        facts = {"interpreter": ["python"], "interpreter_present": False,
+                 "tools": {"curl": False}, "paths": {"/tmp": None}}
+        self.assertIn("interpreter:python", feature_keys(facts))
+        self.assertIn("tool:curl", touched_keys(facts))
+
 
 
 
