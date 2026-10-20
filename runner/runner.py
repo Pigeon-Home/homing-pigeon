@@ -230,11 +230,15 @@ PROTOCOL_VERSION = 1
 def _version_ok(v) -> bool:
     """True when a message's protocol version may be accepted.
 
-    Only 1 is a protocol version. The 2026-10-17 bump to 2 changed
-    the integer and nothing else, and it was reverted. Replies carry
-    PROTOCOL_VERSION.
+    Only 1 is a protocol version, and the draft (Section 9)
+    defines the member as the Integer 1: JSON true and 1.0 are
+    equal to 1 under == but they are not the integer, so the
+    check is a type check as well as a value check. The
+    2026-10-17 bump to 2 changed the integer and nothing else,
+    and it was reverted. Replies carry PROTOCOL_VERSION.
     """
-    return v == PROTOCOL_VERSION
+    return isinstance(v, int) and not isinstance(v, bool) \
+        and v == PROTOCOL_VERSION
 SEEN_CAP = 2000
 
 
@@ -1095,7 +1099,16 @@ def verify_body_keyed(body_text: str, secrets: dict):
             continue
         if not isinstance(payload, dict):
             raise ValueError("signed body must be a JSON object")
-        key_id = payload.get("key_id") or ""
+        # Key selection follows the draft (Section 10) exactly:
+        # absent selects the default secret; a present key_id
+        # must be a string in the map (the empty string names
+        # the default secret); anything else -- null, a boolean,
+        # a number, an unknown string -- is rejected before any
+        # MAC is computed, never silently mapped to the default.
+        if "key_id" in payload:
+            key_id = payload["key_id"]
+        else:
+            key_id = ""
         if not isinstance(key_id, str) or key_id not in secrets:
             raise ValueError(f"unknown key_id {key_id!r}")
         secret = secrets[key_id]
@@ -3790,14 +3803,16 @@ MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024  # 100 MiB
 
 
 class _NoForeignRedirect(HTTPRedirectHandler):
-    """A redirect off http or https is poison. A URL that cannot be
-    printed is still a rejection, not a retry."""
+    """A redirect off https is poison: downloads are HTTPS only
+    (PROTOCOL Sections 6/7), so a redirect may not downgrade to
+    http any more than the original URL may start there. A URL
+    that cannot be printed is still a rejection, not a retry."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         if not isinstance(newurl, str) or not newurl.lower().startswith(
-                ("http://", "https://")):
+                "https://"):
             shown = _as_text(newurl) or "url"
-            raise JobRejected("download redirected off http: " + shown)
+            raise JobRejected("download redirected off https: " + shown)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
@@ -3806,9 +3821,14 @@ def _open_download(req, timeout):
 
 
 def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
-    # Non-HTTP schemes (file:, ftp:) fail the same way every cycle and
-    # can read the local machine. Reject them as poison.
-    if not isinstance(url, str) or not url.lower().startswith(("http://", "https://")):
+    # Downloads are HTTPS only (PROTOCOL Sections 6/7, draft
+    # Section 11.4): an http URL would fetch the content in the
+    # clear on a channel the job's MAC does not cover, and
+    # non-HTTP schemes (file:, ftp:) fail the same way every
+    # cycle and can read the local machine. Reject them all as
+    # poison. Every route here -- files[] entries and
+    # script_url alike -- funnels through this one check.
+    if not isinstance(url, str) or not url.lower().startswith("https://"):
         raise JobRejected(f"unsupported url scheme: {url}")
     if not isinstance(dest, str) or not dest:
         raise JobRejected("download destination is not a path")

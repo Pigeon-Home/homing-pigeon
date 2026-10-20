@@ -498,15 +498,15 @@ class DownloadAndScanTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             dest = os.path.join(d, "out")
             with mock.patch("runner.runner._open_download", return_value=Body(b"abcdef")):
-                download("http://example.test/a", dest, max_bytes=0)
+                download("https://example.test/a", dest, max_bytes=0)
                 self.assertTrue(os.path.exists(dest))
             with mock.patch("runner.runner._open_download", return_value=Body(b"abcdef")):
                 with self.assertRaises(JobRejected):
-                    download("http://example.test/a", dest, max_bytes=3)
-            err = HTTPError("http://example.test/a", 500, "no", hdrs=None, fp=None)
+                    download("https://example.test/a", dest, max_bytes=3)
+            err = HTTPError("https://example.test/a", 500, "no", hdrs=None, fp=None)
             with mock.patch("runner.runner._open_download", side_effect=err):
                 with self.assertRaises(HTTPError):
-                    download("http://example.test/a", dest, max_bytes="nope")
+                    download("https://example.test/a", dest, max_bytes="nope")
 
     def test_artifact_scan_stops_and_survives_a_walk_error(self):
         from runner import runner
