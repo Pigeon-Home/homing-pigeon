@@ -1,8 +1,6 @@
 # Future
 
-Ideas. An entry marked BUILT is a decision record, not work.
-
-## The message
+## Heading 1
 
 - Encrypted credentials at rest
 - Ack messages
