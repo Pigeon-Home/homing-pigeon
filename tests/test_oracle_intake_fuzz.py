@@ -1456,6 +1456,20 @@ class RingTwoBoardTest(unittest.TestCase):
         self.assertEqual(self.board.tasks["dep-b"]["state"], "claimed")
         self.assertEqual(self.board.tasks["dep-b"]["claimed_by"], "w-dag2")
 
+    def test_advisory_hands_out_an_unfinished_requirement(self):
+        self.cfg["dag_mode"] = "advisory"
+        self._send_kind("task_submit", "need-a", self._kind(
+            "task_submit", "need-a", requires=["missing-a"],
+            payload={"note": "file me"}))
+        self._send_kind("task_request", "w-adv", self._kind(
+            "task_request", "w-adv", capabilities=["py"]))
+        task = self.board.tasks["need-a"]
+        self.assertEqual(task["state"], "claimed")
+        self.assertEqual(task["claimed_by"], "w-adv")
+        self.assertEqual(
+            task["dag_warning"]["incomplete_requires"], ["missing-a"])
+
+
 
 
 

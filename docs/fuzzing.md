@@ -141,7 +141,8 @@ A task id with a slash, or longer than 128 characters,
 opens nothing. A plain id still opens. With
 `dag_mode` enforce, a task whose requirement is not done
 is not claimed. Once that requirement is done, a request
-claims it.
+claims it. Advisory hands the same shape out, and the
+record names the requirement that is not done.
 
 ## One prompt-injection case
 
