@@ -682,6 +682,29 @@ class RingTwoJobTest(unittest.TestCase):
         self._run(other, self._wire(other))
         self.assertTrue(os.path.isfile(self.marker))
 
+    def test_an_envelope_key_that_differs_from_the_body_does_not_run(self):
+        job_id = uuid.uuid4().hex
+        payload = {
+            "v": 1,
+            "type": "job",
+            "job_id": job_id,
+            "key_id": "sense-key",
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "kind": "exec",
+            "interpreter": [sys.executable],
+            "script": "open(%r, 'w').write('ran')\n" % self.marker,
+        }
+        wire = encrypt_body(
+            sign_payload(payload, SENSE), SECRET,
+            job_id=job_id, key_id="", sign=sign_payload)
+        secrets = {"": SECRET, "sense-key": SENSE}
+        self._run(job_id, wire, secrets=secrets)
+        self.assertFalse(os.path.exists(self.marker))
+        good_id = uuid.uuid4().hex
+        self._run(good_id, self._wire(good_id), secrets=secrets)
+        self.assertTrue(os.path.isfile(self.marker))
+
 
 _CANARY = "hp-canary-9f3c2a"
 
