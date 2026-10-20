@@ -15,6 +15,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import uuid
 from datetime import datetime, timezone
@@ -536,6 +537,67 @@ class RingTwoJobTest(unittest.TestCase):
         good_id = uuid.uuid4().hex
         self._run(good_id, self._wire(good_id))
         self.assertTrue(os.path.isfile(self.marker))
+
+
+_CANARY = "hp-canary-9f3c2a"
+
+
+class RingTwoQueryTest(unittest.TestCase):
+    """A query that does not verify learns nothing. A good query
+    of the same retained output still gets the answer."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-ring2-query-")
+        self.cfg = {
+            "mailbox_user": "runner@example.com",
+            "shared_secret": SECRET,
+            "max_job_age_sec": 3600,
+            "base_dir": self.tmp,
+        }
+        self.job_id = "retainedjob01"
+        retained = os.path.join(self.tmp, "retained")
+        os.makedirs(retained)
+        with open(os.path.join(retained, self.job_id + ".json"),
+                  "w", encoding="utf-8") as f:
+            json.dump({
+                "stdout": "secret " + _CANARY,
+                "stderr": "",
+                "exit_code": 0,
+                "budget": 8,
+                "spent": 0,
+                "view": "full",
+                "saved_at": time.time(),
+            }, f)
+
+    def _wire(self, query_id):
+        payload = {
+            "v": 1,
+            "type": "query",
+            "query_id": query_id,
+            "job_id": self.job_id,
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "queries": [{"op": "grep", "pattern": _CANARY}],
+        }
+        return sign_payload(payload, SECRET)
+
+    def _ask(self, query_id, body):
+        return process_transport_message(
+            self.cfg, self.tmp, {}, {"": SECRET}, {},
+            "[HOMING-PIGEON] query " + query_id, body)
+
+    def test_a_flipped_query_learns_nothing(self):
+        bad_id = uuid.uuid4().hex
+        wire = self._wire(bad_id)
+        flipped = (
+            wire[:-2] + ("0" if wire[-2] != "0" else "1") + wire[-1])
+        bad = self._ask(bad_id, flipped)
+        self.assertEqual(bad, [])
+        good_id = uuid.uuid4().hex
+        good = self._ask(good_id, self._wire(good_id))
+        blob = " ".join(body for _s, body, _t in good)
+        self.assertIn(_CANARY, blob)
+
 
 
 

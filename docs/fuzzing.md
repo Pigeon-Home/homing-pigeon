@@ -47,7 +47,10 @@ second wrap around an envelope does not run the script
 inside it, and a job_id of `..` does not run either. A key
 bound to sensor alerts only cannot run a script, and the
 owner's key still can. A script over `max_script_bytes`
-does not run, and the next script that fits still does.
+does not run, and the next script that fits still does. A
+flipped query learns nothing from retained output. The next
+good query of the same output still gets the answer. A query
+is still admitted as signed cleartext. A job is not.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already
