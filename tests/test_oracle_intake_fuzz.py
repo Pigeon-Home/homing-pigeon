@@ -29,7 +29,10 @@ from runner.extensions import (
 )
 from runner.review import review_job
 from runner.runner import (
+    _handle_local_signal_conn,
     _ingest_local_envelope_inner,
+    _local_signal_port,
+    _local_signals_enabled,
     _run_oracle_tool,
     _scan_local_inbox,
     check_key_policy,
@@ -252,4 +255,44 @@ class RingOneFuzzTest(unittest.TestCase):
             {"shared_secret": SECRET, "mailbox_user": "r@example.com"},
             base)
         self.assertIsInstance(n, int)
+
+
+class _Chunks:
+    """A connection that yields a fixed list of recv results."""
+
+    def __init__(self, chunks):
+        self._chunks = list(chunks)
+
+    def settimeout(self, _seconds):
+        return None
+
+    def recv(self, _n):
+        if not self._chunks:
+            return b""
+        chunk = self._chunks.pop(0)
+        if chunk is None:
+            raise TimeoutError("quiet")
+        return chunk
+
+
+class SocketIntakeFuzzTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-sock-fuzz-")
+        self.cfg = {
+            "shared_secret": SECRET,
+            "mailbox_user": "runner@example.com",
+        }
+
+    @settings(max_examples=40, deadline=None)
+    @given(chunks=st.lists(st.binary(max_size=200), max_size=4),
+           cfg=_messy)
+    def test_socket_bytes_never_raise(self, chunks, cfg):
+        _handle_local_signal_conn(
+            self.cfg, self.tmp, _Chunks(chunks))
+        self.assertIsInstance(_local_signals_enabled(cfg), bool)
+        port = _local_signal_port(cfg)
+        self.assertIsInstance(port, int)
+        self.assertGreaterEqual(port, 0)
+        self.assertLessEqual(port, 65535)
+
 

@@ -60,9 +60,9 @@ admission is the part a sensor can reach.
 
 - `tests/test_oracle_intake_fuzz.py` — ring 1 for alerts,
   manifests, key policy, the local envelope, review, the
-  Oracle's tools, sensor config, and a poisoned senses store.
-  The tool named `run` is stubbed. The fuzzer must not grow a
-  shell.
+  Oracle's tools, sensor config, a poisoned senses store, and
+  the loopback socket reader. The tool named `run` is stubbed.
+  The fuzzer must not grow a shell.
 - `tests/test_dtls_fuzz.py` — ring 3, started: random
   datagrams and the fragment buffer.
 - `tests/test_properties.py` — the older property tests on
