@@ -4304,8 +4304,14 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     # --- stage script
     # Interpreter is resolved first so the filename matches it.
     # PowerShell -File requires .ps1; a bare "script" is rejected.
-    interpreter = job.get("interpreter") or cfg.get("default_interpreter") \
-        or platform_interpreter()
+    # Only an ABSENT interpreter falls back to the configured or
+    # platform default: a present-but-empty one is the malformed
+    # value the check below exists to refuse, and an `or` chain
+    # would silently substitute the default for it.
+    interpreter = job.get("interpreter")
+    if interpreter is None:
+        interpreter = cfg.get("default_interpreter") \
+            or platform_interpreter()
     if not isinstance(interpreter, list) or not interpreter or \
             not all(isinstance(x, str) for x in interpreter):
         raise JobRejected("interpreter must be a non-empty list of strings")

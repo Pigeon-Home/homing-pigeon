@@ -246,7 +246,9 @@ class RingOneFuzzTest(unittest.TestCase):
         base = tempfile.mkdtemp(prefix="hp-store-fuzz-")
         path = os.path.join(base, "senses.jsonl")
         mode = "wb" if isinstance(blob, (bytes, bytearray)) else "w"
-        with open(path, mode) as f:
+        kw = {"encoding": "utf-8", "errors": "surrogateescape"} \
+            if mode == "w" else {}
+        with open(path, mode, **kw) as f:
             f.write(blob)
         got = load_alerts(base, sensor=sensor, severity_floor=floor)
         self.assertIsInstance(got, list)
@@ -260,7 +262,9 @@ class RingOneFuzzTest(unittest.TestCase):
         os.makedirs(inbox)
         path = os.path.join(inbox, "n.json")
         mode = "wb" if isinstance(body, (bytes, bytearray)) else "w"
-        with open(path, mode) as f:
+        kw = {"encoding": "utf-8", "errors": "surrogateescape"} \
+            if mode == "w" else {}
+        with open(path, mode, **kw) as f:
             f.write(body)
 
         def _no_shell(*_a, **_k):
@@ -925,7 +929,11 @@ class RingTwoJobTest(unittest.TestCase):
         empty = uuid.uuid4().hex
         out = self._run(empty, self._poison(empty, interpreter=[]))
         self.assertFalse(os.path.exists(self.marker))
-        self.assertEqual(self._opened(out, empty)["exit_code"], 2)
+        # Refused like every malformed interpreter (-2). This
+        # once expected 2 -- the exit code the platform shell
+        # happened to return when the empty list was silently
+        # replaced by the default interpreter and the job ran.
+        self.assertEqual(self._opened(out, empty)["exit_code"], -2)
         good = uuid.uuid4().hex
         self._run(good, self._wire(good))
         self.assertTrue(os.path.isfile(self.marker))

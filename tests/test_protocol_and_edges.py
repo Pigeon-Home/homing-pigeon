@@ -632,6 +632,23 @@ class InfiniteRetryBugs(unittest.TestCase):
         self.assertIn("1", imap.flagged)
         self.assertIn(jid, seen)
 
+    def test_empty_list_interpreter_rejected_not_retried(self):
+        # A present-but-empty interpreter is malformed, not
+        # absent: it must be refused, never silently replaced
+        # by the platform default (which is what an `or` chain
+        # over the job value did -- the job then ran, and on a
+        # platform whose default shell exits 0 on the script,
+        # recorded success).
+        jid = str(uuid.uuid4())
+        p = base_job(jid, kind="exec", script="echo hi", interpreter=[])
+        imap, smtp, seen = self.cycle([job_email(p)])
+        self.assertEqual(len(smtp.sent), 1)
+        r = read_result(smtp.sent[0])
+        self.assertEqual(r["exit_code"], -2)
+        self.assertIn("interpreter must be", r["stderr"])
+        self.assertIn("1", imap.flagged)
+        self.assertIn(jid, seen)
+
 
 
     def test_missing_interpreter_is_poison_not_retried(self):
