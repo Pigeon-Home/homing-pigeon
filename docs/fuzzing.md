@@ -25,6 +25,11 @@ before anyone checked it was a string.
 - The same check was open in three more lookups: a model tool
   name, a `security.modes` value, and `dtls_greeting`. A
   non-string is a refusal or a config error, not a crash.
+- `baseline_anomaly` summed `kinds` with `sum()` and then
+  used the job's `kind` as a dict key. A stored baseline
+  whose counts are not numbers, or a `kind` that is a list,
+  raised `TypeError`. Counts that are not finite numbers are
+  skipped, and a non-string kind is treated as unknown.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already

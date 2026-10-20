@@ -19,6 +19,7 @@ from unittest import mock
 
 from hypothesis import given, settings, strategies as st
 
+from runner.detection import baseline_anomaly
 from runner.extensions import (
     api_refusal,
     build_sensor_alert,
@@ -365,6 +366,17 @@ class NonStringKeyFuzzTest(unittest.TestCase):
             os.environ.pop("HOMING_PIGEON_TRANSPORT_CHANNEL", None)
             os.environ.pop("HOMING_PIGEON_TRANSPORT_CONFIG", None)
         self.assertEqual(code, 2)
+
+    def test_a_poisoned_baseline_does_not_raise(self):
+        baseline = {"kinds": {"exec": "many", "ping": [1]}}
+        self.assertIsNone(baseline_anomaly(
+            baseline, {"kind": ["exec"]}))
+        seen = {"kinds": {f"k{i}": 1 for i in range(21)}}
+        self.assertEqual(
+            baseline_anomaly(seen, {"kind": ["nope"]}),
+            "new_job_kind")
+        self.assertIsNone(baseline_anomaly(seen, {"kind": "k0"}))
+
 
 
 

@@ -239,10 +239,22 @@ def baseline_anomaly(baseline: Dict[str, Any], job: Dict[str, Any],
             except Exception:
                 pass
     kinds = baseline.get("kinds") or {}
-    if isinstance(kinds, dict) and sum(kinds.values()) > 20:
-        kind = (job or {}).get("kind") or "unknown"
-        if kind not in kinds:
-            return "new_job_kind"
+    if isinstance(kinds, dict):
+        total = 0
+        for value in kinds.values():
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                continue
+            if value != value or value in (float("inf"), float("-inf")):
+                continue
+            total += value
+        if total > 20:
+            kind = "unknown"
+            if isinstance(job, dict):
+                raw = job.get("kind")
+                if isinstance(raw, str) and raw:
+                    kind = raw
+            if kind not in kinds:
+                return "new_job_kind"
     return None
 
 
