@@ -142,7 +142,9 @@ opens nothing. A plain id still opens. With
 `dag_mode` enforce, a task whose requirement is not done
 is not claimed. Once that requirement is done, a request
 claims it. Advisory hands the same shape out, and the
-record names the requirement that is not done.
+record names the requirement that is not done. A
+higher `priority` is claimed first, even when it was
+submitted second. The lower one stays open.
 
 ## One prompt-injection case
 

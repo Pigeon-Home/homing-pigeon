@@ -1469,6 +1469,20 @@ class RingTwoBoardTest(unittest.TestCase):
         self.assertEqual(
             task["dag_warning"]["incomplete_requires"], ["missing-a"])
 
+    def test_the_higher_priority_is_claimed_first(self):
+        self._send_kind("task_submit", "low-p", self._kind(
+            "task_submit", "low-p", priority=0,
+            payload={"note": "file me"}))
+        self._send_kind("task_submit", "high-p", self._kind(
+            "task_submit", "high-p", priority=5,
+            payload={"note": "file me"}))
+        self._send_kind("task_request", "w-pri", self._kind(
+            "task_request", "w-pri", capabilities=["py"]))
+        self.assertEqual(self.board.tasks["high-p"]["state"], "claimed")
+        self.assertEqual(self.board.tasks["high-p"]["claimed_by"], "w-pri")
+        self.assertEqual(self.board.tasks["low-p"]["state"], "open")
+
+
 
 
 
