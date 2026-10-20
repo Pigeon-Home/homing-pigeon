@@ -68,7 +68,7 @@ also_copy = [
     "AGENTS.md", "CONTRIBUTING.md", "ENTERPRISE.md", "FUTURE.md",
     "INSTALL.md",
     "PROTOCOL.md", "README.md", "RUNBOOK.md",
-    "SAFEGUARDS.md", "SECURITY.md", "STYLE.md", "TRANSPORTS.md",
+    "SAFEGUARDS.md", "SECURITY.md", "TRANSPORTS.md",
     "requirements-ci.txt",
     # The CI pin file. tests/test_build_config.py reads it, and
     # mutmut's stats run dies if the mutant tree does not have it.
@@ -84,7 +84,7 @@ line-length = 88
 target-version = "py39"
 
 [tool.ruff.lint]
-# Day-one set (STYLE.md): pyflakes everywhere (F) plus pycodestyle
+# Day-one set: pyflakes everywhere (F) plus pycodestyle
 # errors (E) outside the grandfathered files below. The list grows
 # only with a commit that keeps the gate green.
 select = ["E", "F"]
