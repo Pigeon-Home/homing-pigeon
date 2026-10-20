@@ -1053,6 +1053,22 @@ class RingTwoBoardTest(unittest.TestCase):
         self._send(other, self._sealed(other))
         self.assertEqual(self.board.tasks[other]["state"], "open")
 
+    def test_a_second_submit_does_not_replace_the_task(self):
+        task_id = "task-once"
+        self._send(task_id, self._sealed(task_id))
+        self.assertEqual(
+            self.board.tasks[task_id]["payload"], {"note": "file me"})
+        again = self._kind(
+            "task_submit", task_id, payload={"note": "replaced"})
+        self._send_kind("task_submit", task_id, again)
+        self.assertEqual(
+            self.board.tasks[task_id]["payload"], {"note": "file me"})
+        self.assertEqual(self.board.tasks[task_id]["state"], "open")
+        other = "task-once-2"
+        self._send(other, self._sealed(other))
+        self.assertEqual(self.board.tasks[other]["state"], "open")
+
+
 
 
 
