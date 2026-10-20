@@ -1438,6 +1438,25 @@ class RingTwoBoardTest(unittest.TestCase):
         self._send(good, self._sealed(good))
         self.assertEqual(self.board.tasks[good]["state"], "open")
 
+    def test_an_unfinished_requirement_is_not_claimed(self):
+        self.cfg["dag_mode"] = "enforce"
+        self._send("dep-a", self._sealed("dep-a"))
+        self._send_kind("task_submit", "dep-b", self._kind(
+            "task_submit", "dep-b", requires=["dep-a"],
+            payload={"note": "file me"}))
+        self._send_kind("task_request", "w-dag", self._kind(
+            "task_request", "w-dag", capabilities=["py"]))
+        self.assertEqual(self.board.tasks["dep-a"]["state"], "claimed")
+        self.assertEqual(self.board.tasks["dep-b"]["state"], "open")
+        self._send_kind("task_result", "dep-a", self._kind(
+            "task_result", "dep-a", result={"ok": True}))
+        self.assertEqual(self.board.tasks["dep-a"]["state"], "done")
+        self._send_kind("task_request", "w-dag2", self._kind(
+            "task_request", "w-dag2", capabilities=["py"]))
+        self.assertEqual(self.board.tasks["dep-b"]["state"], "claimed")
+        self.assertEqual(self.board.tasks["dep-b"]["claimed_by"], "w-dag2")
+
+
 
 
 
