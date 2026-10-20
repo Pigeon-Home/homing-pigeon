@@ -72,7 +72,8 @@ runner's own mailbox. One plain address is honored, because
 it was inside the signed body. A job cannot put a
 `PIGEON_` variable into its own process, in either case.
 Any other name it sets is still there. The next ordinary
-job still runs.
+job still runs. The same job submitted again does not
+run a second time. A different job id still does.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already

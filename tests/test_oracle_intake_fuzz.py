@@ -665,6 +665,23 @@ class RingTwoJobTest(unittest.TestCase):
         with open(self.marker, encoding="utf-8") as f:
             self.assertEqual(f.read(), "ran")
 
+    def test_the_same_job_does_not_run_twice(self):
+        job_id = uuid.uuid4().hex
+        wire = self._wire(job_id)
+        seen = {}
+        process_transport_message(
+            self.cfg, self.tmp, seen, self.secrets, {},
+            "[HOMING-PIGEON] job " + job_id, wire)
+        self.assertTrue(os.path.isfile(self.marker))
+        os.remove(self.marker)
+        process_transport_message(
+            self.cfg, self.tmp, seen, self.secrets, {},
+            "[HOMING-PIGEON] job " + job_id, wire)
+        self.assertFalse(os.path.exists(self.marker))
+        other = uuid.uuid4().hex
+        self._run(other, self._wire(other))
+        self.assertTrue(os.path.isfile(self.marker))
+
 
 _CANARY = "hp-canary-9f3c2a"
 
