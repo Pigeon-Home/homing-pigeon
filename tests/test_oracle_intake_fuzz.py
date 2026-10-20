@@ -869,9 +869,10 @@ class RingTwoQueryTest(unittest.TestCase):
             self._wire(query_id), SECRET, job_id=query_id,
             key_id="", sign=sign_payload)
 
-    def _ask(self, query_id, body):
+    def _ask(self, query_id, body, seen=None):
         return process_transport_message(
-            self.cfg, self.tmp, {}, {"": SECRET}, {},
+            self.cfg, self.tmp, {} if seen is None else seen,
+            {"": SECRET}, {},
             "[HOMING-PIGEON] query " + query_id, body)
 
     def test_cleartext_is_refused_and_the_encrypted_query_answers(self):
@@ -900,6 +901,18 @@ class RingTwoQueryTest(unittest.TestCase):
             self.assertIn(_CANARY, raw)
         finally:
             _set_allow_cleartext_jobs(False)
+
+    def test_the_same_query_is_not_answered_twice(self):
+        qid = uuid.uuid4().hex
+        wire = self._sealed(qid)
+        seen = {}
+        first = self._ask(qid, wire, seen)
+        raw = " ".join(body for _s, body, _t in first)
+        self.assertNotIn(_CANARY, raw)
+        outer = verify_body(first[0][1], SECRET)
+        inner = decrypt_body(outer, SECRET, qid, "")
+        self.assertIn(_CANARY, json.dumps(verify_body(inner, SECRET)))
+        self.assertEqual(self._ask(qid, wire, seen), [])
 
 
 class RingTwoBoardTest(unittest.TestCase):
