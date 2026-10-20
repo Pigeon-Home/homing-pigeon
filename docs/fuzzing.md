@@ -92,7 +92,9 @@ still does. A kind the runner does not know (`sh`, an
 empty string, `Exec`) does not run the script it carries.
 The next exec job still does. A script that is a number,
 or a list, does not run either. The next exec job still
-does. The same query is answered
+does. A `script_sha384` that does not match the script
+does not run. The same script with the right hash does.
+The same query is answered
 once. The second copy, same seen set, gets nothing back.
 A second query, different id, after the budget is spent,
 does not get the canary either. The answer says budget.
