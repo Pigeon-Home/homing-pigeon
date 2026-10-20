@@ -1541,6 +1541,21 @@ class RingTwoBoardTest(unittest.TestCase):
         self.assertEqual(self.board.tasks["pri-ok"]["state"], "open")
         self.assertEqual(self.board.tasks["pri-ok"]["priority"], 1)
 
+    def test_an_expired_claim_is_offered_again(self):
+        self.cfg["task_timeout"] = 60
+        self._send("old-claim", self._sealed("old-claim"))
+        self._send_kind("task_request", "w-old", self._kind(
+            "task_request", "w-old", capabilities=["py"]))
+        self.assertEqual(self.board.tasks["old-claim"]["claimed_by"], "w-old")
+        stale = datetime.now(timezone.utc) - timedelta(hours=2)
+        self.board.tasks["old-claim"]["claimed_at"] = stale.isoformat()
+        self._send_kind("task_request", "w-new", self._kind(
+            "task_request", "w-new", capabilities=["py"]))
+        task = self.board.tasks["old-claim"]
+        self.assertEqual(task["state"], "claimed")
+        self.assertEqual(task["claimed_by"], "w-new")
+
+
 
 
 

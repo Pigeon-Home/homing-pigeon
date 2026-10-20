@@ -152,7 +152,9 @@ different worker gets the newer one. Capabilities that
 are not a list of strings open nothing: a string, a list
 with a number, or an object. A task that omits them still
 opens. A priority of `"9"` or infinity opens nothing. A
-priority of `1` still opens.
+priority of `1` still opens. A claim older than
+`task_timeout` is offered again. The next request takes
+it, and the previous worker no longer holds it.
 
 ## One prompt-injection case
 
