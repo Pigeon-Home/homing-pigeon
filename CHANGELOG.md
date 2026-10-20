@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.12 - 2026-10-20
+
+- **Version rev.** No functional change from 3.11.11.
+  v3.11.11 is already on the mirrors; this cut is the
+  rev that was asked for on top of it.
+
 ## 3.11.11 - 2026-10-20
 
 - **Windows build can finish.** The guided-fuzz campaign
