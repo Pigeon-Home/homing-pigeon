@@ -105,6 +105,10 @@ A pattern that does not compile is `bad_pattern` and does
 not get the canary either. A later good grep still does.
 A retained view of `summary` or `attested` does not return
 the line. The answer says policy. `full` still does.
+`redacted`, with the canary as a pattern, returns the
+line with `[REDACTED:canary]` in its place. The pattern
+the query itself sent is echoed. `full` still returns the
+canary.
 
 An open task is not finished by a result or an approval.
 It has to be claimed first. A later submit still opens.

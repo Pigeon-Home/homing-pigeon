@@ -1067,6 +1067,29 @@ class RingTwoQueryTest(unittest.TestCase):
         self.assertIn(
             _CANARY, json.dumps(self._open_query(good, good_id)))
 
+    def test_a_redacted_view_does_not_return_the_canary(self):
+        path = self._retained()
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        data["view"] = "redacted"
+        data["patterns"] = {"canary": _CANARY}
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        qid = uuid.uuid4().hex
+        out = self._ask(qid, self._sealed(qid))
+        raw = " ".join(body for _s, body, _t in out)
+        self.assertNotIn(_CANARY, raw)
+        opened = self._open_query(out, qid)
+        match = opened["answers"][0]
+        self.assertEqual(match["matches"], ["secret [REDACTED:canary]"])
+        self.assertNotIn(_CANARY, " ".join(match["matches"]))
+        self._set_view("full")
+        good_id = uuid.uuid4().hex
+        good = self._ask(good_id, self._sealed(good_id))
+        self.assertIn(
+            _CANARY, json.dumps(self._open_query(good, good_id)))
+
+
 
 class RingTwoBoardTest(unittest.TestCase):
     """A board message that does not verify changes nothing. The
