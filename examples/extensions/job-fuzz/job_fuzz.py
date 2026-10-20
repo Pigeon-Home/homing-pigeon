@@ -89,19 +89,56 @@ The sense never holds the shared secret and never needs it.
 The triage discipline: everything the campaign observes is
 a candidate finding -- hard failures, divergence, coverage
 novelties -- and the triage memory decides what files.
-Hard failures and divergences file once per (seed,
-mutator, class) and may file again after
-filed_cooldown_sec (default a week); a novelty files once
-per combination, ever. Alerts per pass are capped
-(max_alerts_per_pass, default 20), hard failures first,
-then divergences, then novelties, so a rich pass cannot
-flood the ingest caps; what the cap drops is counted in
-the pass's state, not lost silently. Every variant the
-campaign runs is archived under the work dir (default:
-.job-fuzz-variants next to this script; pruned to
-max_archived_variants, default 200, oldest first) so any
-finding reproduces by handing the same file to
---run-variant again.
+Hard failures file once per REASON BUCKET -- the
+normalized refusal/error reason, so ten seeds that hit
+the same validation hole file one signal whose detail
+carries the bucket's count and example variants -- and
+divergences file once per (seed, mutator, class); both
+may file again after filed_cooldown_sec (default a week);
+a novelty files once per combination, ever. Alerts per
+pass are capped (max_alerts_per_pass, default 20), hard
+failures first, then divergences, then novelties, so a
+rich pass cannot flood the ingest caps; what the cap
+drops is counted in the pass's state, not lost silently.
+Every variant the campaign runs is archived under the
+work dir (default: .job-fuzz-variants next to this
+script; pruned to max_archived_variants, default 200,
+oldest first) so any finding reproduces by handing the
+same file to --run-variant again.
+
+The corpus learns. A variant that reaches a coverage
+novelty is PROMOTED into a distilled tier of the corpus
+(bounded by distilled_max_jobs, default 50, and the same
+age bound as seeds): later campaigns mutate the distilled
+variants as seeds in their own right, so a campaign starts
+from everything earlier campaigns discovered instead of
+from the same retained jobs forever. Two mutators widen
+the neighborhood further: splice recombines lines from
+two different seeds, and dictionary injects tokens
+harvested from the corpus's own scripts -- the commands,
+flags, and paths this box actually runs.
+
+Two mutators are relation probes. blank_line and
+trailing_blank are semantics-preserving by construction,
+so they carry an EXPECTED relation: same outcome class
+and same output digest as the seed. A probe whose promise
+breaks files a divergence that names the broken relation
+-- a much sharper fact than an unexplained class change.
+
+Findings shrink before they file. A variant whose outcome
+is interesting (a hard failure, or a class change) is
+minimized in the campaign: lines are dropped while the
+outcome's stage and class persist, bounded by
+minimize_max_steps (default 12) re-runs, and the archived
+variant is the minimized one -- the repro the Oracle
+reads is the smallest one the campaign could make.
+
+Seeds earn energy. The state remembers, per seed, how
+many variants ran and how many produced novelties, hard
+failures, and divergences; seed selection spends the
+pass's budget on the seeds with the best yield first,
+with recency as the tiebreak, instead of always taking
+the newest few.
 
 With runner_cmd empty (the default) there is nothing to
 execute variants with: the sense still maintains its
@@ -153,6 +190,10 @@ _MAX_RECORD_BYTES = 1 << 20
 _SEED_SCRIPT_CAP = 500
 _FILER_CAP = 1000
 _NOVELTY_CAP = 2000
+_BUCKET_CAP = 200
+_ENERGY_CAP = 1000
+_DICTIONARY_CAP = 256
+_CLASSES = ("refused", "error", "timeout", "exit0", "nonzero")
 
 
 # --- small tolerant helpers (the sibling shape) --------------------
@@ -221,7 +262,7 @@ def _script_lines(script):
     return script.split("\n")
 
 
-def _mut_truncate(job, rng):
+def _mut_truncate(job, rng, ctx):
     lines = _script_lines(job.get("script") or "")
     if len(lines) < 2:
         return None
@@ -229,7 +270,7 @@ def _mut_truncate(job, rng):
     return {"script": "\n".join(lines[:cut])}
 
 
-def _mut_duplicate_line(job, rng):
+def _mut_duplicate_line(job, rng, ctx):
     lines = _script_lines(job.get("script") or "")
     nonempty = [i for i, ln in enumerate(lines) if ln.strip()]
     if not nonempty:
@@ -239,7 +280,7 @@ def _mut_duplicate_line(job, rng):
     return {"script": "\n".join(lines)}
 
 
-def _mut_drop_line(job, rng):
+def _mut_drop_line(job, rng, ctx):
     lines = _script_lines(job.get("script") or "")
     if len(lines) < 2:
         return None
@@ -253,7 +294,7 @@ _BOUNDARY_NUMBERS = ("0", "-1", "2147483647",
                      "99999999999999999999999999")
 
 
-def _mut_boundary_number(job, rng):
+def _mut_boundary_number(job, rng, ctx):
     script = job.get("script") or ""
     spots = []
     cur = ""
@@ -272,7 +313,7 @@ def _mut_boundary_number(job, rng):
             + rng.choice(_BOUNDARY_NUMBERS) + script[end:]}
 
 
-def _mut_quote_break(job, rng):
+def _mut_quote_break(job, rng, ctx):
     script = job.get("script") or ""
     quotes = [i for i, ch in enumerate(script) if ch in "\"'"]
     if quotes:
@@ -284,26 +325,26 @@ def _mut_quote_break(job, rng):
     return {"script": "\n".join(lines)}
 
 
-def _mut_unicode_edge(job, rng):
+def _mut_unicode_edge(job, rng, ctx):
     script = job.get("script") or ""
     lines = _script_lines(script)
     lines.append("# edge: é​\U0001F600")
     return {"script": "\n".join(lines)}
 
 
-def _mut_empty_script(job, rng):
+def _mut_empty_script(job, rng, ctx):
     if not (job.get("script") or ""):
         return None
     return {"script": ""}
 
 
-def _mut_oversized_line(job, rng):
+def _mut_oversized_line(job, rng, ctx):
     lines = _script_lines(job.get("script") or "")
     lines.append("echo " + "a" * 65536)
     return {"script": "\n".join(lines)}
 
 
-def _mut_null_byte(job, rng):
+def _mut_null_byte(job, rng, ctx):
     script = job.get("script") or ""
     if len(script) < 2:
         return None
@@ -311,11 +352,70 @@ def _mut_null_byte(job, rng):
     return {"script": script[:i] + "\x00" + script[i:]}
 
 
-def _mut_interpreter_string(job, rng):
+def _mut_interpreter_string(job, rng, ctx):
     """The classic malformed shape: interpreter as a bare
     string. Validation must refuse it; if it ever runs, the
     refusal path has a hole and the divergence is the news."""
     return {"interpreter": "sh"}
+
+
+def _mut_blank_line(job, rng, ctx):
+    """Relation probe: an inserted blank line preserves a
+    script's meaning in every interpreter this box runs,
+    so the variant PROMISES the seed's class and digest."""
+    lines = _script_lines(job.get("script") or "")
+    if not lines:
+        return None
+    lines.insert(rng.randrange(len(lines) + 1), "")
+    return {"script": "\n".join(lines)}
+
+
+def _mut_trailing_blank(job, rng, ctx):
+    """Relation probe: trailing blank lines are inert."""
+    script = job.get("script") or ""
+    if not script:
+        return None
+    return {"script": script + "\n" * (1 + rng.randrange(3))}
+
+
+def _mut_splice(job, rng, ctx):
+    """Crossover: a segment of a second seed's script lands
+    inside this one. Single-seed mutation cannot recombine;
+    this is the operator that can."""
+    donor = ctx.get("donor") if isinstance(ctx, dict) else None
+    if not isinstance(donor, dict):
+        return None
+    mine = _script_lines(job.get("script") or "")
+    theirs = [ln for ln in _script_lines(
+        donor.get("script") or "") if ln.strip()]
+    if not mine or not theirs:
+        return None
+    start = rng.randrange(len(theirs))
+    take = 1 + rng.randrange(min(3, len(theirs) - start))
+    segment = theirs[start:start + take]
+    at = rng.randrange(len(mine) + 1)
+    return {"script": "\n".join(mine[:at] + segment + mine[at:])}
+
+
+_TOKEN_SPLIT = (" \t\"'=;|&<>(){}[]`$#")
+
+
+def _mut_dictionary(job, rng, ctx):
+    """Inject one token harvested from the corpus's own
+    scripts: the vocabulary this box actually runs with."""
+    tokens = ctx.get("dictionary") if isinstance(ctx, dict) \
+        else None
+    if not tokens:
+        return None
+    token = rng.choice(list(tokens))
+    lines = _script_lines(job.get("script") or "")
+    nonempty = [i for i, ln in enumerate(lines) if ln.strip()]
+    if nonempty and rng.random() < 0.5:
+        i = rng.choice(nonempty)
+        lines[i] = lines[i] + " " + token
+    else:
+        lines.insert(rng.randrange(len(lines) + 1), token)
+    return {"script": "\n".join(lines)}
 
 
 MUTATORS = {
@@ -329,24 +429,69 @@ MUTATORS = {
     "oversized_line": _mut_oversized_line,
     "null_byte": _mut_null_byte,
     "interpreter_string": _mut_interpreter_string,
+    "blank_line": _mut_blank_line,
+    "trailing_blank": _mut_trailing_blank,
+    "splice": _mut_splice,
+    "dictionary": _mut_dictionary,
 }
 
+# Mutators whose output carries an expected relation to the
+# seed's outcome: "identity" means same outcome class AND
+# same output digest. decide() checks the promise.
+RELATION_MUTATORS = {"blank_line": "identity",
+                     "trailing_blank": "identity"}
 
-def build_variant(seed_job, mutator, campaign_seed):
+
+def _build_dictionary(seeds):
+    """The corpus's own vocabulary: tokens from every seed
+    script, deduped, sorted, capped. Deterministic in the
+    seed set, so a campaign's variants reproduce."""
+    tokens = set()
+    for seed in seeds:
+        if not isinstance(seed, dict):
+            continue
+        script = seed.get("script") or ""
+        word = ""
+        for ch in script + " ":
+            if ch in _TOKEN_SPLIT or ch == "\n":
+                if 3 <= len(word) <= 40 and any(
+                        c.isalnum() for c in word):
+                    tokens.add(word)
+                word = ""
+            else:
+                word += ch
+    return sorted(tokens)[:_DICTIONARY_CAP]
+
+
+def build_variant(seed_job, mutator, campaign_seed,
+                  donor_job=None, dictionary=()):
     """One variant job dict, or None when the mutator cannot
-    bite. Deterministic in (seed job, mutator, campaign_seed).
+    bite. Deterministic in (seed job, mutator, campaign_seed)
+    plus, for splice and dictionary, the donor and the
+    dictionary -- the extra inputs are hashed into the same
+    material, so a variant's id names everything it came
+    from.
     """
     fn = MUTATORS.get(mutator)
     if fn is None:
         return None
+    extra = ""
+    if mutator == "splice" and isinstance(donor_job, dict):
+        extra = "|donor:" + (donor_job.get("job_id") or "") \
+            + "|" + (donor_job.get("script") or "")
+    elif mutator == "dictionary" and dictionary:
+        extra = "|dict:" + hashlib.sha384(
+            "\n".join(dictionary).encode(
+                "utf-8", "surrogateescape")).hexdigest()[:16]
     material = (str(campaign_seed) + "|" + mutator + "|"
                 + (seed_job.get("job_id") or "") + "|"
-                + (seed_job.get("script") or "")).encode(
-                    "utf-8", "surrogateescape")
+                + (seed_job.get("script") or "")
+                + extra).encode("utf-8", "surrogateescape")
     rng = random.Random(
         int.from_bytes(hashlib.sha384(material).digest()[:8],
                        "big"))
-    fields = fn(seed_job, rng)
+    ctx = {"donor": donor_job, "dictionary": dictionary}
+    fields = fn(seed_job, rng, ctx)
     if fields is None:
         return None
     variant = {"job_id": "fuzz-" + hashlib.sha384(
@@ -523,6 +668,106 @@ def _prune_archive(work_dir, cap):
             pass
 
 
+def _seed_class(seed):
+    forced = seed.get("force_class")
+    if forced in _CLASSES:
+        return forced
+    return _exit_class("ran", seed.get("exit_code"),
+                       seed.get("timed_out"))
+
+
+def _distilled_seed(entry_id, entry):
+    """One distilled-tier entry -> a seed in the scan's
+    shape, or None. A distilled seed's recorded class is
+    authoritative (a promoted refusal has no exit code to
+    derive one from), so it rides as force_class."""
+    if not isinstance(entry, dict):
+        return None
+    script = entry.get("script")
+    if not isinstance(script, str) or not script:
+        return None
+    exit_code = entry.get("exit_code")
+    saved_at = entry.get("saved_at")
+    return {"job_id": entry_id, "script": script,
+            "exit_code": int(exit_code)
+            if _is_number(exit_code) else None,
+            "timed_out": bool(entry.get("timed_out")),
+            "force_class": entry.get("exit_class")
+            if entry.get("exit_class") in _CLASSES else "",
+            "digest": entry.get("digest")
+            if isinstance(entry.get("digest"), str) else "",
+            "saved_at": float(saved_at)
+            if _is_number(saved_at) else 0.0,
+            "distilled": True}
+
+
+def _seed_score(entry):
+    """A seed's energy: yield per run, smoothed so an
+    untried seed starts near the middle of the pack."""
+    if not isinstance(entry, dict):
+        return 0.5
+    def _n(k):
+        v = entry.get(k)
+        return int(v) if _is_number(v) else 0
+    return (3.0 * _n("novel") + 2.0 * _n("hard")
+            + _n("diverged") + 1.0) / (_n("runs") + 2.0)
+
+
+def _minimize_variant(runner_cmd, variant, report, work_dir,
+                      timeout_sec, budget):
+    """Shrink an interesting variant while its outcome's
+    stage and class persist: drop one line at a time, keep
+    a drop only when a re-run through the door lands in the
+    same stage and class. Returns (variant, report, steps).
+    The archived file ends up holding the minimized
+    variant, so the finding's repro is the smallest one
+    the campaign could make. Trials run under the same
+    timeout as the original run -- a shorter leash would
+    misread slow scripts as hangs.
+    """
+    stage0 = report.get("stage") or "error"
+    cls0 = _exit_class(stage0, report.get("exit_code"),
+                       report.get("timed_out"))
+    lines = (variant.get("script") or "").split("\n")
+    if len(lines) < 2 or budget < 1:
+        return variant, report, 0
+    cur_variant, cur_report = variant, report
+    cur_lines = lines
+    steps = 0
+    i = 0
+    while i < len(cur_lines) and steps < budget \
+            and len(cur_lines) > 1:
+        trial = dict(cur_variant)
+        trial["script"] = "\n".join(
+            cur_lines[:i] + cur_lines[i + 1:])
+        trial["job_id"] = cur_variant["job_id"] + "-min"
+        rep = _run_one_variant(runner_cmd, trial, work_dir,
+                               timeout_sec)
+        steps += 1
+        stage = rep.get("stage") or "error"
+        if stage == stage0 and _exit_class(
+                stage, rep.get("exit_code"),
+                rep.get("timed_out")) == cls0:
+            cur_lines = trial["script"].split("\n")
+            cur_variant = dict(cur_variant)
+            cur_variant["script"] = trial["script"]
+            cur_report = rep
+        else:
+            i += 1
+    if cur_variant["script"] != variant.get("script"):
+        name = (variant.get("job_id") or "fuzz-variant") \
+            + ".json"
+        try:
+            with open(os.path.join(work_dir, name), "w",
+                      encoding="utf-8") as fh:
+                json.dump(cur_variant, fh, sort_keys=True)
+        except OSError:
+            pass
+        cur_report = dict(cur_report)
+        cur_report["variant_file"] = name
+    return cur_variant, cur_report, steps
+
+
 def read_live(manifest, reader_state=None):
     """One snapshot: corpus seeds, the idle verdict, and --
     when the box is idle and a runner command is configured
@@ -546,7 +791,7 @@ def read_live(manifest, reader_state=None):
     readings = {"now": now, "idle": idle, "seeds": seeds,
                 "outcomes": []}
     runner_cmd = _str_tunable(tunables, "runner_cmd")
-    if not idle or not runner_cmd or not seeds:
+    if not idle or not runner_cmd:
         return readings
     campaign_seed = reader_state.get("campaign_seed") \
         if isinstance(reader_state, dict) else None
@@ -561,8 +806,39 @@ def read_live(manifest, reader_state=None):
     max_variants = _int_tunable(
         tunables, "max_variants_per_pass", 8)
     timeout_sec = _tunable(tunables, "variant_timeout_sec", 30.0)
+    min_budget = _int_tunable(
+        tunables, "minimize_max_steps", 12)
+    # The pool: fresh retained seeds plus the distilled
+    # tier the state carries (promoted variants from
+    # earlier campaigns). A retained record wins a job_id
+    # collision -- it is the fresher truth.
+    pool = list(seeds)
+    seen_ids = {s["job_id"] for s in pool}
+    if isinstance(reader_state, dict):
+        distilled = reader_state.get("distilled")
+        if isinstance(distilled, dict):
+            for entry_id, entry in distilled.items():
+                seed = _distilled_seed(entry_id, entry)
+                if seed is not None \
+                        and entry_id not in seen_ids:
+                    pool.append(seed)
+                    seen_ids.add(entry_id)
+    if not pool:
+        return readings
+    dictionary = _build_dictionary(pool)
+    energy = reader_state.get("energy") \
+        if isinstance(reader_state, dict) else None
+    if not isinstance(energy, dict):
+        energy = {}
+    # Energy first, recency as the tiebreak: the pass's
+    # budget goes to the seeds that have produced before.
+    order = sorted(
+        range(len(pool)),
+        key=lambda i: (-_seed_score(energy.get(
+            pool[i]["job_id"])), -pool[i]["saved_at"]))
+    chosen = [pool[i] for i in order[:max_seeds]] \
+        if max_seeds > 0 else []
     mutator_names = sorted(MUTATORS)
-    chosen = seeds[-max_seeds:] if max_seeds > 0 else []
     ran = 0
     for seed in chosen:
         if ran >= max_variants:
@@ -580,17 +856,46 @@ def read_live(manifest, reader_state=None):
                 return readings
             seed_job = {"job_id": seed["job_id"],
                         "script": seed["script"]}
-            variant = build_variant(seed_job, mutator,
-                                    campaign_seed)
+            donor = None
+            if len(pool) > 1:
+                at = pool.index(seed)
+                donor = pool[(at + 1) % len(pool)]
+            variant = build_variant(
+                seed_job, mutator, campaign_seed,
+                donor_job={"job_id": donor["job_id"],
+                           "script": donor["script"]}
+                if donor else None,
+                dictionary=dictionary)
             if variant is None:
                 continue
-            outcome = _run_one_variant(
+            report = _run_one_variant(
                 runner_cmd, variant, work_dir, timeout_sec)
+            var_cls = _exit_class(
+                report.get("stage") or "error",
+                report.get("exit_code"),
+                report.get("timed_out"))
+            interesting = report.get("stage") == "error" \
+                or var_cls == "timeout" \
+                or var_cls != _seed_class(seed)
+            steps = 0
+            if interesting and min_budget > 0:
+                variant, report, steps = _minimize_variant(
+                    runner_cmd, variant, report, work_dir,
+                    timeout_sec, min_budget)
+            outcome = report
             outcome["job_id"] = seed["job_id"]
             outcome["mutator"] = mutator
             outcome["orig_stage"] = "ran"
-            outcome["orig_exit_code"] = seed["exit_code"]
-            outcome["orig_timed_out"] = seed["timed_out"]
+            outcome["orig_exit_code"] = seed.get("exit_code")
+            outcome["orig_timed_out"] = seed.get("timed_out")
+            if seed.get("force_class"):
+                outcome["orig_class"] = seed["force_class"]
+            outcome["orig_digest"] = seed.get("digest") or ""
+            outcome["variant_id"] = variant["job_id"]
+            outcome["variant_script"] = variant.get(
+                "script") or ""
+            if steps:
+                outcome["min_steps"] = steps
             readings["outcomes"].append(outcome)
             ran += 1
     _prune_archive(work_dir, _int_tunable(
@@ -602,10 +907,83 @@ def read_live(manifest, reader_state=None):
 
 def _fresh_state():
     return {"corpus": {}, "novelty": [], "filed": {},
+            "distilled": {}, "energy": {}, "buckets": {},
             "campaign_seed": 0, "campaigns": 0, "dropped_total": 0}
 
 
-def _clean_state(state, corpus_cap):
+def _clean_distilled(raw, cap):
+    distilled = {}
+    if isinstance(raw, dict):
+        for entry_id, entry in raw.items():
+            if not isinstance(entry_id, str) \
+                    or not isinstance(entry, dict):
+                continue
+            script = entry.get("script")
+            saved_at = entry.get("saved_at")
+            if not isinstance(script, str) or not script \
+                    or not _is_number(saved_at):
+                continue
+            exit_code = entry.get("exit_code")
+            distilled[entry_id] = {
+                "script": script[:_SEED_SCRIPT_CAP],
+                "exit_code": int(exit_code)
+                if _is_number(exit_code) else None,
+                "timed_out": bool(entry.get("timed_out")),
+                "exit_class": entry.get("exit_class")
+                if entry.get("exit_class") in _CLASSES else "",
+                "digest": entry.get("digest")
+                if isinstance(entry.get("digest"), str) else "",
+                "saved_at": float(saved_at)}
+    if len(distilled) > cap:
+        keep = sorted(distilled.items(),
+                      key=lambda kv: kv[1]["saved_at"])[-cap:]
+        distilled = dict(keep)
+    return distilled
+
+
+def _clean_energy(raw):
+    energy = {}
+    if isinstance(raw, dict):
+        for job_id, entry in raw.items():
+            if not isinstance(job_id, str) \
+                    or not isinstance(entry, dict):
+                continue
+            clean = {}
+            for key in ("runs", "novel", "hard", "diverged"):
+                v = entry.get(key)
+                clean[key] = int(v) if _is_number(v) else 0
+            energy[job_id] = clean
+    if len(energy) > _ENERGY_CAP:
+        keep = sorted(energy.items(),
+                      key=lambda kv: kv[1]["runs"])[-_ENERGY_CAP:]
+        energy = dict(keep)
+    return energy
+
+
+def _clean_buckets(raw):
+    buckets = {}
+    if isinstance(raw, dict):
+        for key, entry in raw.items():
+            if not isinstance(key, str) \
+                    or not isinstance(entry, dict):
+                continue
+            count = entry.get("count")
+            last = entry.get("last")
+            examples = entry.get("examples")
+            buckets[key] = {
+                "count": int(count) if _is_number(count) else 0,
+                "last": float(last) if _is_number(last) else 0.0,
+                "examples": [e for e in examples
+                             if isinstance(e, str)][:3]
+                if isinstance(examples, list) else []}
+    if len(buckets) > _BUCKET_CAP:
+        keep = sorted(buckets.items(),
+                      key=lambda kv: kv[1]["last"])[-_BUCKET_CAP:]
+        buckets = dict(keep)
+    return buckets
+
+
+def _clean_state(state, corpus_cap, distilled_cap=50):
     if not isinstance(state, dict):
         return _fresh_state()
     corpus = {}
@@ -647,11 +1025,36 @@ def _clean_state(state, corpus_cap):
     dropped = state.get("dropped_total")
     return {"corpus": corpus, "novelty": novelty[-_NOVELTY_CAP:],
             "filed": filed,
+            "distilled": _clean_distilled(
+                state.get("distilled"), distilled_cap),
+            "energy": _clean_energy(state.get("energy")),
+            "buckets": _clean_buckets(state.get("buckets")),
             "campaign_seed": int(seed) if _is_number(seed) else 0,
             "campaigns": int(campaigns)
             if _is_number(campaigns) else 0,
             "dropped_total": int(dropped)
             if _is_number(dropped) else 0}
+
+
+def _normalize_reason(reason, cls):
+    """A hard failure's bucket key: the reason with its
+    variable parts flattened -- case folded, whitespace
+    collapsed, every digit run replaced -- so the same
+    hole found through different seeds and numbers lands
+    in one bucket. No reason at all buckets by class."""
+    if not isinstance(reason, str) or not reason.strip():
+        return cls
+    out = []
+    digit = False
+    for ch in reason.lower():
+        if ch.isdigit():
+            if not digit:
+                out.append("#")
+            digit = True
+        else:
+            digit = False
+            out.append(ch)
+    return " ".join("".join(out).split())[:80] or cls
 
 
 def decide(readings, manifest, state):
@@ -668,7 +1071,11 @@ def decide(readings, manifest, state):
     corpus_cap = _int_tunable(tunables, "corpus_max_jobs", 200)
     if corpus_cap < 1:
         corpus_cap = 200
-    state = _clean_state(state, corpus_cap)
+    distilled_cap = _int_tunable(
+        tunables, "distilled_max_jobs", 50)
+    if distilled_cap < 1:
+        distilled_cap = 50
+    state = _clean_state(state, corpus_cap, distilled_cap)
     if not isinstance(readings, dict):
         readings = {}
     sensor = manifest.get("name") if isinstance(manifest, dict) \
@@ -710,6 +1117,10 @@ def decide(readings, manifest, state):
                       key=lambda kv: kv[1]["saved_at"])[-corpus_cap:]
         corpus = dict(keep)
     state["corpus"] = corpus
+    if age_cap > 0:
+        state["distilled"] = {
+            k: v for k, v in state["distilled"].items()
+            if now - v["saved_at"] <= age_cap}
 
     outcomes = readings.get("outcomes")
     if not readings.get("idle") or not isinstance(outcomes, list) \
@@ -723,7 +1134,11 @@ def decide(readings, manifest, state):
     filed = state["filed"]
     novelty = state["novelty"]
     novelty_known = set(novelty)
-    candidates = []  # (priority, alert, file_key, novelty_key)
+    distilled = state["distilled"]
+    energy = state["energy"]
+    buckets = state["buckets"]
+    new_keys_seen = set()
+    candidates = []  # (priority, alert, file_key, nkey, bucket)
     for outcome in outcomes:
         if not isinstance(outcome, dict):
             continue
@@ -737,49 +1152,123 @@ def decide(readings, manifest, state):
             stage = "error"
         cls = _exit_class(stage, outcome.get("exit_code"),
                           outcome.get("timed_out"))
-        orig_cls = _exit_class(
-            "ran", outcome.get("orig_exit_code"),
-            outcome.get("orig_timed_out"))
+        orig_cls = outcome.get("orig_class")
+        if orig_cls not in _CLASSES:
+            orig_cls = _exit_class(
+                "ran", outcome.get("orig_exit_code"),
+                outcome.get("orig_timed_out"))
         detail = {"job_id": job_id, "mutator": mutator,
                   "stage": stage, "variant_class": cls,
                   "original_class": orig_cls}
         if isinstance(outcome.get("variant_file"), str):
             detail["variant_file"] = outcome["variant_file"]
+        if _is_number(outcome.get("min_steps")):
+            detail["min_steps"] = int(outcome["min_steps"])
+        stats = energy.setdefault(
+            job_id, {"runs": 0, "novel": 0, "hard": 0,
+                     "diverged": 0})
+        stats["runs"] += 1
         hard = stage == "error" or cls == "timeout"
+        diverged = False
         if hard:
+            stats["hard"] += 1
             reason = outcome.get("reason")
             detail["reason"] = reason if isinstance(reason, str) \
                 else "variant timed out in the bucket"
+            bucket = _normalize_reason(
+                outcome.get("reason"), cls)
+            detail["bucket"] = bucket
             candidates.append((0, {
                 "sensor": sensor,
                 "signal": "variant_hard_failure",
                 "severity": "high",
                 "title": f"variant of job {job_id} hard-failed "
                          f"under {mutator} ({cls})",
-                "detail": detail},
-                f"hf|{job_id}|{mutator}", None))
-        elif cls != orig_cls:
-            candidates.append((1, {
-                "sensor": sensor,
-                "signal": "variant_divergence",
-                "severity": "medium",
-                "title": f"variant of job {job_id} diverged "
-                         f"under {mutator}: {orig_cls} -> {cls}",
-                "detail": detail},
-                f"dv|{job_id}|{mutator}|{cls}", None))
+                "detail": detail}, None, None, bucket))
+        else:
+            violation = ""
+            if cls != orig_cls:
+                diverged = True
+                if mutator in RELATION_MUTATORS:
+                    violation = "outcome class changed under " \
+                        "a semantics-preserving mutation"
+            elif mutator in RELATION_MUTATORS \
+                    and stage == "ran":
+                od = outcome.get("orig_digest")
+                vd = outcome.get("digest")
+                if isinstance(od, str) and od \
+                        and isinstance(vd, str) and vd \
+                        and od != vd:
+                    diverged = True
+                    violation = "output digest changed under " \
+                        "a semantics-preserving mutation"
+                    detail["original_digest"] = od
+                    detail["variant_digest"] = vd
+            if diverged:
+                stats["diverged"] += 1
+                title = f"variant of job {job_id} diverged " \
+                        f"under {mutator}: {orig_cls} -> {cls}"
+                if violation:
+                    detail["relation"] = "identity"
+                    detail["relation_violation"] = violation
+                    title = f"variant of job {job_id} broke " \
+                            f"the identity relation under " \
+                            f"{mutator}: {violation}"
+                candidates.append((1, {
+                    "sensor": sensor,
+                    "signal": "variant_divergence",
+                    "severity": "medium",
+                    "title": title,
+                    "detail": detail},
+                    f"dv|{job_id}|{mutator}|{cls}", None, None))
         nkey = f"{mutator}|{stage}|{cls}"
         if nkey not in novelty_known:
+            if nkey not in new_keys_seen:
+                new_keys_seen.add(nkey)
+                stats["novel"] += 1
+                # Promotion: the variant that first reached
+                # this region joins the distilled corpus, so
+                # later campaigns start from it.
+                vid = outcome.get("variant_id")
+                vscript = outcome.get("variant_script")
+                if isinstance(vid, str) and vid \
+                        and isinstance(vscript, str) and vscript:
+                    distilled[vid] = {
+                        "script": vscript[:_SEED_SCRIPT_CAP],
+                        "exit_code": int(outcome["exit_code"])
+                        if _is_number(outcome.get("exit_code"))
+                        else None,
+                        "timed_out": bool(
+                            outcome.get("timed_out")),
+                        "exit_class": cls,
+                        "digest": outcome.get("digest")
+                        if isinstance(outcome.get("digest"),
+                                      str) else "",
+                        "saved_at": now}
             candidates.append((2, {
                 "sensor": sensor,
                 "signal": "coverage_novelty",
                 "severity": "info",
                 "title": f"job fuzz reached new coverage: "
                          f"{mutator} -> {stage}/{cls}",
-                "detail": detail}, None, nkey))
+                "detail": detail}, None, nkey, None))
 
     candidates.sort(key=lambda c: c[0])
     alerts = []
-    for _prio, alert, file_key, nkey in candidates:
+    for _prio, alert, file_key, nkey, bucket in candidates:
+        if bucket is not None:
+            entry = buckets.setdefault(
+                bucket, {"count": 0, "last": 0.0,
+                         "examples": []})
+            entry["count"] += 1
+            vf = alert["detail"].get("variant_file")
+            if isinstance(vf, str) and vf \
+                    and vf not in entry["examples"]:
+                entry["examples"] = (
+                    entry["examples"] + [vf])[-3:]
+            if entry["last"] \
+                    and now - entry["last"] <= cooldown:
+                continue
         if file_key is not None:
             last = filed.get(file_key)
             if last is not None and now - last <= cooldown:
@@ -792,6 +1281,12 @@ def decide(readings, manifest, state):
         if len(alerts) >= max_alerts:
             state["dropped_total"] += 1
             continue
+        if bucket is not None:
+            entry = buckets[bucket]
+            alert["detail"]["bucket_count"] = entry["count"]
+            alert["detail"]["bucket_examples"] = list(
+                entry["examples"])
+            entry["last"] = now
         alerts.append(alert)
         if file_key is not None:
             filed[file_key] = now
@@ -803,6 +1298,12 @@ def decide(readings, manifest, state):
         keep = sorted(filed.items(),
                       key=lambda kv: kv[1])[-_FILER_CAP:]
         state["filed"] = dict(keep)
+    if len(distilled) > distilled_cap:
+        keep = sorted(distilled.items(),
+                      key=lambda kv: kv[1]["saved_at"])[-distilled_cap:]
+        state["distilled"] = dict(keep)
+    state["energy"] = _clean_energy(energy)
+    state["buckets"] = _clean_buckets(buckets)
     return alerts, state
 
 
@@ -940,9 +1441,10 @@ def main(argv=None):
                   f"{args.samples}: {e}", file=sys.stderr)
             return 2
     else:
-        reader = {"campaign_seed": state.get("campaign_seed")
-                  if isinstance(state, dict) else None}
-        readings = read_live(manifest, reader)
+        # The reader sees the whole state: the campaign
+        # seed, the distilled tier, and the energy memory
+        # all shape the next campaign.
+        readings = read_live(manifest, state)
     alerts, state = decide(readings, manifest, state)
     if args.local_dir:
         delivered = _deliver_local(alerts, args)

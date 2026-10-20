@@ -71,6 +71,39 @@ moves it), pruned to `max_archived_variants` (200). A
 finding's detail names its archive file, and any finding
 reproduces by handing that file to `--run-variant` again.
 
+## How the campaign improves on itself
+
+Four habits, each lifted from the fuzzing platforms and
+kept deterministic:
+
+- **The corpus learns.** A variant that reaches a
+  coverage novelty is promoted into a distilled tier of
+  the corpus (`distilled_max_jobs`, default 50, same age
+  bound as seeds) and later campaigns mutate it as a seed
+  in its own right. Campaigns compound instead of
+  restarting from the same retained jobs.
+- **Mutations recombine and speak the local dialect.**
+  Alongside the single-seed mutators, `splice` grafts a
+  segment of one seed's script into another, and
+  `dictionary` injects tokens harvested from the corpus's
+  own scripts — the commands, flags, and paths this box
+  actually runs.
+- **Two mutators are probes with a promise.**
+  `blank_line` and `trailing_blank` preserve a script's
+  meaning, so they carry an expected relation: same
+  outcome class, same output digest. A broken promise
+  files a divergence that names the broken relation.
+- **Findings shrink, triage buckets, seeds earn their
+  budget.** An interesting variant is minimized before it
+  files — lines dropped while the outcome persists,
+  bounded by `minimize_max_steps` (default 12) — so the
+  archived repro is the smallest one the campaign could
+  make. Hard failures file once per normalized reason
+  bucket across all seeds (the same validation hole found
+  ten ways is one signal with a count and examples), and
+  seed selection spends the pass on the seeds with the
+  best historical yield first.
+
 One honest limit: the runner's retained records cap a
 job's script at 500 characters, so variants fuzz the
 retained text. The corpus is the record, not the wire.

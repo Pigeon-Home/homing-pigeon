@@ -6,7 +6,7 @@
 # --run-variant door, or the catalog.
 # Usage: ./run-extension-tests.sh [extra pytest args]
 set -e
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 PY="${PYTHON:-$HOME/workspace/.pfvenv/bin/python}"
 exec "$PY" -m pytest \
     tests/test_job_fuzz.py \

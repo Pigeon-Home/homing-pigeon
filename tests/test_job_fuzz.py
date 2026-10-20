@@ -421,6 +421,284 @@ class IdleVoteTest(unittest.TestCase):
         self.assertTrue(JF._load_quiet(1e18))
 
 
+class SpliceDictionaryTest(unittest.TestCase):
+    SEED = {"job_id": "job-a",
+            "script": "echo start\nsleep 5\necho done"}
+    DONOR = {"job_id": "job-b",
+             "script": "curl example.test\ndeploy --prod"}
+
+    def test_splice_needs_and_uses_a_donor(self):
+        self.assertIsNone(
+            JF.build_variant(self.SEED, "splice", 1))
+        v = JF.build_variant(self.SEED, "splice", 1,
+                             donor_job=self.DONOR)
+        self.assertIsNotNone(v)
+        donor_lines = set(self.DONOR["script"].split("\n"))
+        self.assertTrue(donor_lines & set(
+            v["script"].split("\n")))
+
+    def test_splice_is_deterministic_in_the_triple(self):
+        a = JF.build_variant(self.SEED, "splice", 7,
+                             donor_job=self.DONOR)
+        b = JF.build_variant(self.SEED, "splice", 7,
+                             donor_job=self.DONOR)
+        self.assertEqual(a, b)
+
+    def test_dictionary_needs_tokens_and_injects_one(self):
+        self.assertIsNone(
+            JF.build_variant(self.SEED, "dictionary", 1))
+        v = JF.build_variant(
+            self.SEED, "dictionary", 1,
+            dictionary=["systemctl", "restart", "nginx"])
+        self.assertTrue(any(t in v["script"] for t in
+                            ("systemctl", "restart", "nginx")))
+
+    def test_dictionary_harvests_the_corpus_vocabulary(self):
+        tokens = JF._build_dictionary(
+            [{"script": "systemctl restart nginx\n"
+                        "curl -s example.test"}])
+        self.assertIn("systemctl", tokens)
+        self.assertIn("nginx", tokens)
+        self.assertNotIn("-s", tokens)  # too short
+        self.assertEqual(tokens, sorted(tokens))
+
+
+class RelationTest(unittest.TestCase):
+    def test_digest_change_under_a_probe_is_divergence(self):
+        alerts, _s = JF.decide(
+            _readings([_outcome(mutator="trailing_blank",
+                                exit_code=0, digest="changed",
+                                orig_digest="d-job-a")]),
+            _manifest(), {})
+        dv = [a for a in alerts
+              if a["signal"] == "variant_divergence"]
+        self.assertEqual(len(dv), 1)
+        self.assertEqual(dv[0]["detail"]["relation"],
+                         "identity")
+        self.assertIn("digest",
+                      dv[0]["detail"]["relation_violation"])
+
+    def test_kept_relation_is_quiet(self):
+        alerts, _s = JF.decide(
+            _readings([_outcome(mutator="trailing_blank",
+                                exit_code=0, digest="d-job-a",
+                                orig_digest="d-job-a")]),
+            _manifest(), {})
+        self.assertNotIn("variant_divergence",
+                         [a["signal"] for a in alerts])
+
+    def test_class_change_under_a_probe_names_the_relation(self):
+        alerts, _s = JF.decide(
+            _readings([_outcome(mutator="blank_line",
+                                exit_code=2)]),
+            _manifest(), {})
+        dv = [a for a in alerts
+              if a["signal"] == "variant_divergence"][0]
+        self.assertIn("class",
+                      dv["detail"]["relation_violation"])
+
+
+class BucketTest(unittest.TestCase):
+    def test_same_reason_across_seeds_files_once(self):
+        outcomes = [
+            _outcome(job_id="job-a", stage="error",
+                     reason="runner exploded 42 times",
+                     variant_file="va.json"),
+            _outcome(job_id="job-b", stage="error",
+                     reason="Runner exploded 7 times",
+                     variant_file="vb.json")]
+        alerts, state = JF.decide(
+            _readings(outcomes), _manifest(), {})
+        hf = [a for a in alerts
+              if a["signal"] == "variant_hard_failure"]
+        self.assertEqual(len(hf), 1)
+        self.assertEqual(hf[0]["detail"]["bucket_count"], 1)
+        bucket = state["buckets"]["runner exploded # times"]
+        self.assertEqual(bucket["count"], 2)
+        self.assertEqual(bucket["examples"],
+                         ["va.json", "vb.json"])
+
+    def test_different_reasons_file_separately(self):
+        outcomes = [
+            _outcome(job_id="job-a", stage="error",
+                     reason="disk gone"),
+            _outcome(job_id="job-b", stage="error",
+                     reason="permission denied")]
+        alerts, _s = JF.decide(
+            _readings(outcomes), _manifest(), {})
+        self.assertEqual(len([a for a in alerts if a["signal"]
+                              == "variant_hard_failure"]), 2)
+
+    def test_bucket_refiles_after_cooldown_with_its_count(self):
+        readings = _readings([_outcome(
+            stage="error", reason="runner exploded 1 time")])
+        _a, state = JF.decide(readings, _manifest(), {})
+        later = _readings([_outcome(
+            stage="error", reason="runner exploded 2 time")],
+            now=T0 + 8 * 86400)
+        alerts, state = JF.decide(later, _manifest(), state)
+        hf = [a for a in alerts
+              if a["signal"] == "variant_hard_failure"]
+        self.assertEqual(len(hf), 1)
+        self.assertEqual(hf[0]["detail"]["bucket_count"], 2)
+
+
+class PromotionTest(unittest.TestCase):
+    def test_novel_variant_joins_the_distilled_corpus(self):
+        outcome = _outcome(exit_code=3, variant_id="fuzz-v1",
+                           variant_script="echo boom\nexit 3",
+                           digest="vd")
+        _a, state = JF.decide(
+            _readings([outcome]), _manifest(), {})
+        entry = state["distilled"]["fuzz-v1"]
+        self.assertEqual(entry["script"], "echo boom\nexit 3")
+        self.assertEqual(entry["exit_class"], "nonzero")
+        self.assertEqual(entry["exit_code"], 3)
+
+    def test_known_coverage_promotes_nothing(self):
+        outcome = _outcome(exit_code=0, variant_id="fuzz-v1",
+                           variant_script="echo hi")
+        _a1, state = JF.decide(
+            _readings([outcome]), _manifest(), {})
+        other = _outcome(exit_code=0, variant_id="fuzz-v2",
+                         variant_script="echo other")
+        _a2, state = JF.decide(
+            _readings([other]), _manifest(), state)
+        self.assertNotIn("fuzz-v2", state["distilled"])
+
+    def test_distilled_tier_is_capped_oldest_first(self):
+        m = _manifest()
+        m["tunables"]["distilled_max_jobs"] = 1
+        o1 = _outcome(mutator="truncate", exit_code=3,
+                      variant_id="fuzz-v1",
+                      variant_script="echo one")
+        _a, state = JF.decide(_readings([o1]), m, {})
+        o2 = _outcome(mutator="drop_line", exit_code=3,
+                      variant_id="fuzz-v2",
+                      variant_script="echo two")
+        later = _readings([o2], now=T0 + 60)
+        _a, state = JF.decide(later, m, state)
+        self.assertEqual(sorted(state["distilled"]),
+                         ["fuzz-v2"])
+
+    def test_distilled_baseline_class_is_authoritative(self):
+        outcome = _outcome(stage="ran", exit_code=0,
+                           orig_class="refused")
+        alerts, _s = JF.decide(
+            _readings([outcome]), _manifest(), {})
+        dv = [a for a in alerts
+              if a["signal"] == "variant_divergence"]
+        self.assertEqual(len(dv), 1)
+        self.assertEqual(dv[0]["detail"]["original_class"],
+                         "refused")
+
+
+class EnergyTest(unittest.TestCase):
+    def test_decide_counts_runs_and_yield_per_seed(self):
+        outcomes = [_outcome(exit_code=3),
+                    _outcome(job_id="job-b", stage="error",
+                             reason="x")]
+        _a, state = JF.decide(
+            _readings(outcomes), _manifest(), {})
+        a = state["energy"]["job-a"]
+        self.assertEqual((a["runs"], a["novel"], a["hard"],
+                          a["diverged"]), (1, 1, 0, 1))
+        b = state["energy"]["job-b"]
+        self.assertEqual((b["runs"], b["hard"]), (1, 1))
+
+    def test_untried_seed_scores_mid_pack(self):
+        self.assertEqual(JF._seed_score(None), 0.5)
+        self.assertGreater(
+            JF._seed_score({"runs": 4, "novel": 3, "hard": 1,
+                            "diverged": 0}),
+            JF._seed_score({"runs": 4, "novel": 0, "hard": 0,
+                            "diverged": 0}))
+
+
+MINIM_RUNNER = """\
+import json, sys
+v = json.load(open(sys.argv[-1]))
+code = 3 if "boom" in v.get("script", "") else 0
+print(json.dumps({"stage": "ran", "exit_code": code,
+                  "timed_out": False, "duration_sec": 0.01,
+                  "stdout_bytes": 0, "stderr_bytes": 0,
+                  "digest": "z"}))
+"""
+
+
+class MinimizeTest(unittest.TestCase):
+    def test_minimizer_shrinks_to_the_essential_line(self):
+        with tempfile.TemporaryDirectory() as td:
+            runner = os.path.join(td, "minim.py")
+            with open(runner, "w", encoding="utf-8") as fh:
+                fh.write(MINIM_RUNNER)
+            cmd = f"{sys.executable} {runner} {{variant}}"
+            variant = {"job_id": "fuzz-min1", "kind": "exec",
+                       "mutator": "truncate",
+                       "script": "junk one\njunk two\n"
+                                 "boom here\ntrailing junk"}
+            report = {"stage": "ran", "exit_code": 3,
+                      "timed_out": False, "digest": "z",
+                      "variant_file": "fuzz-min1.json"}
+            variant, report, steps = JF._minimize_variant(
+                cmd, variant, report, td, 5, 12)
+            self.assertEqual(variant["script"], "boom here")
+            self.assertEqual(steps, 4)
+            with open(os.path.join(td, "fuzz-min1.json"),
+                      encoding="utf-8") as fh:
+                archived = json.load(fh)
+            self.assertEqual(archived["script"], "boom here")
+
+    def test_minimizer_leaves_a_single_line_alone(self):
+        variant = {"job_id": "fuzz-min2", "script": "boom"}
+        _v, _r, steps = JF._minimize_variant(
+            "unused", variant, {"stage": "ran", "exit_code": 3,
+                                "timed_out": False},
+            "/nonexistent", 5, 12)
+        self.assertEqual(steps, 0)
+
+
+class CampaignPoolTest(ReadLiveTest):
+    def test_distilled_seed_campaigns_without_retained(self):
+        reader = {"campaign_seed": 0,
+                  "idle_load_max": None,
+                  "distilled": {"fuzz-d1": {
+                      "script": "echo distilled\nexit 0",
+                      "exit_code": 0, "timed_out": False,
+                      "exit_class": "exit0", "digest": "dd",
+                      "saved_at": time.time() - 3600}}}
+        m = self._manifest_with(
+            runner_cmd=f"{sys.executable} {self.fake} {{variant}}")
+        readings = JF.read_live(m, reader)
+        self.assertTrue(readings["outcomes"])
+        self.assertEqual({o["job_id"]
+                          for o in readings["outcomes"]},
+                         {"fuzz-d1"})
+
+    def test_energy_beats_recency_in_seed_choice(self):
+        self._retain(_seed("job-old",
+                           saved_at=time.time() - 7200),
+                     age_sec=7200)
+        self._retain(_seed("job-new",
+                           saved_at=time.time() - 3600),
+                     age_sec=3600)
+        m = self._manifest_with(
+            runner_cmd=f"{sys.executable} {self.fake} {{variant}}",
+            max_seeds_per_pass=1)
+        fresh = JF.read_live(m, {"campaign_seed": 0})
+        self.assertEqual({o["job_id"]
+                          for o in fresh["outcomes"]},
+                         {"job-new"})
+        seasoned = JF.read_live(
+            m, {"campaign_seed": 0,
+                "energy": {"job-old": {"runs": 2, "novel": 5,
+                                       "hard": 0,
+                                       "diverged": 0}}})
+        self.assertEqual({o["job_id"]
+                          for o in seasoned["outcomes"]},
+                         {"job-old"})
+
+
 class MainSamplesTest(unittest.TestCase):
     def test_samples_mode_prints_alerts_and_writes_state(self):
         readings = _readings([_outcome(exit_code=3)])
