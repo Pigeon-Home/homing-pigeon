@@ -4,6 +4,34 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.7 - 2026-10-19
+
+- **Strictness batch.** The protocol version field is now
+  checked as an integer in the strict sense: JSON `true`
+  and `1.0` are refused, as draft Section 9 states. Key
+  selection follows draft Section 10: a present `key_id`
+  must name a configured secret or the job is refused
+  before its MAC is checked; the empty identifier names
+  the default secret. Downloads accept `https://` URLs
+  only, and a redirect to any other scheme is refused.
+  The DTLS transport extension enforces the shared-secret
+  entropy floor at its own endpoint and refuses to start
+  below it, as the sender already did. Malformed DTLS
+  records are logged at WARN instead of dropped silently.
+- **Documentation corrections from the claims audit.**
+  CONTRIBUTING's chat-privacy account now rests on
+  redact-before-write, which is what the code does; two
+  parked items -- the `av` detections sense and the
+  Windows WFP cage -- are described as not built, which
+  they are; and a set of smaller audit fixes lands across
+  thirteen documents.
+- **Seeded mutation testing.** A scheduled, non-gating
+  twin of the release mutation job reruns the security
+  module's mutants under a fresh recorded seed each week,
+  so order-dependent survivors have nowhere permanent to
+  hide. The release job itself is unchanged and stays
+  deterministic.
+
 ## 3.11.6 - 2026-10-19
 
 - **The cleartext posture, completed.** 3.11.5 refused an
