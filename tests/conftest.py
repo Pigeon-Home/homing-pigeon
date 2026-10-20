@@ -19,3 +19,17 @@ else:
             suppress_health_check=[HealthCheck.differing_executors],
         )
         settings.load_profile("mutation")
+
+    # The seeded mutation workflow (mutation-seeded.yml) sets
+    # HP_MUTATION_SEED so each scheduled run draws different
+    # Hypothesis examples while staying reproducible from its
+    # printed seed. The assignment is the same mechanism the pytest
+    # plugin's --hypothesis-seed option uses. Unset, nothing
+    # changes: normal runs and the deterministic release mutation
+    # job are untouched. A malformed value fails loudly -- a seed
+    # that silently did not take would make the run's log lie
+    # about what it explored.
+    if os.environ.get("HP_MUTATION_SEED") is not None:
+        import hypothesis.core
+
+        hypothesis.core.global_force_seed = int(os.environ["HP_MUTATION_SEED"])

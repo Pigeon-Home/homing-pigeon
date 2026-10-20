@@ -1,0 +1,63 @@
+name: mutation-seeded
+
+# The seeded twin of build.yml's release mutation job. The release
+# job stays deterministic and tag-only: it is the gate signal. This
+# workflow explores instead -- the same mutmut scope with the seed
+# varied per run, so different Hypothesis draws and a different hash
+# seed walk the mutant space the fixed release configuration never
+# visits. It is a signal, never a gate: nothing needs it, no publish
+# keys off it, and it does not run on pushes or tags.
+#
+# The seed is the run number unless a manual dispatch supplies one.
+# It is printed in the log and the run summary together with the
+# commit, and a run reproduces by dispatching this workflow with
+# that seed on that commit: set PYTHONHASHSEED and HP_MUTATION_SEED
+# to it locally and `mutmut run` walks the same space.
+on:
+  schedule:
+    # Weekly, Monday 06:17 UTC. Off the hour, off the release path.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "Seed to reproduce a previous run (blank = use the run number)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  mutation-seeded:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c requirements-ci.txt mutmut pytest hypothesis
+      - name: Resolve the seed
+        id: seed
+        env:
+          INPUT_SEED: ${{ inputs.seed }}
+        run: |
+          if [ -n "$INPUT_SEED" ]; then SEED="$INPUT_SEED"; else SEED="${{ github.run_number }}"; fi
+          echo "seed=$SEED" >> "$GITHUB_OUTPUT"
+          echo "::notice title=mutation seed::seed=$SEED commit=${{ github.sha }}"
+          {
+            echo "## Seeded mutation run"
+            echo ""
+            echo "- seed: \`$SEED\`"
+            echo "- commit: \`${{ github.sha }}\`"
+            echo ""
+            echo "Reproduce: dispatch this workflow with seed \`$SEED\` on that commit,"
+            echo "or locally with \`PYTHONHASHSEED=$SEED HP_MUTATION_SEED=$SEED mutmut run\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: mutmut (seeded)
+        env:
+          PYTHONHASHSEED: ${{ steps.seed.outputs.seed }}
+          HP_MUTATION_SEED: ${{ steps.seed.outputs.seed }}
+        run: mutmut run --max-children 4
+    # NOTE: as in build.yml, mutmut exits 0 even with surviving
+    # mutants; it only fails on infra errors. Survivors are reported
+    # in the log for triage -- this job is a signal, not a block.
