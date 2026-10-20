@@ -106,7 +106,9 @@ With review required, a result holds the task at
 `pending_review` and a second result does not replace it.
 An approval is what marks it done. A worker whose
 capabilities do not cover the task does not claim it. The
-worker who has them does.
+worker who has them does. A worker who is not on
+`worker_allowlist` does not claim either. The worker who
+is on the list does.
 
 ## One prompt-injection case
 

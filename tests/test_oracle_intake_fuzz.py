@@ -1132,6 +1132,19 @@ class RingTwoBoardTest(unittest.TestCase):
         self.assertEqual(self.board.tasks[task_id]["state"], "claimed")
         self.assertEqual(self.board.tasks[task_id]["claimed_by"], "w-py")
 
+    def test_a_worker_off_the_list_does_not_claim(self):
+        self.cfg["worker_allowlist"] = ["w-ok"]
+        task_id = "task-list-1"
+        self._send(task_id, self._sealed(task_id))
+        self._send_kind("task_request", "w-no", self._kind(
+            "task_request", "w-no", capabilities=["py"]))
+        self.assertEqual(self.board.tasks[task_id]["state"], "open")
+        self._send_kind("task_request", "w-ok", self._kind(
+            "task_request", "w-ok", capabilities=["py"]))
+        self.assertEqual(self.board.tasks[task_id]["state"], "claimed")
+        self.assertEqual(self.board.tasks[task_id]["claimed_by"], "w-ok")
+
+
 
 # The fork bomb from tests/test_flag321_obfuscated.py. It pipes to
 # itself. The judge denies the exact string and allows one space.
