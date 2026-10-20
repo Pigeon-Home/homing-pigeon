@@ -76,7 +76,9 @@ job still runs. The same job submitted again does not
 run a second time. A different job id still does. An
 envelope signed with one key, around a body signed with
 another, does not run. The next job whose keys agree still
-does.
+does. A job aimed at a different runner, or at no runner,
+does not run when audience is enforce. The job that names
+this runner still does.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already

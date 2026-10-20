@@ -705,6 +705,34 @@ class RingTwoJobTest(unittest.TestCase):
         self._run(good_id, self._wire(good_id), secrets=secrets)
         self.assertTrue(os.path.isfile(self.marker))
 
+    def _claiming(self, job_id, runner_id):
+        payload = {
+            "v": 1,
+            "type": "job",
+            "job_id": job_id,
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "kind": "exec",
+            "interpreter": [sys.executable],
+            "script": "open(%r, 'w').write('ran')\n" % self.marker,
+        }
+        if runner_id is not None:
+            payload["runner_id"] = runner_id
+        return encrypt_body(
+            sign_payload(payload, SECRET), SECRET,
+            job_id=job_id, key_id="", sign=sign_payload)
+
+    def test_the_wrong_audience_does_not_run(self):
+        self.cfg["runner_id"] = "this-runner"
+        self.cfg["security"] = {"modes": {"audience": "enforce"}}
+        for claim in (None, "someone-else"):
+            job_id = uuid.uuid4().hex
+            self._run(job_id, self._claiming(job_id, claim))
+            self.assertFalse(os.path.exists(self.marker))
+        good_id = uuid.uuid4().hex
+        self._run(good_id, self._claiming(good_id, "this-runner"))
+        self.assertTrue(os.path.isfile(self.marker))
+
 
 _CANARY = "hp-canary-9f3c2a"
 
