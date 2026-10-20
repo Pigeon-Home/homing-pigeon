@@ -70,19 +70,33 @@ Ideas. An entry marked BUILT is a decision record, not work.
   carrying provenance and seen-once ids, so context
   accumulates without echoing itself.
 
-- cloud-task-board-delegation (DRU, 2026-10-20; a protocol
-  v2 candidate, nothing built): the liveness check — the
-  ping a sender already spends to learn the box is
-  reachable — returns the job board along with the pong.
-  The cloud SI then sees that box's open work (unclaimed,
-  claimed, waiting on review) and may delegate onto it:
-  submit a task to a board it has just proven it can
-  reach, instead of guessing which bird is free. Same
-  trust boundary as Mirror: only the holder of the shared
-  secret, only when the operator enables it for that
-  sender, the board view bounded and encrypted like the
-  result. A ping the operator has not opened this way
-  stays a pong. Nothing here is built.
+- cloud-task-board-delegation (DRU, 2026-10-20; nothing
+  built): the liveness check — the ping a sender already
+  spends to learn the box is reachable — returns the job
+  board along with the pong. The cloud SI then sees that
+  box's open work (unclaimed, claimed, waiting on review)
+  and may delegate onto it: submit a task to a board it
+  has just proven it can reach, instead of guessing which
+  bird is free. Same trust boundary as Mirror: only the
+  holder of the shared secret, only when the operator
+  enables it for that sender, the board view bounded and
+  encrypted like the result. A ping the operator has not
+  opened this way stays a pong. Placement (DRU): this is
+  NOT a version of the base specification — it is to be
+  written as a separate IETF draft document riding the
+  current protocol, whether or not it one day becomes a
+  version 2 or stays a different draft. Versioning caused
+  problems the first time; folding it in as a version
+  remains the possible end state, reached by the separate
+  draft first. The irony is part of the record: the
+  optimization is in some sense less secure — it trusts
+  the cloud SI with fuller control — and it is also the
+  more advanced system, because it is designed for
+  hardware with significantly more restrictions. That is
+  the industry pattern: build the big chunky crypto and
+  security system first, then design and implement a
+  lightweight optimized version alongside it. Nothing
+  here is built.
 
 ## The pipe
 
