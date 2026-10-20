@@ -86,7 +86,7 @@ def parse_sensors(cfg) -> dict:
             raise RuntimeError(where + ".profile must be an object")
         clean_profile = dict(profile)
         floor = clean_profile.get("severity_floor", "info")
-        if floor not in SEVERITY_SCORES:
+        if not isinstance(floor, str) or floor not in SEVERITY_SCORES:
             raise RuntimeError(
                 where + f".profile.severity_floor must be one of "
                 f"{sorted(SEVERITY_SCORES)}")

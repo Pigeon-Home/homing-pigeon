@@ -12,26 +12,33 @@ the zillion inputs.
 
 import json
 import os
+import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 from hypothesis import given, settings, strategies as st
 
 from runner.extensions import (
     api_refusal,
+    build_sensor_alert,
     load_extensions,
     parse_manifest,
-    signal_description,
-    build_sensor_alert,
     sign_envelope,
+    signal_description,
 )
+from runner.review import review_job
 from runner.runner import (
     _ingest_local_envelope_inner,
+    _run_oracle_tool,
+    _scan_local_inbox,
     check_key_policy,
 )
 from runner.senses import (
     file_sensor_alert,
     gate_alert,
+    load_alerts,
+    parse_sensors,
     validate_sensor_alert,
 )
 
@@ -178,3 +185,71 @@ class LocalEnvelopeFuzzTest(unittest.TestCase):
             self.cfg, self.tmp, signed, "fuzz")
         self.assertIsInstance(got, dict)
         self.assertEqual(got.get("sensor"), "canary")
+
+
+class RingOneFuzzTest(unittest.TestCase):
+    """The next functions whose docstring says they never raise,
+    or that a bad config must come back as RuntimeError and
+    nothing else."""
+
+    @settings(**_FAST)
+    @given(cfg=_messy, job=_messy)
+    def test_review_never_raises(self, cfg, job):
+        got = review_job(cfg, job)
+        self.assertIsInstance(got, dict)
+        self.assertIsInstance(got.get("notes"), list)
+
+    @settings(**_FAST)
+    @given(cfg=_messy)
+    def test_parse_sensors_is_a_dict_or_a_config_error(self, cfg):
+        try:
+            got = parse_sensors(cfg)
+        except RuntimeError:
+            return
+        self.assertIsInstance(got, dict)
+
+    def test_a_list_severity_floor_is_a_config_error(self):
+        cfg = {"sensors": {"canary": {
+            "enabled": True,
+            "key_id": "canary-key",
+            "profile": {"severity_floor": ["high"]},
+        }}}
+        with self.assertRaises(RuntimeError):
+            parse_sensors(cfg)
+
+    @settings(**_FAST)
+    @given(blob=st.one_of(st.binary(max_size=300), st.text(max_size=300)),
+           sensor=_messy, floor=_messy)
+    def test_a_poisoned_senses_store_reads_as_a_list(self, blob, sensor,
+                                                     floor):
+        base = tempfile.mkdtemp(prefix="hp-store-fuzz-")
+        path = os.path.join(base, "senses.jsonl")
+        mode = "wb" if isinstance(blob, (bytes, bytearray)) else "w"
+        with open(path, mode) as f:
+            f.write(blob)
+        got = load_alerts(base, sensor=sensor, severity_floor=floor)
+        self.assertIsInstance(got, list)
+
+    @settings(max_examples=30, deadline=None)
+    @given(name=_messy, args=_messy,
+           body=st.one_of(st.binary(max_size=80), st.text(max_size=80)))
+    def test_oracle_tools_return_a_string(self, name, args, body):
+        base = tempfile.mkdtemp(prefix="hp-tool-fuzz-")
+        inbox = os.path.join(base, "local-inbox")
+        os.makedirs(inbox)
+        path = os.path.join(inbox, "n.json")
+        mode = "wb" if isinstance(body, (bytes, bytearray)) else "w"
+        with open(path, mode) as f:
+            f.write(body)
+
+        def _no_shell(*_a, **_k):
+            return subprocess.CompletedProcess([], 0, b"", b"")
+
+        with mock.patch("runner.runner.subprocess.run", _no_shell):
+            got = _run_oracle_tool(name, args, base_dir=base)
+        self.assertIsInstance(got, str)
+        n = _scan_local_inbox(
+            {"shared_secret": SECRET, "mailbox_user": "r@example.com"},
+            base)
+        self.assertIsInstance(n, int)
+
