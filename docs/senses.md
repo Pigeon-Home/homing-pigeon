@@ -93,6 +93,13 @@ care about them per platform.
 
 ### `av` — antivirus / anti-malware detections
 
+**Not built — parked.** No `av` collector ships today: there is
+no adapter under `examples/extensions/`, and nothing files the
+platform AV's detections as `sensor_alert`s. What ships is the
+posture stat — `av_posture`, in the basic hygiene senses below.
+This section is the design for the detections sense, kept for
+when it is picked up.
+
 The sense does not replace the antivirus; it is a collector that
 files what the platform's AV already found as `sensor_alert`s.
 

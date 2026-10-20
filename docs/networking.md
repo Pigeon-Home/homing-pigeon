@@ -59,8 +59,9 @@ Three slots, deliberately separate:
 - **Cage (opt-in enforcement).** Linux: bwrap with
   `--unshare-net` (loopback-only jobs) in enforce mode (M6).
   Windows: per-user WFP rules tied to the job identity
-  (M8 `--run-as`). The firewall *sense* verifies the cage
-  held — check, don't trust.
+  (M8 `--run-as`) — **not built; the Windows cage is parked**
+  and no WFP rules are written today. The firewall *sense*
+  verifies the cage held — check, don't trust.
 - **Egress policy (opt-in enforcement).** Per-job-identity
   allowlists. This closes the phone-home shape: a job that
   exfiltrates over its own connection prints nothing, so the
