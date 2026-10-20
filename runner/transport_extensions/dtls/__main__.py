@@ -56,6 +56,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))))
 
 from runner import dtlsproto  # noqa: E402
+from runner import security as _security  # noqa: E402
 from runner.transport_extensions import channel as ch  # noqa: E402
 
 DEFAULT_PORT = 20220
@@ -95,6 +96,30 @@ def build_greeting(tier):
                 for name in _PATH_TOOLS}
         obj["platform"] = plat
     return (json.dumps(obj, sort_keys=True) + "\n").encode("utf-8")
+
+
+def _psk_floor_problem(cfg):
+    """None when every PSK this pipe would terminate with
+    clears the shared-secret entropy floor (draft Section
+    19.2), else a loggable reason naming the offender. The
+    core validates the same values at startup; this pipe is
+    the endpoint that authenticates with them, so it checks
+    what it was handed too -- a runtime config written by
+    anything else must not talk it into a weak PSK."""
+    candidates = [("shared_secret", cfg.get("shared_secret"))]
+    extra = cfg.get("additional_secrets")
+    if isinstance(extra, dict):
+        for kid in sorted(extra, key=str):
+            candidates.append(
+                (f"additional_secrets[{kid!r}]", extra[kid]))
+    for label, value in candidates:
+        if not isinstance(value, str) or not value:
+            continue
+        try:
+            _security.validate_shared_secret(value)
+        except RuntimeError as e:
+            return f"{label}: {e}"
+    return None
 
 
 class DtlsPipe:
@@ -227,6 +252,11 @@ def main(argv=None):
     if not isinstance(tier, str) or tier not in GREETING_TIERS:
         ch.log(f"dtls transport: dtls_greeting must be one of "
                f"{GREETING_TIERS}, not {tier!r}", "ERROR")
+        return 2
+    problem = _psk_floor_problem(cfg)
+    if problem is not None:
+        ch.log(f"dtls transport: refusing to start -- {problem}",
+               "ERROR")
         return 2
     try:
         pipe = DtlsPipe(cfg, channel_dir)
