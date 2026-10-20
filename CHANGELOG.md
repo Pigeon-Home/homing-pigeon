@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.15 - 2026-10-20
+
+- **Windows canary test stops tripping on its own rewrite.**
+  The CRLF regression test replaced every `\n`, including the
+  one inside an existing `\r\n`, so a file that was already
+  CRLF became CR-CR-LF and the watcher correctly called that
+  a content change. The v3.11.14 tag run failed build-windows
+  on that and did not publish. The test now writes the other
+  line ending of the same text.
+
 ## 3.11.14 - 2026-10-20
 
 - **Mutation cannot pin a tag run for hours.** The job has

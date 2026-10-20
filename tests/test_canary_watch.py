@@ -86,8 +86,16 @@ class CanaryTripTest(unittest.TestCase):
             path = _canary_path(tmp, name)
             with open(path, "rb") as fh:
                 data = fh.read()
+            # Fold first. Replacing bare \n in a file that is already
+            # CRLF turns \r\n into \r\r\n, which is a real content
+            # change and trips. That is what failed build-windows on
+            # the v3.11.14 tag run. Write the other ending of the
+            # same text so the rewrite is translation only.
+            lf = data.replace(b"\r\n", b"\n")
+            other = lf if b"\r\n" in data else lf.replace(b"\n", b"\r\n")
+            self.assertNotEqual(other, data)
             with open(path, "wb") as fh:
-                fh.write(data.replace(b"\n", b"\r\n"))
+                fh.write(other)
         out = R._canary_watch(tmp)
         self.assertNotIn("TRIPPED", out)
         self.assertIn("untouched", out)
