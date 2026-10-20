@@ -54,15 +54,21 @@ Ideas. An entry marked BUILT is a decision record, not work.
   the signals, lessons, and box state the opinion was
   made from -- so a trusted SI plans its next job with
   the system's actual state in view instead of guessing
-  from an exit code. Trust is the whole design: mirror
-  flows only to the holder of the shared secret, only
-  when the operator enables it for that sender, encrypted
-  like the job itself, bounded like everything else. The
-  general form is the same move everywhere: any component
-  may append its signed view to a shared context -- the
-  Oracle offers its context to extensions as readily as
-  the box offers it to the SI -- with provenance on every
-  segment, so context accumulates without echoing itself.
+  from an exit code. Mirror also runs mid-decision: a
+  light Oracle (Pi Light's deterministic tier) sends the
+  question it would have asked itself UP to the cloud SI
+  with its context attached, the answer returns as a
+  signed object, and no answer by the deadline means the
+  local default decides. Trust is the whole design:
+  mirror flows only to the holder of the shared secret,
+  only when the operator enables it for that sender,
+  encrypted like the job itself, bounded like everything
+  else. The general form is the same move everywhere:
+  any component may append its signed view to a shared
+  context -- the Oracle offers its context to extensions
+  as readily as the box offers it to the SI -- segments
+  carrying provenance and seen-once ids, so context
+  accumulates without echoing itself.
 
 ## The pipe
 
