@@ -460,7 +460,7 @@ class RingTwoJobTest(unittest.TestCase):
         self.secrets = {"": SECRET}
         self.marker = os.path.join(self.tmp, "ran.txt")
 
-    def _wire(self, job_id):
+    def _wire_as(self, job_id, secret, key_id):
         payload = {
             "v": 1,
             "type": "job",
@@ -471,13 +471,19 @@ class RingTwoJobTest(unittest.TestCase):
             "interpreter": [sys.executable],
             "script": "open(%r, 'w').write('ran')\n" % self.marker,
         }
+        if key_id:
+            payload["key_id"] = key_id
         return encrypt_body(
-            sign_payload(payload, SECRET), SECRET,
-            job_id=job_id, key_id="", sign=sign_payload)
+            sign_payload(payload, secret), secret,
+            job_id=job_id, key_id=key_id, sign=sign_payload)
 
-    def _run(self, job_id, body):
+    def _wire(self, job_id):
+        return self._wire_as(job_id, SECRET, "")
+
+    def _run(self, job_id, body, policies=None, secrets=None):
         return process_transport_message(
-            self.cfg, self.tmp, {}, self.secrets, {},
+            self.cfg, self.tmp, {}, secrets or self.secrets,
+            policies or {},
             "[HOMING-PIGEON] job " + job_id, body)
 
     def test_a_flipped_job_does_not_run_and_the_next_one_does(self):
@@ -508,6 +514,19 @@ class RingTwoJobTest(unittest.TestCase):
         good_id = uuid.uuid4().hex
         self._run(good_id, self._wire(good_id))
         self.assertTrue(os.path.isfile(self.marker))
+
+    def test_a_sensor_key_cannot_run_a_script(self):
+        secrets = {"": SECRET, "sense-key": SENSE}
+        policies = {"sense-key": {"allowed_kinds": ["sensor_alert"]}}
+        bad_id = uuid.uuid4().hex
+        self._run(
+            bad_id, self._wire_as(bad_id, SENSE, "sense-key"),
+            policies, secrets)
+        self.assertFalse(os.path.exists(self.marker))
+        good_id = uuid.uuid4().hex
+        self._run(good_id, self._wire(good_id), policies, secrets)
+        self.assertTrue(os.path.isfile(self.marker))
+
 
 
 
