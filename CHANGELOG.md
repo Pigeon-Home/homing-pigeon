@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.17 - 2026-10-20
+
+- **Version rev.** No functional change from 3.11.16.
+  That tag published, Windows included. The only red run
+  still on the board is v3.11.14, which v3.11.15 already
+  fixed. This tag is the next look.
+
 ## 3.11.16 - 2026-10-20
 
 - **Version rev.** No functional change from 3.11.15.
