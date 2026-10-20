@@ -88,7 +88,9 @@ default, and the platform shell is started. The Python
 script does not run under that shell. The next ordinary
 job still does. A ping that carries a script answers
 `pong` and does not run the script. The next exec job
-still does.
+still does. A kind the runner does not know (`sh`, an
+empty string, `Exec`) does not run the script it carries.
+The next exec job still does.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already

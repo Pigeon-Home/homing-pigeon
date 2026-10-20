@@ -811,6 +811,16 @@ class RingTwoJobTest(unittest.TestCase):
         self._run(good_id, self._wire(good_id))
         self.assertTrue(os.path.isfile(self.marker))
 
+    def test_an_unknown_kind_does_not_run(self):
+        for kind in ("sh", "", "Exec"):
+            job_id = uuid.uuid4().hex
+            out = self._run(job_id, self._poison(job_id, kind=kind))
+            self.assertFalse(os.path.exists(self.marker))
+            self.assertEqual(self._opened(out, job_id)["exit_code"], -2)
+        good_id = uuid.uuid4().hex
+        self._run(good_id, self._wire(good_id))
+        self.assertTrue(os.path.isfile(self.marker))
+
 
 _CANARY = "hp-canary-9f3c2a"
 
