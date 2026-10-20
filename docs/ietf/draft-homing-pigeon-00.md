@@ -522,7 +522,7 @@ The past window rejects stale `issued_at`. The seen-set rejects a repeated `job_
 
 ### 17.7. Two secrets
 
-The transport credential reads and deletes mail. The HMAC secret authorizes jobs. Neither substitutes for the other. A store that holds both has lost both when it is copied.
+The transport credentials and the HMAC secret, which authorizes jobs.
 
 ### 17.8. Marker collision
 
