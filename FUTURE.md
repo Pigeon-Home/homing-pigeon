@@ -157,6 +157,60 @@ Ideas. An entry marked BUILT is a decision record, not work.
   beyond the mechanical one, and the opinion as a signed
   statement by the Oracle as an authenticated party in a
   confidentiality-on mode.
+- A new extension kind, the concentrate, and its first
+  member: the red-team concentrate (DRU coined the kind,
+  2026-10-20). A concentrate is neither a sense nor a
+  transport: a sense observes the box and files signals, a
+  transport carries jobs, and a concentrate takes incoming
+  jobs themselves as its material, analyzes them before
+  they run, and hands the platform back a better opinion of
+  them than the job's literal text supports. Its seat is
+  narrow and fixed: after signature verification (it never
+  sees an unverified job) and before the Oracle's opinion
+  freezes, inside the runner, holding no admission power of
+  its own — a concentrate opines, it never admits, refuses,
+  or executes, and the core's gates decide exactly as they
+  would without it. The red-team concentrate spends that
+  seat adversarially. Where a plain opinion reads the job,
+  this one attacks the reading: it generates near neighbors
+  of the job — grammar-shaped mutations, boundary values,
+  reordered and re-typed fields, encodings at the edge of
+  what the parsers accept — and replays them against the
+  deterministic checkers and the sandbox, hunting for the
+  variant that flips the verdict: a job judged benign whose
+  one-byte neighbor executes differently, a job judged
+  dangerous whose neighbor is inert, any edge the forming
+  opinion has not priced in. What it returns is the opinion
+  itself, revised by the attack — weakened and annotated
+  with the flipping variant when one is found, standing
+  stronger, with the searched neighborhood recorded, when
+  none is. Every flip reproduces from an archived seed and
+  the exact variant bytes, never from a model's say-so: the
+  generation of variants may be model-assisted in the same
+  division of labor as the in-memory fuzzing entry below
+  (the model proposes, deterministic machinery disposes),
+  but a flip counts only when the machinery replays it. The
+  yield compounds through the Oracle's self-learning: the
+  frozen opinion is scored against the outcome today, and
+  the cases that teach most — the ones where the opinion
+  was almost wrong — are precisely the ones that never
+  occur naturally, because the job that ran was the job as
+  sent. The concentrate manufactures those cases before the
+  fact, while they can still change the verdict, and files
+  the near misses as first-class learning input. Design
+  constraints carried from the rest of the platform: the
+  deterministic tier must do the whole job on Pi Light,
+  where there is no model; the analysis budget is an
+  operator-tunable cost charged against the job's wait, not
+  the box's idle time; and the extension contract for the
+  kind (manifest, what a concentrate may see, what shape an
+  annotated opinion takes) is unwritten — the fuzz sense
+  was chosen ahead of this (a sense, background, off by
+  default), and the kind-defining gentler sibling, a
+  concentrate that maps a job's mutation neighborhood
+  without attacking the opinion, was sketched in the same
+  conversation. This entry is the red team's record;
+  nothing here is built.
 
 ## Who signs
 
