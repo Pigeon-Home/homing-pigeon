@@ -1555,6 +1555,18 @@ class RingTwoBoardTest(unittest.TestCase):
         self.assertEqual(task["state"], "claimed")
         self.assertEqual(task["claimed_by"], "w-new")
 
+    def test_a_fresh_claim_is_not_taken(self):
+        self.cfg["task_timeout"] = 60
+        self._send("fresh-claim", self._sealed("fresh-claim"))
+        self._send_kind("task_request", "w-old", self._kind(
+            "task_request", "w-old", capabilities=["py"]))
+        self._send_kind("task_request", "w-new", self._kind(
+            "task_request", "w-new", capabilities=["py"]))
+        task = self.board.tasks["fresh-claim"]
+        self.assertEqual(task["state"], "claimed")
+        self.assertEqual(task["claimed_by"], "w-old")
+
+
 
 
 

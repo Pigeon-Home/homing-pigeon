@@ -154,7 +154,9 @@ with a number, or an object. A task that omits them still
 opens. A priority of `"9"` or infinity opens nothing. A
 priority of `1` still opens. A claim older than
 `task_timeout` is offered again. The next request takes
-it, and the previous worker no longer holds it.
+it, and the previous worker no longer holds it. A claim
+inside `task_timeout` is not taken. A second worker's
+request leaves it with the first.
 
 ## One prompt-injection case
 
