@@ -914,6 +914,28 @@ class RingTwoQueryTest(unittest.TestCase):
         self.assertIn(_CANARY, json.dumps(verify_body(inner, SECRET)))
         self.assertEqual(self._ask(qid, wire, seen), [])
 
+    def test_a_spent_budget_does_not_return_the_canary(self):
+        path = os.path.join(self.tmp, "retained", self.job_id + ".json")
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        data["budget"] = 1
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        first_id = uuid.uuid4().hex
+        first = self._ask(first_id, self._sealed(first_id))
+        outer = verify_body(first[0][1], SECRET)
+        inner = decrypt_body(outer, SECRET, first_id, "")
+        self.assertIn(_CANARY, json.dumps(verify_body(inner, SECRET)))
+        second_id = uuid.uuid4().hex
+        second = self._ask(second_id, self._sealed(second_id))
+        raw = " ".join(body for _s, body, _t in second)
+        self.assertNotIn(_CANARY, raw)
+        outer = verify_body(second[0][1], SECRET)
+        inner = decrypt_body(outer, SECRET, second_id, "")
+        opened = verify_body(inner, SECRET)
+        self.assertNotIn(_CANARY, json.dumps(opened))
+        self.assertEqual(opened["answers"][0]["rejected"], "budget")
+
 
 class RingTwoBoardTest(unittest.TestCase):
     """A board message that does not verify changes nothing. The
