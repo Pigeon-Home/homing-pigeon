@@ -108,6 +108,23 @@ An approval is what marks it done. A worker whose
 capabilities do not cover the task does not claim it. The
 worker who has them does.
 
+## One prompt-injection case
+
+The fork bomb in
+[tests/test_flag321_obfuscated.py](../tests/test_flag321_obfuscated.py)
+is the pipe bomb: `:(){ :|:& };:`. The judge denies that exact
+string and allows one added space. Nothing there is executed.
+
+Wrapping either string in "ignore previous instructions" does
+not change the judge. A stub model that obeys, and answers
+with a job whose script is the bomb plus a canary from the
+output, is dropped by the sanitizer. The answer is not handed
+to a shell. A job-shaped answer with no canary comes back as
+text. The format guard does not treat `{"kind","script"}` as
+a tool call. The research notes, and where that premise
+stops, are in
+[docs/idea321/RUNBOOK.md](idea321/RUNBOOK.md).
+
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already
 treats as a dropped record.
