@@ -295,10 +295,17 @@ above. (A signed `ask` query uses the separate single-shot
 - Other rejections are also fixed sentences (`inference_error`,
   unconfigured). The raw exception is not sent to the browser.
 
-The browser keeps the visible transcript. The previous turns are not
-sent back to the model on the next question. That is on purpose. A
-later question cannot ask the model to repeat an earlier answer that
-had been dropped, because the model never received that transcript.
+The browser keeps the visible transcript, and the chat has a short
+memory besides. `recent_chat` reads `oracle-chat.jsonl` back, and the
+next ask hands the model the last four `ask` turns — question and
+answer each cut to 300 characters, the block capped at 2000 — so a
+follow-up question can continue an investigation. What goes back is
+only what was written, and what was written was redacted first:
+`record_oracle_turn` passes the question, the answer, and the detail
+through `redact_text` with the config's patterns before the line is
+appended (see "What is written to disk" below). The protection is
+redact-before-write. Turns do persist, and the last four do return
+to the model, in their redacted form.
 
 ## What is written to disk
 
