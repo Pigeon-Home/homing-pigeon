@@ -109,7 +109,7 @@ you. You start them by making a **release**. All point and click:
    `pyproject.toml`, not a guess.
 6. Click the big green **Publish release** button.
 7. Now click the **Actions** tab at the top. You will see the robots
-   working. It typically takes about 10 minutes.
+   working. It typically takes about 20 minutes.
 8. When they finish, go back to **Releases**. Your version is there
    with files to download (each file and folder name carries that
    same number):
@@ -143,7 +143,7 @@ To check a download against all of it, on any outlet, see
 
 **Releasing through your SI instead:** say "tag and publish
 everything." That one sentence is the whole instruction set. The SI
-bumps the version in the three places it lives, waits for the
+bumps the version in the four places it lives, waits for the
 branch build to go green at every job, tags that commit, watches
 the tag build job by job (mutation included), and then checks
 every outlet by name -- GitHub Release, PyPI, Docker, SourceForge,

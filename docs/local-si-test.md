@@ -16,9 +16,9 @@ See `docs/handoff-local-si.md` for the full handoff (two instances, email-only t
 ## The email harness
 
 The mock SI is tested through email. That is Transport #1 and the
-only transport this harness exercises. The local socket and the
-other broker transports were cut from the code; they are not part
-of this test. See FUTURE.md.
+only transport this harness exercises. The local socket was cut
+from the code; the broker transports are not part of this test.
+See FUTURE.md.
 
 To run the email test you need a real mailbox in `config.json`
 (`smtp_host`, `smtp_port`, `mailbox_user`, password or OAuth) and a
@@ -92,22 +92,22 @@ The mock SI reads the same `config.json` as the runner.
 
 - **In-process** — the default. The question is handed to the Oracle
   path directly. No email, no socket. Fastest for a single chat.
-- **Email** — `send email` on the page (or `send_via_email` in code)
+- **Email** — `send_via_email` in code
   builds a signed job and sends it with the runner's SMTP settings
   (`smtp_host`, `smtp_port`, `mailbox_user`, password or OAuth). The
   runner must be polling that mailbox to pick it up. This is the real
   Transport #1 path.
 
 A loopback-socket option (`127.0.0.1:8766`) was specified in an
-earlier revision but never implemented; it was cut with the other
-broker transports. In-process and email are the two working paths.
+earlier revision but never implemented; it was cut. In-process
+and email are the two working paths.
 
 ## High-throughput local transport — cut
 
 An earlier revision specified a loopback-TCP framing here (4-byte
 big-endian length, UTF-8 question, answer back the same way,
-`127.0.0.1` only). It was never implemented and was cut with the
-other broker transports. For volume testing today, use the in-process
+`127.0.0.1` only). It was never implemented and was cut. For
+volume testing today, use the in-process
 path or the real email transport.
 
 ## Diagnose mode — the black-box gauntlet

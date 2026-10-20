@@ -109,8 +109,11 @@ mitigation:
   email account; it's a control channel wearing an email costume.
 - Don't run jobs you don't understand on machines you care about.
   The SI writes the script; you own the consequences.
-- Don't assume TLS means private. Email content is encrypted in
-  transit, but the *mailbox provider itself* sees everything. The
+- Don't assume TLS means private. Transport TLS encrypts email in
+  transit, but the *mailbox provider itself* can read whatever the
+  transport carries in the clear — which is why jobs are encrypted
+  per-job by default, so the provider sees the envelope, not the
+  script (subjects and metadata still show). The
   Oracle (§4) exists precisely because "the SI" and "the
   infrastructure" are both third parties.
 

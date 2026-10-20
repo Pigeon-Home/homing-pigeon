@@ -206,7 +206,7 @@ Sign with the test key via `send_job.py new --key-id test-only
 - **T4.1 — Kind escalation.**
   Submit `exec` (`--kind exec --script-file hello.sh`) with the test
   key. *Expected:* rejected before execution —
-  `key policy: job kind 'exec' is not allowed` — logged, marked seen,
+  `key policy: job kind 'exec' is not allowed for this key` — logged, marked seen,
   never retried. Confirm no work dir / no execution in the log.
 - **T4.2 — Interpreter escape.**
   Policy allows `[["bash"]]`; submit with

@@ -2,9 +2,13 @@
 
 Historical note from the `feat/local-si-test` work. The transport
 table that used to sit here said Cloudflare, NATS, MQTT, Redis, and
-the rest were send-ready. That was wrong then and it is wrong now.
-`runner/transports.py` was removed. Email is the only transport in
-the runner. See `docs/transports-status.md`. Do not treat "try
+the rest were send-ready. That was wrong then, and Cloudflare,
+MQTT, and Redis are still not in the runner. (NATS has since
+shipped as a transport extension.) `runner/transports.py` is the
+transport-extension supervisor; email is the runner's default
+transport extension and the only one this harness exercises, with
+file, NATS, and DTLS extensions beside it. See
+`docs/transports-status.md`. Do not treat "try
 Cloudflare tomorrow" as an open task.
 
 ## What this is
@@ -54,13 +58,16 @@ unless asked.
 
 ## Transports
 
-There is no adapter module. Status: `docs/transports-status.md`.
+The harness uses no adapter module; in the runner, transports are
+extensions supervised by `runner/transports.py`. Status:
+`docs/transports-status.md`.
 
 | Transport | State |
 |-----------|--------|
 | email | implemented, this is what the harness tests |
 | cloudflare | not in the runner |
-| local_socket, nats, mqtt, redis, durable_objects, postgres | cut on purpose |
+| nats | implemented as a transport extension; not used by this harness |
+| local_socket, mqtt, redis, durable_objects, postgres | cut on purpose |
 
 ## What was removed on purpose
 

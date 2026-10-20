@@ -241,8 +241,9 @@ the service, reading the same `base_dir`.
 
 ## What one question does
 
-`GET /` returns the page. Any other GET path is 404, including a
-favicon request. The page embeds a session token (`secrets.token_urlsafe`)
+`GET /` returns the page. `GET /status` returns the ask-progress
+JSON, behind the same host and token checks. Any other GET path
+is 404, including a favicon request. The page embeds a session token (`secrets.token_urlsafe`)
 as JSON in the script. The token is not put in the URL, so it does
 not leak via a query string or a referrer. `<` in that JSON is escaped
 so a model name cannot break out of the script tag. The page builds

@@ -94,10 +94,10 @@ where each one stands. Items marked absent are listed in FUTURE.md.
   Status: partial.
 - **Secret revocation.** "The shared secret is root" is documented,
   and a written fire drill exists — SAFEGUARDS.md §7 and
-  docs/secret-rotation.md: rotate the shared secret first
-  (setup wizard or `--shared-secret`), then the mailbox credential,
-  then assume every job signed with the old secret is suspect and
-  re-verify the seen-set. Status: documented.
+  docs/secret-rotation.md: revoke the mailbox credential first
+  (that stops mail-borne delivery at once), then generate a
+  fresh shared secret, then check `runner.log` and the mailbox
+  for jobs you didn't send. Status: documented.
 - **Windows default privilege.** The out-of-box Scheduled Task runs
   as SYSTEM. `--run-as` exists, but the default is the
   highest-privilege account on the box and it's quiet about it.

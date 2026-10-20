@@ -213,7 +213,11 @@ refuse, is yours to pick per machine.
 just works. Runner: executes any signed job, answers queries with
 full output. Oracle: reviews every job anyway (its notes ride in
 the result) and logs resource pressure. Quiet by choice: nothing
-pages, and the judge never blocks a job at the door.
+pages, and the judge never blocks a job at the door. These are
+the config-file defaults; a fresh install sits one notch tighter
+— the installer applies the `password-only` profile (judge
+`advisory`, view `attested`) unless `--no-profile` is passed.
+See RUNBOOK.md Job 7.
 
 **eyes open** (recommended) — same trust, but now you watch.
 Runner: executes, attaches the policy verdict to each result,
@@ -435,7 +439,9 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. Turns are appended to `oracle-chat.jsonl` in the base dir (1 MiB, then one backup). See `CONTRIBUTING.md` (maintainer notes: the `--oracle` flag). |
 | `--poll-interval SECONDS`, `--timeout SECONDS`, `--judge MODE`, `--dag-mode MODE`, `--oracle-mode MODE`, … | One-process config overrides: one flag per key, `config.json` untouched, and a flag beats a later config edit. The full map is in `--help` and `docs/configuring-oracle.md` |
 
-`install.py` accepts the same flags and bakes them into the installed
+`install.py` accepts the common run flags — `--poll-interval`,
+`--timeout`, `--workers`, `--max-output-bytes`, `--dry-run`,
+`--verbose` — and bakes them into the installed
 service, so the agent on boot runs exactly what you tested:
 `python3 runner/install.py --verbose --poll-interval 30`.
 
@@ -453,7 +459,7 @@ End-to-end without your SI:
    subject + body.
 2. From any email account, send it to the
    runner mailbox.
-3. On the target machine: `python3 runner.py --config config.json --once`.
+3. On the target machine: `python3 runner/runner.py --config config.json --once`.
 4. A result message with `stdout: "pong"` should arrive in the mailbox
    (or at the job's `reply_to` address, if you set one).
 

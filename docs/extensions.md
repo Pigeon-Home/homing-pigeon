@@ -19,8 +19,10 @@ the sense did that. That indifference is what makes an ecosystem
 possible: anyone can publish a sense, anyone can run one, and
 the Oracle's trust never has to stretch past the envelope.
 
-One kind of extension exists today: `sense`. A sense files signed
-alerts with the Oracle, which fuses them with job activity. The
+This document covers one of the two extension kinds that exist
+today: `sense`. (The other, `transport`, carries the job pipes
+and is covered in [TRANSPORTS.md](../TRANSPORTS.md).) A sense
+files signed alerts with the Oracle, which fuses them with job activity. The
 plumbing underneath — alert shape, ingest gates, storage, the
 `senses` query — is the senses system, specified in
 [docs/senses.md](senses.md). This document covers the layer that
@@ -29,7 +31,7 @@ signal contract.
 
 ## The shape of the thing
 
-The agent never imports or executes extension code. The whole
+The agent never imports or executes sense code. The whole
 surface the agent consumes is:
 
 1. your manifest (`extension.json`), read at startup and on the
@@ -99,7 +101,7 @@ logged.
 | `name` | yes | string | The sensor name this extension files as. Letters, digits, `.`, `_`, `-`; starts with a letter or digit; at most 64 characters. |
 | `version` | yes | string | The extension's own version, semver-shaped (`0.3.0`, suffixes like `-rc.1` allowed). Yours to rev. |
 | `api_version` | yes | integer | The extension API the manifest was written against. Must be a whole number, 1 or more. See the compatibility promise below. |
-| `kind` | yes | string | `"sense"` — the only kind today. |
+| `kind` | yes | string | `"sense"` (this document) or `"transport"` (TRANSPORTS.md). |
 | `signals` | yes | list | 1 to 64 entries, each an object with `name` and `description`. Names unique within the manifest. This list is the contract; see "Signals are the contract". |
 | `description` | no | string | One line, at most 200 characters: what the extension is, for humans reading the logs and docs. |
 | `tunables` | no | object | Your knobs, carried through unread by the agent. Your daemon reads them from its own manifest. The sense's ingest gates (severity floor, cooldown, caps) are separate: those live in the sensor's `profile` in `config.json`, as for every sense. |
@@ -473,7 +475,8 @@ deauthenticates anyone, never injects frames.
 
 - `extension.json` — the manifest. Name `airwaves`, four
   declared signals, tunables: `poll_interval_sec`,
-  `gone_after_scans`, `link_drop_db`, `iface`.
+  `gone_after_scans`, `link_drop_db`, `iface`,
+  `learn_first_pass`.
 - `airwaves.py` — the watcher. `read_live()` is the only
   function that touches the platform; the scan parsers and
   `decide()` are pure, and baselines (known BSSIDs per SSID,

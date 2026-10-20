@@ -166,8 +166,7 @@ cd "homing-pigeon-windows-x86_64-$ver"
   --logs [--follow]` (tail or watch the runner log), and `install.exe
   --wipe` (backs everything up into one zip, then removes the home,
   the task, and every scattered state dir).
-- **Linux:** run `./install` — registers a systemd service
-  (or cron `@reboot` fallback).
+- **Linux:** run `./install` — registers a systemd service.
 - **macOS:** run `./install` — registers a launchd agent.
 
 Then sign in: run the app once with `homing-pigeon --setup` (or let

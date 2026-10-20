@@ -26,8 +26,10 @@ It could even work as a marketable service.
 
 ## What this means in practice
 
-- The signature is the sole authentication gate. Guard the shared
-  secret like a root password, because that is what it is.
+- The signature is the authentication gate for jobs (a transport's
+  own credentials, where it has them, gate the pipe in front of
+  it). Guard the shared secret like a root password, because that
+  is what it is.
 - Run the agent as a locked-down user, on a throwaway account, on a
   box you can wipe. The README's security notes are not boilerplate.
 - The Oracle reviews and attests. It does not contain a job unless

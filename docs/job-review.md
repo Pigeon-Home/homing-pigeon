@@ -18,14 +18,14 @@ with the judge; review is correctness ("will this work").
 
 ## The two tiers
 
-Designed for message-body encryption, listed in FUTURE.md:
+Two tiers, split by whether the check needs the script text:
 
 - **Metadata tier** needs no content access: job shape, declared
   files, timeouts, interpreter form, shebang vs platform. It works
   even when job bodies are encrypted.
 - **Content tier** reads the script text: known-failure patterns
   and static checks (dangling file references, operator-defined
-  regexes). Under future confidentiality it needs the decrypt
+  regexes). Under per-job encryption it needs the decrypt
   credential the runner already holds — no new man-in-the-middle.
   The Oracle reads what the runner legitimately decrypted.
 
