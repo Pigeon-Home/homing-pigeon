@@ -108,7 +108,9 @@ the line. The answer says policy. `full` still does.
 `redacted`, with the canary as a pattern, returns the
 line with `[REDACTED:canary]` in its place. The pattern
 the query itself sent is echoed. `full` still returns the
-canary.
+canary. A `max_matches` of zero returns no lines, and the
+answer says the output was truncated. A later grep with
+the default limit still returns the canary.
 
 An open task is not finished by a result or an approval.
 It has to be claimed first. A later submit still opens.

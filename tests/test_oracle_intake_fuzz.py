@@ -1089,6 +1089,32 @@ class RingTwoQueryTest(unittest.TestCase):
         self.assertIn(
             _CANARY, json.dumps(self._open_query(good, good_id)))
 
+    def test_a_zero_match_limit_does_not_return_the_line(self):
+        qid = uuid.uuid4().hex
+        payload = {
+            "v": 1,
+            "type": "query",
+            "query_id": qid,
+            "job_id": self.job_id,
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "queries": [{
+                "op": "grep", "pattern": _CANARY, "max_matches": 0,
+            }],
+        }
+        wire = encrypt_body(
+            sign_payload(payload, SECRET), SECRET,
+            job_id=qid, key_id="", sign=sign_payload)
+        out = self._ask(qid, wire)
+        match = self._open_query(out, qid)["answers"][0]
+        self.assertEqual(match["matches"], [])
+        self.assertTrue(match["truncated"])
+        good_id = uuid.uuid4().hex
+        good = self._ask(good_id, self._sealed(good_id))
+        self.assertIn(
+            _CANARY, json.dumps(self._open_query(good, good_id)))
+
+
 
 
 class RingTwoBoardTest(unittest.TestCase):
