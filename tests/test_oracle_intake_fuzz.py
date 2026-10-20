@@ -1495,6 +1495,26 @@ class RingTwoBoardTest(unittest.TestCase):
         self.assertEqual(self.board.tasks["num-p"]["state"], "claimed")
         self.assertEqual(self.board.tasks["bool-p"]["state"], "open")
 
+    def test_a_worker_who_holds_a_claim_is_not_handed_another(self):
+        self._send_kind("task_submit", "held", self._kind(
+            "task_submit", "held", priority=0,
+            payload={"note": "file me"}))
+        self._send_kind("task_request", "w-hold", self._kind(
+            "task_request", "w-hold", capabilities=["py"]))
+        self.assertEqual(self.board.tasks["held"]["state"], "claimed")
+        self._send_kind("task_submit", "newer", self._kind(
+            "task_submit", "newer", priority=9,
+            payload={"note": "file me"}))
+        self._send_kind("task_request", "w-hold", self._kind(
+            "task_request", "w-hold", capabilities=["py"]))
+        self.assertEqual(self.board.tasks["held"]["claimed_by"], "w-hold")
+        self.assertEqual(self.board.tasks["newer"]["state"], "open")
+        self._send_kind("task_request", "w-other", self._kind(
+            "task_request", "w-other", capabilities=["py"]))
+        self.assertEqual(self.board.tasks["newer"]["state"], "claimed")
+        self.assertEqual(self.board.tasks["newer"]["claimed_by"], "w-other")
+
+
 
 
 

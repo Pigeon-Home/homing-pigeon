@@ -146,7 +146,9 @@ record names the requirement that is not done. A
 higher `priority` is claimed first, even when it was
 submitted second. The lower one stays open. A priority
 of `true` is stored, and it does not outrank a priority
-of `1`.
+of `1`. A worker who already holds a claim is handed that
+task again, not a newer one with a higher priority. A
+different worker gets the newer one.
 
 ## One prompt-injection case
 
