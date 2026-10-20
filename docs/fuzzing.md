@@ -62,6 +62,8 @@ not.
 A job stamped two hours ago, or an hour ahead, does not
 run. The window is `max_job_age_sec`, with five minutes of
 slack into the future. The next job stamped now still runs.
+A file named `../escaped.txt` is not staged and the script
+does not run. The next ordinary job still does.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already

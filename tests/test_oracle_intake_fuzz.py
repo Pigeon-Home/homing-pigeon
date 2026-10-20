@@ -464,7 +464,8 @@ class RingTwoJobTest(unittest.TestCase):
         self.secrets = {"": SECRET}
         self.marker = os.path.join(self.tmp, "ran.txt")
 
-    def _wire_as(self, job_id, secret, key_id, issued_at=None):
+    def _wire_as(self, job_id, secret, key_id, issued_at=None,
+                 files=None):
         payload = {
             "v": 1,
             "type": "job",
@@ -477,6 +478,8 @@ class RingTwoJobTest(unittest.TestCase):
         }
         if key_id:
             payload["key_id"] = key_id
+        if files is not None:
+            payload["files"] = files
         return encrypt_body(
             sign_payload(payload, secret), secret,
             job_id=job_id, key_id=key_id, sign=sign_payload)
@@ -552,6 +555,21 @@ class RingTwoJobTest(unittest.TestCase):
             self._run(job_id, self._wire_as(
                 job_id, SECRET, "", stamp))
             self.assertFalse(os.path.exists(self.marker))
+        good_id = uuid.uuid4().hex
+        self._run(good_id, self._wire(good_id))
+        self.assertTrue(os.path.isfile(self.marker))
+
+    def test_a_file_named_dotdot_does_not_escape(self):
+        outside = os.path.join(os.path.dirname(self.tmp), "escaped.txt")
+        job_id = uuid.uuid4().hex
+        self._run(job_id, self._wire_as(job_id, SECRET, "", files=[{
+            "name": "../escaped.txt",
+            "url": "https://example.com/escaped.txt",
+        }]))
+        self.assertFalse(os.path.exists(self.marker))
+        self.assertFalse(os.path.exists(outside))
+        self.assertFalse(os.path.exists(
+            os.path.join(self.tmp, "escaped.txt")))
         good_id = uuid.uuid4().hex
         self._run(good_id, self._wire(good_id))
         self.assertTrue(os.path.isfile(self.marker))
