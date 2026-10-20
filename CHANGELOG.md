@@ -4,6 +4,15 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.14 - 2026-10-20
+
+- **Mutation cannot pin a tag run for hours.** The job has
+  no functional product change. It now dies at 40 minutes
+  instead of the platform default of 6 hours. The v3.11.11
+  run measured about 25 minutes; stacked tag runs were
+  sitting in_progress long after the mirrors had published.
+  Mutation stays a signal: it still cannot fail the publish.
+
 ## 3.11.13 - 2026-10-20
 
 - **Version rev.** No functional change from 3.11.12.

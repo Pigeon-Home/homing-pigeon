@@ -52,10 +52,10 @@ jobs:
 
   mutation:
     # Release-only: mutation runs when a version tag is pushed, not
-    # on branch pushes or PRs. It takes ~5 minutes and is a signal,
-    # not a block; the tag build is where the signal is wanted. The
-    # rule lives here so nobody has to remember to ask for it --
-    # the ref decides.
+    # on branch pushes or PRs. Measured at about 25 minutes on the
+    # v3.11.11 tag run. It is a signal, not a block; the tag build
+    # is where the signal is wanted. The rule lives here so nobody
+    # has to remember to ask for it -- the ref decides.
     # continue-on-error makes the comment above true in the one
     # place it was not: a failed mutation job used to stamp the
     # whole run 'failure', and the mirror publishers key off the
@@ -64,7 +64,12 @@ jobs:
     # reached either mirror that way). The job still shows failed
     # in the run when it fails -- the signal stays loud; it just
     # cannot block a publish any more.
+    # timeout-minutes is the hang guard. Without it a stuck mutmut
+    # holds the tag run in_progress for the platform default of
+    # 6 hours, after the mirrors have already published. 40 minutes
+    # is the measured run plus headroom.
     continue-on-error: true
+    timeout-minutes: 40
     if: startsWith(github.ref, 'refs/tags/v')
     needs: test
     runs-on: ubuntu-latest

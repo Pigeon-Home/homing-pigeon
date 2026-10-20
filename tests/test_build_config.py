@@ -76,7 +76,7 @@ class UnixVersionSmokeTest(unittest.TestCase):
 class MutationGateTest(unittest.TestCase):
     """Mutation is release-only (owner's call, 2026-10-17).
 
-    The job takes ~5 minutes and is a signal, not a block, so it is
+    The job is a signal, not a block, so it is
     gated on the ref: version tags run it, branch pushes and PRs
     skip it. The rule lives in build.yml so nobody has to remember
     to ask for it -- and this test is the proof of work for the
@@ -108,6 +108,14 @@ class MutationGateTest(unittest.TestCase):
         # when they keyed off workflow_run.conclusion.
         block = _job_block(_workflow(), "mutation")
         self.assertIn("continue-on-error: true", block)
+
+    def test_mutation_cannot_hold_a_tag_run_for_hours(self):
+        # A stuck mutmut used to leave the tag run in_progress for
+        # the platform default of 6 hours after the mirrors had
+        # already published. The measured run is about 25 minutes;
+        # the cap is that plus headroom, not the platform default.
+        block = _job_block(_workflow(), "mutation")
+        self.assertIn("timeout-minutes: 40", block)
 
     def test_real_gates_are_not_continue_on_error(self):
         # The mirror image of the pin above: if a job that gates
