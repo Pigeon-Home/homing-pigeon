@@ -896,6 +896,24 @@ class RingTwoJobTest(unittest.TestCase):
         self._run(zero, self._poison(zero, env=0))
         self.assertTrue(os.path.isfile(self.marker))
 
+    def test_files_that_are_not_a_list_of_names_do_not_run(self):
+        bad = (
+            "readme",
+            [{"name": "a.txt", "url": 1}],
+            [{"name": 1, "url": "https://example.com/a"}],
+        )
+        for files in bad:
+            if os.path.exists(self.marker):
+                os.remove(self.marker)
+            job_id = uuid.uuid4().hex
+            out = self._run(job_id, self._poison(job_id, files=files))
+            self.assertFalse(os.path.exists(self.marker))
+            self.assertEqual(self._opened(out, job_id)["exit_code"], -2)
+        zero = uuid.uuid4().hex
+        self._run(zero, self._poison(zero, files=0))
+        self.assertTrue(os.path.isfile(self.marker))
+
+
 
 
 

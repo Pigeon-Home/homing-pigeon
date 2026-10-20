@@ -101,7 +101,10 @@ read as missing, so the default is used and the job runs.
 Args that are a string or a number do not run. Args of
 `0` are read as missing, so the job runs. An env that is
 a string or a list does not run. An env of `0` is read
-as missing, so the job runs. The same query is answered
+as missing, so the job runs. Files that are a string,
+or an entry whose name or url is not a string, do not
+run. Files of `0` are read as missing, so the job runs.
+The same query is answered
 once. The second copy, same seen set, gets nothing back.
 A second query, different id, after the budget is spent,
 does not get the canary either. The answer says budget.
