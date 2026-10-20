@@ -780,6 +780,7 @@ class _Endpoint:
 
     def _handle_key_update(self, received_epoch, body):
         if not body or body[0] not in (0, 1):
+            self.log("dtls: malformed KeyUpdate; dropped", "WARN")
             return []
         update_requested = body[0] == 1
         self._recv_ap_secret = _expand_label(
@@ -935,6 +936,8 @@ class DtlsClientCore(_Endpoint):
                          "WARN")
                 return []
             if record[0] != CT_HANDSHAKE:
+                self.log("dtls: plaintext record that is not a "
+                         "handshake or an alert; dropped", "WARN")
                 return []
             return self._on_handshake_bytes(content, now, 0)
         low2 = record[0] & 0x3
@@ -949,6 +952,8 @@ class DtlsClientCore(_Endpoint):
             self.record_log.append(("in", epoch, ctype))
             return self._on_protected(epoch, ctype, content, seq,
                                       now)
+        self.log("dtls: record did not decrypt under any "
+                 "known epoch key; dropped", "WARN")
         return []
 
     def _on_protected(self, epoch, ctype, content, seq, now):
@@ -960,6 +965,8 @@ class DtlsClientCore(_Endpoint):
             if content and content[0] == ALERT_FATAL:
                 self.dead = True
                 self.state = "dead"
+                self.log("dtls: fatal alert from the server; "
+                         "session dead", "WARN")
             return out
         if ctype == CT_APPDATA:
             if not self.finished_sent:
@@ -981,6 +988,8 @@ class DtlsClientCore(_Endpoint):
     def _on_handshake_bytes(self, data, now, epoch):
         parsed = _parse_handshake(data)
         if parsed is None:
+            self.log("dtls: handshake record carries no "
+                     "complete message; dropped", "WARN")
             return []
         if parsed[0] == "fragment":
             whole = self._fragments.offer(
@@ -1008,6 +1017,8 @@ class DtlsClientCore(_Endpoint):
             return []
         if msg_type == HS_KEY_UPDATE:
             return self._handle_key_update(epoch, body)
+        self.log(f"dtls: unexpected handshake message type "
+                 f"{msg_type}; dropped", "WARN")
         return []
 
     def _on_server_hello(self, body, raw, now):
@@ -1101,6 +1112,8 @@ class DtlsClientCore(_Endpoint):
             ticket_len = int.from_bytes(take(2), "big")
             ticket = take(ticket_len)
         except DtlsError:
+            self.log("dtls: malformed NewSessionTicket; "
+                     "dropped", "WARN")
             return
         psk = _expand_label(self._res_master, b"resumption",
                             nonce, HASH_LEN)
@@ -1322,6 +1335,8 @@ class _ServerSession(_Endpoint):
         try:
             epoch, ctype, content, seq = self._open_record(record)
         except DtlsError:
+            self.log("dtls: record carrying a live session's "
+                     "CID did not decrypt; dropped", "WARN")
             return [], False
         out = self._on_protected(epoch, ctype, content, seq, now)
         return out, True
@@ -1349,6 +1364,8 @@ class _ServerSession(_Endpoint):
             if content and content[0] == ALERT_FATAL:
                 self.dead = True
                 self.state = "dead"
+                self.log("dtls: fatal alert from the client; "
+                         "session dead", "WARN")
             return out
         if ctype == CT_APPDATA:
             if not self.established:
@@ -1370,6 +1387,8 @@ class _ServerSession(_Endpoint):
     def _on_handshake_bytes(self, data, now, epoch):
         parsed = _parse_handshake(data)
         if parsed is None:
+            self.log("dtls: handshake record carries no "
+                     "complete message; dropped", "WARN")
             return []
         if parsed[0] == "fragment":
             whole = self._fragments.offer(
@@ -1387,6 +1406,8 @@ class _ServerSession(_Endpoint):
             return self._on_client_finished(body, raw, now)
         if msg_type == HS_KEY_UPDATE:
             return self._handle_key_update(epoch, body)
+        self.log(f"dtls: unexpected handshake message type "
+                 f"{msg_type}; dropped", "WARN")
         return []
 
     def _on_client_finished(self, body, raw, now):
@@ -1514,6 +1535,8 @@ class DtlsServerCore:
             return out
         if _is_plaintext_record(record):
             if record[0] != CT_HANDSHAKE:
+                self.log("dtls: plaintext record that is not a "
+                         "handshake; dropped", "WARN")
                 return []
             length = int.from_bytes(record[11:13], "big")
             return self._on_hello_bytes(record[13:13 + length],
@@ -1531,13 +1554,20 @@ class DtlsServerCore:
         if parsed is None or parsed[0] == "fragment":
             # No service for fragmented first flights: the
             # profile's ClientHello is one message by design.
+            self.log("dtls: unparseable or fragmented first "
+                     "handshake flight; dropped", "WARN")
             return []
         msg_type, msg_seq, body, raw = parsed
         if msg_type != HS_CLIENT_HELLO:
+            self.log(f"dtls: first handshake message is type "
+                     f"{msg_type}, not a ClientHello; dropped",
+                     "WARN")
             return []
         try:
             fields = _parse_client_hello(body)
         except DtlsError:
+            self.log("dtls: malformed ClientHello; dropped",
+                     "WARN")
             return []
         cookie_ext = fields["exts"].get(EXT_COOKIE)
         if cookie_ext is None:
@@ -1545,6 +1575,8 @@ class DtlsServerCore:
             hrr = _hello_retry_request(cookie)
             return [_plaintext_record(CT_HANDSHAKE, 0, 0, hrr)]
         if len(cookie_ext) < 2:
+            self.log("dtls: malformed cookie extension; "
+                     "dropped", "WARN")
             return []
         cookie = cookie_ext[2:2 + int.from_bytes(cookie_ext[0:2],
                                                  "big")]
