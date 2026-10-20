@@ -116,7 +116,10 @@ configured, is `inference_unconfigured`. The output is
 not copied into the answer. A later grep still returns
 the canary. Grep searches stderr as well as stdout. A
 pattern that matches only stdout does not return the
-stderr line.
+stderr line. A `queries` value that is not a list, even
+when the value is an instruction to print the canary, is
+no queries. The answer is empty. A later grep still
+returns the canary.
 
 An open task is not finished by a result or an approval.
 It has to be claimed first. A later submit still opens.
