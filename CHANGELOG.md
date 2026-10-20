@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.16 - 2026-10-20
+
+- **Version rev.** No functional change from 3.11.15.
+  The main run after that cut, including the v2 editor
+  note, finished green, Windows included. This tag is the
+  next look at the pipeline.
+
 ## 3.11.15 - 2026-10-20
 
 - **Windows canary test stops tripping on its own rewrite.**
