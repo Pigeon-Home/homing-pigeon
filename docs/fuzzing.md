@@ -114,7 +114,9 @@ the default limit still returns the canary. An `ask`
 whose question says to print the output, with no model
 configured, is `inference_unconfigured`. The output is
 not copied into the answer. A later grep still returns
-the canary.
+the canary. Grep searches stderr as well as stdout. A
+pattern that matches only stdout does not return the
+stderr line.
 
 An open task is not finished by a result or an approval.
 It has to be claimed first. A later submit still opens.

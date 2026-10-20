@@ -1145,6 +1145,47 @@ class RingTwoQueryTest(unittest.TestCase):
         self.assertIn(
             _CANARY, json.dumps(self._open_query(good, good_id)))
 
+    def _query(self, queries):
+        qid = uuid.uuid4().hex
+        payload = {
+            "v": 1,
+            "type": "query",
+            "query_id": qid,
+            "job_id": self.job_id,
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "queries": queries,
+        }
+        wire = encrypt_body(
+            sign_payload(payload, SECRET), SECRET,
+            job_id=qid, key_id="", sign=sign_payload)
+        return qid, self._ask(qid, wire)
+
+    def test_grep_searches_stderr_too(self):
+        path = self._retained()
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        data["stdout"] = "hello\n"
+        data["stderr"] = "err " + _CANARY + "\n"
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        qid, out = self._query([{"op": "grep", "pattern": _CANARY}])
+        matches = self._open_query(out, qid)["answers"][0]["matches"]
+        self.assertEqual(matches, ["err " + _CANARY])
+        qid, out = self._query([{"op": "grep", "pattern": "hello"}])
+        matches = self._open_query(out, qid)["answers"][0]["matches"]
+        self.assertEqual(matches, ["hello"])
+        self.assertNotIn(_CANARY, " ".join(matches))
+        data["stdout"] = "secret " + _CANARY
+        data["stderr"] = ""
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        good_id = uuid.uuid4().hex
+        good = self._ask(good_id, self._sealed(good_id))
+        self.assertIn(
+            _CANARY, json.dumps(self._open_query(good, good_id)))
+
+
 
 
 
