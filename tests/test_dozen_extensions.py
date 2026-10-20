@@ -1,14 +1,14 @@
-"""The twenty-four catalog examples: catalog-level pins.
+"""The twenty-five catalog examples: catalog-level pins.
 
 Per-extension behavior lives in tests/test_<name>.py (decide()
 fixtures, state discipline, and the end-to-ends). This module
 pins the slate AS a slate -- the thing a reader of
-docs/extensions.md is promised. The slate is the sixteen
+docs/extensions.md is promised. The slate is the seventeen
 career-and-watchers examples plus the eight IDS collector
 feed adapters (falco-feed through wazuh-feed), which follow
 the same producer pattern over a collector's output artifact:
 
-- every one of the twenty-four folders loads through the real
+- every one of the twenty-five folders loads through the real
   extension loader under its declared sensor name,
 - the declared signal names match this catalog table exactly
   (a signal renamed in a manifest without updating the catalog
@@ -79,6 +79,9 @@ CATALOG = [
     ("training-watch", "training_watch.py", "training_watch",
      ["checkpoint_arrived", "training_stalled", "run_crashed",
       "gpu_overheating", "gpu_memory_pressure"]),
+    ("job-fuzz", "job_fuzz.py", "job_fuzz",
+     ["variant_hard_failure", "variant_divergence",
+      "coverage_novelty"]),
     ("falco-feed", "falco_feed.py", "falco_feed",
      ["falco_critical", "falco_warning"]),
     ("suricata-feed", "suricata_feed.py", "suricata_feed",
@@ -115,7 +118,7 @@ def _load_producer(folder, filename):
 
 
 class CatalogManifestTest(unittest.TestCase):
-    def test_all_twenty_four_load_through_the_real_loader(self):
+    def test_all_twenty_five_load_through_the_real_loader(self):
         registry, problems = E.load_extensions(EXAMPLES_DIR)
         for folder, _fname, sensor, _signals in CATALOG:
             with self.subTest(sensor=sensor):

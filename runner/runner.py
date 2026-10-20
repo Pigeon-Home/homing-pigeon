@@ -7561,6 +7561,115 @@ def run_inspect(cfg, args) -> int:
     return 0
 
 
+# Keys a fuzz variant may carry into execute_job. Everything
+# else in the variant file -- signature material, files,
+# script_url, delivery fields -- is dropped here, so a variant
+# can never fetch, sign, or send: it is a local script body and
+# its shape, nothing more.
+_VARIANT_KEYS = ("job_id", "kind", "script", "interpreter",
+                 "args", "env", "timeout_sec")
+_VARIANT_TIMEOUT_CAP_SEC = 120
+
+
+def run_variant(cfg, args) -> int:
+    """Run ONE locally supplied fuzz variant and print its outcome.
+
+    The job-fuzz sense's execution door. A variant is a mutation
+    of a job this box already ran; its signature no longer
+    verifies by construction, so it is never admitted through
+    the job path -- this mode is a local operator act, like
+    --inspect or --diagnose, that takes a variant file the
+    operator's own process wrote, runs its script through the
+    same validation and confined execution as a real exec job,
+    and prints one JSON report:
+
+    - {"stage": "refused", "reason": ...} -- the core's own
+      validation refused the shape before anything ran,
+    - {"stage": "ran", "exit_code": ..., "timed_out": ...,
+      "duration_sec": ..., "stdout_bytes": ..., "stderr_bytes":
+      ..., "digest": ...} -- the variant executed in the bucket,
+    - {"stage": "error", "reason": ...} -- the execution path
+      itself failed around the run.
+
+    Work lands under <base_dir>/fuzz-work, never the live work
+    tree; every run leaves an audit entry; nothing is mailed,
+    marked seen, or retained as a job. The variant's timeout
+    is capped at _VARIANT_TIMEOUT_CAP_SEC whatever the file
+    asks for. Exit code 0 means a report was printed; 2 is a
+    usage or config error, reported on stderr like the other
+    one-shot modes.
+    """
+    base_dir = _base_dir_for(cfg, args.config)
+    try:
+        with open(args.run_variant, encoding="utf-8") as fh:
+            variant = json.load(fh)
+    except (OSError, ValueError) as e:
+        print(f"run-variant: cannot read variant "
+              f"{args.run_variant}: {e}", file=sys.stderr)
+        return 2
+    report = {"stage": "refused", "reason": "variant is not a "
+              "JSON object"}
+    if isinstance(variant, dict):
+        mutator = variant.get("mutator")
+        job = {k: variant[k] for k in _VARIANT_KEYS
+               if k in variant}
+        if job.get("kind", "exec") != "exec":
+            report = {"stage": "refused",
+                      "reason": "variant kind is not exec"}
+        else:
+            job["kind"] = "exec"
+            try:
+                job["timeout_sec"] = min(
+                    int(job.get("timeout_sec")
+                        or cfg.get("default_timeout_sec", 300)),
+                    _VARIANT_TIMEOUT_CAP_SEC)
+            except (TypeError, ValueError, OverflowError):
+                job["timeout_sec"] = _VARIANT_TIMEOUT_CAP_SEC
+            job_id = job.get("job_id")
+            if not isinstance(job_id, str) or not job_id:
+                job["job_id"] = "fuzz-variant"
+            work_base = os.path.join(base_dir, "fuzz-work")
+            try:
+                os.makedirs(work_base, exist_ok=True)
+            except OSError as e:
+                print(f"run-variant: cannot create {work_base}: "
+                      f"{e}", file=sys.stderr)
+                return 2
+            if _security is not None:
+                _security.write_audit_entry(
+                    base_dir, "fuzz", "variant_run", "local_variant",
+                    job_id=str(job.get("job_id")),
+                    detail=mutator if isinstance(mutator, str)
+                    else "", cfg=cfg)
+            try:
+                r = execute_job(cfg, job, work_base)
+                digest = hashlib.sha384(
+                    (_as_str(r.get("stdout"))
+                     + _as_str(r.get("stderr"))).encode(
+                        "utf-8")).hexdigest()
+                report = {
+                    "stage": "ran",
+                    "exit_code": _as_int(r.get("exit_code"), -1),
+                    "timed_out": bool(r.get("timed_out")),
+                    "duration_sec": _as_float(
+                        r.get("duration_sec"), 0.0),
+                    "stdout_bytes": len(_as_str(
+                        r.get("stdout")).encode("utf-8")),
+                    "stderr_bytes": len(_as_str(
+                        r.get("stderr")).encode("utf-8")),
+                    "digest": digest,
+                }
+            except JobRejected as e:
+                report = {"stage": "refused", "reason": str(e)}
+            except Exception as e:  # the path around the run
+                report = {"stage": "error",
+                          "reason": f"{type(e).__name__}: {e}"}
+        if isinstance(mutator, str) and mutator:
+            report["mutator"] = mutator
+    print(json.dumps(report, sort_keys=True))
+    return 0
+
+
 def _invocation_line(argv=None) -> str:
     """This process's command line, shell-quoted for copy-paste.
 
@@ -10464,6 +10573,15 @@ def main() -> int:
                         "no mailbox")
     g.add_argument("--job-id", default=None, metavar="ID",
                    help="job id for --inspect job")
+    g.add_argument("--run-variant", default=None, metavar="FILE",
+                   help="run one locally supplied fuzz variant "
+                        "job from FILE through validation and "
+                        "confined execution, print its outcome "
+                        "as JSON, and exit; no mailbox needed. "
+                        "The job-fuzz sense's execution door: "
+                        "variants are unsigned local artifacts "
+                        "and are never admitted through the job "
+                        "path")
     g.add_argument("--audit-report", action="store_true",
                    help="print a summary of the security audit "
                         "log and exit; no mailbox needed")
@@ -10571,6 +10689,14 @@ def main() -> int:
         _posture = _load_mod("runner.posture", "posture")
         base_dir = _base_dir_for(cfg, args.config)
         return _posture.main(cfg, cfg_path, base_dir)
+    if args.run_variant:
+        # One local fuzz variant through validation and confined
+        # execution, outcome as JSON. Deliberately before the
+        # mailbox setup gate, like the other one-shot modes: a
+        # variant run needs config and the bucket, never a
+        # mailbox, and it must work on a box whose mail is not
+        # (yet) configured.
+        return run_variant(cfg, args)
     if args.remediation_release:
         # The owner's release door: restore a quarantined job's
         # outputs as one deliberate, recorded act. The Oracle

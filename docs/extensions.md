@@ -557,22 +557,23 @@ python3 sky_watcher.py --samples recorded-passes.json
 on the equator at midnight: all three stages fire at corridor
 entry, because the window opens inside the lead time.)
 
-## The catalog: twenty-four examples from the workbench
+## The catalog: twenty-five examples from the workbench
 
-Twenty-seven extension folders ship in all; this catalog pins
-twenty-four. `lab-results`, `pi-health`, and `sky-watcher` are
+Twenty-eight extension folders ship in all; this catalog pins
+twenty-five. `lab-results`, `pi-health`, and `sky-watcher` are
 standalone examples outside the pinned table, and `airwaves`
 appears both as a full section above and as a row below.
 
-Sixteen more working senses, each one a small diffing
+Seventeen more working senses, each one a small diffing
 watcher in the same shape as the four above — a manifest, a
 boring producer with one platform-reading function and a
 pure `decide()`, a state file, and a README. Thirteen are
 rooted in trades their author practiced: fuzzing, PKI,
 network engineering, penetration testing, kernel work,
-code signing, operations; the last three watch the machine's
-resource trends, the runner's own job history, and
-machine-learning training runs instead.
+code signing, operations; the last four watch the machine's
+resource trends, the runner's own job history,
+machine-learning training runs, and the neighborhood of
+the jobs themselves.
 Powerful-desktop senses are the center of
 gravity; every one also declares how it tunes down for a Pi
 Light install (its README's Light mode section has the
@@ -605,6 +606,7 @@ quoting a number it cannot stand behind.
 | `resource-sentinel` | The machine's counters, judged as rates and trends, never single samples: CPU held saturated across the window (high), disk free space shrinking too fast (high), process count storm (medium), memory falling steadily to the floor (medium) | Cadence to 300s, window down — the trends it hunts play out over minutes |
 | `job-watcher` | The runner's retained job history: the same job failing repeatedly (medium), a job alternating pass/fail (info), a run far beyond the job's own duration baseline (medium, and never before a baseline exists), many distinct jobs failing at once (high) | Cadence to 900s; history does not move fast |
 | `training-watch` | An ML training run: its log tail, checkpoint directory, and GPU — a checkpoint that has stopped changing (info), a log quiet past the stall limit or flat parsed losses (medium), crash markers: Traceback, CUDA out of memory, NCCL error, RuntimeError (high), GPU overheating (high), GPU memory pressure (medium) | Cadence to 900s; `tail_bytes` down; the parser half needs no GPU |
+| `job-fuzz` | The runner's retained jobs, fuzzed: grammar-shaped mutations of real jobs run through the core's validation and confined execution (`--run-variant`) on idle cycles only — a variant that hangs or breaks the run (high), a variant whose outcome class diverges from the seed job's recorded class (medium), a first-seen (mutator, stage, class) combination (info) | Cadence to 900s; `max_variants_per_pass` down; the campaign spends idle cycles only |
 | `falco-feed` | Falco's JSON alert file: Emergency/Alert/Critical rules (high); Warning/Notice rules (medium). No footprint claimed for Falco itself: it did not run in the measurement sandbox (the host denied BPF) — on a normal box the modern-eBPF driver is the zero-build path | Cadence up; the episode cooldown is the volume knob |
 | `suricata-feed` | Suricata's eve.json: alert signatures at the source's own severity (1 high, 2 medium, 3 info); protocol anomalies (medium). ~52 MB with a minimal ruleset in the measurement container — a production ruleset is several hundred MB; the rules are the weight | A trimmed ruleset is the real light mode; cadence up |
 | `zeek-feed` | Zeek's conn.log and dns.log: a burst of first-seen external peers (medium); DNS anomalies — long queries, odd qtypes, many labels (medium). ~230 MB idle measured: Zeek is never a default | Cadence up; conn.log only |

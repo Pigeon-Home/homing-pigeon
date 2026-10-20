@@ -436,6 +436,7 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | `--inspect {board,budget,job,redact}` | Read local Oracle state and exit; no mailbox |
 | `--audit-report [--since 14d|48h]` | Summarize the security audit log and exit; no mailbox, read-only |
 | `--posture` | Report the runner's security posture (exit 0/1/2) and exit; no mailbox |
+| `--run-variant FILE` | Run one locally supplied fuzz variant job from FILE through validation and confined execution, print its outcome as JSON, and exit; no mailbox. The job-fuzz sense's execution door: variants are unsigned local artifacts, admitted only here, never through the job path |
 | `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. Turns are appended to `oracle-chat.jsonl` in the base dir (1 MiB, then one backup). See `CONTRIBUTING.md` (maintainer notes: the `--oracle` flag). |
 | `--poll-interval SECONDS`, `--timeout SECONDS`, `--judge MODE`, `--dag-mode MODE`, `--oracle-mode MODE`, … | One-process config overrides: one flag per key, `config.json` untouched, and a flag beats a later config edit. The full map is in `--help` and `docs/configuring-oracle.md` |
 
