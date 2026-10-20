@@ -41,7 +41,8 @@ before anyone checked it was a string.
 Ring 2 has started for sensor alerts. A flipped signature
 stores no alert. A signed alert whose severity is a list
 stores no alert. The next good alert, in the same directory,
-still files.
+still files. The same rule holds for a job: a flipped
+envelope does not run, and the next good job does.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already

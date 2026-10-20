@@ -13,8 +13,11 @@ the zillion inputs.
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
+import uuid
+from datetime import datetime, timezone
 from unittest import mock
 
 from hypothesis import given, settings, strategies as st
@@ -30,6 +33,7 @@ from runner.extensions import (
     signal_description,
 )
 from runner.review import review_job
+from runner.jobcrypto import encrypt_body
 from runner.runner import (
     _handle_local_signal_conn,
     _ingest_local_envelope_inner,
@@ -39,6 +43,8 @@ from runner.runner import (
     _run_oracle_tool,
     _scan_local_inbox,
     check_key_policy,
+    process_transport_message,
+    sign_payload,
 )
 from runner.security import validate_security_config
 from runner.senses import (
@@ -436,6 +442,57 @@ class RingTwoAlertTest(unittest.TestCase):
         with open(self._senses(), encoding="utf-8") as f:
             stored = f.read()
         self.assertIn("tripwire", stored)
+
+
+class RingTwoJobTest(unittest.TestCase):
+    """Same rule on a job. A bad envelope does not run. The next
+    good one, same directory, does."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-ring2-job-")
+        self.cfg = {
+            "mailbox_user": "runner@example.com",
+            "shared_secret": SECRET,
+            "max_job_age_sec": 3600,
+            "default_timeout_sec": 30,
+            "base_dir": self.tmp,
+        }
+        self.secrets = {"": SECRET}
+        self.marker = os.path.join(self.tmp, "ran.txt")
+
+    def _wire(self, job_id):
+        payload = {
+            "v": 1,
+            "type": "job",
+            "job_id": job_id,
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "kind": "exec",
+            "interpreter": [sys.executable],
+            "script": "open(%r, 'w').write('ran')\n" % self.marker,
+        }
+        return encrypt_body(
+            sign_payload(payload, SECRET), SECRET,
+            job_id=job_id, key_id="", sign=sign_payload)
+
+    def _run(self, job_id, body):
+        return process_transport_message(
+            self.cfg, self.tmp, {}, self.secrets, {},
+            "[HOMING-PIGEON] job " + job_id, body)
+
+    def test_a_flipped_job_does_not_run_and_the_next_one_does(self):
+        bad_id = uuid.uuid4().hex
+        wire = self._wire(bad_id)
+        flipped = wire[:-2] + ("0" if wire[-2] != "0" else "1") + wire[-1]
+        self.assertEqual(self._run(bad_id, flipped), [])
+        self.assertFalse(os.path.exists(self.marker))
+        good_id = uuid.uuid4().hex
+        out = self._run(good_id, self._wire(good_id))
+        self.assertTrue(out)
+        self.assertTrue(os.path.isfile(self.marker))
+        with open(self.marker, encoding="utf-8") as f:
+            self.assertEqual(f.read(), "ran")
+
 
 
 
