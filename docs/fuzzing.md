@@ -80,7 +80,9 @@ does. A job aimed at a different runner, or at no runner,
 does not run when audience is enforce. The job that names
 this runner still does. A `script_url` of `file:` is not
 fetched, in either case, and the inline script does not run
-in its place. The next ordinary job still does.
+in its place. The next ordinary job still does. A null
+byte in an argument, an interpreter, or an environment
+name does not run. The next ordinary job still does.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already

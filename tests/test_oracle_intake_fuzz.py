@@ -762,6 +762,36 @@ class RingTwoJobTest(unittest.TestCase):
         self._run(good_id, self._wire(good_id))
         self.assertTrue(os.path.isfile(self.marker))
 
+    def _poison(self, job_id, **extra):
+        payload = {
+            "v": 1,
+            "type": "job",
+            "job_id": job_id,
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "kind": "exec",
+            "interpreter": [sys.executable],
+            "script": "open(%r, 'w').write('ran')\n" % self.marker,
+        }
+        payload.update(extra)
+        return encrypt_body(
+            sign_payload(payload, SECRET), SECRET,
+            job_id=job_id, key_id="", sign=sign_payload)
+
+    def test_a_null_byte_does_not_run(self):
+        cases = (
+            {"args": ["ok", "bad\x00byte"]},
+            {"interpreter": [sys.executable + "\x00"]},
+            {"env": {"OK": "fine", "BAD\x00": "no"}},
+        )
+        for extra in cases:
+            job_id = uuid.uuid4().hex
+            self._run(job_id, self._poison(job_id, **extra))
+            self.assertFalse(os.path.exists(self.marker))
+        good_id = uuid.uuid4().hex
+        self._run(good_id, self._wire(good_id))
+        self.assertTrue(os.path.isfile(self.marker))
+
 
 _CANARY = "hp-canary-9f3c2a"
 
