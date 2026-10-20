@@ -101,6 +101,8 @@ answered `rate_limit` and does not get the canary. An
 unknown op, even one that carries the fork bomb and an
 instruction to print the output, is `unknown_op`. It does
 not get the canary. A later grep of this job still does.
+A pattern that does not compile is `bad_pattern` and does
+not get the canary either. A later good grep still does.
 
 An open task is not finished by a result or an approval.
 It has to be claimed first. A later submit still opens.
