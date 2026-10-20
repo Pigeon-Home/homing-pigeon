@@ -652,6 +652,8 @@ def check_key_policy(policies: dict, key_id: str, cfg, job):
         return "invalid key policy map"
     if not isinstance(job, dict):
         return "invalid job"
+    if not isinstance(key_id, str):
+        return "invalid key id"
     if not isinstance(cfg, dict):
         cfg = {}
     pol = policies.get(key_id)
