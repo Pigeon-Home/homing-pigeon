@@ -4,6 +4,17 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.18 - 2026-10-20
+
+- **Windows monitor test stamps inside the resource window.**
+  The evidence was written before the monitor started, and
+  the resource window only looks one second back. On the
+  v3.11.17 main push that write took longer, so
+  `resource_event` was missing while confinement (five
+  seconds of slack) still matched. The tag of the same
+  commit was fast enough to publish. The test now stamps
+  from the monitor's own start.
+
 ## 3.11.17 - 2026-10-20
 
 - **Version rev.** No functional change from 3.11.16.

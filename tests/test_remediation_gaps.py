@@ -443,7 +443,18 @@ class Gaps(unittest.TestCase):
             self.assertIsNotNone(bare.outcome["acted"])
             base = os.path.join(work, "base")
             os.makedirs(base)
-            now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            def alerts(_since):
+                return [{"title": "nothing"}, {"title": "pid 1 spinning"}]
+            win = _mon(base, base_dir=base, alerts_fn=alerts, job="j")
+            # Stamp from the monitor's own start. The resource window
+            # only reaches one second before that. Writing the logs
+            # first can take longer than that on Windows, so the
+            # event falls out while confinement (five seconds of
+            # slack) still matches. That failed build-windows on the
+            # v3.11.17 main push; the tag of the same commit was
+            # fast enough to pass.
+            now = time.strftime(
+                "%Y-%m-%dT%H:%M:%SZ", time.gmtime(win._started_wall))
             with open(os.path.join(base, "security-audit.jsonl"), "w") as fh:
                 for rec in (
                     {"ts": now, "feature": "other", "job_id": "j",
@@ -458,9 +469,6 @@ class Gaps(unittest.TestCase):
                     fh.write(json.dumps(rec) + "\n")
             with open(os.path.join(base, "security-events.jsonl"), "w") as fh:
                 fh.write(json.dumps({"at": now, "type": "resource_pressure"}) + "\n")
-            def alerts(_since):
-                return [{"title": "nothing"}, {"title": "pid 1 spinning"}]
-            win = _mon(base, base_dir=base, alerts_fn=alerts, job="j")
             win.sample_once()
             kinds = [d["kind"] for d in win.outcome["divergences"]]
             self.assertEqual(win.outcome["acted"]["divergence"]["kind"],
