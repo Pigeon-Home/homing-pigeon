@@ -137,6 +137,8 @@ worker who has them does. A worker who is not on
 `worker_allowlist` does not claim either. The worker who
 is on the list does. A task in a compartment the worker
 does not share stays open. The worker who shares it claims.
+A task id with a slash, or longer than 128 characters,
+opens nothing. A plain id still opens.
 
 ## One prompt-injection case
 

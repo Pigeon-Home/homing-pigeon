@@ -1429,6 +1429,16 @@ class RingTwoBoardTest(unittest.TestCase):
         self.assertEqual(self.board.tasks[task_id]["state"], "claimed")
         self.assertEqual(self.board.tasks[task_id]["claimed_by"], "w-blue")
 
+    def test_a_bad_task_id_opens_nothing(self):
+        for task_id in ("../x", "foo/bar", "a" * 129):
+            self._send_kind("task_submit", task_id, self._kind(
+                "task_submit", task_id, payload={"note": "file me"}))
+            self.assertNotIn(task_id, self.board.tasks)
+        good = "task-id-ok"
+        self._send(good, self._sealed(good))
+        self.assertEqual(self.board.tasks[good]["state"], "open")
+
+
 
 
 
