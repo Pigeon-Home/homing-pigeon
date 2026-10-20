@@ -18,7 +18,7 @@ import tempfile
 import time
 import unittest
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest import mock
 
 from hypothesis import given, settings, strategies as st
@@ -464,12 +464,12 @@ class RingTwoJobTest(unittest.TestCase):
         self.secrets = {"": SECRET}
         self.marker = os.path.join(self.tmp, "ran.txt")
 
-    def _wire_as(self, job_id, secret, key_id):
+    def _wire_as(self, job_id, secret, key_id, issued_at=None):
         payload = {
             "v": 1,
             "type": "job",
             "job_id": job_id,
-            "issued_at": datetime.now(timezone.utc).strftime(
+            "issued_at": issued_at or datetime.now(timezone.utc).strftime(
                 "%Y-%m-%dT%H:%M:%SZ"),
             "kind": "exec",
             "interpreter": [sys.executable],
@@ -537,6 +537,21 @@ class RingTwoJobTest(unittest.TestCase):
         self._run(bad_id, self._wire(bad_id))
         self.assertFalse(os.path.exists(self.marker))
         self.cfg["max_script_bytes"] = 1048576
+        good_id = uuid.uuid4().hex
+        self._run(good_id, self._wire(good_id))
+        self.assertTrue(os.path.isfile(self.marker))
+
+    def test_a_stamp_outside_the_window_does_not_run(self):
+        now = datetime.now(timezone.utc)
+        stamps = (
+            (now - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            (now + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        )
+        for stamp in stamps:
+            job_id = uuid.uuid4().hex
+            self._run(job_id, self._wire_as(
+                job_id, SECRET, "", stamp))
+            self.assertFalse(os.path.exists(self.marker))
         good_id = uuid.uuid4().hex
         self._run(good_id, self._wire(good_id))
         self.assertTrue(os.path.isfile(self.marker))

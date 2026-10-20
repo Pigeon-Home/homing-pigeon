@@ -59,6 +59,10 @@ too, so a canary in retained output is not in the raw reply.
 An encrypted submit opens the task. A cleartext submit does
 not.
 
+A job stamped two hours ago, or an hour ahead, does not
+run. The window is `max_job_age_sec`, with five minutes of
+slack into the future. The next job stamped now still runs.
+
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already
 treats as a dropped record.
