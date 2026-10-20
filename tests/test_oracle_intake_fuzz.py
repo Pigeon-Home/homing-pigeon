@@ -778,16 +778,26 @@ class RingTwoJobTest(unittest.TestCase):
             sign_payload(payload, SECRET), SECRET,
             job_id=job_id, key_id="", sign=sign_payload)
 
+    def _opened(self, out, job_id):
+        outer = verify_body(out[0][1], SECRET)
+        inner = decrypt_body(outer, SECRET, job_id, "")
+        return verify_body(inner, SECRET)
+
     def test_a_null_byte_does_not_run(self):
-        cases = (
+        for extra in (
             {"args": ["ok", "bad\x00byte"]},
-            {"interpreter": [sys.executable + "\x00"]},
             {"env": {"OK": "fine", "BAD\x00": "no"}},
-        )
-        for extra in cases:
+        ):
             job_id = uuid.uuid4().hex
-            self._run(job_id, self._poison(job_id, **extra))
+            out = self._run(job_id, self._poison(job_id, **extra))
             self.assertFalse(os.path.exists(self.marker))
+            self.assertEqual(self._opened(out, job_id)["exit_code"], -2)
+        job_id = uuid.uuid4().hex
+        out = self._run(job_id, self._poison(
+            job_id, interpreter=[sys.executable + "\x00"]))
+        self.assertFalse(os.path.exists(self.marker))
+        opened = self._opened(out, job_id)
+        self.assertNotEqual(opened["exit_code"], -2)
         good_id = uuid.uuid4().hex
         self._run(good_id, self._wire(good_id))
         self.assertTrue(os.path.isfile(self.marker))

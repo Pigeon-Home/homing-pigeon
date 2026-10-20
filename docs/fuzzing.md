@@ -81,8 +81,12 @@ does not run when audience is enforce. The job that names
 this runner still does. A `script_url` of `file:` is not
 fetched, in either case, and the inline script does not run
 in its place. The next ordinary job still does. A null
-byte in an argument, an interpreter, or an environment
-name does not run. The next ordinary job still does.
+byte in an argument or an environment name is refused, and
+the script does not start. A null byte in the interpreter
+is not a refusal. The path is absent, repair is the
+default, and the platform shell is started. The Python
+script does not run under that shell. The next ordinary
+job still does.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already
