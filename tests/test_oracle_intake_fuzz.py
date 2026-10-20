@@ -1590,6 +1590,20 @@ class RingTwoBoardTest(unittest.TestCase):
         self.assertEqual(
             self.board.tasks["in-review"]["state"], "pending_review")
 
+    def test_a_nan_in_the_result_is_stored_as_null(self):
+        self._send("nan-task", self._sealed("nan-task"))
+        self._send_kind("task_request", "w-nan", self._kind(
+            "task_request", "w-nan", capabilities=["py"]))
+        self._send_kind("task_result", "nan-task", self._kind(
+            "task_result", "nan-task", result={"reading": float("nan")}))
+        task = self.board.tasks["nan-task"]
+        self.assertEqual(task["state"], "done")
+        self.assertIsNone(task["result"]["reading"])
+        self._send_kind("task_result", "nan-task", self._kind(
+            "task_result", "nan-task", result={"reading": 1}))
+        self.assertIsNone(self.board.tasks["nan-task"]["result"]["reading"])
+
+
 
 
 

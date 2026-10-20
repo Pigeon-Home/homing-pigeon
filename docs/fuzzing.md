@@ -160,6 +160,8 @@ request leaves it with the first. A task in
 `pending_review` is not put back to open when the claim
 is older than `task_timeout`. A later request can take a
 different open task, and the review stays where it is.
+A NaN in a result is stored as null, and the task is
+done. A second result does not replace that null.
 
 ## One prompt-injection case
 
