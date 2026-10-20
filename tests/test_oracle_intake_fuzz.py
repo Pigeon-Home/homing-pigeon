@@ -1566,6 +1566,31 @@ class RingTwoBoardTest(unittest.TestCase):
         self.assertEqual(task["state"], "claimed")
         self.assertEqual(task["claimed_by"], "w-old")
 
+    def test_a_review_does_not_expire_into_an_open_task(self):
+        self.cfg["require_review"] = True
+        self.cfg["task_timeout"] = 60
+        self._send("in-review", self._sealed("in-review"))
+        self._send_kind("task_request", "w-rev", self._kind(
+            "task_request", "w-rev", capabilities=["py"]))
+        self._send_kind("task_result", "in-review", self._kind(
+            "task_result", "in-review", result={"ok": True}))
+        self.assertEqual(
+            self.board.tasks["in-review"]["state"], "pending_review")
+        stale = datetime.now(timezone.utc) - timedelta(hours=2)
+        self.board.tasks["in-review"]["claimed_at"] = stale.isoformat()
+        self._send_kind("task_request", "w-other", self._kind(
+            "task_request", "w-other", capabilities=["py"]))
+        task = self.board.tasks["in-review"]
+        self.assertEqual(task["state"], "pending_review")
+        self.assertEqual(task["claimed_by"], "w-rev")
+        self._send("review-ok", self._sealed("review-ok"))
+        self._send_kind("task_request", "w-other", self._kind(
+            "task_request", "w-other", capabilities=["py"]))
+        self.assertEqual(self.board.tasks["review-ok"]["claimed_by"], "w-other")
+        self.assertEqual(
+            self.board.tasks["in-review"]["state"], "pending_review")
+
+
 
 
 

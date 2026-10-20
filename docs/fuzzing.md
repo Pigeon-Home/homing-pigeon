@@ -156,7 +156,10 @@ priority of `1` still opens. A claim older than
 `task_timeout` is offered again. The next request takes
 it, and the previous worker no longer holds it. A claim
 inside `task_timeout` is not taken. A second worker's
-request leaves it with the first.
+request leaves it with the first. A task in
+`pending_review` is not put back to open when the claim
+is older than `task_timeout`. A later request can take a
+different open task, and the review stays where it is.
 
 ## One prompt-injection case
 
