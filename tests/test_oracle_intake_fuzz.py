@@ -46,6 +46,7 @@ from runner.runner import (
     check_key_policy,
     process_transport_message,
     sign_payload,
+    Board,
 )
 from runner.security import validate_security_config
 from runner.senses import (
@@ -597,6 +598,52 @@ class RingTwoQueryTest(unittest.TestCase):
         good = self._ask(good_id, self._wire(good_id))
         blob = " ".join(body for _s, body, _t in good)
         self.assertIn(_CANARY, blob)
+
+
+class RingTwoBoardTest(unittest.TestCase):
+    """A board message that does not verify changes nothing. The
+    next good submit still opens the task."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-ring2-board-")
+        self.board = Board(os.path.join(self.tmp, "board.json"))
+        self.cfg = {
+            "mailbox_user": "runner@example.com",
+            "shared_secret": SECRET,
+            "max_job_age_sec": 3600,
+            "base_dir": self.tmp,
+            "board": self.board,
+        }
+
+    def _wire(self, task_id):
+        payload = {
+            "v": 1,
+            "type": "task_submit",
+            "task_id": task_id,
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "payload": {"note": "file me"},
+        }
+        return sign_payload(payload, SECRET)
+
+    def _send(self, task_id, body):
+        return process_transport_message(
+            self.cfg, self.tmp, {}, {"": SECRET}, {},
+            "[HOMING-PIGEON] task_submit " + task_id, body)
+
+    def test_a_flipped_submit_opens_nothing(self):
+        bad_id = "task-bad-1"
+        wire = self._wire(bad_id)
+        flipped = (
+            wire[:-2] + ("0" if wire[-2] != "0" else "1") + wire[-1])
+        self.assertEqual(self._send(bad_id, flipped), [])
+        self.assertNotIn(bad_id, self.board.tasks)
+        good_id = "task-good-1"
+        out = self._send(good_id, self._wire(good_id))
+        self.assertEqual(self.board.tasks[good_id]["state"], "open")
+        blob = " ".join(body for _s, body, _t in out)
+        self.assertIn("task_ack", blob)
+
 
 
 
