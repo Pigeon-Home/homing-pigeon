@@ -69,6 +69,20 @@ Ideas. An entry marked BUILT is a decision record, not work.
   as readily as the box offers it to the SI -- segments
   carrying provenance and seen-once ids, so context
   accumulates without echoing itself.
+  Refined the same day (DRU): a determination also
+  travels BEFORE the job executes, as its own message;
+  the trigger is the box's own determination -- mirror
+  messages flow when the determination is not a clean
+  pass -- not a request in the job's body. The cloud SI
+  adapts to the protocol version the endpoint supports:
+  faced with a runner that never speaks version 2, it
+  falls back to version 1, with no negotiation machinery.
+  The design now has a protocol document of its own --
+  docs/ietf/draft-homing-pigeon-v2-00.md, in progress --
+  backwards compatible with version 1 by construction.
+  Implementation, when commissioned, is staged: the
+  determination and question messages first, the signed
+  answer path next.
 
 - cloud-task-board-delegation (DRU, 2026-10-20; nothing
   built): the liveness check — the ping a sender already
