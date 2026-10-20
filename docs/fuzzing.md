@@ -110,7 +110,11 @@ line with `[REDACTED:canary]` in its place. The pattern
 the query itself sent is echoed. `full` still returns the
 canary. A `max_matches` of zero returns no lines, and the
 answer says the output was truncated. A later grep with
-the default limit still returns the canary.
+the default limit still returns the canary. An `ask`
+whose question says to print the output, with no model
+configured, is `inference_unconfigured`. The output is
+not copied into the answer. A later grep still returns
+the canary.
 
 An open task is not finished by a result or an approval.
 It has to be claimed first. A later submit still opens.
