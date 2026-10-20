@@ -1068,6 +1068,27 @@ class RingTwoBoardTest(unittest.TestCase):
         self._send(other, self._sealed(other))
         self.assertEqual(self.board.tasks[other]["state"], "open")
 
+    def test_a_claimed_task_can_be_finished_once(self):
+        task_id = "task-claim-1"
+        self._send(task_id, self._sealed(task_id))
+        request = self._kind(
+            "task_request", "w1", capabilities=["py"])
+        self._send_kind("task_request", "w1", request)
+        self.assertEqual(self.board.tasks[task_id]["state"], "claimed")
+        self._send_kind(
+            "task_result", task_id,
+            self._kind("task_result", task_id, result={"ok": True}))
+        self.assertEqual(self.board.tasks[task_id]["state"], "done")
+        self.assertEqual(self.board.tasks[task_id]["result"], {"ok": True})
+        self._send_kind(
+            "task_result", task_id,
+            self._kind("task_result", task_id, result={"ok": False}))
+        self.assertEqual(self.board.tasks[task_id]["result"], {"ok": True})
+        other = "task-claim-2"
+        self._send(other, self._sealed(other))
+        self.assertEqual(self.board.tasks[other]["state"], "open")
+
+
 
 
 

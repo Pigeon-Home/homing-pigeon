@@ -100,6 +100,8 @@ An open task is not finished by a result or an approval.
 It has to be claimed first. A later submit still opens.
 A second submit of the same task does not replace it.
 The first payload stays. A different task still opens.
+Once a task is claimed, a result finishes it, and a second
+result does not replace that. A later submit still opens.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already
