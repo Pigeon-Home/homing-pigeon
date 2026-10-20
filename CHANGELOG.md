@@ -4,6 +4,35 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.10 - 2026-10-20
+
+- **job-fuzz: a sense that fuzzes the jobs this box
+  already ran.** A new example sense plus a core one-shot
+  door (`--run-variant FILE`): the sense keeps a bounded
+  corpus of the runner's retained jobs, mutates them on
+  idle cycles only, and runs each variant through the
+  runner's own validation and confined execution; findings
+  file as Oracle signals (hard failures, divergence from
+  the seed's recorded outcome, coverage novelties) and are
+  context for future opinions, never a gate on the seed
+  job. Variants are mutations of verified jobs, so they
+  are never admitted through the job path; the door copies
+  an allowlist of job keys and drops everything else. The
+  corpus learns: novelty-reaching variants are promoted
+  into a distilled tier, splice and dictionary mutators
+  widen the neighborhood, relation probes carry an
+  expected class and digest, interesting variants are
+  minimized before they file, hard failures triage into
+  reason buckets, and seeds earn their budget by yield.
+- **Windows fixes.** job-fuzz splits its runner command
+  per platform (POSIX shlex ate the backslashes out of
+  Windows paths, so no campaign could run there), and the
+  Pi Light end-to-end test drains the wake gate's brief
+  thread before its temp tree comes down. 3.11.9 was
+  tagged but never published: its release build failed on
+  that cleanup race (WinError 145). This release
+  supersedes it.
+
 ## 3.11.9 - 2026-10-20
 
 - **Mutation stats can finish.** mutmut's stats pass sets
