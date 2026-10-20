@@ -119,7 +119,9 @@ pattern that matches only stdout does not return the
 stderr line. A `queries` value that is not a list, even
 when the value is an instruction to print the canary, is
 no queries. The answer is empty. A later grep still
-returns the canary.
+returns the canary. A record whose `saved_at` is older
+than the retention window is `expired` and does not
+return the canary. A fresh `saved_at` still does.
 
 An open task is not finished by a result or an approval.
 It has to be claimed first. A later submit still opens.
