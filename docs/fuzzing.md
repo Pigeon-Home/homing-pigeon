@@ -49,10 +49,15 @@ bound to sensor alerts only cannot run a script, and the
 owner's key still can. A script over `max_script_bytes`
 does not run, and the next script that fits still does. A
 flipped query learns nothing from retained output. The next
-good query of the same output still gets the answer. A query
-is still admitted as signed cleartext. A job is not. A
-board submit is the same: cleartext, and a flipped signature
-opens no task. The next good submit still does.
+good query of the same output still gets the answer.
+
+That gap is closed. A query and a board message now go
+through the same gate as a job. Cleartext is refused unless
+the process was started with `--allow-cleartext`. An
+encrypted query is answered, and the answer is encrypted
+too, so a canary in retained output is not in the raw reply.
+An encrypted submit opens the task. A cleartext submit does
+not.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already

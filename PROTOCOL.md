@@ -387,7 +387,7 @@ The object protocol uses three cryptographic primitives:
   algorithm (`aes-256-gcm/hkdf-sha384`), a 12-byte nonce, and
   the ciphertext — and the envelope is itself signed as
   transmitted; the receiver verifies the envelope's signature
-  before decrypting. A receiver MUST accept the encrypted form, and MUST NOT execute a job received in cleartext unless the operator has explicitly enabled cleartext acceptance; in the reference software that enable is the `--allow-cleartext` command-line parameter, deliberately not a configuration setting.
+  before decrypting. A receiver MUST accept the encrypted form, and MUST NOT execute a job received in cleartext unless the operator has explicitly enabled cleartext acceptance; in the reference software that enable is the `--allow-cleartext` command-line parameter, deliberately not a configuration setting. The reference receiver applies that same refusal to a query and to a board message, and an encrypted query or board message is answered in the same form.
   A result mirrors the form of the job it answers unless
   `job_encryption` says otherwise: an explicit true encrypts
   every result, and the literal false encrypts none.

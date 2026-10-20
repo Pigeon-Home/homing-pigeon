@@ -12,6 +12,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "cloud"))
 
+from runner import jobcrypto
 from runner.runner import Board, poll_once
 from send_job import sign_payload
 from tests.test_runner import FakeIMAP, FakeSMTP
@@ -94,7 +95,13 @@ def _board_mail(subject, payload):
     msg["From"] = SENDER
     msg["To"] = SENDER
     msg["Subject"] = subject
-    msg.set_content(sign_payload(payload, SECRET))
+    signed = sign_payload(payload, SECRET)
+    ident = subject.rsplit(" ", 1)[-1]
+    key_id = payload.get("key_id") if isinstance(payload, dict) else ""
+    wire = jobcrypto.encrypt_body(
+        signed, SECRET, job_id=ident, key_id=key_id or "",
+        sign=sign_payload)
+    msg.set_content(wire)
     return msg.as_bytes()
 
 

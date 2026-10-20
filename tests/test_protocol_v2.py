@@ -23,12 +23,23 @@ sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "tests"))
 sys.path.insert(0, os.path.join(REPO, "cloud"))
 
+from runner import jobcrypto  # noqa: E402
 from runner import runner as R  # noqa: E402
 from runner import security as SEC  # noqa: E402
 from runner.runner import poll_once, sign_payload, verify_body  # noqa: E402
 from tests.security_parity import SECRET, FakeIMAP, FakeSMTP  # noqa: E402
 
 import send_job  # noqa: E402
+
+
+def _open_reply(msg, secret=SECRET):
+    body = verify_body(msg.get_content(), secret)
+    if isinstance(body, dict) and isinstance(body.get("hp_enc"), dict):
+        ident = str(msg["Subject"]).rsplit(" ", 1)[-1]
+        inner = jobcrypto.decrypt_body(
+            body, secret, ident, body.get("key_id") or "")
+        body = verify_body(inner, secret)
+    return body
 
 
 def _now():
@@ -40,7 +51,15 @@ def _mail(subject, payload):
     msg["From"] = "si@example.com"
     msg["To"] = "si@example.com"
     msg["Subject"] = subject
-    msg.set_content(sign_payload(payload, SECRET))
+    signed = sign_payload(payload, SECRET)
+    subject_l = subject.lower()
+    if "query" in subject_l or "task_" in subject_l:
+        ident = subject.rsplit(" ", 1)[-1]
+        key_id = payload.get("key_id") if isinstance(payload, dict) else ""
+        signed = jobcrypto.encrypt_body(
+            signed, SECRET, job_id=ident, key_id=key_id or "",
+            sign=sign_payload)
+    msg.set_content(signed)
     return msg.as_bytes()
 
 
@@ -108,7 +127,7 @@ class VersionGateTest(unittest.TestCase):
              "queries": [{"op": "grep", "pattern": "x"}]}
         smtp = self._poll([_mail("[HOMING-PIGEON] query q-v1", q)])
         self.assertEqual(len(smtp.sent), 1)
-        body = verify_body(smtp.sent[0].get_content(), SECRET)
+        body = _open_reply(smtp.sent[0])
         self.assertEqual(body["type"], "qresult")
         self.assertEqual(body["rejected"], "unknown_job")
         self.assertEqual(body["v"], 1)
@@ -119,7 +138,7 @@ class VersionGateTest(unittest.TestCase):
              "queries": [{"op": "grep", "pattern": "x"}]}
         smtp = self._poll([_mail("[HOMING-PIGEON] query q-v2", q)])
         self.assertEqual(len(smtp.sent), 1)
-        body = verify_body(smtp.sent[0].get_content(), SECRET)
+        body = _open_reply(smtp.sent[0])
         self.assertEqual(body["type"], "qresult")
         self.assertEqual(body["rejected"], "unsupported")
         self.assertEqual(body["v"], 1)
@@ -149,7 +168,7 @@ class VersionGateTest(unittest.TestCase):
         smtp = self._poll([mail])
         acks = [m for m in smtp.sent if "task_ack t-v1" in m["Subject"]]
         self.assertEqual(len(acks), 1)
-        body = verify_body(acks[0].get_content(), SECRET)
+        body = _open_reply(acks[0])
         self.assertEqual(body["type"], "task_ack")
         self.assertEqual(body["v"], 1)
 

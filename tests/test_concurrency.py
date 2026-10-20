@@ -56,10 +56,9 @@ def _wire_body(subject, body):
     against -- so a body whose job_id deliberately differs from
     the subject still decrypts and meets the check written for
     it, with its inner bytes unchanged. Anything that is not a
-    signed job object (queries, board messages, garbage) is
-    returned byte-identical: those paths have no cleartext
-    refusal, and deliberately broken fixtures must keep the
-    exact bytes they were built with.
+    signed job object is returned byte-identical, and so is a
+    body that does not parse. Queries and board messages are
+    enveloped the same way: those paths refuse cleartext too.
     """
     if not isinstance(body, str):
         return body
@@ -67,16 +66,24 @@ def _wire_body(subject, body):
         payload = json.loads(body)
     except ValueError:
         return body
-    if not isinstance(payload, dict) or payload.get("type") != "job":
+    if not isinstance(payload, dict):
         return body
-    m = re.search(r"\bjob\s+(\S+)", subject or "")
-    if not m:
+    kind = payload.get("type")
+    if kind == "job":
+        m = re.search(r"\bjob\s+(\S+)", subject or "")
+        if not m:
+            return body
+        object_id = m.group(1)
+    elif kind in ("query", "task_submit", "task_request",
+                  "task_result", "task_approve"):
+        object_id = (subject or "").rsplit(" ", 1)[-1]
+    else:
         return body
     key_id = payload.get("key_id")
     if not isinstance(key_id, str):
         key_id = ""
     return jobcrypto.encrypt_body(
-        body, SECRET, job_id=m.group(1), key_id=key_id,
+        body, SECRET, job_id=object_id, key_id=key_id,
         sign=sign_payload)
 
 

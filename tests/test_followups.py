@@ -43,7 +43,13 @@ def _signed(subject, payload, secret=SECRET):
     msg["From"] = SENDER
     msg["To"] = SENDER
     msg["Subject"] = subject
-    msg.set_content(sign_payload(payload, secret))
+    signed = sign_payload(payload, secret)
+    ident = subject.rsplit(" ", 1)[-1]
+    key_id = payload.get("key_id") if isinstance(payload, dict) else ""
+    wire = jobcrypto.encrypt_body(
+        signed, secret, job_id=ident, key_id=key_id or "",
+        sign=sign_payload)
+    msg.set_content(wire)
     return msg.as_bytes()
 
 
@@ -265,7 +271,7 @@ class QueryFollowupTest(unittest.TestCase):
         ])
         self.assertIn("1", imap.flagged)
         self.assertIn("query:q-missing", seen)
-        body = verify_body(smtp.sent[0].get_content(), SECRET)
+        body = _read_result(smtp.sent[0])
         self.assertEqual(body["rejected"], "unknown_job")
         self.assertEqual(body["type"], "qresult")
 
@@ -295,7 +301,7 @@ class QueryFollowupTest(unittest.TestCase):
         _, smtp, _ = self.cycle([
             _signed("[HOMING-PIGEON] query q1", payload),
         ])
-        body = verify_body(smtp.sent[0].get_content(), SECRET)
+        body = _read_result(smtp.sent[0])
         self.assertEqual(body["answers"][0]["matches"], ["ERROR: boom"])
         self.assertEqual(body["answers"][1]["lines"], ["ok"])
         self.assertTrue(body["answers"][2]["value"])
@@ -324,7 +330,7 @@ class QueryFollowupTest(unittest.TestCase):
         _, smtp, _ = self.cycle([
             _signed("[HOMING-PIGEON] query q-budget", payload),
         ])
-        body = verify_body(smtp.sent[0].get_content(), SECRET)
+        body = _read_result(smtp.sent[0])
         self.assertEqual(body["answers"][0], {"rejected": "budget"})
         self.assertEqual(load_retained(self.tmp, "job2")["spent"], 2)
         self.assertEqual(body["budget_remaining"], 0)

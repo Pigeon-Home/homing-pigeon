@@ -34,8 +34,9 @@ from runner.extensions import (
     signal_description,
 )
 from runner.review import review_job
-from runner.jobcrypto import encrypt_body
+from runner.jobcrypto import decrypt_body, encrypt_body
 from runner.runner import (
+    Board,
     _handle_local_signal_conn,
     _ingest_local_envelope_inner,
     _local_signal_port,
@@ -43,10 +44,11 @@ from runner.runner import (
     _parse_content_tool_call,
     _run_oracle_tool,
     _scan_local_inbox,
+    _set_allow_cleartext_jobs,
     check_key_policy,
     process_transport_message,
     sign_payload,
-    Board,
+    verify_body,
 )
 from runner.security import validate_security_config
 from runner.senses import (
@@ -582,22 +584,42 @@ class RingTwoQueryTest(unittest.TestCase):
         }
         return sign_payload(payload, SECRET)
 
+    def _sealed(self, query_id):
+        return encrypt_body(
+            self._wire(query_id), SECRET, job_id=query_id,
+            key_id="", sign=sign_payload)
+
     def _ask(self, query_id, body):
         return process_transport_message(
             self.cfg, self.tmp, {}, {"": SECRET}, {},
             "[HOMING-PIGEON] query " + query_id, body)
 
-    def test_a_flipped_query_learns_nothing(self):
+    def test_cleartext_is_refused_and_the_encrypted_query_answers(self):
         bad_id = uuid.uuid4().hex
         wire = self._wire(bad_id)
         flipped = (
             wire[:-2] + ("0" if wire[-2] != "0" else "1") + wire[-1])
-        bad = self._ask(bad_id, flipped)
-        self.assertEqual(bad, [])
+        self.assertEqual(self._ask(bad_id, flipped), [])
+        plain_id = uuid.uuid4().hex
+        self.assertEqual(self._ask(plain_id, self._wire(plain_id)), [])
         good_id = uuid.uuid4().hex
-        good = self._ask(good_id, self._wire(good_id))
-        blob = " ".join(body for _s, body, _t in good)
-        self.assertIn(_CANARY, blob)
+        good = self._ask(good_id, self._sealed(good_id))
+        raw = " ".join(body for _s, body, _t in good)
+        self.assertNotIn(_CANARY, raw)
+        outer = verify_body(good[0][1], SECRET)
+        inner = decrypt_body(outer, SECRET, good_id, "")
+        opened = verify_body(inner, SECRET)
+        self.assertIn(_CANARY, json.dumps(opened))
+
+    def test_allow_cleartext_still_answers(self):
+        _set_allow_cleartext_jobs(True)
+        try:
+            qid = uuid.uuid4().hex
+            good = self._ask(qid, self._wire(qid))
+            raw = " ".join(body for _s, body, _t in good)
+            self.assertIn(_CANARY, raw)
+        finally:
+            _set_allow_cleartext_jobs(False)
 
 
 class RingTwoBoardTest(unittest.TestCase):
@@ -626,23 +648,32 @@ class RingTwoBoardTest(unittest.TestCase):
         }
         return sign_payload(payload, SECRET)
 
+    def _sealed(self, task_id):
+        return encrypt_body(
+            self._wire(task_id), SECRET, job_id=task_id,
+            key_id="", sign=sign_payload)
+
     def _send(self, task_id, body):
         return process_transport_message(
             self.cfg, self.tmp, {}, {"": SECRET}, {},
             "[HOMING-PIGEON] task_submit " + task_id, body)
 
-    def test_a_flipped_submit_opens_nothing(self):
+    def test_cleartext_opens_nothing_and_the_envelope_does(self):
         bad_id = "task-bad-1"
         wire = self._wire(bad_id)
         flipped = (
             wire[:-2] + ("0" if wire[-2] != "0" else "1") + wire[-1])
         self.assertEqual(self._send(bad_id, flipped), [])
         self.assertNotIn(bad_id, self.board.tasks)
+        plain_id = "task-plain-1"
+        self.assertEqual(self._send(plain_id, self._wire(plain_id)), [])
+        self.assertNotIn(plain_id, self.board.tasks)
         good_id = "task-good-1"
-        out = self._send(good_id, self._wire(good_id))
+        out = self._send(good_id, self._sealed(good_id))
         self.assertEqual(self.board.tasks[good_id]["state"], "open")
-        blob = " ".join(body for _s, body, _t in out)
-        self.assertIn("task_ack", blob)
+        raw = " ".join(body for _s, body, _t in out)
+        self.assertNotIn("file me", raw)
+        self.assertIn("task_ack", " ".join(s for s, _b, _t in out))
 
 
 

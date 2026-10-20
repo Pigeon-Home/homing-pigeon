@@ -78,16 +78,24 @@ def _wire_body(subject, body):
         payload = json.loads(body)
     except ValueError:
         return body
-    if not isinstance(payload, dict) or payload.get("type") != "job":
+    if not isinstance(payload, dict):
         return body
-    m = re.search(r"\bjob\s+(\S+)", subject or "")
-    if not m:
+    kind = payload.get("type")
+    if kind == "job":
+        m = re.search(r"\bjob\s+(\S+)", subject or "")
+        if not m:
+            return body
+        object_id = m.group(1)
+    elif kind in ("query", "task_submit", "task_request",
+                  "task_result", "task_approve"):
+        object_id = (subject or "").rsplit(" ", 1)[-1]
+    else:
         return body
     key_id = payload.get("key_id")
     if not isinstance(key_id, str):
         key_id = ""
     return jobcrypto.encrypt_body(
-        body, SECRET, job_id=m.group(1), key_id=key_id,
+        body, SECRET, job_id=object_id, key_id=key_id,
         sign=sign_payload)
 
 

@@ -4653,6 +4653,46 @@ def _cleartext_jobs_allowed() -> bool:
     return _ALLOW_CLEARTEXT_JOBS
 
 
+def _admit_object(body_text, secrets, object_id):
+    """Verify a transmitted body and, when it is an envelope,
+    the object inside it.
+
+    Returns (obj, key_id, secret, encrypted). An hp_enc
+    envelope is verified, decrypted under object_id (the id
+    in the subject), and the inner object is verified with
+    the same key. A cleartext object comes back with
+    encrypted False. The caller decides whether that form
+    is allowed. Raises ValueError on a bad signature and
+    JobCryptoError on a bad envelope.
+    """
+    if not isinstance(object_id, str):
+        object_id = ""
+    payload, key_id = verify_body_keyed(body_text, secrets)
+    secret = secrets[key_id]
+    enc = payload.get("hp_enc") if isinstance(payload, dict) else None
+    if not isinstance(enc, dict):
+        return payload, key_id, secret, False
+    if _jobcrypto is None or not _jobcrypto.is_envelope(payload):
+        raise ValueError("malformed encryption envelope")
+    inner_text = _jobcrypto.decrypt_body(
+        payload, secret, job_id=object_id, key_id=key_id)
+    inner, inner_key = verify_body_keyed(inner_text, secrets)
+    if inner_key != key_id:
+        raise ValueError(
+            "encrypted envelope key_id does not match its body")
+    return inner, key_id, secret, True
+
+
+def _seal_reply(reply, secret, object_id, key_id, encrypted):
+    """Sign a reply. Encrypt it when the request was encrypted."""
+    text = sign_payload(reply, secret)
+    if encrypted and _jobcrypto is not None:
+        text = _jobcrypto.encrypt_body(
+            text, secret, job_id=object_id, key_id=key_id or "",
+            sign=sign_payload)
+    return text
+
+
 def _resolve_verbosity(cfg, flag) -> int:
     """The verbosity level for this process.
 
@@ -4927,12 +4967,13 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     # when one is configured.
     seen_key = _seen_key(cfg, "query:" + query_id)
 
-    def finish(reply, secret):
+    def finish(reply, secret, encrypted=False, key_id=""):
         if reply is not None and secret and opts is not None and (opts.dry_run or getattr(opts, "no_send", False)):
             reply = None
         if reply is not None and secret:
             send_mail(smtp, cfg, f"[HOMING-PIGEON] qresult {query_id}",
-                      sign_payload(reply, secret))
+                      _seal_reply(reply, secret, query_id, key_id,
+                                  encrypted))
         if isinstance(seen, dict) and (opts is None or not opts.dry_run):
             with _MAIL_LOCK:
                 seen[seen_key] = True
@@ -4944,10 +4985,24 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
 
     try:
         body = get_text_body(email.message_from_bytes(raw))
-        payload, key_id = verify_body_keyed(body, secrets)
-        secret = secrets[key_id]
+        payload, key_id, secret, encrypted = _admit_object(
+            body, secrets, query_id)
+    except JobCryptoError as e:
+        log(f"query bad envelope seq {seq}: {e}", "WARN")
+        _mark(imap, seq, opts)
+        return True
     except Exception as e:
         log(f"query bad signature seq {seq}: {e}", "WARN")
+        _mark(imap, seq, opts)
+        return True
+    if not encrypted and not _cleartext_jobs_allowed():
+        log(f"query {query_id}: cleartext refused", "WARN")
+        _append_security_event(base_dir, {
+            "type": "auth_rejection",
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "reason": "cleartext_not_supported",
+            "feature": "query",
+        })
         _mark(imap, seq, opts)
         return True
 
@@ -4968,7 +5023,7 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
         finish({
             "v": PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
             "rejected": "unsupported", "answers": [],
-        }, secret)
+        }, secret, encrypted, key_id)
         return True
     ok_ts, why = _issued_at_ok(payload.get("issued_at"), cfg)
     if not ok_ts:
@@ -4986,7 +5041,7 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
         finish({
             "v": PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
             "rejected": "rate_limit", "answers": [],
-        }, secret)
+        }, secret, encrypted, key_id)
         return True
 
     job_id = payload.get("job_id")
@@ -5053,7 +5108,7 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
                     "job_id": job_id, "answers": answers,
                     "budget_remaining": remaining,
                 }
-    finish(reply, secret)
+    finish(reply, secret, encrypted, key_id)
     return True
 
 def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, base_dir):
@@ -5068,14 +5123,32 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
             mark_seen(imap, seq)
     try:
         body = get_text_body(email.message_from_bytes(raw))
-        payload, key_id = verify_body_keyed(body, secrets)
-        secret = secrets[key_id]
+        payload, key_id, secret, encrypted = _admit_object(
+            body, secrets, ident)
+    except JobCryptoError as e:
+        reject(f"bad envelope: {e}")
+        _append_security_event(base_dir, {
+            "type": "auth_rejection",
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "reason": "bad_encryption",
+            "feature": "board",
+        })
+        return True
     except Exception as e:
         reject(f"bad signature: {e}")
         _append_security_event(base_dir, {
             "type": "auth_rejection",
             "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "reason": "bad_signature",
+        })
+        return True
+    if not encrypted and not _cleartext_jobs_allowed():
+        reject("cleartext board message refused")
+        _append_security_event(base_dir, {
+            "type": "auth_rejection",
+            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "reason": "cleartext_not_supported",
+            "feature": "board",
         })
         return True
     # Hardening M5: audience binding for every board message type
@@ -5127,7 +5200,9 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
         reject("board error")
         return True
     if opts is None or not getattr(opts, "no_send", False):
-        send_mail(smtp, cfg, reply_subj, sign_payload(reply_body, secret))
+        send_mail(smtp, cfg, reply_subj, _seal_reply(
+            reply_body, secret, reply_subj.rsplit(" ", 1)[-1],
+            key_id, encrypted))
     if opts is None or not opts.dry_run:
         mark_seen(imap, seq)
     return True

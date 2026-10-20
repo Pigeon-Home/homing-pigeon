@@ -43,22 +43,22 @@ def _now():
 
 
 def _mail(subject, body):
-    # Job mails travel encrypted since the HMAC-only form was
-    # removed: a well-formed signed job is enveloped here so
-    # its poisoned CONTENT is what the poll meets, not the
-    # form refusal. Other mail types (query, task_*) keep the
-    # plain signed form their handlers read, and a body that
-    # does not verify (a deliberately malformed fixture)
-    # passes through byte-identical.
-    if subject.startswith("[HOMING-PIGEON] job "):
+    # Job, query, and board mails travel encrypted. A body that
+    # does not verify passes through byte-identical.
+    if subject.startswith("[HOMING-PIGEON] "):
         try:
             payload = verify_body(body, SECRET)
         except Exception:
             payload = None
-        if isinstance(payload, dict) \
-                and payload.get("type") == "job":
+        if isinstance(payload, dict) and payload.get("type") in (
+                "job", "query", "task_submit", "task_request",
+                "task_result", "task_approve"):
+            if payload.get("type") == "job":
+                object_id = payload.get("job_id") or ""
+            else:
+                object_id = subject.rsplit(" ", 1)[-1]
             body = jobcrypto.encrypt_body(
-                body, SECRET, job_id=payload.get("job_id") or "",
+                body, SECRET, job_id=object_id,
                 key_id=payload.get("key_id") or "",
                 sign=sign_payload)
     msg = EmailMessage()

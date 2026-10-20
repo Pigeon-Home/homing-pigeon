@@ -182,6 +182,7 @@ class QueryAudienceTest(unittest.TestCase):
     def _query_mail(self, qid, runner_id="MISSING"):
         from datetime import datetime, timezone
         from email.message import EmailMessage
+        from runner import jobcrypto
         from tests.security_parity import SENDER, sign_payload
         p = {"v": 1, "type": "query", "query_id": qid,
              "issued_at": datetime.now(timezone.utc).strftime(
@@ -190,11 +191,14 @@ class QueryAudienceTest(unittest.TestCase):
                           "view": "summary"}]}
         if runner_id != "MISSING":
             p["runner_id"] = runner_id
+        signed = sign_payload(p, SECRET)
+        wire = jobcrypto.encrypt_body(
+            signed, SECRET, job_id=qid, key_id="", sign=sign_payload)
         msg = EmailMessage()
         msg["From"] = SENDER
         msg["To"] = SENDER
         msg["Subject"] = "[HOMING-PIGEON] query %s" % qid
-        msg.set_content(sign_payload(p, SECRET))
+        msg.set_content(wire)
         return msg.as_bytes()
 
     def _run_query(self, cfg_extra, raw):
@@ -227,12 +231,19 @@ class QueryAudienceTest(unittest.TestCase):
 class BoardAudienceTest(unittest.TestCase):
     def _board(self, subject, payload):
         from email.message import EmailMessage
+        from runner import jobcrypto
         from tests.security_parity import SENDER, sign_payload
+        signed = sign_payload(payload, SECRET)
+        ident = subject.rsplit(" ", 1)[-1]
+        key_id = payload.get("key_id") if isinstance(payload, dict) else ""
+        wire = jobcrypto.encrypt_body(
+            signed, SECRET, job_id=ident, key_id=key_id or "",
+            sign=sign_payload)
         msg = EmailMessage()
         msg["From"] = SENDER
         msg["To"] = SENDER
         msg["Subject"] = subject
-        msg.set_content(sign_payload(payload, SECRET))
+        msg.set_content(wire)
         return msg.as_bytes()
 
     def _run(self, cfg_extra, raw):

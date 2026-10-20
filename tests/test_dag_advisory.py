@@ -20,6 +20,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "cloud"))
 
+from runner import jobcrypto  # noqa: E402
 from runner.runner import Board, poll_once  # noqa: E402
 from send_job import sign_payload  # noqa: E402
 from tests.test_runner import SECRET, SENDER, FakeIMAP, FakeSMTP  # noqa: E402
@@ -191,7 +192,13 @@ def _board_mail(subject, payload):
     msg["From"] = SENDER
     msg["To"] = SENDER
     msg["Subject"] = subject
-    msg.set_content(sign_payload(payload, SECRET))
+    signed = sign_payload(payload, SECRET)
+    ident = subject.rsplit(" ", 1)[-1]
+    key_id = payload.get("key_id") if isinstance(payload, dict) else ""
+    wire = jobcrypto.encrypt_body(
+        signed, SECRET, job_id=ident, key_id=key_id or "",
+        sign=sign_payload)
+    msg.set_content(wire)
     return msg.as_bytes()
 
 
@@ -235,7 +242,16 @@ class DagAdvisoryE2ETest(unittest.TestCase):
         offers = []
         for m in smtp.sent:
             if "task_offer" in m["Subject"]:
-                offers.append(json.loads(m.get_content()))
+                outer = json.loads(m.get_content())
+                if isinstance(outer, dict) and "hp_enc" in outer:
+                    from runner.runner import verify_body
+                    opened = verify_body(m.get_content(), SECRET)
+                    ident = str(m["Subject"]).rsplit(" ", 1)[-1]
+                    inner = jobcrypto.decrypt_body(
+                        opened, SECRET, ident,
+                        opened.get("key_id") or "")
+                    outer = json.loads(inner)
+                offers.append(outer)
         return offers
 
     def test_offer_body_carries_the_warning(self):

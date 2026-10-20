@@ -51,7 +51,13 @@ def _signed(subject, payload, secret=SECRET):
     msg["From"] = SENDER
     msg["To"] = SENDER
     msg["Subject"] = subject
-    msg.set_content(sign_payload(payload, secret))
+    signed = sign_payload(payload, secret)
+    ident = subject.rsplit(" ", 1)[-1]
+    key_id = payload.get("key_id") if isinstance(payload, dict) else ""
+    wire = jobcrypto.encrypt_body(
+        signed, secret, job_id=ident, key_id=key_id or "",
+        sign=sign_payload)
+    msg.set_content(wire)
     return msg.as_bytes()
 
 
@@ -452,7 +458,7 @@ class QueryMailVerifyTest(unittest.TestCase):
         self.assertEqual(result["stderr"], "")
         self.assertEqual(result["exit_code"], 0)
         self.assertNotIn("rm -rf", result["stderr"])
-        qresult = verify_body(smtp.sent[1].get_content(), SECRET)
+        qresult = _read_result(smtp.sent[1])
         self.assertEqual(qresult["answers"][0]["matches"], ["pong"])
         retained = load_retained(self.tmp, jid)
         self.assertEqual(retained["spent"], 2)
@@ -472,7 +478,7 @@ class QueryMailVerifyTest(unittest.TestCase):
         _, smtp, seen = self.cycle([
             _signed("[HOMING-PIGEON] query q-old", payload),
         ])
-        body = verify_body(smtp.sent[0].get_content(), SECRET)
+        body = _read_result(smtp.sent[0])
         self.assertEqual(body["rejected"], "expired")
         self.assertEqual(load_retained(self.tmp, "old-job")["spent"], 0)
         self.assertIn("query:q-old", seen)
@@ -493,8 +499,8 @@ class QueryMailVerifyTest(unittest.TestCase):
             _signed("[HOMING-PIGEON] query q-r1", first),
             _signed("[HOMING-PIGEON] query q-r2", second),
         ])
-        ok = verify_body(smtp.sent[0].get_content(), SECRET)
-        limited = verify_body(smtp.sent[1].get_content(), SECRET)
+        ok = _read_result(smtp.sent[0])
+        limited = _read_result(smtp.sent[1])
         self.assertEqual(ok["answers"][0]["matches"], ["pong"])
         self.assertEqual(limited["rejected"], "rate_limit")
         self.assertEqual(load_retained(self.tmp, "rate-job")["spent"], 1)
@@ -514,7 +520,7 @@ class QueryMailVerifyTest(unittest.TestCase):
         _, smtp, _ = self.cycle([
             _signed("[HOMING-PIGEON] query q-att", att),
         ])
-        body = verify_body(smtp.sent[0].get_content(), SECRET)
+        body = _read_result(smtp.sent[0])
         self.assertEqual(body["answers"][0]["rejected"], "policy")
         self.assertNotIn("hidden", smtp.sent[0].get_content())
         self.assertEqual(load_retained(self.tmp, "att-job")["spent"], 1)
@@ -549,7 +555,7 @@ class QueryMailVerifyTest(unittest.TestCase):
         _, smtp, _ = self.cycle([
             _signed("[HOMING-PIGEON] query q-type", bad_type),
         ])
-        body = verify_body(smtp.sent[0].get_content(), SECRET)
+        body = _read_result(smtp.sent[0])
         self.assertEqual(body["rejected"], "unsupported")
 
         trav = {
@@ -560,7 +566,7 @@ class QueryMailVerifyTest(unittest.TestCase):
         _, smtp, _ = self.cycle([
             _signed("[HOMING-PIGEON] query q-trav", trav),
         ])
-        body = verify_body(smtp.sent[0].get_content(), SECRET)
+        body = _read_result(smtp.sent[0])
         self.assertEqual(body["rejected"], "unknown_job")
 
         save_retained(self.tmp, "dup-job", {
@@ -604,7 +610,7 @@ class QueryMailVerifyTest(unittest.TestCase):
         finally:
             rr._default_inference_open = orig
         raw = smtp.sent[0].get_content()
-        body = verify_body(raw, SECRET)
+        body = _read_result(smtp.sent[0])
         self.assertEqual(body["answers"][0], {"op": "ask", "rejected": "sanitization"})
         self.assertNotIn("PRIVATE KEY", raw)
         self.assertEqual(load_retained(self.tmp, "ask-job")["spent"], 1)
@@ -741,7 +747,7 @@ class BoardVerifyTest(unittest.TestCase):
         smtp = FakeSMTP()
         poll_once(self.cfg, self.tmp, {}, self.seen_path,
                   imap=FakeIMAP(mails), smtp=smtp)
-        bodies = [verify_body(m.get_content(), SECRET) for m in smtp.sent]
+        bodies = [_read_result(m) for m in smtp.sent]
         self.assertEqual(bodies[0]["ok"], True)
         self.assertEqual(bodies[1]["type"], "task_offer")
         self.assertEqual(bodies[1]["task"]["task_id"], "t-one")
@@ -769,7 +775,7 @@ class BoardVerifyTest(unittest.TestCase):
         poll_once(self.cfg, self.tmp, {}, self.seen_path, imap=imap, smtp=smtp)
         self.assertIn("1", imap.flagged)
         self.assertEqual(len(smtp.sent), 1)
-        body = verify_body(smtp.sent[0].get_content(), SECRET)
+        body = _read_result(smtp.sent[0])
         self.assertEqual(body["status"], "not_found")
         self.assertFalse(os.path.exists(os.path.join(self.tmp, "board.json")))
 

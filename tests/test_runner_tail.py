@@ -223,15 +223,23 @@ class BoardTailTest(unittest.TestCase):
             self.assertEqual(chosen["task_id"], "claimed")
 
     def test_task_approve_and_a_board_that_raises(self):
+        from runner import jobcrypto
         from cloud.send_job import sign_payload
         from runner.runner import Board, handle_board_mail
         with tempfile.TemporaryDirectory() as d:
             board = Board(os.path.join(d, "board.json"))
             board.tasks["t1"] = {"task_id": "t1", "state": "pending_review"}
-            body = sign_payload({"v": 1, "type": "task_approve"}, SECRET)
+
+            def _approve(task_id):
+                signed = sign_payload(
+                    {"v": 1, "type": "task_approve"}, SECRET)
+                return jobcrypto.encrypt_body(
+                    signed, SECRET, job_id=task_id, key_id="",
+                    sign=sign_payload)
+
             msg = EmailMessage()
             msg["Subject"] = "[HOMING-PIGEON] task_approve t1"
-            msg.set_content(body)
+            msg.set_content(_approve("t1"))
             cfg = base_config(d)
             imap = FakeIMAP([])
             smtp = FakeSMTP()
@@ -248,7 +256,7 @@ class BoardTailTest(unittest.TestCase):
             board.approve = explode
             msg2 = EmailMessage()
             msg2["Subject"] = "[HOMING-PIGEON] task_approve t2"
-            msg2.set_content(body)
+            msg2.set_content(_approve("t2"))
             smtp2 = FakeSMTP()
             handled = handle_board_mail(
                 cfg, imap, smtp2, "2", msg2.as_bytes(), msg2["Subject"],
