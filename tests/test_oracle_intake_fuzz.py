@@ -936,6 +936,36 @@ class RingTwoQueryTest(unittest.TestCase):
         self.assertNotIn(_CANARY, json.dumps(opened))
         self.assertEqual(opened["answers"][0]["rejected"], "budget")
 
+    def _open_query(self, out, query_id):
+        outer = verify_body(out[0][1], SECRET)
+        inner = decrypt_body(outer, SECRET, query_id, "")
+        return verify_body(inner, SECRET)
+
+    def test_a_query_for_another_job_does_not_get_the_canary(self):
+        qid = uuid.uuid4().hex
+        payload = {
+            "v": 1,
+            "type": "query",
+            "query_id": qid,
+            "job_id": "some-other-job",
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"),
+            "queries": [{"op": "grep", "pattern": _CANARY}],
+        }
+        wire = encrypt_body(
+            sign_payload(payload, SECRET), SECRET,
+            job_id=qid, key_id="", sign=sign_payload)
+        out = self._ask(qid, wire)
+        raw = " ".join(body for _s, body, _t in out)
+        self.assertNotIn(_CANARY, raw)
+        opened = self._open_query(out, qid)
+        self.assertEqual(opened["rejected"], "unknown_job")
+        self.assertNotIn(_CANARY, json.dumps(opened))
+        good_id = uuid.uuid4().hex
+        good = self._ask(good_id, self._sealed(good_id))
+        self.assertIn(
+            _CANARY, json.dumps(self._open_query(good, good_id)))
+
 
 class RingTwoBoardTest(unittest.TestCase):
     """A board message that does not verify changes nothing. The

@@ -94,6 +94,8 @@ The next exec job still does. The same query is answered
 once. The second copy, same seen set, gets nothing back.
 A second query, different id, after the budget is spent,
 does not get the canary either. The answer says budget.
+A query aimed at a different job does not get it either.
+The answer says unknown. The query for this job still does.
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already
