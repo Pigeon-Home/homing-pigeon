@@ -270,3 +270,43 @@ its own identifier (`msg_id`), and carries `issued_at` as in
 version 1. Replay handling follows the seen-set discipline of
 version 1: an identifier is recorded once the message has been
 acted on, and a duplicate is dropped silently.
+
+---
+
+**Editor's note — state of this draft** (2026-10-20; this note is
+removed as the sections land)
+
+Sections 1 through 5 above are written. What remains, in order:
+
+- Section 6, the determination message: members, the frozen
+  pre-execution verdict, sent only when the determination is not
+  a clean pass and only to an enabled sender.
+- Section 7, the question message: the question the endpoint
+  would have asked its own model, its context, its deadline.
+- Section 8, the answer message: signed, keyed by question
+  identifier; a late answer becomes context for the next
+  decision and never reopens the decided job.
+- Section 9, the decision timeline and the local default, with
+  the timeline figure.
+- Section 10, context segments: append-only, signed, carrying
+  provenance and seen-once identifiers; extensions receive only
+  the kinds their manifest declares; inbound context is data,
+  never instructions.
+- Section 11, enablement and local policy: per-sender operator
+  enablement, the command-line option in the reference software.
+- Section 12, bindings and subjects for the new message types.
+- Section 13, security considerations, including the trust this
+  version deliberately extends to the submitter and why.
+- Section 14, IANA considerations.
+
+Figures are part of the drafting contract: every decision point
+gets one, as Sections 1.1, 1.2, and 4 illustrate.
+
+Still to come from the author: the implementation details for
+how this protocol is realized in the client software. They are
+discussed with the author and folded into the sections above as
+each one lands; this note is the placeholder that keeps them
+from being lost. Implementation, when commissioned, is staged:
+the determination and question messages and the receiver's
+dispatch on message type first; the signed answer path, with
+its deadline, second.
