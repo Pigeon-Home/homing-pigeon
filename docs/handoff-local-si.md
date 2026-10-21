@@ -108,7 +108,8 @@ Unbuilt work is listed in FUTURE.md. These notes are not a queue.
 
 1. A live Cloudflare try was planned and was not done. Queues are
    still not in the runner.
-2. Confirm Open WebUI env var `OLLAMA_BASE_URL` is the one that
-   build honors, if you run `--local-test --browser`.
+2. Open WebUI env var: confirmed — `runner/local_test.py` sets
+   `OLLAMA_BASE_URL` when it launches Open WebUI for
+   `--local-test --browser`.
 3. The chat confirms the send. It does not wait for the result
    email unless someone adds that later.
