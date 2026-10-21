@@ -202,7 +202,7 @@
   draft-homing-pigeon-00 Section 20.
 
 - Cloudflare Queues: The design notes are TRANSPORTS.md
-- Consider dist blockchain for file flow and work board/answers or transport extension.
+- Consider dist blockchain for file flow and work board/answers or transport extension.onion
 
 ## Before a job runs
 
