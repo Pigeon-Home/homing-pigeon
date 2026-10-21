@@ -267,20 +267,25 @@ def _trim_locked(path):
         return
     if len(lines) <= LEDGER_MAX_LINES:
         return
+    kept = "".join(lines[-LEDGER_KEEP_LINES:])
+    tmp = path + ".tmp." + str(os.getpid())
     try:
-        flags = os.O_WRONLY | os.O_TRUNC
+        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
         if hasattr(os, "O_BINARY"):
             flags |= os.O_BINARY
-        fd = os.open(path, flags, 0o600)
+        fd = os.open(tmp, flags, 0o600)
         try:
-            os.write(fd, "".join(
-                lines[-LEDGER_KEEP_LINES:]).encode("utf-8"))
+            os.write(fd, kept.encode("utf-8"))
         finally:
             os.close(fd)
+        os.replace(tmp, path)
     except OSError:
-        pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
 
 
 def read_records(base_dir):
@@ -289,11 +294,12 @@ def read_records(base_dir):
     path = ledger_path(base_dir)
     if path is None:
         return []
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-    except OSError:
-        return []
+    with _LOCK:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+        except OSError:
+            return []
     out = []
     for line in lines[-LEDGER_MAX_LINES:]:
         line = line.strip()

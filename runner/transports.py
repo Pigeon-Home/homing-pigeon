@@ -52,6 +52,7 @@ Stdlib only, like the rest of the runner. This module imports
 nothing from runner.py; the runner passes its log function in.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -378,18 +379,25 @@ def fetch_channel_messages(base_dir, name, log=None):
             out.append(refuse("symlink job files are not read"))
             continue
         try:
-            size = os.path.getsize(path)
+            with open(path, "rb") as f:
+                raw = f.read()
+            with open(path, "rb") as f:
+                again = f.read()
         except OSError as e:
-            out.append(refuse(f"cannot stat: {e}"))
+            out.append(refuse(f"cannot read: {e}"))
             continue
-        if size > FILE_MAX_BYTES:
-            out.append(refuse(f"{size} bytes exceeds the "
+        # A rewrite during the read (same length, same second)
+        # does not move mtime_ns. Compare the bytes themselves.
+        digest = hashlib.sha256(raw).hexdigest()
+        if hashlib.sha256(again).hexdigest() != digest:
+            continue
+        if len(again) > FILE_MAX_BYTES:
+            out.append(refuse(f"{len(again)} bytes exceeds the "
                               f"{FILE_MAX_BYTES}-byte cap"))
             continue
         try:
-            with open(path, encoding="utf-8") as f:
-                text = f.read()
-        except (OSError, UnicodeDecodeError) as e:
+            text = again.decode("utf-8")
+        except UnicodeDecodeError as e:
             out.append(refuse(f"cannot read as UTF-8: {e}"))
             continue
         parsed = parse_envelope(text)
@@ -401,13 +409,34 @@ def fetch_channel_messages(base_dir, name, log=None):
         stem = fname[:-len(".job.txt")] \
             if fname.endswith(".job.txt") else fname
 
+        def ack_read(path=path, fname=fname, digest=digest):
+            try:
+                with open(path, "rb") as f:
+                    now = hashlib.sha256(f.read()).hexdigest()
+            except OSError as e:
+                log(f"transport {name}: cannot move {fname} to "
+                    f"done: {e}", "WARN")
+                return False
+            if now != digest:
+                log(f"transport {name}: {fname} changed after it "
+                    f"was read; leaving the new bytes", "WARN")
+                return False
+            try:
+                os.replace(path, os.path.join(paths["inbox_done"],
+                                              fname))
+            except OSError as e:
+                log(f"transport {name}: cannot move {fname} to "
+                    f"done: {e}", "WARN")
+                return False
+            return True
+
         def reply(rsubject, rbody, target=None,
                   job_subject=subject, stem=stem):
             write_channel_result(base_dir, name, job_subject,
                                  rsubject, rbody, ident_hint=stem,
                                  target=target)
 
-        out.append(IncomingMessage(subject, body, reply, ack=ack,
+        out.append(IncomingMessage(subject, body, reply, ack=ack_read,
                                    ident=fname))
     return out
 
@@ -468,11 +497,19 @@ def service_channel(base_dir, name, process_message, log=None,
                 log(f"transport {name}: rollback failed for "
                     f"{msg.ident or '?'}: {e}", "WARN")
         if not dry_run and consume:
+            acked = True
             try:
-                msg.ack()
+                acked = msg.ack()
             except Exception as e:
                 log(f"transport {name}: ack failed for "
                     f"{msg.ident or '?'}: {e}", "WARN")
+                acked = False
+            if acked is False and callable(rollback):
+                try:
+                    rollback()
+                except Exception as e:
+                    log(f"transport {name}: rollback failed for "
+                        f"{msg.ident or '?'}: {e}", "WARN")
     return len(messages)
 
 

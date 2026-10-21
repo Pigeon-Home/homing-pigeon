@@ -25,7 +25,8 @@ sys.path.insert(0, os.path.join(REPO, "tests"))
 from runner import jobcrypto  # noqa: E402
 from runner import protocol_v2 as v2  # noqa: E402
 from runner.runner import (  # noqa: E402
-    poll_once, process_transport_message, sign_payload, verify_body)
+    _disk_owns, load_seen, poll_once, process_transport_message,
+    save_seen, sign_payload, verify_body)
 from tests.security_parity import SECRET, FakeIMAP, FakeSMTP  # noqa: E402
 
 
@@ -164,6 +165,36 @@ class BuildersTest(unittest.TestCase):
                   encoding="utf-8") as fh:
             saved = json.load(fh)["answer"]["answer"]
         self.assertIn(saved, ("first", "second"))
+        more = os.path.join(tmp, "v2", "answers", "q.j1.json.more.jsonl")
+        self.assertTrue(os.path.isfile(more))
+        with open(more, encoding="utf-8") as fh:
+            extra = json.loads(fh.readline())
+        self.assertIn(extra["answer"], ("first", "second"))
+        self.assertNotEqual(extra["answer"], saved)
+
+    def test_long_job_ids_do_not_share_a_question_slot(self):
+        cfg = {"protocol_v2": True, "oracle_mode": "deterministic"}
+        left = "a" * 120 + "left"
+        right = "a" * 120 + "right"
+        one = v2.question_for(cfg, {"job_id": left, "kind": "exec"})
+        two = v2.question_for(cfg, {"job_id": right, "kind": "exec"})
+        self.assertNotEqual(one["msg_id"], two["msg_id"])
+        self.assertLessEqual(len(one["msg_id"]), 128)
+        self.assertLessEqual(len(two["msg_id"]), 128)
+        short = v2.question_for(cfg, {"job_id": "j1", "kind": "exec"})
+        self.assertEqual(short["msg_id"], "q.j1")
+
+    def test_a_second_answer_rides_as_late_context(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-late-")
+        q = {"v": 2, "type": "question", "job_id": "j1", "msg_id": "q.j1",
+             "issued_at": _now(), "deadline_sec": 0,
+             "question": "Would it?", "local_default": "proceed"}
+        self.assertTrue(v2.store_answer(tmp, v2.answer_for(q, "first")))
+        self.assertFalse(v2.store_answer(tmp, v2.answer_for(q, "second")))
+        got = v2.await_answer(tmp, q, time.time())
+        kinds = [(s["kind"], s["text"]) for s in got]
+        self.assertEqual(kinds[0], ("answer", "first"))
+        self.assertIn(("late_answer", "second"), kinds)
 
     def test_a_broken_answer_file_does_not_hold_the_slot(self):
         tmp = tempfile.mkdtemp(prefix="hp-v2-")
@@ -568,6 +599,34 @@ class MailTest(unittest.TestCase):
             parsed = verify_body(inner, SECRET)
         kinds = [(s["kind"], s["text"]) for s in parsed["context"]]
         self.assertIn(("answer", "after the send"), kinds)
+
+
+class SeenClaimTest(unittest.TestCase):
+    def test_a_second_process_cannot_take_a_live_claim(self):
+        tmp = tempfile.mkdtemp(prefix="hp-claim-")
+        seen = {}
+        self.assertTrue(_disk_owns(tmp, "job-1", seen))
+        # Pretend another pid holds it.
+        folder = os.path.join(tmp, "inflight")
+        name = os.listdir(folder)[0]
+        with open(os.path.join(folder, name), "w", encoding="utf-8") as fh:
+            fh.write("1\n0\njob-1\n")
+        other = {}
+        self.assertFalse(_disk_owns(tmp, "job-1", other))
+        save_seen(os.path.join(tmp, "seen.json"), {"job-1": True})
+        self.assertIn("job-1", load_seen(os.path.join(tmp, "seen.json")))
+        third = {}
+        self.assertFalse(_disk_owns(tmp, "job-1", third))
+        self.assertTrue(third.get("job-1"))
+
+    def test_save_merges_instead_of_wiping(self):
+        tmp = tempfile.mkdtemp(prefix="hp-seen-")
+        path = os.path.join(tmp, "seen.json")
+        save_seen(path, {"a": True})
+        other = {"b": True}
+        save_seen(path, other)
+        self.assertEqual(set(load_seen(path)), {"a", "b"})
+        self.assertIn("a", other)
 
 
 if __name__ == "__main__":

@@ -32,6 +32,7 @@ Usage:
 import ipaddress
 import argparse
 import base64  # noqa: F401  (re-exported: tests patch it here)
+import copy
 import email
 import hashlib
 import hmac
@@ -3668,7 +3669,7 @@ class Board:
         chosen["claimed_at"] = datetime.now(timezone.utc).isoformat()
         chosen["claimed_key_id"] = key_id
         self.save()
-        return chosen
+        return copy.deepcopy(chosen)
 
     def complete(self, task_id, result, require_review=False):
         with _BOARD_LOCK:
@@ -6850,11 +6851,26 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
 
     # Claim the job_id so a duplicate delivery on another worker thread
     # cannot double-execute it. The check-and-add is atomic under the lock.
+    # The disk claim is the same rule across two processes: seen.json
+    # and the inflight file are updated under a file lock, and the
+    # claim is not dropped until the key is in seen.json.
     with _MAIL_LOCK:
         if skey in seen or skey in _IN_FLIGHT:
             vlog(f"ingest: job {job_id}: skipped; another "
                  f"worker claimed it first")
             mark_seen(imap, seq)
+            return
+        if not _disk_owns(base_dir, skey, seen):
+            # Already in the replay cache: this copy is done.
+            # A live claim in another process is not done. Leave
+            # the message unseen so a crash there can be stolen
+            # on the next poll instead of dropped.
+            if seen.get(skey):
+                vlog(f"ingest: job {job_id}: skipped; already seen")
+                mark_seen(imap, seq)
+            else:
+                vlog(f"ingest: job {job_id}: skipped; another "
+                     f"process holds it")
             return
         _IN_FLIGHT.add(skey)
     try:
@@ -7219,6 +7235,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     finally:
         with _MAIL_LOCK:
             _IN_FLIGHT.discard(skey)
+            if skey not in seen:
+                _disk_release(base_dir, skey)
 
 
 # ---------------------------------------------------------------- main
@@ -7251,35 +7269,98 @@ def load_config(path: str) -> dict:
     return data
 
 
-def load_seen(path: str) -> dict:
-    """Replay cache. A symlink is not followed.
+_SEEN_FILE_GUARD = threading.RLock()
+_CLAIM_STALE_SEC = 86400
 
-    A missing or unreadable file is an empty cache. Never raises.
-    """
+
+def _pid_alive(pid):
+    """True when pid is still a process. A dead claim can be taken."""
+    if not isinstance(pid, int) or pid <= 0:
+        return False
+    if pid == os.getpid():
+        return True
+    if os.name == "nt":
+        try:
+            import ctypes
+            access = 0x1000  # PROCESS_QUERY_LIMITED_INFORMATION
+            handle = ctypes.windll.kernel32.OpenProcess(access, False, pid)
+            if handle:
+                ctypes.windll.kernel32.CloseHandle(handle)
+                return True
+            # 5 is access denied: the process is there.
+            return ctypes.windll.kernel32.GetLastError() == 5
+        except Exception:
+            return True
     try:
-        if not isinstance(path, str) or not path or os.path.islink(path):
-            return {}
-        with open(path, encoding="utf-8") as fh:
-            data = json.load(fh)
-        if isinstance(data, list):
-            return {str(x): True for x in data}
-        if isinstance(data, dict):
-            return {str(k): True for k in data}
-        return {}
-    except Exception:
-        return {}
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
 
 
-def save_seen(path: str, seen: dict):
-    """Write the replay cache. A symlink at the temp name is not followed.
+def _claim_path(base_dir, skey):
+    folder = os.path.join(base_dir, "inflight")
+    name = hashlib.sha256(str(skey).encode("utf-8")).hexdigest()
+    return folder, os.path.join(folder, name)
 
-    The file is a JSON list of the newest SEEN_CAP keys, mode 0600.
-    A bad path or a key that cannot be printed is skipped. Never raises.
+
+def _with_seen_file(path, mutator):
+    """Read-modify-write seen.json under a lock other processes see.
+
+    mutator(disk_dict) returns the dict to write. The lock is a
+    file lock plus an in-process one, so two runners on the same
+    state directory cannot both believe they own a job id.
     """
     if not isinstance(path, str) or not path:
-        return
-    if not isinstance(seen, dict):
-        seen = {}
+        return {}
+    with _SEEN_FILE_GUARD:
+        fd = None
+        try:
+            flags = os.O_CREAT | os.O_RDWR
+            fd = os.open(path + ".lock", flags, 0o600)
+            try:
+                os.lseek(fd, 0, os.SEEK_END)
+                if os.lseek(fd, 0, os.SEEK_CUR) == 0:
+                    os.write(fd, b"\0")
+                os.lseek(fd, 0, os.SEEK_SET)
+            except OSError:
+                pass
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(fd, fcntl.LOCK_EX)
+            disk = load_seen(path)
+            updated = mutator(disk if isinstance(disk, dict) else {})
+            if not isinstance(updated, dict):
+                updated = disk
+            _write_seen_unlocked(path, updated)
+            return updated
+        except OSError:
+            return load_seen(path) if isinstance(path, str) else {}
+        finally:
+            if fd is not None:
+                try:
+                    if os.name == "nt":
+                        import msvcrt
+                        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+                    else:
+                        import fcntl
+                        fcntl.flock(fd, fcntl.LOCK_UN)
+                except OSError:
+                    pass
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+
+
+def _write_seen_unlocked(path, seen):
     keys = []
     for key in list(seen.keys())[-SEEN_CAP:]:
         try:
@@ -7289,13 +7370,9 @@ def save_seen(path: str, seen: dict):
         if "\x00" in text:
             continue
         keys.append(text)
-    tmp = path + ".tmp." + str(threading.get_ident())
+    tmp = path + ".tmp." + str(os.getpid()) + "." + str(threading.get_ident())
     fd = None
     try:
-        try:
-            os.unlink(tmp)
-        except FileNotFoundError:
-            pass
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
@@ -7320,6 +7397,165 @@ def save_seen(path: str, seen: dict):
             os.unlink(tmp)
         except OSError:
             pass
+
+
+def _disk_owns(base_dir, skey, seen):
+    """Claim skey on disk, or report that someone else holds it.
+
+    Returns True when this process may execute. A seen.json that
+    already has the key, or a live claim file, returns False and
+    records the key in the in-memory cache when it is already done.
+    """
+    if not isinstance(base_dir, str) or not base_dir:
+        return True
+    seen_path = os.path.join(base_dir, "seen.json")
+    folder, claim = _claim_path(base_dir, skey)
+    decision = {"ok": False}
+
+    def mutate(disk):
+        if skey in disk:
+            if isinstance(seen, dict):
+                seen[skey] = True
+            decision["ok"] = False
+            return disk
+        try:
+            os.makedirs(folder, exist_ok=True)
+        except OSError:
+            decision["ok"] = False
+            return disk
+        if os.path.exists(claim):
+            pid = None
+            try:
+                with open(claim, encoding="utf-8") as fh:
+                    pid = int(fh.readline().strip() or "0")
+            except (OSError, ValueError):
+                pid = None
+            try:
+                age = time.time() - os.path.getmtime(claim)
+            except OSError:
+                age = 0
+            if pid == os.getpid():
+                if isinstance(seen, dict) and seen.get(skey):
+                    decision["ok"] = False
+                    return disk
+            elif _pid_alive(pid):
+                decision["ok"] = False
+                return disk
+            elif not pid and age < _CLAIM_STALE_SEC:
+                decision["ok"] = False
+                return disk
+            try:
+                os.unlink(claim)
+            except OSError:
+                decision["ok"] = False
+                return disk
+        try:
+            fd = os.open(claim, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        except OSError:
+            decision["ok"] = False
+            return disk
+        try:
+            os.write(fd, f"{os.getpid()}\n{time.time()}\n{skey}\n".encode("utf-8"))
+        finally:
+            os.close(fd)
+        decision["ok"] = True
+        return disk
+
+    _with_seen_file(seen_path, mutate)
+    return decision["ok"]
+
+
+def _disk_release(base_dir, skey):
+    """Drop this process's claim without recording the job as seen.
+
+    Only the claim whose pid is ours is removed, and only under
+    the same file lock as the claim. An unlocked unlink can
+    delete a claim a second process just stole.
+    """
+    if not isinstance(base_dir, str) or not base_dir:
+        return
+    seen_path = os.path.join(base_dir, "seen.json")
+    _folder, claim = _claim_path(base_dir, skey)
+
+    def mutate(disk):
+        try:
+            with open(claim, encoding="utf-8") as fh:
+                pid = int(fh.readline().strip() or "0")
+        except (OSError, ValueError):
+            return disk
+        if pid != os.getpid():
+            return disk
+        try:
+            os.unlink(claim)
+        except OSError:
+            pass
+        return disk
+
+    _with_seen_file(seen_path, mutate)
+
+
+def _release_saved_claims(seen_path, seen):
+    folder = os.path.join(os.path.dirname(seen_path), "inflight")
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return
+    for name in names:
+        path = os.path.join(folder, name)
+        try:
+            with open(path, encoding="utf-8") as fh:
+                lines = fh.read().splitlines()
+        except OSError:
+            continue
+        key = lines[2] if len(lines) > 2 else ""
+        if key and isinstance(seen, dict) and seen.get(key):
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+
+
+def load_seen(path: str) -> dict:
+    """Replay cache. A symlink is not followed.
+
+    A missing or unreadable file is an empty cache. Never raises.
+    """
+    try:
+        if not isinstance(path, str) or not path or os.path.islink(path):
+            return {}
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        if isinstance(data, list):
+            return {str(x): True for x in data}
+        if isinstance(data, dict):
+            return {str(k): True for k in data}
+        return {}
+    except Exception:
+        return {}
+
+
+def save_seen(path: str, seen: dict):
+    """Write the replay cache, merged with whatever is already there.
+
+    Two runners used to each replace the file with only the keys
+    they held in memory, so one wiped the other's. The merge is
+    under the same lock as the claim.
+    """
+    if not isinstance(path, str) or not path:
+        return
+    if not isinstance(seen, dict):
+        seen = {}
+
+    def merge(disk):
+        if not isinstance(disk, dict):
+            disk = {}
+        disk.update({k: True for k in seen})
+        for key in disk:
+            seen[key] = True
+        return disk
+
+    _with_seen_file(path, merge)
+    _release_saved_claims(path, seen)
 
 
 HOT_KEYS = ("poll_interval_sec", "workers", "default_timeout_sec",
@@ -7662,6 +7898,7 @@ def process_transport_message(cfg, base_dir, seen, secrets,
             return
         for key in added:
             seen.pop(key, None)
+            _disk_release(base_dir, key)
 
     dry = opts is not None and getattr(opts, "dry_run", False)
     return _Outbound(out, bool(imap.marked) and not dry, rollback)

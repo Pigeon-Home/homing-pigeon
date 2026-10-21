@@ -165,6 +165,23 @@ class ChannelServiceTest(unittest.TestCase):
         inbox = transports.channel_paths(self.tmp, "file")["inbox"]
         self.assertIn("j.job.txt", os.listdir(inbox))
 
+    def test_a_file_replaced_after_the_read_is_not_acked(self):
+        self._drop("j.job.txt", "Subj\n\nbody-old\n")
+        inbox = transports.channel_paths(self.tmp, "file")["inbox"]
+        path = os.path.join(inbox, "j.job.txt")
+
+        def process(subject, body):
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("Subj\n\nbody-new\n")
+            return [("Result", "ok")]
+
+        transports.service_channel(
+            self.tmp, "file", process, dry_run=False)
+        self.assertTrue(os.path.isfile(path))
+        with open(path, encoding="utf-8") as fh:
+            self.assertIn("body-new", fh.read())
+        self.assertEqual(os.listdir(os.path.join(inbox, "done")), [])
+
     def test_dry_run_acks_nothing(self):
         self._drop("a.job.txt", "Subj\n\nbody\n")
         transports.service_channel(

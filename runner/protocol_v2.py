@@ -20,6 +20,7 @@ mode, and it happens only when ``protocol_v2`` is true.
 Context text is data. This module never interprets it.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -88,10 +89,20 @@ def _safe_id(value, label):
 
 
 def _msg_id(prefix, job_id):
+    """A stable id. Short ids stay readable. A long one is still
+    unique: the 128-character cap used to keep only the first
+    120 characters, so two job ids that differed past that
+    point shared one question and one answer slot.
+    """
     _safe_id(job_id, "job_id")
-    ident = prefix + "." + job_id[:120]
-    _safe_id(ident, "msg_id")
-    return ident
+    ident = prefix + "." + job_id
+    if len(ident) <= 128 and _ID.match(ident):
+        return ident
+    digest = hashlib.sha256(job_id.encode("utf-8")).hexdigest()[:16]
+    room = 128 - len(prefix) - 1 - 1 - len(digest)
+    head = job_id[:max(1, room)]
+    ident = prefix + "." + head + "." + digest
+    return _safe_id(ident, "msg_id")
 
 
 def _now():
@@ -192,7 +203,7 @@ def answer_for(question, text):
         "v": V2,
         "type": "answer",
         "job_id": job_id,
-        "msg_id": _msg_id("a", qid[:120]),
+        "msg_id": _msg_id("a", qid),
         "question_id": qid,
         "issued_at": _now(),
         "answer": text.strip()[:_TEXT_CAP],
@@ -358,12 +369,82 @@ def store_answer(base_dir, obj):
             fh.write("\n")
             fh.flush()
             os.fsync(fh.fileno())
-        return _publish_answer(path, tmp)
+        won = _publish_answer(path, tmp)
+        if not won:
+            _remember_other(path, obj)
+        return won
     finally:
         try:
             os.unlink(tmp)
         except OSError:
             pass
+
+
+def _remember_other(path, obj):
+    """A second valid answer does not replace the first.
+
+    It is kept beside it, so the result can show it as a late
+    answer instead of throwing it away. The same text is not
+    stored twice, and the file stops at eight.
+    """
+    text = obj.get("answer") if isinstance(obj, dict) else ""
+    if not isinstance(text, str) or not text.strip():
+        return
+    text = text.strip()
+    more = path + ".more.jsonl"
+    have = []
+    try:
+        with open(more, encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+    except OSError:
+        lines = []
+    for line in lines:
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(rec, dict) and isinstance(rec.get("answer"), str):
+            have.append(rec["answer"])
+    if text in have or len(have) >= 8:
+        return
+    try:
+        with open(more, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps({
+                "received_at": time.time(),
+                "answer": text,
+            }) + "\n")
+    except OSError:
+        pass
+
+
+def _other_answers(base_dir, question_id, winner):
+    try:
+        _safe_id(question_id, "question_id")
+    except ValueError:
+        return []
+    _folder, path = _answer_path(base_dir, question_id)
+    more = path + ".more.jsonl"
+    try:
+        with open(more, encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+    except OSError:
+        return []
+    out = []
+    for line in lines:
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(rec, dict):
+            continue
+        text = rec.get("answer")
+        if not isinstance(text, str) or not text or text == winner:
+            continue
+        if text not in out:
+            out.append(text)
+        if len(out) >= 8:
+            break
+    return out
 
 
 def _load_answer(base_dir, question_id):
@@ -427,11 +508,15 @@ def await_answer(base_dir, question, asked_at, pump=None, pending=None):
         # wall-clock step during that wait must not turn an
         # answer we observed in time into a late one.
         if in_wait or received <= asked + deadline + 1.0:
-            return [segment("answerer", "answer", text)]
-        return [
-            segment("runner", "local_default", default),
-            segment("answerer", "late_answer", text),
-        ]
+            segs = [segment("answerer", "answer", text)]
+        else:
+            segs = [
+                segment("runner", "local_default", default),
+                segment("answerer", "late_answer", text),
+            ]
+        for extra in _other_answers(base_dir, qid, text):
+            segs.append(segment("answerer", "late_answer", extra))
+        return segs
 
     if deadline > 0 and pending is not None:
         send_give_up = min(start + deadline, cap_end)
