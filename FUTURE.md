@@ -324,7 +324,9 @@
 ## Misc
 
 - NATS JetStream, MQTT, Redis, Postgres, and Durable Objects. Cut.
-  (Core NATS pub/sub shipped as a job transport — TRANSPORTS.md.)
+  (NATS pub/sub shipped as a job transport — a standalone
+  transport extension; the core has been transport-blind since
+  3.10.0 — TRANSPORTS.md.)
   (The local-signal socket shipped — signed `sensor_alert`
   envelopes only, not a job transport.) TRANSPORTS.md.
 - SMS paging -- decided against (DRU; see runner/dri.py).
