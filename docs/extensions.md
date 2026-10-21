@@ -25,9 +25,8 @@ and is covered in [TRANSPORTS.md](../TRANSPORTS.md).) A sense
 files signed alerts with the Oracle, which fuses them with job activity. The
 plumbing underneath — alert shape, ingest gates, storage, the
 `senses` query — is the senses system, specified in
-[docs/senses.md](senses.md). This document covers the layer that
-did not exist before: packaging, versioning, and the declared
-signal contract.
+[docs/senses.md](senses.md). This document covers the packaging layer: packaging,
+versioning, and the declared signal contract.
 
 ## The shape of the thing
 
