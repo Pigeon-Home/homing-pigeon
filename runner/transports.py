@@ -58,6 +58,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 import uuid
 
@@ -97,6 +98,28 @@ class TransportError(Exception):
 
 def _silent_log(msg, level="INFO"):
     pass
+
+
+_EXTENSION_LINE_RE = re.compile(
+    r"^(INFO|WARN|WARNING|ERROR|DEBUG):[ \t]*(.*)$")
+
+
+def _extension_line_parts(text):
+    """(level, message) for one line of extension output.
+
+    Transport extensions log "LEVEL: message" (see
+    transport_extensions/channel.py). A line with that prefix
+    keeps its level; WARNING normalizes to the runner log's
+    WARN. Anything else -- a traceback frame, a plain print --
+    is INFO with the text untouched.
+    """
+    m = _EXTENSION_LINE_RE.match(text)
+    if not m:
+        return "INFO", text
+    level = m.group(1)
+    if level == "WARNING":
+        level = "WARN"
+    return level, m.group(2)
 
 
 # ------------------------------------------------------------------
@@ -634,6 +657,15 @@ class TransportSupervisor:
     or the other transports down -- each extension is its own
     process with its own channel, and every failure here is
     caught, logged, and left for the next check.
+
+    Each child's stdout/stderr goes through a pump thread (one
+    per process start): every line is relayed into the runner's
+    own log -- "transport <name>: <line>", with a WARN:/ERROR:
+    prefix keeping its level -- and appended, timestamped in
+    the runner-log style, to the transport's extension.log
+    sidecar. The pump always drains the pipe, so a chatty child
+    can never block on a full one, and a failing transport is
+    visible in runner.log instead of only in the sidecar.
     """
 
     def __init__(self, cfg, base_dir, log=None, popen=None,
@@ -709,12 +741,11 @@ class TransportSupervisor:
         log_path = os.path.join(paths["root"], "extension.log")
         rec = {"manifest": manifest, "restarts": 0,
                "next_restart": None, "started": self._clock(),
-               "argv": argv, "settled": False}
-        logfh = None
+               "argv": argv, "settled": False, "logfh": None}
         try:
-            logfh = open(log_path, "ab")
             kw = {"cwd": manifest["dir"], "env": env,
-                  "stdin": subprocess.DEVNULL, "stdout": logfh,
+                  "stdin": subprocess.DEVNULL,
+                  "stdout": subprocess.PIPE,
                   "stderr": subprocess.STDOUT}
             if os.name == "posix":
                 kw["start_new_session"] = True
@@ -722,14 +753,15 @@ class TransportSupervisor:
                 kw["creationflags"] = getattr(
                     subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
             rec["proc"] = self._popen(argv, **kw)
-            rec["logfh"] = logfh
-            logfh = None
+            stream = getattr(rec["proc"], "stdout", None)
+            if stream is not None:
+                pump = threading.Thread(
+                    target=self._pump_extension_log,
+                    args=(name, stream, log_path),
+                    name=f"transport-{name}-log-pump", daemon=True)
+                rec["pump"] = pump
+                pump.start()
         except Exception as e:
-            if logfh is not None:
-                try:
-                    logfh.close()
-                except Exception:
-                    pass
             self.log(f"transport {name}: cannot start "
                      f"{manifest['entry']}: {e}", "ERROR")
             rec["proc"] = None
@@ -741,6 +773,88 @@ class TransportSupervisor:
                      f"by {manifest['publisher']} started "
                      f"(pid {rec['proc'].pid})")
         return rec
+
+    def _pump_extension_log(self, name, stream, log_path):
+        """Drain one child's stdout until EOF, line by line.
+
+        Every line is relayed into the runner's log (attributed
+        to the transport, level preserved) and appended to the
+        transport's extension.log with the runner log's
+        timestamp style. The sidecar used to be the child's own
+        stdout target; it is now written here so the runner log
+        -- the operator's console -- sees transport failures the
+        moment they happen, not on the next forensic dig.
+
+        The pump must never stop draining: a child that fills
+        its pipe buffer would block forever, so nothing in this
+        loop may raise. The handle is opened lazily and closed
+        at EOF; if the supervisor's shutdown closed the path's
+        handle state mid-drain the write side reopens once. The
+        pump deliberately does NOT go through self.log's owner
+        for the sidecar -- the file is the unfiltered record;
+        the runner log applies its own rate discipline on top.
+        """
+        fh = None
+
+        def write_sidecar(text):
+            nonlocal fh
+            stamp = time.strftime("%Y-%m-%d %H:%M:%S",
+                                  time.localtime())
+            level, message = _extension_line_parts(text)
+            if _EXTENSION_LINE_RE.match(text):
+                entry = f"{stamp} [{level}] {message}\n"
+            else:
+                entry = f"{stamp} {text}\n"
+            data = entry.encode("utf-8", "replace")
+            if fh is None:
+                fh = open(log_path, "ab")
+            try:
+                fh.write(data)
+                fh.flush()
+            except (OSError, ValueError):
+                # Closed under us (shutdown raced the drain):
+                # reopen once and retry so the tail is not lost.
+                try:
+                    fh = open(log_path, "ab")
+                    fh.write(data)
+                    fh.flush()
+                except OSError:
+                    fh = None
+
+        try:
+            for raw in stream:
+                try:
+                    line = raw.decode(
+                        "utf-8", "replace").rstrip("\r\n")
+                    if not line.strip():
+                        # Blank lines carry no signal; neither
+                        # sink repeats them.
+                        continue
+                    level, message = _extension_line_parts(line)
+                    try:
+                        self.log(f"transport {name}: {message}",
+                                 level)
+                    except Exception:
+                        # A broken log call must not stop the
+                        # drain or lose the sidecar copy.
+                        pass
+                    try:
+                        write_sidecar(line)
+                    except Exception:
+                        pass
+                except Exception:
+                    # A poisoned line never stops the pump.
+                    continue
+        except Exception:
+            # The stream itself broke (the child died hard); the
+            # supervisor's check() owns the restart.
+            pass
+        finally:
+            if fh is not None:
+                try:
+                    fh.close()
+                except Exception:
+                    pass
 
     def check(self):
         """Restart whatever died since the last check."""
@@ -758,10 +872,10 @@ class TransportSupervisor:
                          f"(code {proc.poll()}); will restart "
                          f"with backoff", "WARN")
                 rec["reported"] = proc
-                try:
-                    rec["logfh"].close()
-                except Exception:
-                    pass
+                # extension.log is the pump thread's handle now;
+                # it closes when the dead child's pipe hits EOF,
+                # after the buffered tail has been drained into
+                # both sinks. Nothing to close here.
                 backoff = min(30.0, float(2 ** rec["restarts"]))
                 rec["next_restart"] = now + backoff
             if rec.get("next_restart") is not None \
@@ -812,15 +926,17 @@ class TransportSupervisor:
                             pass
                         _wait_down(proc, 1)
             finally:
-                # Close even when shutdown is interrupted. The child
-                # and this handle both keep extension.log open, and
-                # Windows will not delete it until both are gone.
-                logfh = rec.get("logfh")
-                if logfh is not None:
-                    try:
-                        logfh.close()
-                    except Exception:
-                        pass
+                # extension.log belongs to the pump thread now.
+                # With the child down, its pipe is at EOF and
+                # the pump closes the file after draining the
+                # tail; give it a bounded moment so the handle
+                # is released before stop returns (Windows will
+                # not delete the file while it is open). The
+                # pump is a daemon: even a join timeout cannot
+                # hang shutdown.
+                pump = rec.get("pump")
+                if pump is not None:
+                    pump.join(timeout=3)
             self.processes.pop(name, None)
 
 
