@@ -78,9 +78,11 @@
   The design now has a protocol document of its own --
   docs/ietf/draft-homing-pigeon-v2-00.md, in progress --
   backwards compatible with version 1 by construction.
-  Implementation, when commissioned, is staged: the
-  determination and question messages first, the signed
-  answer path next.
+  The reference slice is runner/protocol_v2.py. It is off
+  unless protocol_v2 is set. answer_only is the laptop
+  mode: it answers, and it does not execute. The rest of
+  Mirror (the Oracle's full context, extension segment
+  kinds, the red-team concentrate) is not built.
 
 - cloud-task-board-delegation (DRU, 2026-10-20; nothing
   built): the liveness check — the ping a sender already

@@ -132,6 +132,18 @@ class ApplyCliOverridesTest(unittest.TestCase):
         self.assertEqual(applied, [])
         self.assertEqual(cfg, {"judge": "off", "poll_interval_sec": 20})
 
+    def test_version_2_flags_are_opt_in(self):
+        cfg = {}
+        applied = apply_cli_overrides(cfg, _override_args(
+            protocol_v2=True, answer_only=True))
+        self.assertIs(cfg["protocol_v2"], True)
+        self.assertIs(cfg["answer_only"], True)
+        self.assertEqual(set(applied), {"protocol_v2", "answer_only"})
+        cfg = {"protocol_v2": True}
+        applied = apply_cli_overrides(cfg, _override_args())
+        self.assertIs(cfg["protocol_v2"], True)
+        self.assertNotIn("protocol_v2", applied)
+
     def test_negative_counts_are_rejected(self):
         for dest, _key in runner._CLI_OVERRIDES:
             if dest not in runner._CLI_OVERRIDE_COUNTS:
@@ -705,6 +717,7 @@ class RunnerHelpDocumentTest(unittest.TestCase):
         "--task-timeout", "--max-query-budget",
         "--max-queries-per-hour", "--max-result-view",
         "--judge", "--dag-mode", "--oracle-mode", "--require-review",
+        "--protocol-v2", "--answer-only",
         "--no-require-review", "--faster",
         "--local-signals", "--no-local-signals",
         "--local-signal-port", "--wake-cooldown",

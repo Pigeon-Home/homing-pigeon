@@ -129,6 +129,7 @@ _security = _load_mod("runner.security", "security")
 _sandbox = _load_mod("runner.sandbox", "sandbox")
 _transports = _load_mod("runner.transports", "transports")
 _jobcrypto = _load_mod("runner.jobcrypto", "jobcrypto")
+_protocol_v2 = _load_mod("runner.protocol_v2", "protocol_v2")
 _mailbox_lib = _load_mod("runner.mailbox", "mailbox")
 if _mailbox_lib is not None:
     # The mailbox client library lives in runner/mailbox.py; the
@@ -6254,6 +6255,243 @@ def _learning_model_candidate(cfg, base_dir, job_id, job, outcome,
             f"{job_id}", "WARN")
 
 
+def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
+                   base_dir):
+    """Determination, question, or answer. Never a job.
+
+    Returns True when the subject is one of those three, so
+    the caller does not try to execute it. A process that has
+    not turned version 2 on drops the message. ``answer_only``
+    answers a question and does not run anything.
+    """
+    if _protocol_v2 is None:
+        return False
+    found = _protocol_v2.subject_kind(subject)
+    if found is None:
+        return False
+    kind, ident = found
+
+    def reject(why):
+        vlog(f"ingest: seq {seq}: rejected: {why}")
+        log(f"rejecting seq {seq}: {why}", "WARN")
+        if opts is None or not opts.dry_run:
+            mark_seen(imap, seq)
+
+    if not _protocol_v2.receiving(cfg):
+        vlog(f"ingest: seq {seq}: version 2 message ignored; "
+             f"protocol_v2 is off")
+        if opts is None or not opts.dry_run:
+            mark_seen(imap, seq)
+        return True
+    try:
+        body = get_text_body(email.message_from_bytes(raw))
+        payload, key_id, secret, encrypted = _admit_object(
+            body, secrets, ident)
+    except JobCryptoError as e:
+        reject(f"bad envelope: {e}")
+        return True
+    except Exception as e:
+        reject(f"bad signature: {e}")
+        return True
+    if not encrypted and not _cleartext_jobs_allowed():
+        reject("cleartext version 2 message refused")
+        return True
+    if not _protocol_v2.answerer_allowed(cfg, key_id):
+        reject("answerer is not enabled for this key")
+        return True
+    try:
+        _protocol_v2.validate(payload)
+    except ValueError as e:
+        reject(str(e))
+        return True
+    if payload.get("type") != kind or payload.get("msg_id") != ident:
+        reject("version 2 subject does not match the body")
+        return True
+    dry = opts is not None and opts.dry_run
+    if kind == "answer":
+        if not dry:
+            stored = _protocol_v2.store_answer(base_dir, payload)
+            log(f"version 2 answer for {payload.get('question_id')}: "
+                f"{'stored' if stored else 'already stored'}")
+        if not dry:
+            mark_seen(imap, seq)
+        return True
+    if kind == "question":
+        if not _protocol_v2.answer_only(cfg):
+            log(f"version 2 question {ident}: this process is "
+                f"not an answerer; not answering")
+            if not dry:
+                mark_seen(imap, seq)
+            return True
+        text = _protocol_v2.local_answer_text(payload)
+        if _oracle_mode(cfg) != "deterministic":
+            inf = inference_config(cfg)
+            if inf is not None:
+                try:
+                    res = ask_model(
+                        inf,
+                        "Answer in one short sentence. You are "
+                        "deciding for another machine. Do not "
+                        "write a script and do not give "
+                        "instructions to run.",
+                        str(payload.get("question") or ""),
+                        500, _redact_patterns(cfg))
+                    if isinstance(res, dict) and isinstance(
+                            res.get("answer"), str) and res["answer"].strip():
+                        text = res["answer"].strip()[:500]
+                except Exception as e:
+                    log(f"version 2 answerer model failed: {e}", "WARN")
+        try:
+            ans = _protocol_v2.answer_for(payload, text)
+        except ValueError as e:
+            reject(str(e))
+            return True
+        no_send = opts is not None and opts.no_send
+        if not dry and not no_send:
+            send_mail(
+                smtp, cfg,
+                "[HOMING-PIGEON] answer " + ans["msg_id"],
+                _seal_reply(ans, secret, ans["msg_id"], key_id,
+                            encrypted))
+        log(f"version 2 answerer replied to {ident}")
+        if not dry:
+            mark_seen(imap, seq)
+        return True
+    # A determination is the Pi telling the answerer what it
+    # expects. File nothing executable. The answerer only needed
+    # to see it.
+    log(f"version 2 determination {ident} for job "
+        f"{payload.get('job_id')}: {payload.get('expect')}")
+    if not dry:
+        mark_seen(imap, seq)
+    return True
+
+
+def _v2_hand_off(cfg, smtp, base_dir, subject, body, target):
+    """Put one version 2 message on the pipe before the wait.
+
+    A transport captures sends and writes the channel only
+    after the job returns. That is too late: the answer
+    would miss the deadline. Those messages are written to
+    the channel now and are not captured, so they are not
+    written a second time. A live SMTP, including the test
+    double, is sent immediately.
+    """
+    if isinstance(smtp, _CaptureSMTP) and _transports is not None:
+        try:
+            names = _enabled_transports(cfg)
+        except Exception as e:
+            log(f"version 2 hand-off skipped: {e}", "WARN")
+            names = []
+        wrote = False
+        for name in names:
+            try:
+                hint = subject.rsplit(" ", 1)[-1]
+                _transports.write_channel_result(
+                    base_dir, name, subject, subject, body,
+                    ident_hint=hint, target=target)
+                wrote = True
+            except Exception as e:
+                log(f"version 2 hand-off to {name} failed: {e}",
+                    "WARN")
+        if wrote:
+            return
+    send_mail(smtp, cfg, subject, body, to=target)
+
+
+def _v2_ingest(cfg, imap, base_dir, seen, secrets, opts):
+    """File version 2 messages that arrived while a question is open.
+
+    Jobs stay where they are. A second job must not start on
+    top of the one that asked. ``seen`` is unused; the mail
+    core's own mark is what records a message.
+    """
+    del seen
+    if _protocol_v2 is None:
+        return
+    if imap is not None and not isinstance(imap, _NullIMAP):
+        fetch = globals().get("fetch_job_mails")
+        if fetch is None:
+            return
+        try:
+            mails = fetch(imap)
+        except Exception as e:
+            log(f"version 2 ingest failed: {e}", "WARN")
+            return
+        for seq, raw in mails:
+            try:
+                msg = email.message_from_bytes(raw)
+                subject = str(msg["Subject"] or "")
+            except Exception:
+                continue
+            if _protocol_v2.subject_kind(subject) is None:
+                continue
+            handle_v2_mail(cfg, imap, None, seq, raw, subject,
+                           secrets, opts, base_dir)
+        return
+    if _transports is None:
+        return
+    try:
+        names = _enabled_transports(cfg)
+    except Exception as e:
+        log(f"version 2 ingest failed: {e}", "WARN")
+        return
+    for name in names:
+        try:
+            messages = _transports.fetch_channel_messages(
+                base_dir, name, log=log)
+        except Exception as e:
+            log(f"version 2 ingest {name} failed: {e}", "WARN")
+            continue
+        for msg in messages:
+            if _protocol_v2.subject_kind(msg.subject) is None:
+                continue
+            safe = str(msg.subject).replace("\r", " ").replace("\n", " ")
+            raw = ("Subject: " + safe + "\r\n"
+                   "From: transport\r\n"
+                   'Content-Type: text/plain; charset="utf-8"\r\n'
+                   "\r\n" + str(msg.body)).encode("utf-8")
+            try:
+                handle_v2_mail(
+                    cfg, _NullIMAP(), _CaptureSMTP(), "transport",
+                    raw, msg.subject, secrets, opts, base_dir)
+            except Exception as e:
+                log(f"version 2 ingest message failed: {e}", "WARN")
+                continue
+            try:
+                msg.ack()
+            except Exception as e:
+                log(f"version 2 ingest ack failed: {e}", "WARN")
+
+
+def _v2_before_execute(cfg, job, op_plan, secret, key_id, encrypted,
+                       base_dir, send, pump=None):
+    """Send a determination and, on Pi Light, a question.
+
+    ``send`` hands a message to the pipe. ``pump`` files any
+    answer that arrives before the deadline. The returned
+    segments ride the version 1 result. They do not change
+    what runs.
+    """
+    if _protocol_v2 is None:
+        return []
+    outbound = _protocol_v2.outbound_for(cfg, job, op_plan)
+    segments = []
+    question = None
+    for subj, obj in outbound:
+        send(subj, _seal_reply(
+            obj, secret, obj["msg_id"], key_id, encrypted))
+        if obj.get("type") == "determination":
+            segments.append(_protocol_v2.segment(
+                "runner", "determination", obj.get("why") or ""))
+        elif obj.get("type") == "question":
+            question = obj
+    if question is not None:
+        segments.extend(_protocol_v2.await_answer(
+            base_dir, question, time.time(), pump=pump))
+    return segments
+
+
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 seen: dict, secrets: dict, opts=None, key_policies=None):
     msg = email.message_from_bytes(raw)
@@ -6273,12 +6511,20 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     if "board" in cfg and cfg["board"] is not None:
         if handle_board_mail(cfg, imap, smtp, seq, raw, subject, cfg["board"], secrets, opts, base_dir):
             return
+    if handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
+                      base_dir):
+        return
     m = re.search(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)", subject, re.I)
     if not m:
         # Result messages and other non-job traffic share the [HOMING-PIGEON]
         # prefix. Mark them seen quietly so the console is not spammed
         # with "subject does not match job pattern" on every poll.
         vlog(f"ingest: seq {seq}: skipped; not a job message")
+        if opts is None or not opts.dry_run:
+            mark_seen(imap, seq)
+        return
+    if _protocol_v2 is not None and _protocol_v2.answer_only(cfg):
+        log(f"answer-only: not executing job {m.group(1)}")
         if opts is None or not opts.dry_run:
             mark_seen(imap, seq)
         return
@@ -6606,6 +6852,25 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     if mnote:
                         op_member = _opinion.with_model_note(
                             op_member, mnote)
+            v2_segments = []
+            if _protocol_v2 is not None and _protocol_v2.enabled(cfg):
+                try:
+                    def v2_send(subject, body):
+                        _v2_hand_off(
+                            cfg, smtp, base_dir, subject, body,
+                            _valid_reply_to(job))
+
+                    def v2_pump():
+                        _v2_ingest(
+                            cfg, imap, base_dir, seen, secrets, opts)
+
+                    v2_segments = _v2_before_execute(
+                        cfg, job, op_plan, secret, key_id,
+                        encrypt_result, base_dir, v2_send, v2_pump)
+                except Exception as e:
+                    log(f"version 2 exchange failed for {job_id}: {e}",
+                        "WARN")
+                    v2_segments = []
             # Confinement snapshots exclude the runner's own base_dir so
             # retained/, board.json, and seen.json do not false-positive.
             ws = cfg.get("workspace_root") or ""
@@ -6695,6 +6960,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     mnote = _opinion_model_note(cfg, job)
                 result["oracle_opinion"] = _opinion.diagnosis_member(
                     op_plan["mode"], findings, model_note=mnote)
+            # Version 2 context rides the version 1 result.
+            # apply_result_policy rebuilds the dict, so the
+            # segments are attached after it, as the opinion is.
+            if v2_segments:
+                result["context"] = v2_segments
             # Self-learning (runner/learning.py): score the
             # frozen call against this outcome and persist what
             # it teaches BEFORE the result is sent, so the next
@@ -7088,6 +7358,8 @@ _CLI_OVERRIDES = (
     ("dag_mode", "dag_mode"),
     ("oracle_mode", "oracle_mode"),
     ("oracle_opinion", "oracle_opinion_mode"),
+    ("protocol_v2", "protocol_v2"),
+    ("answer_only", "answer_only"),
     ("remediation_mode", "remediation_mode"),
     ("require_review", "require_review"),
     ("local_signals", "local_signals"),
@@ -7108,6 +7380,7 @@ _CLI_OVERRIDE_COUNTS = frozenset(
     dest for dest, _key in _CLI_OVERRIDES
     if dest not in ("max_result_view", "judge", "dag_mode",
                     "oracle_mode", "oracle_opinion",
+                    "protocol_v2", "answer_only",
                     "remediation_mode", "require_review",
                     "local_signals", "oracle_log", "transports"))
 
@@ -10468,6 +10741,19 @@ def main() -> int:
                    help="Oracle mode: llm, or deterministic -- "
                         "the Pi Light mode, no model is called "
                         "(default: llm)")
+    g.add_argument("--protocol-v2", action="store_true",
+                   default=None,
+                   help="before a job runs, send a version 2 "
+                        "determination when the Oracle does not "
+                        "expect a clean pass, and on a "
+                        "deterministic Oracle ask the question "
+                        "a local model would have been asked "
+                        "(default: off)")
+    g.add_argument("--answer-only", action="store_true",
+                   default=None,
+                   help="answer version 2 questions and do not "
+                        "execute jobs; the laptop that thinks "
+                        "for a Pi (default: off)")
     g.add_argument("--oracle-opinion", default=None, metavar="MODE",
                    choices=["off", "diagnose", "advise", "repair"],
                    help="Oracle opinion latitude for this process: "

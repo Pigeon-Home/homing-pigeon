@@ -4,6 +4,19 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.0 - 2026-10-21
+
+- **Protocol version 2, as messages beside a version 1 job.**
+  A runner with `protocol_v2` sends a determination when the
+  Oracle does not expect a clean pass, and a deterministic
+  Oracle also sends the question it would have asked a local
+  model. Any holder of a trusted secret may answer.
+  `answer_only` is the laptop that answers and does not
+  execute. One answer decides; a late one is context. The
+  segments ride the version 1 result and do not change what
+  runs. Off unless the operator turns it on. Jobs stay
+  version 1.
+
 ## 3.11.63 - 2026-10-20
 
 - **Version rev.** No functional change from 3.11.62.
