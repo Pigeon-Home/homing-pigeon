@@ -29,6 +29,8 @@ class BannerTest(unittest.TestCase):
         self.assertIn("IMPORTANT DOCUMENTS", BANNER)
         self.assertIn("do NOT install", BANNER)
         self.assertIn("proficient system administrator", BANNER)
+        self.assertNotIn("ignore", BANNER.lower())
+        self.assertNotIn("--", BANNER)
         self.assertNotIn("body-that-must-not-leak", BANNER)
 
 
@@ -133,6 +135,57 @@ class ScanTest(unittest.TestCase):
             os.path.join(tempfile.gettempdir(), "hp-no-such-home")))
         self.assertFalse(personal_documents_present(""))
         self.assertFalse(personal_documents_present(None))
+
+
+class SwitchTest(unittest.TestCase):
+    def test_the_switch_does_not_run_the_check(self):
+        import argparse
+        from runner.runner import log_startup
+        import runner.runner as R
+        args = argparse.Namespace(
+            verbose=False, workers=None, poll_interval=None,
+            max_output_bytes=None, timeout=None,
+            dry_run=False, once=False, no_send=False,
+            ignore_personal_documents=True)
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(
+                    R._personal_docs, "warn_if_personal_documents",
+                    side_effect=AssertionError("check ran")):
+                log_startup({}, args, d)
+
+    def test_without_the_switch_the_check_runs(self):
+        import argparse
+        from runner.runner import log_startup
+        import runner.runner as R
+        args = argparse.Namespace(
+            verbose=False, workers=None, poll_interval=None,
+            max_output_bytes=None, timeout=None,
+            dry_run=False, once=False, no_send=False,
+            ignore_personal_documents=False)
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(
+                    R._personal_docs, "warn_if_personal_documents",
+                    return_value=False) as warn:
+                log_startup({}, args, d)
+        warn.assert_called_once_with()
+
+    def test_install_bakes_the_switch_into_the_service(self):
+        import types
+        from runner import install
+        baked = install._forwarded_args(types.SimpleNamespace(
+            dry_run=False, no_send=False, pdb=False,
+            allow_cleartext=False, verbose=True,
+            poll_interval=None, max_output_bytes=None,
+            timeout=None, workers=None,
+            ignore_personal_documents=True))
+        self.assertIn("--ignore-personal-documents", baked)
+        quiet = install._forwarded_args(types.SimpleNamespace(
+            dry_run=False, no_send=False, pdb=False,
+            allow_cleartext=False, verbose=True,
+            poll_interval=None, max_output_bytes=None,
+            timeout=None, workers=None,
+            ignore_personal_documents=False))
+        self.assertNotIn("--ignore-personal-documents", quiet)
 
 
 if __name__ == "__main__":

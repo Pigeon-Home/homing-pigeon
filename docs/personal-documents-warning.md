@@ -59,14 +59,21 @@ people stop reading. A quiet result does not mean the computer is
 free of personal papers. A scan named `IMG_2044.pdf` will not
 match. That is the limit of looking at names.
 
-## Why there is no off switch
+## How to skip it
 
-The banner is the feature. A flag that hides it is how it gets
-turned off on the computer it was written for. A proficient
-administrator can stand the banner.
+`--ignore-personal-documents` on the runner skips the check for
+that process. The same flag on the installer skips the warning
+during install and writes the runner flag into the service
+command, so a boot start stays quiet too.
+
+The banner does not mention the flag. `--help` does. There is
+no config key. A service installed without the flag keeps
+warning.
 
 ## Where it runs
 
-The runner prints it at startup, including a dry run. The
-installer prints it before it copies anything. `--help`,
-`--version`, uninstall, `--check`, and `--logs` do not print it.
+The runner prints it at startup, including a dry run, unless
+`--ignore-personal-documents` was passed. The installer prints
+it before it copies anything, unless that same flag was passed.
+`--help`, `--version`, uninstall, `--check`, and `--logs` do
+not print it.

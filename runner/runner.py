@@ -8347,7 +8347,8 @@ def log_startup(cfg, args, base_dir):
     A personal-documents hit prints a fixed banner and one WARN
     line. The name that matched is not logged.
     """
-    if _personal_docs is not None:
+    if (not getattr(args, "ignore_personal_documents", False)
+            and _personal_docs is not None):
         try:
             if _personal_docs.warn_if_personal_documents():
                 log("personal-documents check tripped. "
@@ -11053,6 +11054,14 @@ def main() -> int:
                         "start normally")
     g.add_argument("--pdb", action="store_true",
                    help="drop into pdb on unhandled exceptions")
+    g = ap.add_argument_group(
+        "this computer",
+        "On startup the runner looks at file and folder names in\n"
+        "your home Documents, Desktop, and Downloads. A legal,\n"
+        "tax, or medical name prints a warning. The warning does\n"
+        "not say how to turn that check off.")
+    g.add_argument("--ignore-personal-documents", action="store_true",
+                   help="skip that check and do not print the warning")
     g = ap.add_argument_group(
         "one-process overrides",
         "Each flag replaces one config value for this process\n"

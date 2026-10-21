@@ -711,7 +711,7 @@ class RunnerHelpDocumentTest(unittest.TestCase):
     FLAGS = [
         "--help", "--version",
         "--config", "--once", "--dry-run", "--no-send", "--setup",
-        "--pdb",
+        "--pdb", "--ignore-personal-documents",
         "--workers", "--poll-interval", "--timeout",
         "--max-output-bytes", "--max-job-age", "--retention-days",
         "--task-timeout", "--max-query-budget",
@@ -799,6 +799,7 @@ class InstallHelpDocumentTest(unittest.TestCase):
         "--dry-run", "--workers", "--poll-interval",
         "--max-output-bytes", "--no-send", "--timeout",
         "--verbose", "--quiet", "--pdb",
+        "--ignore-personal-documents",
     ]
     EXAMPLES = [
         "install.py",

@@ -59,7 +59,8 @@ def _runner_argv(dst_dir: str):
 def _forwarded_args(args) -> list:
     """Runner CLI flags to bake into the installed service command."""
     out = []
-    for name in ("dry_run", "no_send", "pdb", "allow_cleartext"):
+    for name in ("dry_run", "no_send", "pdb", "allow_cleartext",
+                 "ignore_personal_documents"):
         if getattr(args, name, False):
             out.append("--" + name.replace("_", "-"))
     # verbose is the runner default. Only bake the off switch.
@@ -2785,9 +2786,15 @@ def main() -> int:
                         "written into the service command at install "
                         "time, exactly like the other flags in this "
                         "group; there is no config key for it")
+    g.add_argument("--ignore-personal-documents", action="store_true",
+                   help="skip the personal-documents warning, and "
+                        "bake the runner's --ignore-personal-documents "
+                        "into the service so a boot start stays quiet "
+                        "too")
     args = ap.parse_args()
 
-    if not (args.uninstall or args.check or args.logs):
+    if not (args.uninstall or args.check or args.logs
+            or args.ignore_personal_documents):
         _warn_personal_documents()
 
     print(f"install {__version__}")
