@@ -38,6 +38,14 @@ Those values live on the runner host. They do not travel through the SI chat.
 3. The shared secret for HMAC is the only secret the SI needs, and only so it can sign jobs. It is not a login.
 4. If a live round-trip is required, send the signed job with the connector to the runner's dedicated address. The result is delivered to the runner's mailbox, not to the connector account (see 'Result location' below); to verify it, ask the user to forward it, then read the forward with the connector. Do not log into the runner's mailbox.
 5. If the connector is not connected, ask the user to connect their mail account. Do not fall back to asking for a password.
+6. **Audit ignore list.** Claims audits and doc sweeps skip these by
+   owner decision; do not file findings against them or propose
+   removing them:
+   - `ENTERPRISE.md` — a placeholder the owner keeps as-is; it ships
+     in the sdist because the root-doc guard test copies every root
+     `.md`.
+   - `CHANGELOG.md`, `docs/reports/**`, `docs/archive/**` — historical
+     records; banners mark them, content is not re-audited.
 
 
 ## Sending a job
