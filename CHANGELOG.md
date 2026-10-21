@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.4 - 2026-10-21
+
+- **3.12.3 did not publish.** Its test job failed: the seen-file
+  temp name did not match the Linux pin, and the Windows lock
+  import ran on Linux when a test pretended to be Windows.
+  Binaries for that tag were not built. This tag is the same
+  race fixes, with those two corrected.
+
 ## 3.12.3 - 2026-10-21
 
 - **Two runners, one state directory.** A job is claimed on

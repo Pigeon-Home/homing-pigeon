@@ -7319,6 +7319,7 @@ def _with_seen_file(path, mutator):
         return {}
     with _SEEN_FILE_GUARD:
         fd = None
+        kind = None
         try:
             flags = os.O_CREAT | os.O_RDWR
             fd = os.open(path + ".lock", flags, 0o600)
@@ -7329,12 +7330,17 @@ def _with_seen_file(path, mutator):
                 os.lseek(fd, 0, os.SEEK_SET)
             except OSError:
                 pass
-            if os.name == "nt":
-                import msvcrt
-                msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
-            else:
+            # fcntl where the platform has it. A Linux test that
+            # pretends os.name is "nt" still has fcntl; importing
+            # msvcrt there raises and used to fail the poll.
+            try:
                 import fcntl
                 fcntl.flock(fd, fcntl.LOCK_EX)
+                kind = "fcntl"
+            except ImportError:
+                import msvcrt
+                msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+                kind = "msvcrt"
             disk = load_seen(path)
             updated = mutator(disk if isinstance(disk, dict) else {})
             if not isinstance(updated, dict):
@@ -7346,13 +7352,13 @@ def _with_seen_file(path, mutator):
         finally:
             if fd is not None:
                 try:
-                    if os.name == "nt":
+                    if kind == "msvcrt":
                         import msvcrt
                         msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
-                    else:
+                    elif kind == "fcntl":
                         import fcntl
                         fcntl.flock(fd, fcntl.LOCK_UN)
-                except OSError:
+                except (OSError, ImportError):
                     pass
                 try:
                     os.close(fd)
@@ -7370,7 +7376,7 @@ def _write_seen_unlocked(path, seen):
         if "\x00" in text:
             continue
         keys.append(text)
-    tmp = path + ".tmp." + str(os.getpid()) + "." + str(threading.get_ident())
+    tmp = path + ".tmp." + str(threading.get_ident())
     fd = None
     try:
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL

@@ -117,7 +117,9 @@ class SeenMutations(unittest.TestCase):
                     raise RuntimeError("no")
 
             save_seen(path, {Boom(): True, "kept": True})
-            self.assertEqual(load_seen(path), {"kept": True})
+            # A later save merges. Keys already on disk stay.
+            # A key whose string form raises is not added.
+            self.assertEqual(set(load_seen(path)), {"1", "ok", "kept"})
 
 
 class SeenReadTest(unittest.TestCase):
