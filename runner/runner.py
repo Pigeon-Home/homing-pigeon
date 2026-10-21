@@ -1215,6 +1215,19 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
         "duration_sec": exec_result.get("duration_sec"),
         "view": effective, "output_digest": digest,
     }
+    # Spec-required members (PROTOCOL result table): the exec
+    # result carries both, and this rebuild must not drop them.
+    # A caller that hands in a bare exec result gets them minted
+    # here rather than emitting a result that lacks them.
+    completed_at = exec_result.get("completed_at")
+    if not (isinstance(completed_at, str) and completed_at):
+        completed_at = datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ")
+    base["completed_at"] = completed_at
+    runner_name = exec_result.get("runner")
+    if not (isinstance(runner_name, str) and runner_name):
+        runner_name = socket.gethostname()
+    base["runner"] = runner_name
     retain = effective != "full"
     if effective == "full":
         base.update({
