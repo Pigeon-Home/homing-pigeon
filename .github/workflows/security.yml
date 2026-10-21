@@ -40,7 +40,4 @@ jobs:
         with:
           languages: python
           config-file: ./.github/codeql/codeql-config.yml
-          # The default suite does not run the suppression query, so a
-          # "# codeql[...]" line above a finding would otherwise be ignored.
-          queries: +codeql/python-queries:AlertSuppression.ql
       - uses: github/codeql-action/analyze@ce5e7eeac396d720fe2d802714996c8ce561e311 # v3

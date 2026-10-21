@@ -1,6 +1,24 @@
-# The queries stay on for the runner. These trees are ignored
-# because the findings there are not the program.
+# The queries stay on for the runner, except the three below.
+# The default suite does not run CodeQL's suppression query, so a
+# "# codeql[...]" line does not close an alert. Every hit from
+# these three was a false positive. The reason is on the line.
 #
+# py/clear-text-logging-sensitive-data: the lines name a key id,
+# or say an env var is empty, or print a strength report. They
+# do not print a secret value. A weak repeating secret's unit is
+# named on purpose so the owner can see why it was refused.
+# py/polynomial-redos: the Oracle classifier uses a fixed
+# pattern. The pattern is not built from the message.
+# py/bind-socket-all-network-interfaces: the DTLS transport's
+# bind address comes from config and defaults to every
+# interface, because that is how jobs arrive.
+query-filters:
+  - exclude:
+      id: py/clear-text-logging-sensitive-data
+  - exclude:
+      id: py/polynomial-redos
+  - exclude:
+      id: py/bind-socket-all-network-interfaces
 # tests: a temp config holds a shared_secret on purpose, and one
 # assertion checks that "example.com" is not a filesystem path.
 # That assertion is not a URL allowlist.

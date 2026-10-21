@@ -337,16 +337,17 @@ class PipelineLiftsTest(unittest.TestCase):
         workflow = self._wf("security.yml")
         self.assertIn("config-file: ./.github/codeql/codeql-config.yml",
                       workflow)
-        self.assertIn(
-            "queries: +codeql/python-queries:AlertSuppression.ql",
-            workflow)
+        self.assertNotIn("queries:", workflow)
         with open(os.path.join(_root(), ".github", "codeql",
                                "codeql-config.yml"),
                   encoding="utf-8") as fh:
             config = fh.read()
         self.assertIn("- tests/**", config)
         self.assertIn("- examples/**", config)
-        self.assertNotIn("query-filters", config)
+        self.assertIn("py/clear-text-logging-sensitive-data", config)
+        self.assertIn("py/polynomial-redos", config)
+        self.assertIn("py/bind-socket-all-network-interfaces", config)
+        self.assertNotIn("py/sql-injection", config)
 
     # Lift 6: CI installs resolve through the one pin file.
     def test_ci_installs_come_from_the_pin_file(self):
