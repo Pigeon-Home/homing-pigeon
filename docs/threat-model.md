@@ -13,11 +13,15 @@ scoped keys, CI runners, containers, or a proper agent sandbox. Still,
 configuring those repeatedly for every provider and chat interface is
 cumbersome, and this cuts through that noise.
 
-Jobs are gated before they run by deterministic code — the
-opinion's tier-1 checks, which run by default (and the judge,
-when the owner sets it to enforce). The Oracle, backed by a local
-model (the installer's default is qwen3:1.7b), reviews the results
-after the fact. The operating system can carry the rest of the load,
+Jobs are checked before they run by deterministic code — the
+opinion's tier-1 checks, which run by default. The opinion is
+advisory, not a gate: it never blocks, holds, or approves a job
+by itself (the judge does gate, when the owner sets it to
+enforce). The Oracle reviews the results after the fact; by
+default that review is the same deterministic tier-1 machinery —
+a local model joins the opinion only when the owner opts in
+(`oracle_opinion_model`; the installer's default model is
+qwen3:1.7b). The operating system can carry the rest of the load,
 with SELinux or AppArmor, locked-down users, containers, filesystem
 ACLs, and role-based keys that could feed back into the Oracle and
 limit what a bad or even malicious job can touch.
