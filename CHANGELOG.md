@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.1 - 2026-10-21
+
+- **Frozen builds include the version 2 module.** The one-file
+  executables load `runner.protocol_v2` dynamically, so PyInstaller
+  needs it named. The 3.12.0 tag failed that check in CI before
+  anything was published. No protocol change.
+
 ## 3.12.0 - 2026-10-21
 
 - **Protocol version 2, as messages beside a version 1 job.**
