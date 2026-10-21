@@ -1,0 +1,29 @@
+# Agent-Stamp: 30000f1a-3b4c-4d5e-8f6a-7b8c9d0e1f2a
+name: minimal-userland
+
+# The README's repair claim, proven on a box with no bash: a signed
+# job naming an absent interpreter is repaired to sh and really
+# runs, a job whose shape does not fit is left alone, and every
+# repair is stated in the result. x86_64 and arm64 (the Raspberry
+# Pi's architecture). See tests/test_minimal_userland.py.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  repair-on-busybox:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-22.04-arm]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: docker build -f docker/minimal-userland/Dockerfile -t hp-minimal .
+      - run: docker run --rm hp-minimal

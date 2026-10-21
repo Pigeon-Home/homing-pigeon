@@ -272,7 +272,8 @@ class PipelineLiftsTest(unittest.TestCase):
     pins keep the six lifts from quietly un-landing.
     """
 
-    WORKFLOWS = ("build.yml", "docker.yml", "security.yml")
+    WORKFLOWS = ("build.yml", "docker.yml", "security.yml",
+                 "minimal-userland.yml")
 
     def _wf(self, name):
         with open(os.path.join(_root(), ".github", "workflows", name),

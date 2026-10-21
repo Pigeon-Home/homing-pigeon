@@ -194,6 +194,15 @@ for an opinion, the prediction rides its result too. The owner's
 ceiling: a job may ask for less, never more. Design:
 `docs/oracle-opinion-design.md`.
 
+**Fixes mismatched jobs, never silently.** CI proves it on a
+bare-bones box (Alpine, BusyBox `sh`, no bash) on x86_64 and arm64:
+a job naming `bash` is repaired to `sh` and runs, a PowerShell-shaped
+job is left alone, and every repair is stated in the result.
+[![minimal-userland](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/minimal-userland.yml/badge.svg)](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/minimal-userland.yml)
+Known gap: shape detection does not see bash-only syntax (arrays),
+so such a script is repaired onto `sh` and fails there, stated in
+the result like any repair (`tests/test_minimal_userland.py`).
+
 ### Operating modes
 
 Five knobs set the posture. They are independent — these are three
