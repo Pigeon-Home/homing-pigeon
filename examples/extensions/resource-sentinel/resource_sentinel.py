@@ -17,11 +17,11 @@ rolling window of samples:
                     loop holds the machine like that; a
                     compile does not
 - disk_fill_velocity free space on the watched mount
-                    shrinking faster than the
+                    shrinking at or faster than the
                     disk_fill_gb_per_hour tunable
                     (default 10) -- log bombing, evidence
                     flooding, a runaway writer
-- process_storm     the process count growing by more than
+- process_storm     the process count growing by at least
                     the process_growth tunable (default
                     200) inside the window -- fork-bomb and
                     runaway-spawn shape
