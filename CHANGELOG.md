@@ -4,6 +4,22 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.37 - 2026-10-20
+
+- **Windows process tree ignores a reused pid.** Toolhelp
+  still names the previous owner's children. On the
+  v3.11.36 tag a one-line job was charged with 144
+  processes, the storm fired, and the env-gate test saw
+  that audit line. The main push of the same commit did
+  not. A process older than the job is not part of the
+  tree. A process that cannot be opened is counted once
+  and not walked. That tag did not publish.
+- **`--inference-only` honors an in-place oracle_mode flip.**
+  A Pi Light box that sets `oracle_mode` to `llm` in
+  config.json and re-runs the flag now installs the model
+  instead of skipping.
+- **Result policy keeps the spec-required members.**
+
 ## 3.11.36 - 2026-10-20
 
 - **Version rev.** No functional change from 3.11.35.

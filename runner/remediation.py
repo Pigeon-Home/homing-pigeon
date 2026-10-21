@@ -294,10 +294,14 @@ def total_memory_bytes():
         return None
 
 
-# --- Windows, via ctypes. Membership (Toolhelp32 snapshot) is
-# reliable. Per-process usage is best-effort: OpenProcess is
-# refused for protected or more-privileged processes, which
-# then count toward membership (storm) with usage unknown.
+# --- Windows, via ctypes. Toolhelp names a parent by pid, and
+# Windows reuses pids, so a job can be handed the leftover
+# children of whoever held that pid before. Those processes
+# are older than the job. A process we cannot open at all is
+# counted once and not walked: its children are the same
+# ambiguity, and walking them is how a one-line job on a busy
+# runner was charged with the whole tree (v3.11.36, 144
+# processes, storm ceiling 64).
 
 def _win_parents():
     import ctypes
@@ -333,6 +337,38 @@ def _win_parents():
     finally:
         kernel32.CloseHandle(snap)
     return parents
+
+
+def _win_created_ticks(pid):
+    """Process creation time in 100ns ticks, or None.
+
+    None means the process could not be opened or its times
+    could not be read. Callers must not treat that as "older"
+    or "younger".
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    class FILETIME(ctypes.Structure):
+        _fields_ = [("lo", wintypes.DWORD), ("hi", wintypes.DWORD)]
+
+        def ticks100ns(self):
+            return (self.hi << 32) | self.lo
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    handle = kernel32.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED
+    if not handle:
+        return None
+    try:
+        created, exited, kern, user = (FILETIME(), FILETIME(),
+                                       FILETIME(), FILETIME())
+        if not kernel32.GetProcessTimes(
+                handle, ctypes.byref(created), ctypes.byref(exited),
+                ctypes.byref(kern), ctypes.byref(user)):
+            return None
+        return created.ticks100ns()
+    finally:
+        kernel32.CloseHandle(handle)
 
 
 def _win_usage(pid):
@@ -416,10 +452,28 @@ def _win_total_memory():
 
 def sample_tree_windows(root_pid):
     parents = _win_parents()
+    children = {}
+    for pid, ppid in parents.items():
+        children.setdefault(ppid, []).append(pid)
+    root_born = _win_created_ticks(root_pid)
     sample = {}
-    for pid in tree_pids(root_pid, parents):
+    seen = set()
+    stack = [root_pid]
+    while stack:
+        pid = stack.pop()
+        if pid in seen:
+            continue
+        seen.add(pid)
+        if pid != root_pid and root_born is not None:
+            born = _win_created_ticks(pid)
+            if born is None:
+                sample[pid] = (0.0, None)
+                continue
+            if born < root_born:
+                continue
         usage = _win_usage(pid)
         sample[pid] = usage if usage is not None else (0.0, None)
+        stack.extend(children.get(pid, ()))
     if root_pid not in sample:
         sample[root_pid] = (0.0, None)
     return sample

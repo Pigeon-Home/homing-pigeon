@@ -196,6 +196,21 @@ class Gaps(unittest.TestCase):
                 ctl["handle"] = 1
                 self.assertEqual(rem.sample_tree(7)[7][1], 999)
 
+    def test_windows_sampler_does_not_adopt_a_reused_pid_tree(self):
+        # 11 started before the job and still names the job's pid
+        # as its parent. 12 is 11's child. Neither belongs to the
+        # job. 15 cannot be opened, so it counts, but its child
+        # 16 is not walked. 13 and 14 started after the job.
+        parents = {10: 1, 11: 10, 12: 11, 13: 10, 14: 13, 15: 10, 16: 15}
+        born = {10: 100, 11: 50, 12: 40, 13: 200, 14: 210, 15: None, 16: 300}
+        with mock.patch.object(rem, "_win_parents", return_value=parents), \
+                mock.patch.object(rem, "_win_created_ticks",
+                                  side_effect=lambda pid: born.get(pid)), \
+                mock.patch.object(rem, "_win_usage",
+                                  return_value=(0.0, 1)):
+            sample = rem.sample_tree_windows(10)
+        self.assertEqual(set(sample), {10, 13, 14, 15})
+
     def test_jsonl_av_and_quarantine(self):
         if os.name == "nt":
             self.skipTest("AV path finding differs on Windows")
