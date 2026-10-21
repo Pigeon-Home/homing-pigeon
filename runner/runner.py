@@ -131,6 +131,7 @@ _sandbox = _load_mod("runner.sandbox", "sandbox")
 _transports = _load_mod("runner.transports", "transports")
 _jobcrypto = _load_mod("runner.jobcrypto", "jobcrypto")
 _protocol_v2 = _load_mod("runner.protocol_v2", "protocol_v2")
+_personal_docs = _load_mod("runner.personal_docs", "personal_docs")
 _mailbox_lib = _load_mod("runner.mailbox", "mailbox")
 if _mailbox_lib is not None:
     # The mailbox client library lives in runner/mailbox.py; the
@@ -8343,7 +8344,17 @@ def log_startup(cfg, args, base_dir):
     """One block: what is configured, what is running, what it expects.
 
     Never prints a secret. Prints the absence of one.
+    A personal-documents hit prints a fixed banner and one WARN
+    line. The name that matched is not logged.
     """
+    if _personal_docs is not None:
+        try:
+            if _personal_docs.warn_if_personal_documents():
+                log("personal-documents check tripped. "
+                    "No file was opened and no name was recorded.",
+                    "WARN")
+        except Exception:
+            pass
     # The verbosity level main() resolved (flag beats config).
     # Direct callers (tests, doors) may not carry one; fall back
     # to the old boolean reading of args.verbose.

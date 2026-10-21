@@ -2574,6 +2574,18 @@ def install_ollama_and_model(cfg_path: str, model: str, skip: bool) -> bool:
         return False
 
 
+def _warn_personal_documents():
+    """Best effort. A missing module must not stop an install."""
+    try:
+        try:
+            from runner.personal_docs import warn_if_personal_documents
+        except ImportError:
+            from personal_docs import warn_if_personal_documents
+        warn_if_personal_documents()
+    except Exception:
+        return
+
+
 def main() -> int:
     # --help is a document here too, same hand as the runner's:
     # chapters in reading order, worked examples in the epilog.
@@ -2774,6 +2786,9 @@ def main() -> int:
                         "time, exactly like the other flags in this "
                         "group; there is no config key for it")
     args = ap.parse_args()
+
+    if not (args.uninstall or args.check or args.logs):
+        _warn_personal_documents()
 
     print(f"install {__version__}")
     plat = sys.platform
