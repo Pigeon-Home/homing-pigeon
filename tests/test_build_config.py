@@ -337,6 +337,9 @@ class PipelineLiftsTest(unittest.TestCase):
         workflow = self._wf("security.yml")
         self.assertIn("config-file: ./.github/codeql/codeql-config.yml",
                       workflow)
+        self.assertIn(
+            "queries: +codeql/python-queries:AlertSuppression.ql",
+            workflow)
         with open(os.path.join(_root(), ".github", "codeql",
                                "codeql-config.yml"),
                   encoding="utf-8") as fh:
