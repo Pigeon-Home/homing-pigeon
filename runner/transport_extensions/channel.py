@@ -31,6 +31,9 @@ FILE_MAX_BYTES = 4 * 1024 * 1024
 
 
 def log(msg, level="INFO"):
+    # A weak-key refusal may name its repeating unit. A strong
+    # secret is not passed here.
+    # codeql[py/clear-text-logging-sensitive-data]
     print(f"{level}: {msg}", file=sys.stderr, flush=True)
 
 

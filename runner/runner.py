@@ -1245,7 +1245,8 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
     stderr = exec_result.get("stderr")
     full_out = _as_text(stdout) + _as_text(stderr)
     # Result digest, not a password hash. SHA-384 is the protocol.
-    digest = hashlib.sha384(full_out.encode("utf-8")).hexdigest()  # codeql[py/weak-sensitive-data-hashing]
+    # codeql[py/weak-sensitive-data-hashing]
+    digest = hashlib.sha384(full_out.encode("utf-8")).hexdigest()
     base = {
         "v": PROTOCOL_VERSION, "type": "result", "job_id": job.get("job_id"),
         "kind": job.get("kind"), "exit_code": exec_result.get("exit_code"),
@@ -2638,7 +2639,8 @@ def _oracle_instruction_kind(text):
     clauses = []
     for sentence in re.split(r"[.!?\n;]+", text.lower()):
         clauses.extend(
-            re.split(r",?\s+(?:and\s+then|and|then)\s+", sentence))  # codeql[py/polynomial-redos]
+            # codeql[py/polynomial-redos]
+            re.split(r",?\s+(?:and\s+then|and|then)\s+", sentence))
     for clause in clauses:
         words = clause.split()
         if not words:
@@ -4391,7 +4393,8 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
             raise JobRejected("script SHA384 mismatch")
         with open(script_path, "w", encoding="utf-8") as fh:
             # The job has to be a file to run. This is not a password store.
-            fh.write(script)  # codeql[py/clear-text-storage-sensitive-data]
+            # codeql[py/clear-text-storage-sensitive-data]
+            fh.write(script)
     else:
         raise JobRejected("exec job requires script or script_url")
 
@@ -4677,7 +4680,8 @@ def log(msg: str, level: str = "INFO"):
         # A closed stdout must not kill the runner. The file still gets it.
         try:
             # Operator lines only. Do not pass a secret value to log().
-            print(line, flush=True)  # codeql[py/clear-text-logging-sensitive-data]
+            # codeql[py/clear-text-logging-sensitive-data]
+            print(line, flush=True)
         except Exception:
             pass
         if _LOG_FILE:

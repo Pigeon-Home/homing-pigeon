@@ -342,6 +342,7 @@ def main(cfg, base_dir, since=None, key=None, feature=None):
     table_rows, suggestions, refused, fragments = build_report(
         cfg, base_dir, since_secs, key=key, feature=feature)
     # Key ids and finding counts. Secret values are not in the report.
-    sys.stdout.write(format_report(table_rows, suggestions, refused,  # codeql[py/clear-text-logging-sensitive-data]
+    # codeql[py/clear-text-logging-sensitive-data]
+    sys.stdout.write(format_report(table_rows, suggestions, refused,
                                    label, fragments))
     return 0

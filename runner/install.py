@@ -173,7 +173,8 @@ def store_additional_secret(cfg_path: str, key_id: str) -> None:
     cfg["additional_secrets"] = extra
     _write_json(cfg_path, cfg)
     # The value stays in the file. This line names the key only.
-    print(f"additional secret stored for {key_id}")  # codeql[py/clear-text-logging-sensitive-data]
+    # codeql[py/clear-text-logging-sensitive-data]
+    print(f"additional secret stored for {key_id}")
 
 
 def install_files(src_dir: str, bin_dir: str,

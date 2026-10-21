@@ -324,7 +324,8 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
     if not cfg.get("runner_id"):
         cfg["runner_id"] = secrets.token_hex(16)
         # The audience a job must name. Not a key.
-        print(f"generated runner_id: {cfg['runner_id']}")  # codeql[py/clear-text-logging-sensitive-data]
+        # codeql[py/clear-text-logging-sensitive-data]
+        print(f"generated runner_id: {cfg['runner_id']}")
     _write_config(cfg_path, cfg)
     print(f"\nwrote {cfg_path} (owner read/write only)")
     print("Give the shared secret above to your cloud SI so it can sign jobs.")

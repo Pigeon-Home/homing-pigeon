@@ -139,6 +139,8 @@ class DtlsPipe:
             greeting_for=lambda session: build_greeting(self.tier),
             log=ch.log)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # bind is config, default every interface. This is how jobs arrive.
+        # codeql[py/bind-socket-all-network-interfaces]
         self.sock.bind((self.bind, self.port))
         self.sock.setblocking(False)
         self.job_session = {}        # job ident -> session id
