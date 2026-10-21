@@ -1,6 +1,6 @@
 # Security Test Plan — homing-pigeon local SI harness
 
-**Status:** draft for execution. **Scope:** the local SI harness (two Ollama instances, Open WebUI, email transport), against runner v3.1.0+ semantics. This plan tests security properties;
+**Status:** draft for execution. **Scope:** the local SI harness (two Ollama instances, Open WebUI, email transport), against runner v3.11+ semantics. This plan tests security properties;
 it is not a harness redesign. Anything the harness cannot do today is
 marked **harness gap** — do not pretend it works.
 
@@ -227,8 +227,10 @@ Sign with the test key via `send_job.py new --key-id test-only
 **Harness gap:** the harness's `build_ask_job` hardcodes
 kind=ping / view=attested / one ask query / budget 4 and takes no
 `key_id`. These tests need hand-crafted jobs (`send_job.py` covers
-kind/interpreter/timeout/key-id; `result_policy` and script-hash jobs
-need a small Python snippet around the repo's `sign_payload`).
+kind/interpreter/timeout/key-id — and script-hash jobs ride
+along via `--script-file` / `--script-sha384`, since the policy
+hashes the job's inline script on the runner; only `result_policy`
+jobs need a small Python snippet around the repo's `sign_payload`).
 Consider a `--job-file` mode for the harness.
 
 ## 5. Transport integrity over email
