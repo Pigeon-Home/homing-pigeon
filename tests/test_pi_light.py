@@ -401,6 +401,56 @@ class InstallPiLightTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         ollama.assert_not_called()
 
+    def test_cfg_oracle_mode_reads_the_existing_config(self):
+        # The --inference-only upgrade decision reads the mode
+        # from the config being upgraded, not from the profile.
+        self.assertIsNone(I._cfg_oracle_mode(self.cfg_path))
+        self._seed_cfg({"oracle_mode": "llm"})
+        self.assertEqual(I._cfg_oracle_mode(self.cfg_path), "llm")
+        self._seed_cfg({"oracle_mode": "deterministic"})
+        self.assertEqual(I._cfg_oracle_mode(self.cfg_path),
+                         "deterministic")
+        self._seed_cfg({"oracle_mode": "  llm  "})
+        self.assertEqual(I._cfg_oracle_mode(self.cfg_path), "llm")
+        self._seed_cfg({"oracle_mode": 42})
+        self.assertIsNone(I._cfg_oracle_mode(self.cfg_path))
+        self._seed_cfg({})
+        self.assertIsNone(I._cfg_oracle_mode(self.cfg_path))
+        with open(self.cfg_path, "w", encoding="utf-8") as fh:
+            fh.write("not json")
+        self.assertIsNone(I._cfg_oracle_mode(self.cfg_path))
+
+    def test_inference_only_honors_the_config_mode_flip(self):
+        # The documented Pi Light upgrade: set oracle_mode to llm
+        # in config.json, re-run --inference-only, get a model --
+        # even though the box still detects as Pi Light. Before the
+        # fix the profile short-circuit ignored the config and the
+        # flip silently did nothing.
+        self._seed_cfg({"oracle_mode": "llm"})
+        argv = ["install", "--dir", self._tmp.name,
+                "--config", self.cfg_path, "--inference-only",
+                "--profile", "pi-light"]
+        with unittest.mock.patch.object(
+                I, "install_ollama_and_model", return_value=True) as ollama, \
+             unittest.mock.patch.object(sys, "argv", argv):
+            rc = I.main()
+        self.assertEqual(rc, 0)
+        ollama.assert_called_once()
+
+    def test_inference_only_still_skips_when_config_stays_light(self):
+        # No flip, no download: a config that still asks for the
+        # deterministic Oracle keeps the short-circuit.
+        self._seed_cfg({"oracle_mode": "deterministic"})
+        argv = ["install", "--dir", self._tmp.name,
+                "--config", self.cfg_path, "--inference-only",
+                "--profile", "pi-light"]
+        with unittest.mock.patch.object(
+                I, "install_ollama_and_model", return_value=True) as ollama, \
+             unittest.mock.patch.object(sys, "argv", argv):
+            rc = I.main()
+        self.assertEqual(rc, 0)
+        ollama.assert_not_called()
+
     def test_example_config_documents_the_mode(self):
         path = os.path.join(REPO, "runner", "config.example.json")
         with open(path, encoding="utf-8") as fh:

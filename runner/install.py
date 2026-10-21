@@ -954,6 +954,27 @@ def _pi_light_skip(args, profile) -> bool:
     return True
 
 
+def _cfg_oracle_mode(cfg_path):
+    """The oracle_mode an existing config.json asks for, or None.
+
+    The documented Pi Light upgrade is an in-place flip: the owner
+    sets oracle_mode to llm in config.json and re-runs
+    --inference-only. The profile alone cannot see that flip (a Pi
+    still detects as Pi Light), so the --inference-only path
+    consults the config it is upgrading before it skips.
+    """
+    try:
+        with open(cfg_path, encoding="utf-8") as f:
+            cfg = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if isinstance(cfg, dict):
+        mode = cfg.get("oracle_mode")
+        if isinstance(mode, str) and mode.strip():
+            return mode.strip()
+    return None
+
+
 def _setup_fresh_config(args, cfg_path):
     """Secrets, mailbox wizard, profile, instructions, Ollama.
 
@@ -2803,7 +2824,8 @@ def main() -> int:
             return do_oracle(bin_dir, cfg_path)
         if args.inference_only:
             profile = chosen_profile(args.profile, args.no_profile)
-            if _pi_light_skip(args, profile):
+            if _pi_light_skip(args, profile) \
+                    and _cfg_oracle_mode(cfg_path) != "llm":
                 print("inference: Pi Light -- no model to install or "
                       "download; the Oracle runs deterministically. "
                       "To add a model, set oracle_mode to llm in "
@@ -2847,7 +2869,8 @@ def main() -> int:
         return do_logs(cfg_path, follow=args.follow, lines=args.lines)
     if args.inference_only:
         profile = chosen_profile(args.profile, args.no_profile)
-        if _pi_light_skip(args, profile):
+        if _pi_light_skip(args, profile) \
+                and _cfg_oracle_mode(cfg_path) != "llm":
             print("inference: Pi Light -- no model to install or "
                   "download; the Oracle runs deterministically. "
                   "To add a model, set oracle_mode to llm in "
