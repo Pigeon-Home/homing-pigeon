@@ -529,7 +529,12 @@ class ArgsPatternTimingTest(unittest.TestCase):
                           args=["a" * 5000], key_id="k2"),
             secret=EXTRA)
         self.assertFalse(executed)
-        self.assertLess(time.time() - t0, 5.0)
+        # The pattern is linear. The bound is on the whole job,
+        # and a loaded Windows runner spent 10.5s of that in
+        # setup on the v3.11.50 tag (the main push of the same
+        # commit stayed under 5). A real backtrack still misses
+        # 30s by a wide margin.
+        self.assertLess(time.time() - t0, 30.0)
 
 
 class PolicyParseTest(unittest.TestCase):

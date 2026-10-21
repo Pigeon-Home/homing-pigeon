@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.51 - 2026-10-20
+
+- **Arg-pattern timing test allows a slow Windows runner.**
+  The v3.11.50 tag did not publish. `test_long_arg_is_fast`
+  measured the whole job, and a loaded runner took 10.5s
+  against a 5s ceiling. The main push of the same commit
+  passed. The ceiling is 30s. The pattern is still linear.
+
 ## 3.11.50 - 2026-10-20
 
 - **Version rev.** No functional change from 3.11.49.
