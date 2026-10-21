@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.35 - 2026-10-20
+
+- **Version rev.** No functional change from 3.11.34.
+  That tag and its main push both finished green,
+  Windows and SourceForge included. This tag is the
+  next look.
+
 ## 3.11.34 - 2026-10-20
 
 - **SourceForge waits for a new file to be indexed.** The
