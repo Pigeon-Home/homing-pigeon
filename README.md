@@ -13,9 +13,11 @@ fixes that: tell your SI to complete a task and it will do it on your
 machine. The results return so that your SI can iterate — run the tests,
 read the failure, fix, repeat. From your phone or anywhere.
 
-Install the Homing Pigeon agent on a machine you own. At setup it asks
-for the login credentials of a dedicated email account — email is the
-default transport. The agent bears a resemblance to GitHub self-hosted
+Install the Homing Pigeon agent on a machine you own. At setup it
+walks you through connecting a dedicated email account — the
+recommended path is a browser sign-in, so the account password
+never lands in config; a Gmail app password is the other choice.
+Email is the default transport. The agent bears a resemblance to GitHub self-hosted
 runners: a small program on your hardware that takes jobs from
 somewhere else and runs them here.
 
@@ -215,8 +217,9 @@ full output. Oracle: reviews every job anyway (its notes ride in
 the result) and logs resource pressure. Quiet by choice: nothing
 pages, and the judge never blocks a job at the door. These are
 the config-file defaults; a fresh install sits one notch tighter
-— the installer applies the `password-only` profile (judge
-`advisory`, view `attested`) unless `--no-profile` is passed.
+— on non-Pi hardware the installer applies the `password-only`
+profile (judge `advisory`, view `attested`) unless `--no-profile`
+is passed; a Raspberry Pi gets the `pi-light` profile instead.
 See RUNBOOK.md Job 7.
 
 **eyes open** (recommended) — same trust, but now you watch.
@@ -367,8 +370,8 @@ lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
   IMAP/SMTP servers and a fake NATS broker.
 - `RUNBOOK.md` — step-by-step instructions (written for a 5-year-old):
   cloning, pushing, cutting a release, installing, sending a job.
-- `examples/extensions/` — the example senses: 27 folders ship,
-  from the lab-results sense to the IDS feeds; 24 of them are the
+- `examples/extensions/` — the example senses: 28 folders ship,
+  from the lab-results sense to the IDS feeds; 25 of them are the
   pinned catalog in `docs/extensions.md`.
 
 ## Setup
@@ -408,11 +411,14 @@ Or paste the string to your SI in chat — it composes, signs, and sends
 the job message itself, and reads the result message when it arrives. Large files
 are uploaded to cloud storage first; the job message carries the URLs.
 
-Verify a result body:
+Verify a result body (results are encrypted by default, so pass
+the job id from the result's subject line to decrypt it):
 
 ```bash
-python3 cloud/send_job.py verify --secret <the-string> result.txt
+python3 cloud/send_job.py verify --secret <the-string> --job-id <id> result.txt
 ```
+
+The `--job-id` can be left off only for a cleartext result.
 
 ## Testing
 
@@ -461,8 +467,10 @@ End-to-end without your SI:
 2. From any email account, send it to the
    runner mailbox.
 3. On the target machine: `python3 runner/runner.py --config config.json --once`.
-4. A result message with `stdout: "pong"` should arrive in the mailbox
-   (or at the job's `reply_to` address, if you set one).
+4. A result message should arrive in the mailbox (or at the job's
+   `reply_to` address, if you set one). It arrives as an encrypted
+   envelope; decrypt it with `verify --job-id` (above) and the
+   result inside says `stdout: "pong"`.
 
 ## Security notes
 
