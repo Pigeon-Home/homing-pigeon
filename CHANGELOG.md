@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.34 - 2026-10-20
+
+- **SourceForge waits for a new file to be indexed.** The
+  v3.11.33 upload landed, then the default-download PUT
+  got a 404 and the job exited before the git mirror.
+  That call now retries for about a minute.
+
 ## 3.11.33 - 2026-10-20
 
 - **Version rev.** No functional change from 3.11.32.

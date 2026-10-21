@@ -423,7 +423,7 @@ jobs:
             -e "ssh -i $HOME/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes" \
             publish/ "${SF_USER}@frs.sourceforge.net:/home/frs/project/${SF_PROJECT}/${TAG}/"
           python3 - <<'PY'
-          import os, pathlib, subprocess, urllib.parse
+          import os, pathlib, subprocess, time, urllib.parse
           project = os.environ["SF_PROJECT"]
           tag = os.environ["TAG"]
           key = os.environ["SF_API"]
@@ -442,12 +442,25 @@ jobs:
               quoted = "/".join(urllib.parse.quote(part) for part in (tag, name))
               url = f"https://sourceforge.net/projects/{urllib.parse.quote(project)}/files/{quoted}"
               data = "&".join(f"default={item}" for item in platforms)
-              subprocess.check_call([
-                  "curl", "-fsS", "-H", "Accept: application/json", "-X", "PUT",
-                  "--data", data,
-                  "--data-urlencode", f"api_key={key}",
-                  url,
-              ])
+              # rsync returns before FRS will serve the file. v3.11.33
+              # uploaded, then the first PUT 404'd and the job exited
+              # before the git mirror.
+              last = None
+              for _attempt in range(8):
+                  try:
+                      subprocess.check_call([
+                          "curl", "-fsS", "-H", "Accept: application/json", "-X", "PUT",
+                          "--data", data,
+                          "--data-urlencode", f"api_key={key}",
+                          url,
+                      ])
+                      last = None
+                      break
+                  except subprocess.CalledProcessError as exc:
+                      last = exc
+                      time.sleep(8)
+              if last is not None:
+                  raise last
               marked += 1
               print(f"default {platforms[0]} -> {name}")
           if marked != 3:
