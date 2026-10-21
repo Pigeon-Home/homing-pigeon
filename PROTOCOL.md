@@ -238,11 +238,11 @@ The reference default is email only: `transports` absent means
     ordered the act for a divergence no tripwire covers).
   - `divergence`: a short string naming what was observed --
     the divergence kind and its basis.
-  - `act`: `killed` (the job's process tree was killed),
+  - `act`: `killed` (the job's process tree was killed) or
     `quarantined` (the job's outputs were seized into the
-    runner's quarantine area, releasable by the owner), or
-    `referred` (suspect files were referred to the box's
-    antivirus; see `av_verdict`).
+    runner's quarantine area, releasable by the owner). Referral
+    of suspect files to the box's antivirus is not an act of its
+    own; it accompanies the act and is reported in `av_verdict`.
   - `av_verdict`: the antivirus's own verdict on the referred
     files: `confirmed`, `clean`, or `unavailable` (no antivirus
     on the box, or no verdict read). Unavailable is a fact, not
@@ -653,10 +653,13 @@ counted against the budget so probing the policy itself isn't free.
 
 Query ops: `attest` (evaluate a named predicate now), `grep` (regex over
 retained stdout+stderr, up to `max_matches` lines), `tail` (`lines`:
-last N lines), and `ask` (natural-language question answered by local
-inference — see below). Answers obey the job's effective view exactly as
-section 9 requires — under `attested`, `grep`/`tail` are rejected; under
-`redacted`, returned lines are scrubbed first.
+last N lines), `ask` (natural-language question answered by local
+inference — see below), and `senses` (the alerts the Oracle's senses
+filed around this job, ranked by weight × severity; parameters
+`sensor`, `severity_floor`, `since`, `until`, `limit` — specified in
+docs/senses.md, "Reading signals"). Answers obey the job's effective
+view exactly as section 9 requires — under `attested`, `grep`/`tail`
+are rejected; under `redacted`, returned lines are scrubbed first.
 
 ### 10.1 Local inference (optional): the `ask` op
 
@@ -942,6 +945,29 @@ Throughput is bounded by a single machine dealing from a local queue.
 That is the design, not a limitation to fix later. If the board ever
 outgrows one box, the answer is a second Oracle with its own board,
 not a distributed Oracle.
+
+### 13.7 Submitting, approving, and the acknowledgement
+
+Three more board messages ride the same signed, encrypted form and
+the same authorization as a job. Their subjects follow the board
+pattern: `[HOMING-PIGEON] <type> <id>`.
+
+- `task_submit` (subject id: the `task_id`) opens a task on the
+  board. The body is the task of section 13.1 — `task_id`, and
+  optionally `requires[]`, `capabilities[]`, `compartments[]`,
+  `priority`, `payload`. A `task_id` already on the board is not
+  replaced; the first submission stands. `cloud/send_job.py
+  task-submit` composes one.
+- `task_approve` (subject id: the `task_id`) is the human gate of
+  section 13.4: it moves a task from `pending_review` to `done`.
+  A task in any other state is refused.
+- `task_ack` is the Oracle's reply to `task_submit`, `task_result`,
+  and `task_approve`, sent to the runner mailbox (board replies do
+  not follow `reply_to`): `{"v": 1, "type": "task_ack", "task_id":
+  "<id>", ...}` carrying `ok` and `reason` (for submit and approve)
+  or `status` and `reason` (for a result: `done`, `pending_review`,
+  or `duplicate`). `task_request` is answered by `task_offer`, or by
+  `task_offer` with `"empty": true` when nothing fits (section 13.2).
 
 ## 14. Multiple shared secrets
 
