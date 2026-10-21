@@ -10,6 +10,7 @@ not execute.
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import threading
@@ -606,13 +607,21 @@ class SeenClaimTest(unittest.TestCase):
         tmp = tempfile.mkdtemp(prefix="hp-claim-")
         seen = {}
         self.assertTrue(_disk_owns(tmp, "job-1", seen))
-        # Pretend another pid holds it.
-        folder = os.path.join(tmp, "inflight")
-        name = os.listdir(folder)[0]
-        with open(os.path.join(folder, name), "w", encoding="utf-8") as fh:
-            fh.write("1\n0\njob-1\n")
-        other = {}
-        self.assertFalse(_disk_owns(tmp, "job-1", other))
+        # Pid 1 is init on Linux and usually nobody on Windows, so
+        # a claim written as pid 1 was stealable there. Hold a real
+        # second process instead.
+        other = subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(30)"])
+        try:
+            folder = os.path.join(tmp, "inflight")
+            name = os.listdir(folder)[0]
+            with open(os.path.join(folder, name), "w", encoding="utf-8") as fh:
+                fh.write(f"{other.pid}\n0\njob-1\n")
+            held = {}
+            self.assertFalse(_disk_owns(tmp, "job-1", held))
+        finally:
+            other.kill()
+            other.wait(timeout=10)
         save_seen(os.path.join(tmp, "seen.json"), {"job-1": True})
         self.assertIn("job-1", load_seen(os.path.join(tmp, "seen.json")))
         third = {}

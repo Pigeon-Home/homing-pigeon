@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.7 - 2026-10-21
+
+- **3.12.6 did not publish.** The Windows test job failed the
+  live-claim check. That test wrote pid 1 into the claim file.
+  Pid 1 is alive on Linux and usually nobody on Windows, so
+  Windows treated the claim as dead and took it. The test now
+  holds a real second process. The claim rule is unchanged.
+
 ## 3.12.6 - 2026-10-21
 
 - **Skip the personal-documents check.**
