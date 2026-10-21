@@ -46,7 +46,7 @@ as the runner's account — by the owner's explicit call, that
 is an admin account by default. Its network edge is currently
 unrestricted: a job can open any outbound connection the
 account can. This is the edge all firewall work is about, and
-it is the one edge the project had never drawn until now.
+the edge this document draws.
 
 ## Where the firewall fits
 
@@ -78,8 +78,9 @@ is load-bearing — see `docs/senses.md` ("why this shape").
 Listed in FUTURE.md.
 
 - **NIDS** — Zeek/Suricata as a network-side sense next to the
-  host IDS. The `netmon` sense slot exists; a real collector
-  does not yet.
+  host IDS. This ships: the `suricata-feed` and `zeek-feed`
+  adapters in `examples/extensions/` fill the `netmon` sense,
+  and the installer installs the collectors.
 - **DNS monitoring** — the exfiltration channel. A per-job
   DNS log correlated by `job_id_hint` is the sharpest
   available signal for "job talking where it shouldn't."
