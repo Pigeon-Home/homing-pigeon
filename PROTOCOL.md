@@ -130,8 +130,9 @@ The reference default is email only: `transports` absent means
 
 - `kind`: `exec` or `ping`. A `ping` job carries no script; the runner
   answers with a `pong` result (health check).
-- For `exec`, exactly one of `script` / `script_url` is required.
-  `script_url` wins if both are present.
+- For `exec`, at least one of `script` / `script_url` is required.
+  A job carrying both is accepted and `script_url` wins; the inline
+  `script` is ignored.
 - `timeout_sec`: default 300, maximum 3600.
 - `interpreter`: optional list whose first element is the executable and
   the rest are its arguments, e.g. `["pwsh", "-File"]` or `["bash"]`. The
@@ -322,8 +323,11 @@ Authorization then runs in this order, and all of it must pass:
 5. `issued_at` parses, carries a timezone, and is within
    `max_job_age_sec` (default 3600) of the runner's clock
    (replay / stale protection).
-6. `job_id` not in the seen-set (replay protection). The seen-set key
-   is namespaced by `runner_id` when one is configured.
+6. *(Seen-set.)* The `job_id` seen-set lookup is a routing check and
+   has already run, before any signature work (see the opening of
+   this section). It is listed here only so the replay story reads
+   in one place: a repeated `job_id` never reaches this list. The
+   seen-set key is namespaced by `runner_id` when one is configured.
 7. **Job-shape validation** (job messages): `kind` is `exec` or
    `ping`; `script_sha384`, when present, matches the script — for
    `script_url`, the downloaded bytes, checked before anything
@@ -488,8 +492,11 @@ The job gains an optional `result_policy` object:
 - `queries`: **all** questions the SI will ever ask about this job's
   output, declared upfront before any answer is seen (section 10). This
   is what makes the exchange non-interactive.
-- `query_budget`: maximum queries answerable for this job (default 8;
-  the runner owner's config may only lower it). Bounds total leakage —
+- `query_budget`: maximum queries answerable for this job (default 8).
+  The runner owner's config caps it with `max_query_budget` (default
+  8); the effective budget is the smaller of the job's value and the
+  cap, so config can never raise a job above what the job asked for,
+  though a cap above 8 lets a job ask for more. Bounds total leakage —
   and doubles as a tripwire (section 11): a job that burns its whole
   budget is a job worth a human look.
 
@@ -547,14 +554,17 @@ Before anything runs, the Oracle reads the job — its code, its
 declared intent, its interpreters and paths — and renders a verdict:
 does this look like it will do what it claims?
 
-With a local model configured (section 10.1), the verdict is semantic
-("this script deletes files outside its workspace"; "this matches its
-description"). Without one, the Oracle still applies deterministic
-checks against the job text (writes outside the workspace,
-known-dangerous patterns).
+The verdict is deterministic: checks against the job text (writes
+outside the workspace, known-dangerous patterns). No model
+participates in it, whether or not a local model is configured for
+the `ask` op (section 10.1).
 
-*The runner ships the deterministic checks only. The semantic
-path is listed in FUTURE.md.*
+*A semantic verdict — a model-backed reading such as "this script
+deletes files outside its workspace" or "this matches its
+description" — would run alongside the deterministic checks. It is
+not shipped; it is listed in FUTURE.md. (The optional model-backed
+note in the `oracle_opinion` result member is advisory and is not the
+verdict.)*
 
 A verdict is a judgment, not a proof. It can miss malicious code and
 flag benign code, so the runner owner sets the policy — config-only,
@@ -685,10 +695,15 @@ answer only the question asked, briefly, using only the provided
 output — then runs the answer through the **sanitization pipeline**:
 
 1. Truncate to `max_chars`.
-2. Redact via the section-9 engine (same secret patterns as the
+2. Secret-scan the truncated answer, including fragment matches
+   against the job output the model was shown; on any hit, the answer
+   is replaced with `{"rejected": "sanitization"}`. Scanning runs
+   before redaction so that a leaked secret is rejected outright, not
+   rewritten and mailed.
+3. Redact via the section-9 engine (same secret patterns as the
    `redacted` view).
-3. Secret-scan the answer; on any hit, the answer is replaced with
-   `{"rejected": "sanitization"}`.
+4. Secret-scan again on the redacted text; a hit is the same
+   rejection.
 
 The delivered answer carries `{"op": "ask", "answer": "...",
 "model": "<model id>", "sanitized": true}`.
@@ -724,8 +739,11 @@ Defenses, in order of importance:
    gone. Zero-knowledge proofs went non-interactive (SNARKs/STARKs) for
    the same reason: a fixed proof artifact can't be probed.
 2. **Privacy budget.** `query_budget` bounds *total* leakage per job.
-   Accounting is per key ID (section 14), so one key cannot spend
-   another key's budget.
+   Accounting is per job: the spend is kept with the job's retained
+   output, so one job's queries cannot draw down another job's
+   budget, and since a job is signed by one key, no key can spend a
+   budget it did not sign for. (Rate limiting, item 3, is the per-key
+   control; see section 14.)
    Each answered or policy-rejected query spends 1; exhaustion silences
    the Oracle for that job. A budget bounds what rate limiting cannot:
    the total, not just the speed.
@@ -814,7 +832,8 @@ A task is a job the Oracle has not assigned yet:
   what the work needs. Workers claim capabilities when they pull;
   matching is by tag equality.
 - `priority`: higher first. Ties break by arrival order.
-- `body`: the work itself, usually a job body or a declared query set.
+- `payload`: the work itself, usually a job body or a declared query
+  set.
 
 Dependency enforcement follows the same three-mode pattern as
 pre-execution judgment (section 9.3): `dag_mode: off` (default; the
@@ -875,12 +894,15 @@ section 3.2, or attested answers where the task used a result policy (sections
 at-least-once redelivery is safe.
 
 An attestation binds a worker to its claimed output. It says nothing
-about whether the output is correct. Correctness comes from review: a
-second worker with the `review` capability, and finally a human. The
-Oracle routes results to reviewers the same way it routes tasks to
-workers. By default results are accepted as-is and flagged for human
-review; `require_review: true` in config holds them until a human signs
-off.
+about whether the output is correct. Correctness comes from review,
+and the review gate is a human one. By default a `task_result` moves
+the task straight to `done`; nothing is flagged. With
+`require_review: true` in config, the task instead enters
+`pending_review` (section 13.6) and stays there until the owner
+approves it. The Oracle does not route results to reviewing workers;
+a `review` capability tag is an ordinary tag a task may require, and
+automatic routing of results to such workers is listed in FUTURE.md,
+not shipped.
 
 ### 13.5 Liveness and delivery
 
@@ -895,11 +917,13 @@ The Oracle is the sole arbiter of the board, so there is no distributed
 consensus problem: one writer, many readers. Concurrency reduces to
 three rules.
 
-1. **Claims are exclusive.** A task has one state: open, claimed, or
-   done. Dealing moves open to claimed; a `task_result` for a claimed
-   task moves claimed to done — completion checks the task's state,
-   not which worker claimed it. No two workers ever hold the
-   same task.
+1. **Claims are exclusive.** A task has one state: open, claimed,
+   pending_review, or done. Dealing moves open to claimed; a
+   `task_result` for a claimed task moves claimed to done, or to
+   pending_review when `require_review` is on (section 13.4), from
+   which the owner's approval moves it to done — completion checks
+   the task's state, not which worker claimed it. No two workers
+   ever hold the same task.
 2. **Claims are leases, not locks.** A claim lapses after `task_timeout`
    (config, default 24h) with no result, and the task returns to open.
    A crashed worker cannot wedge the board; it can only delay a task
@@ -942,8 +966,9 @@ and a message naming a key ID it cannot satisfy verifies against
 nothing.
 
 The key ID is also the natural key for per-sender policy. Rate limits
-and privacy budgets (section 11) are tracked per key ID, so one chatty
-worker cannot spend another worker's budget. Rotation is a config edit:
+(`max_queries_per_hour`, section 11) are tracked per key ID, so one
+chatty worker cannot consume another worker's rate allowance. Privacy
+budgets are tracked per job (section 11). Rotation is a config edit:
 add a new key ID, hand it out, retire the old one. No flag day.
 
 ### 14.1 Per-key policies (opt-in)
@@ -1049,7 +1074,7 @@ as the record of what the Oracle required. It is not a proposal.
 - `dag_mode` (off/advisory/enforce), `worker_allowlist`,
   `compartments` / `worker_compartments`, `require_review`,
   `task_timeout`: config parsing and enforcement.
-- Per-key-ID rate limits and privacy budgets (section 11).
+- Per-key-ID rate limits and per-job privacy budgets (section 11).
 - `install.py`: generate additional secrets on request
   (`--additional-secret <key-id>`) and store them in config.json —
   a generated secret is never printed — same 256-bit generation as
@@ -1060,19 +1085,28 @@ as the record of what the Oracle required. It is not a proposal.
 
 ### Documentation
 
+The documentation items below were part of the plan. The first and
+last shipped; the middle four did not, and they remain open — the
+code they would describe is implemented, the walkthroughs are not
+written. They are listed here as open items, not as a description of
+the current docset.
+
 - README.md: Oracle section rewritten from "proposal" to real;
   dispatcher described in plain language; multi-secret setup.
+  *Shipped.*
 - INSTALL.md / RUNBOOK.md: `additional_secrets` config walkthrough;
   worker enrollment (shared secret plus key ID handoff); task board
-  usage.
+  usage. *Open.*
 - AGENTS.md: how a worker SI pulls tasks, claims capabilities,
-  submits results; key_id handling for cloud SIs.
+  submits results; key_id handling for cloud SIs. *Open.*
 - SECURITY.md: multi-secret threat notes (key ID is a label, not a
   secret; rotation procedure); dispatcher trust model (review as the
-  correctness anchor).
+  correctness anchor). *Open.*
 - SAFEGUARDS.md: operational guidance for running a board (timeouts,
   allowlists, when to tighten from least-restrictive defaults).
+  *Open.*
 - PROTOCOL.md: this file. The Oracle sections are implemented.
+  *Shipped.*
 - docs/archive/DOCKER.md: env vars for additional secrets, if supported.
 
 ### Order

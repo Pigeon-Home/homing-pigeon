@@ -58,13 +58,18 @@ This Internet-Draft will expire on 20 April 2027.
 
 ## 1. Introduction
 
-Version 1 specifies two messages: a signed job object and a signed
-result object, carried unchanged over any binding. The runner's
-decisions in version 1 are local and silent: it verifies the
-signature, forms whatever expectation its configuration gives it,
-executes, and reports an exit code and output. The submitter learns
-what happened, never what the runner thought would happen, and never
-what the runner would have asked if it could.
+Version 1's core exchange is two messages: a signed job object and a
+signed result object, carried unchanged over any binding. (Version 1
+also specifies the query and query-result messages of its two-phase
+exchange, the task-board messages, and the sensor alert; none of
+those is the subject here.) The runner's decisions in version 1 are
+local: it verifies the signature and the further admission checks of
+its Section 14, forms whatever expectation its configuration gives
+it, executes, and reports an exit code and output. The result may
+carry the runner's opinion home as the `oracle_opinion` member, but
+that opinion is formed and frozen on the runner alone: the submitter
+has no way to ask a question before execution, and the runner has no
+way to ask one at all.
 
 Three gaps follow, and version 2 closes each with one message:
 
@@ -100,7 +105,8 @@ the wrong side of a figure has misunderstood the protocol.
                     DECISION              DECIDED BY
                     -------------------   -------------------
                     admit or refuse job   the runner, on the
-                                          signature alone (v1)
+                                          signature and its own
+                                          admission checks (v1)
 
                     what the job will     the runner, before
                     probably do           execution (determination)

@@ -221,6 +221,13 @@
   beyond the mechanical one, and the opinion as a signed
   statement by the Oracle as an authenticated party in a
   confidentiality-on mode.
+- Reviewer routing on the task board: the Oracle dealing a
+  finished `task_result` to a second worker holding the `review`
+  capability before it reaches the human gate. PROTOCOL 13.4
+  described this as shipped; it was not (spec corrected
+  2026-10-21). What ships is the human gate alone:
+  `require_review` parks the task in `pending_review` until the
+  owner approves. Routing to reviewing workers remains an idea.
 - A new extension kind, the concentrate, and its first
   member: the red-team concentrate (DRU coined the kind,
   2026-10-20). A concentrate is neither a sense nor a

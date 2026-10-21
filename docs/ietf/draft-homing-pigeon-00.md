@@ -55,7 +55,7 @@ Two things are out of scope for this document and are established out of band: t
 
 ### Versions in this document
 
-This document specifies one version of the protocol: version 1. Its bindings are the email binding (Section 5), the file binding (Section 5.1), the NATS binding (Section 5.2), and the DTLS session binding (Section 19), which also carries the session greeting (Section 20). It consolidates this document's earlier text, which specified the email binding alone, and draft-homing-pigeon-v2-00 (since removed; its text is consolidated in this document), which specified the DTLS binding as a companion document.
+This document specifies one version of the protocol: version 1. Its bindings are the email binding (Section 5), the file binding (Section 5.1), the NATS binding (Section 5.2), and the DTLS session binding (Section 19), which also carries the session greeting (Section 20). It consolidates this document's earlier text, which specified the email binding alone, with the DTLS binding text that was first drafted as a companion document. The companion draft that now carries the name draft-homing-pigeon-v2-00 is a different document: it specifies protocol version 2 (the determination, question, and answer exchange) and does not specify a binding.
 
 A binding does not version the messages. The job and result objects are the same objects on every binding, byte for byte; their `v` member is 1, and a receiver MUST NOT reject an object for carrying `v` = 1 on any binding. A receiver that does not offer a binding is not non-conformant; it simply does not offer that binding. An earlier framing treated the DTLS binding as a second version of the protocol. That framing is withdrawn: there is no version 2, and the protocol's version is 1 on every binding this document specifies.
 
@@ -127,7 +127,7 @@ The message MUST be rejected before the MAC if the raw RFC822 object exceeds the
 
 The file binding carries the same envelope as a file in a pair of watched directories on a filesystem both parties can reach. It exists for deployments where the submitter and the runner share a filesystem (a mounted volume, a synchronized folder, a removable medium) and for testing: it is the email binding's envelope with the mailbox removed, and nothing else changes.
 
-The envelope mapping is byte-for-byte the email form: a subject line in the shape of Section 6, a blank line, then the signed body. A job is a file named `<ident>.job.txt` in the inbox directory, where `<ident>` is the binding-local name of the job (the `job_id` serves). A result is a file named `<ident>.result.txt` in the outbox directory. A receiver polls the directories on its ordinary poll cycle.
+The envelope mapping is byte-for-byte the email form: a subject line in the shape of Section 6, a blank line, then the signed body. A job is a regular file in the inbox directory. The file SHOULD be named `<ident>.job.txt`, where `<ident>` is the binding-local name of the job (the `job_id` serves), but a receiver MUST NOT condition acceptance on the name: every regular file in the inbox is read as a candidate job and judged by its contents, and symbolic links and directories are not read. A result is a file named `<ident>.result.txt` in the outbox directory. A receiver polls the directories on its ordinary poll cycle.
 
 Acknowledgement is consumption. Whichever side has taken a file moves it into a sibling `done/` directory; files are never deleted by the binding. A redelivery of the same job rewrites the same file name, and the seen-set (Sections 14 and 17.6) deduplicates the repeat: delivery is at-least-once, exactly as on the email binding (Section 17.10).
 
@@ -445,7 +445,7 @@ If step 16 fails, the receiver MUST leave the job out of the seen-set. The next 
 
 Submitters MUST treat `exec` as repeatable. A job that is not safe to run twice is not a conforming job.
 
-A job marked seen is not executed again, including `exit_code` -2 and every no-result reject in Section 14.
+Two senses of "seen" are kept apart. Marking a message seen (Section 14, steps 3 through 12 and 16) is the binding-level flag: that copy of the message is not reprocessed. Recording a `job_id` in the seen-set is the replay state of Section 14, and a receiver MUST add a `job_id` to the seen-set only after it has produced a result for it: on a successful send at step 16, or on the `exit_code` -2 result of step 12. A reject that produces no result (steps 3 through 9, and step 10 when the LOCAL choice is silence) MUST NOT enter the seen-set. A redelivered copy of such a message is therefore processed afresh and rejected afresh. This is deliberate: a message that never verified cannot burn a `job_id`, so a forger holding a victim's `job_id` cannot block the genuine job from running.
 
 ## 16. Per-Job Encryption
 
