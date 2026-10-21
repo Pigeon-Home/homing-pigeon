@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.5 - 2026-10-21
+
+- **Personal-documents warning.** On startup, and before an
+  install copies files, the program looks at file and folder
+  names in the home Documents, Desktop, and Downloads. A legal,
+  tax, or medical name prints a fixed banner: do not install
+  here unless you are a proficient system administrator. No
+  file is opened, and the name that matched is not recorded.
+  Decisions: docs/personal-documents-warning.md.
+
 ## 3.12.4 - 2026-10-21
 
 - **3.12.3 did not publish.** Its test job failed: the seen-file
