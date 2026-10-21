@@ -183,7 +183,9 @@ virtual machine is a good idea).
    
    Save the file and close it.
 6. Run the installer:
-   - Windows: double-click `install.exe`.
+   - Windows: right-click `install.exe` and run it as
+     administrator. (A plain double-click is refused: creating
+     `C:\homing-pigeon` needs elevation.)
    - Mac/Linux: open the black box in this folder, type `./install`,
      press Enter.
 7. Done. The runner now starts by itself every time the computer
@@ -243,7 +245,10 @@ python3 cloud/send_job.py new --kind ping --secret PASTE_YOUR_SECRET_HERE
 5. Typically within a minute or two, a reply email arrives with the
    result — the wait rides on the runner's poll interval and your
    mail provider's delivery time.
-   For a ping, the result says `pong`.
+   For a ping, the result says `pong` — once decrypted. Jobs and
+   results are encrypted by default, so the reply shows an
+   envelope, not the word; read it with
+   `python3 cloud/send_job.py verify --secret <the-string> --job-id <id> result.txt`.
 
 To run a script instead of a ping:
 
@@ -297,7 +302,7 @@ Oracle runs deterministically.
 Install, or re-apply, like this:
 
 ```
-python3 install.py --no-profile --no-inference
+python3 runner/install.py --no-profile --no-inference
 ```
 
 On a config that already exists, set these keys. Leave the mailbox
