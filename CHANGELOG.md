@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.10 - 2026-10-21
+
+- **Release.** Same code as 3.12.9. The 3.13.0 tag was
+  removed and is not part of this line.
+
 ## 3.12.9 - 2026-10-21
 
 - **Code scanning is clear.** Three queries still fired after
