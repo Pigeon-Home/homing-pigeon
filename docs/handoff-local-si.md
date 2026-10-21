@@ -1,15 +1,6 @@
 # Handoff: local SI test and transports
 
-Historical note from the `feat/local-si-test` work. The transport
-table that used to sit here said Cloudflare, NATS, MQTT, Redis, and
-the rest were send-ready. That was wrong then, and Cloudflare,
-MQTT, and Redis are still not in the runner. (NATS has since
-shipped as a transport extension.) `runner/transports.py` is the
-transport-extension supervisor; email is the runner's default
-transport extension and the only one this harness exercises, with
-file, NATS, and DTLS extensions beside it. See
-`docs/transports-status.md`. Do not treat "try
-Cloudflare tomorrow" as an open task.
+Historical note from the `feat/local-si-test` work.
 
 ## What this is
 
