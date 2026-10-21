@@ -368,3 +368,86 @@
   and no knowledge beyond its own block), tightened by what
   the fuzzing found. Fuzz first, harden at the kernel layer
   second, adopt third.
+
+- USB neural-link peripheral for existing Raspberry Pis
+  (DRU, 2026-10-20 — company idea, nothing built). The
+  thought: a company that sells a USB peripheral which
+  gives any already-owned Raspberry Pi a "neural link" —
+  a plug-in brain that adds capability the Pi does not
+  have on its own, the way an external GPU once added
+  3D to a machine that only had 2D. Historical thread
+  from ~1995: in 1995 the PC was still mostly 2D; the
+  3dfx Voodoo (announced ~Comdex 1995, first cards
+  shipping October 1996) was a 3D-only accelerator that
+  sat beside an existing 2D VGA card and connected by a
+  pass-through cable. It did not replace the computer;
+  it gave the computer a new sense. Quake + GLQuake
+  made the case. The same shape applies now: millions
+  of Pis already exist; a USB stick that adds real-time
+  inference (or a sensory/BCI front-end) turns the
+  installed base into something new without a new board.
+
+  Existing solutions that already occupy parts of the
+  space (so the company must differentiate, not invent
+  the category):
+  - Google Coral USB Accelerator — Edge TPU, ~4 TOPS,
+    USB 3, works on Pi, ~$60, TF-Lite only, ~2 W.
+  - Hailo-8L (Raspberry Pi AI Kit) — 13 TOPS, M.2 on
+    Pi 5, not a universal USB for older Pis.
+  - Intel Neural Compute Stick (Movidius) — earlier USB
+    inference stick, largely superseded.
+  - PiEEG / similar shields — actual EEG/BCI add-ons
+    for Pi (GPIO, not USB-universal), research-grade,
+    open source.
+
+  Differentiation angles worth researching:
+  - Universal USB for any Pi (Zero through 5), not just
+    the Pi 5 PCIe path. Older installed base is the
+    market the big kits ignore.
+  - Not just inference: a "neural link" could mean a
+    fused peripheral — accelerator + sensors (camera,
+    mic, IMU, or even a light BCI front-end) with a
+    single signed protocol so the host Pi sees one
+    device, not a pile of drivers.
+  - Homing-Pigeon fit: the peripheral is the local
+    Oracle's muscle. A Pi Light that currently does
+    deterministic checks gains a small model it can
+    call; mirror (above) can ship the question up when
+    the stick is absent or the model is unsure.
+  - Power and heat on USB 2 vs USB 3; many older Pis
+    only have USB 2. A design that is useful on USB 2
+    (lower TOPS, still better than CPU) wins the
+    installed base.
+  - Model portability: Coral locked to TF-Lite. A stick
+    that runs a small open set (ONNX, a fixed GGUF
+    class, or a Homing-Pigeon-signed model format)
+    reduces lock-in.
+  - Security: the stick holds no long-term secrets;
+    jobs that need inference are signed, results are
+    signed, the stick is a coprocessor not a trust
+    root. Same discipline as the rest of the system.
+
+  Research fronts to expand:
+  - Bandwidth: what USB 2 actually delivers for a small
+    model vs USB 3; latency budget for a local Oracle
+    decision.
+  - Thermal: a sealed USB dongle that does not throttle
+    under continuous inference.
+  - Existing-base census: how many Pis in the wild are
+    pre-Pi-5 and therefore cannot take an M.2 AI kit.
+  - Killer app equivalent to GLQuake: the one demo that
+    makes a person plug the stick into the Pi they
+    already own. For Homing Pigeon that is probably
+    "the box that was silent now has an opinion."
+  - Regulatory: if the "neural link" leans toward real
+    biosignals (EEG), medical-device lines appear;
+    pure compute acceleration does not.
+  - Company shape: sell the stick, or sell the stick +
+    a signed model subscription that only runs on the
+    stick (the Glide-era lesson: the API and the
+    hardware travel together).
+
+  Nothing to build yet. Record the direction so later
+  work can pick it up without rediscovering the
+  external-GPU analogy or the existing Coral/Hailo/
+  PiEEG map.
