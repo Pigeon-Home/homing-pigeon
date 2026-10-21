@@ -165,7 +165,14 @@ cd "homing-pigeon-windows-x86_64-$ver"
   Ctrl+C), `install.exe --oracle` (the Oracle chat), `install.exe
   --logs [--follow]` (tail or watch the runner log), and `install.exe
   --wipe` (backs everything up into one zip, then removes the home,
-  the task, and every scattered state dir).
+  the task, and every scattered state dir). The less common flags:
+  `--home DIR` picks a different one-home root; `--migrate` copies
+  state found in older install locations into the one home;
+  `--backup-dir DIR` and `--no-backup` steer or skip the zip that
+  `--wipe` writes; `--lines N` sets how much `--logs` prints; and
+  `--shared-secret SECRET` writes that secret into `config.json`
+  (replacing whatever is there) instead of generating one; it must
+  pass the same 128-bit entropy gate the runner applies at startup.
 - **Linux:** run `./install` — registers a systemd service.
 - **macOS:** run `./install` — registers a launchd agent.
 

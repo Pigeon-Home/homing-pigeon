@@ -95,6 +95,10 @@ A readings file is one JSON object of normalized records:
               "error": "rsync: link_stat failed"}]}
 ```
 
+### Other tunables
+
+`duration_z` (default 3.5) is the robust z-score a run's duration must exceed against the job's own history before `job_duration_anomaly` files.
+
 ## Light mode
 
 This sense reads small JSON files on a calm cadence, and

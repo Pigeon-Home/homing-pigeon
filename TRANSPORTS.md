@@ -310,7 +310,15 @@ implemented as a bounded pure-Python profile
   like `send_job.py` (per-job encryption on by default,
   `--cleartext` selects the plain signed form), prints the
   greeting, sends the job, prints the verified result, and
-  can persist the resumption ticket between runs.
+  can persist the resumption ticket between runs. Usage:
+  `python3 cloud/send_dtls.py --host <runner> [--port 20220]
+  --secret <the-string> [--key-id ID] [--kind ping|exec
+  --script-file job.sh --timeout 300] [--job-id ID]
+  [--wait 120] [--ticket-file PATH] [--encrypt|--cleartext]`.
+  `--wait` is how many seconds to hold the session open for
+  the result (default 120); `--ticket-file` stores the
+  resumption ticket so the next run resumes (with a fresh
+  DHE share, as the profile requires).
 - **One supervisor deviation, stated plainly:** the dtls
   extension is the one pipe the supervisor hands the shared
   secret to — because this pipe terminates PSK

@@ -1,9 +1,11 @@
 # Homing Pigeon in Docker
 
-> **Archived — not current guidance.** This page is a historical
-> record of an earlier Docker setup, kept for reference only.
-> For the install paths that ship today, see
-> [INSTALL.md](../../INSTALL.md).
+> **Reference page for the Docker image.** It documents the
+> environment variables `docker/entrypoint.sh` reads, the dry-run
+> invocation, and updating; those parts are checked against the
+> live Dockerfile (last: 2026-10-21). The install paths that ship
+> today, Docker included, are in [INSTALL.md](../../INSTALL.md),
+> which points here for these three topics.
 
 The fastest way to run the runner. No Python to install, no git clone,
 no service configuration — one `docker run` and your inbox becomes a
@@ -71,6 +73,9 @@ cloud SI and let it do the whole thing.
 | `PIGEON_WORKERS` | no | `1` |
 | `PIGEON_TIMEOUT` | no | `300` |
 | `PIGEON_MAX_OUTPUT` | no | `100000` |
+| `PIGEON_MAX_JOB_AGE` | no | `3600` (seconds; `max_job_age_sec`) |
+| `PIGEON_BASE_DIR` | no | `/data/work` (`base_dir`) |
+| `PIGEON_AUTH` | no | `password` (`auth`; `oauth` for the browser sign-in) |
 
 The HMAC shared secret is a separate `shared_secret` value (same as the bare-metal
 install) — set it via `PIGEON_SHARED_SECRET`. Throwaway account, nothing personal — see SECURITY.md.

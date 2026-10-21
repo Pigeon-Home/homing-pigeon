@@ -61,6 +61,10 @@ them may be `null`; a null source simply has no vote):
  "mem_avail_pct": 61.5}
 ```
 
+### Other tunables
+
+`disk_mount` (default `/`) is the mount point whose free space `disk_fill_velocity` watches; `max_samples` (default 240) bounds how many samples the rolling window keeps, and is raised to the window's minimum if set lower.
+
 ## Light mode
 
 The cost of this sense is the sampling itself, and it is

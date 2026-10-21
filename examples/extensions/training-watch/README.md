@@ -132,6 +132,10 @@ has nothing to say; log lines carry their own timestamps
 in samples, while a live read stamps new lines with the
 log file's mtime.)
 
+### Other tunables
+
+`run_dir` (default empty) is the directory whose checkpoints are scanned and `log_path` (default empty) the training log that is tailed — with both empty the watcher has nothing to watch and files nothing; `loss_history` (default 200) is how many parsed loss points the state file keeps for the trend rules; `max_checkpoints` (default 200) bounds how many checkpoint identities are remembered.
+
 ## Light mode
 
 Light mode is cadence and surface. Raise

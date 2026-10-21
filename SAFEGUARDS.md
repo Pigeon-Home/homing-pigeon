@@ -16,8 +16,10 @@ covers what **you** do, step by step, to keep a deployment safe.
   machine: install software, read files, add users, pivot to your
   network.
 - Email is the control plane. Whoever can sign a job message is the
-  operator — the sender address is not checked, the HMAC signature
-  is the only gate. There is no second factor on a job.
+  operator — the sender address is not checked; the HMAC signature
+  is the only thing that authenticates a job, and the runner's own
+  admission checks (freshness, replay, key policy, cleartext,
+  audience) are the rest. There is no second factor on a job.
 
 If any of that makes you uncomfortable, good — that feeling is the
 whole point of this document. Set it up right and the risk is

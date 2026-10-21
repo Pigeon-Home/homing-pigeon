@@ -108,6 +108,10 @@ One honest limit: the runner's retained records cap a
 job's script at 500 characters, so variants fuzz the
 retained text. The corpus is the record, not the wire.
 
+### Other tunables
+
+`filed_cooldown_sec` (default 604800, a week) is how long a finding that was already filed stays quiet before the same finding may file again; `max_alerts_per_pass` (default 20) caps the alerts one pass may file; `max_records_per_pass` (default 500) caps how many retained records one pass reads.
+
 ## Light mode
 
 This sense exists to spend idle cycles, so Light mode is

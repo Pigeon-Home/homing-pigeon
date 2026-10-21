@@ -65,6 +65,10 @@ manifest fields, the versioning contract, sensor binding, and how
 to turn this example into your own package — is in
 [docs/extensions.md](../../../docs/extensions.md).
 
+### Other tunables
+
+`probe_timeout_sec` (default 2) is the per-probe TCP connect timeout; a probe that does not connect inside it counts as a failure.
+
 ## Light mode
 
 For a Pi Light install, tune it down with the tunables the code

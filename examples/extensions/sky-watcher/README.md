@@ -53,6 +53,10 @@ a scripted pass, and every stage firing in order. A feed
 outage on the live path is a quiet no-op — nothing files, the
 state is untouched, and the next minute tries again.
 
+### Other tunables
+
+`dark_sun_elevation_deg` (default -6) is the sun elevation at the observer below which the sky counts as dark for `visible_pass_starting`.
+
 ## Light mode
 
 The whole cost of this sense is the feed poll: one small HTTPS

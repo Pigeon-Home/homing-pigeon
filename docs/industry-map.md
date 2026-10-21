@@ -60,7 +60,9 @@ product; standalone NDR as a growth story; chat-only copilots; pre-LLM
 
 ### Nearly free: take it, the kernel does the work
 
-- **ACLs** — the example. Already in place; keep extending per the gaps doc.
+- **ACLs** — the example. Partly in place: the Windows one-home install
+  sets a real DACL (`icacls`); POSIX ACLs are not applied yet. Extend
+  per `docs/security-gaps.md`.
 - **Linux capabilities** — drop everything a job doesn't need. A few lines,
   zero runtime cost. Partly there via bwrap; make it explicit per profile.
 - **seccomp-bpf** — syscall filter per job profile. Cheap, set once.

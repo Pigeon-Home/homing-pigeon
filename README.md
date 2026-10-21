@@ -404,8 +404,14 @@ python3 cloud/send_job.py new --kind ping --secret <the-string>
 
 python3 cloud/send_job.py new --kind exec --script-file job.sh \
   --interpreter '["bash"]' --file data.csv=https://... --timeout 300 \
-  --secret <the-string>
+  --arg --verbose --env MODE=ci --secret <the-string>
 ```
+
+`--arg` and `--env KEY=value` are repeatable. Two more subcommands
+drive the task board (PROTOCOL.md section 13): `send_job.py
+task-submit --task-id <id> --priority 1 --script-file job.sh --secret
+<the-string>` opens a task, and `send_job.py task-request --worker-id
+<name> --secret <the-string>` pulls one.
 
 Or paste the string to your SI in chat — it composes, signs, and sends
 the job message itself, and reads the result message when it arrives. Large files
@@ -440,7 +446,7 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | `--no-send` | Execute, but log results instead of emailing them |
 | `--once` | Single poll cycle, then exit |
 | `--inspect {board,budget,job,redact}` | Read local Oracle state and exit; no mailbox |
-| `--audit-report [--since 14d|48h]` | Summarize the security audit log and exit; no mailbox, read-only |
+| `--audit-report [--since 14d|48h] [--feature NAME]` | Summarize the security audit log and exit; no mailbox, read-only. `--feature` narrows it to one control's entries |
 | `--posture` | Report the runner's security posture (exit 0/1/2) and exit; no mailbox |
 | `--run-variant FILE` | Run one locally supplied fuzz variant job from FILE through validation and confined execution, print its outcome as JSON, and exit; no mailbox. The job-fuzz sense's execution door: variants are unsigned local artifacts, admitted only here, never through the job path |
 | `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. Turns are appended to `oracle-chat.jsonl` in the base dir (1 MiB, then one backup). See `CONTRIBUTING.md` (maintainer notes: the `--oracle` flag). |
@@ -513,7 +519,8 @@ End-to-end without your SI:
   bounds the script after verification. Either rejects through the
   normal reject path; `0` means unlimited. A negative or non-integer
   value is a startup config error.
-- Optional hardening controls (all off by default): see [SECURITY.md](SECURITY.md).
+- Optional hardening controls (off by default, except the size caps
+  above, which are always on): see [SECURITY.md](SECURITY.md).
 
 ## Not built
 

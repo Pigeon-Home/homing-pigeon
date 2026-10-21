@@ -347,9 +347,9 @@ paged, and no model is called. There is no flag that deletes the Oracle.
   Copy it again, carefully.
 - **Nothing happens after sending a job message** — check that the
   runner computer is turned on, and that the job was signed with the
-  right secret. Any sender address works (the HMAC signature is the
-  only gate); a "bad signature" rejection means the
-  secret didn't match.
+  right secret. Any sender address works (the address is never
+  checked; the signature and the runner's own admission checks
+  are); a "bad signature" rejection means the secret didn't match.
 - **The robots (Actions) show a red X** — click the X, click the
   failed job, read the red text at the bottom. It usually says
   exactly what went wrong.

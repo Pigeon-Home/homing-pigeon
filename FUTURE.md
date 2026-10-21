@@ -46,8 +46,10 @@
   in the same change. (Live docs describe shipped state;
   this entry remains as the record of the decision.)
 
-- Mirror (DRU's coinage, 2026-10-20; a protocol v2
-  candidate, nothing built): the result carries the
+- Mirror (DRU's coinage, 2026-10-20; the determination /
+  question / answer slice is BUILT as protocol v2, off unless
+  `protocol_v2` is set — see the end of this entry; the rest
+  of Mirror is not built): the result carries the
   Oracle's full decision context home to the cloud SI --
   the signals, lessons, and box state the opinion was
   made from -- so a trusted SI plans its next job with

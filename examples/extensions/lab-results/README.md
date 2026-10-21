@@ -32,6 +32,10 @@ python3 lab_results.py --watch-dir path/to/results
 Alert payloads are unsigned sense alerts; signing and delivery
 follow the standard senses flow.
 
+### Other tunables
+
+`anomaly_min_history` (default 3) is how many earlier finished runs the folder needs before `result_anomaly` is judged at all; with fewer, nothing is called an anomaly.
+
 ## Light mode
 
 For a Pi Light install this sense is already cheap: a pass is

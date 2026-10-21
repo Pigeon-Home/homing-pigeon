@@ -3,7 +3,8 @@
 *Written 2026-10-15 as branch work against v3.5.2; those controls
 shipped on `main` in **v3.6.0**. The "do not merge" lines below are
 the record of how the work was done, not the current rule. Every
-control is still off unless the owner turns it on.*
+control except the M1 size caps (`max_job_bytes` / `max_script_bytes`,
+always on) is still off unless the owner turns it on.*
 
 ## Scope and constraints
 

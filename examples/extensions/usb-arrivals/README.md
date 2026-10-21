@@ -67,6 +67,10 @@ manifest fields, the versioning contract, sensor binding, and
 how to turn this example into your own package — is in
 [docs/extensions.md](../../../docs/extensions.md).
 
+### Other tunables
+
+`learn_first_pass` (default true) makes the first pass absorb everything currently plugged in as the baseline without filing; set it false to file every present device as an arrival on the first pass.
+
 ## Light mode
 
 Two tunables in `extension.json` are the whole cost of this
