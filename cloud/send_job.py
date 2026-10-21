@@ -330,7 +330,7 @@ def _board_body(payload, ident, args) -> str:
 
 
 def cmd_task_submit(args) -> int:
-    payload = {"v": PROTOCOL_VERSION, "type": "task", "task_id": args.task_id, "priority": args.priority}
+    payload = {"v": PROTOCOL_VERSION, "type": "task_submit", "task_id": args.task_id, "priority": args.priority}
     if getattr(args, "reply_to", None):
         payload["reply_to"] = args.reply_to
     body = _board_body(payload, args.task_id, args)
