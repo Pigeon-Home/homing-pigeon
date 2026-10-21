@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.33 - 2026-10-20
+
+- **Version rev.** No functional change from 3.11.32.
+  The FUTURE.md note about a USB neural-link peripheral
+  landed after that tag, and its main push finished
+  green, Windows included. This tag is the next look.
+
 ## 3.11.32 - 2026-10-20
 
 - **Version rev.** No functional change from 3.11.31.
