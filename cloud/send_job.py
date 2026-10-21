@@ -331,6 +331,8 @@ def _board_body(payload, ident, args) -> str:
 
 def cmd_task_submit(args) -> int:
     payload = {"v": PROTOCOL_VERSION, "type": "task", "task_id": args.task_id, "priority": args.priority}
+    if getattr(args, "reply_to", None):
+        payload["reply_to"] = args.reply_to
     body = _board_body(payload, args.task_id, args)
     print(f"[HOMING-PIGEON] task_submit {args.task_id}")
     print()
@@ -340,6 +342,8 @@ def cmd_task_submit(args) -> int:
 
 def cmd_task_request(args) -> int:
     payload = {"v": PROTOCOL_VERSION, "type": "task_request", "worker_id": args.worker_id, "capabilities": []}
+    if getattr(args, "reply_to", None):
+        payload["reply_to"] = args.reply_to
     body = _board_body(payload, args.worker_id, args)
     print(f"[HOMING-PIGEON] task_request {args.worker_id}")
     print()
@@ -448,6 +452,9 @@ def main() -> int:
     ts.add_argument("--priority", type=int, default=0,
                     help="task priority (default: 0)")
     ts.add_argument("--secret", required=True, metavar="SECRET")
+    ts.add_argument("--reply-to", default=None, metavar="ADDRESS",
+                    help="email the task_ack to this address instead "
+                         "of the runner mailbox (inside the signed body)")
     ts.add_argument("--cleartext", action="store_true",
                     help="do NOT encrypt: send the plain HMAC-signed "
                          "body (the runner refuses it unless started "
@@ -459,6 +466,9 @@ def main() -> int:
         description="Build a signed board task_request email.")
     tr.add_argument("--worker-id", required=True, metavar="ID")
     tr.add_argument("--secret", required=True, metavar="SECRET")
+    tr.add_argument("--reply-to", default=None, metavar="ADDRESS",
+                    help="email the task_offer to this address instead "
+                         "of the runner mailbox (inside the signed body)")
     tr.add_argument("--cleartext", action="store_true",
                     help="do NOT encrypt: send the plain HMAC-signed "
                          "body (the runner refuses it unless started "

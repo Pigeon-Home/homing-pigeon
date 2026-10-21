@@ -962,8 +962,10 @@ pattern: `[HOMING-PIGEON] <type> <id>`.
   section 13.4: it moves a task from `pending_review` to `done`.
   A task in any other state is refused.
 - `task_ack` is the Oracle's reply to `task_submit`, `task_result`,
-  and `task_approve`, sent to the runner mailbox (board replies do
-  not follow `reply_to`): `{"v": 1, "type": "task_ack", "task_id":
+  and `task_approve`. Board replies — `task_ack` and `task_offer` —
+  are routed like results (3.1): to a valid `reply_to` inside the
+  signed board message, otherwise to the runner mailbox; the `From`
+  header never chooses. The ack: `{"v": 1, "type": "task_ack", "task_id":
   "<id>", ...}` carrying `ok` and `reason` (for submit and approve)
   or `status` and `reason` (for a result: `done`, `pending_review`,
   or `duplicate`). `task_request` is answered by `task_offer`, or by

@@ -409,9 +409,11 @@ python3 cloud/send_job.py new --kind exec --script-file job.sh \
 
 `--arg` and `--env KEY=value` are repeatable. Two more subcommands
 drive the task board (PROTOCOL.md section 13): `send_job.py
-task-submit --task-id <id> --priority 1 --script-file job.sh --secret
-<the-string>` opens a task, and `send_job.py task-request --worker-id
-<name> --secret <the-string>` pulls one.
+task-submit --task-id <id> --priority 1 --secret <the-string>` opens a
+task, and `send_job.py task-request --worker-id <name> --secret
+<the-string>` pulls one. Both take `--reply-to` so the ack or the
+offer lands in your inbox instead of the runner's, and `--cleartext`
+with the same meaning as for `new`.
 
 Or paste the string to your SI in chat — it composes, signs, and sends
 the job message itself, and reads the result message when it arrives. Large files

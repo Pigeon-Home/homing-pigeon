@@ -143,3 +143,39 @@ class BoardE2ETest(unittest.TestCase):
         subjects = [m["Subject"] for m in smtp.sent]
         self.assertTrue(any("task_ack t-e2e" in s for s in subjects))
         self.assertTrue(any("task_offer t-e2e" in s for s in subjects))
+        # No reply_to on any of these: every reply goes to the
+        # runner's own mailbox.
+        self.assertTrue(all(m["To"] == SENDER for m in smtp.sent))
+
+    def test_board_replies_follow_a_signed_reply_to(self):
+        # The same routing rule as results (PROTOCOL 3.1 / 13.7): a
+        # valid reply_to inside the signed body receives the offer or
+        # ack; an invalid one falls back to the runner mailbox.
+        issued = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        mails = [
+            _board_mail("[HOMING-PIGEON] task_submit t-rt", {
+                "v": 1, "type": "task_submit", "task_id": "t-rt",
+                "issued_at": issued, "capabilities": ["py"],
+                "payload": {"kind": "ping"},
+                "reply_to": "submitter@example.com",
+            }),
+            _board_mail("[HOMING-PIGEON] task_request w-rt", {
+                "v": 1, "type": "task_request", "issued_at": issued,
+                "capabilities": ["py"],
+                "reply_to": "worker@example.com",
+            }),
+            _board_mail("[HOMING-PIGEON] task_result t-rt", {
+                "v": 1, "type": "task_result", "issued_at": issued,
+                "result": {"ok": True},
+                "reply_to": "not an address, and a comma,",
+            }),
+        ]
+        smtp = FakeSMTP()
+        poll_once(self.cfg, self.tmp, {}, self.seen_path,
+                  imap=FakeIMAP(mails), smtp=smtp)
+        pairs = [(m["Subject"], m["To"]) for m in smtp.sent]
+        acks = [to for s, to in pairs if "task_ack t-rt" in s]
+        offers = [to for s, to in pairs if "task_offer t-rt" in s]
+        self.assertEqual(offers, ["worker@example.com"])
+        self.assertIn("submitter@example.com", acks)   # the submit ack
+        self.assertIn(SENDER, acks)                     # the result ack

@@ -5279,9 +5279,13 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
         reject("board error")
         return True
     if opts is None or not getattr(opts, "no_send", False):
+        # Board replies follow the same routing rule as results
+        # (PROTOCOL 3.1 / 13.7): a valid reply_to inside the signed
+        # body receives the offer or ack; otherwise the runner's own
+        # mailbox does. The From header never chooses.
         send_mail(smtp, cfg, reply_subj, _seal_reply(
             reply_body, secret, reply_subj.rsplit(" ", 1)[-1],
-            key_id, encrypted))
+            key_id, encrypted), to=_valid_reply_to(payload))
     if opts is None or not opts.dry_run:
         mark_seen(imap, seq)
     return True
