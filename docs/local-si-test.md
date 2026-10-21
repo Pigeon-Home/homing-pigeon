@@ -16,8 +16,11 @@ See `docs/handoff-local-si.md` for the full handoff (two instances, email-only t
 ## The email harness
 
 The mock SI is tested through email. That is Transport #1 and the
-only transport this harness exercises. The local socket was cut
-from the code; the broker transports are not part of this test.
+only transport this harness exercises. The harness's own local
+socket was cut from the code (the runner's shipped loopback
+local-signal socket is a different thing — it carries signed
+sensor alerts, not jobs); the broker transports are not part of
+this test.
 See FUTURE.md.
 
 To run the email test you need a real mailbox in `config.json`
