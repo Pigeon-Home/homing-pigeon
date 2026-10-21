@@ -17,7 +17,7 @@ Install the Homing Pigeon agent on a machine you own. At setup it
 walks you through connecting a dedicated email account — the
 recommended path is a browser sign-in, so the account password
 never lands in config; an app password is the other choice.
-Email is the default transport. The agent bears a resemblance to GitHub self-hosted
+Email is the default transport. This application bears a resemblance to GitHub self-hosted
 runners, they are small program on your hardware that picks up jobs from a source which
 you control and runs them.
 
