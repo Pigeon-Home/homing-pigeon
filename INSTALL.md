@@ -322,8 +322,9 @@ the simulation used.
    `max_result_view` to `redacted`.
 4. `homing-pigeon --config config.json --inspect redact` with the
    flag on stdin prints `[REDACTED:flag]` and not the flag.
-   `--once --dry-run` exits 0. A closed mail port is a logged poll
-   failure, not a traceback, and the shared secret is not printed.
+   `--once --dry-run` exits 0. A dry run starts no transport
+   extensions and never opens the mailbox, and the shared secret
+   is not printed.
 
 ---
 
