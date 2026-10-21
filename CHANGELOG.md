@@ -4,6 +4,23 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.2 - 2026-10-21
+
+- **Channel reliability.** A job whose failure is retryable stays
+  unseen on the channel instead of being consumed, and a result
+  that does not land rolls the seen-set back and leaves the
+  envelope. IMAP SEARCH/FETCH are serialized with STORE. The
+  security-events trim replaces the file instead of truncating
+  it under another writer.
+- **Board subcommands encrypt by default**, like `new`.
+- **Protocol version 2 questions.** A question stays unseen
+  until its answerer reads it, and the answer deadline starts
+  at send.
+- **Docs bent to shipped behavior.** The 2026-10-20 claims
+  audit's 18 spec items are closed, and a 2026-10-21 round bent
+  10 more docs, closed the three PROTOCOL.md items PC-01..03,
+  and documented 30 previously undocumented knobs.
+
 ## 3.12.1 - 2026-10-21
 
 - **Frozen builds include the version 2 module.** The one-file
