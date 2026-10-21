@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.9 - 2026-10-21
+
+- **Code scanning is clear.** Three queries still fired after
+  3.12.8, all false positives: clear-text logging of a line
+  that does not contain a secret, the fixed Oracle
+  classifier pattern, and the DTLS listen address. The
+  default suite does not honor a comment on the line, so
+  those three are excluded in the CodeQL config. The other
+  queries stay on.
+
 ## 3.12.8 - 2026-10-21
 
 - **Code scanning.** The open CodeQL alerts were false
