@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.11.38 - 2026-10-20
+
+- **Oracle ask tests wait longer on a loaded Windows runner.**
+  The v3.11.37 tag published, but its main push failed
+  `test_random_questions_all_carry_the_line`: a loopback
+  POST to the test server timed out at 5 seconds. The
+  client waits 20 now.
+
 ## 3.11.37 - 2026-10-20
 
 - **Windows process tree ignores a reused pid.** Toolhelp

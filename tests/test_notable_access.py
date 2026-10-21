@@ -1430,7 +1430,11 @@ class HttpAskTest(unittest.TestCase):
             f"http://127.0.0.1:{self.port}/ask",
             data=data, headers=headers, method="POST")
         try:
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            # 20s, not 5. On a loaded Windows runner the loopback
+            # server thread can sit that long; v3.11.37's main
+            # push timed out at 5 and the tag of the same commit
+            # did not.
+            with urllib.request.urlopen(req, timeout=20) as resp:
                 return resp.status, json.loads(resp.read().decode())
         except urllib.error.HTTPError as e:
             return e.code, e.read().decode()
@@ -1549,12 +1553,12 @@ class HttpAskTest(unittest.TestCase):
             "X-Oracle-Token": self.httpd.oracle_token,
             "Content-Type": "application/json",
         }
-        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=20)
         conn.request("POST", "/nope", b"{}", headers)
         self.assertEqual(conn.getresponse().status, 404)
         conn.close()
 
-        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=20)
         bad = dict(headers)
         bad["Content-Length"] = "nope"
         conn.request("POST", "/ask", b"", bad)
@@ -1563,7 +1567,7 @@ class HttpAskTest(unittest.TestCase):
         conn.close()
         self.assertEqual(body.get("detail"), "Ask something first.")
 
-        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=20)
         conn.request("POST", "/ask", b"x" * 8001, headers)
         self.assertEqual(conn.getresponse().status, 400)
         conn.close()
@@ -1578,7 +1582,7 @@ class HttpAskTest(unittest.TestCase):
     def test_the_page_and_status_do_not_carry_the_record(self):
         import urllib.request
         page = urllib.request.urlopen(
-            f"http://127.0.0.1:{self.port}/", timeout=5).read().decode()
+            f"http://127.0.0.1:{self.port}/", timeout=20).read().decode()
         self.assertNotIn(_KEY, page)
         self.assertNotIn("notable:", page)
         self.assertNotIn("SUSPICIOUS", page)
@@ -1587,7 +1591,7 @@ class HttpAskTest(unittest.TestCase):
         req = urllib.request.Request(
             f"http://127.0.0.1:{self.port}/status",
             headers={"X-Oracle-Token": self.httpd.oracle_token})
-        status = json.loads(urllib.request.urlopen(req, timeout=5).read())
+        status = json.loads(urllib.request.urlopen(req, timeout=20).read())
         self.assertIn("active", status)
         self.assertNotIn(_KEY, json.dumps(status))
 
@@ -1596,12 +1600,12 @@ class HttpAskTest(unittest.TestCase):
             f"http://127.0.0.1:{self.port}/status",
             headers={"X-Oracle-Token": "nope"})
         with self.assertRaises(urllib.error.HTTPError) as caught:
-            urllib.request.urlopen(bad, timeout=5)
+            urllib.request.urlopen(bad, timeout=20)
         self.assertEqual(caught.exception.code, 403)
 
         with self.assertRaises(urllib.error.HTTPError) as caught:
             urllib.request.urlopen(
-                f"http://127.0.0.1:{self.port}/nope", timeout=5)
+                f"http://127.0.0.1:{self.port}/nope", timeout=20)
         self.assertEqual(caught.exception.code, 404)
 
 
