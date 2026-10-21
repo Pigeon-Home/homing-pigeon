@@ -18,8 +18,8 @@ walks you through connecting a dedicated email account — the
 recommended path is a browser sign-in, so the account password
 never lands in config; an app password is the other choice.
 Email is the default transport. The agent bears a resemblance to GitHub self-hosted
-runners: a small program on your hardware that takes jobs from a board in the cloud
-which you control and runs it.
+runners: a small program on your hardware that picks up jobs from a
+mailbox you control and runs them here.
 
 Then try this prompt in your cloud SI, it should return in less than 30 seconds.
 
