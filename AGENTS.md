@@ -63,7 +63,7 @@ object. Prefer the body `send_job.py` prints.
 | Uppercase hex signature | Accepted (hex is case-insensitive) |
 | Subject with extra words (`TEST`, `Re:`) | Accepted |
 | Signature that does not match | Rejected |
-| `file:` or other non-HTTP url | Rejected |
+| `file:`, plain `http:`, or any other non-HTTPS url | Rejected |
 | Download host that does not resolve, or HTTP 4xx | Rejected |
 
 `send_job.py` already emits lowercase hex, a `Z` timestamp, and a UUID.
@@ -86,7 +86,7 @@ The connector is attached to a personal mail account. Rules:
 
 ## Current connector
 
-The connected send-as address is the primary account on it. Jobs the SI sends come from that address. The runner accepts signed jobs from any sender; the signature is the only gate.
+The connected send-as address is the primary account on it. Jobs the SI sends come from that address. The runner accepts signed jobs from any sender — the sender's address is not gated — but the signature is not the only gate: a verified job is still refused for a stale `issued_at`, a key-policy violation, a cleartext body without `--allow-cleartext`, a replayed job id, or a budget/policy check.
 
 ## Platform-safe job construction (real failure)
 
@@ -99,5 +99,5 @@ The job is rejected with `cannot start interpreter: [WinError 2] The system cann
 
 ## Result location
 
-Result emails are sent **to the runner's mailbox** (`mailbox_user`), not to the SI's connected mail account. Searching the connector for `[HOMING-PIGEON] result <job_id>` will not find them unless the result was forwarded or the runner is configured to deliver elsewhere. Check the runner console or ask the user to forward the result if verification is needed.
+Result emails are sent **to the runner's mailbox** (`mailbox_user`) — or to the job's validated `reply_to` address when the job sets one — not to the SI's connected mail account. Searching the connector for `[HOMING-PIGEON] result <job_id>` will not find them unless the job's `reply_to` named that account, the result was forwarded, or the runner is configured to deliver elsewhere. Check the runner console or ask the user to forward the result if verification is needed.
 
