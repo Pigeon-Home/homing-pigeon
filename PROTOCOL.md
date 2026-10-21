@@ -1,7 +1,7 @@
 # Homing Pigeon Protocol
 
--The technical protocol description v1: `docs/ietf/draft-homing-pigeon-00.md`
--The technical protocol description v2: `docs/ietf/draft-homing-pigeon-v2-00.md`
+- The technical protocol description v1: `docs/ietf/draft-homing-pigeon-00.md`
+- The technical protocol description v2: `docs/ietf/draft-homing-pigeon-v2-00.md`
 
 ## 1. Actors
 
