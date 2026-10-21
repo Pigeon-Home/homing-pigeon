@@ -1,5 +1,12 @@
 # Known failures
 
+> **Archived.** This file is kept in `docs/archive/` as a
+> historical record. It is undated and written in the present
+> tense of its time — do not read an entry as current behavior
+> without checking it against the shipped runner.
+> ([docs/job-review.md](../job-review.md) points here for the
+> reviewer-pattern format.)
+
 The Oracle's pre-execution reviewer matches incoming jobs against
 these patterns. Each entry is a failure that actually happened,
 diagnosed once, filed here so it happens less. When you diagnose a

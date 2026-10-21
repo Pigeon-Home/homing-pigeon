@@ -2,7 +2,7 @@
 
 This report belongs to release v3.5.2. It was remeasured on
 2026-10-17. The current numbers are in
-[v3.7.22](../v3.7.22/coverage.md). The numbers below are that day's
+[v3.11.1](../../reports/v3.11.1/coverage.md). The numbers below are that day's
 measurement, not the current suite.
 The package version is 3.5.2 and the latest tag is v3.5.2.
 Measured on main at c48aece, 14 commits after that tag, after the coverage-seam tests in pull 76.

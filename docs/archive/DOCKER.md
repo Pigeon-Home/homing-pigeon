@@ -1,5 +1,10 @@
 # Homing Pigeon in Docker
 
+> **Archived — not current guidance.** This page is a historical
+> record of an earlier Docker setup, kept for reference only.
+> For the install paths that ship today, see
+> [INSTALL.md](../../INSTALL.md).
+
 The fastest way to run the runner. No Python to install, no git clone,
 no service configuration — one `docker run` and your inbox becomes a
 job queue.
