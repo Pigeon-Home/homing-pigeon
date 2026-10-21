@@ -26,7 +26,10 @@ entry onto the new id.
    openssl rand -hex 32
    ```
    Put it in config.json under `additional_secrets` with a new id.
-   `KEY_ID` must match `[A-Za-z0-9._-]{1,64}`. Leave `shared_secret` in place.
+   The runner imposes no pattern or length limit on these ids — it
+   requires only a non-empty string (the `[A-Za-z0-9._-]{1,64}`
+   pattern is enforced only by `install.py --additional-secret`).
+   Leave `shared_secret` in place.
    (Note: `install.py --additional-secret KEY_ID` only stores the secret on
    fresh installs — on an existing Windows one-home install it is silently
    ignored, so edit the config directly.)
