@@ -313,9 +313,25 @@ def cmd_verify(args) -> int:
 
 
 
+def _board_body(payload, ident, args) -> str:
+    """Sign a board message and, unless --cleartext, wrap it in the
+    per-job envelope exactly as `new` does for a job. The runner
+    refuses a cleartext board message unless it was started with
+    --allow-cleartext, and it decrypts a board envelope under the
+    identifier in the subject (the task id or the worker id), so
+    that identifier is the envelope's object id here."""
+    body = sign_payload(payload, args.secret)
+    if not getattr(args, "cleartext", False):
+        body = jobcrypto.encrypt_body(
+            body, args.secret, job_id=ident,
+            key_id=getattr(args, "key_id", None) or "",
+            sign=sign_payload)
+    return body
+
+
 def cmd_task_submit(args) -> int:
     payload = {"v": PROTOCOL_VERSION, "type": "task", "task_id": args.task_id, "priority": args.priority}
-    body = sign_payload(payload, args.secret)
+    body = _board_body(payload, args.task_id, args)
     print(f"[HOMING-PIGEON] task_submit {args.task_id}")
     print()
     print(body)
@@ -324,7 +340,7 @@ def cmd_task_submit(args) -> int:
 
 def cmd_task_request(args) -> int:
     payload = {"v": PROTOCOL_VERSION, "type": "task_request", "worker_id": args.worker_id, "capabilities": []}
-    body = sign_payload(payload, args.secret)
+    body = _board_body(payload, args.worker_id, args)
     print(f"[HOMING-PIGEON] task_request {args.worker_id}")
     print()
     print(body)
@@ -432,6 +448,10 @@ def main() -> int:
     ts.add_argument("--priority", type=int, default=0,
                     help="task priority (default: 0)")
     ts.add_argument("--secret", required=True, metavar="SECRET")
+    ts.add_argument("--cleartext", action="store_true",
+                    help="do NOT encrypt: send the plain HMAC-signed "
+                         "body (the runner refuses it unless started "
+                         "with --allow-cleartext)")
     ts.set_defaults(func=cmd_task_submit)
 
     tr = sub.add_parser(
@@ -439,6 +459,10 @@ def main() -> int:
         description="Build a signed board task_request email.")
     tr.add_argument("--worker-id", required=True, metavar="ID")
     tr.add_argument("--secret", required=True, metavar="SECRET")
+    tr.add_argument("--cleartext", action="store_true",
+                    help="do NOT encrypt: send the plain HMAC-signed "
+                         "body (the runner refuses it unless started "
+                         "with --allow-cleartext)")
     tr.set_defaults(func=cmd_task_request)
     v = sub.add_parser(
         "verify", help="verify a signed result body",

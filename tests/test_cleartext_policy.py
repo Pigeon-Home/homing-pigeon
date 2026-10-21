@@ -421,6 +421,47 @@ class SenderFlagsTest(CleartextBase):
         self.assertEqual(proc.returncode, 0)
         self.assertIn("--cleartext", proc.stdout)
 
+    # The board subcommands must follow the same rule as `new`: the
+    # default runner refuses a cleartext board message, so a tool
+    # that emitted one by default produced messages nobody could
+    # accept without --allow-cleartext (claims audit 2026-10-21,
+    # finding C-01).
+    def _run_board(self, *argv):
+        out = io.StringIO()
+        with mock.patch.object(sys, "argv", ["send_job.py", *argv]):
+            with contextlib.redirect_stdout(out):
+                send_job.main()
+        subject, _, body = out.getvalue().partition("\n\n")
+        return subject.strip(), body.strip()
+
+    def test_task_submit_default_is_an_envelope_the_runner_admits(self):
+        subject, body = self._run_board(
+            "task-submit", "--task-id", "t-1", "--secret", SECRET)
+        self.assertEqual(subject, "[HOMING-PIGEON] task_submit t-1")
+        outer = verify_body(body, SECRET)
+        self.assertTrue(jobcrypto.is_envelope(outer))
+        payload, _kid, _sec, encrypted = runner_mod._admit_object(
+            body, {"": SECRET}, "t-1")
+        self.assertTrue(encrypted)
+        self.assertEqual(payload["task_id"], "t-1")
+
+    def test_task_request_default_is_an_envelope_the_runner_admits(self):
+        subject, body = self._run_board(
+            "task-request", "--worker-id", "w-1", "--secret", SECRET)
+        self.assertEqual(subject, "[HOMING-PIGEON] task_request w-1")
+        payload, _kid, _sec, encrypted = runner_mod._admit_object(
+            body, {"": SECRET}, "w-1")
+        self.assertTrue(encrypted)
+        self.assertEqual(payload["worker_id"], "w-1")
+
+    def test_board_cleartext_flag_is_plain_signed(self):
+        _subject, body = self._run_board(
+            "task-submit", "--task-id", "t-2", "--secret", SECRET,
+            "--cleartext")
+        payload = verify_body(body, SECRET)
+        self.assertFalse(jobcrypto.is_envelope(payload))
+        self.assertEqual(payload["task_id"], "t-2")
+
 
 class InstallerBakeTest(unittest.TestCase):
     def _args(self, **over):
