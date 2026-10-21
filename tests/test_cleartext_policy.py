@@ -447,12 +447,14 @@ class SenderFlagsTest(CleartextBase):
 
     def test_task_request_default_is_an_envelope_the_runner_admits(self):
         subject, body = self._run_board(
-            "task-request", "--worker-id", "w-1", "--secret", SECRET)
+            "task-request", "--worker-id", "w-1", "--secret", SECRET,
+            "--capability", "py", "--capability", "review")
         self.assertEqual(subject, "[HOMING-PIGEON] task_request w-1")
         payload, _kid, _sec, encrypted = runner_mod._admit_object(
             body, {"": SECRET}, "w-1")
         self.assertTrue(encrypted)
         self.assertEqual(payload["worker_id"], "w-1")
+        self.assertEqual(payload["capabilities"], ["py", "review"])
 
     def test_board_cleartext_flag_is_plain_signed(self):
         _subject, body = self._run_board(

@@ -119,6 +119,33 @@ mitigation:
   Oracle (§4) exists precisely because "the SI" and "the
   infrastructure" are both third parties.
 
+## 6a. Running a task board
+
+The board (PROTOCOL.md section 13) is always on and, by default,
+least restrictive: anyone with the shared secret can pull any task
+and see it whole. Tighten in this order, when you have a reason:
+
+- **`task_timeout`** (default 86400): a claim lapses after this many
+  seconds without a result and the task is re-offered. Shorter for
+  quick jobs so a crashed worker does not sit on work for a day;
+  never so short that a slow worker loses a task it is still doing.
+- **`worker_allowlist`**: name the `worker_id`s that may pull.
+  Empty means anyone with the secret.
+- **`worker_compartments`** on tasks that carry `compartments`:
+  a task is visible only to workers sharing a tag. A policy, not a
+  proof — a worker that receives a task sees it fully; do not put
+  mutually hostile workers on one board and expect labels to save you.
+- **`require_review: true`**: finished tasks park in `pending_review`
+  until you send `task_approve`. Use it when a result changes
+  something you cannot undo.
+- **`dag_mode: enforce`** when a task's `requires[]` must be done
+  first; `advisory` warns and hands it out anyway.
+- **One key per worker** (`additional_secrets` + a `key_policies`
+  entry), so a leaked worker secret is revoked alone.
+
+Watch it with `homing-pigeon --inspect board` (state counts; no
+mailbox needed).
+
 ## 7. If something goes wrong
 
 **Secret leaked or suspected leaked:**

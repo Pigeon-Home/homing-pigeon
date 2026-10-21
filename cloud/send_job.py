@@ -341,7 +341,8 @@ def cmd_task_submit(args) -> int:
 
 
 def cmd_task_request(args) -> int:
-    payload = {"v": PROTOCOL_VERSION, "type": "task_request", "worker_id": args.worker_id, "capabilities": []}
+    payload = {"v": PROTOCOL_VERSION, "type": "task_request", "worker_id": args.worker_id,
+               "capabilities": list(getattr(args, "capability", None) or [])}
     if getattr(args, "reply_to", None):
         payload["reply_to"] = args.reply_to
     body = _board_body(payload, args.worker_id, args)
@@ -465,6 +466,11 @@ def main() -> int:
         "task-request", help="build a signed task_request email",
         description="Build a signed board task_request email.")
     tr.add_argument("--worker-id", required=True, metavar="ID")
+    tr.add_argument("--capability", action="append", default=[],
+                    metavar="TAG",
+                    help="a capability tag this worker claims "
+                         "(repeatable); a task is offered only when "
+                         "the worker claims every tag it requires")
     tr.add_argument("--secret", required=True, metavar="SECRET")
     tr.add_argument("--reply-to", default=None, metavar="ADDRESS",
                     help="email the task_offer to this address instead "

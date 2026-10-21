@@ -258,6 +258,14 @@ fine there: use `pip install pigeon-home-runner` or build from source.
 5. When you want an SI to send jobs, make sure `shared_secret` in
    config.json matches the string you pasted to the SI in chat
    (the wizard shows you a fresh one; `openssl rand -hex 32` works too).
+6. **More than one signer?** Give each its own key instead of sharing
+   the one secret: `python3 runner/install.py --additional-secret
+   grok-4` generates a 256-bit secret under `additional_secrets`
+   with that key ID (on a fresh install; on an existing Windows
+   one-home install edit `config.json` by hand), and a matching
+   `key_policies` entry limits what that key may do. The signer then
+   passes `--key-id grok-4` to `send_job.py`. Rotation and the policy
+   details: `docs/secret-rotation.md`, PROTOCOL.md section 14.
 
 **From source** (needs Python 3.9+):
 

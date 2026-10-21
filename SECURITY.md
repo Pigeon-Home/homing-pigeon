@@ -194,6 +194,31 @@ each secret from a file at startup (whitespace-stripped). A secret
 given both inline and via file is a startup error, as is a missing or
 empty file. File secrets pass the same entropy gate.
 
+### Multiple secrets (M-key)
+
+`additional_secrets` maps key IDs to further shared secrets
+(PROTOCOL.md section 14). Threat notes:
+
+- **A key ID is a label, not a secret.** It travels in the clear
+  inside the signed body and may appear in logs. Possession of the
+  secret it names is the credential; guessing the label buys nothing.
+- **Every secret is root unless its policy says otherwise.** Keys
+  without a `key_policies` entry are unrestricted by default. Give
+  every delegated key an entry (`allowed_kinds`, `max_timeout_sec`,
+  `allowed_script_sha384`, ...), or set `key_policies_default_deny`
+  so a new key with no entry is refused.
+- **Unknown key IDs are rejected before any MAC is computed**, and
+  the runner never falls back to the default secret for them. An
+  attacker cannot make a message verify under a key it did not name.
+- **Rotation is per key**: add the new ID, hand it out, retire the
+  old one (`docs/secret-rotation.md`). Secrets are read at startup;
+  rotation takes a restart.
+- **The dispatcher's trust model** (section 13): a result from a
+  worker is bound to that worker's key by the signature, and the
+  attestation binds the worker to its claimed output. Neither says
+  the output is correct; review (`require_review`, the human gate)
+  is the correctness anchor.
+
 See the hardening report (`docs/archive/HARDENING_REPORT.md`) for per-milestone
 status, and the threat model (`docs/threat-model.md`) for the
 overall posture: the Oracle reviews while the operating system

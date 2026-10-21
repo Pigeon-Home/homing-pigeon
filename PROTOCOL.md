@@ -1117,29 +1117,29 @@ as the record of what the Oracle required. It is not a proposal.
 
 ### Documentation
 
-The documentation items below were part of the plan. The first and
-last shipped; the middle four did not, and they remain open — the
-code they would describe is implemented, the walkthroughs are not
-written. They are listed here as open items, not as a description of
-the current docset.
+The documentation items below were part of the plan. All shipped;
+the four marked open on 2026-10-21 were closed the same day.
 
 - README.md: Oracle section rewritten from "proposal" to real;
   dispatcher described in plain language; multi-secret setup.
   *Shipped.*
-- INSTALL.md / RUNBOOK.md: `additional_secrets` config walkthrough;
-  worker enrollment (shared secret plus key ID handoff); task board
-  usage. *Open.*
+- INSTALL.md / RUNBOOK.md: `additional_secrets` config walkthrough
+  (INSTALL.md step 6, RUNBOOK.md Job 6, `docs/secret-rotation.md`);
+  worker enrollment and task board usage (AGENTS.md, "Working the
+  task board"). *Shipped.*
 - AGENTS.md: how a worker SI pulls tasks, claims capabilities,
-  submits results; key_id handling for cloud SIs. *Open.*
+  submits results; key_id handling for cloud SIs. *Shipped.*
 - SECURITY.md: multi-secret threat notes (key ID is a label, not a
   secret; rotation procedure); dispatcher trust model (review as the
-  correctness anchor). *Open.*
+  correctness anchor). *Shipped ("Multiple secrets").*
 - SAFEGUARDS.md: operational guidance for running a board (timeouts,
   allowlists, when to tighten from least-restrictive defaults).
-  *Open.*
+  *Shipped (§6a).*
 - PROTOCOL.md: this file. The Oracle sections are implemented.
   *Shipped.*
-- docs/archive/DOCKER.md: env vars for additional secrets, if supported.
+- docs/archive/DOCKER.md: env vars for additional secrets, if
+  supported. *Open* — the Docker entrypoint reads no
+  `additional_secrets` variable; mount a `config.json` for that.
 
 ### Order
 

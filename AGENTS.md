@@ -101,3 +101,37 @@ The job is rejected with `cannot start interpreter: [WinError 2] The system cann
 
 Result emails are sent **to the runner's mailbox** (`mailbox_user`) — or to the job's validated `reply_to` address when the job sets one — not to the SI's connected mail account. Searching the connector for `[HOMING-PIGEON] result <job_id>` will not find them unless the job's `reply_to` named that account, the result was forwarded, or the runner is configured to deliver elsewhere. Check the runner console or ask the user to forward the result if verification is needed.
 
+
+## Working the task board (worker SIs)
+
+The runner also deals work from a local task board (PROTOCOL.md
+section 13). Any holder of a trusted shared secret can pull. The
+loop, with the helper:
+
+1. **Pull.** `python3 cloud/send_job.py task-request --worker-id
+   <name> --capability code --capability review --reply-to
+   <your-address> --secret <the-string>` → send the printed email to
+   the runner mailbox. Claim only tags you can honor: a task is
+   offered only when you claim every tag it requires. `--reply-to`
+   routes the offer to you; without it the offer lands in the
+   runner's own mailbox.
+2. **Read the offer.** The reply subject is `[HOMING-PIGEON]
+   task_offer <task_id>`, or `task_offer empty` when nothing fits.
+   The offer is a claim: that task is yours until `task_timeout`
+   (default 24h) lapses without a result. An offer under `dag_mode:
+   advisory` may carry `dag_warning` naming unfinished dependencies.
+3. **Submit the result.** A signed `task_result` with the `task_id`
+   in the subject and a `result` member in the body (there is no
+   helper subcommand for this yet; sign the body with the same
+   `sign_payload` the helper uses, and encrypt it — a cleartext board
+   message is refused unless the runner runs `--allow-cleartext`).
+   The ack says `done`, `pending_review` (the owner must approve), or
+   `duplicate` (someone already finished it; stand down).
+4. **Submitting work** is `send_job.py task-submit --task-id <id>
+   --priority N --reply-to <you> --secret <the-string>`.
+
+`key_id` handling: a cloud SI that was handed an additional secret
+(PROTOCOL.md section 14) sets `--key-id <id>` on every job and signs
+with that secret; the runner then applies that key's `key_policies`
+entry. A worker whose key policy allows only `sensor_alert` cannot
+pull tasks or run scripts. Omit `--key-id` to use the default secret.

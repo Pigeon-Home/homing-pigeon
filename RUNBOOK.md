@@ -250,6 +250,10 @@ python3 cloud/send_job.py new --kind ping --secret PASTE_YOUR_SECRET_HERE
    envelope, not the word; read it with
    `python3 cloud/send_job.py verify --secret <the-string> --job-id <id> result.txt`.
 
+If this SI has its own key (see INSTALL.md step 6), add
+`--key-id <its-id>` and sign with that key's secret instead of
+`shared_secret`.
+
 To run a script instead of a ping:
 
 ```
