@@ -6357,10 +6357,11 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
         return True
     if kind == "question":
         if not _protocol_v2.answer_only(cfg):
-            log(f"version 2 question {ident}: this process is "
-                f"not an answerer; not answering")
-            if not dry:
-                mark_seen(imap, seq)
+            # This process asked, or it is not the laptop. The
+            # question has to stay unseen so another reader of
+            # this mailbox can answer it. Marking it seen here
+            # is how a shared pipe loses the question.
+            _v2_leave_unseen(ident)
             return True
         text = _protocol_v2.local_answer_text(payload)
         if _oracle_mode(cfg) != "deterministic":
@@ -6406,6 +6407,26 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
     return True
 
 
+def _v2_leave_unseen(ident):
+    """Log once that this process will not answer a question.
+
+    The message stays unseen. A later poll will see it again;
+    the set is only so that does not log every time.
+    """
+    if not isinstance(ident, str):
+        ident = str(ident)
+    if ident in _V2_LEFT_UNSEEN:
+        return
+    if len(_V2_LEFT_UNSEEN) > 256:
+        _V2_LEFT_UNSEEN.clear()
+    _V2_LEFT_UNSEEN.add(ident)
+    log(f"version 2 question {ident}: this process is "
+        f"not an answerer; left unseen")
+
+
+_V2_LEFT_UNSEEN = set()
+
+
 def _v2_hand_off(cfg, smtp, base_dir, subject, body, target):
     """Put one version 2 message on the pipe before the wait.
 
@@ -6415,7 +6436,12 @@ def _v2_hand_off(cfg, smtp, base_dir, subject, body, target):
     the channel now and are not captured, so they are not
     written a second time. A live SMTP, including the test
     double, is sent immediately.
+
+    Returns the outbox paths still waiting for an extension
+    to send. An empty list means the message is already on
+    the wire.
     """
+    paths = []
     if isinstance(smtp, _CaptureSMTP) and _transports is not None:
         try:
             names = _enabled_transports(cfg)
@@ -6426,16 +6452,19 @@ def _v2_hand_off(cfg, smtp, base_dir, subject, body, target):
         for name in names:
             try:
                 hint = subject.rsplit(" ", 1)[-1]
-                _transports.write_channel_result(
+                path = _transports.write_channel_result(
                     base_dir, name, subject, subject, body,
                     ident_hint=hint, target=target)
+                if path:
+                    paths.append(path)
                 wrote = True
             except Exception as e:
                 log(f"version 2 hand-off to {name} failed: {e}",
                     "WARN")
         if wrote:
-            return
+            return paths
     send_mail(smtp, cfg, subject, body, to=target)
+    return []
 
 
 def _v2_ingest(cfg, imap, base_dir, seen, secrets, opts):
@@ -6491,11 +6520,16 @@ def _v2_ingest(cfg, imap, base_dir, seen, secrets, opts):
                    'Content-Type: text/plain; charset="utf-8"\r\n'
                    "\r\n" + str(msg.body)).encode("utf-8")
             try:
+                box = _NullIMAP()
                 handle_v2_mail(
-                    cfg, _NullIMAP(), _CaptureSMTP(), "transport",
+                    cfg, box, _CaptureSMTP(), "transport",
                     raw, msg.subject, secrets, opts, base_dir)
             except Exception as e:
                 log(f"version 2 ingest message failed: {e}", "WARN")
+                continue
+            if not box.marked:
+                # A question this process is not answering stays
+                # in the inbox. Acking it would mark the mail seen.
                 continue
             try:
                 msg.ack()
@@ -6517,17 +6551,25 @@ def _v2_before_execute(cfg, job, op_plan, secret, key_id, encrypted,
     outbound = _protocol_v2.outbound_for(cfg, job, op_plan)
     segments = []
     question = None
+    question_paths = []
     for subj, obj in outbound:
-        send(subj, _seal_reply(
+        sent_paths = send(subj, _seal_reply(
             obj, secret, obj["msg_id"], key_id, encrypted))
         if obj.get("type") == "determination":
             segments.append(_protocol_v2.segment(
                 "runner", "determination", obj.get("why") or ""))
         elif obj.get("type") == "question":
             question = obj
+            if isinstance(sent_paths, (list, tuple)):
+                question_paths.extend(
+                    p for p in sent_paths if isinstance(p, str) and p)
     if question is not None:
+        def still_out(paths=tuple(question_paths)):
+            return any(os.path.exists(p) for p in paths)
+
         segments.extend(_protocol_v2.await_answer(
-            base_dir, question, time.time(), pump=pump))
+            base_dir, question, time.time(), pump=pump,
+            pending=still_out if question_paths else None))
     return segments
 
 
@@ -6895,7 +6937,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             if _protocol_v2 is not None and _protocol_v2.enabled(cfg):
                 try:
                     def v2_send(subject, body):
-                        _v2_hand_off(
+                        return _v2_hand_off(
                             cfg, smtp, base_dir, subject, body,
                             _valid_reply_to(job))
 

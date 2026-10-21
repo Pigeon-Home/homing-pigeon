@@ -225,6 +225,74 @@ class BuildersTest(unittest.TestCase):
         self.assertEqual(got[0]["text"], "from the pump")
         self.assertEqual(got[0]["kind"], "answer")
 
+    def test_deadline_zero_does_not_wait_for_a_stuck_outbox(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-")
+        q = {"msg_id": "q.stuck0", "deadline_sec": 0,
+             "local_default": "proceed"}
+        t0 = time.monotonic()
+        got = v2.await_answer(tmp, q, time.time(), pending=lambda: True)
+        self.assertLess(time.monotonic() - t0, 0.3)
+        self.assertEqual(got[0]["kind"], "local_default")
+
+    def test_a_stuck_outbox_pauses_only_for_the_deadline(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-")
+        q = {"msg_id": "q.stuck1", "deadline_sec": 1,
+             "local_default": "proceed"}
+        t0 = time.monotonic()
+        got = v2.await_answer(tmp, q, time.time(), pending=lambda: True)
+        elapsed = time.monotonic() - t0
+        self.assertGreater(elapsed, 0.7)
+        self.assertLess(elapsed, 3.0)
+        self.assertEqual([s["kind"] for s in got], ["local_default"])
+
+    def test_the_deadline_starts_when_the_question_leaves(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-")
+        q = {"msg_id": "q.leave", "deadline_sec": 2,
+             "local_default": "proceed"}
+        state = {"n": 0}
+
+        def pending():
+            state["n"] += 1
+            return state["n"] < 3
+
+        def pump():
+            if state["n"] < 3:
+                return
+            folder = os.path.join(tmp, "v2", "answers")
+            os.makedirs(folder, exist_ok=True)
+            path = os.path.join(folder, "q.leave.json")
+            if os.path.exists(path):
+                return
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"received_at": time.time(),
+                           "answer": {"answer": "after send"}}, fh)
+
+        t0 = time.monotonic()
+        got = v2.await_answer(tmp, q, time.time(), pump=pump,
+                              pending=pending)
+        self.assertLess(time.monotonic() - t0, 2.5)
+        self.assertEqual(got[0]["kind"], "answer")
+        self.assertEqual(got[0]["text"], "after send")
+
+    def test_a_wall_clock_step_does_not_make_an_open_wait_late(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-")
+        q = {"msg_id": "q.jump", "deadline_sec": 2,
+             "local_default": "proceed"}
+
+        def pump():
+            folder = os.path.join(tmp, "v2", "answers")
+            os.makedirs(folder, exist_ok=True)
+            path = os.path.join(folder, "q.jump.json")
+            if os.path.exists(path):
+                return
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"received_at": time.time() + 1000,
+                           "answer": {"answer": "still open"}}, fh)
+
+        got = v2.await_answer(tmp, q, time.time(), pump=pump)
+        self.assertEqual(got[0]["kind"], "answer")
+        self.assertEqual(got[0]["text"], "still open")
+
 
 class MailTest(unittest.TestCase):
     def setUp(self):
@@ -311,10 +379,14 @@ class MailTest(unittest.TestCase):
         question = v2.question_for(
             {"protocol_v2": True, "oracle_mode": "deterministic"},
             {"job_id": "j1", "kind": "exec"})
-        smtp = self._poll([
+        imap = FakeIMAP([
             _mail("[HOMING-PIGEON] question " + question["msg_id"],
-                  question, question["msg_id"])], protocol_v2=True)
+                  question, question["msg_id"])])
+        smtp = FakeSMTP()
+        poll_once(dict(self.cfg, protocol_v2=True), self.tmp, {},
+                  self.seen_path, imap=imap, smtp=smtp)
         self.assertEqual(smtp.sent, [])
+        self.assertEqual(imap.flagged, [])
 
     def test_answer_only_does_not_execute_a_ping(self):
         job = _job("ping-1")
@@ -395,6 +467,107 @@ class MailTest(unittest.TestCase):
         self.assertEqual(parsed["exit_code"], 0)
         self.assertIn(("answer", "from the channel"),
                       [(s["kind"], s["text"]) for s in parsed["context"]])
+
+    def test_a_question_on_the_channel_stays_in_the_inbox(self):
+        question = v2.question_for(
+            {"protocol_v2": True, "oracle_mode": "deterministic"},
+            {"job_id": "j1", "kind": "exec"})
+        from runner.transport_extensions import channel as ch
+        channel = os.path.join(
+            self.tmp, "transport-extensions", "email")
+        path = ch.deliver_job(
+            channel, "q-j1",
+            "[HOMING-PIGEON] question " + question["msg_id"],
+            _seal(question, question["msg_id"]))
+        sent = process_transport_message(
+            dict(self.cfg, protocol_v2=True, transports=["email"]),
+            self.tmp, {}, {"": SECRET}, {},
+            "[HOMING-PIGEON] question " + question["msg_id"],
+            _seal(question, question["msg_id"]))
+        self.assertEqual(list(sent), [])
+        self.assertFalse(sent.consume)
+        poll_once(
+            dict(self.cfg, protocol_v2=True, transports=["email"]),
+            self.tmp, {}, self.seen_path)
+        self.assertTrue(os.path.isfile(path))
+        done = os.path.join(channel, "inbox", "done")
+        self.assertEqual(os.listdir(done), [])
+
+    def test_the_deadline_starts_after_the_question_leaves_the_outbox(self):
+        job_id = "v2wait1"
+        job = _job(job_id, kind="exec", script="echo ok")
+        channel = os.path.join(
+            self.tmp, "transport-extensions", "email")
+        outbox = os.path.join(channel, "outbox")
+        os.makedirs(outbox, exist_ok=True)
+        filed = {"ok": False}
+
+        def watcher():
+            found = None
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and found is None:
+                try:
+                    names = os.listdir(outbox)
+                except OSError:
+                    names = []
+                for name in names:
+                    if name == "done":
+                        continue
+                    full = os.path.join(outbox, name)
+                    try:
+                        with open(full, encoding="utf-8") as fh:
+                            text = fh.read()
+                    except OSError:
+                        continue
+                    if "question " in text:
+                        found = full
+                        break
+                if found is None:
+                    time.sleep(0.02)
+            if found is None:
+                return
+            time.sleep(0.8)
+            try:
+                os.remove(found)
+            except OSError:
+                return
+            time.sleep(2.4)
+            question = v2.question_for(
+                {"protocol_v2": True, "oracle_mode": "deterministic",
+                 "v2_answer_deadline_sec": 3},
+                {"job_id": job_id, "kind": "exec", "script": "echo ok"})
+            folder = os.path.join(self.tmp, "v2", "answers")
+            os.makedirs(folder, exist_ok=True)
+            path = os.path.join(folder, question["msg_id"] + ".json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"received_at": time.time(),
+                           "answer": {"answer": "after the send"}}, fh)
+            filed["ok"] = True
+
+        thread = threading.Thread(target=watcher)
+        thread.start()
+        t0 = time.monotonic()
+        try:
+            sent = process_transport_message(
+                dict(self.cfg, protocol_v2=True,
+                     oracle_mode="deterministic",
+                     v2_answer_deadline_sec=3, transports=["email"]),
+                self.tmp, {}, {"": SECRET}, {},
+                "[HOMING-PIGEON] job " + job_id,
+                _seal(job, job_id))
+        finally:
+            thread.join(timeout=12)
+        self.assertLess(time.monotonic() - t0, 8)
+        self.assertTrue(filed["ok"])
+        result = next(row for row in sent if "result " + job_id in row[0])
+        parsed = verify_body(result[1], SECRET)
+        ident = result[0].rsplit(" ", 1)[-1]
+        if isinstance(parsed, dict) and isinstance(parsed.get("hp_enc"), dict):
+            inner = jobcrypto.decrypt_body(
+                parsed, SECRET, ident, parsed.get("key_id") or "")
+            parsed = verify_body(inner, SECRET)
+        kinds = [(s["kind"], s["text"]) for s in parsed["context"]]
+        self.assertIn(("answer", "after the send"), kinds)
 
 
 if __name__ == "__main__":

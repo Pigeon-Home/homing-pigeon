@@ -430,7 +430,15 @@ to wait does not stall a worker. The cap is 30 seconds.
 
 An answer is in time when it was filed at or before the moment
 the question was sent, plus `deadline_sec`, plus one second of
-grace for the same clock. The reference software, while it
+grace for the same clock. Time waiting for the question file
+to leave a channel outbox does not count against
+`deadline_sec`, and that pause itself stops once
+`deadline_sec` has elapsed, so a sender that never takes the
+file cannot hold the worker longer than the deadline. The
+whole wait, pause included, still ends by 30 seconds. A
+deadline of 0 does not pause. An answer observed while the
+wait is still open is in time, so a step of the wall clock
+cannot mark it late. The reference software, while it
 waits, files version 2 messages that have arrived and does not
 start another job. On a transport channel the question is
 written to the channel before the wait, not after the job
@@ -518,8 +526,12 @@ cleartext job is refused.
 
 A version 2 message is not a job. A job with `v` other than 1
 is still rejected. A process that has not enabled version 2
-and is not an answerer marks the message seen and does not act
-on it.
+marks the message seen and does not act on it. A process that
+has enabled version 2 but is not an answerer does not answer
+a question and does not mark that question seen, so another
+reader of the same mailbox can still answer it. An invalid
+question is still rejected and marked seen. A determination
+is still marked seen.
 
 ## 13. Security Considerations
 

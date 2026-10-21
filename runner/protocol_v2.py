@@ -371,7 +371,7 @@ def _load_answer(base_dir, question_id):
     return _read_answer_file(path)
 
 
-def await_answer(base_dir, question, asked_at, pump=None):
+def await_answer(base_dir, question, asked_at, pump=None, pending=None):
     """Segments for the result. Never changes what will run.
 
     An answer already on disk, or one that arrives before
@@ -382,6 +382,13 @@ def await_answer(base_dir, question, asked_at, pump=None):
     ``pump``, when given, is called once per look. The
     runner uses it to file version 2 messages that arrived
     after the question was sent. It must not run a job.
+
+    ``pending``, when given, is true while the question is
+    still sitting in a channel outbox. That wait does not
+    count against ``deadline_sec``, and it stops at
+    ``deadline_sec`` so a dead sender cannot hold the job
+    open. The whole wait, pause included, still ends by
+    ``_DEADLINE_CAP``. A deadline of 0 does not pause.
     """
     if not isinstance(question, dict):
         return []
@@ -395,25 +402,64 @@ def await_answer(base_dir, question, asked_at, pump=None):
         deadline = 0
     deadline = max(0, min(deadline, _DEADLINE_CAP))
     default = local_answer_text(question)
-    end = time.monotonic() + deadline
-    while True:
-        if pump is not None:
+    try:
+        asked = float(asked_at)
+    except (TypeError, ValueError):
+        asked = time.time()
+    start = time.monotonic()
+    cap_end = start + _DEADLINE_CAP
+    end = start + deadline
+
+    def look():
+        if pump is None:
+            return
+        try:
+            pump()
+        except Exception:
+            pass
+
+    def classify(hit, in_wait):
+        received, ans = hit
+        text = ans.get("answer") if isinstance(ans, dict) else ""
+        if not isinstance(text, str):
+            text = ""
+        # in_wait is the monotonic clock still being open. A
+        # wall-clock step during that wait must not turn an
+        # answer we observed in time into a late one.
+        if in_wait or received <= asked + deadline + 1.0:
+            return [segment("answerer", "answer", text)]
+        return [
+            segment("runner", "local_default", default),
+            segment("answerer", "late_answer", text),
+        ]
+
+    if deadline > 0 and pending is not None:
+        send_give_up = min(start + deadline, cap_end)
+        while True:
+            look()
+            hit = _load_answer(base_dir, qid)
+            if hit is not None:
+                return classify(hit, True)
             try:
-                pump()
+                waiting = bool(pending())
             except Exception:
-                pass
+                waiting = False
+            now = time.monotonic()
+            if not waiting:
+                asked = time.time()
+                end = min(now + deadline, cap_end)
+                break
+            if now >= send_give_up or now >= cap_end:
+                end = now
+                break
+            time.sleep(0.05)
+
+    while True:
+        look()
         hit = _load_answer(base_dir, qid)
         if hit is not None:
-            received, ans = hit
-            text = ans.get("answer")
-            if not isinstance(text, str):
-                text = ""
-            if received <= asked_at + deadline + 1.0:
-                return [segment("answerer", "answer", text)]
-            return [
-                segment("runner", "local_default", default),
-                segment("answerer", "late_answer", text),
-            ]
+            in_wait = deadline > 0 and time.monotonic() < end
+            return classify(hit, in_wait)
         if time.monotonic() >= end:
             return [segment("runner", "local_default", default)]
         time.sleep(0.05)
