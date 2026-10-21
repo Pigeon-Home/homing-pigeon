@@ -16,8 +16,8 @@ The watcher files four declared signals:
 | Signal | Fires when |
 |--------|------------|
 | `cpu_saturation_sustained` | Total CPU busy stays at or over `cpu_high_pct` (default 95) between the first and last samples of the window — miner or spin-loop shape |
-| `disk_fill_velocity` | Free space on the watched mount shrinks faster than `disk_fill_gb_per_hour` (default 10) across the window — log bombing, evidence flooding, a runaway writer |
-| `process_storm` | The process count grows by more than `process_growth` (default 200) from the window's low point to its end — fork-bomb or runaway-spawn shape |
+| `disk_fill_velocity` | Free space on the watched mount shrinks at or faster than `disk_fill_gb_per_hour` (default 10) across the window — log bombing, evidence flooding, a runaway writer |
+| `process_storm` | The process count grows by at least `process_growth` (default 200) from the window's low point to its end — fork-bomb or runaway-spawn shape |
 | `memory_exhaustion_trend` | Available memory falls steadily (at most one small rise) to or under `mem_floor_pct` (default 15), dropping at least `mem_drop_points` (default 25) across the window — a leak or memory bomb, where pi-health's static threshold would only say "low" |
 
 A signal files when its condition first holds, again when
