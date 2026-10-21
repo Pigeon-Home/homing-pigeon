@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.6 - 2026-10-21
+
+- **Skip the personal-documents check.**
+  `--ignore-personal-documents` on the runner skips the scan
+  for that process. The same flag on the installer skips the
+  warning and writes it into the service command. The banner
+  does not mention the flag. `--help` does.
+
 ## 3.12.5 - 2026-10-21
 
 - **Personal-documents warning.** On startup, and before an
