@@ -4,6 +4,15 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.8 - 2026-10-21
+
+- **Code scanning.** The open CodeQL alerts were false
+  positives: test fixtures, sample sensors that name an empty
+  env var and do not print the secret, the result SHA-384
+  digest, the job script written so it can run, and operator
+  reports that show key ids rather than secret values. Ignore
+  rules cover those. The checks stay on for the runner.
+
 ## 3.12.7 - 2026-10-21
 
 - **3.12.6 did not publish.** The Windows test job failed the

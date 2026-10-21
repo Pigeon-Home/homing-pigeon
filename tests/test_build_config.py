@@ -333,6 +333,18 @@ class PipelineLiftsTest(unittest.TestCase):
             self.assertIn("refs/tags/v", block)
             self.assertIn("needs: [release]", block)
 
+    def test_codeql_ignores_tests_and_examples_only(self):
+        workflow = self._wf("security.yml")
+        self.assertIn("config-file: ./.github/codeql/codeql-config.yml",
+                      workflow)
+        with open(os.path.join(_root(), ".github", "codeql",
+                               "codeql-config.yml"),
+                  encoding="utf-8") as fh:
+            config = fh.read()
+        self.assertIn("- tests/**", config)
+        self.assertIn("- examples/**", config)
+        self.assertNotIn("query-filters", config)
+
     # Lift 6: CI installs resolve through the one pin file.
     def test_ci_installs_come_from_the_pin_file(self):
         for line in _workflow().splitlines():

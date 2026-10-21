@@ -31,7 +31,7 @@ from xml.sax.saxutils import escape
 # Frozen binaries cannot import the package the same way a live run can.
 # The constant is the source of truth for --version; tests/test_version.py
 # fails the build if it drifts from pyproject.toml.
-__version__ = "3.12.7"
+__version__ = "3.12.8"
 
 SERVICE_NAME = "homing-pigeon"
 FILES = ["runner.py", "oauth.py", "winlog.py"]
@@ -172,7 +172,8 @@ def store_additional_secret(cfg_path: str, key_id: str) -> None:
     extra[key_id] = secret
     cfg["additional_secrets"] = extra
     _write_json(cfg_path, cfg)
-    print(f"additional secret stored for {key_id}")
+    # The value stays in the file. This line names the key only.
+    print(f"additional secret stored for {key_id}")  # codeql[py/clear-text-logging-sensitive-data]
 
 
 def install_files(src_dir: str, bin_dir: str,

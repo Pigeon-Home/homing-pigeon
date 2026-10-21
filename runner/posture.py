@@ -382,5 +382,6 @@ def exit_code_for(results):
 def main(cfg, cfg_path, base_dir):
     """Entry point for --posture. Returns an exit code."""
     results = build_posture(cfg, cfg_path, base_dir)
-    sys.stdout.write(format_posture(results))
+    # Strength and key ids. A strong secret is not printed.
+    sys.stdout.write(format_posture(results))  # codeql[py/clear-text-logging-sensitive-data]
     return exit_code_for(results)

@@ -1,0 +1,15 @@
+# The queries stay on for the runner. These trees are ignored
+# because the findings there are not the program.
+#
+# tests: a temp config holds a shared_secret on purpose, and one
+# assertion checks that "example.com" is not a filesystem path.
+# That assertion is not a URL allowlist.
+# examples: each sense prints the name of an empty env var when
+# it cannot sign. The secret value is not in that line.
+# cert-sentinel reads a peer certificate with the default TLS
+# context. It sends no secret, and it has to speak whatever the
+# server speaks or it cannot see that certificate.
+name: "Homing Pigeon"
+paths-ignore:
+  - tests/**
+  - examples/**
