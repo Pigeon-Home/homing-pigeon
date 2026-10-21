@@ -598,6 +598,49 @@ class FileTransportExtensionTest(unittest.TestCase):
             "job.txt",
             os.listdir(os.path.join(self.inbox, "done")))
 
+    def test_a_retryable_failure_stays_in_the_inbox(self):
+        # The channel used to ack when handle_mail returned,
+        # including the path that logs "will retry" and does
+        # not record the id. The mail rule is the opposite:
+        # poison is consumed, a result that never landed is not.
+        jid = str(uuid.uuid4())
+        self._drop("job.txt", _envelope(jid))
+        self.pipe.scan_jobs()
+        from runner import runner as rr
+        with mock.patch.object(
+                rr, "execute_job",
+                side_effect=RuntimeError("disk full")):
+            poll_once(self.cfg, self.tmp, self.seen, self.seen_path)
+        self.assertNotIn(jid, self.seen)
+        chan_inbox = self.paths["inbox"]
+        self.assertIn("job.job.txt", os.listdir(chan_inbox))
+        self.assertEqual(
+            os.listdir(os.path.join(chan_inbox, "done")), [])
+        self.assertIn("job.txt", os.listdir(self.inbox))
+        self._cycle()
+        self.assertEqual(self._results(), [f"{jid}.result.txt"])
+        self.assertIn(jid, self.seen)
+        self.assertEqual(os.listdir(self.inbox), ["done"])
+
+    def test_a_result_that_does_not_land_is_run_again(self):
+        jid = str(uuid.uuid4())
+        self._drop("job.txt", _envelope(jid))
+        self.pipe.scan_jobs()
+        with mock.patch.object(
+                transports, "write_channel_result",
+                side_effect=OSError("disk full")):
+            poll_once(self.cfg, self.tmp, self.seen, self.seen_path)
+        self.assertNotIn(jid, self.seen)
+        self.assertIn(
+            "job.job.txt", os.listdir(self.paths["inbox"]))
+        self._cycle()
+        self.assertEqual(self._results(), [f"{jid}.result.txt"])
+        with open(os.path.join(self.outbox, f"{jid}.result.txt"),
+                  encoding="utf-8") as f:
+            _subject, body = transports.parse_envelope(f.read())
+        result = _read_result(body, jid)
+        self.assertEqual(result["stdout"], "pong")
+
     def test_symlink_is_refused_unread(self):
         target = os.path.join(self.tmp, "elsewhere.txt")
         jid = str(uuid.uuid4())
@@ -972,6 +1015,29 @@ class EmailTransportExtensionTest(unittest.TestCase):
         result = _read_result(body, jid)
         self.assertEqual(result["stdout"], "pong")
         self.assertEqual(imap.flagged, ["1"])
+
+    def test_a_retryable_failure_is_not_marked_seen(self):
+        jid = str(uuid.uuid4())
+        imap = self.FakeIMAP([self._raw_mail(jid)])
+        smtp = self.FakeSMTP()
+        pipe = self._pipe(imap, smtp)
+        pipe.pass_once()
+        from runner import runner as rr
+        with mock.patch.object(
+                rr, "execute_job",
+                side_effect=RuntimeError("disk full")):
+            poll_once(self.cfg, self.tmp, self.seen, self.seen_path)
+        pipe.pass_once()
+        self.assertEqual(smtp.sent, [])
+        self.assertEqual(imap.flagged, [])
+        self.assertNotIn(jid, self.seen)
+        poll_once(self.cfg, self.tmp, self.seen, self.seen_path)
+        pipe.pass_once()
+        self.assertEqual(len(smtp.sent), 1)
+        self.assertEqual(imap.flagged, ["1"])
+        body = smtp.sent[0].get_content()
+        result = _read_result(body, jid)
+        self.assertEqual(result["stdout"], "pong")
 
     def test_reply_to_routes_the_result(self):
         jid = str(uuid.uuid4())

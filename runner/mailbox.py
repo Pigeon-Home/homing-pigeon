@@ -243,65 +243,88 @@ def fetch_job_mails(imap):
     """Return [(seq, raw_bytes)] for unseen mails with the job subject prefix.
 
     A bad SEARCH or one bad FETCH is skipped. The rest of the poll
-    still runs.
+    still runs. SEARCH and FETCH hold the mailbox lock for the whole
+    exchange: the connection is not safe for a STORE or a send on
+    another thread at the same time. Failures are logged after the
+    lock is released. Logging takes the runner's lock, and taking
+    that while this one is still held deadlocks a worker that is
+    already inside the runner lock and waiting to mark seen.
     """
     # Search broad: the subject regex accepts decorated subjects
     # ("[HOMING-PIGEON] TEST job <id>", "Re: ..."), which do not contain
     # the exact "[HOMING-PIGEON] job" substring. handle_mail filters.
-    try:
-        typ, data = imap.search(None, "UNSEEN", "SUBJECT", '"[HOMING-PIGEON]"')
-    except Exception as e:
-        log(f"IMAP SEARCH failed: {e}", "WARN")
-        return []
-    if typ != "OK":
-        log("IMAP SEARCH failed", "WARN")
-        return []
-    if not isinstance(data, (list, tuple)) or not data:
-        return []
-    blob = data[0]
-    if blob is None:
-        return []
-    if isinstance(blob, str):
-        blob = blob.encode("ascii", "replace")
-    if not isinstance(blob, (bytes, bytearray)):
-        log(f"IMAP SEARCH returned {type(blob).__name__}; ignoring", "WARN")
-        return []
+    notes = []
+
+    def note(msg):
+        notes.append(msg)
+
     mails = []
-    for num in blob.split():
+    with _MAIL_LOCK:
         try:
-            seq = num.decode("ascii") \
-                if isinstance(num, (bytes, bytearray)) else str(num)
-        except Exception:
-            continue
-        try:
-            typ, fetched = imap.fetch(num, "(RFC822)")
+            typ, data = imap.search(
+                None, "UNSEEN", "SUBJECT", '"[HOMING-PIGEON]"')
         except Exception as e:
-            log(f"IMAP FETCH {seq} failed: {e}", "WARN")
-            continue
-        if typ != "OK" or not fetched:
-            continue
-        raw = None
-        try:
-            parts = list(fetched)
-        except TypeError:
-            continue
-        for part in parts:
-            if isinstance(part, tuple) and len(part) == 2 \
-                    and isinstance(part[1], bytes):
-                raw = part[1]
-                break
-        if raw is not None:
-            mails.append((seq, raw))
+            note(f"IMAP SEARCH failed: {e}")
+            typ, data = None, None
+        if typ is None:
+            pass
+        elif typ != "OK":
+            note("IMAP SEARCH failed")
+        elif not isinstance(data, (list, tuple)) or not data:
+            pass
+        else:
+            blob = data[0]
+            if isinstance(blob, str):
+                blob = blob.encode("ascii", "replace")
+            if blob is None:
+                pass
+            elif not isinstance(blob, (bytes, bytearray)):
+                note("IMAP SEARCH returned "
+                     f"{type(blob).__name__}; ignoring")
+            else:
+                for num in blob.split():
+                    try:
+                        seq = num.decode("ascii") \
+                            if isinstance(num, (bytes, bytearray)) \
+                            else str(num)
+                    except Exception:
+                        continue
+                    try:
+                        ftyp, fetched = imap.fetch(num, "(RFC822)")
+                    except Exception as e:
+                        note(f"IMAP FETCH {seq} failed: {e}")
+                        continue
+                    if ftyp != "OK" or not fetched:
+                        continue
+                    raw = None
+                    try:
+                        parts = list(fetched)
+                    except TypeError:
+                        continue
+                    for part in parts:
+                        if isinstance(part, tuple) and len(part) == 2 \
+                                and isinstance(part[1], bytes):
+                            raw = part[1]
+                            break
+                    if raw is not None:
+                        mails.append((seq, raw))
+    for msg in notes:
+        log(msg, "WARN")
     return mails
 
 
 def mark_seen(imap, seq):
     # IMAP connections are not thread-safe; serialize STORE.
+    # Log after the lock. The logger takes the runner lock, and
+    # the claim path holds that lock while it calls in here.
+    err = None
     with _MAIL_LOCK:
         try:
             imap.store(seq, "+FLAGS", "\\Seen")
         except Exception as e:
-            log(f"STORE \\Seen failed for {seq}: {e}", "WARN")
+            err = e
+    if err is not None:
+        log(f"STORE \\Seen failed for {seq}: {err}", "WARN")
 
 
 def send_mail(smtp, cfg, subject: str, body: str, to: str | None = None):

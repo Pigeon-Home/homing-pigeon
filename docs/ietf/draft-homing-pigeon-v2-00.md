@@ -393,7 +393,9 @@ The subject is `[HOMING-PIGEON] answer <msg_id>`. Signing and
 encryption are as in Section 6.
 
 One answer decides. The reference software records the first
-answer for a `question_id` and refuses to replace it. A second
+answer for a `question_id` and refuses to replace it. A file
+that is not a readable answer does not occupy the slot, so a
+crash while saving cannot keep a later answer out. A second
 answer, and any answer that arrives after the deadline, is
 context for a later decision (Section 10). It does not reopen
 the job and it does not vote.

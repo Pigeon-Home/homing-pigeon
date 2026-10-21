@@ -337,6 +337,10 @@ Authorization then runs in this order, and all of it must pass:
 Failures are logged, the mail is marked seen, and the job is **never**
 executed. Delivery is at-least-once: a job whose result email fails to
 send stays unseen and will be retried (re-executed) on the next cycle.
+On a file channel the same rule is the move into `inbox/done`. That
+move happens only when the core would have marked the mail seen. A
+retryable failure leaves the envelope in the inbox. A rejection is
+still consumed, so poison is not retried.
 
 ## 6. Execution semantics
 

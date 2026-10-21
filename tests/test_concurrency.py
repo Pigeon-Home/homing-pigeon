@@ -414,3 +414,171 @@ class ImapAndBudgetTest(unittest.TestCase):
             with open(os.path.join(d, "retained", "job-b.json"), encoding="utf-8") as fh:
                 saved = json.load(fh)
             self.assertEqual(saved["spent"], 2)
+
+
+class MailboxConnectionLockTest(unittest.TestCase):
+    """SEARCH/FETCH and STORE share one IMAP connection.
+
+    The mailbox lock serializes them. A STORE failure is logged
+    after that lock is released, because the logger takes the
+    runner lock and the claim path holds the runner lock while
+    it marks seen. The other order deadlocks.
+    """
+
+    def test_fetch_and_store_do_not_overlap(self):
+        from runner import mailbox
+
+        state = {"inside": 0, "overlap": 0}
+        gate = threading.Lock()
+
+        class IMAP:
+            def _enter(self):
+                with gate:
+                    state["inside"] += 1
+                    if state["inside"] > 1:
+                        state["overlap"] += 1
+
+            def _leave(self):
+                with gate:
+                    state["inside"] -= 1
+
+            def search(self, *args):
+                self._enter()
+                try:
+                    time.sleep(0.02)
+                    return "OK", [b"1"]
+                finally:
+                    self._leave()
+
+            def fetch(self, *args):
+                self._enter()
+                try:
+                    time.sleep(0.02)
+                    return "OK", [(b"1 (RFC822)", b"raw")]
+                finally:
+                    self._leave()
+
+            def store(self, *args):
+                self._enter()
+                try:
+                    time.sleep(0.02)
+                    return "OK", []
+                finally:
+                    self._leave()
+
+        imap = IMAP()
+        errors = []
+
+        def run(fn):
+            try:
+                fn()
+            except Exception as e:
+                errors.append(e)
+
+        threads = []
+        for _ in range(4):
+            threads.append(threading.Thread(
+                target=run,
+                args=(lambda: mailbox.fetch_job_mails(imap),),
+                daemon=True))
+            threads.append(threading.Thread(
+                target=run,
+                args=(lambda: mailbox.mark_seen(imap, "1"),),
+                daemon=True))
+        for th in threads:
+            th.start()
+        for th in threads:
+            th.join(5)
+        self.assertFalse(any(th.is_alive() for th in threads))
+        self.assertEqual(errors, [])
+        self.assertEqual(state["overlap"], 0)
+
+    def test_a_failed_store_does_not_deadlock_the_runner_lock(self):
+        from runner import mailbox
+        from runner.runner import _MAIL_LOCK
+
+        in_store = threading.Event()
+        finish_store = threading.Event()
+
+        class IMAP:
+            def store(self, *args):
+                in_store.set()
+                if not finish_store.wait(2):
+                    raise RuntimeError("store timed out")
+                raise RuntimeError("store failed")
+
+        errors = []
+
+        def storer():
+            try:
+                mailbox.mark_seen(IMAP(), "1")
+            except Exception as e:
+                errors.append(e)
+
+        def holder():
+            try:
+                with _MAIL_LOCK:
+                    if not in_store.wait(2):
+                        raise RuntimeError("store never started")
+                    finish_store.set()
+                    mailbox.mark_seen(IMAP(), "2")
+            except Exception as e:
+                errors.append(e)
+
+        t_store = threading.Thread(target=storer, daemon=True)
+        t_hold = threading.Thread(target=holder, daemon=True)
+        t_store.start()
+        self.assertTrue(in_store.wait(2))
+        t_hold.start()
+        t_store.join(3)
+        t_hold.join(3)
+        self.assertFalse(t_store.is_alive())
+        self.assertFalse(t_hold.is_alive())
+        self.assertEqual(errors, [])
+
+
+class SecurityEventTrimTest(unittest.TestCase):
+    """security-events.jsonl is appended from more than one thread.
+
+    The trim must not tear a line or drop the cap by truncating
+    the live file under another writer.
+    """
+
+    def test_concurrent_appends_stay_valid_and_capped(self):
+        from runner.runner import (
+            _append_security_event, _SECURITY_EVENTS_MAX)
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch(
+                    "runner.runner._SECURITY_EVENTS_MAX", 5):
+                errors = []
+
+                def worker(n):
+                    try:
+                        for i in range(8):
+                            _append_security_event(d, {
+                                "type": "test",
+                                "n": n,
+                                "i": i,
+                            })
+                    except Exception as e:
+                        errors.append(e)
+
+                threads = [
+                    threading.Thread(target=worker, args=(n,),
+                                     daemon=True)
+                    for n in range(4)]
+                for th in threads:
+                    th.start()
+                for th in threads:
+                    th.join(5)
+                self.assertFalse(any(th.is_alive() for th in threads))
+                self.assertEqual(errors, [])
+                path = os.path.join(d, "security-events.jsonl")
+                with open(path, encoding="utf-8") as fh:
+                    lines = fh.readlines()
+                self.assertLessEqual(len(lines), 5)
+                self.assertGreaterEqual(len(lines), 1)
+                for line in lines:
+                    rec = json.loads(line)
+                    self.assertEqual(rec["type"], "test")
+                self.assertEqual(_SECURITY_EVENTS_MAX, 5000)

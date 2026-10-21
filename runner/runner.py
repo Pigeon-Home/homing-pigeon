@@ -150,41 +150,75 @@ if _mailbox_lib is not None:
     _valid_reply_to = _mailbox_lib._valid_reply_to
 
 
+_SECURITY_EVENTS_LOCK = threading.Lock()
+_SECURITY_EVENTS_MAX = 5000
+
+
 def _append_security_event(base_dir: str, event: dict) -> None:
-    """Append one event to security-events.jsonl (capped). Best effort."""
+    """Append one event to security-events.jsonl (capped). Best effort.
+
+    The poll thread and the local-inbox thread both append. The
+    trim used to read the file and then truncate it with no lock,
+    so one append could land in the window that the other wipe
+    threw away. The lock covers the append and the trim. The trim
+    replaces the file instead of truncating it in place, so a
+    reader sees the old file or the new one, never a hole.
+    """
     if not isinstance(base_dir, str) or not base_dir:
         return
     path = os.path.join(base_dir, "security-events.jsonl")
     try:
-        flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        if hasattr(os, "O_BINARY"):
-            flags |= os.O_BINARY
-        fd = os.open(path, flags, 0o600)
+        line = (json.dumps(event, ensure_ascii=False) + "\n").encode("utf-8")
+    except (TypeError, ValueError):
+        return
+    tmp = None
+    with _SECURITY_EVENTS_LOCK:
         try:
-            os.write(fd, (json.dumps(event, ensure_ascii=False) + "\n").encode("utf-8"))
-        finally:
-            os.close(fd)
-        try:
-            os.chmod(path, 0o600)
-        except OSError:
-            pass
-        with open(path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        if len(lines) > 5000:
-            flags = os.O_WRONLY | os.O_TRUNC
+            flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
             if hasattr(os, "O_NOFOLLOW"):
                 flags |= os.O_NOFOLLOW
             if hasattr(os, "O_BINARY"):
                 flags |= os.O_BINARY
-            fd = os.open(path, flags)
+            fd = os.open(path, flags, 0o600)
             try:
-                os.write(fd, "".join(lines[-5000:]).encode("utf-8"))
+                os.write(fd, line)
             finally:
                 os.close(fd)
-    except Exception:
-        pass
+            try:
+                os.chmod(path, 0o600)
+            except OSError:
+                pass
+            if os.path.islink(path):
+                return
+            with open(path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            if len(lines) <= _SECURITY_EVENTS_MAX:
+                return
+            kept = "".join(lines[-_SECURITY_EVENTS_MAX:]).encode("utf-8")
+            tmp = path + ".tmp." + str(os.getpid()) + "." + str(
+                threading.get_ident())
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            if hasattr(os, "O_BINARY"):
+                flags |= os.O_BINARY
+            fd = os.open(tmp, flags, 0o600)
+            try:
+                os.write(fd, kept)
+            finally:
+                os.close(fd)
+            os.replace(tmp, path)
+            tmp = None
+            try:
+                os.chmod(path, 0o600)
+            except OSError:
+                pass
+        except Exception:
+            if tmp:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
 
 
 def _note_resource_event(base_dir, event):
@@ -4932,11 +4966,16 @@ def _log_job_output(job_id, kind, stdout, stderr, cfg):
         f"--- end of job {job_id} output ---")
     append_bounded_log(_LOG_FILE, record, _LOG_MAX_BYTES, _LOG_BACKUPS)
 
-# Concurrency: IMAP/SMTP connections and the seen-set are not
-# thread-safe. Worker threads run handle_mail, but every touch of shared
-# state goes through _MAIL_LOCK. Only execute_job (subprocess + per-job
-# work dirs) actually runs in parallel. _IN_FLIGHT stops two threads
-# from executing the same job_id concurrently (duplicate delivery).
+# Two locks, on purpose. This one covers the seen-set and
+# _IN_FLIGHT. mailbox._MAIL_LOCK is a different lock: it
+# serializes IMAP SEARCH, FETCH, STORE, and SMTP send on the
+# shared connections. The mailbox lock is never held while
+# taking this one. A STORE or SEARCH failure is logged after
+# the mailbox lock is released, because log() takes this lock.
+# _IN_FLIGHT stops two threads executing the same job_id.
+# Production mail does not use the worker pool. The channel is
+# serviced one envelope at a time. The pool is the injected
+# mailbox path (the harness and the local SI test).
 _MAIL_LOCK = threading.RLock()
 _IN_FLIGHT: set = set()
 
@@ -7477,10 +7516,32 @@ def _scrub_env(env: dict) -> dict:
 
 class _NullIMAP:
     """Stand-in for the mail path's mark_seen calls: a transported
-    message has no mailbox flags to set."""
+    message has no mailbox flags to set. ``marked`` records that
+    the core would have marked the mail seen, which is the signal
+    to consume the channel envelope. A retryable failure never
+    calls store, so the envelope stays in the inbox."""
+
+    def __init__(self):
+        self.marked = False
 
     def store(self, *args):
+        self.marked = True
         return ("OK", [])
+
+
+class _Outbound(list):
+    """Replies from one transported envelope.
+
+    ``consume`` is false when the core left the message unseen.
+    ``rollback`` drops seen-set keys this attempt added, so a
+    reply that never reached the outbox can run again instead of
+    being treated as a replay.
+    """
+
+    def __init__(self, items, consume, rollback):
+        super().__init__(items)
+        self.consume = consume
+        self.rollback = rollback
 
 
 class _CaptureSMTP:
@@ -7520,15 +7581,21 @@ def process_transport_message(cfg, base_dir, seen, secrets,
     Returns the (subject, body, target) messages the core sent:
     target is the job's validated reply_to when the send carried
     one, else None (the send went to the runner's own mailbox,
-    which is the channel's default destination anyway).
+    which is the channel's default destination anyway). The
+    list's ``consume`` flag is false when the core did not mark
+    the message seen. The channel must leave that envelope in
+    the inbox. ``rollback`` forgets seen-set keys added during
+    this attempt.
     """
     cap = _CaptureSMTP()
+    imap = _NullIMAP()
+    before = set(seen) if isinstance(seen, dict) else None
     safe_subject = str(subject).replace("\r", " ").replace("\n", " ")
     raw = ("Subject: " + safe_subject + "\r\n"
            "From: transport\r\n"
            'Content-Type: text/plain; charset="utf-8"\r\n'
            "\r\n" + str(body_text)).encode("utf-8")
-    handle_mail(cfg, _NullIMAP(), cap, "transport", raw, base_dir,
+    handle_mail(cfg, imap, cap, "transport", raw, base_dir,
                 seen, secrets, opts, key_policies)
     mailbox_addr = str(cfg.get("mailbox_user") or "")
     out = []
@@ -7540,7 +7607,18 @@ def process_transport_message(cfg, base_dir, seen, secrets,
         target = raw_to if raw_to and raw_to != mailbox_addr \
             else None
         out.append((sent_subject, sent_body, target))
-    return out
+    added = []
+    if before is not None:
+        added = [key for key in list(seen) if key not in before]
+
+    def rollback(added=list(added), seen=seen):
+        if not isinstance(seen, dict):
+            return
+        for key in added:
+            seen.pop(key, None)
+
+    dry = opts is not None and getattr(opts, "dry_run", False)
+    return _Outbound(out, bool(imap.marked) and not dry, rollback)
 
 
 def _service_transports(cfg, base_dir, seen, seen_path, names,

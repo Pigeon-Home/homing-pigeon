@@ -497,7 +497,11 @@ The pipe itself is a pair of directories, the channel, at
   shape, named `<ident>.result.txt` for the job's ident.
 
 Ack is consumption: whichever side has taken a file moves it
-into the sibling `done/` directory. The runner services each
+into the sibling `done/` directory. The runner moves an inbox
+file only when the core would have marked that mail seen. A
+result that did not land, or a job the core will retry, stays
+in the inbox. A rejection is consumed, so poison is not
+retried. The runner services each
 channel once per poll cycle and hands every envelope to the
 same verification/execution core the mail path uses. The
 blob does not change between transports. The signatures do

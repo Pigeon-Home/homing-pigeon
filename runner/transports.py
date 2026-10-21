@@ -414,32 +414,65 @@ def fetch_channel_messages(base_dir, name, log=None):
 
 def service_channel(base_dir, name, process_message, log=None,
                     dry_run=False):
-    """One runner cycle for one extension's channel: hand every
-    waiting job envelope to process_message(subject, body) ->
-    [(subject, body)], route the replies into the outbox, and
-    ack each job in a finally (dry-run acks nothing). A reply may
-    carry a third element, the result's validated reply_to,
-    which is dropped beside the result as its target sidecar.
-    Returns the number of messages serviced."""
+    """One runner cycle for one extension's channel.
+
+    Hand every waiting envelope to process_message(subject, body).
+    The return is a sequence of (subject, body) or
+    (subject, body, target) replies. Each reply is written to
+    the outbox. A reply may carry the result's validated
+    reply_to as its third element; that becomes the target
+    sidecar.
+
+    The sequence may set ``consume`` false. The envelope then
+    stays in the inbox so the next cycle can retry it. That is
+    the mail rule: a result that did not land is not finished.
+    A processor that raises is still consumed, so one bad
+    callback cannot wedge the channel. If writing a reply
+    raises, the envelope is not consumed. ``rollback`` on the
+    sequence, when callable, runs in that case so a seen-set
+    entry recorded before the write can be dropped.
+
+    Dry-run acks nothing. Returns how many envelopes were
+    visited, consumed or not.
+    """
     log = log or _silent_log
     messages = fetch_channel_messages(base_dir, name, log=log)
     for msg in messages:
+        consume = True
+        rollback = None
         try:
             replies = process_message(msg.subject, msg.body)
-            for reply in replies:
-                rsubject, rbody = reply[0], reply[1]
-                target = reply[2] if len(reply) > 2 else None
-                msg.reply(rsubject, rbody, target=target)
+            if replies is None:
+                replies = []
+            consume = bool(getattr(replies, "consume", True))
+            rollback = getattr(replies, "rollback", None)
+            try:
+                for reply in replies:
+                    rsubject, rbody = reply[0], reply[1]
+                    target = reply[2] if len(reply) > 2 else None
+                    msg.reply(rsubject, rbody, target=target)
+            except Exception as e:
+                # The effect did not stick. Leave the envelope
+                # where the next cycle will see it.
+                log(f"transport {name}: message "
+                    f"{msg.ident or '?'} result did not land: "
+                    f"{e!r}", "ERROR")
+                consume = False
         except Exception as e:
             log(f"transport {name}: message {msg.ident or '?'} "
                 f"failed: {e!r}", "ERROR")
-        finally:
-            if not dry_run:
-                try:
-                    msg.ack()
-                except Exception as e:
-                    log(f"transport {name}: ack failed for "
-                        f"{msg.ident or '?'}: {e}", "WARN")
+        if not consume and callable(rollback):
+            try:
+                rollback()
+            except Exception as e:
+                log(f"transport {name}: rollback failed for "
+                    f"{msg.ident or '?'}: {e}", "WARN")
+        if not dry_run and consume:
+            try:
+                msg.ack()
+            except Exception as e:
+                log(f"transport {name}: ack failed for "
+                    f"{msg.ident or '?'}: {e}", "WARN")
     return len(messages)
 
 

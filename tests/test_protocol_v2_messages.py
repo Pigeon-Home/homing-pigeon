@@ -165,6 +165,24 @@ class BuildersTest(unittest.TestCase):
             saved = json.load(fh)["answer"]["answer"]
         self.assertIn(saved, ("first", "second"))
 
+    def test_a_broken_answer_file_does_not_hold_the_slot(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-")
+        folder = os.path.join(tmp, "v2", "answers")
+        os.makedirs(folder)
+        path = os.path.join(folder, "q.j1.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("{")
+        q = {"v": 2, "type": "question", "job_id": "j1", "msg_id": "q.j1",
+             "issued_at": _now(), "deadline_sec": 0,
+             "question": "Would it?", "local_default": "proceed"}
+        self.assertTrue(v2.store_answer(tmp, v2.answer_for(q, "recovered")))
+        with open(path, encoding="utf-8") as fh:
+            saved = json.load(fh)
+        self.assertEqual(saved["answer"]["answer"], "recovered")
+        self.assertFalse(v2.store_answer(tmp, v2.answer_for(q, "later")))
+        with open(path, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["answer"]["answer"], "recovered")
+
     def test_await_on_time_late_and_missing(self):
         tmp = tempfile.mkdtemp(prefix="hp-v2-")
         q = {"msg_id": "q.j1", "deadline_sec": 0, "local_default": "proceed"}

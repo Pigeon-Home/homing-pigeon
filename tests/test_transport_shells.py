@@ -9,6 +9,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
@@ -119,6 +120,50 @@ class ChannelServiceTest(unittest.TestCase):
         outbox = transports.channel_paths(self.tmp, "file")["outbox"]
         results = [f for f in os.listdir(outbox) if f != "done"]
         self.assertEqual(len(results), 1)
+
+    def test_consume_false_leaves_the_file(self):
+        self._drop("retry.job.txt", "Subj R\n\nbody-r\n")
+
+        class Batch(list):
+            def __init__(self):
+                super().__init__([])
+                self.consume = False
+                self.rolled = False
+
+            def rollback(self):
+                self.rolled = True
+
+        batch = Batch()
+        n = transports.service_channel(
+            self.tmp, "file", lambda s, b: batch, dry_run=False)
+        self.assertEqual(n, 1)
+        self.assertTrue(batch.rolled)
+        inbox = transports.channel_paths(self.tmp, "file")["inbox"]
+        self.assertIn("retry.job.txt", os.listdir(inbox))
+        self.assertEqual(
+            os.listdir(os.path.join(inbox, "done")), [])
+
+    def test_a_reply_that_does_not_land_is_not_consumed(self):
+        self._drop("j.job.txt", "Subj\n\nbody\n")
+
+        class Batch(list):
+            def __init__(self):
+                super().__init__([("Result", "body", None)])
+                self.consume = True
+                self.rolled = False
+
+            def rollback(self):
+                self.rolled = True
+
+        batch = Batch()
+        with mock.patch.object(
+                transports, "write_channel_result",
+                side_effect=OSError("disk full")):
+            transports.service_channel(
+                self.tmp, "file", lambda s, b: batch, dry_run=False)
+        self.assertTrue(batch.rolled)
+        inbox = transports.channel_paths(self.tmp, "file")["inbox"]
+        self.assertIn("j.job.txt", os.listdir(inbox))
 
     def test_dry_run_acks_nothing(self):
         self._drop("a.job.txt", "Subj\n\nbody\n")

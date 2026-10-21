@@ -168,8 +168,9 @@ class FilePipe:
         # Reconcile deliveries the runner consumed without a
         # result coming back (a rejected job sends nothing):
         # the channel's inbox/done is the consumption signal,
-        # so the watched file is finished too -- process-once
-        # holds for rejections exactly as for results.
+        # so the watched file is finished too. A retryable
+        # failure does not move that channel file, so this
+        # loop does not see it and the watched job stays.
         chan_done = os.path.join(self.channel, "inbox", "done")
         for ident, (watched, jid) in list(self._pending.items()):
             if os.path.exists(os.path.join(

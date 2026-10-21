@@ -286,30 +286,8 @@ def _answer_path(base_dir, question_id):
     return folder, os.path.join(folder, question_id + ".json")
 
 
-def store_answer(base_dir, obj):
-    """File a verified answer where the job can find it.
-
-    Keyed by question id. A second answer for the same
-    question does not replace the first: one answer decides.
-    """
-    validate(obj)
-    if obj.get("type") != "answer":
-        raise ValueError("not an answer")
-    folder, path = _answer_path(base_dir, obj["question_id"])
-    os.makedirs(folder, exist_ok=True)
-    rec = {"received_at": time.time(), "answer": obj}
-    try:
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
-    except FileExistsError:
-        return False
-    with os.fdopen(fd, "w", encoding="utf-8") as fh:
-        json.dump(rec, fh)
-        fh.write("\n")
-    return True
-
-
-def _load_answer(base_dir, question_id):
-    _folder, path = _answer_path(base_dir, question_id)
+def _read_answer_file(path):
+    """(received_at, answer) or None. A half-written file is None."""
     try:
         with open(path, encoding="utf-8") as fh:
             rec = json.load(fh)
@@ -325,6 +303,72 @@ def _load_answer(base_dir, question_id):
     except (TypeError, ValueError):
         return None
     return got, ans
+
+
+def _publish_answer(path, tmp):
+    """Move a finished answer into place. The first valid one stays.
+
+    The bytes are already on disk in ``tmp``. Linking that file
+    into ``path`` either wins the slot or loses it. A crash
+    before the link leaves no answer, so the next one can try.
+    A crash that left a half-written ``path`` is not an answer:
+    it is moved aside and the slot is tried again.
+    """
+    for _ in range(3):
+        try:
+            os.link(tmp, path)
+            return True
+        except OSError:
+            got = _read_answer_file(path)
+            if got is not None:
+                return False
+            if not os.path.exists(path):
+                continue
+            aside = path + ".bad-" + uuid.uuid4().hex[:8]
+            try:
+                os.rename(path, aside)
+            except OSError:
+                continue
+            try:
+                os.unlink(aside)
+            except OSError:
+                pass
+    return False
+
+
+def store_answer(base_dir, obj):
+    """File a verified answer where the job can find it.
+
+    Keyed by question id. A second valid answer for the same
+    question does not replace the first: one answer decides.
+    A file that is not a readable answer does not count, so a
+    crash mid-write cannot hold the slot forever.
+    """
+    validate(obj)
+    if obj.get("type") != "answer":
+        raise ValueError("not an answer")
+    folder, path = _answer_path(base_dir, obj["question_id"])
+    os.makedirs(folder, exist_ok=True)
+    rec = {"received_at": time.time(), "answer": obj}
+    tmp = path + ".tmp-" + uuid.uuid4().hex
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(rec, fh)
+            fh.write("\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        return _publish_answer(path, tmp)
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+
+
+def _load_answer(base_dir, question_id):
+    _folder, path = _answer_path(base_dir, question_id)
+    return _read_answer_file(path)
 
 
 def await_answer(base_dir, question, asked_at, pump=None):
