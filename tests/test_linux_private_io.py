@@ -41,14 +41,22 @@ class PrivateWriteTest(unittest.TestCase):
                 for i in range(5000):
                     fh.write(json.dumps({"n": i}) + "\n")
             seen = []
+            replaced = []
             real_open = os.open
+            real_replace = os.replace
 
-            def spy(path, flags, *args, **kwargs):
-                if str(path).endswith("security-events.jsonl"):
-                    seen.append(flags)
-                return real_open(path, flags, *args, **kwargs)
+            def spy(spied, flags, *args, **kwargs):
+                if os.path.basename(str(spied)).startswith(
+                        "security-events.jsonl"):
+                    seen.append((str(spied), flags))
+                return real_open(spied, flags, *args, **kwargs)
 
-            with mock.patch("os.open", side_effect=spy):
+            def replace_spy(src, dst, *args, **kwargs):
+                replaced.append((str(src), str(dst)))
+                return real_replace(src, dst, *args, **kwargs)
+
+            with mock.patch("os.open", side_effect=spy), \
+                    mock.patch("os.replace", side_effect=replace_spy):
                 _append_security_event(d, {"n": 5000, "msg": "a\nb"})
             rows = [json.loads(line) for line in _lines(path)]
             self.assertEqual(len(rows), 5000)
@@ -60,11 +68,23 @@ class PrivateWriteTest(unittest.TestCase):
             self.assertFalse(os.path.islink(path))
             nofollow = os.O_NOFOLLOW
             self.assertTrue(seen)
-            self.assertTrue(all(flags & nofollow for flags in seen))
-            self.assertTrue(any(flags & os.O_APPEND for flags in seen))
-            trunc = [flags for flags in seen if flags & os.O_TRUNC]
-            self.assertTrue(trunc)
-            self.assertTrue(all(not (flags & os.O_APPEND) for flags in trunc))
+            self.assertTrue(all(flags & nofollow for _, flags in seen))
+            self.assertTrue(any(
+                p == path and flags & os.O_APPEND for p, flags in seen))
+            # The trim replaces the file instead of truncating it in
+            # place: the live path is never opened with O_TRUNC. The
+            # kept tail goes to a tmp sibling (O_EXCL, no O_APPEND)
+            # and is renamed over the original, leaving no tmp behind.
+            self.assertFalse(any(
+                p == path and flags & os.O_TRUNC for p, flags in seen))
+            tmp_opens = [(p, f) for p, f in seen if p != path]
+            self.assertTrue(tmp_opens)
+            self.assertTrue(all(f & os.O_EXCL for _, f in tmp_opens))
+            self.assertTrue(all(not (f & os.O_APPEND) for _, f in tmp_opens))
+            self.assertEqual(len(replaced), 1)
+            self.assertTrue(replaced[0][0].startswith(path + ".tmp."))
+            self.assertEqual(replaced[0][1], path)
+            self.assertEqual(os.listdir(d), ["security-events.jsonl"])
 
     def test_an_alert_file_stops_at_the_same_cap(self):
         with tempfile.TemporaryDirectory() as d:
