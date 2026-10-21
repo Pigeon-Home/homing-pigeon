@@ -4,6 +4,23 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.3 - 2026-10-21
+
+- **Two runners, one state directory.** A job is claimed on
+  disk as well as in memory. `seen.json` is merged, not
+  replaced. A crash drops the claim. A live claim leaves the
+  mail unseen so the next poll can take it.
+- **Channel ack checks the bytes.** A job file rewritten after
+  the read stays in the inbox. A same-length rewrite used to
+  match the timestamp and get moved to done unread.
+- **Version 2 answer slot.** Job ids that differ only past 120
+  characters no longer share one question. A second valid
+  answer is kept as late context. The first still wins.
+- **Board offer returns a copy**, so a later complete cannot
+  change the reply being sent.
+- **Learning ledger trim replaces the file** instead of
+  truncating it under a reader.
+
 ## 3.12.2 - 2026-10-21
 
 - **Channel reliability.** A job whose failure is retryable stays
