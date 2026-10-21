@@ -75,6 +75,10 @@ CLI reports it via `--version`, and the frozen binaries cannot read
 `pyproject.toml` — `tests/test_version.py` fails the build if the two
 drift.
 
+Two more files carry the version and move in the same commit:
+`runner/install.py` (`__version__`) and the pin in
+`tests/test_install_edges.py`. A release commit touches all four.
+
 ### The looking is the gate
 
 The SI can run the entire release pipeline: implement, test, commit,
@@ -178,25 +182,29 @@ Entry point is `main()` in `runner/runner.py`.
 1. Parse `--oracle` and `--oracle-port`.
 2. Load `config.json`.
 3. `--inspect` still wins if both are passed. Inspect reads local
-   state and exits. It does not open the chat.
+   state and exits — `main` returns there, so steps 4 and 5 never
+   run on the `--inspect` path. It does not open the chat.
 4. `ensure_inference_ready` and `update_llama_from_config` run, same
    as a normal start, so a missing Ollama daemon can be started and a
    changed model id can be pulled.
 5. If `--oracle` is set, `oracle_window` is called and `main` returns
    its exit code. Everything below that line does not run.
 
-That last point is why the window does not need a mailbox. The
-`mailbox_user` check, `validate_shared_secret`, OAuth checks, and the
-poll loop are all after the `return`. You can open the chat on a
-config that has inference and `base_dir` and nothing else. A normal
-poll (`homing-pigeon` with no `--oracle`) is unchanged.
+That last point is why the window does not need a mailbox: `main`
+returns before the poll loop starts, `validate_shared_secret` sits
+after the `return`, and the mailbox setup and OAuth gate sit before
+it and are skipped for `--oracle` by their guard condition, not by
+position. You can open the chat on a config that has inference and
+`base_dir` and nothing else. A normal poll (`homing-pigeon` with
+no `--oracle`) is unchanged.
 
 ## What the chat can see
 
 `oracle_context` builds the model's context from the base dir: the
 retained job records (id, kind, script, output), the tail of
 `runner.log`, and — by default — the watch sections (canary state,
-Windows Event Log, registry diff, host log). The log tail is what lets the Oracle answer
+Windows Event Log, registry diff, host log, Firewall posture,
+AV posture). The log tail is what lets the Oracle answer
 "did this happen?" instead of inventing log events. `ASK_AGENT_SYSTEM`
 (the window's prompt; `ASK_SYSTEM` is the mailbox door's) tells the model to quote from what it was given and to say it cannot
 see something when it is not there.
@@ -218,7 +226,9 @@ something unwise. That is the owner's explicit trade.
 - Rejects a port that is not an integer or is outside 0..65535.
   Exit code 2.
 - Sets the process log file to `<base_dir>/runner.log`. `base_dir`
-  comes from config, or `~/.homing-pigeon` if unset. This matters
+  comes from the config's `base_dir` when set, otherwise the
+  directory containing the config file; `~/.homing-pigeon` is the
+  fallback only when no config path is known. This matters
   because a normal run assigns `_LOG_FILE` later, and `--oracle`
   returns before that assignment. Without this line the chat would
   log only to the console.
@@ -226,7 +236,9 @@ something unwise. That is the owner's explicit trade.
   is `127.0.0.1`, `::1`, and `localhost`. `0.0.0.0` raises `ValueError`
   and the process exits 2. After bind, the socket's own address is
   checked again and a non-loopback address is closed and refused.
-  Exit code 1 is only "the port is already taken" (`OSError`).
+  Exit code 1 is any `OSError` from `make_oracle_server` (the port
+  already taken is the common one; there is no errno check, so any
+  listen failure lands here).
 - Prints the URL and the path of `oracle-chat.jsonl`.
 - Appends an `open` record to that file.
 - Opens the browser after 0.4 seconds. Tests pass `open_browser=False`
@@ -292,8 +304,11 @@ above. (A signed `ask` query uses the separate single-shot
   dropped. It is not rewritten and shown. The page displays a fixed
   sentence: "The reply was dropped because it repeated protected
   material."
-- Other rejections are also fixed sentences (`inference_error`,
-  unconfigured). The raw exception is not sent to the browser.
+- Other rejections are also fixed sentences (unconfigured).
+  `inference_error` is the exception: when the model supplies a
+  `detail`, that text — built from the endpoint's response —
+  replaces the fixed sentence (the same override exists in
+  `oracle_cli`). The raw exception is not sent to the browser.
 
 The browser keeps the visible transcript, and the chat has a short
 memory besides. `recent_chat` reads `oracle-chat.jsonl` back, and the
@@ -321,7 +336,9 @@ saved and also warned that an unbounded log will fill a disk.
   config's redact patterns (built-ins plus `redact_patterns_extra`)
   before the write
 - `rejected` (the code, such as `sanitization`, or empty)
+- `detail`, cut at 300 characters
 - `model`
+- `tool_rounds`
 
 Question is stored at most 2000 characters. Answer at most 4000.
 The session token is not stored. The mailbox password is not stored.
@@ -336,8 +353,9 @@ case is about 2 MiB for the chat. The write uses `os.open` with mode
 `0o600` and `O_APPEND`, under `_LOG_WRITE_LOCK`.
 
 `runner.log` uses the same helper, `append_bounded_log`. Its bounds
-are config — `log_max_bytes` / `log_backups`, defaults 32 MiB across
-4 rotated files. Those bounds apply to every run that writes the
+are config — `log_max_bytes` / `log_backups`, defaults 32 MiB per
+file with 4 backups: the live file plus 4 rotations, about
+160 MiB retained in all. Those bounds apply to every run that writes the
 process log, not only `--oracle`. The per-minute
 console budget is unchanged: verbose drops ordinary lines past 200 a
 minute, quiet past 50, and WARN and ERROR still pass. Dropped console
