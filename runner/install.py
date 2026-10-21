@@ -31,7 +31,7 @@ from xml.sax.saxutils import escape
 # Frozen binaries cannot import the package the same way a live run can.
 # The constant is the source of truth for --version; tests/test_version.py
 # fails the build if it drifts from pyproject.toml.
-__version__ = "3.11.58"
+__version__ = "3.11.59"
 
 SERVICE_NAME = "homing-pigeon"
 FILES = ["runner.py", "oauth.py", "winlog.py"]
