@@ -34,7 +34,7 @@ follow the standard senses flow.
 
 ### Other tunables
 
-`anomaly_min_history` (default 3) is how many earlier finished runs the folder needs before `result_anomaly` is judged at all; with fewer, nothing is called an anomaly.
+`metric` (default `accuracy`) names the key inside a result file's `metrics` object that counts as the headline metric for `metric_threshold_crossed` and `result_anomaly`. `anomaly_min_history` (default 3) is how many earlier finished runs the folder needs before `result_anomaly` is judged at all; with fewer, nothing is called an anomaly.
 
 ## Light mode
 
