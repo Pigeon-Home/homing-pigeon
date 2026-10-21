@@ -53,6 +53,19 @@ a scripted pass, and every stage firing in order. A feed
 outage on the live path is a quiet no-op — nothing files, the
 state is untouched, and the next minute tries again.
 
+## Light mode
+
+The whole cost of this sense is the feed poll: one small HTTPS
+request to wheretheiss.at per pass, at the `poll_interval_sec`
+cadence (60 by default), plus geometry that amounts to nothing
+on the Pi's CPU. That is already the whole footprint on a Pi
+Light install — but if the box's uplink is precious, raise
+`poll_interval_sec` toward 300: a pass unfolds over minutes
+and `visible_lead_sec` (600) still leaves warning time, at the
+price of a coarser approach track. A feed outage is a quiet
+no-op either way, and replaying `--samples` costs no network
+at all.
+
 Attribution: ISS position data from
 [wheretheiss.at](https://wheretheiss.at)
 (`api.wheretheiss.at/v1/satellites/25544`), polled at the

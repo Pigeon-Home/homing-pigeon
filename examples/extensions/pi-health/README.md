@@ -70,6 +70,17 @@ A readings file is one JSON object:
 (`throttled` is the raw bitmask as an integer; any field may be
 `null` or absent when its source has nothing to say.)
 
+## Light mode
+
+This sense is the Pi Light showcase, and there is nothing to
+tune down: a pass is a handful of capability reads — the
+thermal sysfs, one `vcgencmd get_throttled` call where the
+firmware tool exists, a disk-usage read on `disk_mount`, and
+the memory counters — with no network and no model anywhere
+in it, and the state file stays a few lines of JSON. Leave
+`disk_mount` on the one mount that matters and run it as
+often as you like.
+
 The full extension walkthrough — manifest fields, the
 versioning contract, sensor binding, and how to turn this
 example into your own package — is in
