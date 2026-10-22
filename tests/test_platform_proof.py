@@ -146,9 +146,17 @@ class PlatformProofTests(unittest.TestCase):
         self.assertIn("pigeon-42", result["stdout"])
 
     def test_6_non_ascii_output_survives_the_locale(self):
+        # The job writes UTF-8 bytes; the runner must deliver the text
+        # intact whatever the box's locale. (A job that print()s a str
+        # is a different question: on Windows the child's stdout is
+        # cp1252 and print() itself raises -- the matrix found that on
+        # windows-11-arm. Whether the runner should set PYTHONUTF8=1 for
+        # jobs is a policy call recorded in the commit, not hidden here.)
         job = oo._exec_payload(
             interpreter=[sys.executable],
-            script="print('pigeon-\\u00fc-\\u6f22-ok')")
+            script="import sys\n"
+                   "sys.stdout.buffer.write('pigeon-\\u00fc-\\u6f22-ok\\n'"
+                   ".encode('utf-8'))\nsys.stdout.flush()")
         _smtp, result = _run(job)
         self.assertIsNotNone(result, "no result was sent")
         self.assertEqual(result["exit_code"], 0, result.get("stderr"))

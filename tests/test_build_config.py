@@ -633,3 +633,63 @@ class PipelineLessonsTest(unittest.TestCase):
         # that proves anything may use it.
         for name in ("minimal-userland.yml", "platform-matrix.yml"):
             self.assertNotIn("continue-on-error", _workflow_text(name), name)
+
+
+class PythonFloorTest(unittest.TestCase):
+    """pyproject says requires-python >= 3.9. The platform matrix put
+    the runner on Rocky 9 and python:3.9 for the first time and it
+    could not import: `to: str | None` in a signature is evaluated at
+    definition time before 3.10. The matrix leg proves the floor for
+    real; this test keeps the one known way of breaking it out of the
+    tree between runs."""
+
+    def _pep604_runtime_sites(self, path):
+        import ast
+        with open(path, encoding="utf-8") as fh:
+            tree = ast.parse(fh.read())
+        future = any(
+            isinstance(n, ast.ImportFrom) and n.module == "__future__"
+            and any(a.name == "annotations" for a in n.names)
+            for n in tree.body)
+        if future:
+            return []
+
+        def bitor(node):
+            return node is not None and any(
+                isinstance(x, ast.BinOp) and isinstance(x.op, ast.BitOr)
+                for x in ast.walk(node))
+
+        sites = []
+        for n in ast.walk(tree):
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                a = n.args
+                anns = [x.annotation for x in
+                        a.posonlyargs + a.args + a.kwonlyargs]
+                anns += [n.returns,
+                         a.vararg.annotation if a.vararg else None,
+                         a.kwarg.annotation if a.kwarg else None]
+                if any(bitor(x) for x in anns):
+                    sites.append("%s:%d %s" % (path, n.lineno, n.name))
+            elif isinstance(n, ast.AnnAssign) and bitor(n.annotation):
+                sites.append("%s:%d" % (path, n.lineno))
+        return sites
+
+    def test_no_runtime_pep604_annotations_without_future_import(self):
+        import glob
+        files = sorted(glob.glob(os.path.join(_root(), "runner", "**", "*.py"),
+                                 recursive=True))
+        files += sorted(glob.glob(os.path.join(_root(), "tools", "*.py")))
+        self.assertGreater(len(files), 30)
+        sites = []
+        for f in files:
+            sites += self._pep604_runtime_sites(f)
+        self.assertEqual(sites, [],
+                         "PEP 604 annotation evaluated at definition time "
+                         "breaks import on the 3.9 floor; add "
+                         "`from __future__ import annotations`")
+
+    def test_the_floor_is_claimed_and_proven(self):
+        with open(os.path.join(_root(), "pyproject.toml"),
+                  encoding="utf-8") as fh:
+            self.assertIn('requires-python = ">=3.9"', fh.read())
+        self.assertIn("python-3.9-floor-x86_64", _matrix_leg_names())

@@ -11,6 +11,10 @@ Detects the platform and installs the native mechanism:
 Usage:
     python3 install.py [--dir DIR] [--config CONFIG] [--system] [--uninstall]
 """
+# Python 3.9 is the floor (pyproject): PEP 604 unions in annotations
+# must not be evaluated at definition time. Found by the platform
+# matrix on Rocky 9 and python:3.9; see tests/test_build_config.py.
+from __future__ import annotations
 
 import argparse
 import datetime
