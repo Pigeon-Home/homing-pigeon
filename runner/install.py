@@ -1569,7 +1569,15 @@ def chosen_profile(explicit, skip: bool):
 # boot a television would be a lie. A USB accelerator is not a
 # computer either. Docker is Linux packaged, so it is allowed, and
 # it is not treated as a new kind of machine.
-_APPLIANCE_OS = ("tizen", "webos", "roku", "tvos", "android")
+_APPLIANCE_OS = ("tizen", "webos", "roku", "tvos")
+# Android-class sets (Android TV, Google TV, Fire TV, Shield) are the
+# one television family where a shell is obtainable: a sideloaded
+# terminal environment gives the runner a real Python and the runner
+# only needs outbound mail. The owner's decision (2026-10-21): warn,
+# do not refuse. What decides is still the shell -- an Android
+# environment that cannot exec (a signed TV app) is refused by the
+# no-exec case below, exactly like any other set.
+_ANDROID_OS = ("android",)
 _ACCEL_VENDORS = {
     "1a6e": "coral",   # Coral USB, before the firmware load
     "18d1": "coral",   # Google, after the firmware load
@@ -1598,6 +1606,9 @@ def host_decision(facts):
     appliance = next((name for name in _APPLIANCE_OS if name in plat), None)
     if appliance:
         return _refuse_appliance(appliance, accels)
+    android = any(name in plat for name in _ANDROID_OS)
+    if android and can_exec is not False:
+        return _warn_android(accels)
     if can_exec is False:
         return {
             "case": "no-exec",
@@ -1647,14 +1658,40 @@ def host_decision(facts):
     return {"case": "other", "action": "run", "profile": None, "note": ""}
 
 
+def _warn_android(accels):
+    """Android with a shell: run, and say what the set will not do.
+
+    The set can host the runner through a sideloaded terminal
+    environment. What it cannot promise: a service that survives
+    standby (the installer has no init to register with; the user
+    keeps the terminal app alive or uses its boot hook), a model
+    (no profile installs one here), or a sandbox (bwrap is not
+    available). None of that is a reason to refuse a box that can
+    execute a job; all of it is a reason to say so before copying
+    files.
+    """
+    note = ("This machine is Android, including Android TV, Google "
+            "TV, Fire TV, and Shield, with a shell available. The "
+            "installer will proceed, with these limits stated: no "
+            "service is registered here (keep the terminal "
+            "environment running, or use its boot hook); no model "
+            "is installed; no sandbox is available. Jobs run "
+            "unsandboxed as the terminal app's user. A dedicated "
+            "Linux board behind the screen is the stronger host: "
+            "--profile display-board.")
+    extra = _accel_note(accels)
+    if extra:
+        note = note + " " + extra
+    return {"case": "android", "action": "run",
+            "profile": "display-board", "note": note}
+
+
 def _refuse_appliance(name, accels):
     names = {
         "tizen": "a Samsung Tizen television",
         "webos": "an LG webOS television",
         "roku": "a Roku",
         "tvos": "an Apple TV",
-        "android": "Android, including Android TV, Google TV, "
-                   "Fire TV, and Shield",
     }
     what = names.get(name, name)
     note = (f"This machine is {what}. Code signing can put an "

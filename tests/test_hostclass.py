@@ -79,7 +79,7 @@ class HostDecisionTests(unittest.TestCase):
             self.assertEqual(decision["note"], "")
 
     def test_televisions_are_refused(self):
-        for plat in ("tizen", "webos", "roku", "tvos", "android"):
+        for plat in ("tizen", "webos", "roku", "tvos"):
             decision = I.host_decision(facts(platform=plat))
             self.assertEqual(decision["action"], "refuse", plat)
             self.assertIn("shell", decision["note"])
@@ -90,6 +90,34 @@ class HostDecisionTests(unittest.TestCase):
         decision = I.host_decision(facts(platform="android"))
         for name in ("Android TV", "Google TV", "Fire TV", "Shield"):
             self.assertIn(name, decision["note"])
+
+    def test_android_with_a_shell_is_warned_not_refused(self):
+        # The owner's call (2026-10-21): the shell decides. A
+        # sideloaded terminal environment on an Android set can run
+        # a job, so the installer proceeds and states the limits.
+        decision = I.host_decision(facts(platform="android",
+                                         machine="aarch64"))
+        self.assertEqual(decision["action"], "run")
+        self.assertEqual(decision["case"], "android")
+        self.assertEqual(decision["profile"], "display-board")
+        for word in ("no service", "no model", "no sandbox",
+                     "display-board", "shell"):
+            self.assertIn(word, decision["note"], word)
+        self.assertNotIn("will not install", decision["note"])
+
+    def test_android_without_a_shell_is_still_refused(self):
+        # A signed TV app with no exec is a television like any other.
+        decision = I.host_decision(facts(platform="android",
+                                         can_exec=False))
+        self.assertEqual(decision["action"], "refuse")
+        self.assertEqual(decision["case"], "no-exec")
+
+    def test_android_warning_keeps_the_accelerator_note(self):
+        decision = I.host_decision(facts(platform="android",
+                                         accelerators=["coral"]))
+        self.assertEqual(decision["action"], "run")
+        self.assertIn("coral", decision["note"])
+        self.assertIn("will not use it", decision["note"])
 
     def test_an_accelerator_alone_is_refused(self):
         decision = I.host_decision(facts(

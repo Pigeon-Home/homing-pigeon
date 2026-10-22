@@ -103,9 +103,19 @@ television is not. The installer refuses these, and does not
 copy files onto them:
 
 - Samsung Tizen, LG webOS, Roku, Apple TV
-- Android, including Android TV, Google TV, Fire TV, and Shield
 - a USB accelerator with no Linux host under it
 - any environment that cannot execute a shell
+
+Android -- Android TV, Google TV, Fire TV, Shield -- is the one
+television family where a shell is obtainable: a sideloaded
+terminal environment gives this program a real Python, and the
+runner only needs outbound mail. There the installer proceeds
+and states the limits before copying files: no service is
+registered (keep the terminal environment running, or use its
+boot hook), no model is installed, and there is no sandbox, so
+jobs run unsandboxed as the terminal app's user. An Android
+environment with no shell (a signed TV app) is refused like any
+other set.
 
 Code signing can put an app on the screen. It cannot give this
 program a shell, and a job runs by executing a shell. The

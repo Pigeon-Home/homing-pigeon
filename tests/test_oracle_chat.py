@@ -616,11 +616,31 @@ class OracleAgentTest(unittest.TestCase):
         self.assertNotIn("must never inspect", system)
 
     def test_build_packages_protocol_doc(self):
+        # Every frozen runner carries PROTOCOL.md, with PyInstaller's
+        # platform separator: `;` on Windows, `:` elsewhere. The
+        # separator must match the one used for the transport
+        # extensions on the same line, which is how a line tells us
+        # its platform. Counting builds exactly (1 Windows, 3 POSIX)
+        # broke the moment 606ccc0 froze binaries for three more
+        # architectures; the invariant is per build, not a census.
         yml = os.path.join(REPO, ".github", "workflows", "build.yml")
         with open(yml, encoding="utf-8") as fh:
-            text = fh.read()
-        self.assertEqual(text.count('PROTOCOL.md;pigeon-docs'), 1)
-        self.assertEqual(text.count('PROTOCOL.md:pigeon-docs'), 3)
+            lines = fh.read().splitlines()
+        builds = [l for l in lines
+                  if "pyinstaller" in l and "runner/runner.py" in l]
+        self.assertGreaterEqual(len(builds), 4)
+        for line in builds:
+            win = ";pigeon-transport-extensions" in line
+            posix = ":pigeon-transport-extensions" in line
+            self.assertTrue(win != posix, line[:80])
+            sep = ";" if win else ":"
+            self.assertEqual(line.count("PROTOCOL.md%spigeon-docs" % sep), 1,
+                             line[:80])
+            self.assertEqual(line.count("PROTOCOL.md"), 1, line[:80])
+        self.assertGreaterEqual(
+            sum(1 for l in builds if ";pigeon-transport-extensions" in l), 1)
+        self.assertGreaterEqual(
+            sum(1 for l in builds if ":pigeon-transport-extensions" in l), 3)
 
     def test_oracle_page_starts_with_an_empty_box(self):
         # The example question is a placeholder hint, never content.

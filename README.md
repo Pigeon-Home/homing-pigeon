@@ -344,11 +344,13 @@ cannot be claimed here without running there. Not on the list: a box
 with no Python at all (BusyBox-only, bare firmware) -- the runner is
 stdlib Python, so that is the floor, not a gap. Also not a leg, and
 refused by the installer rather than simulated: a television
-(Tizen, webOS, Roku, Apple TV, Android TV and the sticks), and a
-USB accelerator with no Linux host under it. Those have no shell
-for a job to run in. A Linux board behind the screen is an
-ordinary leg; `--profile display-board` is that install with no
-model. To add a host or a
+(Tizen, webOS, Roku, Apple TV), and a USB accelerator with no
+Linux host under it. Those have no shell for a job to run in.
+Android-class sets (Android TV, Google TV, Fire TV, Shield) with a
+sideloaded shell are permitted with a stated warning -- no
+service, no model, no sandbox -- because the shell is what
+decides. A Linux board behind the screen is an ordinary leg;
+`--profile display-board` is that install with no model. To add a host or a
 fat-finger, add one matrix line and one table entry.
 
 ## Extending the agent: your own senses
