@@ -194,15 +194,15 @@ for an opinion, the prediction rides its result too. The owner's
 ceiling: a job may ask for less, never more. Design:
 `docs/oracle-opinion-design.md`.
 
-**Fixes mismatched jobs, never silently.** CI proves it on a
-bare-bones box (Alpine, BusyBox `sh`, no bash) on x86_64 and arm64:
-a job naming `bash` is repaired to `sh` and runs, a PowerShell-shaped
-job is left alone, and every repair is stated in the result.
+**Fixes mismatched jobs, never silently.** CI proves it on Alpine
+(BusyBox `sh`, no bash) on x86_64 and on arm64: a job naming
+`bash` whose script fits `sh` is repaired and runs, a
+PowerShell-shaped job is left alone, and a bash-only script (an
+array, process substitution, a substring expansion) is left alone
+too. Every repair is stated in the result. The arm64 leg is the
+Pi Light proof; the Pi Light archive does not carry a second copy
+of the test.
 [![minimal-userland](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/minimal-userland.yml/badge.svg)](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/minimal-userland.yml)
-A script that uses bash-only syntax (arrays, here-strings,
-`declare`) is **not** repaired onto `sh` — that shell cannot run
-it — so the opinion names bash itself as the missing piece instead
-of moving the job onto a shell that would fail (`tests/test_minimal_userland.py`).
 
 ### Operating modes
 

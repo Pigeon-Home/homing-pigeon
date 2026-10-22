@@ -100,6 +100,16 @@ The result message (PROTOCOL §3.2) gains one OPTIONAL member:
 Receivers that do not know the member ignore it; the member never
 changes the meaning of any existing result field.
 
+A bash-only script is not a repair. An array assignment, process
+substitution, or a substring expansion does not fit `sh`, so an
+absent `bash` is left absent and the job is rejected. The
+specimens in `docs/specimens/repair-results.json` are the two
+results a sender should expect: the POSIX job that was repaired
+(`pigeon-42`) and the array that was not. `send_job.py verify`
+prints one line to stderr when the member carries `repaired` —
+what was received, and the first line of what ran — and leaves
+the JSON on stdout.
+
 ## Where the opinion comes from
 
 Two tiers, in order:

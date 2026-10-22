@@ -4,6 +4,7 @@
 The repair claim (README "Opinions, before anything runs";
 PROTOCOL 3.2) is that an absent interpreter is replaced with the
 platform default when the script's shape fits, never silently.
+A bash-only script does not fit sh, and is not repaired.
 tests/test_oracle_opinion.py proves the plan with execute_job
 stubbed. This module proves it with nothing stubbed but the mail
 transport: the job goes through poll_once and the repaired job
@@ -104,8 +105,7 @@ class MinimalUserlandRepairTests(unittest.TestCase):
         # moved onto sh -- that shell cannot run it. shape="bash"
         # does not fit the sh default, so the repair declines and
         # the opinion names bash itself as the thing that is
-        # missing. (Was a pinned known gap until shape detection
-        # learned bash-only syntax.)
+        # missing.
         job = oo._exec_payload(
             interpreter=["bash"],
             script="#!/bin/bash\nnums=(4 2)\necho \"yes-${nums[1]}\"")

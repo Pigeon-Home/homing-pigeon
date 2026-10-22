@@ -176,12 +176,17 @@ _PREFIX_WORDS = frozenset(
 #   - array / append assignment:   a=( ...   a+=( ...
 #   - array index expansion:       ${a[0]}  ${#a[@]}
 #   - here-strings:                cmd <<< word
+#   - process substitution:        <(cmd)  >(cmd)
+#   - substring expansion:         ${x:0:1}   (not ${x:-default})
 #   - bash-only builtins:          declare / mapfile / readarray
 _BASH_ONLY_RE = re.compile(
     r"(?m)"
     r"^\s*[A-Za-z_]\w*\+?=\("          # array literal assignment
     r"|\$\{\#?[A-Za-z_]\w*\["          # ${a[..]} / ${#a[..]}
     r"|<<<"                            # here-string
+    r"|<\("                            # process substitution
+    r"|>\("
+    r"|\$\{[A-Za-z_]\w*:[0-9]"         # ${x:0} / ${x:0:1}
     r"|^\s*(?:declare|mapfile|readarray)\b")
 
 
@@ -409,7 +414,7 @@ def tier1_findings(job, facts):
                     f"platform default "
                     f"{facts.get('platform_interpreter')!r}"),
             }
-            detail += "; the platform default would do"
+            detail += "; the platform default would do."
         out.append({"kind": "interpreter_absent", "detail": detail,
                     "repair": repair})
 

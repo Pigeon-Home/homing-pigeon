@@ -287,6 +287,28 @@ def cmd_new(args) -> int:
     return 0
 
 
+def repair_line(payload):
+    """One line for a sender reading a result.
+
+    Stdout of `verify` stays the JSON. This line goes to stderr
+    so a sender sees what was received and what ran without
+    parsing the member. None when the result states no repair.
+    """
+    if not isinstance(payload, dict):
+        return None
+    member = payload.get("oracle_opinion")
+    if not isinstance(member, dict) or "repaired" not in member:
+        return None
+    if member.get("repaired") is True:
+        digest = member.get("received_digest") or ""
+        stdout = payload.get("stdout") if isinstance(
+            payload.get("stdout"), str) else ""
+        first = stdout.strip().splitlines()
+        ran = first[0][:200] if first else "(no stdout)"
+        return f"repair: received {digest}  ran: {ran}"
+    return "repair: refused; the job as received was not rewritten"
+
+
 def cmd_verify(args) -> int:
     text = open(args.file, encoding="utf-8").read() if args.file else sys.stdin.read()
     try:
@@ -308,6 +330,9 @@ def cmd_verify(args) -> int:
     except ValueError as e:
         print(f"INVALID: {e}", file=sys.stderr)
         return 1
+    line = repair_line(payload)
+    if line:
+        print(line, file=sys.stderr)
     print(json.dumps(payload, indent=2, ensure_ascii=False))
     return 0
 

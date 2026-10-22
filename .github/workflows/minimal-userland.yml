@@ -3,9 +3,11 @@ name: minimal-userland
 
 # The README's repair claim, proven on a box with no bash: a signed
 # job naming an absent interpreter is repaired to sh and really
-# runs, a job whose shape does not fit is left alone, and every
-# repair is stated in the result. x86_64 and arm64 (the Raspberry
-# Pi's architecture). See tests/test_minimal_userland.py.
+# runs, a job whose shape does not fit (PowerShell, or bash-only
+# syntax) is left alone, and every repair is stated in the result.
+# The run fails if the suite skips: a skip is not a proof. x86_64
+# and arm64 (the Raspberry Pi's architecture, and the proof the
+# Pi Light archive points at). See tests/test_minimal_userland.py.
 on:
   push:
     branches: [main]
@@ -26,4 +28,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: docker build -f docker/minimal-userland/Dockerfile -t hp-minimal .
-      - run: docker run --rm hp-minimal
+      - name: prove repair, and fail if the suite skipped
+        run: |
+          set -euo pipefail
+          docker run --rm hp-minimal | tee minimal-out.txt
+          grep -q 'Ran 6 tests' minimal-out.txt
+          grep -qx 'OK' minimal-out.txt
+          ! grep -q 'skipped' minimal-out.txt

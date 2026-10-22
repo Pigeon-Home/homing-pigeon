@@ -221,6 +221,11 @@ jobs:
     # selects Pi Light -- no model, deterministic Oracle -- without
     # anyone passing --profile. The ordinary archives carry no
     # marker and keep the defaults they always had.
+    #
+    # Repair on a box with no bash is not proved here and not
+    # copied into this archive. That proof is the arm64 leg of
+    # .github/workflows/minimal-userland.yml, which runs
+    # tests/test_minimal_userland.py inside docker/minimal-userland.
     needs: test
     runs-on: ubuntu-22.04-arm
     permissions:

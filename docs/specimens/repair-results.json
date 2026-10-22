@@ -1,0 +1,56 @@
+{
+  "repaired": {
+    "job": {
+      "v": 1,
+      "type": "job",
+      "job_id": "specimen-repair-pigeon-42",
+      "kind": "exec",
+      "interpreter": [
+        "bash"
+      ],
+      "script": "echo pigeon-$((6 * 7))\n"
+    },
+    "result": {
+      "v": 1,
+      "type": "result",
+      "job_id": "specimen-repair-pigeon-42",
+      "kind": "exec",
+      "exit_code": 0,
+      "stdout": "pigeon-42\n",
+      "stderr": "",
+      "oracle_opinion": {
+        "mode": "repair",
+        "verdict": "likely_failure",
+        "note": "interpreter ['bash'] is not present on this POSIX host; the platform default would do. Repair applied: interpreter ['bash'] replaced with the platform default ['sh']. The result below is from the repaired job.",
+        "repaired": true,
+        "received_digest": "257ed07feb6434c1013551084bae81ebda92a7f9eaf4c7264df1a793c043ef97ae98f1639adf3bea9ebc7d4a651cb472"
+      }
+    }
+  },
+  "not_repaired": {
+    "job": {
+      "v": 1,
+      "type": "job",
+      "job_id": "specimen-bashism-not-repaired",
+      "kind": "exec",
+      "interpreter": [
+        "bash"
+      ],
+      "script": "#!/bin/bash\nnums=(4 2)\necho \"yes-${nums[1]}\"\n"
+    },
+    "result": {
+      "v": 1,
+      "type": "result",
+      "job_id": "specimen-bashism-not-repaired",
+      "kind": "exec",
+      "exit_code": -2,
+      "stdout": "",
+      "stderr": "job rejected: cannot start interpreter: bash",
+      "oracle_opinion": {
+        "mode": "repair",
+        "verdict": "likely_failure",
+        "note": "interpreter ['bash'] is not present on this POSIX host"
+      }
+    }
+  }
+}

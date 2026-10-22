@@ -579,6 +579,32 @@ class HandleMailLearningTests(unittest.TestCase):
         self.assertEqual(recon["lesson_selected"],
                          L.claim_key(claim))
 
+    def test_a_lesson_cannot_repair_a_bashism(self):
+        # A corroborated lesson may select among mechanical
+        # repairs. It may not create one. A bash-only script has
+        # no repair to select, so the lesson does not rewrite it.
+        drive = _Drive({"oracle_opinion_mode": "repair"})
+        fp = runner._learning_fingerprint()
+        claim = (f"Jobs naming interpreter {INTERP} fail on "
+                 f"this host")
+        cand = L.validate_candidate(_candidate(
+            claim=claim, features=[f"interpreter:{INTERP}"]))
+        drive.seed(L.candidate_record(cand, "seed", fp))
+        for i in range(2):
+            drive.seed({
+                "type": "candidate_event",
+                "at": "2026-10-19T00:00:00Z", "host": fp,
+                "claim_key": cand and L.claim_key(claim),
+                "event": "corroboration", "job_id": f"bashism-{i}"})
+        job = _exec_payload(
+            "#!/bin/bash\nnums=(4 2)\necho yes\n",
+            interpreter=[INTERP], oracle_opinion="repair")
+        result, calls = drive.run(job, exit_code=0)
+        self.assertEqual(calls[0]["interpreter"], [INTERP])
+        self.assertNotIn("repaired", result["oracle_opinion"])
+        self.assertIsNone(
+            drive.records("prediction")[0].get("lesson_selected"))
+
     def test_write_failure_never_blocks_the_result(self):
         drive = _Drive({"oracle_opinion_mode": "advise"})
         job = _exec_payload(f"{TOOL} --all", oracle_opinion="advise")

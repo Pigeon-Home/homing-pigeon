@@ -128,6 +128,7 @@ class ScriptHintTests(unittest.TestCase):
 
     def test_posix_tells(self):
         self.assertEqual(op.script_shape("#!/bin/sh\necho hi"), "posix")
+        self.assertEqual(op.script_shape("#!/bin/bash\necho hi"), "posix")
         self.assertEqual(op.script_shape("export FOO=1\necho $FOO"), "posix")
         # A bash shebang with no bashisms runs on sh -- still posix.
         self.assertEqual(op.script_shape("#!/bin/bash\necho hi"), "posix")
@@ -141,6 +142,8 @@ class ScriptHintTests(unittest.TestCase):
         self.assertEqual(op.script_shape("declare -A m\nm[k]=v"), "bash")
         self.assertEqual(op.script_shape("readarray -t L < f"), "bash")
         self.assertEqual(op.script_shape("echo ${#arr[@]}"), "bash")
+        self.assertEqual(op.script_shape("cat <(echo hi)"), "bash")
+        self.assertEqual(op.script_shape('echo "${x:0:1}"'), "bash")
         self.assertFalse(op._shape_fits("bash", "posix-shell"))
         self.assertFalse(op._shape_fits("bash", "powershell"))
 
@@ -150,6 +153,7 @@ class ScriptHintTests(unittest.TestCase):
         self.assertEqual(op.script_shape("x=$(date)\necho $x"), "neutral")
         self.assertEqual(op.script_shape("n=$((1 + 2))"), "neutral")
         self.assertEqual(op.script_shape("echo $(ls)"), "neutral")
+        self.assertEqual(op.script_shape("echo ${x:-default}"), "neutral")
 
     def test_neutral(self):
         self.assertEqual(op.script_shape("echo hello"), "neutral")
@@ -207,6 +211,25 @@ class Tier1FindingsTests(unittest.TestCase):
         absent = [f for f in op.tier1_findings(job, facts)
                   if f["kind"] == "interpreter_absent"][0]
         self.assertIsNone(absent["repair"])
+
+    def test_bashism_absent_interpreter_is_not_repairable(self):
+        job = {"script": "#!/bin/bash\nnums=(4 2)\n"}
+        facts = staged_facts(job, ["bash"], ["sh"], which_map={})
+        findings = op.tier1_findings(job, facts)
+        absent = [f for f in findings
+                  if f["kind"] == "interpreter_absent"][0]
+        self.assertIsNone(absent["repair"])
+        self.assertIn("['bash']", absent["detail"])
+
+    def test_the_repair_log_is_one_sentence(self):
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "runner", "runner.py")
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        needle_a = "oracle opinion repaired the "
+        needle_b = "interpreter to the platform default"
+        self.assertEqual(text.count(needle_a), 1)
+        self.assertEqual(text.count(needle_b), 1)
 
     def test_missing_tool(self):
         job = {"script": "frobnicate --all\nls /tmp"}
@@ -924,6 +947,41 @@ class CliOverrideTests(unittest.TestCase):
                           "runner", "runner.py"), "--help"],
             capture_output=True, text=True, timeout=60)
         self.assertIn("--oracle-opinion", out.stdout)
+
+
+class RepairSpecimenTests(unittest.TestCase):
+    def test_specimens_match_the_code(self):
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "docs", "specimens", "repair-results.json")
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        repaired = data["repaired"]
+        member = repaired["result"]["oracle_opinion"]
+        self.assertIs(member["repaired"], True)
+        self.assertEqual(member["received_digest"],
+                         op.received_digest(repaired["job"]))
+        self.assertEqual(repaired["result"]["stdout"], "pigeon-42\n")
+        refused = data["not_repaired"]
+        note = refused["result"]["oracle_opinion"]["note"]
+        self.assertNotIn("repaired", refused["result"]["oracle_opinion"])
+        self.assertEqual(refused["result"]["exit_code"], -2)
+        self.assertIn("['bash']", note)
+        self.assertIn("not present", note)
+
+    def test_verify_says_what_ran(self):
+        from cloud.send_job import repair_line
+        digest = "ab" * 48
+        self.assertEqual(
+            repair_line({
+                "stdout": "pigeon-42\n",
+                "oracle_opinion": {
+                    "repaired": True, "received_digest": digest},
+            }),
+            f"repair: received {digest}  ran: pigeon-42")
+        self.assertEqual(
+            repair_line({"oracle_opinion": {"repaired": False}}),
+            "repair: refused; the job as received was not rewritten")
+        self.assertIsNone(repair_line({"stdout": "pigeon-42\n"}))
 
 
 if __name__ == "__main__":
