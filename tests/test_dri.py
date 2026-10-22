@@ -64,6 +64,26 @@ class ParseTest(unittest.TestCase):
         self.assertIn("judge_block", d["triggers"])
         self.assertNotIn("key_probe", d["triggers"])
 
+    def test_numbers_that_are_not_numbers_are_refused(self):
+        with self.assertRaises(RuntimeError):
+            D.parse_dri({"dri": {"enabled": "yes"}})
+        with self.assertRaises(RuntimeError):
+            D.parse_dri({"dri": {"triggers": {"sensor_fused_score": "high"}}})
+        with self.assertRaises(RuntimeError):
+            D.parse_dri({"dri": {"triggers": {
+                "sensor_fused_score": {"threshold": "high"}}}})
+        with self.assertRaises(RuntimeError):
+            D.parse_dri({"dri": {"triggers": {"key_probe": "lots"}}})
+        with self.assertRaises(RuntimeError):
+            D.parse_dri({"dri": {"triggers": {
+                "key_probe": {"threshold": "lots"}}}})
+        with self.assertRaises(RuntimeError):
+            D.parse_dri({"dri": {"cooldown_sec": "soon"}})
+        with self.assertRaises(RuntimeError):
+            D.parse_dri({"dri": {"cooldown_sec": float("inf")}})
+        self.assertIsNone(D._to_ts("2026-10-22T00:00:00"))
+        self.assertIsNone(D._to_ts("not-a-time"))
+
 
 class SensorTriggerTest(unittest.TestCase):
     def test_fused_score_trips(self):

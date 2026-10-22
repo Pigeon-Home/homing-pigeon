@@ -493,6 +493,41 @@ class ShellOrderingTest(unittest.TestCase):
         self.assertEqual(ensure.call_count, 1)
         winlog._reported_ok = False
 
+    def test_the_event_source_points_at_the_system_message_file(self):
+        import sys
+        from runner import winlog
+
+        class Key:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+
+        class Reg:
+            HKEY_LOCAL_MACHINE = object()
+            REG_EXPAND_SZ = 2
+            REG_DWORD = 4
+            def __init__(self):
+                self.created = []
+                self.values = []
+            def CreateKey(self, hive, path):
+                self.created.append((hive, path))
+                return Key()
+            def SetValueEx(self, key, name, reserved, typ, value):
+                self.values.append((name, typ, value))
+
+        reg = Reg()
+        sys.modules["winreg"] = reg
+        try:
+            winlog._ensure_source()
+        finally:
+            sys.modules.pop("winreg", None)
+        self.assertIn("EventLog\\Application\\HomingPigeon",
+                      reg.created[0][1])
+        names = {name: value for name, _typ, value in reg.values}
+        self.assertIn("EventCreate.exe", names["EventMessageFile"])
+        self.assertEqual(names["TypesSupported"], 7)
+
     def test_a_google_error_wins_over_a_missing_code(self):
         from runner.oauth import browser_consent
 

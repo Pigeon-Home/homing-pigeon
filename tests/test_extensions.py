@@ -655,5 +655,64 @@ class DocsTest(unittest.TestCase):
             self.assertIn(anchor, text)
 
 
+class TransportAndEnvelopeTest(unittest.TestCase):
+    def _transport(self, **kw):
+        m = _manifest(
+            kind="transport",
+            entry=["python3", "-m", "ext"],
+            publisher="A lab publisher.")
+        m.pop("signals", None)
+        m.update(kw)
+        return m
+
+    def test_a_transport_without_an_entry_is_refused(self):
+        m = self._transport()
+        del m["entry"]
+        with self.assertRaises(ValueError) as ctx:
+            E.parse_manifest(m)
+        self.assertIn("entry", str(ctx.exception))
+        with self.assertRaises(ValueError):
+            E.parse_manifest(self._transport(entry=["ok", "x" * 501]))
+        with self.assertRaises(ValueError):
+            E.parse_manifest(self._transport(publisher="two\nlines"))
+        with self.assertRaises(ValueError):
+            E.parse_manifest(self._transport(startup_settle_ms=9000))
+        parsed = E.parse_manifest(self._transport())
+        self.assertEqual(parsed["kind"], "transport")
+        self.assertEqual(parsed["entry"][0], "python3")
+
+    def test_a_description_is_looked_up_from_the_signal_list(self):
+        manifest = _manifest()
+        self.assertIsNone(E.signal_description(manifest, 5))
+        self.assertEqual(
+            E.signal_description(manifest, "experiment_finished"),
+            "A run reached a finished state.")
+        self.assertIsNone(E.signal_description(
+            {"signals": [{"name": "s", "description": 5}]}, "s"))
+
+    def test_the_loader_skips_what_is_not_its_business(self):
+        reg, problems = E.load_extensions("")
+        self.assertEqual((reg, problems), ({}, []))
+        with tempfile.TemporaryDirectory() as root:
+            os.symlink("/tmp", os.path.join(root, "link.json"))
+            _write_folder(root, "gone", "{")
+            _write_folder(root, "transport", self._transport(name="wire"))
+            reg, problems = E.load_extensions(root, kinds=("sense",))
+            self.assertEqual(reg, {})
+            self.assertTrue(any("not valid JSON" in p for p in problems))
+            self.assertFalse(any("wire" in p for p in problems))
+
+    def test_an_envelope_needs_an_object_and_a_secret(self):
+        with self.assertRaises(ValueError):
+            E.sign_envelope(["nope"], "secret")
+        with self.assertRaises(ValueError):
+            E.sign_envelope({"v": 1}, "")
+        payload = E.build_sensor_alert(
+            "lab", "high", "done", observed_at="2026-10-22T00:00:00Z")
+        self.assertEqual(payload["observed_at"], "2026-10-22T00:00:00Z")
+        with self.assertRaises(ValueError):
+            E.drop_local_signal("", payload, "secret")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

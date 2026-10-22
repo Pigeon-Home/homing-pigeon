@@ -198,3 +198,35 @@ What is left in those two files is the crash-recovery race
 in the answer publish, and `is_dir` raising. Those are not
 the next hole. The extension programs are still 74% to 79%.
 
+## After the rejection tests
+
+Measured again the same day. 4442 tests, OK, 22 skipped,
+370 seconds.
+
+Statements: 16872. Missed: 962. Covered: 94.3%.
+Branches: 91.3%. Together: 93.4%.
+
+| File | Before this pass | After | Missed after |
+|---|---:|---:|---:|
+| winlog.py | 88% | 100% | 0 |
+| detection.py | 82% | 94% | 11 |
+| extensions.py | 91% | 96% | 8 |
+| learning.py | 84% | 88% | 48 |
+| oauth.py | 85% | 89% | 24 |
+| dri.py | 91% | 92% | 30 |
+
+What this pass pins: a detection rule or plan that is not the
+shape the checker expects; a baseline file that is not JSON;
+a new job kind after the count has junk in it; a refresh and
+a code exchange that come back as a non-object or without a
+token; a DRI number that is not a number, including infinity;
+a transport manifest with no entry, a huge argv item, or a
+publisher that is two lines; a ledger that grows past 5000
+lines and keeps the last 4000; the Windows event source
+pointing at `EventCreate.exe` with types 7.
+
+The extension programs are still 74% to 79%. That is the
+floor until there is a real socket. `transports.py` is 84%
+and `dtlsproto.py` is 88%, and both are still the handshake.
+
+

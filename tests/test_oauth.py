@@ -57,5 +57,83 @@ class ExchangeCodeErrorDescriptionTests(unittest.TestCase):
         self.assertIn("HTTP 400", str(ctx.exception))
 
 
+class RefreshAndExchangeShapeTest(unittest.TestCase):
+    def test_an_unparseable_refresh_error_still_says_relogin(self):
+        from runner.oauth import OAuthRefreshError, refresh_access_token
+
+        with unittest.mock.patch(
+                "runner.oauth.urllib.request.urlopen",
+                side_effect=_http_error(b"<html>")):
+            with self.assertRaises(OAuthRefreshError) as ctx:
+                refresh_access_token({
+                    "oauth_client_id": "x",
+                    "oauth_refresh_token": "r",
+                    "oauth_client_secret": "s",
+                })
+        self.assertIn("Re-run", str(ctx.exception))
+
+    def test_a_refresh_without_a_token_is_refused(self):
+        from runner.oauth import OAuthRefreshError, refresh_access_token
+
+        class Resp:
+            def __init__(self, body):
+                self._body = body
+            def read(self):
+                return self._body
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+
+        with unittest.mock.patch(
+                "runner.oauth.urllib.request.urlopen",
+                return_value=Resp(b"[]")):
+            with self.assertRaises(OAuthRefreshError) as ctx:
+                refresh_access_token({
+                    "oauth_client_id": "x", "oauth_refresh_token": "r"})
+        self.assertIn("non-object", str(ctx.exception))
+        with unittest.mock.patch(
+                "runner.oauth.urllib.request.urlopen",
+                return_value=Resp(b"{}")):
+            with self.assertRaises(OAuthRefreshError) as ctx:
+                refresh_access_token({
+                    "oauth_client_id": "x", "oauth_refresh_token": "r"})
+        self.assertIn("access_token", str(ctx.exception))
+
+    def test_an_exchange_that_is_not_an_object_exits(self):
+        class Resp:
+            def __init__(self, body):
+                self._body = body
+            def read(self):
+                return self._body
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+
+        def opener(req, timeout=30):
+            return Resp(b"not-json")
+
+        with self.assertRaises(SystemExit) as ctx:
+            exchange_code({"oauth_client_id": "x"}, "code", "v", opener=opener)
+        self.assertIn("unparseable", str(ctx.exception))
+
+        def opener_list(req, timeout=30):
+            return Resp(b"[]")
+
+        with self.assertRaises(SystemExit) as ctx:
+            exchange_code({"oauth_client_id": "x", "oauth_client_secret": "s"},
+                          "code", "v", opener=opener_list)
+        self.assertIn("non-object", str(ctx.exception))
+
+        def opener_empty(req, timeout=30):
+            return Resp(b"{}")
+
+        with self.assertRaises(SystemExit) as ctx:
+            exchange_code({"oauth_client_id": "x"}, "code", "v",
+                          opener=opener_empty)
+        self.assertIn("refresh_token", str(ctx.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -696,5 +696,27 @@ class ModelChannelTests(unittest.TestCase):
         self.assertFalse(ask.called)
 
 
+class LedgerTrimTest(unittest.TestCase):
+    def test_a_ledger_past_the_cap_keeps_the_last_four_thousand(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = L.ledger_path(d)
+            with open(path, "w", encoding="utf-8") as fh:
+                for i in range(L.LEDGER_MAX_LINES):
+                    fh.write(json.dumps({"i": i}) + "\n")
+            self.assertTrue(L._append(d, {"i": "last"}))
+            with open(path, encoding="utf-8") as fh:
+                lines = fh.read().splitlines()
+        self.assertEqual(len(lines), L.LEDGER_KEEP_LINES)
+        self.assertEqual(json.loads(lines[-1])["i"], "last")
+        first = L.LEDGER_MAX_LINES - L.LEDGER_KEEP_LINES + 1
+        self.assertEqual(json.loads(lines[0])["i"], first)
+
+    def test_an_unknown_feature_is_quoted_as_itself(self):
+        self.assertEqual(L.feature_claim("nope"), "nope")
+        self.assertIsNone(L.ledger_path(""))
+        self.assertFalse(L._append("", {"i": 1}))
+        self.assertFalse(L._append("/tmp", ["nope"]))
+
+
 if __name__ == "__main__":
     unittest.main()
