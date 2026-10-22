@@ -331,7 +331,7 @@ passed; a skipped proof is not a proof. Nothing is stubbed but the mail.
 | Kind | Legs |
 |------|------|
 | Native runners | `native-ubuntu-x86_64`, `native-ubuntu-arm64`, `native-windows-arm64`, `native-macos-x86_64`, `native-windows-x86_64`, `native-macos-arm64` |
-| Distributions, x86_64 (containers) | `alpine-3-x86_64`, `rocky-9-x86_64`, `python-3.9-floor-x86_64`, `debian-12-x86_64`, `debian-11-x86_64`, `ubuntu-22.04-x86_64`, `ubuntu-24.04-x86_64`, `fedora-latest-x86_64`, `almalinux-8-x86_64`, `ubi9-minimal-x86_64`, `ubi9-minimal-fips-x86_64`, `opensuse-leap-15-x86_64`, `archlinux-x86_64`, `amazonlinux-2023-x86_64`, `python-3.14-x86_64` |
+| Distributions, x86_64 (containers) | `alpine-3-x86_64`, `rocky-9-x86_64`, `python-3.9-floor-x86_64`, `debian-12-x86_64`, `ubuntu-22.04-x86_64`, `ubuntu-24.04-x86_64`, `fedora-latest-x86_64`, `almalinux-8-x86_64`, `ubi9-minimal-x86_64`, `ubi9-minimal-fips-x86_64`, `opensuse-leap-15-x86_64`, `archlinux-x86_64`, `amazonlinux-2023-x86_64`, `python-3.14-x86_64` |
 | Distributions, arm64 (containers, native ARM runner) | `debian-13-arm64`, `alpine-3-arm64`, `ubuntu-24.04-arm64`, `fedora-latest-arm64`, `rocky-9-arm64` |
 | Other architectures (QEMU) | `debian-12-armv7-qemu`, `debian-12-i386-qemu`, `debian-12-ppc64le-qemu`, `debian-12-s390x-qemu`, `debian-13-riscv64-qemu` |
 | BSD virtual machines (nightly) | `vm-freebsd-14`, `vm-openbsd-7`, `vm-netbsd-10` |
