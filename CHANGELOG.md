@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.23 - 2026-10-22
+
+- **CI.** A red suite is the suite's own exit code again:
+  `tee` can no longer hide it. A failure is also a check
+  annotation, so the test name and the exception are
+  readable without the log. No change to what the runner
+  does.
+
 ## 3.12.22 - 2026-10-22
 
 - **The release can finish.** GitHub retired the `macos-13`
