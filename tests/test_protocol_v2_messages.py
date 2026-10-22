@@ -18,6 +18,7 @@ import time
 import unittest
 from datetime import datetime, timezone
 from email.message import EmailMessage
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
@@ -848,6 +849,43 @@ class Version2EdgesTest(unittest.TestCase):
         self.assertLess(time.monotonic() - started, 1.0)
         self.assertEqual(got[0]["text"], "early")
         self.assertEqual(got[0]["kind"], "answer")
+
+    def test_a_directory_in_the_answer_slot_is_moved_aside(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-dir-")
+        q = self._q()
+        obj = v2.answer_for(q, "yes")
+        _folder, path = v2._answer_path(tmp, obj["question_id"])
+        os.makedirs(path)
+        self.assertTrue(v2.store_answer(tmp, obj))
+        self.assertTrue(os.path.isfile(path))
+        more = path + ".more.jsonl"
+        with open(more, "w", encoding="utf-8") as fh:
+            fh.write("not-json\n")
+            fh.write("[]\n")
+            fh.write(json.dumps({"answer": ""}) + "\n")
+            fh.write(json.dumps({"answer": "yes"}) + "\n")
+            fh.write(json.dumps({"answer": "later"}) + "\n")
+        self.assertEqual(
+            v2._other_answers(tmp, obj["question_id"], "yes"),
+            ["later"])
+
+    def test_an_empty_outbox_starts_the_deadline(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-empty-")
+        q = self._q()
+        q["deadline_sec"] = 30
+        start = time.monotonic()
+        jumps = {"n": 0}
+
+        def mono():
+            jumps["n"] += 1
+            if jumps["n"] < 8:
+                return start
+            return start + 100
+
+        with mock.patch("runner.protocol_v2.time.monotonic", mono):
+            got = v2.await_answer(
+                tmp, q, time.time(), pending=lambda: False)
+        self.assertEqual(got[0]["kind"], "local_default")
 
 
 if __name__ == "__main__":

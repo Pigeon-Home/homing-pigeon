@@ -33,6 +33,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
@@ -163,6 +164,17 @@ class ManifestValidationTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             E.parse_manifest(_manifest(tunables=["metric"]))
 
+    def test_a_description_with_a_newline_is_refused(self):
+        with self.assertRaises(ValueError):
+            E.parse_manifest(_manifest(description="two\nlines"))
+
+    def test_a_signal_that_is_not_an_object_is_refused(self):
+        with self.assertRaises(ValueError):
+            E.parse_manifest(_manifest(signals=["experiment_finished"]))
+        with self.assertRaises(ValueError):
+            E.parse_manifest(_manifest(signals=[
+                {"name": "has space", "description": "d"}]))
+
     def test_too_many_signals(self):
         sigs = [{"name": "s%d" % i, "description": "d"} for i in range(65)]
         with self.assertRaises(ValueError):
@@ -233,6 +245,21 @@ class LoaderTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             registry, problems = E.load_extensions(
                 os.path.join(d, "nope"))
+            self.assertEqual(registry, {})
+            self.assertEqual(problems, [])
+
+    def test_a_folder_that_cannot_be_stated_is_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "cloudy"))
+            real = os.path.isdir
+
+            def boom(path):
+                if str(path).endswith("cloudy"):
+                    raise OSError("stat")
+                return real(path)
+
+            with mock.patch("os.path.isdir", boom):
+                registry, problems = E.load_extensions(d)
             self.assertEqual(registry, {})
             self.assertEqual(problems, [])
 

@@ -432,6 +432,43 @@ throws is logged, and the loop sleeps instead of dying.
 Two lines remain: the script entry, and the results scan
 on a pass whose jobs scan already threw.
 
+## After the sensor and answer refusals
+
+Measured again the same day. 4512 tests, OK, 22 skipped,
+365 seconds.
+
+Statements: 16872. Missed: 650. Covered: 96.1%.
+Branches: 94.0%. Together: 95.5%.
+
+| File | Before this pass | After | Missed after |
+|---|---:|---:|---:|
+| senses.py | 95% | 98% | 6 |
+| extensions.py | 96% | 99% | 3 |
+| detection.py | 94% | 96% | 8 |
+| dri.py | 93% | 95% | 20 |
+| protocol_v2.py | 95% | 96% | 14 |
+
+What this pass pins: a sensor with no name, or a profile
+that is not an object, is a config error. A timestamp with
+no timezone is not a time. A job-id hint that is not text
+is refused. Junk and unreadable times in the recent list
+do not open a cooldown or an hourly cap, and an alert with
+no time is outside an until-window. An extension
+description with a newline is refused, and so is a signal
+that is not an object or whose name has a space. A folder
+that cannot be stated is skipped. A baseline whose kinds
+are a list is rebuilt, and a save that cannot open its
+temp file leaves the counts in memory. A retained result
+that is a symlink is not read. An alert that is not an
+object, and a sensor that cannot be a dict key, do not
+stop the fused score. A chat id that is not JSON is
+printed. A page-state that is not a map is replaced. A
+directory sitting in an answer slot is moved aside. A late
+file with a broken line, a non-object, an empty answer, or
+a repeat of the winner keeps only the new text. An empty
+outbox starts the deadline instead of pausing.
+
+
 
 
 

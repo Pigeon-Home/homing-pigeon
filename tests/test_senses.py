@@ -97,6 +97,16 @@ class ParseSensorsTest(unittest.TestCase):
     def test_absent_is_empty(self):
         self.assertEqual(S.parse_sensors({}), {})
 
+    def test_a_nameless_sensor_and_a_bad_profile_are_refused(self):
+        self.assertIsNone(S._parse_ts("2026-01-01T00:00:00"))
+        with self.assertRaises(RuntimeError):
+            S.parse_sensors({"sensors": {"": {"key_id": "k"}}})
+        with self.assertRaises(RuntimeError):
+            S.parse_sensors({"sensors": {1: {"key_id": "k"}}})
+        with self.assertRaises(RuntimeError):
+            S.parse_sensors({"sensors": {"x": {"key_id": "k",
+                                               "profile": "nope"}}})
+
 
 class ValidateAlertTest(unittest.TestCase):
     def test_valid(self):
@@ -106,6 +116,40 @@ class ValidateAlertTest(unittest.TestCase):
         a = _alert()
         del a["sensor"]
         self.assertIn("sensor", S.validate_sensor_alert(a))
+
+    def test_a_hint_that_is_not_text_is_refused(self):
+        self.assertIn("job_id_hint", S.validate_sensor_alert(
+            _alert(job_id_hint=5)))
+
+    def test_junk_in_the_recent_list_does_not_open_the_gate(self):
+        from datetime import datetime, timezone
+        stamp = datetime(2026, 10, 15, 12, 0, tzinfo=timezone.utc)
+        now = stamp.timestamp()
+        iso = "2026-10-15T12:00:00Z"
+        alert = {"severity": "info", "title": "t"}
+        reason = S.gate_alert(
+            {"profile": {"cooldown_sec": 60}}, alert, [
+                {"received_at": iso, "title": "t"},
+                {"received_at": "not-a-time", "title": "t"},
+            ], now=now)
+        self.assertIn("cooldown", reason)
+        capped = S.gate_alert(
+            {"profile": {"max_per_hour": 2}}, alert, [
+                {"received_at": "2000-01-01T00:00:00Z", "title": "old"},
+                {"received_at": iso, "title": "x"},
+                {"received_at": "nope"},
+                "junk",
+            ], now=now)
+        self.assertIsNone(capped)
+
+    def test_an_alert_with_no_time_is_outside_an_until_window(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "senses.jsonl")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write('{"sensor": "host_ids", "severity": "high", '
+                         '"title": "timeless"}\n')
+            self.assertEqual(
+                S.load_alerts(d, until="2026-10-15T12:00:00Z"), [])
 
     def test_bad_severity(self):
         self.assertIn("severity",

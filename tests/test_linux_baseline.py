@@ -119,6 +119,20 @@ class BaselineMutations(unittest.TestCase):
             got = update_baseline(d, {"kind": "ping"}, {"stdout": "abcd"})
             self.assertEqual(got["kinds"]["ping"], 1)
             self.assertEqual(got["output_sizes"], [4, 4])
+
+    def test_a_baseline_whose_kinds_are_not_a_map_is_rebuilt(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = _path(d)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write('{"kinds": ["ping"], "output_sizes": []}\n')
+            got = update_baseline(d, {"kind": "ping"}, {"stdout": "ab"})
+            self.assertEqual(got["kinds"], {"ping": 1})
+            os.mkdir(_tmp(d))
+            try:
+                again = update_baseline(d, {"kind": "ping"}, {"stdout": "abcd"})
+                self.assertEqual(again["kinds"]["ping"], 2)
+            finally:
+                os.rmdir(_tmp(d))
             sizes = [10] * 12
             reason = baseline_anomaly(
                 {"output_sizes": sizes, "kinds": {"ping": 30}},

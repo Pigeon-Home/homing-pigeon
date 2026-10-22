@@ -109,6 +109,63 @@ class ParseTest(unittest.TestCase):
 
         self.assertFalse(D.send_telegram("token", Unprintable(), "hi"))
 
+    def test_a_chat_id_that_is_not_json_is_printed_instead(self):
+        loop = {}
+        loop["self"] = loop
+        self.assertFalse(D.send_telegram("token", loop, "hi"))
+
+    def test_a_symlink_in_retained_is_not_read(self):
+        with tempfile.TemporaryDirectory() as d:
+            folder = os.path.join(d, "retained")
+            os.makedirs(folder)
+            os.symlink("/etc/hostname", os.path.join(folder, "x.json"))
+            self.assertEqual(D._recent_retained(d, 0), [])
+
+    def test_a_bad_alert_does_not_stop_the_fused_score(self):
+        now = _iso()
+        records = [
+            "nope",
+            {"sensor": ["not-a-key"], "severity": "high",
+             "title": "bad", "observed_at": now, "weight": 1.0},
+            {"sensor": "host_ids", "severity": "critical",
+             "title": "a", "observed_at": now, "weight": 1.0},
+            {"sensor": "host_ids", "severity": "critical",
+             "title": "b", "observed_at": now, "weight": 1.0},
+        ]
+        real = D._senses.alert_score
+
+        def score(rec, weight=1.0):
+            if isinstance(rec.get("sensor"), list):
+                raise TypeError("bad sensor")
+            return real(rec, weight)
+
+        dcfg = D.parse_dri(_cfg())
+        with mock.patch.object(
+                D._senses, "load_alerts", return_value=records), \
+                mock.patch.object(D._senses, "alert_score", score):
+            evs = D.evaluate_page_triggers(dcfg, "unused", time.time() - 10)
+        self.assertEqual(len(evs), 1)
+        self.assertIn("host_ids", evs[0]["title"])
+
+    def test_a_page_state_that_is_not_a_map_is_replaced(self):
+        with tempfile.TemporaryDirectory() as d:
+            D.maybe_page(_cfg(), d, now=1000.0)
+            state_path = os.path.join(d, D.STATE_FILE)
+            with open(state_path, encoding="utf-8") as fh:
+                state = json.load(fh)
+            state["last_page"] = ["not-a-map"]
+            with open(state_path, "w", encoding="utf-8") as fh:
+                json.dump(state, fh)
+            with mock.patch.object(
+                    D, "evaluate_page_triggers",
+                    return_value=[None, {"trigger": "sensor_fused_score"}]), \
+                    mock.patch.object(D, "_send", return_value=True):
+                sent = D.maybe_page(_cfg(), d, now=5000.0)
+            self.assertEqual(sent, 1)
+            with open(state_path, encoding="utf-8") as fh:
+                saved = json.load(fh)
+            self.assertIsInstance(saved["last_page"], dict)
+
 
 class SensorTriggerTest(unittest.TestCase):
     def test_fused_score_trips(self):
