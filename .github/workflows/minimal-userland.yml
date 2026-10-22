@@ -31,7 +31,7 @@ jobs:
       - name: prove repair, and fail if the suite skipped
         run: |
           set -euo pipefail
-          docker run --rm hp-minimal | tee minimal-out.txt
+          docker run --rm hp-minimal 2>&1 | tee minimal-out.txt
           grep -q 'Ran 6 tests' minimal-out.txt
           grep -qx 'OK' minimal-out.txt
           ! grep -q 'skipped' minimal-out.txt
