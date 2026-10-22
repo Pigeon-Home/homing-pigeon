@@ -4,12 +4,13 @@
     {
       "id": "wazuh",
       "role": "upstream",
-      "description": "Wazuh, whose manager writes the alerts.json this sense reads: its source, ruleset included.",
+      "description": "Wazuh, whose manager writes the alerts.json this sense reads: its source, ruleset included, and the code that writes each alert as JSON.",
       "license": "GPL-2.0-only",
       "github": "wazuh/wazuh",
       "ref": "latest",
       "tag_match": "^v\\d+\\.\\d+\\.\\d+$",
       "files": [
+        "src/analysisd/format/to_json.c",
         "LICENSE"
       ],
       "archive": true,

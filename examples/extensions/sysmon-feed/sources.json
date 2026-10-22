@@ -6,7 +6,7 @@
       "role": "upstream",
       "description": "Sysmon for Linux, whose syslog XML events this sense reads. Sysmon for Windows is closed source; its text events carry the same fields.",
       "license": "MIT",
-      "github": "microsoft/SysmonForLinux",
+      "github": "Sysinternals/SysmonForLinux",
       "ref": "latest",
       "files": [
         "LICENSE"
@@ -16,11 +16,15 @@
     },
     {
       "id": "sysmoncommon",
-      "role": "upstream",
-      "description": "SysmonCommon, the code Sysmon for Linux shares with Sysmon for Windows: a submodule the Sysmon for Linux archive does not carry.",
+      "role": "schema",
+      "description": "SysmonCommon, the code Sysmon for Linux shares with Sysmon for Windows; its manifest.xml defines the event fields, Event ID 1 included.",
       "license": "MIT",
-      "github": "microsoft/SysmonCommon",
+      "github": "Sysinternals/SysmonCommon",
       "ref": "latest",
+      "files": [
+        "manifest.xml",
+        "LICENSE"
+      ],
       "archive": true,
       "max_mb": 16
     }

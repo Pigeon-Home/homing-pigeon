@@ -4,12 +4,18 @@
     {
       "id": "softflowd",
       "role": "upstream",
-      "description": "softflowd, the flow exporter whose NetFlow and IPFIX datagrams this sense decodes.",
+      "description": "softflowd, the flow exporter whose NetFlow and IPFIX datagrams this sense decodes: its source, and the code that writes v5 and v9 records.",
       "license": "BSD-style; see the LICENSE in its source",
       "github": "irino/softflowd",
       "ref": "latest",
       "archive": true,
-      "max_mb": 8
+      "max_mb": 8,
+      "files": [
+        "compat/netflow5.c",
+        "compat/netflow9.c",
+        "softflowd.h",
+        "LICENSE"
+      ]
     },
     {
       "id": "rfc3954",

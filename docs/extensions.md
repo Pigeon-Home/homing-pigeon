@@ -529,8 +529,10 @@ The eight IDS adapters declare their upstream project: its source
 archive, its license, and the files that define what the adapter
 reads — Suricata's EVE schema and format guide, Zeek's conn and
 dns scripts, osquery's table specs, Falco's default config and
-rules, Sysmon for Linux with SysmonCommon; the softflowd adapter
-adds NetFlow version 9 (RFC 3954) and IPFIX (RFC 7011). The four
+rules, Sysmon's event manifest, and the code that writes the
+record for AIDE's report, Wazuh's alerts, and softflowd's flows;
+the softflowd adapter adds NetFlow version 9 (RFC 3954) and IPFIX
+(RFC 7011). The four
 shipped transports declare their own code in the project tree and
 the specifications they speak: IMAP4rev1, SMTP, STARTTLS, and the
 message format for email; DTLS 1.3, TLS 1.3, HKDF, and X25519 for
