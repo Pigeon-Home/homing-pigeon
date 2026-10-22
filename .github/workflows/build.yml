@@ -53,6 +53,28 @@ jobs:
       - name: "probe: EnforceTest alone"
         continue-on-error: true
         run: python -m unittest tests.test_confinement -v
+      # One step per suspect module: the step list names the culprit.
+      - name: "probe: test_fuzz_surfaces"
+        continue-on-error: true
+        run: python -m unittest tests.test_fuzz_surfaces
+      - name: "probe: test_linux_platform"
+        continue-on-error: true
+        run: python -m unittest tests.test_linux_platform
+      - name: "probe: test_flag321_scenarios"
+        continue-on-error: true
+        run: python -m unittest tests.test_flag321_scenarios
+      - name: "probe: test_security_parity"
+        continue-on-error: true
+        run: python -m unittest tests.test_security_parity
+      - name: "probe: test_linux_audit + test_linux_mounts"
+        continue-on-error: true
+        run: python -m unittest tests.test_linux_audit tests.test_linux_mounts
+      - name: "probe: test_remediation + test_remediation_gaps"
+        continue-on-error: true
+        run: python -m unittest tests.test_remediation tests.test_remediation_gaps
+      - name: "probe: test_runner_tail + test_runner_seams + test_runner_more_edges"
+        continue-on-error: true
+        run: python -m unittest tests.test_runner_tail tests.test_runner_seams tests.test_runner_more_edges
       # The -v log is kept so the next step can read the skips.
       # pipefail: the suite's own exit code is the step's.
       - name: run the suite
@@ -63,7 +85,10 @@ jobs:
       - name: annotate failures
         if: always()
         run: |
-          grep -E '^(FAIL|ERROR): ' test-output.log | head -40 | while IFS= read -r line; do echo "::error::$line"; done
+          # Only unittest's own summary lines name a test in tests.*;
+          # inner fixture output (install doctor, shard stubs) does not.
+          # GitHub shows at most 10 error annotations per step.
+          grep -E '^(FAIL|ERROR): \S+ \(tests\.' test-output.log | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done
           grep -E '^(Ran [0-9]+ tests|OK|FAILED)' test-output.log | while IFS= read -r line; do echo "::warning::$line"; done
           true
       # A skipped proof is green from the outside. On this box the
