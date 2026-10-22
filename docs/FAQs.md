@@ -311,6 +311,16 @@ into motion through signed jobs, with the results coming back each
 round. It is the fastest honest benchmark there is for whether a model
 can operate, not just talk.
 
+**Camera traps and field recorders.** A Pi on a trail camera or a
+bioacoustic recorder runs a small classifier as its own sense: an
+extension (`docs/extensions.md`) that declares signals such as
+`animal_detected` or `low_confidence_frame` and files them signed
+with the Oracle. Only the labels and a digest leave the box; when a
+frame is a toss-up, your SI sends one more job for just that frame
+instead of pulling the whole card. A runner that asks the cloud its
+own free-form question ("lynx or bobcat?") is the Mirror idea in
+`docs/FUTURE.md`, not built yet.
+
 And for the box that cannot decide on its own: with protocol version
 2 turned on, a Pi Light runner can send the question it would have
 asked a model up to a laptop or a cloud SI, and the answer rides back
