@@ -1,0 +1,25 @@
+{
+  "bytes": 6317,
+  "fetched_at": "2026-10-22T22:41:04Z",
+  "files": {
+    "LICENSE": {
+      "bytes": 373,
+      "sha384": "02b33dd23f119ab024c4e097797091515b9802c8e419df3dab053a7dfa6621a95167b4e2a830ab0cdaaf8d771d517d68"
+    },
+    "specs/listening_ports.table": {
+      "bytes": 773,
+      "sha384": "6b4f044a41a97de4a7463687dcb8db5426db41d723d27ffe661b57d3c5a3fbb5874eec69f7a404451068807ac3cd9bab"
+    },
+    "specs/processes.table": {
+      "bytes": 3649,
+      "sha384": "7b00fb253098dc2ef9176a8e44162dd6eedab65fa3f35b160616f1bb98e5014c70c2670b0439f6959f61537c8d203f87"
+    },
+    "specs/users.table": {
+      "bytes": 1522,
+      "sha384": "940b87f44965985904f1ee3a681e090a04199530154474022cb5b093030af595971eb17ef12b95fc9f0651c70e8baa6a"
+    }
+  },
+  "pin": "33c218b033cb6d61735d365a401a572720c67b9e",
+  "ref": "master",
+  "repo": "https://github.com/osquery/osquery"
+}

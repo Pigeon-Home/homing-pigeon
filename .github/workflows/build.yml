@@ -41,6 +41,15 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -c requirements-ci.txt hypothesis
+      # The feed senses parse formats other projects define. The
+      # files that define them ride in-tree under
+      # examples/extensions/*/upstream/, pinned by each manifest.
+      # --check fails when a pin moved without a fetch, a file was
+      # edited by hand, or the 5 MiB budget is spent. A refresh is
+      # `python3 tools/fetch_upstream.py` (or --bump), committed;
+      # .github/workflows/upstream-pins.yml does that nightly.
+      - name: upstream files the feed senses read are pinned and whole
+        run: python3 tools/fetch_upstream.py --check
       # bwrap is what the Linux sandbox is built on. Without it the
       # EnforceTest proofs in tests/test_confinement.py skip and
       # "the sandbox walls the job in" is never shown in CI. The

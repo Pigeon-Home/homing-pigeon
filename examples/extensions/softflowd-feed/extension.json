@@ -1,1 +1,43 @@
-{"api_version":1,"description":"Collects softflowd NetFlow v5/v9/IPFIX over UDP and files first-seen external peers, high-volume flows, and long-lived flows.","kind":"sense","name":"softflowd_feed","signals":[{"description":"A flow's destination is an external address -- not private, loopback, link-local, or multicast, and not allowlisted -- never seen before.","name":"flow_new_external_peer"},{"description":"A single flow carried at least high_volume_bytes bytes.","name":"flow_high_volume"},{"description":"A single flow lasted at least long_lived_sec seconds from first packet to last.","name":"flow_long_lived"}],"tunables":{"allowlist":[],"collect_window_sec":10,"high_volume_bytes":50000000,"listen_addr":"127.0.0.1:2055","long_lived_sec":3600,"max_datagrams":1000,"max_filed_flows":1024,"max_known_peers":1024,"poll_interval_sec":60},"version":"0.1.0"}
+{
+  "api_version": 1,
+  "description": "Collects softflowd NetFlow v5/v9/IPFIX over UDP and files first-seen external peers, high-volume flows, and long-lived flows.",
+  "kind": "sense",
+  "name": "softflowd_feed",
+  "signals": [
+    {
+      "description": "A flow's destination is an external address -- not private, loopback, link-local, or multicast, and not allowlisted -- never seen before.",
+      "name": "flow_new_external_peer"
+    },
+    {
+      "description": "A single flow carried at least high_volume_bytes bytes.",
+      "name": "flow_high_volume"
+    },
+    {
+      "description": "A single flow lasted at least long_lived_sec seconds from first packet to last.",
+      "name": "flow_long_lived"
+    }
+  ],
+  "tunables": {
+    "allowlist": [],
+    "collect_window_sec": 10,
+    "high_volume_bytes": 50000000,
+    "listen_addr": "127.0.0.1:2055",
+    "long_lived_sec": 3600,
+    "max_datagrams": 1000,
+    "max_filed_flows": 1024,
+    "max_known_peers": 1024,
+    "poll_interval_sec": 60
+  },
+  "version": "0.1.0",
+  "upstream": {
+    "repo": "https://github.com/irino/softflowd",
+    "ref": "master",
+    "pin": "bc013f05c82559dc7f7a75d2083cd5ef64f8d98d",
+    "paths": [
+      "softflowd.h",
+      "compat/netflow5.c",
+      "compat/netflow9.c",
+      "LICENSE"
+    ]
+  }
+}

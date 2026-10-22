@@ -4,6 +4,26 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## Unreleased
+
+- **Feed senses carry the format they parse.** Each of the eight
+  feed senses (Suricata, Zeek, osquery, Falco, Wazuh, AIDE, Sysmon,
+  softflowd) now names an `upstream` in its manifest -- repository,
+  ref, pinned commit, and the few files that define the log or
+  record it reads -- and `tools/fetch_upstream.py` carries those
+  files into `<extension>/upstream/` beside the adapter, licenses
+  included. The fetch is a blobless sparse git checkout; the whole
+  set is budgeted at 5 MiB (1.2 MiB used) and the build fails past
+  it or when a file is stale or hand-edited. New drift tests assert
+  the fields each adapter reads are still defined in the source it
+  carries. A nightly `upstream-pins` workflow moves the pins, reruns
+  those tests, and commits only when they pass. `docs/extensions.md`,
+  "Upstream: carrying the format you parse". No change to what the
+  runner does; the manifest field is validated and never fetched by
+  the agent.
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.12.51 - 2026-10-22
 
 - **Windows Oracle asks no longer get dropped.** The chat

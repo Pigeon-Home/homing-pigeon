@@ -1,0 +1,25 @@
+{
+  "bytes": 50630,
+  "fetched_at": "2026-10-22T22:41:05Z",
+  "files": {
+    "LICENSE": {
+      "bytes": 7371,
+      "sha384": "017c5063350b92104acf9251457545292e96ee6221cfb573f6c3b2f6f18036584c6fa1e84db40856d707a15b2e477ce2"
+    },
+    "compat/netflow5.c": {
+      "bytes": 9048,
+      "sha384": "07e99ddd57f50050625e34c4278dbfc5bfacb0eb766465fa064b5a96eae1e2ddc515d25748aabb456da1e3c85a58634a"
+    },
+    "compat/netflow9.c": {
+      "bytes": 18201,
+      "sha384": "6c2d357f1c43470d76683168fdb53bdda375a25fe27070ce5499e6154150f58f9073bb269ef2dd57a4011dbbed04945e"
+    },
+    "softflowd.h": {
+      "bytes": 16010,
+      "sha384": "9523a41528ee1daf78e3f35f72965fc8585d78db189c36fa89a7eb8a81f6bbc5feaf45b553fc8b924062cb6fe6990957"
+    }
+  },
+  "pin": "bc013f05c82559dc7f7a75d2083cd5ef64f8d98d",
+  "ref": "master",
+  "repo": "https://github.com/irino/softflowd"
+}

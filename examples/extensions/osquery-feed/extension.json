@@ -1,1 +1,35 @@
-{"api_version":1,"description":"Tails the osqueryd results log for processes, users and listening ports the light pack reports as added or removed.","kind":"sense","name":"osquery_feed","signals":[{"description":"osquery reported a process, user or listening port as added; medium severity for users and listeners, info for processes.","name":"osquery_added"},{"description":"osquery reported a process, user or listening port as removed that this feed had filed or could have filed as added.","name":"osquery_removed"}],"tunables":{"filed_cap":10000,"log_paths":["/var/log/osquery/osqueryd.results.log"],"poll_interval_sec":60},"version":"0.1.0"}
+{
+  "api_version": 1,
+  "description": "Tails the osqueryd results log for processes, users and listening ports the light pack reports as added or removed.",
+  "kind": "sense",
+  "name": "osquery_feed",
+  "signals": [
+    {
+      "description": "osquery reported a process, user or listening port as added; medium severity for users and listeners, info for processes.",
+      "name": "osquery_added"
+    },
+    {
+      "description": "osquery reported a process, user or listening port as removed that this feed had filed or could have filed as added.",
+      "name": "osquery_removed"
+    }
+  ],
+  "tunables": {
+    "filed_cap": 10000,
+    "log_paths": [
+      "/var/log/osquery/osqueryd.results.log"
+    ],
+    "poll_interval_sec": 60
+  },
+  "version": "0.1.0",
+  "upstream": {
+    "repo": "https://github.com/osquery/osquery",
+    "ref": "master",
+    "pin": "33c218b033cb6d61735d365a401a572720c67b9e",
+    "paths": [
+      "specs/processes.table",
+      "specs/users.table",
+      "specs/listening_ports.table",
+      "LICENSE"
+    ]
+  }
+}
