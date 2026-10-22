@@ -4,6 +4,22 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.11 - 2026-10-21
+
+- **Bash-only scripts are not repaired onto `sh`.** An array,
+  a here-string, `declare`, process substitution, or a
+  substring expansion means the job stays as sent. A plain
+  `#!/bin/bash` script with none of those is still repaired.
+  `send_job.py verify` prints one line naming the digest of
+  what was received and the first line of what ran.
+- **Extension output is in the runner log.** Transport
+  extensions relay each line into the same log `--logs`
+  tails.
+- **The release is proved before it is published.** Repair
+  is run on Alpine with no bash, on x86_64 and arm64. A
+  skipped proof fails the build. POSIX archives and the
+  Docker image are smoked before publish.
+
 ## 3.12.10 - 2026-10-21
 
 - **Release.** Same code as 3.12.9. The 3.13.0 tag was
