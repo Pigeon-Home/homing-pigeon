@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.17 - 2026-10-21
+
+- **FAQ: the duty of care sits with the SI.** A new entry in
+  `docs/FAQs.md` says why the runner does not protect a beginner
+  from installing on the wrong computer: the runner is the dumb
+  end of the wire, the vendors claim their models act
+  responsibly, and the project takes them at their word.
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.12.16 - 2026-10-21
 
 - **Release.** Same code as 3.12.15.
