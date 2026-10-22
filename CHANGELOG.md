@@ -4,6 +4,20 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.24 - 2026-10-22
+
+- **Docs reorganized to the common layout.** The root keeps
+  README, INSTALL, CHANGELOG, CONTRIBUTING, SECURITY, AGENTS,
+  PROTOCOL, and ENTERPRISE. TRANSPORTS, SAFEGUARDS, RUNBOOK,
+  and FUTURE moved to `docs/`; design records to
+  `docs/design/`; four retired notes and RESEARCHER_IDENT to
+  `docs/archive/`. PROTOCOL.md and the IETF drafts did not
+  move, so their published URLs still work. Links to the
+  four moved root files now need the `docs/` prefix.
+- **FAQ: "What can I actually use this for?"** Six use cases,
+  each tied to the feature and doc that makes it work.
+- No change to what the runner does.
+
 ## 3.12.23 - 2026-10-22
 
 - **CI.** A red suite is the suite's own exit code again:
