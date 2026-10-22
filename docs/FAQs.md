@@ -246,7 +246,7 @@ So the bet is explicit. An unexperienced user is going to get hold
 of this and break their own computer; that is fine, and it is how
 most of us learned. Every vendor sells a model that would notice,
 say so, and recommend a spare box or a VM. An SI that reads the
-README's first line and helps a novice install onto the family PC
+README's first line and helps a novice install onto like a family PC
 without a word has failed at the exact thing it is marketed for.
 No runner-side guardrail should have to cover for that, and
 building one would mean conceding the claim is false.
