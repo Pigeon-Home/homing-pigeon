@@ -29,6 +29,7 @@ import io
 import os
 import random
 import re
+import subprocess
 import sys
 import tempfile
 import threading
@@ -232,6 +233,22 @@ class PumpFuzzTest(_Relay, unittest.TestCase):
             else:
                 self.assertEqual(tail, line)
 
+    def test_trailing_whitespace_and_capital_x_survive(self):
+        # The pump strips only the line ending. (Mutation kills:
+        # rstrip(None) would eat trailing spaces/tabs; an rstrip
+        # charset of X/\r/\n would eat a trailing capital X.)
+        path = self.pump(io.BytesIO(
+            b"INFO: keep spaces   \nWARN: ends with X\n"
+            b"INFO: tab\t\n"))
+        self.assertEqual(
+            self.lines,
+            [("INFO", "transport file: keep spaces   "),
+             ("WARN", "transport file: ends with X"),
+             ("INFO", "transport file: tab\t")])
+        side = self.sidecar(path)
+        self.assertTrue(side[0].endswith("keep spaces   "))
+        self.assertTrue(side[1].endswith("ends with X"))
+
     def test_two_pumps_on_one_supervisor_do_not_interfere(self):
         paths = {n: transports.ensure_channel_dirs(self.tmp, n)
                  for n in ("file", "mail")}
@@ -340,6 +357,54 @@ class SidecarFailureTest(_Relay, unittest.TestCase):
                       log_path=self.path)
         self.assertEqual(len(self.lines), 2)
         self.assertFalse(os.path.exists(self.path))
+
+    def test_reopen_failure_then_recovery_lands_later_lines(
+            self):
+        # After a failed reopen the handle must go back to None,
+        # so the NEXT line retries the open and lands. (Mutation
+        # kill: fh = "" instead of None strands every later line.)
+        with mock.patch(
+                "builtins.open",
+                self._opener(["broken", "raise", "real"])):
+            self.pump(io.BytesIO(b"INFO: first\nINFO: second\n"
+                                 b"INFO: third\n"),
+                      log_path=self.path)
+        self.assertEqual(len(self.lines), 3)
+        side = self.sidecar(self.path)
+        self.assertEqual(len(side), 2)
+        self.assertIn("second", side[0])
+        self.assertIn("third", side[1])
+
+    def test_sidecar_handle_is_closed_at_eof(self):
+        # The pump owns the handle and closes it when the stream
+        # ends. (Mutation kill: flipping the finally guard leaves
+        # the file open -- a leaked handle Windows cannot delete.)
+        real_open = self.real_open
+        holder = {"closed": False}
+
+        def opener(path, mode="r", *a, **kw):
+            f = real_open(path, mode, *a, **kw)
+            if os.fspath(path) != self.path:
+                return f
+
+            class Rec:
+                def write(self, data):
+                    return f.write(data)
+
+                def flush(self):
+                    return f.flush()
+
+                def close(self):
+                    holder["closed"] = True
+                    return f.close()
+
+            return Rec()
+
+        with mock.patch("builtins.open", opener):
+            self.pump(io.BytesIO(b"INFO: kept\n"),
+                      log_path=self.path)
+        self.assertTrue(holder["closed"])
+        self.assertEqual(len(self.sidecar(self.path)), 1)
 
     def test_a_close_failure_at_eof_is_swallowed(self):
         with mock.patch("builtins.open",
@@ -458,6 +523,197 @@ class SupervisorBranchTest(unittest.TestCase):
         pump = rec.get("pump")
         if pump is not None:
             pump.join(timeout=10)
+        sup.stop()
+
+
+class SpawnContractTest(unittest.TestCase):
+    """Mutation-killer pins for _start_one's observable contract.
+
+    The relay tests prove a child starts; these prove WHAT it is
+    started with -- the substituted argv, the exact child env,
+    the process record's shape, the pump thread's identity, and
+    the failure backoff. Each assertion exists because a mutmut
+    run over the relay functions (2026-10-22) found the value
+    could change with no test noticing.
+    """
+
+    def setUp(self):
+        self.lines = []
+        self.procs = []
+        self.kw_seen = []
+        self.argv_seen = []
+        self.tmp = tempfile.mkdtemp(prefix="hp-test-")
+        self.clock = [1000.0]
+
+    def _supervisor(self, popen=None):
+        def fake_popen(argv, **kw):
+            self.argv_seen.append(list(argv))
+            self.kw_seen.append(kw)
+            proc = _PipeProc(argv, stdout=io.BytesIO(b""))
+            self.procs.append(proc)
+            return proc
+
+        return transports.TransportSupervisor(
+            _cfg(self.tmp), self.tmp,
+            log=lambda m, level="INFO":
+            self.lines.append((level, m)),
+            popen=popen or fake_popen,
+            clock=lambda: self.clock[0])
+
+    def _finish(self, sup, name="file"):
+        rec = sup.processes[name]
+        pump = rec.get("pump")
+        if pump is not None:
+            pump.join(timeout=10)
+        sup.stop()
+        return rec
+
+    def _fake_manifest(self, sup, entry):
+        sup.registry["fake"] = {
+            "name": "fakeext", "version": "1",
+            "publisher": "tests",
+            "dir": os.path.join(self.tmp, "extdir"),
+            "entry": entry}
+
+    def test_spawn_env_is_exact(self):
+        sup = self._supervisor()
+        spaced = "dir one" + os.pathsep + "plain"
+        with mock.patch.dict(
+                os.environ,
+                {"MUTANT_UNDER_TEST": "stats", "PYTHONPATH": spaced},
+                clear=True):
+            sup.start()
+        env = self.kw_seen[0]["env"]
+        self.assertNotIn("MUTANT_UNDER_TEST", env)
+        pkg_parent = os.path.dirname(os.path.dirname(
+            os.path.abspath(transports.__file__)))
+        self.assertEqual(env["PYTHONPATH"],
+                         pkg_parent + os.pathsep + spaced)
+        paths = transports.channel_paths(self.tmp, "file")
+        self.assertEqual(env["HOMING_PIGEON_TRANSPORT_NAME"],
+                         "file")
+        self.assertEqual(env["HOMING_PIGEON_TRANSPORT_CHANNEL"],
+                         paths["root"])
+        self.assertEqual(
+            env["HOMING_PIGEON_TRANSPORT_CONFIG"],
+            os.path.join(paths["root"], "runtime-config.json"))
+        self.assertEqual(env["HOMING_PIGEON_BASE_DIR"], self.tmp)
+        self._finish(sup)
+
+    def test_spawn_env_without_pythonpath_gets_package_parent(
+            self):
+        sup = self._supervisor()
+        with mock.patch.dict(os.environ, {}, clear=True):
+            sup.start()
+        pkg_parent = os.path.dirname(os.path.dirname(
+            os.path.abspath(transports.__file__)))
+        self.assertEqual(self.kw_seen[0]["env"]["PYTHONPATH"],
+                         pkg_parent)
+        self._finish(sup)
+
+    def test_all_placeholders_substitute(self):
+        sup = self._supervisor()
+        self._fake_manifest(sup, [
+            "{self}", "{extension_dir}", "{base_dir}", "{name}",
+            "{channel_dir}", "{runtime_config}", "{python}"])
+        sup._start_one("fake")
+        paths = transports.channel_paths(self.tmp, "fake")
+        self.assertEqual(
+            self.argv_seen[0],
+            [sys.executable, os.path.join(self.tmp, "extdir"),
+             self.tmp, "fake", paths["root"],
+             os.path.join(paths["root"], "runtime-config.json"),
+             sys.executable])
+        self._finish(sup, "fake")
+
+    def test_frozen_launch_rewrites_module_argv(self):
+        sup = self._supervisor()
+        self._fake_manifest(
+            sup, ["{self}", "-m", "some.module", "extra"])
+        with mock.patch.dict(os.environ, {}, clear=True), \
+                mock.patch.object(sys, "frozen", True,
+                                  create=True):
+            sup._start_one("fake")
+        self.assertEqual(
+            self.argv_seen[0],
+            [sys.executable, "--transport-extension-module",
+             "some.module", "extra"])
+        # Frozen launches skip the PYTHONPATH assembly entirely.
+        self.assertNotIn("PYTHONPATH", self.kw_seen[0]["env"])
+        self._finish(sup, "fake")
+
+    def test_frozen_module_entry_without_a_module_raises(self):
+        # The rewrite indexes argv[2]; a frozen "-m" entry with
+        # no module token is malformed and the shipped behavior
+        # is to raise. Pinned as-is: it is the boundary the
+        # len(argv) >= 2 mutants probe.
+        sup = self._supervisor()
+        self._fake_manifest(sup, ["{self}", "-m"])
+        with mock.patch.object(sys, "frozen", True, create=True):
+            with self.assertRaises(IndexError):
+                sup._start_one("fake")
+
+    def test_record_shape_and_started_line(self):
+        sup = self._supervisor()
+        sup.start()
+        rec = sup.processes["file"]
+        self.assertEqual(
+            set(rec),
+            {"manifest", "restarts", "next_restart", "started",
+             "argv", "settled", "logfh", "proc", "pump"})
+        self.assertEqual(rec["restarts"], 0)
+        self.assertIsNone(rec["next_restart"])
+        self.assertIs(rec["settled"], False)
+        self.assertIsNone(rec["logfh"])
+        self.assertEqual(rec["started"], 1000.0)
+        self.assertEqual(rec["argv"], self.argv_seen[0])
+        self.assertIs(rec["proc"], self.procs[0])
+        self.assertTrue(
+            any("started" in m for _, m in self.lines))
+        self._finish(sup)
+
+    def test_pump_thread_name_and_daemon(self):
+        sup = self._supervisor()
+        sup.start()
+        pump = sup.processes["file"]["pump"]
+        self.assertEqual(pump.name, "transport-file-log-pump")
+        self.assertIs(pump.daemon, True)
+        self._finish(sup)
+
+    @unittest.skipUnless(os.name == "posix", "posix spawn arm")
+    def test_posix_spawn_sets_start_new_session_true(self):
+        sup = self._supervisor()
+        sup.start()
+        self.assertIs(
+            self.kw_seen[0].get("start_new_session"), True)
+        self._finish(sup)
+
+    def test_nt_spawn_uses_the_process_group_value(self):
+        sup = self._supervisor()
+        with mock.patch.object(os, "name", "nt"), \
+                mock.patch.object(
+                    subprocess, "CREATE_NEW_PROCESS_GROUP", 0x200,
+                    create=True):
+            sup.start()
+        kw = self.kw_seen[0]
+        self.assertEqual(kw.get("creationflags"), 0x200)
+        self.assertNotIn("start_new_session", kw)
+        self._finish(sup)
+
+    def test_spawn_failure_records_one_second_backoff(self):
+        def boom(argv, **kw):
+            raise RuntimeError("no spawn")
+
+        sup = self._supervisor(popen=boom)
+        sup.start()
+        rec = sup.processes["file"]
+        self.assertIsNone(rec["proc"])
+        self.assertEqual(rec["next_restart"], 1001.0)
+        self.assertTrue(
+            any(lvl == "ERROR" and "cannot start" in m
+                for lvl, m in self.lines))
+        self.assertFalse(
+            any("started" in m for _, m in self.lines))
         sup.stop()
 
 
