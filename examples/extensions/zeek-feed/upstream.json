@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "upstreams": [
+    {
+      "name": "zeek",
+      "repo": "https://github.com/zeek/zeek",
+      "track": "branch:master",
+      "commit": "debb824091f1f609fee9c2acc9a32daa772fae43",
+      "license": "BSD-3-Clause",
+      "paths": [
+        "COPYING"
+      ]
+    }
+  ]
+}

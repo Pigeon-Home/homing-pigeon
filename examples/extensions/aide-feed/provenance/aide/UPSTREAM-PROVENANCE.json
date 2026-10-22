@@ -1,0 +1,17 @@
+{
+  "commit": "db923656149ea64bee63f7e45275322a20c7dbe3",
+  "fetched_at": "2026-10-22T22:42:39Z",
+  "files": [
+    {
+      "bytes": 18092,
+      "path": "COPYING",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+    }
+  ],
+  "license": "GPL-2.0-only",
+  "repo": "https://github.com/aide/aide",
+  "stamp": "tools/vendor_upstreams.py",
+  "track": "branch:master",
+  "tree_sha256": "b716cfb7debc8f1bba7fc1cb6ccd9e7b1982c39777f6149ef8821758a88ae48c",
+  "upstream": "aide"
+}

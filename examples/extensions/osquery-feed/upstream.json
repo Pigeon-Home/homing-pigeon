@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "upstreams": [
+    {
+      "name": "osquery",
+      "repo": "https://github.com/osquery/osquery",
+      "track": "branch:master",
+      "commit": "33c218b033cb6d61735d365a401a572720c67b9e",
+      "license": "Apache-2.0 AND GPL-2.0-only",
+      "paths": [
+        "LICENSE",
+        "LICENSE-Apache-2.0",
+        "LICENSE-GPL-2.0"
+      ]
+    }
+  ]
+}

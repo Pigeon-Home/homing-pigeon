@@ -1,0 +1,17 @@
+{
+  "commit": "debb824091f1f609fee9c2acc9a32daa772fae43",
+  "fetched_at": "2026-10-22T22:42:39Z",
+  "files": [
+    {
+      "bytes": 1838,
+      "path": "COPYING",
+      "sha256": "1f984adb6b5cd93d5035c2a87c2df5f38922649fbea90c7bd79ff321d17333aa"
+    }
+  ],
+  "license": "BSD-3-Clause",
+  "repo": "https://github.com/zeek/zeek",
+  "stamp": "tools/vendor_upstreams.py",
+  "track": "branch:master",
+  "tree_sha256": "09d6785088a7bbd532ed0dc89fa7e3bac516c83c946ec891b78e2d851146196a",
+  "upstream": "zeek"
+}

@@ -1,0 +1,17 @@
+{
+  "commit": "4cea537828c2b33c11e2c2a9427251682dfa1136",
+  "fetched_at": "2026-10-22T22:42:39Z",
+  "files": [
+    {
+      "bytes": 11348,
+      "path": "LICENSE",
+      "sha256": "908a8e97d551fac9b859f653b53ac905d9de0e22d2f3099ca3120cc2525e7159"
+    }
+  ],
+  "license": "Apache-2.0",
+  "repo": "https://github.com/falcosecurity/falco",
+  "stamp": "tools/vendor_upstreams.py",
+  "track": "branch:master",
+  "tree_sha256": "786ba726401d8190bb9af7eb208fae6375b2ae90d65141850452b22e63a62895",
+  "upstream": "falco"
+}

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "upstreams": [
+    {
+      "name": "softflowd",
+      "repo": "https://github.com/irino/softflowd",
+      "track": "branch:master",
+      "commit": "bc013f05c82559dc7f7a75d2083cd5ef64f8d98d",
+      "license": "BSD-3-Clause",
+      "paths": [
+        "LICENSE"
+      ]
+    }
+  ]
+}
