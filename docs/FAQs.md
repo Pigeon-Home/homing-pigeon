@@ -222,3 +222,45 @@ function, which is the usual assumption for this kind of
 reuse. The real cost is the one the draft already states:
 a compromised secret opens both the signatures and every
 recorded envelope.
+
+## Why doesn't the runner protect a beginner from installing this on the wrong computer?
+
+Short answer: because every SI vendor claims their model
+understands context and acts responsibly, and this project takes
+them at their word. The runner is the dumb end of the wire on
+purpose. If the smart end can't handle a novice and a family PC,
+that is the vendor's failure, not a gap in the installer.
+
+The runner verifies a signature and executes a job. That is all it
+knows how to do. The intelligence sits on the other side: the SI
+composing the job is also the one reading the user's intent,
+holding the context of who they are, and quoting this project's
+documentation back to them. The first line of the README says this
+tool hands full administrative control of the machine to whoever
+holds the shared secret. `SAFEGUARDS.md` and
+`docs/personal-documents-warning.md` say what that means on a
+shared or personal computer. Those warnings are written for the
+SI as much as for the human.
+
+So the bet is explicit. A thirteen-year-old is going to get hold
+of this and break their own computer; that is fine, and it is how
+most of us learned. What is not fine is that same kid handing an
+assistant the keys to a machine with someone else's tax, legal, or
+medical papers on it. Every vendor sells a model that would notice,
+say so, and recommend a spare box or a VM. An SI that reads the
+README's first line and helps a novice install onto the family PC
+without a word has failed at the exact thing it is marketed for.
+No runner-side guardrail should have to cover for that, and
+building one would mean conceding the claim is false.
+
+That is what makes this project a clean test of the claim: a
+novice, a shared machine, a README that says what it says. Point
+a model at it and find out. The warnings are placed where an
+assistant will read them -- the README, `SAFEGUARDS.md`,
+`AGENTS.md`, and the personal-documents check that prints at
+install and at startup. The check is a speed bump, not a
+protection. It exists so the assistant and the human both see it.
+What happens next is on them -- and on the vendor who said their
+model could handle it.
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
