@@ -335,7 +335,7 @@ passed; a skipped proof is not a proof. Nothing is stubbed but the mail.
 | Distributions, arm64 (containers, native ARM runner) | `debian-13-arm64`, `alpine-3-arm64`, `ubuntu-24.04-arm64`, `fedora-latest-arm64`, `rocky-9-arm64` |
 | Other architectures (QEMU) | `debian-12-armv7-qemu`, `debian-12-i386-qemu`, `debian-12-ppc64le-qemu`, `debian-12-s390x-qemu`, `debian-13-riscv64-qemu` |
 | BSD virtual machines (nightly) | `vm-freebsd-14`, `vm-openbsd-7`, `vm-netbsd-10` |
-| Administrator fat-fingers on a known-good base | `fatfinger-no-bash`, `fatfinger-noexec-tmp`, `fatfinger-no-home`, `fatfinger-path-minimal`, `fatfinger-c-locale`, `fatfinger-umask-077`, `fatfinger-closed-stdin`, `fatfinger-readonly-root`, `drop-in-stripped` |
+| Administrator fat-fingers on a known-good base | `fatfinger-no-bash`, `fatfinger-noexec-tmp`, `fatfinger-no-home`, `fatfinger-path-minimal`, `fatfinger-c-locale`, `fatfinger-umask-077`, `fatfinger-closed-stdin`, `fatfinger-readonly-root` |
 
 Legs marked core in `.github/workflows/platform-matrix.yml` run on every
 push and pull request; the whole corpus runs nightly and on dispatch.

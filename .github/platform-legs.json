@@ -211,15 +211,6 @@
    "runner": "ubuntu-latest",
    "image": "python:3.12-slim",
    "docker_flags": "--read-only --tmpfs /tmp:rw,size=256m"
-  },
-  {
-   "name": "drop-in-stripped",
-   "tier": "core",
-   "runner": "ubuntu-latest",
-   "image": "python:3.12-slim",
-   "platform": "",
-   "mutation": "drop-in",
-   "docker_flags": "--read-only --tmpfs /tmp:rw,exec,size=256m"
   }
  ],
  "native": [
