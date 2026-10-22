@@ -1,0 +1,22 @@
+{
+  "sources_version": 1,
+  "sources": [
+    {
+      "id": "suricata",
+      "role": "upstream",
+      "description": "Suricata, the network IDS whose eve.json this sense reads: its source, the EVE schema, the EVE format guide, and the default config.",
+      "license": "GPL-2.0-only",
+      "github": "OISF/suricata",
+      "ref": "latest",
+      "tag_match": "^suricata-\\d+\\.\\d+\\.\\d+$",
+      "files": [
+        "etc/schema.json",
+        "suricata.yaml.in",
+        "doc/userguide/output/eve/eve-json-format.rst",
+        "LICENSE"
+      ],
+      "archive": true,
+      "max_mb": 96
+    }
+  ]
+}

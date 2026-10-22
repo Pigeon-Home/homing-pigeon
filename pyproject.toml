@@ -39,6 +39,13 @@ include = ["runner*", "cloud*"]
 
 [tool.setuptools.package-data]
 runner = ["config.example.json"]
+# The shipped transports are found by their manifests, and they bring
+# their sources by their declarations (docs/extensions.md, "Sources"):
+# a wheel without these files has no transport at all.
+"runner.transport_extensions.dtls" = ["extension.json", "sources.json"]
+"runner.transport_extensions.email" = ["extension.json", "sources.json"]
+"runner.transport_extensions.file" = ["extension.json", "sources.json"]
+"runner.transport_extensions.nats" = ["extension.json", "sources.json"]
 
 [tool.mutmut]
 source_paths = ["runner"]

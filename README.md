@@ -399,6 +399,18 @@ experiment runs drop result files and files signals like
 `experiment_finished` and `metric_threshold_crossed` when a run
 lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
 
+Every extension, sense or transport, also brings its own code for
+the Oracle. The first time it runs, the agent gives the Oracle
+the extension's installed code and fetches, in the background,
+whatever its optional `sources.json` declares: its published
+source, the upstream project it wraps, the specifications it
+speaks. The release ships only the declarations and the build's
+SHA-384 pins of what they name; the box fetches the sources and
+refuses bytes that differ from a pin. The Oracle gets it all by
+default, and a written disclosure rule lets the owner (or the
+author) withhold any of it
+([docs/extensions.md](docs/extensions.md), "Sources").
+
 ## Layout
 
 - `PROTOCOL.md` — the full wire protocol (message formats, signatures,
@@ -427,6 +439,11 @@ lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
   listener all run as supervised extension programs under
   `runner/transport_extensions/`, enabled by the `transports`
   config key.
+- `runner/extsources.py` — extension sources: the first time an
+  extension runs, its own code and the upstream sources and specs
+  its `sources.json` declares reach the Oracle — fetched in the
+  background, held to the build's SHA-384 pins, never executed,
+  and under the disclosure rule (`docs/extensions.md`, "Sources").
 - `runner/opinion.py` — the Oracle's opinion: the pre-run checks,
   the prediction, and the one mechanical repair.
 - `runner/learning.py` — the self-learning ledger: frozen calls,
@@ -451,6 +468,10 @@ lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
   `homing-pigeon-project-<version>.tar.gz`. An installed runner
   keeps it in its state dir, so the Oracle can read the source, the
   tests, and the CI that built it without a network.
+- `tools/pin_extension_sources.py` — the release job's pins: every
+  declared extension source resolved to a commit and hashed,
+  shipped in the snapshot as `project/EXTENSION-SOURCES.lock.json`
+  (the sources themselves never ship; the boxes fetch them).
 - `examples/extensions/` — the example senses: 28 folders ship,
   from the lab-results sense to the IDS feeds; 25 of them are the
   pinned catalog in `docs/extensions.md`.

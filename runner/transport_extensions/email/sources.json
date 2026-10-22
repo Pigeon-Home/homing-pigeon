@@ -1,0 +1,45 @@
+{
+  "sources_version": 1,
+  "sources": [
+    {
+      "id": "code",
+      "role": "self",
+      "description": "The email pipe in full: this extension, the channel every transport shares, the IMAP/SMTP library it drives, and its OAuth helper.",
+      "project": [
+        "runner/transport_extensions/email",
+        "runner/transport_extensions/channel.py",
+        "runner/mailbox.py",
+        "runner/oauth.py",
+        "runner/transports.py"
+      ]
+    },
+    {
+      "id": "rfc3501",
+      "role": "spec",
+      "description": "IMAP4rev1, the protocol this extension polls the mailbox with.",
+      "license": "IETF document rights (BCP 78)",
+      "url": "https://www.rfc-editor.org/rfc/rfc3501.txt"
+    },
+    {
+      "id": "rfc5321",
+      "role": "spec",
+      "description": "SMTP, the protocol results leave by.",
+      "license": "IETF document rights (BCP 78)",
+      "url": "https://www.rfc-editor.org/rfc/rfc5321.txt"
+    },
+    {
+      "id": "rfc3207",
+      "role": "spec",
+      "description": "SMTP STARTTLS, the TLS upgrade results are sent under.",
+      "license": "IETF document rights (BCP 78)",
+      "url": "https://www.rfc-editor.org/rfc/rfc3207.txt"
+    },
+    {
+      "id": "rfc5322",
+      "role": "spec",
+      "description": "Internet Message Format, the shape of every job and result message.",
+      "license": "IETF document rights (BCP 78)",
+      "url": "https://www.rfc-editor.org/rfc/rfc5322.txt"
+    }
+  ]
+}

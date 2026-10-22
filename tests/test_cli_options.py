@@ -1035,7 +1035,8 @@ class RunnerHelpDocumentTest(unittest.TestCase):
         "--oracle-log", "--no-oracle-log", "--oracle-log-max-bytes",
         "--oracle-log-backups",
         "--oracle", "--oracle-cli", "--oracle-port",
-        "--inspect", "--job-id", "--audit-report", "--since",
+        "--inspect", "--job-id", "--fetch-sources", "--audit-report",
+        "--since",
         "--key", "--feature", "--posture", "--diagnose",
         "--diagnose-timeout", "--local-test", "--browser",
     ]

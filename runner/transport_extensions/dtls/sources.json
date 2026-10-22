@@ -1,0 +1,44 @@
+{
+  "sources_version": 1,
+  "sources": [
+    {
+      "id": "code",
+      "role": "self",
+      "description": "The DTLS pipe in full: this extension, its hand-written DTLS 1.3 profile, and the channel every transport shares.",
+      "project": [
+        "runner/transport_extensions/dtls",
+        "runner/dtlsproto.py",
+        "runner/transport_extensions/channel.py",
+        "runner/transports.py"
+      ]
+    },
+    {
+      "id": "rfc9147",
+      "role": "spec",
+      "description": "DTLS 1.3, the protocol runner/dtlsproto.py profiles.",
+      "license": "IETF document rights (BCP 78)",
+      "url": "https://www.rfc-editor.org/rfc/rfc9147.txt"
+    },
+    {
+      "id": "rfc8446",
+      "role": "spec",
+      "description": "TLS 1.3, which DTLS 1.3 is defined against: the handshake and the key schedule.",
+      "license": "IETF document rights (BCP 78)",
+      "url": "https://www.rfc-editor.org/rfc/rfc8446.txt"
+    },
+    {
+      "id": "rfc5869",
+      "role": "spec",
+      "description": "HKDF, the key derivation inside the TLS 1.3 key schedule.",
+      "license": "IETF document rights (BCP 78)",
+      "url": "https://www.rfc-editor.org/rfc/rfc5869.txt"
+    },
+    {
+      "id": "rfc7748",
+      "role": "spec",
+      "description": "X25519, the key exchange behind psk_dhe_ke.",
+      "license": "IETF document rights (BCP 78)",
+      "url": "https://www.rfc-editor.org/rfc/rfc7748.txt"
+    }
+  ]
+}

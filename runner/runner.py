@@ -129,6 +129,7 @@ _setup = _load_mod("runner.setup", "setup")
 _security = _load_mod("runner.security", "security")
 _sandbox = _load_mod("runner.sandbox", "sandbox")
 _transports = _load_mod("runner.transports", "transports")
+_extsources = _load_mod("runner.extsources", "extsources")
 _jobcrypto = _load_mod("runner.jobcrypto", "jobcrypto")
 _protocol_v2 = _load_mod("runner.protocol_v2", "protocol_v2")
 _personal_docs = _load_mod("runner.personal_docs", "personal_docs")
@@ -2317,15 +2318,47 @@ def _tool_stays_inside(path, base_dir):
     return dest.startswith(root + os.sep)
 
 
-def _run_oracle_tool(name, args, base_dir=None) -> str:
+_WITHHELD_TOOL_ERROR = ("error: withheld from the Oracle by the extension "
+                        "sources disclosure rule")
+
+
+def _withheld_for_tools(base_dir) -> list:
+    """Paths the file tools refuse (runner/extsources.py). Never raises."""
+    if _extsources is None or not _tool_base_dir(base_dir):
+        return []
+    try:
+        return _extsources.withheld_paths(base_dir)
+    except Exception:
+        return []
+
+
+def _tool_withheld(path, base_dir, withheld) -> bool:
+    if withheld is None:
+        withheld = _withheld_for_tools(base_dir)
+    if not withheld or _extsources is None:
+        return False
+    try:
+        return bool(_extsources.is_withheld(path, withheld))
+    except Exception:
+        return True
+
+
+def _run_oracle_tool(name, args, base_dir=None, withheld=None) -> str:
     """Execute one Oracle agent tool call. Never raises.
 
     The model is untrusted input here, same class as job JSON: names
     and args are validated strictly, everything is bounded, and
     failures come back as an error string the model can read.
+
+    withheld: the real paths the extension sources disclosure rule
+    keeps from the Oracle (computed per call when None). read_file,
+    list_dir, and write_file refuse them, and list_dir leaves them
+    out of a listing. The run tool is a shell and is not filtered.
     """
     if not isinstance(args, dict):
         return "error: args must be an object"
+    if name in ("read_file", "list_dir", "write_file") and withheld is None:
+        withheld = _withheld_for_tools(base_dir)
     if name == "read_file":
         path = args.get("path")
         if not isinstance(path, str) or not path:
@@ -2333,6 +2366,8 @@ def _run_oracle_tool(name, args, base_dir=None) -> str:
         path = _resolve_tool_path(path, base_dir)
         if not _tool_stays_inside(path, base_dir):
             return "error: path leaves the state dir"
+        if _tool_withheld(path, base_dir, withheld):
+            return _WITHHELD_TOOL_ERROR
         raw_cap = args.get("max_chars", 4000)
         if isinstance(raw_cap, bool):
             max_chars = 4000
@@ -2360,12 +2395,17 @@ def _run_oracle_tool(name, args, base_dir=None) -> str:
         path = _resolve_tool_path(path, base_dir)
         if not _tool_stays_inside(path, base_dir):
             return "error: path leaves the state dir"
+        if _tool_withheld(path, base_dir, withheld):
+            return _WITHHELD_TOOL_ERROR
         try:
             entries = os.listdir(path)
         except OSError as e:
             return f"error: cannot list {path!r}: {e.strerror or e}"
         except Exception as e:
             return f"error: cannot list {path!r}: {e}"
+        if withheld:
+            entries = [e for e in entries if not _tool_withheld(
+                os.path.join(path, e), base_dir, withheld)]
         out = []
         for entry in sorted(entries)[:200]:
             full = os.path.join(path, entry)
@@ -2387,6 +2427,8 @@ def _run_oracle_tool(name, args, base_dir=None) -> str:
         path = _resolve_tool_path(path, base_dir)
         if not _tool_stays_inside(path, base_dir):
             return "error: path leaves the state dir"
+        if _tool_withheld(path, base_dir, withheld):
+            return _WITHHELD_TOOL_ERROR
         if len(content) > 200000:
             return "error: content too large (200000 char cap)"
         try:
@@ -2729,6 +2771,9 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
     patterns = patterns if patterns is not None else BUILTIN_REDACT_PATTERNS
     if not isinstance(cfg, dict):
         return {"op": "ask", "rejected": "inference_unconfigured"}
+    # One read of the disclosure rule per question: the file tools
+    # refuse what it withholds for the whole exchange.
+    withheld = _withheld_for_tools(base_dir)
     endpoint = cfg.get("endpoint") or ""
     model = cfg.get("model") or ""
     if not isinstance(endpoint, str) or not isinstance(model, str):
@@ -2878,7 +2923,8 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
                 preview = "?"
             log(f"oracle tool: {name} {preview}")
             _progress(f"Running {name}")
-            result_text = _run_oracle_tool(name, fargs, base_dir)
+            result_text = _run_oracle_tool(name, fargs, base_dir,
+                                           withheld=withheld)
             scan_text += "\n" + result_text
             executed.append((call_id, name, fargs, result_text))
         if executed and executed[0][0].startswith(_CONTENT_CALL_ID_PREFIX):
@@ -5390,6 +5436,198 @@ def _report_extensions(cfg, base_dir) -> None:
         log(f"extensions: {problem}", "WARN")
 
 
+# ---------------------------------------------------------------------------
+# Extension sources (runner/extsources.py). The first time this agent
+# runs an extension -- loads a sense, starts a transport -- a
+# background pass gives the Oracle that extension's own code and the
+# upstream sources and specs its sources.json declares, under the
+# disclosure rule. The pass repeats on a timer, which is how retries,
+# newly dropped-in extensions, and live config edits are picked up;
+# work already done is never redone.
+
+_EXTSOURCES_PASS: dict = {"thread": None, "next_due": 0.0, "problem": None}
+_EXTSOURCES_LOCK = threading.Lock()
+
+
+def _model_oracle_configured(cfg) -> bool:
+    """Whether a local model runs the Oracle.
+
+    inference_config's answer, without its log line: this is asked
+    on a timer, and a refused endpoint is reported elsewhere.
+    """
+    if not isinstance(cfg, dict) or _oracle_mode(cfg) == "deterministic":
+        return False
+    inf = cfg.get("inference")
+    if not isinstance(inf, dict):
+        return False
+    endpoint, model = inf.get("endpoint"), inf.get("model")
+    if not isinstance(endpoint, str) or not isinstance(model, str) \
+            or not endpoint.strip() or not model.strip():
+        return False
+    return _endpoint_is_loopback(endpoint.strip())
+
+
+def _extension_source_targets(cfg, base_dir) -> list:
+    """Every extension this agent runs: each loaded sense extension
+    and each enabled transport that has a loadable extension."""
+    out = []
+    for name, m in sorted(_extension_registry(cfg, base_dir).items()):
+        if isinstance(m, dict) and isinstance(m.get("dir"), str):
+            out.append({"kind": "sense", "name": name,
+                        "version": m.get("version") or "",
+                        "dir": m["dir"],
+                        "description": m.get("description") or ""})
+    if _transports is not None:
+        try:
+            enabled = _transports.enabled_transports(cfg)
+            registry, _problems = _transports.discover_transport_extensions(
+                cfg, base_dir)
+        except Exception:
+            enabled, registry = [], {}
+        for name in enabled:
+            m = registry.get(name)
+            if isinstance(m, dict) and isinstance(m.get("dir"), str):
+                out.append({"kind": "transport", "name": name,
+                            "version": m.get("version") or "",
+                            "dir": m["dir"],
+                            "description": m.get("description") or ""})
+    return out
+
+
+def _extension_sources_policy(cfg, model_oracle=None):
+    if _extsources is None:
+        return None
+    policy = _extsources.owner_policy(
+        cfg, _model_oracle_configured(cfg) if model_oracle is None
+        else model_oracle)
+    if policy.get("problem") != _EXTSOURCES_PASS.get("problem"):
+        _EXTSOURCES_PASS["problem"] = policy.get("problem")
+        if policy.get("problem"):
+            log(policy["problem"] + "; nothing is fetched and every "
+                "extension source is withheld from the Oracle until it "
+                "is fixed", "WARN")
+    return policy
+
+
+def _extension_sources_pass(cfg, base_dir, force=False, fetcher=None):
+    """One provisioning pass, in the calling thread. Never raises."""
+    if _extsources is None:
+        return None
+    try:
+        policy = _extension_sources_policy(cfg)
+        return _extsources.provision(
+            base_dir, _extension_source_targets(cfg, base_dir), policy,
+            fetcher=fetcher, log=log, force=force)
+    except Exception as e:
+        log(f"extension sources: pass failed: {e}", "WARN")
+        return None
+
+
+def _extension_sources_tick(cfg, base_dir, now=None, due_now=False) -> bool:
+    """Start a background pass when one is due. Never raises.
+
+    Due at startup, every PASS_INTERVAL_SEC after, and at once when
+    config.json changes (the disclosure rule is live). One pass at a
+    time; a pass in flight makes the tick a no-op. Returns whether a
+    pass was started.
+    """
+    if _extsources is None or not isinstance(base_dir, str) or not base_dir:
+        return False
+    now = time.time() if now is None else now
+    with _EXTSOURCES_LOCK:
+        th = _EXTSOURCES_PASS.get("thread")
+        if th is not None and th.is_alive():
+            return False
+        if not due_now and now < _EXTSOURCES_PASS["next_due"]:
+            return False
+        _EXTSOURCES_PASS["next_due"] = now + _extsources.PASS_INTERVAL_SEC
+        try:
+            snapshot = copy.deepcopy(cfg)
+        except Exception:
+            snapshot = dict(cfg) if isinstance(cfg, dict) else {}
+        th = threading.Thread(target=_extension_sources_pass,
+                              args=(snapshot, base_dir),
+                              name="extension-sources", daemon=True)
+        _EXTSOURCES_PASS["thread"] = th
+        th.start()
+        return True
+
+
+def _report_extension_sources(cfg, base_dir) -> None:
+    """Startup line: whether extension sources will be fetched."""
+    if _extsources is None:
+        return
+    policy = _extension_sources_policy(cfg)
+    if policy is None or not policy.get("valid"):
+        return
+    overrides = [n for n, o in policy["extensions"].items()
+                 if o.get("fetch") is True]
+    if policy["enabled"] or overrides:
+        log("extension sources: on its first run each extension's code, "
+            "and the upstream sources and specs it declares, are fetched "
+            "in the background for the Oracle (budget %d MB; index %s/%s)"
+            % (policy["max_bytes"] // (1 << 20), _extsources.STATE_DIRNAME,
+               _extsources.INDEX_FILE))
+    elif policy["fetch"] == "auto":
+        log("extension sources: off -- no local model runs the Oracle "
+            "(set extension_sources to true to fetch anyway)")
+    else:
+        log("extension sources: off (extension_sources is false)")
+
+
+def _extension_sources_note(base_dir) -> str:
+    """The Oracle's context line for extension sources, or ""."""
+    if _extsources is None or not isinstance(base_dir, str) or not base_dir:
+        return ""
+    try:
+        return _extsources.oracle_note(base_dir)
+    except Exception:
+        return ""
+
+
+def run_fetch_sources(cfg, args, fetcher=None) -> int:
+    """--fetch-sources: one provisioning pass in the foreground.
+
+    Retries what failed without waiting out its backoff and prints
+    what happened. Asking counts as wanting it: "auto" fetches here
+    even with no local model, and only extension_sources false (or a
+    per-extension fetch false) still stops it.
+    """
+    if _extsources is None:
+        print("extension sources: runner/extsources.py is unavailable",
+              file=sys.stderr)
+        return 1
+    base = _base_dir_for(cfg, getattr(args, "config", None))
+    policy = _extension_sources_policy(cfg, model_oracle=True)
+    if not policy.get("valid"):
+        print(policy["problem"], file=sys.stderr)
+        return 2
+    targets = _extension_source_targets(cfg, base)
+    if not any(_extsources.fetch_allowed(policy, t["name"])
+               for t in targets):
+        print("extension sources: nothing to fetch (no extension runs "
+              "here, or extension_sources is false)")
+        return 0
+    report = _extsources.provision(
+        base, targets, policy, fetcher=fetcher,
+        log=lambda msg, level="INFO": print(msg), force=True)
+    if report.get("busy"):
+        print("extension sources: another pass is running; try again "
+              "when it finishes", file=sys.stderr)
+        return 1
+    short = [o for o in report["outcomes"]
+             if o["status"] not in ("fetched",)]
+    print("extension sources: %d entr%s worked on, %d not complete; "
+          "%.1f MB of %d MB used; index: %s"
+          % (len(report["outcomes"]),
+             "y" if len(report["outcomes"]) == 1 else "ies", len(short),
+             report["used_bytes"] / (1 << 20),
+             report["budget_bytes"] // (1 << 20),
+             os.path.join(_extsources.state_root(base),
+                          _extsources.INDEX_FILE)))
+    return 1 if short else 0
+
+
 def _sensor_alert_core(cfg, job, key_id, base_dir, dry=False, extra=None):
     """Validate and file one sensor_alert job. The one ingest core.
 
@@ -7625,7 +7863,8 @@ HOT_KEYS = ("poll_interval_sec", "workers", "default_timeout_sec",
             "max_output_bytes", "max_job_age_sec")
 # Strings and objects the Oracle reads live. Not integers, so they do not
 # go through _valid_hot. Credentials stay out of this list.
-LIVE_KEYS = ("owner_instructions", "inference", "oracle_mode", "verbose")
+LIVE_KEYS = ("owner_instructions", "inference", "oracle_mode", "verbose",
+             "extension_sources")
 
 
 def _valid_hot(key: str, value):
@@ -8252,6 +8491,13 @@ def run_inspect(cfg, args) -> int:
         limit = _query_limit(cfg)
         print(json.dumps({"max_queries_per_hour": None if limit < 0 else limit,
                           "keys": budget_status(path, cfg)}, indent=2))
+        return 0
+    if args.inspect == "sources":
+        if _extsources is None:
+            print("extension sources: runner/extsources.py is unavailable",
+                  file=sys.stderr)
+            return 1
+        print(json.dumps(_extsources.status(base), indent=2))
         return 0
     if args.inspect == "job":
         if not args.job_id:
@@ -10317,6 +10563,14 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
                      "or off).")
         elif av:
             blob += "\n\n---\nAV posture:\n" + av
+    if job_blob_len < cap:
+        # Last on purpose: reference material yields to the watch
+        # sections above when the cap bites. Only what the
+        # disclosure rule provides is named; a withheld extension
+        # source never reaches the context.
+        srcs = _extension_sources_note(base_dir)
+        if srcs:
+            blob += "\n\n---\n" + srcs
     # max_chars caps the whole context, not just the job portion.
     # A zero cap (zero or negative max_chars) means no context at all.
     if cap <= 0:
@@ -11323,11 +11577,17 @@ def main() -> int:
         "Run one thing, print it, exit.\n"
         "None of these poll the mailbox.")
     g.add_argument("--inspect",
-                   choices=["board", "budget", "job", "redact"],
+                   choices=["board", "budget", "job", "redact",
+                            "sources"],
                    help="read local Oracle state and exit; "
                         "no mailbox")
     g.add_argument("--job-id", default=None, metavar="ID",
                    help="job id for --inspect job")
+    g.add_argument("--fetch-sources", action="store_true",
+                   help="fetch every extension's code and declared "
+                        "upstream sources for the Oracle now, in the "
+                        "foreground, retrying what failed; print "
+                        "what happened and exit")
     g.add_argument("--run-variant", default=None, metavar="FILE",
                    help="run one locally supplied fuzz variant "
                         "job from FILE through validation and "
@@ -11432,6 +11692,8 @@ def main() -> int:
         return 2
     if args.inspect:
         return run_inspect(cfg, args)
+    if args.fetch_sources:
+        return run_fetch_sources(cfg, args)
     if args.audit_report:
         # Read-only: works with a config that has no mailbox
         # credentials, and never touches the mailbox or config.json.
@@ -11609,6 +11871,14 @@ def main() -> int:
         except Exception as e:
             log(f"transport supervisor failed to start: {e}",
                 "ERROR")
+    # Extension sources: the first run of each extension brings its
+    # code and declared sources for the Oracle, in the background.
+    # A dry run changes nothing and a single cycle has no time for
+    # it; --fetch-sources is the foreground door for both.
+    _report_extension_sources(cfg, base_dir)
+    if not getattr(args, "dry_run", False) \
+            and not getattr(args, "once", False):
+        _extension_sources_tick(cfg, base_dir, due_now=True)
     auth_failed = False  # latch: report auth death once, not every 20s
     # Connection credentials (mailbox_user/password, oauth_*) are not
     # hot. Those still need a restart. CLI flags pin their key so a
@@ -11625,6 +11895,7 @@ def main() -> int:
         while True:
             # Re-read config if the file changed. Edit config.json all you
             # want — the runner picks it up within one poll interval.
+            changed = []
             try:
                 previous = {"inference": cfg.get("inference")}
                 changed = reload_hot_config(cfg, args.config, reload_state,
@@ -11644,6 +11915,10 @@ def main() -> int:
                         args.verbose_level = _VERBOSE_LEVEL
             except Exception as e:
                 log(f"config reload failed (keeping old values): {e}", "WARN")
+            if not args.once and not getattr(args, "dry_run", False):
+                # A config edit may flip the disclosure rule or
+                # bring a model online: run the pass now, not later.
+                _extension_sources_tick(cfg, base_dir, due_now=bool(changed))
             try:
                 poll_once(cfg, base_dir, seen, seen_path, opts=args)
                 if auth_failed:

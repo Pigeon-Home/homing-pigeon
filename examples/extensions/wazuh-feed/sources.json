@@ -1,0 +1,19 @@
+{
+  "sources_version": 1,
+  "sources": [
+    {
+      "id": "wazuh",
+      "role": "upstream",
+      "description": "Wazuh, whose manager writes the alerts.json this sense reads: its source, ruleset included.",
+      "license": "GPL-2.0-only",
+      "github": "wazuh/wazuh",
+      "ref": "latest",
+      "tag_match": "^v\\d+\\.\\d+\\.\\d+$",
+      "files": [
+        "LICENSE"
+      ],
+      "archive": true,
+      "max_mb": 160
+    }
+  ]
+}

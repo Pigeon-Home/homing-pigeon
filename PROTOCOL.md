@@ -813,6 +813,16 @@ look* — which, for most debugging sessions, is the expensive part.
   default.
 - **Review is the correctness anchor:** attestations bind workers to
   claimed outputs; correctness comes from review (section 13.4).
+- **Extension sources follow a disclosure rule:** the code an extension
+  runs, and the upstream sources and specifications it declares, reach
+  the local Oracle by default and are withheld when the owner says so
+  (or the extension's author does and the owner has not overruled it).
+  Withheld material is never named in the Oracle's context and its file
+  tools refuse it. The material is fetched on the box, checked against
+  the release build's pinned digests where it has them, and never
+  executed. The rule, the
+  declaration format, and the owner's settings are in
+  [docs/extensions.md](docs/extensions.md), "Sources".
 
 ## 13. Task dispatch: the Oracle as work queue
 

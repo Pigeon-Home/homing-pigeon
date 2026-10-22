@@ -1,0 +1,15 @@
+{
+  "sources_version": 1,
+  "sources": [
+    {
+      "id": "code",
+      "role": "self",
+      "description": "The watched-folder pipe in full: this extension and the channel every transport shares.",
+      "project": [
+        "runner/transport_extensions/file",
+        "runner/transport_extensions/channel.py",
+        "runner/transports.py"
+      ]
+    }
+  ]
+}

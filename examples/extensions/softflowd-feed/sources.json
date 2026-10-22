@@ -1,0 +1,29 @@
+{
+  "sources_version": 1,
+  "sources": [
+    {
+      "id": "softflowd",
+      "role": "upstream",
+      "description": "softflowd, the flow exporter whose NetFlow and IPFIX datagrams this sense decodes.",
+      "license": "BSD-style; see the LICENSE in its source",
+      "github": "irino/softflowd",
+      "ref": "latest",
+      "archive": true,
+      "max_mb": 8
+    },
+    {
+      "id": "rfc3954",
+      "role": "spec",
+      "description": "NetFlow version 9, the template-driven export format this sense decodes.",
+      "license": "IETF document rights (BCP 78)",
+      "url": "https://www.rfc-editor.org/rfc/rfc3954.txt"
+    },
+    {
+      "id": "rfc7011",
+      "role": "spec",
+      "description": "IPFIX, the IETF export protocol this sense also decodes over a documented field subset.",
+      "license": "IETF document rights (BCP 78)",
+      "url": "https://www.rfc-editor.org/rfc/rfc7011.txt"
+    }
+  ]
+}

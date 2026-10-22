@@ -1,0 +1,25 @@
+{
+  "sources_version": 1,
+  "sources": [
+    {
+      "id": "code",
+      "role": "self",
+      "description": "The NATS pipe in full: this extension's hand-rolled core NATS client and the channel every transport shares.",
+      "project": [
+        "runner/transport_extensions/nats",
+        "runner/transport_extensions/channel.py",
+        "runner/transports.py"
+      ]
+    },
+    {
+      "id": "nats-protocol",
+      "role": "spec",
+      "description": "The NATS client protocol: INFO, CONNECT, SUB, MSG, PUB, PING and PONG are the subset this extension speaks.",
+      "github": "nats-io/nats.docs",
+      "ref": "latest",
+      "files": [
+        "reference/reference-protocols/nats-protocol.md"
+      ]
+    }
+  ]
+}

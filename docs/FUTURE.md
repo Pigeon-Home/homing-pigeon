@@ -322,6 +322,19 @@
   it acts as the cloud SI in-process and reads the result
   directly -- no email is sent. `docs/archive/handoff-local-si.md`.
 
+## What an extension brings
+
+- Extension sources ship (runner/extsources.py, docs/extensions.md
+  "Sources"); three follow-ups are not built. Verifying an
+  upstream's own release signature (a `.asc` beside the tarball)
+  where a project publishes one: today the build's pin proves the
+  box got the bytes the build saw, not that the upstream signed
+  them. Resolving the upstream version installed on the box
+  instead of the latest at build, so the Oracle reads the source
+  that matches the running daemon. Source cards (names,
+  versions, licenses -- never content) in the `senses` answer, so
+  a cloud SI knows what the box's Oracle can read.
+
 ## The hardware
 
 - Accelerator Pis. Pi Light ships the deterministic Oracle

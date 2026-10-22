@@ -1,0 +1,32 @@
+{
+  "sources_version": 1,
+  "sources": [
+    {
+      "id": "falco",
+      "role": "upstream",
+      "description": "Falco, the runtime security monitor whose JSON alert file this sense reads: its source and its default config.",
+      "license": "Apache-2.0",
+      "github": "falcosecurity/falco",
+      "ref": "latest",
+      "tag_match": "^\\d+\\.\\d+\\.\\d+$",
+      "files": [
+        "falco.yaml",
+        "LICENSE"
+      ],
+      "archive": true,
+      "max_mb": 64
+    },
+    {
+      "id": "falco-rules",
+      "role": "rules",
+      "description": "Falco's default rules: the rule names and priorities that appear in the alerts this sense files.",
+      "license": "Apache-2.0",
+      "github": "falcosecurity/rules",
+      "ref": "latest",
+      "tag_match": "^falco-rules-\\d+\\.\\d+\\.\\d+$",
+      "files": [
+        "rules/falco_rules.yaml"
+      ]
+    }
+  ]
+}

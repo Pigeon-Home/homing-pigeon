@@ -22,12 +22,17 @@ the results of the CI run without a network. A snapshot directory:
     project/PROJECT-SNAPSHOT.md  the index: what is where, as local
                                  paths and as GitHub links pinned to
                                  the commit
+    project/EXTENSION-SOURCES.lock.json
+                                 with --sources-lock: every declared
+                                 extension source pinned by this
+                                 build (tools/pin_extension_sources.py)
 
 Stdlib only, like the rest of the project. No YAML parser: workflow
 facts are read with line rules that match how build.yml is written.
 
 Usage:
     python tools/make_snapshot.py --out snapshot [--test-log test-output.log]
+                                  [--sources-lock EXTENSION-SOURCES.lock.json]
     python tools/make_snapshot.py --inject snapshot/project ARCHIVE...
 
 --inject adds the snapshot to finished install archives as
@@ -233,6 +238,25 @@ _INDEX = [
 ]
 
 
+SOURCES_LOCK = "EXTENSION-SOURCES.lock.json"
+
+
+def sources_lock_facts(path):
+    """Counts for the CI facts: extensions, entries, problems."""
+    with open(path, encoding="utf-8") as fh:
+        lock = json.load(fh)
+    exts = lock.get("extensions") if isinstance(lock, dict) else None
+    if not isinstance(exts, dict):
+        raise SystemExit("%s is not an extension sources lock" % path)
+    entries = [e for b in exts.values() if isinstance(b, dict)
+               for e in (b.get("entries") or {}).values()]
+    return {"file": SOURCES_LOCK, "extensions": len(exts),
+            "entries": len(entries),
+            "problems": sum(len(e.get("problems") or [])
+                            for e in entries if isinstance(e, dict)),
+            "generated_at": lock.get("generated_at")}
+
+
 def index_markdown(snap, history_note, bundle_present, file_count):
     sha = snap["commit"]
     ver = snap["version"]
@@ -252,8 +276,11 @@ def index_markdown(snap, history_note, bundle_present, file_count):
         url = "%s/%s/%s/%s" % (REPO_URL, kind, sha, path.rstrip("/"))
         out.append("| %s | `%s` | %s |" % (label, path, url))
     out += ["| CI facts for this build | `CI-SNAPSHOT.json` | %s |"
-            % (snap["run_url"] or "n/a (built outside CI)"),
-            "| The release | — | %s/releases/tag/v%s |" % (REPO_URL, ver),
+            % (snap["run_url"] or "n/a (built outside CI)")]
+    if snap.get("extension_sources_lock"):
+        out.append("| Extension sources pinned by this build | `%s` | — |"
+                   % SOURCES_LOCK)
+    out += ["| The release | — | %s/releases/tag/v%s |" % (REPO_URL, ver),
             ""]
     out += ["## History", ""]
     if bundle_present:
@@ -280,7 +307,8 @@ def index_markdown(snap, history_note, bundle_present, file_count):
     return "\n".join(out) + "\n"
 
 
-def make_snapshot(repo, out_dir, test_log=None, env=None, now=None):
+def make_snapshot(repo, out_dir, test_log=None, env=None, now=None,
+                  sources_lock=None):
     project = os.path.join(out_dir, "project")
     if os.path.exists(project) and os.listdir(project):
         raise SystemExit("%s exists and is not empty" % project)
@@ -289,6 +317,12 @@ def make_snapshot(repo, out_dir, test_log=None, env=None, now=None):
     snap = ci_snapshot(repo, project, test_log, env=env, now=now)
     snap["history"] = {"bundle": BUNDLE if bundle else None, "note": note}
     snap["files"] = count
+    snap["extension_sources_lock"] = None
+    if sources_lock:
+        snap["extension_sources_lock"] = sources_lock_facts(sources_lock)
+        with open(sources_lock, "rb") as src, \
+                open(os.path.join(project, SOURCES_LOCK), "wb") as dst:
+            dst.write(src.read())
     with open(os.path.join(project, "CI-SNAPSHOT.json"), "w",
               encoding="utf-8") as fh:
         json.dump(snap, fh, indent=2, sort_keys=True)
@@ -361,6 +395,9 @@ def main(argv=None):
     ap.add_argument("--repo", default=".", help="the git checkout")
     ap.add_argument("--test-log", default=None,
                     help="a `python -m unittest -v` log to summarize")
+    ap.add_argument("--sources-lock", default=None,
+                    help="an extension sources lock to ship as "
+                         "project/" + SOURCES_LOCK)
     args = ap.parse_args(argv)
     if args.inject:
         if not args.archives:
@@ -371,7 +408,8 @@ def main(argv=None):
         return 0
     if not args.out:
         ap.error("--out is required")
-    project, snap = make_snapshot(args.repo, args.out, args.test_log)
+    project, snap = make_snapshot(args.repo, args.out, args.test_log,
+                                  sources_lock=args.sources_lock)
     print("snapshot %s: %s @ %s, %d files, history %s"
           % (project, snap["version"], snap["commit"][:12], snap["files"],
              "bundled" if snap["history"]["bundle"] else "omitted"))

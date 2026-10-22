@@ -38,7 +38,10 @@ surface the agent consumes is:
 2. the signed `sensor_alert` envelope your daemon sends
    ([docs/senses.md](senses.md), "Alert format"),
 3. the `senses` query answer, where your declared signals are
-   surfaced back as context.
+   surfaced back as context,
+4. your optional `sources.json`, read when your extension first
+   runs: where your code and the projects it wraps live, so the
+   Oracle can read them (see "Sources" below). It is data too.
 
 Your daemon — the watcher, collector, or bridge that produces
 alerts — is an ordinary process you run yourself, under your own
@@ -324,6 +327,215 @@ Extensions fail closed and fail quiet:
   sense as far as ingest is concerned (the declared-signal gate
   has no manifest to gate on). The startup report is where you
   learn that your packaging, not your daemon, needs the fix.
+
+## Sources: every extension brings its own code
+
+This section applies to both kinds, `sense` and `transport`.
+
+The Oracle reasons better about a signal, a failure, or a pipe
+when it can read the code behind it — and the upstream project
+that code wraps, and the specification it speaks. So whenever a
+local model runs the Oracle (the default; "Owner settings"
+below), the first time the agent runs an extension (loads a
+sense, starts a transport), it gives the Oracle that material:
+
+- **Its installed code.** Your extension folder as installed,
+  declared or not. A folder inside the state dir (the default
+  `extensions/`) is referenced where it sits. A folder outside
+  it is copied into the state dir — code and docs only: no
+  dotfiles, nothing named like a secret (`*token*`, `*.key`,
+  `.env`, and the like), no file over 1 MiB, 8 MiB in all — so
+  the Oracle's file tools can reach it.
+- **What your `sources.json` declares.** An optional file next
+  to `extension.json`: your own published source, the upstream
+  projects your extension wraps, the specifications it speaks,
+  schemas, rule sets, docs.
+
+A daemon that runs on another machine (the mail path) still has
+its folder here, the manifest at least, and that folder is all
+the agent can copy. Declare a `self` entry pointing at the
+published code, so the Oracle reads what actually runs.
+
+Nothing fetched ships. A release carries the declarations (a few
+kilobytes); the fetching happens on the box, in the background,
+the first time each extension runs. A second run fetches
+nothing: an entry is fetched again only when its declaration
+changes. The manifest is untouched — `sources.json` is a
+separate file, so an agent that predates it loads the same
+extension and never reads it.
+
+### The declaration
+
+```json
+{
+  "sources_version": 1,
+  "sources": [
+    {"id": "suricata", "role": "upstream",
+     "description": "Suricata, the network IDS whose eve.json this sense reads.",
+     "license": "GPL-2.0-only",
+     "github": "OISF/suricata", "ref": "latest",
+     "tag_match": "^suricata-\\d+\\.\\d+\\.\\d+$",
+     "files": ["etc/schema.json", "LICENSE"],
+     "archive": true, "max_mb": 96},
+    {"id": "rfc7011", "role": "spec",
+     "url": "https://www.rfc-editor.org/rfc/rfc7011.txt"},
+    {"id": "self", "role": "self",
+     "github": "you/your-extension", "ref": "v0.3.0", "archive": true}
+  ]
+}
+```
+
+| Field | Rules |
+|-------|-------|
+| `sources_version` | Required; `1`. Newer than the agent reads: refused. Older: accepted. The manifest's promise, kept the same way. |
+| `oracle` | Optional, top level: `"provide"` or `"withhold"`, the author's line for the whole extension in the disclosure rule below. |
+| `sources` | Up to 16 entries. |
+| `id` | Required. Letters, digits, `.`, `_`, `-`; unique without regard to case (it becomes a folder); `installed` is reserved. |
+| `role` | Required: `self`, `upstream`, `spec`, `schema`, `rules`, or `docs`. Context for the Oracle. |
+| `description`, `license` | Optional, one line each (at most 200 and 100 characters). |
+| `github` / `url` / `project` | Exactly one location: a GitHub repository (`owner/repo`); one https URL; or paths inside Homing Pigeon's own tree (for the extensions that ship with it). |
+| `ref` | GitHub only. `"latest"` (the default, below), or a tag, a branch, or a commit. |
+| `tag_match`, `asset_match` | `"latest"` only. A regular expression the release tag must match; one that picks a release asset as the archive (a release tarball carries what GitHub's own archive does not, such as submodules). |
+| `files` | GitHub only. Up to 32 repository paths, each fetched alone at the pinned commit. |
+| `archive` | GitHub or URL: fetch the whole source archive and unpack it. A GitHub entry asks for its archive, its files, or both. |
+| `max_mb` | Default 64, at most 512: the most this entry may download. |
+| `oracle` | Optional, per entry: `"provide"` or `"withhold"`. |
+
+Validation is the manifest's: unknown fields are refused by
+name, and so is any path that could leave its folder or could not
+exist on every platform. A refused declaration does not refuse
+the extension — it loads and runs, its installed code still
+reaches the Oracle, and the log says what to fix.
+
+**"latest"** is the highest-versioned release that is not a draft
+or a prerelease (and matches `tag_match`); with no such release,
+the highest-versioned matching tag; with no tags, the default
+branch's head. Highest version, not newest: a project that
+patches two release lines publishes old-line patches after
+new-line releases. The release this picks can differ from the
+version installed on the box, and the index says so.
+
+### Integrity: pinned by the build
+
+"latest" is resolved when Homing Pigeon is built. The release job
+runs `tools/pin_extension_sources.py`: every declared upstream
+pinned to a commit, every file and archive downloaded and hashed
+(SHA-384), all of it written to
+`project/EXTENSION-SOURCES.lock.json` inside every release
+archive. A box fetches exactly what its build pinned and refuses
+bytes whose digest differs: nothing is stored, the entry reads
+`mismatch`, and it is tried again a day later. A pin vouches for
+bytes only: every URL is rebuilt from the declaration and the
+pinned release (its commit, or its asset).
+
+An extension author pins the same way and ships the result next
+to the declaration:
+
+```bash
+python tools/pin_extension_sources.py --out my-ext/sources.lock.json my-ext
+```
+
+The extension's own `sources.lock.json` is consulted first, then
+the build's, and either applies only to the exact declaration it
+was made from. With no pin — a source checkout, a third-party
+extension without a lock — the box resolves the declaration on
+first run and records what it got (trust on first use).
+
+### Safety
+
+Fetched material is data. Nothing fetched is ever executed or
+imported. Every request is https, redirects included; the GitHub
+token the release job holds goes to api.github.com and nowhere
+else. Archives unpack as plain files only — no links, no devices,
+no execute bits, nothing outside the target; a name a Windows box
+cannot hold is skipped — bounded per entry by `max_mb` (unpacked,
+at most 20 times what was downloaded) and in all by the owner's
+disk budget. Small things go first for every extension (single
+files, project paths, installed code), then archives, smallest
+cap first. An offline box records each failure and retries on
+backoff, an hour doubling to a day; a server that answers 404 is
+asked again a day later, and one missing file in an entry that
+otherwise arrived is noted in the index instead of retried.
+Nothing here blocks the agent or the extension.
+
+### The disclosure rule
+
+Every piece an extension brings is either **provided** to the
+Oracle or **withheld** from it. For one piece, the first of these
+that is set decides:
+
+1. the owner, for this extension:
+   `extension_sources.extensions.<name>.oracle` in `config.json`;
+2. the owner, for every extension: `extension_sources.oracle` —
+   only `"withhold"` acts here; the default `"provide"` defers to
+   the author;
+3. the author, for this entry: the entry's `oracle` in
+   `sources.json`;
+4. the author, for the extension: the top-level `oracle`;
+5. otherwise: provide.
+
+Provided material is listed in `extension-sources/INDEX.md`,
+named in the Oracle's context, and readable with the Oracle's
+file tools. Withheld material is never listed or named, and
+`read_file`, `list_dir`, and `write_file` refuse it — a withheld
+extension's own folder under the state dir included. The Oracle's
+`run` tool is a shell on the box and is not a confidentiality
+boundary: an owner who needs one sets `"fetch": false` for that
+extension, and nothing is fetched or copied at all. A malformed
+`extension_sources` setting fails closed: nothing is fetched,
+everything is withheld, and one log line says why.
+
+The Oracle is local by construction — the inference endpoint must
+be loopback — so "provide" means this box's own model reads it.
+Nothing here sends source anywhere.
+
+### Owner settings
+
+`extension_sources` in `config.json`, read live (an edit runs a
+pass at once):
+
+| Value | Meaning |
+|-------|---------|
+| `"auto"` (default) | Fetch when a local model runs the Oracle. A deterministic (Pi Light) box with no model fetches nothing and writes nothing. |
+| `true` | Always fetch. |
+| `false` | Never fetch. |
+| an object | `{"fetch": "auto" / true / false, "oracle": "provide" / "withhold", "max_mb": 512, "extensions": {"<name>": {"fetch": true / false, "oracle": "provide" / "withhold"}}}` — the same switch, the owner's lines of the disclosure rule, the disk budget in megabytes (default 512), and per-extension overrides. |
+
+### Where it lands, and how to look
+
+```
+<base_dir>/extension-sources/
+    INDEX.md                      what the Oracle may read, with paths
+    <kind>/<name>/SOURCES.json    everything recorded: status, pins, digests, retries
+    <kind>/<name>/installed/      the installed code, when it lives outside the state dir
+    <kind>/<name>/<id>/CARD.json  one entry's provenance
+    <kind>/<name>/<id>/files/     its single files
+    <kind>/<name>/<id>/source/    its unpacked archive
+```
+
+`homing-pigeon --inspect sources` prints the recorded state, with
+no network. `homing-pigeon --fetch-sources` runs a pass in the
+foreground now, retries what failed without waiting out its
+backoff, and prints what happened. Asking counts as wanting it:
+`"auto"` fetches there even with no model, and only `false`
+(overall, or for that extension) stops it. To refetch one entry,
+delete its folder. A box with no way out can be seeded: copy
+`extension-sources/` from a connected box running the same
+release and extensions, and its first pass keeps what arrived.
+
+### What ships declared
+
+The eight IDS adapters declare their upstream project: its source
+archive, its license, and the files that define what the adapter
+reads — Suricata's EVE schema and format guide, Zeek's conn and
+dns scripts, osquery's table specs, Falco's default config and
+rules, Sysmon for Linux with SysmonCommon; the softflowd adapter
+adds NetFlow version 9 (RFC 3954) and IPFIX (RFC 7011). The four
+shipped transports declare their own code in the project tree and
+the specifications they speak: IMAP4rev1, SMTP, STARTTLS, and the
+message format for email; DTLS 1.3, TLS 1.3, HKDF, and X25519 for
+dtls; the NATS client protocol for nats. Any extension can do the
+same with one file.
 
 ## Build your own
 

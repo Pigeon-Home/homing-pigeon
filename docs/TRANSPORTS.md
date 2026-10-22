@@ -481,6 +481,16 @@ First-party extensions ship under
 manifest declaring any `api_version` other than 1 is refused
 with a log line; the runner keeps running without it.
 
+A transport can bring its own sources for the Oracle, exactly
+as a sense can: a `sources.json` next to the manifest
+([docs/extensions.md](extensions.md), "Sources"), fetched in the
+background the first time the transport starts and given to the
+Oracle under the disclosure rule. The four shipped transports
+declare their own code in the project tree and the
+specifications they speak — the IMAP, SMTP, STARTTLS, and
+message-format RFCs for email, the DTLS 1.3, TLS 1.3, HKDF, and
+X25519 RFCs for dtls, the NATS client protocol for nats.
+
 The runner supervises each enabled extension as a child
 process: it starts them with the runner, restarts a dead one
 with backoff (1s doubling to 30s) and a log line, and stops

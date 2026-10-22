@@ -51,6 +51,8 @@
   "key_policies_default_deny": false,
   "extensions_dir": "",
   "_extensions_dir": "where user extension folders live (docs/extensions.md); empty means <base_dir>/extensions; a relative path resolves against base_dir",
+  "extension_sources": "auto",
+  "_extension_sources": "the first time an extension runs, its code and the upstream sources and specs its sources.json declares are fetched in the background for the Oracle (docs/extensions.md, \"Sources\"): \"auto\" fetches when a local model runs the Oracle, true always, false never. The object form {\"fetch\", \"oracle\": \"provide\"|\"withhold\", \"max_mb\" (default 512), \"extensions\": {name: {\"fetch\", \"oracle\"}}} sets the disclosure rule, the disk budget, and per-extension overrides. Read live.",
   "local_signals": true,
   "_local_signals": "local delivery for senses on this machine (docs/extensions.md): producers drop signed envelopes into <base_dir>/local-inbox or push them to a loopback listener; same signature checks as the mail path, no mailbox involved; false turns both front-ends off; read at startup",
   "local_signal_port": 39271,
