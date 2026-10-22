@@ -18,11 +18,14 @@ name: platform-matrix
 # 077, a noexec /tmp, a read-only root, a closed stdin).
 #
 # The corpus is .github/platform-legs.json (one entry per leg, with a
-# tier). The plan job filters it -- core legs on every push and PR, the
-# whole corpus nightly and on dispatch -- and feeds the matrices via
-# fromJSON, because a job-level `if:` cannot read the matrix context.
-# The README's "Proven platforms" table is pinned to the leg names in
-# that file by tests/test_build_config.py.
+# tier). The plan job filters it. A push or a pull request runs the
+# core legs on plentiful runners only, so a commit is not waiting on
+# macOS, Windows, or an ARM hosted runner that the binary build is
+# already using. The nightly schedule and a manual dispatch run the
+# whole corpus, including those scarce runners. A job-level `if:`
+# cannot read the matrix context, so the plan job feeds the matrices
+# via fromJSON. The README's "Proven platforms" table is pinned to
+# the leg names in that file by tests/test_build_config.py.
 on:
   push:
     branches: [main]
@@ -30,6 +33,13 @@ on:
   schedule:
     - cron: '17 9 * * *'
   workflow_dispatch:
+
+# A new push replaces the previous push's matrix. It does not
+# cancel the nightly, and the nightly does not cancel a push:
+# the event name is part of the group.
+concurrency:
+  group: platform-matrix-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
 permissions: {}
 
