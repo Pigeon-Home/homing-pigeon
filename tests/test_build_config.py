@@ -626,13 +626,43 @@ class PipelineLessonsTest(unittest.TestCase):
             plan = fh.read()
         self.assertIn('("schedule", "workflow_dispatch")', plan)
 
-    def test_probe_steps_never_hide_behind_continue_on_error(self):
+    def test_continue_on_error_only_where_documented(self):
         # continue-on-error reports the step as `success` in the API
         # even when the command failed. The bwrap diagnosis on PR #87
-        # read "EnforceTest alone: passes" off exactly that. Nothing
-        # that proves anything may use it.
-        for name in ("minimal-userland.yml", "platform-matrix.yml"):
-            self.assertNotIn("continue-on-error", _workflow_text(name), name)
+        # read "EnforceTest alone: passes" off exactly that. The one
+        # allowed use is build.yml's release-only mutation job, whose
+        # comment explains it is a signal, not a gate. Anywhere else
+        # it hides a failure.
+        for name in self.ALL:
+            lines = [l for l in _workflow_text(name).splitlines()
+                     if "continue-on-error" in l and not l.strip().startswith("#")]
+            if name == "build.yml":
+                self.assertEqual(len(lines), 1, lines)
+                block = _job_block(_workflow(), "mutation")
+                self.assertIn("continue-on-error: true", block)
+            else:
+                self.assertEqual(lines, [], "%s uses continue-on-error" % name)
+
+    def test_no_test_count_census_in_workflows(self):
+        # `grep -q 'Ran 6 tests'` and `assertEqual(count, 1)` both
+        # broke on 2026-10-21 the moment someone added a test or a
+        # build. A verdict step asks for N > 0, a bare OK and no skip
+        # (tools/skip_guard.py --require-ok --no-skips), never a number.
+        for name in self.ALL:
+            for line in _workflow_text(name).splitlines():
+                if line.strip().startswith("#"):
+                    continue
+                self.assertNotRegex(line, r"Ran \d+ tests?",
+                                    "%s hardcodes a test count: %s"
+                                    % (name, line.strip()))
+
+    def test_verdict_steps_use_the_guard(self):
+        # Wherever a workflow tees a test run into a file, the file is
+        # read by the guard, not by ad-hoc greps.
+        for name in ("minimal-userland.yml", "platform-matrix.yml", "build.yml"):
+            wf = _workflow_text(name)
+            if "| tee" in wf:
+                self.assertIn("tools/skip_guard.py", wf, name)
 
 
 class PythonFloorTest(unittest.TestCase):
