@@ -1717,6 +1717,33 @@ class ChannelEdgeTest(unittest.TestCase):
             got[0].ack()
             self.assertTrue(any("cannot move" in m for m in lines))
 
+    def test_a_file_that_cannot_be_read_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = transports.ensure_channel_dirs(d, "file")
+            job = os.path.join(paths["inbox"], "gone.job.txt")
+            with open(job, "w", encoding="utf-8") as fh:
+                fh.write("Subject: hi\n\nbody\n")
+            real_open = open
+
+            def boom(path, mode="r", *args, **kwargs):
+                if path == job and "b" in str(mode):
+                    raise OSError("denied")
+                return real_open(path, mode, *args, **kwargs)
+
+            lines = []
+            with mock.patch("builtins.open", boom):
+                got = transports.fetch_channel_messages(
+                    d, "file",
+                    log=lambda m, level="INFO": lines.append(m))
+            self.assertEqual(len(got), 1)
+            self.assertTrue(any("cannot read" in m for m in lines))
+            import shutil
+            shutil.rmtree(paths["inbox_done"])
+            with open(paths["inbox_done"], "w", encoding="utf-8") as fh:
+                fh.write("not a directory")
+            got[0].ack()
+            self.assertTrue(any("cannot move" in m for m in lines))
+
     def test_a_rewrite_during_the_read_is_left_alone(self):
         with tempfile.TemporaryDirectory() as d:
             paths = transports.ensure_channel_dirs(d, "file")
@@ -2013,6 +2040,92 @@ class SupervisorFailureTest(unittest.TestCase):
         transports._ACTIVE_SUPERVISORS[(self.tmp, "boom")] = Boom()
         transports.stop_supervisors(self.tmp)
         self.assertNotIn((self.tmp, "boom"), transports._ACTIVE_SUPERVISORS)
+
+    def test_a_start_that_fails_and_a_waiting_inbox(self):
+        lines = []
+
+        def refuse(argv, **kw):
+            raise OSError("nope")
+
+        sup = transports.TransportSupervisor(
+            {"transports": ["file"]}, self.tmp,
+            log=lambda m, level="INFO": lines.append(m),
+            popen=refuse, clock=lambda: 1.0)
+        sup.start()
+        self.assertIsNone(sup.processes["file"]["proc"])
+        self.assertTrue(any("cannot start" in m for m in lines))
+        sup.stop()
+
+        def popen(argv, **kw):
+            return SupervisorTest.FakeProc(argv, **kw)
+
+        sup = transports.TransportSupervisor(
+            {"transports": ["file"]}, self.tmp, popen=popen,
+            clock=lambda: 1.0)
+        sup.start()
+        rec = sup.processes["file"]
+        rec["settled"] = False
+        rec["manifest"]["startup_settle_ms"] = 500
+        inbox = transports.channel_paths(self.tmp, "file")["inbox"]
+        with open(os.path.join(inbox, "waiting.job.txt"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("x")
+        sup.settle()
+        self.assertTrue(rec["settled"])
+        sup.stop()
+
+        class Keep:
+            def stop(self):
+                self.called = True
+
+        keep = Keep()
+        transports._ACTIVE_SUPERVISORS[("/other-base", "k")] = keep
+        transports.stop_supervisors(self.tmp)
+        self.assertIn(("/other-base", "k"), transports._ACTIVE_SUPERVISORS)
+        del transports._ACTIVE_SUPERVISORS[("/other-base", "k")]
+
+        loop = {}
+        loop["self"] = loop
+        sig = transports._config_signature(
+            {"transports": ["dtls"], "additional_secrets": loop},
+            self.tmp)
+        self.assertIn("additional_secrets", sig[1])
+
+    def test_the_pump_drops_a_poisoned_line_and_a_dead_sidecar(self):
+        sup = transports.TransportSupervisor(
+            {"transports": ["file"]}, self.tmp, popen=lambda *a, **k: None,
+            clock=lambda: 1.0)
+        log_path = os.path.join(self.tmp, "extension.log")
+
+        class Dead:
+            def write(self, data):
+                raise OSError("closed")
+            def flush(self):
+                return None
+            def close(self):
+                return None
+
+        real_open = open
+
+        def fake_open(path, mode="r", *args, **kwargs):
+            if path == log_path:
+                return Dead()
+            return real_open(path, mode, *args, **kwargs)
+
+        def lines():
+            yield b"WARN: still here\n"
+
+        with mock.patch("builtins.open", fake_open):
+            sup._pump_extension_log("file", lines(), log_path)
+
+        def poison(text):
+            raise RuntimeError("poison")
+
+        def more():
+            yield b"plain line\n"
+
+        with mock.patch("runner.transports._extension_line_parts", poison):
+            sup._pump_extension_log("file", more(), log_path)
 
 
 if __name__ == "__main__":

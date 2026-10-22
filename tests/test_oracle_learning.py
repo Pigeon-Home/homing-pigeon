@@ -837,6 +837,22 @@ class LearningShapeTest(unittest.TestCase):
                 "features": ["tool:a"], "claim": "a"}]},
             ["tool:b"]))
 
+    def test_a_trim_that_cannot_replace_the_ledger_leaves_it(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = L.ledger_path(d)
+            with open(path, "w", encoding="utf-8") as fh:
+                for _i in range(L.LEDGER_MAX_LINES + 1):
+                    fh.write("{}\n")
+            tmp = path + ".tmp." + str(os.getpid())
+            os.mkdir(tmp)
+            try:
+                L._trim_locked(path)
+                with open(path, encoding="utf-8") as fh:
+                    self.assertGreater(
+                        len(fh.readlines()), L.LEDGER_KEEP_LINES)
+            finally:
+                os.rmdir(tmp)
+
 
 if __name__ == "__main__":
     unittest.main()

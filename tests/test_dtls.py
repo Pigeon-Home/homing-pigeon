@@ -987,3 +987,104 @@ def _wait_for(pred, timeout=20.0):
             return True
         time.sleep(0.1)
     return pred()
+
+
+class ProfileRefusalTest(unittest.TestCase):
+    def test_a_short_scalar_and_a_zero_point_are_refused(self):
+        with self.assertRaises(dtlsproto.DtlsError):
+            dtlsproto.x25519(b"\x01" * 16, b"\x02" * 32)
+        with self.assertRaises(dtlsproto.DtlsError) as ctx:
+            dtlsproto._ecdh(b"\x01" * 32, b"\x00" * 32)
+        self.assertIn("all-zero", str(ctx.exception))
+        self.assertEqual(len(dtlsproto._hkdf_extract(None, b"ikm")),
+                         dtlsproto.HASH_LEN)
+
+    def test_a_broken_extension_block_is_refused_by_name(self):
+        short = (3).to_bytes(2, "big") + b"abc"
+        with self.assertRaises(dtlsproto.DtlsError) as ctx:
+            dtlsproto._parse_extensions(short, 0)
+        self.assertIn("truncated extension header", str(ctx.exception))
+        overrun = (4).to_bytes(2, "big") + b"\x00\x01\x00\x02X"
+        with self.assertRaises(dtlsproto.DtlsError) as ctx:
+            dtlsproto._parse_extensions(overrun, 0)
+        self.assertIn("overruns", str(ctx.exception))
+        dup = b"\x00\x01\x00\x00" + b"\x00\x01\x00\x00"
+        data = len(dup).to_bytes(2, "big") + dup
+        with self.assertRaises(dtlsproto.DtlsError) as ctx:
+            dtlsproto._parse_extensions(data, 0)
+        self.assertIn("duplicate", str(ctx.exception))
+
+    def test_a_broken_key_share_and_psk_are_refused(self):
+        with self.assertRaises(dtlsproto.DtlsError):
+            dtlsproto._key_share_entry(b"\x00\x1d\x00\x20", server_form=True)
+        with self.assertRaises(dtlsproto.DtlsError):
+            dtlsproto._key_share_entry(
+                (4).to_bytes(2, "big") + b"\x00\x1d\x00\x20")
+        with self.assertRaises(dtlsproto.DtlsError) as ctx:
+            dtlsproto._parse_psk_extension((1).to_bytes(2, "big") + b"\x00")
+        self.assertIn("truncated identity", str(ctx.exception))
+        with self.assertRaises(dtlsproto.DtlsError) as ctx:
+            dtlsproto._parse_psk_extension(
+                (6).to_bytes(2, "big") + b"\x00\x02ab\x00\x00")
+        self.assertIn("identity body", str(ctx.exception))
+        ident = b"\x00\x02ab" + b"\x00\x00\x00\x00"
+        body = len(ident).to_bytes(2, "big") + ident + bytes([2, 3])
+        with self.assertRaises(dtlsproto.DtlsError) as ctx:
+            dtlsproto._parse_psk_extension(body)
+        self.assertIn("binder", str(ctx.exception))
+
+    def test_an_empty_secret_is_not_a_name(self):
+        self.assertEqual(dtlsproto.identity_for(""), b"homing-pigeon")
+        self.assertEqual(dtlsproto.identity_for("lab"),
+                         b"homing-pigeon:lab")
+        lookup = dtlsproto.make_secret_lookup(
+            "", {"lab": "", "other": "sek"})
+        self.assertIsNone(lookup(dtlsproto.identity_for("")))
+        self.assertIsNone(lookup(dtlsproto.identity_for("lab")))
+        self.assertEqual(lookup(dtlsproto.identity_for("other")), "sek")
+
+    def test_an_unanswered_flight_is_abandoned(self):
+        lines = []
+        ep = dtlsproto._Endpoint(
+            log=lambda m, level="INFO": lines.append(m))
+        ep._flight = [(0, dtlsproto.CT_HANDSHAKE, b"hi")]
+        ep._flight_first = 0.0
+        ep._flight_next = 1.0
+        self.assertEqual(ep.tick(61.0), [])
+        self.assertTrue(ep.dead)
+        self.assertEqual(ep.state, "dead")
+        self.assertIsNone(ep._flight)
+        self.assertTrue(any("abandoned" in m for m in lines))
+        ep._acks_wanted = [(0, 1)]
+        self.assertEqual(ep.tick(62.0), [])
+
+    def test_an_application_message_past_the_cap_is_refused(self):
+        ep = dtlsproto._Endpoint()
+        seen = []
+        ep._on_app_message = seen.append
+        ep._app_receive(b"\x00\x00\x00\x05ab")
+        self.assertEqual(ep.app_messages, [])
+        done = dtlsproto._Endpoint()
+        done._on_app_message = seen.append
+        done._app_receive(b"\x00\x00\x00\x02hi")
+        self.assertEqual(seen, [b"hi"])
+        huge = dtlsproto._Endpoint()
+        n = dtlsproto.APP_MESSAGE_MAX + 1
+        with self.assertRaises(dtlsproto.DtlsError):
+            huge._app_receive(n.to_bytes(4, "big"))
+
+    def test_a_key_update_is_answered_and_a_bad_one_is_dropped(self):
+        secret = b"k" * dtlsproto.HASH_LEN
+        lines = []
+        ep = dtlsproto._Endpoint(
+            log=lambda m, level="INFO": lines.append(m))
+        ep._recv_ap_secret = secret
+        ep._send_ap_secret = secret
+        ep.senders[3] = dtlsproto._RecordSealer(secret)
+        self.assertEqual(ep._handle_key_update(3, b""), [])
+        self.assertTrue(any("malformed" in m for m in lines))
+        self.assertEqual(ep._handle_key_update(3, b"\x00"), [])
+        out = ep._handle_key_update(3, b"\x01extra")
+        self.assertEqual(len(out), 1)
+        self.assertIn(4, ep.senders)
+        self.assertIn(4, ep.receivers)

@@ -296,6 +296,41 @@ an ack of a file that cannot be moved is logged.
 `dtlsproto.py` is still the handshake, at 88%. The extension
 programs are still 74% to 79%.
 
+## After the profile refusal tests
+
+Measured again the same day. 4479 tests, OK, 22 skipped,
+367 seconds.
+
+Statements: 16872. Missed: 811. Covered: 95.2%.
+Branches: 92.6%. Together: 94.5%.
+
+| File | Before this pass | After | Missed after |
+|---|---:|---:|---:|
+| dtlsproto.py | 88% | 90% | 109 |
+| transports.py | 96% | 98% | 11 |
+| learning.py | 97% | 99% | 5 |
+
+What this pass pins: an X25519 input that is not 32 octets,
+and the all-zero shared secret from a zero point, which the
+profile aborts. An extension block with a short header, an
+overrun, or a duplicate type is refused by name. A key share
+and a PSK extension that are cut short are refused. An empty
+additional secret is not a name. A flight nobody answers for
+60 seconds is abandoned. An application message past the cap
+is refused, and a short one waits. A KeyUpdate of the wrong
+shape is dropped; one that asks for a reply is answered and
+ratchets both directions. A channel file that cannot be read
+is refused. A child that cannot be started is logged and
+stopped without a kill. An inbox that already has a job does
+not hold startup. The log pump drops a poisoned line and a
+sidecar that will not reopen. A ledger trim that cannot
+replace the file leaves the old ledger in place.
+
+What is left in `dtlsproto.py` is the rest of the two
+handshake state machines, not the parsers. The extension
+programs are still 74% to 79%.
+
+
 
 
 
