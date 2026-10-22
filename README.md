@@ -342,7 +342,13 @@ push and pull request; the whole corpus runs nightly and on dispatch.
 `tests/test_build_config.py` pins this table to the matrix, so a leg
 cannot be claimed here without running there. Not on the list: a box
 with no Python at all (BusyBox-only, bare firmware) -- the runner is
-stdlib Python, so that is the floor, not a gap. To add a host or a
+stdlib Python, so that is the floor, not a gap. Also not a leg, and
+refused by the installer rather than simulated: a television
+(Tizen, webOS, Roku, Apple TV, Android TV and the sticks), and a
+USB accelerator with no Linux host under it. Those have no shell
+for a job to run in. A Linux board behind the screen is an
+ordinary leg; `--profile display-board` is that install with no
+model. To add a host or a
 fat-finger, add one matrix line and one table entry.
 
 ## Extending the agent: your own senses

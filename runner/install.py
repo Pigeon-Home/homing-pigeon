@@ -1303,6 +1303,22 @@ BUILTIN_PROFILES = {
     # invocations and written configs keep working; it now means
     # the same light install (no model), not the old 1B pull.
     "raspberry-pi-home": _PI_HOME_SPEC,
+    # A Linux board behind a screen. Not a television, and not a
+    # USB accelerator: those cannot exec a job. Same deterministic
+    # Oracle as Pi Light, chosen by name, never by guessing that
+    # every arm64 machine is an appliance.
+    "display-board": {
+        "description": "Dedicated Linux board (a screen in front "
+                       "of it is only a screen). Deterministic "
+                       "Oracle, no local model.",
+        "redact_patterns_extra": {
+            "shadow_hash": r"\$[0-9a-z]+\$[A-Za-z0-9./]{20,}",
+        },
+        "protected_paths": ["/etc/shadow"],
+        "max_result_view": "attested",
+        "judge": "advisory",
+        "oracle_mode": "deterministic",
+    },
     "password-only": {
         "description": "Only the password hash matters on this box",
         "redact_patterns_extra": {
@@ -1542,6 +1558,239 @@ def chosen_profile(explicit, skip: bool):
     if bundled:
         return bundled
     return detect_default_profile()
+
+
+# Hardware the CI proofs do not cover. Each one is refused with a
+# reason, and the tests simulate them: a green job that claimed to
+# boot a television would be a lie. A USB accelerator is not a
+# computer either. Docker is Linux packaged, so it is allowed, and
+# it is not treated as a new kind of machine.
+_APPLIANCE_OS = ("tizen", "webos", "roku", "tvos", "android")
+_ACCEL_VENDORS = {
+    "1a6e": "coral",   # Coral USB, before the firmware load
+    "18d1": "coral",   # Google, after the firmware load
+    "03e7": "ncs",     # Intel Movidius / NCS
+    "1e60": "hailo",
+}
+
+
+def host_decision(facts):
+    """What an install should do on this machine.
+
+    facts: platform, machine, device_model, in_container,
+    accelerators (list of names), can_exec. Returns action
+    "run" or "refuse", the profile a Linux install would
+    suggest, and a note. An empty note means say nothing.
+    """
+    if not isinstance(facts, dict):
+        facts = {}
+    platform = str(facts.get("platform") or "")
+    machine = str(facts.get("machine") or "").lower()
+    model = str(facts.get("device_model") or "").lower()
+    accels = [a for a in (facts.get("accelerators") or []) if a]
+    container = bool(facts.get("in_container"))
+    can_exec = facts.get("can_exec", True)
+    plat = platform.lower()
+    appliance = next((name for name in _APPLIANCE_OS if name in plat), None)
+    if appliance:
+        return _refuse_appliance(appliance, accels)
+    if can_exec is False:
+        return {
+            "case": "no-exec",
+            "action": "refuse",
+            "profile": None,
+            "note": "This environment cannot execute a shell, so "
+                    "it cannot run a job. A signed app on a "
+                    "television is that kind of environment. Put "
+                    "a Linux board behind the screen and install "
+                    "there with --profile display-board.",
+        }
+    runnable = plat.startswith("linux") or plat.startswith("freebsd") \
+        or plat in ("win32", "darwin")
+    if accels and not runnable:
+        return _refuse_accelerator(accels)
+    pi = "raspberry pi" in model
+    if plat.startswith("linux") and pi:
+        note = _accel_note(accels)
+        return {"case": "pi", "action": "run",
+                "profile": "pi-light", "note": note}
+    if plat.startswith("linux") and container:
+        note = ("Docker is the published Linux image, not a "
+                "different machine. The proof that repair works "
+                "with no bash is the minimal-userland job, not "
+                "this image.")
+        extra = _accel_note(accels)
+        if extra:
+            note = note + " " + extra
+        return {"case": "docker", "action": "run",
+                "profile": "password-only", "note": note}
+    if plat.startswith("linux") and machine in ("aarch64", "arm64", "armv7l"):
+        note = ("This is a Linux board, not a television. If the "
+                "board is dedicated and a screen is only a "
+                "screen, install with --profile display-board. "
+                "That profile installs no model.")
+        extra = _accel_note(accels)
+        if extra:
+            note = note + " " + extra
+        return {"case": "display-candidate", "action": "run",
+                "profile": "password-only", "note": note}
+    if plat.startswith("linux") and accels:
+        return {"case": "linux", "action": "run",
+                "profile": "password-only", "note": _accel_note(accels)}
+    if runnable:
+        return {"case": plat.split()[0] if plat else "host",
+                "action": "run", "profile": "password-only", "note": ""}
+    return {"case": "other", "action": "run", "profile": None, "note": ""}
+
+
+def _refuse_appliance(name, accels):
+    names = {
+        "tizen": "a Samsung Tizen television",
+        "webos": "an LG webOS television",
+        "roku": "a Roku",
+        "tvos": "an Apple TV",
+        "android": "Android, including Android TV, Google TV, "
+                   "Fire TV, and Shield",
+    }
+    what = names.get(name, name)
+    note = (f"This machine is {what}. Code signing can put an "
+            f"app on the screen. It cannot give Homing Pigeon a "
+            f"shell, and a job runs by executing a shell. The "
+            f"installer will not install here. A Linux board "
+            f"behind the set can: install on that board with "
+            f"--profile display-board. The television stays a "
+            f"screen.")
+    extra = _accel_note(accels)
+    if extra:
+        note = note + " " + extra
+    return {"case": name, "action": "refuse", "profile": None,
+            "note": note}
+
+
+def _refuse_accelerator(accels):
+    listed = ", ".join(sorted(set(accels)))
+    return {
+        "case": "accelerator",
+        "action": "refuse",
+        "profile": None,
+        "note": f"A USB accelerator ({listed}) is not a computer. "
+                f"It cannot run the runner, and plugging it into "
+                f"a television does not create a host. Install on "
+                f"a Linux board. Pi Light and display-board do "
+                f"not use the accelerator; a model is a later, "
+                f"explicit choice.",
+    }
+
+
+def _accel_note(accels):
+    if not accels:
+        return ""
+    listed = ", ".join(sorted(set(accels)))
+    return (f"A USB accelerator is attached ({listed}). It is "
+            f"not the runner, and this install will not use it. "
+            f"Pi Light and display-board install no model.")
+
+
+def _read_text(path):
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as fh:
+            return fh.read()
+    except Exception:
+        return ""
+
+
+def _path_exists(path):
+    try:
+        return os.path.exists(path)
+    except Exception:
+        return False
+
+
+def _usb_accelerators():
+    root = "/sys/bus/usb/devices"
+    found = []
+    try:
+        names = os.listdir(root)
+    except Exception:
+        return found
+    for name in names:
+        vendor = _read_text(os.path.join(root, name, "idVendor")).strip().lower()
+        kind = _ACCEL_VENDORS.get(vendor)
+        if kind and kind not in found:
+            found.append(kind)
+    return found
+
+
+def gather_host_facts(read_text=None, exists=None, platform_name=None,
+                      machine=None, environ=None, usb_ids=None,
+                      can_exec=True):
+    """Facts for host_decision, from this machine or from probes.
+
+    The probes are optional so a test can simulate a television
+    without one being present.
+    """
+    read_text = read_text or _read_text
+    exists = exists or _path_exists
+    environ = os.environ if environ is None else environ
+    if platform_name is None:
+        platform_name = sys.platform
+    if machine is None:
+        import platform as _platform
+        machine = _platform.machine()
+    os_release = read_text("/etc/os-release")
+    identity = os_release.lower()
+    plat = str(platform_name)
+    for marker, name in (("/etc/tizen-release", "tizen"),
+                         ("/etc/webos-release", "webos")):
+        if exists(marker):
+            plat = name
+    if "id=tizen" in identity or "id=webos" in identity:
+        plat = "tizen" if "id=tizen" in identity else plat
+        if "id=webos" in identity:
+            plat = "webos"
+    if environ.get("ANDROID_ROOT") or environ.get("ANDROID_DATA") \
+            or "id=android" in identity or "android" in plat.lower():
+        plat = "android"
+    model = read_text("/proc/device-tree/model")
+    if "raspberry pi" not in model.lower():
+        cpu = read_text("/proc/cpuinfo")
+        if "raspberry pi" in cpu.lower():
+            model = cpu
+    if usb_ids is None:
+        accels = _usb_accelerators()
+    else:
+        accels = []
+        for vendor in usb_ids:
+            kind = _ACCEL_VENDORS.get(str(vendor).lower())
+            if kind and kind not in accels:
+                accels.append(kind)
+    in_container = exists("/.dockerenv") or exists("/run/.containerenv")
+    if not in_container:
+        cgroup = read_text("/proc/1/cgroup")
+        in_container = "docker" in cgroup or "containerd" in cgroup
+    return {
+        "platform": plat,
+        "machine": machine,
+        "device_model": model,
+        "in_container": in_container,
+        "accelerators": accels,
+        "can_exec": can_exec,
+    }
+
+
+def host_install_gate(facts=None):
+    """Print the hardware note. Return 2 when install must stop.
+
+    Check, logs, uninstall, and wipe do not call this: a box
+    that already has an install can still be inspected.
+    """
+    decision = host_decision(facts if facts is not None
+                             else gather_host_facts())
+    if decision.get("note"):
+        print(decision["note"])
+    if decision.get("action") != "run":
+        return 2
+    return None
 
 
 def detect_default_profile() -> str:
@@ -2695,10 +2944,13 @@ def main() -> int:
                         "instructions")
     g.add_argument("--profile", default=None, metavar="NAME_OR_PATH",
                    help="apply a deployment profile (pi-light, "
-                        "password-only, or a JSON file; "
-                        "raspberry-pi-home is pi-light's former "
-                        "name). If omitted, a profile is chosen "
-                        "automatically.")
+                        "display-board, password-only, or a JSON "
+                        "file; raspberry-pi-home is pi-light's "
+                        "former name). display-board is a dedicated "
+                        "Linux board behind a screen: no model. "
+                        "A television is not a board, and the "
+                        "installer refuses one. If omitted, a "
+                        "profile is chosen automatically.")
     g.add_argument("--no-profile", action="store_true",
                    help="do not apply any deployment profile")
     g.add_argument("--additional-secret", action="append", default=[],
@@ -2874,6 +3126,9 @@ def main() -> int:
             # into _setup_fresh_config instead.
             install_collectors(requested_collectors(args), args)
             return 0
+        refused = host_install_gate()
+        if refused:
+            return refused
         return do_install_home(args, home, bin_dir, cfg_path, state_dir,
                                src_dir)
 
@@ -2915,6 +3170,9 @@ def main() -> int:
             and os.path.isfile(cfg_path):
         install_collectors(requested_collectors(args), args)
         return 0
+    refused = host_install_gate()
+    if refused:
+        return refused
     if not install_files(src_dir, dst_dir, os.path.join(dst_dir,
                                                         "config.json")):
         return 1

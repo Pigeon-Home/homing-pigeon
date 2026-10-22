@@ -92,6 +92,34 @@ When Pis ship with neural accelerator chips worth using, the
 same install upgrades in place: set `oracle_mode` to `llm` in
 `config.json` and re-run the installer with `--inference-only` to
 pull a model. Nothing reinstalls and nothing else changes.
+A USB accelerator (Coral, Intel NCS, Hailo) is not that Pi and
+is not a computer. Seeing one does not change the install. The
+installer says so and still installs no model.
+
+### What is not a runner
+
+The Pi archive and the Docker image are both Linux. A
+television is not. The installer refuses these, and does not
+copy files onto them:
+
+- Samsung Tizen, LG webOS, Roku, Apple TV
+- Android, including Android TV, Google TV, Fire TV, and Shield
+- a USB accelerator with no Linux host under it
+- any environment that cannot execute a shell
+
+Code signing can put an app on the screen. It cannot give this
+program a shell, and a job runs by executing a shell. The
+repair proofs (Alpine with no bash, the arm64 Pi archive) do
+not apply there, and CI does not pretend to boot those
+systems.
+
+A Linux board behind the television is a normal install. If
+the board is dedicated and the screen is only a screen, use
+`--profile display-board`. That is Pi Light's stance — full
+runner, deterministic Oracle, no model — without claiming the
+board is a Raspberry Pi. Docker is the published Linux image,
+not a third kind of machine; the installer says that and
+continues.
 
 ## 3. Release binary
 
