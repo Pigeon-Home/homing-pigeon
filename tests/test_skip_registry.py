@@ -65,6 +65,10 @@ REGISTERED = {
     "no /proc/stat": "run on Linux",
     "time.tzset is unavailable here": "run on POSIX",
     "socketpair unavailable": "run on POSIX",
+    "posix spawn arm":
+        "the relay launch sets start_new_session on POSIX; runs on "
+        "ubuntu and macOS. The Windows arm is "
+        "test_nt_spawn_uses_the_process_group_value, which patches os.name",
     "needs symlink": "run where symlinks exist (every CI leg but some Windows configs)",
     "symlinks unavailable": "run where symlinks exist",
     "temp test file leaks into discovery on Windows":

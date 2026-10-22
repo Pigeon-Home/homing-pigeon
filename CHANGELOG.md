@@ -4,6 +4,21 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.25 - 2026-10-22
+
+- **More boards, same push.** The nightly platform proof now
+  covers the userspace a Pi competitor ships: 64-bit Pi OS
+  and Armbian, Ubuntu under a Jetson and on Odroid N2, the
+  32-bit Ubuntu a PandaBoard and an Odroid XU4 shipped,
+  Alpine on those 32-bit boards, and ROS 2 Humble and Jazzy.
+  A push does not run them. 32-bit Pi OS, BeagleBone, CHIP,
+  and the Tinker Board were already the Debian armv7 leg.
+- **The suite is green again.** The relay spawn test skipped
+  on Windows with a reason the skip registry had not been
+  told about, so the Ubuntu job went red. The reason is
+  registered. The Windows arm of that launch is its own test.
+- No change to what the runner does.
+
 ## 3.12.24 - 2026-10-22
 
 - **Docs reorganized to the common layout.** The root keeps
