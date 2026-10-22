@@ -68,7 +68,11 @@ Defense in depth, cheapest first:
   it. That one is a snapshot, not a sandbox. See PROTOCOL.md §9.4.
   On Linux, `security.modes.confinement` set to `enforce` runs the
   job inside bubblewrap. Off by default. If `bwrap` is missing, the
-  job runs normally and the audit log says so. See SECURITY.md.
+  job runs normally and the audit log says so. Inside the sandbox
+  the job sees `/usr`, its own workdir, and nothing else; when the
+  interpreter lives outside `/usr` (pyenv, a venv, `/opt`), its own
+  install prefix is bound read-only too, and that bind is written
+  to the audit record and the log. See SECURITY.md.
 
 ## 4. The Oracle as a safeguard
 

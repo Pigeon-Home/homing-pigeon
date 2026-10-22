@@ -35,68 +35,35 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -c requirements-ci.txt hypothesis
+      # bwrap is what the Linux sandbox is built on. Without it the
+      # EnforceTest proofs in tests/test_confinement.py skip and
+      # "the sandbox walls the job in" is never shown in CI. The
+      # runner's userns works out of the box (probed on PR #87); the
+      # sysctl is a belt for Ubuntu images that gate it.
       - name: install bubblewrap (the Linux sandbox)
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
           bwrap --version
-      # Each probe is its own step so its pass/fail is readable from
-      # the job's step list without the log.
-      - name: "probe: bwrap can unshare user+pid as the runner user"
-        continue-on-error: true
-        run: bwrap --unshare-user --unshare-pid --ro-bind / / --dev /dev --proc /proc true
-      - name: "probe: same, after relaxing the AppArmor userns gate"
-        continue-on-error: true
-        run: |
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          bwrap --unshare-user --unshare-pid --ro-bind / / --dev /dev --proc /proc true
-      - name: "probe: EnforceTest alone"
-        continue-on-error: true
-        run: python -m unittest tests.test_confinement -v
-      # One step per suspect module: the step list names the culprit.
-      - name: "probe: test_fuzz_surfaces"
-        continue-on-error: true
-        run: python -m unittest tests.test_fuzz_surfaces
-      - name: "probe: test_linux_platform"
-        continue-on-error: true
-        run: python -m unittest tests.test_linux_platform
-      - name: "probe: test_flag321_scenarios"
-        continue-on-error: true
-        run: python -m unittest tests.test_flag321_scenarios
-      - name: "probe: test_security_parity"
-        continue-on-error: true
-        run: python -m unittest tests.test_security_parity
-      - name: "probe: test_linux_audit + test_linux_mounts"
-        continue-on-error: true
-        run: python -m unittest tests.test_linux_audit tests.test_linux_mounts
-      - name: "probe: test_remediation + test_remediation_gaps"
-        continue-on-error: true
-        run: python -m unittest tests.test_remediation tests.test_remediation_gaps
-      - name: "probe: test_runner_tail + test_runner_seams + test_runner_more_edges"
-        continue-on-error: true
-        run: python -m unittest tests.test_runner_tail tests.test_runner_seams tests.test_runner_more_edges
       # The -v log is kept so the next step can read the skips.
       # pipefail: the suite's own exit code is the step's.
       - name: run the suite
         shell: bash
         run: python -m unittest discover -s tests -t . -v 2>&1 | tee test-output.log
-      # Failing test names as check annotations: readable via the
-      # API when the log store is not.
       - name: annotate failures
         if: always()
         run: |
-          # Only unittest's own summary lines name a test in tests.*;
-          # inner fixture output (install doctor, shard stubs) does not.
-          # GitHub shows at most 10 error annotations per step.
           grep -E '^(FAIL|ERROR): \S+ \(tests\.' test-output.log | sort -u | head -5 | while IFS= read -r line; do echo "::error::$line"; done
-          # The exception line of each failure: for the sandbox tests it carries bwrap's own stderr.
           grep -E '^(AssertionError|[A-Za-z_.]+Error|bwrap): ' test-output.log | grep -v 'cannot read runtime config' | sort -u | head -5 | while IFS= read -r line; do echo "::error::${line:0:900}"; done
-          grep -E '^(Ran [0-9]+ tests|OK|FAILED)' test-output.log | while IFS= read -r line; do echo "::warning::$line"; done
+          grep -E '^(Ran [0-9]+ tests|FAILED|OK)' test-output.log | head -3 | while IFS= read -r line; do echo "::warning::$line"; done
           true
       # A skipped proof is green from the outside. On this box the
       # sandbox proofs must run; any other skip is listed, not fatal.
-      - name: list every skip (none forbidden yet)
-        run: python tools/skip_guard.py test-output.log
+      # A skipped proof is green from the outside. On this box the
+      # sandbox proofs must run; any other skip is listed, not fatal.
+      - name: no silent skips of must-run proofs
+        run: python tools/skip_guard.py test-output.log --forbid "bwrap not available"
 
   typecheck:
     needs: test

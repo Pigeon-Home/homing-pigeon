@@ -974,16 +974,19 @@ def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
         _audit("fallback", "confinement_unavailable")
         return normal
     # enforce
+    notes = []
     try:
         argv = _sandbox.build_bwrap_command(
             cfg, interpreter, os.path.basename(script_path),
-            work, args, env)
+            work, args, env, notes=notes)
     except RuntimeError as e:
         log(f"job {job_id}: cannot build sandbox ({e}); "
             f"running unsandboxed", "WARN")
         _audit("fallback", "confinement_build_failed", str(e))
         return normal
-    _audit("sandboxed", "sandboxed")
+    for note in notes:
+        log(f"job {job_id}: sandbox: {note}", "INFO")
+    _audit("sandboxed", "sandboxed", "; ".join(notes))
     # In the sandbox the env travels via --setenv; Popen inherits.
     return (argv, False, True)
 
