@@ -4,6 +4,29 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.12 - 2026-10-21
+
+- **A television is not a runner.** Tizen, webOS, Roku, and
+  Apple TV are refused before any file is copied. So is any
+  environment that cannot execute a shell, including an
+  Android set whose app cannot exec. Android with a shell
+  (a sideloaded terminal) is warned and then installed as
+  `display-board`: no model, no service, jobs run as that
+  app's user. A USB accelerator is not the computer.
+  `--profile display-board` is the no-model install for a
+  dedicated Linux board behind a screen.
+- **Three more frozen binaries.** Linux ARM64 (no Pi Light
+  marker), Windows ARM64, and Intel macOS. Each is built on
+  the matching runner. The SourceForge defaults stay Windows
+  x64, Linux x64, and Apple Silicon.
+- **Enforce mode can see the interpreter.** The sandbox
+  binds that interpreter's install prefix read-only, so a
+  pyenv, a venv, or a toolcache Python is not missing inside
+  the wall. The bind is written into the audit record.
+- **Python 3.9 imports again.** Annotations in the installer,
+  the mailbox, and setup are lazy, matching the declared
+  floor.
+
 ## 3.12.11 - 2026-10-21
 
 - **Bash-only scripts are not repaired onto `sh`.** An array,
