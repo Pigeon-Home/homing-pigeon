@@ -233,6 +233,24 @@ class OpinionAndLearningTest(unittest.TestCase):
             self.assertIsNone(R._learning_model_candidate(
                 {}, "/tmp", "j", {"kind": "ping"},
                 {"exit_code": 1, "timed_out": False}, "", "err"))
+        for bad in (RuntimeError("down"), "nope", {"answer": 5}):
+            with mock.patch.object(R._learning, "learning_model_enabled",
+                                   return_value=True), \
+                    mock.patch.object(R._opinion, "model_enabled",
+                                      return_value=True), \
+                    mock.patch.object(R, "inference_config",
+                                      return_value=inf), \
+                    mock.patch.object(
+                        R, "ask_model",
+                        side_effect=bad if isinstance(bad, Exception)
+                        else None,
+                        return_value=None if isinstance(bad, Exception)
+                        else bad), \
+                    mock.patch.object(R._learning, "validate_candidate") as val:
+                self.assertIsNone(R._learning_model_candidate(
+                    {}, "/tmp", "j", {"kind": "ping"},
+                    {"exit_code": 0}, "", ""))
+            val.assert_not_called()
 
 
 class RemediationWireTest(unittest.TestCase):

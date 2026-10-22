@@ -8,6 +8,7 @@ import json
 import os
 import random
 import tempfile
+import threading
 import unittest
 from unittest import mock
 
@@ -130,6 +131,29 @@ class PrivateWriteMutations(unittest.TestCase):
             self.assertEqual(_lines(path), [json.dumps({"chmod": True})])
             with open(target, encoding="utf-8") as fh:
                 self.assertEqual(fh.read(), "keep")
+
+            path = os.path.join(d, "many.jsonl")
+            # The trim only runs past the cap. A chmod that fails
+            # there, and a temp file that cannot be created, must
+            # not drop the line that was just appended.
+            from runner.runner import _SECURITY_EVENTS_MAX
+            many = os.path.join(d, "security-events.jsonl")
+            with open(many, "w", encoding="utf-8") as fh:
+                for i in range(_SECURITY_EVENTS_MAX):
+                    fh.write(json.dumps({"n": i}) + "\n")
+            with mock.patch("os.chmod", side_effect=OSError("busy")):
+                _append_security_event(d, {"after": True})
+            with open(many, encoding="utf-8") as fh:
+                self.assertIn('"after": true', fh.read())
+            tmp = many + ".tmp." + str(os.getpid()) + "." + str(
+                threading.get_ident())
+            os.mkdir(tmp)
+            try:
+                _append_security_event(d, {"stuck": True})
+                with open(many, encoding="utf-8") as fh:
+                    self.assertIn('"stuck": true', fh.read())
+            finally:
+                os.rmdir(tmp)
 
 
 class PrivateWriteFuzzTest(unittest.TestCase):

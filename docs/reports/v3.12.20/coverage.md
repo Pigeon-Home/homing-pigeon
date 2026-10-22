@@ -528,6 +528,38 @@ quit throws, still finishes the cycle. An extension loader
 that throws is a warning. A registry that is not a map
 loads nothing.
 
+## After the determination and the dead channel
+
+Measured again the same day, on the tree that also has the
+transport-log fuzz tests. 4549 tests, OK, 22 skipped,
+367 seconds.
+
+Statements: 16872. Missed: 546. Covered: 96.8%.
+Branches: 94.5%. Together: 96.1%.
+
+| File | Before this pass | After | Missed after |
+|---|---:|---:|---:|
+| runner.py | 96.0% | 96.6% | 236 |
+
+The earlier 96.5% figure was taken before the transport-log
+fuzz commit. This number includes that commit and this pass.
+
+What this pass pins: a version 2 message that arrives while
+version 2 is off is marked seen and not answered. A
+determination is logged and not executed. A mail fetch that
+throws does not start a job. With no transport extension
+there is nothing to file. A channel list that throws is a
+warning. A channel whose fetch throws is skipped. A channel
+message that is not version 2 is not acked.
+
+A remediation digest that does not name the job as received
+is rewritten before the result goes out. A model lesson
+that throws, or that is not a sentence, is not filed. Past
+the security-event cap, a chmod that fails and a temp file
+that cannot be created leave the line that was just
+appended.
+
+
 
 
 

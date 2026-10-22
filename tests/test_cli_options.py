@@ -671,6 +671,125 @@ class Version2IngestTest(_VerbosityGuard):
         self.assertTrue(taken)
         self.assertIn("answerer model failed", out)
 
+    def test_version_2_off_marks_the_message_and_does_not_answer(self):
+        runner._set_verbosity(2)
+        q = self._question()
+        cfg = {"mailbox_user": "t@example.com", "shared_secret": SECRET}
+        imap = _IMAP()
+        imap.marked = []
+        imap.store = lambda *args: imap.marked.append(args) or ("OK", None)
+        with tempfile.TemporaryDirectory() as d:
+            with _captured_log() as buf:
+                taken = handle_v2_mail(
+                    cfg, imap, _SMTP(), 9,
+                    _mail("[HOMING-PIGEON] question " + q["msg_id"],
+                          _seal_v2(q)),
+                    "[HOMING-PIGEON] question " + q["msg_id"],
+                    runner.build_secrets(cfg), _Opts(), d)
+        self.assertTrue(taken)
+        self.assertIn("protocol_v2 is off", buf.getvalue())
+        self.assertEqual(len(imap.marked), 1)
+
+    def test_a_determination_is_logged_and_not_executed(self):
+        from runner import protocol_v2 as v2
+        det = v2.determination_for(
+            {"job_id": "j1"},
+            {"findings": [{"detail": "rm"}]})
+        taken, out = self._take(
+            self._cfg(),
+            "[HOMING-PIGEON] determination " + det["msg_id"],
+            _seal_v2(det))
+        self.assertTrue(taken)
+        self.assertIn("version 2 determination", out)
+        self.assertIn("fail", out)
+
+
+class Version2IngestPumpTest(unittest.TestCase):
+    def _cfg(self):
+        return {"mailbox_user": "t@example.com",
+                "shared_secret": SECRET, "protocol_v2": True}
+
+    def test_a_fetch_that_throws_does_not_start_a_job(self):
+        cfg = self._cfg()
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(
+                    runner, "fetch_job_mails",
+                    side_effect=OSError("down")), \
+                    _captured_log() as buf:
+                runner._v2_ingest(
+                    cfg, _IMAP(), d, {}, runner.build_secrets(cfg),
+                    _Opts())
+        self.assertIn("version 2 ingest failed", buf.getvalue())
+
+    def test_no_transport_means_nothing_to_file(self):
+        cfg = self._cfg()
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(runner, "_transports", None):
+                runner._v2_ingest(
+                    cfg, None, d, {}, runner.build_secrets(cfg),
+                    _Opts())
+
+    def test_a_channel_that_throws_is_skipped(self):
+        cfg = self._cfg()
+
+        class Msg:
+            subject = "hello there"
+            body = "nope"
+
+            def ack(self):
+                raise AssertionError("a non-version-2 mail was acked")
+
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(
+                    runner, "_enabled_transports",
+                    side_effect=[RuntimeError("no"), ["file"]]), \
+                    _captured_log() as buf:
+                runner._v2_ingest(
+                    cfg, None, d, {}, runner.build_secrets(cfg),
+                    _Opts())
+            self.assertIn("version 2 ingest failed", buf.getvalue())
+            with mock.patch.object(
+                    runner, "_enabled_transports", return_value=["file"]), \
+                    mock.patch.object(
+                        runner._transports, "fetch_channel_messages",
+                        side_effect=OSError("closed")), \
+                    _captured_log() as buf:
+                runner._v2_ingest(
+                    cfg, None, d, {}, runner.build_secrets(cfg),
+                    _Opts())
+            self.assertIn("ingest file failed", buf.getvalue())
+            with mock.patch.object(
+                    runner, "_enabled_transports", return_value=["file"]), \
+                    mock.patch.object(
+                        runner._transports, "fetch_channel_messages",
+                        return_value=[Msg()]):
+                runner._v2_ingest(
+                    cfg, None, d, {}, runner.build_secrets(cfg),
+                    _Opts())
+
+
+class DigestRewriteTest(_VerbosityGuard):
+    def test_a_remediation_digest_is_rewritten_to_the_job_as_received(self):
+        job = {"v": 1, "type": "job", "job_id": "rem1",
+               "issued_at": _now(), "kind": "ping"}
+        raw = _mail("[HOMING-PIGEON] job rem1", _encrypted_body_for(job))
+        cfg = {"mailbox_user": "t@example.com", "shared_secret": SECRET}
+        seen = {}
+
+        def execute_job(_cfg, _job, _base):
+            return {"exit_code": 0, "stdout": "", "stderr": "",
+                    "duration_sec": 0.0,
+                    "remediation": {"received_digest": "stale"}}
+
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(runner, "execute_job", execute_job), \
+                    mock.patch.object(
+                        runner._remediation, "fix_marker_digest") as fix:
+                handle_mail(cfg, _IMAP(), _SMTP(), 1, raw, d, seen,
+                            runner.build_secrets(cfg), _Opts())
+        self.assertTrue(fix.called)
+        self.assertNotEqual(fix.call_args[0][2], "stale")
+
 
 class PollCloseTest(unittest.TestCase):
     def test_a_logout_and_a_quit_that_fail_do_not_fail_the_poll(self):
