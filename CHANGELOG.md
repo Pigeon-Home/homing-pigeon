@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.14 - 2026-10-21
+
+- **Release.** Same code as 3.12.13.
+
 ## 3.12.13 - 2026-10-21
 
 - **A skipped test has to say why.** Every skip reason in the
