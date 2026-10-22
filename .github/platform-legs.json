@@ -165,6 +165,41 @@
    "platform": "linux/riscv64"
   },
   {
+   "name": "debian-12-arm64-qemu",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "debian:bookworm-slim",
+   "platform": "linux/arm64"
+  },
+  {
+   "name": "ubuntu-22.04-arm64-qemu",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "ubuntu:22.04",
+   "platform": "linux/arm64"
+  },
+  {
+   "name": "alpine-3-armv7-qemu",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "alpine:3",
+   "platform": "linux/arm/v7"
+  },
+  {
+   "name": "ros-humble-arm64-qemu",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "ros:humble-ros-base",
+   "platform": "linux/arm64"
+  },
+  {
+   "name": "ros-jazzy-arm64-qemu",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "ros:jazzy-ros-base",
+   "platform": "linux/arm64"
+  },
+  {
    "name": "fatfinger-no-home",
    "tier": "full",
    "runner": "ubuntu-latest",
