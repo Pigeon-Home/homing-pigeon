@@ -15,9 +15,12 @@
 # HP_SRC   where the tree is (default: the directory above tools/)
 # HP_WORK  a writable scratch dir (default: a fresh one under $TMPDIR)
 # HP_MUTATION  none | no-bash | no-home | path-minimal | c-locale |
-#              umask-077 | closed-stdin   (noexec-tmp and readonly-root
-#              are container flags the workflow applies; the script
-#              just runs under them)
+#              umask-077 | closed-stdin | drop-in
+#              (noexec-tmp and readonly-root are container flags the
+#              workflow applies; the script just runs under them.
+#              drop-in is the stripped surroundings in
+#              docs/drop-in-hypothetical.md, and it also runs
+#              tests/test_drop_in.py)
 set -eu
 
 # Any failure before the verdict step still names itself.
@@ -89,6 +92,14 @@ case "$MUT" in
   c-locale)     export LANG=C LC_ALL=C; unset LANGUAGE 2>/dev/null || true ;;
   umask-077)    umask 077 ;;
   closed-stdin) exec </dev/null ;;
+  drop-in)
+    # The interpreter already in hand, and nothing else. No home,
+    # stdin closed. This is a surrounding, not a way into one.
+    py=$(command -v python3)
+    unset HOME
+    export HOME=/nonexistent
+    export PATH="$(dirname "$py"):/usr/bin:/bin"
+    exec </dev/null ;;
   *) say "unknown HP_MUTATION '$MUT'"; exit 4 ;;
 esac
 say "mutation: $MUT"
@@ -96,5 +107,7 @@ say "mutation: $MUT"
 # ---- 5. run, and demand a full OK ------------------------------------
 STAGE="proof"
 export HP_PLATFORM_PROOF=1 HP_MUTATION="$MUT" PYTHONDONTWRITEBYTECODE=1
-python3 -m unittest tests.test_platform_proof -v 2>&1 | tee "$WORK/proof.log" || true
+mods="tests.test_platform_proof"
+if [ "$MUT" = "drop-in" ]; then mods="$mods tests.test_drop_in"; fi
+python3 -m unittest $mods -v 2>&1 | tee "$WORK/proof.log" || true
 python3 tools/skip_guard.py "$WORK/proof.log" --no-skips --require-ok --annotate

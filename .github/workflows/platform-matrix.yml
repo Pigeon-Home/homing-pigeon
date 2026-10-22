@@ -15,7 +15,10 @@ name: platform-matrix
 # on an older Raspberry Pi, i386, ppc64le, s390x, riscv64); BSD VMs;
 # and the ordinary administrator fat-fingers applied to a known-good
 # base (bash removed, no $HOME, a minimal PATH, the C locale, umask
-# 077, a noexec /tmp, a read-only root, a closed stdin).
+# 077, a noexec /tmp, a read-only root, a closed stdin), and one
+# stripped drop-in (drop-in-stripped: read-only root, no home, PATH
+# holds only the interpreter, stdin closed). The hypothetical that
+# leg stands for is docs/drop-in-hypothetical.md. It is not an exploit.
 #
 # The corpus is .github/platform-legs.json (one entry per leg, with a
 # tier). The plan job filters it -- core legs on every push and PR, the
