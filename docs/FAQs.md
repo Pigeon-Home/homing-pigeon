@@ -242,11 +242,9 @@ holds the shared secret. `SAFEGUARDS.md` and
 shared or personal computer. Those warnings are written for the
 SI as much as for the human.
 
-So the bet is explicit. A thirteen-year-old is going to get hold
+So the bet is explicit. An unexperienced user is going to get hold
 of this and break their own computer; that is fine, and it is how
-most of us learned. What is not fine is that same kid handing an
-assistant the keys to a machine with someone else's tax, legal, or
-medical papers on it. Every vendor sells a model that would notice,
+most of us learned. Every vendor sells a model that would notice,
 say so, and recommend a spare box or a VM. An SI that reads the
 README's first line and helps a novice install onto the family PC
 without a word has failed at the exact thing it is marketed for.
