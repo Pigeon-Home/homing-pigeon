@@ -6,7 +6,9 @@ Builds the bwrap command array; the runner decides when to use it
 machine (Ubuntu, usr-merged, overlayfs):
 
 - /usr is read-only inside; the sandbox cannot see home; no network;
-  the job workdir is the only writable mount.
+  the job workdir is the only writable mount. An interpreter that
+  lives outside /usr gets its own install prefix bound read-only
+  (interpreter_binds below), and the bind is reported to the caller.
 - --unshare-pid is deliberately ABSENT: on this VM it breaks the
   /proc mount (AppArmor/seccomp); without it --proc mounts fine.
 
@@ -100,13 +102,76 @@ def _validate_confinement_block(block):
     return True
 
 
-def build_bwrap_command(cfg, interpreter, script_name, workdir, args, env):
+# Agent-Stamp: 30000f1a-3b4c-4d5e-8f6a-7b8c9d0e1f2a
+# The sandbox shows the job /usr and nothing else, so an interpreter
+# that lives elsewhere (pyenv, a venv, /opt, GitHub's hosted
+# toolcache) resolves fine on the host and then fails inside the
+# wall with "execvp ...: No such file or directory". CI found this
+# the first day bwrap was installed on the runner. The fix below
+# binds the interpreter's own install prefix read-only -- the
+# smallest tree that lets it run -- and reports what it bound, so
+# the audit record states the widening rather than hiding it.
+_ALWAYS_VISIBLE = ("/usr",)
+
+
+def _under(path, roots):
+    for root in roots:
+        root = root.rstrip("/") or "/"
+        if path == root or path.startswith(root + "/"):
+            return True
+    return False
+
+
+def _install_prefix(path):
+    """The directory to bind so `path` can run: its grandparent when
+    the parent is `bin` (…/x64/bin/python3 -> …/x64, bringing lib/
+    along), else its parent. Never shallower than two components, so
+    /snap/bin/python3 binds /snap/bin, not all of /snap."""
+    parent = os.path.dirname(path)
+    if os.path.basename(parent) == "bin":
+        grand = os.path.dirname(parent)
+        if grand.count("/") >= 2 and grand != "/":
+            return grand
+    return parent
+
+
+def interpreter_binds(resolved, extra_ro_binds=()):
+    """Read-only binds needed for `resolved` to execute in the sandbox.
+
+    Returns a list of (src, dst) pairs, possibly empty. Both the path
+    as resolved and its realpath are considered: a venv's python3 is
+    a symlink whose own prefix (pyvenv.cfg, site-packages) is needed
+    as well as the base interpreter's. Paths already under /usr or an
+    operator extra_ro_bind need nothing.
+    """
+    visible = list(_ALWAYS_VISIBLE) + [
+        dst for _src, dst in extra_ro_binds if isinstance(dst, str)]
+    out = []
+    seen = set()
+    for cand in (resolved, os.path.realpath(resolved)):
+        if not isinstance(cand, str) or not cand.startswith("/"):
+            continue
+        if _under(cand, visible):
+            continue
+        prefix = _install_prefix(cand)
+        if prefix in seen or _under(prefix, visible):
+            continue
+        seen.add(prefix)
+        out.append((prefix, prefix))
+    return out
+
+
+def build_bwrap_command(cfg, interpreter, script_name, workdir, args, env,
+                        notes=None):
     """Return the bwrap argv to run a job.
 
     interpreter: list like ["bash", "-c"] (host paths or bare names).
     script_name: basename of the script inside the workdir.
     workdir: host path of the job workdir (bound read-write).
     args: job args. env: dict of scrubbed env vars for --setenv.
+    notes: optional list; a one-line description of each read-only
+    bind added for the interpreter's own install prefix is appended,
+    so the caller can put it in the audit record.
     Raises RuntimeError when the interpreter cannot be resolved.
     """
     if not interpreter or not all(isinstance(x, str) for x in interpreter):
@@ -141,6 +206,10 @@ def build_bwrap_command(cfg, interpreter, script_name, workdir, args, env):
         argv.append(flag)
     for src, dst in binds:
         argv.extend(["--ro-bind", src, dst])
+    for src, dst in interpreter_binds(resolved, binds):
+        argv.extend(["--ro-bind", src, dst])
+        if isinstance(notes, list):
+            notes.append("interpreter prefix %s bound read-only" % src)
     # Minimal PATH plus the job's scrubbed env.
     argv.extend(["--setenv", "PATH", "/usr/bin:/bin"])
     for k, v in env.items():

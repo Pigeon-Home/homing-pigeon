@@ -35,13 +35,17 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -c requirements-ci.txt hypothesis
-      # The bwrap sandbox proofs (EnforceTest) need bubblewrap on
-      # the runner. Installing it turned the suite red in ways the
-      # proxy-blocked logs could not show; the install and the
-      # --forbid "bwrap not available" return together once the
-      # failure is understood (diagnosed on a PR branch with
-      # failing-test annotations). Until then the skip guard lists
-      # every skip -- visible in the step output -- and forbids none.
+      # bwrap is what the Linux sandbox is built on. Without it the
+      # EnforceTest proofs in tests/test_confinement.py skip and
+      # "the sandbox walls the job in" is never shown in CI. The
+      # runner's userns works out of the box (probed on PR #87); the
+      # sysctl is a belt for Ubuntu images that gate it.
+      - name: install bubblewrap (the Linux sandbox)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --version
       # The -v log is kept so the next step can read the skips.
       # pipefail: the suite's own exit code is the step's.
       - name: run the suite
@@ -49,8 +53,10 @@ jobs:
         run: python -m unittest discover -s tests -t . -v 2>&1 | tee test-output.log
       # A skipped proof is green from the outside. On this box the
       # sandbox proofs must run; any other skip is listed, not fatal.
-      - name: list every skip (none forbidden yet)
-        run: python tools/skip_guard.py test-output.log
+      # A skipped proof is green from the outside. On this box the
+      # sandbox proofs must run; any other skip is listed, not fatal.
+      - name: no silent skips of must-run proofs
+        run: python tools/skip_guard.py test-output.log --forbid "bwrap not available"
 
   typecheck:
     needs: test
