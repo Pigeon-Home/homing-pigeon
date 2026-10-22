@@ -2,10 +2,45 @@
 
 This report belongs to package 3.12.20. The previous measurement is
 [v3.11.1](../v3.11.1/coverage.md). No new tag was cut for this
-measurement. The tree measured is main at baddf66 (`Update FAQs.md`).
-The package version in that tree is 3.12.20.
+measurement. The chart below is where this report started, on main
+at baddf66. The status after it is the current tree.
+
+## Current status
+
+Measured on main at b529730 (`tests: file a determination and skip a
+dead channel`). 4549 tests, OK, 22 skipped. 367 seconds.
+
+| | Covered | Missed | Total |
+|---|---:|---:|---:|
+| Statements | 96.8% | 546 | 16872 |
+| Branches | 94.5% | | |
+| Statements and branches | 96.1% | | |
+
+The files still under 96%, by statements:
+
+| File | Covered | Missed |
+|---|---:|---:|
+| transport_extensions/dtls/__main__.py | 74.2% | 42 |
+| transport_extensions/email/__main__.py | 74.4% | 32 |
+| transport_extensions/nats/__main__.py | 77.5% | 47 |
+| resources.py | 92.5% | 14 |
+| oauth.py | 92.9% | 15 |
+| auditreport.py | 93.5% | 15 |
+| security.py | 93.5% | 15 |
+| mailbox.py | 94.1% | 11 |
+| dri.py | 94.9% | 20 |
+| detection.py | 95.6% | 8 |
+
+runner.py, the largest file, is 96.6% (236 missed of 6908). The
+three extension programs at 74–78% are the floor. They open a
+socket or a broker, and the passes above this status did not
+invent one. What is left in the other files is mostly a platform
+branch this Linux tree cannot run (the Windows pid check, the
+Windows file lock) or a second attempt that cannot fail once the
+first attempt has already turned the value into text.
 
 ## Text chart
+
 
 Statement coverage, 40 cells, one cell is 2.5 points.
 
