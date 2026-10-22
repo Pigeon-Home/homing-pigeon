@@ -183,7 +183,16 @@ Which upstream each shipped feed carries:
 Your own extension may name an upstream the same way. A manifest
 without the field is unchanged, and a runner that predates the
 field refuses it by name -- so add it only once the agent you
-target is at least 3.12.51.
+target is at least 3.12.52.
+
+Beside the manifest block, each shipped feed also carries a
+provenance bundle: `upstream.json` names the upstream, its license,
+and its pinned commit, and `tools/vendor_upstreams.py` keeps that
+upstream's license text and an `UPSTREAM-PROVENANCE.json` (a SHA-256
+per file and over the whole bundle) in
+`<extension>/provenance/<name>/`. The build's offline `verify`
+fails on a hand-edited bundle, a pin bumped without a re-vendor, or
+a bundle past its 5 MB cap.
 
 ## Three version numbers
 
@@ -400,12 +409,23 @@ Extensions fail closed and fail quiet:
 
 This section applies to both kinds, `sense` and `transport`.
 
+It is the third of three ways an extension names another
+project, and each has its own job. The manifest's `upstream`
+block (above) keeps the few files that define a feed's format in
+this tree, where the drift tests read them at build time. The
+provenance bundle (`upstream.json`, above) keeps each upstream's
+license and pinned commit in the tree. `sources.json` (here)
+names what the box itself should fetch for its Oracle — whole
+source archives, specifications, the extension's own code — and
+none of that ships.
+
 The Oracle reasons better about a signal, a failure, or a pipe
 when it can read the code behind it — and the upstream project
-that code wraps, and the specification it speaks. So whenever a
-local model runs the Oracle (the default; "Owner settings"
-below), the first time the agent runs an extension (loads a
-sense, starts a transport), it gives the Oracle that material:
+that code wraps, and the specification it speaks. So on every
+box — a Pi Light with no model included, unless its owner says
+otherwise ("Owner settings" below) — the first time the agent
+runs an extension (loads a sense, starts a transport), it gives
+the Oracle that material:
 
 - **Its installed code.** Your extension folder as installed,
   declared or not. A folder inside the state dir (the default
@@ -564,10 +584,10 @@ pass at once):
 
 | Value | Meaning |
 |-------|---------|
-| `"auto"` (default) | Fetch when a local model runs the Oracle. A deterministic (Pi Light) box with no model fetches nothing and writes nothing. |
-| `true` | Always fetch. |
+| `true` (default) | Fetch on every box. A Pi Light box with no model fetches too: the sources are there for the owner to read, and for the Oracle the day the box runs a model. |
+| `"auto"` | Fetch only when a local model runs the Oracle. A deterministic box then fetches nothing and writes nothing. |
 | `false` | Never fetch. |
-| an object | `{"fetch": "auto" / true / false, "oracle": "provide" / "withhold", "max_mb": 512, "extensions": {"<name>": {"fetch": true / false, "oracle": "provide" / "withhold"}}}` — the same switch, the owner's lines of the disclosure rule, the disk budget in megabytes (default 512), and per-extension overrides. |
+| an object | `{"fetch": true / "auto" / false, "oracle": "provide" / "withhold", "max_mb": 512, "extensions": {"<name>": {"fetch": true / false, "oracle": "provide" / "withhold"}}}` — the same switch, the owner's lines of the disclosure rule, the disk budget in megabytes (default 512), and per-extension overrides. |
 
 ### Where it lands, and how to look
 
@@ -585,7 +605,7 @@ pass at once):
 no network. `homing-pigeon --fetch-sources` runs a pass in the
 foreground now, retries what failed without waiting out its
 backoff, and prints what happened. Asking counts as wanting it:
-`"auto"` fetches there even with no model, and only `false`
+even `"auto"` fetches there with no model, and only `false`
 (overall, or for that extension) stops it. To refetch one entry,
 delete its folder. A box with no way out can be seeded: copy
 `extension-sources/` from a connected box running the same

@@ -8,7 +8,7 @@
       "license": "GPL-2.0-only",
       "github": "wazuh/wazuh",
       "ref": "latest",
-      "tag_match": "^v\\d+\\.\\d+\\.\\d+$",
+      "tag_match": "^v4\\.\\d+\\.\\d+$",
       "files": [
         "src/analysisd/format/to_json.c",
         "LICENSE"

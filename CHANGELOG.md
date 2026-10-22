@@ -24,6 +24,29 @@ facts a reader may need to cite. Git history carries the rest.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
+- **Every extension brings its own code for the Oracle.** The first
+  time the agent loads a sense or starts a transport, it gives the
+  Oracle the extension's installed code and fetches, in the
+  background, what its optional `sources.json` declares: its
+  published source, the upstream project it wraps, the specs it
+  speaks. On every box by default, a Pi Light with no model
+  included (`extension_sources`). The release job pins every
+  declared upstream (`project/EXTENSION-SOURCES.lock.json`) and a
+  box refuses bytes that differ. A written disclosure rule decides
+  what the Oracle sees: provide by default, withhold when the owner
+  (or the author) says so. `--inspect sources`, `--fetch-sources`.
+  `docs/extensions.md`, "Sources".
+- **pip installs get their transports.** The wheel now carries each
+  shipped transport's `extension.json`; the 3.12.50 wheel had none,
+  so a pip install discovered no transport at all.
+- **Provenance bundles.** Each feed's `upstream.json` keeps its
+  upstream's license and pinned commit under
+  `<extension>/provenance/<name>/`, verified offline in the build
+  (`tools/vendor_upstreams.py`). The folder is `provenance/`, not
+  `upstream/`, so the format files' nightly fetch cannot delete it.
+
+<!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
+
 ## 3.12.51 - 2026-10-22
 
 - **Windows Oracle asks no longer get dropped.** The chat

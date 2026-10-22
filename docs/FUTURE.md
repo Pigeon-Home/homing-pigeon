@@ -334,6 +334,17 @@
   that matches the running daemon. Source cards (names,
   versions, licenses -- never content) in the `senses` answer, so
   a cloud SI knows what the box's Oracle can read.
+- One declaration, not three. Since 2026-10-22 three files name the
+  same eight upstreams, each written by a different pass and each
+  with its own tool, pins, and checks: the manifest's `upstream`
+  block (tools/fetch_upstream.py, format files in
+  `<extension>/upstream/`, the drift tests, the nightly bump),
+  `upstream.json` (tools/vendor_upstreams.py, licenses in
+  `<extension>/provenance/`), and `sources.json` (runner/extsources.py,
+  fetched on the box). They agree today and drift apart the first
+  time one is bumped without the others. Open: which one is the
+  source of truth, and whether the other two are generated from
+  it. Until then a pin bump touches all three.
 
 ## The hardware
 

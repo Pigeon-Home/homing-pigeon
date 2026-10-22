@@ -505,20 +505,21 @@ _PER_EXTENSION_FIELDS = ("fetch", "oracle")
 def owner_policy(cfg, model_oracle=True) -> dict:
     """The owner's extension_sources setting, normalized.
 
-    Accepted shapes: absent or "auto" (fetch when a local model runs
-    the Oracle), true, false, or an object with fetch, oracle,
-    max_mb, and per-extension overrides. A malformed setting fails
-    closed: valid False, nothing fetched, everything withheld.
+    Accepted shapes: absent or true (fetch on every box, a Pi Light
+    with no model included: the default), "auto" (fetch only when a
+    local model runs the Oracle), false, or an object with fetch,
+    oracle, max_mb, and per-extension overrides. A malformed setting
+    fails closed: valid False, nothing fetched, everything withheld.
     """
-    raw = cfg.get("extension_sources", "auto") if isinstance(cfg, dict) \
-        else "auto"
-    pol: dict = {"valid": True, "problem": None, "fetch": "auto",
-           "oracle": "provide", "max_bytes": DEFAULT_BUDGET_MB * _MB,
-           "extensions": {}, "model_oracle": bool(model_oracle),
-           "enabled": False}
+    raw = cfg.get("extension_sources", True) if isinstance(cfg, dict) \
+        else True
+    pol: dict = {"valid": True, "problem": None, "fetch": True,
+                 "oracle": "provide", "max_bytes": DEFAULT_BUDGET_MB * _MB,
+                 "extensions": {}, "model_oracle": bool(model_oracle),
+                 "enabled": False}
     try:
         if raw is None or raw == "auto" or isinstance(raw, bool):
-            obj = {"fetch": "auto" if raw is None else raw}
+            obj = {"fetch": True if raw is None else raw}
         elif isinstance(raw, dict):
             obj = raw
         else:
@@ -527,7 +528,7 @@ def owner_policy(cfg, model_oracle=True) -> dict:
         if unknown:
             raise ValueError(f"unknown field(s) {', '.join(unknown)} "
                              f"(known: {', '.join(_POLICY_FIELDS)})")
-        fetch = obj.get("fetch", "auto")
+        fetch = obj.get("fetch", True)
         if not isinstance(fetch, bool) and fetch != "auto":
             raise ValueError('fetch must be true, false, or "auto"')
         oracle = obj.get("oracle", "provide")

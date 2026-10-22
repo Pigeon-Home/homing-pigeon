@@ -5569,8 +5569,8 @@ def _report_extension_sources(cfg, base_dir) -> None:
             % (policy["max_bytes"] // (1 << 20), _extsources.STATE_DIRNAME,
                _extsources.INDEX_FILE))
     elif policy["fetch"] == "auto":
-        log("extension sources: off -- no local model runs the Oracle "
-            "(set extension_sources to true to fetch anyway)")
+        log("extension sources: off -- extension_sources is \"auto\" "
+            "and no local model runs the Oracle (true fetches anyway)")
     else:
         log("extension sources: off (extension_sources is false)")
 
@@ -5589,8 +5589,8 @@ def run_fetch_sources(cfg, args, fetcher=None) -> int:
     """--fetch-sources: one provisioning pass in the foreground.
 
     Retries what failed without waiting out its backoff and prints
-    what happened. Asking counts as wanting it: "auto" fetches here
-    even with no local model, and only extension_sources false (or a
+    what happened. Asking counts as wanting it: even "auto" fetches
+    here with no local model, and only extension_sources false (or a
     per-extension fetch false) still stops it.
     """
     if _extsources is None:

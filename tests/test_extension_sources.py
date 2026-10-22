@@ -468,11 +468,19 @@ class ShippedDeclarationsTest(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class PolicyTest(unittest.TestCase):
-    def test_auto_follows_the_model(self):
+    def test_every_box_fetches_by_default_and_auto_follows_the_model(self):
+        # The owner's call (2026-10-22): a Pi Light box with no model
+        # fetches too. "auto" is the opt-in for model-only fetching.
         self.assertTrue(X.owner_policy({}, model_oracle=True)["enabled"])
-        self.assertFalse(X.owner_policy({}, model_oracle=False)["enabled"])
+        self.assertTrue(X.owner_policy({}, model_oracle=False)["enabled"])
         self.assertTrue(X.owner_policy({"extension_sources": True},
                                        model_oracle=False)["enabled"])
+        self.assertTrue(X.owner_policy({"extension_sources": "auto"},
+                                       model_oracle=True)["enabled"])
+        self.assertFalse(X.owner_policy({"extension_sources": "auto"},
+                                        model_oracle=False)["enabled"])
+        self.assertFalse(X.owner_policy({"extension_sources": {
+            "fetch": "auto"}}, model_oracle=False)["enabled"])
         self.assertFalse(X.owner_policy({"extension_sources": False},
                                         model_oracle=True)["enabled"])
         pol = X.owner_policy({"extension_sources": {"max_mb": 10}})
@@ -978,6 +986,13 @@ class ProvisionTest(_Base):
         self.assertEqual(code["project"]["items"]["runner/mailbox.py"],
                          "project/runner/mailbox.py")
 
+    def test_a_pi_light_box_fetches_under_the_default(self):
+        write_ext(self.ext, upstream_decl())
+        rep = self.run_pass(policy=self.policy(
+            {"oracle_mode": "deterministic"}, model=False))
+        self.assertTrue(rep["ran"])
+        self.assertEqual(self.state()["entries"]["up"]["status"], "fetched")
+
     def test_fetch_off_for_one_extension_fetches_nothing(self):
         write_ext(self.ext, upstream_decl())
         pol = self.policy({"extension_sources": {
@@ -989,9 +1004,10 @@ class ProvisionTest(_Base):
                          {"off"})
         self.assertIsNone(st["installed"])
 
-    def test_a_box_without_a_model_is_left_untouched(self):
+    def test_auto_leaves_a_box_without_a_model_untouched(self):
         write_ext(self.ext, upstream_decl())
-        rep = self.run_pass(policy=self.policy(model=False))
+        rep = self.run_pass(policy=self.policy(
+            {"extension_sources": "auto"}, model=False))
         self.assertFalse(rep["ran"])
         self.assertFalse(os.path.exists(os.path.join(self.base,
                                                      X.STATE_DIRNAME)))
@@ -1370,7 +1386,7 @@ class DocsTest(unittest.TestCase):
 
     def test_the_example_config_documents_the_key(self):
         cfg = json.loads(self.read("runner", "config.example.json"))
-        self.assertEqual(cfg["extension_sources"], "auto")
+        self.assertIs(cfg["extension_sources"], True)
         self.assertIn("docs/extensions.md", cfg["_extension_sources"])
 
 
