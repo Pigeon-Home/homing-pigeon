@@ -262,3 +262,59 @@ What happens next is on them -- and on the vendor who said their
 model could handle it.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+## What can I actually use this for?
+
+Anything with a processor, a job worth doing, and a network that is
+slow, flaky, or absent. A few that show the shape:
+
+**Plug in a soil monitor and hand the SI the whole job.** Install the
+runner on a Raspberry Pi in the barn and the software side is done:
+the installer detects the Pi and applies Pi Light by itself, with no
+model to download. Wire in a soil-moisture sensor and give your SI a
+broad task — "read this sensor every hour and tell me when the beds
+need water." The SI writes the driver, runs it, reads the failure,
+fixes it, and iterates, all through signed jobs. A cellular link that
+drops for a day just means the jobs wait in the mailbox.
+
+**Fermentation, growing rooms, and small bioreactors.** Homebrewers,
+mushroom and microgreen growers, cheesemakers, and the technicians in
+an agriculture or food-science lab can let an SI iterate on the
+scripts that hold a temperature or a humidity band. Remediation is the
+safety net: a job that storms processes or escapes its workspace is
+killed and its outputs are quarantined, moved and never deleted, until
+you release them (`docs/design/remediation-design.md`).
+
+**Field equipment across an air gap.** The file transport turns the
+protocol into an auditable sneakernet. `send_job.py new --to-file`
+writes a signed, encrypted job to a file; someone carries it on a USB
+stick into a watched folder on a machine with no network at all; the
+result lands in the outbox as `<job_id>.result.txt` and rides back the
+same way. Vehicle and generator diagnostics, maintenance and logistics
+boxes in disaster zones or remote sites: with `max_result_view` set to
+`attested`, only pass/fail, digests, and signed claims leave the box,
+never the raw logs (`docs/TRANSPORTS.md`, PROTOCOL.md section 9).
+
+**A data clean room, lite.** A researcher's script runs against data
+that never leaves the machine, such as a clinic's records or a lab's
+unpublished results. They get attestations ("exit zero", "no secrets
+in the output", an output digest) and, with a local model, plain-
+English `ask` answers that are truncated, secret-scanned, and redacted
+before they are sent. The owner's ceiling caps what any job can see,
+and a per-job privacy budget caps how much it can learn by asking
+(PROTOCOL.md sections 9-11).
+
+**Make a new model prove itself on real hardware.** Put a servo board
+on a Pi and tell the SI to balance an inverted pendulum. It has to
+write the firmware, flash it, read the sensors, and debug the hardware
+into motion through signed jobs, with the results coming back each
+round. It is the fastest honest benchmark there is for whether a model
+can operate, not just talk.
+
+And for the box that cannot decide on its own: with protocol version
+2 turned on, a Pi Light runner can send the question it would have
+asked a model up to a laptop or a cloud SI, and the answer rides back
+on the result without ever holding the job past its deadline (30
+seconds at most; `docs/ietf/draft-homing-pigeon-v2-00.md`).
+
+Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854
