@@ -51,7 +51,28 @@ if ! command -v python3 >/dev/null 2>&1; then
     [ -x "$cand" ] && ln -sf "$cand" /usr/local/bin/python3 && break
   done
 fi
-say "python3: $(command -v python3) $(python3 -c 'import platform;print(platform.python_version())')"
+# ---- 1b. the floor: pyproject says >= 3.9. Leap 15 and EL8 ship a
+# system python3 of 3.6 and carry the supported interpreter as a
+# separate package; the matrix found both. Install it, then pick
+# the newest python3.X on PATH. Below the floor is a stated stop.
+STAGE="python floor"
+_floor_ok() { "$1" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' 2>/dev/null; }
+PY=$(command -v python3)
+if ! _floor_ok "$PY"; then
+  say "system python3 is $($PY -c 'import platform;print(platform.python_version())') -- below the 3.9 floor; installing a supported one"
+  if   command -v zypper >/dev/null 2>&1; then zypper -n -q install python311 || zypper -n -q install python310 || true
+  elif command -v dnf    >/dev/null 2>&1; then dnf install -y -q python3.11 || dnf install -y -q python3.9 || dnf install -y -q python39 || true
+  elif command -v yum    >/dev/null 2>&1; then yum install -y -q python3.11 || yum install -y -q python39 || true
+  elif command -v apt-get >/dev/null 2>&1; then apt-get install -y -qq --no-install-recommends python3.11 >/dev/null 2>&1 || true
+  fi
+  for cand in python3.13 python3.12 python3.11 python3.10 python3.9; do
+    if command -v "$cand" >/dev/null 2>&1 && _floor_ok "$(command -v "$cand")"; then PY=$(command -v "$cand"); break; fi
+  done
+  _floor_ok "$PY" || { say "no Python >= 3.9 could be installed on this box"; exit 5; }
+fi
+# Absolute path on purpose: the path-minimal fat-finger strips PATH
+# for the runner and its jobs, and must not strip the test launcher.
+say "python: $PY $($PY -c 'import platform;print(platform.python_version())')"
 
 # ---- 2. FIPS (opt-in): force the OpenSSL FIPS provider ----------------
 STAGE="fips"
@@ -60,7 +81,7 @@ if [ "${HP_FIPS:-0}" = 1 ]; then
   command -v microdnf >/dev/null 2>&1 && microdnf install -y openssl openssl-fips-provider >/dev/null 2>&1 || true
   export OPENSSL_FORCE_FIPS_MODE=1
   command -v openssl >/dev/null 2>&1 && openssl list -providers 2>&1 | sed 's/^/   /' || true
-  python3 - <<'PY'
+  "$PY" - <<'PY'
 import hashlib, hmac
 hmac.new(b"k", b"m", hashlib.sha384).hexdigest()
 try:
@@ -96,5 +117,5 @@ say "mutation: $MUT"
 # ---- 5. run, and demand a full OK ------------------------------------
 STAGE="proof"
 export HP_PLATFORM_PROOF=1 HP_MUTATION="$MUT" PYTHONDONTWRITEBYTECODE=1
-python3 -m unittest tests.test_platform_proof -v 2>&1 | tee "$WORK/proof.log" || true
-python3 tools/skip_guard.py "$WORK/proof.log" --no-skips --require-ok --annotate
+"$PY" -m unittest tests.test_platform_proof -v 2>&1 | tee "$WORK/proof.log" || true
+"$PY" tools/skip_guard.py "$WORK/proof.log" --no-skips --require-ok --annotate

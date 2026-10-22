@@ -25,6 +25,17 @@ docker run -d --name pigeon --restart unless-stopped \
 No Python, no git, nothing else. See [DOCKER.md](docs/archive/DOCKER.md) for
 dry-run mode, config options, and updating.
 
+### The Python floor on older enterprise distributions
+
+The runner needs Python 3.9 or newer (`requires-python` in
+`pyproject.toml`). openSUSE Leap 15 and RHEL/AlmaLinux/Rocky 8
+ship a system `python3` of 3.6 and carry a supported interpreter as
+a separate package -- `zypper install python311` or `dnf install
+python3.11` -- so run the installer with that interpreter
+(`python3.11 install.py`). Rocky/Alma 9, Debian 11+, Ubuntu 22.04+,
+Fedora, Amazon Linux 2023 and Alpine 3 ship 3.9 or newer already.
+The platform matrix proves each of these.
+
 ## 2. pip (best for Raspberry Pi)
 
 **Install:**
