@@ -47,16 +47,24 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
           bwrap --version
       # The -v log is kept so the next step can read the skips.
-      # pipefail: the suite's own exit code is the step's.
+      # pipefail: the suite's own exit code is the step's. A bare
+      # `shell: bash` drops the runner's default pipefail, and then
+      # tee's success hides a red suite.
       - name: run the suite
-        shell: bash
-        run: python -m unittest discover -s tests -t . -v 2>&1 | tee test-output.log
+        run: |
+          set -o pipefail
+          python -m unittest discover -s tests -t . -v 2>&1 | tee test-output.log
       # A skipped proof is green from the outside. On this box the
       # sandbox proofs must run; any other skip is listed, not fatal.
-      # A skipped proof is green from the outside. On this box the
-      # sandbox proofs must run; any other skip is listed, not fatal.
+      # --annotate is the piece worth keeping from diag/bwrap-suite:
+      # the failing test and its exception become check annotations,
+      # readable when the log is not. The one-off bwrap probes on
+      # that branch are not kept. A step that is told to keep going
+      # after a failure shows up as a pass, and that is how the
+      # sandbox diagnosis read a red probe as green.
       - name: no silent skips of must-run proofs
-        run: python tools/skip_guard.py test-output.log --forbid "bwrap not available"
+        if: always()
+        run: python tools/skip_guard.py test-output.log --forbid "bwrap not available" --annotate
 
   typecheck:
     needs: test
