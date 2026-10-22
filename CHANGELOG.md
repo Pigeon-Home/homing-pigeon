@@ -4,6 +4,15 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.26 - 2026-10-22
+
+- **CI.** A push runs the plentiful proofs only. macOS,
+  Windows, and ARM hosted runners, and the board legs, run
+  nightly. Binary jobs start beside the suite. The release
+  still waits for the suite and for every artifact. The
+  reasoning is `docs/design/ci-runtime.md`. No change to
+  what the runner does.
+
 ## 3.12.25 - 2026-10-22
 
 - **More boards, same push.** The nightly platform proof now
