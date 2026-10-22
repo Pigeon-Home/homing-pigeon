@@ -43,7 +43,7 @@ It could even work as a marketable service.
   containment. AppArmor and SELinux profiles live under `hardening/`
   and are opt-in. They are not installed for you.
 - Every new sense, transport, and job kind added to this project
-  widens the blast radius. `docs/roadmap-spec.md` is exciting and
+  widens the blast radius. `docs/archive/roadmap-spec.md` is exciting and
   dangerous in exactly equal measure; build the gates (§3) before
   the hands (§1.3).
 

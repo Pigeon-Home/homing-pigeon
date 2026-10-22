@@ -3990,7 +3990,7 @@ def _staged_dest(work, name):
 
 
 # ---------------------------------------------------------------- remediation
-# The acts are core (docs/remediation-design.md): only the runner
+# The acts are core (docs/design/remediation-design.md): only the runner
 # holds the process tree, the workdir, and the result channel.
 # runner/remediation.py holds the policy; the glue below wires
 # the live probes in. Everything here is best-effort: a broken
@@ -4459,7 +4459,7 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         # Missing binary, a null in argv, or an unusable interpreter
         # fails the same way every cycle. Poison, not transient.
         raise JobRejected(f"cannot start interpreter: {e}")
-    # Remediation watches the run (docs/remediation-design.md).
+    # Remediation watches the run (docs/design/remediation-design.md).
     # A monitor that fails to start changes nothing: the job runs
     # exactly as it did before remediation existed.
     monitor = None

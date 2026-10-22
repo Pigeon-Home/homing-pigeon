@@ -3,7 +3,7 @@
 A procedure that says "type a title like `Version 3.7.28`" is
 correct only until the next tag lands; then it is quietly wrong
 forever (field catch, 2026-10-18: the release procedure in
-RUNBOOK.md carried the then-current version as its example).
+docs/RUNBOOK.md carried the then-current version as its example).
 Evergreen docs use placeholders (X.Y.Z) and point at
 pyproject.toml for the number. Dated records are exempt by
 design: CHANGELOG.md, docs/archive/, the dated reports under

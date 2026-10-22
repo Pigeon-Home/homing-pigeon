@@ -13,7 +13,7 @@ open.
 
 The project can already refuse a job before it runs (the
 judge), predict how it will go (the Oracle's opinion,
-`docs/oracle-opinion-design.md`), and report what it did
+`docs/design/oracle-opinion-design.md`), and report what it did
 afterwards (the retained record, the audit log). What it
 cannot do is act *while* a job runs. If the agent determines
 that something from a job is going bad — not failed, not

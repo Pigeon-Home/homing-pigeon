@@ -247,7 +247,7 @@ class MutationTreeTest(unittest.TestCase):
     def test_the_doc_guards_expected_docs_are_copied(self):
         copied = _also_copy()
         for expected in ("README.md", "INSTALL.md", "AGENTS.md",
-                         "PROTOCOL.md", "RUNBOOK.md"):
+                         "PROTOCOL.md"):
             self.assertIn(expected, copied)
 
     def test_the_ci_pin_file_is_copied(self):

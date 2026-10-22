@@ -1,5 +1,8 @@
 # Transport implementation status
 
+> **Archived 2026-10-22.** A short status table superseded by
+> [docs/TRANSPORTS.md](../TRANSPORTS.md), which is current.
+
 Transports are extensions in full. The runner core is
 transport-blind: `runner/transports.py` is the contract,
 discovery, and supervision module (TRANSPORT_API_VERSION = 1),

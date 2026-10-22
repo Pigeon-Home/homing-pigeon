@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Remediation: acting on a job that goes bad mid-run.
 
-The design of record is docs/remediation-design.md; this module
+The design of record is docs/design/remediation-design.md; this module
 is its implementation, and every place the code departs from the
 document is written there, in the open. The short form:
 

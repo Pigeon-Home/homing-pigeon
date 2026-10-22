@@ -1,6 +1,6 @@
 # Approval gate — design (M10)
 
-*Not built. See FUTURE.md. This document records the shape of a
+*Not built. See docs/FUTURE.md. This document records the shape of a
 human approval step before job execution, so the work can be picked
 up without re-deriving the tradeoffs.*
 

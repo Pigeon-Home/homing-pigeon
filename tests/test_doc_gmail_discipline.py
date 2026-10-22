@@ -72,7 +72,7 @@ class NoProviderNameInLiveDocsTest(unittest.TestCase):
         self.assertIsNotNone(m, "no also_copy list in pyproject.toml")
         body = m.group(1)
         for name in ("README.md", "INSTALL.md", "AGENTS.md",
-                     "PROTOCOL.md", "RUNBOOK.md"):
+                     "PROTOCOL.md"):
             self.assertIn('"%s"' % name, body,
                           "mutmut will not copy %s" % name)
 

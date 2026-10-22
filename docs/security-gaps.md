@@ -72,7 +72,7 @@ job field that turns the judge off.**
 ## The rest of the inventory
 
 Basic technologies a project like this is expected to have, and
-where each one stands. Items marked absent are listed in FUTURE.md.
+where each one stands. Items marked absent are listed in docs/FUTURE.md.
 
 - **Runner code integrity.** Nothing verifies `runner.py` hasn't
   been modified on disk. A same-user job can patch the runner and own
@@ -93,7 +93,7 @@ where each one stands. Items marked absent are listed in FUTURE.md.
   for Ollama. PyPI trusted publishing is the one solid link.
   Status: partial.
 - **Secret revocation.** "The shared secret is root" is documented,
-  and a written fire drill exists — SAFEGUARDS.md §7 and
+  and a written fire drill exists — docs/SAFEGUARDS.md §7 and
   docs/secret-rotation.md: revoke the mailbox credential first
   (that stops mail-borne delivery at once), then generate a
   fresh shared secret, then check `runner.log` and the mailbox

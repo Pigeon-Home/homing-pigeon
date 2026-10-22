@@ -65,10 +65,10 @@ also_copy = [
     # (plus tests/ and pyproject.toml, which it adds itself). Without
     # these, stats collection dies on "INSTALL.md not found" before
     # any mutant runs.
-    "AGENTS.md", "CONTRIBUTING.md", "ENTERPRISE.md", "FUTURE.md",
+    "AGENTS.md", "CONTRIBUTING.md", "ENTERPRISE.md",
     "INSTALL.md",
-    "PROTOCOL.md", "README.md", "RESEARCHER_IDENT.md", "RUNBOOK.md",
-    "SAFEGUARDS.md", "SECURITY.md", "TRANSPORTS.md",
+    "PROTOCOL.md", "README.md",
+    "SECURITY.md",
     "requirements-ci.txt",
     # The CI pin file. tests/test_build_config.py reads it, and
     # mutmut's stats run dies if the mutant tree does not have it.

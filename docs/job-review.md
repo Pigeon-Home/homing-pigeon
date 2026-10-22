@@ -34,7 +34,7 @@ Two tiers, split by whether the check needs the script text:
 The notes ride in the already-HMAC-signed result message, bound to
 the `job_id`. The Oracle is an authenticated party with an opinion;
 it does not need its own key for this. A dedicated Oracle signing
-key is listed in FUTURE.md, for when the opinion may need to travel
+key is listed in docs/FUTURE.md, for when the opinion may need to travel
 outside the result envelope (e.g., to the DRI playbook channel).
 
 ## Built-in checks

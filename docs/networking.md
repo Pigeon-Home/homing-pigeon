@@ -75,7 +75,7 @@ is load-bearing — see `docs/senses.md` ("why this shape").
 
 ## What the picture still lacks
 
-Listed in FUTURE.md.
+Listed in docs/FUTURE.md.
 
 - **NIDS** — Zeek/Suricata as a network-side sense next to the
   host IDS. This ships: the `suricata-feed` and `zeek-feed`
@@ -89,7 +89,7 @@ Listed in FUTURE.md.
   `api-keys.txt`). A read that changes one, or a delete, is filed
   once and stays reported until the file is restored. Canary
   credentials (a token that phones home when used) are listed in
-  FUTURE.md.
+  docs/FUTURE.md.
 - **FIM proper** — file integrity monitoring. The roadmap's
   "snapshot eyes" gestures at it; no design yet.
 - **Out of scope:** TLS inspection, WAF (there is no inbound

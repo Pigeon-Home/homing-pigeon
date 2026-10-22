@@ -13,7 +13,7 @@
 > envelopes in, result envelopes out; see "Writing a new
 > transport"). Everything else below — Cloudflare Queues, NATS
 > JetStream, MQTT, Redis, Postgres, Durable Objects — is design
-> notes, not implementation, and is listed in FUTURE.md. (A
+> notes, not implementation, and is listed in docs/FUTURE.md. (A
 > loopback local-signal socket IS also shipped — it carries
 > signed `sensor_alert` envelopes from same-box producers, not
 > jobs.)
@@ -533,7 +533,7 @@ have) plus credentials for it. The `transports` config key
 (or `--transports` for one process) is the switch; several
 transport extensions run side by side, each supervised by
 the one runner. What is not built, and what was cut, is
-listed in FUTURE.md.
+listed in docs/FUTURE.md.
 
 ## Local socket — cut
 

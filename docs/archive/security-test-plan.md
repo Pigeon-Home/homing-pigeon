@@ -1,5 +1,8 @@
 # Security Test Plan — homing-pigeon local SI harness
 
+> **Archived 2026-10-22.** A draft manual test plan for the local SI
+> harness, kept for the record. Not current guidance.
+
 **Status:** draft for execution. **Scope:** the local SI harness (two Ollama instances, Open WebUI, email transport), against runner v3.11+ semantics. This plan tests security properties;
 it is not a harness redesign. Anything the harness cannot do today is
 marked **harness gap** — do not pretend it works.

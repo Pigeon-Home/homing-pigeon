@@ -21,7 +21,7 @@ the Oracle's trust never has to stretch past the envelope.
 
 This document covers one of the two extension kinds that exist
 today: `sense`. (The other, `transport`, carries the job pipes
-and is covered in [TRANSPORTS.md](../TRANSPORTS.md).) A sense
+and is covered in [docs/TRANSPORTS.md](TRANSPORTS.md).) A sense
 files signed alerts with the Oracle, which fuses them with job activity. The
 plumbing underneath — alert shape, ingest gates, storage, the
 `senses` query — is the senses system, specified in
@@ -100,7 +100,7 @@ logged.
 | `name` | yes | string | The sensor name this extension files as. Letters, digits, `.`, `_`, `-`; starts with a letter or digit; at most 64 characters. |
 | `version` | yes | string | The extension's own version, semver-shaped (`0.3.0`, suffixes like `-rc.1` allowed). Yours to rev. |
 | `api_version` | yes | integer | The extension API the manifest was written against. Must be a whole number, 1 or more. See the compatibility promise below. |
-| `kind` | yes | string | `"sense"` (this document) or `"transport"` (TRANSPORTS.md). |
+| `kind` | yes | string | `"sense"` (this document) or `"transport"` (docs/TRANSPORTS.md). |
 | `signals` | yes | list | 1 to 64 entries, each an object with `name` and `description`. Names unique within the manifest. This list is the contract; see "Signals are the contract". |
 | `description` | no | string | One line, at most 200 characters: what the extension is, for humans reading the logs and docs. |
 | `tunables` | no | object | Your knobs, carried through unread by the agent. Your daemon reads them from its own manifest. The sense's ingest gates (severity floor, cooldown, caps) are separate: those live in the sensor's `profile` in `config.json`, as for every sense. |

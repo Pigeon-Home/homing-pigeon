@@ -42,7 +42,7 @@
   deliberately, never silently. When this ships, the
   default install's confidentiality story flips, and the
   documentation sweep that revises the claims (above)
-  covers README, TRANSPORTS.md, and the configuring docs
+  covers README, docs/TRANSPORTS.md, and the configuring docs
   in the same change. (Live docs describe shipped state;
   this entry remains as the record of the decision.)
 
@@ -201,20 +201,20 @@
   responder; a resumed session re-runs it. Specified in
   draft-homing-pigeon-00 Section 20.
 
-- Cloudflare Queues: The design notes are TRANSPORTS.md
+- Cloudflare Queues: The design notes are docs/TRANSPORTS.md
 - Consider dist blockchain for file flow and work board/answers or transport extension.onion or bt for that matter
 
 ## Before a job runs
 
 - An approval gate: the owner says yes before the job runs.
-  `docs/approval-gate-design.md`
+  `docs/design/approval-gate-design.md`
 - A remote agent rarely knows the box: the OS, the tools on
   PATH, the versions, what is installed. An Oracle option
   attaches full platform metadata to every result, so the
   sender stops guessing.
 - The Oracle's opinion, as a result member — BUILT
   (DRU). The design is
-  `docs/oracle-opinion-design.md`; the member is specified in
+  `docs/design/oracle-opinion-design.md`; the member is specified in
   PROTOCOL 3.1/3.2 and implemented in `runner/opinion.py`:
   diagnose / advise / repair latitudes under the
   `oracle_opinion_mode` ceiling, deterministic tier-1 checks,
@@ -289,7 +289,7 @@
 ## Who signs
 
 - Ed25519 signatures instead of the shared HMAC secret.
-  `docs/asymmetric-signing-design.md`
+  `docs/design/asymmetric-signing-design.md`
 
 ## What you see
 
@@ -320,7 +320,7 @@
   for the signing key alone.) `docs/job-review.md`.
 - The local test chat runs the whole exchange on one box:
   it acts as the cloud SI in-process and reads the result
-  directly -- no email is sent. `docs/handoff-local-si.md`.
+  directly -- no email is sent. `docs/archive/handoff-local-si.md`.
 
 ## The hardware
 
@@ -338,9 +338,9 @@
 - NATS JetStream, MQTT, Redis, Postgres, and Durable Objects. Cut.
   (NATS pub/sub shipped as a job transport — a standalone
   transport extension; the core has been transport-blind since
-  3.10.0 — TRANSPORTS.md.)
+  3.10.0 — docs/TRANSPORTS.md.)
   (The local-signal socket shipped — signed `sensor_alert`
-  envelopes only, not a job transport.) TRANSPORTS.md.
+  envelopes only, not a job transport.) docs/TRANSPORTS.md.
 - SMS paging -- decided against (DRU; see runner/dri.py).
   `docs/dri-playbook.md`.
 - TLS inspection and a WAF. `docs/networking.md`.

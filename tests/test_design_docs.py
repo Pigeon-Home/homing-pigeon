@@ -9,8 +9,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
 DOCS = {
-    "docs/asymmetric-signing-design.md": ["ed25519", "public_keys"],
-    "docs/approval-gate-design.md": ["--approve", "pending.json"],
+    "docs/design/asymmetric-signing-design.md": ["ed25519", "public_keys"],
+    "docs/design/approval-gate-design.md": ["--approve", "pending.json"],
 }
 
 
@@ -21,7 +21,7 @@ class DesignDocsTest(unittest.TestCase):
             self.assertTrue(os.path.exists(path), name)
             with open(path, encoding="utf-8") as fh:
                 text = fh.read()
-            self.assertIn("Not built. See FUTURE.md.", text, name)
+            self.assertIn("Not built. See docs/FUTURE.md.", text, name)
 
     def test_no_code_implements_them(self):
         # If these ever get implemented, this test should be updated

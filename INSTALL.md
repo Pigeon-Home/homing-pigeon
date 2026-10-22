@@ -413,7 +413,7 @@ the simulation used.
 ---
 
 Whichever path you pick, **verify** with the clock check from
-[RUNBOOK.md](RUNBOOK.md) Job 7. If the runner replies with the time,
+[docs/RUNBOOK.md](docs/RUNBOOK.md) Job 7. If the runner replies with the time,
 you're live.
 
 > **Note:** the runner re-reads `config.json` every poll cycle and

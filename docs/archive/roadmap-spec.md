@@ -1,5 +1,9 @@
 # Roadmap spec — senses, transports, and Oracle upgrades
 
+> **Archived 2026-10-22.** A spec-only roadmap from 2026-10-15; nothing
+> in it was scheduled. Unbuilt work is listed in
+> [docs/FUTURE.md](../FUTURE.md).
+
 Status: **spec only** (2026-10-15). Nothing here is scheduled or
 approved for build. Drawn from a Claude brainstorm; edited to fit the
 pieces that already exist: the `sensor_alert` ingest path, `key_policies`,

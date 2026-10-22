@@ -1,7 +1,7 @@
 # idea321
 
 The pipe bomb is the fork bomb. The unit test is the pair in
-[tests/test_flag321_obfuscated.py](../../tests/test_flag321_obfuscated.py):
+[tests/test_flag321_obfuscated.py](../../../tests/test_flag321_obfuscated.py):
 the exact string `:(){ :|:& };:` is denied, and the same
 string with one space is not. The function under test is
 `judge_job`. It looks for four exact substrings in `script`
@@ -43,7 +43,7 @@ not see.
 `files[].name`. The exact bomb in `script` is a denylist
 hit with or without the wrapper. The one-space form is not
 a hit with or without the wrapper.
-[PipeBombInjectionTest](../../tests/test_oracle_intake_fuzz.py)
+[PipeBombInjectionTest](../../../tests/test_oracle_intake_fuzz.py)
 pins both. `script_url` is a scheme check (`https://`
 only), not a denylist check, and `file:` is refused again
 at download. A bomb in a URL is not a shell. A `..` in a
@@ -83,7 +83,7 @@ What it does instead:
   JSON object would not change the answer.
 
 PROTOCOL section 10 and T2.3 in
-[docs/security-test-plan.md](../security-test-plan.md)
+[docs/archive/security-test-plan.md](../../archive/security-test-plan.md)
 describe the same threat. T2.3 is a manual case. The stub
 above is the automated one. A live model is not required
 and is not called.

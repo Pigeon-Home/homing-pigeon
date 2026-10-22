@@ -21,7 +21,7 @@ it matters.
 The page itself is advisory: a page never kills a job, revokes
 a key, or touches the box -- the human decides what a page
 means. Remediation is a separate, runner-side mechanism
-(docs/remediation-design.md): on a closed list of tripwires
+(docs/design/remediation-design.md): on a closed list of tripwires
 the runner's reflexes kill and quarantine without asking
 anyone, and in oracle mode the Oracle may order a kill for a
 divergence off the list. Every remediation act is recorded
@@ -70,14 +70,14 @@ evaluate_page_triggers(cfg, base_dir) -> list[PageEvent]
 ## Channels
 
 Telegram is the only channel the runner accepts. Signal and
-WhatsApp are listed in FUTURE.md. Do not set `dri.channel` to
+WhatsApp are listed in docs/FUTURE.md. Do not set `dri.channel` to
 anything but `"telegram"`.
 
 - **Telegram.** This is the channel the runner implements. Bot API
   over HTTPS: one token, one chat id. A page is a single POST.
   `dri.channel` must be `"telegram"`.
-- **Signal.** The runner rejects it. See FUTURE.md.
-- **WhatsApp.** The runner rejects it. See FUTURE.md.
+- **Signal.** The runner rejects it. See docs/FUTURE.md.
+- **WhatsApp.** The runner rejects it. See docs/FUTURE.md.
 
 **Out of scope, by owner decision: SMS.** No text messaging. No
 Twilio-style provider, no per-message cost, no carrier metadata.
@@ -164,7 +164,7 @@ you, not in this repo. Template for when the time comes:
 
 ## The dashboard
 
-Listed in FUTURE.md. `--oracle` is a loopback chat, not
+Listed in docs/FUTURE.md. `--oracle` is a loopback chat, not
 a page history. There is no ack path at all today: no reply
 keyword is read, and the page's "ack by investigating" line
 means exactly that — the acknowledgement is the investigation

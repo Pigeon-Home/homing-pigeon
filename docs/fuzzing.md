@@ -196,7 +196,7 @@ to a shell. A job-shaped answer with no canary comes back as
 text. The format guard does not treat `{"kind","script"}` as
 a tool call. The research notes, and where that premise
 stops, are in
-[docs/idea321/RUNBOOK.md](idea321/RUNBOOK.md).
+[docs/design/idea321/RUNBOOK.md](design/idea321/RUNBOOK.md).
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already

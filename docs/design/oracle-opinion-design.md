@@ -8,7 +8,7 @@ prediction and
 repair behavior under `oracle_opinion_predict` /
 `oracle_opinion_repair` / `oracle_opinion_model`). DRU's
 proposal (2026-10-15), elaborated 2026-10-18; recorded in
-FUTURE.md under "Before a job runs". This document remains the
+docs/FUTURE.md under "Before a job runs". This document remains the
 design record the build started from.
 
 ## Why repair is the default
@@ -130,7 +130,7 @@ Two tiers, in order:
 The result is signed with the secret that verified the job, so in
 the current protocol the opinion inherits that signature — it is
 part of the runner's statement. Under a future confidentiality-on
-or asymmetric mode (docs/asymmetric-signing-design.md), the
+or asymmetric mode (docs/design/asymmetric-signing-design.md), the
 opinion MUST be signable as the Oracle's own statement, detachable
 from the result and verifiable on its own: the Oracle speaks as an
 authenticated party adding its opinion, never as a man-in-the-

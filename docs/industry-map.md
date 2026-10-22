@@ -106,7 +106,7 @@ personal runner, not a platform.
 
 ## Honest gaps the industry just named
 
-The two candidates are listed in FUTURE.md.
+The two candidates are listed in docs/FUTURE.md.
 
 1. **Nobody watches the Oracle.** The industry's newest category is
    agent-behavior baselining — watching the watchers. Our Oracle calls tools

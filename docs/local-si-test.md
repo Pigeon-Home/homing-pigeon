@@ -1,4 +1,4 @@
-See `docs/handoff-local-si.md` for the full handoff (two instances, email-only testing, transports, what was removed).
+See `docs/archive/handoff-local-si.md` for the full handoff (two instances, email-only testing, transports, what was removed).
 
 # Local SI test
 
@@ -21,7 +21,7 @@ socket was cut from the code (the runner's shipped loopback
 local-signal socket is a different thing — it carries signed
 sensor alerts, not jobs); the broker transports are not part of
 this test.
-See FUTURE.md.
+See docs/FUTURE.md.
 
 To run the email test you need a real mailbox in `config.json`
 (`smtp_host`, `smtp_port`, `mailbox_user`, password or OAuth) and a

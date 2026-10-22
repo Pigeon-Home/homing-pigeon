@@ -105,7 +105,7 @@ its own required gate beside the signature, which makes it the
 more secure option even though it is not the default. (A
 sensor on the same box also delivers its signed alerts directly,
 by local inbox or loopback socket -- alerts, not jobs.) Anything
-else is in [FUTURE.md](FUTURE.md).
+else is in [docs/FUTURE.md](docs/FUTURE.md).
 
 **Runbooks, not prompts.** The SI doesn't chat about the task — it ships
 a runbook: deterministic steps, each with a check that proves the step
@@ -192,7 +192,7 @@ the repaired job is judged again before it runs. When a job asks
 for an opinion, the prediction rides its result too. The owner's
 `oracle_opinion_mode` is both the default latitude and the
 ceiling: a job may ask for less, never more. Design:
-`docs/oracle-opinion-design.md`.
+`docs/design/oracle-opinion-design.md`.
 
 **Fixes mismatched jobs, never silently.** CI proves it on Alpine
 (BusyBox `sh`, no bash) on x86_64 and on arm64: a job naming
@@ -230,7 +230,7 @@ the config-file defaults; a fresh install sits one notch tighter
 — on non-Pi hardware the installer applies the `password-only`
 profile (judge `advisory`, view `attested`) unless `--no-profile`
 is passed; a Raspberry Pi gets the `pi-light` profile instead.
-See RUNBOOK.md Job 7.
+See docs/RUNBOOK.md Job 7.
 
 **eyes open** (recommended) — same trust, but now you watch.
 Runner: executes, attaches the policy verdict to each result,
@@ -311,7 +311,7 @@ them. A lesson never authorizes anything by itself: a repair still
 requires the repair latitude, the mismatch re-verified on the
 current job, and the repaired job judged again before it runs.
 Set `oracle_learning` to false to turn the loop off. Design:
-`docs/oracle-opinion-design.md`.
+`docs/design/oracle-opinion-design.md`.
 
 Full spec in PROTOCOL.md (sections 9–12). Oracle fields are optional
 members of a `"v": 1` message. They are not a separate message version.
@@ -382,17 +382,22 @@ lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
 
 - `PROTOCOL.md` — the full wire protocol (message formats, signatures,
   verification rules, security model).
-- `FUTURE.md` — work that is not built. The only list.
-- `TRANSPORTS.md` — the job transports as shipped: email (default),
+- `docs/FUTURE.md` — work that is not built. The only list.
+- `docs/TRANSPORTS.md` — the job transports as shipped: email (default),
   file, core NATS, and the DTLS session binding (off unless
   enabled — it is the one transport that listens). Everything
   past those in that file is design notes, not code.
-- `SAFEGUARDS.md` — how to run this without getting burned: the
+- `docs/SAFEGUARDS.md` — how to run this without getting burned: the
   non-negotiables, containment, the Oracle as a safeguard, and what
   to do when something goes wrong.
 - `docs/` — the long shelf: the threat model and security gaps,
-  configuring the Oracle, the extensions walkthrough, and the
-  design records (opinions and self-learning, remediation).
+  configuring the Oracle, the extensions walkthrough, fuzzing
+  (`docs/fuzzing.md`), and the four manuals above. Beneath it:
+  `docs/design/` (design records: opinions and self-learning,
+  remediation, the approval gate, asymmetric signing),
+  `docs/ietf/` (the Internet-Drafts), `docs/reports/` (dated
+  coverage and mutation reports), and `docs/archive/`
+  (historical notes, kept for the record; not current guidance).
 - `runner/runner.py` — the agent. Polls, verifies, executes,
   replies. No dependencies beyond the Python 3.9+ standard library.
 - `runner/transports.py` — the transport-extension contract
@@ -415,7 +420,7 @@ lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
   verifies result messages. (Your SI uses this logic when dispatching jobs.)
 - `tests/` — the suite: the real runner driven against fake
   IMAP/SMTP servers and a fake NATS broker.
-- `RUNBOOK.md` — step-by-step instructions (written for a 5-year-old):
+- `docs/RUNBOOK.md` — step-by-step instructions (written for a 5-year-old):
   cloning, pushing, cutting a release, installing, sending a job.
 - `examples/extensions/` — the example senses: 28 folders ship,
   from the lab-results sense to the IDS feeds; 25 of them are the
@@ -573,7 +578,7 @@ End-to-end without your SI:
 
 ## Not built
 
-The list is [FUTURE.md](FUTURE.md).
+The list is [docs/FUTURE.md](docs/FUTURE.md).
 
 ## Status
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Remediation tests (docs/remediation-design.md).
+"""Remediation tests (docs/design/remediation-design.md).
 
 The trigger is a divergence from the job's intent envelope;
 the tripwire list is closed; the Oracle's layer abstains on

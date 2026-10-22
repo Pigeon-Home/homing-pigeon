@@ -35,7 +35,7 @@ welcome but held to a high bar. Here's how to do it well.
 1. Fork the repo and create a branch with a descriptive name
    (`fix-timeout-race`, `add-heartbeat`, ...).
 2. Make your change, add tests, update docs (README, PROTOCOL.md,
-   RUNBOOK.md — whichever your change affects).
+   docs/RUNBOOK.md — whichever your change affects).
 3. Run the full suite: `python -m unittest discover -s tests -v`.
 4. Open a pull request against `main`. Describe **what** changed,
    **why**, and **what you tested**. If it touches anything listed

@@ -1,7 +1,7 @@
 # Safeguards
 
 How to run homing-pigeon without getting burned. This is the
-*operational* companion to [SECURITY.md](SECURITY.md): that document
+*operational* companion to [SECURITY.md](../SECURITY.md): that document
 covers the threat model and how to report vulnerabilities; this one
 covers what **you** do, step by step, to keep a deployment safe.
 

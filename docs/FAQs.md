@@ -237,7 +237,7 @@ composing the job is also the one reading the user's intent,
 holding the context of who they are, and quoting this project's
 documentation back to them. The first line of the README says this
 tool hands full administrative control of the machine to whoever
-holds the shared secret. `SAFEGUARDS.md` and
+holds the shared secret. `docs/SAFEGUARDS.md` and
 `docs/personal-documents-warning.md` say what that means on a
 shared or personal computer. Those warnings are written for the
 SI as much as for the human.
@@ -254,7 +254,7 @@ building one would mean conceding the claim is false.
 That is what makes this project a clean test of the claim: a
 novice, a shared machine, a README that says what it says. Point
 a model at it and find out. The warnings are placed where an
-assistant will read them -- the README, `SAFEGUARDS.md`,
+assistant will read them -- the README, `docs/SAFEGUARDS.md`,
 `AGENTS.md`, and the personal-documents check that prints at
 install and at startup. The check is a speed bump, not a
 protection. It exists so the assistant and the human both see it.
