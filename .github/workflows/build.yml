@@ -207,16 +207,12 @@ jobs:
       - run: pip install -c requirements-ci.txt pyinstaller
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.learning --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test --hidden-import runner.transports --hidden-import runner.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.dtlsproto --hidden-import runner.jobcrypto --hidden-import runner.protocol_v2 --hidden-import runner.personal_docs --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --add-data "runner/transport_extensions:pigeon-transport-extensions"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py --hidden-import runner._version --hidden-import runner.personal_docs
+      # Same depth as the Windows smoke: a real config, a planted
+      # credential that --inspect redact must not echo, the board
+      # inspector, and a --once --dry-run startup. One script for
+      # Linux and Pi Light so both archives get the same proof.
       - name: smoke the built linux binaries
-        run: |
-          set -euo pipefail
-          ver=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-          out=$(./dist/homing-pigeon --version)
-          echo "$out"
-          case "$out" in *"$ver"*) ;; *) echo "homing-pigeon --version printed '$out', expected $ver"; exit 1;; esac
-          out=$(./dist/install --version)
-          echo "$out"
-          case "$out" in *"$ver"*) ;; *) echo "install --version printed '$out', expected $ver"; exit 1;; esac
+        run: tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
       - name: package linux binaries
         run: |
           set -euo pipefail
@@ -259,15 +255,7 @@ jobs:
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.learning --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test --hidden-import runner.transports --hidden-import runner.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.dtlsproto --hidden-import runner.jobcrypto --hidden-import runner.protocol_v2 --hidden-import runner.personal_docs --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --add-data "runner/transport_extensions:pigeon-transport-extensions"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py --hidden-import runner._version --hidden-import runner.personal_docs
       - name: smoke the built pi-light binaries
-        run: |
-          set -euo pipefail
-          ver=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-          out=$(./dist/homing-pigeon --version)
-          echo "$out"
-          case "$out" in *"$ver"*) ;; *) echo "homing-pigeon --version printed '$out', expected $ver"; exit 1;; esac
-          out=$(./dist/install --version)
-          echo "$out"
-          case "$out" in *"$ver"*) ;; *) echo "install --version printed '$out', expected $ver"; exit 1;; esac
+        run: tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
       - name: package pi-light binaries
         run: |
           set -euo pipefail
@@ -300,15 +288,7 @@ jobs:
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.learning --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test --hidden-import runner.transports --hidden-import runner.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.dtlsproto --hidden-import runner.jobcrypto --hidden-import runner.protocol_v2 --hidden-import runner.personal_docs --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --add-data "runner/transport_extensions:pigeon-transport-extensions"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py --hidden-import runner._version --hidden-import runner.personal_docs
       - name: smoke the built macos binaries
-        run: |
-          set -euo pipefail
-          ver=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-          out=$(./dist/homing-pigeon --version)
-          echo "$out"
-          case "$out" in *"$ver"*) ;; *) echo "homing-pigeon --version printed '$out', expected $ver"; exit 1;; esac
-          out=$(./dist/install --version)
-          echo "$out"
-          case "$out" in *"$ver"*) ;; *) echo "install --version printed '$out', expected $ver"; exit 1;; esac
+        run: tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
       - name: package macos binaries
         run: |
           set -euo pipefail

@@ -50,6 +50,24 @@ jobs:
             type=raw,value=latest,enable=${{ github.event_name != 'workflow_dispatch' }}
             type=sha,prefix=
 
+      # The image is run before it is published: the entrypoint
+      # builds a config from the environment, then the runner must
+      # start with --once --dry-run and exit 0, touching nothing.
+      # Until this step existed the image was built and pushed to
+      # ghcr.io on every tag without ever being executed.
+      - name: build the image locally and run it once
+        run: |
+          set -euo pipefail
+          docker build -t hp-image-smoke .
+          docker run --rm \
+            -e PIGEON_MAILBOX_USER=pigeon-test@example.com \
+            -e PIGEON_MAILBOX_PASSWORD=not-a-real-mailbox-password \
+            -e PIGEON_SHARED_SECRET=9f2c7ab1e84d3065c1a7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d \
+            -e PIGEON_IMAP_HOST=127.0.0.1 -e PIGEON_IMAP_PORT=1 \
+            -e PIGEON_SMTP_HOST=127.0.0.1 -e PIGEON_SMTP_PORT=1 \
+            hp-image-smoke --config /data/config.json --once --dry-run
+          docker run --rm --entrypoint python3 hp-image-smoke /app/runner/runner.py --version
+
       - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         id: build
         with:

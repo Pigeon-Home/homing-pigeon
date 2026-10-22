@@ -63,14 +63,36 @@ class HiddenImportSyncTest(unittest.TestCase):
 
 
 class UnixVersionSmokeTest(unittest.TestCase):
-    def test_linux_and_macos_smoke_the_built_version(self):
+    """Every POSIX archive is smoked by the one shared script, at the
+    depth the Windows job already had: --version against pyproject,
+    a planted credential that --inspect redact must not echo, the
+    board inspector, and a --once --dry-run startup. Until this
+    script existed, Linux, Pi Light and macOS checked --version
+    and nothing else."""
+
+    SMOKE = "tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install"
+
+    def test_every_posix_job_runs_the_shared_smoke(self):
         workflow = _workflow()
-        for job in ("build-linux", "build-macos"):
+        for job in ("build-linux", "build-pi-light", "build-macos"):
             block = _job_block(workflow, job)
-            self.assertIn("./dist/homing-pigeon --version", block,
-                          "%s never runs the built binary" % job)
-            self.assertIn("./dist/install --version", block,
-                          "%s never runs the built installer" % job)
+            self.assertIn(self.SMOKE, block,
+                          "%s does not smoke its built binaries" % job)
+
+    def test_the_shared_smoke_checks_what_windows_checks(self):
+        with open(os.path.join(_root(), "tools",
+                               "smoke_posix_binaries.sh"),
+                  encoding="utf-8") as fh:
+            script = fh.read()
+        for needle in ("$RUNNER --version", "$INSTALL --version",
+                       "--inspect redact", "--inspect board",
+                       "--once --dry-run", "FLAG-CRED-", "REDACTED"):
+            self.assertIn(needle, script, "smoke lacks %s" % needle)
+        # The flag must be asserted absent, not merely present.
+        self.assertIn("flag leaked", script)
+        self.assertTrue(os.access(os.path.join(
+            _root(), "tools", "smoke_posix_binaries.sh"), os.X_OK),
+            "smoke script is not executable")
 
 
 class MutationGateTest(unittest.TestCase):
