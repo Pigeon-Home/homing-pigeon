@@ -406,6 +406,33 @@ server is answered.
 Nine statements remain. Two are the X25519 clamp, which
 cannot run. The extension programs are still 74% to 79%.
 
+## After the file-pipe refusals
+
+Measured again the same day. 4498 tests, OK, 22 skipped,
+364 seconds.
+
+Statements: 16872. Missed: 683. Covered: 96.0%.
+Branches: 93.7%. Together: 95.3%.
+
+| File | Before this pass | After | Missed after |
+|---|---:|---:|---:|
+| transport_extensions/file/__main__.py | 79% | 99% | 2 |
+
+The file pipe is a watched folder, so these do not need a
+broker or a socket. A file that is not UTF-8 is refused and
+the reason is written beside it. A file that disappears
+between the listing and the stat is refused the same way.
+A refusal whose note cannot be written still moves the job
+into done/. A refusal that cannot move the job leaves the
+file in the inbox. A result body with no trailing newline
+gets one. A seen-mark that cannot be written is not fatal.
+`main` with no channel directory returns 2. A pass that
+throws is logged, and the loop sleeps instead of dying.
+
+Two lines remain: the script entry, and the results scan
+on a pass whose jobs scan already threw.
+
+
 
 
 

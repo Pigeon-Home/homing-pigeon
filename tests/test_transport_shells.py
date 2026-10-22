@@ -257,6 +257,109 @@ class FilePipeEdgeTest(unittest.TestCase):
         self.assertTrue(os.path.exists(
             os.path.join(self.pipe.done, "job-3.job-seen")))
 
+    def test_a_file_that_cannot_be_read_is_refused(self):
+        inbox = self.pipe.inbox
+        done = self.pipe.done
+        with open(os.path.join(inbox, "binary.txt"), "wb") as f:
+            f.write(b"\xff\xfe not text")
+        self.pipe.scan_jobs()
+        note = os.path.join(done, "binary.txt.refused.txt")
+        with open(note, encoding="utf-8") as f:
+            self.assertIn("cannot read as UTF-8", f.read())
+
+        with open(os.path.join(inbox, "huge.txt"), "wb") as f:
+            f.write(b"x" * (ch.FILE_MAX_BYTES + 1))
+        # oversize is already covered elsewhere if the note exists;
+        # this one is the stat failure, which needs the name to
+        # vanish between the listing and the stat.
+        with open(os.path.join(inbox, "gone.txt"), "w",
+                  encoding="utf-8") as f:
+            f.write("x")
+        real = os.path.getsize
+
+        def boom(path):
+            if str(path).endswith("gone.txt"):
+                raise OSError("gone")
+            return real(path)
+
+        with mock.patch("os.path.getsize", boom):
+            self.pipe.scan_jobs()
+        with open(os.path.join(done, "gone.txt.refused.txt"),
+                  encoding="utf-8") as f:
+            self.assertIn("cannot stat", f.read())
+
+    def test_a_refusal_that_cannot_be_written_down_still_moves(self):
+        name = "bad.txt"
+        with open(os.path.join(self.pipe.inbox, name), "w",
+                  encoding="utf-8") as f:
+            f.write("no blank line here")
+        os.makedirs(os.path.join(self.pipe.done, name + ".refused.txt"))
+        self.pipe.scan_jobs()
+        self.assertTrue(os.path.isfile(
+            os.path.join(self.pipe.done, name)))
+        self.assertTrue(os.path.isdir(
+            os.path.join(self.pipe.done, name + ".refused.txt")))
+
+    def test_a_refusal_that_cannot_move_the_file_leaves_it(self):
+        name = "stuck.txt"
+        with open(os.path.join(self.pipe.inbox, name), "w",
+                  encoding="utf-8") as f:
+            f.write("no blank line here")
+        os.makedirs(os.path.join(self.pipe.done, name))
+        self.pipe.scan_jobs()
+        self.assertTrue(os.path.isfile(
+            os.path.join(self.pipe.inbox, name)))
+
+    def test_a_result_without_a_newline_gets_one(self):
+        outbox = ch.dirs(self.channel)["outbox"]
+        with open(os.path.join(outbox, "stem.result.txt"), "w",
+                  encoding="utf-8") as f:
+            f.write("[HOMING-PIGEON] result job-4\n\nok")
+        self.pipe.scan_results()
+        written = os.path.join(self.pipe.outbox, "job-4.result.txt")
+        with open(written, encoding="utf-8") as f:
+            text = f.read()
+        self.assertTrue(text.endswith("\n"))
+        self.assertIn("ok\n", text)
+
+    def test_a_seen_mark_that_cannot_be_written_is_not_fatal(self):
+        watched = os.path.join(self.pipe.inbox, "w.txt")
+        with open(watched, "w", encoding="utf-8") as f:
+            f.write("[HOMING-PIGEON] job job-3\n\nbody\n")
+        self.pipe.scan_jobs()
+        os.makedirs(os.path.join(self.pipe.done, "job-3.job-seen"))
+        done = os.path.join(self.channel, "inbox", "done")
+        os.makedirs(done, exist_ok=True)
+        open(os.path.join(done, "w.job.txt"), "w").close()
+        self.pipe.scan_results()
+        self.assertNotIn("w", self.pipe._pending)
+        self.assertTrue(os.path.isdir(
+            os.path.join(self.pipe.done, "job-3.job-seen")))
+
+    def test_main_refuses_no_channel_and_survives_a_bad_pass(self):
+        import json
+        from runner.transport_extensions.file.__main__ import main
+        self.assertEqual(main(["file-transport"]), 2)
+        cfg_path = os.path.join(self.tmp, "runtime.json")
+        with open(cfg_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "base_dir": self.tmp,
+                "inbox_dir": "watched-in",
+                "outbox_dir": "watched-out",
+            }, f)
+
+        def nap(_interval):
+            raise SystemExit("slept")
+
+        def explode(_self):
+            raise RuntimeError("disk")
+
+        with mock.patch(
+                "runner.transport_extensions.channel.nap", nap), \
+                mock.patch.object(FilePipe, "scan_jobs", explode):
+            with self.assertRaises(SystemExit):
+                main(["file-transport", self.channel, cfg_path])
+
 
 class SupervisorStartFailureTest(unittest.TestCase):
     def test_one_popen_failure_leaves_the_other_started(self):
