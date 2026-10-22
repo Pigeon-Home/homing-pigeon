@@ -199,10 +199,20 @@ class InjectTest(unittest.TestCase):
         os.chmod(self.binary, 0o755)
 
     def test_a_tarball_gains_project_and_keeps_its_binary(self):
+        import io
         import tarfile
+        payload = b"\x7fELF" + bytes(range(256))
         arc = os.path.join(self.tmp, "homing-pigeon-x-1.tar.gz")
+        # The exec bit has to be in the tar header. On Windows,
+        # chmod + tar.add never writes it, so the assertion was
+        # failing before inject ran and the release job never
+        # started. That is what kept 3.12.27 off the mirrors.
         with tarfile.open(arc, "w:gz") as tar:
-            tar.add(self.stage, "homing-pigeon-x-1")
+            info = tarfile.TarInfo("homing-pigeon-x-1/homing-pigeon")
+            info.size = len(payload)
+            info.mode = 0o755
+            info.type = tarfile.REGTYPE
+            tar.addfile(info, io.BytesIO(payload))
         self.assertEqual(snap_mod.inject(self.project, arc), 2)
         with tarfile.open(arc) as tar:
             names = tar.getnames()
@@ -210,7 +220,7 @@ class InjectTest(unittest.TestCase):
             data = tar.extractfile(binary).read()
         self.assertIn("homing-pigeon-x-1/project/PROTOCOL.md", names)
         self.assertIn("homing-pigeon-x-1/project/runner/runner.py", names)
-        self.assertEqual(data, b"\x7fELF" + bytes(range(256)))
+        self.assertEqual(data, payload)
         self.assertTrue(binary.mode & 0o100, "binary lost its exec bit")
         with self.assertRaises(SystemExit):
             snap_mod.inject(self.project, arc)  # twice is refused

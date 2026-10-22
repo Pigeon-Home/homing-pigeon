@@ -4,6 +4,18 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.29 - 2026-10-22
+
+- **The Windows job can finish a release again.** The new
+  snapshot test required a Unix exec bit. On Windows, `chmod`
+  plus `tar.add` never writes that bit, so the suite failed,
+  the release job was skipped, and 3.12.27 never reached
+  GitLab or SourceForge. The test now writes the bit into the
+  tar header, which is what inject is supposed to keep.
+- Mirrors are otherwise current through 3.12.26: GitLab
+  releases, SourceForge files (Linux, macOS, and Windows
+  defaults), and both git mirrors at that tag.
+
 ## 3.12.28 - 2026-10-22
 
 - Same code as 3.12.27. No change to what the runner does.
