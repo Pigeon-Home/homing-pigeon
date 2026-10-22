@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.18 - 2026-10-21
+
+- **Release.** Same code as 3.12.17.
+
 ## 3.12.17 - 2026-10-21
 
 - **FAQ: the duty of care sits with the SI.** A new entry in
