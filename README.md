@@ -199,9 +199,10 @@ bare-bones box (Alpine, BusyBox `sh`, no bash) on x86_64 and arm64:
 a job naming `bash` is repaired to `sh` and runs, a PowerShell-shaped
 job is left alone, and every repair is stated in the result.
 [![minimal-userland](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/minimal-userland.yml/badge.svg)](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/minimal-userland.yml)
-Known gap: shape detection does not see bash-only syntax (arrays),
-so such a script is repaired onto `sh` and fails there, stated in
-the result like any repair (`tests/test_minimal_userland.py`).
+A script that uses bash-only syntax (arrays, here-strings,
+`declare`) is **not** repaired onto `sh` — that shell cannot run
+it — so the opinion names bash itself as the missing piece instead
+of moving the job onto a shell that would fail (`tests/test_minimal_userland.py`).
 
 ### Operating modes
 

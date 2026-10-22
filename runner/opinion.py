@@ -168,13 +168,39 @@ _SH_KEYWORDS = frozenset("""
 _PREFIX_WORDS = frozenset(
     ("sudo", "env", "command", "time", "nice", "nohup", "exec"))
 
+# Bash-only syntax that dash and BusyBox ash cannot run. Each
+# alternative is unmistakable -- no plain-sh script produces it,
+# so a match means moving the job onto the sh default would break
+# it. Conservative on purpose: `[[`/`=~` are left out because some
+# ash builds tolerate them, which would make this a false tell.
+#   - array / append assignment:   a=( ...   a+=( ...
+#   - array index expansion:       ${a[0]}  ${#a[@]}
+#   - here-strings:                cmd <<< word
+#   - bash-only builtins:          declare / mapfile / readarray
+_BASH_ONLY_RE = re.compile(
+    r"(?m)"
+    r"^\s*[A-Za-z_]\w*\+?=\("          # array literal assignment
+    r"|\$\{\#?[A-Za-z_]\w*\["          # ${a[..]} / ${#a[..]}
+    r"|<<<"                            # here-string
+    r"|^\s*(?:declare|mapfile|readarray)\b")
+
 
 def script_shape(script):
-    """A strong shape tell: "powershell", "posix", or "neutral".
+    """A strong shape tell: "powershell", "bash", "posix", or
+    "neutral".
 
     Only unmistakable tells count -- a shebang, PowerShell
-    cmdlets / $env:, a POSIX export line. Anything weaker is
-    neutral, and neutral scripts are never shape findings.
+    cmdlets / $env:, a POSIX export line, or bash-only syntax
+    that no POSIX sh (dash, BusyBox ash) can run. Anything
+    weaker is neutral, and neutral scripts are never shape
+    findings.
+
+    "bash" outranks a bash/sh shebang: a `#!/bin/bash` script
+    with no bashisms is "posix" (it runs on sh), but the moment
+    it uses a bash-only feature it is "bash" and no longer fits
+    the platform default sh -- so the repair leaves it alone and
+    the opinion says bash itself is missing, rather than moving
+    the script onto a shell that cannot run it.
     """
     if not isinstance(script, str) or not script:
         return "neutral"
@@ -183,11 +209,13 @@ def script_shape(script):
         low = first.lower()
         if "powershell" in low or "pwsh" in low:
             return "powershell"
-        if "sh" in low:
-            return "posix"
     if _CMDLET_RE.search(script) or "$env:" in script \
             or "Write-Host" in script:
         return "powershell"
+    if _BASH_ONLY_RE.search(script):
+        return "bash"
+    if first.startswith("#!") and "sh" in first.lower():
+        return "posix"
     if re.search(r"(?m)^\s*export\s+[A-Za-z_][A-Za-z0-9_]*=", script):
         return "posix"
     return "neutral"
@@ -343,6 +371,10 @@ def _shape_fits(shape, platform_family):
         return platform_family == "powershell"
     if shape == "posix":
         return platform_family == "posix-shell"
+    if shape == "bash":
+        # The platform default is plain sh, never bash, so a
+        # bash-shaped script never fits it: no repair, by design.
+        return False
     return True
 
 
@@ -392,6 +424,13 @@ def tier1_findings(job, facts):
             "kind": "script_shape_mismatch",
             "detail": "the script is POSIX-shell-shaped (sh "
                       "shebang, export) but the interpreter is "
+                      "PowerShell",
+            "repair": None})
+    elif shape == "bash" and family == "powershell":
+        out.append({
+            "kind": "script_shape_mismatch",
+            "detail": "the script uses bash-only syntax (arrays, "
+                      "here-strings) but the interpreter is "
                       "PowerShell",
             "repair": None})
 

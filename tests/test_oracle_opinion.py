@@ -129,6 +129,27 @@ class ScriptHintTests(unittest.TestCase):
     def test_posix_tells(self):
         self.assertEqual(op.script_shape("#!/bin/sh\necho hi"), "posix")
         self.assertEqual(op.script_shape("export FOO=1\necho $FOO"), "posix")
+        # A bash shebang with no bashisms runs on sh -- still posix.
+        self.assertEqual(op.script_shape("#!/bin/bash\necho hi"), "posix")
+
+    def test_bash_only_tells(self):
+        # Syntax no dash/ash can run: shape is "bash", which does
+        # not fit the sh default, so repair leaves it alone.
+        self.assertEqual(op.script_shape("a=(1 2 3)\necho ${a[0]}"), "bash")
+        self.assertEqual(op.script_shape("#!/bin/bash\nx+=(y)"), "bash")
+        self.assertEqual(op.script_shape("cat <<< \"$x\""), "bash")
+        self.assertEqual(op.script_shape("declare -A m\nm[k]=v"), "bash")
+        self.assertEqual(op.script_shape("readarray -t L < f"), "bash")
+        self.assertEqual(op.script_shape("echo ${#arr[@]}"), "bash")
+        self.assertFalse(op._shape_fits("bash", "posix-shell"))
+        self.assertFalse(op._shape_fits("bash", "powershell"))
+
+    def test_bash_tells_do_not_catch_plain_posix(self):
+        # Command substitution and arithmetic look like `=(` / `[`
+        # but are not arrays: they must stay out of the bash tell.
+        self.assertEqual(op.script_shape("x=$(date)\necho $x"), "neutral")
+        self.assertEqual(op.script_shape("n=$((1 + 2))"), "neutral")
+        self.assertEqual(op.script_shape("echo $(ls)"), "neutral")
 
     def test_neutral(self):
         self.assertEqual(op.script_shape("echo hello"), "neutral")

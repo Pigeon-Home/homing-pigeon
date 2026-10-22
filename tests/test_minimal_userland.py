@@ -99,23 +99,20 @@ class MinimalUserlandRepairTests(unittest.TestCase):
         self.assertNotEqual(result["exit_code"], 0)
         self.assertNotIn("repaired", member)
 
-    def test_known_gap_bashism_is_repaired_and_says_so(self):
-        # KNOWN GAP, pinned on purpose. script_shape() sees a
-        # bash shebang as "posix", and arrays are not a tell, so a
-        # bash-only script is repaired onto ash and fails there.
-        # (Arrays, not [[ ]]: BusyBox ash accepts [[ ]].)
-        # What still holds is "never silently": the result states
-        # the repair and carries the received digest. When shape
-        # detection learns bashisms, flip this test.
+    def test_bash_only_script_is_not_repaired_onto_sh(self):
+        # A bash-only script (arrays) naming absent bash is NOT
+        # moved onto sh -- that shell cannot run it. shape="bash"
+        # does not fit the sh default, so the repair declines and
+        # the opinion names bash itself as the thing that is
+        # missing. (Was a pinned known gap until shape detection
+        # learned bash-only syntax.)
         job = oo._exec_payload(
             interpreter=["bash"],
             script="#!/bin/bash\nnums=(4 2)\necho \"yes-${nums[1]}\"")
         result = _run(job)
-        member = result["oracle_opinion"]
-        self.assertIs(member["repaired"], True)
-        self.assertEqual(member["received_digest"],
-                         op.received_digest(job))
+        member = result.get("oracle_opinion") or {}
         self.assertNotEqual(result["exit_code"], 0)
+        self.assertIsNot(member.get("repaired"), True)
         self.assertNotIn("yes-2", result.get("stdout", ""))
 
 
