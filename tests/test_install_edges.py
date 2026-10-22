@@ -830,7 +830,7 @@ class TailTest(unittest.TestCase):
         # Frozen binaries hardcode the version; the constant is the
         # source of truth. tests/test_version.py checks it matches
         # pyproject.toml.
-        self.assertEqual(inst.__version__, "3.12.29")
+        self.assertEqual(inst.__version__, "3.12.30")
 
     def test_the_last_platform_decisions(self):
         args = mock.Mock(no_collector=False, collector=["osquery"],

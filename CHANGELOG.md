@@ -4,6 +4,17 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.30 - 2026-10-22
+
+- **Windows snapshot test.** The shallow-clone check built
+  `file://C:\...`, which is not a file URL. It now uses
+  `pathlib.Path.as_uri()`, so git gets `file:///C:/...`.
+  The module also stays importable when the Windows
+  simulator breaks `shutil.which`.
+- No change to what the runner does. Mirrors are still on
+  3.12.26 until a Windows job passes and the release job
+  publishes.
+
 ## 3.12.29 - 2026-10-22
 
 - **The Windows job can finish a release again.** The new
