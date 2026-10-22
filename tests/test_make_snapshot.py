@@ -11,6 +11,7 @@ pretending, and the index links every path it names to the commit.
 import importlib.util
 import json
 import os
+import pathlib
 import shutil
 import subprocess
 import tempfile
@@ -22,7 +23,14 @@ _spec = importlib.util.spec_from_file_location(
 snap_mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(snap_mod)
 
-HAS_GIT = shutil.which("git") is not None
+def _has_git():
+    try:
+        return shutil.which("git") is not None
+    except Exception:  # the simulated Windows surface breaks which()
+        return False
+
+
+HAS_GIT = _has_git()
 
 WORKFLOW = """\
 name: CI
@@ -123,8 +131,10 @@ class SnapshotTest(unittest.TestCase):
 
     def test_a_shallow_checkout_says_so_instead_of_bundling(self):
         shallow = os.path.join(self.tmp, "shallow")
+        # as_uri, not "file://" + path: on Windows that builds
+        # file://C:\..., which is not a file URL; git wants file:///C:/...
         _git(self.tmp, "clone", "-q", "--depth", "1",
-             "file://" + self.repo, shallow)
+             pathlib.Path(self.repo).resolve().as_uri(), shallow)
         project, snap = self._make(repo=shallow)
         self.assertIsNone(snap["history"]["bundle"])
         self.assertIn("shallow", snap["history"]["note"])
