@@ -23,6 +23,10 @@ set -eu
 # Any failure before the verdict step still names itself.
 trap 'rc=$?; [ $rc -ne 0 ] && printf "::error::platform_proof.sh failed (exit %s) at stage: %s\n" "$rc" "${STAGE:-start}"; exit $rc' EXIT
 
+# BSD package trees live under /usr/pkg (NetBSD) and /usr/local (FreeBSD,
+# OpenBSD); make sure both are searched whatever the login shell set.
+export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/local/bin:/usr/local/sbin:$PATH"
+
 here=$(cd "$(dirname "$0")" && pwd)
 SRC=${HP_SRC:-$(dirname "$here")}
 MUT=${HP_MUTATION:-none}
@@ -48,7 +52,7 @@ fi
 # BSD packages install a versioned binary; make python3 resolvable.
 if ! command -v python3 >/dev/null 2>&1; then
   for cand in /usr/pkg/bin/python3.12 /usr/pkg/bin/python3.11 /usr/local/bin/python3.12 /usr/local/bin/python3.11; do
-    [ -x "$cand" ] && ln -sf "$cand" /usr/local/bin/python3 && break
+    [ -x "$cand" ] && mkdir -p /usr/local/bin && ln -sf "$cand" /usr/local/bin/python3 && break
   done
 fi
 # ---- 1b. the floor: pyproject says >= 3.9. Leap 15 and EL8 ship a
