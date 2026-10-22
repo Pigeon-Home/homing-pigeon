@@ -54,8 +54,8 @@ class HiddenImportSyncTest(unittest.TestCase):
         workflow = _workflow()
         build_lines = [ln for ln in workflow.splitlines()
                        if "pyinstaller" in ln and "runner/runner.py" in ln]
-        self.assertEqual(len(build_lines), 4,
-                         "expected one runner build line per OS job")
+        self.assertEqual(len(build_lines), 7,
+                         "expected one runner build line per binary job")
         for line in build_lines:
             for mod in sorted(_dynamic_runner_modules()):
                 self.assertIn("--hidden-import runner.%s" % mod, line,
@@ -74,7 +74,8 @@ class UnixVersionSmokeTest(unittest.TestCase):
 
     def test_every_posix_job_runs_the_shared_smoke(self):
         workflow = _workflow()
-        for job in ("build-linux", "build-pi-light", "build-macos"):
+        for job in ("build-linux", "build-linux-arm64", "build-pi-light",
+                    "build-macos", "build-macos-x86_64"):
             block = _job_block(workflow, job)
             self.assertIn(self.SMOKE, block,
                           "%s does not smoke its built binaries" % job)
@@ -115,8 +116,9 @@ class MutationGateTest(unittest.TestCase):
         # a stray tag-only condition on one of them would silently
         # stop branch CI from meaning anything.
         workflow = _workflow()
-        for job in ("test", "typecheck", "build-linux", "build-macos",
-                    "build-windows", "build-python", "build-pi-light"):
+        for job in ("test", "typecheck", "build-linux", "build-linux-arm64",
+                    "build-macos", "build-macos-x86_64", "build-windows",
+                    "build-windows-arm64", "build-python", "build-pi-light"):
             block = _job_block(workflow, job)
             self.assertNotIn("refs/tags", block,
                              "%s must not be tag-gated" % job)
@@ -144,8 +146,9 @@ class MutationGateTest(unittest.TestCase):
         # the release ever grows continue-on-error, a red suite
         # would publish. Only the signal job may carry it.
         workflow = _workflow()
-        for job in ("test", "typecheck", "build-linux", "build-macos",
-                    "build-windows", "build-python", "build-pi-light",
+        for job in ("test", "typecheck", "build-linux", "build-linux-arm64",
+                    "build-macos", "build-macos-x86_64", "build-windows",
+                    "build-windows-arm64", "build-python", "build-pi-light",
                     "release", "pypi-publish", "sourceforge", "gitlab"):
             block = _job_block(workflow, job)
             self.assertNotIn("continue-on-error", block,
@@ -192,7 +195,7 @@ class PiLightArchiveTest(unittest.TestCase):
     def test_the_mirrors_count_four_install_archives(self):
         workflow = _workflow()
         for job in ("sourceforge", "gitlab"):
-            self.assertIn("the four install archives",
+            self.assertIn("the install archives",
                           _job_block(workflow, job), job)
 
 
@@ -329,7 +332,8 @@ class PipelineLiftsTest(unittest.TestCase):
         workflow = _workflow()
         read_only = {("contents", "read")}
         for job in ("test", "typecheck", "mutation", "build-windows",
-                    "build-linux", "build-pi-light", "build-macos",
+                    "build-windows-arm64", "build-linux", "build-linux-arm64",
+                    "build-pi-light", "build-macos", "build-macos-x86_64",
                     "build-python"):
             self.assertEqual(read_only,
                              _perm_entries(_job_block(workflow, job)),
@@ -394,9 +398,12 @@ class PipelineLiftsTest(unittest.TestCase):
     def test_every_packaging_step_stamps_provenance(self):
         workflow = _workflow()
         for job, packer in (("build-windows", "Compress-Archive"),
+                            ("build-windows-arm64", "Compress-Archive"),
                             ("build-linux", "tar czf"),
+                            ("build-linux-arm64", "tar czf"),
                             ("build-pi-light", "tar czf"),
-                            ("build-macos", "tar czf")):
+                            ("build-macos", "tar czf"),
+                            ("build-macos-x86_64", "tar czf")):
             block = _job_block(workflow, job)
             stamp = "tools/stamp_provenance.py --job %s" % job
             self.assertIn(stamp, block, "%s never stamps" % job)

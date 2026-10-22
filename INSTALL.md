@@ -230,8 +230,11 @@ standalone binaries built by GitHub Actions:
 | Platform | Download |
 |----------|----------|
 | Windows (x64) | `homing-pigeon-windows-x86_64-<version>.zip` → `homing-pigeon.exe` + `install.exe` |
+| Windows (ARM64) | `homing-pigeon-windows-arm64-<version>.zip` → `homing-pigeon.exe` + `install.exe` |
 | Linux (x64, Debian/RHEL/Ubuntu/…) | `homing-pigeon-linux-x86_64-<version>.tar.gz` → `homing-pigeon` + `install` |
+| Linux (ARM64, a board that is not asking for Pi Light) | `homing-pigeon-linux-arm64-<version>.tar.gz` → `homing-pigeon` + `install` |
 | macOS (ARM64) | `homing-pigeon-macos-arm64-<version>.tar.gz` → `homing-pigeon` + `install` |
+| macOS (Intel) | `homing-pigeon-macos-x86_64-<version>.tar.gz` → `homing-pigeon` + `install` |
 | Raspberry Pi (ARM64, Pi Light) | `homing-pigeon-pi-light-arm64-<version>.tar.gz` → `homing-pigeon` + `install` |
 
 Every archive carries the version in its file name, and extracting it
@@ -244,6 +247,14 @@ Ubuntu 22.04+, recent Debian, and most current distros. We don't ship
 binaries for older systems (Debian 11, Ubuntu 20.04, RHEL 8) because of
 their older glibc, but the runner itself is stdlib-only Python and runs
 fine there: use `pip install pigeon-home-runner` or build from source.
+
+The frozen binaries are built on the architecture they run on.
+PyInstaller freezes the interpreter it was built with, so there is
+no cross-compile. x86_64 and ARM64 are the ones with a native
+runner, for Linux, Windows, and macOS. The other architectures in
+the platform matrix (armv7, i386, ppc64le, s390x, riscv64, the
+BSDs) run from source; they are proved there, and they do not get
+a frozen binary. A television still does not.
 
 1. Extract the archive on the target machine.
 2. Run `install` (or `install.exe` on Windows, from an elevated

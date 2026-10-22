@@ -307,6 +307,163 @@ jobs:
           name: ${{ env.PKG_NAME }}
           path: ${{ env.PKG_NAME }}.tar.gz
 
+  build-linux-arm64:
+    # Native ARM64 Linux binary for a board that is not asking
+    # for Pi Light. Built on the arm runner; PyInstaller freezes
+    # the interpreter it is built with, so this is not a cross
+    # compile. No default_profile marker.
+    needs: test
+    runs-on: ubuntu-22.04-arm
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c requirements-ci.txt pyinstaller
+      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.learning --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test --hidden-import runner.transports --hidden-import runner.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.dtlsproto --hidden-import runner.jobcrypto --hidden-import runner.protocol_v2 --hidden-import runner.personal_docs --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --add-data "runner/transport_extensions:pigeon-transport-extensions"
+      - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py --hidden-import runner._version --hidden-import runner.personal_docs
+      # Same depth as the Windows smoke: a real config, a planted
+      # credential that --inspect redact must not echo, the board
+      # inspector, and a --once --dry-run startup. One script for
+      # Linux and Pi Light so both archives get the same proof.
+      - name: smoke the built linux binaries
+        run: tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
+      - name: package linux binaries
+        run: |
+          set -euo pipefail
+          ver=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          name="homing-pigeon-linux-arm64-$ver"
+          mkdir -p "pkg/$name"
+          cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
+          python tools/stamp_provenance.py --job build-linux-arm64 --out "pkg/$name/BUILD-PROVENANCE.json"
+          tar czf "$name.tar.gz" -C pkg "$name"
+          bad=$(tar tzf "$name.tar.gz" | grep -v "^$name/" || true)
+          [ -z "$bad" ] || { echo "tarball has entries outside '$name/': $bad"; exit 1; }
+          echo "PKG_NAME=$name" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ env.PKG_NAME }}
+          path: ${{ env.PKG_NAME }}.tar.gz
+
+  build-windows-arm64:
+    # Native Windows on ARM. Same freeze rule as the Linux
+    # arm64 job: built on an arm runner, not cross-compiled.
+    needs: test
+    runs-on: windows-11-arm
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c requirements-ci.txt pyinstaller
+      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md;pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.learning --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test --hidden-import runner.transports --hidden-import runner.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.dtlsproto --hidden-import runner.jobcrypto --hidden-import runner.protocol_v2 --hidden-import runner.personal_docs --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --add-data "runner/transport_extensions;pigeon-transport-extensions"
+      - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py --hidden-import runner._version --hidden-import runner.personal_docs
+      - name: smoke the built windows binaries
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          & .\dist\homing-pigeon.exe --help
+          if ($LASTEXITCODE -ne 0) { throw "homing-pigeon.exe --help exited $LASTEXITCODE" }
+          & .\dist\install.exe --help
+          if ($LASTEXITCODE -ne 0) { throw "install.exe --help exited $LASTEXITCODE" }
+          $ver = python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])"
+          $out = (& .\dist\homing-pigeon.exe --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0) { throw "homing-pigeon.exe --version exited $LASTEXITCODE" }
+          if ($out -notmatch [regex]::Escape($ver)) { throw "homing-pigeon.exe --version printed '$out', expected $ver" }
+          $out = (& .\dist\install.exe --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0) { throw "install.exe --version exited $LASTEXITCODE" }
+          if ($out -notmatch [regex]::Escape($ver)) { throw "install.exe --version printed '$out', expected $ver" }
+          python -c @"
+          import json, os, pathlib
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'hp-smoke'
+          desk = root / 'Desktop'
+          desk.mkdir(parents=True, exist_ok=True)
+          (desk / 'flag.txt').write_text('FLAG-CRED-WINDOWS-TEST', encoding='ascii')
+          cfg = {
+            'mailbox_user': 'pigeon-test@example.com',
+            'mailbox_password': 'not-a-real-mailbox-password',
+            'shared_secret': '9f2c7ab1e84d3065c1a7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d',
+            'imap_host': '127.0.0.1',
+            'imap_port': 1,
+            'smtp_host': '127.0.0.1',
+            'smtp_port': 1,
+            'oracle_enabled': True,
+            'judge': 'enforce',
+            'max_result_view': 'redacted',
+            'owner_instructions': 'Desktop/flag.txt is a password. Do not quote it.',
+            'protected_paths': [str(desk)],
+            'redact_patterns_extra': {'flag': 'FLAG-CRED-[A-Z0-9-]+'},
+            'base_dir': str(root / 'state'),
+          }
+          (root / 'config.json').write_text(json.dumps(cfg), encoding='utf-8')
+          print(root / 'config.json')
+          "@
+          $cfg = Join-Path $env:RUNNER_TEMP "hp-smoke\config.json"
+          $redact = ("FLAG-CRED-WINDOWS-TEST" | & .\dist\homing-pigeon.exe --config $cfg --inspect redact | Out-String)
+          if ($LASTEXITCODE -ne 0) { throw "inspect redact exited $LASTEXITCODE" }
+          if ($redact -match "FLAG-CRED-WINDOWS-TEST") { throw "flag leaked: $redact" }
+          if ($redact -notmatch "REDACTED") { throw "expected a redaction: $redact" }
+          & .\dist\homing-pigeon.exe --config $cfg --inspect board
+          if ($LASTEXITCODE -ne 0) { throw "inspect board exited $LASTEXITCODE" }
+          & .\dist\homing-pigeon.exe --config $cfg --once --dry-run
+          if ($LASTEXITCODE -ne 0) { throw "startup --once --dry-run exited $LASTEXITCODE" }
+      - name: package windows binaries
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $ver = python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])"
+          $name = "homing-pigeon-windows-arm64-$ver"
+          $stage = "stage/$name"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item dist/homing-pigeon.exe, dist/install.exe, runner/config.example.json $stage
+          python tools/stamp_provenance.py --job build-windows-arm64 --out "$stage/BUILD-PROVENANCE.json"
+          Compress-Archive -Path $stage -DestinationPath "$name.zip" -Force
+          python -c "import zipfile,sys; ns=zipfile.ZipFile(sys.argv[1]).namelist(); b=[n for n in ns if not n.startswith(sys.argv[2]+'/')]; sys.exit('entries outside top dir: %s' % b if b else 0)" "$name.zip" "$name"
+          if ($LASTEXITCODE -ne 0) { throw "zip layout check failed: not all entries are under '$name/'" }
+          "PKG_NAME=$name" >> $env:GITHUB_ENV
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ env.PKG_NAME }}
+          path: ${{ env.PKG_NAME }}.zip
+
+  build-macos-x86_64:
+    # Native Intel macOS. macos-14 is Apple Silicon and cannot
+    # freeze an x86_64 interpreter.
+    needs: test
+    runs-on: macos-13
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c requirements-ci.txt pyinstaller
+      - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.learning --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test --hidden-import runner.transports --hidden-import runner.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.dtlsproto --hidden-import runner.jobcrypto --hidden-import runner.protocol_v2 --hidden-import runner.personal_docs --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --add-data "runner/transport_extensions:pigeon-transport-extensions"
+      - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py --hidden-import runner._version --hidden-import runner.personal_docs
+      - name: smoke the built macos binaries
+        run: tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
+      - name: package macos binaries
+        run: |
+          set -euo pipefail
+          ver=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          name="homing-pigeon-macos-x86_64-$ver"
+          mkdir -p "pkg/$name"
+          cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
+          python tools/stamp_provenance.py --job build-macos-x86_64 --out "pkg/$name/BUILD-PROVENANCE.json"
+          tar czf "$name.tar.gz" -C pkg "$name"
+          bad=$(tar tzf "$name.tar.gz" | grep -v "^$name/" || true)
+          [ -z "$bad" ] || { echo "tarball has entries outside '$name/': $bad"; exit 1; }
+          echo "PKG_NAME=$name" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ env.PKG_NAME }}
+          path: ${{ env.PKG_NAME }}.tar.gz
+
   build-python:
     needs: test
     runs-on: ubuntu-latest
@@ -327,7 +484,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-windows, build-linux, build-macos, build-pi-light]
+    needs: [build-windows, build-windows-arm64, build-linux, build-linux-arm64, build-macos, build-macos-x86_64, build-pi-light]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -370,7 +527,7 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
 
   sourceforge:
-    # Uploads the four install archives, the wheel, the sdist,
+    # Uploads the install archives, the wheel, the sdist,
     # SHA384SUMS, and the SBOM. Runs only after the GitHub Release
     # only on a tag push, so a push to main never starts it.
     # Skips until the repo secrets exist, so a release is never
@@ -437,11 +594,15 @@ jobs:
           for path in sorted(pathlib.Path("publish").iterdir()):
               name = path.name
               low = name.lower()
-              if "windows" in low and low.endswith(".zip"):
+              # Only the primary archive of each OS is the default
+              # download. The other architectures are published
+              # beside it and must not be marked, or the count
+              # below stops being 3.
+              if "windows" in low and "x86_64" in low and low.endswith(".zip"):
                   platforms = ["windows"]
-              elif "linux" in low and low.endswith((".tar.gz", ".tgz")):
+              elif "linux" in low and "x86_64" in low and low.endswith((".tar.gz", ".tgz")):
                   platforms = ["linux"]
-              elif ("macos" in low or "darwin" in low) and low.endswith((".tar.gz", ".tgz", ".zip")):
+              elif "macos" in low and "arm64" in low and low.endswith((".tar.gz", ".tgz", ".zip")):
                   platforms = ["mac"]
               else:
                   continue
@@ -479,7 +640,7 @@ jobs:
           echo "source mirrored to SourceForge git (main + tags)"
 
   gitlab:
-    # Uploads the four install archives, the wheel, the sdist,
+    # Uploads the install archives, the wheel, the sdist,
     # SHA384SUMS, and the SBOM, plus a GitLab Release linking
     # as SourceForge: tag push, after the GitHub Release. Skips
     # until GITLAB_TOKEN exists. Variable or secret:
