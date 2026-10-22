@@ -446,7 +446,9 @@ published code, so the Oracle reads what actually runs.
 
 Nothing fetched ships. A release carries the declarations (a few
 kilobytes); the fetching happens on the box, in the background,
-the first time each extension runs. A second run fetches
+the first time each extension runs — the first pass a minute after
+the agent starts, so a one-cycle check or a run stopped at once
+never begins one, then every 15 minutes. A second run fetches
 nothing: an entry is fetched again only when its declaration
 changes. The manifest is untouched — `sources.json` is a
 separate file, so an agent that predates it loads the same

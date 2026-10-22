@@ -5445,8 +5445,14 @@ def _report_extensions(cfg, base_dir) -> None:
 # newly dropped-in extensions, and live config edits are picked up;
 # work already done is never redone.
 
-_EXTSOURCES_PASS: dict = {"thread": None, "next_due": 0.0, "problem": None}
+_EXTSOURCES_PASS: dict = {"thread": None, "next_due": 0.0, "problem": None,
+                          "since": None}
 _EXTSOURCES_LOCK = threading.Lock()
+# The first pass waits this long after the agent starts, so a
+# short-lived process -- one cycle, a run stopped at once, a test
+# that drives the loop -- never starts fetching into a state dir
+# that is about to go away.
+EXTSOURCES_STARTUP_GRACE_SEC = 60
 
 
 def _model_oracle_configured(cfg) -> bool:
@@ -5523,18 +5529,32 @@ def _extension_sources_pass(cfg, base_dir, force=False, fetcher=None):
         return None
 
 
+def _extension_sources_start(now=None) -> None:
+    """main() calls this once at startup: the first background pass
+    is due EXTSOURCES_STARTUP_GRACE_SEC later."""
+    now = time.time() if now is None else now
+    with _EXTSOURCES_LOCK:
+        _EXTSOURCES_PASS["since"] = now
+        _EXTSOURCES_PASS["next_due"] = now + EXTSOURCES_STARTUP_GRACE_SEC
+
+
 def _extension_sources_tick(cfg, base_dir, now=None, due_now=False) -> bool:
     """Start a background pass when one is due. Never raises.
 
-    Due at startup, every PASS_INTERVAL_SEC after, and at once when
-    config.json changes (the disclosure rule is live). One pass at a
-    time; a pass in flight makes the tick a no-op. Returns whether a
-    pass was started.
+    Due a minute after startup (_extension_sources_start), every
+    PASS_INTERVAL_SEC after, and at once when config.json changes
+    (the disclosure rule is live) -- never inside the startup grace,
+    and never in a process that did not start the loop. One pass at
+    a time; a pass in flight makes the tick a no-op. Returns whether
+    a pass was started.
     """
     if _extsources is None or not isinstance(base_dir, str) or not base_dir:
         return False
     now = time.time() if now is None else now
     with _EXTSOURCES_LOCK:
+        since = _EXTSOURCES_PASS.get("since")
+        if since is None or now < since + EXTSOURCES_STARTUP_GRACE_SEC:
+            return False
         th = _EXTSOURCES_PASS.get("thread")
         if th is not None and th.is_alive():
             return False
@@ -11872,13 +11892,14 @@ def main() -> int:
             log(f"transport supervisor failed to start: {e}",
                 "ERROR")
     # Extension sources: the first run of each extension brings its
-    # code and declared sources for the Oracle, in the background.
-    # A dry run changes nothing and a single cycle has no time for
-    # it; --fetch-sources is the foreground door for both.
+    # code and declared sources for the Oracle, in the background,
+    # a minute in (the loop's tick starts the pass). A dry run
+    # changes nothing and a single cycle has no time for it;
+    # --fetch-sources is the foreground door for both.
     _report_extension_sources(cfg, base_dir)
     if not getattr(args, "dry_run", False) \
             and not getattr(args, "once", False):
-        _extension_sources_tick(cfg, base_dir, due_now=True)
+        _extension_sources_start()
     auth_failed = False  # latch: report auth death once, not every 20s
     # Connection credentials (mailbox_user/password, oauth_*) are not
     # hot. Those still need a restart. CLI flags pin their key so a

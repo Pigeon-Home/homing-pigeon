@@ -29,9 +29,10 @@ When
 ----
 The first time the agent loads a sense extension or starts a
 transport extension, and again only when its declaration changes.
-Fetching runs in the background and never blocks or breaks the
-extension: an offline box records the failure and retries with
-backoff, an hour doubling to a day.
+Fetching runs in the background -- the first pass a minute after the
+agent starts, so a short-lived process never begins one -- and never
+blocks or breaks the extension: an offline box records the failure
+and retries with backoff, an hour doubling to a day.
 
 Integrity
 ---------

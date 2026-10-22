@@ -1233,7 +1233,20 @@ class RunnerWiringTest(_Base):
 
         with mock.patch.object(R, "_extension_sources_pass", fake_pass), \
                 mock.patch.dict(R._EXTSOURCES_PASS,
-                                {"thread": None, "next_due": 0.0}):
+                                {"thread": None, "next_due": 0.0,
+                                 "since": None}):
+            # No loop started: no pass, ever.
+            self.assertFalse(R._extension_sources_tick({}, self.base,
+                                                       now=1000.0,
+                                                       due_now=True))
+            # Inside the startup grace: no pass, not even on a
+            # config edit.
+            R._extension_sources_start(now=1000.0 - 30)
+            self.assertFalse(R._extension_sources_tick({}, self.base,
+                                                       now=1000.0,
+                                                       due_now=True))
+            R._extension_sources_start(
+                now=1000.0 - R.EXTSOURCES_STARTUP_GRACE_SEC)
             self.assertTrue(R._extension_sources_tick({}, self.base,
                                                       now=1000.0))
             self.assertFalse(R._extension_sources_tick({}, self.base,
