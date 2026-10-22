@@ -136,6 +136,22 @@ archive. A file that arrives detached from any release page —
 a mirror, a forwarded email — can still say which build it
 is, and the commit can be checked against the tag.
 
+## The project snapshot
+
+Every install archive carries `project/`, and the same snapshot
+ships alone as `homing-pigeon-project-<version>.tar.gz`: every
+tracked file at the tag, the full history as
+`project/.history/homing-pigeon.bundle`, and `CI-SNAPSHOT.json`
+(the workflows, the platform jobs, and the test results of the run
+that built the release). It is added to the archives before
+`SHA384SUMS` is computed, so the sums and the attestation above
+cover it like everything else. To check the history against the tag:
+
+```sh
+git clone project/.history/homing-pigeon.bundle hp && cd hp
+git rev-parse "vX.Y.Z^{commit}"   # matches "commit" in CI-SNAPSHOT.json
+```
+
 ## The SBOM
 
 `SBOM.spdx.json` (SPDX 2.3) ships with every release and is

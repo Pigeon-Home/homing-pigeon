@@ -286,7 +286,13 @@ and Apple TV cannot exec a shell. The computer behind that screen,
 if it is a Linux board you control, is the Linux archive above,
 and that board does not need Python either.
 
-1. Extract the archive on the target machine.
+1. Extract the archive on the target machine. Beside the binaries
+   is `project/`: the whole Homing Pigeon project that built this
+   release (source, tests, docs, the CI workflows, the full git
+   history as `project/.history/homing-pigeon.bundle`, and the
+   build's CI results). `project/PROJECT-SNAPSHOT.md` is its index.
+   The installer copies it into the state dir, where the Oracle
+   reads it with no network.
 2. Run `install` (or `install.exe` on Windows, from an elevated
    PowerShell). It copies the runner binary, registers the boot-start
    service (systemd / launchd / cron @reboot / Scheduled Task), and —

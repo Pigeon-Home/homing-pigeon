@@ -119,8 +119,11 @@ you. You start them by making a **release**. All point and click:
    - `homing-pigeon-pi-light-arm64-<version>.tar.gz` — for Raspberry Pi (Pi Light)
 
    The release also carries the Python wheel and source
-   distribution, `SHA384SUMS`, the SBOM, and the build-provenance
-   record -- nine files in all.
+   distribution, `SHA384SUMS`, the SBOM, the build-provenance
+   record, and `homing-pigeon-project-<version>.tar.gz` -- the
+   whole project (every file, the full history, and this build's
+   CI facts and test results). Every install archive above carries
+   the same snapshot as its `project/` folder.
 
 The next release uses the next number. Bigger number = newer.
 Do not reuse a tag that already exists.

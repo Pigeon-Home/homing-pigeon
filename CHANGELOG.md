@@ -4,6 +4,30 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.27 - 2026-10-22
+
+- **Every release ships the whole project.** Each install
+  archive now carries `project/`: every tracked file at the tag,
+  the full git history as `project/.history/homing-pigeon.bundle`,
+  and `CI-SNAPSHOT.json` — every workflow with its triggers and
+  jobs, the platform each build ran on, and the test results of
+  the run that built the release. `PROJECT-SNAPSHOT.md` indexes
+  it with links pinned to the commit. The same snapshot ships
+  alone as `homing-pigeon-project-<version>.tar.gz`. The release
+  job builds it once, after the test job, and adds it to the
+  finished archives before `SHA384SUMS`, so the sums and the
+  attestation cover it (`tools/make_snapshot.py`).
+- **The Oracle can read it.** The installer copies `project/`
+  into the state dir (an upgrade replaces it whole), and the
+  Oracle's context names it, so the local model can read the
+  source, the tests, and the CI that built this release with no
+  network. This is the groundwork for the Oracle recommending CI
+  changes and unit tests from the environments it fails in.
+- **Links.** PROTOCOL.md's Agent Guide, README, INSTALL, RUNBOOK
+  and `docs/verification.md` point at the source, the tests, the
+  CI workflows, and the snapshot. RUNBOOK no longer states a file
+  count for the release.
+
 ## 3.12.26 - 2026-10-22
 
 - **CI.** A push runs the plentiful proofs only. macOS,

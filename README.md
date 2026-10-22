@@ -443,6 +443,14 @@ lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
   IMAP/SMTP servers and a fake NATS broker.
 - `docs/RUNBOOK.md` — step-by-step instructions (written for a 5-year-old):
   cloning, pushing, cutting a release, installing, sending a job.
+- `tools/make_snapshot.py` — packs the whole project into every
+  release: each install archive carries `project/` (every tracked
+  file, the full git history as a bundle, and the build's CI facts
+  and test results, indexed by `project/PROJECT-SNAPSHOT.md`), and
+  the same snapshot ships alone as
+  `homing-pigeon-project-<version>.tar.gz`. An installed runner
+  keeps it in its state dir, so the Oracle can read the source, the
+  tests, and the CI that built it without a network.
 - `examples/extensions/` — the example senses: 28 folders ship,
   from the lab-results sense to the IDS feeds; 25 of them are the
   pinned catalog in `docs/extensions.md`.

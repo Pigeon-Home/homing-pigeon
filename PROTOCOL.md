@@ -1155,3 +1155,7 @@ other value.*
 ### Agent Guide
 - The python script to compose transport message: https://github.com/Pigeon-Home/homing-pigeon/blob/main/cloud/send_job.py
 - Project context: https://github.com/Pigeon-Home/homing-pigeon/blob/main/AGENTS.md
+- The source: https://github.com/Pigeon-Home/homing-pigeon/tree/main/runner
+- The test suite: https://github.com/Pigeon-Home/homing-pigeon/tree/main/tests
+- The CI pipeline (every workflow): https://github.com/Pigeon-Home/homing-pigeon/tree/main/.github/workflows
+- The whole project as a snapshot (every file, the full git history, and the CI facts and test results of the build), inside every release archive as `project/` and alone as `homing-pigeon-project-<version>.tar.gz`: https://github.com/Pigeon-Home/homing-pigeon/releases/latest — its index is `project/PROJECT-SNAPSHOT.md`. On an installed runner it is `<state dir>/project/`.

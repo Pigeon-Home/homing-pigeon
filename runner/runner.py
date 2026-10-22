@@ -2242,6 +2242,52 @@ def _bundled_doc_path(name):
     return ""
 
 
+def _project_snapshot_note(base_dir):
+    """One short context block pointing at the shipped project snapshot.
+
+    A release install carries the whole project under <base_dir>/project
+    (tools/make_snapshot.py): source, tests, docs, CI workflows, the
+    full history as a git bundle, and the build's CI facts. The note
+    names the paths so the model can read them with its tools. Returns
+    "" when no snapshot is installed. Never raises.
+    """
+    if not isinstance(base_dir, str) or not base_dir:
+        return ""
+    root = os.path.join(base_dir, "project")
+    index = os.path.join(root, "PROJECT-SNAPSHOT.md")
+    if not os.path.isfile(index):
+        return ""
+    facts = {}
+    try:
+        with open(os.path.join(root, "CI-SNAPSHOT.json"),
+                  encoding="utf-8") as fh:
+            loaded = json.load(fh)
+        if isinstance(loaded, dict):
+            facts = loaded
+    except (OSError, ValueError):
+        pass
+    ver = facts.get("version") if isinstance(facts.get("version"), str) \
+        else "unknown"
+    commit = facts.get("commit") if isinstance(facts.get("commit"), str) \
+        else "unknown"
+    lines = ["Homing Pigeon %s, commit %s, ships its whole project in "
+             "project/ (read it with your tools; paths are relative to "
+             "the state dir):" % (ver, commit[:12]),
+             "- project/PROJECT-SNAPSHOT.md: the index, with links",
+             "- project/CI-SNAPSHOT.json: the CI workflows, platform "
+             "jobs, and the test results of the build that made this "
+             "release",
+             "- project/runner/, project/tests/, project/.github/"
+             "workflows/, project/PROTOCOL.md: source, tests, CI, spec"]
+    tests = facts.get("tests")
+    if isinstance(tests, dict) and isinstance(tests.get("ran"), int):
+        skips = tests.get("skips")
+        lines.append("- CI test result: %s tests, %s, %d skipped"
+                     % (tests["ran"], tests.get("result") or "?",
+                        len(skips) if isinstance(skips, list) else 0))
+    return "\n".join(lines)
+
+
 def _resolve_tool_path(path, base_dir):
     """Relative tool paths resolve against the state dir, so the model
     can say 'runner.log' instead of guessing where the box keeps it."""
@@ -10213,6 +10259,10 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
     if log_tail:
         blob += ("\n\n---\nRecent runner log "
                  "(last lines of runner.log):\n" + log_tail)
+    if job_blob_len < cap:
+        snap = _project_snapshot_note(base_dir)
+        if snap:
+            blob += "\n\n---\nProject snapshot:\n" + snap
     if watch and job_blob_len < cap:
         # The canary section is telemetry, not job output: it yields
         # when the job portion alone already filled the max_chars

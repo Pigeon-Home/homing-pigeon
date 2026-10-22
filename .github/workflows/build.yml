@@ -71,6 +71,13 @@ jobs:
       - name: no silent skips of must-run proofs
         if: always()
         run: python tools/skip_guard.py test-output.log --forbid "bwrap not available" --annotate
+      # The release ships a snapshot of the whole project, and the
+      # snapshot carries this run's test results (tools/make_snapshot.py).
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: ci-test-log
+          path: test-output.log
 
   typecheck:
     needs: test
@@ -524,11 +531,33 @@ jobs:
       id-token: write
       attestations: write
     steps:
+      # Full history: the project snapshot bundles it.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           path: artifacts
           merge-multiple: true
+      # Every install archive carries the whole project: every tracked
+      # file, the full history as a git bundle, and this run's CI facts
+      # and test results, with an index of links (PROJECT-SNAPSHOT.md).
+      # It is built once, here, after the test job, and added to the
+      # finished archives before the sums and the attestation, so both
+      # cover it. The same snapshot ships alone as
+      # homing-pigeon-project-<version>.tar.gz.
+      - name: snapshot the project into every archive
+        run: |
+          set -euo pipefail
+          mkdir -p ci
+          mv artifacts/test-output.log ci/ 2>/dev/null || true
+          log=""; [ -f ci/test-output.log ] && log="--test-log ci/test-output.log"
+          python3 tools/make_snapshot.py --out snapshot $log
+          ver=$(python3 -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          archives=$(ls artifacts/homing-pigeon-*.tar.gz artifacts/homing-pigeon-*.zip)
+          python3 tools/make_snapshot.py --inject snapshot/project $archives
+          tar czf "artifacts/homing-pigeon-project-${ver}.tar.gz" -C snapshot project
+          ls -l artifacts
       # The SBOM (SPDX JSON) joins the artifact set here, before
       # the sums: SHA384SUMS then covers it, the attestation below
       # covers the sums, and the mirrors carry it for free.

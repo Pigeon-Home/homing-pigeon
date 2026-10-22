@@ -33,6 +33,8 @@ REGISTERED = {
         "the test_linux_* modules; run in the ubuntu test job",
     "POSIX installer path": "run on ubuntu and macOS; Windows has its own",
     "POSIX only": "run on ubuntu and macOS",
+    "git not installed": "test_make_snapshot builds throwaway repos; git is "
+                         "on every CI runner, so this runs everywhere CI does",
     "POSIX quoting is the live shell here": "run on ubuntu and macOS",
     "Unix mode bits": "run on ubuntu and macOS",
     "ACL home differs on Windows": "run on POSIX; Windows path tested separately",

@@ -35,7 +35,7 @@ from xml.sax.saxutils import escape
 # Frozen binaries cannot import the package the same way a live run can.
 # The constant is the source of truth for --version; tests/test_version.py
 # fails the build if it drifts from pyproject.toml.
-__version__ = "3.12.26"
+__version__ = "3.12.27"
 
 SERVICE_NAME = "homing-pigeon"
 FILES = ["runner.py", "oauth.py", "winlog.py"]
@@ -179,6 +179,57 @@ def store_additional_secret(cfg_path: str, key_id: str) -> None:
     # The value stays in the file. This line names the key only.
     # codeql[py/clear-text-logging-sensitive-data]
     print(f"additional secret stored for {key_id}")
+
+
+def _cfg_base_dir(cfg_path: str) -> str:
+    """The state dir the runner will use for this config: an explicit
+    base_dir wins, else the config file's directory (runner
+    _base_dir_for)."""
+    try:
+        with open(cfg_path, encoding="utf-8") as fh:
+            cfg = json.load(fh)
+    except (OSError, ValueError):
+        cfg = {}
+    bd = cfg.get("base_dir") if isinstance(cfg, dict) else None
+    if isinstance(bd, str) and bd.strip():
+        return bd
+    return os.path.dirname(os.path.abspath(cfg_path))
+
+
+def install_project_snapshot(src_dir: str, base_dir: str) -> bool:
+    """Install the release's project snapshot as <base_dir>/project.
+
+    A release archive carries project/ (tools/make_snapshot.py): every
+    tracked file, the full history as a git bundle, and the build's CI
+    facts. It lands in the state dir so the Oracle's file tools reach
+    it. An upgrade replaces it whole; nothing else in the state dir is
+    touched. No snapshot in the archive (a source install) is not an
+    error. Returns True when a snapshot was installed.
+    """
+    src = os.path.join(src_dir, "project")
+    if not os.path.isfile(os.path.join(src, "PROJECT-SNAPSHOT.md")):
+        return False
+    os.makedirs(base_dir, exist_ok=True)
+    dst = os.path.join(base_dir, "project")
+    staging = dst + ".new"
+    retired = dst + ".old"
+    for leftover in (staging, retired):
+        if os.path.exists(leftover):
+            shutil.rmtree(leftover, ignore_errors=True)
+    try:
+        shutil.copytree(src, staging, symlinks=True)
+        if os.path.exists(dst):
+            os.replace(dst, retired)
+        os.replace(staging, dst)
+    except OSError as e:
+        print(f"install: warning: project snapshot not installed: {e}")
+        shutil.rmtree(staging, ignore_errors=True)
+        if not os.path.exists(dst) and os.path.exists(retired):
+            os.replace(retired, dst)
+        return False
+    shutil.rmtree(retired, ignore_errors=True)
+    print(f"project snapshot: {dst} (index: PROJECT-SNAPSHOT.md)")
+    return True
 
 
 def install_files(src_dir: str, bin_dir: str,
@@ -1076,6 +1127,7 @@ def do_install_home(args, home, bin_dir, cfg_path, state_dir, src_dir) -> int:
         _stop_task_for_upgrade()
     if not install_files(src_dir, bin_dir, cfg_path):
         return 1
+    install_project_snapshot(src_dir, state_dir)
     inference_ok, model, pi_light = False, None, False
     if fresh:
         _ensure_base_dir(cfg_path, state_dir)
@@ -3217,6 +3269,7 @@ def main() -> int:
     if not install_files(src_dir, dst_dir, os.path.join(dst_dir,
                                                         "config.json")):
         return 1
+    install_project_snapshot(src_dir, _cfg_base_dir(cfg_path))
     inference_ok, model, pi_light = _setup_fresh_config(args, cfg_path)
     extra = _forwarded_args(args)
     if extra:
