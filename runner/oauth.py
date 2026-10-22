@@ -28,6 +28,7 @@ import os
 import secrets
 import sys
 import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -132,16 +133,29 @@ def refresh_access_token(cfg: dict) -> str:
 class _Catch(BaseHTTPRequestHandler):
     code = None
     error = None
+    expected_state = None
 
     def do_GET(self):
         q = urllib.parse.urlparse(self.path).query
         params = urllib.parse.parse_qs(q)
+        if params.get("state", [None])[0] != _Catch.expected_state:
+            # Not the callback this wait is for: a favicon, a
+            # browser preconnect that turned into a GET, or a
+            # stale tab's redirect from an earlier attempt (its
+            # state belongs to a consent that no longer exists).
+            # Answer it and keep waiting -- the one-shot version
+            # of this handler let the first such hit end the
+            # sign-in, and the real redirect had nowhere to land.
+            self._page("Still waiting for the sign-in in progress.")
+            return
         if "code" in params:
             _Catch.code = params["code"][0]
             self._page("Signed in. You can close this window.")
-        else:
-            _Catch.error = params.get("error", ["unknown"])[0]
+        elif "error" in params:
+            _Catch.error = params["error"][0]
             self._page(f"Sign-in failed: {_Catch.error}")
+        else:
+            self._page("Still waiting for the sign-in in progress.")
 
     def _page(self, text: str):
         body = f"<html><body><p>{text}</p></body></html>".encode()
@@ -216,8 +230,40 @@ def exchange_code(cfg, code, verifier, opener=None) -> str:
     return refresh
 
 
+_CONSENT_WAIT_SEC = 300
+_ACCEPT_POLL_SEC = 0.5
+_REQUEST_READ_TIMEOUT_SEC = 5.0
+
+
+class _ConsentServer(HTTPServer):
+    """The redirect listener, hardened against the field failures
+    of 2026-10-22: an accepted connection gets a read deadline, so
+    a browser preconnect that never sends a request cannot block
+    the wait forever, and a failed read is dropped quietly
+    instead of printing a handler traceback over the wizard."""
+
+    def get_request(self):
+        request, address = super().get_request()
+        request.settimeout(_REQUEST_READ_TIMEOUT_SEC)
+        return request, address
+
+    def handle_error(self, request, client_address):
+        return
+
+
 def browser_consent(cfg: dict) -> str:
-    """Open the system browser and return a refresh token. Blocks."""
+    """Open the system browser and return a refresh token. Blocks.
+
+    Serves the redirect port until the callback for THIS consent
+    arrives (matched by state) or the wait expires. Requests that
+    are not that callback -- favicons, preconnects, stale tabs
+    from earlier attempts -- are answered and ignored; the
+    one-shot listener this replaces let the first of those end
+    the sign-in, and its stuck accept thread then held the port
+    so the setup's retry died with "address already in use".
+    The wait runs in the calling thread and the server is closed
+    on every exit, so the port is free for a retry.
+    """
     client_id = cfg.get("oauth_client_id") or ""
     if not client_id:
         raise SystemExit("config error: oauth_client_id is required for auth=oauth")
@@ -226,15 +272,20 @@ def browser_consent(cfg: dict) -> str:
     url = build_authorize_url(cfg, verifier, challenge, state)
     _Catch.code = None
     _Catch.error = None
-    server = HTTPServer(("127.0.0.1", REDIRECT_PORT), _Catch)
-    thread = threading.Thread(target=server.handle_request, daemon=True)
-    thread.start()
+    _Catch.expected_state = state
+    server = _ConsentServer(("127.0.0.1", REDIRECT_PORT), _Catch)
+    server.timeout = _ACCEPT_POLL_SEC
     print("Opening the browser for Google sign-in.")
     print("If it does not open, paste this URL yourself:")
     print(url)
     webbrowser.open(url)
-    thread.join(timeout=300)
-    server.server_close()
+    deadline = time.monotonic() + _CONSENT_WAIT_SEC
+    try:
+        while _Catch.code is None and _Catch.error is None \
+                and time.monotonic() < deadline:
+            server.handle_request()
+    finally:
+        server.server_close()
     if _Catch.error:
         raise SystemExit(f"Google sign-in failed: {_Catch.error}")
     if not _Catch.code:

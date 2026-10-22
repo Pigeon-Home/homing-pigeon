@@ -1,13 +1,19 @@
 """Tests for runner/oauth.py token exchange error reporting."""
+import http.client
 import io
 import json
 import os
+import socket
 import sys
 import tempfile
+import threading
+import time
 import unittest
 import urllib.error
+import urllib.parse
 from unittest import mock
 
+from runner import oauth
 from runner.oauth import exchange_code
 
 
@@ -194,6 +200,158 @@ class RefreshAndExchangeShapeTest(unittest.TestCase):
             self.assertIn("config error", err.getvalue())
             with open(cfg, encoding="utf-8") as fh:
                 self.assertNotIn("refresh", fh.read())
+
+
+class BrowserConsentLoopTests(unittest.TestCase):
+    """The listener behind browser_consent, against the field
+    failures of 2026-10-22: the old one-shot listener let the
+    first stray hit end the sign-in (the real redirect then had
+    nowhere to land), and its stuck accept thread held the port
+    so the setup wizard's retry died with "address already in
+    use". The consent runs in a thread against a real socket,
+    with the browser and the token exchange stubbed out."""
+
+    CFG = {"oauth_client_id": "cid"}
+
+    def _free_port(self):
+        s = socket.socket()
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+        s.close()
+        return port
+
+    def _run_consent(self, port, wait_sec=None, read_timeout=None):
+        box = {}
+        opened = []
+
+        def fake_open(url, **kwargs):
+            opened.append(url)
+            return True
+
+        def fake_exchange(cfg, code, verifier, opener=None):
+            box["exchanged_code"] = code
+            return "refresh-token"
+
+        patches = [
+            mock.patch.object(oauth, "REDIRECT_PORT", port),
+            mock.patch.object(oauth.webbrowser, "open", fake_open),
+            mock.patch.object(oauth, "exchange_code", fake_exchange),
+        ]
+        if wait_sec is not None:
+            patches.append(
+                mock.patch.object(oauth, "_CONSENT_WAIT_SEC", wait_sec))
+        if read_timeout is not None:
+            patches.append(mock.patch.object(
+                oauth, "_REQUEST_READ_TIMEOUT_SEC", read_timeout))
+        for p in patches:
+            p.start()
+
+        def target():
+            try:
+                box["token"] = oauth.browser_consent(self.CFG)
+            except SystemExit as e:
+                box["exit"] = str(e)
+            finally:
+                for p in patches:
+                    p.stop()
+
+        thread = threading.Thread(target=target, daemon=True)
+        thread.start()
+        deadline = time.time() + 5
+        while not opened and time.time() < deadline:
+            thread.join(0.05)
+        self.assertTrue(opened, "the browser was never opened")
+        state = urllib.parse.parse_qs(
+            urllib.parse.urlparse(opened[0]).query)["state"][0]
+        return thread, box, state
+
+    def _get(self, port, path):
+        last = None
+        for _ in range(40):
+            conn = http.client.HTTPConnection("127.0.0.1", port,
+                                              timeout=5)
+            try:
+                conn.request("GET", path)
+                resp = conn.getresponse()
+                resp.read()
+                return resp.status
+            except ConnectionRefusedError as e:
+                last = e
+                time.sleep(0.05)
+            finally:
+                conn.close()
+        raise last
+
+    def test_stray_and_stale_hits_do_not_end_the_wait(self):
+        port = self._free_port()
+        thread, box, state = self._run_consent(port)
+        self.assertEqual(self._get(port, "/favicon.ico"), 200)
+        self.assertEqual(
+            self._get(port, "/?state=stale-state&code=old-code"), 200)
+        self.assertTrue(thread.is_alive())
+        self.assertEqual(
+            self._get(port, f"/?state={state}&code=real-code"), 200)
+        thread.join(timeout=5)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(box.get("token"), "refresh-token")
+        self.assertEqual(box.get("exchanged_code"), "real-code")
+
+    def test_a_stale_error_does_not_end_the_wait(self):
+        port = self._free_port()
+        thread, box, state = self._run_consent(port)
+        self.assertEqual(
+            self._get(port, "/?state=other&error=access_denied"), 200)
+        self.assertTrue(thread.is_alive())
+        self.assertEqual(
+            self._get(port, f"/?state={state}&error=access_denied"),
+            200)
+        thread.join(timeout=5)
+        self.assertFalse(thread.is_alive())
+        self.assertIn("access_denied", box.get("exit", ""))
+
+    def test_only_strays_until_the_deadline_frees_the_port(self):
+        port = self._free_port()
+        thread, box, state = self._run_consent(port, wait_sec=1.5)
+        self.assertEqual(self._get(port, "/favicon.ico"), 200)
+        self.assertEqual(
+            self._get(port, "/?state=stale&code=old-code"), 200)
+        thread.join(timeout=10)
+        self.assertFalse(thread.is_alive())
+        self.assertIn("no sign-in code received", box.get("exit", ""))
+        # The port must be usable again immediately: the setup
+        # wizard's retry is a second consent on the same port.
+        server = oauth.HTTPServer(("127.0.0.1", port), oauth._Catch)
+        server.server_close()
+
+    def test_back_to_back_consents_reuse_the_port(self):
+        port = self._free_port()
+        for _ in range(2):
+            thread, box, state = self._run_consent(port)
+            self.assertEqual(
+                self._get(port, f"/?state={state}&code=the-code"),
+                200)
+            thread.join(timeout=5)
+            self.assertFalse(thread.is_alive())
+            self.assertEqual(box.get("token"), "refresh-token")
+
+    def test_a_stalled_connection_does_not_block_the_callback(self):
+        port = self._free_port()
+        thread, box, state = self._run_consent(port, read_timeout=0.5)
+        stalled = socket.create_connection(("127.0.0.1", port),
+                                           timeout=5)
+        try:
+            # The stalled connection sends nothing (a browser
+            # preconnect). The real callback queues behind it and
+            # must still land once the read deadline drops it.
+            self.assertEqual(
+                self._get(port, f"/?state={state}&code=real-code"),
+                200)
+            thread.join(timeout=10)
+            self.assertFalse(thread.is_alive())
+            self.assertEqual(box.get("token"), "refresh-token")
+            self.assertEqual(box.get("exchanged_code"), "real-code")
+        finally:
+            stalled.close()
 
 
 if __name__ == "__main__":
