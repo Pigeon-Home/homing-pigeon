@@ -1,0 +1,116 @@
+# Agent-Stamp: 30000f1a-3b4c-4d5e-8f6a-7b8c9d0e1f2a
+"""tools/skip_guard.py: a forbidden skip fails, everything else passes.
+
+The guard exists because a skipped proof looks exactly like a
+passed one from the outside. These tests pin the parsing of
+unittest's skip line and the one rule: only the named reasons
+fail the build.
+"""
+import importlib.util
+import io
+import os
+import sys
+import unittest
+from contextlib import redirect_stdout
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+
+def _load():
+    path = os.path.join(os.path.dirname(__file__), "..", "tools",
+                        "skip_guard.py")
+    spec = importlib.util.spec_from_file_location("skip_guard", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+SG = _load()
+
+LOG = """\
+test_a (tests.t.T.test_a) ... ok
+test_b (tests.t.T.test_b) ... skipped 'bwrap not available on this machine'
+test_c (tests.t.T.test_c) ... skipped "z3 is not installed"
+test_d (tests.t.T.test_d) ... skipped 'bwrap not available on this machine'
+test_e (tests.t.T.test_e) ... FAIL
+test_f (tests.t.T.test_f) ... skipped 'runs in the docker/minimal-userland image'
+"""
+
+
+class ParseTests(unittest.TestCase):
+    def test_counts_each_reason(self):
+        reasons = SG.skips_in(io.StringIO(LOG))
+        self.assertEqual(reasons["bwrap not available on this machine"], 2)
+        self.assertEqual(reasons["z3 is not installed"], 1)
+        self.assertEqual(
+            reasons["runs in the docker/minimal-userland image"], 1)
+        self.assertEqual(sum(reasons.values()), 4)
+
+    def test_ok_and_fail_lines_are_not_skips(self):
+        reasons = SG.skips_in(io.StringIO("x ... ok\ny ... FAIL\n"))
+        self.assertEqual(reasons, {})
+
+    def test_crlf_logs_parse(self):
+        reasons = SG.skips_in(io.StringIO(
+            "t (m.T.t) ... skipped 'bwrap not available'\r\n"))
+        self.assertEqual(reasons["bwrap not available"], 1)
+
+
+class RuleTests(unittest.TestCase):
+    def _run(self, text, *forbid):
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".log", delete=False,
+                                         encoding="utf-8") as fh:
+            fh.write(text)
+            path = fh.name
+        try:
+            out = io.StringIO()
+            argv = [path]
+            for f in forbid:
+                argv += ["--forbid", f]
+            with redirect_stdout(out):
+                rc = SG.main(argv)
+            return rc, out.getvalue()
+        finally:
+            os.unlink(path)
+
+    def test_no_forbidden_reasons_passes_and_lists_skips(self):
+        rc, out = self._run(LOG)
+        self.assertEqual(rc, 0)
+        self.assertIn("skip reasons seen:", out)
+        self.assertIn("bwrap not available", out)
+        self.assertNotIn("FORBIDDEN", out)
+
+    def test_forbidden_substring_fails(self):
+        rc, out = self._run(LOG, "bwrap not available")
+        self.assertEqual(rc, 1)
+        self.assertIn("FORBIDDEN", out)
+        self.assertIn("   2  bwrap not available on this machine", out)
+
+    def test_only_named_reasons_fail(self):
+        # z3 is a deliberate skip (tests/test_runbook_constraints.py);
+        # forbidding bwrap must not drag it in.
+        rc, out = self._run(LOG, "bwrap not available")
+        self.assertEqual(rc, 1)
+        forbidden_section = out.split("FORBIDDEN")[1]
+        self.assertIn("bwrap", forbidden_section)
+        self.assertNotIn("z3", forbidden_section)
+        # And once bwrap is present, the same forbid list passes.
+        rc2, _ = self._run(LOG.replace(
+            "skipped 'bwrap not available on this machine'", "ok"),
+            "bwrap not available")
+        self.assertEqual(rc2, 0)
+
+    def test_forbid_is_repeatable(self):
+        rc, out = self._run(LOG, "nothing-here", "z3 is not")
+        self.assertEqual(rc, 1)
+        self.assertIn("z3 is not installed", out.split("FORBIDDEN")[1])
+
+    def test_empty_log_passes(self):
+        rc, out = self._run("", "bwrap")
+        self.assertEqual(rc, 0)
+        self.assertIn("none", out)
+
+
+if __name__ == "__main__":
+    unittest.main()
