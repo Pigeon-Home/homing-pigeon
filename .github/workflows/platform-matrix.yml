@@ -17,9 +17,12 @@ name: platform-matrix
 # base (bash removed, no $HOME, a minimal PATH, the C locale, umask
 # 077, a noexec /tmp, a read-only root, a closed stdin).
 #
-# tier: core legs run on every push and PR; the whole corpus runs
-# nightly and on dispatch. The README's "Proven platforms" table is
-# pinned to the leg names here by tests/test_build_config.py.
+# The corpus is .github/platform-legs.json (one entry per leg, with a
+# tier). The plan job filters it -- core legs on every push and PR, the
+# whole corpus nightly and on dispatch -- and feeds the matrices via
+# fromJSON, because a job-level `if:` cannot read the matrix context.
+# The README's "Proven platforms" table is pinned to the leg names in
+# that file by tests/test_build_config.py.
 on:
   push:
     branches: [main]
@@ -31,54 +34,32 @@ on:
 permissions: {}
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      container: ${{ steps.plan.outputs.container }}
+      container_count: ${{ steps.plan.outputs.container_count }}
+      native: ${{ steps.plan.outputs.native }}
+      native_count: ${{ steps.plan.outputs.native_count }}
+      vm: ${{ steps.plan.outputs.vm }}
+      vm_count: ${{ steps.plan.outputs.vm_count }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - id: plan
+        run: python3 tools/platform_plan.py
+
   container:
     name: ${{ matrix.name }}
-    if: ${{ matrix.tier == 'core' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.container_count != '0' }}
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          # ---- core: every push -------------------------------------
-          - {name: alpine-3-x86_64,        tier: core, runner: ubuntu-latest,    image: "alpine:3"}
-          - {name: rocky-9-x86_64,         tier: core, runner: ubuntu-latest,    image: "rockylinux:9"}
-          - {name: python-3.9-floor-x86_64, tier: core, runner: ubuntu-latest,   image: "python:3.9-slim"}
-          - {name: debian-13-arm64,        tier: core, runner: ubuntu-24.04-arm, image: "debian:trixie-slim"}
-          - {name: debian-12-armv7-qemu,   tier: core, runner: ubuntu-latest,    image: "debian:bookworm-slim", platform: linux/arm/v7}
-          - {name: fatfinger-no-bash,      tier: core, runner: ubuntu-latest,    image: "python:3.12-slim", mutation: no-bash}
-          - {name: fatfinger-noexec-tmp,   tier: core, runner: ubuntu-latest,    image: "python:3.12-slim", docker_flags: "--tmpfs /tmp:rw,noexec,nosuid,size=256m"}
-          # ---- full: nightly and on dispatch -- distributions, x86_64 --
-          - {name: debian-12-x86_64,       tier: full, runner: ubuntu-latest,    image: "debian:bookworm-slim"}
-          - {name: debian-11-x86_64,       tier: full, runner: ubuntu-latest,    image: "debian:bullseye-slim"}
-          - {name: ubuntu-22.04-x86_64,    tier: full, runner: ubuntu-latest,    image: "ubuntu:22.04"}
-          - {name: ubuntu-24.04-x86_64,    tier: full, runner: ubuntu-latest,    image: "ubuntu:24.04"}
-          - {name: fedora-latest-x86_64,   tier: full, runner: ubuntu-latest,    image: "fedora:latest"}
-          - {name: almalinux-8-x86_64,     tier: full, runner: ubuntu-latest,    image: "almalinux:8"}
-          - {name: ubi9-minimal-x86_64,    tier: full, runner: ubuntu-latest,    image: "registry.access.redhat.com/ubi9/ubi-minimal"}
-          - {name: ubi9-minimal-fips-x86_64, tier: full, runner: ubuntu-latest,  image: "registry.access.redhat.com/ubi9/ubi-minimal", fips: "1"}
-          - {name: opensuse-leap-15-x86_64, tier: full, runner: ubuntu-latest,   image: "opensuse/leap:15"}
-          - {name: archlinux-x86_64,       tier: full, runner: ubuntu-latest,    image: "archlinux:latest"}
-          - {name: amazonlinux-2023-x86_64, tier: full, runner: ubuntu-latest,   image: "amazonlinux:2023"}
-          - {name: python-3.14-x86_64,     tier: full, runner: ubuntu-latest,    image: "python:3.14-slim"}
-          # ---- full: distributions, arm64 native ----------------------
-          - {name: alpine-3-arm64,         tier: full, runner: ubuntu-24.04-arm, image: "alpine:3"}
-          - {name: ubuntu-24.04-arm64,     tier: full, runner: ubuntu-24.04-arm, image: "ubuntu:24.04"}
-          - {name: fedora-latest-arm64,    tier: full, runner: ubuntu-24.04-arm, image: "fedora:latest"}
-          - {name: rocky-9-arm64,          tier: full, runner: ubuntu-24.04-arm, image: "rockylinux:9"}
-          # ---- full: other architectures under QEMU -------------------
-          - {name: debian-12-i386-qemu,    tier: full, runner: ubuntu-latest,    image: "debian:bookworm-slim", platform: linux/386}
-          - {name: debian-12-ppc64le-qemu, tier: full, runner: ubuntu-latest,    image: "debian:bookworm-slim", platform: linux/ppc64le}
-          - {name: debian-12-s390x-qemu,   tier: full, runner: ubuntu-latest,    image: "debian:bookworm-slim", platform: linux/s390x}
-          - {name: debian-13-riscv64-qemu, tier: full, runner: ubuntu-latest,    image: "debian:trixie-slim", platform: linux/riscv64}
-          # ---- full: the rest of the fat-fingers -----------------------
-          - {name: fatfinger-no-home,      tier: full, runner: ubuntu-latest,    image: "python:3.12-slim", mutation: no-home}
-          - {name: fatfinger-path-minimal, tier: full, runner: ubuntu-latest,    image: "python:3.12-slim", mutation: path-minimal}
-          - {name: fatfinger-c-locale,     tier: full, runner: ubuntu-latest,    image: "python:3.12-slim", mutation: c-locale}
-          - {name: fatfinger-umask-077,    tier: full, runner: ubuntu-latest,    image: "python:3.12-slim", mutation: umask-077}
-          - {name: fatfinger-closed-stdin, tier: full, runner: ubuntu-latest,    image: "python:3.12-slim", mutation: closed-stdin}
-          - {name: fatfinger-readonly-root, tier: full, runner: ubuntu-latest,   image: "python:3.12-slim", docker_flags: "--read-only --tmpfs /tmp:rw,size=256m"}
+      matrix: ${{ fromJSON(needs.plan.outputs.container) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - if: ${{ matrix.platform != '' }}
@@ -99,20 +80,14 @@ jobs:
 
   native:
     name: ${{ matrix.name }}
-    if: ${{ matrix.tier == 'core' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.native_count != '0' }}
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - {name: native-ubuntu-x86_64,   tier: core, runner: ubuntu-latest}
-          - {name: native-ubuntu-arm64,    tier: core, runner: ubuntu-24.04-arm}
-          - {name: native-windows-arm64,   tier: core, runner: windows-11-arm}
-          - {name: native-macos-x86_64,    tier: core, runner: macos-13}
-          - {name: native-windows-x86_64,  tier: full, runner: windows-latest}
-          - {name: native-macos-arm64,     tier: full, runner: macos-15}
+      matrix: ${{ fromJSON(needs.plan.outputs.native) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
@@ -129,17 +104,14 @@ jobs:
 
   vm:
     name: ${{ matrix.name }}
-    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.vm_count != '0' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - {name: vm-freebsd-14, os: freebsd}
-          - {name: vm-openbsd-7,  os: openbsd}
-          - {name: vm-netbsd-10,  os: netbsd}
+      matrix: ${{ fromJSON(needs.plan.outputs.vm) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - if: ${{ matrix.os == 'freebsd' }}

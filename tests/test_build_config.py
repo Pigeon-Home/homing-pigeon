@@ -512,10 +512,16 @@ def _workflow_text(name):
         return fh.read()
 
 
-def _matrix_leg_names(name):
-    """The `name:` of every `- {name: ..., ...}` matrix entry."""
-    return re.findall(r"(?m)^\s+- \{name: ([A-Za-z0-9._-]+),",
-                      _workflow_text(name))
+def _legs():
+    """The platform corpus: {job: [leg, ...]} from platform-legs.json."""
+    import json
+    with open(os.path.join(_root(), ".github", "platform-legs.json"),
+              encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _matrix_leg_names(_name=None):
+    return [e["name"] for entries in _legs().values() for e in entries]
 
 
 class PipelineLessonsTest(unittest.TestCase):
@@ -590,12 +596,28 @@ class PipelineLessonsTest(unittest.TestCase):
         # Core must stay cheap enough to run on every push; the whole
         # corpus is for the nightly and the dispatch.
         wf = _workflow_text("platform-matrix.yml")
-        core = len(re.findall(r"tier: core,", wf))
+        legs = _legs()
+        core = sum(1 for es in legs.values() for e in es
+                   if e.get("tier") == "core")
         self.assertGreaterEqual(core, 8)
         self.assertLessEqual(core, 14, "core tier is growing; move legs to full")
+        for es in legs.values():
+            for e in es:
+                self.assertIn(e.get("tier"), ("core", "full"), e)
         self.assertIn("schedule:", wf)
         self.assertIn("workflow_dispatch:", wf)
-        self.assertIn("matrix.tier == 'core' || github.event_name == 'schedule'", wf)
+        # a job-level `if:` cannot read the matrix context (the first
+        # push of this workflow died at validation on exactly that);
+        # the plan job filters and the matrices come from fromJSON.
+        self.assertNotIn("matrix.tier", wf)
+        for job in ("container", "native", "vm"):
+            self.assertIn("fromJSON(needs.plan.outputs.%s)" % job, wf)
+            self.assertIn("needs.plan.outputs.%s_count != '0'" % job, wf)
+        # and the plan itself: core on push, everything on schedule
+        with open(os.path.join(_root(), "tools", "platform_plan.py"),
+                  encoding="utf-8") as fh:
+            plan = fh.read()
+        self.assertIn('("schedule", "workflow_dispatch")', plan)
 
     def test_probe_steps_never_hide_behind_continue_on_error(self):
         # continue-on-error reports the step as `success` in the API

@@ -1,0 +1,265 @@
+{
+ "container": [
+  {
+   "name": "alpine-3-x86_64",
+   "tier": "core",
+   "runner": "ubuntu-latest",
+   "image": "alpine:3"
+  },
+  {
+   "name": "rocky-9-x86_64",
+   "tier": "core",
+   "runner": "ubuntu-latest",
+   "image": "rockylinux:9"
+  },
+  {
+   "name": "python-3.9-floor-x86_64",
+   "tier": "core",
+   "runner": "ubuntu-latest",
+   "image": "python:3.9-slim"
+  },
+  {
+   "name": "debian-13-arm64",
+   "tier": "core",
+   "runner": "ubuntu-24.04-arm",
+   "image": "debian:trixie-slim"
+  },
+  {
+   "name": "debian-12-armv7-qemu",
+   "tier": "core",
+   "runner": "ubuntu-latest",
+   "image": "debian:bookworm-slim",
+   "platform": "linux/arm/v7"
+  },
+  {
+   "name": "fatfinger-no-bash",
+   "tier": "core",
+   "runner": "ubuntu-latest",
+   "image": "python:3.12-slim",
+   "mutation": "no-bash"
+  },
+  {
+   "name": "fatfinger-noexec-tmp",
+   "tier": "core",
+   "runner": "ubuntu-latest",
+   "image": "python:3.12-slim",
+   "docker_flags": "--tmpfs /tmp:rw,noexec,nosuid,size=256m"
+  },
+  {
+   "name": "debian-12-x86_64",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "debian:bookworm-slim"
+  },
+  {
+   "name": "debian-11-x86_64",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "debian:bullseye-slim"
+  },
+  {
+   "name": "ubuntu-22.04-x86_64",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "ubuntu:22.04"
+  },
+  {
+   "name": "ubuntu-24.04-x86_64",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "ubuntu:24.04"
+  },
+  {
+   "name": "fedora-latest-x86_64",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "fedora:latest"
+  },
+  {
+   "name": "almalinux-8-x86_64",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "almalinux:8"
+  },
+  {
+   "name": "ubi9-minimal-x86_64",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "registry.access.redhat.com/ubi9/ubi-minimal"
+  },
+  {
+   "name": "ubi9-minimal-fips-x86_64",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "registry.access.redhat.com/ubi9/ubi-minimal",
+   "fips": "1"
+  },
+  {
+   "name": "opensuse-leap-15-x86_64",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "opensuse/leap:15"
+  },
+  {
+   "name": "archlinux-x86_64",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "archlinux:latest"
+  },
+  {
+   "name": "amazonlinux-2023-x86_64",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "amazonlinux:2023"
+  },
+  {
+   "name": "python-3.14-x86_64",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "python:3.14-slim"
+  },
+  {
+   "name": "alpine-3-arm64",
+   "tier": "full",
+   "runner": "ubuntu-24.04-arm",
+   "image": "alpine:3"
+  },
+  {
+   "name": "ubuntu-24.04-arm64",
+   "tier": "full",
+   "runner": "ubuntu-24.04-arm",
+   "image": "ubuntu:24.04"
+  },
+  {
+   "name": "fedora-latest-arm64",
+   "tier": "full",
+   "runner": "ubuntu-24.04-arm",
+   "image": "fedora:latest"
+  },
+  {
+   "name": "rocky-9-arm64",
+   "tier": "full",
+   "runner": "ubuntu-24.04-arm",
+   "image": "rockylinux:9"
+  },
+  {
+   "name": "debian-12-i386-qemu",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "debian:bookworm-slim",
+   "platform": "linux/386"
+  },
+  {
+   "name": "debian-12-ppc64le-qemu",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "debian:bookworm-slim",
+   "platform": "linux/ppc64le"
+  },
+  {
+   "name": "debian-12-s390x-qemu",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "debian:bookworm-slim",
+   "platform": "linux/s390x"
+  },
+  {
+   "name": "debian-13-riscv64-qemu",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "debian:trixie-slim",
+   "platform": "linux/riscv64"
+  },
+  {
+   "name": "fatfinger-no-home",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "python:3.12-slim",
+   "mutation": "no-home"
+  },
+  {
+   "name": "fatfinger-path-minimal",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "python:3.12-slim",
+   "mutation": "path-minimal"
+  },
+  {
+   "name": "fatfinger-c-locale",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "python:3.12-slim",
+   "mutation": "c-locale"
+  },
+  {
+   "name": "fatfinger-umask-077",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "python:3.12-slim",
+   "mutation": "umask-077"
+  },
+  {
+   "name": "fatfinger-closed-stdin",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "python:3.12-slim",
+   "mutation": "closed-stdin"
+  },
+  {
+   "name": "fatfinger-readonly-root",
+   "tier": "full",
+   "runner": "ubuntu-latest",
+   "image": "python:3.12-slim",
+   "docker_flags": "--read-only --tmpfs /tmp:rw,size=256m"
+  }
+ ],
+ "native": [
+  {
+   "name": "native-ubuntu-x86_64",
+   "tier": "core",
+   "runner": "ubuntu-latest"
+  },
+  {
+   "name": "native-ubuntu-arm64",
+   "tier": "core",
+   "runner": "ubuntu-24.04-arm"
+  },
+  {
+   "name": "native-windows-arm64",
+   "tier": "core",
+   "runner": "windows-11-arm"
+  },
+  {
+   "name": "native-macos-x86_64",
+   "tier": "core",
+   "runner": "macos-13"
+  },
+  {
+   "name": "native-windows-x86_64",
+   "tier": "full",
+   "runner": "windows-latest"
+  },
+  {
+   "name": "native-macos-arm64",
+   "tier": "full",
+   "runner": "macos-15"
+  }
+ ],
+ "vm": [
+  {
+   "name": "vm-freebsd-14",
+   "os": "freebsd",
+   "tier": "full"
+  },
+  {
+   "name": "vm-openbsd-7",
+   "os": "openbsd",
+   "tier": "full"
+  },
+  {
+   "name": "vm-netbsd-10",
+   "os": "netbsd",
+   "tier": "full"
+  }
+ ]
+}
