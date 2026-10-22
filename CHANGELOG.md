@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.13 - 2026-10-21
+
+- **A skipped test has to say why.** Every skip reason in the
+  suite is registered with the reason it is legitimate and
+  where the test does run. An unused registration fails, and
+  a skip hidden behind `if True` is refused. The workflows
+  no longer hardcode a test count, and `continue-on-error`
+  stays only on the release mutation job, where it is
+  documented.
+
 ## 3.12.12 - 2026-10-21
 
 - **A television is not a runner.** Tizen, webOS, Roku, and
