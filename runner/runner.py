@@ -10838,7 +10838,16 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
         port_n = int(port)
     except (TypeError, ValueError):
         raise ValueError("oracle chat port must be an integer")
-    httpd = ThreadingHTTPServer((bind_host, port_n), Handler)
+
+    class _OracleServer(ThreadingHTTPServer):
+        # The default backlog is 5. Eight asks at once, which the
+        # send-button contract does, fill it. Windows then aborts
+        # the extra localhost sockets (WinError 10053) and the
+        # page looks dead. 32 covers that burst plus the status poll.
+        request_queue_size = 32
+        daemon_threads = True
+
+    httpd = _OracleServer((bind_host, port_n), Handler)
     bound = httpd.socket.getsockname()[0]
     if not _is_loopback_ip(bound):
         httpd.server_close()

@@ -164,19 +164,30 @@ class OracleSendServerTest(unittest.TestCase):
         except urllib.error.HTTPError as e:
             return e.code, e.read().decode()
         except (ConnectionAbortedError, ConnectionResetError,
-                BrokenPipeError):
-            # Windows delivers WinError 10053 instead of the status
-            # when the host aborts a just-refused localhost socket.
-            # One fresh request; a second abort is a real failure.
-            req = urllib.request.Request(
-                f"http://127.0.0.1:{self.port}/ask",
-                data=data, headers=hdrs, method="POST",
-            )
-            try:
-                with urllib.request.urlopen(req, timeout=5) as resp:
-                    return resp.status, resp.read().decode()
-            except urllib.error.HTTPError as e:
-                return e.code, e.read().decode()
+                BrokenPipeError, TimeoutError, urllib.error.URLError,
+                OSError):
+            # Windows delivers WinError 10053, and sometimes 10038,
+            # instead of the status when the host aborts a localhost
+            # socket that arrived before accept. urllib wraps that
+            # in URLError. A few fresh requests; a last abort is a
+            # real failure and must still raise.
+            last = None
+            for _ in range(4):
+                time.sleep(0.05)
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{self.port}/ask",
+                    data=data, headers=hdrs, method="POST",
+                )
+                try:
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        return resp.status, resp.read().decode()
+                except urllib.error.HTTPError as e:
+                    return e.code, e.read().decode()
+                except (ConnectionAbortedError, ConnectionResetError,
+                        BrokenPipeError, TimeoutError,
+                        urllib.error.URLError, OSError) as exc:
+                    last = exc
+            raise last
 
     def test_good_ask_returns_json_answer(self):
         with mock.patch("runner.runner.ask_model_agent",
@@ -295,10 +306,14 @@ class OracleSendServerTest(unittest.TestCase):
 
     def test_concurrent_asks_all_return(self):
         results = []
+        errors = []
 
         def one(i):
-            code, body = self._post(f"q{i}")
-            results.append((code, json.loads(body).get("answer")))
+            try:
+                code, body = self._post(f"q{i}")
+                results.append((code, json.loads(body).get("answer")))
+            except Exception as exc:
+                errors.append(repr(exc))
 
         with mock.patch("runner.runner.ask_model_agent",
                         return_value={"op": "ask", "answer": "ok"}):
@@ -306,10 +321,12 @@ class OracleSendServerTest(unittest.TestCase):
             for t in threads:
                 t.start()
             for t in threads:
-                t.join()
-        self.assertEqual(len(results), 8)
-        self.assertTrue(all(code == 200 for code, _ in results))
-        self.assertTrue(all(ans == "ok" for _, ans in results))
+                t.join(15)
+        self.assertFalse(any(t.is_alive() for t in threads), errors)
+        self.assertEqual(errors, [])
+        self.assertEqual(len(results), 8, errors)
+        self.assertTrue(all(code == 200 for code, _ in results), results)
+        self.assertTrue(all(ans == "ok" for _, ans in results), results)
 
 
 if __name__ == "__main__":

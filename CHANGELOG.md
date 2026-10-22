@@ -4,6 +4,21 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.51 - 2026-10-22
+
+- **Windows Oracle asks no longer get dropped.** The chat
+  server listened with a backlog of 5. Eight asks at once
+  filled it, Windows aborted the rest (WinError 10053), and
+  the send-button test saw 2 answers out of 8. That is the
+  failure that turned the 3.12.25 Windows job red. The
+  backlog is 32, and a refused localhost socket is retried.
+- The other red runs in this stretch were already fixed:
+  the unregistered "posix spawn arm" skip (3.12.25), the
+  tar exec bit Windows never writes (3.12.27 and 3.12.28),
+  and the `file://C:\...` clone URL (3.12.30). The twenty
+  tags from 3.12.31 through 3.12.50 were the same code as
+  3.12.30 and their tag runs passed.
+
 ## 3.12.50 - 2026-10-22
 
 - Same code as 3.12.30. No change to what the runner does.
