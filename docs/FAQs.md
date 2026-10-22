@@ -275,15 +275,11 @@ model to download. Wire in a soil-moisture sensor and give your SI a
 broad task — "read this sensor every hour and tell me when the beds
 need water." The SI writes the driver, runs it, reads the failure,
 fixes it, and iterates, all through signed jobs. A cellular link that
-drops for a day just means the jobs wait in the mailbox.
-
-**Fermentation, growing rooms, and small bioreactors.** Homebrewers,
-mushroom and microgreen growers, cheesemakers, and the technicians in
-an agriculture or food-science lab can let an SI iterate on the
-scripts that hold a temperature or a humidity band. Remediation is the
-safety net: a job that storms processes or escapes its workspace is
-killed and its outputs are quarantined, moved and never deleted, until
-you release them (`docs/design/remediation-design.md`).
+drops for a day just means the jobs wait in the mailbox. Same can be
+done with fermentation, growing rooms, and small bioreactors. 
+Homebrewers, mushroom and microgreen growers, cheesemakers, and the
+technicians in an agriculture or food-science lab can let an SI
+iterate on the scripts that hold a temperature or a humidity band.
 
 **Field equipment across an air gap.** The file transport turns the
 protocol into an auditable sneakernet. `send_job.py new --to-file`
