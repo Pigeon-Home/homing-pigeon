@@ -24,6 +24,12 @@ on:
 # pins this block and the per-job grants.
 permissions: {}
 
+# A newer push to the same branch cancels the one it replaced.
+# A tag is a release and is never cancelled by this.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -116,7 +122,10 @@ jobs:
     # reported in the log for triage -- this job is a signal, not a block.
 
   build-windows:
-    needs: test
+    # Does not wait for the Ubuntu suite. They run together.
+    # The release waits for both, so a red suite still cannot
+    # publish. Waiting here was the suite's four minutes plus
+    # this job's six, in a line.
     runs-on: windows-latest
     permissions:
       contents: read
@@ -213,7 +222,6 @@ jobs:
           path: ${{ env.PKG_NAME }}.zip
 
   build-linux:
-    needs: test
     runs-on: ubuntu-22.04
     permissions:
       contents: read
@@ -262,7 +270,6 @@ jobs:
     # copied into this archive. That proof is the arm64 leg of
     # .github/workflows/minimal-userland.yml, which runs
     # tests/test_minimal_userland.py inside docker/minimal-userland.
-    needs: test
     runs-on: ubuntu-22.04-arm
     permissions:
       contents: read
@@ -295,7 +302,6 @@ jobs:
           path: ${{ env.PKG_NAME }}.tar.gz
 
   build-macos:
-    needs: test
     runs-on: macos-14
     permissions:
       contents: read
@@ -331,7 +337,6 @@ jobs:
     # for Pi Light. Built on the arm runner; PyInstaller freezes
     # the interpreter it is built with, so this is not a cross
     # compile. No default_profile marker.
-    needs: test
     runs-on: ubuntu-22.04-arm
     permissions:
       contents: read
@@ -369,7 +374,6 @@ jobs:
   build-windows-arm64:
     # Native Windows on ARM. Same freeze rule as the Linux
     # arm64 job: built on an arm runner, not cross-compiled.
-    needs: test
     runs-on: windows-11-arm
     permissions:
       contents: read
@@ -464,7 +468,6 @@ jobs:
     # December 2025 and a job that asks for it never starts, so
     # the release never publishes. macos-15-intel is the
     # standard runner that still freezes x86_64.
-    needs: test
     runs-on: macos-15-intel
     permissions:
       contents: read
@@ -496,7 +499,6 @@ jobs:
           path: ${{ env.PKG_NAME }}.tar.gz
 
   build-python:
-    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -515,7 +517,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-windows, build-windows-arm64, build-linux, build-linux-arm64, build-macos, build-macos-x86_64, build-pi-light]
+    needs: [test, build-python, build-windows, build-windows-arm64, build-linux, build-linux-arm64, build-macos, build-macos-x86_64, build-pi-light]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -652,11 +652,58 @@ class PipelineLessonsTest(unittest.TestCase):
         for job in ("container", "native", "vm"):
             self.assertIn("fromJSON(needs.plan.outputs.%s)" % job, wf)
             self.assertIn("needs.plan.outputs.%s_count != '0'" % job, wf)
-        # and the plan itself: core on push, everything on schedule
+        # and the plan itself: the full corpus is the schedule and
+        # a manual dispatch. A push runs core legs on plentiful
+        # runners only.
         with open(os.path.join(_root(), "tools", "platform_plan.py"),
                   encoding="utf-8") as fh:
             plan = fh.read()
         self.assertIn('("schedule", "workflow_dispatch")', plan)
+
+    def test_a_push_does_not_queue_a_scarce_runner(self):
+        # Measured 2026-10-22: every push started a matrix leg on
+        # macos-13, which GitHub retired, so the workflow sat in
+        # the queue and never finished. The same push also asked
+        # for Windows and ARM runners the binary build was already
+        # using. Those legs stay in the corpus. They run nightly.
+        import importlib.util
+        path = os.path.join(_root(), "tools", "platform_plan.py")
+        spec = importlib.util.spec_from_file_location(
+            "platform_plan", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        legs = _legs()
+        push = mod.choose(legs, "push")
+        names = [e["name"] for es in push.values() for e in es]
+        self.assertIn("native-ubuntu-x86_64", names)
+        self.assertIn("alpine-3-x86_64", names)
+        self.assertIn("python-3.9-floor-x86_64", names)
+        self.assertNotIn("native-macos-x86_64", names)
+        self.assertNotIn("native-windows-arm64", names)
+        self.assertNotIn("debian-13-arm64", names)
+        for maker in ("debian-12-arm64-qemu", "ubuntu-22.04-arm64-qemu",
+                      "alpine-3-armv7-qemu", "ros-humble-arm64-qemu",
+                      "ros-jazzy-arm64-qemu"):
+            self.assertNotIn(maker, names)
+        for es in push.values():
+            for entry in es:
+                self.assertFalse(mod.is_scarce(entry), entry["name"])
+        nightly = mod.choose(legs, "schedule")
+        nightly_names = [e["name"] for es in nightly.values() for e in es]
+        for maker in ("debian-12-arm64-qemu", "ubuntu-22.04-arm64-qemu",
+                      "alpine-3-armv7-qemu", "ros-humble-arm64-qemu",
+                      "ros-jazzy-arm64-qemu"):
+            self.assertIn(maker, nightly_names)
+        mac = [e for e in nightly["native"]
+               if e["name"] == "native-macos-x86_64"]
+        self.assertEqual(len(mac), 1)
+        self.assertEqual(mac[0]["runner"], "macos-15-intel")
+        self.assertGreater(
+            sum(len(v) for v in nightly.values()),
+            sum(len(v) for v in push.values()))
+        with open(os.path.join(_root(), ".github", "platform-legs.json"),
+                  encoding="utf-8") as fh:
+            self.assertNotIn("macos-13", fh.read())
 
     def test_continue_on_error_only_where_documented(self):
         # continue-on-error reports the step as `success` in the API
