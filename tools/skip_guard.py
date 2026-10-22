@@ -23,6 +23,7 @@ import sys
 from collections import Counter
 
 _SKIP_RE = re.compile(r"\.\.\. skipped ['\"](?P<reason>.*?)['\"]\s*$")
+_RAN_RE = re.compile(r"^Ran (\d+) tests? in ")
 
 
 def skips_in(lines):
@@ -50,12 +51,19 @@ def main(argv=None):
     ap.add_argument("--forbid", action="append", default=[],
                     metavar="SUBSTRING",
                     help="a skip reason that must not appear; repeatable")
+    ap.add_argument("--no-skips", action="store_true",
+                    help="any skip at all fails (for a proof that must "
+                         "run every test on every box)")
+    ap.add_argument("--require-ok", action="store_true",
+                    help="the log must show `Ran N tests` with N > 0 "
+                         "and a verdict line of exactly OK")
     args = ap.parse_args(argv)
 
     fh = sys.stdin if args.log == "-" else open(args.log, encoding="utf-8",
                                                 errors="replace")
     with fh:
-        reasons = skips_in(fh)
+        lines = fh.read().splitlines()
+    reasons = skips_in(lines)
 
     if reasons:
         print("skip reasons seen:")
@@ -64,13 +72,29 @@ def main(argv=None):
     else:
         print("skip reasons seen: none")
 
+    rc = 0
     hits = forbidden(reasons, args.forbid)
     if hits:
         print("\nFORBIDDEN skips -- a proof this box must run did not:")
         for reason, count in hits:
             print("  %4d  %s" % (count, reason))
-        return 1
-    return 0
+        rc = 1
+    if args.no_skips and reasons:
+        print("\nSKIPS are not allowed in this run: a skipped proof "
+              "is not a proof.")
+        rc = 1
+    if args.require_ok:
+        ran = [m for m in (_RAN_RE.match(l) for l in lines) if m]
+        count = int(ran[-1].group(1)) if ran else 0
+        verdict_ok = any(l.strip() == "OK" for l in lines)
+        if count <= 0:
+            print("\nREQUIRE-OK: no `Ran N tests` line with N > 0 "
+                  "(the suite did not run, or discovery found nothing)")
+            rc = 1
+        if not verdict_ok:
+            print("\nREQUIRE-OK: no bare `OK` verdict line")
+            rc = 1
+    return rc
 
 
 if __name__ == "__main__":

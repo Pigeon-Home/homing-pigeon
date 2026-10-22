@@ -295,7 +295,7 @@ class PipelineLiftsTest(unittest.TestCase):
     """
 
     WORKFLOWS = ("build.yml", "docker.yml", "security.yml",
-                 "minimal-userland.yml")
+                 "minimal-userland.yml", "platform-matrix.yml")
 
     def _wf(self, name):
         with open(os.path.join(_root(), ".github", "workflows", name),
@@ -503,3 +503,104 @@ class PipelineLiftsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+# Agent-Stamp: 30000f1a-3b4c-4d5e-8f6a-7b8c9d0e1f2a
+def _workflow_text(name):
+    with open(os.path.join(_root(), ".github", "workflows", name),
+              encoding="utf-8") as fh:
+        return fh.read()
+
+
+def _matrix_leg_names(name):
+    """The `name:` of every `- {name: ..., ...}` matrix entry."""
+    return re.findall(r"(?m)^\s+- \{name: ([A-Za-z0-9._-]+),",
+                      _workflow_text(name))
+
+
+class PipelineLessonsTest(unittest.TestCase):
+    """What 2026-10-21 taught, pinned so it cannot un-learn itself.
+
+    Each test here is a bug the pipeline actually had that day, or a
+    way a proof silently stopped being one. They are cheap and they
+    read the workflows as text, like the rest of this file."""
+
+    ALL = ("build.yml", "docker.yml", "security.yml",
+           "minimal-userland.yml", "platform-matrix.yml",
+           "mutation-seeded.yml")
+
+    def test_unittest_output_piped_to_tee_captures_stderr(self):
+        # unittest writes its report to stderr. 8dc7ac7 piped
+        # `docker run | tee` (stdout only) and then grepped the
+        # file for `Ran N tests` / `OK`: the file was empty and both
+        # minimal-userland legs were red for four commits.
+        for name in self.ALL:
+            for line in _workflow_text(name).splitlines():
+                if "| tee" in line and ("unittest" in line
+                                        or "docker run" in line):
+                    self.assertIn("2>&1", line,
+                                  "%s pipes a test report to tee "
+                                  "without 2>&1: %s" % (name, line.strip()))
+
+    def test_every_portable_proof_demands_a_full_ok(self):
+        # A skipped proof is green from the outside. Wherever the
+        # portable proof runs, the verdict step must forbid skips and
+        # require a bare OK. Containers and VMs get it from the script;
+        # the native job spells it out.
+        with open(os.path.join(_root(), "tools", "platform_proof.sh"),
+                  encoding="utf-8") as fh:
+            script = fh.read()
+        self.assertIn("skip_guard.py", script)
+        self.assertIn("--no-skips --require-ok", script)
+        wf = _workflow_text("platform-matrix.yml")
+        self.assertIn("tools/skip_guard.py proof.log --no-skips --require-ok", wf)
+        self.assertIn("tools/platform_proof.sh", wf)
+        # and the proof module refuses to be a platform-conditional
+        with open(os.path.join(_root(), "tests", "test_platform_proof.py"),
+                  encoding="utf-8") as fh:
+            proof = fh.read()
+        self.assertEqual(proof.count("skipUnless"), 1,
+                         "the portable proof may gate on HP_PLATFORM_PROOF "
+                         "only; no per-platform skips")
+        self.assertNotIn("skipIf", proof)
+
+    def test_readme_lists_every_matrix_leg(self):
+        # Claims track proof: every leg name in the matrix appears in
+        # the README's Proven platforms table, and nothing in that
+        # table is a leg the matrix does not run.
+        legs = _matrix_leg_names("platform-matrix.yml")
+        self.assertGreaterEqual(len(legs), 40, legs)
+        self.assertEqual(len(legs), len(set(legs)), "duplicate leg names")
+        with open(os.path.join(_root(), "README.md"), encoding="utf-8") as fh:
+            readme = fh.read()
+        self.assertIn("## Proven platforms", readme)
+        table = readme.split("## Proven platforms", 1)[1].split("\n## ", 1)[0]
+        for leg in legs:
+            self.assertIn("`%s`" % leg, table,
+                          "README Proven platforms lacks leg %s" % leg)
+        listed = set(re.findall(r"`([A-Za-z0-9._-]+)`", table))
+        extra = {x for x in listed if ("-x86_64" in x or "-arm64" in x
+                                        or "-qemu" in x or x.startswith(
+                                            ("fatfinger-", "native-", "vm-")))
+                 } - set(legs)
+        self.assertEqual(extra, set(),
+                         "README lists legs the matrix does not run")
+
+    def test_matrix_core_tier_is_small_and_runs_on_push(self):
+        # Core must stay cheap enough to run on every push; the whole
+        # corpus is for the nightly and the dispatch.
+        wf = _workflow_text("platform-matrix.yml")
+        core = len(re.findall(r"tier: core,", wf))
+        self.assertGreaterEqual(core, 8)
+        self.assertLessEqual(core, 14, "core tier is growing; move legs to full")
+        self.assertIn("schedule:", wf)
+        self.assertIn("workflow_dispatch:", wf)
+        self.assertIn("matrix.tier == 'core' || github.event_name == 'schedule'", wf)
+
+    def test_probe_steps_never_hide_behind_continue_on_error(self):
+        # continue-on-error reports the step as `success` in the API
+        # even when the command failed. The bwrap diagnosis on PR #87
+        # read "EnforceTest alone: passes" off exactly that. Nothing
+        # that proves anything may use it.
+        for name in ("minimal-userland.yml", "platform-matrix.yml"):
+            self.assertNotIn("continue-on-error", _workflow_text(name), name)

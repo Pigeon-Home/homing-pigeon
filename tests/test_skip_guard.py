@@ -74,6 +74,20 @@ class RuleTests(unittest.TestCase):
         finally:
             os.unlink(path)
 
+    def _run_args(self, text, extra):
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".log", delete=False,
+                                         encoding="utf-8") as fh:
+            fh.write(text)
+            path = fh.name
+        try:
+            out = io.StringIO()
+            with redirect_stdout(out):
+                rc = SG.main([path] + list(extra))
+            return rc, out.getvalue()
+        finally:
+            os.unlink(path)
+
     def test_no_forbidden_reasons_passes_and_lists_skips(self):
         rc, out = self._run(LOG)
         self.assertEqual(rc, 0)
@@ -105,6 +119,32 @@ class RuleTests(unittest.TestCase):
         rc, out = self._run(LOG, "nothing-here", "z3 is not")
         self.assertEqual(rc, 1)
         self.assertIn("z3 is not installed", out.split("FORBIDDEN")[1])
+
+    def test_no_skips_fails_on_any_skip(self):
+        rc, out = self._run_args(LOG, ["--no-skips"])
+        self.assertEqual(rc, 1)
+        self.assertIn("SKIPS are not allowed", out)
+        rc2, _ = self._run_args("t (m.T.t) ... ok\nRan 1 test in 0.0s\nOK\n",
+                                ["--no-skips"])
+        self.assertEqual(rc2, 0)
+
+    def test_require_ok_needs_ran_and_verdict(self):
+        good = "t (m.T.t) ... ok\n\nRan 7 tests in 0.3s\n\nOK\n"
+        self.assertEqual(self._run_args(good, ["--require-ok"])[0], 0)
+        # a FAILED verdict, an empty discovery, and a missing verdict
+        bad1 = good.replace("OK", "FAILED (failures=1)")
+        bad2 = good.replace("Ran 7 tests", "Ran 0 tests")
+        bad3 = "t ... ok\n"
+        for text in (bad1, bad2, bad3):
+            rc, out = self._run_args(text, ["--require-ok"])
+            self.assertEqual(rc, 1, text)
+            self.assertIn("REQUIRE-OK", out)
+        # "OK (skipped=2)" is not a bare OK: with --no-skips it fails
+        # twice over, which is the point.
+        rc, _ = self._run_args(
+            "t ... skipped 'x'\nRan 1 test in 0.0s\nOK (skipped=1)\n",
+            ["--require-ok", "--no-skips"])
+        self.assertEqual(rc, 1)
 
     def test_empty_log_passes(self):
         rc, out = self._run("", "bwrap")
