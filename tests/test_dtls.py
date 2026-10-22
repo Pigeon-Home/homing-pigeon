@@ -1088,3 +1088,309 @@ class ProfileRefusalTest(unittest.TestCase):
         self.assertEqual(len(out), 1)
         self.assertIn(4, ep.senders)
         self.assertIn(4, ep.receivers)
+
+
+class HandshakeRefusalTest(unittest.TestCase):
+    def _pair_at_server_hello(self):
+        lines = []
+        log = lambda m, level="INFO": lines.append((level, m))
+        client = dtlsproto.DtlsClientCore(SECRET, log=log)
+        server = dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(SECRET), log=log)
+        hello = client.start(NOW)[0]
+        hrr = server.feed(hello, ADDR, NOW)[0]
+        second = client.feed(hrr, NOW)[0]
+        flight = server.feed(second, ADDR, NOW)
+        return client, server, flight, lines
+
+    def _server_hello(self, suite, version, psk, group, pub, cid):
+        share = (group.to_bytes(2, "big") + len(pub).to_bytes(2, "big")
+                 + pub)
+        exts = [
+            (dtlsproto.EXT_SUPPORTED_VERSIONS, version.to_bytes(2, "big")),
+            (dtlsproto.EXT_KEY_SHARE, share),
+            (dtlsproto.EXT_PRE_SHARED_KEY, psk),
+        ]
+        if cid is not None:
+            exts.append((dtlsproto.EXT_CONNECTION_ID, cid))
+        return (dtlsproto.LEGACY_VERSION.to_bytes(2, "big")
+                + b"\x11" * 32 + b"\x00"
+                + suite.to_bytes(2, "big") + b"\x00"
+                + dtlsproto._extensions_bytes(exts))
+
+    def test_a_server_hello_that_breaks_the_profile_is_refused(self):
+        client, _server, _flight, _lines = self._pair_at_server_hello()
+        pub = b"\x02" * 32
+        psk = (0).to_bytes(2, "big")
+        cases = [
+            (0x1301, dtlsproto.DTLS_1_3, psk, dtlsproto.GROUP_X25519,
+             pub, None, "foreign ciphersuite"),
+            (dtlsproto.SUITE_AES256, 0x0304, psk, dtlsproto.GROUP_X25519,
+             pub, None, "did not pick DTLS 1.3"),
+            (dtlsproto.SUITE_AES256, dtlsproto.DTLS_1_3, b"\x00\x01",
+             dtlsproto.GROUP_X25519, pub, None, "did not accept our PSK"),
+            (dtlsproto.SUITE_AES256, dtlsproto.DTLS_1_3, psk, 0x0017,
+             pub, None, "foreign group"),
+        ]
+        for suite, version, psk_ext, group, key, cid, note in cases:
+            fresh, _, _, _ = self._pair_at_server_hello()
+            body = self._server_hello(suite, version, psk_ext, group,
+                                      key, cid)
+            with self.assertRaises(dtlsproto.DtlsError) as ctx:
+                fresh._on_server_hello(body, b"raw", NOW)
+            self.assertIn(note, str(ctx.exception))
+        client._on_server_hello(
+            self._server_hello(
+                dtlsproto.SUITE_AES256, dtlsproto.DTLS_1_3, psk,
+                dtlsproto.GROUP_X25519, pub, b""),
+            b"raw", NOW)
+        self.assertIsNone(client._peer_cid)
+
+    def test_a_bad_retry_and_a_late_finished_are_ignored(self):
+        client = dtlsproto.DtlsClientCore(SECRET)
+        client.start(NOW)
+        body = (dtlsproto.LEGACY_VERSION.to_bytes(2, "big")
+                + dtlsproto.HRR_RANDOM + b"\x00"
+                + dtlsproto.SUITE_AES256.to_bytes(2, "big") + b"\x00"
+                + dtlsproto._extensions_bytes([
+                    (dtlsproto.EXT_SUPPORTED_VERSIONS,
+                     dtlsproto.DTLS_1_3.to_bytes(2, "big"))]))
+        with self.assertRaises(dtlsproto.DtlsError):
+            client._on_server_hello(body, b"raw", NOW)
+        client.state = "established"
+        self.assertEqual(client._on_server_hello(body, b"raw", NOW), [])
+        self.assertEqual(
+            client._on_server_finished(b"\x00" * 48, b"raw", NOW), [])
+
+    def test_a_finished_that_does_not_verify_kills_the_client(self):
+        client, _server, flight, _lines = self._pair_at_server_hello()
+        client.feed(flight[0], NOW)
+        self.assertEqual(client.state, "handshake-keys")
+        with self.assertRaises(dtlsproto.DtlsError):
+            client._on_server_finished(b"\x00" * 48, b"raw", NOW)
+        self.assertEqual(client.state, "dead")
+
+    def test_alerts_fragments_and_early_data(self):
+        client, server = _established_pair()
+        session = next(iter(server.sessions.values()))
+        alert = session._emit(
+            max(session.senders), dtlsproto.CT_ALERT,
+            bytes([dtlsproto.ALERT_FATAL, 40]))
+        client.feed(alert, NOW)
+        self.assertEqual(client.state, "dead")
+
+        early = dtlsproto.DtlsClientCore(SECRET)
+        with self.assertRaises(dtlsproto.DtlsError):
+            early._on_protected(3, dtlsproto.CT_APPDATA, b"", 0, NOW)
+        self.assertEqual(early._on_protected(3, 99, b"", 0, NOW), [])
+        self.assertEqual(early._on_handshake_bytes(b"\x02", NOW, 0), [])
+
+        def frag(off, piece, total=2):
+            return (bytes([dtlsproto.HS_ENCRYPTED_EXTENSIONS])
+                    + total.to_bytes(3, "big") + (1).to_bytes(2, "big")
+                    + off.to_bytes(3, "big")
+                    + len(piece).to_bytes(3, "big") + piece)
+
+        self.assertEqual(
+            early._on_handshake_bytes(frag(0, b"\x00"), NOW, 2), [])
+        early._on_handshake_bytes(frag(1, b"\x00"), NOW, 2)
+        self.assertTrue(early._ee_seen)
+        early._on_handshake_bytes(
+            dtlsproto._hs_message(
+                dtlsproto.HS_ENCRYPTED_EXTENSIONS, b"\x00\x00", 2),
+            NOW, 2)
+        early._on_app_message(b"not-json")
+        self.assertEqual(early.greeting, {})
+        upd = dtlsproto._hs_message(dtlsproto.HS_KEY_UPDATE, b"\x00", 9)
+        client2, _server2 = _established_pair()
+        self.assertEqual(
+            client2._on_handshake_bytes(upd, NOW, 3), [])
+
+    def test_the_server_refuses_a_hello_that_breaks_the_profile(self):
+        core = dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(SECRET))
+        share = ((2).to_bytes(2, "big")
+                 + dtlsproto.GROUP_X25519.to_bytes(2, "big")
+                 + (32).to_bytes(2, "big") + b"\x09" * 32)
+        modes = bytes([1, dtlsproto.PSK_MODE_DHE_KE])
+        ident = b"homing-pigeon:nope"
+        entry = (len(ident).to_bytes(2, "big") + ident + b"\x00" * 4)
+        psk = (len(entry).to_bytes(2, "big") + entry + bytes([1, 0]))
+
+        def begin(suites, exts, raw=b"x" * 64):
+            session = dtlsproto._ServerSession(core, ADDR)
+            return session, session.begin(
+                raw, {"suites": suites, "exts": exts},
+                b"\x00" * dtlsproto.HASH_LEN, b"hrr", NOW)
+
+        session, out = begin([0x0001], {})
+        self.assertTrue(session.dead)
+        self.assertEqual(out[0][0], dtlsproto.CT_ALERT)
+        _s, out = begin([dtlsproto.SUITE_AES256], {})
+        self.assertEqual(out[0][0], dtlsproto.CT_ALERT)
+        _s, out = begin([dtlsproto.SUITE_AES256], {
+            dtlsproto.EXT_PSK_MODES: modes})
+        self.assertEqual(out[0][0], dtlsproto.CT_ALERT)
+        _s, out = begin([dtlsproto.SUITE_AES256], {
+            dtlsproto.EXT_PSK_MODES: modes,
+            dtlsproto.EXT_KEY_SHARE: b"\x00"})
+        self.assertEqual(out[0][0], dtlsproto.CT_ALERT)
+        _s, out = begin([dtlsproto.SUITE_AES256], {
+            dtlsproto.EXT_PSK_MODES: modes,
+            dtlsproto.EXT_KEY_SHARE: ((2).to_bytes(2, "big")
+                                      + (0x0017).to_bytes(2, "big")
+                                      + (32).to_bytes(2, "big")
+                                      + b"\x09" * 32)})
+        self.assertEqual(out[0][0], dtlsproto.CT_ALERT)
+        _s, out = begin([dtlsproto.SUITE_AES256], {
+            dtlsproto.EXT_PSK_MODES: modes,
+            dtlsproto.EXT_KEY_SHARE: share})
+        self.assertEqual(out[0][0], dtlsproto.CT_ALERT)
+        _s, out = begin([dtlsproto.SUITE_AES256], {
+            dtlsproto.EXT_PSK_MODES: modes,
+            dtlsproto.EXT_KEY_SHARE: share,
+            dtlsproto.EXT_PRE_SHARED_KEY: b"\x00\x10"})
+        self.assertEqual(out[0][0], dtlsproto.CT_ALERT)
+        session, out = begin([dtlsproto.SUITE_AES256], {
+            dtlsproto.EXT_PSK_MODES: modes,
+            dtlsproto.EXT_KEY_SHARE: share,
+            dtlsproto.EXT_PRE_SHARED_KEY: (0).to_bytes(2, "big")
+            + bytes([1, 0])})
+        self.assertTrue(session.dead)
+        session, out = begin([dtlsproto.SUITE_AES256], {
+            dtlsproto.EXT_PSK_MODES: modes,
+            dtlsproto.EXT_KEY_SHARE: share,
+            dtlsproto.EXT_PRE_SHARED_KEY: psk,
+            dtlsproto.EXT_CONNECTION_ID: b""}, raw=b"ab")
+        self.assertEqual(out[0][0], dtlsproto.CT_ALERT)
+
+    def test_a_zero_point_does_not_leave_a_session_behind(self):
+        server = dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(SECRET))
+        real = dtlsproto.x25519_public
+        dtlsproto.x25519_public = lambda priv: b"\x00" * 32
+        try:
+            client = dtlsproto.DtlsClientCore(SECRET)
+            hello = client.start(NOW)[0]
+            hrr = server.feed(hello, ADDR, NOW)[0]
+            second = client.feed(hrr, NOW)[0]
+        finally:
+            dtlsproto.x25519_public = real
+        self.assertEqual(server.feed(second, ADDR, NOW), [])
+        self.assertEqual(server.sessions, {})
+        self.assertEqual(server.by_addr, {})
+
+    def test_a_first_flight_that_is_not_a_hello_is_dropped(self):
+        lines = []
+        server = dtlsproto.DtlsServerCore(
+            log=lambda m, level="INFO": lines.append(m))
+        alert = dtlsproto._plaintext_record(
+            dtlsproto.CT_ALERT, 0, 0, bytes([2, 0]))
+        self.assertEqual(server.feed(alert, ADDR, NOW), [])
+        frag = (bytes([1]) + (10).to_bytes(3, "big")
+                + b"\x00\x00" + b"\x00\x00\x00" + (1).to_bytes(3, "big")
+                + b"\x00")
+        rec = dtlsproto._plaintext_record(
+            dtlsproto.CT_HANDSHAKE, 0, 0, frag)
+        self.assertEqual(server.feed(rec, ADDR, NOW), [])
+        other = dtlsproto._hs_message(2, b"\x00" * 40, 0)
+        rec = dtlsproto._plaintext_record(
+            dtlsproto.CT_HANDSHAKE, 0, 0, other)
+        self.assertEqual(server.feed(rec, ADDR, NOW), [])
+        short = dtlsproto._plaintext_record(
+            dtlsproto.CT_HANDSHAKE, 0, 0,
+            dtlsproto._hs_message(1, b"\x00\x00", 0))
+        self.assertEqual(server.feed(short, ADDR, NOW), [])
+        self.assertTrue(any("not a handshake" in m for m in lines))
+        self.assertTrue(any("fragmented" in m for m in lines))
+        self.assertTrue(any("not a ClientHello" in m for m in lines))
+        self.assertTrue(any("malformed ClientHello" in m for m in lines))
+
+    def test_a_replayed_hello_is_the_same_flight(self):
+        client = dtlsproto.DtlsClientCore(SECRET)
+        server = dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(SECRET))
+        hello = client.start(NOW)[0]
+        hrr = server.feed(hello, ADDR, NOW)[0]
+        second = client.feed(hrr, NOW)[0]
+        first = server.feed(second, ADDR, NOW)
+        again = server.feed(second, ADDR, NOW)
+        self.assertEqual(len(again), len(first))
+        self.assertTrue(again)
+
+    def test_records_that_cannot_be_split_or_opened(self):
+        legacy = dtlsproto.LEGACY_VERSION.to_bytes(2, "big")
+        short = bytes([22]) + legacy + b"\x00" * 8 + (100).to_bytes(2, "big")
+        self.assertEqual(dtlsproto._split_records(short), [])
+        unified = bytes([0x20 | 0x08 | 0x10, 0x00])
+        self.assertEqual(dtlsproto._split_records(unified), [])
+        self.assertIsNone(dtlsproto._record_cid(bytes([0x24])))
+        secret = b"k" * dtlsproto.HASH_LEN
+        sealer = dtlsproto._RecordSealer(secret)
+        opener = dtlsproto._RecordSealer(secret)
+        empty = sealer.seal(3, 0, b"", None)
+        with self.assertRaises(dtlsproto.DtlsError) as ctx:
+            opener.open(3, empty)
+        self.assertIn("empty", str(ctx.exception))
+        with self.assertRaises(dtlsproto.DtlsError):
+            opener.open(3, b"")
+        opener._next_expected = 0x1FFFF
+        with self.assertRaises(Exception):
+            opener.open(3, empty)
+        opener._next_expected = 0x10000
+        with self.assertRaises(Exception):
+            opener.open(3, sealer.seal(3, 22, b"hi", None))
+        ident = b"\x00\x01a" + b"\x00" * 4
+        with self.assertRaises(dtlsproto.DtlsError) as ctx:
+            dtlsproto._parse_psk_extension(len(ident).to_bytes(2, "big")
+                                           + ident)
+        self.assertIn("binders missing", str(ctx.exception))
+        body = (len(ident).to_bytes(2, "big") + ident + bytes([1, 3]))
+        with self.assertRaises(dtlsproto.DtlsError) as ctx:
+            dtlsproto._parse_psk_extension(body)
+        self.assertIn("binder overruns", str(ctx.exception))
+        self.assertEqual(dtlsproto._addr_bytes("socket"), b"socket")
+        bare = dtlsproto._Endpoint()
+        with self.assertRaises(NotImplementedError):
+            bare._on_app_message(b"x")
+        self.assertEqual(bare._note_ack(b""), None)
+        no_keys = dtlsproto._ServerSession(
+            dtlsproto.DtlsServerCore(), ADDR)
+        alert = dtlsproto._sendable_alert(no_keys, 40)
+        self.assertTrue(dtlsproto._is_plaintext_record(alert))
+        keyed = dtlsproto._ServerSession(
+            dtlsproto.DtlsServerCore(), ADDR)
+        keyed.senders[2] = dtlsproto._RecordSealer(secret)
+        sealed = dtlsproto._sendable_alert(keyed, 40)
+        self.assertFalse(dtlsproto._is_plaintext_record(sealed))
+
+    def test_a_dead_session_and_an_expired_ticket_are_dropped(self):
+        client, server = _established_pair()
+        session = next(iter(server.sessions.values()))
+        session.dead = True
+        server.tickets[b"old"] = (b"k", NOW - 1)
+        server.tickets[b"new"] = (b"k", NOW + 10)
+        server.tick(NOW + 1)
+        self.assertEqual(server.sessions, {})
+        self.assertNotIn(b"old", server.tickets)
+        self.assertIn(b"new", server.tickets)
+        self.assertEqual(server.send_app(b"missing", b"hi"), [])
+        self.assertEqual(
+            session._on_protected(3, dtlsproto.CT_APPDATA, b"", 0, NOW),
+            [])
+        self.assertEqual(
+            session._on_protected(3, 99, b"", 0, NOW), [])
+        self.assertEqual(
+            session._on_handshake_bytes(b"\x14", NOW, 3), [])
+        alert = client._emit(
+            max(client.senders), dtlsproto.CT_ALERT,
+            bytes([dtlsproto.ALERT_FATAL, 40]))
+        # The client's send key is what the server receives.
+        # Re-establish so the session is alive, then kill it
+        # with the alert.
+        client, server = _established_pair()
+        session = next(iter(server.sessions.values()))
+        alert = client._emit(
+            3, dtlsproto.CT_ALERT, bytes([dtlsproto.ALERT_FATAL, 40]))
+        session.feed_authenticated(alert, NOW)
+        self.assertTrue(session.dead)

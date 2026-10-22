@@ -330,6 +330,45 @@ What is left in `dtlsproto.py` is the rest of the two
 handshake state machines, not the parsers. The extension
 programs are still 74% to 79%.
 
+## After the handshake refusal tests
+
+Measured again the same day. 4489 tests, OK, 22 skipped,
+370 seconds.
+
+Statements: 16872. Missed: 734. Covered: 95.6%.
+Branches: 93.4%. Together: 95.0%.
+
+| File | Before this pass | After | Missed after |
+|---|---:|---:|---:|
+| dtlsproto.py | 90% | 97% | 33 |
+
+What this pass pins, through the real client and server
+cores: a ServerHello that picks a foreign suite, a foreign
+version, a foreign group, or that does not accept the PSK.
+A HelloRetryRequest with no cookie. A Finished that does
+not verify, which kills the client. A fatal alert in either
+direction. Application data before our Finished. A
+handshake fragment that is reassembled, and a second
+EncryptedExtensions that is not added to the transcript
+again. A greeting that is not JSON. A ClientHello whose
+X25519 share is the zero point: the binder matches and the
+server still drops the session it had started to register.
+A first flight that is an alert, a fragment, a ServerHello,
+or a malformed ClientHello. A replayed cookie-bearing
+hello, answered with the same flight and no new keys. A
+datagram that claims more bytes than it has. An empty
+inner plaintext. A dead session and an expired ticket,
+removed on the next tick.
+
+Thirty-three statements remain in `dtlsproto.py`. Two of
+them are the X25519 clamp, which forces the last swap bit
+off, so that branch cannot run. The rest are a few server
+checks a well-formed hello never reaches (an unknown
+identity that still has a matching binder, a Finished that
+fails on the server side). The extension programs are still
+74% to 79%.
+
+
 
 
 
