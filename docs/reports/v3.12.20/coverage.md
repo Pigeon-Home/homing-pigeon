@@ -229,4 +229,38 @@ The extension programs are still 74% to 79%. That is the
 floor until there is a real socket. `transports.py` is 84%
 and `dtlsproto.py` is 88%, and both are still the handshake.
 
+## After the channel and ledger tests
+
+Measured again the same day. 4456 tests, OK, 22 skipped,
+367 seconds.
+
+Statements: 16872. Missed: 897. Covered: 94.7%.
+Branches: 92.0%. Together: 93.9%.
+
+| File | Before this pass | After | Missed after |
+|---|---:|---:|---:|
+| learning.py | 88% | 96% | 16 |
+| transports.py | 84% | 90% | 56 |
+| oauth.py | 89% | 90% | 21 |
+| dri.py | 92% | 93% | 27 |
+
+What this pass pins: the learning switches take `yes` and
+`off`, and a number that is not a number stays at the
+default. Each feature kind (interpreter, tool, path,
+pathshape) has a claim, and today's probe wins when it
+disagrees. A torn ledger line and a record with no host are
+skipped. A result id is taken from the job subject when the
+channel has no hint, and a slash in that id is not a path. A
+file that changes between the two reads is left in the inbox.
+A result that does not land is not consumed, and a rollback
+or an ack that raises is logged rather than stopping the
+other message. A DTLS secret file is read, and an inline
+secret wins over the file of the same key. `oauth`'s command
+refuses a symlink config and a token with a newline.
+
+`transports.py` is now 90%. What is left there is the child
+process supervisor. `dtlsproto.py` is still the handshake,
+at 88%. The extension programs are still 74% to 79%.
+
+
 

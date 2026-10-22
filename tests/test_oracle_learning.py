@@ -718,5 +718,88 @@ class LedgerTrimTest(unittest.TestCase):
         self.assertFalse(L._append("/tmp", ["nope"]))
 
 
+class LearningShapeTest(unittest.TestCase):
+    def test_the_switches_accept_words_and_refuse_junk(self):
+        self.assertTrue(L.learning_enabled(None))
+        self.assertTrue(L.learning_enabled({"oracle_learning": "yes"}))
+        self.assertFalse(L.learning_enabled({"oracle_learning": "off"}))
+        self.assertFalse(L.learning_model_enabled(None))
+        self.assertEqual(L.promote_after(None), L.DEFAULT_PROMOTE_AFTER)
+        self.assertEqual(L.promote_after(
+            {"oracle_learning_promote_after": 0}), L.DEFAULT_PROMOTE_AFTER)
+        self.assertEqual(L.promote_after(
+            {"oracle_learning_promote_after": "two"}), L.DEFAULT_PROMOTE_AFTER)
+
+    def test_features_and_claims_cover_each_kind(self):
+        self.assertEqual(L.feature_keys("nope"), [])
+        self.assertEqual(L.touched_keys("nope"), set())
+        self.assertIn("python2", L.feature_claim("interpreter:python2"))
+        self.assertIn("curl", L.feature_claim("tool:curl"))
+        self.assertIn("/tmp/x", L.feature_claim("path:/tmp/x"))
+        self.assertIn("shaped", L.feature_claim("pathshape:/tmp/x"))
+        self.assertFalse(L._fact_agrees("tool:curl", "tool", "nope"))
+        self.assertFalse(L._fact_agrees(
+            "interpreter:py", "interpreter", {"interpreter": "py"}))
+        self.assertFalse(L._fact_agrees(
+            "interpreter:py", "interpreter", {"interpreter": ["sh"]}))
+        self.assertTrue(L._fact_agrees(
+            "interpreter:py", "interpreter",
+            {"interpreter": ["py"], "interpreter_present": False}))
+        self.assertFalse(L._fact_agrees(
+            "tool:wget", "tool", {"tools": {"curl": False}}))
+        self.assertTrue(L._fact_agrees(
+            "tool:curl", "tool", {"tools": {"curl": False}}))
+        self.assertFalse(L._fact_agrees("path:/a", "path", {"paths": []}))
+        self.assertTrue(L._fact_agrees(
+            "path:/a", "path", {"paths": {"/a": False}}))
+        self.assertFalse(L._fact_agrees(
+            "pathshape:/a", "pathshape", {"paths": {"/a": False}}))
+        self.assertTrue(L._fact_agrees(
+            "pathshape:/a", "pathshape", {"paths": {"/a": None}}))
+        self.assertFalse(L._fact_agrees("other:x", "other", {}))
+
+    def test_a_torn_ledger_and_a_bad_record_do_not_raise(self):
+        self.assertEqual(L.read_records(""), [])
+        self.assertTrue(L.outcome_failed("nope"))
+        with tempfile.TemporaryDirectory() as d:
+            self.assertFalse(L._append(d, {"n": float("nan")}))
+            path = L.ledger_path(d)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("\n[]\n")
+                fh.write(json.dumps({"type": "fact"}) + "\n")
+                fh.write(json.dumps(
+                    {"type": "fact", "host": "h"}) + "\n")
+                fh.write(json.dumps({
+                    "type": "candidate", "host": "h"}) + "\n")
+                fh.write(json.dumps({
+                    "type": "candidate", "host": "h",
+                    "claim_key": "k", "claim": "c"}) + "\n")
+                fh.write(json.dumps({
+                    "type": "candidate_event", "host": "h",
+                    "claim_key": "missing", "event": "corroboration"}) + "\n")
+                fh.write(json.dumps({
+                    "type": "candidate_event", "host": "h",
+                    "claim_key": "k", "event": "contradiction"}) + "\n")
+                fh.write(json.dumps({
+                    "type": "candidate_event", "host": "h",
+                    "claim_key": "k", "event": "corroboration"}) + "\n")
+            state = L.load_state(d)
+            slot = state["candidates"][("h", "k")]
+            self.assertEqual(slot["status"], "contradicted")
+            self.assertEqual(state["facts"], {})
+            L._trim_locked(os.path.join(d, "not-a-ledger"))
+
+    def test_a_lesson_about_a_different_tool_is_not_this_job(self):
+        state = {"facts": {}, "candidates": {
+            ("host", "k"): {
+                "claim_key": "k", "claim": "other tool",
+                "features": ["tool:other"], "expects": "failure",
+                "support": 0, "contradictions": 0,
+                "status": "candidate"}}}
+        out = L.relevant_lessons(
+            state, {}, "host", {"tools": {"curl": False}})
+        self.assertEqual(out["candidates"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

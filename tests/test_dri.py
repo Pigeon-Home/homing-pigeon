@@ -84,6 +84,31 @@ class ParseTest(unittest.TestCase):
         self.assertIsNone(D._to_ts("2026-10-22T00:00:00"))
         self.assertIsNone(D._to_ts("not-a-time"))
 
+    def test_retained_junk_and_a_page_that_will_not_encode(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "retained"))
+            with open(os.path.join(d, "retained", "a.json"),
+                      "w", encoding="utf-8") as fh:
+                fh.write("{")
+            with open(os.path.join(d, "retained", "b.json"),
+                      "w", encoding="utf-8") as fh:
+                fh.write("[]\n")
+            outside = os.path.join(d, "out.json")
+            with open(outside, "w", encoding="utf-8") as fh:
+                fh.write("{}\n")
+            os.symlink(outside, os.path.join(d, "retained", "c.json"))
+            self.assertEqual(D._recent_retained(d, 0), [])
+            self.assertEqual(D._recent_retained(
+                os.path.join(d, "missing"), 0), [])
+
+        class Unprintable:
+            def __bool__(self):
+                return True
+            def __str__(self):
+                raise RuntimeError("no")
+
+        self.assertFalse(D.send_telegram("token", Unprintable(), "hi"))
+
 
 class SensorTriggerTest(unittest.TestCase):
     def test_fused_score_trips(self):

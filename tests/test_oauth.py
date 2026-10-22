@@ -1,8 +1,12 @@
 """Tests for runner/oauth.py token exchange error reporting."""
 import io
 import json
-import urllib.error
+import os
+import sys
+import tempfile
 import unittest
+import urllib.error
+from unittest import mock
 
 from runner.oauth import exchange_code
 
@@ -133,6 +137,29 @@ class RefreshAndExchangeShapeTest(unittest.TestCase):
             exchange_code({"oauth_client_id": "x"}, "code", "v",
                           opener=opener_empty)
         self.assertIn("refresh_token", str(ctx.exception))
+
+    def test_main_refuses_a_symlink_and_a_token_with_a_newline(self):
+        from runner import oauth
+        with tempfile.TemporaryDirectory() as d:
+            real = os.path.join(d, "real.json")
+            with open(real, "w", encoding="utf-8") as fh:
+                fh.write("{}\n")
+            link = os.path.join(d, "link.json")
+            os.symlink(real, link)
+            with mock.patch.object(sys, "argv", ["oauth", "--config", link]):
+                self.assertEqual(oauth.main(), 2)
+            cfg = os.path.join(d, "ok.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                json.dump({"oauth_client_id": "cid"}, fh)
+            err = io.StringIO()
+            with mock.patch.object(sys, "argv", ["oauth", "--config", cfg]), \
+                    mock.patch.object(oauth, "browser_consent",
+                                      return_value="bad\ntoken"), \
+                    mock.patch.object(sys, "stderr", err):
+                self.assertEqual(oauth.main(), 2)
+            self.assertIn("config error", err.getvalue())
+            with open(cfg, encoding="utf-8") as fh:
+                self.assertNotIn("refresh", fh.read())
 
 
 if __name__ == "__main__":

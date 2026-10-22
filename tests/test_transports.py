@@ -1633,5 +1633,181 @@ class OldConfigCompatTest(unittest.TestCase):
         self.assertEqual(handed["mailbox_user"], SENDER)
 
 
+class ChannelEdgeTest(unittest.TestCase):
+    def test_the_extensions_dir_and_a_frozen_bundle(self):
+        self.assertEqual(
+            transports._extensions_dir_for(
+                {"extensions_dir": "/abs/ext"}, ""),
+            "/abs/ext")
+        self.assertEqual(transports._extensions_dir_for({}, ""), "")
+        with mock.patch.object(transports.sys, "_MEIPASS", "/mei",
+                               create=True):
+            roots = transports.builtin_transport_roots()
+        self.assertIn(
+            os.path.join("/mei", "pigeon-transport-extensions"), roots)
+        self.assertIn(os.path.join("/mei", "transport_extensions"), roots)
+
+    def test_a_result_id_comes_from_the_job_when_there_is_no_hint(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = transports.write_channel_result(
+                d, "file",
+                "[HOMING-PIGEON] job abc/def",
+                "[HOMING-PIGEON] result",
+                "body-no-newline")
+            self.assertTrue(path.endswith("abc_def.result.txt"))
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+            self.assertTrue(text.endswith("\n"))
+            self.assertIn("body-no-newline", text)
+
+    def test_a_directory_and_bad_bytes_are_not_a_job(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = transports.ensure_channel_dirs(d, "file")
+            os.mkdir(os.path.join(paths["inbox"], "notes"))
+            with open(os.path.join(paths["inbox"], "bad.job.txt"),
+                      "wb") as fh:
+                fh.write(b"\xff\xfe not utf-8\n\nbody")
+            lines = []
+            got = transports.fetch_channel_messages(
+                d, "file", log=lambda m, level="INFO": lines.append(m))
+            self.assertEqual(len(got), 1)
+            self.assertEqual(got[0].subject, "")
+            self.assertTrue(any("UTF-8" in m for m in lines))
+            got[0].ack()
+            self.assertTrue(os.path.isfile(os.path.join(
+                paths["inbox_done"], "bad.job.txt")))
+
+    def test_a_rewrite_during_the_read_is_left_alone(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = transports.ensure_channel_dirs(d, "file")
+            target = os.path.join(paths["inbox"], "race.job.txt")
+            first = b"Subject: one\n\nbody\n"
+            second = b"Subject: two\n\nbody\n"
+            with open(target, "wb") as fh:
+                fh.write(first)
+            real_open = open
+            calls = {"n": 0}
+
+            def flip(path, mode="r", *args, **kwargs):
+                if path == target and "b" in str(mode):
+                    calls["n"] += 1
+                    import io
+                    body = first if calls["n"] == 1 else second
+                    return io.BytesIO(body)
+                return real_open(path, mode, *args, **kwargs)
+
+            with mock.patch("builtins.open", flip):
+                got = transports.fetch_channel_messages(d, "file")
+            self.assertEqual(got, [])
+            self.assertTrue(os.path.isfile(target))
+
+    def test_a_result_that_does_not_land_is_not_consumed(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = transports.ensure_channel_dirs(d, "file")
+            job = os.path.join(paths["inbox"], "j.job.txt")
+            with open(job, "w", encoding="utf-8") as fh:
+                fh.write("Subject: hi\n\nbody\n")
+            lines = []
+
+            def log(msg, level="INFO"):
+                lines.append(msg)
+
+            def process(subject, body):
+                return [("Subject: out", "body")]
+
+            with mock.patch.object(
+                    transports, "write_channel_result",
+                    side_effect=OSError("full")):
+                n = transports.service_channel(
+                    d, "file", process, log=log)
+            self.assertEqual(n, 1)
+            self.assertTrue(os.path.isfile(job))
+            self.assertTrue(any("did not land" in m for m in lines))
+
+    def test_a_raising_rollback_and_a_raising_ack_are_logged(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = transports.ensure_channel_dirs(d, "file")
+            with open(os.path.join(paths["inbox"], "j.job.txt"),
+                      "w", encoding="utf-8") as fh:
+                fh.write("Subject: hi\n\nbody\n")
+            lines = []
+
+            class Replies(list):
+                def rollback(self):
+                    raise RuntimeError("rb")
+
+            def process(subject, body):
+                out = Replies()
+                out.consume = False
+                return out
+
+            transports.service_channel(
+                d, "file", process, log=lambda m, level="INFO": lines.append(m))
+            self.assertTrue(any("rollback failed" in m for m in lines))
+
+            def boom(subject, body):
+                raise RuntimeError("bad job")
+
+            lines.clear()
+            with mock.patch.object(
+                    transports.IncomingMessage, "ack",
+                    side_effect=OSError("stuck")):
+                transports.service_channel(
+                    d, "file", boom,
+                    log=lambda m, level="INFO": lines.append(m))
+            self.assertTrue(any("ack failed" in m for m in lines))
+            self.assertTrue(any("failed" in m for m in lines))
+
+    def test_a_processor_that_returns_nothing_still_acks(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = transports.ensure_channel_dirs(d, "file")
+            with open(os.path.join(paths["inbox"], "j.job.txt"),
+                      "w", encoding="utf-8") as fh:
+                fh.write("Subject: hi\n\nbody\n")
+            n = transports.service_channel(
+                d, "file", lambda subject, body: None)
+            self.assertEqual(n, 1)
+            self.assertTrue(os.path.isfile(os.path.join(
+                paths["inbox_done"], "j.job.txt")))
+            msg = transports.IncomingMessage("s", "b", lambda *a: None)
+            msg.ack()
+
+    def test_dtls_secrets_come_from_files_and_inline_wins(self):
+        with tempfile.TemporaryDirectory() as d:
+            secret = os.path.join(d, "secret")
+            extra = os.path.join(d, "extra")
+            with open(secret, "w", encoding="utf-8") as fh:
+                fh.write("sekrit\n")
+            with open(extra, "w", encoding="utf-8") as fh:
+                fh.write("from-file\n")
+            out = transports._dtls_secret_material({
+                "shared_secret_file": secret,
+                "additional_secrets": {"a": "inline", "bad": 5},
+                "additional_secrets_files": {
+                    "a": extra, "b": extra, "c": 5,
+                    "d": os.path.join(d, "missing")},
+            })
+            self.assertEqual(out["shared_secret"], "sekrit")
+            self.assertEqual(out["additional_secrets"]["a"], "inline")
+            self.assertEqual(out["additional_secrets"]["b"], "from-file")
+            self.assertNotIn("d", out["additional_secrets"])
+            self.assertEqual(transports._read_secret_file_quiet(
+                os.path.join(d, "missing")), "")
+            handed = transports._runtime_config(
+                None, "file", d, {"root": d})
+            self.assertEqual(handed["poll_interval_sec"], 20)
+            paths = {"root": d}
+            real_open = os.open
+
+            def refuse(*args, **kwargs):
+                raise OSError("no fd")
+
+            with mock.patch("runner.transports.os.open", refuse):
+                written = transports._write_runtime_config(
+                    paths, {"name": "file"})
+            with open(written, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh)["name"], "file")
+
+
 if __name__ == "__main__":
     unittest.main()
