@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.22 - 2026-10-22
+
+- **The release can finish.** GitHub retired the `macos-13`
+  runner in December 2025. The Intel macOS build was still
+  asking for it, so the release job sat in that queue and
+  never published. It now asks for `macos-15-intel`. No
+  change to what the runner does.
+
 ## 3.12.21 - 2026-10-22
 
 - **Windows build.** The job-claim tests called `os.kill(pid, 0)`

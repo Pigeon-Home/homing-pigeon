@@ -452,9 +452,12 @@ jobs:
 
   build-macos-x86_64:
     # Native Intel macOS. macos-14 is Apple Silicon and cannot
-    # freeze an x86_64 interpreter.
+    # freeze an x86_64 interpreter. macos-13 was retired in
+    # December 2025 and a job that asks for it never starts, so
+    # the release never publishes. macos-15-intel is the
+    # standard runner that still freezes x86_64.
     needs: test
-    runs-on: macos-13
+    runs-on: macos-15-intel
     permissions:
       contents: read
     steps:
