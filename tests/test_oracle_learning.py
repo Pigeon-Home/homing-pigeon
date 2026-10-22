@@ -800,6 +800,43 @@ class LearningShapeTest(unittest.TestCase):
             state, {}, "host", {"tools": {"curl": False}})
         self.assertEqual(out["candidates"], [])
 
+    def test_a_write_failure_does_not_block_the_result(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.mkdir(L.ledger_path(d))
+            self.assertIsNone(L.reconcile(
+                d, {}, {"verdict": "likely_failure"},
+                {"exit_code": 1}, ["tool:curl"], {"tool:curl"},
+                "j", "h"))
+
+    def test_a_candidate_about_another_tool_is_not_scored(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertTrue(L._append(d, {
+                "type": "candidate", "host": "h", "claim_key": "k",
+                "claim": "other", "features": ["tool:other"],
+                "expects": "failure", "job_id": "j0"}))
+            rec = L.reconcile(
+                d, {}, {"verdict": "likely_success"},
+                {"exit_code": 0}, ["tool:curl"], {"tool:curl"},
+                "j1", "h")
+            self.assertEqual(rec["classification"], "correct")
+            events = [r for r in L.read_records(d)
+                      if r.get("type") == "candidate_event"]
+            self.assertEqual(events, [])
+
+    def test_a_candidate_with_a_repeated_feature_keeps_one(self):
+        self.assertIsNone(L.validate_candidate({"claim": 5}))
+        got = L.validate_candidate({
+            "claim": "curl is not on this box",
+            "features": ["tool:curl", "tool:curl"],
+            "expects": "failure", "confidence": 0.5})
+        self.assertEqual(got["features"], ["tool:curl"])
+        self.assertFalse(L._fact_agrees(
+            "pathshape:/missing", "pathshape", {"paths": {}}))
+        self.assertIsNone(L.lesson_selects(
+            {"corroborated": [{
+                "features": ["tool:a"], "claim": "a"}]},
+            ["tool:b"]))
+
 
 if __name__ == "__main__":
     unittest.main()

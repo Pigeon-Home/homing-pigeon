@@ -138,6 +138,40 @@ class RefreshAndExchangeShapeTest(unittest.TestCase):
                           opener=opener_empty)
         self.assertIn("refresh_token", str(ctx.exception))
 
+    def test_a_refresh_returns_the_access_token(self):
+        from runner.oauth import refresh_access_token
+
+        class Resp:
+            def read(self):
+                return b'{"access_token": "ya29.token"}'
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+
+        with mock.patch("runner.oauth.urllib.request.urlopen",
+                        return_value=Resp()):
+            token = refresh_access_token({
+                "oauth_client_id": "x",
+                "oauth_refresh_token": "r",
+            })
+        self.assertEqual(token, "ya29.token")
+
+    def test_a_failed_write_does_not_leave_the_token(self):
+        from runner.oauth import store_refresh_token
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("{}\n")
+            with mock.patch("runner.oauth.os.replace",
+                            side_effect=OSError("full")):
+                with self.assertRaises(OSError):
+                    store_refresh_token(path, {"auth": "password"}, "tok")
+            with open(path, encoding="utf-8") as fh:
+                self.assertNotIn("tok", fh.read())
+            leftovers = [n for n in os.listdir(d) if ".tmp." in n]
+            self.assertEqual(leftovers, [])
+
     def test_main_refuses_a_symlink_and_a_token_with_a_newline(self):
         from runner import oauth
         with tempfile.TemporaryDirectory() as d:

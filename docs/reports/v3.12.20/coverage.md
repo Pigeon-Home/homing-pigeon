@@ -262,5 +262,40 @@ refuses a symlink config and a token with a newline.
 process supervisor. `dtlsproto.py` is still the handshake,
 at 88%. The extension programs are still 74% to 79%.
 
+## After the supervisor tests
+
+Measured again the same day. 4468 tests, OK, 22 skipped,
+363 seconds.
+
+Statements: 16872. Missed: 850. Covered: 95.0%.
+Branches: 92.2%. Together: 94.2%.
+
+| File | Before this pass | After | Missed after |
+|---|---:|---:|---:|
+| transports.py | 90% | 96% | 24 |
+| learning.py | 96% | 97% | 10 |
+| oauth.py | 90% | 93% | 15 |
+
+What this pass pins: a refresh that succeeds returns the
+access token, and a token write that fails does not leave
+the token in the config. A reconciliation that cannot be
+written returns nothing, so learning does not block the
+result. A candidate about a different tool is not scored.
+A repeated feature is stored once. A broken extension
+folder is logged and the shipped transport still starts. A
+frozen build rewrites `-m` into `--transport-extension-module`.
+A child that has been up for a minute has its restart count
+cleared. An unreadable inbox does not hold startup. The log
+pump skips a blank line, reopens a sidecar that closed under
+it, and keeps draining when the log call or the pipe raises.
+A process that will not die is killed, and a wait that runs
+out returns false. The same config reuses one supervisor.
+A symlink job and an oversize job are refused unread, and
+an ack of a file that cannot be moved is logged.
+
+`dtlsproto.py` is still the handshake, at 88%. The extension
+programs are still 74% to 79%.
+
+
 
 
