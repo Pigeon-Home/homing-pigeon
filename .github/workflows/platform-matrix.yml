@@ -75,7 +75,8 @@ jobs:
             -v "$PWD:/src:ro" \
             -e HP_MUTATION="${{ matrix.mutation }}" \
             -e HP_FIPS="${{ matrix.fips }}" \
-            "${{ matrix.image }}" sh /src/tools/platform_proof.sh 2>&1 | tee leg.log
+            "${{ matrix.image }}" sh /src/tools/platform_proof.sh 2>&1 | tee leg.log \
+            || { tail -n 15 leg.log | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
           grep PLATFORM-REPORT leg.log | tail -1 >> "$GITHUB_STEP_SUMMARY"
 
   native:
@@ -99,7 +100,7 @@ jobs:
           HP_PLATFORM_PROOF: "1"
         run: |
           python -m unittest tests.test_platform_proof -v 2>&1 | tee proof.log || true
-          python tools/skip_guard.py proof.log --no-skips --require-ok
+          python tools/skip_guard.py proof.log --no-skips --require-ok --annotate
           grep PLATFORM-REPORT proof.log | tail -1 >> "$GITHUB_STEP_SUMMARY"
 
   vm:

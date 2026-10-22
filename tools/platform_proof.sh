@@ -20,6 +20,9 @@
 #              just runs under them)
 set -eu
 
+# Any failure before the verdict step still names itself.
+trap 'rc=$?; [ $rc -ne 0 ] && printf "::error::platform_proof.sh failed (exit %s) at stage: %s\n" "$rc" "${STAGE:-start}"; exit $rc' EXIT
+
 here=$(cd "$(dirname "$0")" && pwd)
 SRC=${HP_SRC:-$(dirname "$here")}
 MUT=${HP_MUTATION:-none}
@@ -27,6 +30,7 @@ MUT=${HP_MUTATION:-none}
 say() { printf '== %s\n' "$*"; }
 
 # ---- 1. python3 -------------------------------------------------------
+STAGE="install python3"
 if ! command -v python3 >/dev/null 2>&1; then
   say "installing python3"
   if   command -v apk      >/dev/null 2>&1; then apk add --no-cache python3
@@ -50,6 +54,7 @@ fi
 say "python3: $(command -v python3) $(python3 -c 'import platform;print(platform.python_version())')"
 
 # ---- 2. FIPS (opt-in): force the OpenSSL FIPS provider ----------------
+STAGE="fips"
 if [ "${HP_FIPS:-0}" = 1 ]; then
   say "forcing OpenSSL FIPS mode"
   command -v microdnf >/dev/null 2>&1 && microdnf install -y openssl openssl-fips-provider >/dev/null 2>&1 || true
@@ -66,12 +71,14 @@ PY
 fi
 
 # ---- 3. a writable copy of the tree ----------------------------------
+STAGE="copy tree"
 WORK=${HP_WORK:-$(mktemp -d "${TMPDIR:-/tmp}/hp-proof.XXXXXX")}
 mkdir -p "$WORK"
 cp -R "$SRC/runner" "$SRC/tests" "$SRC/tools" "$SRC/pyproject.toml" "$WORK"/
 cd "$WORK"
 
 # ---- 4. the fat-finger -----------------------------------------------
+STAGE="mutation $MUT"
 case "$MUT" in
   none) ;;
   no-bash)
@@ -87,6 +94,7 @@ esac
 say "mutation: $MUT"
 
 # ---- 5. run, and demand a full OK ------------------------------------
+STAGE="proof"
 export HP_PLATFORM_PROOF=1 HP_MUTATION="$MUT" PYTHONDONTWRITEBYTECODE=1
 python3 -m unittest tests.test_platform_proof -v 2>&1 | tee "$WORK/proof.log" || true
-python3 tools/skip_guard.py "$WORK/proof.log" --no-skips --require-ok
+python3 tools/skip_guard.py "$WORK/proof.log" --no-skips --require-ok --annotate

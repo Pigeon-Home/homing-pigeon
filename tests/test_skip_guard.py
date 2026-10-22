@@ -146,6 +146,25 @@ class RuleTests(unittest.TestCase):
             ["--require-ok", "--no-skips"])
         self.assertEqual(rc, 1)
 
+    def test_annotate_emits_failures_and_verdicts(self):
+        log = ("test_x (tests.m.T.test_x) ... FAIL\n"
+               "FAIL: test_x (tests.m.T.test_x)\n"
+               "Traceback (most recent call last):\n"
+               "AssertionError: 1 != 0 : scen-2\n"
+               "FAIL: test_bad (test_gamma.T.test_bad)\n"   # fixture noise
+               "Ran 1 test in 0.0s\nFAILED (failures=1)\n")
+        rc, out = self._run_args(log, ["--require-ok", "--annotate"])
+        self.assertEqual(rc, 1)
+        self.assertIn("::error::FAIL: test_x (tests.m.T.test_x)", out)
+        self.assertIn("::error::AssertionError: 1 != 0 : scen-2", out)
+        self.assertNotIn("::error::FAIL: test_bad", out)
+        self.assertIn("::error::REQUIRE-OK", out)
+        # a clean log annotates nothing
+        rc, out = self._run_args("t ... ok\nRan 1 test in 0.0s\nOK\n",
+                                 ["--require-ok", "--annotate"])
+        self.assertEqual(rc, 0)
+        self.assertNotIn("::error::", out)
+
     def test_empty_log_passes(self):
         rc, out = self._run("", "bwrap")
         self.assertEqual(rc, 0)

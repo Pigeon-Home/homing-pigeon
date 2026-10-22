@@ -36,6 +36,26 @@ def skips_in(lines):
     return reasons
 
 
+_FAIL_RE = re.compile(r"^(FAIL|ERROR): \S+ \(tests\.")
+_EXC_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*Error|[A-Za-z_]*Exception|"
+                     r"AssertionError|bwrap|ImportError|ModuleNotFoundError)"
+                     r"(: |$)")
+
+
+def failures_in(lines):
+    """unittest's own failure lines and the exception lines that
+    follow them -- the parts of a log worth an annotation."""
+    out = []
+    seen = set()
+    for raw in lines:
+        line = raw.rstrip("\r\n")
+        if _FAIL_RE.match(line) or _EXC_RE.match(line):
+            if line not in seen:
+                seen.add(line)
+                out.append(line)
+    return out[:10]
+
+
 def forbidden(reasons, needles):
     """The (reason, count) pairs whose reason contains a needle."""
     hits = []
@@ -57,6 +77,10 @@ def main(argv=None):
     ap.add_argument("--require-ok", action="store_true",
                     help="the log must show `Ran N tests` with N > 0 "
                          "and a verdict line of exactly OK")
+    ap.add_argument("--annotate", action="store_true",
+                    help="also print GitHub ::error:: annotations for "
+                         "failing tests, exception lines and verdicts, "
+                         "so a leg's reason is readable without its log")
     args = ap.parse_args(argv)
 
     fh = sys.stdin if args.log == "-" else open(args.log, encoding="utf-8",
@@ -73,27 +97,40 @@ def main(argv=None):
         print("skip reasons seen: none")
 
     rc = 0
+    notes = []
+
+    def note(text):
+        notes.append(text)
+        print(text)
+
+    if args.annotate:
+        for line in failures_in(lines):
+            print("::error::" + line[:900])
+
     hits = forbidden(reasons, args.forbid)
     if hits:
-        print("\nFORBIDDEN skips -- a proof this box must run did not:")
+        note("\nFORBIDDEN skips -- a proof this box must run did not:")
         for reason, count in hits:
-            print("  %4d  %s" % (count, reason))
+            note("  %4d  %s" % (count, reason))
         rc = 1
     if args.no_skips and reasons:
-        print("\nSKIPS are not allowed in this run: a skipped proof "
-              "is not a proof.")
+        note("\nSKIPS are not allowed in this run: a skipped proof "
+             "is not a proof.")
         rc = 1
     if args.require_ok:
         ran = [m for m in (_RAN_RE.match(l) for l in lines) if m]
         count = int(ran[-1].group(1)) if ran else 0
         verdict_ok = any(l.strip() == "OK" for l in lines)
         if count <= 0:
-            print("\nREQUIRE-OK: no `Ran N tests` line with N > 0 "
-                  "(the suite did not run, or discovery found nothing)")
+            note("\nREQUIRE-OK: no `Ran N tests` line with N > 0 "
+                 "(the suite did not run, or discovery found nothing)")
             rc = 1
         if not verdict_ok:
-            print("\nREQUIRE-OK: no bare `OK` verdict line")
+            note("\nREQUIRE-OK: no bare `OK` verdict line")
             rc = 1
+    if args.annotate and rc:
+        for text in notes:
+            print("::error::" + text.strip().replace("\n", " ")[:900])
     return rc
 
 
