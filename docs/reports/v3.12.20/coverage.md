@@ -368,6 +368,45 @@ identity that still has a matching binder, a Finished that
 fails on the server side). The extension programs are still
 74% to 79%.
 
+## After the server checks
+
+Measured again the same day. 4492 tests, OK, 22 skipped,
+368 seconds.
+
+Statements: 16872. Missed: 712. Covered: 95.8%.
+Branches: 93.6%. Together: 95.2%.
+
+| File | Before this pass | After | Missed after |
+|---|---:|---:|---:|
+| dtlsproto.py | 97% | 99% | 9 |
+
+The previous pass asserted "an alert came back" and several
+checks returned one before the line under test. The key
+share in those hellos was two bytes short, so the parser
+refused them first. This pass builds a share the parser
+accepts, and checks the alert code.
+
+What it pins: no PSK modes is a missing extension. No key
+share, a key share that does not parse, and a group that is
+not X25519 are illegal. No pre-shared key is a missing
+extension. A PSK block that does not parse, or that names
+no identity, is illegal. An identity the server does not
+have is a handshake failure, and the log says so. An
+expired resumption ticket falls through to the external
+secret, and a binder longer than the hello is a decrypt
+error. Application data before the session is up is
+dropped. A client Finished that does not verify kills the
+server session and sends an alert. A cookie extension
+shorter than its length field is dropped, and a cookie of
+the wrong size is ignored. A handshake header that claims
+100 bytes and carries none does not parse. A second
+Finished on a live session is ignored. A KeyUpdate on the
+server is answered.
+
+Nine statements remain. Two are the X25519 clamp, which
+cannot run. The extension programs are still 74% to 79%.
+
+
 
 
 

@@ -1394,3 +1394,181 @@ class HandshakeRefusalTest(unittest.TestCase):
             3, dtlsproto.CT_ALERT, bytes([dtlsproto.ALERT_FATAL, 40]))
         session.feed_authenticated(alert, NOW)
         self.assertTrue(session.dead)
+
+
+class ServerHelloCheckTest(unittest.TestCase):
+    """The checks inside begin() that a normal hello never fails.
+
+    The key share has to be long enough to parse, or an earlier
+    refusal fires and these lines never run.
+    """
+
+    def _core(self):
+        self.lines = []
+        return dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(SECRET),
+            log=lambda m, level="INFO": self.lines.append(m))
+
+    def _share(self, group=None, pub=None):
+        group = dtlsproto.GROUP_X25519 if group is None else group
+        pub = b"\x09" * 32 if pub is None else pub
+        entry = (group.to_bytes(2, "big") + len(pub).to_bytes(2, "big")
+                 + pub)
+        return len(entry).to_bytes(2, "big") + entry
+
+    def _psk(self, identity, binder=b"\xab"):
+        entry = (len(identity).to_bytes(2, "big") + identity
+                 + b"\x00" * 4)
+        vec = bytes([len(binder)]) + binder
+        return len(entry).to_bytes(2, "big") + entry + bytes([len(vec)]) + vec
+
+    def _begin(self, core, exts, raw=b"x" * 80):
+        session = dtlsproto._ServerSession(core, ADDR)
+        out = session.begin(
+            raw, {"suites": [dtlsproto.SUITE_AES256], "exts": exts},
+            b"\x11" * dtlsproto.HASH_LEN, b"hrr", NOW)
+        return session, out
+
+    def _alert_code(self, out):
+        return out[0][14]
+
+    def _base_exts(self, **over):
+        exts = {
+            dtlsproto.EXT_PSK_MODES: bytes([1, dtlsproto.PSK_MODE_DHE_KE]),
+            dtlsproto.EXT_KEY_SHARE: self._share(),
+        }
+        exts.update(over)
+        return exts
+
+    def test_each_broken_hello_is_refused_for_its_own_reason(self):
+        core = self._core()
+        modes = bytes([1, dtlsproto.PSK_MODE_DHE_KE])
+        share = self._share()
+
+        _s, out = self._begin(core, {})
+        self.assertEqual(self._alert_code(out),
+                         dtlsproto.ALERT_MISSING_EXTENSION)
+
+        _s, out = self._begin(core, {dtlsproto.EXT_PSK_MODES: modes})
+        self.assertEqual(self._alert_code(out),
+                         dtlsproto.ALERT_ILLEGAL_PARAMETER)
+
+        _s, out = self._begin(core, {
+            dtlsproto.EXT_PSK_MODES: modes,
+            dtlsproto.EXT_KEY_SHARE: b"\x00\x02\x00"})
+        self.assertEqual(self._alert_code(out),
+                         dtlsproto.ALERT_ILLEGAL_PARAMETER)
+
+        _s, out = self._begin(core, {
+            dtlsproto.EXT_PSK_MODES: modes,
+            dtlsproto.EXT_KEY_SHARE: self._share(group=0x0017)})
+        self.assertEqual(self._alert_code(out),
+                         dtlsproto.ALERT_ILLEGAL_PARAMETER)
+
+        _s, out = self._begin(core, {
+            dtlsproto.EXT_PSK_MODES: modes,
+            dtlsproto.EXT_KEY_SHARE: share})
+        self.assertEqual(self._alert_code(out),
+                         dtlsproto.ALERT_MISSING_EXTENSION)
+
+        _s, out = self._begin(core, self._base_exts() | {
+            dtlsproto.EXT_PRE_SHARED_KEY: b"\x00\x10"})
+        self.assertEqual(self._alert_code(out),
+                         dtlsproto.ALERT_ILLEGAL_PARAMETER)
+
+        _s, out = self._begin(core, self._base_exts() | {
+            dtlsproto.EXT_PRE_SHARED_KEY: (0).to_bytes(2, "big")
+            + bytes([1, 0])})
+        self.assertEqual(self._alert_code(out),
+                         dtlsproto.ALERT_ILLEGAL_PARAMETER)
+
+        _s, out = self._begin(core, self._base_exts() | {
+            dtlsproto.EXT_PRE_SHARED_KEY: self._psk(b"homing-pigeon:nope")})
+        self.assertEqual(self._alert_code(out),
+                         dtlsproto.ALERT_HANDSHAKE_FAILURE)
+        self.assertTrue(any("unknown PSK identity" in m for m in self.lines))
+
+        core.tickets[b"homing-pigeon"] = (b"k" * 48, NOW - 5)
+        _s, out = self._begin(core, self._base_exts() | {
+            dtlsproto.EXT_PRE_SHARED_KEY: self._psk(
+                b"homing-pigeon", b"\x11" * 48)}, raw=b"short")
+        self.assertEqual(self._alert_code(out),
+                         dtlsproto.ALERT_DECRYPT_ERROR)
+
+    def test_application_data_before_the_session_is_dropped(self):
+        client = dtlsproto.DtlsClientCore(SECRET)
+        lines = []
+        server = dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(SECRET),
+            log=lambda m, level="INFO": lines.append(m))
+        hello = client.start(NOW)[0]
+        hrr = server.feed(hello, ADDR, NOW)[0]
+        second = client.feed(hrr, NOW)[0]
+        server.feed(second, ADDR, NOW)
+        session = next(iter(server.sessions.values()))
+        self.assertFalse(session.established)
+        self.assertEqual(session._on_protected(
+            2, dtlsproto.CT_APPDATA, b"job", 1, NOW), [])
+        self.assertTrue(any("before the session" in m for m in lines))
+        bad = session._on_client_finished(b"\x00" * 48, b"raw", NOW)
+        self.assertTrue(session.dead)
+        self.assertEqual(bad[0][0] & 0xE0, 0x20)
+        self.assertTrue(any("does not verify" in m for m in lines))
+
+    def test_a_short_cookie_and_a_short_handshake_are_dropped(self):
+        lines = []
+        server = dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(SECRET),
+            log=lambda m, level="INFO": lines.append(m))
+        cookie = b"\x00"
+        body = (dtlsproto.LEGACY_VERSION.to_bytes(2, "big")
+                + b"\x22" * 32 + b"\x00" + b"\x00"
+                + (2).to_bytes(2, "big")
+                + dtlsproto.SUITE_AES256.to_bytes(2, "big")
+                + b"\x01\x00"
+                + dtlsproto._extensions_bytes([
+                    (dtlsproto.EXT_COOKIE, cookie)]))
+        raw = dtlsproto._hs_message(dtlsproto.HS_CLIENT_HELLO, body, 1)
+        rec = dtlsproto._plaintext_record(
+            dtlsproto.CT_HANDSHAKE, 0, 0, raw)
+        self.assertEqual(server.feed(rec, ADDR, NOW), [])
+        self.assertTrue(any("malformed cookie" in m for m in lines))
+        wide = (4).to_bytes(2, "big") + b"abcd"
+        body = (dtlsproto.LEGACY_VERSION.to_bytes(2, "big")
+                + b"\x33" * 32 + b"\x00" + b"\x00"
+                + (2).to_bytes(2, "big")
+                + dtlsproto.SUITE_AES256.to_bytes(2, "big")
+                + b"\x01\x00"
+                + dtlsproto._extensions_bytes([
+                    (dtlsproto.EXT_COOKIE, wide)]))
+        raw = dtlsproto._hs_message(dtlsproto.HS_CLIENT_HELLO, body, 1)
+        rec = dtlsproto._plaintext_record(
+            dtlsproto.CT_HANDSHAKE, 0, 0, raw)
+        self.assertEqual(server.feed(rec, ADDR, NOW), [])
+        self.assertTrue(any("bad cookie" in m for m in lines))
+
+        claimed = (bytes([2]) + (100).to_bytes(3, "big")
+                   + (1).to_bytes(2, "big") + (0).to_bytes(3, "big")
+                   + (100).to_bytes(3, "big"))
+        self.assertIsNone(dtlsproto._parse_handshake(claimed))
+
+        client, server = _established_pair()
+        session = next(iter(server.sessions.values()))
+        finished = dtlsproto._hs_message(
+            dtlsproto.HS_FINISHED, b"\x00" * 48, 9)
+        self.assertEqual(
+            session._on_handshake_bytes(finished, NOW, 3), [])
+        update = dtlsproto._hs_message(
+            dtlsproto.HS_KEY_UPDATE, b"\x00", 10)
+        out = session._on_protected(3, dtlsproto.CT_HANDSHAKE, update, 4, NOW)
+        self.assertTrue(out)
+
+        def piece(off, data, total=2):
+            return (bytes([dtlsproto.HS_KEY_UPDATE])
+                    + total.to_bytes(3, "big") + (11).to_bytes(2, "big")
+                    + off.to_bytes(3, "big")
+                    + len(data).to_bytes(3, "big") + data)
+
+        self.assertEqual(
+            session._on_handshake_bytes(piece(0, b"\x00"), NOW, 3), [])
+        session._on_handshake_bytes(piece(1, b"\x00"), NOW, 3)
