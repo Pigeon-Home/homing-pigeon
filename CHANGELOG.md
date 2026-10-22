@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.35 - 2026-10-22
+
+- Same code as 3.12.30. No change to what the runner does.
+
 ## 3.12.34 - 2026-10-22
 
 - Same code as 3.12.30. No change to what the runner does.
