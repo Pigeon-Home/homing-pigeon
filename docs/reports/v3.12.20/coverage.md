@@ -468,6 +468,36 @@ file with a broken line, a non-object, an empty answer, or
 a repeat of the winner keeps only the new text. An empty
 outbox starts the deadline instead of pausing.
 
+## After the claim-file tests
+
+Measured again the same day. 4518 tests, OK, 22 skipped,
+370 seconds.
+
+Statements: 16872. Missed: 618. Covered: 96.3%.
+Branches: 94.1%. Together: 95.7%.
+
+| File | Before this pass | After | Missed after |
+|---|---:|---:|---:|
+| runner.py | 95.1% | 95.6% | 305 |
+
+What this pass pins, in the on-disk job claim: a pid that is
+not an integer, zero, or negative is not alive. Our own pid
+is. A pid that is not running is not. A pid we are not
+allowed to signal is treated as alive, so we do not steal
+the job. Any other error from the signal is not alive.
+
+Our own claim is not taken a second time once the key is
+already seen. A claim we cannot read, and whose age we
+cannot stat, is left in place. A dead claim that cannot be
+unlinked stays, and the job is not taken. A claim file that
+cannot be created is not ours. Releasing a key that has no
+claim is quiet. Releasing does not delete a claim whose pid
+is someone else's. A release that cannot unlink our own
+claim leaves the file.
+
+The Windows pid check is still unrun. This tree is Linux.
+
+
 
 
 

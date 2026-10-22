@@ -27,8 +27,8 @@ sys.path.insert(0, os.path.join(REPO, "tests"))
 from runner import jobcrypto  # noqa: E402
 from runner import protocol_v2 as v2  # noqa: E402
 from runner.runner import (  # noqa: E402
-    _disk_owns, load_seen, poll_once, process_transport_message,
-    save_seen, sign_payload, verify_body)
+    _disk_owns, _disk_release, _pid_alive, load_seen, poll_once,
+    process_transport_message, save_seen, sign_payload, verify_body)
 from tests.security_parity import SECRET, FakeIMAP, FakeSMTP  # noqa: E402
 
 
@@ -628,6 +628,117 @@ class SeenClaimTest(unittest.TestCase):
         third = {}
         self.assertFalse(_disk_owns(tmp, "job-1", third))
         self.assertTrue(third.get("job-1"))
+
+    def test_a_pid_that_is_not_running_is_not_alive(self):
+        self.assertFalse(_pid_alive(None))
+        self.assertFalse(_pid_alive(0))
+        self.assertFalse(_pid_alive(-3))
+        self.assertTrue(_pid_alive(os.getpid()))
+        dead = None
+        for cand in (999999, 2 ** 20, 2 ** 22):
+            try:
+                os.kill(cand, 0)
+            except ProcessLookupError:
+                dead = cand
+                break
+        self.assertIsNotNone(dead)
+        self.assertFalse(_pid_alive(dead))
+        with mock.patch("os.kill", side_effect=PermissionError):
+            self.assertTrue(_pid_alive(4242))
+        with mock.patch("os.kill", side_effect=OSError("errno")):
+            self.assertFalse(_pid_alive(4242))
+
+    def _claim(self, tmp, skey):
+        folder = os.path.join(tmp, "inflight")
+        name = os.listdir(folder)[0]
+        return os.path.join(folder, name)
+
+    def test_our_own_claim_is_not_taken_twice(self):
+        tmp = tempfile.mkdtemp(prefix="hp-claim-self-")
+        seen = {}
+        self.assertTrue(_disk_owns(tmp, "job-1", seen))
+        seen["job-1"] = True
+        self.assertFalse(_disk_owns(tmp, "job-1", seen))
+
+    def test_a_claim_we_cannot_read_and_cannot_age_is_kept(self):
+        tmp = tempfile.mkdtemp(prefix="hp-claim-age-")
+        self.assertTrue(_disk_owns(tmp, "job-1", {}))
+        claim = self._claim(tmp, "job-1")
+        real_open = open
+        real_mtime = os.path.getmtime
+
+        def bad_open(path, *args, **kwargs):
+            if path == claim:
+                raise OSError("unreadable")
+            return real_open(path, *args, **kwargs)
+
+        def bad_mtime(path):
+            if path == claim:
+                raise OSError("no mtime")
+            return real_mtime(path)
+
+        with mock.patch("builtins.open", bad_open), \
+                mock.patch("os.path.getmtime", bad_mtime):
+            self.assertFalse(_disk_owns(tmp, "job-1", {}))
+        self.assertTrue(os.path.exists(claim))
+
+    def test_a_dead_claim_that_cannot_be_removed_stays(self):
+        tmp = tempfile.mkdtemp(prefix="hp-claim-dead-")
+        self.assertTrue(_disk_owns(tmp, "job-1", {}))
+        claim = self._claim(tmp, "job-1")
+        dead = 999999
+        for cand in (999999, 2 ** 20, 2 ** 22):
+            try:
+                os.kill(cand, 0)
+            except ProcessLookupError:
+                dead = cand
+                break
+        with open(claim, "w", encoding="utf-8") as fh:
+            fh.write(f"{dead}\n0\njob-1\n")
+        real = os.unlink
+
+        def boom(path):
+            if path == claim:
+                raise OSError("busy")
+            return real(path)
+
+        with mock.patch("os.unlink", boom):
+            self.assertFalse(_disk_owns(tmp, "job-1", {}))
+        self.assertTrue(os.path.exists(claim))
+
+    def test_a_claim_that_cannot_be_created_is_not_ours(self):
+        tmp = tempfile.mkdtemp(prefix="hp-claim-open-")
+        real = os.open
+
+        def boom(path, flags, mode=0o777, *args, **kwargs):
+            if "inflight" in str(path):
+                raise OSError("busy")
+            return real(path, flags, mode, *args, **kwargs)
+
+        with mock.patch("os.open", boom):
+            self.assertFalse(_disk_owns(tmp, "job-2", {}))
+
+    def test_release_does_not_take_someone_elses_claim(self):
+        tmp = tempfile.mkdtemp(prefix="hp-claim-rel-")
+        self.assertTrue(_disk_owns(tmp, "job-1", {}))
+        claim = self._claim(tmp, "job-1")
+        _disk_release(tmp, "missing")
+        with open(claim, "w", encoding="utf-8") as fh:
+            fh.write("1\n0\njob-1\n")
+        _disk_release(tmp, "job-1")
+        self.assertTrue(os.path.exists(claim))
+        with open(claim, "w", encoding="utf-8") as fh:
+            fh.write(f"{os.getpid()}\n0\njob-1\n")
+        real = os.unlink
+
+        def boom(path):
+            if path == claim:
+                raise OSError("busy")
+            return real(path)
+
+        with mock.patch("os.unlink", boom):
+            _disk_release(tmp, "job-1")
+        self.assertTrue(os.path.exists(claim))
 
     def test_save_merges_instead_of_wiping(self):
         tmp = tempfile.mkdtemp(prefix="hp-seen-")
