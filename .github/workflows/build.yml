@@ -88,7 +88,9 @@ jobs:
           # Only unittest's own summary lines name a test in tests.*;
           # inner fixture output (install doctor, shard stubs) does not.
           # GitHub shows at most 10 error annotations per step.
-          grep -E '^(FAIL|ERROR): \S+ \(tests\.' test-output.log | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done
+          grep -E '^(FAIL|ERROR): \S+ \(tests\.' test-output.log | sort -u | head -5 | while IFS= read -r line; do echo "::error::$line"; done
+          # The exception line of each failure: for the sandbox tests it carries bwrap's own stderr.
+          grep -E '^(AssertionError|[A-Za-z_.]+Error|bwrap): ' test-output.log | grep -v 'cannot read runtime config' | sort -u | head -5 | while IFS= read -r line; do echo "::error::${line:0:900}"; done
           grep -E '^(Ran [0-9]+ tests|OK|FAILED)' test-output.log | while IFS= read -r line; do echo "::warning::$line"; done
           true
       # A skipped proof is green from the outside. On this box the
