@@ -33,7 +33,8 @@ from unittest import mock
 from runner import jobcrypto, runner
 from runner._version import __version__
 from runner.runner import (
-    Board, apply_cli_overrides, handle_mail, poll_once, sign_payload,
+    Board, apply_cli_overrides, handle_mail, handle_v2_mail, poll_once,
+    sign_payload,
 )
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -524,6 +525,196 @@ class IngestVerboseTest(_VerbosityGuard):
                         runner.build_secrets(cfg), _Opts())
         self.assertIn("verbose: ingest: seq 7 job dup1: skipped; "
                       "already seen", buf.getvalue())
+
+
+def _seal_v2(obj):
+    return jobcrypto.encrypt_body(
+        sign_payload(obj, SECRET), SECRET,
+        job_id=obj["msg_id"], key_id="", sign=sign_payload)
+
+
+class DiskClaimIngestTest(_VerbosityGuard):
+    def _ping(self, job_id):
+        job = {"v": 1, "type": "job", "job_id": job_id,
+               "issued_at": _now(), "kind": "ping"}
+        return _mail("[HOMING-PIGEON] job " + job_id,
+                     _encrypted_body_for(job))
+
+    def _handle(self, job_id, owns):
+        runner._set_verbosity(2)
+        cfg = {"mailbox_user": "t@example.com", "shared_secret": SECRET}
+        imap = _IMAP()
+        imap.marked = []
+        imap.store = lambda *args: imap.marked.append(args) or ("OK", None)
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(runner, "_disk_owns", owns), \
+                    _captured_log() as buf:
+                handle_mail(cfg, imap, _SMTP(), 4, self._ping(job_id),
+                            d, {}, runner.build_secrets(cfg), _Opts())
+        return buf.getvalue(), imap.marked
+
+    def test_a_job_the_disk_already_finished_is_not_run(self):
+        def owns(_base, key, seen):
+            seen[key] = True
+            return False
+
+        out, marked = self._handle("disk1", owns)
+        self.assertIn("job disk1: skipped; already seen", out)
+        self.assertEqual(len(marked), 1)
+
+    def test_a_job_another_process_holds_stays_unseen(self):
+        def owns(_base, _key, _seen):
+            return False
+
+        out, marked = self._handle("held1", owns)
+        self.assertIn("another process holds it", out)
+        self.assertEqual(marked, [])
+
+
+class Version2IngestTest(_VerbosityGuard):
+    def _cfg(self, **extra):
+        cfg = {"mailbox_user": "t@example.com",
+               "shared_secret": SECRET,
+               "protocol_v2": True}
+        cfg.update(extra)
+        return cfg
+
+    def _question(self):
+        from runner import protocol_v2 as v2
+        return v2.question_for(
+            {"protocol_v2": True},
+            {"job_id": "j1", "kind": "exec"})
+
+    def _take(self, cfg, subject, body):
+        imap = _IMAP()
+        with tempfile.TemporaryDirectory() as d:
+            with _captured_log() as buf:
+                taken = handle_v2_mail(
+                    cfg, imap, _SMTP(), 9,
+                    _mail(subject, body), subject,
+                    runner.build_secrets(cfg), _Opts(), d)
+        return taken, buf.getvalue()
+
+    def test_a_bad_signature_and_a_bad_envelope_are_refused(self):
+        q = self._question()
+        cfg = self._cfg()
+        taken, out = self._take(
+            cfg, "[HOMING-PIGEON] question " + q["msg_id"], "nope")
+        self.assertTrue(taken)
+        self.assertIn("bad signature", out)
+        taken, out = self._take(
+            cfg, "[HOMING-PIGEON] question wrong-id", _seal_v2(q))
+        self.assertTrue(taken)
+        self.assertIn("bad envelope", out)
+
+    def test_cleartext_and_an_unlisted_answerer_are_refused(self):
+        q = self._question()
+        saved = runner._ALLOW_CLEARTEXT_JOBS
+        runner._ALLOW_CLEARTEXT_JOBS = False
+        try:
+            taken, out = self._take(
+                self._cfg(),
+                "[HOMING-PIGEON] question " + q["msg_id"],
+                sign_payload(q, SECRET))
+        finally:
+            runner._ALLOW_CLEARTEXT_JOBS = saved
+        self.assertTrue(taken)
+        self.assertIn("cleartext version 2 message refused", out)
+        taken, out = self._take(
+            self._cfg(v2_answerers=["someone-else"]),
+            "[HOMING-PIGEON] question " + q["msg_id"],
+            _seal_v2(q))
+        self.assertTrue(taken)
+        self.assertIn("answerer is not enabled", out)
+
+    def test_a_question_the_schema_refuses_is_not_answered(self):
+        q = self._question()
+        q["deadline_sec"] = 99
+        taken, out = self._take(
+            self._cfg(),
+            "[HOMING-PIGEON] question " + q["msg_id"],
+            _seal_v2(q))
+        self.assertTrue(taken)
+        self.assertIn("deadline_sec", out)
+
+    def test_the_answerer_uses_the_model_and_survives_it_failing(self):
+        from runner import protocol_v2 as v2
+        q = self._question()
+        cfg = self._cfg(answer_only=True)
+        subject = "[HOMING-PIGEON] question " + q["msg_id"]
+        body = _seal_v2(q)
+        used = {}
+        real = v2.answer_for
+
+        def answer_for(payload, text):
+            used["text"] = text
+            return real(payload, text)
+
+        with mock.patch.object(
+                runner, "inference_config", return_value={"model": "x"}), \
+                mock.patch.object(
+                    runner, "ask_model",
+                    return_value={"answer": "  hold the job  "}), \
+                mock.patch.object(
+                    runner._protocol_v2, "answer_for", answer_for):
+            taken, out = self._take(cfg, subject, body)
+        self.assertTrue(taken)
+        self.assertEqual(used["text"], "hold the job")
+        self.assertNotIn("answerer model failed", out)
+
+        with mock.patch.object(
+                runner, "inference_config", return_value={"model": "x"}), \
+                mock.patch.object(
+                    runner, "ask_model",
+                    side_effect=RuntimeError("down")):
+            taken, out = self._take(cfg, subject, body)
+        self.assertTrue(taken)
+        self.assertIn("answerer model failed", out)
+
+
+class PollCloseTest(unittest.TestCase):
+    def test_a_logout_and_a_quit_that_fail_do_not_fail_the_poll(self):
+        cfg = {"mailbox_user": "t@example.com", "shared_secret": SECRET}
+        imap = _IMAP()
+
+        def logout():
+            raise OSError("gone")
+
+        imap.logout = logout
+        smtp = _SMTP()
+
+        def quit_():
+            raise OSError("gone")
+
+        smtp.quit = quit_
+        with tempfile.TemporaryDirectory() as d:
+            seen_path = os.path.join(d, "seen.json")
+            with mock.patch.object(runner, "connect_imap",
+                                    return_value=imap):
+                poll_once(cfg, d, {}, seen_path, imap=None,
+                          smtp=_SMTP(), opts=_Opts())
+            with mock.patch.object(runner, "connect_smtp",
+                                    return_value=smtp):
+                poll_once(cfg, d, {}, seen_path, imap=_IMAP(),
+                          smtp=None, opts=_Opts())
+
+
+class ExtensionReportTest(unittest.TestCase):
+    def test_a_loader_that_throws_is_a_warning(self):
+        with mock.patch.object(
+                runner._extensions, "load_extensions",
+                side_effect=RuntimeError("boom")), \
+                _captured_log() as buf:
+            runner._report_extensions({}, "/tmp")
+        self.assertIn("loader failed", buf.getvalue())
+
+    def test_a_registry_that_is_not_a_map_loads_nothing(self):
+        with mock.patch.object(
+                runner._extensions, "load_extensions",
+                return_value=(["nope"], [])), \
+                _captured_log() as buf:
+            runner._report_extensions({}, "/tmp")
+        self.assertNotIn("extension loaded", buf.getvalue())
 
 
 class JudgeVerboseTest(_VerbosityGuard):

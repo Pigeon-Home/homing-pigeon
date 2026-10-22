@@ -497,6 +497,38 @@ claim leaves the file.
 
 The Windows pid check is still unrun. This tree is Linux.
 
+## After the ingest refusals
+
+Measured again the same day. 4527 tests, OK, 22 skipped,
+372 seconds.
+
+Statements: 16872. Missed: 588. Covered: 96.5%.
+Branches: 94.3%. Together: 95.9%.
+
+| File | Before this pass | After | Missed after |
+|---|---:|---:|---:|
+| runner.py | 95.6% | 96.0% | 275 |
+
+What this pass pins, on the way into a job: a job the disk
+has already finished is not run, and the mail is marked
+seen. A job another process still holds stays unseen, so a
+crash there can be picked up on the next poll.
+
+On a version 2 message: a bad signature is refused, and so
+is an envelope that will not decrypt under the id in the
+subject. Cleartext is refused unless the process was
+started with the flag. An answerer whose key is not on the
+list is refused. A question whose deadline is out of range
+is not answered. The answerer uses a model sentence when
+one comes back, and a model that throws does not stop the
+local default.
+
+A poll whose own IMAP logout throws, or whose own SMTP
+quit throws, still finishes the cycle. An extension loader
+that throws is a warning. A registry that is not a map
+loads nothing.
+
+
 
 
 
