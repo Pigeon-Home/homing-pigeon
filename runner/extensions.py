@@ -57,7 +57,17 @@ _VERSION_RE = re.compile(
 
 _REQUIRED_FIELDS = ("name", "version", "api_version", "kind")
 _OPTIONAL_FIELDS = ("description", "tunables", "signals", "entry",
-                    "publisher", "startup_settle_ms")
+                    "publisher", "startup_settle_ms", "upstream")
+# `upstream` (added in 3.12.x; api_version stays 1) names the files
+# of another project this extension's reading depends on -- a log
+# schema, a record layout, the license that lets them ride along.
+# tools/fetch_upstream.py carries them into <extension>/upstream/.
+# The runner only validates the shape; it never fetches.
+_UPSTREAM_FIELDS = ("repo", "ref", "pin", "paths")
+_UPSTREAM_REPO_RE = re.compile(
+    r"\Ahttps://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
+_UPSTREAM_PIN_RE = re.compile(r"\A[0-9a-f]{40}\Z")
+MAX_UPSTREAM_PATHS = 32
 MAX_SIGNALS = 64
 MAX_DESCRIPTION_CHARS = 200
 
@@ -153,6 +163,7 @@ def parse_manifest(data, where=MANIFEST_FILE) -> dict:
                 f"at most {MAX_DESCRIPTION_CHARS} characters; it is "
                 "the context the Oracle receives for this signal")
         clean_signals.append({"name": sname, "description": sdesc})
+    upstream = _parse_upstream(data.get("upstream"), where)
     entry = data.get("entry")
     publisher = data.get("publisher", "")
     startup_settle_ms = data.get("startup_settle_ms", 0)
@@ -191,7 +202,51 @@ def parse_manifest(data, where=MANIFEST_FILE) -> dict:
         "startup_settle_ms": startup_settle_ms
         if isinstance(startup_settle_ms, int)
         and not isinstance(startup_settle_ms, bool) else 0,
+        "upstream": upstream,
     }
+
+
+def _parse_upstream(block, where):
+    """Validate the optional upstream block. None when absent."""
+    if block is None:
+        return None
+    uw = f"{where}: upstream"
+    if not isinstance(block, dict):
+        raise ValueError(f"{uw} must be an object")
+    extra = sorted(set(block) - set(_UPSTREAM_FIELDS))
+    if extra:
+        raise ValueError(f"{uw}: unknown field(s) {', '.join(extra)}")
+    missing = [f for f in _UPSTREAM_FIELDS if f not in block]
+    if missing:
+        raise ValueError(f"{uw}: missing {', '.join(missing)}")
+    repo = block["repo"]
+    if not isinstance(repo, str) or not _UPSTREAM_REPO_RE.match(repo):
+        raise ValueError(
+            f"{uw}.repo must be https://github.com/<owner>/<name>")
+    ref = block["ref"]
+    if not isinstance(ref, str) or not ref or len(ref) > 128 \
+            or ref.startswith("-") or any(c.isspace() for c in ref):
+        raise ValueError(f"{uw}.ref must be a branch or tag name")
+    pin = block["pin"]
+    if not isinstance(pin, str) or not _UPSTREAM_PIN_RE.match(pin):
+        raise ValueError(f"{uw}.pin must be a 40-hex commit id")
+    paths = block["paths"]
+    if not isinstance(paths, list) or not paths \
+            or len(paths) > MAX_UPSTREAM_PATHS:
+        raise ValueError(
+            f"{uw}.paths must list 1 to {MAX_UPSTREAM_PATHS} repository paths")
+    seen = set()
+    for p in paths:
+        if not isinstance(p, str) or not p or len(p) > 240 \
+                or p.startswith("/") or p.startswith("-") \
+                or "\\" in p or "\x00" in p \
+                or any(part in ("", ".", "..") for part in p.split("/")):
+            raise ValueError(
+                f"{uw}.paths: {p!r} is not a plain relative path")
+        if p in seen:
+            raise ValueError(f"{uw}.paths: {p!r} listed twice")
+        seen.add(p)
+    return {"repo": repo, "ref": ref, "pin": pin, "paths": list(paths)}
 
 
 def api_refusal(manifest: dict):

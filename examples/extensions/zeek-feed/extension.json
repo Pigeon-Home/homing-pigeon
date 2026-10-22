@@ -1,1 +1,39 @@
-{"api_version":1,"description":"Tails Zeek conn.log and dns.log for first-seen external responders and anomalous DNS queries.","kind":"sense","name":"zeek_feed","signals":[{"description":"At least new_peer_threshold distinct external responders (id.resp_h) were first seen inside window_sec; already-seen peers do not count.","name":"zeek_new_external_peers"},{"description":"A DNS query was at least query_length_threshold characters, had six or more labels, or used a TXT, NULL, KEY or ANY qtype.","name":"zeek_dns_anomaly"}],"tunables":{"allowlist":[],"log_paths":["/opt/zeek/logs/current/conn.log","/opt/zeek/logs/current/dns.log"],"new_peer_threshold":10,"poll_interval_sec":60,"query_length_threshold":50,"seen_peers_cap":10000,"window_sec":600},"version":"0.1.0"}
+{
+  "api_version": 1,
+  "description": "Tails Zeek conn.log and dns.log for first-seen external responders and anomalous DNS queries.",
+  "kind": "sense",
+  "name": "zeek_feed",
+  "signals": [
+    {
+      "description": "At least new_peer_threshold distinct external responders (id.resp_h) were first seen inside window_sec; already-seen peers do not count.",
+      "name": "zeek_new_external_peers"
+    },
+    {
+      "description": "A DNS query was at least query_length_threshold characters, had six or more labels, or used a TXT, NULL, KEY or ANY qtype.",
+      "name": "zeek_dns_anomaly"
+    }
+  ],
+  "tunables": {
+    "allowlist": [],
+    "log_paths": [
+      "/opt/zeek/logs/current/conn.log",
+      "/opt/zeek/logs/current/dns.log"
+    ],
+    "new_peer_threshold": 10,
+    "poll_interval_sec": 60,
+    "query_length_threshold": 50,
+    "seen_peers_cap": 10000,
+    "window_sec": 600
+  },
+  "version": "0.1.0",
+  "upstream": {
+    "repo": "https://github.com/zeek/zeek",
+    "ref": "master",
+    "pin": "debb824091f1f609fee9c2acc9a32daa772fae43",
+    "paths": [
+      "scripts/base/protocols/conn/main.zeek",
+      "scripts/base/protocols/dns/main.zeek",
+      "COPYING"
+    ]
+  }
+}

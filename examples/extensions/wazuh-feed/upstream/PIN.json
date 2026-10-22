@@ -1,0 +1,17 @@
+{
+  "bytes": 51672,
+  "fetched_at": "2026-10-22T22:41:08Z",
+  "files": {
+    "LICENSE": {
+      "bytes": 24734,
+      "sha384": "537c07275d5f5c99990dcc9df81667a54c83a7077a1f9887965e7d0615ada443664dad255d656fd02ef8d859f3b2d836"
+    },
+    "src/analysisd/format/to_json.c": {
+      "bytes": 26938,
+      "sha384": "fc20b9011f27a0ad993d2cb1bc7ccd86f037498b6a1cecf9e9995453af3ea1af3eb6337d37a977983c493956f0a1e5da"
+    }
+  },
+  "pin": "bed556db3f4f535cb3a585f3d9e7f35a6acf0f58",
+  "ref": "v4.14.9",
+  "repo": "https://github.com/wazuh/wazuh"
+}

@@ -104,6 +104,7 @@ logged.
 | `signals` | yes | list | 1 to 64 entries, each an object with `name` and `description`. Names unique within the manifest. This list is the contract; see "Signals are the contract". |
 | `description` | no | string | One line, at most 200 characters: what the extension is, for humans reading the logs and docs. |
 | `tunables` | no | object | Your knobs, carried through unread by the agent. Your daemon reads them from its own manifest. The sense's ingest gates (severity floor, cooldown, caps) are separate: those live in the sensor's `profile` in `config.json`, as for every sense. |
+| `upstream` | no | object | The files of another project this extension's reading depends on, pinned to one commit: `repo` (an `https://github.com/<owner>/<name>` URL), `ref` (the branch or tag the nightly bump follows), `pin` (the 40-hex commit the files were taken from), `paths` (1 to 32 plain relative paths in that repository). The agent validates the shape and never fetches. See "Upstream: carrying the format you parse". |
 
 Validation is strict in both directions. A missing required
 field, a bad type, an unknown signal shape — refused, with the
@@ -113,6 +114,73 @@ says so, instead of loading a manifest that silently declares
 nothing. A signal's `description` must be one non-empty line of
 at most 200 characters; it is Oracle context, and context is a
 budget.
+
+## Upstream: carrying the format you parse
+
+A feed sense reads what another program writes -- Suricata's
+`eve.json`, Zeek's `conn.log`, osquery's results log, AIDE's
+report. The adapter is only as right as its reading of that
+format, and the format is defined in the other project's tree,
+not in yours. The `upstream` manifest field names the few files
+that define it, and `tools/fetch_upstream.py` carries them into
+`<extension>/upstream/` beside the adapter, with the license that
+lets them ride along:
+
+```json
+"upstream": {
+  "repo": "https://github.com/OISF/suricata",
+  "ref": "main",
+  "pin": "9451642a2885dde09c27826dabd4d514be984c00",
+  "paths": ["etc/schema.json", "LICENSE"]
+}
+```
+
+`pin` is the commit the files were taken from; `ref` is where the
+nightly job looks for a newer one. The fetch is plain git -- a
+blobless, depth-1 fetch of the pinned commit and a sparse checkout
+of the listed paths -- so it carries home only the blobs it names,
+and `upstream/PIN.json` records the pin, the fetch time, and a
+SHA-384 per file. Full upstream source does not fit on purpose:
+everything under every `upstream/` together is budgeted at 5 MiB,
+and the suite fails past it.
+
+Three things are checked, and none needs the network:
+
+- **The tree is whole.** `tools/fetch_upstream.py --check` (and
+  `tests/test_upstream_pins.py`) fail when a pin moved without a
+  fetch, a file was edited by hand, a file sits under `upstream/`
+  the manifest does not list, or the budget is spent. The build
+  runs the check.
+- **The reading still holds.** For each feed sense the suite
+  asserts that the fields the adapter reads are still named in the
+  source it carries: `signature_id` in the eve.json schema,
+  `qtype_name` in Zeek's `DNS::Info`, `Column("port")` in osquery's
+  `listening_ports.table`, `Added entries` in AIDE's plain report.
+  An upstream rename shows up as a red test naming the sense and
+  the field, not as a silent sense on someone's box.
+- **The pins move on a schedule, not by surprise.** The nightly
+  `upstream-pins` workflow resolves each `ref`, refetches, runs
+  those tests, and commits the refreshed pins only when they pass.
+  When they do not, nothing is committed and the job is red until
+  the adapter is fixed.
+
+Which upstream each shipped feed carries:
+
+| Sense | Repository | Files |
+|-------|------------|-------|
+| `suricata_feed` | OISF/suricata | `etc/schema.json` (the eve.json schema) |
+| `zeek_feed` | zeek/zeek | `scripts/base/protocols/{conn,dns}/main.zeek` (the `Conn::Info` and `DNS::Info` records) |
+| `osquery_feed` | osquery/osquery | `specs/{processes,users,listening_ports}.table` |
+| `falco_feed` | falcosecurity/rules | `rules/falco_rules.yaml` (the rule names and priorities it files) |
+| `wazuh_feed` | wazuh/wazuh at `v4.14.9` | `src/analysisd/format/to_json.c` (the `alerts.json` writer; `main` is the 5.x engine) |
+| `aide_feed` | aide/aide | `src/report.c`, `src/report_plain.c` |
+| `sysmon_feed` | Sysinternals/SysmonCommon | `manifest.xml` (the event schema; Sysmon itself is closed) |
+| `softflowd_feed` | irino/softflowd | `softflowd.h`, `compat/netflow{5,9}.c` |
+
+Your own extension may name an upstream the same way. A manifest
+without the field is unchanged, and a runner that predates the
+field refuses it by name -- so add it only once the agent you
+target is at least 3.12.51.
 
 ## Three version numbers
 
