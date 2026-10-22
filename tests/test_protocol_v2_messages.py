@@ -629,20 +629,34 @@ class SeenClaimTest(unittest.TestCase):
         self.assertFalse(_disk_owns(tmp, "job-1", third))
         self.assertTrue(third.get("job-1"))
 
+    def _dead_pid(self):
+        """A pid that is not a running process.
+
+        Windows rejects signal 0 with WinError 87, so os.kill is
+        not a probe there. A pid this high is not in use, and the
+        runner asks the process table instead of sending a signal.
+        """
+        if os.name == "nt":
+            return 2 ** 22
+        for cand in (999999, 2 ** 20, 2 ** 22):
+            try:
+                os.kill(cand, 0)
+            except ProcessLookupError:
+                return cand
+            except PermissionError:
+                continue
+            except OSError:
+                return cand
+        self.fail("no unused pid")
+
     def test_a_pid_that_is_not_running_is_not_alive(self):
         self.assertFalse(_pid_alive(None))
         self.assertFalse(_pid_alive(0))
         self.assertFalse(_pid_alive(-3))
         self.assertTrue(_pid_alive(os.getpid()))
-        dead = None
-        for cand in (999999, 2 ** 20, 2 ** 22):
-            try:
-                os.kill(cand, 0)
-            except ProcessLookupError:
-                dead = cand
-                break
-        self.assertIsNotNone(dead)
-        self.assertFalse(_pid_alive(dead))
+        self.assertFalse(_pid_alive(self._dead_pid()))
+        if os.name == "nt":
+            return
         with mock.patch("os.kill", side_effect=PermissionError):
             self.assertTrue(_pid_alive(4242))
         with mock.patch("os.kill", side_effect=OSError("errno")):
@@ -686,13 +700,7 @@ class SeenClaimTest(unittest.TestCase):
         tmp = tempfile.mkdtemp(prefix="hp-claim-dead-")
         self.assertTrue(_disk_owns(tmp, "job-1", {}))
         claim = self._claim(tmp, "job-1")
-        dead = 999999
-        for cand in (999999, 2 ** 20, 2 ** 22):
-            try:
-                os.kill(cand, 0)
-            except ProcessLookupError:
-                dead = cand
-                break
+        dead = self._dead_pid()
         with open(claim, "w", encoding="utf-8") as fh:
             fh.write(f"{dead}\n0\njob-1\n")
         real = os.unlink

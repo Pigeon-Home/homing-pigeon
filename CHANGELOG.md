@@ -4,6 +4,17 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.21 - 2026-10-22
+
+- **Windows build.** The job-claim tests called `os.kill(pid, 0)`
+  to find a pid that is not running. On Windows that is
+  WinError 87, not "no such process", and it failed
+  `build-windows`. The tests ask the process table there, the
+  same way the runner does.
+- **No runner change.** Coverage on this tree is 96.8%
+  statements. The doc tree was reorganized. What the runner
+  does is the same as 3.12.20.
+
 ## 3.12.20 - 2026-10-21
 
 - **A computer with no Python.** The common one is a Windows
