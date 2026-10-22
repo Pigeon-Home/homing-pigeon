@@ -246,7 +246,13 @@ setup, leaving the rest of your install alone. Pass
 By default the installer also sets up local inference for the Oracle `ask` op: it installs Ollama (if missing) and pulls a model (`qwen3:1.7b` by default). A Raspberry Pi install, detected automatically or selected with `--profile pi-light`, is Pi Light instead: no model is installed or downloaded, and the Oracle runs deterministically (see "Raspberry Pi: Pi Light" in §2). `--faster` pulls `qwen2.5:3b`, a faster model, on any machine. Pass `--inference-model` to choose a tag yourself, or `--no-inference` to skip the model entirely. The runner itself never bundles the model; Ollama runs separately on loopback. `homing-pigeon --faster` uses `qwen2.5:3b` for that process only and leaves `config.json` unchanged.
 
 **Easiest: download a release.** No Python needed — each release ships
-standalone binaries built by GitHub Actions:
+standalone binaries built by GitHub Actions. The common computer
+that does not ship with Python is a Windows PC. Download the
+Windows zip. Do not install Python. `homing-pigeon.exe` carries
+its own interpreter, and so do the Linux and macOS binaries. The
+release build proves the drop: the Linux binary is started in a
+Debian image that has no `python3`, and the Windows binary is
+started with Python taken off `PATH`.
 
 | Platform | Download |
 |----------|----------|
@@ -275,7 +281,10 @@ no cross-compile. x86_64 and ARM64 are the ones with a native
 runner, for Linux, Windows, and macOS. The other architectures in
 the platform matrix (armv7, i386, ppc64le, s390x, riscv64, the
 BSDs) run from source; they are proved there, and they do not get
-a frozen binary. A television still does not.
+a frozen binary. A television still does not. Tizen, webOS, Roku,
+and Apple TV cannot exec a shell. The computer behind that screen,
+if it is a Linux board you control, is the Linux archive above,
+and that board does not need Python either.
 
 1. Extract the archive on the target machine.
 2. Run `install` (or `install.exe` on Windows, from an elevated

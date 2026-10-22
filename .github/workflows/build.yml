@@ -176,6 +176,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "inspect board exited $LASTEXITCODE" }
           & .\dist\homing-pigeon.exe --config $cfg --once --dry-run
           if ($LASTEXITCODE -ne 0) { throw "startup --once --dry-run exited $LASTEXITCODE" }
+      - name: no python on the machine
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:PATH = "$env:SystemRoot\System32"
+          if (Get-Command python -ErrorAction SilentlyContinue) { throw "python is still on PATH" }
+          if (Get-Command python3 -ErrorAction SilentlyContinue) { throw "python3 is still on PATH" }
+          & .\dist\homing-pigeon.exe --version
+          if ($LASTEXITCODE -ne 0) { throw "frozen runner did not start with no Python on PATH" }
       - name: package windows binaries
         shell: pwsh
         run: |
@@ -214,6 +223,8 @@ jobs:
       # Linux and Pi Light so both archives get the same proof.
       - name: smoke the built linux binaries
         run: tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
+      - name: drop onto a machine with no Python
+        run: tools/smoke_no_python.sh ./dist/homing-pigeon
       - name: package linux binaries
         run: |
           set -euo pipefail
@@ -411,6 +422,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "inspect board exited $LASTEXITCODE" }
           & .\dist\homing-pigeon.exe --config $cfg --once --dry-run
           if ($LASTEXITCODE -ne 0) { throw "startup --once --dry-run exited $LASTEXITCODE" }
+      - name: no python on the machine
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:PATH = "$env:SystemRoot\System32"
+          if (Get-Command python -ErrorAction SilentlyContinue) { throw "python is still on PATH" }
+          if (Get-Command python3 -ErrorAction SilentlyContinue) { throw "python3 is still on PATH" }
+          & .\dist\homing-pigeon.exe --version
+          if ($LASTEXITCODE -ne 0) { throw "frozen runner did not start with no Python on PATH" }
       - name: package windows binaries
         shell: pwsh
         run: |

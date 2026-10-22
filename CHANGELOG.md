@@ -4,6 +4,19 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.20 - 2026-10-21
+
+- **A computer with no Python.** The common one is a Windows
+  PC, which does not ship Python. Download the Windows zip
+  and run `homing-pigeon.exe`. Do not install Python. The
+  binary carries its own interpreter, and so do the Linux
+  and macOS binaries. The release proves it: Windows starts
+  the exe with Python off `PATH`, and the Linux binary
+  starts in a Debian image that has no `python3`. A
+  television OS still cannot run this. The board behind the
+  screen, if you control it, is the Linux archive, and that
+  board does not need Python either.
+
 ## 3.12.19 - 2026-10-21
 
 - **Release.** Same code as 3.12.18.

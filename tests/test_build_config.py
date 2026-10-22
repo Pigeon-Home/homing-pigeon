@@ -508,6 +508,38 @@ class PipelineLiftsTest(unittest.TestCase):
             self.assertIn(needle, doc)
 
 
+class NoPythonDropTest(unittest.TestCase):
+    """A machine you own that does not have Python.
+
+    The common one is a Windows PC. The frozen binary is the
+    interpreter. The Linux proof is the same binary started in
+    Debian bookworm slim, which has no python3 package. If that
+    image grows a Python, the script fails closed.
+    """
+
+    def test_linux_job_drops_onto_a_machine_with_no_python(self):
+        block = _job_block(_workflow(), "build-linux")
+        self.assertIn(
+            "tools/smoke_no_python.sh ./dist/homing-pigeon", block)
+        with open(os.path.join(_root(), "tools", "smoke_no_python.sh"),
+                  encoding="utf-8") as fh:
+            script = fh.read()
+        for needle in ("debian:bookworm-slim", "command -v python3",
+                       "--version", "no-python drop ok",
+                       "has Python"):
+            self.assertIn(needle, script, "no-python smoke lacks %s" % needle)
+        self.assertTrue(os.access(os.path.join(
+            _root(), "tools", "smoke_no_python.sh"), os.X_OK),
+            "no-python smoke is not executable")
+
+    def test_windows_job_runs_with_python_off_the_path(self):
+        for job in ("build-windows", "build-windows-arm64"):
+            block = _job_block(_workflow(), job)
+            self.assertIn("no python on the machine", block, job)
+            self.assertIn("SystemRoot\\System32", block, job)
+            self.assertIn("python is still on PATH", block, job)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 
