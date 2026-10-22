@@ -1,0 +1,17 @@
+{
+  "commit": "dcb722fae3e85719eaaa006a45751c77819469e5",
+  "fetched_at": "2026-10-22T22:42:39Z",
+  "files": [
+    {
+      "bytes": 26121,
+      "path": "LICENSE",
+      "sha256": "acf29a5c3b4b89e06ec75623eea6c206541d014e4bd1db43ee88934e3fe7bd90"
+    }
+  ],
+  "license": "GPL-2.0-only",
+  "repo": "https://github.com/wazuh/wazuh",
+  "stamp": "tools/vendor_upstreams.py",
+  "track": "branch:main",
+  "tree_sha256": "d1a01ed3ff3d806ff062fdcbbe6fdb84174c8e8cb4c5a271b684b2ff623d3f5a",
+  "upstream": "wazuh"
+}

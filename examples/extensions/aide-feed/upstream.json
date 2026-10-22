@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "upstreams": [
+    {
+      "name": "aide",
+      "repo": "https://github.com/aide/aide",
+      "track": "branch:master",
+      "commit": "db923656149ea64bee63f7e45275322a20c7dbe3",
+      "license": "GPL-2.0-only",
+      "paths": [
+        "COPYING"
+      ]
+    }
+  ]
+}

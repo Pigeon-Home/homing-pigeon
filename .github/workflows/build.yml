@@ -41,6 +41,18 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -c requirements-ci.txt hypothesis
+      # The sense extensions that read an upstream tool (Zeek,
+      # Suricata, Falco, ...) each carry a pinned, hash-verified
+      # provenance bundle under examples/extensions/<ext>/upstream/.
+      # This gate is offline: it recomputes the committed file hashes
+      # and tree hash, confirms each provenance commit matches its
+      # manifest pin, and enforces the 5 MB vendored-footprint cap.
+      # A hand-edited bundle, a pin bumped without a re-vendor, or a
+      # size blowout fails here. The online re-fetch
+      # (tools/vendor_upstreams.py check) is a refresh-time step, kept
+      # out of the build so a down upstream never reddens a release.
+      - name: verify vendored upstream provenance (offline, <=5MB)
+        run: python tools/vendor_upstreams.py verify --max-bytes 5242880
       # bwrap is what the Linux sandbox is built on. Without it the
       # EnforceTest proofs in tests/test_confinement.py skip and
       # "the sandbox walls the job in" is never shown in CI. The
