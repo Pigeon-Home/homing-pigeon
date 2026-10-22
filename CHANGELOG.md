@@ -14,7 +14,7 @@ facts a reader may need to cite. Git history carries the rest.
   `docs/archive/`. PROTOCOL.md and the IETF drafts did not
   move, so their published URLs still work. Links to the
   four moved root files now need the `docs/` prefix.
-- **FAQ: "What can I actually use this for?"** Six use cases,
+- **FAQ: "What can I actually use this for?"** Use cases from a barn Pi to camera traps,
   each tied to the feature and doc that makes it work.
 - No change to what the runner does.
 
