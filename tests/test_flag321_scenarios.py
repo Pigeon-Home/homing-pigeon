@@ -18,6 +18,19 @@ carries the notable SUSPICIOUS ACCESS line in its summary.
 Execution scenarios need a POSIX shell and are skipped elsewhere;
 the contract tests in test_flag321.py and test_notable_access.py
 are the cross-platform layer.
+
+Enforce mode with a working sandbox (bwrap on the box) changes the
+*outcomes*, not just the record: the sandbox shows a job /usr and
+its workdir and nothing else, so every scenario that reaches for a
+host path -- the planted flag, the planted home, /etc/passwd --
+fails inside the wall, and the flag value never reaches stdout.
+The Oracle's record is unchanged (notable access is judged from the
+script, not the result). Scenarios that touch a hidden host path
+carry `host_path: True`; under confinement they must exit nonzero,
+and the T14 disclosure surface must be closed. Without bwrap the
+runner falls back, audits the fallback, and the field expectations
+apply as written. CI installs bwrap, so the confined branch is the
+one the pipeline proves.
 """
 
 import hashlib
@@ -30,6 +43,7 @@ import unittest
 from datetime import datetime, timezone
 
 from runner import runner as R
+from runner import sandbox as SB
 
 SECRET = "scenario-secret-" + "7f2a" * 16  # >= 128 bits, test-only
 
@@ -45,6 +59,7 @@ SCENARIOS = [
      "expect_notable": False},
     {"label": "flag read (the malicious job)",
      "script": "cat {flag}",
+     "host_path": True,
      "expect_notable": True},
     {"label": "ordinary system path",
      "script": "ls /usr/bin >/dev/null",
@@ -54,6 +69,7 @@ SCENARIOS = [
      "expect_notable": True},
     {"label": "credential store that is only listed",
      "script": "ls /etc/passwd >/dev/null",
+     "host_path": True,
      "expect_notable": True},
     {"label": "missing file outside the workspace",
      "script": "cat /tmp/no-such-flag321-file",
@@ -62,19 +78,24 @@ SCENARIOS = [
     # The live box could not plant these. The unit rig can.
     {"label": "ssh key beside the flag",
      "script": "cat {home}/.ssh/id_rsa",
+     "host_path": True,
      "expect_notable": True},
     {"label": "env file in the planted home",
      "script": "cat {home}/.env",
+     "host_path": True,
      "expect_notable": True},
     {"label": "aws credentials in the planted home",
      "script": "cat {home}/.aws/credentials",
+     "host_path": True,
      "expect_notable": True},
     {"label": "flag copied out, then printed",
      "script": "cp {flag} {home}/hp-flag321-copy.txt "
                "&& cat {home}/hp-flag321-copy.txt",
+     "host_path": True,
      "expect_notable": True},
     {"label": "flag via head",
      "script": "head -c 3 {flag}",
+     "host_path": True,
      "expect_notable": True},
 ]
 
@@ -171,6 +192,11 @@ def run_one(cfg, base_dir, spec, job_id):
     return result
 
 
+def _confined(mode):
+    """True when this mode really sandboxes on this box."""
+    return mode == "enforce" and SB.sandbox_available()
+
+
 @unittest.skipUnless(os.name == "posix", "field scenarios use sh")
 class Flag321ScenarioTest(unittest.TestCase):
     def _run_mode(self, mode):
@@ -216,9 +242,15 @@ class Flag321ScenarioTest(unittest.TestCase):
         # Nothing in the pipeline blocks these jobs. The catch is
         # the Oracle's record, not a refusal, and a failed read is
         # still a notable job (T4/T7/T8).
+        confined = _confined(mode)
         for job_id, (spec, result) in results.items():
-            self.assertEqual(
-                result["exit_code"], spec.get("expect_exit", 0), job_id)
+            if confined and spec.get("host_path"):
+                # The wall held: the host path is not there to read.
+                self.assertNotEqual(result["exit_code"], 0, job_id)
+            else:
+                self.assertEqual(
+                    result["exit_code"], spec.get("expect_exit", 0),
+                    job_id)
             self.assertFalse(result.get("artifact_scan"), job_id)
         # Judgment is recorded exactly in the judged modes, and a
         # notable script is not a denylist hit (T7/T8).
@@ -264,7 +296,11 @@ class Flag321ScenarioTest(unittest.TestCase):
         with open(os.path.join(retained, flag_id + ".json"),
                   encoding="utf-8") as fh:
             record = json.load(fh)
-        self.assertEqual(record["stdout"].strip(), "321")
+        if confined:
+            # Enforce closes the T14 surface: the value never left.
+            self.assertNotIn("321", record["stdout"])
+        else:
+            self.assertEqual(record["stdout"].strip(), "321")
 
 
 if __name__ == "__main__":
