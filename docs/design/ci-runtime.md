@@ -108,6 +108,29 @@ nightly, and nothing cancels a tag.
   Four minutes is not the queue. Splitting it would make
   the annotation and the skip guard apply to a fragment.
 
+## Maker boards and robots
+
+Added as full legs on `ubuntu-latest`, under QEMU, so a push
+does not grow and the nightly's wall clock grows only if one
+of them is slower than the qemu legs already there. They run
+beside the existing nightly, not after it.
+
+| Leg | What it stands in for |
+|---|---|
+| `debian-12-armv7-qemu` (already core) | 32-bit Raspberry Pi OS, BeagleBone, the old C.H.I.P. Debian |
+| `debian-12-arm64-qemu` | 64-bit Raspberry Pi OS, Armbian Debian |
+| `ubuntu-22.04-arm64-qemu` | The Ubuntu under a Jetson, and Ubuntu images for Orange Pi and ROCK Pi |
+| `alpine-3-armv7-qemu` | The same 32-bit boards on musl instead of glibc |
+| `ros-humble-arm64-qemu` | ROS 2 Humble, the fleet image (`ros:humble-ros-base`, Ubuntu 22.04 arm64) |
+| `ros-jazzy-arm64-qemu` | ROS 2 Jazzy (`ros:jazzy-ros-base`, Ubuntu 24.04 arm64) |
+
+Not a leg, on purpose. A second container of an image the
+nightly already runs (Ubuntu 24.04 arm64 has a native arm
+runner). A NVIDIA JetPack image, which is several gigabytes
+and wants the NVIDIA runtime. The eight fat-fingers crossed
+with each board. The proof is the same either way, and the
+minutes are not.
+
 ## Adding a leg later
 
 Put it in `.github/platform-legs.json`.

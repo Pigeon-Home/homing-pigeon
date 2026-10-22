@@ -338,17 +338,18 @@ passed; a skipped proof is not a proof. Nothing is stubbed but the mail.
 | BSD virtual machines (nightly) | `vm-freebsd-14`, `vm-openbsd-7`, `vm-netbsd-10` |
 | Administrator fat-fingers on a known-good base | `fatfinger-no-bash`, `fatfinger-noexec-tmp`, `fatfinger-no-home`, `fatfinger-path-minimal`, `fatfinger-c-locale`, `fatfinger-umask-077`, `fatfinger-closed-stdin`, `fatfinger-readonly-root` |
 
-Legs marked core in `.github/workflows/platform-matrix.yml` run on every
-push and pull request; the whole corpus runs nightly and on dispatch.
-The maker row is full, so it does not lengthen a push. It is the
-userspace those boards ship, not a boot of the board. Pi OS
-64-bit and Armbian are Debian 12 arm64. A 32-bit Pi, a
-BeagleBone, or the old CHIP is the Debian 12 armv7 leg already
-in the core tier. Jetson-class Ubuntu is 22.04 arm64. The two
-ROS legs are the official Humble and Jazzy arm64 images. A
-JetPack image is not pulled. It is several gigabytes and it
-needs NVIDIA's runtime. Fat-fingers are not crossed with every
-board. They already run on a known-good base.
+A push runs the core legs whose runner is ubuntu-latest. macOS,
+Windows, and ARM hosted runners, and every full leg, run nightly
+and on dispatch. The maker row is the userspace those boards
+ship, not a boot of the board: Pi OS 64-bit and Armbian are
+Debian 12 arm64, a 32-bit Pi, BeagleBone, or the old CHIP is
+the Debian 12 armv7 leg already in the core tier, Jetson-class
+Ubuntu is 22.04 arm64, and the two ROS legs are the official
+Humble and Jazzy images. A JetPack image is not pulled. It is
+several gigabytes and it needs NVIDIA's runtime. Fat-fingers
+are not crossed with every board. They already run on a
+known-good base, and copying all eight onto each new
+architecture is how the nightly stops finishing.
 `tests/test_build_config.py` pins this table to the matrix, so a leg
 cannot be claimed here without running there. Not on the list: a box
 with no Python at all (BusyBox-only, bare firmware) -- the runner is

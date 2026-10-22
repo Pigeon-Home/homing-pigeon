@@ -681,10 +681,19 @@ class PipelineLessonsTest(unittest.TestCase):
         self.assertNotIn("native-macos-x86_64", names)
         self.assertNotIn("native-windows-arm64", names)
         self.assertNotIn("debian-13-arm64", names)
+        for maker in ("debian-12-arm64-qemu", "ubuntu-22.04-arm64-qemu",
+                      "alpine-3-armv7-qemu", "ros-humble-arm64-qemu",
+                      "ros-jazzy-arm64-qemu"):
+            self.assertNotIn(maker, names)
         for es in push.values():
             for entry in es:
                 self.assertFalse(mod.is_scarce(entry), entry["name"])
         nightly = mod.choose(legs, "schedule")
+        nightly_names = [e["name"] for es in nightly.values() for e in es]
+        for maker in ("debian-12-arm64-qemu", "ubuntu-22.04-arm64-qemu",
+                      "alpine-3-armv7-qemu", "ros-humble-arm64-qemu",
+                      "ros-jazzy-arm64-qemu"):
+            self.assertIn(maker, nightly_names)
         mac = [e for e in nightly["native"]
                if e["name"] == "native-macos-x86_64"]
         self.assertEqual(len(mac), 1)
