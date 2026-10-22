@@ -638,5 +638,217 @@ class SeenClaimTest(unittest.TestCase):
         self.assertIn("a", other)
 
 
+class Version2EdgesTest(unittest.TestCase):
+    """The branches a normal-length id and one late answer never touch."""
+
+    def _q(self, job_id="j1"):
+        return {"v": 2, "type": "question", "job_id": job_id,
+                "msg_id": "q." + job_id, "issued_at": _now(),
+                "deadline_sec": 0, "question": "Would it?",
+                "local_default": "proceed"}
+
+    def test_ids_past_128_characters_do_not_share_a_slot(self):
+        # "q." plus a 128-character id is 130, so the id is hashed.
+        # The first 109 characters of these two are the same. The
+        # tail is what used to be cut off.
+        cfg = {"protocol_v2": True, "oracle_mode": "deterministic"}
+        left = "a" * 124 + "LEFT"
+        right = "a" * 124 + "RGHT"
+        self.assertEqual(len(left), 128)
+        one = v2.question_for(cfg, {"job_id": left, "kind": "exec"})
+        two = v2.question_for(cfg, {"job_id": right, "kind": "exec"})
+        self.assertNotEqual(one["msg_id"], two["msg_id"])
+        self.assertLessEqual(len(one["msg_id"]), 128)
+        self.assertNotIn("LEFT", one["msg_id"])
+        self.assertNotIn("RGHT", two["msg_id"])
+        v2.validate(one)
+
+    def test_the_ninth_answer_and_a_repeat_are_dropped(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-more-")
+        q = self._q()
+        self.assertTrue(v2.store_answer(tmp, v2.answer_for(q, "winner")))
+        for i in range(8):
+            self.assertFalse(v2.store_answer(
+                tmp, v2.answer_for(q, "late-%d" % i)))
+        self.assertFalse(v2.store_answer(
+            tmp, v2.answer_for(q, "late-0")))
+        self.assertFalse(v2.store_answer(
+            tmp, v2.answer_for(q, "ninth-extra")))
+        more = os.path.join(tmp, "v2", "answers", "q.j1.json.more.jsonl")
+        with open(more, encoding="utf-8") as fh:
+            self.assertEqual(len(fh.read().splitlines()), 8)
+        with open(more, "a", encoding="utf-8") as fh:
+            fh.write("not-json\n")
+            fh.write("{}\n")
+        got = v2.await_answer(tmp, q, time.time())
+        late = [s["text"] for s in got if s["kind"] == "late_answer"]
+        self.assertEqual(late, ["late-%d" % i for i in range(8)])
+        self.assertNotIn("ninth-extra", late)
+
+    def test_a_late_file_that_cannot_be_opened_is_skipped(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-more-")
+        q = self._q()
+        self.assertTrue(v2.store_answer(tmp, v2.answer_for(q, "winner")))
+        self.assertFalse(v2.store_answer(tmp, v2.answer_for(q, "second")))
+        more = os.path.join(tmp, "v2", "answers", "q.j1.json.more.jsonl")
+        os.remove(more)
+        os.mkdir(more)
+        self.assertFalse(v2.store_answer(tmp, v2.answer_for(q, "third")))
+        got = v2.await_answer(tmp, q, time.time())
+        self.assertEqual(
+            [s["kind"] for s in got], ["answer"])
+
+    def test_shapes_that_are_not_messages(self):
+        self.assertIsNone(v2.subject_kind(None))
+        self.assertEqual(v2.segment("x", "k", None)["text"], "")
+        self.assertEqual(v2.local_answer_text("nope"), "proceed")
+        self.assertEqual(v2.local_answer_text(
+            {"local_default": "  wait  "}), "wait")
+        self.assertEqual(v2.deadline_of(None), 0)
+        self.assertEqual(v2.deadline_of(
+            {"v2_answer_deadline_sec": "nope"}), 0)
+        self.assertEqual(v2.outbound_for(
+            {"protocol_v2": True}, None, None), [])
+        det = v2.determination_for(
+            {"job_id": "j1"}, {"findings": ["nope", {"detail": 3}]})
+        self.assertEqual(det["why"], "expected trouble")
+        det = v2.determination_for(
+            {"job_id": "j1"}, {"repair_action": {"a": 1}})
+        self.assertEqual(det["expect"], "unknown")
+        cfg = {"protocol_v2": True, "oracle_mode": "deterministic"}
+        q = v2.question_for(cfg, {"job_id": "j1", "kind": "exec",
+                                  "script": ""})
+        self.assertNotIn("script=", q["question"])
+        q = v2.question_for(cfg, {"job_id": "j1", "kind": "exec",
+                                  "script": 3})
+        self.assertNotIn("script=", q["question"])
+        blank = v2.answer_for(self._q(), "   ")
+        self.assertEqual(blank["answer"], "proceed")
+        with self.assertRaises(ValueError):
+            v2.answer_for([], "x")
+        with self.assertRaises(ValueError):
+            v2.validate([])
+        with self.assertRaises(ValueError):
+            v2.validate({"v": 2, "type": "nope"})
+        base = {"v": 2, "type": "determination", "job_id": "j1",
+                "msg_id": "d.j1", "issued_at": "2026-10-22T00:00:00Z",
+                "clean_pass": False, "expect": "fail", "why": "because"}
+        v2.validate(base)
+        for bad in (dict(base, issued_at="nope"),
+                    dict(base, clean_pass=True),
+                    dict(base, expect="maybe"),
+                    dict(base, why=""),
+                    dict(base, why="x" * 501)):
+            with self.assertRaises(ValueError):
+                v2.validate(bad)
+        question = self._q()
+        v2.validate(question)
+        for bad in (dict(question, question="  "),
+                    dict(question, deadline_sec=True),
+                    dict(question, deadline_sec=99),
+                    dict(question, local_default=""),
+                    dict(question, local_default="x" * 65)):
+            with self.assertRaises(ValueError):
+                v2.validate(bad)
+        ans = v2.answer_for(question, "ok")
+        with self.assertRaises(ValueError):
+            v2.validate(dict(ans, answer="  "))
+        with self.assertRaises(ValueError):
+            v2.store_answer(tempfile.mkdtemp(prefix="hp-v2-"), question)
+
+    def test_a_bad_question_does_not_wait(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-")
+        self.assertEqual(v2.await_answer(tmp, None, 0), [])
+        self.assertEqual(v2.await_answer(tmp, {"msg_id": "bad id"}, 0), [])
+
+        def boom():
+            raise RuntimeError("pump")
+
+        q = self._q()
+        q["deadline_sec"] = True
+        got = v2.await_answer(tmp, q, "not-a-time", pump=boom)
+        self.assertEqual(got[0]["kind"], "local_default")
+
+    def test_a_raising_outbox_does_not_hold_the_job(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-")
+        calls = {"n": 0}
+
+        def pending():
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RuntimeError("outbox")
+            return False
+
+        q = self._q()
+        q["deadline_sec"] = 1
+        started = time.monotonic()
+        got = v2.await_answer(tmp, q, time.time(), pending=pending)
+        self.assertLess(time.monotonic() - started, 2.5)
+        self.assertEqual(got[0]["kind"], "local_default")
+        self.assertGreaterEqual(calls["n"], 1)
+
+    def test_a_ping_still_sends_the_determination_only(self):
+        job = {"job_id": "j1", "kind": "ping"}
+        plan = {"findings": [{"detail": "missing"}]}
+        out = v2.outbound_for(
+            {"protocol_v2": True, "oracle_mode": "deterministic"},
+            job, plan)
+        self.assertEqual([obj["type"] for _s, obj in out], ["determination"])
+        self.assertEqual(v2.local_answer_text({"local_default": 5}), "proceed")
+        self.assertEqual(v2.local_answer_text(
+            {"local_default": "   "}), "proceed")
+
+    def test_a_garbage_line_in_the_late_file_is_skipped_on_write(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-more-")
+        q = self._q()
+        self.assertTrue(v2.store_answer(tmp, v2.answer_for(q, "winner")))
+        self.assertFalse(v2.store_answer(tmp, v2.answer_for(q, "second")))
+        more = os.path.join(tmp, "v2", "answers", "q.j1.json.more.jsonl")
+        with open(more, "a", encoding="utf-8") as fh:
+            fh.write("not-json\n")
+            fh.write("[]\n")
+        self.assertFalse(v2.store_answer(tmp, v2.answer_for(q, "third")))
+        with open(more, encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+        self.assertIn("third", lines[-1])
+
+    def test_an_unreadable_slot_does_not_keep_the_answer(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-slot-")
+        q = self._q()
+        folder = os.path.join(tmp, "v2", "answers")
+        os.makedirs(folder)
+        slot = os.path.join(folder, "q.j1.json")
+        os.mkdir(slot)
+        self.assertTrue(v2.store_answer(tmp, v2.answer_for(q, "recovered")))
+        with open(slot, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["answer"]["answer"], "recovered")
+
+    def test_a_file_that_is_not_an_answer_does_not_hold_the_slot(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-bad-")
+        q = self._q()
+        folder = os.path.join(tmp, "v2", "answers")
+        os.makedirs(folder)
+        slot = os.path.join(folder, "q.j1.json")
+        for junk in ("[]", '{"answer": "x", "received_at": 1}',
+                     '{"answer": {}, "received_at": "nope"}'):
+            with open(slot, "w", encoding="utf-8") as fh:
+                fh.write(junk)
+            self.assertTrue(v2.store_answer(
+                tmp, v2.answer_for(q, "taken")))
+            with open(slot, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh)["answer"]["answer"], "taken")
+
+    def test_an_answer_already_waiting_ends_the_outbox_pause(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-pending-")
+        q = self._q()
+        q["deadline_sec"] = 5
+        self.assertTrue(v2.store_answer(tmp, v2.answer_for(q, "early")))
+        started = time.monotonic()
+        got = v2.await_answer(tmp, q, time.time(), pending=lambda: True)
+        self.assertLess(time.monotonic() - started, 1.0)
+        self.assertEqual(got[0]["text"], "early")
+        self.assertEqual(got[0]["kind"], "answer")
+
+
 if __name__ == "__main__":
     unittest.main()

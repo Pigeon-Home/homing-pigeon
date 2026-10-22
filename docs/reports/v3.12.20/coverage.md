@@ -168,3 +168,33 @@ is only partly walked. The hole worth a test is the v2
 long-id and overflow-answer path, and the XDG branch of the
 personal-documents warning. Not another point on the old core,
 and not the extension programs.
+
+## After the edge tests
+
+Measured again the same day, same command, after tests for
+the two holes named above. 4425 tests, OK, 22 skipped,
+363 seconds.
+
+Statements: 16872. Missed: 1038. Covered: 15834. Covered: 93.8%.
+Branches: 90.7%. Together: 92.9%.
+
+| File | Before | After | Missed after |
+|---|---:|---:|---:|
+| protocol_v2.py | 79% | 95% | 18 |
+| personal_docs.py | 86% | 96% | 7 |
+
+What the new tests actually pin: two job ids that share a
+109-character prefix and differ after it do not share a
+question slot; a ninth late answer and a repeated one are
+dropped; a junk line in the late file is skipped; a slot
+that is not an answer does not keep the answer; an answer
+already on disk ends the outbox wait. The warning now pins
+a phrase (`bank-statement`, `health_records`), `node_modules`
+and a dotfile, the 2000-entry cap, an XDG file full of
+comments and a path that leaves home, and a folder that
+will not scan.
+
+What is left in those two files is the crash-recovery race
+in the answer publish, and `is_dir` raising. Those are not
+the next hole. The extension programs are still 74% to 79%.
+
