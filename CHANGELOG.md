@@ -4,6 +4,36 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.55 - 2026-10-22
+
+- **Every pipeline timer is off, to measure.** The mutation job's
+  `timeout-minutes: 40` -- the pipeline's only explicit job timer --
+  is removed by the owner's decision, so a run shows how long it
+  really takes instead of where a guard cut it. The platform's
+  360-minute ceiling still applies. `tests/test_build_config.py`
+  pins the experiment (no timer on mutation, none in any workflow)
+  and says how to end it.
+
+- **The red and the slow are now named on the run page.** The Linux
+  suite runs with `--durations 25` and the Windows shards with
+  `--durations 15`, so unittest lists the slowest tests after each
+  run. `tools/run_tests_parallel.py` reports each shard's wall time
+  and, under GitHub Actions, turns every `FAIL:`/`ERROR:` line of a
+  failed shard into an annotation naming the test. `tools/skip_guard.py
+  --annotate` spends its ten annotations on test ids first and
+  annotates nothing when the verdict is OK; fixture noise used to
+  take the slots before the real failure.
+
+- **Six days of CI, read as a corpus.** `docs/reports/v3.12.55/
+  ci-failures.md`: 1,000 build runs and their jobs and steps. No
+  timer ever fired. The red was the suite -- Windows twice as often
+  as Linux, almost never both; the 13-hour stalls were the retired
+  `macos-13` label, since moved; mutation is a release's entire long
+  pole and gates nothing. The report lists the failure modes seen
+  and what to cut.
+
+<!-- Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c -->
+
 ## 3.12.54 - 2026-10-22
 
 - **Three source pins that 404'd.** The first lock missed
