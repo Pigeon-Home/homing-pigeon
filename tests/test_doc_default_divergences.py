@@ -221,5 +221,122 @@ class TestNullTaskTimeoutDefaultsTo86400(unittest.TestCase):
         self.assertEqual(state, "open")
 
 
+class _RecordingOpener:
+    """A fake inference opener: records the timeout it was
+    called with and returns one canned chat completion."""
+
+    def __init__(self):
+        self.timeouts = []
+
+    def __call__(self, req, timeout=None):
+        self.timeouts.append(timeout)
+
+        class _Resp:
+            def read(self, n=-1):
+                return (b'{"choices":[{"message":'
+                        b'{"content":"ok answer"}}]}')
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        return _Resp()
+
+
+class TestBogusInferenceTimeoutDefaultsTo180(unittest.TestCase):
+    """Divergence: an unparseable or out-of-range inference
+    timeout_sec falls back to 60 seconds in the ask paths,
+    instead of the documented 180-second default.
+
+    (a) Doc claim (PROTOCOL.md, section 10.1, line 678):
+        "`max_answer_chars` (default 2000), `timeout_sec`
+        (default 180)."
+        The same default is stated in
+        docs/configuring-oracle.md (line 43): "`timeout_sec`
+        (default 180, per-question model timeout; a cold model
+        on a laptop often needs more than 60, and the default
+        model thinks before answering, so long questions can
+        need the full budget)" -- 60 is named there as the
+        value the 180 default exists to avoid.
+
+    (b) How the bug was found: the campaign's doc-default hunt
+        (2026-10-22 23:21 PDT tick) exercised
+        runner.runner.ask_model and runner.runner.ask_model_agent
+        with the inference timeout left unset and varied around
+        it -- key omitted, explicit None, 0, a valid 42, a
+        non-numeric string ("hour"), a negative value (-5),
+        and float("inf") -- using a recording opener to observe
+        the timeout each call actually used, the same direct-call
+        surface the repo's own ask_model tests use.
+
+    (c) Behavior actually observed: omitted, None, and 0 all
+        use the documented default (the opener receives
+        timeout 180), and 42 is honored. A non-numeric string,
+        a negative value, and infinity do not: both ask_model
+        (runner/runner.py lines 1859-1863) and ask_model_agent
+        (lines 2748-2752) compute
+        int(cfg.get("timeout_sec") or 180) but their except /
+        below-1 fallback is a hardcoded 60, so the opener
+        receives timeout 60 -- one third of the documented
+        default, and exactly the too-short budget the
+        configuring-oracle rationale warns about. The sibling
+        readers disagree with that fallback: inference_config
+        uses 180 as its only fallback value (and disables
+        inference rather than inventing another budget), and
+        the max_answer_chars fallback in the very same
+        functions uses the documented default 2000 in both
+        its try and its except path.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed in
+        the code.
+    """
+
+    _BASE = {"endpoint": "http://127.0.0.1:11434/v1",
+             "model": "m"}
+
+    def _ask_timeout(self, extra):
+        from runner.runner import ask_model
+        opener = _RecordingOpener()
+        cfg = dict(self._BASE)
+        cfg.update(extra)
+        ask_model(cfg, "why?", "some output", 100, opener=opener)
+        return opener.timeouts
+
+    def _agent_timeout(self, extra):
+        from runner.runner import ask_model_agent
+        opener = _RecordingOpener()
+        cfg = dict(self._BASE)
+        cfg.update(extra)
+        ask_model_agent(cfg, "why?", "some output", 100,
+                        opener=opener)
+        return opener.timeouts
+
+    def test_bogus_ask_timeout_defaults_to_180(self):
+        self.assertEqual(
+            self._ask_timeout({"timeout_sec": "hour"}), [180])
+
+    def test_negative_ask_timeout_defaults_to_180(self):
+        self.assertEqual(
+            self._ask_timeout({"timeout_sec": -5}), [180])
+
+    def test_infinite_ask_timeout_defaults_to_180(self):
+        self.assertEqual(
+            self._ask_timeout({"timeout_sec": float("inf")}),
+            [180])
+
+    def test_bogus_agent_timeout_defaults_to_180(self):
+        timeouts = self._agent_timeout({"timeout_sec": "hour"})
+        self.assertTrue(timeouts)
+        self.assertEqual(timeouts[0], 180)
+
+    def test_negative_agent_timeout_defaults_to_180(self):
+        timeouts = self._agent_timeout({"timeout_sec": -5})
+        self.assertTrue(timeouts)
+        self.assertEqual(timeouts[0], 180)
+
+
 if __name__ == "__main__":
     unittest.main()
