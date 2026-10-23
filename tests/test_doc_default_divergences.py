@@ -3966,5 +3966,122 @@ class TestNonFinitePiHealthTunableDefaults(unittest.TestCase):
 
 
 
+
+class TestNonFiniteAirwavesGoneAfterScansDefaultsTo3(unittest.TestCase):
+    """Divergence: a non-finite airwaves ``gone_after_scans``
+    tunable (inf / -inf / NaN) crashes decide() with an
+    uncaught OverflowError / ValueError instead of falling
+    back to the documented default of 3 scans.
+
+    (a) Doc claim (docs/extensions.md, airwaves table):
+        "`access_point_gone` | A long-known AP is missing
+        across `gone_after_scans` consecutive scans
+        (default 3)". The extension's own manifest repeats
+        the same tunable.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 tick) exercised the airwaves
+        example extension's decide() -- the pure decision
+        function -- with a learned baseline holding one
+        known AP at 2 recorded misses and an empty scan,
+        varying only the ``gone_after_scans`` tunable:
+        omitted, a bogus string, an explicit 1, and
+        float("inf"), float("-inf") and float("nan").
+
+    (c) Behavior actually observed: omitted and bogus
+        tunables file access_point_gone on this third
+        consecutive miss, as documented, and an explicit
+        1 is honored. The non-finite values never reach a
+        decision at all: _gone_after_scans accepts them
+        via _is_number (which excludes booleans but not
+        non-finite floats) and then evaluates
+        int(value), which raises OverflowError for inf /
+        -inf and ValueError for NaN; decide() lets the
+        exception propagate, so one bad tunable kills the
+        whole watcher pass instead of reading as the
+        documented default 3. Sibling readers in this
+        codebase exclude non-finite values and fall back
+        to their defaults (e.g. runner.remediation
+        ._pos_float, runner.runner._local_wake_cooldown);
+        this reader converts without guarding. Observed
+        on 2026-10-23: decide() with tunables
+        {"gone_after_scans": float("inf")} raised
+        OverflowError ("cannot convert float infinity to
+        integer") on a state where the omitted tunable
+        returned ["access_point_gone"].
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    _STATE = {"learned": True,
+              "aps": {"AA:BB:CC:DD:EE:FF": {
+                  "ssid": "Home", "security": "WPA2",
+                  "rank": 3, "misses": 2}},
+              "ssids": {"Home": {
+                  "bssids": ["AA:BB:CC:DD:EE:FF"], "rank": 3}},
+              "link": None}
+
+    def _decide(self, tunables):
+        import copy
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "airwaves", "airwaves.py")
+        spec = importlib.util.spec_from_file_location(
+            "airwaves_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        alerts, _state = mod.decide(
+            {"scan_ok": True, "scan": [], "link": None,
+             "now": 0},
+            {"tunables": tunables}, copy.deepcopy(self._STATE))
+        return [a["signal"] for a in alerts]
+
+    def test_infinite_gone_after_scans_defaults_to_3(self):
+        self.assertEqual(
+            self._decide({"gone_after_scans": float("inf")}),
+            ["access_point_gone"])
+
+    def test_negative_infinite_gone_after_scans_defaults_to_3(self):
+        self.assertEqual(
+            self._decide({"gone_after_scans": float("-inf")}),
+            ["access_point_gone"])
+
+    def test_nan_gone_after_scans_defaults_to_3(self):
+        self.assertEqual(
+            self._decide({"gone_after_scans": float("nan")}),
+            ["access_point_gone"])
+
+    def test_omitted_and_bogus_gone_after_scans_default_to_3(self):
+        # Controls: the documented default and an
+        # unparseable value already behave today and must
+        # keep doing so after the non-finite cases are
+        # fixed.
+        self.assertEqual(self._decide({}), ["access_point_gone"])
+        self.assertEqual(
+            self._decide({"gone_after_scans": "bogus"}),
+            ["access_point_gone"])
+
+    def test_explicit_one_gone_after_scans_is_honored(self):
+        # Control: a genuine in-domain value is used as
+        # given; the fix must not flatten it to 3.
+        import copy
+        state = copy.deepcopy(self._STATE)
+        state["aps"]["AA:BB:CC:DD:EE:FF"]["misses"] = 0
+        orig = self._STATE
+        try:
+            self._STATE = state
+            self.assertEqual(
+                self._decide({"gone_after_scans": 1}),
+                ["access_point_gone"])
+        finally:
+            self._STATE = orig
+
+
+
 if __name__ == "__main__":
     unittest.main()

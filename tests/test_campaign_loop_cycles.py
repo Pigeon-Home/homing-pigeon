@@ -1685,5 +1685,56 @@ class CampaignLoopCycleTests(unittest.TestCase):
     def test_cycle_531_hostinfo(self):
         self._run_cycle(531, 'hostinfo', 0)
 
+    def test_cycle_532_workdir(self):
+        self._run_cycle(532, 'workdir', 0)
+
+    def test_cycle_533_flagread(self):
+        self._run_cycle(533, 'flagread', 0)
+
+    def test_cycle_534_sysstat(self):
+        self._run_cycle(534, 'sysstat', 0)
+
+    def test_cycle_535_exit3(self):
+        self._run_cycle(535, 'exit3', 3)
+
+    def test_cycle_536_shadow(self):
+        self._run_cycle(536, 'shadow', 0)
+
+    def test_cycle_537_clock(self):
+        self._run_cycle(537, 'clock', 0)
+
+    def test_cycle_538_envmark(self):
+        self._run_cycle(538, 'envmark', 0)
+
+    def test_cycle_539_hostinfo(self):
+        self._run_cycle(539, 'hostinfo', 0)
+
+    def test_cycle_540_workdir(self):
+        self._run_cycle(540, 'workdir', 0)
+
+    def test_cycle_541_flagread(self):
+        self._run_cycle(541, 'flagread', 0)
+
+    def test_cycle_542_sysstat(self):
+        self._run_cycle(542, 'sysstat', 0)
+
+    def test_cycle_543_exit3(self):
+        self._run_cycle(543, 'exit3', 3)
+
+    def test_cycle_544_shadow(self):
+        self._run_cycle(544, 'shadow', 0)
+
+    def test_cycle_545_clock(self):
+        self._run_cycle(545, 'clock', 0)
+
+    def test_cycle_546_envmark(self):
+        self._run_cycle(546, 'envmark', 0)
+
+    def test_cycle_547_hostinfo(self):
+        self._run_cycle(547, 'hostinfo', 0)
+
+    def test_cycle_548_workdir(self):
+        self._run_cycle(548, 'workdir', 0)
+
 if __name__ == "__main__":
     unittest.main()
