@@ -4658,5 +4658,151 @@ class TestInfiniteTripwireTunablesCrashInsteadOfDefault(unittest.TestCase):
 
 
 
+class TestNonFiniteSkyWatcherLeadAndBrightDefaults(unittest.TestCase):
+    """Divergence: non-finite sky-watcher visible_lead_sec,
+    visible_min_elevation_deg, and bright_min_elevation_deg
+    values suppress the visible-pass signals (or crash the
+    update outright) instead of falling back to the
+    documented defaults of 600, 10, and 65.
+
+    (a) Doc claim (docs/extensions.md, sky-watcher signal
+        table, lines 531-532): "`visible_pass_starting` | A
+        sunlit pass over a dark sky begins within
+        `visible_lead_sec` (default 600), culminating above
+        `visible_min_elevation_deg` (default 10 deg)";
+        "`bright_pass` | That pass culminates at or above
+        `bright_min_elevation_deg` (default 65 deg) -- near
+        zenith".
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 tick) exercised the sky-watcher
+        example extension's update() -- the pure pass state
+        machine -- with an observer at (0, 0), a sunlit
+        equatorial zenith pass already inside the approach
+        corridor at a midnight epoch (previous sub-point
+        (0, -44), current sub-point (0, -43), alt 420 km,
+        culmination 90 deg, window opening in about 470 s,
+        inside the documented 600 s lead), the three
+        tunables omitted, set to genuine values, and set to
+        float("inf"), float("-inf"), and float("nan").
+
+    (c) Behavior actually observed: the omitted tunables
+        file as documented (both visible_pass_starting and
+        bright_pass) and genuine values are honored
+        (visible_lead_sec 10 files neither, 10000 files
+        both; bright_min_elevation_deg 80 files both, 95
+        files only visible_pass_starting), but _tunable
+        accepts inf and NaN as numbers (_is_number excludes
+        booleans but not non-finite floats): with
+        visible_lead_sec NaN or -inf the starts_in <= lead
+        comparison is never true, so neither signal files;
+        with bright_min_elevation_deg inf or NaN the
+        culmination >= bright_min comparison is never
+        true, so bright_pass silently goes missing while
+        visible_pass_starting still files; and with
+        visible_min_elevation_deg inf, update() raises
+        ValueError (math domain error) out of
+        psi_for_elevation_deg instead of filing anything.
+        Non-finite values therefore erase or crash the
+        heads-up instead of reading as the documented
+        defaults. Sibling readers in this codebase exclude
+        non-finite values and fall back to their defaults
+        (e.g. runner.remediation._pos_float,
+        runner.runner._local_wake_cooldown); this reader
+        does not. Observed on 2026-10-23: update() with
+        visible_lead_sec float("nan") and float("-inf")
+        returned [] where the omitted tunable returned
+        ["visible_pass_starting", "bright_pass"]; with
+        bright_min_elevation_deg float("inf") and
+        float("nan") returned ["visible_pass_starting"]
+        where the omitted tunable returned both; with
+        visible_min_elevation_deg float("inf") raised
+        ValueError: math domain error.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    MIDNIGHT = 1704067200  # 2024-01-01T00:00Z, sun ~-66.9 deg
+
+    def _signals(self, tunables):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "sky-watcher",
+            "sky_watcher.py")
+        spec = importlib.util.spec_from_file_location(
+            "sky_watcher_lead_bright_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        prev = {"lat": 0, "lon": -44, "alt_km": 420,
+                "velocity_kmh": 27576, "sunlit": True,
+                "ts": self.MIDNIGHT}
+        sample = {"lat": 0, "lon": -43, "alt_km": 420,
+                  "velocity_kmh": 27576, "sunlit": True,
+                  "ts": self.MIDNIGHT + 60}
+        state = {"stage": "approaching", "pass_id": 1,
+                 "fired": ["station_approaching"],
+                 "prev": prev, "culmination_deg": None,
+                 "last_ts": self.MIDNIGHT}
+        manifest = {"name": "sky_watcher",
+                    "tunables": {"observer_lat": 0,
+                                 "observer_lon": 0, **tunables}}
+        alerts, _state = mod.update(sample, manifest, state)
+        return [a["signal"] for a in alerts]
+
+    def test_nan_lead_defaults_to_600(self):
+        self.assertEqual(
+            self._signals({"visible_lead_sec": float("nan")}),
+            ["visible_pass_starting", "bright_pass"])
+
+    def test_negative_infinite_lead_defaults_to_600(self):
+        self.assertEqual(
+            self._signals({"visible_lead_sec": float("-inf")}),
+            ["visible_pass_starting", "bright_pass"])
+
+    def test_infinite_bright_min_defaults_to_65(self):
+        self.assertEqual(
+            self._signals(
+                {"bright_min_elevation_deg": float("inf")}),
+            ["visible_pass_starting", "bright_pass"])
+
+    def test_nan_bright_min_defaults_to_65(self):
+        self.assertEqual(
+            self._signals(
+                {"bright_min_elevation_deg": float("nan")}),
+            ["visible_pass_starting", "bright_pass"])
+
+    def test_infinite_visible_min_defaults_to_10(self):
+        self.assertEqual(
+            self._signals(
+                {"visible_min_elevation_deg": float("inf")}),
+            ["visible_pass_starting", "bright_pass"])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented defaults and genuine
+        # values already behave today and must keep doing
+        # so after the non-finite cases are fixed.
+        self.assertEqual(
+            self._signals({}),
+            ["visible_pass_starting", "bright_pass"])
+        self.assertEqual(
+            self._signals({"visible_lead_sec": 10}), [])
+        self.assertEqual(
+            self._signals({"visible_lead_sec": 10000}),
+            ["visible_pass_starting", "bright_pass"])
+        self.assertEqual(
+            self._signals({"bright_min_elevation_deg": 80}),
+            ["visible_pass_starting", "bright_pass"])
+        self.assertEqual(
+            self._signals({"bright_min_elevation_deg": 95}),
+            ["visible_pass_starting"])
+
+
+
+
 if __name__ == "__main__":
     unittest.main()
