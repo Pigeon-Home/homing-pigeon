@@ -5224,5 +5224,126 @@ class TestInfiniteServiceWatchFlapCountDefaultsTo4(unittest.TestCase):
             self._signals({"flap_count": 9}))
 
 
+
+class TestInfiniteJobWatcherRepeatFailuresDefaultsTo3(unittest.TestCase):
+    """Divergence: a non-finite job-watcher
+    repeat_failures (+inf, -inf, or NaN) crashes
+    decide() instead of falling back to the
+    documented 3-failure default.
+
+    (a) Doc claim (examples/extensions/job-watcher/
+        README.md, line 18): "`job_failing_repeatedly`
+        | The same job -- same `kind` and script --
+        failed at least `repeat_failures` times
+        (default 3) inside `failure_window_sec`
+        (default a day)". The extension header states
+        the same default (job_watcher.py lines 35-36:
+        "repeat_failures times (default 3)"), and the
+        manifest ships it (extension.json:
+        "repeat_failures": 3).
+
+    (b) How the bug was found: the campaign's
+        doc-default hunt (2026-10-23 15:01 PDT tick)
+        exercised the job-watcher example extension's
+        decide() -- the pure decision function -- with
+        three failure records for one job inside the
+        failure window, with the tunable omitted, set
+        to genuine values (3, 2, and 5), and set to
+        float("inf"), float("-inf"), float("nan"),
+        and True.
+
+    (c) Behavior actually observed: omitted, 3, and
+        True all file job_failing_repeatedly at the
+        third failure, as the documented default
+        requires; an explicit 2 files it at the
+        second failure and an explicit 5 does not
+        file it within three failures. The non-finite
+        values do not fall back: decide() computes
+        repeat_failures as int(_tunable(tunables,
+        "repeat_failures", 3)) (job_watcher.py line
+        400), and _tunable returns float(value) when
+        _is_number(value) holds (lines 117-119);
+        _is_number excludes booleans but not
+        non-finite floats (lines 104-105), so
+        int(float("inf")) and int(float("-inf"))
+        raise OverflowError: cannot convert float
+        infinity to integer, and int(float("nan"))
+        raises ValueError: cannot convert float NaN
+        to integer -- decide() crashes on the pass
+        instead of using the default. Sibling readers
+        in this codebase exclude non-finite values
+        and fall back to their defaults; this reader
+        does not. This is the campaign's known
+        non-finite-tunable root-cause family.
+        Observed on 2026-10-23: decide() with
+        repeat_failures float("inf") raised
+        OverflowError where the omitted tunable
+        returned ["job_failing_repeatedly"].
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _signals(self, tunables, count=3):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "job-watcher",
+            "job_watcher.py")
+        spec = importlib.util.spec_from_file_location(
+            "job_watcher_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        now = 1000000.0
+        manifest = {"name": "job_watcher",
+                    "tunables": dict(tunables)}
+        records = [{"job_id": f"j{i}", "key": "k1",
+                    "kind": "shell", "label": "job1",
+                    "saved_at": now + i, "exit_code": 1,
+                    "duration_sec": 1.0,
+                    "error": "boom"} for i in range(count)]
+        readings = {"now": now + count,
+                    "records": records}
+        alerts, _state = mod.decide(readings, manifest, {})
+        return [a["signal"] for a in alerts]
+
+    def test_infinite_repeat_failures_defaults_to_3(self):
+        self.assertEqual(
+            self._signals({"repeat_failures": float("inf")}),
+            ["job_failing_repeatedly"])
+
+    def test_negative_infinite_repeat_failures_defaults_to_3(self):
+        self.assertEqual(
+            self._signals({"repeat_failures": float("-inf")}),
+            ["job_failing_repeatedly"])
+
+    def test_nan_repeat_failures_defaults_to_3(self):
+        self.assertEqual(
+            self._signals({"repeat_failures": float("nan")}),
+            ["job_failing_repeatedly"])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented default and genuine
+        # values already behave today and must keep
+        # doing so after the non-finite case is fixed.
+        self.assertEqual(self._signals({}),
+                         ["job_failing_repeatedly"])
+        self.assertEqual(
+            self._signals({"repeat_failures": 3}),
+            ["job_failing_repeatedly"])
+        self.assertEqual(
+            self._signals({"repeat_failures": True}),
+            ["job_failing_repeatedly"])
+        self.assertEqual(
+            self._signals({"repeat_failures": 2}, count=2),
+            ["job_failing_repeatedly"])
+        self.assertEqual(
+            self._signals({"repeat_failures": 5}), [])
+
+
+
 if __name__ == "__main__":
     unittest.main()
