@@ -542,7 +542,11 @@ class ShellOrderingTest(unittest.TestCase):
             def server_close(self):
                 return None
 
-        with mock.patch("runner.oauth.HTTPServer", Server), \
+        # browser_consent builds its listener from _ConsentServer
+        # (the hardened HTTPServer subclass) since 3e61d86; patching
+        # HTTPServer left a real listener waiting out the full
+        # consent window and failing with "no sign-in code".
+        with mock.patch("runner.oauth._ConsentServer", Server), \
              mock.patch("runner.oauth.webbrowser.open"):
             with self.assertRaises(SystemExit) as caught:
                 browser_consent({"oauth_client_id": "cid"})

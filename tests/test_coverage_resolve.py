@@ -373,7 +373,11 @@ class OAuthBrowserTest(unittest.TestCase):
             def server_close(self):
                 return None
 
-        with mock.patch("runner.oauth.HTTPServer", Server), \
+        # The listener is _ConsentServer since 3e61d86, and the wait
+        # loops until its deadline: a server that never delivers a
+        # callback ends the wait at once only with no wait window.
+        with mock.patch("runner.oauth._ConsentServer", Server), \
+             mock.patch("runner.oauth._CONSENT_WAIT_SEC", 0), \
              mock.patch("runner.oauth.webbrowser.open"):
             with self.assertRaises(SystemExit) as caught:
                 browser_consent({"oauth_client_id": "cid"})
@@ -393,7 +397,7 @@ class OAuthBrowserTest(unittest.TestCase):
             def server_close(self):
                 return None
 
-        with mock.patch("runner.oauth.HTTPServer", Server), \
+        with mock.patch("runner.oauth._ConsentServer", Server), \
              mock.patch("runner.oauth.webbrowser.open"), \
              mock.patch("runner.oauth.exchange_code", return_value="refresh"):
             token = oauth.browser_consent({"oauth_client_id": "cid"})
@@ -413,7 +417,7 @@ class OAuthBrowserTest(unittest.TestCase):
             def server_close(self):
                 return None
 
-        with mock.patch("runner.oauth.HTTPServer", Server), \
+        with mock.patch("runner.oauth._ConsentServer", Server), \
              mock.patch("runner.oauth.webbrowser.open"):
             with self.assertRaises(SystemExit) as caught:
                 browser_consent({"oauth_client_id": "cid"})
