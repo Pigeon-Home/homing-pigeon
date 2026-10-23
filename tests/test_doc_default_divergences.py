@@ -1014,5 +1014,93 @@ class TestHugeResourcesValueIsConfigError(unittest.TestCase):
                 {"resources": {"threshold": 10**400}}, base))
 
 
+class _BodyRecordingOpener:
+    """Fake inference opener: records request-body JSON."""
+
+    def __init__(self):
+        self.bodies = []
+
+    def __call__(self, req, timeout=None):
+        self.bodies.append(json.loads(req.data.decode("utf-8")))
+
+        class _Resp:
+            def read(self, n=-1):
+                return (b'{"choices":[{"message":'
+                        b'{"content":"ok answer"}}]}')
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        return _Resp()
+
+
+class TestAskModelKeepAliveDefaultsTo30mOnOllama(unittest.TestCase):
+    """Divergence: ask_model never sends keep_alive, so the
+    documented Ollama default (30m on a :11434 endpoint when
+    keep_alive is unset) -- and any explicit keep_alive --
+    is lost on the plain ask path.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 70):
+        "`keep_alive` (passed to the model server so it
+        keeps the model loaded between questions; unset by
+        default, except that an endpoint on `:11434` gets
+        \"30m\" so Ollama does not cold-start every ask)."
+        The key is listed as an `inference` sub-key, with
+        no restriction to one call path.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 07:11 PDT tick) exercised
+        runner.runner.ask_model and runner.runner.ask_model_agent
+        with keep_alive left unset and varied around it --
+        key omitted on a :11434 endpoint, explicit
+        "10m", and a non-Ollama endpoint -- using a
+        recording opener to observe the exact request-body
+        JSON each call sent, the same direct-call surface
+        the repo's own ask tests use.
+
+    (c) Behavior actually observed: ask_model_agent, which
+        builds its payload through _inference_chat
+        (runner/runner.py lines 2476-2481), sends
+        keep_alive "30m" when the key is unset and the
+        endpoint contains :11434, and sends an explicit
+        value verbatim. ask_model (runner/runner.py,
+        def at line 1782) does neither: it builds its
+        payload as only {model, messages} and contains no
+        keep_alive handling at all, so on 2026-10-23 a
+        :11434 ask with the key unset sent a body with no
+        keep_alive member, and an explicit "10m" was also
+        dropped -- Ollama cold-starts the next ask, the
+        exact outcome the documented default exists to
+        avoid, on the main query-answer path.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    _BASE = {"endpoint": "http://127.0.0.1:11434/v1",
+             "model": "m"}
+
+    def _ask_body(self, extra):
+        from runner.runner import ask_model
+        opener = _BodyRecordingOpener()
+        cfg = dict(self._BASE)
+        cfg.update(extra)
+        ask_model(cfg, "why?", "some output", 100, opener=opener)
+        self.assertEqual(len(opener.bodies), 1)
+        return opener.bodies[0]
+
+    def test_unset_keep_alive_defaults_to_30m_on_ollama(self):
+        body = self._ask_body({})
+        self.assertEqual(body.get("keep_alive"), "30m")
+
+    def test_explicit_keep_alive_is_sent(self):
+        body = self._ask_body({"keep_alive": "10m"})
+        self.assertEqual(body.get("keep_alive"), "10m")
+
+
 if __name__ == "__main__":
     unittest.main()

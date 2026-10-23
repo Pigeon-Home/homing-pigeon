@@ -1022,6 +1022,12 @@ class CampaignLoopCycleTests(unittest.TestCase):
     def test_cycle_311_exit3(self):
         self._run_cycle(311, 'exit3', 3)
 
+    def test_cycle_312_shadow(self):
+        self._run_cycle(312, 'shadow', 0)
+
+    def test_cycle_313_clock(self):
+        self._run_cycle(313, 'clock', 0)
+
 
 if __name__ == "__main__":
     unittest.main()
