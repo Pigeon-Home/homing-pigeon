@@ -5110,5 +5110,119 @@ class TestInfiniteFailedLoginBurstCountDefaultsTo5(unittest.TestCase):
             self._signals({"burst_count": 7}, count=6), [])
 
 
+
+class TestInfiniteServiceWatchFlapCountDefaultsTo4(unittest.TestCase):
+    """Divergence: an infinite service-watch
+    flap_count (+inf) crashes decide() with
+    OverflowError instead of falling back to the
+    documented 4-transition default.
+
+    (a) Doc claim (examples/extensions/service-watch/
+        README.md, line 18): the example configuration
+        ships "\"flap_window_sec\": 600,
+        \"flap_count\": 4", and line 28 states
+        service_flapping fires when a service's
+        transitions inside flap_window_sec reach
+        flap_count. The manifest ships the same
+        default (extension.json: "flap_count": 4,
+        "flap_window_sec": 600).
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 14:56 PDT tick) exercised the
+        service-watch example extension's decide() --
+        the pure decision function -- with one watched
+        service toggling down/up/down/up (four
+        transitions inside the window), with the
+        tunable omitted, set to genuine values (4, 2
+        and 9), and set to float("inf"),
+        float("-inf"), float("nan"), and True.
+
+    (c) Behavior actually observed: omitted, 4, NaN,
+        -inf, and True all file service_flapping at
+        the fourth transition, as the documented
+        default requires; an explicit 2 files it at
+        the second transition and an explicit 9 does
+        not file it within four transitions.
+        float("inf") does not: decide() computes
+        flap_count as int(flap_count) if
+        _is_number(flap_count) and flap_count >= 1
+        else 4 (service_watch.py lines 211-213);
+        _is_number excludes booleans but not
+        non-finite floats, and inf >= 1 is true, so
+        int(float("inf")) raises OverflowError:
+        cannot convert float infinity to integer, and
+        decide() crashes on the first pass instead of
+        using the default. Sibling readers in this
+        codebase exclude non-finite values and fall
+        back to their defaults; this reader does not.
+        This is the campaign's known non-finite-tunable
+        root-cause family. Observed on 2026-10-23:
+        decide() with flap_count float("inf") raised
+        OverflowError where the omitted tunable
+        returned service_down / service_recovered /
+        service_flapping across the four toggles.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _signals(self, tunables):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "service-watch",
+            "service_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "service_watch_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        manifest = {"name": "service_watch",
+                    "tunables": {
+                        "services": [{"name": "sshd",
+                                      "match": "exact"}],
+                        **tunables}}
+        state = {"learned": True,
+                 "services": {"sshd": {
+                     "up": True, "transitions": [],
+                     "down_filed": False,
+                     "flap_fired": False}}}
+        signals = []
+        proc = {"name": "sshd", "pid": 1,
+                "cmdline": "/usr/sbin/sshd"}
+        for now, up in [(1000.0, False), (1010.0, True),
+                        (1020.0, False), (1030.0, True)]:
+            readings = {"now": now,
+                        "processes": [proc] if up else []}
+            alerts, state = mod.decide(readings, manifest, state)
+            signals.extend(a["signal"] for a in alerts)
+        return signals
+
+    def test_infinite_flap_count_defaults_to_4(self):
+        self.assertIn(
+            "service_flapping",
+            self._signals({"flap_count": float("inf")}))
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented default and genuine
+        # values already behave today and must keep
+        # doing so after the non-finite case is fixed.
+        self.assertIn("service_flapping", self._signals({}))
+        self.assertIn(
+            "service_flapping",
+            self._signals({"flap_count": 4}))
+        self.assertIn(
+            "service_flapping",
+            self._signals({"flap_count": float("nan")}))
+        self.assertIn(
+            "service_flapping",
+            self._signals({"flap_count": 2}))
+        self.assertNotIn(
+            "service_flapping",
+            self._signals({"flap_count": 9}))
+
+
 if __name__ == "__main__":
     unittest.main()

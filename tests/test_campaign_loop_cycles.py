@@ -6022,5 +6022,155 @@ class CampaignLoopCycleTests(unittest.TestCase):
     def test_cycle_1976_shadow(self):
         self._run_cycle(1976, 'shadow', 0)
 
+    def test_cycle_1977_clock(self):
+        self._run_cycle(1977, 'clock', 0)
+
+    def test_cycle_1978_envmark(self):
+        self._run_cycle(1978, 'envmark', 0)
+
+    def test_cycle_1979_hostinfo(self):
+        self._run_cycle(1979, 'hostinfo', 0)
+
+    def test_cycle_1980_workdir(self):
+        self._run_cycle(1980, 'workdir', 0)
+
+    def test_cycle_1981_flagread(self):
+        self._run_cycle(1981, 'flagread', 0)
+
+    def test_cycle_1982_sysstat(self):
+        self._run_cycle(1982, 'sysstat', 0)
+
+    def test_cycle_1983_exit3(self):
+        self._run_cycle(1983, 'exit3', 3)
+
+    def test_cycle_1984_shadow(self):
+        self._run_cycle(1984, 'shadow', 0)
+
+    def test_cycle_1985_clock(self):
+        self._run_cycle(1985, 'clock', 0)
+
+    def test_cycle_1986_envmark(self):
+        self._run_cycle(1986, 'envmark', 0)
+
+    def test_cycle_1987_hostinfo(self):
+        self._run_cycle(1987, 'hostinfo', 0)
+
+    def test_cycle_1988_workdir(self):
+        self._run_cycle(1988, 'workdir', 0)
+
+    def test_cycle_1989_flagread(self):
+        self._run_cycle(1989, 'flagread', 0)
+
+    def test_cycle_1990_sysstat(self):
+        self._run_cycle(1990, 'sysstat', 0)
+
+    def test_cycle_1991_exit3(self):
+        self._run_cycle(1991, 'exit3', 3)
+
+    def test_cycle_1992_shadow(self):
+        self._run_cycle(1992, 'shadow', 0)
+
+    def test_cycle_1993_clock(self):
+        self._run_cycle(1993, 'clock', 0)
+
+    def test_cycle_1994_envmark(self):
+        self._run_cycle(1994, 'envmark', 0)
+
+    def test_cycle_1995_hostinfo(self):
+        self._run_cycle(1995, 'hostinfo', 0)
+
+    def test_cycle_1996_workdir(self):
+        self._run_cycle(1996, 'workdir', 0)
+
+    def test_cycle_1997_flagread(self):
+        self._run_cycle(1997, 'flagread', 0)
+
+    def test_cycle_1998_sysstat(self):
+        self._run_cycle(1998, 'sysstat', 0)
+
+    def test_cycle_1999_exit3(self):
+        self._run_cycle(1999, 'exit3', 3)
+
+    def test_cycle_2000_shadow(self):
+        self._run_cycle(2000, 'shadow', 0)
+
+    def test_cycle_2001_clock(self):
+        self._run_cycle(2001, 'clock', 0)
+
+    def test_cycle_2002_envmark(self):
+        self._run_cycle(2002, 'envmark', 0)
+
+    def test_cycle_2003_hostinfo(self):
+        self._run_cycle(2003, 'hostinfo', 0)
+
+    def test_cycle_2004_workdir(self):
+        self._run_cycle(2004, 'workdir', 0)
+
+    def test_cycle_2005_flagread(self):
+        self._run_cycle(2005, 'flagread', 0)
+
+    def test_cycle_2006_sysstat(self):
+        self._run_cycle(2006, 'sysstat', 0)
+
+    def test_cycle_2007_exit3(self):
+        self._run_cycle(2007, 'exit3', 3)
+
+    def test_cycle_2008_shadow(self):
+        self._run_cycle(2008, 'shadow', 0)
+
+    def test_cycle_2009_clock(self):
+        self._run_cycle(2009, 'clock', 0)
+
+    def test_cycle_2010_envmark(self):
+        self._run_cycle(2010, 'envmark', 0)
+
+    def test_cycle_2011_hostinfo(self):
+        self._run_cycle(2011, 'hostinfo', 0)
+
+    def test_cycle_2012_workdir(self):
+        self._run_cycle(2012, 'workdir', 0)
+
+    def test_cycle_2013_flagread(self):
+        self._run_cycle(2013, 'flagread', 0)
+
+    def test_cycle_2014_sysstat(self):
+        self._run_cycle(2014, 'sysstat', 0)
+
+    def test_cycle_2015_exit3(self):
+        self._run_cycle(2015, 'exit3', 3)
+
+    def test_cycle_2016_shadow(self):
+        self._run_cycle(2016, 'shadow', 0)
+
+    def test_cycle_2017_clock(self):
+        self._run_cycle(2017, 'clock', 0)
+
+    def test_cycle_2018_envmark(self):
+        self._run_cycle(2018, 'envmark', 0)
+
+    def test_cycle_2019_hostinfo(self):
+        self._run_cycle(2019, 'hostinfo', 0)
+
+    def test_cycle_2020_workdir(self):
+        self._run_cycle(2020, 'workdir', 0)
+
+    def test_cycle_2021_flagread(self):
+        self._run_cycle(2021, 'flagread', 0)
+
+    def test_cycle_2022_sysstat(self):
+        self._run_cycle(2022, 'sysstat', 0)
+
+    def test_cycle_2023_exit3(self):
+        self._run_cycle(2023, 'exit3', 3)
+
+    def test_cycle_2024_shadow(self):
+        self._run_cycle(2024, 'shadow', 0)
+
+    def test_cycle_2025_clock(self):
+        self._run_cycle(2025, 'clock', 0)
+
+    def test_cycle_2026_envmark(self):
+        self._run_cycle(2026, 'envmark', 0)
+
 if __name__ == "__main__":
     unittest.main()
