@@ -1930,5 +1930,87 @@ class TestBooleanDriValuesAreConfigErrors(unittest.TestCase):
                 "key_probe": {"threshold": True}}}})
 
 
+class TestBooleanMailboxPortIsConfigError(unittest.TestCase):
+    """Divergence: an imap_port or smtp_port set to a boolean
+    reads as port 1 or port 0 instead of the startup config
+    error every other non-numeric port value gets.
+
+    (a) Doc claim (PROTOCOL.md line 41): "Runner access:
+        IMAP (read, port 993) + SMTP (send, port 587)" --
+        repeated at PROTOCOL.md line 379, "IMAP/SMTP over
+        TLS (993/587)" -- and those are exactly the values
+        the reader returns when the keys are omitted, i.e.
+        they are the defaults. The reader's own contract
+        states the rest (runner/mailbox.py, _port, lines
+        80-87): "A missing or non-numeric port is a config
+        error, not a crash", raising RuntimeError
+        "config error: <key> must be a number". The
+        runner's startup validation relies on that
+        (runner/runner.py: a bad port is a config error,
+        checked at startup so the poll loop is not the
+        thing that discovers it). No document gives a
+        boolean a numeric meaning as a port; sibling
+        readers exclude booleans explicitly (for example
+        runner.runner._cfg_size, "Booleans are not
+        sizes", and runner.dri.parse_dri's own `enabled`
+        check, where booleans are a distinct type, never
+        numbers).
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 09:31 PDT tick) exercised
+        runner.mailbox._port -- the single reader that
+        validates imap_port and smtp_port, called from
+        connect_imap, connect_smtp, and the runner's
+        startup validation -- with each key left unset
+        and varied around it: omitted, the explicit
+        documented defaults (993, 587), explicit None,
+        a non-numeric string ("bogus"), a huge integer
+        (10**400), and the booleans True and False on
+        both keys.
+
+    (c) Behavior actually observed: omitted reads as
+        the documented defaults (993, 587); "bogus" and
+        None raise the documented RuntimeError config
+        error. The booleans do not: _port converts with
+        int() and no boolean guard (runner/mailbox.py
+        line 85), so imap_port True reads as port 1 and
+        False as port 0 instead of raising, and
+        smtp_port True reads as port 1 and False as
+        port 0 instead of raising -- a silently wrong
+        mail port rather than the config error the
+        startup check exists to surface. Observed on
+        2026-10-23: _port({"imap_port": True},
+        "imap_port", 993) returned 1, _port(
+        {"imap_port": False}, "imap_port", 993)
+        returned 0, and _port({"smtp_port": True},
+        "smtp_port", 587) returned 1, none of them
+        raising.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def test_true_imap_port_is_config_error(self):
+        from runner.mailbox import _port
+        with self.assertRaises(RuntimeError):
+            _port({"imap_port": True}, "imap_port", 993)
+
+    def test_false_imap_port_is_config_error(self):
+        from runner.mailbox import _port
+        with self.assertRaises(RuntimeError):
+            _port({"imap_port": False}, "imap_port", 993)
+
+    def test_true_smtp_port_is_config_error(self):
+        from runner.mailbox import _port
+        with self.assertRaises(RuntimeError):
+            _port({"smtp_port": True}, "smtp_port", 587)
+
+    def test_false_smtp_port_is_config_error(self):
+        from runner.mailbox import _port
+        with self.assertRaises(RuntimeError):
+            _port({"smtp_port": False}, "smtp_port", 587)
+
+
 if __name__ == "__main__":
     unittest.main()
