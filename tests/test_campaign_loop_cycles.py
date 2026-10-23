@@ -1067,6 +1067,9 @@ class CampaignLoopCycleTests(unittest.TestCase):
     def test_cycle_326_sysstat(self):
         self._run_cycle(326, 'sysstat', 0)
 
+    def test_cycle_327_exit3(self):
+        self._run_cycle(327, 'exit3', 3)
+
 
 if __name__ == "__main__":
     unittest.main()

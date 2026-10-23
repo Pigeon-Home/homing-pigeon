@@ -1409,5 +1409,83 @@ class TestBooleanWakeCooldownDefaultsTo900(unittest.TestCase):
                 {"local_wake_cooldown_sec": False}), 900.0)
 
 
+class TestBooleanMaxOutputBytesDefaultsTo100000(unittest.TestCase):
+    """Divergence: max_output_bytes set to the boolean true
+    truncates every job's output to a single byte instead
+    of the documented 100000-byte default.
+
+    (a) Doc claim (PROTOCOL.md, section 3, lines 183-184):
+        "`stdout`/`stderr` are truncated at a configurable
+        byte limit (default 100_000); the `*_truncated`
+        flags say so."
+        The runner's --help states the same default for the
+        flag that supplies the key ("--max-output-bytes
+        BYTES -- truncate stdout/stderr beyond this many
+        bytes (default: 100000)"), and
+        docs/configuring-oracle.md (flag-to-key map,
+        line 84) maps that flag to the config key:
+        "`--max-output-bytes BYTES` | `max_output_bytes`".
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 08:16 PDT tick) exercised
+        runner.runner.execute_job -- the single reader of
+        this key -- with the key left unset and varied
+        around it -- key omitted, explicit 100000, explicit
+        None (JSON null), a non-numeric string ("bogus"),
+        0, -5, float("inf"), a valid small cap (5), and the
+        booleans True and False -- running a trivial
+        python3 script (print('hello-probe-output')) each
+        time, the same direct-call surface the repo's own
+        execute_job tests and this file's timeout tests
+        use.
+
+    (c) Behavior actually observed: omitted, explicit
+        100000, None, "bogus", 0, -5, and infinity all
+        return the full output untruncated (the reader's
+        unparseable fallback and its below-1 fallback both
+        supply the documented default), a valid cap of 5
+        truncates to 5 bytes with the flag set, and False
+        reads as 0 and so also lands on the default. True
+        does not: execute_job computes
+        int(cfg.get("max_output_bytes", 100000)) with no
+        boolean guard, int(True) is 1, and 1 passes its
+        `max_out < 1` check, so the job's stdout is
+        truncated to exactly one byte ('h') with
+        stdout_truncated True -- every job's output is
+        effectively destroyed by a boolean typo. Sibling
+        readers exclude booleans explicitly --
+        runner.runner._cfg_size ("Booleans are not
+        sizes"), runner.remediation._pos_int, and the
+        inference config validator's `is True` refusal --
+        only this reader lets one through as a number.
+        Observed on 2026-10-23: execute_job with
+        {"max_output_bytes": True} returned stdout 'h'
+        and stdout_truncated True for a script printing
+        'hello-probe-output'.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def _run(self, cfg_extra):
+        from runner.runner import execute_job
+        with tempfile.TemporaryDirectory() as base:
+            cfg = {"base_dir": base}
+            cfg.update(cfg_extra)
+            job = {"v": 1, "type": "job", "job_id": "docdef-maxout",
+                   "issued_at": "2026-10-23T00:00:00Z",
+                   "kind": "exec", "interpreter": ["python3"],
+                   "script": "print('hello-probe-output')"}
+            return execute_job(cfg, job, base)
+
+    def test_true_max_output_bytes_defaults_to_100000(self):
+        result = self._run({"max_output_bytes": True})
+        self.assertEqual(result.get("exit_code"), 0)
+        self.assertIn("hello-probe-output",
+                      result.get("stdout", ""))
+        self.assertFalse(result.get("stdout_truncated"))
+
+
 if __name__ == "__main__":
     unittest.main()
