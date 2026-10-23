@@ -2316,5 +2316,77 @@ class TestBooleanPollIntervalDefaultsTo20(unittest.TestCase):
             [42.0])
 
 
+class TestBooleanDtlsPortDefaultsTo20220(unittest.TestCase):
+    """Divergence: transport_dtls port set to a boolean reads
+    as port 1 (true) or port 0 (false) instead of the
+    documented default 20220.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 64):
+        "`transport_dtls` -- the DTLS session binding ...
+        handed to the DTLS extension: `port` (default 20220)
+        and `bind` (default `0.0.0.0`)."
+        The extension's own module docstring states the same
+        (runner/transport_extensions/dtls/__main__.py, lines
+        5-9): "port    UDP port to listen on (default 20220)".
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 tick) exercised
+        runner.transport_extensions.dtls DtlsPipe construction
+        with the transport_dtls block varied around the
+        documented default -- port omitted, explicit None,
+        a non-numeric string ("bogus"), 0, a valid 20220, and
+        the booleans True and False -- checking the port the
+        pipe actually bound. The null and bogus forms are
+        already recorded in TestNullDtlsPortBindDefaults
+        above; this class records the boolean forms of the
+        same reader.
+
+    (c) Behavior actually observed: omitted reads as the
+        documented default 20220 and 0 binds an ephemeral
+        port as constructed in the repo's own pipe tests.
+        True does not fall back: DtlsPipe.__init__ computes
+        int(cfg.get("port", DEFAULT_PORT)) with no boolean
+        guard, so True returns 1 -- the pipe binds the
+        privileged port 1 the operator never asked for --
+        and False returns 0, an ephemeral port, instead of
+        the documented 20220 either way. Sibling parsers in
+        this codebase refuse booleans explicitly
+        (_cfg_size for the log bounds, _pos_int in
+        remediation, audit_max_lines in security, and
+        _validate_size_caps for the size caps); this read
+        site has no such guard. This is the known
+        boolean-as-number family. Observed on 2026-10-23:
+        DtlsPipe with port True bound port 1 and with port
+        False bound port 0.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed in
+        the code.
+    """
+
+    def _pipe(self, extra):
+        import importlib
+        import os
+
+        dtls_ext = importlib.import_module(
+            "runner.transport_extensions.dtls.__main__")
+        cfg = {"shared_secret": "campaign-test-secret-0123456789",
+               "port": 0, "bind": "127.0.0.1"}
+        cfg.update(extra)
+        with tempfile.TemporaryDirectory() as tmp:
+            pipe = dtls_ext.DtlsPipe(
+                cfg, os.path.join(tmp, "channel"))
+        self.addCleanup(pipe.sock.close)
+        return pipe
+
+    def test_true_port_defaults_to_20220(self):
+        pipe = self._pipe({"port": True})
+        self.assertEqual(pipe.port, 20220)
+
+    def test_false_port_defaults_to_20220(self):
+        pipe = self._pipe({"port": False})
+        self.assertEqual(pipe.port, 20220)
+
+
 if __name__ == "__main__":
     unittest.main()
