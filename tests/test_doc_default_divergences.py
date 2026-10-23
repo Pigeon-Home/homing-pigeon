@@ -338,5 +338,75 @@ class TestBogusInferenceTimeoutDefaultsTo180(unittest.TestCase):
         self.assertEqual(timeouts[0], 180)
 
 
+class TestNullDefaultTimeoutSecDefaultsTo300(unittest.TestCase):
+    """Divergence: a default_timeout_sec present in config as
+    null (or a non-numeric string) rejects every job that omits
+    its own timeout_sec, instead of falling back to the
+    documented 300-second default.
+
+    (a) Doc claim (PROTOCOL.md, section 3.1, line 136):
+        "`timeout_sec`: default 300, maximum 3600."
+        The runner's --help states the same default for the
+        config key that supplies it ("--timeout SECONDS --
+        default per-job timeout in seconds (default: 300)"),
+        and docs/configuring-oracle.md (flag-to-key map,
+        line 83) maps that flag to the config key:
+        "`--timeout SECONDS` | `default_timeout_sec`".
+
+    (b) How the bug was found: the campaign's doc-default hunt
+        (2026-10-22 23:56 PDT tick) exercised
+        runner.runner.execute_job with a job that omits
+        timeout_sec and varied the config around it -- key
+        omitted, explicit 300, explicit None (JSON null), a
+        non-numeric string ("bogus"), and a numeric string
+        ("42") -- running a trivial python3 script
+        (print('hi-probe')) each time, the same direct-call
+        surface the repo's own execute_job tests use.
+
+    (c) Behavior actually observed: omitted, explicit 300,
+        and "42" all run the job (exit 0, stdout 'hi-probe').
+        None and "bogus" do not: execute_job computes
+        int(job.get("timeout_sec") or
+        cfg.get("default_timeout_sec", 300)) -- the .get
+        default fires only when the key is absent -- int(None)
+        / int("bogus") raises, and the except path raises
+        JobRejected("timeout_sec must be a number"), so a
+        single bad config value rejects every timeout-less
+        job rather than supplying the documented default.
+        Sibling default readers in the same function and file
+        (max_output_bytes in execute_job, max_job_age_sec,
+        poll_interval_sec, output_retention_days) all treat a
+        null or unparseable value as the documented default;
+        only this one turns it into a rejection. The same
+        expression in check_key_policy's max_timeout_sec path
+        has the same shape.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed in
+        the code.
+    """
+
+    def _run(self, cfg_extra):
+        from runner.runner import execute_job
+        with tempfile.TemporaryDirectory() as base:
+            cfg = {"base_dir": base}
+            cfg.update(cfg_extra)
+            job = {"v": 1, "type": "job", "job_id": "docdef-to",
+                   "issued_at": "2026-10-23T00:00:00Z",
+                   "kind": "exec", "interpreter": ["python3"],
+                   "script": "print('hi-probe')"}
+            return execute_job(cfg, job, base)
+
+    def test_null_default_timeout_defaults_to_300(self):
+        result = self._run({"default_timeout_sec": None})
+        self.assertEqual(result.get("exit_code"), 0)
+        self.assertIn("hi-probe", result.get("stdout", ""))
+
+    def test_bogus_default_timeout_defaults_to_300(self):
+        result = self._run({"default_timeout_sec": "bogus"})
+        self.assertEqual(result.get("exit_code"), 0)
+        self.assertIn("hi-probe", result.get("stdout", ""))
+
+
 if __name__ == "__main__":
     unittest.main()
