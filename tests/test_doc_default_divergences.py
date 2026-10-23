@@ -861,5 +861,74 @@ class TestInfinitePromoteAfterDefaultsTo2(unittest.TestCase):
             2)
 
 
+class TestHugeSensorWeightDefaultsToOne(unittest.TestCase):
+    """Divergence: a sensor weight that is a huge integer (a
+    JSON number with hundreds of digits) raises OverflowError
+    out of alert_score, instead of falling back to the
+    documented default weight of 1.0.
+
+    (a) Doc claim (docs/senses.md, line 254):
+        "`weight` (number >= 0, default 1.0): the Oracle's
+        weighting for this source."
+        The scoring path states the same arithmetic
+        (docs/senses.md, line 325): alerts are ranked by
+        "score = weight x severity", and alert_score's own
+        fallback for an unparseable weight is the default
+        1.0 (runner/senses.py, lines 407-410).
+
+    (b) How the bug was found: the campaign's doc-default hunt
+        (2026-10-23 06:41 PDT tick) exercised
+        runner.senses.alert_score with the weight left unset
+        and varied around it -- key omitted via the callers'
+        rec.get("weight", 1.0), explicit None, a non-numeric
+        string ("bogus"), a numeric string ("2"), 0, -1,
+        float("inf"), NaN, and huge integers (10**400 and
+        10**1000). The huge forms are reachable from real
+        data: a stored sensor alert is sensor-supplied JSON,
+        Python's json parses a several-hundred-digit number
+        into an arbitrary-precision int, and the DRI fused
+        score path passes a stored record's own weight
+        straight in (runner/dri.py: rec.get("weight", 1.0)).
+
+    (c) Behavior actually observed: omitted, None, and
+        "bogus" all read as the documented default (an info
+        alert scores 0.5, i.e. 1.0 x 0.5), "2" is honored
+        (1.0), and 0 / -1 / inf / NaN pass through the float
+        conversion. A huge int does not: float(10**400)
+        raises OverflowError, and alert_score guards its
+        conversion with `except (TypeError, ValueError)`
+        only, so the error escapes the scorer entirely.
+        Downstream it escapes further: the DRI fused-score
+        loop and its top-alert sorter catch only
+        (TypeError, ValueError) around alert_score, so one
+        stored alert carrying such a weight aborts the
+        whole trigger evaluation instead of scoring at the
+        default weight. Sibling readers include
+        OverflowError in their fallback guard: parse_sensors
+        reads this very weight key with
+        `except (TypeError, ValueError, OverflowError)`,
+        gate_alert's cooldown / cap readers do the same in
+        the same module, and promote_after's missing
+        OverflowError guard is the sibling divergence
+        recorded above. This reader is the outlier.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def test_huge_int_weight_defaults_to_one(self):
+        from runner.senses import alert_score
+        self.assertEqual(
+            alert_score({"severity": "info"}, 10**400), 0.5)
+
+    def test_huge_int_weight_from_json_defaults_to_one(self):
+        from runner.senses import alert_score
+        record = json.loads(
+            '{"severity": "high", "weight": 1' + "0" * 400 + "}")
+        self.assertEqual(
+            alert_score(record, record.get("weight", 1.0)), 3.0)
+
+
 if __name__ == "__main__":
     unittest.main()
