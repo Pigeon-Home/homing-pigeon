@@ -5973,6 +5973,133 @@ class TestNonFiniteTrainingWatchTunablesDefaultInsteadOfSilenceOrCrash(unittest.
 
 
 
+class TestInfiniteReleaseDropMaxHashDefaultsTo512(unittest.TestCase):
+    """Divergence: release-drop max_hash_mb float("inf")
+    crashes read_live() with OverflowError instead of
+    falling back to the documented default of 512.
+
+    (a) Doc claim (examples/extensions/release-drop/
+        README.md, line 21): "A file larger than
+        `max_hash_mb` (default 512) is skipped entirely
+        for the pass". The module docstring states the
+        same (release_drop.py, line 26): "A file larger
+        than the max_hash_mb tunable (default 512 MB) is
+        SKIPPED entirely for the pass". The manifest
+        ships the same default (extension.json tunables
+        max_hash_mb 512), and the code's own fallback
+        literal states it (release_drop.py line 89:
+        512 * 1024 * 1024).
+
+    (b) How the bug was found: the campaign's
+        doc-default hunt (2026-10-23) exercised the
+        release-drop example extension's read_live()
+        -- the live folder pass -- over a temp drop
+        folder holding one small file, with
+        max_hash_mb omitted, set to genuine values,
+        set to True, set to a bogus string, and set
+        to float("inf"), float("-inf"), and
+        float("nan"), and exercised the
+        _max_hash_bytes() helper directly with the
+        same values.
+
+    (c) Behavior actually observed: omitted, genuine,
+        True, bogus, zero, negative, -inf, and NaN
+        all behave as documented (the small file is
+        hashed and listed, or the helper returns the
+        512 MB fallback). float("inf") does not fall
+        back: _is_number excludes booleans but not
+        non-finite floats (release_drop.py lines
+        71-72), inf > 0 holds, and
+        int(inf * 1024 * 1024) at line 88 raises
+        OverflowError ("cannot convert float
+        infinity to integer"), so read_live() crashes
+        outright instead of using the documented
+        default 512. Sibling readers in this codebase
+        exclude non-finite values and fall back to
+        their defaults; this reader does not. This is
+        the campaign's known non-finite-tunable
+        root-cause family. Observed on 2026-10-23:
+        _max_hash_bytes({"max_hash_mb": float("inf")})
+        raised OverflowError and read_live() over a
+        one-file drop folder with that tunable raised
+        the same error, where the omitted tunable
+        listed the file with skipped_oversize 0.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _load(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "release-drop",
+            "release_drop.py")
+        spec = importlib.util.spec_from_file_location(
+            "release_drop_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _read_live(self, tunables):
+        import os
+        import tempfile
+        mod = self._load()
+        with tempfile.TemporaryDirectory() as td:
+            with open(os.path.join(td, "a.txt"),
+                      "wb") as fh:
+                fh.write(b"hello")
+            full = {"watch_dir": td}
+            full.update(tunables)
+            manifest = {"name": "release_drop",
+                        "tunables": full}
+            return mod.read_live(manifest)
+
+    def test_infinite_max_hash_bytes_defaults_to_512(self):
+        mod = self._load()
+        self.assertEqual(
+            mod._max_hash_bytes(
+                {"max_hash_mb": float("inf")}),
+            512 * 1024 * 1024)
+
+    def test_infinite_max_hash_read_live_lists_small_file(self):
+        readings = self._read_live(
+            {"max_hash_mb": float("inf")})
+        self.assertEqual(readings["skipped_oversize"], 0)
+        self.assertEqual(
+            [f["name"] for f in readings["files"]],
+            ["a.txt"])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented default and genuine
+        # values already behave today and must keep
+        # doing so after the non-finite case is fixed.
+        mod = self._load()
+        self.assertEqual(mod._max_hash_bytes({}),
+                         512 * 1024 * 1024)
+        self.assertEqual(
+            mod._max_hash_bytes({"max_hash_mb": 512}),
+            512 * 1024 * 1024)
+        self.assertEqual(
+            mod._max_hash_bytes({"max_hash_mb": 1}),
+            1 * 1024 * 1024)
+        for bogus in (True, False, "bogus", 0, -5,
+                      float("-inf"), float("nan")):
+            with self.subTest(max_hash_mb=bogus):
+                self.assertEqual(
+                    mod._max_hash_bytes(
+                        {"max_hash_mb": bogus}),
+                    512 * 1024 * 1024)
+        readings = self._read_live({})
+        self.assertEqual(
+            [f["name"] for f in readings["files"]],
+            ["a.txt"])
+
+
+
 
 if __name__ == "__main__":
     unittest.main()
