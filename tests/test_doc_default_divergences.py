@@ -1570,5 +1570,91 @@ class TestBooleanPlanBudgetDefaults(unittest.TestCase):
         self.assertTrue(ok, reason)
 
 
+class TestBooleanResourcesValuesAreConfigErrors(unittest.TestCase):
+    """Divergence: a resources threshold or cooldown_sec set
+    to a boolean reads as the number 1 or 0 instead of the
+    startup config error every other malformed resources
+    value gets.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 72):
+        "`resources` -- the built-in resource monitor
+        (`runner/resources.py`) ... `enabled` (default
+        true), `threshold` (default 0.95; the CPU, memory,
+        or disk fraction whose crossing files a
+        `resource_pressure` security event; must be in
+        (0, 1]), `cooldown_sec` (default 900; minimum
+        seconds between repeat events for the same
+        resource). A malformed block is a startup config
+        error."
+        The reader's own error strings state the same
+        contract (runner/resources.py): a threshold that
+        is not a number raises "config error:
+        resources.threshold must be a number", a cooldown
+        that is not a number raises "config error:
+        resources.cooldown_sec must be a number", and a
+        non-boolean `enabled` raises a config error --
+        booleans are a distinct type in this block, never
+        numbers. No document gives a boolean a numeric
+        meaning for threshold or cooldown_sec.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 08:56 PDT tick) exercised
+        runner.resources.parse_resources -- the single
+        reader that validates the resources block -- with
+        the block left unset and varied around it: block
+        omitted, empty block, explicit documented defaults
+        (0.95 / 900), explicit None, a non-numeric string
+        ("bogus"), 0, 42, and the booleans True and False
+        on each of threshold and cooldown_sec.
+
+    (c) Behavior actually observed: omitted and empty
+        read as the documented defaults (threshold 0.95,
+        cooldown 900.0); None and "bogus" raise the
+        documented RuntimeError config error on both keys.
+        The booleans do not: parse_resources converts with
+        float(raw) and no boolean guard, so threshold True
+        reads as 1.0 -- the monitor then fires only at
+        total saturation instead of the documented 0.95 --
+        and cooldown_sec True reads as 1.0 second and
+        False as 0.0 seconds instead of the documented
+        900 -- repeat resource_pressure events on nearly
+        every poll. (Threshold False happens to raise, but
+        only because float(False) is 0.0 and 0 fails the
+        range check, not because the boolean was refused.)
+        Sibling readers exclude booleans explicitly --
+        runner.runner._cfg_size ("Booleans are not
+        sizes"), runner.remediation._pos_int, this same
+        reader's own `enabled` check, and the inference
+        config validator's `is True` refusal -- only these
+        two float() conversions let one through as a
+        number. Observed on 2026-10-23:
+        parse_resources({"resources": {"threshold": True}})
+        returned threshold 1.0, parse_resources(
+        {"resources": {"cooldown_sec": True}}) returned
+        cooldown_sec 1.0, and parse_resources({"resources":
+        {"cooldown_sec": False}}) returned cooldown_sec
+        0.0, none of them raising.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def test_true_threshold_is_config_error(self):
+        from runner.resources import parse_resources
+        with self.assertRaises(RuntimeError):
+            parse_resources({"resources": {"threshold": True}})
+
+    def test_true_cooldown_is_config_error(self):
+        from runner.resources import parse_resources
+        with self.assertRaises(RuntimeError):
+            parse_resources({"resources": {"cooldown_sec": True}})
+
+    def test_false_cooldown_is_config_error(self):
+        from runner.resources import parse_resources
+        with self.assertRaises(RuntimeError):
+            parse_resources({"resources": {"cooldown_sec": False}})
+
+
 if __name__ == "__main__":
     unittest.main()
