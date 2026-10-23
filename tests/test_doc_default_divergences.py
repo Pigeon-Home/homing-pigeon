@@ -2657,5 +2657,110 @@ class TestHugeEmailPollIntervalDefaultsTo20(unittest.TestCase):
         self.assertIn("every 20s", line)
 
 
+class TestBadNatsPortDefaultsTo4222(unittest.TestCase):
+    """Divergence: a NATS broker URL whose port urlparse
+    rejects (out of range, or not a number) raises a raw
+    ValueError out of the NATS transport extension's
+    reconnect loop, instead of falling back to the
+    documented default port 4222.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 62):
+        "`transport_nats` -- core NATS, handed to the NATS
+        extension: `url` (default `nats://127.0.0.1:4222`),
+        `subject` (default `homing-pigeon.jobs`),
+        `result_subject_prefix` (default
+        `homing-pigeon.results`)." The extension's own
+        module docstring states the same default. The
+        client's reader states the fallback in code:
+        `self.port = parsed.port or 4222` -- a port that
+        cannot be used lands on 4222.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 10:46 PDT tick) exercised
+        NatsClient and NatsPipe in
+        runner/transport_extensions/nats/__main__.py with
+        the transport_nats url varied around the
+        documented default -- key omitted, no port, port
+        0, an explicit valid port, an out-of-range port
+        (99999), and a non-numeric port (abc) -- recording
+        the host/port the client resolved and whether
+        NatsPipe.run() stayed inside its reconnect loop
+        (channel nap stubbed to stop it after the first
+        failed connect). The bad-port forms are reachable
+        from a real config file: the transport_nats block
+        is handed to the extension verbatim, and nothing
+        between config.json and the client validates the
+        URL's port.
+
+    (c) Behavior actually observed: an omitted URL, a
+        URL with no port, and port 0 all resolve to
+        127.0.0.1:4222, and an explicit valid port is
+        honored. The out-of-range and non-numeric ports
+        do not: `urlparse(...).port` is a property that
+        raises ValueError ("Port out of range 0-65535" /
+        "Port could not be cast to integer value"), and
+        NatsClient.__init__ reads it unguarded, so the
+        ValueError escapes NatsPipe.run() -- whose
+        reconnect loop catches TransportError only --
+        and kills the extension process before any
+        connection attempt; the supervisor restarts a
+        permanently dead extension instead of the pipe
+        connecting on the default port, or at worst
+        retrying a clean TransportError.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    class _Stop(Exception):
+        pass
+
+    def _client(self, url):
+        import importlib
+        nm = importlib.import_module(
+            "runner.transport_extensions.nats.__main__")
+        return nm.NatsClient(url)
+
+    def test_out_of_range_port_defaults_to_4222(self):
+        client = self._client("nats://127.0.0.1:99999")
+        self.assertEqual(client.port, 4222)
+
+    def test_non_numeric_port_defaults_to_4222(self):
+        client = self._client("nats://127.0.0.1:abc")
+        self.assertEqual(client.port, 4222)
+
+    def test_explicit_and_missing_ports_are_honored(self):
+        # Controls: a valid port is used as given, and a
+        # URL with no port already lands on the default --
+        # proving the readers work, not that every URL is
+        # forced to 4222.
+        self.assertEqual(
+            self._client("nats://broker.example:4223").port,
+            4223)
+        self.assertEqual(
+            self._client("nats://127.0.0.1").port, 4222)
+
+    def test_bad_port_stays_in_reconnect_loop(self):
+        import importlib
+        nm = importlib.import_module(
+            "runner.transport_extensions.nats.__main__")
+        from runner.transport_extensions import channel as ch
+        pipe = nm.NatsPipe(
+            {"url": "nats://127.0.0.1:99999",
+             "allow_unauthenticated": True},
+            "/tmp/docdef-no-channel", log=lambda *a, **k: None)
+        orig_nap = ch.nap
+
+        def _nap(_seconds):
+            raise self._Stop()
+        ch.nap = _nap
+        try:
+            with self.assertRaises(self._Stop):
+                pipe.run()
+        finally:
+            ch.nap = orig_nap
+
+
 if __name__ == "__main__":
     unittest.main()
