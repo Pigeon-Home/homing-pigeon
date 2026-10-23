@@ -80,11 +80,18 @@ jobs:
           # are the binaries. Every one of them must have concluded
           # success on this exact commit.
           gh api "repos/${GITHUB_REPOSITORY}/commits/${SHA}/check-runs?per_page=100" \
-            --jq '[.check_runs[] | select(.name == "test" or (.name | startswith("build-"))) | {name, status, conclusion}]' > runs.json
+            --jq '[.check_runs[] | select(.name == "test" or (.name | startswith("build-"))) | {name, status, conclusion, id}]' > runs.json
           python3 - <<'EOF'
           import json, sys
-          runs = json.load(open("runs.json"))
-          names = {r["name"] for r in runs}
+          # A superseded run (cancelled by a newer push) leaves its
+          # own check run beside the live one; the newest per job
+          # is the verdict.
+          newest = {}
+          for r in json.load(open("runs.json")):
+              if r["name"] not in newest or r["id"] > newest[r["name"]]["id"]:
+                  newest[r["name"]] = r
+          runs = list(newest.values())
+          names = set(newest)
           need = {"test", "build-python", "build-linux", "build-linux-arm64",
                   "build-windows", "build-windows-arm64", "build-macos",
                   "build-macos-x86_64", "build-pi-light"}
