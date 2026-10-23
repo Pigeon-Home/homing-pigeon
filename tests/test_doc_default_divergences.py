@@ -6671,5 +6671,118 @@ class TestInfiniteOsqueryFiledCapCrashesInsteadOfDefault(unittest.TestCase):
         self.assertEqual(len(self._signals({}, events)), 2)
 
 
+class TestNonFiniteSoftflowdTunablesDefaultInsteadOfCrashOrSilence(unittest.TestCase):
+    """Divergence: non-finite softflowd-feed tunables
+    (+inf) crash decide() with OverflowError or suppress
+    flow_long_lived instead of falling back to the
+    documented defaults.
+
+    (a) Doc claim (examples/extensions/softflowd-feed/
+        README.md, Tunables table): "high_volume_bytes |
+        50000000", "long_lived_sec | 3600",
+        "max_known_peers | 1024", "max_filed_flows |
+        1024"; the same defaults are in the extension's
+        extension.json tunables (50000000 / 3600 / 1024 /
+        1024).
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 tick) exercised the softflowd-feed
+        example extension's decide() -- the pure decision
+        function -- with each tunable omitted, set to a
+        genuine value, and set to float("inf") and
+        float("nan"), using one flow (192.168.1.20 ->
+        8.8.8.8:443, 60,000,000 bytes, first 1000, last
+        8200, duration 7200s) that files all three signals
+        under the defaults.
+
+    (c) Behavior actually observed: omitted, NaN and
+        explicit defaults all file
+        ['flow_new_external_peer', 'flow_high_volume',
+        'flow_long_lived'], as documented. But +inf is
+        accepted as a number -- _is_number in
+        softflowd_feed.py excludes booleans but not
+        non-finite floats, and inf > 0 / inf >= 1 hold --
+        so high_volume_bytes, max_known_peers and
+        max_filed_flows evaluate int(float("inf")) and
+        raise OverflowError: cannot convert float
+        infinity to integer, crashing the whole pass;
+        and long_lived_sec=float("inf") becomes an
+        infinite threshold, so the 7200s flow files no
+        flow_long_lived instead of falling back to 3600.
+        This is the campaign's known non-finite-tunable
+        root-cause family in a new reader.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _signals(self, tunables):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "softflowd-feed",
+            "softflowd_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "softflowd_feed_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        flow = {"src": "192.168.1.20", "dst": "8.8.8.8",
+                "src_port": 12345, "dst_port": 443,
+                "proto": 6, "packets": 10,
+                "bytes": 60_000_000,
+                "first": 1000, "last": 8200}
+        alerts, _state = mod.decide(
+            {"now": 9000, "flows": [flow]},
+            {"name": "softflowd_feed", "tunables": tunables},
+            {})
+        return [a["signal"] for a in alerts]
+
+    _ALL = ["flow_new_external_peer", "flow_high_volume",
+            "flow_long_lived"]
+
+    def test_infinite_high_volume_defaults_to_50000000(self):
+        self.assertEqual(
+            self._signals({"high_volume_bytes": float("inf")}),
+            self._ALL)
+
+    def test_infinite_max_known_peers_defaults_to_1024(self):
+        self.assertEqual(
+            self._signals({"max_known_peers": float("inf")}),
+            self._ALL)
+
+    def test_infinite_max_filed_flows_defaults_to_1024(self):
+        self.assertEqual(
+            self._signals({"max_filed_flows": float("inf")}),
+            self._ALL)
+
+    def test_infinite_long_lived_defaults_to_3600(self):
+        self.assertEqual(
+            self._signals({"long_lived_sec": float("inf")}),
+            self._ALL)
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        self.assertEqual(self._signals({}), self._ALL)
+        self.assertEqual(
+            self._signals({"high_volume_bytes": 50000000,
+                           "long_lived_sec": 3600,
+                           "max_known_peers": 1024,
+                           "max_filed_flows": 1024}),
+            self._ALL)
+        self.assertEqual(
+            self._signals({"high_volume_bytes": float("nan"),
+                           "long_lived_sec": float("nan")}),
+            self._ALL)
+        # A genuine larger threshold is honored: 61 MB
+        # high-volume threshold files no flow_high_volume
+        # for this 60 MB flow.
+        self.assertEqual(
+            self._signals({"high_volume_bytes": 61_000_000}),
+            ["flow_new_external_peer", "flow_long_lived"])
+
+
+
 if __name__ == "__main__":
     unittest.main()
