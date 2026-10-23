@@ -1487,5 +1487,88 @@ class TestBooleanMaxOutputBytesDefaultsTo100000(unittest.TestCase):
         self.assertFalse(result.get("stdout_truncated"))
 
 
+class TestBooleanPlanBudgetDefaults(unittest.TestCase):
+    """Divergence: a max_plan_steps or max_plan_timeout_sec
+    present in config as a boolean reads as 1 (true) or 0
+    (false) instead of the documented defaults (8 steps,
+    600 seconds).
+
+    (a) Doc claim (docs/configuring-oracle.md, line 68):
+        "`max_plan_steps` / `max_plan_timeout_sec` -- caps
+        the detection layer (`runner/detection.py`) applies
+        to a multi-step plan: at most this many steps
+        (default 8) and this much total timeout in seconds
+        (default 600)."
+        The function's own docstring states the same
+        (runner/detection.py, lines 104-105): "cfg may
+        contain max_plan_steps (default 8) and
+        max_plan_timeout_sec (default 600)."
+        No document gives a boolean a special meaning for
+        these keys. The zero/negative forms of this same
+        divergence are recorded in
+        TestZeroOrNegativePlanBudgetDefaults above; this
+        class is the boolean form.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 08:21 PDT tick) exercised
+        runner.detection.check_plan_budget with the caps
+        left unset and varied around them -- keys omitted,
+        explicit 8 / 600, explicit None (JSON null), a
+        non-numeric string ("bogus"), 0, -5, and the
+        booleans True and False -- each against a two-step
+        plan with 10-second step timeouts (well inside
+        both documented defaults).
+
+    (c) Behavior actually observed: omitted, explicit
+        defaults, None, and "bogus" all allow the plan.
+        The booleans do not: check_plan_budget computes
+        int(cfg.get(...)) with no boolean guard, so True
+        reads as a cap of 1 -- the two-step plan is
+        rejected as "plan has 2 steps (max 1)" and the
+        10-second plan as "plan timeout 10s exceeds 1s"
+        -- and False reads as a cap of 0, rejecting every
+        plan outright. Sibling readers exclude booleans
+        explicitly -- runner.runner._cfg_size ("Booleans
+        are not sizes"), runner.remediation._pos_int, and
+        the inference config validator's `is True`
+        refusal -- only this reader lets one through as
+        a number on both of its inputs. Observed on
+        2026-10-23: check_plan_budget with
+        {"max_plan_steps": True} rejected a two-step
+        plan, and with {"max_plan_timeout_sec": True}
+        rejected a 10-second plan.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    _PLAN = [{"timeout_sec": 10}, {"timeout_sec": 10}]
+
+    def test_true_max_plan_steps_defaults_to_8(self):
+        from runner.detection import check_plan_budget
+        ok, reason = check_plan_budget(
+            self._PLAN, {"max_plan_steps": True})
+        self.assertTrue(ok, reason)
+
+    def test_false_max_plan_steps_defaults_to_8(self):
+        from runner.detection import check_plan_budget
+        ok, reason = check_plan_budget(
+            self._PLAN, {"max_plan_steps": False})
+        self.assertTrue(ok, reason)
+
+    def test_true_max_plan_timeout_defaults_to_600(self):
+        from runner.detection import check_plan_budget
+        ok, reason = check_plan_budget(
+            self._PLAN, {"max_plan_timeout_sec": True})
+        self.assertTrue(ok, reason)
+
+    def test_false_max_plan_timeout_defaults_to_600(self):
+        from runner.detection import check_plan_budget
+        ok, reason = check_plan_budget(
+            self._PLAN, {"max_plan_timeout_sec": False})
+        self.assertTrue(ok, reason)
+
+
 if __name__ == "__main__":
     unittest.main()
