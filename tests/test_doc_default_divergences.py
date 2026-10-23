@@ -6101,5 +6101,171 @@ class TestInfiniteReleaseDropMaxHashDefaultsTo512(unittest.TestCase):
 
 
 
+class TestNonFiniteZeekFeedTunablesDefaultInsteadOfCrashOrBoundlessWindow(unittest.TestCase):
+    """Divergence: zeek-feed tunables float("inf")
+    crash decide() with OverflowError or make the
+    trailing window boundless instead of falling
+    back to the documented defaults.
+
+    (a) Doc claim (examples/extensions/zeek-feed/
+        README.md, Tunables table lines 46-50):
+        window_sec default 600 ("The trailing window
+        first sightings accumulate in"),
+        new_peer_threshold default 10 ("Distinct
+        first-seen external responders inside the
+        window that file"), query_length_threshold
+        default 50 ("DNS query length that counts as
+        anomalous"), and seen_peers_cap default 10000
+        ("Bound on remembered peers (and filed DNS
+        pairs)"). The Signals table states the same
+        (lines 37-38), the manifest ships the same
+        defaults (extension.json tunables), and the
+        code's own fallback literals state them
+        (zeek_feed.py lines 378, 380, 383-389).
+
+    (b) How the bug was found: the campaign's
+        doc-default hunt (2026-10-23) exercised the
+        zeek-feed example extension's pure decide()
+        with each tunable omitted, set to genuine
+        values, set to float("nan"), and set to
+        float("inf"): ten distinct external conn
+        responders inside the window for the
+        threshold and cap cases, the same ten spaced
+        10,000 seconds apart for the window case,
+        and one 72-character DNS query for the
+        length case.
+
+    (c) Behavior actually observed: omitted, genuine,
+        and NaN values all behave as documented (NaN
+        fails the >= 1 / > 0 guards and falls back).
+        float("inf") does not fall back: _is_number
+        excludes booleans but not non-finite floats
+        (zeek_feed.py line 92), so inf passes the
+        guards and int(inf) at lines 378, 385, and
+        389 raises OverflowError ("cannot convert
+        float infinity to integer"), crashing
+        decide() for new_peer_threshold,
+        query_length_threshold, and seen_peers_cap
+        instead of using the documented defaults
+        10, 50, and 10000. For window_sec, float(inf)
+        at lines 380-381 becomes an infinite trailing
+        window, so ten first-seen peers spaced
+        10,000 seconds apart file
+        zeek_new_external_peers, where the documented
+        600-second window files nothing. This is the
+        campaign's known non-finite-tunable
+        root-cause family in a new reader.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _load(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "zeek-feed",
+            "zeek_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "zeek_feed_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _conn_events(self, n, start_ts=1000.0,
+                     spacing=10.0):
+        return [{"ts": start_ts + i * spacing,
+                 "kind": "conn",
+                 "resp_h": f"8.8.{i // 250}.{i % 250 + 1}",
+                 "orig_h": "192.168.1.5"}
+                for i in range(n)]
+
+    def _decide(self, tunables, events, now=2000.0):
+        mod = self._load()
+        manifest = {"name": "zeek_feed",
+                    "tunables": tunables}
+        alerts, _state = mod.decide(
+            {"now": now, "events": events}, manifest, None)
+        return alerts
+
+    def test_infinite_new_peer_threshold_defaults_to_10(self):
+        alerts = self._decide(
+            {"new_peer_threshold": float("inf")},
+            self._conn_events(10))
+        self.assertEqual(
+            [a["signal"] for a in alerts],
+            ["zeek_new_external_peers"])
+        self.assertEqual(
+            alerts[0]["detail"]["threshold"], 10)
+
+    def test_infinite_query_length_threshold_defaults_to_50(self):
+        query = "a" * 60 + ".example.com"
+        events = [{"ts": 1000.0, "kind": "dns",
+                   "query": query, "qtype_name": "A",
+                   "resp_h": "8.8.8.8",
+                   "orig_h": "192.168.1.5"}]
+        alerts = self._decide(
+            {"query_length_threshold": float("inf")},
+            events)
+        self.assertEqual(
+            [a["signal"] for a in alerts],
+            ["zeek_dns_anomaly"])
+
+    def test_infinite_seen_peers_cap_defaults_to_10000(self):
+        alerts = self._decide(
+            {"seen_peers_cap": float("inf")},
+            self._conn_events(10))
+        self.assertEqual(
+            [a["signal"] for a in alerts],
+            ["zeek_new_external_peers"])
+
+    def test_infinite_window_defaults_to_600(self):
+        # Ten peers spaced 10,000s apart are never
+        # inside one 600s window, so nothing files.
+        alerts = self._decide(
+            {"window_sec": float("inf")},
+            self._conn_events(10, spacing=10000.0),
+            now=100000.0)
+        self.assertEqual(alerts, [])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented defaults and genuine
+        # values already behave today and must keep
+        # doing so after the non-finite case is fixed.
+        alerts = self._decide({}, self._conn_events(10))
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            alerts[0]["detail"]["threshold"], 10)
+        self.assertEqual(
+            alerts[0]["detail"]["window_sec"], 600)
+        self.assertEqual(
+            self._decide({}, self._conn_events(9)), [])
+        self.assertEqual(
+            self._decide(
+                {}, self._conn_events(10, spacing=10000.0),
+                now=100000.0), [])
+        alerts = self._decide(
+            {"new_peer_threshold": 3},
+            self._conn_events(3))
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            alerts[0]["detail"]["threshold"], 3)
+        # NaN already falls back today for every
+        # tunable in this class.
+        for key in ("new_peer_threshold",
+                    "query_length_threshold",
+                    "seen_peers_cap", "window_sec"):
+            with self.subTest(tunable=key):
+                alerts = self._decide(
+                    {key: float("nan")},
+                    self._conn_events(10))
+                self.assertEqual(len(alerts), 1)
+
+
+
+
 if __name__ == "__main__":
     unittest.main()
