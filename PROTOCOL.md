@@ -818,9 +818,12 @@ look* — which, for most debugging sessions, is the expensive part.
   the local Oracle by default and are withheld when the owner says so
   (or the extension's author does and the owner has not overruled it).
   Withheld material is never named in the Oracle's context and its file
-  tools refuse it. The material is fetched on the box, checked against
-  the release build's pinned digests where it has them, and never
-  executed. The rule, the
+  tools refuse it. The material is fetched on the box only where a
+  local model runs the Oracle (or the owner says every box), checked
+  against the release build's pinned digests, never executed, and an
+  entry nothing pins is not fetched until the owner allows trust on
+  first use -- the same stance section 10.1 takes toward what the
+  local model reads. The rule, the
   declaration format, and the owner's settings are in
   [docs/extensions.md](docs/extensions.md), "Sources".
 

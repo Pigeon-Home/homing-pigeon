@@ -28,7 +28,11 @@ agent that predates this module loads the same extension unchanged.
 When
 ----
 The first time the agent loads a sense extension or starts a
-transport extension, and again only when its declaration changes.
+transport extension, and again only when its declaration changes --
+and only on a box where a local model runs the Oracle, unless the
+owner sets `extension_sources` to true. The default is "auto": a
+deterministic box has nothing that reads the material, so it makes
+no request for it.
 Fetching runs in the background -- the first pass a minute after the
 agent starts, so a short-lived process never begins one -- and never
 blocks or breaks the extension: an offline box records the failure
@@ -43,8 +47,11 @@ ships inside every release. A box fetches exactly what its build
 pinned and refuses anything whose digest differs. An extension may
 carry its own sources.lock.json (the same format) for the same
 guarantee. With no pin -- a source checkout, a third-party extension
-without a lock -- the box resolves the declaration itself on first
-run and records what it got (trust on first use).
+without a lock -- the entry waits, and the index says why, until the
+owner sets `unpinned` (for that extension, or for all): only then
+does the box resolve the declaration itself and record what it got
+(trust on first use). Nothing vouched for by nobody reaches the
+Oracle by default.
 
 Fetched material is data. It is never executed or imported: archive
 members are extracted as plain files only (no links, no devices, no
@@ -499,28 +506,34 @@ def load_lock(path):
 # The owner's policy and the disclosure rule
 # ---------------------------------------------------------------------------
 
-_POLICY_FIELDS = ("fetch", "oracle", "max_mb", "extensions")
-_PER_EXTENSION_FIELDS = ("fetch", "oracle")
+_POLICY_FIELDS = ("fetch", "oracle", "max_mb", "unpinned", "extensions")
+_PER_EXTENSION_FIELDS = ("fetch", "oracle", "unpinned")
 
 
 def owner_policy(cfg, model_oracle=True) -> dict:
     """The owner's extension_sources setting, normalized.
 
-    Accepted shapes: absent or true (fetch on every box, a Pi Light
-    with no model included: the default), "auto" (fetch only when a
-    local model runs the Oracle), false, or an object with fetch,
-    oracle, max_mb, and per-extension overrides. A malformed setting
-    fails closed: valid False, nothing fetched, everything withheld.
+    Accepted shapes: absent or "auto" (fetch only when a local model
+    runs the Oracle: the default, so a box with nothing to read the
+    material makes no requests), true (fetch on every box, a Pi Light
+    with no model included), false, or an object with fetch, oracle,
+    max_mb, unpinned, and per-extension overrides. `unpinned`
+    (default false) is whether an entry no lock pins -- a source
+    checkout, a third-party extension without a lock -- may be
+    fetched on this box's own say-so and recorded as it arrives
+    (trust on first use); the build's pins and an extension's own
+    lock need no such consent. A malformed setting fails closed:
+    valid False, nothing fetched, everything withheld.
     """
-    raw = cfg.get("extension_sources", True) if isinstance(cfg, dict) \
-        else True
-    pol: dict = {"valid": True, "problem": None, "fetch": True,
+    raw = cfg.get("extension_sources", "auto") if isinstance(cfg, dict) \
+        else "auto"
+    pol: dict = {"valid": True, "problem": None, "fetch": "auto",
                  "oracle": "provide", "max_bytes": DEFAULT_BUDGET_MB * _MB,
-                 "extensions": {}, "model_oracle": bool(model_oracle),
-                 "enabled": False}
+                 "unpinned": False, "extensions": {},
+                 "model_oracle": bool(model_oracle), "enabled": False}
     try:
         if raw is None or raw == "auto" or isinstance(raw, bool):
-            obj = {"fetch": True if raw is None else raw}
+            obj = {"fetch": "auto" if raw is None else raw}
         elif isinstance(raw, dict):
             obj = raw
         else:
@@ -529,9 +542,12 @@ def owner_policy(cfg, model_oracle=True) -> dict:
         if unknown:
             raise ValueError(f"unknown field(s) {', '.join(unknown)} "
                              f"(known: {', '.join(_POLICY_FIELDS)})")
-        fetch = obj.get("fetch", True)
+        fetch = obj.get("fetch", "auto")
         if not isinstance(fetch, bool) and fetch != "auto":
             raise ValueError('fetch must be true, false, or "auto"')
+        unpinned = obj.get("unpinned", False)
+        if not isinstance(unpinned, bool):
+            raise ValueError("unpinned must be true or false")
         oracle = obj.get("oracle", "provide")
         if oracle not in DISCLOSURES:
             raise ValueError(f"oracle must be one of {list(DISCLOSURES)}")
@@ -558,12 +574,15 @@ def owner_policy(cfg, model_oracle=True) -> dict:
             if "oracle" in over and over["oracle"] not in DISCLOSURES:
                 raise ValueError(f"extensions.{name}.oracle must be one "
                                  f"of {list(DISCLOSURES)}")
+            if "unpinned" in over and not isinstance(over["unpinned"], bool):
+                raise ValueError(f"extensions.{name}.unpinned must be "
+                                 f"true or false")
             clean_exts[name] = dict(over)
     except ValueError as e:
         pol.update(valid=False, problem=f"extension_sources: {e}")
         return pol
     pol.update(fetch=fetch, oracle=oracle, max_bytes=max_mb * _MB,
-               extensions=clean_exts)
+               unpinned=unpinned, extensions=clean_exts)
     pol["enabled"] = fetch is True or (fetch == "auto" and bool(model_oracle))
     return pol
 
@@ -592,6 +611,22 @@ def fetch_allowed(policy, ext_name) -> bool:
     if isinstance(over.get("fetch"), bool):
         return over["fetch"]
     return bool(policy.get("enabled"))
+
+
+def unpinned_allowed(policy, ext_name) -> bool:
+    """Whether an entry with no pin may be fetched on first use.
+
+    The owner says so for one extension, or for all. Without that,
+    an unpinned github or url entry waits: a pin from the build or
+    the extension's own lock is the only other thing that lets it
+    through. Project entries are local and never need it.
+    """
+    if not isinstance(policy, dict) or not policy.get("valid"):
+        return False
+    over = (policy.get("extensions") or {}).get(ext_name) or {}
+    if isinstance(over.get("unpinned"), bool):
+        return over["unpinned"]
+    return bool(policy.get("unpinned"))
 
 
 # ---------------------------------------------------------------------------
@@ -1658,8 +1693,25 @@ def _run_pass(base_dir, root, targets, policy, fetcher, now, log, force,
                 if rec.get("status") in (None, "pending"):
                     rec["status"] = "off"
                 continue
-            if rec.get("status") in ("fetched", "off"):
+            if rec.get("status") in ("fetched", "off", "unpinned"):
                 rec["status"] = "pending"
+            if pin is None and entry["location"] != "project" \
+                    and not unpinned_allowed(policy, t["name"]):
+                # Nothing vouches for these bytes yet. The build's
+                # lock or the extension's own pins it; failing that,
+                # the owner's `unpinned` says this box may trust what
+                # it fetches first. Until one of those, it waits,
+                # and the index says why. No request is made.
+                detail = ("no pin from the build or the extension; "
+                          "set extension_sources.unpinned to true to "
+                          "trust what this box fetches first")
+                if old.get("status") != "unpinned":
+                    _outcome(report, t, eid, "unpinned", detail)
+                    log("extension sources: %s %s: %s: %s"
+                        % (t["kind"], t["name"], eid, detail), "INFO")
+                rec.update(status="unpinned", detail=detail)
+                rec["bytes"] = _tree_bytes(entry_dir)
+                continue
             budget_grew = isinstance(rec.get("budget_bytes"), int) \
                 and budget["limit"] > rec["budget_bytes"]
             if not force and not budget_grew \

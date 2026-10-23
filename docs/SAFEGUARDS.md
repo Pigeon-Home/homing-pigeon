@@ -106,6 +106,18 @@ mitigation:
 - **Prune the mailbox.** The runner marks processed mail seen, but
   the job messages remain. Delete them periodically — they're signed,
   but they still describe what you asked your machine to do.
+- **Know what the box reaches out for.** The runner's own traffic is
+  the mailbox (or the transport you enabled) and the HTTPS downloads a
+  job names. One more thing can leave the box: with a local model
+  running the Oracle, the first time an extension runs, the agent
+  fetches the sources that extension declares from GitHub, in the
+  background, so the Oracle can read them (`extension_sources`,
+  docs/extensions.md "Sources"). The request pattern says which
+  extensions are installed. On a box whose posture is "nothing leaves
+  but the attestation," set `extension_sources` to `false`, or leave
+  the box deterministic: the default (`"auto"`) makes no request where
+  no model runs. Material nothing pins is never fetched unless you set
+  `unpinned`; what the Oracle reads is what the build vouched for.
 
 ## 6. Don't do this
 

@@ -400,15 +400,19 @@ experiment runs drop result files and files signals like
 lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
 
 Every extension, sense or transport, also brings its own code for
-the Oracle. The first time it runs, the agent gives the Oracle
-the extension's installed code and fetches, in the background,
+the Oracle. On a box where a local model runs the Oracle, the
+first time an extension runs, the agent gives the Oracle the
+extension's installed code and fetches, in the background,
 whatever its optional `sources.json` declares: its published
 source, the upstream project it wraps, the specifications it
 speaks. The release ships only the declarations and the build's
 SHA-384 pins of what they name; the box fetches the sources and
-refuses bytes that differ from a pin. The Oracle gets it all by
-default, and a written disclosure rule lets the owner (or the
-author) withhold any of it
+refuses bytes that differ from a pin, and an entry nothing pins
+waits until the owner allows it. A deterministic box (Pi Light)
+has no model to read the material and makes no request for it
+unless its owner turns the fetch on. The Oracle gets what is
+pinned by default, and a written disclosure rule lets the owner
+(or the author) withhold any of it
 ([docs/extensions.md](docs/extensions.md), "Sources").
 
 ## Layout

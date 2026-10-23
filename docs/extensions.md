@@ -422,11 +422,11 @@ none of that ships.
 
 The Oracle reasons better about a signal, a failure, or a pipe
 when it can read the code behind it — and the upstream project
-that code wraps, and the specification it speaks. So on every
-box — a Pi Light with no model included, unless its owner says
-otherwise ("Owner settings" below) — the first time the agent
-runs an extension (loads a sense, starts a transport), it gives
-the Oracle that material:
+that code wraps, and the specification it speaks. So on a box
+where a local model runs the Oracle — every box, a Pi Light with
+no model included, when its owner says so ("Owner settings"
+below) — the first time the agent runs an extension (loads a
+sense, starts a transport), it gives the Oracle that material:
 
 - **Its installed code.** Your extension folder as installed,
   declared or not. A folder inside the state dir (the default
@@ -529,8 +529,13 @@ python tools/pin_extension_sources.py --out my-ext/sources.lock.json my-ext
 The extension's own `sources.lock.json` is consulted first, then
 the build's, and either applies only to the exact declaration it
 was made from. With no pin — a source checkout, a third-party
-extension without a lock — the box resolves the declaration on
-first run and records what it got (trust on first use).
+extension without a lock — the entry waits: the index lists it
+as `unpinned` with the reason, and no request is made for it,
+until the owner sets `unpinned` (for that extension, or for all).
+Only then does the box resolve the declaration on first run and
+record what it got (trust on first use). The rule is the same one
+the `ask` op lives by: material that nobody vouched for does not
+reach the local model by default, because the model reads it.
 
 ### Safety
 
@@ -587,10 +592,16 @@ pass at once):
 
 | Value | Meaning |
 |-------|---------|
-| `true` (default) | Fetch on every box. A Pi Light box with no model fetches too: the sources are there for the owner to read, and for the Oracle the day the box runs a model. |
-| `"auto"` | Fetch only when a local model runs the Oracle. A deterministic box then fetches nothing and writes nothing. |
+| `"auto"` (default) | Fetch only when a local model runs the Oracle. A deterministic box has nothing that reads the material, so it fetches nothing, writes nothing, and makes no request. |
+| `true` | Fetch on every box. A Pi Light box with no model fetches too: the sources are there for the owner to read, and for the Oracle the day the box runs a model. |
 | `false` | Never fetch. |
-| an object | `{"fetch": true / "auto" / false, "oracle": "provide" / "withhold", "max_mb": 512, "extensions": {"<name>": {"fetch": true / false, "oracle": "provide" / "withhold"}}}` — the same switch, the owner's lines of the disclosure rule, the disk budget in megabytes (default 512), and per-extension overrides. |
+| an object | `{"fetch": "auto" / true / false, "oracle": "provide" / "withhold", "max_mb": 512, "unpinned": false, "extensions": {"<name>": {"fetch": true / false, "oracle": "provide" / "withhold", "unpinned": true / false}}}` — the same switch, the owner's lines of the disclosure rule, the disk budget in megabytes (default 512), whether an entry no lock pins may be fetched on this box's own say-so (default false), and per-extension overrides. |
+
+An entry's status in `SOURCES.json` and the index is one of
+`pending`, `fetched`, `partial`, `skipped` (the budget), `failed`
+(retried with backoff), `mismatch` (bytes differed from the pin),
+`off` (the owner's fetch switch), or `unpinned` (no pin, and the
+owner has not allowed trust on first use).
 
 ### Where it lands, and how to look
 

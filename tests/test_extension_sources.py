@@ -197,7 +197,12 @@ class _Base(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def policy(self, cfg=None, model=True):
-        return X.owner_policy(cfg or {}, model_oracle=model)
+        # The harness default is the permissive owner: fetch on this
+        # box, and trust what it fetches first. The defaults the
+        # software ships ("auto", unpinned false) have their own tests.
+        if cfg is None:
+            cfg = {"extension_sources": {"fetch": True, "unpinned": True}}
+        return X.owner_policy(cfg, model_oracle=model)
 
     def run_pass(self, targets=None, policy=None, now=None, force=False,
                  opener=None, **kw):
@@ -474,11 +479,13 @@ class ShippedDeclarationsTest(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class PolicyTest(unittest.TestCase):
-    def test_every_box_fetches_by_default_and_auto_follows_the_model(self):
-        # The owner's call (2026-10-22): a Pi Light box with no model
-        # fetches too. "auto" is the opt-in for model-only fetching.
+    def test_the_default_is_auto_and_follows_the_model(self):
+        # Absent means "auto": a box whose Oracle runs a local model
+        # fetches; a deterministic box makes no request. `true` is
+        # the owner saying every box fetches, a Pi Light included.
         self.assertTrue(X.owner_policy({}, model_oracle=True)["enabled"])
-        self.assertTrue(X.owner_policy({}, model_oracle=False)["enabled"])
+        self.assertFalse(X.owner_policy({}, model_oracle=False)["enabled"])
+        self.assertEqual(X.owner_policy({})["fetch"], "auto")
         self.assertTrue(X.owner_policy({"extension_sources": True},
                                        model_oracle=False)["enabled"])
         self.assertTrue(X.owner_policy({"extension_sources": "auto"},
@@ -487,10 +494,31 @@ class PolicyTest(unittest.TestCase):
                                         model_oracle=False)["enabled"])
         self.assertFalse(X.owner_policy({"extension_sources": {
             "fetch": "auto"}}, model_oracle=False)["enabled"])
+        self.assertFalse(X.owner_policy({"extension_sources": {}},
+                                        model_oracle=False)["enabled"])
         self.assertFalse(X.owner_policy({"extension_sources": False},
                                         model_oracle=True)["enabled"])
         pol = X.owner_policy({"extension_sources": {"max_mb": 10}})
         self.assertEqual(pol["max_bytes"], 10 << 20)
+
+    def test_unpinned_is_off_by_default_and_the_owner_turns_it_on(self):
+        self.assertFalse(X.owner_policy({})["unpinned"])
+        self.assertFalse(X.unpinned_allowed(X.owner_policy({}), "feed"))
+        pol = X.owner_policy({"extension_sources": {"unpinned": True}})
+        self.assertTrue(X.unpinned_allowed(pol, "feed"))
+        pol = X.owner_policy({"extension_sources": {
+            "extensions": {"feed": {"unpinned": True}}}})
+        self.assertTrue(X.unpinned_allowed(pol, "feed"))
+        self.assertFalse(X.unpinned_allowed(pol, "other"))
+        pol = X.owner_policy({"extension_sources": {
+            "unpinned": True, "extensions": {"feed": {"unpinned": False}}}})
+        self.assertFalse(X.unpinned_allowed(pol, "feed"))
+        self.assertTrue(X.unpinned_allowed(pol, "other"))
+        for bad in ({"unpinned": "yes"},
+                    {"extensions": {"feed": {"unpinned": 1}}}):
+            pol = X.owner_policy({"extension_sources": bad})
+            self.assertFalse(pol["valid"], bad)
+            self.assertFalse(X.unpinned_allowed(pol, "feed"))
 
     def test_malformed_settings_fail_closed(self):
         for bad in ("yes", 1, [], {"fetch": "sometimes"},
@@ -931,7 +959,8 @@ class ProvisionTest(_Base):
         big = tgz({"blob": os.urandom(3 << 20)})
         self.opener.routes[ASSET] = big
         write_ext(self.ext, upstream_decl())
-        small = self.policy({"extension_sources": {"max_mb": 2}})
+        small = self.policy({"extension_sources": {"max_mb": 2,
+                                                   "unpinned": True}})
         self.run_pass(policy=small)
         up = self.state()["entries"]["up"]
         self.assertEqual(up["status"], "skipped")
@@ -940,7 +969,8 @@ class ProvisionTest(_Base):
                          ["LICENSE", "doc/schema.json"])
         self.assertEqual(self.state()["entries"]["rfc5321"]["status"],
                          "fetched")
-        bigger = self.policy({"extension_sources": {"max_mb": 64}})
+        bigger = self.policy({"extension_sources": {"max_mb": 64,
+                                                    "unpinned": True}})
         self.run_pass(policy=bigger, now=self.now + 60)
         self.assertEqual(self.state()["entries"]["up"]["status"], "fetched")
 
@@ -992,12 +1022,61 @@ class ProvisionTest(_Base):
         self.assertEqual(code["project"]["items"]["runner/mailbox.py"],
                          "project/runner/mailbox.py")
 
-    def test_a_pi_light_box_fetches_under_the_default(self):
+    def test_a_pi_light_box_fetches_nothing_under_the_default(self):
+        # No model reads the material on a deterministic box, so the
+        # default ("auto") makes no request there. The owner's `true`
+        # fetches on every box, a Pi Light included.
         write_ext(self.ext, upstream_decl())
         rep = self.run_pass(policy=self.policy(
             {"oracle_mode": "deterministic"}, model=False))
+        self.assertFalse(rep["ran"])
+        self.assertEqual(self.opener.seen, [])
+        rep = self.run_pass(policy=self.policy(
+            {"oracle_mode": "deterministic",
+             "extension_sources": {"fetch": True, "unpinned": True}},
+            model=False))
         self.assertTrue(rep["ran"])
         self.assertEqual(self.state()["entries"]["up"]["status"], "fetched")
+
+    def test_an_unpinned_entry_waits_until_the_owner_allows_it(self):
+        # The shipped default: nothing pins the entry, the owner has
+        # not said "unpinned", so the box makes no request for it and
+        # the index says why. Project entries are local and unaffected.
+        write_ext(self.ext, upstream_decl())
+        rep = self.run_pass(policy=self.policy({"extension_sources": True}))
+        self.assertTrue(rep["ran"])
+        self.assertEqual(self.opener.seen, [])
+        st = self.state()
+        self.assertEqual(st["entries"]["up"]["status"], "unpinned")
+        self.assertIn("unpinned", st["entries"]["up"]["detail"])
+        self.assertEqual(st["entries"]["rfc5321"]["status"], "unpinned")
+        self.assertIn("not here yet (unpinned", self.index())
+        self.assertEqual([o["status"] for o in rep["outcomes"]],
+                         ["unpinned", "unpinned"])
+        # The same pass again reports nothing new and still asks nothing.
+        rep = self.run_pass(policy=self.policy({"extension_sources": True}),
+                            now=self.now + 10)
+        self.assertEqual(rep["outcomes"], [])
+        self.assertEqual(self.opener.seen, [])
+        # The owner allows it for this extension: it fetches on the
+        # next pass and is recorded as resolved on this box.
+        rep = self.run_pass(policy=self.policy({"extension_sources": {
+            "fetch": True, "extensions": {"feed": {"unpinned": True}}}}),
+            now=self.now + 20)
+        up = self.state()["entries"]["up"]
+        self.assertEqual((up["status"], up["pinned_by"]),
+                         ("fetched", "first-run"))
+
+    def test_a_build_pin_needs_no_unpinned_consent(self):
+        decl = upstream_decl()
+        write_ext(self.ext, decl)
+        proj = os.path.join(self.base, "project")
+        os.makedirs(proj)
+        with open(os.path.join(proj, X.PROJECT_LOCK_FILE), "w") as fh:
+            json.dump(self._lock_for(decl, upstream_routes()), fh)
+        self.run_pass(policy=self.policy({"extension_sources": True}))
+        up = self.state()["entries"]["up"]
+        self.assertEqual((up["status"], up["pinned_by"]), ("fetched", "build"))
 
     def test_fetch_off_for_one_extension_fetches_nothing(self):
         write_ext(self.ext, upstream_decl())
@@ -1095,6 +1174,7 @@ class DisclosureTest(_Base):
 
     def test_an_owner_withheld_extension_is_invisible(self):
         pol = self.policy({"extension_sources": {
+            "unpinned": True,
             "extensions": {"feed": {"oracle": "withhold"}}}})
         self.run_pass(policy=pol)
         self.assertEqual(self.state()["entries"]["up"]["status"], "fetched")
@@ -1205,7 +1285,7 @@ class RunnerWiringTest(_Base):
 
     def test_fetch_sources_runs_in_the_foreground(self):
         cfg = {"base_dir": self.base, "transports": ["file"],
-               "extension_sources": "auto"}
+               "extension_sources": {"fetch": "auto", "unpinned": True}}
         args = mock.Mock(config=os.path.join(self.base, "config.json"))
         buf = io.StringIO()
         with redirect_stdout(buf):
@@ -1405,8 +1485,9 @@ class DocsTest(unittest.TestCase):
 
     def test_the_example_config_documents_the_key(self):
         cfg = json.loads(self.read("runner", "config.example.json"))
-        self.assertIs(cfg["extension_sources"], True)
+        self.assertEqual(cfg["extension_sources"], "auto")
         self.assertIn("docs/extensions.md", cfg["_extension_sources"])
+        self.assertIn("unpinned", cfg["_extension_sources"])
 
 
 if __name__ == "__main__":
