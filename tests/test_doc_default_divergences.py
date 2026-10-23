@@ -2929,5 +2929,89 @@ class TestBadDtlsPortDefaultsTo20220(unittest.TestCase):
         self.assertEqual(pipe.port, 20220)
 
 
+class TestHugeExtensionPollIntervalDefaultsTo2(unittest.TestCase):
+    """Divergence: an extension_poll_interval_sec that is a
+    huge integer (a JSON number with hundreds of digits)
+    raises a raw OverflowError out of the shared transport
+    channel's poll-interval reader, instead of falling back
+    to its 2.0-second default -- the file transport, the
+    reader's caller, dies at startup before its first pass.
+
+    (a) The documented contract: runner/transport_extensions/
+        channel.py's poll_interval(cfg, default=2.0) is the
+        one reader every polling transport extension takes
+        its cadence from (the file transport's main() calls
+        it before its loop), and its contract -- stated by
+        its signature default and pinned by the repo's own
+        tests/test_transport_shells.py,
+        test_poll_interval_clamps_and_rejects_garbage -- is
+        that an unusable value falls back to the default
+        2.0 and a usable one is clamped to [0.2, 60]:
+        omitted -> 2.0, "nope" -> 2.0, 0 -> 0.2, 1000 ->
+        60.0. A several-hundred-digit number is not a
+        usable cadence, so by that contract it too must
+        land on 2.0.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 11:06 PDT tick) exercised
+        runner.transport_extensions.channel.poll_interval
+        with the key left unset and varied around it --
+        omitted, "nope", 0, 1000, True, False,
+        float("inf"), float("nan"), and a huge integer
+        (10**400) -- recording the interval or the
+        exception each call produced. The huge form is
+        reachable from a real config file: load_config
+        uses a plain json.load, which parses a
+        several-hundred-digit JSON number into an
+        arbitrary-precision int, and transports.py's
+        _runtime_config hands a transport block's keys to
+        its extension verbatim, so
+        transport_file.extension_poll_interval_sec reaches
+        this reader exactly as written.
+
+    (c) Behavior actually observed: omitted and "nope"
+        return the default 2.0, 0 clamps to 0.2, 1000
+        clamps to 60.0, and inf/nan clamp to 60.0. The
+        huge int does not fall back: poll_interval
+        computes float(raw) guarded by
+        `except (TypeError, ValueError)` only, and
+        float(10**400) raises OverflowError, which
+        escapes the reader. The file transport's main()
+        calls poll_interval before its pass loop, so the
+        extension process dies at startup and the
+        supervisor restarts a permanently dead transport.
+        Sibling float readers include OverflowError in
+        their fallback guard: the core's poll-interval
+        reader, parse_sensors (runner/senses.py), and
+        _cfg_size (runner/runner.py) all catch it; this
+        reader is the outlier -- the same missing-
+        OverflowError root cause already recorded for
+        the email extension's poll_interval_sec reader in
+        TestHugeEmailPollIntervalDefaultsTo20 above, in a
+        second reader that family had not covered.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def test_huge_extension_poll_interval_defaults_to_2(self):
+        from runner.transport_extensions import channel as ch
+        self.assertEqual(
+            ch.poll_interval(
+                {"extension_poll_interval_sec": 10**400}),
+            2.0)
+
+    def test_garbage_extension_poll_interval_defaults_to_2(self):
+        # Control: a non-numeric string already lands on
+        # the documented default today; it must keep doing
+        # so after the huge case is fixed.
+        from runner.transport_extensions import channel as ch
+        self.assertEqual(
+            ch.poll_interval(
+                {"extension_poll_interval_sec": "nope"}),
+            2.0)
+
+
 if __name__ == "__main__":
     unittest.main()
