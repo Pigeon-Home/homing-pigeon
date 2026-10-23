@@ -5641,6 +5641,158 @@ class TestNonFiniteLabResultsTunablesDefaultInsteadOfCrashOrSilence(unittest.Tes
 
 
 
+class TestNonFiniteLatencyPostTunablesDefaultInsteadOfSilence(unittest.TestCase):
+    """Divergence: non-finite latency-post tunables
+    (+inf / NaN / -inf spike_ms, +inf spike_factor)
+    silently suppress latency_spike or drop its
+    documented floor instead of falling back to the
+    documented defaults (spike_ms 250, spike_factor 3).
+
+    (a) Doc claim (examples/extensions/latency-post/
+        README.md, line 30): "`latency_spike` | A
+        probe's latency rises above both the
+        `spike_ms` tunable (default 250) and
+        `spike_factor` (default 3) times the median
+        of the target's last samples, with at least
+        3 prior samples". The manifest ships the
+        same defaults (extension.json tunables:
+        "spike_ms": 250, "spike_factor": 3), and
+        the code's own fallback literals state them
+        (latency_post.py lines 221 and 223-224:
+        spike_ms falls back to 250.0, spike_factor
+        to 3.0).
+
+    (b) How the bug was found: the campaign's
+        doc-default hunt (2026-10-23 15:16 PDT tick)
+        exercised the latency-post example
+        extension's decide() -- the pure decision
+        pass -- with a target holding three prior
+        samples, with the tunables omitted, set to
+        genuine values (spike_ms 250, spike_factor
+        3), and set to float("inf"),
+        float("-inf"), float("nan"), and True for
+        each of spike_ms and spike_factor.
+
+    (c) Behavior actually observed: omitted,
+        genuine, and True all behave as documented
+        (with prior samples [100, 100, 100], median
+        100, the default threshold is
+        max(250, 3 * 100) = 300, so a 1000 ms probe
+        files latency_spike). The non-finite
+        values do not fall back: spike_ms and
+        spike_factor are computed as float(value)
+        when _is_number holds (latency_post.py
+        lines 220-224), and _is_number excludes
+        booleans but not non-finite floats (line
+        61), so +inf passes through and the spike
+        test at line 261 (latency > max(spike_ms,
+        spike_factor * median)) can never hold --
+        latency_spike is silently suppressed
+        instead of using the default 250 / 3.
+        spike_ms NaN likewise poisons the max()
+        to NaN, so the comparison is never true.
+        spike_ms -inf drops the documented 250
+        floor entirely: with prior samples
+        [10, 10, 10] a 100 ms probe files
+        latency_spike against max(-inf, 30) = 30,
+        where the documented floor gives
+        max(250, 30) = 250 and no spike. Sibling
+        readers in this codebase exclude
+        non-finite values and fall back to their
+        defaults; this reader does not. This is
+        the campaign's known non-finite-tunable
+        root-cause family. Observed on 2026-10-23:
+        decide() with spike_ms float("inf"),
+        spike_factor float("inf"), or spike_ms
+        float("nan") returned no alerts for the
+        1000 ms probe where the omitted tunables
+        returned ["latency_spike"], and decide()
+        with spike_ms float("-inf") returned
+        ["latency_spike"] for the 100 ms probe
+        where the omitted tunables returned [].
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _signals(self, tunables, samples, latency):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "latency-post",
+            "latency_post.py")
+        spec = importlib.util.spec_from_file_location(
+            "latency_post_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        state = {"targets": {"t:443": {
+            "samples": list(samples), "down": False,
+            "spike_active": False}}}
+        readings = {"now": 1792375113.0, "probes": [{
+            "target": "t:443", "ok": True,
+            "latency_ms": latency, "error": None}]}
+        manifest = {"name": "latency_post",
+                    "tunables": dict(tunables)}
+        alerts, _state = mod.decide(readings, manifest, state)
+        return [a["signal"] for a in alerts]
+
+    def test_infinite_spike_ms_defaults_to_250(self):
+        self.assertEqual(
+            self._signals({"spike_ms": float("inf")},
+                          [100.0, 100.0, 100.0], 1000.0),
+            ["latency_spike"])
+
+    def test_infinite_spike_factor_defaults_to_3(self):
+        self.assertEqual(
+            self._signals(
+                {"spike_factor": float("inf")},
+                [100.0, 100.0, 100.0], 1000.0),
+            ["latency_spike"])
+
+    def test_nan_spike_ms_defaults_to_250(self):
+        self.assertEqual(
+            self._signals({"spike_ms": float("nan")},
+                          [100.0, 100.0, 100.0], 1000.0),
+            ["latency_spike"])
+
+    def test_negative_infinite_spike_ms_keeps_250_floor(self):
+        self.assertEqual(
+            self._signals({"spike_ms": float("-inf")},
+                          [10.0, 10.0, 10.0], 100.0),
+            [])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented defaults and genuine
+        # values already behave today and must keep
+        # doing so after the non-finite case is fixed.
+        spiked = ["latency_spike"]
+        samples = [100.0, 100.0, 100.0]
+        self.assertEqual(self._signals({}, samples, 1000.0),
+                         spiked)
+        self.assertEqual(
+            self._signals(
+                {"spike_ms": 250, "spike_factor": 3},
+                samples, 1000.0),
+            spiked)
+        self.assertEqual(
+            self._signals({"spike_ms": True},
+                          samples, 1000.0),
+            spiked)
+        self.assertEqual(
+            self._signals({"spike_factor": True},
+                          samples, 1000.0),
+            spiked)
+        self.assertEqual(self._signals({}, samples, 100.0),
+                         [])
+        self.assertEqual(
+            self._signals({"spike_ms": 2000},
+                          samples, 1000.0),
+            [])
+
+
 
 if __name__ == "__main__":
     unittest.main()
