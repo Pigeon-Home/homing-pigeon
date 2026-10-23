@@ -1711,5 +1711,64 @@ class TestBooleanPromoteAfterDefaultsTo2(unittest.TestCase):
             promote_after({"oracle_learning_promote_after": True}), 2)
 
 
+class TestBooleanSensorCooldownDefaultsToZero(unittest.TestCase):
+    """Divergence: a sensor profile cooldown_sec set to boolean
+    true reads as a 1-second dedup window instead of the
+    documented default of 0 (no dedup), so a repeat alert is
+    dropped.
+
+    (a) Doc claim (docs/senses.md, lines 260-261):
+        "`cooldown_sec`: drop repeats of the same sensor+title
+        within this window. Default 0 (no dedup)."
+
+    (b) How the bug was found: the campaign's doc-default hunt
+        (2026-10-23 09:06 PDT tick) exercised
+        runner.senses.gate_alert -- the ingest gate that reads
+        this profile knob -- with the key left unset and varied
+        around it: omitted, explicit None, a non-numeric string
+        ("bogus"), 0, a valid 300, and the booleans True and
+        False, each time with one recent stored alert carrying
+        the same title at the same instant.
+
+    (c) Behavior actually observed: omitted, None, "bogus",
+        0, and False all keep the alert (gate_alert returns
+        None, the documented no-dedup default), and 300 drops
+        it as a cooldown repeat. True does not fall back:
+        gate_alert computes float(profile.get("cooldown_sec")
+        or 0) with no boolean guard, so float(True) is 1.0,
+        the > 0 check passes, and the same-title alert at the
+        same instant is dropped as "cooldown: same title
+        within 1s". The config validator shares the shape:
+        parse_sensors likewise converts a boolean
+        cooldown_sec to 1.0 instead of refusing it or reading
+        the default. Sibling numeric readers exclude booleans
+        explicitly (runner.runner._cfg_size: "Booleans are
+        not sizes"; runner.remediation._pos_int;
+        runner.security.audit_max_lines); this reader is the
+        outlier. Observed on 2026-10-23: gate_alert(
+        {"profile": {"cooldown_sec": True}},
+        {"severity": "info", "title": "same"},
+        [{"title": "same", "received_at": NOW}], now=<NOW as
+        a timestamp>) returned "cooldown: same title within
+        1s" instead of None.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def test_true_cooldown_defaults_to_zero_no_dedup(self):
+        from datetime import datetime, timezone
+
+        from runner.senses import gate_alert
+        now = datetime(2026, 10, 23, 5, 50, 22,
+                       tzinfo=timezone.utc).timestamp()
+        self.assertIsNone(gate_alert(
+            {"profile": {"cooldown_sec": True}},
+            {"severity": "info", "title": "same"},
+            [{"title": "same", "received_at": NOW}], now=now))
+
+
+
 if __name__ == "__main__":
     unittest.main()
