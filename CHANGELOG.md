@@ -45,6 +45,17 @@ facts a reader may need to cite. Git history carries the rest.
   pipeline finishing last leaves it alone. GitLab and the version
   folders were already order-independent. `cut-release` notes on
   its run page when a tag carries the same code as the last one.
+- **runner.py is a thousand lines shorter.** Signing, verification,
+  secrets, key policies, and the audience check moved to
+  `runner/verify.py`; the task board to `runner/board.py`; the text
+  helpers they share to `runner/textutil.py`. Every name is bound
+  back onto `runner.runner`, so callers and tests resolve what they
+  always did. The pattern -- stdlib only, no import of runner.py,
+  the runner's logger found live -- is the one the next pieces
+  follow. No change to what the runner does.
+- **Three doc statements brought in line with the code**: the
+  redacted view's shape, a spent query budget's answers, and
+  `--inspect sources`.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 

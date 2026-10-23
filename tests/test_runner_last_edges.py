@@ -99,7 +99,9 @@ class PureEdgeTest(_Binary, unittest.TestCase):
         with self.assertRaises(ValueError):
             rr.verify_body("{}", 3)
         secret = "s" * 32
-        with mock.patch.object(rr, "_json_safe", return_value=[1]):
+        # sign_payload lives in runner/verify.py now; patch the helper
+        # where it is looked up.
+        with mock.patch.object(rr._verify, "_json_safe", return_value=[1]):
             with self.assertRaises(ValueError):
                 rr.sign_payload({"a": 1}, secret)
         with self.assertRaises(ValueError):

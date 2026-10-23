@@ -437,6 +437,12 @@ pinned by default, and a written disclosure rule lets the owner
   (historical notes, kept for the record; not current guidance).
 - `runner/runner.py` — the agent. Polls, verifies, executes,
   replies. No dependencies beyond the Python 3.9+ standard library.
+  Two pieces of it now live beside it and are bound back onto it:
+  `runner/verify.py` (signing, verification, secrets, key policies,
+  audience — PROTOCOL.md sections 4, 5, 14) and `runner/board.py`
+  (the task board, section 13). `runner/platformcard.py` is the
+  card a pong and the DTLS greeting carry; `runner/textutil.py` the
+  text helpers they share.
 - `runner/transports.py` — the transport-extension contract
   (v1), discovery, and supervision: the core is transport-blind,
   and email, the watched folder, core NATS, and the DTLS
