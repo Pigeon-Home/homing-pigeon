@@ -2762,5 +2762,84 @@ class TestBadNatsPortDefaultsTo4222(unittest.TestCase):
             ch.nap = orig_nap
 
 
+class TestBooleanDefaultTimeoutDefaultsTo300(unittest.TestCase):
+    """Divergence: default_timeout_sec set to a JSON boolean
+    gives every timeout-less job a 1-second timeout instead
+    of the documented 300-second default.
+
+    (a) Doc claim (PROTOCOL.md, section 3.1, line 136):
+        "`timeout_sec`: default 300, maximum 3600."
+        docs/configuring-oracle.md (flag-to-key map,
+        line 83) maps the flag that carries that default
+        to this config key: "`--timeout SECONDS` |
+        `default_timeout_sec`".
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 10:56 PDT tick) exercised
+        runner.runner.execute_job with a job that omits
+        timeout_sec and a script that sleeps 2 seconds
+        before printing 'hi-probe', varying
+        default_timeout_sec around the documented
+        default -- key omitted, explicit 300, explicit
+        42 (with a fast script), "bogus", True, and
+        False.
+
+    (c) Behavior actually observed: omitted and explicit
+        300 run the 2-second job to completion (exit 0,
+        stdout 'hi-probe', timed_out False), and "bogus"
+        is rejected as "timeout_sec must be a number"
+        (the already-recorded null/bogus divergence).
+        True and False do neither: execute_job computes
+        int(job.get("timeout_sec") or
+        cfg.get("default_timeout_sec", 300)) -- int(True)
+        is 1, and int(False) is 0 which the following
+        clamp lifts to 1 -- so both booleans silently
+        become a 1-second timeout, the 2-second job is
+        killed (exit -1, timed_out True, no stdout),
+        instead of falling back to the documented 300.
+        This is the known boolean-as-number family:
+        numeric config getters accept a Python boolean
+        as 1/0 instead of falling back to the documented
+        default or raising the documented config error.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def _run(self, cfg_extra):
+        from runner.runner import execute_job
+        with tempfile.TemporaryDirectory() as base:
+            cfg = {"base_dir": base}
+            cfg.update(cfg_extra)
+            job = {"v": 1, "type": "job", "job_id": "docdef-bto",
+                   "issued_at": "2026-10-23T00:00:00Z",
+                   "kind": "exec", "interpreter": ["python3"],
+                   "script": "import time; time.sleep(2); "
+                             "print('hi-probe')"}
+            return execute_job(cfg, job, base)
+
+    def test_true_default_timeout_defaults_to_300(self):
+        result = self._run({"default_timeout_sec": True})
+        self.assertEqual(result.get("exit_code"), 0)
+        self.assertFalse(result.get("timed_out"))
+        self.assertIn("hi-probe", result.get("stdout", ""))
+
+    def test_false_default_timeout_defaults_to_300(self):
+        result = self._run({"default_timeout_sec": False})
+        self.assertEqual(result.get("exit_code"), 0)
+        self.assertFalse(result.get("timed_out"))
+        self.assertIn("hi-probe", result.get("stdout", ""))
+
+    def test_omitted_default_timeout_runs_two_second_job(self):
+        # Control: with the key omitted the documented
+        # default really does let the same job finish --
+        # proving the harness works, not that every
+        # config is forced to a long timeout.
+        result = self._run({})
+        self.assertEqual(result.get("exit_code"), 0)
+        self.assertIn("hi-probe", result.get("stdout", ""))
+
+
 if __name__ == "__main__":
     unittest.main()
