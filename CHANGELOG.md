@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.54 - 2026-10-22
+
+- **Three source pins that 404'd.** The first lock missed
+  softflowd's netflow files (they live on `master`, not the
+  v1.1.1 tag), Sysmon's `LICENSE.txt`, and the NATS client
+  protocol page. Those paths are corrected.
+- A design note for agent stamps is in
+  `docs/design/agent-stamp-design.md`. It is a note, not a
+  behavior change.
+
 ## 3.12.53 - 2026-10-22
 
 - **The extension doc no longer names the release it ships in.**
