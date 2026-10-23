@@ -2121,5 +2121,98 @@ class TestBooleanAgentWallClockDefaultsTo300(unittest.TestCase):
         self.assertNotIn(None, seen["tools"])
 
 
+class TestBooleanTaskTimeoutDefaultsTo86400(unittest.TestCase):
+    """Divergence: a task_timeout set to a JSON boolean (true or
+    false) strips a board claim after at most one second, instead
+    of falling back to the documented 86400-second default.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 41):
+        "`task_timeout` -- seconds before a claimed task is
+        returned to open. Default 86400."
+        The same default is stated in docs/SAFEGUARDS.md
+        line 132 ("`task_timeout` (default 86400): a claim lapses
+        after this many [seconds]") and in PROTOCOL.md
+        section 13.6 ("A claim lapses after `task_timeout`
+        (config, default 24h) with no result, and the task
+        returns to open.").
+
+    (b) How the bug was found: the campaign's doc-default hunt
+        (2026-10-23 09:41 PDT tick) exercised the board reoffer
+        path in runner/runner.py with task_timeout varied
+        around the documented default -- key omitted, explicit
+        86400, explicit 3600, boolean true, and boolean false --
+        using the exact caller expression the board-mail
+        handler uses,
+        board.reoffer_expired(cfg.get("task_timeout", 86400)),
+        on a task claimed one hour earlier (well inside the
+        documented 86400-second default, so a correct read
+        leaves the claim in place).
+
+    (c) Behavior actually observed: omitted, explicit 86400,
+        and a claim read with the documented default all leave
+        the one-hour-old claim claimed (reoffer count 0).
+        Explicit 3600 reoffers it, as a valid one-hour timeout
+        should. Boolean true and boolean false do not land on
+        the default: the .get default fires only when the key
+        is absent, so Board._reoffer_expired_unlocked compares
+        the claim age with `> task_timeout` where task_timeout
+        is the boolean itself -- True compares as 1 and False
+        as 0 (Python's bool is a subclass of int), so both
+        reoffer the claim immediately (count 1, state returns
+        to open), stripping a live worker's lease 23 hours
+        early. The sibling boolean hunts in this file show the
+        codebase's other default readers reject booleans or
+        fall back to the documented default; this read site
+        has no such guard. This extends the null/bogus-string
+        task_timeout divergence recorded above: those wedge a
+        claim forever, these strip it at once.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed in
+        the code.
+    """
+
+    def _reoffer_via_config(self, cfg, age_hours=1):
+        # The exact caller expression in handle_board_mail
+        # (runner/runner.py): the .get default fires only when
+        # the key is absent, not when it holds a boolean.
+        import os
+        from datetime import datetime, timedelta, timezone
+
+        from runner.runner import Board
+        with tempfile.TemporaryDirectory() as base:
+            board = Board(os.path.join(base, "board.json"))
+            board.submit({"task_id": "t1"})
+            old = (datetime.now(timezone.utc)
+                   - timedelta(hours=age_hours)).isoformat()
+            board.tasks["t1"]["state"] = "claimed"
+            board.tasks["t1"]["claimed_at"] = old
+            board.tasks["t1"]["claimed_by"] = "w1"
+            count = board.reoffer_expired(
+                cfg.get("task_timeout", 86400))
+            return count, board.tasks["t1"]["state"]
+
+    def test_true_task_timeout_defaults_to_86400(self):
+        count, state = self._reoffer_via_config(
+            {"task_timeout": True})
+        self.assertEqual(count, 0)
+        self.assertEqual(state, "claimed")
+
+    def test_false_task_timeout_defaults_to_86400(self):
+        count, state = self._reoffer_via_config(
+            {"task_timeout": False})
+        self.assertEqual(count, 0)
+        self.assertEqual(state, "claimed")
+
+    def test_explicit_3600_still_reoffers_at_one_hour(self):
+        # Control: a valid one-hour timeout reoffers a claim
+        # aged just over one hour; the fix must keep genuine
+        # integer timeouts working, not freeze every claim.
+        count, state = self._reoffer_via_config(
+            {"task_timeout": 3600}, age_hours=2)
+        self.assertEqual(count, 1)
+        self.assertEqual(state, "open")
+
+
 if __name__ == "__main__":
     unittest.main()
