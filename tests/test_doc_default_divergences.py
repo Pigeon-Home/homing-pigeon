@@ -3735,5 +3735,137 @@ class TestBooleanPlanStepTimeoutCountsAs60(unittest.TestCase):
             {"max_plan_timeout_sec": 30})
         self.assertTrue(ok)
 
+
+class TestNegativeOrNonFiniteSensorWeightDefaultsToOne(unittest.TestCase):
+    """Divergence: a stored sensor weight that is negative or
+    non-finite (infinity or NaN) is used as-is by the alert
+    scorer, instead of falling back to the documented
+    default weight of 1.0.
+
+    (a) Doc claim (docs/senses.md, line 254):
+        "`weight` (number >= 0, default 1.0): the Oracle's
+        weighting for this source. Turn a noisy sensor
+        down, a trusted one up, or to 0 to mute it without
+        disabling ingest."
+        The config validator enforces exactly that domain
+        (runner/senses.py, parse_sensors): a weight that
+        is NaN, infinite, or below 0 raises a config error
+        ("must be a finite number >= 0"). The scorer's own
+        fallback for an unparseable weight is likewise the
+        default 1.0 (runner/senses.py, alert_score), and
+        the sibling senses-query reader in runner/runner.py
+        (the answer_queries senses branch) explicitly
+        resets a weight that is NaN, negative, or infinite
+        to 1.0 before scoring with it.
+
+    (b) How the bug was found: the campaign's
+        doc-default hunt (2026-10-23 12:56 PDT tick)
+        exercised runner.senses.alert_score -- the scorer
+        the DRI fused-score path calls with a stored
+        record's own raw weight
+        (runner/dri.py: rec.get("weight", 1.0)) -- with
+        the weight left unset and varied around the
+        documented domain: omitted via the caller's
+        default, explicit None, a non-numeric string
+        ("bogus"), a numeric string ("2"), explicit 0
+        (the documented mute), 2, -1, -5, float("inf"),
+        float("-inf"), and NaN, scoring an info alert
+        (severity score 0.5) each time. The out-of-domain
+        forms are reachable from real data: a stored
+        sensor alert is sensor-supplied JSON, and the
+        runner's JSON parsing admits Infinity / NaN
+        literals and negative numbers, so a stored
+        record can carry exactly these weights into the
+        DRI path, which -- unlike the senses-query path --
+        performs no range or finiteness reset before
+        calling the scorer.
+
+    (c) Behavior actually observed: omitted, None, and
+        "bogus" all score at the documented default (an
+        info alert scores 0.5, i.e. 1.0 x 0.5); explicit
+        0 scores 0.0 (the documented mute) and 2 scores
+        1.0, as given. The out-of-domain values do not
+        fall back: alert_score converts with float() and
+        checks nothing after the conversion
+        (runner/senses.py, alert_score), so -1 scores
+        -0.5 and -5 scores -2.5 -- a negative total that
+        drags a sensor's fused score down and can keep
+        it under the DRI paging threshold; float("inf")
+        scores inf, so a single such alert crosses any
+        finite fused-score threshold on its own; and
+        NaN scores NaN, poisoning the fused total (every
+        comparison against a NaN total is false, so the
+        trigger silently never fires). Sibling readers
+        reject or reset exactly these values --
+        parse_sensors in the same module raises on them
+        at config time, and the senses-query reader in
+        runner.py resets them to 1.0 at read time; this
+        scorer is the outlier, and its missing guard is
+        a range/finiteness check after conversion, a
+        different defect from the boolean and
+        huge-integer guards recorded for other readers
+        in this file. Observed on 2026-10-23:
+        alert_score({"severity": "info"}, -1) returned
+        -0.5, alert_score({"severity": "info"},
+        float("inf")) returned inf, and
+        alert_score({"severity": "info"}, float("nan"))
+        returned nan, where the documented default
+        weight scores 0.5.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def test_negative_weight_defaults_to_one(self):
+        from runner.senses import alert_score
+        self.assertEqual(
+            alert_score({"severity": "info"}, -1), 0.5)
+
+    def test_large_negative_weight_defaults_to_one(self):
+        from runner.senses import alert_score
+        self.assertEqual(
+            alert_score({"severity": "info"}, -5), 0.5)
+
+    def test_infinite_weight_defaults_to_one(self):
+        from runner.senses import alert_score
+        self.assertEqual(
+            alert_score({"severity": "info"}, float("inf")), 0.5)
+
+    def test_negative_infinite_weight_defaults_to_one(self):
+        from runner.senses import alert_score
+        self.assertEqual(
+            alert_score({"severity": "info"}, float("-inf")), 0.5)
+
+    def test_nan_weight_defaults_to_one(self):
+        from runner.senses import alert_score
+        self.assertEqual(
+            alert_score({"severity": "info"}, float("nan")), 0.5)
+
+    def test_explicit_zero_weight_still_mutes(self):
+        # Control: 0 is the documented mute (weight >= 0
+        # includes it); the fix must not flatten a
+        # genuine zero to the default.
+        from runner.senses import alert_score
+        self.assertEqual(
+            alert_score({"severity": "info"}, 0), 0.0)
+
+    def test_explicit_two_weight_is_honored(self):
+        # Control: a genuine in-domain weight is used as
+        # given; the fix must not flatten it to 1.0.
+        from runner.senses import alert_score
+        self.assertEqual(
+            alert_score({"severity": "info"}, 2), 1.0)
+
+    def test_bogus_weight_defaults_to_one(self):
+        # Control: an unparseable weight already falls
+        # back to the documented default today; it must
+        # keep doing so after the out-of-domain cases
+        # are fixed.
+        from runner.senses import alert_score
+        self.assertEqual(
+            alert_score({"severity": "info"}, "bogus"), 0.5)
+
+
 if __name__ == "__main__":
     unittest.main()
