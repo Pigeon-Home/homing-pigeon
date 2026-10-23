@@ -700,6 +700,30 @@ jobs:
           project = os.environ["SF_PROJECT"]
           tag = os.environ["TAG"]
           key = os.environ["SF_API"]
+          # Two releases cut minutes apart run their pipelines side by
+          # side, and the older one can reach this step last. The
+          # per-version folders do not care; the default-download
+          # marker does. It is set only by the newest tag on the repo,
+          # so the mirror never points at a release that was already
+          # superseded when it got here.
+          def vkey(t):
+              return tuple(int(x) for x in t.lstrip("v").split("."))
+          tags = subprocess.check_output(
+              ["gh", "api", "--paginate",
+               f"repos/{os.environ['REPO']}/git/matching-refs/tags/v",
+               "--jq", ".[].ref"], text=True).split()
+          vtags = []
+          for ref in tags:
+              name = ref.rsplit("/", 1)[-1]
+              try:
+                  vtags.append((vkey(name), name))
+              except ValueError:
+                  continue
+          newest = max(vtags)[1] if vtags else tag
+          if vkey(newest) > vkey(tag):
+              print(f"{tag} is not the newest tag ({newest}); files are "
+                    f"published, the default download stays with {newest}")
+              raise SystemExit(0)
           marked = 0
           for path in sorted(pathlib.Path("publish").iterdir()):
               name = path.name

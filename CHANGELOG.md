@@ -39,6 +39,12 @@ facts a reader may need to cite. Git history carries the rest.
   carries the same card (`runner/platformcard.py`), so the two
   bindings describe the box the same way; its `family` tier gained
   `default_interpreter` and `protocol_versions`. PROTOCOL.md 3.2.
+- **Mirrors cannot publish out of order.** Two releases cut minutes
+  apart run side by side; the SourceForge default-download marker
+  is now set only by the newest tag on the repository, so an older
+  pipeline finishing last leaves it alone. GitLab and the version
+  folders were already order-independent. `cut-release` notes on
+  its run page when a tag carries the same code as the last one.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 

@@ -70,6 +70,27 @@ jobs:
             exit 1
           fi
 
+      - name: same code as the last release?
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # A note, not a gate: the owner cuts releases as often as he
+          # likes. But a tag whose diff since the last one touches
+          # only the version carriers and the changelog is the same
+          # code with a new number, and the run page should say so.
+          last=$(git tag --list 'v*' --sort=-v:refname | grep -v "^$TAG\$" | head -n 1 || true)
+          if [ -z "$last" ]; then
+            echo "no earlier tag; nothing to compare"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$last" HEAD | grep -v -E '^(pyproject\.toml|runner/_version\.py|runner/install\.py|tests/test_install_edges\.py|CHANGELOG\.md)$' || true)
+          if [ -z "$changed" ]; then
+            echo "::warning title=same code::$TAG carries the same code as $last (only the version carriers and CHANGELOG changed)"
+          else
+            echo "$TAG changes $(echo "$changed" | wc -l) file(s) since $last"
+          fi
+
       - name: the build on this commit is green
         env:
           GH_TOKEN: ${{ github.token }}
