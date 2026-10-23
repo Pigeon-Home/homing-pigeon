@@ -4,7 +4,38 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## Unreleased
+## 3.12.58 - 2026-10-23
+
+- **The code now delivers every default the docs promise.** The VM
+  campaign's documented-default divergences
+  (`tests/test_doc_default_divergences.py`, 184 tests, red by design
+  since they landed) all pass, with no test edited. Three shapes
+  covered most of them: a JSON boolean read as a number (`true` was
+  1, so `poll_interval_sec: true` polled every second and
+  `max_output_bytes: true` cut results to one byte), a huge integer
+  or `inf`/`NaN` escaping as a raw `OverflowError`, and a key present
+  as `null`, a non-numeric string, zero or a negative number used as
+  is (`task_timeout: null` wedged claimed tasks forever,
+  `default_timeout_sec: null` rejected every timeout-less job). Six
+  were their own bugs: a stored alert with no severity dropped on
+  read-back, the inference timeout falling back to 60 not 180,
+  `ask_model` never sending `keep_alive`, a bad NATS port killing the
+  extension from inside `urlparse().port`, an unknown result view
+  echoed verbatim instead of reading as `full`, and a null or unknown
+  `dtls_greeting` refusing to start instead of reading as `family`.
+- **`runner/confval.py`** is the one typed reader behind the fix: a
+  boolean is never a number, a number must be finite, bounds decide
+  what is usable, and the documented default is what anything else
+  gets. `senses.py`, the transport channel and all 28 example
+  extensions carry the same rule locally so they stay import-free.
+- **Two tests moved with the behavior.** The DTLS extension starts on
+  the default tier for a bad `dtls_greeting` and says so, instead of
+  exiting 2; the campaign modules' four skip reasons are registered.
+  The frozen builds carry `runner.confval` as a hidden import.
+
+<!-- Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c -->
+
+Also in this release, from the unreleased queue:
 
 - **`cut-release` workflow.** `gh workflow run cut-release.yml` tags
   the version in `pyproject.toml` on a green commit and dispatches
