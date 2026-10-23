@@ -6783,6 +6783,115 @@ class TestNonFiniteSoftflowdTunablesDefaultInsteadOfCrashOrSilence(unittest.Test
             ["flow_new_external_peer", "flow_long_lived"])
 
 
+class TestHugeIntJobFuzzFloatTunablesCrashInsteadOfDefault(unittest.TestCase):
+    """Divergence: a huge-integer job-fuzz float tunable
+    (corpus_max_age_days = 10**400, or filed_cooldown_sec
+    = 10**400) crashes decide() with OverflowError instead
+    of falling back to the documented defaults.
+
+    (a) Doc claim (examples/extensions/job-fuzz/README.md,
+        line 61): the corpus is bounded by age with
+        "`corpus_max_age_days` (default 30)"; and (line 113):
+        "`filed_cooldown_sec` (default 604800, a week) is
+        how long a finding that was already filed stays
+        quiet". The same defaults are in the module
+        docstring in job_fuzz.py (lines 57-58: "by age
+        (corpus_max_age_days, default 30)"; line 97: "may
+        file again after filed_cooldown_sec (default a
+        week)") and in extension.json tunables
+        (corpus_max_age_days 30, filed_cooldown_sec
+        604800).
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 tick) exercised the job-fuzz
+        example extension's decide() -- the pure decision
+        function -- with each float tunable omitted, set
+        to a genuine value, set to float("inf") and
+        float("nan") (both already guarded in this reader),
+        and set to the huge integer 10**400, a value JSON
+        config carries as an ordinary number, using one
+        seed job saved 40 days before the pass's "now".
+
+    (c) Behavior actually observed: omitted, explicit 30,
+        +inf and NaN all apply the documented 30-day age
+        bound (the 40-day-old seed is evicted from the
+        corpus), and explicit 60 retains it. But a huge
+        integer is accepted as a number -- _is_number in
+        job_fuzz.py (lines 201-204) excludes booleans and
+        non-finite floats, not oversized ints -- so
+        _tunable (line 220-222) evaluates float(10**400)
+        and raises OverflowError: int too large to convert
+        to float, at job_fuzz.py lines 1108 (age) and 1110
+        (cooldown). The whole pass crashes and no state is
+        returned, instead of the reader falling back to
+        30 / 604800 like it does for non-finite values.
+        Observed on 2026-10-23: decide() with
+        {"corpus_max_age_days": 10**400} and with
+        {"filed_cooldown_sec": 10**400} each raised that
+        OverflowError on the seed above, where the omitted
+        tunables returned an evicted corpus.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    NOW = 1000 + 40 * 86400
+
+    def _corpus(self, tunables):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "job-fuzz",
+            "job_fuzz.py")
+        spec = importlib.util.spec_from_file_location(
+            "job_fuzz_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        seeds = [{"job_id": "old-job", "saved_at": 1000,
+                  "exit_code": 0}]
+        alerts, state = mod.decide(
+            {"now": self.NOW, "seeds": seeds,
+             "outcomes": []},
+            {"name": "job_fuzz", "tunables": tunables},
+            {})
+        return sorted(state["corpus"]), alerts
+
+    def test_huge_corpus_max_age_days_defaults_to_30(self):
+        corpus, _alerts = self._corpus(
+            {"corpus_max_age_days": 10 ** 400})
+        self.assertEqual(corpus, [])
+
+    def test_huge_filed_cooldown_defaults_to_604800(self):
+        corpus, alerts = self._corpus(
+            {"filed_cooldown_sec": 10 ** 400})
+        self.assertEqual(corpus, [])
+        self.assertEqual(alerts, [])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented default and genuine
+        # values already behave today and must keep doing
+        # so after the huge-int case is fixed.
+        self.assertEqual(self._corpus({})[0], [])
+        self.assertEqual(
+            self._corpus({"corpus_max_age_days": 30})[0],
+            [])
+        self.assertEqual(
+            self._corpus(
+                {"corpus_max_age_days": float("inf")})[0],
+            [])
+        self.assertEqual(
+            self._corpus(
+                {"corpus_max_age_days": float("nan")})[0],
+            [])
+        # A genuine larger bound is honored: at 60 days
+        # the 40-day-old seed is retained.
+        self.assertEqual(
+            self._corpus({"corpus_max_age_days": 60})[0],
+            ["old-job"])
+
 
 if __name__ == "__main__":
     unittest.main()
