@@ -1,6 +1,6 @@
 {
   "commit": "33c218b033cb6d61735d365a401a572720c67b9e",
-  "fetched_at": "2026-10-22T22:42:39Z",
+  "fetched_at": "2026-10-23T02:35:48Z",
   "files": [
     {
       "bytes": 373,
@@ -18,7 +18,7 @@
       "sha256": "640d90f6ee401241ff62834d0d1b33f83049e99b8bfdfa04ed1b0a1635dde3e7"
     }
   ],
-  "license": "Apache-2.0 AND GPL-2.0-only",
+  "license": "Apache-2.0 OR GPL-2.0-only",
   "repo": "https://github.com/osquery/osquery",
   "stamp": "tools/vendor_upstreams.py",
   "track": "branch:master",

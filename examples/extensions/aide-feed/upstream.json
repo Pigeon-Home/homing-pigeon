@@ -6,7 +6,7 @@
       "repo": "https://github.com/aide/aide",
       "track": "branch:master",
       "commit": "db923656149ea64bee63f7e45275322a20c7dbe3",
-      "license": "GPL-2.0-only",
+      "license": "GPL-2.0-or-later",
       "paths": [
         "COPYING"
       ]
