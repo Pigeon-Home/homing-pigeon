@@ -6570,5 +6570,106 @@ class TestInfiniteWazuhQuietDefaultsTo3600(unittest.TestCase):
             ["wazuh_alert", "wazuh_alert"])
 
 
+class TestInfiniteOsqueryFiledCapCrashesInsteadOfDefault(unittest.TestCase):
+    """Divergence: an infinite osquery-feed filed_cap
+    (+inf) crashes decide() with OverflowError instead
+    of falling back to the documented 10000 default.
+
+    (a) Doc claim (examples/extensions/osquery-feed/
+        README.md, tunable table, line 46):
+        "filed_cap | 10000 | Bound on remembered filed
+        episodes; the oldest entries are evicted first";
+        the same default is in the extension's
+        extension.json tunables (10000).
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 tick) exercised the osquery-feed
+        example extension's decide() -- the pure decision
+        function -- with filed_cap omitted, set to a
+        genuine value, and set to float("inf"),
+        float("-inf") and float("nan"), using one
+        differential event (a user row reported added).
+
+    (c) Behavior actually observed: omitted, NaN, -inf
+        and an explicit 10000 all file the event once,
+        as documented. But +inf is accepted as a number
+        -- _is_number in osquery_feed.py excludes
+        booleans but not non-finite floats, and
+        inf >= 1 holds -- so decide() evaluates
+        int(float("inf")) and raises OverflowError:
+        cannot convert float infinity to integer. The
+        whole pass crashes and no alert files, instead
+        of the reader falling back to 10000 like its
+        sibling readers do for non-finite values.
+        Observed on 2026-10-23: decide() with
+        {"filed_cap": float("inf")} raised OverflowError
+        on a single added-user event, where the omitted
+        tunable returned ['osquery_added']. This is the
+        campaign's known non-finite-tunable root-cause
+        family in a new reader.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _signals(self, tunables, events=None):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "osquery-feed",
+            "osquery_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "osquery_feed_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        if events is None:
+            events = [{
+                "ts": 1000, "action": "added",
+                "kind": "user",
+                "columns": {"username": "eve",
+                            "uid": "1001", "gid": "1001"}}]
+        alerts, _state = mod.decide(
+            {"now": 1000, "events": events},
+            {"name": "osquery_feed", "tunables": tunables},
+            {})
+        return [a["signal"] for a in alerts]
+
+    def test_infinite_filed_cap_defaults_to_10000(self):
+        self.assertEqual(
+            self._signals({"filed_cap": float("inf")}),
+            ["osquery_added"])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented default and genuine
+        # values already behave today and must keep doing
+        # so after the non-finite case is fixed.
+        self.assertEqual(self._signals({}), ["osquery_added"])
+        self.assertEqual(
+            self._signals({"filed_cap": 10000}),
+            ["osquery_added"])
+        self.assertEqual(
+            self._signals({"filed_cap": float("nan")}),
+            ["osquery_added"])
+        self.assertEqual(
+            self._signals({"filed_cap": float("-inf")}),
+            ["osquery_added"])
+        # A genuine small cap is honored: with cap 1 the
+        # first identity is evicted by the second, so its
+        # repeat add files again (3 alerts), while the
+        # default cap files each identity once (2).
+        def _add(name):
+            return {"ts": 1000, "action": "added",
+                    "kind": "user",
+                    "columns": {"username": name,
+                                "uid": "1", "gid": "1"}}
+        events = [_add("a"), _add("b"), _add("a")]
+        self.assertEqual(
+            len(self._signals({"filed_cap": 1}, events)), 3)
+        self.assertEqual(len(self._signals({}, events)), 2)
+
+
 if __name__ == "__main__":
     unittest.main()
