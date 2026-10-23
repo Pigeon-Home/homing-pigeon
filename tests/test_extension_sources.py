@@ -409,6 +409,7 @@ class ShippedDeclarationsTest(unittest.TestCase):
     ADAPTERS = ("aide-feed", "falco-feed", "osquery-feed", "softflowd-feed",
                 "suricata-feed", "sysmon-feed", "wazuh-feed", "zeek-feed")
     TRANSPORTS = ("dtls", "email", "file", "nats")
+    NAMED_REFS = {"softflowd": "master"}
 
     def folders(self):
         return [os.path.join(REPO, "examples", "extensions", a)
@@ -440,7 +441,12 @@ class ShippedDeclarationsTest(unittest.TestCase):
             self.assertTrue(ups, name)
             for e in ups:
                 self.assertEqual(e["location"], "github", name)
-                self.assertEqual(e["ref"], "latest", name)
+                # "latest", so each release pins the newest; softflowd
+                # follows master because its last release predates
+                # the record writers (compat/netflow5.c, netflow9.c)
+                # the 3.12.53 pin found missing at that tag.
+                self.assertEqual(e["ref"], self.NAMED_REFS.get(
+                    e["id"], "latest"), name)
                 self.assertTrue(e["archive"], name)
                 self.assertTrue(e["license"], name)
 

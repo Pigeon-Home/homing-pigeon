@@ -18,7 +18,7 @@
       "github": "nats-io/nats.docs",
       "ref": "latest",
       "files": [
-        "reference/reference-protocols/nats-protocol.md"
+        "reference/protocols/client.md"
       ]
     }
   ]

@@ -9,7 +9,7 @@
       "github": "Sysinternals/SysmonForLinux",
       "ref": "latest",
       "files": [
-        "LICENSE"
+        "LICENSE.txt"
       ],
       "archive": true,
       "max_mb": 16
