@@ -4083,5 +4083,113 @@ class TestNonFiniteAirwavesGoneAfterScansDefaultsTo3(unittest.TestCase):
 
 
 
+
+class TestNonFiniteSkyWatcherApproachRadiusDefaultsTo5000(unittest.TestCase):
+    """Divergence: a non-finite sky-watcher approach_radius_km
+    (inf / -inf / NaN) makes the corridor boundless or empty
+    instead of falling back to the documented 5000 km default.
+
+    (a) Doc claim (docs/extensions.md, sky-watcher signal
+        table, line 530): "`station_approaching` | The station
+        enters the approach corridor (`approach_radius_km`,
+        default 5000 km) around the observer -- every pass,
+        visible or not".
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 tick) exercised the sky-watcher
+        example extension's update() -- the pure pass state
+        machine -- with an observer at (0, 0), the tunable
+        omitted, set to genuine values, and set to
+        float("inf"), float("-inf"), and float("nan"), using
+        a far sample (station sub-point at (0, 90), about
+        10,007 km away, outside the documented 5000 km
+        corridor) and a near sample (sub-point at the
+        observer, distance 0).
+
+    (c) Behavior actually observed: the omitted tunable
+        files as documented (far sample files nothing, near
+        sample files station_approaching) and explicit radii
+        are honored (100 km files nothing for a sample about
+        111 km away; 20000 km files for the far sample), but
+        _tunable accepts inf and NaN as numbers (_is_number
+        excludes booleans but not non-finite floats): with
+        inf or NaN no distance is ever greater than the
+        radius, so the far sample files station_approaching
+        from halfway around the planet, and with -inf every
+        distance is greater, so even a station directly
+        overhead files nothing. A non-finite radius therefore
+        makes the corridor boundless or empty instead of
+        reading as the documented default. Sibling readers
+        in this codebase exclude non-finite values and fall
+        back to their defaults (e.g.
+        runner.remediation._pos_float,
+        runner.runner._local_wake_cooldown); this reader
+        does not. Observed on 2026-10-23: update() with
+        approach_radius_km float("inf") and float("nan")
+        returned ["station_approaching"] for the far sample
+        where the omitted tunable returned [], and with
+        float("-inf") returned [] for the near sample where
+        the omitted tunable returned ["station_approaching"].
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def _signals(self, lat, lon, tunables):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "sky-watcher",
+            "sky_watcher.py")
+        spec = importlib.util.spec_from_file_location(
+            "sky_watcher_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        sample = {"lat": lat, "lon": lon, "alt_km": 420,
+                  "velocity_kmh": 27576, "sunlit": False,
+                  "ts": 1700000000}
+        manifest = {"name": "sky_watcher",
+                    "tunables": {"observer_lat": 0,
+                                 "observer_lon": 0, **tunables}}
+        alerts, _state = mod.update(sample, manifest, {})
+        return [a["signal"] for a in alerts]
+
+    def test_infinite_radius_defaults_to_5000(self):
+        self.assertEqual(
+            self._signals(0, 90,
+                          {"approach_radius_km": float("inf")}),
+            [])
+
+    def test_nan_radius_defaults_to_5000(self):
+        self.assertEqual(
+            self._signals(0, 90,
+                          {"approach_radius_km": float("nan")}),
+            [])
+
+    def test_negative_infinite_radius_defaults_to_5000(self):
+        self.assertEqual(
+            self._signals(0, 0,
+                          {"approach_radius_km": float("-inf")}),
+            ["station_approaching"])
+
+    def test_omitted_and_explicit_radii_are_honored(self):
+        # Controls: the documented default and genuine radii
+        # already behave today and must keep doing so after
+        # the non-finite cases are fixed.
+        self.assertEqual(self._signals(0, 90, {}), [])
+        self.assertEqual(
+            self._signals(0, 0, {}), ["station_approaching"])
+        self.assertEqual(
+            self._signals(0, 1, {"approach_radius_km": 100}),
+            [])
+        self.assertEqual(
+            self._signals(0, 90, {"approach_radius_km": 20000}),
+            ["station_approaching"])
+
+
+
 if __name__ == "__main__":
     unittest.main()
