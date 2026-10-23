@@ -1156,6 +1156,9 @@ class CampaignLoopCycleTests(unittest.TestCase):
     def test_cycle_355_hostinfo(self):
         self._run_cycle(355, 'hostinfo', 0)
 
+    def test_cycle_356_workdir(self):
+        self._run_cycle(356, 'workdir', 0)
+
 
 if __name__ == "__main__":
     unittest.main()
