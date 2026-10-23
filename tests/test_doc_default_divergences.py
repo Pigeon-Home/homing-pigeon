@@ -930,5 +930,89 @@ class TestHugeSensorWeightDefaultsToOne(unittest.TestCase):
             alert_score(record, record.get("weight", 1.0)), 3.0)
 
 
+class TestHugeResourcesValueIsConfigError(unittest.TestCase):
+    """Divergence: a resources threshold or cooldown that is
+    a huge integer (a JSON number with hundreds of digits)
+    raises a raw OverflowError out of the config reader,
+    instead of the startup config error every other
+    malformed resources value gets.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 72):
+        "`resources` -- the built-in resource monitor
+        (`runner/resources.py`) ... `enabled` (default
+        true), `threshold` (default 0.95; the CPU, memory,
+        or disk fraction whose crossing files a
+        `resource_pressure` security event; must be in
+        (0, 1]), `cooldown_sec` (default 900; minimum
+        seconds between repeat events for the same
+        resource). A malformed block is a startup config
+        error."
+        The reader's own contract matches: every other
+        malformed form -- a non-numeric string, infinity,
+        an out-of-range fraction, a negative or non-finite
+        cooldown, a non-boolean enabled -- raises
+        RuntimeError("config error: resources...."), and
+        check_resources treats that RuntimeError as
+        monitor-off (returns None).
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 07:01 PDT tick) exercised
+        runner.resources.parse_resources with the block
+        left unset and varied around it -- block omitted,
+        explicit None, keys omitted, a non-numeric string
+        ("bogus"), infinity, and huge integers (10**400)
+        for each of threshold and cooldown_sec. The huge
+        forms are reachable from a real config file: the
+        runner's load_config uses a plain json.load, which
+        parses a several-hundred-digit JSON number into
+        an arbitrary-precision int.
+
+    (c) Behavior actually observed: omitted, None, and
+        omitted keys read as the documented defaults
+        (threshold 0.95, cooldown 900); "bogus" and
+        infinity raise the documented RuntimeError config
+        error. A huge int does not: float(10**400) raises
+        OverflowError, and parse_resources guards its
+        float() conversions with
+        `except (TypeError, ValueError)` only
+        (runner/resources.py lines 45-46 and 51-52), so
+        the error escapes the reader raw. It escapes the
+        next layer too: check_resources catches only
+        (RuntimeError, AttributeError, TypeError) around
+        parse_resources, so the OverflowError propagates
+        to the poll loop, which logs "resource monitor
+        failed: int too large to convert to float" on
+        every poll -- the monitor never runs and the
+        failure repeats forever instead of being handled
+        once as the config error the docs promise.
+        Sibling float readers include OverflowError in
+        their fallback guard: parse_sensors and
+        gate_alert (runner/senses.py) and _cfg_size
+        (runner/runner.py) all catch it; this reader is
+        the outlier.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def test_huge_threshold_is_config_error(self):
+        from runner.resources import parse_resources
+        with self.assertRaises(RuntimeError):
+            parse_resources({"resources": {"threshold": 10**400}})
+
+    def test_huge_cooldown_is_config_error(self):
+        from runner.resources import parse_resources
+        with self.assertRaises(RuntimeError):
+            parse_resources(
+                {"resources": {"cooldown_sec": 10**400}})
+
+    def test_huge_threshold_check_resources_returns_none(self):
+        from runner.resources import check_resources
+        with tempfile.TemporaryDirectory() as base:
+            self.assertIsNone(check_resources(
+                {"resources": {"threshold": 10**400}}, base))
+
+
 if __name__ == "__main__":
     unittest.main()
