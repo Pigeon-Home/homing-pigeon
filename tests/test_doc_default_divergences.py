@@ -1102,5 +1102,53 @@ class TestAskModelKeepAliveDefaultsTo30mOnOllama(unittest.TestCase):
         self.assertEqual(body.get("keep_alive"), "10m")
 
 
+class TestBooleanReviewScanBytesDefaultsTo65536(unittest.TestCase):
+    """Divergence: review_scan_bytes set to the boolean true
+    makes the job reviewer scan a single byte of the script
+    instead of the documented 65536-byte default.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 67):
+        "`review_scan_bytes` -- how many bytes of the script
+        the job reviewer (`docs/job-review.md`) scans for
+        file-name references. Default 65536."
+
+    (b) How the bug was found: the campaign's doc-default hunt
+        (2026-10-23 07:16 PDT tick) exercised
+        runner.review._review_scan_bytes with the key left
+        unset and varied around it -- key omitted, explicit
+        None, False, a non-numeric string ("bogus"), 0, a
+        negative value (-5), float("inf"), a valid value
+        (123), and the boolean True -- checking the scan
+        bound each call returned.
+
+    (c) Behavior actually observed: omitted, None, False,
+        "bogus", 0, -5, and infinity all return the
+        documented default 65536, and 123 is honored. True
+        does not: _review_scan_bytes (runner/review.py)
+        computes int(cfg.get("review_scan_bytes", 65536))
+        with no boolean guard, int(True) is 1, and 1 passes
+        its `n > 0` check, so the reviewer scans exactly
+        one byte of the script and its file-name-reference
+        check is effectively switched off by a boolean typo.
+        Sibling size/count readers in the same codebase
+        exclude booleans explicitly -- runner.runner._cfg_size
+        ("Booleans are not sizes") and
+        runner.remediation._pos_int both return the default
+        for a boolean -- only this reader lets one through
+        as the number 1. Observed on 2026-10-23:
+        _review_scan_bytes({"review_scan_bytes": True})
+        returned 1.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed in
+        the code.
+    """
+
+    def test_true_review_scan_bytes_defaults_to_65536(self):
+        from runner.review import _review_scan_bytes
+        self.assertEqual(
+            _review_scan_bytes({"review_scan_bytes": True}), 65536)
+
+
 if __name__ == "__main__":
     unittest.main()
