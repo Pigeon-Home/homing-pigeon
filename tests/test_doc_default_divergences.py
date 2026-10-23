@@ -2841,5 +2841,93 @@ class TestBooleanDefaultTimeoutDefaultsTo300(unittest.TestCase):
         self.assertIn("hi-probe", result.get("stdout", ""))
 
 
+class TestBadDtlsPortDefaultsTo20220(unittest.TestCase):
+    """Divergence: transport_dtls port set to a non-numeric
+    or out-of-range value kills the DTLS extension at
+    startup instead of reading as the documented default
+    port 20220.
+
+    (a) Doc claims: docs/configuring-oracle.md line 64 --
+        "`transport_dtls` ... `port` (default 20220) and
+        `bind` (default `0.0.0.0`)"; docs/TRANSPORTS.md
+        lines 273-274 -- "(`transport_dtls.port`, default
+        20220; `transport_dtls.bind`, default `0.0.0.0`)";
+        the extension's own module docstring in
+        runner/transport_extensions/dtls/__main__.py --
+        "port    UDP port to listen on (default 20220)".
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 tick) constructed
+        runner.transport_extensions.dtls.__main__.DtlsPipe
+        -- the listening pipe the supervisor starts when
+        `dtls` is enabled -- with the port key omitted
+        (control), explicit 0 (control), and set to
+        "bogus", "99999", 99999, -1, None, 10**400, and
+        float("inf"). The boolean forms of this same read
+        site are already recorded in
+        TestBooleanDtlsPortDefaultsTo20220 above; this
+        class records the non-numeric / out-of-range
+        forms, which fail differently -- by raising out
+        of the constructor, not by binding a wrong port.
+
+    (c) Behavior actually observed: omitted reads 20220
+        and explicit 0 binds port 0, as documented.
+        Every bad value raises out of DtlsPipe.__init__
+        instead of falling back to 20220: "bogus" raises
+        ValueError from the unguarded int(port) read;
+        None raises TypeError the same way; float("inf")
+        raises OverflowError there; and "99999", 99999,
+        -1, and 10**400 pass int() and raise
+        OverflowError from sock.bind ("port must be
+        0-65535"). The extension process dies before it
+        ever listens, so a typo'd port is a dead
+        transport (supervisor restart loop), not the
+        documented default.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _pipe(self, extra, omit_port=False):
+        import importlib
+        import os
+        dtls_ext = importlib.import_module(
+            "runner.transport_extensions.dtls.__main__")
+        cfg = {"shared_secret": "campaign-test-secret-0123456789",
+               "bind": "127.0.0.1"}
+        if not omit_port:
+            cfg["port"] = 0
+        cfg.update(extra)
+        with tempfile.TemporaryDirectory() as tmp:
+            pipe = dtls_ext.DtlsPipe(
+                cfg, os.path.join(tmp, "channel"))
+        self.addCleanup(pipe.sock.close)
+        return pipe
+
+    def test_bogus_port_defaults_to_20220(self):
+        pipe = self._pipe({"port": "bogus"})
+        self.assertEqual(pipe.port, 20220)
+
+    def test_out_of_range_port_defaults_to_20220(self):
+        pipe = self._pipe({"port": 99999})
+        self.assertEqual(pipe.port, 20220)
+
+    def test_none_port_defaults_to_20220(self):
+        pipe = self._pipe({"port": None})
+        self.assertEqual(pipe.port, 20220)
+
+    def test_huge_port_defaults_to_20220(self):
+        pipe = self._pipe({"port": 10**400})
+        self.assertEqual(pipe.port, 20220)
+
+    def test_omitted_port_is_20220(self):
+        # Control: with the key omitted the documented
+        # default really is used -- proving the harness
+        # works, not that every config is forced to it.
+        pipe = self._pipe({}, omit_port=True)
+        self.assertEqual(pipe.port, 20220)
+
+
 if __name__ == "__main__":
     unittest.main()
