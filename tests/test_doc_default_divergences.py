@@ -4191,5 +4191,136 @@ class TestNonFiniteSkyWatcherApproachRadiusDefaultsTo5000(unittest.TestCase):
 
 
 
+
+class TestNonFiniteSkyWatcherDarkThresholdDefaultsToMinus6(unittest.TestCase):
+    """Divergence: a non-finite sky-watcher
+    dark_sun_elevation_deg (inf / -inf / NaN) makes every sky
+    "dark" or no sky ever "dark" instead of falling back to
+    the documented -6 degree default.
+
+    (a) Doc claim (docs/extensions.md, "The example: Sky
+        Watcher", line 542): "the observer's sky being dark
+        is a small solar calculation (the NOAA approximation)
+        against the `dark_sun_elevation_deg` threshold, -6°
+        by default."
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 tick) exercised the sky-watcher
+        example extension's update() -- the pure pass state
+        machine -- with an observer at (0, 0), a sunlit
+        equatorial zenith pass already inside the approach
+        corridor (previous sub-point (0, -44), current
+        sub-point (0, -43), alt 420 km, culmination 90 deg,
+        window opening in about 470 s, inside the documented
+        600 s lead), the tunable omitted, set to genuine
+        values, and set to float("inf"), float("-inf"), and
+        float("nan"), at a midnight epoch (sun elevation
+        about -66.9 deg at the observer) and a midday epoch
+        (sun elevation about +66.9 deg).
+
+    (c) Behavior actually observed: the omitted tunable
+        files as documented (midnight files
+        visible_pass_starting and bright_pass; midday files
+        neither) and explicit thresholds are honored (-70
+        files nothing at midnight; 70 files both at midday),
+        but _tunable accepts inf and NaN as numbers
+        (_is_number excludes booleans but not non-finite
+        floats) and update() compares the sun's elevation
+        against the result directly: with NaN or -inf no
+        sun elevation is ever below the threshold, so the
+        midnight pass files nothing, and with inf every sun
+        elevation is below it, so the midday pass files
+        visible_pass_starting and bright_pass in full
+        daylight. A non-finite threshold therefore makes
+        the sky permanently dark or never dark instead of
+        reading as the documented -6 degree default.
+        Sibling readers in this codebase exclude non-finite
+        values and fall back to their defaults (e.g.
+        runner.remediation._pos_float,
+        runner.runner._local_wake_cooldown); this reader
+        does not. Observed on 2026-10-23: update() at
+        midnight with dark_sun_elevation_deg float("nan")
+        and float("-inf") returned [] where the omitted
+        tunable returned ["visible_pass_starting",
+        "bright_pass"], and at midday with float("inf")
+        returned ["visible_pass_starting", "bright_pass"]
+        where the omitted tunable returned [].
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    MIDNIGHT = 1704067200  # 2024-01-01T00:00Z, sun ~-66.9 deg
+    MIDDAY = 1704110400  # 2024-01-01T12:00Z, sun ~+66.9 deg
+
+    def _signals(self, ts, tunables):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "sky-watcher",
+            "sky_watcher.py")
+        spec = importlib.util.spec_from_file_location(
+            "sky_watcher_dark_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        prev = {"lat": 0, "lon": -44, "alt_km": 420,
+                "velocity_kmh": 27576, "sunlit": True,
+                "ts": ts}
+        sample = {"lat": 0, "lon": -43, "alt_km": 420,
+                  "velocity_kmh": 27576, "sunlit": True,
+                  "ts": ts + 60}
+        state = {"stage": "approaching", "pass_id": 1,
+                 "fired": ["station_approaching"],
+                 "prev": prev, "culmination_deg": None,
+                 "last_ts": ts}
+        manifest = {"name": "sky_watcher",
+                    "tunables": {"observer_lat": 0,
+                                 "observer_lon": 0, **tunables}}
+        alerts, _state = mod.update(sample, manifest, state)
+        return [a["signal"] for a in alerts]
+
+    def test_nan_dark_threshold_defaults_to_minus_6(self):
+        self.assertEqual(
+            self._signals(self.MIDNIGHT,
+                          {"dark_sun_elevation_deg":
+                           float("nan")}),
+            ["visible_pass_starting", "bright_pass"])
+
+    def test_negative_infinite_dark_threshold_defaults(self):
+        self.assertEqual(
+            self._signals(self.MIDNIGHT,
+                          {"dark_sun_elevation_deg":
+                           float("-inf")}),
+            ["visible_pass_starting", "bright_pass"])
+
+    def test_infinite_dark_threshold_defaults_to_minus_6(self):
+        self.assertEqual(
+            self._signals(self.MIDDAY,
+                          {"dark_sun_elevation_deg":
+                           float("inf")}),
+            [])
+
+    def test_omitted_and_explicit_thresholds_are_honored(self):
+        # Controls: the documented default and genuine
+        # thresholds already behave today and must keep
+        # doing so after the non-finite cases are fixed.
+        self.assertEqual(
+            self._signals(self.MIDNIGHT, {}),
+            ["visible_pass_starting", "bright_pass"])
+        self.assertEqual(self._signals(self.MIDDAY, {}), [])
+        self.assertEqual(
+            self._signals(self.MIDNIGHT,
+                          {"dark_sun_elevation_deg": -70}),
+            [])
+        self.assertEqual(
+            self._signals(self.MIDDAY,
+                          {"dark_sun_elevation_deg": 70}),
+            ["visible_pass_starting", "bright_pass"])
+
+
+
 if __name__ == "__main__":
     unittest.main()
