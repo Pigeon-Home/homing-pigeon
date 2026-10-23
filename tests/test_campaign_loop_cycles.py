@@ -1135,6 +1135,9 @@ class CampaignLoopCycleTests(unittest.TestCase):
     def test_cycle_348_workdir(self):
         self._run_cycle(348, 'workdir', 0)
 
+    def test_cycle_349_flagread(self):
+        self._run_cycle(349, 'flagread', 0)
+
 
 if __name__ == "__main__":
     unittest.main()
