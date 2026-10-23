@@ -21,20 +21,43 @@ Usage:
     python tools/run_tests_parallel.py [--jobs N]
                                        [--start-dir tests]
                                        [--top-level-dir .]
+                                       [--durations N]
                                        [module ...]
 
 With explicit modules, only those run (still sharded). Exit code
 is 0 only if every shard passes; discovering zero tests is an
 error (exit 2), never a silent green.
+
+Two things the report carries so a red or slow Windows job can be
+read from the run page, not only from a downloaded log
+(Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c, 2026-10-22):
+
+- ``--durations N`` hands unittest's own ``--durations`` to every
+  shard (Python 3.12+; older interpreters run without it and say
+  so), and a passing shard's report keeps that block instead of
+  only the last four lines. Each shard also reports its wall time,
+  so the long pole among the shards is one line.
+- Under GitHub Actions, every ``FAIL:`` / ``ERROR:`` line in a
+  failed shard's output becomes a ``::error`` annotation naming
+  the test, so the run page lists the failing tests. Outside
+  Actions nothing is annotated. Annotation never changes the
+  verdict and, like all reporting here, cannot crash the run.
 """
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 import tempfile
 import time
 import unittest
+
+_FAILED_TEST_RE = re.compile(r"^(FAIL|ERROR): (\S+) \(([\w.]+)\)", re.M)
+_DURATIONS_HEADER = "Slowest test durations"
+# The workflow-command parser treats these as part of the command.
+_ANNOTATION_UNSAFE = str.maketrans({"\r": " ", "\n": " ", "%": "%25",
+                                    ":": "%3A", ",": "%2C"})
 
 
 def _emit(text):
@@ -186,7 +209,69 @@ def _child_env():
     return env
 
 
-def run_shards(shards, top_level_dir):
+def durations_args(durations, version_info=None):
+    """The unittest arguments that ask for the slowest-test block.
+
+    unittest grew ``--durations`` in Python 3.12. An older
+    interpreter gets no flag (it would refuse the run), and the
+    caller says so once. None or 0 asks for nothing.
+    """
+    if not durations:
+        return []
+    if (version_info or sys.version_info) < (3, 12):
+        return []
+    return ["--durations", str(durations)]
+
+
+def failed_tests(output):
+    """The test ids named by FAIL:/ERROR: lines, in order, once each."""
+    seen = []
+    for m in _FAILED_TEST_RE.finditer(output):
+        test_id = m.group(3)
+        if test_id not in seen:
+            seen.append(test_id)
+    return seen
+
+
+def under_actions(environ=None):
+    """True when GitHub Actions is reading the output."""
+    return (environ or os.environ).get("GITHUB_ACTIONS") == "true"
+
+
+def annotations_for(output, shard):
+    """``::error`` workflow commands naming each failed test in a shard.
+
+    One line per failed test, title first so the run page shows
+    the test id, the message saying which shard carries the dump.
+    Actions keeps the first ten error annotations of a step; the
+    full list is still in the log above them.
+    """
+    lines = []
+    for test_id in failed_tests(output):
+        title = test_id.translate(_ANNOTATION_UNSAFE)
+        message = ("unittest failed in shard %d; its output is above"
+                   % shard).translate(_ANNOTATION_UNSAFE)
+        lines.append("::error title=%s::%s" % (title, message))
+    return lines
+
+
+def passing_tail(output, durations):
+    """What a passing shard reports: the summary, or the durations block.
+
+    Without durations the last four lines (the separator, "Ran N
+    tests", a blank, and OK) are the whole story. With durations
+    the block unittest prints before "Ran" is the story, so the
+    report starts at its header and runs to the end.
+    """
+    text = output.strip()
+    if durations:
+        where = text.find(_DURATIONS_HEADER)
+        if where >= 0:
+            return text[where:]
+    return "\n".join(text.splitlines()[-4:])
+
+
+def run_shards(shards, top_level_dir, durations=None, annotate=None):
     """Run each shard as a unittest subprocess; return exit code.
 
     Output is captured per shard and printed when the shard
@@ -200,20 +285,33 @@ def run_shards(shards, top_level_dir):
     the shards after it or changes the verdict. Every file handle
     is closed in a finally, whatever printing does, and the temp
     directory's cleanup tolerates refusal instead of crashing.
+
+    ``durations`` asks each shard for its slowest tests (see
+    durations_args). ``annotate`` None means "when under Actions";
+    True or False forces it. Annotations are emitted after a
+    failed shard's dump and never affect the exit code.
     """
+    if annotate is None:
+        annotate = under_actions()
+    extra = durations_args(durations)
+    if durations and not extra:
+        _emit("durations: unittest --durations needs Python 3.12+; "
+              "this is %d.%d, running without it"
+              % (sys.version_info[0], sys.version_info[1]))
     kwargs = {}
     if sys.version_info >= (3, 10):
         kwargs["ignore_cleanup_errors"] = True
     tmp = tempfile.TemporaryDirectory(prefix="hp-test-shards-", **kwargs)
     procs = []
     failed = []
+    started = time.monotonic()
     try:
         for i, shard in enumerate(shards):
             out_path = os.path.join(tmp.name, "shard-%d.log" % i)
             fh = open(out_path, "wb")
             try:
                 proc = subprocess.Popen(
-                    [sys.executable, "-m", "unittest"] + shard,
+                    [sys.executable, "-m", "unittest"] + extra + shard,
                     cwd=top_level_dir, stdout=fh,
                     stderr=subprocess.STDOUT,
                     env=_child_env())
@@ -230,6 +328,7 @@ def run_shards(shards, top_level_dir):
                 rc = None
             finally:
                 fh.close()
+            elapsed = time.monotonic() - started
             if rc != 0:
                 failed.append(i)
             try:
@@ -237,11 +336,15 @@ def run_shards(shards, top_level_dir):
                           errors="replace") as rf:
                     output = rf.read()
                 if rc != 0:
-                    _emit("=== shard %d FAILED (exit %s) ===\n%s"
-                          % (i, rc, output))
+                    _emit("=== shard %d FAILED (exit %s) ===\n(%.1fs)\n%s"
+                          % (i, rc, elapsed, output))
+                    if annotate:
+                        for line in annotations_for(output, i):
+                            _emit_quietly(line)
                 else:
-                    tail = "\n".join(output.strip().splitlines()[-4:])
-                    _emit("shard %d: OK\n%s" % (i, tail))
+                    _emit("shard %d: OK in %.1fs\n%s"
+                          % (i, elapsed,
+                             passing_tail(output, bool(extra))))
             except Exception:
                 _emit_quietly(
                     "shard %d: its captured output could not be printed"
@@ -262,10 +365,15 @@ def main(argv=None):
                         help="worker processes (default: CPU count)")
     parser.add_argument("--start-dir", default="tests")
     parser.add_argument("--top-level-dir", default=".")
+    parser.add_argument("--durations", type=int, default=0, metavar="N",
+                        help="each shard lists its N slowest tests "
+                             "(unittest --durations; Python 3.12+)")
     parser.add_argument("modules", nargs="*",
                         help="explicit modules to run instead of "
                              "discovering the whole suite")
     args = parser.parse_args(argv)
+    if args.durations < 0:
+        parser.error("--durations must be >= 0")
 
     if args.modules:
         counts = {mod: 1 for mod in args.modules}
@@ -280,7 +388,7 @@ def main(argv=None):
     _emit("running %d test(s) from %d module(s) in %d shard(s)"
           % (total, len(counts), len(shards)))
     started = time.monotonic()
-    rc = run_shards(shards, args.top_level_dir)
+    rc = run_shards(shards, args.top_level_dir, durations=args.durations)
     _emit("sharded run finished in %.1fs (exit %d)"
           % (time.monotonic() - started, rc))
     return rc

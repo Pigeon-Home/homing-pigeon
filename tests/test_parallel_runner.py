@@ -11,6 +11,7 @@ import contextlib
 import importlib.util
 import io
 import os
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -266,6 +267,128 @@ class MainContractTest(unittest.TestCase):
             rc = rtp.main(["--jobs", "2", "--top-level-dir", d,
                            "test_alpha", "test_gamma"])
         self.assertEqual(rc, 1)
+
+
+# Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c
+class ReadableFromTheRunPageTest(unittest.TestCase):
+    """A red or slow Windows job must be readable without its log.
+
+    Six days of run history (docs/reports/v3.12.55/ci-failures.md)
+    had 257 red Windows suite jobs whose only annotation was
+    "Process completed with exit code 1": the failing test's name
+    lived in a log nobody opened. These pin the two additions:
+    failed tests become ::error annotations under Actions (and
+    only there), and --durations reaches each shard and survives
+    into a passing shard's report along with its wall time.
+    """
+
+    _DUMP = (
+        "FAIL: test_bad (test_gamma.T.test_bad)\n"
+        "----\n"
+        "AssertionError: False is not true\n"
+        "ERROR: test_boom (tests.test_x.Y.test_boom)\n"
+        "FAIL: test_bad (test_gamma.T.test_bad)\n"
+    )
+
+    def test_failed_tests_are_named_once_each_in_order(self):
+        self.assertEqual(rtp.failed_tests(self._DUMP),
+                         ["test_gamma.T.test_bad", "tests.test_x.Y.test_boom"])
+        self.assertEqual(rtp.failed_tests("Ran 3 tests\n\nOK\n"), [])
+
+    def test_annotations_name_the_test_and_the_shard(self):
+        lines = rtp.annotations_for(self._DUMP, 2)
+        self.assertEqual(len(lines), 2)
+        self.assertTrue(lines[0].startswith("::error title=test_gamma.T.test_bad::"))
+        self.assertIn("shard 2", lines[0])
+        # Workflow-command syntax: the message carries no raw newline
+        # and the title no raw colon or comma.
+        for line in lines:
+            self.assertNotIn("\n", line)
+            self.assertEqual(line.count("::"), 2)
+
+    def test_annotation_escapes_what_the_parser_would_eat(self):
+        dump = "FAIL: test_a (mod.K.test_a)\n"
+        head = rtp.annotations_for(dump, 0)[0].split("::")[1]
+        self.assertEqual(head, "error title=mod.K.test_a")
+        self.assertEqual("a:b,c%d\n".translate(rtp._ANNOTATION_UNSAFE),
+                         "a%3Ab%2Cc%25d ")
+
+    def test_under_actions_reads_the_environment(self):
+        self.assertTrue(rtp.under_actions({"GITHUB_ACTIONS": "true"}))
+        self.assertFalse(rtp.under_actions({"GITHUB_ACTIONS": "false"}))
+        self.assertFalse(rtp.under_actions({}))
+
+    def test_a_failed_shard_is_annotated_under_actions_only(self):
+        if os.name == "nt":
+            self.skipTest("temp test file leaks into discovery on Windows")
+        for env, expected in (({"GITHUB_ACTIONS": "true"}, True),
+                              ({}, False)):
+            fake = io.StringIO()
+            with tempfile.TemporaryDirectory() as d:
+                _write(d, "test_alpha.py", _PASS)
+                _write(d, "test_gamma.py", _FAIL)
+                with mock.patch.dict(os.environ, env, clear=False), \
+                        contextlib.redirect_stdout(fake):
+                    if "GITHUB_ACTIONS" not in env:
+                        os.environ.pop("GITHUB_ACTIONS", None)
+                    rc = rtp.main(["--jobs", "2", "--top-level-dir", d,
+                                   "test_alpha", "test_gamma"])
+            self.assertEqual(rc, 1)
+            text = fake.getvalue()
+            self.assertIn("=== shard 1 FAILED (exit 1) ===", text)
+            self.assertEqual(
+                "::error title=test_gamma.T.test_bad::" in text, expected,
+                "env=%r\n%s" % (env, text))
+
+    def test_durations_flag_is_version_gated(self):
+        self.assertEqual(rtp.durations_args(0), [])
+        self.assertEqual(rtp.durations_args(None), [])
+        self.assertEqual(rtp.durations_args(7, (3, 11, 9)), [])
+        self.assertEqual(rtp.durations_args(7, (3, 12, 0)),
+                         ["--durations", "7"])
+
+    def test_passing_tail_keeps_the_durations_block(self):
+        output = ("test_one ... ok\n\nSlowest test durations\n----\n"
+                  "0.010s     test_one (m.T.test_one)\n\n----\n"
+                  "Ran 1 test in 0.010s\n\nOK\n")
+        self.assertTrue(rtp.passing_tail(output, True)
+                        .startswith("Slowest test durations"))
+        self.assertIn("OK", rtp.passing_tail(output, True))
+        self.assertEqual(rtp.passing_tail(output, False).splitlines()[-1],
+                         "OK")
+        self.assertEqual(len(rtp.passing_tail(output, False).splitlines()),
+                         4)
+        # No block in the output (a shard that printed none): fall
+        # back to the summary tail instead of an empty report.
+        self.assertEqual(rtp.passing_tail("----\nRan 1 test\n\nOK\n", True)
+                         .splitlines()[-1], "OK")
+
+    def test_a_passing_shard_reports_its_wall_time_and_durations(self):
+        fake = io.StringIO()
+        with tempfile.TemporaryDirectory() as d:
+            _write(d, "test_alpha.py", _PASS2)
+            with contextlib.redirect_stdout(fake):
+                rc = rtp.main(["--jobs", "1", "--top-level-dir", d,
+                               "--durations", "5", "test_alpha"])
+        self.assertEqual(rc, 0)
+        text = fake.getvalue()
+        self.assertRegex(text, r"shard 0: OK in \d+\.\ds")
+        if sys.version_info >= (3, 12):
+            # The block is kept whole: its header, through the
+            # summary lines unittest prints after it. (Sub-millisecond
+            # tests are hidden by unittest without -v, so a toy suite
+            # shows the header and the hidden-count note, not ids.)
+            self.assertIn("Slowest test durations", text)
+            self.assertLess(text.index("Slowest test durations"),
+                            text.index("Ran 2 tests"))
+        else:
+            self.assertIn("running without it", text)
+
+    def test_negative_durations_is_a_usage_error(self):
+        with self.assertRaises(SystemExit) as cm, \
+                contextlib.redirect_stderr(io.StringIO()):
+            rtp.main(["--durations", "-1"])
+        self.assertEqual(cm.exception.code, 2)
 
 
 if __name__ == "__main__":

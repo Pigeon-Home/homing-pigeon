@@ -165,6 +165,46 @@ class RuleTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertNotIn("::error::", out)
 
+    # Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c
+    def test_annotations_spend_their_ten_slots_on_test_ids_first(self):
+        # Twelve exception-looking lines come first in log order (a
+        # fixture dumping its deliberately red shard), then the one
+        # real failure. The real FAIL: line must be annotated; the
+        # noise fills whatever of the ten slots remain.
+        noise = "".join("AssertionError: fixture noise %d\n" % i
+                        for i in range(12))
+        log = (noise +
+               "FAIL: test_x (tests.m.T.test_x)\n"
+               "AssertionError: 1 != 0 : the real one\n"
+               "Ran 9 tests in 0.0s\nFAILED (failures=1)\n")
+        got = SG.failures_in(log.splitlines())
+        self.assertEqual(len(got), 10)
+        self.assertEqual(got[0], "FAIL: test_x (tests.m.T.test_x)")
+        self.assertIn("AssertionError: fixture noise 0", got)
+        rc, out = self._run_args(log, ["--annotate"])
+        self.assertIn("::error::FAIL: test_x (tests.m.T.test_x)", out)
+
+    def test_a_green_verdict_annotates_no_exception_lines(self):
+        # The same fixture noise in a log whose suite passed: a
+        # passing run page must not show red annotations.
+        log = ("AssertionError: False is not true\n"
+               "BrokenPipeError: [Errno 32] Broken pipe\n"
+               "Ran 9 tests in 0.0s\nOK\n")
+        self.assertEqual(SG.failures_in(log.splitlines()), [])
+        rc, out = self._run_args(log, ["--annotate"])
+        self.assertEqual(rc, 0)
+        self.assertNotIn("::error::", out)
+        # The CI suite's own verdict carries skips: still green.
+        log = ("AssertionError: False is not true\n"
+               "Ran 4549 tests in 300.0s\nOK (skipped=22)\n")
+        self.assertEqual(SG.failures_in(log.splitlines()), [])
+        # A FAILED verdict annotates; so does a log with no verdict
+        # at all (a suite that died before printing one).
+        for tail in ("Ran 1 test in 0.0s\nFAILED (errors=1)\n", ""):
+            log = "AssertionError: boom\n" + tail
+            self.assertEqual(SG.failures_in(log.splitlines()),
+                             ["AssertionError: boom"])
+
     def test_empty_log_passes(self):
         rc, out = self._run("", "bwrap")
         self.assertEqual(rc, 0)

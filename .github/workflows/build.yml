@@ -77,10 +77,15 @@ jobs:
       # pipefail: the suite's own exit code is the step's. A bare
       # `shell: bash` drops the runner's default pipefail, and then
       # tee's success hides a red suite.
+      # --durations lists the slowest tests after the run (Python
+      # 3.12+), so the suite's long pole is readable from the log
+      # without profiling. The block lands between the failure
+      # dumps and the "Ran N tests" line; skip_guard and
+      # make_snapshot read neither shape differently.
       - name: run the suite
         run: |
           set -o pipefail
-          python -m unittest discover -s tests -t . -v 2>&1 | tee test-output.log
+          python -m unittest discover -s tests -t . -v --durations 25 2>&1 | tee test-output.log
       # A skipped proof is green from the outside. On this box the
       # sandbox proofs must run; any other skip is listed, not fatal.
       # --annotate is the piece worth keeping from diag/bwrap-suite:
@@ -127,12 +132,22 @@ jobs:
     # reached either mirror that way). The job still shows failed
     # in the run when it fails -- the signal stays loud; it just
     # cannot block a publish any more.
-    # timeout-minutes is the hang guard. Without it a stuck mutmut
-    # holds the tag run in_progress for the platform default of
-    # 6 hours, after the mirrors have already published. 40 minutes
-    # is the measured run plus headroom.
+    # No timeout-minutes, by the owner's decision (2026-10-22,
+    # Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c): every
+    # timer in the pipeline is off while the slow and the red
+    # are measured, so a run shows how long it really takes
+    # instead of where a guard cut it. This was the pipeline's
+    # only explicit job timer (40 minutes, the measured mutmut
+    # run plus headroom; a stuck mutmut once held a tag run
+    # in_progress for the platform's 6 hours after the mirrors
+    # had published). The platform default of 360 minutes still
+    # applies; nothing on a hosted runner can go longer. To end
+    # the experiment, put `timeout-minutes: 40` back here and
+    # flip tests/test_build_config.py
+    # test_mutation_cannot_hold_a_tag_run_for_hours back to
+    # asserting it. The six-day run history that motivated the
+    # measurement is docs/reports/v3.12.55/ci-failures.md.
     continue-on-error: true
-    timeout-minutes: 40
     if: startsWith(github.ref, 'refs/tags/v')
     needs: test
     runs-on: ubuntu-latest
@@ -167,8 +182,12 @@ jobs:
       # serial). It runs sharded across the runner's cores by
       # module test count; the shard runner discovers the same
       # suite, runs every test exactly once, and fails if any
-      # shard fails or if discovery comes up empty.
-      - run: python tools/run_tests_parallel.py --jobs 4
+      # shard fails or if discovery comes up empty. --durations
+      # makes each shard list its slowest tests; under Actions the
+      # runner also annotates every failed test by name, so a red
+      # Windows job names its tests on the run page (the six-day
+      # history had 257 of them with nothing but "exit code 1").
+      - run: python tools/run_tests_parallel.py --jobs 4 --durations 15
       - run: pip install -c requirements-ci.txt pyinstaller
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md;pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.extsources --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.learning --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test --hidden-import runner.transports --hidden-import runner.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.dtlsproto --hidden-import runner.jobcrypto --hidden-import runner.protocol_v2 --hidden-import runner.personal_docs --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --add-data "runner/transport_extensions;pigeon-transport-extensions"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py --hidden-import runner._version --hidden-import runner.personal_docs

@@ -43,6 +43,16 @@ def _job_block(workflow, job):
     return m.group(1)
 
 
+def _uncommented(text):
+    """The YAML with its comment lines dropped: what Actions reads.
+
+    A pin on a key's absence must not trip on prose that names the
+    key while explaining why it is gone.
+    """
+    return "\n".join(ln for ln in text.splitlines()
+                     if not ln.lstrip().startswith("#"))
+
+
 class HiddenImportSyncTest(unittest.TestCase):
     def test_scan_finds_the_dynamic_loads(self):
         # Self-check: if the scan ever matches nothing, the sync test
@@ -134,12 +144,35 @@ class MutationGateTest(unittest.TestCase):
         self.assertIn("continue-on-error: true", block)
 
     def test_mutation_cannot_hold_a_tag_run_for_hours(self):
-        # A stuck mutmut used to leave the tag run in_progress for
-        # the platform default of 6 hours after the mirrors had
-        # already published. The measured run is about 25 minutes;
-        # the cap is that plus headroom, not the platform default.
+        # Inverted on purpose (owner's call, 2026-10-22, Agent-Stamp
+        # 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c): every pipeline timer
+        # is off while the slow and the red are measured, and this
+        # was the only one. A stuck mutmut can now hold a tag run
+        # for the platform's 6 hours; that is the point -- the run
+        # then shows how long it really took instead of where the
+        # guard cut it. The pin keeps the experiment deliberate: a
+        # timer that comes back has to come back through this test.
+        # Measured history: docs/reports/v3.12.55/ci-failures.md.
+        # When the experiment ends, restore `timeout-minutes: 40`
+        # (the measured 25-minute run plus headroom) in build.yml
+        # and flip this back to assertIn.
         block = _job_block(_workflow(), "mutation")
-        self.assertIn("timeout-minutes: 40", block)
+        self.assertNotIn("timeout-minutes", _uncommented(block))
+
+    def test_no_job_in_the_pipeline_carries_a_timer(self):
+        # The experiment is "all timers off", not "that one timer
+        # off": no job in any workflow may carry timeout-minutes
+        # while it runs. Platform defaults (360 minutes per job)
+        # are the only ceiling.
+        folder = os.path.join(_root(), ".github", "workflows")
+        names = sorted(n for n in os.listdir(folder)
+                       if n.endswith((".yml", ".yaml")))
+        self.assertGreaterEqual(len(names), 5, names)
+        for name in names:
+            with open(os.path.join(folder, name), encoding="utf-8") as fh:
+                text = fh.read()
+            self.assertNotIn("timeout-minutes", _uncommented(text),
+                             "%s carries a job timer" % name)
 
     def test_real_gates_are_not_continue_on_error(self):
         # The mirror image of the pin above: if a job that gates
@@ -713,8 +746,9 @@ class PipelineLessonsTest(unittest.TestCase):
         # comment explains it is a signal, not a gate. Anywhere else
         # it hides a failure.
         for name in self.ALL:
-            lines = [l for l in _workflow_text(name).splitlines()
-                     if "continue-on-error" in l and not l.strip().startswith("#")]
+            lines = [ln for ln in _workflow_text(name).splitlines()
+                     if "continue-on-error" in ln
+                     and not ln.strip().startswith("#")]
             if name == "build.yml":
                 self.assertEqual(len(lines), 1, lines)
                 block = _job_block(_workflow(), "mutation")

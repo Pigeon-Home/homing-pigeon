@@ -44,16 +44,39 @@ _EXC_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*Error|[A-Za-z_]*Exception|"
 
 def failures_in(lines):
     """unittest's own failure lines and the exception lines that
-    follow them -- the parts of a log worth an annotation."""
-    out = []
+    follow them -- the parts of a log worth an annotation.
+
+    Actions keeps ten error annotations per step, so the ten are
+    spent on test ids first: every FAIL:/ERROR: line, in log order,
+    then exception lines fill what is left. A -v log of a 4,500-test
+    suite carries exception text that is not a failure (a fixture
+    dumping a deliberately red shard, a test printing the traceback
+    it expects), and in log order those used to take the ten slots
+    before the real FAIL: lines near the end -- 126 of 137 red
+    suite runs over six days named no test in their annotations
+    (docs/reports/v3.12.55/ci-failures.md). A log whose verdict
+    line is OK -- bare, or OK with unittest's parenthetical
+    (skipped=N, expected failures=N) -- has no failure to name and
+    gets nothing.
+    """
+    for raw in lines:
+        verdict = raw.rstrip("\r\n").strip()
+        if verdict == "OK" or verdict.startswith("OK ("):
+            return []
+    fails = []
+    excs = []
     seen = set()
     for raw in lines:
         line = raw.rstrip("\r\n")
-        if _FAIL_RE.match(line) or _EXC_RE.match(line):
-            if line not in seen:
-                seen.add(line)
-                out.append(line)
-    return out[:10]
+        if line in seen:
+            continue
+        if _FAIL_RE.match(line):
+            seen.add(line)
+            fails.append(line)
+        elif _EXC_RE.match(line):
+            seen.add(line)
+            excs.append(line)
+    return (fails + excs)[:10]
 
 
 def forbidden(reasons, needles):
@@ -118,9 +141,9 @@ def main(argv=None):
              "is not a proof.")
         rc = 1
     if args.require_ok:
-        ran = [m for m in (_RAN_RE.match(l) for l in lines) if m]
+        ran = [m for m in (_RAN_RE.match(ln) for ln in lines) if m]
         count = int(ran[-1].group(1)) if ran else 0
-        verdict_ok = any(l.strip() == "OK" for l in lines)
+        verdict_ok = any(ln.strip() == "OK" for ln in lines)
         if count <= 0:
             note("\nREQUIRE-OK: no `Ran N tests` line with N > 0 "
                  "(the suite did not run, or discovery found nothing)")
