@@ -86,8 +86,12 @@ jobs:
           # A superseded run (cancelled by a newer push) leaves its
           # own check run beside the live one; the newest per job
           # is the verdict.
+          # A cancelled run was superseded by concurrency; it is not
+          # a verdict on the commit and is ignored.
           newest = {}
           for r in json.load(open("runs.json")):
+              if r["conclusion"] == "cancelled":
+                  continue
               if r["name"] not in newest or r["id"] > newest[r["name"]]["id"]:
                   newest[r["name"]] = r
           runs = list(newest.values())
