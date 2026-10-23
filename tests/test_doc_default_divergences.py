@@ -1150,5 +1150,66 @@ class TestBooleanReviewScanBytesDefaultsTo65536(unittest.TestCase):
             _review_scan_bytes({"review_scan_bytes": True}), 65536)
 
 
+class TestBooleanRetentionDaysDefaultsTo7(unittest.TestCase):
+    """Divergence: output_retention_days set to a boolean reads
+    as 1 day (true) or as indefinite retention (false) instead
+    of the documented 7-day default.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 33):
+        "`output_retention_days` -- how long retained outputs
+        are kept for later queries. Default 7. Zero (or
+        negative) keeps them indefinitely: nothing is pruned
+        and no retained output is reported expired."
+        The reader's own docstring (runner.runner
+        _retention_days) states the fallback contract the
+        claim implies: "Absent, None, or unparseable values
+        fall back to 7."
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 07:26 PDT tick) exercised
+        runner.runner._retention_days -- the single reader
+        every retention consumer takes the window from --
+        with the key left unset and varied around it --
+        omitted, explicit None, a non-numeric string
+        ("bogus"), float("inf"), 0, -3, 30, "30", 2.5, and
+        the booleans True and False -- checking the window
+        each call returned.
+
+    (c) Behavior actually observed: omitted, None, "bogus",
+        and infinity all return the documented default 7;
+        0 and -3 return as-is (indefinite, as documented);
+        30, "30", and 2.5 return 30, 30, and 2. The booleans
+        do not fall back: _retention_days computes int(raw)
+        with no boolean guard, so True returns 1 -- retained
+        outputs older than a single day are pruned and
+        reported expired, a week early -- and False returns
+        0, which the doc reserves for an explicit zero:
+        indefinite retention and unbounded growth of the
+        retained-output store from a boolean typo. Sibling
+        readers exclude booleans explicitly --
+        runner.runner._cfg_size ("Booleans are not sizes"),
+        runner.remediation._pos_int, and the inference
+        config validator's `is True` refusal -- only this
+        reader lets one through as a number. Observed on
+        2026-10-23: _retention_days({"output_retention_days":
+        True}) returned 1 and _retention_days(
+        {"output_retention_days": False}) returned 0.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def test_true_retention_days_defaults_to_7(self):
+        from runner.runner import _retention_days
+        self.assertEqual(
+            _retention_days({"output_retention_days": True}), 7)
+
+    def test_false_retention_days_defaults_to_7(self):
+        from runner.runner import _retention_days
+        self.assertEqual(
+            _retention_days({"output_retention_days": False}), 7)
+
+
 if __name__ == "__main__":
     unittest.main()
