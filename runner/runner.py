@@ -133,6 +133,7 @@ _extsources = _load_mod("runner.extsources", "extsources")
 _jobcrypto = _load_mod("runner.jobcrypto", "jobcrypto")
 _protocol_v2 = _load_mod("runner.protocol_v2", "protocol_v2")
 _personal_docs = _load_mod("runner.personal_docs", "personal_docs")
+_platformcard = _load_mod("runner.platformcard", "platformcard")
 _mailbox_lib = _load_mod("runner.mailbox", "mailbox")
 if _mailbox_lib is not None:
     # The mailbox client library lives in runner/mailbox.py; the
@@ -3883,6 +3884,24 @@ def platform_interpreter():
     return ["sh"]
 
 
+def pong_platform(cfg):
+    """The platform card a ping's result carries (PROTOCOL 3.2), at
+    the owner's `pong_platform` tier, or None at `none` (or when the
+    card module is absent). The protocol versions named are the ones
+    this runner opens: version 1 always, version 2 when protocol_v2
+    is on. The same card, same tiers, as the DTLS greeting."""
+    if _platformcard is None:
+        return None
+    tier, problem = _platformcard.tier_of(cfg, "pong_platform")
+    if problem or tier == "none":
+        return None
+    versions = [PROTOCOL_VERSION]
+    if _protocol_v2 is not None and _protocol_v2.enabled(cfg):
+        versions.append(2)
+    return _platformcard.build_card(tier, cfg, protocol_versions=versions,
+                                    runner_version=__version__)
+
+
 def script_filename(interpreter) -> str:
     """Name the staged script so the interpreter will accept -File.
 
@@ -4393,9 +4412,13 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     kind = job.get("kind")
 
     if kind == "ping":
-        return {"stdout": "pong", "stderr": "", "exit_code": 0,
-                "timed_out": False, "stdout_truncated": False,
-                "stderr_truncated": False, "duration_sec": 0.0}
+        out = {"stdout": "pong", "stderr": "", "exit_code": 0,
+               "timed_out": False, "stdout_truncated": False,
+               "stderr_truncated": False, "duration_sec": 0.0}
+        card = pong_platform(cfg)
+        if card:
+            out["platform"] = card
+        return out
 
     if kind != "exec":
         raise JobRejected(f"unknown kind: {kind}")
@@ -7320,6 +7343,13 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             scan = r.get("artifact_scan")
             if isinstance(scan, list) and scan:
                 result["artifact_scan"] = [str(item)[:200] for item in scan[:20]]
+            # The platform card (PROTOCOL 3.2) answers a ping at the
+            # owner's tier. It is not job output, so the result
+            # policy's view does not shape it; the tier is the
+            # owner's ceiling for it.
+            card = r.get("platform")
+            if job.get("kind") == "ping" and isinstance(card, dict):
+                result["platform"] = card
             # Remediation (PROTOCOL 3.2): the member rides the
             # result when remediation acted on the job or its
             # outputs. A confinement escape the post-run snapshot
@@ -7570,6 +7600,10 @@ def _validate_size_caps(cfg):
         if isinstance(cap, bool) or not isinstance(cap, int) or cap < 0:
             return ("%s must be a non-negative integer (got %r)"
                     % (key, cap))
+    if _platformcard is not None and "pong_platform" in cfg:
+        _tier, problem = _platformcard.tier_of(cfg, "pong_platform")
+        if problem:
+            return problem
     return None
 
 

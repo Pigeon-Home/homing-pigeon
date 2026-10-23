@@ -563,17 +563,35 @@ class GreetingTest(unittest.TestCase):
             self.assertEqual(obj["v"], PROTOCOL_VERSION)
 
     def test_family_tier_is_the_default_shape(self):
+        # The family tier is what a sender needs to pick an
+        # interpreter and a protocol version, and nothing more.
         obj = json.loads(dtls_ext.build_greeting("family"))
         self.assertEqual(obj["disclosure"], "family")
-        self.assertEqual(set(obj["platform"]), {"os_family"})
+        self.assertEqual(set(obj["platform"]),
+                         {"os_family", "default_interpreter",
+                          "protocol_versions"})
         self.assertIn(obj["platform"]["os_family"],
                       ("windows", "macos", "linux", "other"))
+        self.assertEqual(obj["platform"]["protocol_versions"], [1])
+        self.assertTrue(obj["platform"]["default_interpreter"])
+
+    def test_the_card_follows_the_config(self):
+        obj = json.loads(dtls_ext.build_greeting(
+            "family", {"protocol_v2": True,
+                       "default_interpreter": ["bash"]}))
+        self.assertEqual(obj["platform"]["protocol_versions"], [1, 2])
+        self.assertEqual(obj["platform"]["default_interpreter"], ["bash"])
+        obj = json.loads(dtls_ext.build_greeting(
+            "family", {"protocol_v2": "yes", "default_interpreter": "sh"}))
+        self.assertEqual(obj["platform"]["protocol_versions"], [1])
+        self.assertNotEqual(obj["platform"]["default_interpreter"], "sh")
 
     def test_standard_tier_adds_release_and_python(self):
         obj = json.loads(dtls_ext.build_greeting("standard"))
         self.assertEqual(
             set(obj["platform"]),
-            {"os_family", "os_release", "python_version"})
+            {"os_family", "default_interpreter", "protocol_versions",
+             "os_release", "python_version"})
 
     def test_full_tier_adds_a_bounded_tools_summary(self):
         obj = json.loads(dtls_ext.build_greeting("full"))
@@ -664,7 +682,8 @@ class PipeSocketTest(unittest.TestCase):
         pipe, channel, client, sock = self._session()
         self.assertEqual(client.greeting["disclosure"], "family")
         self.assertEqual(
-            set(client.greeting["platform"]), {"os_family"})
+            set(client.greeting["platform"]),
+            {"os_family", "default_interpreter", "protocol_versions"})
         jid = str(uuid.uuid4())
         for dg in client.send_app(
                 _job_envelope(jid).encode("utf-8")):

@@ -162,6 +162,8 @@ The reference default is email only: `transports` absent means
   "stderr_truncated": false,
   "duration_sec": 12.345,
   "runner": "DESKTOP-ABC123",
+  "platform": {"disclosure": "family", "os_family": "linux",
+               "default_interpreter": ["sh"], "protocol_versions": [1]},
   "oracle_opinion": {"mode": "repair", "verdict": "likely_failure",
                      "note": "..."},
   "remediation": {"mode": "deterministic", "authority": "tripwire",
@@ -172,6 +174,26 @@ The reference default is email only: `transports` absent means
 }
 ```
 
+- `platform`: OPTIONAL, and only on the result to a `ping`. The
+  platform card: what the box says about itself, at the tier its
+  owner set with `pong_platform` (`none`, `family`, `standard`,
+  `full`; default `family`). Receivers MUST ignore it if they do not
+  implement it, and an `exec` result never carries it. At `family`
+  it is `{"disclosure": "family", "os_family": "windows"|"macos"|
+  "linux"|"other", "default_interpreter": [...], "protocol_versions":
+  [1, ...]}` -- enough to choose an interpreter and a protocol
+  version before the first real job, and nothing a port scan would
+  not tell. `standard` adds `os_release`, `python_version`, and
+  `runner_version`; `full` adds `path_tools`, a fixed list of tool
+  names mapped to whether each is on PATH. `none` sends the bare
+  pong. The tier is the owner's ceiling: no job member widens it.
+  The card leaves only in a result, which answers a verified job, so
+  an unauthenticated sender learns nothing from it. The DTLS
+  greeting (draft Section 20) carries the same card at its own tier
+  (`dtls_greeting`); the two describe the box the same way.
+  `protocol_versions` is also how a sender discovers that a runner
+  opens version 2 messages (`docs/ietf/draft-homing-pigeon-v2-00.md`)
+  without a negotiation: ping first, then send what the box opens.
 - `timed_out: true` implies the process tree was killed; `exit_code` is -1.
 - `exit_code` -2 means the job was rejected before execution (validation
   failure: unknown kind, SHA384 mismatch, unsafe file name...); details in

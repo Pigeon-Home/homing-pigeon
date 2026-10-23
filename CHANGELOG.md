@@ -30,6 +30,15 @@ facts a reader may need to cite. Git history carries the rest.
   `tools/vendor_upstreams.py`, and their tests are retired; the
   build's offline verify step went with them (`fetch_upstream.py
   --check` was already the gate).
+- **The pong carries a platform card.** A `ping` job's result now
+  carries `platform` at the owner's `pong_platform` tier (default
+  `family`: `os_family`, `default_interpreter`, `protocol_versions`;
+  `standard` and `full` add more; `none` sends the bare pong). A
+  sender learns what box it is talking to, and whether it opens
+  version 2, before the first real job. The DTLS greeting now
+  carries the same card (`runner/platformcard.py`), so the two
+  bindings describe the box the same way; its `family` tier gained
+  `default_interpreter` and `protocol_versions`. PROTOCOL.md 3.2.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 

@@ -24,6 +24,8 @@
   "_transport_dtls": "the DTLS session binding (a binding of protocol version 1): a UDP listener, off unless \"dtls\" is in transports; the shared secret is the session PSK; ephemeral-only key exchange (forward secrecy enforced)",
   "dtls_greeting": "family",
   "_dtls_greeting": "DTLS greeting disclosure tier: none / family (default) / standard / full; the runner chooses, the client cannot widen it",
+  "pong_platform": "family",
+  "_pong_platform": "the platform card on a ping's result (PROTOCOL.md 3.2): none / family (default: os_family, default_interpreter, protocol_versions) / standard (+ os_release, python_version, runner_version) / full (+ path_tools); the same card and tiers as dtls_greeting; the owner chooses, a job cannot widen it",
   "_transport_nats": "core NATS only (no JetStream): job envelopes arrive on the subject; results publish to <result_subject_prefix>.<job_id>. Broker credentials (user/password or token; config keys win over URL userinfo) are this transport's first authorization gate and are REQUIRED unless allow_unauthenticated is true; the HMAC body signature is the second gate",
   "smtp_host": "smtp.gmail.com",
   "smtp_port": 587,

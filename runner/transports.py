@@ -622,8 +622,13 @@ def _runtime_config(cfg, name, base_dir, paths):
                     out[key] = cfg[key]
         if name == "dtls":
             out.update(_dtls_secret_material(cfg))
-            if "dtls_greeting" in cfg:
-                out["dtls_greeting"] = cfg["dtls_greeting"]
+            # The greeting's platform card names the default
+            # interpreter and the protocol versions this runner
+            # speaks (runner/platformcard.py), so those two ride too.
+            for key in ("dtls_greeting", "default_interpreter",
+                        "protocol_v2"):
+                if key in cfg:
+                    out[key] = cfg[key]
     return out
 
 
@@ -980,7 +985,7 @@ def _config_signature(cfg, base_dir):
         # so a secret or greeting change must restart it.
         for key in ("shared_secret", "shared_secret_file",
                     "additional_secrets", "additional_secrets_files",
-                    "dtls_greeting"):
+                    "dtls_greeting", "default_interpreter", "protocol_v2"):
             if key in cfg:
                 keys[key] = cfg[key]
     try:

@@ -56,45 +56,33 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))))
 
 from runner import dtlsproto  # noqa: E402
+from runner import platformcard as _platformcard  # noqa: E402
 from runner import security as _security  # noqa: E402
 from runner.transport_extensions import channel as ch  # noqa: E402
 
 DEFAULT_PORT = 20220
-GREETING_TIERS = ("none", "family", "standard", "full")
-_PATH_TOOLS = ("sh", "bash", "powershell", "pwsh", "python3",
-               "python", "curl", "git", "tar")
+GREETING_TIERS = _platformcard.TIERS
 _JOB_ID_RE = re.compile(
     r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)", re.I)
 
 
-def _os_family():
-    p = sys.platform
-    if p.startswith("win"):
-        return "windows"
-    if p == "darwin":
-        return "macos"
-    if p.startswith("linux"):
-        return "linux"
-    return "other"
-
-
-def build_greeting(tier):
+def build_greeting(tier, cfg=None):
     """The greeting application message for a disclosure tier,
     as bytes. The object always goes out (it is the session's
     first application message at every tier); `tier` decides
-    how much platform information rides in it."""
+    how much platform information rides in it. The card is the
+    one a ping's result carries (runner/platformcard.py), so the
+    two bindings describe the box the same way."""
     obj = {"type": "greeting", "transport": "dtls", "v": 1,
            "disclosure": tier}
-    if tier != "none":
-        plat = {"os_family": _os_family()}
-        if tier in ("standard", "full"):
-            plat["os_release"] = platform.release()
-            plat["python_version"] = platform.python_version()
-        if tier == "full":
-            plat["path_tools"] = {
-                name: bool(shutil.which(name))
-                for name in _PATH_TOOLS}
-        obj["platform"] = plat
+    versions = [1]
+    if isinstance(cfg, dict) and cfg.get("protocol_v2") is True:
+        versions.append(2)
+    card = _platformcard.build_card(tier, cfg, protocol_versions=versions)
+    if card:
+        card = dict(card)
+        card.pop("disclosure", None)
+        obj["platform"] = card
     return (json.dumps(obj, sort_keys=True) + "\n").encode("utf-8")
 
 
@@ -136,7 +124,8 @@ class DtlsPipe:
             cfg.get("shared_secret"), cfg.get("additional_secrets"))
         self.core = dtlsproto.DtlsServerCore(
             secret_lookup=lookup,
-            greeting_for=lambda session: build_greeting(self.tier),
+            greeting_for=lambda session: build_greeting(self.tier,
+                                                        self.cfg),
             log=ch.log)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # bind is config, default every interface. This is how jobs arrive.
