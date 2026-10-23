@@ -2388,5 +2388,69 @@ class TestBooleanDtlsPortDefaultsTo20220(unittest.TestCase):
         self.assertEqual(pipe.port, 20220)
 
 
+class TestBooleanMaxJobAgeDefaultsTo3600(unittest.TestCase):
+    """Divergence: max_job_age_sec set to a boolean reads as a
+    1-second (true) or 0-second (false) freshness window instead
+    of the documented default 3600, so a job issued a minute ago
+    is rejected as stale.
+
+    (a) Doc claim (PROTOCOL.md, section 5, lines 323-325):
+        "`issued_at` parses, carries a timezone, and is within
+        `max_job_age_sec` (default 3600) of the runner's clock
+        (replay / stale protection)."
+
+    (b) How the bug was found: the campaign's doc-default hunt
+        (2026-10-23 tick) exercised runner.runner._issued_at_ok
+        -- the freshness check the verification list names --
+        with max_job_age_sec varied around the documented
+        default -- key omitted, explicit None, a non-numeric
+        string ("bogus"), explicit 3600, and the booleans True
+        and False -- each against a timestamp issued 60 seconds
+        ago, well inside the documented 3600-second window.
+        The zero/negative forms of this same reader are already
+        recorded in TestZeroOrNegativeMaxJobAgeDefaultsTo3600
+        above; this class records the boolean forms.
+
+    (c) Behavior actually observed: omitted, explicit None,
+        "bogus", and explicit 3600 all accept the 60-second-old
+        timestamp. True and False do not fall back:
+        _issued_at_ok computes int(cfg.get("max_job_age_sec",
+        3600)) with a fallback only for unparseable values and
+        no boolean guard, so True returns a 1-second window and
+        False returns 0, and the 60-second-old job is rejected
+        as "issued_at outside allowed window" either way. The
+        same unguarded expression is duplicated at the
+        local-signals and mail handlers' freshness checks.
+        Sibling parsers in this codebase refuse booleans
+        explicitly. This is the known boolean-as-number family.
+        Observed on 2026-10-23: _issued_at_ok with an issued_at
+        60 seconds ago returned (True, '') for omitted, None,
+        "bogus", and 3600, and (False, 'issued_at outside
+        allowed window') for True and for False.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed in
+        the code.
+    """
+
+    def _issued_60s_ago(self):
+        from datetime import datetime, timedelta, timezone
+        return (datetime.now(timezone.utc)
+                - timedelta(seconds=60)).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ")
+
+    def test_true_max_job_age_defaults_to_3600(self):
+        from runner.runner import _issued_at_ok
+        ok, reason = _issued_at_ok(
+            self._issued_60s_ago(), {"max_job_age_sec": True})
+        self.assertTrue(ok, reason)
+
+    def test_false_max_job_age_defaults_to_3600(self):
+        from runner.runner import _issued_at_ok
+        ok, reason = _issued_at_ok(
+            self._issued_60s_ago(), {"max_job_age_sec": False})
+        self.assertTrue(ok, reason)
+
+
 if __name__ == "__main__":
     unittest.main()
