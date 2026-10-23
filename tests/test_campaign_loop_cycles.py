@@ -1208,5 +1208,41 @@ class CampaignLoopCycleTests(unittest.TestCase):
         self._run_cycle(372, 'workdir', 0)
 
 
+    def test_cycle_373_flagread(self):
+        self._run_cycle(373, 'flagread', 0)
+
+    def test_cycle_374_sysstat(self):
+        self._run_cycle(374, 'sysstat', 0)
+
+    def test_cycle_375_exit3(self):
+        self._run_cycle(375, 'exit3', 3)
+
+    def test_cycle_376_shadow(self):
+        self._run_cycle(376, 'shadow', 0)
+
+    def test_cycle_377_clock(self):
+        self._run_cycle(377, 'clock', 0)
+
+    def test_cycle_378_envmark(self):
+        self._run_cycle(378, 'envmark', 0)
+
+    def test_cycle_379_hostinfo(self):
+        self._run_cycle(379, 'hostinfo', 0)
+
+    def test_cycle_380_workdir(self):
+        self._run_cycle(380, 'workdir', 0)
+
+    def test_cycle_381_flagread(self):
+        self._run_cycle(381, 'flagread', 0)
+
+    def test_cycle_382_sysstat(self):
+        self._run_cycle(382, 'sysstat', 0)
+
+    def test_cycle_383_exit3(self):
+        self._run_cycle(383, 'exit3', 3)
+
+    def test_cycle_384_shadow(self):
+        self._run_cycle(384, 'shadow', 0)
+
 if __name__ == "__main__":
     unittest.main()

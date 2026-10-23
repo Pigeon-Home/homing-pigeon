@@ -3393,5 +3393,107 @@ class TestBooleanTailLinesDefaultsTo20(unittest.TestCase):
             self._tail_count({"lines": 0}), 0)
 
 
+
+class TestBooleanSensesLimitDefaultsTo20(unittest.TestCase):
+    """Divergence: a senses query's limit present as a
+    boolean returns 1 alert (true) or every stored alert
+    (false) instead of the default limit of 20 that an
+    omitted or unparseable value gets.
+
+    (a) Doc claim: docs/senses.md (line 322, "Reading
+        signals: the senses query op") shows the senses
+        query with "limit": 20, the value the reader
+        itself uses as its default: runner/runner.py,
+        the senses branch of answer_queries, reads
+        limit=q.get("limit") if isinstance(
+        q.get("limit"), int) else 20 -- an omitted,
+        null, or non-integer limit lands on 20. No
+        document gives a boolean a meaning as a 1-alert
+        cap or as an unlimited read.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 12:06 PDT tick) exercised
+        runner.runner.answer_queries with one senses
+        query over a store holding 25 alerts, varying
+        only limit around the documented default --
+        omitted, explicit None, the string "bogus", a
+        huge integer (10**400), explicit 2, explicit 0,
+        and the booleans True and False -- recording
+        how many alerts each answer carried.
+
+    (c) Behavior actually observed: omitted, None, and
+        "bogus" all return 20 alerts (the documented
+        default); explicit 2 returns 2, as documented;
+        the huge integer returns all 25. True and False
+        do not reach the default: the read is
+        isinstance(q.get("limit"), int), Python's bool
+        is a subclass of int, so True passes as the
+        integer 1 and False passes as the integer 0 --
+        and the store reader then treats 1 as a 1-alert
+        cap and 0, via its out[-0:] slice, as no cap at
+        all. True silently caps the answer at a single
+        alert and False silently returns every stored
+        alert. This is the campaign's known
+        boolean-as-number family -- numeric getters
+        accepting a Python boolean as 1/0 instead of
+        falling back to the documented default -- in
+        the senses branch of the query-answer reader,
+        which that family's grep and tail coverage had
+        not exercised. Observed on 2026-10-23:
+        answer_queries with limit True returned 1
+        alert and with False returned 25, against 25
+        stored alerts.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    _RES = {"stdout": "", "stderr": "", "exit_code": 0}
+
+    def _senses_count(self, extra):
+        import os
+        from runner.runner import answer_queries
+        with tempfile.TemporaryDirectory() as base:
+            with open(os.path.join(base, "senses.jsonl"),
+                      "w", encoding="utf-8") as fh:
+                for i in range(25):
+                    fh.write(json.dumps({
+                        "sensor": "host_ids",
+                        "severity": "info",
+                        "title": "alert %d" % i,
+                        "detail": {},
+                        "observed_at": "2026-10-23T00:00:00Z",
+                        "received_at": "2026-10-23T00:00:00Z",
+                    }) + "\n")
+            q = {"op": "senses"}
+            q.update(extra)
+            answers, _spent = answer_queries(
+                [q], self._RES, None, 8, cfg={}, view="full",
+                base_dir=base)
+            return len(answers[0].get("alerts", []))
+
+    def test_true_limit_defaults_to_20(self):
+        self.assertEqual(
+            self._senses_count({"limit": True}), 20)
+
+    def test_false_limit_defaults_to_20(self):
+        self.assertEqual(
+            self._senses_count({"limit": False}), 20)
+
+    def test_bogus_limit_defaults_to_20(self):
+        # Control: an unparseable value already lands on
+        # the documented default today; it must keep
+        # doing so after the boolean cases are fixed.
+        self.assertEqual(
+            self._senses_count({"limit": "bogus"}), 20)
+
+    def test_explicit_two_limit_is_honored(self):
+        # Control: an explicit numeric limit is honored
+        # today; the fix must not flatten a genuine
+        # small limit to the default.
+        self.assertEqual(
+            self._senses_count({"limit": 2}), 2)
+
 if __name__ == "__main__":
     unittest.main()
