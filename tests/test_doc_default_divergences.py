@@ -6893,5 +6893,126 @@ class TestHugeIntJobFuzzFloatTunablesCrashInsteadOfDefault(unittest.TestCase):
             ["old-job"])
 
 
+
+class TestHugeIntLatencyPostTunablesCrashInsteadOfDefault(unittest.TestCase):
+    """Divergence: a huge-integer latency-post tunable
+    (spike_ms = 10**400, or spike_factor = 10**400)
+    crashes decide() with OverflowError instead of
+    falling back to the documented defaults.
+
+    (a) Doc claim (examples/extensions/latency-post/
+        README.md, line 30): "`latency_spike` | A
+        probe's latency rises above both the
+        `spike_ms` tunable (default 250) and
+        `spike_factor` (default 3) times the median
+        of the target's last samples, with at least
+        3 prior samples". The manifest ships the
+        same defaults (extension.json tunables:
+        "spike_ms": 250, "spike_factor": 3), and the
+        code's own fallback literals state them
+        (latency_post.py lines 221 and 223-224:
+        spike_ms falls back to 250.0, spike_factor
+        to 3.0).
+
+    (b) How the bug was found: the campaign's
+        doc-default hunt (2026-10-23 tick) exercised
+        the latency-post example extension's
+        decide() -- the pure decision pass -- with a
+        target holding three prior samples
+        [100, 100, 100] and a 1000 ms probe, with
+        the tunables omitted, set to genuine values
+        (spike_ms 250, spike_factor 3), set to True
+        (already guarded in this reader), and set
+        to the huge integer 10**400, a value JSON
+        config carries as an ordinary number.
+
+    (c) Behavior actually observed: omitted,
+        genuine, and True all behave as documented
+        (the default threshold is max(250, 3 * 100)
+        = 300, so the 1000 ms probe files
+        latency_spike). A huge integer is accepted
+        as a number -- _is_number in latency_post.py
+        (line 61) excludes booleans but imposes no
+        magnitude bound -- so decide() evaluates
+        float(10**400) at line 221 (spike_ms) and
+        lines 223-224 (spike_factor) and raises
+        OverflowError: int too large to convert to
+        float. The whole pass crashes and no alerts
+        are returned, instead of the reader falling
+        back to 250 / 3. This is the campaign's
+        known conversion-overflow input class, seen
+        earlier in the job-fuzz reader. Observed on
+        2026-10-23: decide() with
+        {"spike_ms": 10**400} and with
+        {"spike_factor": 10**400} each raised that
+        OverflowError on the scenario above, where
+        the omitted tunables returned
+        ["latency_spike"].
+
+    (d) Do not make this test pass by editing the
+        test. It passes only when the bug described
+        above is fixed in the code.
+    """
+
+    def _signals(self, tunables, samples, latency):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "latency-post",
+            "latency_post.py")
+        spec = importlib.util.spec_from_file_location(
+            "latency_post_huge_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        state = {"targets": {"t:443": {
+            "samples": list(samples), "down": False,
+            "spike_active": False}}}
+        readings = {"now": 1792375113.0, "probes": [{
+            "target": "t:443", "ok": True,
+            "latency_ms": latency, "error": None}]}
+        manifest = {"name": "latency_post",
+                    "tunables": dict(tunables)}
+        alerts, _state = mod.decide(readings, manifest, state)
+        return [a["signal"] for a in alerts]
+
+    def test_huge_spike_ms_defaults_to_250(self):
+        self.assertEqual(
+            self._signals({"spike_ms": 10 ** 400},
+                          [100.0, 100.0, 100.0], 1000.0),
+            ["latency_spike"])
+
+    def test_huge_spike_factor_defaults_to_3(self):
+        self.assertEqual(
+            self._signals({"spike_factor": 10 ** 400},
+                          [100.0, 100.0, 100.0], 1000.0),
+            ["latency_spike"])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented default and genuine
+        # values already behave today and must keep
+        # doing so after the huge-int case is fixed.
+        self.assertEqual(
+            self._signals({}, [100.0, 100.0, 100.0],
+                          1000.0),
+            ["latency_spike"])
+        self.assertEqual(
+            self._signals({"spike_ms": 250,
+                           "spike_factor": 3},
+                          [100.0, 100.0, 100.0], 1000.0),
+            ["latency_spike"])
+        self.assertEqual(
+            self._signals({"spike_ms": True},
+                          [100.0, 100.0, 100.0], 1000.0),
+            ["latency_spike"])
+        # A genuine higher floor is honored: at
+        # spike_ms 2000 the 1000 ms probe is in band.
+        self.assertEqual(
+            self._signals({"spike_ms": 2000},
+                          [100.0, 100.0, 100.0], 1000.0),
+            [])
+
+
 if __name__ == "__main__":
     unittest.main()
