@@ -50,6 +50,29 @@ def _to_ts(value):
     return dt.timestamp()
 
 
+def _dri_number(value) -> bool:
+    """A DRI number: a finite int or float, never a bool, numeric text ok.
+
+    The sign checks below still run on the float; this gate refuses
+    what float() would have accepted by accident (True is 1.0 to
+    float(); inf is a float) and what int() would have raised on.
+    """
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, str):
+        try:
+            value = float(value)
+        except ValueError:
+            return False
+    if not isinstance(value, (int, float)):
+        return False
+    try:
+        f = float(value)
+    except (OverflowError, ValueError):
+        return False
+    return f == f and f not in (float("inf"), float("-inf"))
+
+
 def parse_dri(cfg) -> dict:
     """Validate cfg["dri"]. Disabled by default. Raises RuntimeError."""
     if not isinstance(cfg, dict):
@@ -75,15 +98,17 @@ def parse_dri(cfg) -> dict:
             raise RuntimeError(
                 "config error: dri.triggers.sensor_fused_score "
                 "must be an object")
-        try:
-            clean_triggers["sensor_fused_score"] = {
-                "threshold": float(sfs.get("threshold", 6.0)),
-                "window_sec": float(sfs.get("window_sec", 600)),
-            }
-        except (TypeError, ValueError, OverflowError):
+        # A boolean is not a number anywhere in this block: `true`
+        # once read as a threshold of 1 and a one-second window.
+        if not _dri_number(sfs.get("threshold", 6.0)) \
+                or not _dri_number(sfs.get("window_sec", 600)):
             raise RuntimeError(
                 "config error: dri.triggers.sensor_fused_score "
                 "threshold/window_sec must be numbers")
+        clean_triggers["sensor_fused_score"] = {
+            "threshold": float(sfs.get("threshold", 6.0)),
+            "window_sec": float(sfs.get("window_sec", 600)),
+        }
     for name in ("confinement_violation", "judge_block",
                  "resource_pressure", "remediation"):
         if triggers.get(name) is not None:
@@ -93,20 +118,20 @@ def parse_dri(cfg) -> dict:
         if not isinstance(kp, dict):
             raise RuntimeError(
                 "config error: dri.triggers.key_probe must be an object")
-        try:
-            clean_triggers["key_probe"] = {
-                "threshold": int(kp.get("threshold", 5)),
-                "window_sec": float(kp.get("window_sec", 3600)),
-            }
-        except (TypeError, ValueError, OverflowError):
+        if not _dri_number(kp.get("threshold", 5)) \
+                or not _dri_number(kp.get("window_sec", 3600)):
             raise RuntimeError(
                 "config error: dri.triggers.key_probe "
                 "threshold/window_sec must be numbers")
-    try:
-        cooldown = float(raw.get("cooldown_sec", 3600))
-        digest_window = float(raw.get("digest_window_sec", 300))
-    except (TypeError, ValueError, OverflowError):
+        clean_triggers["key_probe"] = {
+            "threshold": int(kp.get("threshold", 5)),
+            "window_sec": float(kp.get("window_sec", 3600)),
+        }
+    if not _dri_number(raw.get("cooldown_sec", 3600)) \
+            or not _dri_number(raw.get("digest_window_sec", 300)):
         raise RuntimeError("config error: dri cooldown/digest must be numbers")
+    cooldown = float(raw.get("cooldown_sec", 3600))
+    digest_window = float(raw.get("digest_window_sec", 300))
     if (cooldown < 0 or digest_window < 0
             or cooldown != cooldown or digest_window != digest_window
             or cooldown == float("inf") or digest_window == float("inf")):

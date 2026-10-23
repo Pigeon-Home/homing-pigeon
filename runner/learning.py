@@ -68,6 +68,11 @@ import json
 import os
 import re
 import threading
+
+try:
+    from runner import confval as _confval
+except ImportError:
+    import confval as _confval  # type: ignore
 from datetime import datetime, timezone
 
 LEDGER_FILE = "oracle-learning.jsonl"
@@ -134,11 +139,11 @@ def promote_after(cfg):
     candidate needs before it carries weight. Default 2."""
     if not isinstance(cfg, dict):
         return DEFAULT_PROMOTE_AFTER
-    try:
-        value = int(cfg.get("oracle_learning_promote_after"))
-    except (TypeError, ValueError):
-        return DEFAULT_PROMOTE_AFTER
-    return value if value >= 1 else DEFAULT_PROMOTE_AFTER
+    # Not a count: a boolean (true once meant one corroboration),
+    # infinity (once an OverflowError out of this reader), NaN, a
+    # non-number, or anything under 1.
+    return _confval.integer(cfg.get("oracle_learning_promote_after"),
+                            DEFAULT_PROMOTE_AFTER, lo=1)
 
 
 # ------------------------------------------------------------ host + features

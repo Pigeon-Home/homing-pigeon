@@ -42,6 +42,16 @@ REGISTERED = {
     "chmod behavior differs on Windows": "run on POSIX",
     "console behavior differs on Windows": "run on POSIX",
     "execute_job fixtures are POSIX shell": "run on POSIX",
+    "loop cycles are POSIX sh scripts":
+        "test_campaign_loop_cycles; run on ubuntu and macOS",
+    "loop variants are POSIX sh scripts":
+        "test_campaign_loop_variants; run on ubuntu and macOS",
+    "host tools required":
+        "test_campaign_loop_variants needs uptime/hostname; runs on every "
+        "POSIX CI runner, which all have them",
+    "df/free required":
+        "test_campaign_loop_variants needs df and free; runs in the ubuntu "
+        "test job, which has both (macOS has no free)",
     "field scenarios use sh": "run on POSIX (and confined on ubuntu, with bwrap)",
     "frozen tree layout differs on Windows": "run on POSIX",
     "geteuid is POSIX": "run on POSIX",

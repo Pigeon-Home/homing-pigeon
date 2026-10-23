@@ -58,6 +58,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(
 from runner import dtlsproto  # noqa: E402
 from runner import platformcard as _platformcard  # noqa: E402
 from runner import security as _security  # noqa: E402
+from runner import confval as _confval  # noqa: E402
 from runner.transport_extensions import channel as ch  # noqa: E402
 
 DEFAULT_PORT = 20220
@@ -110,16 +111,31 @@ def _psk_floor_problem(cfg):
     return None
 
 
+def greeting_tier(cfg):
+    """The greeting disclosure tier: dtls_greeting, default family."""
+    raw = cfg.get("dtls_greeting") if isinstance(cfg, dict) else None
+    return _confval.choice(raw, GREETING_TIERS, "family")
+
+
 class DtlsPipe:
     """One UDP listener, one DtlsServerCore, one channel."""
 
     def __init__(self, cfg, channel_dir):
         self.cfg = cfg
         self.channel = channel_dir
-        self.tier = cfg.get("dtls_greeting", "family")
-        port = cfg.get("port", DEFAULT_PORT)
-        self.port = int(port)
-        self.bind = str(cfg.get("bind", "0.0.0.0"))
+        # docs/configuring-oracle.md: dtls_greeting default family,
+        # transport_dtls.port default 20220, bind default 0.0.0.0. A
+        # value present as null, a non-tier string, a non-numeric or
+        # out-of-range port, or a boolean port is not a setting and
+        # reads as the default (null once killed the extension at
+        # startup, and a bogus tier went into the greeting verbatim).
+        # Port 0 is kept: it asks the kernel for a free port.
+        self.tier = greeting_tier(cfg)
+        self.port = _confval.integer(cfg.get("port"), DEFAULT_PORT,
+                                     lo=0, hi=65535)
+        bind = cfg.get("bind")
+        self.bind = bind.strip() if isinstance(bind, str) and bind.strip() \
+            else "0.0.0.0"
         lookup = dtlsproto.make_secret_lookup(
             cfg.get("shared_secret"), cfg.get("additional_secrets"))
         self.core = dtlsproto.DtlsServerCore(
@@ -239,11 +255,12 @@ def main(argv=None):
                "PSK -- there is nothing to authenticate with, "
                "so the extension will not start", "ERROR")
         return 2
-    tier = cfg.get("dtls_greeting", "family")
-    if not isinstance(tier, str) or tier not in GREETING_TIERS:
+    tier = greeting_tier(cfg)
+    raw_tier = cfg.get("dtls_greeting", "family")
+    if raw_tier != tier:
         ch.log(f"dtls transport: dtls_greeting must be one of "
-               f"{GREETING_TIERS}, not {tier!r}", "ERROR")
-        return 2
+               f"{GREETING_TIERS}, not {raw_tier!r}; using the "
+               f"default tier {tier}", "WARN")
     problem = _psk_floor_problem(cfg)
     if problem is not None:
         ch.log(f"dtls transport: refusing to start -- {problem}",

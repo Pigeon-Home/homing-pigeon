@@ -27,6 +27,11 @@ import re
 import time
 import uuid
 
+try:
+    from runner import confval as _confval
+except ImportError:
+    import confval as _confval  # type: ignore
+
 V2 = 2
 _ID = re.compile(r"\A[A-Za-z0-9._-]{1,128}\Z")
 _KIND = re.compile(
@@ -220,11 +225,14 @@ def local_answer_text(question) -> str:
 
 
 def deadline_of(cfg) -> int:
+    """How long to look for an answer: 0 to 30, documented default 0.
+
+    A boolean is not a number of seconds (true once meant a
+    one-second wait); a negative number reads as 0, and the cap
+    holds above 30.
+    """
     raw = cfg.get("v2_answer_deadline_sec", 0) if isinstance(cfg, dict) else 0
-    try:
-        n = int(raw)
-    except (TypeError, ValueError, OverflowError):
-        return 0
+    n = _confval.integer(raw, 0)
     if n < 0:
         return 0
     if n > _DEADLINE_CAP:

@@ -77,7 +77,16 @@ class NatsClient:
         self.log = log or _silent_log
         parsed = urlparse(url or "nats://127.0.0.1:4222")
         self.host = parsed.hostname or "127.0.0.1"
-        self.port = parsed.port or 4222
+        # docs/configuring-oracle.md: default port 4222. urlparse's
+        # .port raises on a port it rejects (out of range, not a
+        # number); unguarded, that ValueError once escaped the
+        # reconnect loop (which catches TransportError only) and
+        # killed the extension before its first connect.
+        try:
+            port = parsed.port
+        except ValueError:
+            port = None
+        self.port = port or 4222
         self._connect_opts = {"verbose": False, "pedantic": False,
                               "name": "homing-pigeon",
                               "lang": "python-stdlib", "version": "1"}

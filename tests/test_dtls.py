@@ -824,11 +824,40 @@ class ExtensionProcessTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 2, proc.stderr)
         self.assertIn("will not start", proc.stderr)
 
-    def test_refuses_a_bad_greeting_tier(self):
-        proc = self._run({"shared_secret": SECRET,
-                          "dtls_greeting": "everything"})
-        self.assertEqual(proc.returncode, 2, proc.stderr)
-        self.assertIn("dtls_greeting", proc.stderr)
+    def test_a_bad_greeting_tier_reads_as_the_default(self):
+        # docs/configuring-oracle.md: dtls_greeting default family.
+        # An unrecognised tier used to refuse to start (exit 2), which
+        # left the one listening transport permanently dead under the
+        # supervisor; it now starts on the default tier and says so
+        # (tests/test_doc_default_divergences.py,
+        # TestNullDtlsGreetingDefaultsToFamily).
+        tmp = tempfile.mkdtemp(prefix="hp-dtls-")
+        cfg_path = os.path.join(tmp, "runtime-config.json")
+        port = _free_udp_port()
+        with open(cfg_path, "w", encoding="utf-8") as f:
+            json.dump({"shared_secret": SECRET, "port": port,
+                       "bind": "127.0.0.1",
+                       "dtls_greeting": "everything"}, f)
+        env = dict(os.environ)
+        env["PYTHONPATH"] = REPO + os.pathsep + env.get(
+            "PYTHONPATH", "")
+        proc = subprocess.Popen(
+            [sys.executable, "-m",
+             "runner.transport_extensions.dtls", tmp, cfg_path],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, env=env)
+        try:
+            time.sleep(1.5)
+            self.assertIsNone(proc.poll(),
+                              "the extension refused a bad tier instead "
+                              "of starting on the default")
+        finally:
+            proc.terminate()
+            _out, err = proc.communicate(timeout=10)
+        self.assertIn("dtls_greeting", err)
+        self.assertIn("default tier family", err)
+        self.assertIn(f"listening on udp 127.0.0.1:{port}; "
+                      "greeting tier family", err)
 
     def test_starts_and_listens_with_a_secret(self):
         tmp = tempfile.mkdtemp(prefix="hp-dtls-")

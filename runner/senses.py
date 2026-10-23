@@ -33,6 +33,35 @@ SEVERITY_SCORES = {
 }
 
 SENSES_FILE = "senses.jsonl"
+
+
+def _finite_number(value, default, lo=None):
+    """A finite int or float from a stored value, else ``default``.
+
+    A boolean is never a number here (``True`` is ``1`` to float()),
+    nor is infinity, NaN, an integer too large for a float, a
+    non-numeric string, or anything under ``lo``. The one place in
+    this module that decides what a profile number means; kept local
+    so senses.py stays free of runner imports.
+    """
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, str):
+        try:
+            value = float(value)
+        except ValueError:
+            return default
+    if not isinstance(value, (int, float)):
+        return default
+    try:
+        f = float(value)
+    except (OverflowError, ValueError):
+        return default
+    if f != f or f in (float("inf"), float("-inf")):
+        return default
+    if lo is not None and f < lo:
+        return default
+    return value
 MAX_STORED = 5000
 
 
@@ -199,13 +228,9 @@ def gate_alert(sensor_cfg: dict, alert: dict, recent: list,
         sev = "info"
     if SEVERITY_SCORES[sev] < SEVERITY_SCORES[floor]:
         return f"below severity_floor {floor}"
-    try:
-        cooldown = float(profile.get("cooldown_sec") or 0)
-    except (TypeError, ValueError, OverflowError):
-        cooldown = 0
-    if cooldown != cooldown or cooldown < 0 or cooldown in (
-            float("inf"), float("-inf")):
-        cooldown = 0
+    # docs/senses.md: cooldown_sec default 0 (no dedup). A boolean
+    # is not a window: true once dropped every repeat within a second.
+    cooldown = float(_finite_number(profile.get("cooldown_sec"), 0, lo=0))
     if cooldown > 0:
         for prev in reversed(recent):
             if not isinstance(prev, dict):
@@ -217,12 +242,19 @@ def gate_alert(sensor_cfg: dict, alert: dict, recent: list,
                 break
             if prev.get("title") == alert.get("title"):
                 return f"cooldown: same title within {cooldown:g}s"
-    try:
-        cap = float(profile.get("max_per_hour") or 0)
-    except (TypeError, ValueError, OverflowError):
+    # docs/senses.md: max_per_hour default 0 (unlimited). A boolean is
+    # not a cap: true once allowed one alert an hour. A number that
+    # is negative or non-finite stays the loud refusal it was.
+    raw_cap = profile.get("max_per_hour")
+    if isinstance(raw_cap, bool) or raw_cap is None:
         cap = 0.0
-    if cap != cap or cap < 0 or cap in (float("inf"), float("-inf")):
-        return "over max_per_hour (unreadable cap)"
+    else:
+        try:
+            cap = float(raw_cap)
+        except (TypeError, ValueError, OverflowError):
+            cap = 0.0
+        if cap != cap or cap < 0 or cap in (float("inf"), float("-inf")):
+            return "over max_per_hour (unreadable cap)"
     if cap > 0:
         n = 0
         for prev in reversed(recent):
@@ -379,9 +411,15 @@ def load_alerts(base_dir: str, sensor=None, severity_floor=None,
             if not same:
                 continue
         if severity_floor is not None:
+            # docs/senses.md, "Alert format": a missing severity is
+            # info. An alert stored with no severity (or null) is read
+            # back as info, so the default floor "info (keep all)"
+            # keeps it instead of dropping it below the floor.
             try:
-                if (SEVERITY_SCORES.get(rec.get("severity"), 0)  # pyrefly: ignore[no-matching-overload]  # rec is a dict here; unannotated sense plumbing
-                        < SEVERITY_SCORES.get(severity_floor, 0)):
+                sev = rec.get("severity")
+                if not isinstance(sev, str) or sev not in SEVERITY_SCORES:
+                    sev = "info"
+                if SEVERITY_SCORES[sev] < SEVERITY_SCORES.get(severity_floor, 0):
                     continue
             except Exception:
                 continue
@@ -403,11 +441,14 @@ def load_alerts(base_dir: str, sensor=None, severity_floor=None,
 
 
 def alert_score(alert: dict, weight: float) -> float:
-    """How much the Oracle weighs this alert: source weight x severity."""
-    try:
-        weight_n = float(weight)
-    except (TypeError, ValueError):
-        weight_n = 1.0
+    """How much the Oracle weighs this alert: source weight x severity.
+
+    docs/senses.md: weight default 1.0. A weight that is negative,
+    infinite, NaN, a boolean, a non-number, or an integer too large
+    for a float is not a weight and scores as 1.0 (a huge integer
+    once raised OverflowError out of here).
+    """
+    weight_n = float(_finite_number(weight, 1.0, lo=0))
     severity = alert.get("severity") if isinstance(alert, dict) else None
     score = SEVERITY_SCORES.get(severity, 0.5) if isinstance(severity, str) else 0.5
     return weight_n * score

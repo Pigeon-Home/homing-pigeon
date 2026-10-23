@@ -135,6 +135,11 @@ _protocol_v2 = _load_mod("runner.protocol_v2", "protocol_v2")
 _personal_docs = _load_mod("runner.personal_docs", "personal_docs")
 _platformcard = _load_mod("runner.platformcard", "platformcard")
 _textutil = _load_mod("runner.textutil", "textutil")
+# Typed config/job value readers (Agent-Stamp
+# 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c): the one answer to "is this
+# a usable number, and if not what do I use" -- see confval.py for
+# the fifty-six documented defaults that motivated it.
+_confval = _load_mod("runner.confval", "confval")
 if _textutil is None:
     raise ImportError("runner/textutil.py is missing")
 _as_str = _textutil._as_str
@@ -542,8 +547,12 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
     requested = policy.get("view") or "full"
     ceiling = cfg.get("max_result_view") or "full"
     # A non-string view is bad data. .get on a dict key raises TypeError
-    # and the job retried forever.
-    if not isinstance(requested, str):
+    # and the job retried forever. An unrecognised string is the
+    # documented default (PROTOCOL.md section 9: "Default: full"), not
+    # a name that survives verbatim into the attested branch with the
+    # output blanked -- the owner's ceiling below is what bounds a job,
+    # so the default widens nothing the job could not ask for by name.
+    if not isinstance(requested, str) or requested not in VIEW_ORDER:
         requested = "full"
     if not isinstance(ceiling, str):
         ceiling = "full"
@@ -814,14 +823,10 @@ def query_budget(cfg, job):
         cfg = {}
     if not isinstance(policy, dict):
         policy = {}
-    try:
-        job_b = int(policy.get("query_budget", 8))
-    except (TypeError, ValueError, OverflowError):
-        job_b = 8
-    try:
-        max_b = int(cfg.get("max_query_budget", 8))
-    except (TypeError, ValueError, OverflowError):
-        max_b = 8
+    # Documented default 8 for anything that is not a usable count;
+    # a JSON boolean is not a count (True is not 1 here).
+    job_b = _confval.integer(policy.get("query_budget"), 8)
+    max_b = _confval.integer(cfg.get("max_query_budget"), 8)
     return max(0, min(job_b, max_b))
 
 
@@ -1152,6 +1157,7 @@ def _ask_model_once(cfg, question, output_text, max_chars, patterns=None, opener
              "Question:\n" + _as_text(question) + "\n\nOutput:\n" + _as_text(output_text)},
         ],
     }
+    _apply_keep_alive(cfg, payload)
     req = Request(
         endpoint.rstrip("/") + "/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
@@ -1159,12 +1165,10 @@ def _ask_model_once(cfg, question, output_text, max_chars, patterns=None, opener
         method="POST",
     )
     open_fn = opener or _default_inference_open
-    try:
-        timeout = int(cfg.get("timeout_sec") or 180)
-    except (TypeError, ValueError, OverflowError):
-        timeout = 60
-    if timeout < 1:
-        timeout = 60
+    # PROTOCOL.md and docs/configuring-oracle.md: timeout_sec default
+    # 180. Anything that is not a positive finite number gets that,
+    # not a second fallback of 60 that the docs never named.
+    timeout = _inference_timeout(cfg)
     log(f"ask: calling model {model}")
     started = time.monotonic()
     raw_text = None
@@ -1809,21 +1813,37 @@ def _inference_failure_text(exc, timeout=None) -> str:
     return "The local model did not answer."
 
 
+def _apply_keep_alive(cfg, payload):
+    """Keep the local model loaded between calls.
+
+    Ollama unloads after a few idle minutes, and the next question
+    then pays a multi-minute cold start. Explicit config wins; the
+    Ollama default port gets a keep-alive without any config
+    (docs/configuring-oracle.md, `keep_alive`). One place for both
+    ask paths: the plain ask used to build its payload without this
+    and cold-started on the main query-answer path.
+    """
+    keep_alive = cfg.get("keep_alive") if isinstance(cfg, dict) else None
+    endpoint = cfg.get("endpoint") if isinstance(cfg, dict) else None
+    if keep_alive is None and isinstance(endpoint, str) and ":11434" in endpoint:
+        keep_alive = "30m"
+    if keep_alive:
+        payload["keep_alive"] = keep_alive
+
+
+def _inference_timeout(cfg) -> int:
+    """The per-question model timeout: timeout_sec, documented default 180."""
+    raw = cfg.get("timeout_sec") if isinstance(cfg, dict) else None
+    return _confval.integer(raw, 180, lo=1)
+
+
 def _inference_chat(cfg, messages, tools, opener, timeout):
     """One /chat/completions call. Returns the message dict or an error dict."""
     payload = {"model": cfg.get("model"), "messages": messages}
     if tools:
         payload["tools"] = tools
-    # Keep the local model loaded between calls: Ollama unloads after a
-    # few idle minutes, and the next question then pays a multi-minute
-    # cold start. Explicit config wins; the Ollama default port gets a
-    # keep-alive without any config.
-    keep_alive = cfg.get("keep_alive")
     endpoint = cfg.get("endpoint")
-    if keep_alive is None and isinstance(endpoint, str) and ":11434" in endpoint:
-        keep_alive = "30m"
-    if keep_alive:
-        payload["keep_alive"] = keep_alive
+    _apply_keep_alive(cfg, payload)
     body_bytes = json.dumps(payload).encode("utf-8")
     try:
         roles = ",".join(m.get("role", "?") for m in messages
@@ -2092,19 +2112,12 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             cap = 2000
     if cap < 0:
         cap = 0
-    try:
-        timeout = int(cfg.get("timeout_sec") or 180)
-    except (TypeError, ValueError, OverflowError):
-        timeout = 60
-    if timeout < 1:
-        timeout = 60
-    try:
-        wall_clock = int(cfg.get("agent_wall_clock_sec")
-                         or _ORACLE_AGENT_WALL_CLOCK_SEC)
-    except (TypeError, ValueError, OverflowError):
-        wall_clock = _ORACLE_AGENT_WALL_CLOCK_SEC
-    if wall_clock < 1:
-        wall_clock = _ORACLE_AGENT_WALL_CLOCK_SEC
+    timeout = _inference_timeout(cfg)
+    # docs/configuring-oracle.md: agent_wall_clock_sec default 300. A
+    # boolean is not a wall clock (true once gave the agent loop one
+    # second).
+    wall_clock = _confval.integer(cfg.get("agent_wall_clock_sec"),
+                                  _ORACLE_AGENT_WALL_CLOCK_SEC, lo=1)
     system = ASK_AGENT_SYSTEM + (
         ("\n\nOwner instructions for this box:\n" + _as_text(instructions).strip())
         if instructions and _as_text(instructions).strip() else "")
@@ -2353,11 +2366,10 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                     answers.append({"op": "grep", "rejected": "bad_pattern"})
                     spent += 1
                     continue
-                try:
-                    limit = int(q.get("max_matches", 10))
-                except (TypeError, ValueError, OverflowError):
-                    limit = 10
-                limit = max(0, min(limit, 100))
+                # Default 10 for an omitted, unparseable, or boolean
+                # max_matches; a usable number is clamped to [0, 100].
+                limit = _confval.integer(q.get("max_matches"), 10, lo=0)
+                limit = min(limit, 100)
                 matches = []
                 truncated = False
                 for line in text.splitlines():
@@ -2376,11 +2388,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
             if not _raw_lines_allowed(view):
                 answers.append({"op": "tail", "rejected": "policy"})
             else:
-                try:
-                    n = int(q.get("lines", 20))
-                except (TypeError, ValueError, OverflowError):
-                    n = 20
-                n = max(0, min(n, 200))
+                n = min(_confval.integer(q.get("lines"), 20, lo=0), 200)
                 lines = text.splitlines()[-n:] if n else []
                 if view == "redacted":
                     lines = [redact_text(line, patterns)[0] for line in lines]
@@ -2389,10 +2397,10 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
             if inf is None:
                 answers.append({"op": "ask", "rejected": "inference_unconfigured"})
             else:
-                try:
-                    max_chars = int(q.get("max_chars") or inf["max_answer_chars"])
-                except (TypeError, ValueError, OverflowError):
-                    max_chars = inf["max_answer_chars"]
+                # The inference block's max_answer_chars (default 2000)
+                # for an omitted, unparseable, or boolean max_chars.
+                max_chars = _confval.integer(
+                    q.get("max_chars"), inf["max_answer_chars"], lo=0)
                 try:
                     answers.append(ask_model(
                         inf, q.get("question") or "", text, max_chars, patterns,
@@ -2419,7 +2427,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                     severity_floor=q.get("severity_floor") if isinstance(q.get("severity_floor"), str) else None,
                     since=q.get("since") if isinstance(q.get("since"), str) else None,
                     until=q.get("until") if isinstance(q.get("until"), str) else None,
-                    limit=q.get("limit") if isinstance(q.get("limit"), int) else 20,
+                    limit=_confval.integer(q.get("limit"), 20, lo=0),
                 )
                 # Extension may return None or a non-iterable under fault.
                 # Do not let that abort the query or the mail cycle.
@@ -2683,10 +2691,10 @@ def _retention_days(cfg):
     raw = cfg.get("output_retention_days")
     if raw is None:
         return 7
-    try:
-        return int(raw)
-    except (TypeError, ValueError, OverflowError):
-        return 7
+    # An explicit 0 or negative number is kept (no expiry, above); a
+    # boolean, a non-number, or a number too large to be a day count
+    # is the documented 7.
+    return _confval.integer(raw, 7, lo=-(10 ** 9), hi=10 ** 9)
 
 
 def prune_retained(base_dir, days):
@@ -3428,8 +3436,7 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
             and not isinstance(job["script_sha384"], str):
         raise JobRejected("script_sha384 must be a string")
     try:
-        timeout = int(job.get("timeout_sec")
-                      or cfg.get("default_timeout_sec", 300))
+        timeout = int(job.get("timeout_sec") or _default_timeout_sec(cfg))
     except (TypeError, ValueError, OverflowError):
         raise JobRejected("timeout_sec must be a number")
     timeout = min(max(timeout, 1), 3600)
@@ -3517,12 +3524,9 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     env = _scrub_env(env)  # job must not smuggle the runner's credentials back in
     before_files = _work_files(work)
 
-    try:
-        max_out = int(cfg.get("max_output_bytes", 100000))
-    except (TypeError, ValueError, OverflowError):
-        max_out = 100000
-    if max_out < 1:
-        max_out = 100000
+    # Documented default 100000; a boolean or a value under 1 is not
+    # a byte cap (True once truncated every result to one byte).
+    max_out = _confval.integer(cfg.get("max_output_bytes"), 100000, lo=1)
     t0 = time.monotonic()
     # Hardening M6: confinement wraps the argv in bwrap when the
     # feature is in enforce mode and bwrap is available. With the
@@ -3623,20 +3627,27 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
 # ---------------------------------------------------------------- job handling
 def _as_int(value, default):
-    try:
-        return int(value)
-    except (TypeError, ValueError, OverflowError):
-        return default
+    """An int from a stored value, or default. A boolean is not an int."""
+    return _confval.integer(value, default, strings=True)
 
 
 def _as_float(value, default):
-    try:
-        n = float(value)
-    except (TypeError, ValueError):
-        return default
-    if n != n or n in (float("inf"), float("-inf")):
-        return default
-    return n
+    """A finite float from a stored value, or default."""
+    n = _confval.number(value, None, strings=True)
+    return default if n is None else float(n)
+
+
+def _default_timeout_sec(cfg) -> int:
+    """The job timeout a job gets when it names none.
+
+    PROTOCOL.md: default 300. A key present as null, a non-numeric
+    string, a boolean, or a value under 1 is not a timeout and must
+    not reject every timeout-less job (null did) or give them one
+    second (true did).
+    """
+    if not isinstance(cfg, dict):
+        return 300
+    return _confval.integer(cfg.get("default_timeout_sec"), 300, lo=1)
 
 
 def _preview(text, n=80) -> str:
@@ -4114,10 +4125,9 @@ def _issued_at_ok(value, cfg):
     if issued.tzinfo is None or issued.tzinfo.utcoffset(issued) is None:
         return False, "issued_at missing timezone"
     age = (datetime.now(timezone.utc) - issued).total_seconds()
-    try:
-        window = int(cfg.get("max_job_age_sec", 3600))
-    except (TypeError, ValueError, OverflowError):
-        window = 3600
+    # Documented default 3600. Zero, a negative number, a boolean, or
+    # a non-number would reject every job as stale; none is a window.
+    window = _confval.integer(cfg.get("max_job_age_sec"), 3600, lo=1)
     if age < -300 or age > window:
         return False, "issued_at outside allowed window"
     return True, ""
@@ -4840,13 +4850,7 @@ def _local_wake_cooldown(cfg) -> float:
     """Seconds between wakes for one (sensor, signal). Default 900."""
     raw = cfg.get("local_wake_cooldown_sec", 900) \
         if isinstance(cfg, dict) else 900
-    try:
-        n = float(raw)
-    except (TypeError, ValueError, OverflowError):
-        return 900.0
-    if n != n or n < 0 or n in (float("inf"), float("-inf")):
-        return 900.0
-    return n
+    return float(_confval.number(raw, 900.0, lo=0))
 
 
 def _ingest_local_envelope(cfg, base_dir, text, source):
@@ -7595,8 +7599,7 @@ def run_variant(cfg, args) -> int:
             job["kind"] = "exec"
             try:
                 job["timeout_sec"] = min(
-                    int(job.get("timeout_sec")
-                        or cfg.get("default_timeout_sec", 300)),
+                    int(job.get("timeout_sec") or _default_timeout_sec(cfg)),
                     _VARIANT_TIMEOUT_CAP_SEC)
             except (TypeError, ValueError, OverflowError):
                 job["timeout_sec"] = _VARIANT_TIMEOUT_CAP_SEC

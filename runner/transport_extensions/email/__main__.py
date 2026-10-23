@@ -35,6 +35,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(
 
 from runner.transport_extensions import channel as ch  # noqa: E402
 from runner import mailbox as _mailbox  # noqa: E402
+from runner import confval as _confval  # noqa: E402
 
 _mailbox.set_logger(ch.log)
 
@@ -192,12 +193,12 @@ class EmailPipe:
                 pass
 
     def run(self):
-        try:
-            interval = max(
-                1.0, float(self.cfg.get("poll_interval_sec")
-                           or 20))
-        except (TypeError, ValueError):
-            interval = 20.0
+        # docs/FAQs.md: poll_interval_sec default 20. A usable number
+        # is floored at 1s; a boolean, a huge integer (once a raw
+        # OverflowError out of this loop), infinity or NaN is not an
+        # interval and polls at the documented default.
+        interval = max(1.0, float(_confval.number(
+            self.cfg.get("poll_interval_sec"), 20.0, lo=0)))
         ch.log(f"email transport: polling "
                f"{self.mailbox_addr or 'mailbox'} every "
                f"{interval:.0f}s")

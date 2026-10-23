@@ -78,11 +78,19 @@ def _imap_xoauth2(conn, user: str, raw: str) -> None:
 
 
 def _port(cfg, key, default):
-    """A missing or non-numeric port is a config error, not a crash."""
+    """A missing or non-numeric port is a config error, not a crash.
+
+    A boolean is non-numeric here: `true` once read as port 1 and
+    `false` as port 0, silently, past the startup check that exists
+    to catch a bad port before the poll loop finds it.
+    """
     if not isinstance(cfg, dict):
         raise RuntimeError("config error: config is not an object")
+    value = cfg.get(key, default)
+    if isinstance(value, bool):
+        raise RuntimeError("config error: " + key + " must be a number")
     try:
-        return int(cfg.get(key, default))
+        return int(value)
     except (TypeError, ValueError, OverflowError):
         raise RuntimeError("config error: " + key + " must be a number")
 

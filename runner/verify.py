@@ -40,6 +40,10 @@ try:
     from runner.textutil import _json_safe
 except ImportError:
     from textutil import _json_safe  # type: ignore
+try:
+    from runner import confval as _confval
+except ImportError:
+    import confval as _confval  # type: ignore
 
 PROTOCOL_VERSION = 1
 
@@ -298,12 +302,13 @@ def build_key_policies(cfg) -> dict:
                     "must be a non-empty list of string lists")
             clean["allowed_interpreters"] = interps
         if "max_timeout_sec" in pol:
-            try:
-                mt = int(pol["max_timeout_sec"])
-            except (TypeError, ValueError, OverflowError):
+            # A boolean is not a number here: `true` once became a
+            # silent one-second cap for the key.
+            if not _confval.is_number(pol["max_timeout_sec"]):
                 raise RuntimeError(
                     f"config error: key_policies[{kid!r}].max_timeout_sec "
                     "must be a number")
+            mt = int(pol["max_timeout_sec"])
             if mt < 1:
                 raise RuntimeError(
                     f"config error: key_policies[{kid!r}].max_timeout_sec "
@@ -448,15 +453,20 @@ def check_key_policy(policies: dict, key_id: str, cfg, job):
                 or interpreter not in allowed:
             return f"interpreter {interpreter!r} is not allowed for this key"
     if "max_timeout_sec" in pol:
+        # The job's own timeout, else the documented default of 300
+        # (PROTOCOL.md). A default_timeout_sec present as null, a
+        # non-number, or a boolean is not a timeout and must not turn
+        # every timeout-less job away at this gate.
+        default_timeout = _confval.integer(
+            cfg.get("default_timeout_sec") if isinstance(cfg, dict) else None,
+            300, lo=1)
         try:
-            timeout = int(job.get("timeout_sec")
-                          or cfg.get("default_timeout_sec", 300))
+            timeout = int(job.get("timeout_sec") or default_timeout)
         except (TypeError, ValueError, OverflowError):
             return "timeout_sec must be a number"
-        try:
-            cap = int(pol["max_timeout_sec"])
-        except (TypeError, ValueError, OverflowError):
+        if not _confval.is_number(pol["max_timeout_sec"]):
             return "invalid key policy: max_timeout_sec"
+        cap = int(pol["max_timeout_sec"])
         if timeout > cap:
             return (f"timeout {timeout}s exceeds this key's limit "
                     f"of {cap}s")

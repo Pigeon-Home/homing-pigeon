@@ -32,6 +32,11 @@ runner.py, which calls in here.
 """
 import os
 import re
+
+try:
+    from runner import confval as _confval
+except ImportError:
+    import confval as _confval  # type: ignore
 from datetime import datetime, timezone
 
 
@@ -222,11 +227,11 @@ def _metadata_notes(job):
 
 def _review_scan_bytes(cfg):
     """Bytes of script the reviewer scans for filename references."""
-    try:
-        n = int(cfg.get("review_scan_bytes", DEFAULT_REVIEW_SCAN_BYTES))
-    except (TypeError, ValueError, OverflowError):
+    if not isinstance(cfg, dict):
         return DEFAULT_REVIEW_SCAN_BYTES
-    return n if n > 0 else DEFAULT_REVIEW_SCAN_BYTES
+    # A boolean is not a byte count: true once scanned one byte.
+    return _confval.integer(cfg.get("review_scan_bytes"),
+                            DEFAULT_REVIEW_SCAN_BYTES, lo=1)
 
 
 def _content_notes(job, extra_patterns, scan_bytes=None):

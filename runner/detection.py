@@ -18,6 +18,11 @@ import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+try:
+    from runner import confval as _confval
+except ImportError:
+    import confval as _confval  # type: ignore
+
 
 # ---------------------------------------------------------------------------
 # Tiny Sigma/YARA-style rules
@@ -99,34 +104,30 @@ def evaluate_rules(job: Dict[str, Any],
 # ---------------------------------------------------------------------------
 
 def check_plan_budget(plan: List[Dict], cfg: Dict[str, Any]) -> Tuple[bool, str]:
-    """Return (allowed, reason). Cheap counter check.
+    """Bound an explicit multi-step plan by count and summed timeout.
 
     cfg may contain max_plan_steps (default 8) and
-    max_plan_timeout_sec (default 600).
+    max_plan_timeout_sec (default 600). A budget present as zero, a
+    negative number, a boolean, or a non-number is not a budget and
+    reads as the documented default (zero once rejected every plan;
+    true allowed one step). A step whose timeout_sec is omitted,
+    unparseable, or a boolean counts as 60 seconds.
     """
     if not isinstance(plan, list):
         return False, "plan must be a list"
     max_steps = 8
     max_timeout = 600
     if isinstance(cfg, dict):
-        try:
-            max_steps = int(cfg.get("max_plan_steps", 8))
-        except (TypeError, ValueError, OverflowError):
-            max_steps = 8
-        try:
-            max_timeout = int(cfg.get("max_plan_timeout_sec", 600))
-        except (TypeError, ValueError, OverflowError):
-            max_timeout = 600
+        max_steps = _confval.integer(cfg.get("max_plan_steps"), 8, lo=1)
+        max_timeout = _confval.integer(
+            cfg.get("max_plan_timeout_sec"), 600, lo=1)
     if len(plan) > max_steps:
         return False, f"plan has {len(plan)} steps (max {max_steps})"
     total = 0
     for step in plan:
         if not isinstance(step, dict):
             continue
-        try:
-            total += int(step.get("timeout_sec") or 60)
-        except (TypeError, ValueError, OverflowError):
-            total += 60
+        total += _confval.integer(step.get("timeout_sec"), 60, lo=1)
     if total > max_timeout:
         return False, f"plan timeout {total}s exceeds {max_timeout}s"
     return True, ""

@@ -149,11 +149,31 @@ def ack_result(channel, fname):
 
 
 def poll_interval(cfg, default=2.0):
-    raw = cfg.get("extension_poll_interval_sec", default)
-    try:
-        return max(0.2, min(60.0, float(raw)))
-    except (TypeError, ValueError):
+    """Seconds between passes: extension_poll_interval_sec, default 2.
+
+    A usable number is clamped to [0.2, 60]. A boolean (true once
+    meant a one-second cadence, false the 0.2 floor), a huge
+    integer (once a raw OverflowError out of this reader), infinity,
+    NaN, or a non-number is not an interval and reads as the default.
+    """
+    raw = cfg.get("extension_poll_interval_sec", default) \
+        if isinstance(cfg, dict) else default
+    if isinstance(raw, bool):
         return default
+    if isinstance(raw, str):
+        try:
+            raw = float(raw)
+        except ValueError:
+            return default
+    if not isinstance(raw, (int, float)):
+        return default
+    try:
+        n = float(raw)
+    except (OverflowError, ValueError):
+        return default
+    if n != n or n in (float("inf"), float("-inf")):
+        return default
+    return max(0.2, min(60.0, n))
 
 
 def nap(seconds):

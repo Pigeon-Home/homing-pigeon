@@ -27,6 +27,11 @@ import time
 from datetime import datetime, timezone
 
 try:
+    from runner import confval as _confval
+except ImportError:
+    import confval as _confval  # type: ignore
+
+try:
     from runner.textutil import _as_str, _json_safe
 except ImportError:  # run as a script from the runner/ directory
     from textutil import _as_str, _json_safe  # type: ignore
@@ -376,6 +381,13 @@ class Board:
             return self._reoffer_expired_unlocked(task_timeout)
 
     def _reoffer_expired_unlocked(self, task_timeout=86400):
+        # docs/configuring-oracle.md: task_timeout default 86400. A
+        # value present as null, a non-number, a boolean, or a
+        # negative number is not a lease length; null once wedged
+        # every claimed task forever (the comparison raised, and the
+        # except swallowed it), and true stripped claims in a second.
+        # Zero is a number: it reoffers at once, as documented.
+        task_timeout = _confval.number(task_timeout, 86400, lo=0)
         now = datetime.now(timezone.utc)
         count = 0
         tasks = list(self.tasks.values())

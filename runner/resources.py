@@ -20,6 +20,11 @@ import os
 import shutil
 import threading
 import time
+
+try:
+    from runner import confval as _confval
+except ImportError:
+    import confval as _confval  # type: ignore
 from datetime import datetime, timezone
 
 STATE_FILE = "resources.json"
@@ -41,18 +46,29 @@ def parse_resources(cfg) -> dict:
     enabled = raw.get("enabled", True)
     if not isinstance(enabled, bool):
         raise RuntimeError("config error: resources.enabled must be a boolean")
-    try:
-        threshold = float(raw.get("threshold", 0.95))
-    except (TypeError, ValueError):
+    # Every malformed value here is a startup config error, the
+    # documented posture for this block: a boolean (true once read
+    # as threshold 1.0 and cooldown 1), and a number too large for
+    # a float (once a raw OverflowError out of the reader) included.
+    threshold = _confval.number(raw.get("threshold", 0.95), None)
+    if threshold is None:
         raise RuntimeError("config error: resources.threshold must be a number")
+    threshold = float(threshold)
     if not 0 < threshold <= 1:
         raise RuntimeError("config error: resources.threshold must be in (0, 1]")
-    try:
-        cooldown = float(raw.get("cooldown_sec", 900))
-    except (TypeError, ValueError):
+    raw_cooldown = raw.get("cooldown_sec", 900)
+    cooldown = _confval.number(raw_cooldown, None)
+    if cooldown is None:
+        if isinstance(raw_cooldown, float) or (
+                isinstance(raw_cooldown, int)
+                and not isinstance(raw_cooldown, bool)):
+            # A number, but not a usable one: infinity, NaN, or an
+            # integer too large for a float.
+            raise RuntimeError("config error: resources.cooldown_sec "
+                               "must be a finite number >= 0")
         raise RuntimeError("config error: resources.cooldown_sec must be a number")
-    if (cooldown != cooldown or cooldown < 0 or cooldown == float("inf")
-            or cooldown == float("-inf")):
+    cooldown = float(cooldown)
+    if cooldown < 0:
         raise RuntimeError(
             "config error: resources.cooldown_sec must be a finite number >= 0")
     return {"enabled": enabled, "threshold": threshold,
