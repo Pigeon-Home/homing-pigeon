@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## Unreleased
+
+- **`cut-release` workflow.** `gh workflow run cut-release.yml` tags
+  the version in `pyproject.toml` on a green commit and dispatches
+  the release pipeline on the tag. Refuses an existing tag, drifting
+  version carriers, or a commit whose build jobs are not all green.
+  docs/RUNBOOK.md Job 4. No change to what the runner does.
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.12.56 - 2026-10-22
 
 - **Every pipeline timer is off, to measure.** The mutation job's

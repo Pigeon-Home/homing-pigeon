@@ -1,0 +1,125 @@
+# Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
+#
+# Cut a release from the command line: tag the version in
+# pyproject.toml on a commit whose build is already green, then start
+# the same pipeline a tag push would -- build.yml on the tag (the
+# GitHub Release, PyPI, SourceForge, GitLab) and docker.yml for the
+# image. The point-and-click path in docs/RUNBOOK.md Job 4 is
+# unchanged; this is the same release, started by `gh workflow run`.
+#
+# A tag pushed with the repository's own token does not fire the
+# on-push workflows (GitHub's rule against runs that trigger runs),
+# which is why this workflow dispatches them explicitly: a
+# workflow_dispatch from that token is the one trigger it allows.
+#
+# Guards, in order: the tag must not exist; the version must match
+# pyproject.toml, runner/_version.py, and runner/install.py; and the
+# build job on the commit must have concluded success, so a tag never
+# lands before the build is green.
+name: cut-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit to tag (default: the head of main)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: cut-release
+  cancel-in-progress: false
+
+jobs:
+  cut:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.sha != '' && inputs.sha || 'main' }}
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      - name: the version, and that every carrier agrees
+        id: ver
+        run: |
+          set -euo pipefail
+          ver=$(python3 -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          rv=$(python3 -c "import re;print(re.search(r'__version__ = \"([^\"]+)\"', open('runner/_version.py').read()).group(1))")
+          iv=$(python3 -c "import re;print(re.search(r'__version__ = \"([^\"]+)\"', open('runner/install.py').read()).group(1))")
+          if [ "$ver" != "$rv" ] || [ "$ver" != "$iv" ]; then
+            echo "::error::version drift: pyproject=$ver _version.py=$rv install.py=$iv"
+            exit 1
+          fi
+          echo "tag=v$ver" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "cutting v$ver at $(git rev-parse --short HEAD)"
+
+      - name: the tag does not exist yet
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::$TAG already exists; bump the version first"
+            exit 1
+          fi
+
+      - name: the build on this commit is green
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.ver.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # The `test` job of build.yml is the suite; the build-* jobs
+          # are the binaries. Every one of them must have concluded
+          # success on this exact commit.
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${SHA}/check-runs?per_page=100" \
+            --jq '[.check_runs[] | select(.name == "test" or (.name | startswith("build-"))) | {name, status, conclusion}]' > runs.json
+          python3 - <<'EOF'
+          import json, sys
+          runs = json.load(open("runs.json"))
+          names = {r["name"] for r in runs}
+          need = {"test", "build-python", "build-linux", "build-linux-arm64",
+                  "build-windows", "build-windows-arm64", "build-macos",
+                  "build-macos-x86_64", "build-pi-light"}
+          missing = sorted(need - names)
+          if missing:
+              print(f"::error::no check run on this commit for: {', '.join(missing)}")
+              sys.exit(1)
+          bad = [r for r in runs if r["name"] in need
+                 and (r["status"] != "completed" or r["conclusion"] != "success")]
+          for r in bad:
+              print(f"::error::{r['name']}: {r['status']}/{r['conclusion']}")
+          if bad:
+              sys.exit(1)
+          print(f"{len(need)} jobs green on this commit")
+          EOF
+
+      - name: tag and push
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
+          SHA: ${{ steps.ver.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git config user.name "cut-release"
+          git config user.email "cut-release@users.noreply.github.com"
+          git tag -a "$TAG" "$SHA" -m "Version ${TAG#v}"
+          git push origin "refs/tags/$TAG"
+          echo "pushed $TAG -> $SHA"
+
+      - name: start the release pipeline on the tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh workflow run build.yml --ref "$TAG"
+          gh workflow run docker.yml --ref "$TAG" -f tag="$TAG"
+          gh workflow run docker.yml --ref "$TAG" -f tag=latest
+          echo "::notice::$TAG cut; build.yml and docker.yml dispatched on it"

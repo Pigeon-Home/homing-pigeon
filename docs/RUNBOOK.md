@@ -128,6 +128,14 @@ you. You start them by making a **release**. All point and click:
 The next release uses the next number. Bigger number = newer.
 Do not reuse a tag that already exists.
 
+**From a terminal instead of clicking:** with the version already
+bumped on main and its build green, `gh workflow run cut-release.yml`
+does steps 3 through 6 for you. It tags `v<version>` on the head of
+main (or on `-f sha=<commit>`), refuses if the tag exists, the
+version carriers disagree, or any build job on that commit is not
+green, then starts the same pipeline a tag push would. Watch the
+Actions tab as in step 7.
+
 After the robots finish, the Python packages go to PyPI automatically:
 the release workflow publishes them via trusted publishing (no tokens),
 so `pip install pigeon-home-runner` gets the new version. (The project
