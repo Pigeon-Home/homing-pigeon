@@ -5488,5 +5488,159 @@ class TestNonFiniteResourceSentinelSampleCountsCrashInsteadOfDefault(unittest.Te
 
 
 
+class TestNonFiniteLabResultsTunablesDefaultInsteadOfCrashOrSilence(unittest.TestCase):
+    """Divergence: non-finite lab-results tunables
+    (+inf anomaly_min_history, +inf anomaly_band)
+    crash scan() or silently suppress result_anomaly
+    instead of falling back to the documented
+    defaults (3 and 0.25).
+
+    (a) Doc claim (examples/extensions/lab-results/
+        README.md, line 37): "`anomaly_min_history`
+        (default 3) is how many earlier finished runs
+        the folder needs before `result_anomaly` is
+        judged at all; with fewer, nothing is called
+        an anomaly." The manifest ships the same
+        defaults (extension.json: "anomaly_band":
+        0.25, "anomaly_min_history": 3), the code's
+        own fallback literals state them
+        (lab_results.py lines 95 and 97-98: band
+        falls back to 0.25, min_history to 3), and
+        docs/extensions.md states the same contract
+        (lines 93-94 ship the example tunables
+        "anomaly_band": 0.25, "anomaly_min_history":
+        3; line 399: "`result_anomaly` | A finished
+        run's `metric` value sits farther than
+        `anomaly_band` (relative) from the mean of
+        the folder's earlier finished runs, with at
+        least `anomaly_min_history` of them").
+
+    (b) How the bug was found: the campaign's
+        doc-default hunt (2026-10-23 15:11 PDT tick)
+        exercised the lab-results example
+        extension's scan() -- the pure folder pass --
+        over a folder holding one finished result
+        (accuracy 2.0) with three earlier history
+        values (1.0, 1.0, 1.0; mean 1.0), with the
+        tunables omitted, set to genuine values
+        (anomaly_band 0.25, anomaly_min_history 3
+        and 2 and 5), and set to float("inf"),
+        float("-inf"), float("nan"), and True for
+        each of anomaly_band and
+        anomaly_min_history.
+
+    (c) Behavior actually observed: omitted,
+        genuine, True, -inf, and NaN all behave as
+        documented (the 2.0 value sits |2.0 - 1.0|
+        = 1.0 from the mean, beyond 0.25 * 1.0, so
+        scan() files experiment_finished and
+        result_anomaly; anomaly_min_history 5
+        correctly files only experiment_finished).
+        The +inf values do not fall back:
+        anomaly_min_history is computed as
+        int(min_history) when _is_number holds
+        (lab_results.py lines 96-98), and
+        _is_number excludes booleans but not
+        non-finite floats (line 49-50), so
+        int(float("inf")) raises OverflowError:
+        cannot convert float infinity to integer
+        and scan() crashes on the pass instead of
+        using the default 3. anomaly_band is
+        computed as float(band) when _is_number
+        holds and band > 0 (line 95); +inf passes
+        both checks, so the band becomes infinite
+        and abs(value - mean) > band * abs(mean)
+        is never true -- result_anomaly is
+        silently suppressed instead of using the
+        default 0.25. Sibling readers in this
+        codebase exclude non-finite values and
+        fall back to their defaults; this reader
+        does not. This is the campaign's known
+        non-finite-tunable root-cause family.
+        Observed on 2026-10-23: scan() with
+        anomaly_min_history float("inf") raised
+        OverflowError, and scan() with
+        anomaly_band float("inf") returned only
+        ["experiment_finished"], where the omitted
+        tunables returned ["experiment_finished",
+        "result_anomaly"].
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _signals(self, tunables):
+        import importlib.util
+        import json as _json
+        import os
+        import tempfile
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "lab-results",
+            "lab_results.py")
+        spec = importlib.util.spec_from_file_location(
+            "lab_results_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as folder:
+            with open(os.path.join(folder, "exp.json"),
+                      "w", encoding="utf-8") as fh:
+                _json.dump(
+                    {"run": "exp-new", "status": "finished",
+                     "metrics": {"accuracy": 2.0}}, fh)
+            manifest = {"name": "lab_results",
+                        "tunables": dict(tunables)}
+            state = {"reported": {},
+                     "history": [1.0, 1.0, 1.0]}
+            alerts, _state = mod.scan(folder, manifest, state)
+            return [a["signal"] for a in alerts]
+
+    def test_infinite_min_history_defaults_to_3(self):
+        self.assertEqual(
+            self._signals(
+                {"anomaly_min_history": float("inf")}),
+            ["experiment_finished", "result_anomaly"])
+
+    def test_infinite_band_defaults_to_0_25(self):
+        self.assertEqual(
+            self._signals({"anomaly_band": float("inf")}),
+            ["experiment_finished", "result_anomaly"])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented defaults and genuine
+        # values already behave today and must keep
+        # doing so after the non-finite case is fixed.
+        expected = ["experiment_finished", "result_anomaly"]
+        self.assertEqual(self._signals({}), expected)
+        self.assertEqual(
+            self._signals({"anomaly_band": 0.25}), expected)
+        self.assertEqual(
+            self._signals({"anomaly_min_history": 3}),
+            expected)
+        self.assertEqual(
+            self._signals({"anomaly_min_history": 2}),
+            expected)
+        self.assertEqual(
+            self._signals({"anomaly_min_history": 5}),
+            ["experiment_finished"])
+        self.assertEqual(
+            self._signals(
+                {"anomaly_min_history": float("nan")}),
+            expected)
+        self.assertEqual(
+            self._signals(
+                {"anomaly_min_history": float("-inf")}),
+            expected)
+        self.assertEqual(
+            self._signals({"anomaly_band": float("nan")}),
+            expected)
+        self.assertEqual(
+            self._signals({"anomaly_band": True}), expected)
+
+
+
+
 if __name__ == "__main__":
     unittest.main()
