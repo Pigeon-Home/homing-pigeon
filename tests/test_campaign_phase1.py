@@ -76,6 +76,14 @@ class CampaignExecutorTests(unittest.TestCase):
         self.assertEqual(result["exit_code"], 0)
         self.assertIn("campaign-42", result["stdout"])
 
+    def test_args_reach_the_job(self):
+        # t02 (second half): job args arrive as the process's argv.
+        result, _ = _run(None, _job(
+            "c-args", "import sys; print('arg1=' + sys.argv[1])",
+            args=["hello-arg"]))
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("arg1=hello-arg", result["stdout"])
+
     def test_workdir_is_the_job_cwd(self):
         result, tmpdir = _run(None, _job(
             "c-cwd", "import os; open('note.txt', 'w').write('campaign-data')\n"
