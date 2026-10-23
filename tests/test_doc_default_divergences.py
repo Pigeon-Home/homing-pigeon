@@ -3295,5 +3295,103 @@ class TestBooleanGrepMaxMatchesDefaultsTo10(unittest.TestCase):
             self._grep_count({"max_matches": 0}), 0)
 
 
+class TestBooleanTailLinesDefaultsTo20(unittest.TestCase):
+    """Divergence: a tail query's lines present as a
+    boolean returns 1 line (true) or 0 lines (false)
+    instead of the default 20 lines that an omitted or
+    unparseable value gets.
+
+    (a) Doc claim: PROTOCOL.md (line 655) defines the
+        tail op as "`tail` (`lines`: last N lines)" over
+        the retained output. The reader's own code
+        carries the default twice: int(q.get("lines",
+        20)) and an except fallback of 20
+        (runner/runner.py, the tail branch of
+        answer_queries, lines 3030-3034), and it treats
+        an explicit numeric zero as a distinct value --
+        the tail expression returns no lines only when
+        n is zero, paralleling docs/fuzzing.md
+        (lines 129-131), which reserves "returns no
+        lines" for an explicit numeric zero in the
+        sibling grep op and describes a default limit
+        applying otherwise. No document gives a boolean
+        a meaning as a 1-line or 0-line tail.
+
+    (b) How the bug was found: the campaign's
+        doc-default hunt (2026-10-23 11:36 PDT tick)
+        exercised runner.runner.answer_queries with one
+        tail query over retained output holding 25
+        lines, varying only lines around the default --
+        omitted, explicit None, the string "bogus",
+        float("inf"), a huge integer (10**400),
+        explicit 2, explicit 0, and the booleans True
+        and False -- recording how many lines each
+        answer carried.
+
+    (c) Behavior actually observed: omitted, None,
+        "bogus", and infinity all return 20 lines (the
+        default); explicit 2 returns 2 and explicit 0
+        returns 0, as documented; the huge integer
+        clamps to the reader's 200 ceiling and returns
+        all 25. True and False do not reach the
+        default: the read is int(q.get("lines", 20))
+        guarded only by (TypeError, ValueError,
+        OverflowError), Python's bool is a subclass of
+        int, so int(True) is 1 and int(False) is 0 --
+        true silently returns only the last line and
+        false silently returns no lines at all, the
+        behavior reserved for an explicit numeric
+        zero. This is the campaign's known
+        boolean-as-number family -- numeric getters
+        accepting a Python boolean as 1/0 instead of
+        falling back to the documented default -- in
+        the tail branch of the query-answer reader,
+        which the grep branch coverage in the class
+        above had not exercised. Observed on
+        2026-10-23: answer_queries with lines True
+        returned 1 line and with False returned 0,
+        against 25 retained lines.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    _RES = {"stdout": "\n".join(
+        "line %d" % i for i in range(25)) + "\n",
+            "stderr": "", "exit_code": 0}
+
+    def _tail_count(self, extra):
+        from runner.runner import answer_queries
+        q = {"op": "tail"}
+        q.update(extra)
+        answers, _spent = answer_queries(
+            [q], self._RES, None, 8, cfg=None, view="full")
+        return len(answers[0].get("lines", []))
+
+    def test_true_lines_defaults_to_20(self):
+        self.assertEqual(
+            self._tail_count({"lines": True}), 20)
+
+    def test_false_lines_defaults_to_20(self):
+        self.assertEqual(
+            self._tail_count({"lines": False}), 20)
+
+    def test_bogus_lines_defaults_to_20(self):
+        # Control: an unparseable value already lands on
+        # the default today; it must keep doing so after
+        # the boolean cases are fixed.
+        self.assertEqual(
+            self._tail_count({"lines": "bogus"}), 20)
+
+    def test_explicit_zero_lines_returns_no_lines(self):
+        # Control: an explicit numeric zero already
+        # returns no lines today (the tail expression
+        # special-cases zero); the fix must not flatten
+        # a genuine zero to the default.
+        self.assertEqual(
+            self._tail_count({"lines": 0}), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1198,6 +1198,15 @@ class CampaignLoopCycleTests(unittest.TestCase):
     def test_cycle_369_clock(self):
         self._run_cycle(369, 'clock', 0)
 
+    def test_cycle_370_envmark(self):
+        self._run_cycle(370, 'envmark', 0)
+
+    def test_cycle_371_hostinfo(self):
+        self._run_cycle(371, 'hostinfo', 0)
+
+    def test_cycle_372_workdir(self):
+        self._run_cycle(372, 'workdir', 0)
+
 
 if __name__ == "__main__":
     unittest.main()
