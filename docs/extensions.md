@@ -183,7 +183,8 @@ Which upstream each shipped feed carries:
 Your own extension may name an upstream the same way. A manifest
 without the field is unchanged, and a runner that predates the
 field refuses it by name -- so add it only once the agent you
-target is at least 3.12.52.
+target knows the field. The changelog names the release that
+added it.
 
 Beside the manifest block, each shipped feed also carries a
 provenance bundle: `upstream.json` names the upstream, its license,

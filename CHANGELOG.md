@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.53 - 2026-10-22
+
+- **The extension doc no longer names the release it ships in.**
+  `docs/extensions.md` said "at least 3.12.52" while 3.12.52 was
+  the version being tagged. The evergreen-doc test forbids that,
+  and it is the only failure in the 3.12.52 Windows job. The
+  sentence now points at the changelog instead of a number.
+
 ## 3.12.52 - 2026-10-22
 
 - **OAuth consent waits for its own callback.** The redirect
