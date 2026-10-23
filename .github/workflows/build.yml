@@ -119,11 +119,9 @@ jobs:
       - run: pyrefly check
 
   mutation:
-    # Release-only: mutation runs when a version tag is pushed, not
-    # on branch pushes or PRs. Measured at about 25 minutes on the
-    # v3.11.11 tag run. It is a signal, not a block; the tag build
-    # is where the signal is wanted. The rule lives here so nobody
-    # has to remember to ask for it -- the ref decides.
+    # Signal, not a block: mutation reports surviving mutants for
+    # triage. Measured ~25 min on the v3.11.11 tag run, which is why
+    # it no longer rides the release -- see the if: below.
     # continue-on-error makes the comment above true in the one
     # place it was not: a failed mutation job used to stamp the
     # whole run 'failure', and the mirror publishers key off the
@@ -132,23 +130,21 @@ jobs:
     # reached either mirror that way). The job still shows failed
     # in the run when it fails -- the signal stays loud; it just
     # cannot block a publish any more.
-    # No timeout-minutes, by the owner's decision (2026-10-22,
-    # Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c): every
-    # timer in the pipeline is off while the slow and the red
-    # are measured, so a run shows how long it really takes
-    # instead of where a guard cut it. This was the pipeline's
-    # only explicit job timer (40 minutes, the measured mutmut
-    # run plus headroom; a stuck mutmut once held a tag run
-    # in_progress for the platform's 6 hours after the mirrors
-    # had published). The platform default of 360 minutes still
-    # applies; nothing on a hosted runner can go longer. To end
-    # the experiment, put `timeout-minutes: 40` back here and
-    # flip tests/test_build_config.py
-    # test_mutation_cannot_hold_a_tag_run_for_hours back to
-    # asserting it. The six-day run history that motivated the
-    # measurement is docs/reports/v3.12.56/ci-failures.md.
+    # The measurement experiment (2026-10-22, Agent-Stamp 10000c2a)
+    # is ended; its findings are acted on here and in
+    # docs/reports/v3.12.56/ci-failures.md. Mutation left the release
+    # path (the if: below) and the two scarce-runner build jobs
+    # regained a 30-minute timer. Mutation itself needs none now:
+    # off the critical path, a slow mutmut stretches only a manual
+    # dispatch, never a publish.
     continue-on-error: true
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Off the release critical path (owner's call, 2026-10-22): a
+    # non-gating signal was the whole difference between a ~7-minute
+    # release and a ~40-minute one (ci-failures.md, finding 4). It
+    # now runs only on manual dispatch (and the scheduled
+    # mutation-seeded.yml), never on a tag or branch push, so no
+    # publish ever waits on it.
+    if: github.event_name == 'workflow_dispatch'
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -422,6 +418,9 @@ jobs:
     # Native Windows on ARM. Same freeze rule as the Linux
     # arm64 job: built on an arm runner, not cross-compiled.
     runs-on: windows-11-arm
+    # Scarce runner: a retired label parks the release for hours
+    # (ci-failures.md finding 3); 30 minutes fails it fast instead.
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -516,6 +515,10 @@ jobs:
     # the release never publishes. macos-15-intel is the
     # standard runner that still freezes x86_64.
     runs-on: macos-15-intel
+    # Scarce runner: when its label is retired (macos-13 was, and
+    # parked release runs ~16 h -- ci-failures.md finding 3), fail
+    # in 30 minutes instead of at the platform's 6-hour ceiling.
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:

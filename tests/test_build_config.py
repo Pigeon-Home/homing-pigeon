@@ -107,19 +107,25 @@ class UnixVersionSmokeTest(unittest.TestCase):
 
 
 class MutationGateTest(unittest.TestCase):
-    """Mutation is release-only (owner's call, 2026-10-17).
+    """Mutation is a non-gating signal, off the release path
+    (owner's call, 2026-10-22).
 
-    The job is a signal, not a block, so it is
-    gated on the ref: version tags run it, branch pushes and PRs
-    skip it. The rule lives in build.yml so nobody has to remember
-    to ask for it -- and this test is the proof of work for the
-    change that put it there (verified live on run 39101780439:
-    mutation skipped on a branch push, everything else green).
+    It is continue-on-error and runs only on manual dispatch (plus
+    the scheduled mutation-seeded.yml), so no publish waits on it.
+    It used to ride version tags, which is what made releases ~40
+    minutes; the move is finding 4 of
+    docs/reports/v3.12.56/ci-failures.md.
     """
 
-    def test_mutation_runs_only_on_version_tags(self):
+    def test_mutation_runs_only_on_manual_dispatch(self):
+        # Off the release critical path (2026-10-22): mutation is a
+        # non-gating signal, so it runs only on manual dispatch (and
+        # the scheduled mutation-seeded.yml), never on a tag or push.
+        # That is the whole difference between a ~7-min and a ~40-min
+        # release. docs/reports/v3.12.56/ci-failures.md, finding 4.
         block = _job_block(_workflow(), "mutation")
-        self.assertIn("if: startsWith(github.ref, 'refs/tags/v')", block)
+        self.assertIn("if: github.event_name == 'workflow_dispatch'", block)
+        self.assertNotIn("refs/tags", block)
 
     def test_the_gate_jobs_stay_ungated(self):
         # The jobs that gate everything else must run on every push;
@@ -143,36 +149,41 @@ class MutationGateTest(unittest.TestCase):
         block = _job_block(_workflow(), "mutation")
         self.assertIn("continue-on-error: true", block)
 
-    def test_mutation_cannot_hold_a_tag_run_for_hours(self):
-        # Inverted on purpose (owner's call, 2026-10-22, Agent-Stamp
-        # 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c): every pipeline timer
-        # is off while the slow and the red are measured, and this
-        # was the only one. A stuck mutmut can now hold a tag run
-        # for the platform's 6 hours; that is the point -- the run
-        # then shows how long it really took instead of where the
-        # guard cut it. The pin keeps the experiment deliberate: a
-        # timer that comes back has to come back through this test.
-        # Measured history: docs/reports/v3.12.56/ci-failures.md.
-        # When the experiment ends, restore `timeout-minutes: 40`
-        # (the measured 25-minute run plus headroom) in build.yml
-        # and flip this back to assertIn.
+    def test_mutation_needs_no_timer_off_the_release_path(self):
+        # Mutation no longer rides a tag run, so a slow mutmut can
+        # only stretch a manual dispatch, never a publish; it carries
+        # no job timer. The timers that came back live on the scarce
+        # build runners instead (next test).
         block = _job_block(_workflow(), "mutation")
         self.assertNotIn("timeout-minutes", _uncommented(block))
 
-    def test_no_job_in_the_pipeline_carries_a_timer(self):
-        # The experiment is "all timers off", not "that one timer
-        # off": no job in any workflow may carry timeout-minutes
-        # while it runs. Platform defaults (360 minutes per job)
-        # are the only ceiling.
+    def test_only_scarce_runners_carry_a_timer(self):
+        # The measurement experiment is over. The one timer the
+        # report argued for is back, and only there: the two
+        # scarce-runner build jobs whose runner label GitHub can
+        # retire (macos-15-intel, windows-11-arm). A retired label
+        # parked release runs ~16 h (finding 3); 30 minutes fails
+        # them fast instead. No other job -- in build.yml or any
+        # other workflow -- carries one.
+        workflow = _workflow()
+        for job in ("build-macos-x86_64", "build-windows-arm64"):
+            block = _uncommented(_job_block(workflow, job))
+            self.assertIn("timeout-minutes: 30", block,
+                          "%s should carry the scarce-runner timer" % job)
+        # Exactly those two, nowhere else in build.yml.
+        self.assertEqual(_uncommented(workflow).count("timeout-minutes"), 2,
+                         "only the two scarce runners may carry a timer")
+        # And no other workflow file carries one at all.
         folder = os.path.join(_root(), ".github", "workflows")
         names = sorted(n for n in os.listdir(folder)
                        if n.endswith((".yml", ".yaml")))
         self.assertGreaterEqual(len(names), 5, names)
         for name in names:
+            if name == "build.yml":
+                continue
             with open(os.path.join(folder, name), encoding="utf-8") as fh:
-                text = fh.read()
-            self.assertNotIn("timeout-minutes", _uncommented(text),
-                             "%s carries a job timer" % name)
+                self.assertNotIn("timeout-minutes", _uncommented(fh.read()),
+                                 "%s carries a job timer" % name)
 
     def test_real_gates_are_not_continue_on_error(self):
         # The mirror image of the pin above: if a job that gates
