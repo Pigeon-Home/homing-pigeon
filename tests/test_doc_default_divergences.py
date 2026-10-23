@@ -2557,5 +2557,105 @@ class TestBooleanDriWindowSecIsConfigError(unittest.TestCase):
             out["triggers"]["key_probe"]["window_sec"], 3600.0)
 
 
+class TestHugeEmailPollIntervalDefaultsTo20(unittest.TestCase):
+    """Divergence: a poll_interval_sec that is a huge integer
+    (a JSON number with hundreds of digits) raises a raw
+    OverflowError out of the email transport extension's run
+    loop, instead of falling back to the documented
+    20-second default; an infinite value likewise becomes
+    an infinite poll interval instead of the default.
+
+    (a) Doc claim (docs/FAQs.md, line 9): the runner's poll
+        cycle runs "every 20 seconds by default
+        (`poll_interval_sec`)". docs/configuring-oracle.md
+        (flag-to-key map, line 82) maps `--poll-interval
+        SECONDS` to the same key. The core hands this key
+        to every transport extension as its cadence
+        (runner/transports.py, _runtime_config:
+        "poll_interval_sec": cfg.get("poll_interval_sec",
+        20)), and the email extension's own reader states
+        the same fallback in code: an unparseable value
+        lands on 20.0 (its except path).
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 10:41 PDT tick) exercised
+        EmailPipe.run in
+        runner/transport_extensions/email/__main__.py with
+        poll_interval_sec left unset and varied around it
+        -- key omitted, a non-numeric string ("bogus"), 0,
+        False, a valid 42, the boolean True, a negative
+        value, float("inf"), and a huge integer (10**400)
+        -- recording the interval the run loop logged
+        ("polling ... every Ns") with pass_once stubbed
+        out and the channel nap stubbed to stop the loop
+        after one pass. The huge form is reachable from a
+        real config file: load_config uses a plain
+        json.load, which parses a several-hundred-digit
+        JSON number into an arbitrary-precision int, and
+        _runtime_config hands the value to the extension
+        verbatim.
+
+    (c) Behavior actually observed: omitted, "bogus", 0,
+        and False all poll every 20s, and 42 is honored.
+        The huge int does not: run() computes
+        float(cfg.get("poll_interval_sec") or 20) guarded
+        by `except (TypeError, ValueError)` only, and
+        float(10**400) raises OverflowError, which escapes
+        run() before the first pass -- the default
+        transport (email is the default transport) dies at
+        startup and the supervisor restarts a permanently
+        dead extension. Infinity does not crash there but
+        is used literally: the loop logs "every infs" and
+        naps forever, so the mailbox is polled once and
+        never again, instead of every 20 seconds. Sibling
+        float readers include OverflowError in their
+        fallback guard: the core's poll-interval reader,
+        parse_sensors and gate_alert (runner/senses.py),
+        and _cfg_size (runner/runner.py) all catch it;
+        this reader is the outlier.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    class _Stop(Exception):
+        pass
+
+    def _logged_interval(self, extra):
+        import importlib
+        em = importlib.import_module(
+            "runner.transport_extensions.email.__main__")
+        from runner.transport_extensions import channel as ch
+        cfg = {"mailbox_user": "probe@example.invalid"}
+        cfg.update(extra)
+        pipe = em.EmailPipe(cfg, "/tmp/docdef-no-channel")
+        logs = []
+        orig_log, orig_nap = ch.log, ch.nap
+        ch.log = lambda msg, *a, **k: logs.append(str(msg))
+        pipe.pass_once = lambda: None
+
+        def _nap(_seconds):
+            raise self._Stop()
+        ch.nap = _nap
+        try:
+            with self.assertRaises(self._Stop):
+                pipe.run()
+        finally:
+            ch.log, ch.nap = orig_log, orig_nap
+        self.assertTrue(logs, "run loop logged no interval")
+        return logs[0]
+
+    def test_huge_poll_interval_defaults_to_20(self):
+        line = self._logged_interval(
+            {"poll_interval_sec": 10**400})
+        self.assertIn("every 20s", line)
+
+    def test_infinite_poll_interval_defaults_to_20(self):
+        line = self._logged_interval(
+            {"poll_interval_sec": float("inf")})
+        self.assertIn("every 20s", line)
+
+
 if __name__ == "__main__":
     unittest.main()
