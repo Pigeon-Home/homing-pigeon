@@ -15,6 +15,7 @@
       "sha384": "b0dd9adf73b634dcc3932124b51757b22d80da4c3b9376dffa5040d48347f0b3ecdc63cdfb5575a3f720224e9a56deec"
     }
   },
+  "license": "GPL-2.0-or-later",
   "pin": "db923656149ea64bee63f7e45275322a20c7dbe3",
   "ref": "master",
   "repo": "https://github.com/aide/aide"

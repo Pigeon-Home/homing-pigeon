@@ -28,6 +28,7 @@
     "paths": [
       "etc/schema.json",
       "LICENSE"
-    ]
+    ],
+    "license": "GPL-2.0-only"
   }
 }

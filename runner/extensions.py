@@ -63,7 +63,7 @@ _OPTIONAL_FIELDS = ("description", "tunables", "signals", "entry",
 # schema, a record layout, the license that lets them ride along.
 # tools/fetch_upstream.py carries them into <extension>/upstream/.
 # The runner only validates the shape; it never fetches.
-_UPSTREAM_FIELDS = ("repo", "ref", "pin", "paths")
+_UPSTREAM_FIELDS = ("repo", "ref", "pin", "paths", "license")
 _UPSTREAM_REPO_RE = re.compile(
     r"\Ahttps://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
 _UPSTREAM_PIN_RE = re.compile(r"\A[0-9a-f]{40}\Z")
@@ -216,9 +216,14 @@ def _parse_upstream(block, where):
     extra = sorted(set(block) - set(_UPSTREAM_FIELDS))
     if extra:
         raise ValueError(f"{uw}: unknown field(s) {', '.join(extra)}")
-    missing = [f for f in _UPSTREAM_FIELDS if f not in block]
+    missing = [f for f in ("repo", "ref", "pin", "paths") if f not in block]
     if missing:
         raise ValueError(f"{uw}: missing {', '.join(missing)}")
+    license_ = block.get("license", "")
+    if not isinstance(license_, str) or len(license_) > 100 \
+            or "\n" in license_ or "\r" in license_:
+        raise ValueError(f"{uw}.license must be one line (an SPDX "
+                         f"expression) of at most 100 characters")
     repo = block["repo"]
     if not isinstance(repo, str) or not _UPSTREAM_REPO_RE.match(repo):
         raise ValueError(
@@ -246,7 +251,8 @@ def _parse_upstream(block, where):
         if p in seen:
             raise ValueError(f"{uw}.paths: {p!r} listed twice")
         seen.add(p)
-    return {"repo": repo, "ref": ref, "pin": pin, "paths": list(paths)}
+    return {"repo": repo, "ref": ref, "pin": pin, "paths": list(paths),
+            "license": license_}
 
 
 def api_refusal(manifest: dict):

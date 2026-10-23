@@ -11,6 +11,7 @@
       "sha384": "28b68f1aaf790f15dc55f98ed6b7aa908d6a92acce4643bdcd2ba2eebe82b81406e0926d251f53a2fc16b73852ab67e6"
     }
   },
+  "license": "Apache-2.0",
   "pin": "e7b066bfbc8d81226ca5fa3e95ffd4dee38a2428",
   "ref": "main",
   "repo": "https://github.com/falcosecurity/rules"

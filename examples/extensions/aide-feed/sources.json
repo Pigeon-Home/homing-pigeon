@@ -4,9 +4,8 @@
     {
       "id": "aide",
       "role": "upstream",
+      "upstream": true,
       "description": "AIDE, the file integrity checker whose reports this sense reads: its release source, and the code that writes the plain report.",
-      "license": "GPL-2.0-or-later",
-      "github": "aide/aide",
       "ref": "latest",
       "tag_match": "^v\\d+\\.\\d+(\\.\\d+)?$",
       "asset_match": "^aide-\\d+\\.\\d+(\\.\\d+)?\\.tar\\.gz$",

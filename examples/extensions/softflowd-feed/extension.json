@@ -38,6 +38,7 @@
       "compat/netflow5.c",
       "compat/netflow9.c",
       "LICENSE"
-    ]
+    ],
+    "license": "BSD-3-Clause"
   }
 }

@@ -186,14 +186,17 @@ field refuses it by name -- so add it only once the agent you
 target knows the field. The changelog names the release that
 added it.
 
-Beside the manifest block, each shipped feed also carries a
-provenance bundle: `upstream.json` names the upstream, its license,
-and its pinned commit, and `tools/vendor_upstreams.py` keeps that
-upstream's license text and an `UPSTREAM-PROVENANCE.json` (a SHA-256
-per file and over the whole bundle) in
-`<extension>/provenance/<name>/`. The build's offline `verify`
-fails on a hand-edited bundle, a pin bumped without a re-vendor, or
-a bundle past its 5 MB cap.
+The block is the one place an extension names its upstream. It is
+read three ways from that one spot: `tools/fetch_upstream.py` keeps
+the pinned files in the tree for the build and the drift tests;
+the extension sources pass (below) hands the same files to the
+Oracle as the entry `pinned`, vouched for by the digests
+`upstream/PIN.json` recorded, with no lock and no consent needed;
+and a `sources.json` entry that says `"upstream": true` fetches
+more from that repository (an archive, docs, a release line)
+without spelling the repository or its license a second time.
+`license` in the block is the upstream's SPDX expression, written
+once and inherited.
 
 ## Three version numbers
 
@@ -410,15 +413,15 @@ Extensions fail closed and fail quiet:
 
 This section applies to both kinds, `sense` and `transport`.
 
-It is the third of three ways an extension names another
-project, and each has its own job. The manifest's `upstream`
-block (above) keeps the few files that define a feed's format in
-this tree, where the drift tests read them at build time. The
-provenance bundle (`upstream.json`, above) keeps each upstream's
-license and pinned commit in the tree. `sources.json` (here)
-names what the box itself should fetch for its Oracle — whole
-source archives, specifications, the extension's own code — and
-none of that ships.
+An extension names its upstream once, in the manifest's
+`upstream` block (above): repository, pinned commit, the files
+that define the format it reads, the license. `sources.json`
+(here) names what else the box should fetch for its Oracle —
+whole source archives, specifications, the extension's own code —
+and none of that ships. An entry that says `"upstream": true`
+draws on the manifest's repository and license and adds only what
+to fetch from it; the files the manifest pins reach the Oracle on
+their own, as the entry `pinned`, with no entry needed.
 
 The Oracle reasons better about a signal, a failure, or a pipe
 when it can read the code behind it — and the upstream project

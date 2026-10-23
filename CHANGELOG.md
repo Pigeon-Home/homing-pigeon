@@ -11,6 +11,25 @@ facts a reader may need to cite. Git history carries the rest.
   the release pipeline on the tag. Refuses an existing tag, drifting
   version carriers, or a commit whose build jobs are not all green.
   docs/RUNBOOK.md Job 4. No change to what the runner does.
+- **Extension sources: "auto" by default, and nothing unpinned by
+  default.** `extension_sources` now defaults to `"auto"`: the
+  background fetch runs only where a local model runs the Oracle,
+  so a deterministic box (Pi Light) makes no request, which is what
+  the README said of it. An entry no lock pins waits as `unpinned`,
+  listed in the index with the reason, until the owner sets the new
+  `unpinned` switch for that extension or for all; the build's pins
+  and an extension's own lock need no consent. docs/SAFEGUARDS.md
+  states the egress.
+- **One upstream declaration.** The manifest's `upstream` block
+  (now with an SPDX `license`) is the one place an extension names
+  its upstream. `runner/extsources.py` hands the files it pins to
+  the Oracle as the entry `pinned`, vouched for by the digests
+  `upstream/PIN.json` recorded, and a `sources.json` entry says
+  `"upstream": true` to fetch more from that repository without
+  naming it again. `upstream.json`, the `provenance/` bundles,
+  `tools/vendor_upstreams.py`, and their tests are retired; the
+  build's offline verify step went with them (`fetch_upstream.py
+  --check` was already the gate).
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 

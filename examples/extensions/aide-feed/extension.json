@@ -32,6 +32,7 @@
       "src/report.c",
       "src/report_plain.c",
       "COPYING"
-    ]
+    ],
+    "license": "GPL-2.0-or-later"
   }
 }

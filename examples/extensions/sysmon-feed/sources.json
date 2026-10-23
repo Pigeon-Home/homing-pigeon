@@ -17,9 +17,8 @@
     {
       "id": "sysmoncommon",
       "role": "schema",
+      "upstream": true,
       "description": "SysmonCommon, the code Sysmon for Linux shares with Sysmon for Windows; its manifest.xml defines the event fields, Event ID 1 included.",
-      "license": "MIT",
-      "github": "Sysinternals/SysmonCommon",
       "ref": "latest",
       "files": [
         "manifest.xml",

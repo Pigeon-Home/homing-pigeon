@@ -28,6 +28,7 @@
     "paths": [
       "src/analysisd/format/to_json.c",
       "LICENSE"
-    ]
+    ],
+    "license": "GPL-2.0-only"
   }
 }

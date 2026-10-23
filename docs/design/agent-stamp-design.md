@@ -38,7 +38,9 @@ git grep -n 'Agent-Stamp: 40000e00'
 The canonical spelling is `Agent-Stamp`. Variants seen so far:
 
 - `# agent-ident: ...` in `tools/vendor_upstreams.py` and
-  `tests/test_vendor_upstreams.py`
+  `tests/test_vendor_upstreams.py` (both files since retired with
+  the provenance bundles; the upstream is declared once, in the
+  manifest)
 - an `Agent-Chat-Stamp:` commit trailer (one commit)
 
 Proposal: rewrite the two file headers to `Agent-Stamp`. Leave history

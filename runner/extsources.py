@@ -231,11 +231,17 @@ _SEGMENT_RE = re.compile(r"\A[A-Za-z0-9._@+-][A-Za-z0-9._@+ -]{0,254}\Z")
 _WINDOWS_RESERVED = re.compile(
     r"\A(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?\Z", re.IGNORECASE)
 _TOP_FIELDS = ("sources_version", "oracle", "sources")
-_ENTRY_FIELDS = ("id", "role", "description", "license", "github", "url",
+_ENTRY_FIELDS = ("id", "role", "description", "license", "github", "upstream", "url",
                  "project", "ref", "tag_match", "asset_match", "archive",
                  "files", "max_mb", "oracle")
-_LOCATIONS = ("github", "url", "project")
-_RESERVED_IDS = ("installed",)
+_LOCATIONS = ("github", "upstream", "url", "project")
+_RESERVED_IDS = ("installed", "pinned")
+MANIFEST_FILE = "extension.json"
+MANIFEST_UPSTREAM_DIR = "upstream"
+MANIFEST_PIN_FILE = "PIN.json"
+PINNED_ENTRY_ID = "pinned"
+_MANIFEST_REPO_RE = re.compile(
+    r"\Ahttps://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)\Z")
 
 
 def _one_line(value, cap, where):
@@ -305,9 +311,29 @@ def _max_mb(value, where, cap):
     return value
 
 
-def _parse_entry(e, where, seen):
+def _parse_entry(e, where, seen, manifest_upstream=None):
     if not isinstance(e, dict):
         raise ValueError(where + " must be an object")
+    if "upstream" in e:
+        # "upstream": true names the repository the extension's
+        # manifest already declares (its `upstream` block), so the
+        # repository and its license are written once. The entry
+        # adds what else to fetch from it: an archive, more files,
+        # a release line.
+        if e["upstream"] is not True:
+            raise ValueError(f"{where}.upstream must be true (the "
+                             f"manifest's upstream repository)")
+        if "github" in e:
+            raise ValueError(f"{where}: upstream true and github are "
+                             f"exclusive; the manifest names the repository")
+        if not isinstance(manifest_upstream, dict):
+            raise ValueError(f"{where}.upstream is true but "
+                             f"{MANIFEST_FILE} declares no upstream block")
+        e = dict(e)
+        del e["upstream"]
+        e["github"] = manifest_upstream["github"]
+        if not e.get("license") and manifest_upstream.get("license"):
+            e["license"] = manifest_upstream["license"]
     unknown = sorted(set(e) - set(_ENTRY_FIELDS))
     if unknown:
         raise ValueError(f"{where}: unknown field(s) {', '.join(unknown)} "
@@ -419,13 +445,17 @@ def _parse_entry(e, where, seen):
     return out
 
 
-def parse_declaration(data, where=SOURCES_FILE) -> dict:
+def parse_declaration(data, where=SOURCES_FILE, manifest_upstream=None) -> dict:
     """Validate one sources.json. Returns the cleaned declaration.
 
     Raises ValueError with a readable reason. The same promise as the
     manifest: unknown fields are refused by name, sources_version
     newer than this agent reads is refused, older is accepted --
     fields may be added, never removed or reinterpreted.
+    manifest_upstream is the extension manifest's `upstream` block as
+    manifest_upstream_of() returns it; an entry with "upstream": true
+    takes its repository (and, unless it says otherwise, its license)
+    from there.
     """
     if not isinstance(data, dict):
         raise ValueError(f"{where}: must be a JSON object")
@@ -452,7 +482,8 @@ def parse_declaration(data, where=SOURCES_FILE) -> dict:
         raise ValueError(f"{where}: sources must be a list of at most "
                          f"{MAX_ENTRIES} entries")
     seen: set = set()
-    clean = [_parse_entry(e, f"{where}: sources[{i}]", seen)
+    clean = [_parse_entry(e, f"{where}: sources[{i}]", seen,
+                          manifest_upstream)
              for i, e in enumerate(entries)]
     return {"sources_version": ver, "oracle": oracle, "sources": clean}
 
@@ -488,9 +519,86 @@ def load_declaration(ext_dir):
     except (ValueError, UnicodeDecodeError) as e:
         return None, f"{SOURCES_FILE} is not valid JSON: {e}"
     try:
-        return parse_declaration(data), None
+        return parse_declaration(
+            data, manifest_upstream=manifest_upstream_of(ext_dir)), None
     except ValueError as e:
         return None, str(e)
+
+
+def manifest_upstream_of(ext_dir):
+    """The extension manifest's `upstream` block, normalized for this
+    module, or None: {"repo", "github" (owner/name), "ref", "pin",
+    "paths", "license"}. The runner's manifest loader is the
+    validator of record (runner/extensions.py); this reads the same
+    file and takes only a block of the shape it validates, so a
+    malformed manifest contributes nothing here rather than raising.
+    Never raises."""
+    if not isinstance(ext_dir, str) or not ext_dir:
+        return None
+    data = _read_json(os.path.join(ext_dir, MANIFEST_FILE),
+                      MAX_DECLARATION_BYTES)
+    block = data.get("upstream") if isinstance(data, dict) else None
+    if not isinstance(block, dict):
+        return None
+    repo, ref, pin, paths = (block.get("repo"), block.get("ref"),
+                             block.get("pin"), block.get("paths"))
+    m = _MANIFEST_REPO_RE.match(repo) if isinstance(repo, str) else None
+    if m is None or not isinstance(ref, str) or not ref \
+            or not isinstance(pin, str) or not _SHA_RE.match(pin) \
+            or not isinstance(paths, list) or not paths \
+            or not all(isinstance(x, str) and x for x in paths):
+        return None
+    lic = block.get("license")
+    return {"repo": repo, "github": m.group(1), "ref": ref, "pin": pin,
+            "paths": list(paths),
+            "license": lic if isinstance(lic, str) else ""}
+
+
+def manifest_pinned_entry(ext_dir, upstream=None):
+    """(entry, pin) for the files the manifest pins, or (None, None).
+
+    The manifest's `upstream` block is one declaration read three
+    ways: tools/fetch_upstream.py carries the files into
+    <extension>/upstream/ for the build and the drift tests, and this
+    turns the same block into a source entry (id "pinned") the Oracle
+    gets, vouched for by the SHA-384 digests upstream/PIN.json
+    recorded when the build fetched them. No lock and no consent is
+    needed: the pin is the manifest's own. Without PIN.json (a
+    checkout that never ran the tool, a third-party extension) the
+    entry has no pin and waits like any other unpinned entry.
+    """
+    up = upstream if upstream is not None else manifest_upstream_of(ext_dir)
+    if up is None:
+        return None, None
+    entry = {
+        "id": PINNED_ENTRY_ID, "role": "upstream",
+        "description": "the files this extension's manifest pins from "
+                       "%s at commit %s" % (up["github"], up["pin"][:12]),
+        "license": up["license"], "max_mb": DEFAULT_ENTRY_MB,
+        "oracle": None, "location": "github", "github": up["github"],
+        "ref": up["pin"], "archive": False, "files": list(up["paths"]),
+        "tag_match": None, "asset_match": None,
+    }
+    pin = None
+    pinfile = _read_json(os.path.join(ext_dir, MANIFEST_UPSTREAM_DIR,
+                                      MANIFEST_PIN_FILE), MAX_LOCK_BYTES)
+    files = pinfile.get("files") if isinstance(pinfile, dict) else None
+    if isinstance(pinfile, dict) and pinfile.get("pin") == up["pin"] \
+            and isinstance(files, dict):
+        resolved = {"how": "named", "ref": up["pin"], "tag": None,
+                    "commit": up["pin"], "version": None, "asset": None}
+        urls, _archive = remote_urls(entry, resolved)
+        pin_files = {}
+        for path in up["paths"]:
+            rec = files.get(path)
+            if isinstance(rec, dict) and isinstance(rec.get("sha384"), str):
+                pin_files[path] = {"url": urls.get(path),
+                                   "sha384": rec["sha384"],
+                                   "bytes": rec.get("bytes")}
+        if pin_files:
+            pin = {"resolved": resolved, "files": pin_files,
+                   "archive": None, "problems": []}
+    return entry, pin
 
 
 def load_lock(path):
@@ -1662,10 +1770,19 @@ def _run_pass(base_dir, root, targets, policy, fetcher, now, log, force,
         pins, pinned_by = _pins_for(t, decl, ext_lock, project_lock)
         prev_entries = prev.get("entries") or {}
         ctx["ext_root"] = ext_root
-        for entry in (decl or {}).get("sources") or []:
+        work_items = [(entry, pins.get(entry["id"]) if isinstance(
+            pins.get(entry["id"]), dict) else None, pinned_by)
+            for entry in (decl or {}).get("sources") or []]
+        m_entry, m_pin = manifest_pinned_entry(t["dir"])
+        if m_entry is not None:
+            st["manifest_upstream"] = {
+                "github": m_entry["github"], "pin": m_entry["ref"],
+                "pinned": m_pin is not None}
+            work_items.append((m_entry, m_pin,
+                               "manifest" if m_pin else None))
+        for entry, pin, entry_pinned_by in work_items:
             eid = entry["id"]
             entry_dir = os.path.join(ext_root, eid)
-            pin = pins.get(eid) if isinstance(pins.get(eid), dict) else None
             digest = _digest_text(_canonical({"entry": entry, "pin": pin}))
             old = prev_entries.get(eid) if isinstance(
                 prev_entries.get(eid), dict) else {}
@@ -1721,7 +1838,8 @@ def _run_pass(base_dir, root, targets, policy, fetcher, now, log, force,
             before = _tree_bytes(entry_dir)
             try:
                 try:
-                    work = _small_parts(ctx, t, entry, rec, pin, pinned_by)
+                    work = _small_parts(ctx, t, entry, rec, pin,
+                                        entry_pinned_by)
                 except OSError as err:
                     # A disk that is full, a file another process holds
                     # open (Windows): this entry fails and retries; the
@@ -1855,6 +1973,8 @@ def _entry_line(base_dir, rec):
         bits.append("pinned by the build")
     elif rec.get("pinned_by") == "extension":
         bits.append("pinned by the extension")
+    elif rec.get("pinned_by") == "manifest":
+        bits.append("pinned by the manifest")
     elif rec.get("pinned_by") == "first-run":
         bits.append("resolved on this box, unpinned" if origin.get("github")
                     else "unpinned: recorded on its first fetch here")

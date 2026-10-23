@@ -4,9 +4,8 @@
     {
       "id": "zeek",
       "role": "upstream",
+      "upstream": true,
       "description": "Zeek, the traffic analyzer whose conn.log and dns.log this sense reads: its release source and the scripts that define both logs.",
-      "license": "BSD-3-Clause",
-      "github": "zeek/zeek",
       "ref": "latest",
       "tag_match": "^v\\d+\\.\\d+\\.\\d+$",
       "asset_match": "^zeek-\\d+\\.\\d+\\.\\d+\\.tar\\.gz$",

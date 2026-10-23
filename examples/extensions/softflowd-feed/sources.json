@@ -4,9 +4,8 @@
     {
       "id": "softflowd",
       "role": "upstream",
+      "upstream": true,
       "description": "softflowd, the flow exporter whose NetFlow and IPFIX datagrams this sense decodes: its source at master, where the v5 and v9 record writers live.",
-      "license": "BSD-3-Clause",
-      "github": "irino/softflowd",
       "ref": "master",
       "archive": true,
       "max_mb": 8,

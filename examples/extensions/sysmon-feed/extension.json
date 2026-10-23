@@ -28,6 +28,7 @@
     "paths": [
       "manifest.xml",
       "LICENSE"
-    ]
+    ],
+    "license": "MIT"
   }
 }

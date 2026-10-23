@@ -15,6 +15,7 @@
       "sha384": "2a98b5e0a1afade441dbfec009ded0b586b19abd4396c3296e6301e380b80e8897e8c03227f1eee15d623a2937dfca4c"
     }
   },
+  "license": "BSD-3-Clause",
   "pin": "debb824091f1f609fee9c2acc9a32daa772fae43",
   "ref": "master",
   "repo": "https://github.com/zeek/zeek"

@@ -19,9 +19,8 @@
     {
       "id": "falco-rules",
       "role": "rules",
+      "upstream": true,
       "description": "Falco's default rules: the rule names and priorities that appear in the alerts this sense files.",
-      "license": "Apache-2.0",
-      "github": "falcosecurity/rules",
       "ref": "latest",
       "tag_match": "^falco-rules-\\d+\\.\\d+\\.\\d+$",
       "files": [

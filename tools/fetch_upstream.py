@@ -23,8 +23,13 @@ The manifest names what to carry:
       "repo": "https://github.com/OISF/suricata",
       "ref": "master",
       "pin": "<40-hex commit>",
-      "paths": ["etc/schema.json", "LICENSE"]
+      "paths": ["etc/schema.json", "LICENSE"],
+      "license": "GPL-2.0-only"
     }
+
+`license` is the upstream's SPDX expression, informational, written
+here once; the extension's sources.json inherits it for an entry
+that says `"upstream": true`.
 
 `pin` is the commit the files were taken from. `ref` is the branch
 or tag the nightly bump resolves to find a newer pin. The files land
@@ -91,9 +96,14 @@ def validate_upstream(block, where="upstream"):
     """The manifest-side rules; runner/extensions.py applies the same."""
     if not isinstance(block, dict):
         raise UpstreamError(f"{where}: must be an object")
-    extra = sorted(set(block) - {"repo", "ref", "pin", "paths"})
+    extra = sorted(set(block) - {"repo", "ref", "pin", "paths", "license"})
     if extra:
         raise UpstreamError(f"{where}: unknown field(s) {', '.join(extra)}")
+    license_ = block.get("license", "")
+    if not isinstance(license_, str) or len(license_) > 100 \
+            or "\n" in license_ or "\r" in license_:
+        raise UpstreamError(f"{where}.license must be one line (an SPDX "
+                            f"expression) of at most 100 characters")
     for field in ("repo", "ref", "pin", "paths"):
         if field not in block:
             raise UpstreamError(f"{where}: missing {field}")
@@ -118,7 +128,8 @@ def validate_upstream(block, where="upstream"):
         if p in seen:
             raise UpstreamError(f"{where}.paths: {p!r} listed twice")
         seen.add(p)
-    return {"repo": repo, "ref": ref, "pin": pin, "paths": list(paths)}
+    return {"repo": repo, "ref": ref, "pin": pin, "paths": list(paths),
+            "license": license_}
 
 
 def iter_manifests(ext_root=EXTENSIONS_DIR):
@@ -230,6 +241,7 @@ def fetch(ext_dir, block, log=print):
             "repo": block["repo"],
             "ref": block["ref"],
             "pin": block["pin"],
+            "license": block.get("license", ""),
             "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "bytes": total,
             "files": files,

@@ -4,9 +4,8 @@
     {
       "id": "osquery",
       "role": "upstream",
+      "upstream": true,
       "description": "osquery, the host telemetry daemon whose differential results log this sense reads: its source and the specs of the tables the light pack queries.",
-      "license": "Apache-2.0 OR GPL-2.0-only",
-      "github": "osquery/osquery",
       "ref": "latest",
       "tag_match": "^\\d+\\.\\d+\\.\\d+$",
       "files": [

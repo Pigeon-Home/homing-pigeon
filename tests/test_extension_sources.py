@@ -155,7 +155,42 @@ def upstream_decl(**over):
          "description": "SMTP."}]}
 
 
-def write_ext(folder, decl=None, name="feed", kind="sense", files=None):
+PINNED_SHA = "c" * 40
+PINNED_RAW = "https://raw.githubusercontent.com/o/up/%s/" % PINNED_SHA
+PINNED_FILES = {"LICENSE": b"MIT\n", "doc/schema.json": b'{"pinned": 1}\n'}
+
+
+def manifest_upstream(license_="MIT"):
+    return {"repo": "https://github.com/o/up", "ref": "main",
+            "pin": PINNED_SHA, "paths": list(PINNED_FILES),
+            "license": license_}
+
+
+def pinned_routes():
+    return {PINNED_RAW + k: v for k, v in PINNED_FILES.items()}
+
+
+def write_pin_json(folder, pin=PINNED_SHA, files=PINNED_FILES):
+    """What tools/fetch_upstream.py writes beside the files it carries."""
+    import hashlib
+    updir = os.path.join(folder, "upstream")
+    recs = {}
+    for rel, data in files.items():
+        path = os.path.join(updir, *rel.split("/"))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as fh:
+            fh.write(data)
+        recs[rel] = {"sha384": hashlib.sha384(data).hexdigest(),
+                     "bytes": len(data)}
+    with open(os.path.join(updir, "PIN.json"), "w") as fh:
+        json.dump({"repo": "https://github.com/o/up", "ref": "main",
+                   "pin": pin, "fetched_at": "2026-10-22T00:00:00Z",
+                   "bytes": sum(len(v) for v in files.values()),
+                   "files": recs}, fh)
+
+
+def write_ext(folder, decl=None, name="feed", kind="sense", files=None,
+              upstream=None):
     os.makedirs(folder, exist_ok=True)
     manifest = {"name": name, "version": "0.1.0", "api_version": 1,
                 "kind": kind,
@@ -165,6 +200,8 @@ def write_ext(folder, decl=None, name="feed", kind="sense", files=None):
     else:
         manifest["entry"] = ["{python}", "x.py"]
         manifest["publisher"] = "Tests"
+    if upstream is not None:
+        manifest["upstream"] = upstream
     with open(os.path.join(folder, "extension.json"), "w") as fh:
         json.dump(manifest, fh)
     if decl is not None:
@@ -1037,6 +1074,116 @@ class ProvisionTest(_Base):
             model=False))
         self.assertTrue(rep["ran"])
         self.assertEqual(self.state()["entries"]["up"]["status"], "fetched")
+
+    def test_the_manifest_upstream_reaches_the_oracle_as_pinned(self):
+        # The manifest's upstream block, with the PIN.json the build
+        # wrote beside its files, is a source entry the Oracle gets:
+        # id "pinned", vouched for by those digests, no lock and no
+        # consent needed. The URLs are rebuilt from the pin commit.
+        write_ext(self.ext, None, upstream=manifest_upstream())
+        write_pin_json(self.ext)
+        self.opener.routes.update(pinned_routes())
+        rep = self.run_pass(policy=self.policy({"extension_sources": True}))
+        self.assertTrue(rep["ran"])
+        st = self.state()
+        self.assertEqual(st["manifest_upstream"],
+                         {"github": "o/up", "pin": PINNED_SHA, "pinned": True})
+        rec = st["entries"]["pinned"]
+        self.assertEqual((rec["status"], rec["pinned_by"]),
+                         ("fetched", "manifest"))
+        self.assertEqual(rec["license"], "MIT")
+        self.assertEqual(rec["resolved"]["commit"], PINNED_SHA)
+        self.assertEqual(sorted(rec["files"]["items"]),
+                         ["LICENSE", "doc/schema.json"])
+        self.assertEqual(sorted(self.opener.urls()),
+                         sorted(pinned_routes()))
+        with open(os.path.join(self.entry_dir("pinned"), "files",
+                               "doc", "schema.json")) as fh:
+            self.assertEqual(fh.read(), '{"pinned": 1}\n')
+        self.assertIn("pinned by the manifest", self.index())
+        self.assertIn("at commit %s" % PINNED_SHA[:12], self.index())
+
+    def test_bytes_that_differ_from_the_manifest_pin_are_refused(self):
+        write_ext(self.ext, None, upstream=manifest_upstream())
+        write_pin_json(self.ext)
+        routes = pinned_routes()
+        routes[PINNED_RAW + "doc/schema.json"] = b'{"tampered": 1}\n'
+        self.opener.routes.update(routes)
+        self.run_pass(policy=self.policy({"extension_sources": True}))
+        rec = self.state()["entries"]["pinned"]
+        self.assertEqual(rec["status"], "mismatch")
+        self.assertFalse(os.path.exists(os.path.join(
+            self.entry_dir("pinned"), "files", "doc", "schema.json")))
+
+    def test_a_manifest_upstream_without_pin_json_waits_like_any_unpinned(self):
+        # A checkout that never ran the tool, or a third-party
+        # extension: the block is there, the digests are not. No
+        # request is made until the owner allows trust on first use.
+        write_ext(self.ext, None, upstream=manifest_upstream())
+        self.opener.routes.update(pinned_routes())
+        self.run_pass(policy=self.policy({"extension_sources": True}))
+        st = self.state()
+        self.assertEqual(st["manifest_upstream"]["pinned"], False)
+        self.assertEqual(st["entries"]["pinned"]["status"], "unpinned")
+        self.assertEqual(self.opener.seen, [])
+        self.run_pass(policy=self.policy(
+            {"extension_sources": {"fetch": True, "unpinned": True}}),
+            now=self.now + 5)
+        rec = self.state()["entries"]["pinned"]
+        self.assertEqual((rec["status"], rec["pinned_by"]),
+                         ("fetched", "first-run"))
+
+    def test_a_stale_pin_json_does_not_vouch(self):
+        # PIN.json from an older pin: the manifest moved, the tool
+        # has not run. Its digests are for other bytes and are not
+        # used; the entry waits as unpinned.
+        write_ext(self.ext, None, upstream=manifest_upstream())
+        write_pin_json(self.ext, pin="d" * 40)
+        self.run_pass(policy=self.policy({"extension_sources": True}))
+        self.assertEqual(self.state()["entries"]["pinned"]["status"],
+                         "unpinned")
+
+    def test_a_sources_entry_inherits_the_manifest_upstream(self):
+        # "upstream": true names the manifest's repository: the entry
+        # resolves to the same github location and takes the
+        # manifest's license unless it says otherwise. Without a
+        # manifest block, or beside a github field, it is refused.
+        decl = upstream_decl()
+        e = decl["sources"][0]
+        del e["github"]
+        del e["license"]
+        e["upstream"] = True
+        write_ext(self.ext, decl, upstream=manifest_upstream("BSD-3-Clause"))
+        parsed, problem = X.load_declaration(self.ext)
+        self.assertIsNone(problem)
+        up = parsed["sources"][0]
+        self.assertEqual((up["location"], up["github"], up["license"]),
+                         ("github", "o/up", "BSD-3-Clause"))
+        self.assertEqual(up["ref"], "latest")
+        e["license"] = "MIT"
+        write_ext(self.ext, decl, upstream=manifest_upstream("BSD-3-Clause"))
+        parsed, _ = X.load_declaration(self.ext)
+        self.assertEqual(parsed["sources"][0]["license"], "MIT")
+        write_ext(self.ext, decl)
+        parsed, problem = X.load_declaration(self.ext)
+        self.assertIsNone(parsed)
+        self.assertIn("declares no upstream block", problem)
+        e["github"] = "o/up"
+        write_ext(self.ext, decl, upstream=manifest_upstream())
+        parsed, problem = X.load_declaration(self.ext)
+        self.assertIn("exclusive", problem)
+        del e["github"]
+        e["upstream"] = "yes"
+        write_ext(self.ext, decl, upstream=manifest_upstream())
+        parsed, problem = X.load_declaration(self.ext)
+        self.assertIn("must be true", problem)
+
+    def test_pinned_is_a_reserved_entry_id(self):
+        decl = upstream_decl(id="pinned")
+        write_ext(self.ext, decl)
+        parsed, problem = X.load_declaration(self.ext)
+        self.assertIsNone(parsed)
+        self.assertIn("reserved", problem)
 
     def test_an_unpinned_entry_waits_until_the_owner_allows_it(self):
         # The shipped default: nothing pins the entry, the owner has

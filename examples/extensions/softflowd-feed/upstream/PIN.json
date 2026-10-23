@@ -19,6 +19,7 @@
       "sha384": "9523a41528ee1daf78e3f35f72965fc8585d78db189c36fa89a7eb8a81f6bbc5feaf45b553fc8b924062cb6fe6990957"
     }
   },
+  "license": "BSD-3-Clause",
   "pin": "bc013f05c82559dc7f7a75d2083cd5ef64f8d98d",
   "ref": "master",
   "repo": "https://github.com/irino/softflowd"

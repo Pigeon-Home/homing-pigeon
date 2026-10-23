@@ -11,6 +11,7 @@
       "sha384": "fc20b9011f27a0ad993d2cb1bc7ccd86f037498b6a1cecf9e9995453af3ea1af3eb6337d37a977983c493956f0a1e5da"
     }
   },
+  "license": "GPL-2.0-only",
   "pin": "bed556db3f4f535cb3a585f3d9e7f35a6acf0f58",
   "ref": "v4.14.9",
   "repo": "https://github.com/wazuh/wazuh"

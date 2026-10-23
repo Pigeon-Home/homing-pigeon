@@ -19,6 +19,7 @@
       "sha384": "940b87f44965985904f1ee3a681e090a04199530154474022cb5b093030af595971eb17ef12b95fc9f0651c70e8baa6a"
     }
   },
+  "license": "Apache-2.0 OR GPL-2.0-only",
   "pin": "33c218b033cb6d61735d365a401a572720c67b9e",
   "ref": "master",
   "repo": "https://github.com/osquery/osquery"

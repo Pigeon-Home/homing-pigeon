@@ -70,12 +70,18 @@ class ManifestUpstreamBlock(unittest.TestCase):
 
     def test_good_block_round_trips(self):
         m = E.parse_manifest(_sense(upstream=_good_block()))
-        self.assertEqual(m["upstream"], _good_block())
+        self.assertEqual(m["upstream"], dict(_good_block(), license=""))
+        m = E.parse_manifest(_sense(upstream=_good_block(license="GPL-2.0-only")))
+        self.assertEqual(m["upstream"]["license"], "GPL-2.0-only")
 
     def test_shared_rules_with_the_tool(self):
         # The tool validates the same block the runner does; a
         # manifest the runner loads is one the tool fetches.
-        self.assertEqual(FU.validate_upstream(_good_block()), _good_block())
+        self.assertEqual(FU.validate_upstream(_good_block()),
+                         dict(_good_block(), license=""))
+
+    def test_refuses_multiline_license(self):
+        self._refused("license", license="GPL-2.0-only\nMIT")
 
     def _refused(self, msg, **kw):
         with self.assertRaises(ValueError) as cm:
@@ -158,10 +164,37 @@ class ShippedUpstreamState(unittest.TestCase):
     def test_every_upstream_carries_its_license(self):
         for name in FEEDS_WITH_UPSTREAM:
             with self.subTest(name):
-                paths = _manifest(name)["upstream"]["paths"]
+                block = _manifest(name)["upstream"]
                 self.assertTrue(
-                    any(p.split("/")[-1] in ("LICENSE", "COPYING") for p in paths),
+                    any(p.split("/")[-1] in ("LICENSE", "COPYING")
+                        for p in block["paths"]),
                     f"{name}: upstream paths carry no LICENSE or COPYING")
+                self.assertTrue(block.get("license"),
+                                f"{name}: upstream names no SPDX license")
+
+    def test_the_manifest_block_is_the_one_declaration(self):
+        # The retired upstream.json and provenance/ bundles never come
+        # back beside a manifest that declares its upstream, and the
+        # extension's sources.json names that repository by
+        # "upstream": true, not by spelling it a second time.
+        for name in FEEDS_WITH_UPSTREAM:
+            with self.subTest(name):
+                d = os.path.join(EXT, name)
+                self.assertFalse(os.path.exists(os.path.join(d, "upstream.json")))
+                self.assertFalse(os.path.exists(os.path.join(d, "provenance")))
+                repo = _manifest(name)["upstream"]["repo"].lower()
+                sp = os.path.join(d, "sources.json")
+                if not os.path.exists(sp):
+                    continue
+                with open(sp, encoding="utf-8") as f:
+                    entries = json.load(f)["sources"]
+                dup = [e for e in entries if repo.endswith(
+                    "/" + str(e.get("github", "")).lower())]
+                self.assertFalse(dup, f"{name}: sources.json repeats the "
+                                      f"manifest's repository")
+                self.assertTrue(any(e.get("upstream") is True for e in entries),
+                                f"{name}: no sources.json entry inherits the "
+                                f"manifest's upstream")
 
     def test_total_under_budget(self):
         total, per = FU.budget_report(EXT)

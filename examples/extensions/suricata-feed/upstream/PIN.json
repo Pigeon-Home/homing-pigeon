@@ -11,6 +11,7 @@
       "sha384": "6522946b728223999711d8f4ff0339b0298322a42411d787862a26f6bd6eb2f8d48e8d63c470ac98678e31800de6bac0"
     }
   },
+  "license": "GPL-2.0-only",
   "pin": "9451642a2885dde09c27826dabd4d514be984c00",
   "ref": "master",
   "repo": "https://github.com/OISF/suricata"

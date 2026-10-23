@@ -34,6 +34,7 @@
       "scripts/base/protocols/conn/main.zeek",
       "scripts/base/protocols/dns/main.zeek",
       "COPYING"
-    ]
+    ],
+    "license": "BSD-3-Clause"
   }
 }

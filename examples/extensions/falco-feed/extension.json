@@ -28,6 +28,7 @@
     "paths": [
       "rules/falco_rules.yaml",
       "LICENSE"
-    ]
+    ],
+    "license": "Apache-2.0"
   }
 }
