@@ -4322,5 +4322,107 @@ class TestNonFiniteSkyWatcherDarkThresholdDefaultsToMinus6(unittest.TestCase):
 
 
 
+class TestInfiniteCertSentinelDaysDefaults(unittest.TestCase):
+    """Divergence: an infinite cert-sentinel day threshold
+    (warn_days / critical_days = +inf) files expiry alerts
+    for certificates a year from expiry instead of falling
+    back to the documented defaults.
+
+    (a) Doc claim (examples/extensions/cert-sentinel/
+        cert_sentinel.py header, lines 13-16, repeated in
+        the extension README lines 29-30, its extension.json
+        tunables, and the docs/extensions.md table at line
+        594): "cert_expiring  a certificate's remaining life
+        fell to the warn_days tunable (default 30) or
+        below"; "cert_critical  a certificate's remaining
+        life fell to the critical_days tunable (default 7)
+        or below, or it has already expired".
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 tick) exercised the cert-sentinel
+        example extension's decide() -- the pure decision
+        function -- with each day tunable omitted, set to a
+        genuine value, and set to float("inf"),
+        float("-inf") and float("nan"), using a certificate
+        365 days from expiry (far outside both documented
+        bands) plus in-band controls at 20 and 5 days.
+
+    (c) Behavior actually observed: omitted tunables file
+        nothing at 365 days and file as documented at 20
+        (cert_expiring) and 5 days (cert_critical), and a
+        genuine warn_days of 400 is honored. NaN and -inf
+        also fall back, because the reader's `value >= 0`
+        check is false for them. But _tunable_days accepts
+        +inf as a number (_is_number excludes booleans but
+        not non-finite floats, and inf >= 0 holds), so
+        warn_days=inf puts every certificate in the warn
+        band and critical_days=inf puts every certificate
+        in the critical band: decide() files cert_expiring
+        / cert_critical for a certificate with a year of
+        life left instead of reading the tunable as the
+        documented default. Sibling readers in this
+        codebase exclude non-finite values and fall back
+        to their defaults; this reader does not. Observed
+        on 2026-10-23: decide() on a 365-day certificate
+        with {"warn_days": float("inf")} returned
+        ['cert_expiring'] and with {"critical_days":
+        float("inf")} returned ['cert_critical'], where
+        the omitted tunables returned no alerts.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    NOW = 1_800_000_000.0
+
+    def _signals(self, tunables, days_left=365):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "cert-sentinel",
+            "cert_sentinel.py")
+        spec = importlib.util.spec_from_file_location(
+            "cert_sentinel_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        readings = {"now": self.NOW, "certs": [{
+            "source": "example.com",
+            "subject": "CN=example.com", "issuer": "CN=CA",
+            "serial": "01",
+            "not_after": self.NOW + days_left * 86400.0}]}
+        alerts, _state = mod.decide(
+            readings, {"tunables": tunables}, {})
+        return [a["signal"] for a in alerts]
+
+    def test_infinite_warn_days_defaults_to_30(self):
+        self.assertEqual(
+            self._signals({"warn_days": float("inf")}), [])
+
+    def test_infinite_critical_days_defaults_to_7(self):
+        self.assertEqual(
+            self._signals({"critical_days": float("inf")}),
+            [])
+
+    def test_omitted_and_explicit_thresholds_are_honored(self):
+        # Controls: the documented defaults and a genuine
+        # threshold already behave today and must keep
+        # doing so after the non-finite cases are fixed.
+        self.assertEqual(self._signals({}), [])
+        self.assertEqual(
+            self._signals({}, 20), ["cert_expiring"])
+        self.assertEqual(
+            self._signals({}, 5), ["cert_critical"])
+        self.assertEqual(
+            self._signals({"warn_days": 400}),
+            ["cert_expiring"])
+        self.assertEqual(
+            self._signals({"warn_days": float("nan")}), [])
+        self.assertEqual(
+            self._signals({"critical_days": float("nan")}),
+            [])
+
 if __name__ == "__main__":
     unittest.main()
