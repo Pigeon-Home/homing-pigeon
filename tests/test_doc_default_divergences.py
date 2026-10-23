@@ -3495,5 +3495,125 @@ class TestBooleanSensesLimitDefaultsTo20(unittest.TestCase):
         self.assertEqual(
             self._senses_count({"limit": 2}), 2)
 
+
+class TestBooleanAskMaxCharsDefaultsTo2000(unittest.TestCase):
+    """Divergence: an ask query's max_chars present as a
+    boolean true truncates the answer to 1 character
+    instead of the default 2000 that an omitted or
+    unparseable value gets.
+
+    (a) Doc claim: PROTOCOL.md (line 678) gives the
+        inference config "`max_answer_chars` (default
+        2000)", and docs/configuring-oracle.md (line 43)
+        repeats "`max_answer_chars` (default 2000 --
+        answers are truncated past this)". PROTOCOL.md
+        (line 697) shows the ask query carrying
+        "max_chars": 500, and (line 704) step 1 of its
+        sanitization pipeline is "Truncate to
+        `max_chars`." The reader's own code carries the
+        default as its fallback: runner/runner.py, the
+        ask branch of answer_queries (lines 3043-3046),
+        reads int(q.get("max_chars") or
+        inf["max_answer_chars"]) and on (TypeError,
+        ValueError, OverflowError) falls back to
+        inf["max_answer_chars"], which is 2000 unless
+        configured otherwise. A sibling reader in the
+        same file, _run_oracle_tool's read_file branch,
+        explicitly rejects a boolean cap -- "if
+        isinstance(raw_cap, bool): max_chars = 4000",
+        its own default. No document gives a boolean a
+        meaning as a 1-character cap.
+
+    (b) How the bug was found: the campaign's
+        doc-default hunt (2026-10-23 12:11 PDT tick)
+        exercised runner.runner.answer_queries with one
+        ask query over retained output, with a loopback
+        inference config whose max_answer_chars is the
+        documented 2000, patching ask_model only to
+        capture the max_chars it was handed, varying
+        only max_chars around the default -- omitted,
+        explicit None, the string "bogus",
+        float("inf"), a huge integer (10**400),
+        explicit 500, explicit 0, and the booleans True
+        and False -- recording the cap each run used.
+
+    (c) Behavior actually observed: omitted, None,
+        "bogus", infinity, and explicit 0 all use 2000
+        (the documented default -- zero goes through the
+        same "or" fallback); explicit 500 is honored, as
+        documented. True does not reach the default: the
+        read is int(q.get("max_chars") or
+        inf["max_answer_chars"]) guarded only by
+        (TypeError, ValueError, OverflowError), Python's
+        bool is a subclass of int, so int(True) is 1 --
+        true silently truncates the answer to a single
+        character. False happens to land on 2000 today
+        only because the "or" treats it as missing. This
+        is the campaign's known boolean-as-number
+        family -- numeric getters accepting a Python
+        boolean as 1/0 instead of falling back to the
+        documented default -- in the ask branch of the
+        query-answer reader, which that family's grep,
+        tail, and senses coverage had not exercised.
+        Observed on 2026-10-23: answer_queries with
+        max_chars True handed ask_model a cap of 1,
+        against the documented default of 2000.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    _CFG = {"inference": {
+        "endpoint": "http://127.0.0.1:11434/v1",
+        "model": "qwen3:1.7b"}}
+    _RES = {"stdout": "hello\n", "stderr": "",
+            "exit_code": 0}
+
+    def _ask_cap(self, extra):
+        from unittest import mock
+        import runner.runner as runner_mod
+        captured = {}
+
+        def fake(inf, question, text, max_chars,
+                 patterns, instructions=None):
+            captured["max_chars"] = max_chars
+            return {"op": "ask", "answer": "ok",
+                    "model": inf["model"],
+                    "sanitized": True}
+
+        q = {"op": "ask", "question": "why?"}
+        q.update(extra)
+        with mock.patch.object(runner_mod, "ask_model",
+                               fake):
+            answers, _spent = runner_mod.answer_queries(
+                [q], self._RES, None, 8, cfg=self._CFG,
+                view="full")
+        self.assertEqual(answers[0].get("op"), "ask")
+        return captured["max_chars"]
+
+    def test_true_max_chars_defaults_to_2000(self):
+        self.assertEqual(
+            self._ask_cap({"max_chars": True}), 2000)
+
+    def test_false_max_chars_defaults_to_2000(self):
+        self.assertEqual(
+            self._ask_cap({"max_chars": False}), 2000)
+
+    def test_bogus_max_chars_defaults_to_2000(self):
+        # Control: an unparseable value already lands on
+        # the documented default today; it must keep
+        # doing so after the boolean case is fixed.
+        self.assertEqual(
+            self._ask_cap({"max_chars": "bogus"}), 2000)
+
+    def test_explicit_500_max_chars_is_honored(self):
+        # Control: PROTOCOL.md's own example value is
+        # honored today; the fix must not flatten a
+        # genuine explicit cap to the default.
+        self.assertEqual(
+            self._ask_cap({"max_chars": 500}), 500)
+
+
 if __name__ == "__main__":
     unittest.main()
