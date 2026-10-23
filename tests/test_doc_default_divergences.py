@@ -4905,5 +4905,110 @@ class TestInfiniteBackupStaleAfterDefaultsTo90000(unittest.TestCase):
 
 
 
+
+class TestInfiniteCrashWatchRepeatWindowDefaultsTo3600(unittest.TestCase):
+    """Divergence: an infinite crash-watch
+    repeat_window_sec (+inf) keeps every prior crash
+    inside the window forever instead of falling back
+    to the documented 3600-second default.
+
+    (a) Doc claim (examples/extensions/crash-watch/
+        README.md, line 16): "`crash_repeated` | The
+        same binary crashes again within
+        `repeat_window_sec` (default 3600) -- filed
+        instead of `crash_dumped`, with the count of
+        that binary's crashes inside the window". The
+        manifest ships the same default
+        (extension.json: "repeat_window_sec": 3600),
+        and the module docstring in crash_watch.py
+        (lines 18-19) states the repeat_window_sec
+        tunable is "(default one hour)".
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 14:46 PDT tick) exercised the
+        crash-watch example extension's decide() -- the
+        pure decision function -- with now=2000000.0,
+        prior state events [["app", now-100000]] (a
+        crash 100,000 seconds earlier, far outside a
+        one-hour window), and a new readings file
+        app2.dmp whose binary is "app", with the
+        tunable omitted, set to genuine values (3600
+        and 200000), and set to float("inf"),
+        float("-inf"), and float("nan").
+
+    (c) Behavior actually observed: omitted, 3600,
+        -inf, and NaN all file crash_dumped and prune
+        the old event, as the documented default
+        requires. +inf does not: decide() reads the
+        window as float(window) if _is_number(window)
+        and window > 0 else 3600.0 (crash_watch.py
+        lines 205-206); _is_number excludes booleans
+        but not non-finite floats, and inf > 0 is
+        true, so the window becomes infinite, the
+        pruning test ts >= now - window keeps the
+        100,000-second-old event, and decide()
+        returns ["crash_repeated"] instead of
+        ["crash_dumped"]. Sibling readers in this
+        codebase exclude non-finite values and fall
+        back to their defaults; this reader does not.
+        This is the campaign's known non-finite-tunable
+        root-cause family. Observed on 2026-10-23:
+        decide() with repeat_window_sec float("inf")
+        returned ["crash_repeated"] where the omitted
+        tunable returned ["crash_dumped"].
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _signals(self, tunables):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "crash-watch",
+            "crash_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "crash_watch_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        now = 2000000.0
+        manifest = {"name": "crash_watch",
+                    "tunables": dict(tunables)}
+        readings = {"now": now, "truncated": 0,
+                    "files": [{"name": "app2.dmp",
+                               "dir": "./crashes",
+                               "size": 123,
+                               "mtime": now,
+                               "binary": "app"}]}
+        state = {"seen": {},
+                 "events": [["app", now - 100000]]}
+        alerts, _state = mod.decide(readings, manifest, state)
+        return [a["signal"] for a in alerts]
+
+    def test_infinite_repeat_window_defaults_to_3600(self):
+        self.assertEqual(
+            self._signals({"repeat_window_sec": float("inf")}),
+            ["crash_dumped"])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented default and genuine
+        # values already behave today and must keep
+        # doing so after the non-finite case is fixed.
+        self.assertEqual(self._signals({}), ["crash_dumped"])
+        self.assertEqual(
+            self._signals({"repeat_window_sec": 3600}),
+            ["crash_dumped"])
+        self.assertEqual(
+            self._signals({"repeat_window_sec": float("nan")}),
+            ["crash_dumped"])
+        self.assertEqual(
+            self._signals({"repeat_window_sec": 200000}),
+            ["crash_repeated"])
+
+
+
 if __name__ == "__main__":
     unittest.main()
