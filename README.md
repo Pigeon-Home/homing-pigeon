@@ -560,7 +560,7 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | `--pdb` | Drop into pdb on unhandled exceptions |
 | `--no-send` | Execute, but log results instead of emailing them |
 | `--once` | Single poll cycle, then exit |
-| `--inspect {board,budget,job,redact}` | Read local Oracle state and exit; no mailbox |
+| `--inspect {board,budget,job,redact,sources}` | Read local Oracle state and exit; no mailbox |
 | `--audit-report [--since 14d|48h] [--feature NAME]` | Summarize the security audit log and exit; no mailbox, read-only. `--feature` narrows it to one control's entries |
 | `--posture` | Report the runner's security posture (exit 0/1/2) and exit; no mailbox |
 | `--run-variant FILE` | Run one locally supplied fuzz variant job from FILE through validation and confined execution, print its outcome as JSON, and exit; no mailbox. The job-fuzz sense's execution door: variants are unsigned local artifacts, admitted only here, never through the job path |

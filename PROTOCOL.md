@@ -536,9 +536,12 @@ user's box decides what leaves it.
 ### 9.1 View definitions
 
 - `full`: stdout and stderr, as in section 3.2.
-- `redacted`: full result with every `redact_patterns` match replaced by
-  `[REDACTED:<family>]`. The message lists which families were applied.
-  Like every non-`full` view it carries `output_digest` (section 12).
+- `redacted`: the output with every `redact_patterns` match replaced by
+  `[REDACTED:<family>]`. The runner scans stdout and stderr as one
+  text, so the result's `stdout` carries both, in that order, and
+  `stderr` is empty; `redacted_families` lists the families that
+  matched. Like every non-`full` view it carries `output_digest`
+  (section 12).
 - `summary`: no raw output. Contains `exit_code`, `timed_out`,
   `duration_sec`, `stdout_bytes`, `stderr_bytes`, `result_class`
   (`ok`/`fail`), and `output_digest`
@@ -773,9 +776,12 @@ Defenses, in order of importance:
    budget, and since a job is signed by one key, no key can spend a
    budget it did not sign for. (Rate limiting, item 3, is the per-key
    control; see section 14.)
-   Each answered or policy-rejected query spends 1; exhaustion silences
-   the Oracle for that job. A budget bounds what rate limiting cannot:
-   the total, not just the speed.
+   Each answered or policy-rejected query spends 1; past the budget
+   every remaining declared query is answered `{"rejected": "budget"}`
+   and nothing else -- the `answers[]` array keeps one entry per
+   query (section 10), but the Oracle says no more about the output
+   for that job. A budget bounds what rate limiting cannot: the
+   total, not just the speed.
 
    The budget is also an operational tripwire, not just a security
    control. A well-formed job answers its questions in one or two
