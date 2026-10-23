@@ -787,5 +787,79 @@ class TestNullDefaultTimeoutSecPassesKeyPolicy(unittest.TestCase):
             self._check({"default_timeout_sec": "bogus"}))
 
 
+class TestInfinitePromoteAfterDefaultsTo2(unittest.TestCase):
+    """Divergence: an oracle_learning_promote_after present in
+    config as infinity (or negative infinity) raises
+    OverflowError out of the learning reader, instead of
+    falling back to the documented default of 2.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 53):
+        "`oracle_learning_promote_after` -- how many verified
+        corroborating outcomes a model candidate needs before
+        it is treated as corroborated and may select among
+        the existing mechanical repairs ... Default `2`."
+        The same default is stated in the learning module's
+        own docstring (runner/learning.py, line 29:
+        "(oracle_learning_promote_after, default 2, with no
+        intervening contradiction)") and in
+        docs/design/oracle-opinion-design.md (line 188).
+
+    (b) How the bug was found: the campaign's doc-default hunt
+        (2026-10-23 06:21 PDT tick) exercised
+        runner.learning.promote_after with the key left unset
+        and varied around it -- key omitted, explicit None,
+        a non-numeric string ("bogus"), 0, -5, NaN, a valid
+        3, a numeric string ("4"), float("inf"), and
+        float("-inf"). The infinite forms are reachable from
+        a real config file: the runner's load_config uses a
+        plain json.load, which parses the JSON literals
+        Infinity / -Infinity into float infinity, so
+        config.json can carry exactly this value.
+
+    (c) Behavior actually observed: omitted, None, "bogus",
+        0, -5, and NaN all read as the documented default
+        (2) -- 0 and -5 through the reader's own below-1
+        fallback, the rest through its unparseable fallback
+        -- and 3 / "4" are honored. The infinite forms do
+        not: promote_after (runner/learning.py lines
+        137-139) guards int(cfg.get(...)) with
+        `except (TypeError, ValueError)` only, and
+        int(float("inf")) raises OverflowError, which
+        escapes the reader entirely. Downstream, load_state
+        and relevant_lessons call promote_after during every
+        job's opinion evaluation; the runner's
+        _learning_context catches the exception only as a
+        generic failure, logs "oracle learning: context
+        load failed", and returns an empty learning context
+        -- so one config value silently disables candidate
+        promotion for every job instead of reading as the
+        default 2. Sibling numeric readers all include
+        OverflowError in their fallback guard: query_budget
+        and the ask-path timeouts (runner.py),
+        _review_scan_bytes (review.py), and remediation's
+        _pos_int; the wake-cooldown reader rejects
+        infinities by an explicit range check. This reader
+        is the outlier.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def test_infinite_promote_after_defaults_to_2(self):
+        from runner.learning import promote_after
+        self.assertEqual(
+            promote_after(
+                {"oracle_learning_promote_after": float("inf")}),
+            2)
+
+    def test_negative_infinite_promote_after_defaults_to_2(self):
+        from runner.learning import promote_after
+        self.assertEqual(
+            promote_after(
+                {"oracle_learning_promote_after": float("-inf")}),
+            2)
+
+
 if __name__ == "__main__":
     unittest.main()
