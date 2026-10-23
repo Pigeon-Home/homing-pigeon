@@ -3013,5 +3013,90 @@ class TestHugeExtensionPollIntervalDefaultsTo2(unittest.TestCase):
             2.0)
 
 
+class TestBooleanExtensionPollIntervalDefaultsTo2(unittest.TestCase):
+    """Divergence: an extension_poll_interval_sec present as a
+    boolean is read as a number -- True becomes a 1.0-second
+    cadence and False the 0.2-second clamp floor -- instead
+    of falling back to the shared transport channel reader's
+    2.0-second default.
+
+    (a) The documented contract: runner/transport_extensions/
+        channel.py's poll_interval(cfg, default=2.0) (lines
+        151-156) is the one reader every polling transport
+        extension takes its cadence from, and its contract --
+        stated by its signature default and pinned by the
+        repo's own tests/test_transport_shells.py,
+        test_poll_interval_clamps_and_rejects_garbage (lines
+        84-91) -- is that an unusable value falls back to
+        the default 2.0 and a usable one is clamped to
+        [0.2, 60]: omitted -> 2.0, "nope" -> 2.0, 0 -> 0.2,
+        1000 -> 60.0. A boolean is not a usable cadence:
+        every sibling numeric config reader in the codebase
+        excludes booleans explicitly -- runner.runner
+        ._cfg_size ("Booleans are not sizes"),
+        runner.remediation._pos_int / _pos_float, and the
+        core poll-interval reader whose boolean fallback to
+        its documented default is already pinned in
+        TestBooleanPollIntervalDefaultsTo20 above.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 11:16 PDT tick) exercised
+        runner.transport_extensions.channel.poll_interval
+        with the key left unset and varied around it --
+        omitted, explicit None, "nope", 0, -5, 1000,
+        float("inf"), float("nan"), a valid 2.5, and the
+        booleans True and False -- recording the interval
+        each call returned. The boolean forms are reachable
+        from a real config file exactly as the huge-int
+        form in the class above is: load_config's plain
+        json.load parses true / false into Python booleans,
+        and transports.py's _runtime_config hands a
+        transport block's keys to its extension verbatim.
+
+    (c) Behavior actually observed: omitted, None, and
+        "nope" return the default 2.0; 0 and -5 clamp to
+        0.2; 1000 and infinity clamp to 60.0; 2.5 is
+        honored. The booleans do not fall back:
+        poll_interval computes float(raw) with no boolean
+        guard, so float(True) is 1.0 -- inside the clamp
+        range, returned as a 1.0-second cadence -- and
+        float(False) is 0.0, clamped up to the 0.2-second
+        floor. Neither is the documented default 2.0: a
+        boolean typo in a transport block silently runs
+        that extension's poll loop at one second (true) or
+        at the fastest cadence the clamp allows (false)
+        instead of the default every unusable value gets.
+        This is the campaign's known boolean-as-number
+        family -- numeric config getters accepting a Python
+        boolean as 1/0 instead of falling back to the
+        documented default -- in the one reader the
+        family's extension-poll coverage (the huge/garbage
+        class above, a different root cause) had not
+        covered for booleans. Observed on 2026-10-23:
+        poll_interval({"extension_poll_interval_sec":
+        True}) returned 1.0 and poll_interval(
+        {"extension_poll_interval_sec": False}) returned
+        0.2.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def test_true_extension_poll_interval_defaults_to_2(self):
+        from runner.transport_extensions import channel as ch
+        self.assertEqual(
+            ch.poll_interval(
+                {"extension_poll_interval_sec": True}),
+            2.0)
+
+    def test_false_extension_poll_interval_defaults_to_2(self):
+        from runner.transport_extensions import channel as ch
+        self.assertEqual(
+            ch.poll_interval(
+                {"extension_poll_interval_sec": False}),
+            2.0)
+
+
 if __name__ == "__main__":
     unittest.main()
