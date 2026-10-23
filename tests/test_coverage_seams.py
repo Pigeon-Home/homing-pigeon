@@ -141,10 +141,16 @@ class ExchangeCodeTest(unittest.TestCase):
 
 
 class CatchHandlerTest(unittest.TestCase):
+    """The redirect handler since 3e61d86: only the callback carrying
+    this consent's state counts; anything else is answered and
+    ignored, so a favicon or a stale tab cannot end the sign-in."""
+
     def setUp(self):
         from runner.oauth import _Catch
         _Catch.code = None
         _Catch.error = None
+        _Catch.expected_state = "s1"
+        self.addCleanup(setattr, _Catch, "expected_state", None)
 
     def _handler(self, path):
         from runner.oauth import _Catch
@@ -157,7 +163,7 @@ class CatchHandlerTest(unittest.TestCase):
 
     def test_code_is_stored_and_the_page_is_200(self):
         from runner.oauth import _Catch
-        handler = self._handler("/?code=abc")
+        handler = self._handler("/?code=abc&state=s1")
         handler.do_GET()
         self.assertEqual(_Catch.code, "abc")
         self.assertIsNone(_Catch.error)
@@ -167,19 +173,29 @@ class CatchHandlerTest(unittest.TestCase):
 
     def test_error_is_stored_and_code_stays_unset(self):
         from runner.oauth import _Catch
-        handler = self._handler("/?error=access_denied")
+        handler = self._handler("/?error=access_denied&state=s1")
         handler.do_GET()
         self.assertEqual(_Catch.error, "access_denied")
         self.assertIsNone(_Catch.code)
         self.assertIn(b"access_denied", handler.wfile.getvalue())
 
-    def test_a_bare_path_is_an_unknown_error(self):
+    def test_a_bare_path_is_answered_and_ignored(self):
         from runner.oauth import _Catch
         handler = self._handler("/")
         handler.do_GET()
-        self.assertEqual(_Catch.error, "unknown")
+        self.assertIsNone(_Catch.error)
         self.assertIsNone(_Catch.code)
-        self.assertIn(b"unknown", handler.wfile.getvalue())
+        self.assertIn(b"Still waiting", handler.wfile.getvalue())
+
+    def test_another_consents_callback_is_ignored(self):
+        from runner.oauth import _Catch
+        for path in ("/?code=old&state=s0", "/?error=access_denied&state=s0",
+                     "/?state=s1"):
+            handler = self._handler(path)
+            handler.do_GET()
+            self.assertIsNone(_Catch.code, path)
+            self.assertIsNone(_Catch.error, path)
+            self.assertIn(b"Still waiting", handler.wfile.getvalue())
 
     def test_log_message_is_silent(self):
         handler = self._handler("/")
