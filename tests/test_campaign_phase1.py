@@ -206,6 +206,24 @@ class CampaignIntakeTests(unittest.TestCase):
         self.assertFalse(encrypted)
         self.assertFalse(R._cleartext_jobs_allowed())
 
+    def test_duplicate_delivery_executes_once(self):
+        # t11: the same envelope delivered twice produced exactly
+        # one result live. The mechanism is the disk claim the
+        # ingest path takes before executing: the first delivery
+        # owns the job_id; once the run is recorded in seen.json,
+        # a second delivery is refused the claim and skipped.
+        tmpdir = tempfile.mkdtemp(prefix="hp-campaign-")
+        skey = R._seen_key({}, "c-duplicate")
+        seen = {}
+        self.assertTrue(R._disk_owns(tmpdir, skey, seen))
+        # The runner records the finished job in seen.json.
+        seen_path = os.path.join(tmpdir, "seen.json")
+        with open(seen_path, "w", encoding="utf-8") as fh:
+            json.dump({skey: True}, fh)
+        seen_again = {}
+        self.assertFalse(R._disk_owns(tmpdir, skey, seen_again))
+        self.assertTrue(seen_again.get(skey))
+
     def test_encrypted_envelope_admits_as_encrypted(self):
         job = {"v": 1, "type": "job", "job_id": "c-enc",
                "kind": "exec", "script": "echo sealed"}
