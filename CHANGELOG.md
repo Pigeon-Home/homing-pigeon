@@ -4,7 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## Unreleased
+## 3.12.52 - 2026-10-22
+
+- **OAuth consent waits for its own callback.** The redirect
+  listener ignores a favicon, a stale tab, and any callback
+  whose state is not this consent's. A matching code or error
+  is what ends the sign-in. The previous tests still expected
+  a bare path to finish it as "unknown", which is what turned
+  the last main run red on the suite and on Windows.
 
 - **Feed senses carry the format they parse.** Each of the eight
   feed senses (Suricata, Zeek, osquery, Falco, Wazuh, AIDE, Sysmon,
