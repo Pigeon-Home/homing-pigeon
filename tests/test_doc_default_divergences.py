@@ -3198,5 +3198,102 @@ class TestBooleanKeyPolicyMaxTimeoutIsConfigError(unittest.TestCase):
             {"k1": {"max_timeout_sec": 600}})
 
 
+class TestBooleanGrepMaxMatchesDefaultsTo10(unittest.TestCase):
+    """Divergence: a grep query's max_matches present as a
+    boolean caps the answer at 1 line (true) or 0 lines
+    (false) instead of the default limit of 10 that an
+    omitted or unparseable value gets.
+
+    (a) Doc claim: PROTOCOL.md (line 486) shows the grep
+        query in its section 10 example with
+        "max_matches": 10, and line 655 defines the op as
+        "grep (regex over retained stdout+stderr, up to
+        `max_matches` lines)". docs/fuzzing.md (lines
+        129-131) states the two ends of the contract: "A
+        `max_matches` of zero returns no lines" -- an
+        explicit numeric zero -- and "A later grep with
+        the default limit still returns the canary" --
+        a default limit exists and applies when the
+        caller does not supply a usable number. The
+        reader's own code carries that default twice:
+        int(q.get("max_matches", 10)) and an except
+        fallback of 10 (runner/runner.py line 3008 and
+        the lines just below it). No document gives a
+        boolean a meaning as a 1-line or 0-line cap.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 11:26 PDT tick) exercised
+        runner.runner.answer_queries with one grep query
+        over retained output holding 15 matching lines,
+        varying only max_matches around the documented
+        default -- omitted, explicit None, the string
+        "bogus", explicit 2, explicit 0, a huge integer
+        (10**400), and the booleans True and False --
+        recording how many matches each answer carried.
+
+    (c) Behavior actually observed: omitted, None, and
+        "bogus" all return 10 matches (the documented
+        default, truncated True); explicit 2 returns 2
+        and explicit 0 returns 0, as documented; the
+        huge integer clamps to the reader's 100 ceiling
+        and returns all 15. True and False do not reach
+        the default: the read is int(q.get("max_matches",
+        10)) guarded only by (TypeError, ValueError,
+        OverflowError), Python's bool is a subclass of
+        int, so int(True) is 1 and int(False) is 0 --
+        true silently caps the answer at a single line
+        and false silently returns no lines at all, the
+        behavior docs/fuzzing.md reserves for an
+        explicit numeric zero. This is the campaign's
+        known boolean-as-number family -- numeric
+        getters accepting a Python boolean as 1/0
+        instead of falling back to the documented
+        default -- in the query-answer reader, which
+        that family's config-key coverage had not
+        exercised. Observed on 2026-10-23:
+        answer_queries with max_matches True returned
+        1 match and with False returned 0, against 15
+        matching retained lines.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    _RES = {"stdout": "\n".join(
+        "ERROR line %d" % i for i in range(15)) + "\n",
+            "stderr": "", "exit_code": 0}
+
+    def _grep_count(self, extra):
+        from runner.runner import answer_queries
+        q = {"op": "grep", "pattern": "ERROR"}
+        q.update(extra)
+        answers, _spent = answer_queries(
+            [q], self._RES, None, 8, cfg=None, view="full")
+        return len(answers[0].get("matches", []))
+
+    def test_true_max_matches_defaults_to_10(self):
+        self.assertEqual(
+            self._grep_count({"max_matches": True}), 10)
+
+    def test_false_max_matches_defaults_to_10(self):
+        self.assertEqual(
+            self._grep_count({"max_matches": False}), 10)
+
+    def test_bogus_max_matches_defaults_to_10(self):
+        # Control: an unparseable value already lands on
+        # the documented default today; it must keep
+        # doing so after the boolean cases are fixed.
+        self.assertEqual(
+            self._grep_count({"max_matches": "bogus"}), 10)
+
+    def test_explicit_zero_max_matches_returns_no_lines(self):
+        # Control: docs/fuzzing.md documents an explicit
+        # numeric zero as returning no lines; the fix
+        # must not flatten a genuine zero to the default.
+        self.assertEqual(
+            self._grep_count({"max_matches": 0}), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
