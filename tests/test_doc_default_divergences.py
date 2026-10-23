@@ -1338,5 +1338,76 @@ class TestBooleanQueryBudgetDefaultsTo8(unittest.TestCase):
             query_budget({"max_query_budget": False}, {}), 8)
 
 
+
+class TestBooleanWakeCooldownDefaultsTo900(unittest.TestCase):
+    """Divergence: local_wake_cooldown_sec set to a boolean
+    reads as 1 second (true) or 0 seconds (false) instead
+    of the documented 900-second default.
+
+    (a) Doc claim (docs/extensions.md, line 276, config
+        table): "`local_wake_cooldown_sec` | `900` |
+        Minimum seconds between Oracle briefings for the
+        same sensor + signal."
+        The reader's own docstring states the same
+        (runner/runner.py, _local_wake_cooldown):
+        "Seconds between wakes for one (sensor, signal).
+        Default 900."
+        No document gives a boolean a special meaning for
+        this key (unlike the neighbouring local_signal_port,
+        where the same table states "`0` or `false` turns
+        the listener off").
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 08:11 PDT tick) exercised
+        runner.runner._local_wake_cooldown -- the single
+        reader the local-signals wake gate takes the
+        cooldown from -- with the key left unset and
+        varied around it -- omitted, explicit None, a
+        non-numeric string ("bogus"), float("inf"),
+        float("nan"), 0, -5, 42, "42", and the booleans
+        True and False -- checking the cooldown each
+        call returned.
+
+    (c) Behavior actually observed: omitted, None,
+        "bogus", infinity, NaN, and -5 all return the
+        documented default 900.0; 42 and "42" are honored.
+        The booleans do not fall back: _local_wake_cooldown
+        computes float(raw) with no boolean guard, so
+        True returns 1.0 -- briefings throttled to one
+        second instead of fifteen minutes -- and False
+        returns 0.0 -- no cooldown at all, a briefing on
+        every signal -- instead of the documented 900.
+        The neighbouring reader in the same section
+        handles booleans deliberately:
+        _local_signal_port returns the documented default
+        for True and the documented off value for False;
+        sibling config readers likewise exclude booleans
+        explicitly -- runner.runner._cfg_size ("Booleans
+        are not sizes"), runner.remediation._pos_int, and
+        runner.runner._retention_days' sibling readers
+        recorded above -- only this reader lets one
+        through as a number. Observed on 2026-10-23:
+        _local_wake_cooldown({"local_wake_cooldown_sec":
+        True}) returned 1.0 and _local_wake_cooldown(
+        {"local_wake_cooldown_sec": False}) returned 0.0.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def test_true_wake_cooldown_defaults_to_900(self):
+        from runner.runner import _local_wake_cooldown
+        self.assertEqual(
+            _local_wake_cooldown(
+                {"local_wake_cooldown_sec": True}), 900.0)
+
+    def test_false_wake_cooldown_defaults_to_900(self):
+        from runner.runner import _local_wake_cooldown
+        self.assertEqual(
+            _local_wake_cooldown(
+                {"local_wake_cooldown_sec": False}), 900.0)
+
+
 if __name__ == "__main__":
     unittest.main()
