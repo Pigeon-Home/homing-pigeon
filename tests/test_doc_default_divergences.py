@@ -3098,5 +3098,105 @@ class TestBooleanExtensionPollIntervalDefaultsTo2(unittest.TestCase):
             2.0)
 
 
+class TestBooleanKeyPolicyMaxTimeoutIsConfigError(unittest.TestCase):
+    """Divergence: a key_policies entry's max_timeout_sec
+    present as boolean true silently becomes a 1-second
+    timeout cap for that key, instead of the startup
+    config error every other malformed value in that
+    policy gets.
+
+    (a) The documented contract: PROTOCOL.md section 14.1
+        (lines 1019, 1034) defines max_timeout_sec as a
+        numeric cap -- the example is 600 -- that "the
+        job's effective timeout must not exceed".
+        runner.runner.build_key_policies, the reader that
+        validates these policies, states the rest in its
+        own docstring: "Malformed policies fail closed at
+        startup." Its error strings carry that contract:
+        a value int() cannot parse raises RuntimeError
+        "config error: key_policies[<id>].max_timeout_sec
+        must be a number", and a parsed value below 1
+        raises "... must be >= 1". In the very same
+        function, the sibling max_args field refuses a
+        boolean explicitly -- `isinstance(cap, bool) or
+        not isinstance(cap, int)` raises "must be an
+        integer >= 0" -- because in this config format a
+        boolean is a distinct type, never a number. No
+        document gives boolean true a meaning as a
+        1-second cap.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 11:21 PDT tick) exercised
+        runner.runner.build_key_policies with a policy
+        carrying only max_timeout_sec, varied around the
+        documented example -- omitted (no cap), explicit
+        600, explicit None, a non-numeric string
+        ("bogus"), 0, -5, float("inf"), a huge integer
+        (10**400), and the booleans True and False -- and
+        then fed the true-derived policy to
+        check_key_policy with a job whose timeout_sec
+        is 10, recording the cleaned policy or the
+        exception each value produced.
+
+    (c) Behavior actually observed: no cap when omitted;
+        600 and the huge integer are honored as numbers;
+        "bogus", None, and infinity raise the documented
+        RuntimeError "must be a number"; 0 and -5 raise
+        "must be >= 1". False also raises "must be >= 1"
+        (it converts to 0 first, so it fails closed, if
+        for the wrong stated reason). True does not
+        raise at all: build_key_policies computes
+        int(pol["max_timeout_sec"]) with no boolean
+        guard (runner/runner.py, the max_timeout_sec
+        branch of build_key_policies), so True cleans
+        to the integer 1, and check_key_policy then
+        rejects a 10-second job for that key with
+        "timeout 10s exceeds this key's limit of 1s" --
+        a boolean typo in a least-privilege policy
+        silently throttles that key to one-second jobs
+        instead of failing closed at startup like every
+        other malformed value. This is the campaign's
+        known boolean-as-number family -- numeric config
+        getters accepting a Python boolean as 1/0 -- in a
+        reader that family's key-policy coverage (the
+        null/bogus default_timeout_sec class above,
+        which exercises the separate check_key_policy
+        consumer) had not covered. Observed on
+        2026-10-23: build_key_policies({"key_policies":
+        {"k1": {"max_timeout_sec": True}}}) returned
+        {"k1": {"max_timeout_sec": 1}}.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def test_true_max_timeout_sec_is_config_error(self):
+        from runner.runner import build_key_policies
+        with self.assertRaises(RuntimeError):
+            build_key_policies(
+                {"key_policies": {"k1": {"max_timeout_sec": True}}})
+
+    def test_false_max_timeout_sec_is_config_error(self):
+        # Control: False already raises a RuntimeError
+        # config error today (via the >= 1 check, after
+        # converting to 0); it must keep raising after
+        # the True case is fixed.
+        from runner.runner import build_key_policies
+        with self.assertRaises(RuntimeError):
+            build_key_policies(
+                {"key_policies": {"k1": {"max_timeout_sec": False}}})
+
+    def test_explicit_600_max_timeout_sec_is_honored(self):
+        # Control: the documented example value must keep
+        # cleaning to itself after the boolean case is
+        # fixed.
+        from runner.runner import build_key_policies
+        self.assertEqual(
+            build_key_policies(
+                {"key_policies": {"k1": {"max_timeout_sec": 600}}}),
+            {"k1": {"max_timeout_sec": 600}})
+
+
 if __name__ == "__main__":
     unittest.main()
