@@ -24,11 +24,20 @@ on:
 # pins this block and the per-job grants.
 permissions: {}
 
-# A newer push to the same branch cancels the one it replaced.
-# A tag is a release and is never cancelled by this.
+# One build at a time per ref, and a running build is never
+# cancelled by the next push: it finishes, and the newest push
+# waits as the group's one pending run (GitHub keeps one pending
+# run per group and drops the ones in between). The earlier shape,
+# cancel-in-progress on branch pushes, starved main entirely once
+# pushes arrived every five minutes and a build took seven: six
+# builds in a row on 2026-10-23 were cancelled before they
+# finished, no commit could go green, and cut-release (which needs
+# a green commit) could never run. A finished build of a slightly
+# older commit is worth more than a cancelled build of the newest.
+# (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
 concurrency:
   group: build-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  cancel-in-progress: false
 
 jobs:
   test:

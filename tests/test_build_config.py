@@ -157,6 +157,21 @@ class MutationGateTest(unittest.TestCase):
         block = _job_block(_workflow(), "mutation")
         self.assertNotIn("timeout-minutes", _uncommented(block))
 
+    def test_a_running_build_is_never_cancelled_by_the_next_push(self):
+        # Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c. With
+        # cancel-in-progress on branch pushes, a push every five
+        # minutes against a seven-minute build meant no main commit
+        # ever finished building (six cancelled in a row on
+        # 2026-10-23), so nothing could be green and cut-release
+        # could never run. The group still serializes builds per
+        # ref; the running one finishes and the newest push waits.
+        workflow = _workflow()
+        m = re.search(r"^concurrency:\n((?:  .*\n)+)", workflow, re.M)
+        self.assertIsNotNone(m, "build.yml has no concurrency block")
+        block = _uncommented(m.group(1))
+        self.assertIn("group: build-${{ github.ref }}", block)
+        self.assertIn("cancel-in-progress: false", block)
+
     def test_only_scarce_runners_carry_a_timer(self):
         # The measurement experiment is over. The one timer the
         # report argued for is back, and only there: the two
