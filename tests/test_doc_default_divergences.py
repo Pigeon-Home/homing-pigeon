@@ -1831,5 +1831,104 @@ class TestBooleanSensorMaxPerHourDefaultsToZero(unittest.TestCase):
             [{"title": "other", "received_at": NOW}], now=now))
 
 
+class TestBooleanDriValuesAreConfigErrors(unittest.TestCase):
+    """Divergence: a DRI cooldown, digest window, or trigger
+    threshold/window set to a boolean reads as the number 1
+    or 0 instead of the startup config error every other
+    malformed DRI number gets.
+
+    (a) Doc claim (docs/dri-playbook.md, "Config sketch",
+        lines 127-142): the documented configuration is
+        "sensor_fused_score": {"threshold": 6.0,
+        "window_sec": 600}, "key_probe": {"threshold": 5,
+        "window_sec": 3600}, "cooldown_sec": 3600,
+        "digest_window_sec": 300 -- and those are exactly
+        the values the reader returns when the keys are
+        omitted, i.e. they are the defaults. The reader's
+        own contract states the rest (runner/dri.py,
+        parse_dri): it validates cfg["dri"] and raises
+        RuntimeError on a config error; a threshold or
+        window that is not a number raises "config error:
+        dri.triggers... must be numbers", a cooldown or
+        digest that is not a number raises "config error:
+        dri cooldown/digest must be numbers", and a
+        non-boolean `enabled` raises a config error --
+        booleans are a distinct type in this block, never
+        numbers. No document gives a boolean a numeric
+        meaning for any of these keys.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 09:21 PDT tick) exercised
+        runner.dri.parse_dri -- the single reader that
+        validates the dri block -- with the block left
+        unset and varied around it: block omitted, empty
+        block, explicit documented defaults (6.0/600,
+        5/3600, 3600, 300), explicit None, a non-numeric
+        string ("bogus"), a huge integer (10**400), and
+        the booleans True and False on each of
+        cooldown_sec, digest_window_sec, the
+        sensor_fused_score threshold and window_sec, and
+        the key_probe threshold and window_sec.
+
+    (c) Behavior actually observed: omitted and empty
+        read as the documented defaults (threshold 6.0 /
+        window 600, key_probe 5 / 3600, cooldown 3600.0,
+        digest 300.0); "bogus" and the huge integer raise
+        the documented RuntimeError config error.
+        The booleans do not: parse_dri converts with
+        float()/int() and no boolean guard (runner/dri.py
+        lines 80-81, 98-99, and 106-107), so
+        cooldown_sec True reads as 1.0 second and False
+        as 0.0 instead of the documented 3600,
+        digest_window_sec True reads as 1.0 instead of
+        300, sensor_fused_score threshold True reads as
+        1.0 instead of 6.0 (a far more sensitive page
+        trigger), and key_probe threshold True reads as
+        1 instead of 5. Sibling readers exclude booleans
+        explicitly -- runner.runner._cfg_size ("Booleans
+        are not sizes"), runner.remediation._pos_int,
+        runner.security.audit_max_lines, and this same
+        reader's own `enabled` check; these float()/int()
+        conversions are the outliers. Observed on
+        2026-10-23: parse_dri({"dri": {"cooldown_sec":
+        True}}) returned cooldown_sec 1.0,
+        parse_dri({"dri": {"cooldown_sec": False}})
+        returned 0.0, and parse_dri({"dri": {"triggers":
+        {"key_probe": {"threshold": True}}}}) returned
+        threshold 1, none of them raising.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def test_true_cooldown_is_config_error(self):
+        from runner.dri import parse_dri
+        with self.assertRaises(RuntimeError):
+            parse_dri({"dri": {"cooldown_sec": True}})
+
+    def test_false_cooldown_is_config_error(self):
+        from runner.dri import parse_dri
+        with self.assertRaises(RuntimeError):
+            parse_dri({"dri": {"cooldown_sec": False}})
+
+    def test_true_digest_window_is_config_error(self):
+        from runner.dri import parse_dri
+        with self.assertRaises(RuntimeError):
+            parse_dri({"dri": {"digest_window_sec": True}})
+
+    def test_true_sensor_fused_threshold_is_config_error(self):
+        from runner.dri import parse_dri
+        with self.assertRaises(RuntimeError):
+            parse_dri({"dri": {"triggers": {
+                "sensor_fused_score": {"threshold": True}}}})
+
+    def test_true_key_probe_threshold_is_config_error(self):
+        from runner.dri import parse_dri
+        with self.assertRaises(RuntimeError):
+            parse_dri({"dri": {"triggers": {
+                "key_probe": {"threshold": True}}}})
+
+
 if __name__ == "__main__":
     unittest.main()
