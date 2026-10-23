@@ -4424,5 +4424,136 @@ class TestInfiniteCertSentinelDaysDefaults(unittest.TestCase):
             self._signals({"critical_days": float("nan")}),
             [])
 
+
+class TestInfiniteLogSentinelTunablesCrashInsteadOfDefault(unittest.TestCase):
+    """Divergence: an infinite log-sentinel integer tunable
+    (cooldown_sec / max_alerts_per_pass / tail_bytes = +inf)
+    crashes the pass with OverflowError instead of falling
+    back to the documented defaults.
+
+    (a) Doc claim (examples/extensions/log-sentinel/README.md
+        lines 27-30 and 79, repeated in the extension's
+        extension.json tunables): "further matches of the
+        same subject inside `cooldown_sec` (default 3600)
+        are suppressed"; "at most `max_alerts_per_pass`
+        alerts (default 10) file per pass"; "`tail_bytes`
+        down \u2014 65536 by default".
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 tick) exercised the log-sentinel
+        example extension's decide() -- the pure decision
+        function -- and its read_new_lines() reader with
+        each integer tunable omitted, set to a genuine
+        value, and set to float("inf"), float("-inf") and
+        float("nan"), using one OOM line (files under the
+        omitted defaults), a prior firing 100 and 4000
+        seconds before `now` (inside and outside the
+        documented 3600 cooldown), and twelve distinct
+        configured-pattern hits (past the documented cap
+        of 10).
+
+    (c) Behavior actually observed: omitted tunables file
+        the OOM alert, suppress a refire 100 seconds later,
+        file again at 4000 seconds, and cap twelve pattern
+        hits at 10 alerts, and genuine values are honored.
+        NaN and -inf also fall back, because the reader's
+        `value >= minimum` check is false for them. But
+        _int_tunable accepts +inf as a number (_is_number
+        excludes booleans but not non-finite floats, and
+        inf >= minimum holds) and then int(inf) raises
+        OverflowError: decide() crashes outright on
+        cooldown_sec=inf or max_alerts_per_pass=inf, and
+        read_new_lines() crashes the same way on
+        tail_bytes=inf, instead of reading the tunable as
+        the documented default. Sibling readers in this
+        codebase that guard with a range or comparison
+        inf cannot satisfy fall back to their defaults;
+        this reader converts first and crashes. Observed
+        on 2026-10-23: decide() with {"cooldown_sec":
+        float("inf")} and with {"max_alerts_per_pass":
+        float("inf")} both raised "OverflowError: cannot
+        convert float infinity to integer", as did
+        read_new_lines([], {}, float("inf")) via the
+        tail_bytes path.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    NOW = 100000.0
+    OOM = "Out of memory: Killed process 42 (foo)"
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "log-sentinel",
+            "log_sentinel.py")
+        spec = importlib.util.spec_from_file_location(
+            "log_sentinel_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _decide(self, tunables, state=None, lines=None):
+        mod = self._mod()
+        alerts, _state = mod.decide(
+            {"now": self.NOW,
+             "lines": [self.OOM] if lines is None else lines},
+            {"tunables": tunables}, state or {})
+        return alerts
+
+    def test_infinite_cooldown_defaults_to_3600(self):
+        # 100s after a firing is inside the documented
+        # 3600s cooldown: suppressed, not a crash.
+        state = {"last_fired": {
+            "kernel_distress:oom": self.NOW - 100}}
+        self.assertEqual(
+            self._decide({"cooldown_sec": float("inf")}, state),
+            [])
+        # 4000s after a firing is past the documented
+        # default cooldown: files again.
+        state = {"last_fired": {
+            "kernel_distress:oom": self.NOW - 4000}}
+        self.assertEqual(
+            len(self._decide(
+                {"cooldown_sec": float("inf")}, state)), 1)
+
+    def test_infinite_max_alerts_defaults_to_10(self):
+        patterns = [{"name": f"p{i}", "regex": f"hit{i}"}
+                    for i in range(12)]
+        lines = [f"hit{i}" for i in range(12)]
+        alerts = self._decide(
+            {"max_alerts_per_pass": float("inf"),
+             "patterns": patterns}, lines=lines)
+        self.assertEqual(len(alerts), 10)
+
+    def test_infinite_tail_bytes_defaults_to_65536(self):
+        mod = self._mod()
+        lines, _state = mod.read_new_lines(
+            [], {}, float("inf"))
+        self.assertEqual(lines, [])
+
+    def test_omitted_and_explicit_tunables_are_honored(self):
+        # Controls: the documented defaults and genuine
+        # values already behave today and must keep doing
+        # so after the non-finite cases are fixed.
+        self.assertEqual(len(self._decide({})), 1)
+        state = {"last_fired": {
+            "kernel_distress:oom": self.NOW - 100}}
+        self.assertEqual(self._decide({}, state), [])
+        self.assertEqual(
+            len(self._decide({"cooldown_sec": 0}, state)), 1)
+        self.assertEqual(
+            self._decide({"cooldown_sec": float("nan")}, state),
+            [])
+        self.assertEqual(
+            self._decide({"cooldown_sec": float("-inf")}, state),
+            [])
+
+
 if __name__ == "__main__":
     unittest.main()
