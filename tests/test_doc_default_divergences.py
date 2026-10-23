@@ -2452,5 +2452,110 @@ class TestBooleanMaxJobAgeDefaultsTo3600(unittest.TestCase):
         self.assertTrue(ok, reason)
 
 
+class TestBooleanDriWindowSecIsConfigError(unittest.TestCase):
+    """Divergence: a DRI trigger window_sec set to a boolean
+    reads as a 1-second (true) or 0-second (false) window
+    instead of the startup config error every other malformed
+    DRI trigger number gets.
+
+    (a) Doc claim (docs/dri-playbook.md, "Config sketch",
+        lines 133-136): the documented configuration is
+        "sensor_fused_score": {"threshold": 6.0,
+        "window_sec": 600} and "key_probe": {"threshold": 5,
+        "window_sec": 3600} -- and those are exactly the
+        values the reader returns when the keys are omitted,
+        i.e. they are the defaults. The reader's own contract
+        states the rest (runner/dri.py, parse_dri): a
+        threshold or window that is not a number raises
+        "config error: dri.triggers... threshold/window_sec
+        must be numbers", and a non-boolean `enabled` raises
+        a config error -- booleans are a distinct type in
+        this block, never numbers. No document gives a
+        boolean a numeric meaning for either window_sec.
+        The threshold halves of these same two triggers are
+        already recorded in TestBooleanDriValuesAreConfigErrors
+        above, whose hunt exercised the windows but landed no
+        test for them; this class records the window forms.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 10:36 PDT tick) exercised
+        runner.dri.parse_dri -- the single reader that
+        validates the dri block -- with each trigger's
+        window_sec left unset and varied around the
+        documented defaults: key omitted, the documented
+        600 / 3600, a non-numeric string ("bogus"), and the
+        booleans True and False.
+
+    (c) Behavior actually observed: omitted reads as the
+        documented defaults (sensor_fused_score window
+        600.0, key_probe window 3600.0), the documented
+        values are honored, and "bogus" raises the
+        documented RuntimeError config error. The booleans
+        do not: parse_dri converts with float() and no
+        boolean guard (runner/dri.py lines 81 and 99), so
+        sensor_fused_score window_sec True reads as 1.0
+        second and False as 0.0 instead of raising, and
+        key_probe window_sec True reads as 1.0 and False
+        as 0.0 -- a fused score or key-probe count is then
+        tallied over a one-second or empty window instead
+        of the documented 600 / 3600 seconds. Sibling
+        readers exclude booleans explicitly --
+        runner.runner._cfg_size ("Booleans are not sizes"),
+        runner.remediation._pos_int,
+        runner.security.audit_max_lines, and this same
+        reader's own `enabled` check; these float()
+        conversions are the outliers. This is the known
+        boolean-as-number family. Observed on 2026-10-23:
+        parse_dri({"dri": {"triggers": {"sensor_fused_score":
+        {"window_sec": True}}}}) returned window_sec 1.0 and
+        with False returned 0.0, and parse_dri({"dri":
+        {"triggers": {"key_probe": {"window_sec": True}}}})
+        returned window_sec 1.0 and with False returned 0.0,
+        none of them raising.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed in
+        the code.
+    """
+
+    def test_true_sensor_fused_window_is_config_error(self):
+        from runner.dri import parse_dri
+        with self.assertRaises(RuntimeError):
+            parse_dri({"dri": {"triggers": {
+                "sensor_fused_score": {"window_sec": True}}}})
+
+    def test_false_sensor_fused_window_is_config_error(self):
+        from runner.dri import parse_dri
+        with self.assertRaises(RuntimeError):
+            parse_dri({"dri": {"triggers": {
+                "sensor_fused_score": {"window_sec": False}}}})
+
+    def test_true_key_probe_window_is_config_error(self):
+        from runner.dri import parse_dri
+        with self.assertRaises(RuntimeError):
+            parse_dri({"dri": {"triggers": {
+                "key_probe": {"window_sec": True}}}})
+
+    def test_false_key_probe_window_is_config_error(self):
+        from runner.dri import parse_dri
+        with self.assertRaises(RuntimeError):
+            parse_dri({"dri": {"triggers": {
+                "key_probe": {"window_sec": False}}}})
+
+    def test_documented_windows_are_honored(self):
+        # Control: the documented defaults pass validation
+        # untouched; the fix must not flatten genuine
+        # values into an error.
+        from runner.dri import parse_dri
+        out = parse_dri({"dri": {"triggers": {
+            "sensor_fused_score": {"window_sec": 600},
+            "key_probe": {"window_sec": 3600}}}})
+        self.assertEqual(
+            out["triggers"]["sensor_fused_score"]["window_sec"],
+            600.0)
+        self.assertEqual(
+            out["triggers"]["key_probe"]["window_sec"], 3600.0)
+
+
 if __name__ == "__main__":
     unittest.main()
