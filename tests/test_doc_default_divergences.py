@@ -6469,7 +6469,105 @@ class TestInfiniteSuricataCooldownDefaultsTo3600(unittest.TestCase):
                 {"episode_cooldown_sec": float("nan")}),
             ["suricata_alert", "suricata_alert"])
 
+class TestInfiniteWazuhQuietDefaultsTo3600(unittest.TestCase):
+    """Divergence: an infinite wazuh-feed
+    episode_quiet_sec (+inf) suppresses re-filing
+    forever instead of falling back to the documented
+    3600-second default.
 
+    (a) Doc claim (examples/extensions/wazuh-feed/
+        README.md, tunable table, line 69):
+        "episode_quiet_sec | 3600 | How long a (rule,
+        agent) pair must stay quiet before its next
+        alert files as a new episode"; the same
+        default is in the extension's extension.json
+        tunables (3600) and in wazuh_feed.py's module
+        docstring: an episode re-arms once
+        episode_quiet_sec has passed with no further
+        alert for that pair.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 tick) exercised the wazuh-feed
+        example extension's decide() -- the pure decision
+        function -- with episode_quiet_sec omitted, set
+        to a genuine value, and set to float("inf") and
+        float("nan"), using one alert episode (rule_id
+        5710, agent web-1, level 7) firing at t=1000 and
+        again at t=8200 (7200 seconds later, twice the
+        documented quiet period).
+
+    (c) Behavior actually observed: omitted, NaN, and an
+        explicit 3600 all file twice (the second sighting
+        is past the quiet period), and an explicit 10000
+        files once, as documented. But +inf is accepted as a
+        number -- _is_number in wazuh_feed.py excludes
+        booleans but not non-finite floats, and inf > 0
+        holds -- so the quiet period becomes infinite: the
+        t=8200 sighting only updates last_seen and never
+        re-files. Sibling readers in this codebase exclude
+        non-finite values and fall back to their defaults;
+        this reader does not. Observed on 2026-10-23:
+        decide() with {"episode_quiet_sec": float("inf")}
+        on events at 1000 and 8200 returned
+        ['wazuh_alert'] once, where the omitted tunable
+        returned it twice. This is the campaign's known
+        non-finite-tunable root-cause family in a new
+        reader.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _signals(self, tunables, stamps=(1000.0, 8200.0)):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "wazuh-feed",
+            "wazuh_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "wazuh_feed_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        events = [{
+            "ts": ts, "level": 7, "rule_id": "5710",
+            "description": "Test alert", "groups": [],
+            "agent_name": "web-1", "agent_id": "001"}
+            for ts in stamps]
+        alerts, _state = mod.decide(
+            {"now": stamps[-1], "events": events},
+            {"name": "wazuh_feed", "tunables": tunables},
+            {})
+        return [a["signal"] for a in alerts]
+
+    def test_infinite_quiet_defaults_to_3600(self):
+        self.assertEqual(
+            self._signals(
+                {"episode_quiet_sec": float("inf")}),
+            ["wazuh_alert", "wazuh_alert"])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented default and genuine
+        # values already behave today and must keep doing
+        # so after the non-finite case is fixed.
+        self.assertEqual(
+            self._signals({}),
+            ["wazuh_alert", "wazuh_alert"])
+        self.assertEqual(
+            self._signals({"episode_quiet_sec": 3600}),
+            ["wazuh_alert", "wazuh_alert"])
+        self.assertEqual(
+            self._signals({"episode_quiet_sec": 10000}),
+            ["wazuh_alert"])
+        self.assertEqual(
+            self._signals({}, (1000.0, 2000.0)),
+            ["wazuh_alert"])
+        self.assertEqual(
+            self._signals(
+                {"episode_quiet_sec": float("nan")}),
+            ["wazuh_alert", "wazuh_alert"])
 
 
 if __name__ == "__main__":
