@@ -5010,5 +5010,105 @@ class TestInfiniteCrashWatchRepeatWindowDefaultsTo3600(unittest.TestCase):
 
 
 
+
+class TestInfiniteFailedLoginBurstCountDefaultsTo5(unittest.TestCase):
+    """Divergence: an infinite failed-login-watch
+    burst_count (+inf) crashes decide() with
+    OverflowError instead of falling back to the
+    documented 5-failure default.
+
+    (a) Doc claim (examples/extensions/failed-login-watch/
+        README.md, line 37): "`login_failure_burst` |
+        One source accumulates at least the
+        `burst_count` tunable (default 5) failures
+        inside the trailing `window_sec` (default
+        600)". The manifest ships the same default
+        (extension.json: "burst_count": 5,
+        "window_sec": 600).
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 14:51 PDT tick) exercised the
+        failed-login-watch example extension's decide()
+        -- the pure decision function -- with six
+        failure events from one source inside the
+        window, with the tunable omitted, set to
+        genuine values (5 and 2), and set to
+        float("inf"), float("nan"), True, and a huge
+        integer.
+
+    (c) Behavior actually observed: omitted, 5, NaN,
+        and True all file one login_failure_burst at
+        the fifth failure, as the documented default
+        requires, and an explicit 2 files at the
+        second failure. float("inf") does not:
+        decide() computes burst_count as
+        int(burst_count) if _is_number(burst_count)
+        and burst_count >= 1 else 5
+        (failed_login_watch.py lines 251-253);
+        _is_number excludes booleans but not
+        non-finite floats, and inf >= 1 is true, so
+        int(float("inf")) raises OverflowError:
+        cannot convert float infinity to integer,
+        and decide() crashes outright instead of
+        using the default. Sibling readers in this
+        codebase exclude non-finite values and fall
+        back to their defaults; this reader does not.
+        This is the campaign's known non-finite-tunable
+        root-cause family. Observed on 2026-10-23:
+        decide() with burst_count float("inf") raised
+        OverflowError where the omitted tunable
+        returned ["login_failure_burst"].
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _signals(self, tunables, count=6):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "failed-login-watch",
+            "failed_login_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "failed_login_watch_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        now = 1000000.0
+        manifest = {"name": "failed_login_watch",
+                    "tunables": dict(tunables)}
+        events = [{"ts": now + i, "kind": "fail",
+                   "source": "192.0.2.10",
+                   "user": "root"} for i in range(count)]
+        readings = {"now": now + count, "events": events}
+        alerts, _state = mod.decide(readings, manifest, {})
+        return [a["signal"] for a in alerts]
+
+    def test_infinite_burst_count_defaults_to_5(self):
+        self.assertEqual(
+            self._signals({"burst_count": float("inf")}),
+            ["login_failure_burst"])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented default and genuine
+        # values already behave today and must keep
+        # doing so after the non-finite case is fixed.
+        self.assertEqual(self._signals({}),
+                         ["login_failure_burst"])
+        self.assertEqual(
+            self._signals({"burst_count": 5}),
+            ["login_failure_burst"])
+        self.assertEqual(
+            self._signals({"burst_count": float("nan")}),
+            ["login_failure_burst"])
+        self.assertEqual(
+            self._signals({"burst_count": 2}, count=3),
+            ["login_failure_burst"])
+        self.assertEqual(
+            self._signals({"burst_count": 7}, count=6), [])
+
+
 if __name__ == "__main__":
     unittest.main()
