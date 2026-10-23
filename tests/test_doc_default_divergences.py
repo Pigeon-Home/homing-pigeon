@@ -1769,6 +1769,67 @@ class TestBooleanSensorCooldownDefaultsToZero(unittest.TestCase):
             [{"title": "same", "received_at": NOW}], now=now))
 
 
+class TestBooleanSensorMaxPerHourDefaultsToZero(unittest.TestCase):
+    """Divergence: a sensor profile max_per_hour set to boolean
+    true reads as a cap of 1 alert per hour instead of the
+    documented default of 0 (unlimited), so a second alert in
+    the hour is dropped.
+
+    (a) Doc claim (docs/senses.md, lines 262-263):
+        "`max_per_hour`: sliding-window cap per sense; over-cap
+        alerts are dropped. Default 0 (unlimited)."
+
+    (b) How the bug was found: the campaign's doc-default hunt
+        (2026-10-23 09:16 PDT tick) exercised
+        runner.senses.gate_alert -- the ingest gate that reads
+        this profile knob -- with the key left unset and varied
+        around it: omitted, explicit None, a non-numeric string
+        ("bogus"), 0, a valid 60, a huge integer (10**400), and
+        the booleans True and False, each time with one recent
+        stored alert inside the hour window and a new alert of
+        a different title (so the separate cooldown gate could
+        not be the cause).
+
+    (c) Behavior actually observed: omitted, None, "bogus",
+        0, False, 60, and the huge integer all keep the new
+        alert (gate_alert returns None, the documented
+        unlimited default or a cap not yet reached). True does
+        not fall back: gate_alert computes
+        float(profile.get("max_per_hour") or 0) with no boolean
+        guard (runner/senses.py line 221), so float(True) is
+        1.0, the > 0 check passes, the one recent alert counts
+        as n=1 >= cap=1, and the new alert is dropped as
+        "over max_per_hour 1". The config validator shares the
+        shape: parse_sensors likewise converts a boolean
+        max_per_hour to 1.0 (runner/senses.py lines 93-103)
+        instead of refusing it or reading the default.
+        Sibling numeric readers exclude booleans explicitly
+        (runner.runner._cfg_size: "Booleans are not sizes";
+        runner.remediation._pos_int; runner.resources'
+        enabled check); this reader is the outlier. Observed
+        on 2026-10-23: gate_alert(
+        {"profile": {"max_per_hour": True}},
+        {"severity": "info", "title": "new"},
+        [{"title": "other", "received_at": NOW}], now=<NOW as
+        a timestamp>) returned "over max_per_hour 1" instead
+        of None.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def test_true_max_per_hour_defaults_to_zero_unlimited(self):
+        from datetime import datetime, timezone
+
+        from runner.senses import gate_alert
+        now = datetime(2026, 10, 23, 5, 50, 22,
+                       tzinfo=timezone.utc).timestamp()
+        self.assertIsNone(gate_alert(
+            {"profile": {"max_per_hour": True}},
+            {"severity": "info", "title": "new"},
+            [{"title": "other", "received_at": NOW}], now=now))
+
 
 if __name__ == "__main__":
     unittest.main()
