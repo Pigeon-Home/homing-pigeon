@@ -3867,5 +3867,104 @@ class TestNegativeOrNonFiniteSensorWeightDefaultsToOne(unittest.TestCase):
             alert_score({"severity": "info"}, "bogus"), 0.5)
 
 
+
+class TestNonFinitePiHealthTunableDefaults(unittest.TestCase):
+    """Divergence: a non-finite pi-health tunable (inf / NaN)
+    silently disables its alert instead of falling back to the
+    documented default threshold.
+
+    (a) Doc claim (docs/extensions.md, pi-health table):
+        "`board_overheating` | CPU/SoC temperature reaches
+        `temp_high_c` (default 80)"; "`disk_pressure` | The
+        `disk_mount` mount reaches `disk_high_pct` (default
+        90)"; "`memory_pressure` | Available memory falls to
+        `mem_avail_low_pct` (default 10)". The extension's own
+        header repeats the same defaults.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 tick) exercised the pi-health example
+        extension's decide() -- the pure decision function --
+        with each tunable omitted, set to a genuine value,
+        and set to float("inf") and float("nan"), using
+        readings that file under the documented defaults
+        (temp_c 100, disk 95%, mem_avail 5%).
+
+    (c) Behavior actually observed: omitted tunables file
+        as documented and a genuine temp_high_c of 50 is
+        honored, but _tunable accepts inf and NaN as numbers
+        (_is_number excludes booleans but not non-finite
+        floats), so an infinite threshold is never reached
+        and every NaN comparison is false: decide() files
+        nothing at all. A non-finite tunable therefore
+        silences the alert instead of reading as the
+        documented default. Sibling readers in this codebase
+        exclude non-finite values and fall back to their
+        defaults (e.g. runner.remediation._pos_float,
+        runner.runner._local_wake_cooldown, the senses
+        weight validation); this reader does not. Observed
+        on 2026-10-23: decide({"temp_c": 100},
+        {"tunables": {"temp_high_c": float("inf")}}, {})
+        returned no alerts, where the omitted tunable
+        returned board_overheating.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def _decide(self, readings, tunables):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "pi-health", "pi_health.py")
+        spec = importlib.util.spec_from_file_location(
+            "pi_health_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        alerts, _state = mod.decide(
+            readings, {"tunables": tunables}, {})
+        return [a["signal"] for a in alerts]
+
+    def test_infinite_temp_threshold_defaults_to_80(self):
+        self.assertEqual(
+            self._decide({"temp_c": 100},
+                         {"temp_high_c": float("inf")}),
+            ["board_overheating"])
+
+    def test_nan_temp_threshold_defaults_to_80(self):
+        self.assertEqual(
+            self._decide({"temp_c": 100},
+                         {"temp_high_c": float("nan")}),
+            ["board_overheating"])
+
+    def test_infinite_disk_threshold_defaults_to_90(self):
+        self.assertEqual(
+            self._decide({"disk_pct": {"/": 95}},
+                         {"disk_high_pct": float("inf")}),
+            ["disk_pressure"])
+
+    def test_nan_mem_threshold_defaults_to_10(self):
+        self.assertEqual(
+            self._decide({"mem_avail_pct": 5},
+                         {"mem_avail_low_pct": float("nan")}),
+            ["memory_pressure"])
+
+    def test_omitted_and_explicit_thresholds_are_honored(self):
+        # Controls: the documented default and a genuine
+        # threshold both behave today and must keep doing
+        # so after the non-finite cases are fixed.
+        self.assertEqual(
+            self._decide({"temp_c": 100}, {}),
+            ["board_overheating"])
+        self.assertEqual(
+            self._decide({"temp_c": 60}, {"temp_high_c": 50}),
+            ["board_overheating"])
+        self.assertEqual(
+            self._decide({"temp_c": 60}, {}), [])
+
+
+
 if __name__ == "__main__":
     unittest.main()
