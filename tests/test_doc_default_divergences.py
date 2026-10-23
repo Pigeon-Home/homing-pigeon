@@ -3615,5 +3615,125 @@ class TestBooleanAskMaxCharsDefaultsTo2000(unittest.TestCase):
             self._ask_cap({"max_chars": 500}), 500)
 
 
+class TestBooleanPlanStepTimeoutCountsAs60(unittest.TestCase):
+    """Divergence: a plan step whose timeout_sec is
+    boolean true is counted as 1 second toward the
+    documented plan timeout cap, instead of the
+    60 seconds an omitted or unparseable step
+    timeout counts as.
+
+    (a) Doc claim: docs/configuring-oracle.md
+        (line 68) gives the detection layer's plan
+        caps: "`max_plan_steps` /
+        `max_plan_timeout_sec` -- caps the detection
+        layer (`runner/detection.py`) applies to a
+        multi-step plan: at most this many steps
+        (default 8) and this much total timeout in
+        seconds (default 600)." The total is a sum
+        over steps, and the reader's own code states
+        the per-step fallback: runner/detection.py,
+        check_plan_budget (lines 122-129), computes
+        int(step.get("timeout_sec") or 60) and, on
+        (TypeError, ValueError, OverflowError), adds
+        60 -- a step with no usable timeout counts
+        as 60 seconds toward the cap. No document
+        gives a boolean a meaning as a 1-second
+        step timeout.
+
+    (b) How the bug was found: the campaign's
+        doc-default hunt (2026-10-23 12:16 PDT tick)
+        exercised runner.detection.check_plan_budget
+        directly, varying only a step's timeout_sec
+        around the reader's fallback -- omitted,
+        explicit None, the string "bogus", an
+        explicit 45, an explicit 10, and the
+        booleans True and False -- against a
+        30-second total cap, and again with eleven
+        steps under a raised step cap and the
+        documented 600-second total cap, recording
+        whether each plan was allowed.
+
+    (c) Behavior actually observed: omitted, None,
+        and "bogus" all count as 60 (a single such
+        step is refused under a 30-second cap, and
+        eleven such steps total 660 and are refused
+        under the 600 cap); explicit 45 is refused
+        and explicit 10 allowed under the 30 cap,
+        as given. False also counts as 60 today,
+        because the "or 60" treats it as missing.
+        True does not: int(step.get("timeout_sec")
+        or 60) is int(True) -- Python's bool is a
+        subclass of int -- so a true step counts as
+        a single second: one true step is allowed
+        under a 30-second cap that refuses the
+        fallback step, and eleven true steps total
+        11 seconds and pass under the documented
+        600 cap that refuses eleven fallback steps.
+        The plan budget's own config caps were
+        hardened against booleans by earlier
+        campaign classes; the per-step timeout read
+        in the same function was not. This is the
+        campaign's known boolean-as-number family.
+        Observed on 2026-10-23: check_plan_budget(
+        [{"timeout_sec": True}],
+        {"max_plan_timeout_sec": 30}) returned
+        (True, ""), where the omitted-timeout step
+        returned (False, "plan timeout 60s exceeds
+        30s").
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def test_true_step_timeout_counts_as_60(self):
+        from runner.detection import check_plan_budget
+        ok, reason = check_plan_budget(
+            [{"timeout_sec": True}],
+            {"max_plan_timeout_sec": 30})
+        self.assertFalse(ok)
+        self.assertIn("exceeds", reason)
+
+    def test_true_steps_total_counts_as_60_each(self):
+        from runner.detection import check_plan_budget
+        ok, reason = check_plan_budget(
+            [{"timeout_sec": True}] * 11,
+            {"max_plan_steps": 20,
+             "max_plan_timeout_sec": 600})
+        self.assertFalse(ok)
+        self.assertIn("exceeds", reason)
+
+    def test_false_step_timeout_counts_as_60(self):
+        # Control: false already counts as the
+        # 60-second fallback today (the "or" treats
+        # it as missing); it must keep doing so after
+        # the true case is fixed.
+        from runner.detection import check_plan_budget
+        ok, reason = check_plan_budget(
+            [{"timeout_sec": False}],
+            {"max_plan_timeout_sec": 30})
+        self.assertFalse(ok)
+        self.assertIn("exceeds", reason)
+
+    def test_bogus_step_timeout_counts_as_60(self):
+        # Control: an unparseable step timeout already
+        # counts as 60 today; it must keep doing so.
+        from runner.detection import check_plan_budget
+        ok, reason = check_plan_budget(
+            [{"timeout_sec": "bogus"}],
+            {"max_plan_timeout_sec": 30})
+        self.assertFalse(ok)
+        self.assertIn("exceeds", reason)
+
+    def test_explicit_10_step_timeout_is_honored(self):
+        # Control: a genuine explicit step timeout is
+        # counted as given; the fix must not flatten
+        # it to the 60-second fallback.
+        from runner.detection import check_plan_budget
+        ok, reason = check_plan_budget(
+            [{"timeout_sec": 10}],
+            {"max_plan_timeout_sec": 30})
+        self.assertTrue(ok)
+
 if __name__ == "__main__":
     unittest.main()
