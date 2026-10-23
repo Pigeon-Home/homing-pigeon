@@ -4,7 +4,7 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.12.55 - 2026-10-22
+## 3.12.56 - 2026-10-22
 
 - **Every pipeline timer is off, to measure.** The mutation job's
   `timeout-minutes: 40` -- the pipeline's only explicit job timer --
@@ -24,13 +24,25 @@ facts a reader may need to cite. Git history carries the rest.
   annotates nothing when the verdict is OK; fixture noise used to
   take the slots before the real failure.
 
-- **Six days of CI, read as a corpus.** `docs/reports/v3.12.55/
+- **Six days of CI, read as a corpus.** `docs/reports/v3.12.56/
   ci-failures.md`: 1,000 build runs and their jobs and steps. No
   timer ever fired. The red was the suite -- Windows twice as often
   as Linux, almost never both; the 13-hour stalls were the retired
   `macos-13` label, since moved; mutation is a release's entire long
   pole and gates nothing. The report lists the failure modes seen
   and what to cut.
+
+- **The first red run proved the annotations and found two holes.**
+  Main at f0a69dd went red on both suites, and the Windows run page
+  named the test for the first time: `under_actions({})` fell
+  through to the real environment, where Actions sets the variable.
+  Fixed, with the two holes the same run showed: `skip_guard` now
+  reads the verdict unittest prints last (a fixture's bare `OK`
+  earlier in the log blinded it, and would have fooled
+  `--require-ok` the same way), and the shard runner's own tests
+  run with `GITHUB_ACTIONS` unset so a fake red shard never
+  annotates a real run. The suite is run under the CI environment
+  variable before a release from now on.
 
 <!-- Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c -->
 
