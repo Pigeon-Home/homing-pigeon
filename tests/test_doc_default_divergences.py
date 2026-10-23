@@ -2012,5 +2012,114 @@ class TestBooleanMailboxPortIsConfigError(unittest.TestCase):
             _port({"smtp_port": False}, "smtp_port", 587)
 
 
+class TestBooleanAgentWallClockDefaultsTo300(unittest.TestCase):
+    """Divergence: an inference agent_wall_clock_sec set to the
+    boolean true becomes a 1-second wall clock for the Oracle
+    agent loop, instead of the documented 300-second default.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 70):
+        "`agent_wall_clock_sec` (default 300; the
+        whole-conversation wall clock for the `--oracle` agent
+        loop, on top of the per-call `timeout_sec`)".
+        The constant the docs describe is
+        _ORACLE_AGENT_WALL_CLOCK_SEC = 300 (runner/runner.py
+        line 2026).
+
+    (b) How the bug was found: the campaign's doc-default hunt
+        (2026-10-23 09:36 PDT tick) exercised
+        runner.runner.ask_model_agent -- the same direct-call
+        surface the repo's own agent tests use -- with the
+        inference config's agent_wall_clock_sec varied around
+        the documented default: omitted, the string "bogus",
+        a valid 42, boolean false, and boolean true. The
+        clock was controlled by patching time.monotonic so
+        the loop starts at 0 and stands at 10 seconds elapsed
+        on every later reading (well inside the documented
+        300), _inference_chat was faked to answer the first
+        round with one read_file tool call and later rounds
+        with a plain answer, and _run_oracle_tool was stubbed.
+        Whether the agent was forced into its
+        out-of-investigation-time wrap-up (a final chat call
+        with tools=None and the "out of investigation time"
+        note appended) is the observable signal of what wall
+        clock the code actually used.
+
+    (c) Behavior actually observed: omitted, "bogus", and 42
+        all behave as documented -- no wrap-up at 10 seconds
+        elapsed. Boolean false also lands on the default
+        (False is falsy, so `or` yields 300). Boolean true
+        does not: ask_model_agent (runner/runner.py lines
+        2753-2759) computes
+        int(cfg.get("agent_wall_clock_sec") or 300); True is
+        truthy, int(True) is 1, and 1 is not below the
+        code's < 1 guard, so the wall clock becomes 1 second.
+        At 10 seconds elapsed the second chat call arrives
+        with tools=None and the out-of-investigation-time
+        note, cutting off an investigation the documented
+        default would have allowed for another 290 seconds.
+        Python's bool is a subclass of int, and the sibling
+        parsers in this codebase refuse booleans explicitly
+        (_cfg_size for the log bounds, _pos_int in
+        remediation, the `is True` rejection in
+        inference_config); this read site has no such guard.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed in
+        the code.
+    """
+
+    _BASE = {"endpoint": "http://127.0.0.1:9/v1", "model": "m"}
+
+    def _run_agent(self, extra):
+        from unittest import mock
+
+        from runner import runner
+        cfg = dict(self._BASE)
+        cfg.update(extra)
+        seq = {"n": 0}
+
+        def mono():
+            seq["n"] += 1
+            return 0 if seq["n"] == 1 else 10
+
+        seen = {"tools": [], "out_of_time": False}
+
+        def chat(cfg, messages, tools, opener, timeout):
+            seen["tools"].append(tools)
+            for m in messages:
+                if "out of investigation time" in (m.get("content") or ""):
+                    seen["out_of_time"] = True
+            if len(seen["tools"]) == 1:
+                return {"role": "assistant", "content": "",
+                        "tool_calls": [{
+                            "id": "c1",
+                            "function": {"name": "read_file",
+                                         "arguments":
+                                             {"path": "/no/such/hp-gap"}}}]}
+            return {"role": "assistant", "content": "final answer"}
+
+        with mock.patch.object(runner.time, "monotonic",
+                               side_effect=mono), \
+             mock.patch.object(runner, "_inference_chat",
+                               side_effect=chat), \
+             mock.patch.object(runner, "_run_oracle_tool",
+                               return_value="(no output)"):
+            runner.ask_model_agent(cfg, "why?", "some output", 100)
+        return seen
+
+    def test_true_agent_wall_clock_defaults_to_300(self):
+        seen = self._run_agent({"agent_wall_clock_sec": True})
+        self.assertFalse(seen["out_of_time"])
+        self.assertNotIn(None, seen["tools"])
+
+    def test_false_agent_wall_clock_defaults_to_300(self):
+        # Control: false already lands on the documented
+        # default today (falsy, so `or` yields 300); it must
+        # keep doing so after the true case is fixed.
+        seen = self._run_agent({"agent_wall_clock_sec": False})
+        self.assertFalse(seen["out_of_time"])
+        self.assertNotIn(None, seen["tools"])
+
+
 if __name__ == "__main__":
     unittest.main()
