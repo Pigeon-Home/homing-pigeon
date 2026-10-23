@@ -1211,5 +1211,57 @@ class TestBooleanRetentionDaysDefaultsTo7(unittest.TestCase):
             _retention_days({"output_retention_days": False}), 7)
 
 
+class TestBooleanV2AnswerDeadlineDefaultsTo0(unittest.TestCase):
+    """Divergence: v2_answer_deadline_sec set to boolean true
+    reads as a 1-second wait instead of the documented
+    default of 0 (one look, no wait).
+
+    (a) Doc claim (docs/configuring-oracle.md, line 45):
+        "`v2_answer_deadline_sec` is how long to look
+        (0 to 30, default 0 -- one look, no wait)."
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 08:01 PDT tick) exercised
+        runner.protocol_v2.deadline_of -- the reader for
+        this config key -- with the key left unset and
+        varied around it -- omitted, explicit None, a
+        non-numeric string ("bogus"), float("inf"),
+        float("nan"), 0, -5, 5, "5", and the boolean True
+        -- checking the deadline each call returned.
+
+    (c) Behavior actually observed: omitted, None,
+        "bogus", infinity, and NaN all return the
+        documented default 0; negative values return 0
+        and values above 30 clamp to 30, as documented.
+        True does not fall back: deadline_of computes
+        int(raw) with no boolean guard, so True returns
+        1 -- a one-second wait the operator never asked
+        for, instead of the documented one-look-no-wait
+        default. The same module excludes booleans for
+        this very concept elsewhere: the wait loop
+        (runner/protocol_v2.py line 482) reads a deadline
+        with `not isinstance(deadline, int) or
+        isinstance(deadline, bool)` and falls back to 0,
+        and validate (line 263) rejects a boolean
+        deadline outright; sibling config readers
+        (runner.runner._cfg_size, runner.remediation
+        ._pos_int) likewise exclude booleans. Only this
+        reader lets one through as a number. Observed on
+        2026-10-23: deadline_of({"v2_answer_deadline_sec":
+        True}) returned 1. (False returns 0, which
+        coincides with the default, so only True is
+        asserted here.)
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def test_true_v2_answer_deadline_defaults_to_0(self):
+        from runner.protocol_v2 import deadline_of
+        self.assertEqual(
+            deadline_of({"v2_answer_deadline_sec": True}), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

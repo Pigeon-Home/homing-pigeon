@@ -1043,6 +1043,21 @@ class CampaignLoopCycleTests(unittest.TestCase):
     def test_cycle_318_sysstat(self):
         self._run_cycle(318, 'sysstat', 0)
 
+    def test_cycle_319_exit3(self):
+        self._run_cycle(319, 'exit3', 3)
+
+    def test_cycle_320_shadow(self):
+        self._run_cycle(320, 'shadow', 0)
+
+    def test_cycle_321_clock(self):
+        self._run_cycle(321, 'clock', 0)
+
+    def test_cycle_322_envmark(self):
+        self._run_cycle(322, 'envmark', 0)
+
+    def test_cycle_323_hostinfo(self):
+        self._run_cycle(323, 'hostinfo', 0)
+
 
 if __name__ == "__main__":
     unittest.main()
