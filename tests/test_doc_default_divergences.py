@@ -4555,5 +4555,108 @@ class TestInfiniteLogSentinelTunablesCrashInsteadOfDefault(unittest.TestCase):
             [])
 
 
+
+class TestInfiniteTripwireTunablesCrashInsteadOfDefault(unittest.TestCase):
+    """Divergence: an infinite tripwire integer tunable
+    (max_files / max_alerts_per_pass = +inf) crashes the
+    pass with OverflowError instead of falling back to
+    the documented defaults.
+
+    (a) Doc claim (examples/extensions/tripwire/README.md
+        lines 27 and 32-33, repeated in the extension's
+        extension.json tunables): "At most `max_files`
+        files (default 10000) are recorded per pass"; "At
+        most `max_alerts_per_pass` alerts (default 100)
+        are filed per pass".
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 tick) exercised the tripwire
+        example extension's decide() -- the pure decision
+        function -- and its read_live() reader with each
+        integer tunable omitted, set to a genuine value,
+        and set to float("inf"), float("-inf") and
+        float("nan"), using 105 appeared files against a
+        learned empty baseline (past the documented cap
+        of 100 alerts) and a nonexistent watch root.
+
+    (c) Behavior actually observed: omitted tunables cap
+        105 appeared files at 100 alerts, and NaN and
+        -inf also fall back to the defaults, because the
+        reader's `value >= minimum` check is false for
+        them. But _int_tunable accepts +inf as a number
+        (_is_number excludes booleans but not non-finite
+        floats, and inf >= minimum holds) and then
+        int(inf) raises OverflowError: decide() crashes
+        outright on max_alerts_per_pass=inf, and
+        read_live() crashes the same way on
+        max_files=inf (the tunable is converted before
+        the root is even checked), instead of reading
+        the tunable as the documented default. This is
+        the same conversion pattern recorded for the
+        log-sentinel extension above, at a site that class
+        does not cover. Observed on 2026-10-23: both
+        entry points raised "OverflowError: cannot
+        convert float infinity to integer".
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "tripwire",
+            "tripwire.py")
+        spec = importlib.util.spec_from_file_location(
+            "tripwire_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _files(self, count=105):
+        return {f"f{i:03d}.txt": {"sha384": "a" * 96, "size": 1}
+                for i in range(count)}
+
+    def _decide(self, tunables):
+        mod = self._mod()
+        alerts, _state = mod.decide(
+            {"files": self._files()},
+            {"tunables": tunables},
+            {"learned": True, "files": {}})
+        return alerts
+
+    def test_infinite_max_alerts_defaults_to_100(self):
+        self.assertEqual(
+            len(self._decide(
+                {"max_alerts_per_pass": float("inf")})), 100)
+
+    def test_infinite_max_files_defaults_to_10000(self):
+        mod = self._mod()
+        readings = mod.read_live({"tunables": {
+            "root": "/nonexistent-tripwire-probe",
+            "max_files": float("inf")}})
+        self.assertEqual(readings["files"], {})
+        self.assertEqual(readings["truncated"], 0)
+
+    def test_omitted_and_explicit_tunables_are_honored(self):
+        # Controls: the documented defaults and genuine
+        # values already behave today and must keep doing
+        # so after the non-finite cases are fixed.
+        self.assertEqual(len(self._decide({})), 100)
+        self.assertEqual(
+            len(self._decide({"max_alerts_per_pass": 3})), 3)
+        self.assertEqual(
+            len(self._decide(
+                {"max_alerts_per_pass": float("nan")})), 100)
+        self.assertEqual(
+            len(self._decide(
+                {"max_alerts_per_pass": float("-inf")})), 100)
+
+
+
 if __name__ == "__main__":
     unittest.main()
