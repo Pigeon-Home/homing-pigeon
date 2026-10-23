@@ -5794,5 +5794,185 @@ class TestNonFiniteLatencyPostTunablesDefaultInsteadOfSilence(unittest.TestCase)
 
 
 
+class TestNonFiniteTrainingWatchTunablesDefaultInsteadOfSilenceOrCrash(unittest.TestCase):
+    """Divergence: non-finite training-watch tunables
+    (+inf / NaN gpu_temp_high_c and gpu_mem_high_pct,
+    -inf gpu_temp_high_c, and +inf loss_points /
+    loss_history / crash_window_lines /
+    max_checkpoints) silently suppress or spuriously
+    file the GPU signals, or crash decide() outright,
+    instead of falling back to the documented
+    defaults (gpu_temp_high_c 85, gpu_mem_high_pct
+    95, loss_points 5, loss_history 200,
+    crash_window_lines 100, max_checkpoints 200).
+
+    (a) Doc claim (examples/extensions/training-watch/
+        README.md, lines 21-22): "`gpu_overheating` |
+        GPU temperature reaches `gpu_temp_high_c`
+        (default 85)" and "`gpu_memory_pressure` |
+        GPU memory reaches `gpu_mem_high_pct` of the
+        card's total (default 95)". The same README
+        states the remaining defaults: loss_points
+        default 5 (line 56), crash_window_lines
+        default 100 (line 68), loss_history default
+        200 and max_checkpoints default 200
+        (line 137). The manifest ships the same
+        defaults (extension.json tunables), and the
+        code's own fallback literals state them
+        (training_watch.py lines 455-467).
+
+    (b) How the bug was found: the campaign's
+        doc-default hunt (2026-10-23) exercised the
+        training-watch example extension's decide()
+        -- the pure decision pass -- with a GPU
+        reading of 90C and 96% memory (above both
+        documented thresholds), a cool reading of
+        50C and 50%, and empty readings, with the
+        tunables omitted, set to genuine values,
+        set to True, and set to float("inf"),
+        float("-inf"), and float("nan").
+
+    (c) Behavior actually observed: omitted, genuine,
+        and True all behave as documented (the hot
+        reading files both GPU signals; the cool
+        reading files none). The non-finite values
+        do not fall back: _tunable returns
+        float(value) whenever _is_number holds
+        (training_watch.py lines 177-179), and
+        _is_number excludes booleans but not
+        non-finite floats (lines 164-165), so +inf
+        and NaN pass through as the GPU thresholds
+        -- a 90C GPU never reaches an infinite
+        threshold and a NaN comparison is never
+        true, so gpu_overheating / gpu_memory_pressure
+        are silently suppressed instead of using
+        the defaults 85 / 95. gpu_temp_high_c -inf
+        drops the documented 85 floor entirely: a
+        cool 50C GPU files gpu_overheating against
+        max threshold -inf. And the integer
+        tunables are converted with int(_tunable(...))
+        at lines 455, 459, 462, and 467, so +inf
+        loss_points, loss_history,
+        crash_window_lines, or max_checkpoints
+        raises OverflowError ("cannot convert float
+        infinity to integer") and decide() crashes
+        instead of using the documented defaults.
+        Sibling readers in this codebase exclude
+        non-finite values and fall back to their
+        defaults; this reader does not. This is the
+        campaign's known non-finite-tunable
+        root-cause family. Observed on 2026-10-23:
+        decide() with gpu_temp_high_c float("inf")
+        or float("nan") returned only
+        ["gpu_memory_pressure"] for the hot reading,
+        with gpu_mem_high_pct float("inf") or
+        float("nan") only ["gpu_overheating"], with
+        gpu_temp_high_c float("-inf")
+        ["gpu_overheating"] for the cool reading,
+        and with any of the four integer tunables
+        float("inf") raised OverflowError, where
+        the omitted tunables returned both GPU
+        signals for the hot reading, [] for the
+        cool reading, and [] without error for
+        empty readings.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _signals(self, tunables, gpu=None, readings_extra=None):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "training-watch",
+            "training_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "training_watch_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        readings = {"now": 1792375113.0,
+                    "checkpoints": [], "log_lines": [],
+                    "run_alive": True}
+        if gpu is not None:
+            readings["gpu"] = gpu
+        if readings_extra:
+            readings.update(readings_extra)
+        manifest = {"name": "training_watch",
+                    "tunables": dict(tunables)}
+        alerts, _state = mod.decide(readings, manifest, {})
+        return [a["signal"] for a in alerts]
+
+    _HOT = {"temp_c": 90.0, "mem_used_mb": 960,
+            "mem_total_mb": 1000}
+    _COOL = {"temp_c": 50.0, "mem_used_mb": 500,
+             "mem_total_mb": 1000}
+    _BOTH = ["gpu_memory_pressure", "gpu_overheating"]
+
+    def test_infinite_temp_high_defaults_to_85(self):
+        self.assertEqual(
+            self._signals(
+                {"gpu_temp_high_c": float("inf")}, self._HOT),
+            self._BOTH)
+
+    def test_nan_temp_high_defaults_to_85(self):
+        self.assertEqual(
+            self._signals(
+                {"gpu_temp_high_c": float("nan")}, self._HOT),
+            self._BOTH)
+
+    def test_infinite_mem_high_defaults_to_95(self):
+        self.assertEqual(
+            self._signals(
+                {"gpu_mem_high_pct": float("inf")}, self._HOT),
+            self._BOTH)
+
+    def test_nan_mem_high_defaults_to_95(self):
+        self.assertEqual(
+            self._signals(
+                {"gpu_mem_high_pct": float("nan")}, self._HOT),
+            self._BOTH)
+
+    def test_negative_infinite_temp_high_keeps_85_floor(self):
+        self.assertEqual(
+            self._signals(
+                {"gpu_temp_high_c": float("-inf")}, self._COOL),
+            [])
+
+    def test_infinite_int_tunables_default_instead_of_crash(self):
+        for key in ("loss_points", "loss_history",
+                    "crash_window_lines", "max_checkpoints"):
+            with self.subTest(tunable=key):
+                self.assertEqual(
+                    self._signals({key: float("inf")}), [])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented defaults and genuine
+        # values already behave today and must keep
+        # doing so after the non-finite case is fixed.
+        self.assertEqual(self._signals({}, self._HOT),
+                         self._BOTH)
+        self.assertEqual(
+            self._signals(
+                {"gpu_temp_high_c": 85,
+                 "gpu_mem_high_pct": 95}, self._HOT),
+            self._BOTH)
+        self.assertEqual(self._signals({}, self._COOL), [])
+        self.assertEqual(
+            self._signals(
+                {"gpu_temp_high_c": True,
+                 "gpu_mem_high_pct": True}, self._HOT),
+            self._BOTH)
+        self.assertEqual(
+            self._signals(
+                {"gpu_temp_high_c": 95}, self._HOT),
+            ["gpu_memory_pressure"])
+        self.assertEqual(self._signals({}), [])
+
+
+
+
 if __name__ == "__main__":
     unittest.main()
