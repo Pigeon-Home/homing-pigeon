@@ -1138,6 +1138,18 @@ class CampaignLoopCycleTests(unittest.TestCase):
     def test_cycle_349_flagread(self):
         self._run_cycle(349, 'flagread', 0)
 
+    def test_cycle_350_sysstat(self):
+        self._run_cycle(350, 'sysstat', 0)
+
+    def test_cycle_351_exit3(self):
+        self._run_cycle(351, 'exit3', 3)
+
+    def test_cycle_352_shadow(self):
+        self._run_cycle(352, 'shadow', 0)
+
+    def test_cycle_353_clock(self):
+        self._run_cycle(353, 'clock', 0)
+
 
 if __name__ == "__main__":
     unittest.main()

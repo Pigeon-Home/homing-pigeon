@@ -2214,5 +2214,107 @@ class TestBooleanTaskTimeoutDefaultsTo86400(unittest.TestCase):
         self.assertEqual(state, "open")
 
 
+class TestBooleanPollIntervalDefaultsTo20(unittest.TestCase):
+    """Divergence: a poll_interval_sec set to the boolean true
+    becomes a 1-second poll instead of the documented
+    20-second default.
+
+    (a) Doc claim (docs/FAQs.md, line 9):
+        "The deterministic code around the model does the
+        watching on the runner's poll cycle -- every 20 seconds
+        by default (`poll_interval_sec`)."
+        The same 20 is the value in runner/config.example.json
+        and runner/setup.py's generated config, and the core
+        loop's own fallback for an unreadable value is 20
+        (runner/runner.py, the poll delay read in main()).
+
+    (b) How the bug was found: the campaign's doc-default hunt
+        (2026-10-23 10:11 PDT tick) exercised the email
+        transport extension's run loop -- the extension the
+        core hands poll_interval_sec to verbatim via
+        runner/transports.py's _runtime_config -- with the
+        key varied around the documented default: omitted,
+        explicit None, 0, boolean false, the string "bogus",
+        a valid 42, and boolean true. EmailPipe.run computes
+        its interval once, then naps that long after each
+        pass; pass_once was stubbed out and channel.nap was
+        replaced with a recorder that breaks the loop, so the
+        interval each config actually used is observed
+        directly, the same direct-call surface the repo's own
+        transport tests use.
+
+    (c) Behavior actually observed: omitted, None, 0, false,
+        and "bogus" all poll at the documented default
+        (nap 20.0), and 42 is honored (nap 42.0). Boolean
+        true does not: EmailPipe.run
+        (runner/transport_extensions/email/__main__.py)
+        computes max(1.0, float(cfg.get("poll_interval_sec")
+        or 20)); True is truthy, so the `or 20` default never
+        fires, float(True) is 1.0, and the transport polls
+        every 1 second -- twenty times the documented
+        cadence, spending mailbox quota the default exists
+        to pace. The core's own reader has the same shape:
+        int(cfg.get("poll_interval_sec", 20)) in main() is 1
+        for true and its below-1 fallback rescues only
+        false. Python's bool is a subclass of int, and the
+        sibling parsers in this codebase refuse booleans
+        explicitly (_cfg_size for the log bounds, _pos_int in
+        remediation, audit_max_lines in security); these
+        read sites have no such guard. This is the known
+        boolean-as-number family.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed in
+        the code.
+    """
+
+    def _run_interval(self, extra):
+        import importlib
+        from unittest import mock
+
+        mod = importlib.import_module(
+            "runner.transport_extensions.email.__main__")
+        cfg = {"mailbox_user": "a@b.c"}
+        cfg.update(extra)
+        pipe = mod.EmailPipe(cfg, "/tmp/hp-no-such-channel")
+        seen = []
+
+        class _Done(Exception):
+            pass
+
+        def nap(sec):
+            seen.append(sec)
+            raise _Done()
+
+        with mock.patch.object(pipe, "pass_once",
+                               return_value=None), \
+             mock.patch.object(mod.ch, "nap", side_effect=nap):
+            try:
+                pipe.run()
+            except _Done:
+                pass
+        return seen
+
+    def test_true_poll_interval_defaults_to_20(self):
+        self.assertEqual(
+            self._run_interval({"poll_interval_sec": True}),
+            [20.0])
+
+    def test_false_poll_interval_defaults_to_20(self):
+        # Control: false already lands on the documented
+        # default today (falsy, so `or` yields 20); it must
+        # keep doing so after the true case is fixed.
+        self.assertEqual(
+            self._run_interval({"poll_interval_sec": False}),
+            [20.0])
+
+    def test_explicit_42_poll_interval_is_honored(self):
+        # Control: a valid interval is used as given; the
+        # fix must not flatten genuine values to the default.
+        self.assertEqual(
+            self._run_interval({"poll_interval_sec": 42}),
+            [42.0])
+
+
 if __name__ == "__main__":
     unittest.main()
