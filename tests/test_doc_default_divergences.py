@@ -1656,5 +1656,60 @@ class TestBooleanResourcesValuesAreConfigErrors(unittest.TestCase):
             parse_resources({"resources": {"cooldown_sec": False}})
 
 
+class TestBooleanPromoteAfterDefaultsTo2(unittest.TestCase):
+    """Divergence: oracle_learning_promote_after set to
+    boolean true reads as 1 corroboration instead of the
+    documented default of 2.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 53):
+        "`oracle_learning_promote_after` -- how many verified
+        corroborating outcomes a model candidate needs before
+        it is treated as corroborated and may select among
+        the existing mechanical repairs ... Default `2`."
+        The same default is stated in the reader's own
+        docstring (runner/learning.py, promote_after:
+        "Default 2").
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 09:01 PDT tick) exercised
+        runner.learning.promote_after -- the single reader
+        for this config key -- with the key left unset and
+        varied around it: omitted, explicit None, a
+        non-numeric string ("bogus"), 0, -5, NaN, a valid
+        3, a numeric string ("4"), and the booleans True
+        and False.
+
+    (c) Behavior actually observed: omitted, None,
+        "bogus", 0, -5, and NaN all read as the documented
+        default 2, and 3 / "4" are honored. True does not
+        fall back: promote_after computes
+        int(cfg.get("oracle_learning_promote_after")) with
+        no boolean guard, so int(True) is 1, which passes
+        the reader's >= 1 check and returns 1 -- a model
+        candidate is then treated as corroborated after a
+        single verified outcome instead of the documented
+        two. False returns 0 and so reaches the default
+        only through the below-1 fallback, not because the
+        boolean was refused. Sibling numeric readers
+        exclude booleans explicitly (runner.runner
+        ._cfg_size: "Booleans are not sizes";
+        runner.remediation._pos_int;
+        runner.protocol_v2.deadline_of's sibling wait
+        reader); this reader is the outlier for this key.
+        Observed on 2026-10-23: promote_after(
+        {"oracle_learning_promote_after": True})
+        returned 1.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def test_true_promote_after_defaults_to_2(self):
+        from runner.learning import promote_after
+        self.assertEqual(
+            promote_after({"oracle_learning_promote_after": True}), 2)
+
+
 if __name__ == "__main__":
     unittest.main()
