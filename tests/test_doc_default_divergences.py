@@ -4803,6 +4803,107 @@ class TestNonFiniteSkyWatcherLeadAndBrightDefaults(unittest.TestCase):
 
 
 
+class TestInfiniteBackupStaleAfterDefaultsTo90000(unittest.TestCase):
+    """Divergence: an infinite backup-freshness
+    stale_after_sec (+inf) suppresses every staleness
+    alert instead of falling back to the documented
+    90000-second default.
+
+    (a) Doc claim (examples/extensions/backup-freshness/
+        README.md, lines 12-13): "`stale_after_sec` (how
+        old is too old, default 90000 -- just over a
+        day)". The manifest ships the same default
+        (extension.json: "stale_after_sec": 90000), and
+        the README signal table (lines 22-23) states
+        backup_stale fires when the newest backup's age
+        passes stale_after_sec and backup_critical when
+        it passes twice that.
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 14:41 PDT tick) exercised the
+        backup-freshness example extension's decide() --
+        the pure decision function -- with a backup
+        already seen (so no arrival fires), aged
+        1,000,000,000 seconds (far past twice even a
+        generous threshold), the tunable omitted, set
+        to genuine values, and set to float("inf"),
+        float("-inf"), float("nan"), 0, -5, True, and
+        "bogus".
+
+    (c) Behavior actually observed: omitted, NaN,
+        -inf, 0, -5, True, and "bogus" all file
+        backup_critical, as the documented default
+        requires (decide() reads a tunable that is not
+        a positive number as 90000.0: float(x) if
+        _is_number(x) and x > 0 else 90000.0, in
+        backup_freshness.py lines 164-166). +inf does
+        not: _is_number excludes booleans but not
+        non-finite floats, and inf > 0 is true, so the
+        threshold becomes infinite, no age is ever
+        greater than it or twice it, and decide()
+        returns no alerts at all -- a backup a billion
+        seconds old files nothing. Sibling readers in
+        this codebase exclude non-finite values and
+        fall back to their defaults (e.g.
+        runner.remediation._pos_float,
+        runner.runner._local_wake_cooldown); this
+        reader does not. This is the campaign's known
+        non-finite-tunable root-cause family.
+        Observed on 2026-10-23: decide() with
+        stale_after_sec float("inf") returned []
+        where the omitted tunable returned
+        ["backup_critical"].
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _signals(self, tunables):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "backup-freshness",
+            "backup_freshness.py")
+        spec = importlib.util.spec_from_file_location(
+            "backup_freshness_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        manifest = {"name": "backup_freshness",
+                    "tunables": dict(tunables)}
+        readings = {"now": 2000000000.0,
+                    "newest": {"name": "b.tar",
+                               "mtime": 1000000000.0,
+                               "size": 1}}
+        state = {"last_seen_name": "b.tar",
+                 "last_seen_mtime": 1000000000.0,
+                 "tier": "ok"}
+        alerts, _state = mod.decide(readings, manifest, state)
+        return [a["signal"] for a in alerts]
+
+    def test_infinite_stale_after_defaults_to_90000(self):
+        self.assertEqual(
+            self._signals({"stale_after_sec": float("inf")}),
+            ["backup_critical"])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented default and genuine
+        # values already behave today and must keep
+        # doing so after the non-finite case is fixed.
+        self.assertEqual(self._signals({}), ["backup_critical"])
+        self.assertEqual(
+            self._signals({"stale_after_sec": float("nan")}),
+            ["backup_critical"])
+        self.assertEqual(
+            self._signals({"stale_after_sec": 2000000000}),
+            [])
+        self.assertEqual(
+            self._signals({"stale_after_sec": 600000000}),
+            ["backup_stale"])
+
+
 
 if __name__ == "__main__":
     unittest.main()
