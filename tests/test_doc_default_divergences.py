@@ -5345,5 +5345,148 @@ class TestInfiniteJobWatcherRepeatFailuresDefaultsTo3(unittest.TestCase):
 
 
 
+class TestNonFiniteResourceSentinelSampleCountsCrashInsteadOfDefault(unittest.TestCase):
+    """Divergence: a non-finite resource-sentinel
+    min_samples or max_samples (+inf, -inf, or NaN)
+    crashes decide() instead of falling back to the
+    documented defaults (4 and 240).
+
+    (a) Doc claim (examples/extensions/resource-sentinel/
+        README.md, line 66): "`max_samples` (default 240)
+        bounds how many samples the rolling window keeps,
+        and is raised to the window's minimum if set
+        lower". The manifest ships the same defaults
+        (extension.json: "min_samples": 4,
+        "max_samples": 240), the extension header states
+        the trend defaults in the same shape, and
+        README.md lines 29-31 state a signal needs at
+        least `min_samples` samples spanning
+        `min_span_sec` inside `window_sec` before it
+        can fire at all.
+
+    (b) How the bug was found: the campaign's
+        doc-default hunt (2026-10-23 15:06 PDT tick)
+        exercised the resource-sentinel example
+        extension's decide() -- the pure decision
+        function -- with four seeded samples spanning
+        600 seconds (CPU busy 97 percent, available
+        memory falling 40 to 14 percent), with the
+        tunables omitted, set to genuine values
+        (min_samples 4, max_samples 240, and
+        min_samples 2), and set to float("inf"),
+        float("-inf"), float("nan"), and True for
+        each of min_samples and max_samples.
+
+    (c) Behavior actually observed: omitted, genuine,
+        and True all file cpu_saturation_sustained and
+        memory_exhaustion_trend, as the documented
+        defaults require. The non-finite values do
+        not fall back: decide() computes min_samples
+        as int(_tunable(tunables, "min_samples", 4))
+        and max_samples as int(_tunable(tunables,
+        "max_samples", 240)) (resource_sentinel.py
+        lines 246 and 249), and _tunable returns
+        float(value) when _is_number(value) holds
+        (lines 93-95); _is_number excludes booleans
+        but not non-finite floats (lines 80-81), so
+        int(float("inf")) and int(float("-inf"))
+        raise OverflowError: cannot convert float
+        infinity to integer, and int(float("nan"))
+        raises ValueError: cannot convert float NaN
+        to integer -- decide() crashes on the pass
+        instead of using the defaults. Sibling readers
+        in this codebase exclude non-finite values
+        and fall back to their defaults; this reader
+        does not. This is the campaign's known
+        non-finite-tunable root-cause family.
+        Observed on 2026-10-23: decide() with
+        min_samples float("inf") raised OverflowError
+        where the omitted tunable returned
+        ["cpu_saturation_sustained",
+        "memory_exhaustion_trend"].
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _signals(self, tunables):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "resource-sentinel",
+            "resource_sentinel.py")
+        spec = importlib.util.spec_from_file_location(
+            "resource_sentinel_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        gib = 1024.0 ** 3
+        samples = [
+            [1000000.0, 10000, 9000, 100 * gib, 100, 40.0],
+            [1000200.0, 10333, 9010, 100 * gib, 100, 35.0],
+            [1000400.0, 10666, 9020, 100 * gib, 100, 30.0],
+            [1000600.0, 11000, 9030, 100 * gib, 100, 14.0],
+        ]
+        state = {"samples": samples, "fired": {}}
+        manifest = {"name": "resource_sentinel",
+                    "tunables": dict(tunables)}
+        readings = {"now": 1000600.0, "cpu_total": 11000,
+                    "cpu_idle": 9030,
+                    "disk_free_bytes": 100 * gib,
+                    "processes": 100, "mem_avail_pct": 14.0}
+        alerts, _state = mod.decide(readings, manifest, state)
+        return [a["signal"] for a in alerts]
+
+    def test_infinite_min_samples_defaults_to_4(self):
+        self.assertEqual(
+            self._signals({"min_samples": float("inf")}),
+            ["cpu_saturation_sustained",
+             "memory_exhaustion_trend"])
+
+    def test_negative_infinite_min_samples_defaults_to_4(self):
+        self.assertEqual(
+            self._signals({"min_samples": float("-inf")}),
+            ["cpu_saturation_sustained",
+             "memory_exhaustion_trend"])
+
+    def test_nan_min_samples_defaults_to_4(self):
+        self.assertEqual(
+            self._signals({"min_samples": float("nan")}),
+            ["cpu_saturation_sustained",
+             "memory_exhaustion_trend"])
+
+    def test_infinite_max_samples_defaults_to_240(self):
+        self.assertEqual(
+            self._signals({"max_samples": float("inf")}),
+            ["cpu_saturation_sustained",
+             "memory_exhaustion_trend"])
+
+    def test_nan_max_samples_defaults_to_240(self):
+        self.assertEqual(
+            self._signals({"max_samples": float("nan")}),
+            ["cpu_saturation_sustained",
+             "memory_exhaustion_trend"])
+
+    def test_omitted_and_explicit_values_are_honored(self):
+        # Controls: the documented defaults and genuine
+        # values already behave today and must keep
+        # doing so after the non-finite case is fixed.
+        expected = ["cpu_saturation_sustained",
+                    "memory_exhaustion_trend"]
+        self.assertEqual(self._signals({}), expected)
+        self.assertEqual(
+            self._signals({"min_samples": 4}), expected)
+        self.assertEqual(
+            self._signals({"max_samples": 240}), expected)
+        self.assertEqual(
+            self._signals({"min_samples": True}), expected)
+        self.assertEqual(
+            self._signals({"min_samples": 2}), expected)
+
+
+
+
 if __name__ == "__main__":
     unittest.main()
