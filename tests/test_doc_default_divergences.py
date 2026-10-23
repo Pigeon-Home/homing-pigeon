@@ -142,5 +142,84 @@ class TestUnrecognisedViewDefaultsToFull(unittest.TestCase):
         self.assertFalse(retain)
 
 
+class TestNullTaskTimeoutDefaultsTo86400(unittest.TestCase):
+    """Divergence: a task_timeout present in config as null (or a
+    non-numeric string) wedges claimed board tasks forever, instead
+    of falling back to the documented 86400-second default.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 41):
+        "`task_timeout` -- seconds before a claimed task is
+        returned to open. Default 86400."
+        The same default is stated in PROTOCOL.md section 13.5
+        ("`task_timeout` (config, default 24h)"), in section 13.6
+        ("A claim lapses after `task_timeout` (config, default
+        24h) with no result, and the task returns to open. A
+        crashed worker cannot wedge the board; it can only delay
+        a task by one timeout."), and in the runner's --help
+        ("--task-timeout ... (default: 86400)").
+
+    (b) How the bug was found: the campaign's doc-default hunt
+        (2026-10-22 23:06 PDT tick) exercised the board reoffer
+        path in runner/runner.py with task_timeout left unset
+        and varied around it -- key omitted, explicit 86400,
+        explicit None (JSON null), a non-numeric string
+        ("bogus"), and 0 -- using the exact caller expression
+        the board-mail handler uses,
+        board.reoffer_expired(cfg.get("task_timeout", 86400)),
+        on a task claimed two days earlier (older than the
+        86400-second default).
+
+    (c) Behavior actually observed: omitted and explicit 86400
+        reoffer the stale claim (count 1, state returns to
+        open), and 0 reoffers immediately, as expected. None
+        and "bogus" do not: Board._reoffer_expired_unlocked
+        compares the claim age with `> task_timeout`, the
+        TypeError that raises is swallowed by the loop's blanket
+        `except Exception: pass`, and the reoffer count stays 0
+        with the task still claimed -- on every poll, forever.
+        Sibling default readers in the same file (query_budget,
+        _retention_days, _local_wake_cooldown, the max_job_age
+        readers) all treat a null or unparseable value as the
+        documented default; this one silently wedges the board,
+        the exact outcome section 13.6 promises cannot happen.
+
+    (d) Do not make this test pass by editing the test. It passes
+        only when the bug described above is fixed in the code.
+    """
+
+    def _stale_board(self, base):
+        import os
+        from datetime import datetime, timedelta, timezone
+
+        from runner.runner import Board
+        board = Board(os.path.join(base, "board.json"))
+        board.submit({"task_id": "t1"})
+        old = (datetime.now(timezone.utc)
+               - timedelta(days=2)).isoformat()
+        board.tasks["t1"]["state"] = "claimed"
+        board.tasks["t1"]["claimed_at"] = old
+        board.tasks["t1"]["claimed_by"] = "w1"
+        return board
+
+    def _reoffer_via_config(self, cfg):
+        # The exact caller expression in handle_board_mail
+        # (runner/runner.py): the .get default fires only when
+        # the key is absent, not when it is null or unparseable.
+        with tempfile.TemporaryDirectory() as base:
+            board = self._stale_board(base)
+            count = board.reoffer_expired(cfg.get("task_timeout", 86400))
+            return count, board.tasks["t1"]["state"]
+
+    def test_null_task_timeout_defaults_to_86400(self):
+        count, state = self._reoffer_via_config({"task_timeout": None})
+        self.assertEqual(count, 1)
+        self.assertEqual(state, "open")
+
+    def test_bogus_task_timeout_defaults_to_86400(self):
+        count, state = self._reoffer_via_config({"task_timeout": "bogus"})
+        self.assertEqual(count, 1)
+        self.assertEqual(state, "open")
+
+
 if __name__ == "__main__":
     unittest.main()
