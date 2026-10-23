@@ -42,6 +42,24 @@ _EXC_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*Error|[A-Za-z_]*Exception|"
                      r"(: |$)")
 
 
+def verdict_of(lines):
+    """unittest's final verdict line: "OK", "OK (skipped=3)",
+    "FAILED (failures=1)" -- the first non-blank line after the
+    last "Ran N tests" line. Empty when the log has no summary
+    (a suite that died before printing one)."""
+    last_ran = None
+    for i, raw in enumerate(lines):
+        if _RAN_RE.match(raw.rstrip("\r\n")):
+            last_ran = i
+    if last_ran is None:
+        return ""
+    for raw in lines[last_ran + 1:]:
+        line = raw.rstrip("\r\n").strip()
+        if line:
+            return line
+    return ""
+
+
 def failures_in(lines):
     """unittest's own failure lines and the exception lines that
     follow them -- the parts of a log worth an annotation.
@@ -54,15 +72,17 @@ def failures_in(lines):
     it expects), and in log order those used to take the ten slots
     before the real FAIL: lines near the end -- 126 of 137 red
     suite runs over six days named no test in their annotations
-    (docs/reports/v3.12.55/ci-failures.md). A log whose verdict
-    line is OK -- bare, or OK with unittest's parenthetical
-    (skipped=N, expected failures=N) -- has no failure to name and
-    gets nothing.
+    (docs/reports/v3.12.56/ci-failures.md). A log whose verdict is
+    OK -- bare, or OK with unittest's parenthetical (skipped=N,
+    expected failures=N) -- has no failure to name and gets
+    nothing. The verdict is the one unittest prints last, after
+    its final "Ran N tests" line; a bare OK earlier in the log is
+    fixture output (a passing fake shard's tail, printed by the
+    very test that proves the shard runner), and the first CI run
+    of this guard was blinded by exactly that.
     """
-    for raw in lines:
-        verdict = raw.rstrip("\r\n").strip()
-        if verdict == "OK" or verdict.startswith("OK ("):
-            return []
+    if verdict_of(lines).startswith("OK"):
+        return []
     fails = []
     excs = []
     seen = set()
@@ -143,7 +163,8 @@ def main(argv=None):
     if args.require_ok:
         ran = [m for m in (_RAN_RE.match(ln) for ln in lines) if m]
         count = int(ran[-1].group(1)) if ran else 0
-        verdict_ok = any(ln.strip() == "OK" for ln in lines)
+        # The final verdict, not any OK a fixture printed earlier.
+        verdict_ok = verdict_of(lines) == "OK"
         if count <= 0:
             note("\nREQUIRE-OK: no `Ran N tests` line with N > 0 "
                  "(the suite did not run, or discovery found nothing)")

@@ -146,7 +146,7 @@ jobs:
     # flip tests/test_build_config.py
     # test_mutation_cannot_hold_a_tag_run_for_hours back to
     # asserting it. The six-day run history that motivated the
-    # measurement is docs/reports/v3.12.55/ci-failures.md.
+    # measurement is docs/reports/v3.12.56/ci-failures.md.
     continue-on-error: true
     if: startsWith(github.ref, 'refs/tags/v')
     needs: test

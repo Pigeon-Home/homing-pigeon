@@ -163,7 +163,27 @@ class _RaisingStdout:
         pass
 
 
-class ReporterRobustnessTest(unittest.TestCase):
+class _OutsideActions(unittest.TestCase):
+    """A base for every test that drives the runner's main().
+
+    The suite runs under GitHub Actions, where GITHUB_ACTIONS is
+    "true" and the runner annotates failed tests. A test that runs
+    a deliberately red fake shard without redirecting stdout would
+    then print a real ::error line into the real CI log -- a false
+    annotation on the run page, which is the exact noise the
+    annotations were added to cut through. Each test here starts
+    with that variable unset; the one test that proves the
+    annotation path sets it on purpose.
+    """
+
+    def setUp(self):
+        patcher = mock.patch.dict(os.environ, {}, clear=False)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        os.environ.pop("GITHUB_ACTIONS", None)
+
+
+class ReporterRobustnessTest(_OutsideActions):
     """The reporter must survive the output it exists to print.
 
     The 9d8cdac Windows run: a failed shard's dump carried
@@ -244,7 +264,7 @@ class ReporterRobustnessTest(unittest.TestCase):
         self.assertEqual(rc, 0)
 
 
-class MainContractTest(unittest.TestCase):
+class MainContractTest(_OutsideActions):
     def test_zero_discovered_is_an_error_not_a_green(self):
         with tempfile.TemporaryDirectory() as d:
             rc = rtp.main(["--start-dir", d, "--top-level-dir", d])
@@ -270,10 +290,10 @@ class MainContractTest(unittest.TestCase):
 
 
 # Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c
-class ReadableFromTheRunPageTest(unittest.TestCase):
+class ReadableFromTheRunPageTest(_OutsideActions):
     """A red or slow Windows job must be readable without its log.
 
-    Six days of run history (docs/reports/v3.12.55/ci-failures.md)
+    Six days of run history (docs/reports/v3.12.56/ci-failures.md)
     had 257 red Windows suite jobs whose only annotation was
     "Process completed with exit code 1": the failing test's name
     lived in a log nobody opened. These pin the two additions:

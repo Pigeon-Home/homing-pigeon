@@ -234,8 +234,15 @@ def failed_tests(output):
 
 
 def under_actions(environ=None):
-    """True when GitHub Actions is reading the output."""
-    return (environ or os.environ).get("GITHUB_ACTIONS") == "true"
+    """True when GitHub Actions is reading the output.
+
+    ``environ`` None means the process environment; an empty
+    mapping means an environment with nothing in it, and must not
+    fall through to the real one (it did, on the first CI run of
+    this code, where GITHUB_ACTIONS is of course set).
+    """
+    env = os.environ if environ is None else environ
+    return env.get("GITHUB_ACTIONS") == "true"
 
 
 def annotations_for(output, shard):

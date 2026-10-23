@@ -198,6 +198,24 @@ class RuleTests(unittest.TestCase):
         log = ("AssertionError: False is not true\n"
                "Ran 4549 tests in 300.0s\nOK (skipped=22)\n")
         self.assertEqual(SG.failures_in(log.splitlines()), [])
+        # A bare OK printed by a fixture (the passing fake shard's
+        # tail, from the test that proves the shard runner) before
+        # the real summary is not the verdict. The first CI run of
+        # this guard read that OK and annotated nothing on a red
+        # suite.
+        log = ("shard 0: OK\nRan 1 test in 0.000s\n\nOK\n"
+               "test_y ... FAIL\nFAIL: test_y (tests.m.T.test_y)\n"
+               "AssertionError: the real one\n"
+               "Ran 4549 tests in 300.0s\n\nFAILED (failures=1)\n")
+        self.assertEqual(SG.verdict_of(log.splitlines()),
+                         "FAILED (failures=1)")
+        self.assertEqual(SG.failures_in(log.splitlines())[0],
+                         "FAIL: test_y (tests.m.T.test_y)")
+        # ...and --require-ok is not fooled by that OK either.
+        rc, out = self._run_args(log, ["--require-ok"])
+        self.assertEqual(rc, 1)
+        self.assertIn("REQUIRE-OK", out)
+        self.assertEqual(SG.verdict_of(["t ... ok"]), "")
         # A FAILED verdict annotates; so does a log with no verdict
         # at all (a suite that died before printing one).
         for tail in ("Ran 1 test in 0.0s\nFAILED (errors=1)\n", ""):

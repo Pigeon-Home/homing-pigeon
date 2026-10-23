@@ -2,7 +2,7 @@
 
 <!-- Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c -->
 
-This report belongs to package 3.12.55. It answers one question the
+This report belongs to package 3.12.56. It answers one question the
 owner asked on 2026-10-22: the pipeline has been red or stuck for
 days -- is it timing out, and what is taking the longest? The
 method is the one the owner named: treat the pipeline as the

@@ -152,7 +152,7 @@ class MutationGateTest(unittest.TestCase):
         # then shows how long it really took instead of where the
         # guard cut it. The pin keeps the experiment deliberate: a
         # timer that comes back has to come back through this test.
-        # Measured history: docs/reports/v3.12.55/ci-failures.md.
+        # Measured history: docs/reports/v3.12.56/ci-failures.md.
         # When the experiment ends, restore `timeout-minutes: 40`
         # (the measured 25-minute run plus headroom) in build.yml
         # and flip this back to assertIn.
