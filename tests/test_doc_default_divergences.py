@@ -1263,5 +1263,80 @@ class TestBooleanV2AnswerDeadlineDefaultsTo0(unittest.TestCase):
             deadline_of({"v2_answer_deadline_sec": True}), 0)
 
 
+class TestBooleanQueryBudgetDefaultsTo8(unittest.TestCase):
+    """Divergence: a query_budget (job) or max_query_budget
+    (config) set to a boolean reads as 1 (true) or 0 (false)
+    instead of the documented default of 8.
+
+    (a) Doc claim (PROTOCOL.md, lines 499-501):
+        "`query_budget`: maximum queries answerable for this
+        job (default 8). The runner owner's config caps it
+        with `max_query_budget` (default 8); the effective
+        budget is the smaller of the job's value and the
+        cap"
+
+    (b) How the bug was found: the campaign's doc-default
+        hunt (2026-10-23 08:06 PDT tick) exercised
+        runner.runner.query_budget -- the reader that
+        computes the effective budget from the job's
+        result_policy and the config cap -- with both keys
+        left unset and varied around them -- omitted,
+        explicit None, a non-numeric string ("bogus"),
+        float("inf"), 0, 3, 8, "5", and the booleans True
+        and False on each side independently -- checking
+        the effective budget each call returned.
+
+    (c) Behavior actually observed: omitted, None,
+        "bogus", and infinity on either side all fall back
+        to the documented default 8 (effective 8, or the
+        other side's smaller value); explicit 0 returns 0
+        and 3 returns 3, as the min() contract implies.
+        The booleans do not fall back: query_budget
+        computes int(raw) with no boolean guard on either
+        reader, so True returns 1 -- a job or cap that
+        silently allows only a single query -- and False
+        returns 0 -- a job that can answer no queries at
+        all -- instead of the documented default 8.
+        Sibling readers exclude booleans explicitly --
+        runner.runner._cfg_size ("Booleans are not
+        sizes"), runner.runner._query_limit (True is -1,
+        never 1), runner.remediation._pos_int, and the
+        inference config validator's `is True` refusal --
+        only this reader lets one through as a number on
+        both of its inputs. Observed on 2026-10-23:
+        query_budget({}, {"result_policy":
+        {"query_budget": True}}) returned 1,
+        query_budget({}, {"result_policy":
+        {"query_budget": False}}) returned 0,
+        query_budget({"max_query_budget": True}, {})
+        returned 1, and query_budget(
+        {"max_query_budget": False}, {}) returned 0.
+
+    (d) Do not make this test pass by editing the test. It
+        passes only when the bug described above is fixed
+        in the code.
+    """
+
+    def test_true_job_query_budget_defaults_to_8(self):
+        from runner.runner import query_budget
+        self.assertEqual(
+            query_budget({}, {"result_policy": {"query_budget": True}}), 8)
+
+    def test_false_job_query_budget_defaults_to_8(self):
+        from runner.runner import query_budget
+        self.assertEqual(
+            query_budget({}, {"result_policy": {"query_budget": False}}), 8)
+
+    def test_true_max_query_budget_defaults_to_8(self):
+        from runner.runner import query_budget
+        self.assertEqual(
+            query_budget({"max_query_budget": True}, {}), 8)
+
+    def test_false_max_query_budget_defaults_to_8(self):
+        from runner.runner import query_budget
+        self.assertEqual(
+            query_budget({"max_query_budget": False}, {}), 8)
+
+
 if __name__ == "__main__":
     unittest.main()
