@@ -9598,7 +9598,6 @@ class TestFilesNameStaysInsideWorkdir(unittest.TestCase):
                 "./a.txt": "a.txt",
                 "a/../b.txt": "b.txt",
                 "a//b.txt": os.path.join("a", "b.txt"),
-                # Windows realpath treats a dots-only component as a parent step.
                 "~/x.txt": os.path.join("~", "x.txt"),
                 "linkin/ok.txt": os.path.join("real", "ok.txt"),
                 "no/such/deep.txt": os.path.join(
@@ -9606,6 +9605,10 @@ class TestFilesNameStaysInsideWorkdir(unittest.TestCase):
                 "sub/": "sub",
                 "a.txt/": "a.txt",
             }
+            if os.name != "nt":
+                # A dots-only component is a literal directory name.
+                # Windows realpath treats it as a parent step.
+                cases[".../x.txt"] = os.path.join("...", "x.txt")
             for name, rel in cases.items():
                 with self.subTest(name=name):
                     dest = R._staged_dest(work, name)
