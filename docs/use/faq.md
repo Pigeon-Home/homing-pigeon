@@ -70,9 +70,8 @@ and the shell. Three things: a SHA-384 HMAC under a secret that
 never travels in email, a replay and age check (`issued_at` within
 `max_job_age_sec`, default one hour, plus a seen-set of job ids), and
 an AES-256-GCM envelope keyed from the same secret, so a mailbox
-reader sees neither the script nor the result. Mail that is not
-signed is marked seen and skipped, and nothing executes before the
-signature verifies. Everything past that is opt-in containment: the
+reader cannot read the job. Nothing executes before the signature
+verifies. Everything past that is opt-in containment: the
 Oracle's `judge`, a bubblewrap sandbox, and AppArmor and SELinux
 templates in `docs/security/hardening/`. Run it as a locked-down user
 on a box you can wipe (`docs/security/threat-model.md`).
