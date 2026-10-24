@@ -25701,6 +25701,923 @@ class TestCrashWatchDirsAndDecideFifteenShapes(unittest.TestCase):
                 run(["--manifest", manifest, "--state", state,
                      "--readings", bad])[0], 2)
 
+class TestFailedLoginWatchPathsAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the failed-login-watch
+    list tunable log_paths (default
+    ["/var/log/auth.log", "/var/log/secure"]),
+    parse_event()'s sshd / PAM line handling,
+    read_new_events()' incremental tailing, and
+    decide()'s burst / success episode handling
+    varied with the fifteen shapes for the first
+    time (step-8 Target 5 / family (b) --
+    failed-login-watch's earlier classes cover
+    only its numeric burst_count and window_sec
+    readers in isolation; its path list, its line
+    parser, its reader offsets and its episode
+    handling were never varied, the same gap the
+    feed hunts closed in the ticks before this
+    one).
+
+    (a) Doc claims: the manifest ships log_paths
+        ["/var/log/auth.log", "/var/log/secure"],
+        burst_count 5, window_sec 600 and
+        poll_interval_sec 60
+        (extensions/failed-login-watch/extension.json).
+        The README states the files are tailed
+        incrementally, not re-read: the state
+        carries reader offsets per path
+        ({"inode", "offset"}), a missing file
+        yields no events and keeps its offset,
+        and an inode change or a file that shrank
+        (rotation, truncation) restarts that file
+        from 0. Its pattern table gives: a "Failed
+        password for [invalid user] USER from IP"
+        line is a failure from IP for USER; an
+        "Accepted password|publickey for USER
+        from IP" line is a success; a
+        pam_unix(sshd:auth) "authentication
+        failure" line is a failure from source
+        "local" with the user from the user=
+        field if present, else empty; anything
+        else parses to nothing and is ignored;
+        and auth.log timestamps carry no year, so
+        the parser takes the year from the
+        current time. The signal table gives
+        login_failure_burst at at least
+        burst_count failures inside the trailing
+        window_sec (medium) and
+        login_success_after_burst for a success
+        from a source whose burst is active or
+        which has at least burst_count failures
+        inside the trailing window at that moment
+        (high; filing clears that source's
+        failures and closes the episode), and "a
+        burst files once; its flag clears when no
+        failures from that source remain inside
+        the trailing window, so a later, separate
+        burst files again". The module header
+        repeats the tailing rule and states
+        decide() is pure, with the current time
+        arriving as readings["now"] and events
+        processed in timestamp order. log_paths
+        is not a numeric registry row
+        (failed-login-watch's rows in
+        tests/defaults_registry.py are
+        burst_count and window_sec), so Decision
+        1's default-on-unusable policy for numeric
+        readers does not name a shape rule for
+        it; this class pins the observed readings
+        instead of asserting one.
+
+    (b) How this was probed: on 2026-10-24
+        parse_event() was probed with the fifteen
+        shapes for both the line and the now
+        argument, every documented pattern, ISO
+        timestamps in both separator forms, a bad
+        month, a bad day and a pattern line with
+        no timestamp. read_new_events() was
+        probed with the fifteen shapes for paths
+        plus genuine, mixed, tuple and duplicated
+        lists against a real temp auth log, and
+        with reader-state shapes (non-dict state,
+        non-dict entry, bool inode / offset,
+        negative offset, offset past the end of
+        the file, wrong inode), a resume, an
+        append, a missing file with and without a
+        saved offset, a truncation, and two files
+        whose events interleave. decide() was
+        probed with the fifteen shapes for
+        burst_count and window_sec (numeric
+        strings discriminated: "1" / "2" for
+        burst_count, "30" for window_sec),
+        genuine and fractional values, the full
+        episode flow (burst files once, further
+        failures while active file nothing, a
+        success closes the episode, a fresh burst
+        files again, a success at or past
+        burst_count recent failures files even
+        with no active burst, a success whose
+        failures have aged out of the window at
+        its own timestamp files nothing), window
+        pruning at the inclusive boundary and
+        just outside it, end-of-pass pruning
+        against now, per-source isolation,
+        out-of-order events, and event / readings
+        / now / manifest / state shapes. main()
+        was run in --readings, --log-file and
+        live modes against temp manifests
+        (genuine, missing, malformed and
+        non-dict), temp readings (present,
+        missing, malformed), a malformed
+        pre-existing state file, and live
+        log_paths shapes (a genuine list reading
+        the temp log, and a bare string, an empty
+        list, a dict, null and junk elements,
+        none of which reads the temp log -- the
+        documented defaults are used instead).
+        poll_interval_sec is read by neither
+        decide(), parse_event() nor
+        read_new_events(); decide() never
+        consults manifest tunables except
+        burst_count and window_sec (only
+        manifest["name"] for the sensor name).
+
+    (c) Behavior actually observed: NO
+        divergence recorded. read_new_events()
+        reads every non-list / non-tuple paths
+        shape (a bare string included) and an
+        empty list as no paths, cleans genuine
+        lists element-wise (non-string / empty
+        entries skipped, a missing file yields
+        nothing), accepts tuples, reads a
+        duplicated path twice, and returns
+        events in timestamp order across files;
+        a saved offset resumes incrementally (an
+        appended line is the only new event, an
+        unchanged file yields nothing), a missing
+        file keeps its saved offset entry and
+        gains none when it had none, and an
+        inode change, a truncation, an offset
+        past the end of the file, a wrong inode,
+        a bool inode / offset, a negative offset
+        or a non-dict reader entry each restart
+        that file from 0. parse_event() parses
+        the three documented patterns exactly
+        (an invalid-user failure keeps the real
+        user, a PAM failure reports source
+        "local" and the user= value or ""),
+        accepts ISO timestamps with a "T" or a
+        space, takes the year for syslog
+        timestamps from its now argument, and
+        reads every non-string line, every
+        unusable now (null, string, bool,
+        huge-int, inf, NaN, list, dict), an
+        unlisted month, an impossible day, a
+        pattern line with no timestamp and any
+        other line as None. decide() reads every
+        unusable burst_count shape -- numeric
+        strings are not parsed -- as the
+        documented 5, honors genuine values with
+        int() truncation (2.9 and 2.0 both read
+        as 2, 1 files on the first failure), and
+        reads every unusable window_sec shape as
+        the documented 600 while honoring
+        genuine values verbatim (30 and 30.5
+        prune a 40-second span, 700 keeps it;
+        the title formats the window with :g --
+        700.0 titles "700s" -- while the detail
+        carries the value as given). Failures
+        prune to floor <= ts <= event time at
+        each event (a failure exactly at the
+        floor counts, one just below it does
+        not) and once more against now at the
+        end of the pass, which is what clears a
+        burst whose failures have all aged out.
+        A burst files exactly once per episode
+        however many failures arrive, a success
+        from an active burst or with at least
+        burst_count failures still inside the
+        window at its own timestamp files
+        login_success_after_burst and clears
+        that source (and only that source), and
+        a later separate burst files again;
+        sources are independent, and events are
+        processed in timestamp order however
+        they arrive. decide() drops an event
+        whole for a non-dict entry, a non-usable
+        ts (string, bool, inf and huge-int
+        included), a kind other than fail /
+        success, or a non-string / empty source,
+        cleans a non-string user to "", reads a
+        non-list events value (a tuple included)
+        and a non-dict readings value as no
+        events, reads an unusable now as the
+        last event's timestamp (or 0.0 with no
+        events), cleans state field-wise (fails
+        keep only usable numbers, sorted as
+        floats; burst_active is bool()-coerced;
+        an unusable burst_filed_at reads as
+        None, and a genuine one on a source
+        whose fails clean or prune to empty is
+        cleared with the burst flag by the
+        end-of-pass pruning; entries with a
+        non-string key or a
+        non-dict value are dropped; a non-list
+        fails reads as []; a dict _reader is
+        preserved verbatim, a non-dict one
+        dropped, and unknown top-level keys are
+        dropped), and falls back to sensor name
+        "failed_login_watch" for a non-string /
+        empty manifest name or a non-dict
+        manifest or tunables value. main() in
+        --readings mode files, writes the state
+        and answers rc 0, files nothing on the
+        identical second pass while the burst is
+        active, reads a malformed state file as
+        fresh, and answers rc 2 for a missing or
+        malformed manifest or a missing or
+        malformed readings file; a non-dict
+        (list) manifest reads as the defaults
+        and answers rc 0. main() in --log-file
+        mode parses the whole fixture from 0 and
+        files the burst (rc 0), and answers rc 2
+        for a missing log file; in live mode a
+        genuine log_paths list tails the named
+        file and advances its reader offset in
+        the saved state, while a bare-string,
+        empty, dict, null or junk-element
+        log_paths never reads the named file.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        the readings above keep matching the
+        README, the manifest and the module
+        header. If a shape above ever stops
+        behaving as documented, this test is
+        the failing record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "failed-login-watch",
+            "failed_login_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "failed_login_watch_paths_decide", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _man(self, tunables=None, name="failed_login_watch",
+             manifest=None):
+        if manifest is not None:
+            return manifest
+        return {"name": name,
+                "tunables": {} if tunables is None else tunables}
+
+    def _ev(self, ts, kind="fail", source="192.0.2.10",
+            user="alice"):
+        return {"ts": ts, "kind": kind, "source": source,
+                "user": user}
+
+    def _fails(self, n, start=1000.0, step=10.0, **kw):
+        return [self._ev(start + i * step, **kw)
+                for i in range(n)]
+
+    def _log_line(self, sec, user="alice", ip="192.0.2.10"):
+        return (f"Oct  9 12:00:{sec:02d} host sshd[1]: "
+                f"Failed password for {user} from {ip} "
+                f"port 22 ssh2\n")
+
+    def test_parse_event_patterns(self):
+        from datetime import datetime
+        mod = self._mod()
+        now = datetime(2025, 10, 9, 12, 0, 0).timestamp()
+        base = datetime(2025, 10, 9, 12, 0, 1).timestamp()
+        prefix = "Oct  9 12:00:01 host sshd[1]: "
+        self.assertEqual(
+            mod.parse_event(
+                prefix + "Failed password for alice from "
+                "192.0.2.10 port 22 ssh2", now),
+            {"ts": base, "kind": "fail",
+             "source": "192.0.2.10", "user": "alice"})
+        self.assertEqual(
+            mod.parse_event(
+                prefix + "Failed password for invalid user "
+                "bob from 192.0.2.11 port 22 ssh2", now),
+            {"ts": base, "kind": "fail",
+             "source": "192.0.2.11", "user": "bob"})
+        self.assertEqual(
+            mod.parse_event(
+                prefix + "Accepted password for carol from "
+                "192.0.2.12 port 22 ssh2", now),
+            {"ts": base, "kind": "success",
+             "source": "192.0.2.12", "user": "carol"})
+        self.assertEqual(
+            mod.parse_event(
+                prefix + "Accepted publickey for dave from "
+                "192.0.2.13 port 22 ssh2", now),
+            {"ts": base, "kind": "success",
+             "source": "192.0.2.13", "user": "dave"})
+        self.assertEqual(
+            mod.parse_event(
+                prefix + "pam_unix(sshd:auth): "
+                "authentication failure; logname= uid=0 "
+                "rhost=10.0.0.1 user=eve", now),
+            {"ts": base, "kind": "fail",
+             "source": "local", "user": "eve"})
+        self.assertEqual(
+            mod.parse_event(
+                prefix + "pam_unix(sshd:auth): "
+                "authentication failure; logname= uid=0",
+                now),
+            {"ts": base, "kind": "fail",
+             "source": "local", "user": ""})
+        iso = mod.parse_event(
+            "2025-10-09T12:00:01 host sshd[1]: Failed "
+            "password for frank from 192.0.2.14 port 22 "
+            "ssh2", now)
+        self.assertEqual(iso, {"ts": base, "kind": "fail",
+                               "source": "192.0.2.14",
+                               "user": "frank"})
+        iso2 = mod.parse_event(
+            "2025-10-09 12:00:01 host sshd[1]: Failed "
+            "password for gail from 192.0.2.15 port 22 "
+            "ssh2", now)
+        self.assertEqual(iso2["ts"], base)
+
+    def test_parse_event_shapes(self):
+        from datetime import datetime
+        mod = self._mod()
+        now = datetime(2025, 10, 9, 12, 0, 0).timestamp()
+        good = ("Oct  9 12:00:01 host sshd[1]: Failed "
+                "password for alice from 192.0.2.10 "
+                "port 22 ssh2")
+        for line in [None, 123, b"bytes", "", ["x"],
+                     {"x": 1}, True]:
+            with self.subTest(line=repr(line)):
+                self.assertIsNone(mod.parse_event(line, now))
+        for bad_now in [None, "now", True, False,
+                        10 ** 400, float("inf"),
+                        float("-inf"), float("nan"), [],
+                        {}]:
+            with self.subTest(now=repr(bad_now)):
+                self.assertIsNone(
+                    mod.parse_event(good, bad_now))
+        for line in [
+                "Foo  9 12:00:01 host sshd[1]: Failed "
+                "password for hank from 192.0.2.16 "
+                "port 22 ssh2",
+                "Oct 32 12:00:01 host sshd[1]: Failed "
+                "password for ivan from 192.0.2.17 "
+                "port 22 ssh2",
+                "host sshd[1]: Failed password for jane "
+                "from 192.0.2.18 port 22 ssh2",
+                "Oct  9 12:00:01 host cron[1]: something "
+                "else entirely"]:
+            with self.subTest(line=line[:30]):
+                self.assertIsNone(mod.parse_event(line, now))
+
+    def test_read_new_events_paths_shapes(self):
+        import os
+        import tempfile
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, "auth.log")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._log_line(1))
+                fh.write(self._log_line(2))
+            for value in [None, "bare", 123, True,
+                          {"x": 1}, float("inf"), 10 ** 400,
+                          []]:
+                with self.subTest(value=repr(value)):
+                    self.assertEqual(
+                        mod.read_new_events(value, {}),
+                        ([], {}))
+            events, _ = mod.read_new_events(
+                [None, "", 123, path], {})
+            self.assertEqual(
+                [(e["kind"], e["source"], e["user"])
+                 for e in events],
+                [("fail", "192.0.2.10", "alice")] * 2)
+            events, _ = mod.read_new_events((path,), {})
+            self.assertEqual(len(events), 2)
+            events, _ = mod.read_new_events([path, path], {})
+            self.assertEqual(len(events), 4)
+
+    def test_read_new_events_tailing(self):
+        import os
+        import tempfile
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, "auth.log")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._log_line(1))
+                fh.write(self._log_line(2))
+                fh.write("junk line\n")
+            events, reader = mod.read_new_events([path], {})
+            self.assertEqual(len(events), 2)
+            st = os.stat(path)
+            self.assertEqual(
+                reader, {path: {"inode": st.st_ino,
+                                "offset": st.st_size}})
+            events2, reader2 = mod.read_new_events(
+                [path], reader)
+            self.assertEqual(events2, [])
+            self.assertEqual(reader2, reader)
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(self._log_line(3, user="zoe"))
+            events3, reader3 = mod.read_new_events(
+                [path], reader2)
+            self.assertEqual(
+                [e["user"] for e in events3], ["zoe"])
+            missing = os.path.join(td, "nope.log")
+            self.assertEqual(
+                mod.read_new_events([missing], {}), ([], {}))
+            self.assertEqual(
+                mod.read_new_events(
+                    [missing],
+                    {missing: {"inode": 42, "offset": 7}}),
+                ([], {missing: {"inode": 42, "offset": 7}}))
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._log_line(9, user="shrunk"))
+            events4, _ = mod.read_new_events([path], reader3)
+            self.assertEqual(
+                [e["user"] for e in events4], ["shrunk"])
+            other = os.path.join(td, "auth2.log")
+            with open(other, "w", encoding="utf-8") as fh:
+                fh.write(self._log_line(0, user="early"))
+            events5, _ = mod.read_new_events(
+                [path, other], {})
+            self.assertEqual(
+                [e["user"] for e in events5],
+                ["early", "shrunk"])
+
+    def test_read_new_events_reader_state_shapes(self):
+        import os
+        import tempfile
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, "auth.log")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._log_line(1))
+                fh.write(self._log_line(2))
+            ino = os.stat(path).st_ino
+            for state in ["junk", None, 123,
+                          {path: "junk"},
+                          {path: {"inode": True,
+                                  "offset": 0}},
+                          {path: {"inode": ino,
+                                  "offset": True}},
+                          {path: {"inode": ino,
+                                  "offset": -1}},
+                          {path: {"inode": ino,
+                                  "offset": 10 ** 9}},
+                          {path: {"inode": 999999999,
+                                  "offset": 5}}]:
+                with self.subTest(state=repr(state)[:40]):
+                    events, _ = mod.read_new_events(
+                        [path], state)
+                    self.assertEqual(len(events), 2)
+
+    def test_burst_count_fifteen_shapes(self):
+        mod = self._mod()
+        unusable = [None, "", True, False, 0, -3, -0.5,
+                    "1", "2", "bogus", 10 ** 400,
+                    float("inf"), float("-inf"),
+                    float("nan"), [1], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                alerts, _ = mod.decide(
+                    {"now": 1040.0, "events": self._fails(3)},
+                    self._man({"burst_count": value}), {})
+                self.assertEqual(alerts, [])
+                alerts, _ = mod.decide(
+                    {"now": 1040.0, "events": self._fails(5)},
+                    self._man({"burst_count": value}), {})
+                self.assertEqual(len(alerts), 1)
+        for value, need in [(1, 1), (2, 2), (2.0, 2),
+                            (2.9, 2), (3, 3)]:
+            with self.subTest(value=value):
+                alerts, _ = mod.decide(
+                    {"now": 1040.0,
+                     "events": self._fails(need)},
+                    self._man({"burst_count": value}), {})
+                self.assertEqual(len(alerts), 1)
+
+    def test_window_sec_fifteen_shapes(self):
+        mod = self._mod()
+        unusable = [None, "", True, False, 0, -3, "30",
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"), [30],
+                    {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                alerts, _ = mod.decide(
+                    {"now": 1040.0, "events": self._fails(5)},
+                    self._man({"window_sec": value}), {})
+                self.assertEqual(len(alerts), 1)
+                self.assertEqual(
+                    alerts[0]["detail"]["window_sec"], 600)
+                self.assertEqual(
+                    alerts[0]["title"],
+                    "5 failed logins from 192.0.2.10 "
+                    "within 600s")
+        for value in [30, 30.5]:
+            with self.subTest(value=value):
+                alerts, _ = mod.decide(
+                    {"now": 1040.0, "events": self._fails(5)},
+                    self._man({"window_sec": value}), {})
+                self.assertEqual(alerts, [])
+        alerts, _ = mod.decide(
+            {"now": 1030.0, "events": self._fails(4)},
+            self._man({"window_sec": 30.5,
+                       "burst_count": 4}), {})
+        self.assertEqual(
+            alerts[0]["title"],
+            "4 failed logins from 192.0.2.10 within "
+            "30.5s")
+        self.assertEqual(
+            alerts[0]["detail"]["window_sec"], 30.5)
+        alerts, _ = mod.decide(
+            {"now": 1040.0, "events": self._fails(5)},
+            self._man({"window_sec": 700.0}), {})
+        self.assertEqual(
+            alerts[0]["title"],
+            "5 failed logins from 192.0.2.10 within "
+            "700s")
+        self.assertEqual(
+            alerts[0]["detail"]["window_sec"], 700.0)
+
+    def test_decide_episode_flow(self):
+        mod = self._mod()
+        alerts, state = mod.decide(
+            {"now": 1040.0, "events": self._fails(5)},
+            self._man(), {})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["signal"],
+                         "login_failure_burst")
+        self.assertEqual(alerts[0]["severity"], "medium")
+        src = state["sources"]["192.0.2.10"]
+        self.assertEqual(
+            src, {"fails": [1000.0, 1010.0, 1020.0,
+                            1030.0, 1040.0],
+                  "burst_active": True,
+                  "burst_filed_at": 1040.0})
+        alerts, state = mod.decide(
+            {"now": 2000.0, "events": self._fails(10)},
+            self._man(), {})
+        self.assertEqual(len(alerts), 1)
+        _, burst_state = mod.decide(
+            {"now": 1040.0, "events": self._fails(5)},
+            self._man(), {})
+        alerts2, state2 = mod.decide(
+            {"now": 1070.0,
+             "events": self._fails(3, start=1050.0)},
+            self._man(), burst_state)
+        self.assertEqual(alerts2, [])
+        self.assertEqual(
+            len(state2["sources"]["192.0.2.10"]["fails"]),
+            8)
+        alerts3, state3 = mod.decide(
+            {"now": 1080.0,
+             "events": [self._ev(1080.0, kind="success")]},
+            self._man(), state2)
+        self.assertEqual(len(alerts3), 1)
+        self.assertEqual(alerts3[0]["signal"],
+                         "login_success_after_burst")
+        self.assertEqual(alerts3[0]["severity"], "high")
+        self.assertEqual(
+            alerts3[0]["detail"]["recent_failures"], 8)
+        self.assertEqual(
+            state3["sources"]["192.0.2.10"],
+            {"fails": [], "burst_active": False,
+             "burst_filed_at": None})
+        alerts4, _ = mod.decide(
+            {"now": 1200.0,
+             "events": self._fails(5, start=1160.0)},
+            self._man(), state3)
+        self.assertEqual(len(alerts4), 1)
+        crafted = {"sources": {"192.0.2.10": {
+            "fails": [1000.0, 1010.0, 1020.0, 1030.0,
+                      1040.0],
+            "burst_active": False,
+            "burst_filed_at": None}}}
+        alerts5, _ = mod.decide(
+            {"now": 1050.0,
+             "events": [self._ev(1045.0, kind="success")]},
+            self._man(), crafted)
+        self.assertEqual(len(alerts5), 1)
+        self.assertEqual(
+            alerts5[0]["detail"]["recent_failures"], 5)
+        alerts6, _ = mod.decide(
+            {"now": 2000.0,
+             "events": [self._ev(1000.0, kind="success")]},
+            self._man(),
+            {"sources": {"192.0.2.10": {
+                "fails": [100.0, 110.0, 120.0, 130.0,
+                          140.0],
+                "burst_active": False,
+                "burst_filed_at": None}}})
+        self.assertEqual(alerts6, [])
+        alerts7, _ = mod.decide(
+            {"now": 1100.0,
+             "events": self._fails(2) + [
+                 self._ev(1100.0, kind="success")]},
+            self._man(), {})
+        self.assertEqual(alerts7, [])
+
+    def test_decide_window_boundaries_and_pruning(self):
+        mod = self._mod()
+        edge = [self._ev(1000.0)] + self._fails(
+            4, start=1600.0, step=0.0)
+        alerts, _ = mod.decide(
+            {"now": 1600.0, "events": edge},
+            self._man(), {})
+        self.assertEqual(len(alerts), 1)
+        outside = [self._ev(999.9)] + self._fails(
+            4, start=1600.0, step=0.0)
+        alerts, _ = mod.decide(
+            {"now": 1600.0, "events": outside},
+            self._man(), {})
+        self.assertEqual(alerts, [])
+        alerts, state = mod.decide(
+            {"now": 5000.0, "events": []}, self._man(),
+            {"sources": {"192.0.2.10": {
+                "fails": [1000.0], "burst_active": True,
+                "burst_filed_at": 1000.0}}})
+        self.assertEqual(alerts, [])
+        self.assertEqual(
+            state["sources"]["192.0.2.10"],
+            {"fails": [], "burst_active": False,
+             "burst_filed_at": None})
+        alerts, _ = mod.decide(
+            {"now": 1040.0,
+             "events": list(reversed(self._fails(5)))},
+            self._man(), {})
+        self.assertEqual(len(alerts), 1)
+        alerts, _ = mod.decide(
+            {"now": 1040.0,
+             "events": self._fails(5) + self._fails(
+                 5, source="192.0.2.99")},
+            self._man(), {})
+        self.assertEqual(
+            [a["detail"]["source"] for a in alerts],
+            ["192.0.2.10", "192.0.2.99"])
+        alerts, _ = mod.decide(
+            {"now": 1040.0,
+             "events": self._fails(4) + self._fails(
+                 4, source="192.0.2.99")},
+            self._man(), {})
+        self.assertEqual(alerts, [])
+
+    def test_decide_event_readings_state_shapes(self):
+        mod = self._mod()
+        bad = [None, "x", 123,
+               {"ts": "1000", "kind": "fail",
+                "source": "192.0.2.10"},
+               {"ts": True, "kind": "fail",
+                "source": "192.0.2.10"},
+               {"ts": float("inf"), "kind": "fail",
+                "source": "192.0.2.10"},
+               {"ts": 10 ** 400, "kind": "fail",
+                "source": "192.0.2.10"},
+               {"ts": 1000.0, "kind": "bogus",
+                "source": "192.0.2.10"},
+               {"ts": 1000.0, "kind": "fail",
+                "source": ""},
+               {"ts": 1000.0, "kind": "fail",
+                "source": 123},
+               {"ts": 1000.0, "kind": "fail"},
+               {"kind": "fail", "source": "192.0.2.10"}]
+        alerts, state = mod.decide(
+            {"now": 1040.0,
+             "events": bad + self._fails(5)},
+            self._man(), {})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            state["sources"]["192.0.2.10"]["fails"],
+            [1000.0, 1010.0, 1020.0, 1030.0, 1040.0])
+        for value in [None, "x", 123, {"ts": 1},
+                      tuple(self._fails(5))]:
+            with self.subTest(events=type(value).__name__):
+                alerts, state = mod.decide(
+                    {"now": 1040.0, "events": value},
+                    self._man(), {})
+                self.assertEqual(alerts, [])
+                self.assertEqual(state, {"sources": {}})
+        for value in [None, "x", 123, []]:
+            with self.subTest(readings=repr(value)):
+                self.assertEqual(
+                    mod.decide(value, self._man(), {}),
+                    ([], {"sources": {}}))
+        for value in [None, "x", True, float("inf"),
+                      float("nan"), 10 ** 400]:
+            with self.subTest(now=repr(value)):
+                alerts, state = mod.decide(
+                    {"now": value,
+                     "events": self._fails(5)},
+                    self._man(), {})
+                self.assertEqual(len(alerts), 1)
+                self.assertTrue(
+                    state["sources"]["192.0.2.10"]
+                    ["burst_active"])
+        for manifest in [None, "x", 123, {},
+                         {"tunables": "x"}, {"name": ""},
+                         {"name": 123}, {"name": None}]:
+            with self.subTest(manifest=repr(manifest)[:30]):
+                alerts, _ = mod.decide(
+                    {"now": 1040.0,
+                     "events": self._fails(5)},
+                    self._man(manifest=manifest), {})
+                self.assertEqual(len(alerts), 1)
+                self.assertEqual(alerts[0]["sensor"],
+                                 "failed_login_watch")
+        dirty = {"sources": {
+            "192.0.2.10": {
+                "fails": [1040.0, "x", True,
+                          float("inf"), 10 ** 400,
+                          1000.0, None],
+                "burst_active": "yes",
+                "burst_filed_at": "x"},
+            "badentry": "junk",
+            123: {"fails": []},
+            "192.0.2.11": {"fails": "notlist",
+                           "burst_active": 0,
+                           "burst_filed_at": 123.5}},
+            "_reader": {"/var/log/auth.log":
+                        {"inode": 1, "offset": 2}},
+            "extra": "dropped"}
+        _, cleaned = mod.decide(
+            {"now": 1040.0, "events": []},
+            self._man(), dirty)
+        self.assertEqual(cleaned, {"sources": {
+            "192.0.2.10": {"fails": [1000.0, 1040.0],
+                           "burst_active": True,
+                           "burst_filed_at": None},
+            "192.0.2.11": {"fails": [],
+                           "burst_active": False,
+                           "burst_filed_at": None}},
+            "_reader": {"/var/log/auth.log":
+                        {"inode": 1, "offset": 2}}})
+        for value in [None, "x", 123, [],
+                      {"sources": "x"}, {"sources": [1]}]:
+            with self.subTest(state=repr(value)[:20]):
+                self.assertEqual(
+                    mod.decide({"now": 1.0, "events": []},
+                               self._man(), value)[1],
+                    {"sources": {}})
+        self.assertEqual(
+            mod.decide({"now": 1.0, "events": []},
+                       self._man(),
+                       {"sources": {}, "_reader": "x"})[1],
+            {"sources": {}})
+
+    def test_main_modes(self):
+        import contextlib
+        import io
+        import os
+        import tempfile
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            def write(name, content):
+                path = os.path.join(td, name)
+                with open(path, "w",
+                          encoding="utf-8") as fh:
+                    fh.write(content)
+                return path
+
+            manifest = write("m.json", json.dumps(
+                {"name": "failed_login_watch",
+                 "tunables": {}}))
+            readings = write("r.json", json.dumps(
+                {"now": 1040.0,
+                 "events": self._fails(5)}))
+            state = os.path.join(td, "s.json")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(["--manifest", manifest,
+                               "--state", state,
+                               "--readings", readings])
+            self.assertEqual(rc, 0)
+            lines = [ln for ln in
+                     out.getvalue().splitlines() if ln]
+            self.assertEqual(len(lines), 1)
+            self.assertEqual(
+                json.loads(lines[0])["signal"],
+                "login_failure_burst")
+            with open(state, encoding="utf-8") as fh:
+                saved = json.load(fh)
+            self.assertTrue(
+                saved["sources"]["192.0.2.10"]
+                ["burst_active"])
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(["--manifest", manifest,
+                               "--state", state,
+                               "--readings", readings])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.getvalue(), "")
+            self.assertEqual(
+                mod.main(["--manifest",
+                          os.path.join(td, "no.json"),
+                          "--state", state,
+                          "--readings", readings]), 2)
+            bad_m = write("badm.json", "{not json")
+            self.assertEqual(
+                mod.main(["--manifest", bad_m,
+                          "--state", state,
+                          "--readings", readings]), 2)
+            self.assertEqual(
+                mod.main(["--manifest", manifest,
+                          "--state", state,
+                          "--readings",
+                          os.path.join(td, "no.json")]), 2)
+            bad_r = write("badr.json", "{nope")
+            self.assertEqual(
+                mod.main(["--manifest", manifest,
+                          "--state", state,
+                          "--readings", bad_r]), 2)
+            list_m = write("lm.json", json.dumps([1, 2]))
+            fresh = os.path.join(td, "s2.json")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(["--manifest", list_m,
+                               "--state", fresh,
+                               "--readings", readings])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                len([ln for ln in
+                     out.getvalue().splitlines() if ln]),
+                1)
+            garbled = write("s3.json", "{garbage")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(["--manifest", manifest,
+                               "--state", garbled,
+                               "--readings", readings])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                len([ln for ln in
+                     out.getvalue().splitlines() if ln]),
+                1)
+            log_path = write(
+                "auth.log", "".join(
+                    self._log_line(i)
+                    for i in range(1, 6)))
+            log_state = os.path.join(td, "s4.json")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(["--manifest", manifest,
+                               "--state", log_state,
+                               "--log-file", log_path])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                len([ln for ln in
+                     out.getvalue().splitlines() if ln]),
+                1)
+            self.assertEqual(
+                mod.main(["--manifest", manifest,
+                          "--state", log_state,
+                          "--log-file",
+                          os.path.join(td, "no.log")]), 2)
+            live_manifest = write("m2.json", json.dumps(
+                {"name": "failed_login_watch",
+                 "tunables": {"log_paths": [log_path]}}))
+            live_state = os.path.join(td, "s5.json")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(["--manifest", live_manifest,
+                               "--state", live_state])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                len([ln for ln in
+                     out.getvalue().splitlines() if ln]),
+                1)
+            with open(live_state, encoding="utf-8") as fh:
+                saved = json.load(fh)
+            st = os.stat(log_path)
+            self.assertEqual(
+                saved["_reader"],
+                {log_path: {"inode": st.st_ino,
+                            "offset": st.st_size}})
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(["--manifest", live_manifest,
+                               "--state", live_state])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.getvalue(), "")
+            for label, tunables in [
+                    ("bare string", {"log_paths": log_path}),
+                    ("empty list", {"log_paths": []}),
+                    ("dict", {"log_paths": {"x": 1}}),
+                    ("null", {"log_paths": None}),
+                    ("junk elems",
+                     {"log_paths": [123, None]})]:
+                with self.subTest(label=label):
+                    mpath = write("mx.json", json.dumps(
+                        {"name": "failed_login_watch",
+                         "tunables": tunables}))
+                    spath = os.path.join(td, "sx.json")
+                    out = io.StringIO()
+                    with contextlib.redirect_stdout(out):
+                        rc = mod.main(
+                            ["--manifest", mpath,
+                             "--state", spath])
+                    self.assertEqual(rc, 0)
+                    self.assertNotIn(
+                        "login_failure_burst",
+                        out.getvalue())
+                    with open(spath,
+                              encoding="utf-8") as fh:
+                        saved = json.load(fh)
+                    self.assertNotIn(
+                        log_path,
+                        saved.get("_reader", {}))
+
 if __name__ == "__main__":
 
     unittest.main()
