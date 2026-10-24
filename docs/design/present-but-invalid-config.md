@@ -141,7 +141,7 @@ docs first in the same commit (`docs/oracle/configuring-oracle.md`,
 docstring), then `listen_port` and `bind_address` in the DTLS
 extension and `url_port` in the NATS extension, then the four
 campaign classes that had asserted the default for those keys. The
-warning shipped in 3.12.65: one startup line naming the keys read as
+warning has shipped: one startup line naming the keys read as
 defaults, the same list in the `full`-tier platform card, and a
 named log line when a live reload reads a bad value as the default
 (`runner/guard/defaulted.py`; `docs/use/questions.md`, Q5).
