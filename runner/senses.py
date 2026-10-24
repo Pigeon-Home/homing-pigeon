@@ -419,7 +419,9 @@ def load_alerts(base_dir: str, sensor=None, severity_floor=None,
                 sev = rec.get("severity")
                 if not isinstance(sev, str) or sev not in SEVERITY_SCORES:
                     sev = "info"
-                if SEVERITY_SCORES[sev] < SEVERITY_SCORES.get(severity_floor, 0):
+                floor_score = (SEVERITY_SCORES.get(severity_floor, 0)
+                               if isinstance(severity_floor, str) else 0)
+                if SEVERITY_SCORES[sev] < floor_score:
                     continue
             except Exception:
                 continue

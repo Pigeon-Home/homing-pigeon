@@ -3031,8 +3031,9 @@ class SensesLoadBoomFilterPoisonTest(unittest.TestCase):
     raises stopped the load. Alerts could not be read. gate_alert did
     floor not in SEVERITY_SCORES. An unhashable floor raised TypeError.
 
-    A comparison that raises skips the record. An unhashable floor or
-    severity is treated as info. Processing continues.
+    A comparison that raises skips the record. An unusable floor or
+    severity is treated as info and keeps the record. Processing
+    continues.
     """
 
     def test_boom_filter_does_not_raise(self):
@@ -3047,7 +3048,9 @@ class SensesLoadBoomFilterPoisonTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             senses.store_alert(d, {"sensor": "x", "title": "t"})
             self.assertEqual(senses.load_alerts(d, sensor=Boom()), [])
-            self.assertEqual(senses.load_alerts(d, severity_floor=Boom()), [])
+            # An unusable floor reads as the default, info: keep all.
+            self.assertEqual(
+                len(senses.load_alerts(d, severity_floor=Boom())), 1)
             self.assertTrue(senses.load_alerts(d))
 
     def test_concurrent_boom_filter_does_not_raise(self):

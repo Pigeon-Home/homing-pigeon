@@ -4,6 +4,18 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## Unreleased
+
+- **More unusable values read as their documented default.**
+  `max_job_age_sec` at mail and local ingest (zero, negative, a boolean
+  or a huge integer was used as written), a list or dict
+  `severity_floor` in `load_alerts` (it dropped every alert), the
+  job-watcher repeat, flaky, baseline, z and cluster tunables (zero,
+  negative and sub-one values clamped or disabled them), the job-fuzz
+  corpus age and filed cooldown (zero disabled the bound), and an
+  infinite cert-sentinel TLS port (it crashed the pass instead of
+  yielding no record). Decision 1 has the rule.
+
 ## 3.12.61 - 2026-10-24
 
 - **The build and CI scripts are `runner/tools/`.** They left

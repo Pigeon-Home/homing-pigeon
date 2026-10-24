@@ -4928,10 +4928,7 @@ def _ingest_local_envelope_inner(cfg, base_dir, text, source):
     if issued.tzinfo is None or issued.tzinfo.utcoffset(issued) is None:
         return reject("issued_at missing timezone (must be UTC / end with Z)")
     age = (datetime.now(timezone.utc) - issued).total_seconds()
-    try:
-        max_age = int(cfg.get("max_job_age_sec", 3600))
-    except (TypeError, ValueError, OverflowError):
-        max_age = 3600
+    max_age = _confval.integer(cfg.get("max_job_age_sec"), 3600, lo=1)
     if age < -300 or age > max_age:
         return reject(f"issued_at outside allowed window (age {age:.0f}s)")
     violation = check_key_policy(key_policies, key_id, cfg, job)
@@ -6076,10 +6073,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject("issued_at missing timezone (must be UTC / end with Z)")
         return
     age = (datetime.now(timezone.utc) - issued).total_seconds()
-    try:
-        max_age = int(cfg.get("max_job_age_sec", 3600))
-    except (TypeError, ValueError, OverflowError):
-        max_age = 3600
+    max_age = _confval.integer(cfg.get("max_job_age_sec"), 3600, lo=1)
     if age < -300 or age > max_age:
         reject(f"issued_at outside allowed window (age {age:.0f}s)")
         return

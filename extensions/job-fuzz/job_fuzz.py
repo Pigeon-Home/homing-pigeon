@@ -235,6 +235,16 @@ def _tunable(tunables, key, default):
     return float(v) if _is_number(v) else float(default)
 
 
+def _positive_tunable(tunables, key, default):
+    """A strictly positive number; zero and below read as the default.
+
+    A zero age bound disabled the corpus age limit and a zero cooldown
+    refiled a finding at once; neither is a duration.
+    """
+    v = tunables.get(key)
+    return float(v) if _is_number(v) and v > 0 else float(default)
+
+
 def _int_tunable(tunables, key, default):
     v = tunables.get(key)
     return int(v) if _is_number(v) else int(default)
@@ -1118,9 +1128,10 @@ def decide(readings, manifest, state):
         sensor = "job_fuzz"
     now = readings.get("now")
     now = float(now) if _is_number(now) else 0.0
-    age_cap = _tunable(tunables, "corpus_max_age_days", 30.0) \
-        * 86400.0
-    cooldown = _tunable(tunables, "filed_cooldown_sec", 604800.0)
+    age_cap = _positive_tunable(
+        tunables, "corpus_max_age_days", 30.0) * 86400.0
+    cooldown = _positive_tunable(
+        tunables, "filed_cooldown_sec", 604800.0)
     max_alerts = _int_tunable(tunables, "max_alerts_per_pass", 20)
     if max_alerts < 1:
         max_alerts = 20

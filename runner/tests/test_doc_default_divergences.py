@@ -18985,7 +18985,10 @@ class TestZeroNegativeJobWatcherFlakyAndDurationTunablesReadLiterallyInsteadOfDe
                     self._signals(tunables, records))
 
     def test_duration_z_fifteen_shapes_read_as_default_3_5(self):
-        shapes = self._all_shapes(3.5, "3.5")
+        # A limit of 0.5 is a genuine, positive z: the controls below
+        # pin that it files, so it is not an unusable shape here.
+        shapes = [s for s in self._all_shapes(3.5, "3.5")
+                  if s[0] != "sub-1-fractional"]
         records = self._z_records(11.0)
         for name, value in shapes:
             tunables = {} if name == "omitted" else {

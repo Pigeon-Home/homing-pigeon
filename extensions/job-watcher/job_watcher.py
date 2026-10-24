@@ -133,6 +133,35 @@ def _tunable(tunables, key, default):
     return float(value) if _is_number(value) else default
 
 
+def _count_tunable(tunables, key, default):
+    """A count of at least one, truncated; anything else is the default.
+
+    Zero, a negative or a fraction below one is no count: it clamped a
+    threshold to one or judged a whole history, so it reads as the
+    documented default like every other unusable value.
+    """
+    value = tunables.get(key)
+    if _is_number(value) and value >= 1:
+        return int(value)
+    return default
+
+
+def _span_tunable(tunables, key, default):
+    """A window of at least one second; anything else is the default."""
+    value = tunables.get(key)
+    if _is_number(value) and value >= 1:
+        return float(value)
+    return default
+
+
+def _positive_tunable(tunables, key, default):
+    """A strictly positive number; zero and below read as the default."""
+    value = tunables.get(key)
+    if _is_number(value) and value > 0:
+        return float(value)
+    return default
+
+
 def job_key(kind, script):
     """The repeatable identity of "the same job".
 
@@ -411,20 +440,20 @@ def decide(readings, manifest, state):
         sensor = "job_watcher"
     now = readings.get("now")
     now = float(now) if _is_number(now) else 0.0
-    repeat_failures = int(_tunable(tunables, "repeat_failures", 3))
+    repeat_failures = _count_tunable(tunables, "repeat_failures", 3)
     failure_window = _tunable(tunables, "failure_window_sec", 86400.0)
     if failure_window <= 0:
         # A window of no time holds no failure, so the signal could
         # never file. It reads as the documented default, a day, like
         # the sibling watchers' window readers.
         failure_window = 86400.0
-    flaky_runs = int(_tunable(tunables, "flaky_runs", 6))
-    flaky_transitions = int(_tunable(tunables,
-                                     "flaky_min_transitions", 3))
-    min_baseline = int(_tunable(tunables, "duration_min_baseline", 5))
-    z_limit = _tunable(tunables, "duration_z", 3.5)
-    cluster_min = int(_tunable(tunables, "cluster_min_jobs", 3))
-    cluster_window = _tunable(tunables, "cluster_window_sec", 900.0)
+    flaky_runs = _count_tunable(tunables, "flaky_runs", 6)
+    flaky_transitions = _count_tunable(
+        tunables, "flaky_min_transitions", 3)
+    min_baseline = _count_tunable(tunables, "duration_min_baseline", 5)
+    z_limit = _positive_tunable(tunables, "duration_z", 3.5)
+    cluster_min = _count_tunable(tunables, "cluster_min_jobs", 3)
+    cluster_window = _span_tunable(tunables, "cluster_window_sec", 900.0)
 
     seen = dict(state["seen"])
     jobs = state["jobs"]

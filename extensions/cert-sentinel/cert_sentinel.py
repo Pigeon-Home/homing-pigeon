@@ -147,7 +147,7 @@ def _read_tls_target(host, port):
     """
     try:
         port = int(port)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     if not isinstance(host, str) or not host:
         return None
