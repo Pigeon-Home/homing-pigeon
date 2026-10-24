@@ -187,7 +187,7 @@ app-password mailbox, never the owner's inbox):
    for every other binding.
 
 No email in any loop, no standing trickle, no per-cycle sends.
-The binding constraint on sends is the Gmail connector's send
+The binding constraint on sends is the mail connector's send
 quota on the sending side, not volume through the address.
 
 ## Hard rules
