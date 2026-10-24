@@ -16421,6 +16421,144 @@ class TestServiceWatchFlapCountFifteenShapes(unittest.TestCase):
 
 
 
+class TestTaskTimeoutFifteenShapesAtBoardReader(unittest.TestCase):
+    """Second-run hunt coverage: the core task_timeout
+    row itself varied with the fifteen shapes at its
+    actual reader for the first time (step-8 Target 6,
+    core rows covered only for the shapes their class
+    exercised).
+
+    (a) Doc claim (docs/configuring-oracle.md, line
+        52): "`task_timeout` -- seconds before a
+        claimed task is returned to open. Default
+        86400." PROTOCOL.md section 13.6 states the
+        same lease property: "A claim lapses after
+        `task_timeout` (config, default 24h) with no
+        result, and the task returns to open."
+        Registry row "task_timeout" (default 86400,
+        lo 0): policy default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: the row's named
+        hand-written class
+        (TestNullTaskTimeoutDefaultsTo86400) covered
+        only null and a non-numeric string, through a
+        two-day-old claim; the table hunt probes this
+        row through runner/confval, not through the
+        board reader itself. This tick took that row:
+        its reader is runner/board.py
+        _reoffer_expired_unlocked
+        (_confval.number(task_timeout, 86400, lo=0)),
+        reached through the exact caller expression
+        the runner uses, cfg.get("task_timeout",
+        86400), and probed it with the fifteen shapes
+        from the table hunt -- omitted, null, empty
+        string, true, false, zero, negative, the
+        documented default written explicitly,
+        numeric string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, wrong containers
+        (list and dict). The observable pins the
+        effective lease from both sides: a claim
+        82800 seconds old (one hour under the
+        default) must stay claimed, and a claim
+        90000 seconds old (one hour over) must be
+        reoffered to open.
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default 86400: the 82800-second claim stays
+        claimed and the 90000-second claim is
+        reoffered, for null, the empty string, true,
+        false, a negative number, a non-numeric
+        string, the huge-int, inf, -inf, NaN, a list
+        and a dict alike. Zero is NOT read as the
+        default: this reader's bound is lo=0 and the
+        code's own comment states zero is a number
+        that reoffers at once, so a claim one second
+        old is already reoffered. Genuine values are
+        honored exactly: 100 and the numeric string
+        "100" hold a 50-second claim and release a
+        200-second one, 3600 holds at 1800 and
+        releases at 7200, and a fractional 2.5 holds
+        at 2 seconds and releases at 3 (the reader
+        is confval.number, not integer). Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented default and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the docs
+        state, this test is the failing record of
+        that change.
+    """
+
+    def _reoffer(self, cfg, age_sec):
+        import os
+        import tempfile
+        from datetime import datetime, timedelta, timezone
+
+        from runner.runner import Board
+        with tempfile.TemporaryDirectory() as base:
+            board = Board(os.path.join(base, "board.json"))
+            board.submit({"task_id": "t1"})
+            old = (datetime.now(timezone.utc)
+                   - timedelta(seconds=age_sec)).isoformat()
+            board.tasks["t1"]["state"] = "claimed"
+            board.tasks["t1"]["claimed_at"] = old
+            board.tasks["t1"]["claimed_by"] = "w1"
+            count = board.reoffer_expired(
+                cfg.get("task_timeout", 86400))
+            return count, board.tasks["t1"]["state"]
+
+    def test_fifteen_shapes_read_as_the_default(self):
+        unusable = [None, "", True, False, -5, "bogus",
+                    10 ** 400, float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        cases = [("omitted", {})] + [
+            (repr(v), {"task_timeout": v}) for v in unusable]
+        cases.append(("explicit-default",
+                      {"task_timeout": 86400}))
+        cases.append(("numeric-string",
+                      {"task_timeout": "86400"}))
+        for name, cfg in cases:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    self._reoffer(cfg, 82800), (0, "claimed"))
+                self.assertEqual(
+                    self._reoffer(cfg, 90000), (1, "open"))
+
+    def test_zero_and_genuine_values_are_honored(self):
+        # Zero reoffers at once (lo=0): even a claim
+        # one second old is already past its lease,
+        # where the default would hold it.
+        self.assertEqual(
+            self._reoffer({"task_timeout": 0}, 1), (1, "open"))
+        for value in (100, "100"):
+            with self.subTest(value=repr(value)):
+                cfg = {"task_timeout": value}
+                self.assertEqual(
+                    self._reoffer(cfg, 50), (0, "claimed"))
+                self.assertEqual(
+                    self._reoffer(cfg, 200), (1, "open"))
+        self.assertEqual(
+            self._reoffer({"task_timeout": 3600}, 1800),
+            (0, "claimed"))
+        self.assertEqual(
+            self._reoffer({"task_timeout": 3600}, 7200),
+            (1, "open"))
+        # The reader is confval.number: a fractional
+        # lease is honored as itself, not truncated.
+        self.assertEqual(
+            self._reoffer({"task_timeout": 2.5}, 2),
+            (0, "claimed"))
+        self.assertEqual(
+            self._reoffer({"task_timeout": 2.5}, 3),
+            (1, "open"))
+
+
+
 if __name__ == "__main__":
 
     unittest.main()
