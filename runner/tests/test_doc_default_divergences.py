@@ -21205,6 +21205,578 @@ class TestSuricataFeedPathsAndDecideFifteenShapes(unittest.TestCase):
                     self.assertEqual(run(tunables, tag),
                                      (0, 0, True))
 
+class TestWazuhFeedPathsAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the wazuh-feed
+    log_paths tunable and event handling (default
+    ["/var/ossec/logs/alerts/alerts.json"],
+    poll_interval_sec 60) varied with the fifteen
+    shapes for the first time (step-8 Target 5 /
+    family (b) -- wazuh-feed's only earlier classes
+    cover the numeric episode_quiet_sec; its path
+    list was never varied, the same gap aide-feed,
+    sysmon-feed, falco-feed and suricata-feed
+    closed in the ticks before this one).
+
+    (a) Doc claims: the manifest ships both
+        (extensions/wazuh-feed/extension.json:
+        "log_paths":
+        ["/var/ossec/logs/alerts/alerts.json"],
+        "poll_interval_sec": 60). The README states
+        the feed consumes an alerts.json where the
+        owner places one and that log_paths defaults
+        to the manager's own path, its tunables
+        table gives log_paths
+        ["/var/ossec/logs/alerts/alerts.json"] and
+        poll_interval_sec 60, and it describes the
+        tailing: "The file is tailed incrementally,
+        not re-read: the state carries reader
+        offsets per path ({"inode", "offset"}), and
+        an inode change or a file that shrank
+        (rotation, truncation) restarts that file
+        from 0", with a missing file "a quiet no-op
+        on every pass, forever -- never an error,
+        never a state complaint, nothing filed".
+        The README also states this sense files
+        wazuh_alert_high at rule.level at least 10
+        and wazuh_alert at level 5 to 9, that levels
+        below 5 are parsed and never filed, and
+        that an episode is one (rule.id, agent.name)
+        pair re-arming once episode_quiet_sec has
+        passed. log_paths is not a numeric registry
+        row (wazuh-feed's only row in
+        tests/defaults_registry.py is
+        episode_quiet_sec), so Decision 1's
+        default-on-unusable policy for numeric
+        readers does not name a shape rule for it;
+        this class pins the observed readings
+        instead of asserting one.
+
+    (b) How this was probed: on 2026-10-24 the
+        reader (read_new_events(), the function
+        main() hands the log_paths value to after
+        its own fallback) was probed with the
+        table hunt's fifteen shapes
+        (omitted-equivalent empty list, null, empty
+        string, true, false, zero, negative,
+        numeric string, non-numeric string,
+        huge-int (10**400), inf, -inf, NaN, list,
+        dict), plus genuine, mixed, tuple and
+        missing-path lists against a real temp
+        alerts.json file, and with reader-state
+        shapes directly. parse_event() was probed
+        with the fifteen shapes, malformed lines,
+        every timestamp form, and every rule /
+        level shape. decide() was probed with
+        tunables, readings, event and state
+        shapes. main() was run against temp
+        manifests carrying the log_paths shapes.
+        poll_interval_sec is not read by
+        wazuh_feed.py's decide() at all; decide()
+        never consults manifest tunables except
+        episode_quiet_sec (only manifest["name"]
+        for the sensor name).
+
+    (c) Behavior actually observed: NO divergence
+        recorded. read_new_events() reads every
+        non-list/non-tuple shape and an empty list
+        as no paths, cleans genuine lists
+        element-wise (non-string/empty skipped,
+        missing files yield nothing), accepts
+        tuples, reads a duplicated path twice, and
+        returns events in timestamp order; a saved
+        offset resumes incrementally (an appended
+        line yields only that line), a file that
+        shrank restarts from 0, a missing file
+        keeps a valid saved entry and drops an
+        invalid one, and a non-dict reader state
+        or a non-int inode/offset (bool included)
+        or a negative offset restarts the file
+        from 0. main() substitutes the documented
+        default path for a non-list or empty
+        log_paths (on this box that path is absent,
+        so those shapes file nothing, rc 0), while
+        a genuine or mixed list tails the named
+        file. parse_event() reads non-string input
+        and malformed lines as None, keeps an
+        alert whose timestamp is missing or
+        unparseable with ts None, converts an
+        integer rule id to its string and a digit
+        string level (whitespace tolerated) to an
+        int and truncates a float level, answers
+        None for a bool/empty/missing rule id, a
+        bool/non-digit/non-finite level, a missing
+        level, or a non-dict rule, reads a
+        non-string description and non-string
+        agent fields as "" and a non-list groups
+        as [], cleans a genuine groups list
+        element-wise, and parses Z, colon-offset,
+        colon-less-offset, naive (read as UTC),
+        fractional and plain-number timestamps.
+        decide() skips a non-list events value and
+        non-dict entries, drops an event whose
+        level is not a number (a digit string is
+        NOT parsed at this layer, unlike
+        parse_event) or whose rule_id is not a
+        non-empty string, truncates a float level,
+        reads a non-number ts as None (timed by
+        "now"), maps level 5-9 to wazuh_alert at
+        medium and at least 10 to wazuh_alert_high
+        at high, never files below 5 and never
+        lets a below-5 event touch an episode,
+        dedups an episode (rule_id + agent_name)
+        within the quiet period while updating
+        last_seen and refiles at exactly the quiet
+        boundary, files distinct rules/agents
+        separately, processes events in timestamp
+        order with untimestamped events last,
+        falls back to the sensor name "wazuh_feed"
+        for a non-dict manifest or a non-string/
+        empty name, and cleans state by dropping
+        episode entries whose key is not a string
+        or whose last_seen is not a number,
+        reading a non-number filed_at as None and
+        a non-string signal as "", while
+        preserving a dict _reader verbatim.
+        Observed on 2026-10-24 against current
+        main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as the
+        readings above keep holding. If a shape
+        ever stops behaving as described, this
+        test is the failing record of that change.
+    """
+
+    _LINE1 = ('{"timestamp": "2026-10-24T00:00:01.000+0000", '
+              '"rule": {"id": "5710", "level": 5, '
+              '"description": "Desc", "groups": '
+              '["sshd", 7, "auth"]}, "agent": '
+              '{"id": "001", "name": "web-1"}}\n')
+    _LINE2 = ('{"timestamp": "2026-10-24T00:00:02.000+0000", '
+              '"rule": {"id": "5715", "level": 12, '
+              '"description": "Hi", "groups": []}, '
+              '"agent": {"id": "002", "name": "db-1"}}\n')
+    _EVENT = {"ts": 1000.0, "level": 5,
+              "rule_id": "5710", "description": "Desc",
+              "groups": ["sshd"], "agent_name": "web-1",
+              "agent_id": "001"}
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "wazuh-feed", "wazuh_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "wazuh_feed_paths_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_read_new_events_paths_shapes(self):
+        import os
+        import tempfile
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    mod.read_new_events(value, {}), ([], {}))
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "alerts.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._LINE2 + self._LINE1)
+            for value in ([path], (path,)):
+                events, reader = mod.read_new_events(value, {})
+                self.assertEqual(
+                    [e["rule_id"] for e in events],
+                    ["5710", "5715"])
+                self.assertEqual(
+                    reader[path]["offset"],
+                    os.path.getsize(path))
+            events, _ = mod.read_new_events(
+                [path, 123, "", None], {})
+            self.assertEqual(len(events), 2)
+            events, _ = mod.read_new_events([path, path], {})
+            self.assertEqual(len(events), 4)
+            _, reader = mod.read_new_events([path], {})
+            self.assertEqual(
+                mod.read_new_events([path], reader),
+                ([], reader))
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(self._LINE1)
+            events, reader2 = mod.read_new_events([path], reader)
+            self.assertEqual([e["rule_id"] for e in events],
+                             ["5710"])
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._LINE1)
+            events, _ = mod.read_new_events([path], reader2)
+            self.assertEqual([e["rule_id"] for e in events],
+                             ["5710"])
+            missing = os.path.join(d, "nope.json")
+            st = os.stat(path)
+            self.assertEqual(
+                mod.read_new_events(
+                    [missing],
+                    {missing: {"inode": st.st_ino, "offset": 5}}),
+                ([], {missing: {"inode": st.st_ino,
+                                "offset": 5}}))
+            self.assertEqual(
+                mod.read_new_events(
+                    [missing],
+                    {missing: {"inode": "x", "offset": 5}}),
+                ([], {}))
+            self.assertEqual(
+                mod.read_new_events([missing], {}), ([], {}))
+
+    def test_read_new_events_reader_state_shapes(self):
+        import os
+        import tempfile
+        mod = self._module()
+        for bad_state in (None, "bogus", [], 42):
+            with self.subTest(state=repr(bad_state)):
+                self.assertEqual(
+                    mod.read_new_events([], bad_state), ([], {}))
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "alerts.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._LINE1)
+            for bad in ({path: {"inode": "bad",
+                                "offset": "bad"}},
+                        {path: {"inode": True, "offset": 0}},
+                        {path: {"inode": 1, "offset": -1}},
+                        {path: "notdict"},
+                        {path: {"inode": 999999, "offset": 0}}):
+                events, _ = mod.read_new_events([path], bad)
+                self.assertEqual(len(events), 1)
+
+    def test_parse_event_shapes(self):
+        import json
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertIsNone(mod.parse_event(value))
+        self.assertIsNone(mod.parse_event(42))
+        self.assertIsNone(mod.parse_event("not json"))
+        self.assertIsNone(mod.parse_event("[1, 2]"))
+        self.assertEqual(
+            mod.parse_event(self._LINE1),
+            {"ts": 1792800001.0, "level": 5,
+             "rule_id": "5710", "description": "Desc",
+             "groups": ["sshd", "auth"],
+             "agent_name": "web-1", "agent_id": "001"})
+        for ts, want in (
+                ("2026-10-24T00:00:01Z", 1792800001.0),
+                ("2026-10-24T00:00:01+00:00", 1792800001.0),
+                ("2026-10-24T00:00:01", 1792800001.0),
+                (1792800001.0, 1792800001.0)):
+            with self.subTest(ts=ts):
+                ev = mod.parse_event(json.dumps(
+                    {"timestamp": ts,
+                     "rule": {"id": "1", "level": 5}}))
+                self.assertEqual(ev["ts"], want)
+        ev = mod.parse_event(json.dumps(
+            {"timestamp": "2026-10-24T00:00:01.123456789+0000",
+             "rule": {"id": "1", "level": 5}}))
+        self.assertAlmostEqual(ev["ts"], 1792800001.123456,
+                               places=5)
+        for bad_ts in ("bogus", None, True):
+            with self.subTest(ts=bad_ts):
+                ev = mod.parse_event(json.dumps(
+                    {"timestamp": bad_ts,
+                     "rule": {"id": "1", "level": 5}}))
+                self.assertIsNotNone(ev)
+                self.assertIsNone(ev["ts"])
+        ev = mod.parse_event(json.dumps(
+            {"rule": {"id": "1", "level": 5}}))
+        self.assertIsNone(ev["ts"])
+
+    def test_parse_event_rule_shapes(self):
+        import json
+        mod = self._module()
+        base = "2026-10-24T00:00:01Z"
+        ev = mod.parse_event(json.dumps(
+            {"timestamp": base,
+             "rule": {"id": 5710, "level": 5}}))
+        self.assertEqual(ev["rule_id"], "5710")
+        for level in ("5", " 5 ", 5.9):
+            with self.subTest(level=level):
+                ev = mod.parse_event(json.dumps(
+                    {"timestamp": base,
+                     "rule": {"id": "5710", "level": level}}))
+                self.assertEqual(ev["level"], 5)
+        for bad in ({"timestamp": base,
+                     "rule": {"id": "5710", "level": True}},
+                    {"timestamp": base,
+                     "rule": {"id": True, "level": 5}},
+                    {"timestamp": base,
+                     "rule": {"id": "", "level": 5}},
+                    {"timestamp": base, "rule": {"level": 5}},
+                    {"timestamp": base, "rule": {"id": "1"}},
+                    {"timestamp": base, "rule": "nope"},
+                    {"timestamp": base},
+                    {"timestamp": base,
+                     "rule": {"id": "1", "level": "bogus"}}):
+            self.assertIsNone(mod.parse_event(json.dumps(bad)))
+        self.assertIsNone(mod.parse_event(json.dumps(
+            {"timestamp": base,
+             "rule": {"id": "1", "level": float("inf")}})))
+        ev = mod.parse_event(json.dumps(
+            {"timestamp": base,
+             "rule": {"id": "1", "level": 5,
+                      "description": 9, "groups": "sshd"},
+             "agent": "nope"}))
+        self.assertEqual(ev["description"], "")
+        self.assertEqual(ev["groups"], [])
+        self.assertEqual(ev["agent_name"], "")
+        self.assertEqual(ev["agent_id"], "")
+        ev = mod.parse_event(json.dumps(
+            {"timestamp": base,
+             "rule": {"id": "1", "level": 5,
+                      "groups": ["a", 3, None, "b"]},
+             "agent": {"id": 7, "name": 9}}))
+        self.assertEqual(ev["groups"], ["a", "b"])
+        self.assertEqual(ev["agent_name"], "")
+        self.assertEqual(ev["agent_id"], "")
+
+    def test_decide_ignores_path_and_poll_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                alerts, _ = mod.decide(
+                    {"now": 1000.0,
+                     "events": [dict(self._EVENT)]},
+                    {"name": "wazuh_feed",
+                     "tunables": {"log_paths": value,
+                                  "poll_interval_sec": value}},
+                    {})
+                self.assertEqual(len(alerts), 1)
+                self.assertEqual(alerts[0]["signal"],
+                                 "wazuh_alert")
+                self.assertEqual(alerts[0]["severity"], "medium")
+        for man in (None, "x", [], {},
+                    {"name": 123}, {"name": ""},
+                    {"tunables": "nope"}):
+            alerts, _ = mod.decide(
+                {"now": 1000.0, "events": [dict(self._EVENT)]},
+                man, {})
+            self.assertEqual(len(alerts), 1)
+            self.assertEqual(alerts[0]["sensor"], "wazuh_feed")
+
+    def test_decide_levels_and_episodes(self):
+        mod = self._module()
+        man = {"name": "wazuh_feed"}
+        for level, want in ((0, []), (4, []),
+                            (5, [("wazuh_alert", "medium")]),
+                            (9, [("wazuh_alert", "medium")]),
+                            (10, [("wazuh_alert_high", "high")]),
+                            (15, [("wazuh_alert_high", "high")])):
+            with self.subTest(level=level):
+                alerts, _ = mod.decide(
+                    {"now": 1000.0,
+                     "events": [dict(self._EVENT, level=level)]},
+                    man, {})
+                self.assertEqual(
+                    [(a["signal"], a["severity"]) for a in alerts],
+                    want)
+        first, state = mod.decide(
+            {"now": 1000.0, "events": [dict(self._EVENT)]},
+            man, {})
+        self.assertEqual(len(first), 1)
+        self.assertEqual(
+            state["episodes"]["5710|web-1"],
+            {"last_seen": 1000.0, "filed_at": 1000.0,
+             "signal": "wazuh_alert"})
+        again, state = mod.decide(
+            {"now": 1500.0,
+             "events": [dict(self._EVENT, ts=1500.0)]}, man, state)
+        self.assertEqual(again, [])
+        self.assertEqual(
+            state["episodes"]["5710|web-1"]["last_seen"], 1500.0)
+        self.assertEqual(
+            state["episodes"]["5710|web-1"]["filed_at"], 1000.0)
+        refired, _ = mod.decide(
+            {"now": 5100.0,
+             "events": [dict(self._EVENT, ts=5100.0)]}, man, state)
+        self.assertEqual(len(refired), 1)
+        alerts, _ = mod.decide(
+            {"now": 1000.0,
+             "events": [dict(self._EVENT),
+                        dict(self._EVENT, agent_name="db-1"),
+                        dict(self._EVENT, rule_id="9999")]},
+            man, {})
+        self.assertEqual(len(alerts), 3)
+        alerts, _ = mod.decide(
+            {"now": 1000.0,
+             "events": [dict(self._EVENT), dict(self._EVENT)]},
+            man, {})
+        self.assertEqual(len(alerts), 1)
+        alerts, state = mod.decide(
+            {"now": 1000.0,
+             "events": [dict(self._EVENT, level=4),
+                        dict(self._EVENT, level=5, ts=1001.0)]},
+            man, {})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            state["episodes"]["5710|web-1"]["filed_at"], 1001.0)
+        alerts, _ = mod.decide(
+            {"now": 3000.0,
+             "events": [dict(self._EVENT, rule_id="B",
+                             ts=2000.0),
+                        dict(self._EVENT, rule_id="A",
+                             ts=1000.0),
+                        dict(self._EVENT, rule_id="C",
+                             ts=None)]},
+            man, {})
+        self.assertEqual(
+            [a["detail"]["rule_id"] for a in alerts],
+            ["A", "B", "C"])
+
+    def test_decide_event_and_state_cleaning(self):
+        mod = self._module()
+        man = {"name": "wazuh_feed"}
+        for readings in (None, "x", [], {}, {"events": None},
+                         {"events": "notalist"},
+                         {"events": {"a": 1}}):
+            self.assertEqual(mod.decide(readings, man, {}),
+                             ([], {"episodes": {}}))
+        self.assertEqual(
+            mod.decide({"events": ["notadict", None, 42]},
+                       man, {})[0], [])
+        for bad in (dict(self._EVENT, level="5"),
+                    dict(self._EVENT, level=True),
+                    dict(self._EVENT, rule_id=""),
+                    dict(self._EVENT, rule_id=123)):
+            self.assertEqual(
+                mod.decide({"now": 1000.0, "events": [bad]},
+                           man, {})[0], [])
+        alerts, _ = mod.decide(
+            {"now": 1000.0,
+             "events": [dict(self._EVENT, level=5.9)]}, man, {})
+        self.assertEqual(alerts[0]["detail"]["level"], 5)
+        alerts, state = mod.decide(
+            {"now": 2000.0,
+             "events": [dict(self._EVENT, ts="1000")]}, man, {})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            state["episodes"]["5710|web-1"]["last_seen"], 2000.0)
+        alerts, _ = mod.decide(
+            {"now": 1000.0,
+             "events": [dict(self._EVENT, description=5,
+                             groups="x", agent_name=9,
+                             agent_id=7)]}, man, {})
+        self.assertEqual(alerts[0]["title"],
+                         "Wazuh rule 5710 (level 5) on ?: "
+                         "no description")
+        self.assertEqual(alerts[0]["detail"]["groups"], [])
+        alerts, _ = mod.decide(
+            {"now": 1000.0,
+             "events": [dict(self._EVENT,
+                             groups=["a", 3, "b"])]}, man, {})
+        self.assertEqual(alerts[0]["detail"]["groups"],
+                         ["a", "b"])
+        alerts, state = mod.decide({"events": [dict(self._EVENT)]},
+                                   man, {})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            state["episodes"]["5710|web-1"]["last_seen"], 1000.0)
+        alerts, state = mod.decide(
+            {"events": [dict(self._EVENT, ts=None)]}, man, {})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            state["episodes"]["5710|web-1"]["last_seen"], 0.0)
+        for bad_state in (None, "x", [], 42,
+                          {"episodes": "nope"}):
+            alerts, _ = mod.decide(
+                {"now": 1000.0, "events": [dict(self._EVENT)]},
+                man, bad_state)
+            self.assertEqual(len(alerts), 1)
+        alerts, new_state = mod.decide(
+            {"now": 1000.0, "events": [dict(self._EVENT)]},
+            man,
+            {"episodes": {123: {"last_seen": 1},
+                          "k": {"last_seen": "x"},
+                          "ok": {"last_seen": 900.0,
+                                 "filed_at": "x", "signal": 5},
+                          "ok2": {"last_seen": 900.0,
+                                  "filed_at": 800.0,
+                                  "signal": "wazuh_alert"}},
+             "_reader": "notdict"})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            new_state["episodes"]["ok"],
+            {"last_seen": 900.0, "filed_at": None, "signal": ""})
+        self.assertEqual(
+            new_state["episodes"]["ok2"],
+            {"last_seen": 900.0, "filed_at": 800.0,
+             "signal": "wazuh_alert"})
+        self.assertNotIn("_reader", new_state)
+        _, new_state = mod.decide(
+            {"events": []}, man,
+            {"episodes": {}, "_reader": {"/x": {"inode": 1}}})
+        self.assertEqual(new_state["_reader"],
+                         {"/x": {"inode": 1}})
+
+    def test_main_log_paths_fallback(self):
+        import contextlib
+        import io
+        import json
+        import os
+        import tempfile
+        if os.path.exists("/var/ossec/logs/alerts/alerts.json"):
+            self.skipTest("the documented default path "
+                          "exists on this box")
+        mod = self._module()
+        line = ('{"timestamp": "2026-10-24T00:00:01.000+0000", '
+                '"rule": {"id": "5715", "level": 12, '
+                '"description": "Hi", "groups": []}, '
+                '"agent": {"id": "002", "name": "db-1"}}\n')
+        with tempfile.TemporaryDirectory() as d:
+            logp = os.path.join(d, "alerts.json")
+            with open(logp, "w", encoding="utf-8") as fh:
+                fh.write(line)
+
+            def run(tunables, tag):
+                mp = os.path.join(d, "m-" + tag + ".json")
+                sp = os.path.join(d, "s-" + tag + ".json")
+                with open(mp, "w", encoding="utf-8") as fh:
+                    json.dump({"name": "wazuh_feed",
+                               "tunables": tunables}, fh)
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    rc = mod.main(["--manifest", mp,
+                                   "--state", sp])
+                return rc, buf.getvalue().count(
+                    "wazuh_alert_high"), os.path.exists(sp)
+
+            self.assertEqual(run({"log_paths": [logp]},
+                                 "genuine"), (0, 1, True))
+            self.assertEqual(
+                run({"log_paths": [logp, 123, ""]}, "mixed"),
+                (0, 1, True))
+            for tag, tunables in (
+                    ("omitted", {}),
+                    ("null", {"log_paths": None}),
+                    ("empty", {"log_paths": []}),
+                    ("string", {"log_paths": "bogus"}),
+                    ("zero", {"log_paths": 0}),
+                    ("junklist", {"log_paths": [123]}),
+                    ("missingpath",
+                     {"log_paths": ["/nonexistent/x.json"]})):
+                with self.subTest(shape=tag):
+                    self.assertEqual(run(tunables, tag),
+                                     (0, 0, True))
+
 if __name__ == "__main__":
 
     unittest.main()
