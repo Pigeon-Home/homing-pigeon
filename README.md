@@ -407,9 +407,26 @@ The runner is fully inspectable, so audit what it would do before it does it, an
 - Optional hardening controls (off by default, except the size caps
   above, which are always on): see [SECURITY.md](SECURITY.md).
 
-## Not built
+## Questions people ask
 
-The list is [docs/project/future.md](docs/project/future.md).
+The [FAQ](docs/use/faq.md) is where the odd corners get answered.
+Does the Oracle poll or get woken by a signal? Can a hostile job
+talk its way into a repair? Why email, and why not PGP or public-key
+signatures? Is one shared secret really safe for both signing and
+encryption? What would you actually use this for? Read it before you
+design around the protocol; the reasoning is more interesting than
+the rules.
+
+## Where it goes next
+
+Plenty of ideas are already sketched in
+[docs/project/future.md](docs/project/future.md), and some are
+tempting. Imagine the owner approving a job with one tap before it
+runs. Imagine signatures that need no shared secret at all, a
+dashboard that lets you watch the Oracle think, a box that notices
+its own firewall drifting or a patch going missing, or a Pi that
+grows a real model the day an accelerator board arrives. Come pick
+one, or add your own.
 
 ## Status
 
