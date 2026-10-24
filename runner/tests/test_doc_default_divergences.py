@@ -17326,6 +17326,100 @@ class TestInferenceTimeoutSecFifteenShapesAtReader(unittest.TestCase):
         self.assertEqual(
             _inference_timeout({"timeout_sec": 0.5}), 180)
 
+class TestPromoteAfterFifteenShapesAtReader(unittest.TestCase):
+    """Second-run hunt coverage: oracle_learning_promote_after
+    itself varied with the fifteen shapes at its single
+    reader (runner/learning.py: promote_after, through
+    confval.integer lo=1, returning an int) for the first
+    time at reader level. The row's registry-named class
+    (TestInfinitePromoteAfterDefaultsTo2) probed only
+    infinity and negative infinity.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 64):
+        "`oracle_learning_promote_after` -- how many
+        verified corroborating outcomes a model candidate
+        needs before it is treated as corroborated ...
+        Default `2`." Registry row
+        "oracle_learning_promote_after" (kind integer,
+        default 2, reader runner/learning.py:promote_after,
+        policy default under Decision 1, lo=1, hi=None).
+
+    (b) How it was hunted: step-8 Target 6 (core rows
+        covered only for the shapes their classes
+        exercised). This tick probed promote_after with
+        the fifteen shapes from the table hunt -- omitted,
+        null, empty string, true, false, zero, negative,
+        the explicit default, numeric string, non-numeric
+        string, huge-int (10**400), inf, -inf, NaN, wrong
+        containers (list and dict) -- plus genuine values,
+        a sub-1 fractional, and non-dict configs.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape reads as the documented
+        default 2 -- omitted, null, empty string, true,
+        false, zero, negative, non-numeric string,
+        huge-int, inf, -inf, NaN, list and dict alike,
+        and a non-dict config (None, a list, a string,
+        or an int) likewise reads as 2. Zero and
+        negative are defaults here, not literal counts:
+        the reader's bound is lo=1. Genuine values are
+        honored exactly: 1 reads as 1, 3 and 10 read as
+        themselves, the numeric string "3" reads as 3,
+        fractional 2.5 truncates via int() to 2 and
+        "2.5" likewise, and 9999 is honored at the
+        reader (registry hi=None). A sub-1 fractional
+        (0.5) reads as the default, since it truncates
+        below lo=1. Observed on 2026-10-24 against
+        current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes keep
+        reading as the documented default and genuine
+        values keep being honored. If a shape above ever
+        stops behaving as docs/configuring-oracle.md
+        states, this test is the failing record of that
+        change.
+    """
+
+    def test_fifteen_shapes_read_as_default(self):
+        from runner.learning import promote_after
+        unusable = [None, "", True, False, 0, -5,
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        cases = [("omitted", {})]
+        cases += [(repr(v), {"oracle_learning_promote_after": v})
+                  for v in unusable]
+        cases.append(("explicit-default",
+                      {"oracle_learning_promote_after": 2}))
+        for name, cfg in cases:
+            with self.subTest(shape=name):
+                self.assertEqual(promote_after(cfg), 2)
+
+    def test_non_dict_config_reads_as_default(self):
+        from runner.learning import promote_after
+        self.assertEqual(promote_after(None), 2)
+        self.assertEqual(promote_after(["x"]), 2)
+        self.assertEqual(promote_after("bogus"), 2)
+        self.assertEqual(promote_after(42), 2)
+
+    def test_genuine_values_are_honored(self):
+        from runner.learning import promote_after
+        for value, expected in ((1, 1), (3, 3),
+                                ("3", 3), (2.5, 2),
+                                ("2.5", 2), (10, 10),
+                                (9999, 9999)):
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    promote_after(
+                        {"oracle_learning_promote_after": value}),
+                    expected)
+
+    def test_sub_one_fraction_reads_as_default(self):
+        from runner.learning import promote_after
+        self.assertEqual(
+            promote_after({"oracle_learning_promote_after": 0.5}), 2)
+
 if __name__ == "__main__":
 
     unittest.main()
