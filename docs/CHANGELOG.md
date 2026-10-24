@@ -50,6 +50,13 @@ facts a reader may need to cite. Git history carries the rest.
   `workers` 1, `default_timeout_sec` 300, `max_output_bytes`
   100000, `max_job_age_sec` 3600) and is named in the log, as
   Decision 1 has it: no hidden last-good state.
+- **A workspace given through a symlink is the workspace.** The
+  confinement snapshot pruned the workspace by `abspath`, but the
+  walk reaches it under its real name, so a `workspace_root` that is
+  a symlink counted the workspace's own files as outside it and a job
+  that changed only its own files was attested
+  `confined_to_workspace` false. The prune compares real paths too.
+  Muse's hunt found it.
 - **A dots-only `files[]` path component on Windows.** The new
   staging hunt expected `.../x.txt` to land in a `...` directory;
   Win32 strips trailing dots from a component, so on Windows it lands
