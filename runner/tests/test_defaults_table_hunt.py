@@ -622,5 +622,108 @@ class DefaultedTableMatchesRegistryTests(unittest.TestCase):
         self.assertIsNone(defaulted.summary_line([]))
 
 
+@unittest.skipUnless(sys.platform.startswith("linux"),
+                     "needs bwrap on Linux")
+class SandboxStartupRefusalProbes(unittest.TestCase):
+    """Q9 (phase 2, Muse's lane to probe, Claude's to build):
+    a failing-by-design probe for the startup sandbox check.
+
+    The first env-axes pair (run 40142317272) found that with
+    apparmor_restrict_unprivileged_userns=1 -- what Ubuntu
+    24.04 ships -- bwrap cannot set up its namespace, so every
+    job under security.modes.confinement: enforce fails
+    without running. Fail-closed is the safe side, but the
+    failure is silent at startup: the operator learns the
+    sandbox is unusable only when jobs start failing.
+
+    Q9's proposal, under Decision 1's refuse rule (a security
+    mode whose mechanism cannot engage changes what the box
+    protects): at startup under confinement: enforce, the
+    runner probes bwrap once and, if it cannot start, refuses
+    to start and names the cause -- including the sysctl when
+    it reads 1.
+
+    These tests FAIL BY DESIGN until that check lands. Do not
+    make them pass by editing the tests. The boot seam is
+    main() in --inspect mode (the full startup sequence, no
+    mailbox), with PATH controlled so bwrap is missing,
+    present-but-failing, or present-and-working, which pins
+    the behavior however the probe is implemented (a `which`
+    check or a trial run). The two controls pass today and
+    must keep passing: a working bwrap starts, and audit mode
+    -- which falls back loudly by design -- starts without
+    one. Where the sysctl reads 1 in the test environment,
+    the refusal must name it; that assertion is conditional
+    on the environment, not a skip.
+    """
+
+    def _boot(self, mode, path_dir):
+        import io
+        import json
+        import tempfile
+        from contextlib import redirect_stderr, redirect_stdout
+        from unittest import mock
+        from runner import runner as R
+        td = tempfile.mkdtemp(prefix="hp-q9-")
+        path = os.path.join(td, "config.json")
+        cfg = {"security": {"modes": {"confinement": mode}},
+               "base_dir": td}
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(cfg, fh)
+        out = io.StringIO()
+        argv = ["runner", "--config", path, "--inspect", "board"]
+        with mock.patch.dict(os.environ, {"PATH": path_dir}):
+            with mock.patch.object(sys, "argv", argv):
+                with redirect_stdout(out), redirect_stderr(out):
+                    rc = R.main()
+        return rc, out.getvalue()
+
+    def _fake_bwrap_dir(self, exit_code):
+        import tempfile
+        td = tempfile.mkdtemp(prefix="hp-q9-bin-")
+        path = os.path.join(td, "bwrap")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("#!/bin/sh\nexit %d\n" % exit_code)
+        os.chmod(path, 0o755)
+        return td
+
+    def _assert_refusal(self, rc, text):
+        self.assertNotEqual(rc, 0)
+        lowered = text.lower()
+        self.assertTrue(
+            any(name in lowered
+                for name in ("confinement", "sandbox", "bwrap")),
+            "refusal does not name the mechanism: %r" % text[:300])
+        sysctl = "/proc/sys/kernel/apparmor_restrict_unprivileged_userns"
+        try:
+            with open(sysctl, encoding="ascii") as fh:
+                value = fh.read().strip()
+        except OSError:
+            value = None
+        if value == "1":
+            self.assertIn("apparmor_restrict_unprivileged_userns",
+                          text)
+
+    def test_refuses_when_bwrap_is_missing(self):
+        import tempfile
+        empty = tempfile.mkdtemp(prefix="hp-q9-empty-")
+        rc, text = self._boot("enforce", empty)
+        self._assert_refusal(rc, text)
+
+    def test_refuses_when_bwrap_cannot_start(self):
+        rc, text = self._boot("enforce", self._fake_bwrap_dir(1))
+        self._assert_refusal(rc, text)
+
+    def test_control_starts_when_bwrap_can_start(self):
+        rc, _text = self._boot("enforce", self._fake_bwrap_dir(0))
+        self.assertEqual(rc, 0)
+
+    def test_control_audit_mode_starts_without_bwrap(self):
+        import tempfile
+        empty = tempfile.mkdtemp(prefix="hp-q9-empty-")
+        rc, _text = self._boot("audit", empty)
+        self.assertEqual(rc, 0)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
