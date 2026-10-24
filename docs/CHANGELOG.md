@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.61 - 2026-10-24
+
+- **The build and CI scripts are `runner/tools/`.** They left
+  `.github/tools/`, kept out of the wheel, the image, the SBOM,
+  the pyrefly gate and mutmut, the same way the suite is. Workflows,
+  tests and docs follow. No shim. The climb to the tree is unchanged.
+
 ## 3.12.60 - 2026-10-24
 
 - **A workspace given through a symlink no longer counts its own files as outside.**
@@ -28,8 +35,7 @@ facts a reader may need to cite. Git history carries the rest.
     `runner`.
   - `hardening/`, `CONTRIBUTING.md` and `CHANGELOG.md` are under
     `docs/`, with a short Contributing blurb in the README.
-  - The build and CI scripts (`tools/`) are `runner/tools/`, kept out
-    of the wheel and the image like the suite. The Dockerfiles and
+  - The build and CI scripts (`tools/`), the Dockerfiles and
     `docker/`, and `requirements-ci.txt` are under `.github/`, with
     `.dockerignore` beside each Dockerfile as
     `Dockerfile.dockerignore`.
