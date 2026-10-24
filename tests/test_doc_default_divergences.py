@@ -7473,5 +7473,147 @@ class TestHugeIntLatencyPostTunablesCrashInsteadOfDefault(unittest.TestCase):
             [])
 
 
+class TestPlanStepTimeoutSecDefaultsTo60(unittest.TestCase):
+    """Second-run hunt coverage: the plan-step
+    timeout_sec itself, varied with the fifteen
+    shapes through its actual reader for the
+    first time.
+
+    (a) Claim: registry row "timeout_sec (plan
+        step)": integer, default 60, policy
+        default, doc_status unverified -- no
+        prose document states this default. The
+        only statement is the reader's own
+        docstring (runner/detection.py,
+        check_plan_budget, lines 113-114): "A
+        step whose timeout_sec is omitted,
+        unparseable, or a boolean counts as 60
+        seconds." The prose doc for the same
+        function (docs/configuring-oracle.md,
+        line 80) states only the totals it sums
+        toward: "`max_plan_steps` /
+        `max_plan_timeout_sec` -- caps the
+        detection layer (`runner/detection.py`)
+        applies to a multi-step plan: at most
+        this many steps (default 8) and this
+        much total timeout in seconds (default
+        600)." The step-8 Target 3 finding on
+        provenance therefore stands: the 60
+        default rests on the reader (line 130:
+        _confval.integer(step.get("timeout_sec"),
+        60, lo=1)) and this registry row, not on
+        any documented line -- see
+        KNOWN_UNDOCUMENTED in
+        tests/defaults_registry.py. The row's
+        named class
+        (TestBooleanPlanStepTimeoutCountsAs60)
+        varies the boolean shapes only, and the
+        table hunt probes this row through
+        confval, not through check_plan_budget.
+
+    (b) How it was hunted: step 8 Target 3 --
+        the first row with no documented
+        default in any current doc. On
+        2026-10-23 this tick probed
+        check_plan_budget -- the actual reader
+        -- with the table hunt's fifteen shapes
+        for a single step's timeout_sec, each
+        shape asserted exactly, not just by
+        side: with the total cap at 59 a step
+        counting as 60 is refused with "plan
+        timeout 60s exceeds 59s", and with the
+        cap at 60 the same step is allowed, so
+        the effective value is pinned to 60
+        from both sides.
+
+    (c) Behavior actually observed: NO
+        divergence in behavior. Every shape --
+        omitted, null, the empty string, true,
+        false, zero, a negative number, the
+        explicit default 60, a numeric string,
+        a non-numeric string, a
+        several-hundred-digit integer, inf,
+        -inf, NaN, and a list -- counted as
+        exactly 60 seconds. This reader goes
+        through runner/confval.integer, which
+        never counts a boolean as a number,
+        requires a finite value at least 1,
+        and parses numeric strings, so a
+        numeric string "100" counts as 100
+        (a genuine value, honored below),
+        unlike the extension readers that
+        accept only genuine JSON numbers.
+        Genuine values are honored exactly:
+        1, 10, 45, 100 and "100" each count
+        as themselves against a cap one
+        second below them.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        the reader keeps the registry default.
+        If a shape above ever stops counting
+        as 60, this test is the failing record
+        of that change. The documentation gap
+        in (a) is recorded here and in the
+        registry; no production code or doc
+        was changed by this hunt.
+    """
+
+    def _check(self, step, cap):
+        from runner.detection import check_plan_budget
+        return check_plan_budget(
+            [step], {"max_plan_timeout_sec": cap})
+
+    def test_fifteen_shapes_count_as_default_60(self):
+        shapes = [
+            ("omitted", None), ("null", None),
+            ("empty-string", ""), ("true", True),
+            ("false", False), ("zero", 0),
+            ("negative", -5), ("default-explicit", 60),
+            ("numeric-string", "60"),
+            ("non-numeric-string", "bogus"),
+            ("huge-int", 10 ** 400), ("inf", float("inf")),
+            ("neg-inf", float("-inf")), ("nan", float("nan")),
+            ("wrong-container", ["x"]),
+        ]
+        for name, value in shapes:
+            with self.subTest(shape=name):
+                step = {} if name == "omitted" else {
+                    "timeout_sec": value}
+                self.assertEqual(
+                    self._check(step, 59),
+                    (False, "plan timeout 60s exceeds 59s"))
+                self.assertEqual(
+                    self._check(step, 60), (True, ""))
+
+    def test_genuine_step_timeouts_are_honored(self):
+        for value in (10, 45, 100, "100"):
+            want = int(value)
+            with self.subTest(value=value):
+                self.assertEqual(
+                    self._check({"timeout_sec": value}, want - 1),
+                    (False,
+                     f"plan timeout {want}s exceeds {want - 1}s"))
+                self.assertEqual(
+                    self._check({"timeout_sec": value}, want),
+                    (True, ""))
+        # 1 is pinned differently: a cap of 0 is
+        # itself unusable and reads as the 600
+        # default, so there is no usable cap one
+        # below 1. One 1-second step passes at a
+        # cap of 1 (it would fail if it counted
+        # as the 60 default), and two of them
+        # total exactly 2 against that cap.
+        self.assertEqual(
+            self._check({"timeout_sec": 1}, 1), (True, ""))
+        from runner.detection import check_plan_budget
+        self.assertEqual(
+            check_plan_budget(
+                [{"timeout_sec": 1}] * 2,
+                {"max_plan_timeout_sec": 1}),
+            (False, "plan timeout 2s exceeds 1s"))
+
+
+
 if __name__ == "__main__":
     unittest.main()
