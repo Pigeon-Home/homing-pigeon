@@ -20701,6 +20701,510 @@ class TestFalcoFeedPathsAndDecideFifteenShapes(unittest.TestCase):
                     self.assertEqual(run(tunables, tag),
                                      (0, 0, True))
 
+class TestSuricataFeedPathsAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the suricata-feed
+    log_paths tunable and event handling (default
+    ["/var/log/suricata/eve.json"], poll_interval_sec
+    60) varied with the fifteen shapes for the
+    first time (step-8 Target 5 / family (b) --
+    suricata-feed's only earlier classes cover the
+    numeric episode_cooldown_sec; its path list
+    was never varied, the same gap aide-feed,
+    sysmon-feed and falco-feed closed in the ticks
+    before this one).
+
+    (a) Doc claims: the manifest ships both
+        (extensions/suricata-feed/extension.json:
+        "log_paths": ["/var/log/suricata/eve.json"],
+        "poll_interval_sec": 60). The README states
+        Suricata "appends one JSON object per event
+        to `eve.json` -- the `log_paths` tunable,
+        default `/var/log/suricata/eve.json`" (line
+        8), its tunables table gives log_paths
+        ["/var/log/suricata/eve.json"] and
+        poll_interval_sec 60, and it describes the
+        tailing: "The log file is tailed
+        incrementally, not re-read: the state
+        carries reader offsets per path
+        ({"inode", "offset"}), a missing file
+        yields no events and keeps its offset, and
+        an inode change or a file that shrank
+        (rotation, truncation) restarts that file
+        from 0", with the module docstring saying
+        the same of read_new_events(). The README
+        also states this sense files only alert and
+        anomaly events and parses everything else
+        to nothing, and that alert severity follows
+        Suricata's own: 1 is high, 2 is medium, 3
+        is info. log_paths is not a numeric
+        registry row (suricata-feed's only row in
+        tests/defaults_registry.py is
+        episode_cooldown_sec), so Decision 1's
+        default-on-unusable policy for numeric
+        readers does not name a shape rule for it;
+        this class pins the observed readings
+        instead of asserting one.
+
+    (b) How this was probed: on 2026-10-24 the
+        reader (read_new_events(), the function
+        main() hands the log_paths value to after
+        its own fallback) was probed with the
+        table hunt's fifteen shapes
+        (omitted-equivalent empty list, null, empty
+        string, true, false, zero, negative,
+        numeric string, non-numeric string,
+        huge-int (10**400), inf, -inf, NaN, list,
+        dict), plus genuine, mixed, tuple and
+        missing-path lists against a real temp
+        eve.json file, and with reader-state shapes
+        directly. parse_event() was probed with
+        the fifteen shapes, malformed lines, every
+        event_type, and every severity shape.
+        decide() was probed with tunables,
+        readings, event and state shapes. main()
+        was run against temp manifests carrying
+        the log_paths shapes. poll_interval_sec is
+        not read by suricata_feed.py's decide() at
+        all; decide() never consults manifest
+        tunables except episode_cooldown_sec (only
+        manifest["name"] for the sensor name).
+
+    (c) Behavior actually observed: NO divergence
+        recorded. read_new_events() reads every
+        non-list/non-tuple shape and an empty list
+        as no paths, cleans genuine lists
+        element-wise (non-string/empty skipped,
+        missing files yield nothing), accepts
+        tuples, reads a duplicated path twice, and
+        returns events in timestamp order; a saved
+        offset resumes incrementally (an appended
+        line yields only that line), a file that
+        shrank restarts from 0, a missing file
+        keeps a valid saved entry and drops an
+        invalid one, and a non-dict reader state
+        or a non-int inode/offset (bool included)
+        or a negative offset restarts the file
+        from 0. main() substitutes the documented
+        default path for a non-list or empty
+        log_paths (on this box that path is absent,
+        so those shapes file nothing, rc 0), while
+        a genuine or mixed list tails the named
+        file. parse_event() reads non-string input
+        and malformed lines as None, answers None
+        for every event_type other than alert and
+        anomaly (http, tls, dns, flow, fileinfo
+        and stats included), requires an integer
+        signature_id and an integer severity in
+        1..3 for an alert (bool, string and float
+        severities answer None) and a non-empty
+        string anomaly event name, reads an
+        out-of-range or non-integer port as None
+        and non-string signature/category/address/
+        proto fields as "", and parses nanosecond
+        fractions and +0000 offsets. decide()
+        skips a non-list events value and non-dict
+        entries, drops an unknown kind and a
+        non-number ts (string, bool, NaN), drops
+        an alert whose severity is outside 1..3 or
+        whose signature_id is not an integer,
+        maps severity 1/2/3 to high/medium/info,
+        files an anomaly as suricata_anomaly at
+        medium, dedups an episode (signature_id +
+        src + dest for alerts, the event name for
+        anomalies) within the cooldown while
+        updating last_seen and refiles after it,
+        falls back to the sensor name
+        "suricata_feed" for a non-dict manifest or
+        a non-string/empty name, and cleans state
+        by dropping episode entries whose key is
+        not a string or whose filed_at/last_seen
+        are not numbers, while preserving a dict
+        _reader verbatim. Observed on 2026-10-24
+        against current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as the
+        readings above keep holding. If a shape
+        ever stops behaving as described, this
+        test is the failing record of that change.
+    """
+
+    _LINE1 = ('{"timestamp": "2026-10-24T00:00:01Z", '
+              '"event_type": "alert", "src_ip": "1.1.1.1", '
+              '"src_port": 1234, "dest_ip": "2.2.2.2", '
+              '"dest_port": 80, "proto": "TCP", "alert": '
+              '{"signature": "Sig1", "signature_id": 1001, '
+              '"category": "Cat", "severity": 1}}\n')
+    _LINE2 = ('{"timestamp": "2026-10-24T00:00:02Z", '
+              '"event_type": "anomaly", "src_ip": "1.1.1.1", '
+              '"dest_ip": "2.2.2.2", "anomaly": '
+              '{"type": "decode", "event": "ipv4_hlen", '
+              '"layer": "ipv4"}}\n')
+    _EVENT = {"ts": 1000.0, "kind": "alert",
+              "signature": "S", "signature_id": 1001,
+              "category": "C", "alert_severity": 1,
+              "src_ip": "1.1.1.1", "src_port": 1234,
+              "dest_ip": "2.2.2.2", "dest_port": 80,
+              "proto": "TCP"}
+    _ANOM = {"ts": 1000.0, "kind": "anomaly",
+             "anomaly_type": "decode", "event": "ipv4_hlen",
+             "layer": "ipv4", "src_ip": "1.1.1.1",
+             "src_port": None, "dest_ip": "2.2.2.2",
+             "dest_port": None, "proto": ""}
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "suricata-feed",
+            "suricata_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "suricata_feed_paths_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_read_new_events_paths_shapes(self):
+        import os
+        import tempfile
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    mod.read_new_events(value, {}), ([], {}))
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "eve.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._LINE2 + self._LINE1)
+            for value in ([path], (path,)):
+                events, reader = mod.read_new_events(value, {})
+                self.assertEqual(
+                    [e["kind"] for e in events],
+                    ["alert", "anomaly"])
+                self.assertEqual(
+                    reader[path]["offset"],
+                    os.path.getsize(path))
+            events, _ = mod.read_new_events(
+                [path, 123, "", None], {})
+            self.assertEqual(len(events), 2)
+            events, _ = mod.read_new_events([path, path], {})
+            self.assertEqual(len(events), 4)
+            _, reader = mod.read_new_events([path], {})
+            self.assertEqual(
+                mod.read_new_events([path], reader),
+                ([], reader))
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(self._LINE1)
+            events, reader2 = mod.read_new_events([path], reader)
+            self.assertEqual([e["kind"] for e in events], ["alert"])
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._LINE1)
+            events, _ = mod.read_new_events([path], reader2)
+            self.assertEqual([e["kind"] for e in events], ["alert"])
+            missing = os.path.join(d, "nope.json")
+            st = os.stat(path)
+            self.assertEqual(
+                mod.read_new_events(
+                    [missing],
+                    {missing: {"inode": st.st_ino, "offset": 5}}),
+                ([], {missing: {"inode": st.st_ino,
+                                "offset": 5}}))
+            self.assertEqual(
+                mod.read_new_events(
+                    [missing],
+                    {missing: {"inode": "x", "offset": 5}}),
+                ([], {}))
+            self.assertEqual(
+                mod.read_new_events([missing], {}), ([], {}))
+
+    def test_read_new_events_reader_state_shapes(self):
+        import os
+        import tempfile
+        mod = self._module()
+        for bad_state in (None, "bogus", [], 42):
+            with self.subTest(state=repr(bad_state)):
+                self.assertEqual(
+                    mod.read_new_events([], bad_state), ([], {}))
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "eve.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._LINE1)
+            for bad in ({path: {"inode": "bad",
+                                "offset": "bad"}},
+                        {path: {"inode": True, "offset": 0}},
+                        {path: {"inode": 1, "offset": -1}},
+                        {path: "notdict"},
+                        {path: {"inode": 999999, "offset": 0}}):
+                events, _ = mod.read_new_events([path], bad)
+                self.assertEqual(len(events), 1)
+
+    def test_parse_event_shapes(self):
+        import json
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertIsNone(mod.parse_event(value))
+        self.assertIsNone(mod.parse_event(42))
+        self.assertIsNone(mod.parse_event("not json"))
+        self.assertIsNone(mod.parse_event("[1, 2]"))
+        self.assertIsNone(mod.parse_event("42"))
+        for etype in ("http", "tls", "dns", "flow",
+                      "fileinfo", "stats"):
+            with self.subTest(event_type=etype):
+                self.assertIsNone(mod.parse_event(json.dumps(
+                    {"timestamp": "2026-10-24T00:00:01Z",
+                     "event_type": etype,
+                     "alert": {"signature_id": 1,
+                               "severity": 2},
+                     "anomaly": {"event": "x"}})))
+        for severity in (1, 2, 3):
+            with self.subTest(severity=severity):
+                ev = mod.parse_event(json.dumps(
+                    {"timestamp": "2026-10-24T00:00:01Z",
+                     "event_type": "alert",
+                     "alert": {"signature_id": 1,
+                               "severity": severity}}))
+                self.assertIsNotNone(ev)
+                self.assertEqual(ev["alert_severity"], severity)
+        for bad in ({"timestamp": "2026-10-24T00:00:01Z",
+                     "event_type": "alert",
+                     "alert": {"signature_id": 1, "severity": 0}},
+                    {"timestamp": "2026-10-24T00:00:01Z",
+                     "event_type": "alert",
+                     "alert": {"signature_id": 1, "severity": 4}},
+                    {"timestamp": "2026-10-24T00:00:01Z",
+                     "event_type": "alert",
+                     "alert": {"signature_id": 1,
+                               "severity": True}},
+                    {"timestamp": "2026-10-24T00:00:01Z",
+                     "event_type": "alert",
+                     "alert": {"signature_id": 1,
+                               "severity": "1"}},
+                    {"timestamp": "2026-10-24T00:00:01Z",
+                     "event_type": "alert",
+                     "alert": {"signature_id": 1,
+                               "severity": 1.0}},
+                    {"timestamp": "2026-10-24T00:00:01Z",
+                     "event_type": "alert",
+                     "alert": {"signature_id": True,
+                               "severity": 2}},
+                    {"timestamp": "2026-10-24T00:00:01Z",
+                     "event_type": "alert", "alert": "nope"},
+                    {"event_type": "alert",
+                     "alert": {"signature_id": 1, "severity": 2}},
+                    {"timestamp": "bogus",
+                     "event_type": "alert",
+                     "alert": {"signature_id": 1, "severity": 2}},
+                    {"timestamp": "2026-10-24T00:00:01Z",
+                     "event_type": "anomaly",
+                     "anomaly": {"event": ""}},
+                    {"timestamp": "2026-10-24T00:00:01Z",
+                     "event_type": "anomaly",
+                     "anomaly": {"event": 5}},
+                    {"timestamp": "2026-10-24T00:00:01Z",
+                     "event_type": "anomaly", "anomaly": "nope"}):
+            self.assertIsNone(mod.parse_event(json.dumps(bad)))
+        ev = mod.parse_event(json.dumps(
+            {"timestamp": "2026-10-24T00:00:01.123456789+0000",
+             "event_type": "alert", "src_ip": 9,
+             "src_port": 70000, "dest_port": "80", "proto": None,
+             "alert": {"signature": 5, "signature_id": 1,
+                       "category": 7, "severity": 2}}))
+        self.assertAlmostEqual(ev["ts"], 1792800001.123456,
+                               places=5)
+        self.assertEqual(ev["src_ip"], "")
+        self.assertIsNone(ev["src_port"])
+        self.assertIsNone(ev["dest_port"])
+        self.assertEqual(ev["proto"], "")
+        self.assertEqual(ev["signature"], "")
+        self.assertEqual(ev["category"], "")
+
+    def test_decide_ignores_path_and_poll_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                alerts, _ = mod.decide(
+                    {"now": 1000.0,
+                     "events": [dict(self._EVENT)]},
+                    {"name": "suricata_feed",
+                     "tunables": {"log_paths": value,
+                                  "poll_interval_sec": value}},
+                    {})
+                self.assertEqual(len(alerts), 1)
+                self.assertEqual(alerts[0]["signal"],
+                                 "suricata_alert")
+                self.assertEqual(alerts[0]["severity"], "high")
+        for man in (None, "x", [], {},
+                    {"name": 123}, {"name": ""},
+                    {"tunables": "nope"}):
+            alerts, _ = mod.decide(
+                {"now": 1000.0, "events": [dict(self._EVENT)]},
+                man, {})
+            self.assertEqual(len(alerts), 1)
+            self.assertEqual(alerts[0]["sensor"], "suricata_feed")
+
+    def test_decide_event_and_state_cleaning(self):
+        mod = self._module()
+        man = {"name": "suricata_feed"}
+        for readings in (None, "x", [], {}, {"events": None},
+                         {"events": "notalist"},
+                         {"events": {"a": 1}}):
+            self.assertEqual(mod.decide(readings, man, {}),
+                             ([], {"episodes": {}}))
+        self.assertEqual(
+            mod.decide({"events": ["notadict", None, 42]},
+                       man, {})[0], [])
+        for sev, level in ((1, "high"), (2, "medium"),
+                           (3, "info")):
+            alerts, _ = mod.decide(
+                {"events": [dict(self._EVENT,
+                                 alert_severity=sev)]}, man, {})
+            self.assertEqual(
+                [(a["signal"], a["severity"]) for a in alerts],
+                [("suricata_alert", level)])
+        alerts, _ = mod.decide(
+            {"events": [dict(self._ANOM)]}, man, {})
+        self.assertEqual(
+            [(a["signal"], a["severity"]) for a in alerts],
+            [("suricata_anomaly", "medium")])
+        self.assertEqual(
+            mod.decide({"events": [dict(self._EVENT,
+                                        kind="http")]},
+                       man, {})[0], [])
+        for bad_ts in ("1000", True, float("nan")):
+            self.assertEqual(
+                mod.decide({"events": [dict(self._EVENT,
+                                            ts=bad_ts)]},
+                           man, {})[0], [])
+        self.assertEqual(
+            mod.decide({"events": [dict(self._EVENT,
+                                        alert_severity=4)]},
+                       man, {})[0], [])
+        self.assertEqual(
+            mod.decide({"events": [dict(self._EVENT,
+                                        signature_id=True)]},
+                       man, {})[0], [])
+        alerts, _ = mod.decide(
+            {"events": [dict(self._EVENT, signature=5,
+                             category=7, src_ip=9,
+                             proto=None, src_port=70000,
+                             dest_port="80")]}, man, {})
+        self.assertEqual(alerts[0]["detail"]["signature"], "")
+        self.assertEqual(alerts[0]["detail"]["category"], "")
+        self.assertEqual(alerts[0]["detail"]["src_ip"], "")
+        self.assertEqual(alerts[0]["detail"]["proto"], "")
+        self.assertIsNone(alerts[0]["detail"]["src_port"])
+        self.assertIsNone(alerts[0]["detail"]["dest_port"])
+        first, state = mod.decide(
+            {"now": 1000.0, "events": [dict(self._EVENT)]},
+            man, {})
+        self.assertEqual(len(first), 1)
+        again, state = mod.decide(
+            {"now": 1500.0,
+             "events": [dict(self._EVENT, ts=1500.0)]}, man, state)
+        self.assertEqual(again, [])
+        key = "alert|1001|1.1.1.1|2.2.2.2"
+        self.assertEqual(state["episodes"][key]["last_seen"],
+                         1500.0)
+        refired, _ = mod.decide(
+            {"now": 5000.0,
+             "events": [dict(self._EVENT, ts=5000.0)]}, man, state)
+        self.assertEqual(len(refired), 1)
+        alerts, _ = mod.decide(
+            {"now": 1000.0,
+             "events": [dict(self._EVENT),
+                        dict(self._EVENT, signature_id=2002)]},
+            man, {})
+        self.assertEqual(len(alerts), 2)
+        alerts, _ = mod.decide(
+            {"now": 1000.0,
+             "events": [dict(self._EVENT), dict(self._EVENT)]},
+            man, {})
+        self.assertEqual(len(alerts), 1)
+        alerts, new_state = mod.decide(
+            {"now": 1000.0, "events": [dict(self._EVENT)]},
+            man,
+            {"episodes": {123: {"filed_at": 1,
+                                "last_seen": 1},
+                          "k": {"filed_at": "x",
+                                "last_seen": 1},
+                          "ok": {"filed_at": 900.0,
+                                 "last_seen": 900.0}},
+             "_reader": "notdict"})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            new_state["episodes"]["ok"],
+            {"filed_at": 900.0, "last_seen": 900.0})
+        self.assertNotIn("_reader", new_state)
+        _, new_state = mod.decide(
+            {"events": []}, man,
+            {"episodes": {}, "_reader": {"/x": {"inode": 1}}})
+        self.assertEqual(new_state["_reader"],
+                         {"/x": {"inode": 1}})
+
+    def test_main_log_paths_fallback(self):
+        import contextlib
+        import io
+        import json
+        import os
+        import tempfile
+        if os.path.exists("/var/log/suricata/eve.json"):
+            self.skipTest("the documented default path "
+                          "exists on this box")
+        mod = self._module()
+        line = ('{"timestamp": "2026-10-24T00:00:01Z", '
+                '"event_type": "alert", "src_ip": "1.1.1.1", '
+                '"dest_ip": "2.2.2.2", "alert": '
+                '{"signature": "MS", "signature_id": 42, '
+                '"severity": 2}}\n')
+        with tempfile.TemporaryDirectory() as d:
+            logp = os.path.join(d, "eve.json")
+            with open(logp, "w", encoding="utf-8") as fh:
+                fh.write(line)
+
+            def run(tunables, tag):
+                mp = os.path.join(d, "m-" + tag + ".json")
+                sp = os.path.join(d, "s-" + tag + ".json")
+                with open(mp, "w", encoding="utf-8") as fh:
+                    json.dump({"name": "suricata_feed",
+                               "tunables": tunables}, fh)
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    rc = mod.main(["--manifest", mp,
+                                   "--state", sp])
+                return rc, buf.getvalue().count(
+                    "suricata_alert"), os.path.exists(sp)
+
+            self.assertEqual(run({"log_paths": [logp]},
+                                 "genuine"), (0, 1, True))
+            self.assertEqual(
+                run({"log_paths": [logp, 123, ""]}, "mixed"),
+                (0, 1, True))
+            for tag, tunables in (
+                    ("omitted", {}),
+                    ("null", {"log_paths": None}),
+                    ("empty", {"log_paths": []}),
+                    ("string", {"log_paths": "bogus"}),
+                    ("zero", {"log_paths": 0}),
+                    ("junklist", {"log_paths": [123]}),
+                    ("missingpath",
+                     {"log_paths": ["/nonexistent/x.json"]})):
+                with self.subTest(shape=tag):
+                    self.assertEqual(run(tunables, tag),
+                                     (0, 0, True))
+
 if __name__ == "__main__":
 
     unittest.main()
