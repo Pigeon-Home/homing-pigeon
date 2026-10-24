@@ -6,6 +6,6 @@
 # with core.autocrlf (the GitHub Windows runners' default) rewrites
 # line endings and every digest with them. Check these out exactly as
 # committed, on every platform. Patterns here are relative to
-# extensions/, which is why this file lives in it.
+# runner/extensions/, which is why this file lives in it.
 */upstream/** -text
 */provenance/** -text

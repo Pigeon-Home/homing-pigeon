@@ -1952,7 +1952,7 @@ def apply_profile(cfg_path: str, profile: str) -> None:
 #
 # The collectors docs/senses.md names as sense suppliers: the
 # installer can set them up next to the runner, and the matching
-# extensions/<name>-feed producer turns each one's
+# runner/extensions/<name>-feed producer turns each one's
 # output into signed alerts. The measured comparison behind
 # these choices (footprints on a 2 vCPU / 7.7 GB box, next to
 # the local model) is the campaign the senses doc cites; the

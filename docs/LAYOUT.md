@@ -65,7 +65,7 @@
   declared extension source resolved to a commit and hashed,
   shipped in the snapshot as `project/EXTENSION-SOURCES.lock.json`
   (the sources themselves never ship; the boxes fetch them).
-- `extensions/` — the shipped extensions: 28 folders, from the
+- `runner/extensions/` — the shipped extensions: 28 folders, from the
   lab-results sense to the IDS feeds; 25 of them are the pinned
   catalog in `docs/extensions.md`.
 - `docs/hardening/` — opt-in OS hardening: a systemd unit, an

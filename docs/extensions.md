@@ -649,7 +649,7 @@ same with one file.
 Starting from a clone of this repository:
 
 1. Copy the example:
-   `cp -r extensions/lab-results <base_dir>/extensions/my-sense`
+   `cp -r runner/extensions/lab-results <base_dir>/extensions/my-sense`
    (any folder name; the manifest is the identity).
 2. Edit `extension.json`: set `name` to your sensor name, declare
    YOUR signals — names you will actually emit, each with the
@@ -689,7 +689,7 @@ envelope and signal names against a live config.
 
 ## The example: Lab Results
 
-`extensions/lab-results/` is a working sense for
+`runner/extensions/lab-results/` is a working sense for
 people who run experiments. Training and evaluation harnesses
 drop result files; Lab Results turns the folder into signals.
 
@@ -733,7 +733,7 @@ python3 lab_results.py --watch-dir path/to/results
 
 ## The Pi Light example: Pi Health
 
-`extensions/pi-health/` is a working sense for the
+`runner/extensions/pi-health/` is a working sense for the
 health of the machine it runs on, and the Pi Light showcase:
 on a Pi it runs with no local model anywhere in the loop, but
 nothing about it is Pi-only — the same extension runs on a
@@ -781,7 +781,7 @@ severity, title — with no inference involved at any step.
 
 ## The Pi Light example: Airwaves
 
-`extensions/airwaves/` is the Pi's wireless
+`runner/extensions/airwaves/` is the Pi's wireless
 neighborhood watch, and the second Pi Light showcase: a Pi
 sits on a desk with its radio on anyway, so it may as well
 keep the baseline of what the air around it normally looks
@@ -821,7 +821,7 @@ wakes the deterministic Oracle exactly as Pi Health's does.
 
 ## The example: Sky Watcher
 
-`extensions/sky-watcher/` is a working sense for
+`runner/extensions/sky-watcher/` is a working sense for
 people who like looking up. It polls the International Space
 Station's position from the free wheretheiss.at feed (no API
 key) and files the passes over one observer that are worth

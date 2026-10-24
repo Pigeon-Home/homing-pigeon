@@ -1,7 +1,7 @@
 """Osquery Feed: the example sense that tails osquery results.
 
 Pins the Osquery Feed example
-(extensions/osquery-feed/): the manifest through
+(runner/extensions/osquery-feed/): the manifest through
 the real extension loader, the query-name-to-kind mapping
 (the light pack's hp_ names and the bare stock names map;
 unknown query names are parsed and ignored), the pure
@@ -31,7 +31,7 @@ sys.path.insert(0, REPO)
 
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "extensions", "osquery-feed")
+EXAMPLE_DIR = os.path.join(REPO, "runner", "extensions", "osquery-feed")
 FIXTURES = os.path.join(EXAMPLE_DIR, "fixtures")
 
 

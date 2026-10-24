@@ -454,7 +454,7 @@ class ShippedDeclarationsTest(unittest.TestCase):
     NAMED_REFS = {"softflowd": "master"}
 
     def folders(self):
-        return [os.path.join(REPO, "extensions", a)
+        return [os.path.join(REPO, "runner", "extensions", a)
                 for a in self.ADAPTERS] + [
             os.path.join(REPO, "runner", "transport_extensions", t)
             for t in self.TRANSPORTS]
@@ -478,7 +478,7 @@ class ShippedDeclarationsTest(unittest.TestCase):
     def test_adapters_bring_their_upstream_source(self):
         for name in self.ADAPTERS:
             decl, _ = X.load_declaration(
-                os.path.join(REPO, "extensions", name))
+                os.path.join(REPO, "runner", "extensions", name))
             ups = [e for e in decl["sources"] if e["role"] == "upstream"]
             self.assertTrue(ups, name)
             for e in ups:

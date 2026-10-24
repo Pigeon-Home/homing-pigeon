@@ -1,7 +1,7 @@
 """Softflowd Feed: the example sense that collects NetFlow.
 
 Pins the Softflowd Feed example
-(extensions/softflowd-feed/): the manifest through
+(runner/extensions/softflowd-feed/): the manifest through
 the real extension loader, the pure decode_datagram() subset
 -- NetFlow v5 complete, v9 template-driven, IPFIX with its
 enterprise-bit rule -- built byte by byte with struct, the
@@ -33,7 +33,7 @@ sys.path.insert(0, REPO)
 from runner import extensions as E  # noqa: E402
 
 EXAMPLE_DIR = os.path.join(
-    REPO, "extensions", "softflowd-feed")
+    REPO, "runner", "extensions", "softflowd-feed")
 
 
 def _load_example_module():

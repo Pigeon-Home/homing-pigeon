@@ -1,7 +1,7 @@
 """Failed Login Watch: the example sense that tails auth logs.
 
 Pins the Failed Login Watch example
-(extensions/failed-login-watch/): the manifest
+(runner/extensions/failed-login-watch/): the manifest
 through the real extension loader, the pure parse_event() and
 read_new_events() reader plumbing, and the pure decide()
 episode machine -- a burst files once, a success after a
@@ -28,7 +28,7 @@ sys.path.insert(0, REPO)
 from runner import extensions as E  # noqa: E402
 
 EXAMPLE_DIR = os.path.join(
-    REPO, "extensions", "failed-login-watch")
+    REPO, "runner", "extensions", "failed-login-watch")
 
 
 def _load_example_module():

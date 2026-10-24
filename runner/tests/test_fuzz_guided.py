@@ -106,7 +106,7 @@ class _LineTracer:
         # lines once per process, so two campaigns would disagree.
         self.skip_keys = tuple(
             os.path.normcase(root + sub + os.sep).lower()
-            for sub in "tests cloud".split())
+            for sub in "tests cloud tools extensions".split())
         self.hits = set()
         self._rel = {}
 

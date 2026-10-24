@@ -1,6 +1,6 @@
 """Wazuh Feed: the example sense that tails a manager alerts.json.
 
-Pins the Wazuh Feed example (extensions/wazuh-feed/):
+Pins the Wazuh Feed example (runner/extensions/wazuh-feed/):
 the manifest through the real extension loader, the pure
 parse_event() and read_new_events() reader plumbing, and the
 pure decide() episode machine -- level 10+ files high,
@@ -32,7 +32,7 @@ sys.path.insert(0, REPO)
 from runner import extensions as E  # noqa: E402
 
 EXAMPLE_DIR = os.path.join(
-    REPO, "extensions", "wazuh-feed")
+    REPO, "runner", "extensions", "wazuh-feed")
 
 
 def _load_example_module():

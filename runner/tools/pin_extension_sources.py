@@ -3,7 +3,7 @@
 """Pin every declared extension source: the lock a release ships.
 
 For each extension folder with a sources.json -- by default every
-shipped one, extensions/* and runner/transport_extensions/* --
+shipped one, runner/extensions/* and runner/transport_extensions/* --
 resolve each GitHub entry's "latest" to a commit, download every
 declared file and archive, and record the SHA-384 of each in one lock:
 
@@ -43,7 +43,7 @@ sys.path.insert(0, REPO)
 from runner import extensions as E  # noqa: E402
 from runner import extsources as X  # noqa: E402
 
-SHIPPED_PARENTS = ("extensions", "runner/transport_extensions")
+SHIPPED_PARENTS = ("runner/extensions", "runner/transport_extensions")
 
 
 def shipped_dirs(repo=REPO):

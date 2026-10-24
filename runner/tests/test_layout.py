@@ -4,8 +4,8 @@
 folder anywhere in the living tree.
 
 AGENTS.md, "Where things live", is the map. The root keeps the
-manuals, pyproject.toml, and four folders (runner, extensions, docs,
-assets) beside .github/ and .gitignore. The folders and
+manuals, pyproject.toml, and three folders (runner, docs, assets)
+beside .github/ and .gitignore. The folders and
 files below were moved, with no shims, so a new path written
 against the old layout is a bug this file names before a test trips
 over the missing file.
@@ -20,13 +20,14 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(
 
 # Retired root entry -> where it lives now.
 RETIRED = {
-    "examples": "extensions/",
+    "examples": "runner/extensions/",
+    "extensions": "runner/extensions/",
     "cloud": "runner/cloud/",
     "hardening": "docs/hardening/",
     "docker": ".github/docker/",
     "Dockerfile": ".github/docker/Dockerfile",
     ".dockerignore": ".github/docker/Dockerfile.dockerignore",
-    ".gitattributes": "extensions/.gitattributes",
+    ".gitattributes": "runner/extensions/.gitattributes",
     "requirements-ci.txt": ".github/requirements-ci.txt",
     "pyrefly.toml": "[tool.pyrefly] in pyproject.toml",
     "CONTRIBUTING.md": "docs/CONTRIBUTING.md",
@@ -40,9 +41,12 @@ RETIRED = {
 # A path into a retired folder, written the ways the tree writes paths.
 _EDGE = r"(?<![\w./\\-])"
 STALE = [
-    (re.compile(r"examples/extensions"), "extensions/"),
+    (re.compile(r"examples/extensions"), "runner/extensions/"),
     (re.compile(r"[\"']examples[\"'],\s*[\"']extensions[\"']"),
-     '"extensions"'),
+     '"runner", "extensions"'),
+    # the tree's shipped extensions, joined from the repo root
+    (re.compile(r"(?:\b(?:REPO|ROOT|_ROOT|_REPO)\s*,\s*|_root\(\)\s*,\s*)"
+                r"[\"']extensions[\"']"), '"runner", "extensions"'),
     (re.compile(_EDGE + r"cloud/send_"), "runner/cloud/"),
     (re.compile(r"(?<![\w.])cloud\.send_(job|dtls)\b"), "runner.cloud"),
     (re.compile(_EDGE + r"tools/\w+\.(py|sh)\b"), "runner/tools/"),
@@ -91,7 +95,7 @@ def _living_files():
         dirnames[:] = sorted(
             d for d in dirnames
             if d not in _SKIP_DIRS
-            and not (rel_dir.startswith("extensions/")
+            and not (rel_dir.startswith("runner/extensions/")
                      and d in ("upstream", "provenance")))
         if any(rel_dir.startswith(p) for p in _SKIP_PREFIXES):
             continue
@@ -113,11 +117,11 @@ class RootLayoutTest(unittest.TestCase):
                     "(AGENTS.md, 'Where things live')" % (name, now))
 
     def test_the_moved_homes_exist(self):
-        for rel in ("extensions", "runner/cloud/send_job.py",
+        for rel in ("runner/extensions", "runner/cloud/send_job.py",
                     "runner/tools", "docs/hardening",
                     ".github/docker/Dockerfile",
                     ".github/requirements-ci.txt",
-                    "extensions/.gitattributes",
+                    "runner/extensions/.gitattributes",
                     "docs/CONTRIBUTING.md", "docs/CHANGELOG.md",
                     "runner/tests/__init__.py", "runner/tests/airgap"):
             with self.subTest(path=rel):

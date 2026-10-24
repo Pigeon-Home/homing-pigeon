@@ -1,6 +1,6 @@
 """Release Drop: the example sense that files release artifacts.
 
-Pins the Release Drop example (extensions/release-drop/)
+Pins the Release Drop example (runner/extensions/release-drop/)
 the way test_sky_watcher.py pins Sky Watcher: the manifest
 through the real extension loader, the pure decide() state
 machine over fixture readings (arrival attested by its digest,
@@ -28,7 +28,7 @@ sys.path.insert(0, REPO)
 
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "extensions", "release-drop")
+EXAMPLE_DIR = os.path.join(REPO, "runner", "extensions", "release-drop")
 
 T0 = 1_700_000_000.0
 

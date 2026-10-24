@@ -1,6 +1,6 @@
 """Tripwire: the example sense that diffs a hashed tree.
 
-Pins the Tripwire example (extensions/tripwire/)
+Pins the Tripwire example (runner/extensions/tripwire/)
 the way test_sky_watcher.py pins Sky Watcher: the manifest
 through the real extension loader, the pure decide() diff
 against fixture readings (learn pass, appeared / vanished /
@@ -36,7 +36,7 @@ from runner import runner as R  # noqa: E402
 from runner import senses as S  # noqa: E402
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "extensions", "tripwire")
+EXAMPLE_DIR = os.path.join(REPO, "runner", "extensions", "tripwire")
 
 DEFAULT_SECRET = "b109f3bbbc244eb82441917ed06d618b" + "9008dd09b3befd1b078a64781ac2f3e5"
 TRIP_SECRET = "5a2c8e1f4b7d4906a3c5e8f1b2d4a607" + "9c0e2f4a6b8d1c3e5f7a9b0d2e4f6a8c"

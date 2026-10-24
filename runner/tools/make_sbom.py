@@ -68,11 +68,12 @@ def _source_files(root):
     for top in SOURCE_DIRS:
         base = os.path.join(root, top)
         for dirpath, dirnames, filenames in os.walk(base):
-            # The suite and the CI scripts (runner/tests/,
-            # runner/tools/) are not shipped.
+            # The suite, the CI scripts and the example extensions
+            # (runner/tests/, runner/tools/, runner/extensions/) are
+            # not shipped.
             dirnames[:] = [d for d in dirnames if d != "__pycache__"
                            and not (dirpath == base
-                                    and d in "tests tools".split())]
+                                    and d in "tests tools extensions".split())]
             for name in filenames:
                 if name.endswith(".py"):
                     found.append(os.path.join(dirpath, name))

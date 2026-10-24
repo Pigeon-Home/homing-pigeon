@@ -1,7 +1,7 @@
 """Sysmon Feed: the example sense that feeds Sysmon Event ID 1.
 
 Pins the Sysmon Feed example
-(extensions/sysmon-feed/): the manifest through
+(runner/extensions/sysmon-feed/): the manifest through
 the real extension loader, the pure parse_event() over
 BOTH artifact shapes (Sysmon for Linux XML on a syslog
 line, and Windows Sysmon exported as text blocks), the
@@ -32,7 +32,7 @@ sys.path.insert(0, REPO)
 from runner import extensions as E  # noqa: E402
 
 EXAMPLE_DIR = os.path.join(
-    REPO, "extensions", "sysmon-feed")
+    REPO, "runner", "extensions", "sysmon-feed")
 FIXTURES = os.path.join(EXAMPLE_DIR, "fixtures")
 B64 = "QUJD" * 30
 

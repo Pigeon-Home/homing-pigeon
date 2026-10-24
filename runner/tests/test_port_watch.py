@@ -1,6 +1,6 @@
 """Port Watch: the example sense that diffs listening sockets.
 
-Pins the Port Watch example (extensions/port-watch/):
+Pins the Port Watch example (runner/extensions/port-watch/):
 the manifest through the real extension loader, and the pure
 decide() diff -- the first pass learns quietly, a new listener
 files once at the severity its binding earns, high_only
@@ -25,7 +25,7 @@ sys.path.insert(0, REPO)
 
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "extensions", "port-watch")
+EXAMPLE_DIR = os.path.join(REPO, "runner", "extensions", "port-watch")
 
 
 def _load_example_module():

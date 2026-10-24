@@ -6,6 +6,12 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## Unreleased
 
+- **`extensions/` is `runner/extensions/`.** The root holds the manuals,
+  `pyproject.toml`, and three folders (`runner/`, `docs/`, `assets/`)
+  beside `.github/`. Like the suite and the CI scripts it is kept out
+  of the wheel, the image, the SBOM, the pyrefly gate and mutmut. An
+  agent's own `extensions/` folder under its base dir is unchanged.
+
 - **More unusable values read as their documented default.**
   `max_job_age_sec` at mail and local ingest (zero, negative, a boolean
   or a huge integer was used as written), a list or dict

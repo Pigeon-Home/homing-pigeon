@@ -1,6 +1,6 @@
 """AIDE Feed: the example sense that reads AIDE check reports.
 
-Pins the AIDE Feed example (extensions/aide-feed/):
+Pins the AIDE Feed example (runner/extensions/aide-feed/):
 the manifest through the real extension loader, the pure
 parse_report() over the report sections, the batch reader
 read_report_file() -- a report is new exactly when its
@@ -28,7 +28,7 @@ sys.path.insert(0, REPO)
 from runner import extensions as E  # noqa: E402
 
 EXAMPLE_DIR = os.path.join(
-    REPO, "extensions", "aide-feed")
+    REPO, "runner", "extensions", "aide-feed")
 FIXTURES = os.path.join(EXAMPLE_DIR, "fixtures")
 
 

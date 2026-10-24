@@ -79,7 +79,7 @@ Listed in docs/FUTURE.md.
 
 - **NIDS** — Zeek/Suricata as a network-side sense next to the
   host IDS. This ships: the `suricata-feed` and `zeek-feed`
-  adapters in `extensions/` fill the `netmon` sense,
+  adapters in `runner/extensions/` fill the `netmon` sense,
   and the installer installs the collectors.
 - **DNS monitoring** — the exfiltration channel. A per-job
   DNS log correlated by `job_id_hint` is the sharpest

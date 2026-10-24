@@ -57,7 +57,7 @@ traffic. So everything is adjustable from the beginning:
 
 ## Collector support: installing the daemons behind the senses
 
-The adapters above are examples in `extensions/`; the
+The adapters above are examples in `runner/extensions/`; the
 collectors themselves are third-party daemons the installer can
 set up. `install.py --collector NAME` (repeatable) installs one
 where the platform has an official channel, and reports the
@@ -94,7 +94,7 @@ care about them per platform.
 ### `av` — antivirus / anti-malware detections
 
 **Not built — parked.** No `av` collector ships today: there is
-no adapter under `extensions/`, and nothing files the
+no adapter under `runner/extensions/`, and nothing files the
 platform AV's detections as `sensor_alert`s. What ships is the
 posture stat — `av_posture`, in the basic hygiene senses below.
 This section is the design for the detections sense, kept for

@@ -1,7 +1,7 @@
 """Log Sentinel: the example sense that tails sick logs.
 
 Pins the Log Sentinel example
-(extensions/log-sentinel/) the way
+(runner/extensions/log-sentinel/) the way
 test_sky_watcher.py pins Sky Watcher: the manifest through
 the real extension loader, the pure classify()/decide() pair
 against fixture lines (every built-in group at high severity,
@@ -31,7 +31,7 @@ sys.path.insert(0, REPO)
 
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "extensions",
+EXAMPLE_DIR = os.path.join(REPO, "runner", "extensions",
                            "log-sentinel")
 
 

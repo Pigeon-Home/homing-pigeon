@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.join(ROOT, "runner", "tools"))
 from runner import extensions as E  # noqa: E402
 import fetch_upstream as FU  # noqa: E402
 
-EXT = os.path.join(ROOT, "extensions")
+EXT = os.path.join(ROOT, "runner", "extensions")
 FEEDS_WITH_UPSTREAM = (
     "aide-feed", "falco-feed", "osquery-feed", "softflowd-feed",
     "suricata-feed", "sysmon-feed", "wazuh-feed", "zeek-feed",

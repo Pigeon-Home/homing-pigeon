@@ -1,7 +1,7 @@
 """Suricata Feed: the example sense that tails eve.json.
 
 Pins the Suricata Feed example
-(extensions/suricata-feed/): the manifest through
+(runner/extensions/suricata-feed/): the manifest through
 the real extension loader, the pure parse_event() and
 read_new_events() reader plumbing, and the pure decide()
 episode machine -- alert episodes key on signature_id + src
@@ -32,7 +32,7 @@ sys.path.insert(0, REPO)
 
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "extensions", "suricata-feed")
+EXAMPLE_DIR = os.path.join(REPO, "runner", "extensions", "suricata-feed")
 FIXTURE = os.path.join(EXAMPLE_DIR, "fixtures", "suricata-eve.json")
 
 SRC = "192.0.2.10"

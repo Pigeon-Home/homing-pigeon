@@ -468,7 +468,7 @@ class PipelineLiftsTest(unittest.TestCase):
                   encoding="utf-8") as fh:
             config = fh.read()
         self.assertIn("- runner/tests/**", config)
-        self.assertIn("- extensions/**", config)
+        self.assertIn("- runner/extensions/**", config)
         self.assertIn("py/clear-text-logging-sensitive-data", config)
         self.assertIn("py/polynomial-redos", config)
         self.assertIn("py/bind-socket-all-network-interfaces", config)
@@ -573,7 +573,7 @@ class PipelineLiftsTest(unittest.TestCase):
                 # runner/tests/ and runner/tools/ are the suite and the
                 # CI scripts, not shipped modules.
                 if os.path.relpath(dirpath, base).split(os.sep)[0] in (
-                        "tests tools".split()):
+                        "tests tools extensions".split()):
                     continue
                 for name in names:
                     if name.endswith(".py"):

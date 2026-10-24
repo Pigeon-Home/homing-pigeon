@@ -14,7 +14,7 @@ format it is parsing, with its license.
 
 Full upstream source does not fit: Suricata alone is tens of
 megabytes compressed. The budget for everything under
-`extensions/*/upstream/` together is UPSTREAM_BUDGET_BYTES
+`runner/extensions/*/upstream/` together is UPSTREAM_BUDGET_BYTES
 (5 MiB), and `--check` fails when it is spent.
 
 The manifest names what to carry:
@@ -62,7 +62,7 @@ from datetime import datetime, timezone
 # This file lives in runner/tools/: the tree is two levels up.
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
-EXTENSIONS_DIR = os.path.join(ROOT, "extensions")
+EXTENSIONS_DIR = os.path.join(ROOT, "runner", "extensions")
 MANIFEST_FILE = "extension.json"
 UPSTREAM_DIR = "upstream"
 PIN_FILE = "PIN.json"

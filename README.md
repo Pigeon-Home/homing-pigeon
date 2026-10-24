@@ -365,7 +365,7 @@ pinned by default, and a written disclosure rule lets the owner
 
 ## Layout
 
-`PROTOCOL.md` is the wire protocol, `runner/` the code, `extensions/` the shipped extensions, `docs/` the long shelf and `.github/` the CI. The file-by-file map is in [docs/LAYOUT.md](docs/LAYOUT.md).
+`PROTOCOL.md` is the wire protocol, `runner/` the code, `runner/extensions/` the shipped extensions, `docs/` the long shelf and `.github/` the CI. The file-by-file map is in [docs/LAYOUT.md](docs/LAYOUT.md).
 
 ## Setup
 

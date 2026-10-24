@@ -3980,7 +3980,7 @@ class TestNonFinitePiHealthTunableDefaults(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "pi-health", "pi_health.py")
+            "runner", "extensions", "pi-health", "pi_health.py")
         spec = importlib.util.spec_from_file_location(
             "pi_health_divergence", path)
         mod = importlib.util.module_from_spec(spec)
@@ -4092,7 +4092,7 @@ class TestNonFiniteAirwavesGoneAfterScansDefaultsTo3(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "airwaves", "airwaves.py")
+            "runner", "extensions", "airwaves", "airwaves.py")
         spec = importlib.util.spec_from_file_location(
             "airwaves_divergence", path)
         mod = importlib.util.module_from_spec(spec)
@@ -4204,7 +4204,7 @@ class TestNonFiniteSkyWatcherApproachRadiusDefaultsTo5000(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "sky-watcher",
+            "runner", "extensions", "sky-watcher",
             "sky_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "sky_watcher_divergence", path)
@@ -4322,7 +4322,7 @@ class TestNonFiniteSkyWatcherDarkThresholdDefaultsToMinus6(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "sky-watcher",
+            "runner", "extensions", "sky-watcher",
             "sky_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "sky_watcher_dark_divergence", path)
@@ -4390,7 +4390,7 @@ class TestInfiniteCertSentinelDaysDefaults(unittest.TestCase):
     for certificates a year from expiry instead of falling
     back to the documented defaults.
 
-    (a) Doc claim (extensions/cert-sentinel/
+    (a) Doc claim (runner/extensions/cert-sentinel/
         cert_sentinel.py header, lines 13-16, repeated in
         the extension README lines 29-30, its extension.json
         tunables, and the docs/extensions.md table at line
@@ -4444,7 +4444,7 @@ class TestInfiniteCertSentinelDaysDefaults(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "cert-sentinel",
+            "runner", "extensions", "cert-sentinel",
             "cert_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "cert_sentinel_divergence", path)
@@ -4493,7 +4493,7 @@ class TestInfiniteLogSentinelTunablesCrashInsteadOfDefault(unittest.TestCase):
     crashes the pass with OverflowError instead of falling
     back to the documented defaults.
 
-    (a) Doc claim (extensions/log-sentinel/README.md
+    (a) Doc claim (runner/extensions/log-sentinel/README.md
         lines 27-30 and 79, repeated in the extension's
         extension.json tunables): "further matches of the
         same subject inside `cooldown_sec` (default 3600)
@@ -4552,7 +4552,7 @@ class TestInfiniteLogSentinelTunablesCrashInsteadOfDefault(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "log-sentinel",
+            "runner", "extensions", "log-sentinel",
             "log_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "log_sentinel_divergence", path)
@@ -4624,7 +4624,7 @@ class TestInfiniteTripwireTunablesCrashInsteadOfDefault(unittest.TestCase):
     pass with OverflowError instead of falling back to
     the documented defaults.
 
-    (a) Doc claim (extensions/tripwire/README.md
+    (a) Doc claim (runner/extensions/tripwire/README.md
         lines 27 and 32-33, repeated in the extension's
         extension.json tunables): "At most `max_files`
         files (default 10000) are recorded per pass"; "At
@@ -4671,7 +4671,7 @@ class TestInfiniteTripwireTunablesCrashInsteadOfDefault(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "tripwire",
+            "runner", "extensions", "tripwire",
             "tripwire.py")
         spec = importlib.util.spec_from_file_location(
             "tripwire_divergence", path)
@@ -4794,7 +4794,7 @@ class TestNonFiniteSkyWatcherLeadAndBrightDefaults(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "sky-watcher",
+            "runner", "extensions", "sky-watcher",
             "sky_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "sky_watcher_lead_bright_divergence", path)
@@ -4871,7 +4871,7 @@ class TestInfiniteBackupStaleAfterDefaultsTo90000(unittest.TestCase):
     alert instead of falling back to the documented
     90000-second default.
 
-    (a) Doc claim (extensions/backup-freshness/
+    (a) Doc claim (runner/extensions/backup-freshness/
         README.md, lines 12-13): "`stale_after_sec` (how
         old is too old, default 90000 -- just over a
         day)". The manifest ships the same default
@@ -4927,7 +4927,7 @@ class TestInfiniteBackupStaleAfterDefaultsTo90000(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "backup-freshness",
+            "runner", "extensions", "backup-freshness",
             "backup_freshness.py")
         spec = importlib.util.spec_from_file_location(
             "backup_freshness_divergence", path)
@@ -4974,7 +4974,7 @@ class TestInfiniteCrashWatchRepeatWindowDefaultsTo3600(unittest.TestCase):
     inside the window forever instead of falling back
     to the documented 3600-second default.
 
-    (a) Doc claim (extensions/crash-watch/
+    (a) Doc claim (runner/extensions/crash-watch/
         README.md, line 16): "`crash_repeated` | The
         same binary crashes again within
         `repeat_window_sec` (default 3600) -- filed
@@ -5030,7 +5030,7 @@ class TestInfiniteCrashWatchRepeatWindowDefaultsTo3600(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "crash-watch",
+            "runner", "extensions", "crash-watch",
             "crash_watch.py")
         spec = importlib.util.spec_from_file_location(
             "crash_watch_divergence", path)
@@ -5079,7 +5079,7 @@ class TestInfiniteFailedLoginBurstCountDefaultsTo5(unittest.TestCase):
     OverflowError instead of falling back to the
     documented 5-failure default.
 
-    (a) Doc claim (extensions/failed-login-watch/
+    (a) Doc claim (runner/extensions/failed-login-watch/
         README.md, line 37): "`login_failure_burst` |
         One source accumulates at least the
         `burst_count` tunable (default 5) failures
@@ -5132,7 +5132,7 @@ class TestInfiniteFailedLoginBurstCountDefaultsTo5(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "failed-login-watch",
+            "runner", "extensions", "failed-login-watch",
             "failed_login_watch.py")
         spec = importlib.util.spec_from_file_location(
             "failed_login_watch_divergence", path)
@@ -5176,7 +5176,7 @@ class TestFailedLoginWindowSecDefaultsTo600(unittest.TestCase):
     """Second-run hunt coverage: failed-login-watch
     window_sec itself, varied for the first time.
 
-    (a) Doc claim (extensions/failed-login-watch/
+    (a) Doc claim (runner/extensions/failed-login-watch/
         README.md, line 37): "`login_failure_burst` |
         One source accumulates at least the
         `burst_count` tunable (default 5) failures
@@ -5231,7 +5231,7 @@ class TestFailedLoginWindowSecDefaultsTo600(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "failed-login-watch",
+            "runner", "extensions", "failed-login-watch",
             "failed_login_watch.py")
         spec = importlib.util.spec_from_file_location(
             "failed_login_watch_window_hunt", path)
@@ -5294,7 +5294,7 @@ class TestServiceWatchFlapWindowSecDefaultsTo600(unittest.TestCase):
     """Second-run hunt coverage: service-watch
     flap_window_sec itself, varied for the first time.
 
-    (a) Doc claim (extensions/service-watch/
+    (a) Doc claim (runner/extensions/service-watch/
         README.md, line 18): the example configuration
         ships "\"flap_window_sec\": 600,
         \"flap_count\": 4", and line 28 states
@@ -5352,7 +5352,7 @@ class TestServiceWatchFlapWindowSecDefaultsTo600(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "service-watch",
+            "runner", "extensions", "service-watch",
             "service_watch.py")
         spec = importlib.util.spec_from_file_location(
             "service_watch_flap_window_hunt", path)
@@ -5431,7 +5431,7 @@ class TestInfiniteServiceWatchFlapCountDefaultsTo4(unittest.TestCase):
     OverflowError instead of falling back to the
     documented 4-transition default.
 
-    (a) Doc claim (extensions/service-watch/
+    (a) Doc claim (runner/extensions/service-watch/
         README.md, line 18): the example configuration
         ships "\"flap_window_sec\": 600,
         \"flap_count\": 4", and line 28 states
@@ -5487,7 +5487,7 @@ class TestInfiniteServiceWatchFlapCountDefaultsTo4(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "service-watch",
+            "runner", "extensions", "service-watch",
             "service_watch.py")
         spec = importlib.util.spec_from_file_location(
             "service_watch_divergence", path)
@@ -5547,7 +5547,7 @@ class TestJobWatcherFailureWindowSecDefaultsTo86400(unittest.TestCase):
     inside the window and job_failing_repeatedly
     never files.
 
-    (a) Doc claim (extensions/job-watcher/
+    (a) Doc claim (runner/extensions/job-watcher/
         README.md, line 18): "`job_failing_repeatedly`
         | The same job -- same `kind` and script --
         failed at least `repeat_failures` times
@@ -5623,7 +5623,7 @@ class TestJobWatcherFailureWindowSecDefaultsTo86400(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "job-watcher",
+            "runner", "extensions", "job-watcher",
             "job_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "job_watcher_failure_window_hunt", path)
@@ -5690,7 +5690,7 @@ class TestInfiniteJobWatcherRepeatFailuresDefaultsTo3(unittest.TestCase):
     decide() instead of falling back to the
     documented 3-failure default.
 
-    (a) Doc claim (extensions/job-watcher/
+    (a) Doc claim (runner/extensions/job-watcher/
         README.md, line 18): "`job_failing_repeatedly`
         | The same job -- same `kind` and script --
         failed at least `repeat_failures` times
@@ -5750,7 +5750,7 @@ class TestInfiniteJobWatcherRepeatFailuresDefaultsTo3(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "job-watcher",
+            "runner", "extensions", "job-watcher",
             "job_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "job_watcher_divergence", path)
@@ -5810,7 +5810,7 @@ class TestNonFiniteResourceSentinelSampleCountsCrashInsteadOfDefault(unittest.Te
     crashes decide() instead of falling back to the
     documented defaults (4 and 240).
 
-    (a) Doc claim (extensions/resource-sentinel/
+    (a) Doc claim (runner/extensions/resource-sentinel/
         README.md, line 66): "`max_samples` (default 240)
         bounds how many samples the rolling window keeps,
         and is raised to the window's minimum if set
@@ -5875,7 +5875,7 @@ class TestNonFiniteResourceSentinelSampleCountsCrashInsteadOfDefault(unittest.Te
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "resource-sentinel",
+            "runner", "extensions", "resource-sentinel",
             "resource_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "resource_sentinel_divergence", path)
@@ -5954,7 +5954,7 @@ class TestNonFiniteLabResultsTunablesDefaultInsteadOfCrashOrSilence(unittest.Tes
     instead of falling back to the documented
     defaults (3 and 0.25).
 
-    (a) Doc claim (extensions/lab-results/
+    (a) Doc claim (runner/extensions/lab-results/
         README.md, line 37): "`anomaly_min_history`
         (default 3) is how many earlier finished runs
         the folder needs before `result_anomaly` is
@@ -6037,7 +6037,7 @@ class TestNonFiniteLabResultsTunablesDefaultInsteadOfCrashOrSilence(unittest.Tes
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "lab-results",
+            "runner", "extensions", "lab-results",
             "lab_results.py")
         spec = importlib.util.spec_from_file_location(
             "lab_results_divergence", path)
@@ -6107,7 +6107,7 @@ class TestNonFiniteLatencyPostTunablesDefaultInsteadOfSilence(unittest.TestCase)
     documented floor instead of falling back to the
     documented defaults (spike_ms 250, spike_factor 3).
 
-    (a) Doc claim (extensions/latency-post/
+    (a) Doc claim (runner/extensions/latency-post/
         README.md, line 30): "`latency_spike` | A
         probe's latency rises above both the
         `spike_ms` tunable (default 250) and
@@ -6181,7 +6181,7 @@ class TestNonFiniteLatencyPostTunablesDefaultInsteadOfSilence(unittest.TestCase)
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "latency-post",
+            "runner", "extensions", "latency-post",
             "latency_post.py")
         spec = importlib.util.spec_from_file_location(
             "latency_post_divergence", path)
@@ -6265,7 +6265,7 @@ class TestNonFiniteTrainingWatchTunablesDefaultInsteadOfSilenceOrCrash(unittest.
     95, loss_points 5, loss_history 200,
     crash_window_lines 100, max_checkpoints 200).
 
-    (a) Doc claim (extensions/training-watch/
+    (a) Doc claim (runner/extensions/training-watch/
         README.md, lines 21-22): "`gpu_overheating` |
         GPU temperature reaches `gpu_temp_high_c`
         (default 85)" and "`gpu_memory_pressure` |
@@ -6346,7 +6346,7 @@ class TestNonFiniteTrainingWatchTunablesDefaultInsteadOfSilenceOrCrash(unittest.
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "training-watch",
+            "runner", "extensions", "training-watch",
             "training_watch.py")
         spec = importlib.util.spec_from_file_location(
             "training_watch_divergence", path)
@@ -6437,7 +6437,7 @@ class TestInfiniteReleaseDropMaxHashDefaultsTo512(unittest.TestCase):
     crashes read_live() with OverflowError instead of
     falling back to the documented default of 512.
 
-    (a) Doc claim (extensions/release-drop/
+    (a) Doc claim (runner/extensions/release-drop/
         README.md, line 21): "A file larger than
         `max_hash_mb` (default 512) is skipped entirely
         for the pass". The module docstring states the
@@ -6495,7 +6495,7 @@ class TestInfiniteReleaseDropMaxHashDefaultsTo512(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "release-drop",
+            "runner", "extensions", "release-drop",
             "release_drop.py")
         spec = importlib.util.spec_from_file_location(
             "release_drop_divergence", path)
@@ -6566,7 +6566,7 @@ class TestNonFiniteZeekFeedTunablesDefaultInsteadOfCrashOrBoundlessWindow(unitte
     trailing window boundless instead of falling
     back to the documented defaults.
 
-    (a) Doc claim (extensions/zeek-feed/
+    (a) Doc claim (runner/extensions/zeek-feed/
         README.md, Tunables table lines 46-50):
         window_sec default 600 ("The trailing window
         first sightings accumulate in"),
@@ -6626,7 +6626,7 @@ class TestNonFiniteZeekFeedTunablesDefaultInsteadOfCrashOrBoundlessWindow(unitte
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "zeek-feed",
+            "runner", "extensions", "zeek-feed",
             "zeek_feed.py")
         spec = importlib.util.spec_from_file_location(
             "zeek_feed_divergence", path)
@@ -6732,7 +6732,7 @@ class TestInfiniteFalcoCooldownDefaultsTo3600(unittest.TestCase):
     forever instead of falling back to the documented
     3600-second default.
 
-    (a) Doc claim (extensions/falco-feed/
+    (a) Doc claim (runner/extensions/falco-feed/
         README.md, tunable table, line 73):
         "episode_cooldown_sec | 3600 | An episode refiles
         after this long, and clears after this long
@@ -6780,7 +6780,7 @@ class TestInfiniteFalcoCooldownDefaultsTo3600(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "falco-feed",
+            "runner", "extensions", "falco-feed",
             "falco_feed.py")
         spec = importlib.util.spec_from_file_location(
             "falco_feed_divergence", path)
@@ -6833,7 +6833,7 @@ class TestInfiniteSuricataCooldownDefaultsTo3600(unittest.TestCase):
     forever instead of falling back to the documented
     3600-second default.
 
-    (a) Doc claim (extensions/suricata-feed/
+    (a) Doc claim (runner/extensions/suricata-feed/
         README.md, tunable table, line 68):
         "episode_cooldown_sec | 3600 | An episode refiles
         after this long, and clears after this long
@@ -6883,7 +6883,7 @@ class TestInfiniteSuricataCooldownDefaultsTo3600(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "suricata-feed",
+            "runner", "extensions", "suricata-feed",
             "suricata_feed.py")
         spec = importlib.util.spec_from_file_location(
             "suricata_feed_divergence", path)
@@ -6934,7 +6934,7 @@ class TestInfiniteWazuhQuietDefaultsTo3600(unittest.TestCase):
     forever instead of falling back to the documented
     3600-second default.
 
-    (a) Doc claim (extensions/wazuh-feed/
+    (a) Doc claim (runner/extensions/wazuh-feed/
         README.md, tunable table, line 69):
         "episode_quiet_sec | 3600 | How long a (rule,
         agent) pair must stay quiet before its next
@@ -6984,7 +6984,7 @@ class TestInfiniteWazuhQuietDefaultsTo3600(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "wazuh-feed",
+            "runner", "extensions", "wazuh-feed",
             "wazuh_feed.py")
         spec = importlib.util.spec_from_file_location(
             "wazuh_feed_divergence", path)
@@ -7034,7 +7034,7 @@ class TestInfiniteOsqueryFiledCapCrashesInsteadOfDefault(unittest.TestCase):
     (+inf) crashes decide() with OverflowError instead
     of falling back to the documented 10000 default.
 
-    (a) Doc claim (extensions/osquery-feed/
+    (a) Doc claim (runner/extensions/osquery-feed/
         README.md, tunable table, line 46):
         "filed_cap | 10000 | Bound on remembered filed
         episodes; the oldest entries are evicted first";
@@ -7078,7 +7078,7 @@ class TestInfiniteOsqueryFiledCapCrashesInsteadOfDefault(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "osquery-feed",
+            "runner", "extensions", "osquery-feed",
             "osquery_feed.py")
         spec = importlib.util.spec_from_file_location(
             "osquery_feed_divergence", path)
@@ -7136,7 +7136,7 @@ class TestNonFiniteSoftflowdTunablesDefaultInsteadOfCrashOrSilence(unittest.Test
     flow_long_lived instead of falling back to the
     documented defaults.
 
-    (a) Doc claim (extensions/softflowd-feed/
+    (a) Doc claim (runner/extensions/softflowd-feed/
         README.md, Tunables table): "high_volume_bytes |
         50000000", "long_lived_sec | 3600",
         "max_known_peers | 1024", "max_filed_flows |
@@ -7182,7 +7182,7 @@ class TestNonFiniteSoftflowdTunablesDefaultInsteadOfCrashOrSilence(unittest.Test
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "softflowd-feed",
+            "runner", "extensions", "softflowd-feed",
             "softflowd_feed.py")
         spec = importlib.util.spec_from_file_location(
             "softflowd_feed_divergence", path)
@@ -7248,7 +7248,7 @@ class TestHugeIntJobFuzzFloatTunablesCrashInsteadOfDefault(unittest.TestCase):
     = 10**400) crashes decide() with OverflowError instead
     of falling back to the documented defaults.
 
-    (a) Doc claim (extensions/job-fuzz/README.md,
+    (a) Doc claim (runner/extensions/job-fuzz/README.md,
         line 61): the corpus is bounded by age with
         "`corpus_max_age_days` (default 30)"; and (line 113):
         "`filed_cooldown_sec` (default 604800, a week) is
@@ -7303,7 +7303,7 @@ class TestHugeIntJobFuzzFloatTunablesCrashInsteadOfDefault(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "job-fuzz",
+            "runner", "extensions", "job-fuzz",
             "job_fuzz.py")
         spec = importlib.util.spec_from_file_location(
             "job_fuzz_divergence", path)
@@ -7359,7 +7359,7 @@ class TestHugeIntLatencyPostTunablesCrashInsteadOfDefault(unittest.TestCase):
     crashes decide() with OverflowError instead of
     falling back to the documented defaults.
 
-    (a) Doc claim (extensions/latency-post/
+    (a) Doc claim (runner/extensions/latency-post/
         README.md, line 30): "`latency_spike` | A
         probe's latency rises above both the
         `spike_ms` tunable (default 250) and
@@ -7419,7 +7419,7 @@ class TestHugeIntLatencyPostTunablesCrashInsteadOfDefault(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "latency-post",
+            "runner", "extensions", "latency-post",
             "latency_post.py")
         spec = importlib.util.spec_from_file_location(
             "latency_post_huge_divergence", path)
@@ -8360,7 +8360,7 @@ class TestResourceSentinelMinSamplesDefaultsTo4(unittest.TestCase):
         runner/tests/defaults_registry.py. The statements are
         the manifest, which ships the same value
         (extension.json: "min_samples": 4), the README
-        contract (extensions/resource-sentinel/
+        contract (runner/extensions/resource-sentinel/
         README.md, lines 29-31: a signal needs at least
         `min_samples` samples spanning `min_span_sec`
         inside `window_sec` before it can fire at all),
@@ -8447,7 +8447,7 @@ class TestResourceSentinelMinSamplesDefaultsTo4(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "resource-sentinel",
+            "runner", "extensions", "resource-sentinel",
             "resource_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "resource_sentinel_min_samples_hunt", path)
@@ -8640,7 +8640,7 @@ class TestLabResultsAnomalyBandDefaultsTo025(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "lab-results",
+            "runner", "extensions", "lab-results",
             "lab_results.py")
         spec = importlib.util.spec_from_file_location(
             "lab_results_anomaly_band_hunt", path)
@@ -10268,7 +10268,7 @@ class TestCertSentinelTunableDaysFifteenShapes(unittest.TestCase):
     extension-tunable table probe) -- the fifteen
     shapes at reader level for both day rows.
 
-    (a) Doc claims (extensions/cert-sentinel/README.md
+    (a) Doc claims (runner/extensions/cert-sentinel/README.md
         lines 29-30, repeated in the extension header
         lines 13-16 and its extension.json tunables):
         "cert_expiring -- a certificate's remaining
@@ -10289,7 +10289,7 @@ class TestCertSentinelTunableDaysFifteenShapes(unittest.TestCase):
         local helper families, one adapter per
         family. This tick took the _tunable_days
         family (cert-sentinel is its only user) and
-        probed extensions/cert-sentinel/
+        probed runner/extensions/cert-sentinel/
         cert_sentinel.py:_tunable_days directly with
         the fifteen shapes from the table hunt --
         omitted, null, empty string, true, false,
@@ -10342,7 +10342,7 @@ class TestCertSentinelTunableDaysFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "cert-sentinel",
+            "runner", "extensions", "cert-sentinel",
             "cert_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "cert_sentinel_shapes", path)
@@ -10426,7 +10426,7 @@ class TestPiHealthTunableFifteenShapes(unittest.TestCase):
     extension-tunable table probe) -- the fifteen
     shapes at reader level for all three rows.
 
-    (a) Doc claims (extensions/pi-health/README.md
+    (a) Doc claims (runner/extensions/pi-health/README.md
         lines 22-25, repeated in the extension header
         lines 22-31 and its extension.json tunables):
         "board_overheating -- CPU/SoC temperature
@@ -10448,7 +10448,7 @@ class TestPiHealthTunableFifteenShapes(unittest.TestCase):
         reader-level table probe; their readers are
         local helper families, one adapter per
         family. This tick took the pi-health _tunable
-        family and probed extensions/pi-health/
+        family and probed runner/extensions/pi-health/
         pi_health.py:_tunable directly with the
         fifteen shapes from the table hunt --
         omitted, null, empty string, true, false,
@@ -10503,7 +10503,7 @@ class TestPiHealthTunableFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "pi-health",
+            "runner", "extensions", "pi-health",
             "pi_health.py")
         spec = importlib.util.spec_from_file_location(
             "pi_health_shapes", path)
@@ -10610,7 +10610,7 @@ class TestSkyWatcherTunableFifteenShapes(unittest.TestCase):
     extension-tunable table probe) -- the fifteen
     shapes at reader level for all five rows.
 
-    (a) Doc claims (extensions/sky-watcher/README.md
+    (a) Doc claims (runner/extensions/sky-watcher/README.md
         lines 23-25 and 58, repeated in its
         extension.json tunables): "The station enters
         the approach corridor (`approach_radius_km`,
@@ -10638,7 +10638,7 @@ class TestSkyWatcherTunableFifteenShapes(unittest.TestCase):
         reader-level table probe; their readers are
         local helper families, one adapter per
         family. This tick took the sky-watcher
-        _tunable family and probed extensions/
+        _tunable family and probed runner/extensions/
         sky-watcher/sky_watcher.py:_tunable directly
         with the fifteen shapes from the table hunt
         -- omitted, null, empty string, true, false,
@@ -10696,7 +10696,7 @@ class TestSkyWatcherTunableFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "sky-watcher",
+            "runner", "extensions", "sky-watcher",
             "sky_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "sky_watcher_shapes", path)
@@ -10810,7 +10810,7 @@ class TestAirwavesGoneAfterScansFifteenShapes(unittest.TestCase):
     shapes at reader level for the family's one
     registry row.
 
-    (a) Doc claims (extensions/airwaves/README.md
+    (a) Doc claims (runner/extensions/airwaves/README.md
         line 17 and docs/extensions.md, airwaves
         table): "`access_point_gone` | A known AP
         stays absent for `gone_after_scans`
@@ -10825,7 +10825,7 @@ class TestAirwavesGoneAfterScansFifteenShapes(unittest.TestCase):
         reader-level table probe; their readers are
         local helper families, one adapter per
         family. This tick took the airwaves family
-        and probed extensions/airwaves/airwaves.py
+        and probed runner/extensions/airwaves/airwaves.py
         :_gone_after_scans directly with the fifteen
         shapes from the table hunt -- omitted, null,
         empty string, true, false, zero, negative,
@@ -10879,7 +10879,7 @@ class TestAirwavesGoneAfterScansFifteenShapes(unittest.TestCase):
         import os
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-            "extensions", "airwaves", "airwaves.py")
+            "runner", "extensions", "airwaves", "airwaves.py")
         spec = importlib.util.spec_from_file_location(
             "airwaves_fifteen_shapes", path)
         mod = importlib.util.module_from_spec(spec)
@@ -10968,7 +10968,7 @@ class TestLogSentinelIntTunableFifteenShapes(unittest.TestCase):
     shapes at reader level for the family's three
     registry rows.
 
-    (a) Doc claims (extensions/log-sentinel/README.md
+    (a) Doc claims (runner/extensions/log-sentinel/README.md
         lines 27-30 and 79, repeated in extension.json):
         "further matches of the same subject inside
         `cooldown_sec` (default 3600) are suppressed";
@@ -10988,7 +10988,7 @@ class TestLogSentinelIntTunableFifteenShapes(unittest.TestCase):
         local helper families, one adapter per
         family. This tick took the log-sentinel
         _int_tunable family and probed
-        extensions/log-sentinel/log_sentinel.py
+        runner/extensions/log-sentinel/log_sentinel.py
         :_int_tunable directly, using each row's own
         call-site default and minimum (cooldown_sec
         3600 minimum 0, max_alerts_per_pass 10
@@ -11042,7 +11042,7 @@ class TestLogSentinelIntTunableFifteenShapes(unittest.TestCase):
         import os
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-            "extensions", "log-sentinel", "log_sentinel.py")
+            "runner", "extensions", "log-sentinel", "log_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "log_sentinel_fifteen_shapes", path)
         mod = importlib.util.module_from_spec(spec)
@@ -11155,7 +11155,7 @@ class TestTripwireIntTunableFifteenShapes(unittest.TestCase):
     shapes at reader level for the family's two
     registry rows.
 
-    (a) Doc claims (extensions/tripwire/README.md
+    (a) Doc claims (runner/extensions/tripwire/README.md
         lines 27-28 and 32-33, repeated in
         extension.json): "At most `max_files` files
         (default 10000) are recorded per pass"; "At
@@ -11174,7 +11174,7 @@ class TestTripwireIntTunableFifteenShapes(unittest.TestCase):
         local helper families, one adapter per
         family. This tick took the tripwire
         _int_tunable family and probed
-        extensions/tripwire/tripwire.py
+        runner/extensions/tripwire/tripwire.py
         :_int_tunable directly, using each row's own
         call-site default and minimum (both rows
         minimum 0), with the fifteen shapes from
@@ -11227,7 +11227,7 @@ class TestTripwireIntTunableFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "tripwire", "tripwire.py")
+            "runner", "extensions", "tripwire", "tripwire.py")
         spec = importlib.util.spec_from_file_location(
             "tripwire_fifteen_shapes", path)
         mod = importlib.util.module_from_spec(spec)
@@ -11325,7 +11325,7 @@ class TestBackupFreshnessStaleAfterSecFifteenShapes(unittest.TestCase):
     shapes at decide() level for the family's one
     registry row.
 
-    (a) Doc claim (extensions/backup-freshness/README.md:
+    (a) Doc claim (runner/extensions/backup-freshness/README.md:
         "stale_after_sec (how old is too old, default
         90000 -- just over a day)"; backup_stale fires
         when the newest backup's age passes
@@ -11341,7 +11341,7 @@ class TestBackupFreshnessStaleAfterSecFifteenShapes(unittest.TestCase):
         reader-level table probe; their readers are
         local helper families. This tick took the
         backup-freshness family, whose reader is
-        inline in extensions/backup-freshness/
+        inline in runner/extensions/backup-freshness/
         backup_freshness.py:decide (float(value) if
         _is_number(value) and value > 0 else 90000.0),
         and probed it through decide() itself with
@@ -11389,7 +11389,7 @@ class TestBackupFreshnessStaleAfterSecFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "backup-freshness",
+            "runner", "extensions", "backup-freshness",
             "backup_freshness.py")
         spec = importlib.util.spec_from_file_location(
             "backup_freshness_fifteen_shapes", path)
@@ -11458,7 +11458,7 @@ class TestCrashWatchRepeatWindowSecFifteenShapes(unittest.TestCase):
     shapes at decide() level for the family's one
     registry row.
 
-    (a) Doc claim (extensions/crash-watch/README.md:16:
+    (a) Doc claim (runner/extensions/crash-watch/README.md:16:
         "crash_repeated | The same binary crashes again
         within `repeat_window_sec` (default 3600) --
         filed instead of `crash_dumped`, with the count
@@ -11476,7 +11476,7 @@ class TestCrashWatchRepeatWindowSecFifteenShapes(unittest.TestCase):
         reader-level table probe; their readers are
         local helper families. This tick took the
         crash-watch family, whose reader is inline in
-        extensions/crash-watch/crash_watch.py:decide
+        runner/extensions/crash-watch/crash_watch.py:decide
         (float(value) if _is_number(value) and
         value > 0 else 3600.0), and probed it through
         decide() itself with the fifteen shapes from
@@ -11524,7 +11524,7 @@ class TestCrashWatchRepeatWindowSecFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "crash-watch",
+            "runner", "extensions", "crash-watch",
             "crash_watch.py")
         spec = importlib.util.spec_from_file_location(
             "crash_watch_fifteen_shapes", path)
@@ -11602,7 +11602,7 @@ class TestFailedLoginWatchWindowSecFifteenShapes(unittest.TestCase):
     window_sec had never itself been varied) -- the
     fifteen shapes at decide() level.
 
-    (a) Doc claim (extensions/failed-login-watch/
+    (a) Doc claim (runner/extensions/failed-login-watch/
         README.md, signal table: "login_failure_burst |
         One source accumulates at least the
         `burst_count` tunable (default 5) failures
@@ -11617,7 +11617,7 @@ class TestFailedLoginWatchWindowSecFifteenShapes(unittest.TestCase):
         lists window_sec (failed-login-watch) among
         the rows whose named class varies a sibling
         key, not this one. This tick took that row:
-        its reader is inline in extensions/
+        its reader is inline in runner/extensions/
         failed-login-watch/failed_login_watch.py:
         decide (window if _is_number(window) and
         window > 0 else 600, floated), and probed it
@@ -11662,7 +11662,7 @@ class TestFailedLoginWatchWindowSecFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "failed-login-watch",
+            "runner", "extensions", "failed-login-watch",
             "failed_login_watch.py")
         spec = importlib.util.spec_from_file_location(
             "failed_login_watch_fifteen_shapes", path)
@@ -11723,7 +11723,7 @@ class TestLatencyPostTunablesFifteenShapes(unittest.TestCase):
     rows' named classes covered only the non-finite
     shapes and the huge-int shape).
 
-    (a) Doc claim (extensions/latency-post/README.md,
+    (a) Doc claim (runner/extensions/latency-post/README.md,
         line 30): "latency_spike | A probe's latency
         rises above both the `spike_ms` tunable
         (default 250) and `spike_factor` (default 3)
@@ -11743,7 +11743,7 @@ class TestLatencyPostTunablesFifteenShapes(unittest.TestCase):
         single block of new coverage available (51
         rows x the fifteen shapes). This tick took
         the latency-post family: its readers are
-        inline in extensions/latency-post/
+        inline in runner/extensions/latency-post/
         latency_post.py decide() (float(value) if
         _is_number(value) else 250.0 / 3.0), and
         probed them through decide() itself with the
@@ -11817,7 +11817,7 @@ class TestLatencyPostTunablesFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "latency-post",
+            "runner", "extensions", "latency-post",
             "latency_post.py")
         spec = importlib.util.spec_from_file_location(
             "latency_post_fifteen_shapes", path)
@@ -11961,7 +11961,7 @@ class TestResourceSentinelThresholdTunablesFifteenShapes(unittest.TestCase):
     shapes at reader level for its five threshold
     rows, plus decide()-level spot checks.
 
-    (a) Doc claims (extensions/resource-sentinel/
+    (a) Doc claims (runner/extensions/resource-sentinel/
         README.md signal table, repeated in the
         extension header and extension.json tunables):
         cpu_saturation_sustained fires at or over the
@@ -11984,7 +11984,7 @@ class TestResourceSentinelThresholdTunablesFifteenShapes(unittest.TestCase):
         the sample-count keys (min_samples /
         max_samples) for non-finite shapes. This tick
         took the resource-sentinel _tunable family
-        and probed extensions/resource-sentinel/
+        and probed runner/extensions/resource-sentinel/
         resource_sentinel.py:_tunable directly with
         the fifteen shapes from the table hunt --
         omitted, null, empty string, true, false,
@@ -12041,7 +12041,7 @@ class TestResourceSentinelThresholdTunablesFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "resource-sentinel",
+            "runner", "extensions", "resource-sentinel",
             "resource_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "resource_sentinel_shapes", path)
@@ -12151,7 +12151,7 @@ class TestServiceWatchFlapWindowSecFifteenShapes(unittest.TestCase):
     varies the sibling flap_count only, so this row
     is probed here through its effective window).
 
-    (a) Doc claim (extensions/service-watch/README.md,
+    (a) Doc claim (runner/extensions/service-watch/README.md,
         line 18): the example configuration ships
         "\"flap_window_sec\": 600, \"flap_count\": 4",
         and the signal table states service_flapping
@@ -12168,7 +12168,7 @@ class TestServiceWatchFlapWindowSecFifteenShapes(unittest.TestCase):
         lists flap_window_sec (service-watch) among
         the rows whose named class varies a sibling
         key, not this one. This tick took that row:
-        its reader is inline in extensions/
+        its reader is inline in runner/extensions/
         service-watch/service_watch.py:decide
         (float(value) if _is_number(value) and
         value > 0 else 600.0), and probed it through
@@ -12216,7 +12216,7 @@ class TestServiceWatchFlapWindowSecFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "service-watch",
+            "runner", "extensions", "service-watch",
             "service_watch.py")
         spec = importlib.util.spec_from_file_location(
             "service_watch_flap_fifteen_shapes", path)
@@ -12288,7 +12288,7 @@ class TestTrainingWatchTunablesFifteenShapes(unittest.TestCase):
     extension-tunable table probe) -- the fifteen
     shapes at reader level for all six registry rows.
 
-    (a) Doc claims (extensions/training-watch/
+    (a) Doc claims (runner/extensions/training-watch/
         README.md): "GPU temperature reaches
         `gpu_temp_high_c` (default 85)" (line 21);
         "GPU memory reaches `gpu_mem_high_pct` of
@@ -12312,7 +12312,7 @@ class TestTrainingWatchTunablesFifteenShapes(unittest.TestCase):
         local helper families, one adapter per
         family. This tick took the training-watch
         _tunable family and probed
-        extensions/training-watch/
+        runner/extensions/training-watch/
         training_watch.py:_tunable directly with
         the fifteen shapes from the table hunt --
         omitted, null, empty string, true, false,
@@ -12376,7 +12376,7 @@ class TestTrainingWatchTunablesFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "training-watch",
+            "runner", "extensions", "training-watch",
             "training_watch.py")
         spec = importlib.util.spec_from_file_location(
             "training_watch_shapes", path)
@@ -12486,7 +12486,7 @@ class TestResourceSentinelSampleCountTunablesFifteenShapes(unittest.TestCase):
     checks of the int() conversion and the two floors
     decide() applies after the reader.
 
-    (a) Doc claims (extensions/resource-sentinel/
+    (a) Doc claims (runner/extensions/resource-sentinel/
         README.md lines 29-31): a signal needs at least
         `min_samples` samples spanning `min_span_sec`
         inside `window_sec` before it can fire at all;
@@ -12563,7 +12563,7 @@ class TestResourceSentinelSampleCountTunablesFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "resource-sentinel",
+            "runner", "extensions", "resource-sentinel",
             "resource_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "resource_sentinel_count_shapes", path)
@@ -12699,7 +12699,7 @@ class TestLabResultsAnomalyMinHistoryFifteenShapes(unittest.TestCase):
     shapes through its actual reader for the first
     time (step-8 Target 5, extension-tunable table).
 
-    (a) Doc claim (extensions/lab-results/README.md,
+    (a) Doc claim (runner/extensions/lab-results/README.md,
         line 37): "`anomaly_min_history` (default 3)
         is how many earlier finished runs the folder
         needs before `result_anomaly` is judged at
@@ -12778,7 +12778,7 @@ class TestLabResultsAnomalyMinHistoryFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "lab-results",
+            "runner", "extensions", "lab-results",
             "lab_results.py")
         spec = importlib.util.spec_from_file_location(
             "lab_results_min_history_hunt", path)
@@ -12868,7 +12868,7 @@ class TestJobWatcherFailureWindowSecFifteenShapes(unittest.TestCase):
     this row is probed here through its effective
     window).
 
-    (a) Doc claim (extensions/job-watcher/README.md,
+    (a) Doc claim (runner/extensions/job-watcher/README.md,
         line 18): job_failing_repeatedly files when
         the same job failed at least repeat_failures
         times (default 3) inside failure_window_sec
@@ -12887,7 +12887,7 @@ class TestJobWatcherFailureWindowSecFifteenShapes(unittest.TestCase):
         among the rows whose named class varies a
         sibling key, not this one. This tick took
         that row: its reader is
-        extensions/job-watcher/job_watcher.py
+        runner/extensions/job-watcher/job_watcher.py
         decide() (_tunable(tunables,
         "failure_window_sec", 86400.0), with a
         value <= 0 reset to 86400.0), and probed it
@@ -12944,7 +12944,7 @@ class TestJobWatcherFailureWindowSecFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "job-watcher",
+            "runner", "extensions", "job-watcher",
             "job_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "job_watcher_window_fifteen_shapes", path)
@@ -13018,7 +13018,7 @@ class TestFalcoFeedCooldownFifteenShapes(unittest.TestCase):
     only the +inf shape, plus omitted / explicit /
     NaN controls).
 
-    (a) Doc claim (extensions/falco-feed/README.md,
+    (a) Doc claim (runner/extensions/falco-feed/README.md,
         tunable table, line 73): "episode_cooldown_sec
         | 3600 | An episode refiles after this long,
         and clears after this long quiet"; the same
@@ -13036,7 +13036,7 @@ class TestFalcoFeedCooldownFifteenShapes(unittest.TestCase):
         51 extension tunables as covered only for the
         shapes their named classes exercised. This
         tick took the falco-feed row: its reader is
-        extensions/falco-feed/falco_feed.py decide()
+        runner/extensions/falco-feed/falco_feed.py decide()
         (cooldown = float(cooldown) if
         _is_number(cooldown) and cooldown > 0 else
         3600.0, where _is_number accepts only genuine
@@ -13093,7 +13093,7 @@ class TestFalcoFeedCooldownFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "falco-feed",
+            "runner", "extensions", "falco-feed",
             "falco_feed.py")
         spec = importlib.util.spec_from_file_location(
             "falco_feed_cooldown_fifteen_shapes", path)
@@ -13174,7 +13174,7 @@ class TestSuricataFeedCooldownFifteenShapes(unittest.TestCase):
     only the +inf shape, plus omitted / explicit /
     NaN controls).
 
-    (a) Doc claim (extensions/suricata-feed/README.md,
+    (a) Doc claim (runner/extensions/suricata-feed/README.md,
         tunable table, line 68): "episode_cooldown_sec
         | 3600 | An episode refiles after this long,
         and clears after this long quiet; also the
@@ -13194,7 +13194,7 @@ class TestSuricataFeedCooldownFifteenShapes(unittest.TestCase):
         shapes their named classes exercised. This
         tick took the suricata-feed row (the sibling
         of last tick's falco-feed row): its reader is
-        extensions/suricata-feed/suricata_feed.py
+        runner/extensions/suricata-feed/suricata_feed.py
         decide() (cooldown = float(cooldown) if
         _is_number(cooldown) and cooldown > 0 else
         3600.0, where _is_number accepts only genuine
@@ -13251,7 +13251,7 @@ class TestSuricataFeedCooldownFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "suricata-feed",
+            "runner", "extensions", "suricata-feed",
             "suricata_feed.py")
         spec = importlib.util.spec_from_file_location(
             "suricata_feed_cooldown_fifteen_shapes", path)
@@ -13334,7 +13334,7 @@ class TestWazuhFeedQuietFifteenShapes(unittest.TestCase):
     only the +inf shape, plus omitted / explicit /
     NaN controls).
 
-    (a) Doc claim (extensions/wazuh-feed/README.md,
+    (a) Doc claim (runner/extensions/wazuh-feed/README.md,
         tunable table, line 69): "episode_quiet_sec
         | 3600 | How long a (rule, agent) pair must
         stay quiet before its next alert files as a
@@ -13355,7 +13355,7 @@ class TestWazuhFeedQuietFifteenShapes(unittest.TestCase):
         tick took the wazuh-feed row (the sibling of
         the falco-feed and suricata-feed rows hunted
         in the preceding ticks): its reader is
-        extensions/wazuh-feed/wazuh_feed.py decide()
+        runner/extensions/wazuh-feed/wazuh_feed.py decide()
         (quiet_sec = float(quiet) if _is_number(quiet)
         and quiet > 0 else 3600.0, where _is_number
         accepts only genuine finite numbers, never a
@@ -13412,7 +13412,7 @@ class TestWazuhFeedQuietFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "wazuh-feed",
+            "runner", "extensions", "wazuh-feed",
             "wazuh_feed.py")
         spec = importlib.util.spec_from_file_location(
             "wazuh_feed_quiet_fifteen_shapes", path)
@@ -13493,7 +13493,7 @@ class TestOsqueryFeedFiledCapFifteenShapes(unittest.TestCase):
     covered only the +inf shape, plus omitted /
     explicit / NaN / -inf controls).
 
-    (a) Doc claim (extensions/osquery-feed/README.md,
+    (a) Doc claim (runner/extensions/osquery-feed/README.md,
         tunable table, line 46): "filed_cap | 10000 |
         Bound on remembered filed episodes; the
         oldest entries are evicted first"; the same
@@ -13511,7 +13511,7 @@ class TestOsqueryFeedFiledCapFifteenShapes(unittest.TestCase):
         row after the falco-feed, suricata-feed and
         wazuh-feed rows hunted in the preceding
         ticks): its reader is
-        extensions/osquery-feed/osquery_feed.py
+        runner/extensions/osquery-feed/osquery_feed.py
         decide() (cap = int(cap) if _is_number(cap)
         and cap >= 1 else 10000, where _is_number
         accepts only genuine finite numbers, never a
@@ -13565,7 +13565,7 @@ class TestOsqueryFeedFiledCapFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "osquery-feed",
+            "runner", "extensions", "osquery-feed",
             "osquery_feed.py")
         spec = importlib.util.spec_from_file_location(
             "osquery_feed_filed_cap_fifteen_shapes", path)
@@ -13631,7 +13631,7 @@ class TestSoftflowdFeedTunablesFifteenShapes(unittest.TestCase):
     covered only the non-finite shapes, plus omitted /
     explicit / NaN controls).
 
-    (a) Doc claim (extensions/softflowd-feed/README.md,
+    (a) Doc claim (runner/extensions/softflowd-feed/README.md,
         tunable table): "high_volume_bytes | 50000000"
         (line 57), "long_lived_sec | 3600" (line 58),
         "max_known_peers | 1024" (line 60),
@@ -13653,7 +13653,7 @@ class TestSoftflowdFeedTunablesFifteenShapes(unittest.TestCase):
         feed rows after the falco-feed, suricata-feed,
         wazuh-feed and osquery-feed rows hunted in the
         preceding ticks): their reader is
-        extensions/softflowd-feed/softflowd_feed.py
+        runner/extensions/softflowd-feed/softflowd_feed.py
         decide() (high_volume = int(v) if
         _is_number(v) and v > 0 else 50000000;
         long_lived = float(v) if _is_number(v) and
@@ -13723,7 +13723,7 @@ class TestSoftflowdFeedTunablesFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "softflowd-feed",
+            "runner", "extensions", "softflowd-feed",
             "softflowd_feed.py")
         spec = importlib.util.spec_from_file_location(
             "softflowd_feed_tunables_fifteen_shapes", path)
@@ -13883,7 +13883,7 @@ class TestZeekFeedTunablesFifteenShapes(unittest.TestCase):
     covered only the non-finite shapes, plus omitted /
     explicit / NaN controls).
 
-    (a) Doc claim (extensions/zeek-feed/README.md,
+    (a) Doc claim (runner/extensions/zeek-feed/README.md,
         Tunables table): "window_sec | 600" (line 46),
         "new_peer_threshold | 10" (line 47),
         "query_length_threshold | 50" (line 48),
@@ -13905,7 +13905,7 @@ class TestZeekFeedTunablesFifteenShapes(unittest.TestCase):
         tick took the zeek-feed rows (the next feed
         rows after the softflowd-feed rows hunted in
         the preceding tick): their reader is
-        extensions/zeek-feed/zeek_feed.py decide()
+        runner/extensions/zeek-feed/zeek_feed.py decide()
         (threshold = int(v) if _is_number(v) and
         v >= 1 else 10; window_out = v if
         _is_number(v) and v > 0 else 600, read as
@@ -13989,7 +13989,7 @@ class TestZeekFeedTunablesFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "zeek-feed",
+            "runner", "extensions", "zeek-feed",
             "zeek_feed.py")
         spec = importlib.util.spec_from_file_location(
             "zeek_feed_tunables_fifteen_shapes", path)
@@ -14224,7 +14224,7 @@ class TestReleaseDropMaxHashMbFifteenShapes(unittest.TestCase):
     negative / -inf / NaN controls at the helper
     level).
 
-    (a) Doc claim (extensions/release-drop/
+    (a) Doc claim (runner/extensions/release-drop/
         README.md, line 21): "A file larger than
         `max_hash_mb` (default 512) is skipped
         entirely for the pass". The module docstring
@@ -14246,7 +14246,7 @@ class TestReleaseDropMaxHashMbFifteenShapes(unittest.TestCase):
         exercised. This tick took the release-drop
         row (one of the rows listed as remaining
         after the preceding tick): its reader is
-        extensions/release-drop/release_drop.py
+        runner/extensions/release-drop/release_drop.py
         _max_hash_bytes() (mb if _is_number(mb) and
         mb > 0, read through int(mb * 1024 * 1024),
         else 512 * 1024 * 1024, where _is_number
@@ -14306,7 +14306,7 @@ class TestReleaseDropMaxHashMbFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "release-drop",
+            "runner", "extensions", "release-drop",
             "release_drop.py")
         spec = importlib.util.spec_from_file_location(
             "release_drop_fifteen_shapes", path)
@@ -14416,7 +14416,7 @@ class TestZeroNegativeJobFuzzTunablesReadLiterallyInsteadOfDefault(unittest.Test
     corpus age bound is silently disabled and an
     already-filed finding refiles immediately.
 
-    (a) Doc claim (extensions/job-fuzz/README.md,
+    (a) Doc claim (runner/extensions/job-fuzz/README.md,
         line 61): "Corpus bounds are both
         operator-tunable: `corpus_max_jobs`
         (default 200) and `corpus_max_age_days`
@@ -14517,7 +14517,7 @@ class TestZeroNegativeJobFuzzTunablesReadLiterallyInsteadOfDefault(unittest.Test
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "job-fuzz",
+            "runner", "extensions", "job-fuzz",
             "job_fuzz.py")
         spec = importlib.util.spec_from_file_location(
             "job_fuzz_zero_negative_hunt", path)
@@ -15539,7 +15539,7 @@ class TestFailedLoginWatchBurstCountFifteenShapes(unittest.TestCase):
     CountDefaultsTo5, exercised only the non-finite
     family plus genuine controls).
 
-    (a) Doc claim (extensions/failed-login-watch/
+    (a) Doc claim (runner/extensions/failed-login-watch/
         README.md, line 37): "One source accumulates
         at least the `burst_count` tunable (default 5)
         failures inside the trailing `window_sec`
@@ -15551,7 +15551,7 @@ class TestFailedLoginWatchBurstCountFifteenShapes(unittest.TestCase):
         reads as its documented default.
 
     (b) How it was hunted: the reader is inline in
-        extensions/failed-login-watch/
+        runner/extensions/failed-login-watch/
         failed_login_watch.py decide():
         burst_count = int(burst_count) if
         _is_number(burst_count) and burst_count >= 1
@@ -15612,7 +15612,7 @@ class TestFailedLoginWatchBurstCountFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "failed-login-watch",
+            "runner", "extensions", "failed-login-watch",
             "failed_login_watch.py")
         spec = importlib.util.spec_from_file_location(
             "failed_login_watch_burst_fifteen_shapes", path)
@@ -16262,7 +16262,7 @@ class TestServiceWatchFlapCountFifteenShapes(unittest.TestCase):
     tunable table; the sibling of the Target 2
     flap_window_sec hunt).
 
-    (a) Doc claim (extensions/service-watch/README.md,
+    (a) Doc claim (runner/extensions/service-watch/README.md,
         line 18): the example configuration ships
         "\"flap_window_sec\": 600, \"flap_count\": 4",
         and the signal table states service_flapping
@@ -16282,7 +16282,7 @@ class TestServiceWatchFlapCountFifteenShapes(unittest.TestCase):
         second run's Target 2 hunt varied the sibling
         flap_window_sec only, so this key's full shape
         table had never been walked. This tick took
-        that row: its reader is inline in extensions/
+        that row: its reader is inline in runner/extensions/
         service-watch/service_watch.py:decide
         (int(value) if _is_number(value) and
         value >= 1 else 4), and probed it through
@@ -16332,7 +16332,7 @@ class TestServiceWatchFlapCountFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "service-watch",
+            "runner", "extensions", "service-watch",
             "service_watch.py")
         spec = importlib.util.spec_from_file_location(
             "service_watch_flap_count_fifteen_shapes", path)
@@ -17033,7 +17033,7 @@ class TestMaxJobAgeSecLiteralAtLocalIngestInsteadOfDefault(
         repo = os.path.dirname(os.path.dirname(
             os.path.dirname(os.path.abspath(__file__))))
         shutil.copytree(
-            os.path.join(repo, "extensions", "lab-results"),
+            os.path.join(repo, "runner", "extensions", "lab-results"),
             os.path.join(ext_root, "lab-results"))
         cfg = {
             "shared_secret": self._DEF_SECRET,
@@ -18387,7 +18387,7 @@ class TestZeroNegativeJobWatcherRepeatFailuresClampToOneInsteadOfDefault(unittes
     so job_failing_repeatedly files on the FIRST
     failure of a job.
 
-    (a) Doc claim (extensions/job-watcher/README.md,
+    (a) Doc claim (runner/extensions/job-watcher/README.md,
         line 18): "`job_failing_repeatedly` | The
         same job -- same `kind` and script -- failed
         at least `repeat_failures` times (default 3)
@@ -18473,7 +18473,7 @@ class TestZeroNegativeJobWatcherRepeatFailuresClampToOneInsteadOfDefault(unittes
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "job-watcher",
+            "runner", "extensions", "job-watcher",
             "job_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "job_watcher_repeat_fifteen_shapes", path)
@@ -18554,7 +18554,7 @@ class TestZeroNegativeJobWatcherClusterTunablesReadLiterallyInsteadOfDefault(uni
     never files at all (cluster_window_sec 0, -5,
     or 0.5, a window that holds no failure).
 
-    (a) Doc claim (extensions/job-watcher/README.md,
+    (a) Doc claim (runner/extensions/job-watcher/README.md,
         line 21): "`failure_cluster` | At least
         `cluster_min_jobs` distinct jobs (default 3)
         failed inside `cluster_window_sec` (default
@@ -18645,7 +18645,7 @@ class TestZeroNegativeJobWatcherClusterTunablesReadLiterallyInsteadOfDefault(uni
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "job-watcher",
+            "runner", "extensions", "job-watcher",
             "job_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "job_watcher_cluster_fifteen_shapes", path)
@@ -18771,7 +18771,7 @@ class TestZeroNegativeJobWatcherFlakyAndDurationTunablesReadLiterallyInsteadOfDe
     (duration_z 0, -5, or 0.5 used literally as the
     z threshold).
 
-    (a) Doc claims (extensions/job-watcher/README.md):
+    (a) Doc claims (runner/extensions/job-watcher/README.md):
         line 19: "`job_flaky` | The job's last
         `flaky_runs` runs (default 6) alternate
         success/failure at least
@@ -18890,7 +18890,7 @@ class TestZeroNegativeJobWatcherFlakyAndDurationTunablesReadLiterallyInsteadOfDe
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "job-watcher",
+            "runner", "extensions", "job-watcher",
             "job_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "job_watcher_flaky_duration_fifteen_shapes", path)
@@ -19073,7 +19073,7 @@ class TestJobWatcherHistoryAndPassCapsFifteenShapes(unittest.TestCase):
     unusable shape as their documented defaults.
 
     (a) Doc claims: the manifest ships both
-        (extensions/job-watcher/extension.json:
+        (runner/extensions/job-watcher/extension.json:
         "max_history_runs": 60,
         "max_records_per_pass": 500). The README's
         Light mode section names both as the bounds
@@ -19135,7 +19135,7 @@ class TestJobWatcherHistoryAndPassCapsFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "job-watcher",
+            "runner", "extensions", "job-watcher",
             "job_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "job_watcher_caps_fifteen_shapes", path)
@@ -19240,11 +19240,11 @@ class TestPortWatchBooleanTunablesFifteenShapes(unittest.TestCase):
     default false) under the fifteen shapes.
 
     (a) Doc claims: the manifest ships both
-        (extensions/port-watch/extension.json:
+        (runner/extensions/port-watch/extension.json:
         "learn_first_pass": true, "high_only": false).
         The README states the first pass learns quietly
         "with the `learn_first_pass` tunable on, the
-        default" (extensions/port-watch/README.md
+        default" (runner/extensions/port-watch/README.md
         lines 5-7), and that a new listener is absorbed
         "even when the `high_only` tunable suppressed
         its medium alert" (lines 30-32). The module
@@ -19303,7 +19303,7 @@ class TestPortWatchBooleanTunablesFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "port-watch", "port_watch.py")
+            "runner", "extensions", "port-watch", "port_watch.py")
         spec = importlib.util.spec_from_file_location(
             "port_watch_boolean_fifteen_shapes", path)
         mod = importlib.util.module_from_spec(spec)
@@ -19389,7 +19389,7 @@ class TestUsbArrivalsLearnAndKindsFifteenShapes(unittest.TestCase):
     shapes.
 
     (a) Doc claims: the manifest ships both
-        (extensions/usb-arrivals/extension.json:
+        (runner/extensions/usb-arrivals/extension.json:
         "learn_first_pass": true, "kinds":
         ["usb", "serial"], "poll_interval_sec": 300).
         The README states "`learn_first_pass`
@@ -19398,7 +19398,7 @@ class TestUsbArrivalsLearnAndKindsFifteenShapes(unittest.TestCase):
         baseline without filing; set it false to
         file every present device as an arrival on
         the first pass"
-        (extensions/usb-arrivals/README.md line 72),
+        (runner/extensions/usb-arrivals/README.md line 72),
         and "`kinds`: `["usb", "serial"]` by
         default; `["usb"]` in Light mode" (lines
         82-84). Neither key is a numeric registry
@@ -19467,7 +19467,7 @@ class TestUsbArrivalsLearnAndKindsFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "usb-arrivals", "usb_arrivals.py")
+            "runner", "extensions", "usb-arrivals", "usb_arrivals.py")
         spec = importlib.util.spec_from_file_location(
             "usb_arrivals_fifteen_shapes", path)
         mod = importlib.util.module_from_spec(spec)
@@ -19578,13 +19578,13 @@ class TestWireArrivalsLearnAndIfacesFifteenShapes(unittest.TestCase):
     shapes.
 
     (a) Doc claims: the manifest ships both
-        (extensions/wire-arrivals/extension.json:
+        (runner/extensions/wire-arrivals/extension.json:
         "learn_first_pass": true, "ifaces": [],
         "poll_interval_sec": 120). The README states
         "With the `learn_first_pass` tunable on (the
         default), the very first pass is a baseline:
         the whole table is absorbed and nothing
-        files" (extensions/wire-arrivals/README.md
+        files" (runner/extensions/wire-arrivals/README.md
         lines 27-30), and "`ifaces`: name just the
         one LAN interface that matters (for example
         `["eth0"]`) instead of watching every
@@ -19651,7 +19651,7 @@ class TestWireArrivalsLearnAndIfacesFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "wire-arrivals", "wire_arrivals.py")
+            "runner", "extensions", "wire-arrivals", "wire_arrivals.py")
         spec = importlib.util.spec_from_file_location(
             "wire_arrivals_fifteen_shapes", path)
         mod = importlib.util.module_from_spec(spec)
@@ -19766,7 +19766,7 @@ class TestAideFeedPathsAndReportFifteenShapes(unittest.TestCase):
     default 3600) under the fifteen shapes.
 
     (a) Doc claims: the manifest ships both
-        (extensions/aide-feed/extension.json:
+        (runner/extensions/aide-feed/extension.json:
         "report_paths": ["/var/log/aide/aide.log"],
         "poll_interval_sec": 3600). The README states
         "The producer polls the `report_paths`
@@ -19779,7 +19779,7 @@ class TestAideFeedPathsAndReportFifteenShapes(unittest.TestCase):
         fingerprint is the first gate, and the
         fingerprint decide() records in its state is
         the second. A report with zero differences
-        files nothing" (extensions/aide-feed/README.md),
+        files nothing" (runner/extensions/aide-feed/README.md),
         with the tunables table giving report_paths
         ["/var/log/aide/aide.log"] and
         poll_interval_sec 3600. Neither key is a
@@ -19859,7 +19859,7 @@ class TestAideFeedPathsAndReportFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "aide-feed", "aide_feed.py")
+            "runner", "extensions", "aide-feed", "aide_feed.py")
         spec = importlib.util.spec_from_file_location(
             "aide_feed_fifteen_shapes", path)
         mod = importlib.util.module_from_spec(spec)
@@ -20012,7 +20012,7 @@ class TestSysmonFeedPathsAndDecideFifteenShapes(unittest.TestCase):
     shapes.
 
     (a) Doc claims: the manifest ships both
-        (extensions/sysmon-feed/extension.json:
+        (runner/extensions/sysmon-feed/extension.json:
         "log_paths": ["/var/log/syslog",
         "/var/log/messages"],
         "poll_interval_sec": 60). The README states
@@ -20026,7 +20026,7 @@ class TestSysmonFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         `(signal, image, parent_image, rule-matched
         detail)` -- the image for the temp rule, the
         command line for the encoded rule -- and an
-        episode files once" (extensions/sysmon-feed/
+        episode files once" (runner/extensions/sysmon-feed/
         README.md), with the tunables table giving
         log_paths ["/var/log/syslog",
         "/var/log/messages"] and poll_interval_sec
@@ -20130,7 +20130,7 @@ class TestSysmonFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "sysmon-feed", "sysmon_feed.py")
+            "runner", "extensions", "sysmon-feed", "sysmon_feed.py")
         spec = importlib.util.spec_from_file_location(
             "sysmon_feed_fifteen_shapes", path)
         mod = importlib.util.module_from_spec(spec)
@@ -20284,7 +20284,7 @@ class TestFalcoFeedPathsAndDecideFifteenShapes(unittest.TestCase):
     one).
 
     (a) Doc claims: the manifest ships both
-        (extensions/falco-feed/extension.json:
+        (runner/extensions/falco-feed/extension.json:
         "log_paths": ["/var/log/falco/falco.json"],
         "poll_interval_sec": 60). The README states
         "point Falco's `file_output` at the
@@ -20421,7 +20421,7 @@ class TestFalcoFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "falco-feed",
+            "runner", "extensions", "falco-feed",
             "falco_feed.py")
         spec = importlib.util.spec_from_file_location(
             "falco_feed_paths_fifteen_shapes", path)
@@ -20717,7 +20717,7 @@ class TestSuricataFeedPathsAndDecideFifteenShapes(unittest.TestCase):
     before this one).
 
     (a) Doc claims: the manifest ships both
-        (extensions/suricata-feed/extension.json:
+        (runner/extensions/suricata-feed/extension.json:
         "log_paths": ["/var/log/suricata/eve.json"],
         "poll_interval_sec": 60). The README states
         Suricata "appends one JSON object per event
@@ -20871,7 +20871,7 @@ class TestSuricataFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "suricata-feed",
+            "runner", "extensions", "suricata-feed",
             "suricata_feed.py")
         spec = importlib.util.spec_from_file_location(
             "suricata_feed_paths_fifteen_shapes", path)
@@ -21221,7 +21221,7 @@ class TestWazuhFeedPathsAndDecideFifteenShapes(unittest.TestCase):
     closed in the ticks before this one).
 
     (a) Doc claims: the manifest ships both
-        (extensions/wazuh-feed/extension.json:
+        (runner/extensions/wazuh-feed/extension.json:
         "log_paths":
         ["/var/ossec/logs/alerts/alerts.json"],
         "poll_interval_sec": 60). The README states
@@ -21380,7 +21380,7 @@ class TestWazuhFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "wazuh-feed", "wazuh_feed.py")
+            "runner", "extensions", "wazuh-feed", "wazuh_feed.py")
         spec = importlib.util.spec_from_file_location(
             "wazuh_feed_paths_fifteen_shapes", path)
         mod = importlib.util.module_from_spec(spec)
@@ -21794,7 +21794,7 @@ class TestOsqueryFeedPathsAndDecideFifteenShapes(unittest.TestCase):
     one).
 
     (a) Doc claims: the manifest ships both
-        (extensions/osquery-feed/extension.json:
+        (runner/extensions/osquery-feed/extension.json:
         "log_paths":
         ["/var/log/osquery/osqueryd.results.log"],
         "poll_interval_sec": 60). The README states
@@ -21989,7 +21989,7 @@ class TestOsqueryFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "osquery-feed", "osquery_feed.py")
+            "runner", "extensions", "osquery-feed", "osquery_feed.py")
         spec = importlib.util.spec_from_file_location(
             "osquery_feed_paths_fifteen_shapes", path)
         mod = importlib.util.module_from_spec(spec)
@@ -22377,7 +22377,7 @@ class TestZeekFeedPathsAndDecideFifteenShapes(unittest.TestCase):
     closed in the ticks before this one).
 
     (a) Doc claims: the manifest ships both
-        (extensions/zeek-feed/extension.json:
+        (runner/extensions/zeek-feed/extension.json:
         "log_paths":
         ["/opt/zeek/logs/current/conn.log",
         "/opt/zeek/logs/current/dns.log"],
@@ -22618,7 +22618,7 @@ class TestZeekFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "zeek-feed", "zeek_feed.py")
+            "runner", "extensions", "zeek-feed", "zeek_feed.py")
         spec = importlib.util.spec_from_file_location(
             "zeek_feed_paths_fifteen_shapes", path)
         mod = importlib.util.module_from_spec(spec)
@@ -22772,7 +22772,7 @@ class TestZeekFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         fixtures = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "zeek-feed", "fixtures")
+            "runner", "extensions", "zeek-feed", "fixtures")
         conn = os.path.join(fixtures, "conn.log")
         events, reader = mod.read_new_events([conn], {})
         self.assertEqual(
@@ -23393,7 +23393,7 @@ class TestSoftflowdFeedDecodeAndDecideFifteenShapes(unittest.TestCase):
     ticks before this one).
 
     (a) Doc claims: the manifest ships the
-        tunables above (extensions/softflowd-feed/
+        tunables above (runner/extensions/softflowd-feed/
         extension.json). The README's tunables
         table gives the same listen_addr /
         collect_window_sec / max_datagrams /
@@ -23603,7 +23603,7 @@ class TestSoftflowdFeedDecodeAndDecideFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "softflowd-feed",
+            "runner", "extensions", "softflowd-feed",
             "softflowd_feed.py")
         spec = importlib.util.spec_from_file_location(
             "softflowd_feed_decode_decide_fifteen_shapes", path)
@@ -24028,7 +24028,7 @@ class TestSoftflowdFeedDecodeAndDecideFifteenShapes(unittest.TestCase):
         script = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "softflowd-feed", "softflowd_feed.py")
+            "runner", "extensions", "softflowd-feed", "softflowd_feed.py")
         manifest = {"name": "softflowd_feed",
                     "tunables": {"high_volume_bytes": 50000000,
                                  "long_lived_sec": 3600}}
@@ -24094,7 +24094,7 @@ class TestBackupFreshnessPathsAndDecideFifteenShapes(unittest.TestCase):
     (a) Doc claims: the manifest ships the
         tunables above plus poll_interval_sec 3600
         and stale_after_sec 90000
-        (extensions/backup-freshness/extension.json).
+        (runner/extensions/backup-freshness/extension.json).
         The README states watch_dir is "the
         directory backups land in, default
         ./backups", glob is "which files count,
@@ -24219,7 +24219,7 @@ class TestBackupFreshnessPathsAndDecideFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "backup-freshness",
+            "runner", "extensions", "backup-freshness",
             "backup_freshness.py")
         spec = importlib.util.spec_from_file_location(
             "backup_freshness_paths_decide", path)
@@ -24561,7 +24561,7 @@ class TestCertSentinelSourcesAndDecideFifteenShapes(unittest.TestCase):
     (a) Doc claims: the manifest ships cert_files
         [] and tls_targets [] plus warn_days 30,
         critical_days 7 and poll_interval_sec
-        86400 (extensions/cert-sentinel/
+        86400 (runner/extensions/cert-sentinel/
         extension.json). The module header states
         the sources are "all optional and
         capability-based -- a source that cannot
@@ -24706,7 +24706,7 @@ class TestCertSentinelSourcesAndDecideFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "cert-sentinel",
+            "runner", "extensions", "cert-sentinel",
             "cert_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "cert_sentinel_paths_decide", path)
@@ -25059,7 +25059,7 @@ class TestNonFiniteTlsTargetPortCrashesInsteadOfNoRecord(unittest.TestCase):
     with OverflowError instead of yielding no record
     for that source.
 
-    (a) Doc claims (extensions/cert-sentinel/
+    (a) Doc claims (runner/extensions/cert-sentinel/
         cert_sentinel.py module header): the sources
         are "all optional and capability-based -- a
         source that cannot be read yields no record,
@@ -25114,7 +25114,7 @@ class TestNonFiniteTlsTargetPortCrashesInsteadOfNoRecord(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "cert-sentinel",
+            "runner", "extensions", "cert-sentinel",
             "cert_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "cert_sentinel_tls_port_divergence", path)
@@ -25174,7 +25174,7 @@ class TestCrashWatchDirsAndDecideFifteenShapes(unittest.TestCase):
         max_files_per_pass 1000,
         poll_interval_sec 60 and
         repeat_window_sec 3600
-        (extensions/crash-watch/extension.json).
+        (runner/extensions/crash-watch/extension.json).
         The README states a pass scans at most
         max_files_per_pass files (default 1000),
         files beyond the cap are counted, not
@@ -25338,7 +25338,7 @@ class TestCrashWatchDirsAndDecideFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "crash-watch",
+            "runner", "extensions", "crash-watch",
             "crash_watch.py")
         spec = importlib.util.spec_from_file_location(
             "crash_watch_paths_decide", path)
@@ -25725,7 +25725,7 @@ class TestFailedLoginWatchPathsAndDecideFifteenShapes(unittest.TestCase):
         ["/var/log/auth.log", "/var/log/secure"],
         burst_count 5, window_sec 600 and
         poll_interval_sec 60
-        (extensions/failed-login-watch/extension.json).
+        (runner/extensions/failed-login-watch/extension.json).
         The README states the files are tailed
         incrementally, not re-read: the state
         carries reader offsets per path
@@ -25946,7 +25946,7 @@ class TestFailedLoginWatchPathsAndDecideFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "failed-login-watch",
+            "runner", "extensions", "failed-login-watch",
             "failed_login_watch.py")
         spec = importlib.util.spec_from_file_location(
             "failed_login_watch_paths_decide", path)
@@ -26633,7 +26633,7 @@ class TestLogSentinelPathsAndDecideFifteenShapes(unittest.TestCase):
     plumbing were never varied).
 
     (a) Doc claims: the manifest ships
-        (extensions/log-sentinel/extension.json)
+        (runner/extensions/log-sentinel/extension.json)
         "log_paths": ["/var/log/kern.log",
         "/var/log/syslog"], "groups": ["oom",
         "panic", "fs", "segfault", "bug"],
@@ -26785,7 +26785,7 @@ class TestLogSentinelPathsAndDecideFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "log-sentinel", "log_sentinel.py")
+            "runner", "extensions", "log-sentinel", "log_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "log_sentinel_paths_fifteen_shapes", path)
         mod = importlib.util.module_from_spec(spec)
@@ -27407,7 +27407,7 @@ class TestPortWatchListenersAndDecideFifteenShapes(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))),
-            "extensions", "port-watch", "port_watch.py")
+            "runner", "extensions", "port-watch", "port_watch.py")
         spec = importlib.util.spec_from_file_location(
             "port_watch_listeners_fifteen_shapes", path)
         mod = importlib.util.module_from_spec(spec)

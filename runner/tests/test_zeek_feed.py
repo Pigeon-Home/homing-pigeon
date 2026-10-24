@@ -1,6 +1,6 @@
 """Zeek Feed: the example sense that tails Zeek logs.
 
-Pins the Zeek Feed example (extensions/zeek-feed/):
+Pins the Zeek Feed example (runner/extensions/zeek-feed/):
 the manifest through the real extension loader, the
 header-driven TSV parser (headers can reappear mid-file and
 reorder the columns; JSON-lines output parses with the same
@@ -33,7 +33,7 @@ sys.path.insert(0, REPO)
 
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "extensions", "zeek-feed")
+EXAMPLE_DIR = os.path.join(REPO, "runner", "extensions", "zeek-feed")
 FIXTURES = os.path.join(EXAMPLE_DIR, "fixtures")
 
 

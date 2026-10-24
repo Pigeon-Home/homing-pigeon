@@ -58,18 +58,17 @@ Those values live on the runner host. They do not travel through the SI chat.
 
 ## Where things live
 
-The root holds the manuals, `pyproject.toml`, and four folders. Write
+The root holds the manuals, `pyproject.toml`, and three folders. Write
 new paths against this layout; the old ones are gone, with no shims.
 
 | Folder | What |
 |--------|------|
-| `runner/` | The runner and the Oracle. `runner/cloud/` is the cloud-side helpers (`send_job.py`, `send_dtls.py`). `runner/tools/` is the build and CI scripts, and `runner/tests/` the suite, both kept out of the wheel and the image; `runner/tests/airgap/` (once `topaz/`) and `runner/tests/archive/` sit beside it, outside discovery |
-| `extensions/` | The shipped extensions, one folder each |
+| `runner/` | The runner and the Oracle. `runner/cloud/` is the cloud-side helpers (`send_job.py`, `send_dtls.py`). `runner/extensions/` is the shipped extensions, one folder each, `runner/tools/` the build and CI scripts, and `runner/tests/` the suite; all three are kept out of the wheel and the image. `runner/tests/airgap/` (once `topaz/`) and `runner/tests/archive/` sit beside the suite, outside discovery |
 | `docs/` | Everything else to read. `docs/hardening/` is the opt-in OS hardening templates, `docs/CHANGELOG.md` the release record |
 | `assets/` | Images |
 | `.github/` | CI: `workflows/`, `docker/` (the published image and the CI test image), `requirements-ci.txt` (the CI pins) |
 
-There is no root `tests/`, `tools/`, `examples/`, `cloud/`,
+There is no root `tests/`, `tools/`, `examples/`, `extensions/`, `cloud/`,
 `hardening/` or `docker/` any more, and no `tools/` under `.github/`, no root `Dockerfile`,
 `CHANGELOG.md` or `requirements-ci.txt`, and no `pyrefly.toml`: its
 settings are `[tool.pyrefly]` in `pyproject.toml`.

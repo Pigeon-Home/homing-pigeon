@@ -52,7 +52,7 @@ jobs:
       - run: pip install -c .github/requirements-ci.txt hypothesis
       # The feed senses parse formats other projects define. The
       # files that define them ride in-tree under
-      # extensions/*/upstream/, pinned by each manifest.
+      # runner/extensions/*/upstream/, pinned by each manifest.
       # --check fails when a pin moved without a fetch, a file was
       # edited by hand, or the 5 MiB budget is spent. A refresh is
       # `python3 runner/tools/fetch_upstream.py` (or --bump), committed;

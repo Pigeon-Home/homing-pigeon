@@ -5600,7 +5600,7 @@ def test_a_refused_declaration_still_brings_the_installed_code(self):
         rep = self.run_pass()
         st = self.state()
         self.assertIn("unknown field", st["declaration_problem"])
-        self.assertEqual(st["installed"]["path"], "extensions/feed")
+        self.assertEqual(st["installed"]["path"], "runner/extensions/feed")
         self.assertEqual(rep["outcomes"][0]["status"], "refused")
 
 # runner/tests/test_oracle_opinion.py HandleMailOpinionTests.test_failure_diagnosis_names_missing_tool lines 582-588
@@ -15020,7 +15020,7 @@ def test_codeql_ignores_tests_and_examples_only(self):
                   encoding="utf-8") as fh:
             config = fh.read()
         self.assertIn("- runner/tests/**", config)
-        self.assertIn("- extensions/**", config)
+        self.assertIn("- runner/extensions/**", config)
         self.assertIn("py/clear-text-logging-sensitive-data", config)
         self.assertIn("py/polynomial-redos", config)
         self.assertIn("py/bind-socket-all-network-interfaces", config)
@@ -16384,7 +16384,7 @@ def test_spawn_does_not_use_a_shell_and_detaches(self):
 def test_adapters_bring_their_upstream_source(self):
         for name in self.ADAPTERS:
             decl, _ = X.load_declaration(
-                os.path.join(REPO, "extensions", name))
+                os.path.join(REPO, "runner", "extensions", name))
             ups = [e for e in decl["sources"] if e["role"] == "upstream"]
             self.assertTrue(ups, name)
             for e in ups:

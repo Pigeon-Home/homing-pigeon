@@ -234,7 +234,7 @@ _INDEX = [
     ("CI and build tools", "runner/tools/"),
     ("Coverage and mutation reports", "docs/reports/"),
     ("Everything not built yet", "docs/FUTURE.md"),
-    ("The shipped extensions", "extensions/"),
+    ("The shipped extensions", "runner/extensions/"),
     ("OS hardening templates", "docs/hardening/"),
     ("Container images", ".github/docker/"),
 ]

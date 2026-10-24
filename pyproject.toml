@@ -58,7 +58,7 @@ source_paths = ["runner"]
 only_mutate = ["runner/security.py"]
 # The suite sits inside the source path (runner/tests/); it is the
 # oracle that kills mutants, never a mutation target.
-do_not_mutate = ["runner/tests/**", "runner/tools/**"]
+do_not_mutate = ["runner/tests/**", "runner/tools/**", "runner/extensions/**"]
 pytest_add_cli_args = [
     "-x",
     "-q",
@@ -69,10 +69,11 @@ pytest_add_cli_args = [
 pytest_add_cli_args_test_selection = ["runner/tests/"]
 mutate_only_covered_lines = true
 also_copy = [
-    # extensions/ carries the shipped extensions, which
-    # runner/tests/test_extensions.py loads from the tree. docs/ includes
-    # docs/hardening/; runner/cloud/ comes with source_paths.
-    "docs/", "extensions/",
+    # docs/ includes docs/hardening/. runner/cloud/ and
+    # runner/extensions/ (the shipped extensions, which
+    # runner/tests/test_extensions.py loads from the tree) come with
+    # source_paths.
+    "docs/",
     # .github/ carries the CI pin file (.github/requirements-ci.txt,
     # which runner/tests/test_build_config.py reads). The CI tools
     # (runner/tools/; runner/tests/test_parallel_runner.py imports the
@@ -125,6 +126,7 @@ project-includes = [
 project-excludes = [
     "runner/tests/**",
     "runner/tools/**",
+    "runner/extensions/**",
 ]
 
 # Sibling modules are imported in two forms: `from runner.oauth import X`

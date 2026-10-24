@@ -1,7 +1,7 @@
 """Backup Freshness: the example sense that files backup staleness.
 
 Pins the Backup Freshness example
-(extensions/backup-freshness/): the manifest through
+(runner/extensions/backup-freshness/): the manifest through
 the real extension loader and the pure decide() state machine --
 arrival, stale, critical, the empty-directory clock, and the
 tier discipline -- across scripted readings fixtures.
@@ -22,7 +22,7 @@ sys.path.insert(0, REPO)
 
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "extensions", "backup-freshness")
+EXAMPLE_DIR = os.path.join(REPO, "runner", "extensions", "backup-freshness")
 
 T0 = 1700000000.0
 STALE = 90000.0

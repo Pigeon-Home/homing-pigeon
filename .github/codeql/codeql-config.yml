@@ -30,4 +30,4 @@ query-filters:
 name: "Homing Pigeon"
 paths-ignore:
   - runner/tests/**
-  - extensions/**
+  - runner/extensions/**

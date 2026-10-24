@@ -1,7 +1,7 @@
 """The two watcher examples: Resource Sentinel and Job Watcher.
 
-Pins extensions/resource-sentinel/ and
-extensions/job-watcher/ the way test_crash_watch.py
+Pins runner/extensions/resource-sentinel/ and
+runner/extensions/job-watcher/ the way test_crash_watch.py
 pins Crash Watch: the manifests through the real extension
 loader, the pure decide() cores over fixture readings
 (every declared signal firing, its restraint cases staying
@@ -34,9 +34,9 @@ from runner import runner as R  # noqa: E402
 from runner import senses as S  # noqa: E402
 from runner import extensions as E  # noqa: E402
 
-RS_DIR = os.path.join(REPO, "extensions",
+RS_DIR = os.path.join(REPO, "runner", "extensions",
                       "resource-sentinel")
-JW_DIR = os.path.join(REPO, "extensions", "job-watcher")
+JW_DIR = os.path.join(REPO, "runner", "extensions", "job-watcher")
 
 DEFAULT_SECRET = "b109f3bbbc244eb82441917ed06d618b" + \
     "9008dd09b3befd1b078a64781ac2f3e5"
@@ -497,7 +497,7 @@ class WatcherFixture(unittest.TestCase):
         os.makedirs(self.base)
         self.ext_root = os.path.join(self._tmp.name, "exts")
         os.makedirs(self.ext_root)
-        shutil.copytree(os.path.join(REPO, "extensions",
+        shutil.copytree(os.path.join(REPO, "runner", "extensions",
                                      self.folder),
                         os.path.join(self.ext_root, self.folder))
         self.cfg = {

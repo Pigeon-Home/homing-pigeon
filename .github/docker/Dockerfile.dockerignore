@@ -6,3 +6,4 @@ dist/
 # The suite and the CI scripts are not part of the published image.
 runner/tests/
 runner/tools/
+runner/extensions/
