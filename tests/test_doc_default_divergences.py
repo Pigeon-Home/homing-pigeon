@@ -7615,5 +7615,124 @@ class TestPlanStepTimeoutSecDefaultsTo60(unittest.TestCase):
 
 
 
+class TestExtensionPollIntervalSecDefaultsTo2(unittest.TestCase):
+    """Second-run hunt coverage: extension_poll_interval_sec
+    itself, varied with the fifteen shapes through its
+    actual reader for the first time.
+
+    (a) Claim: registry row "extension_poll_interval_sec":
+        core, number, default 2, policy default,
+        doc_status unverified -- no prose document states
+        this default; it is in KNOWN_UNDOCUMENTED in
+        tests/defaults_registry.py. The statements are the
+        reader's own docstring
+        (runner/transport_extensions/channel.py,
+        poll_interval): "Seconds between passes:
+        extension_poll_interval_sec, default 2. A usable
+        number is clamped to [0.2, 60]. A boolean, a huge
+        integer, infinity, NaN, or a non-number is not an
+        interval and reads as the default", and the repo's
+        own tests/test_transport_shells.py pin (omitted ->
+        2.0, 0 -> 0.2, 1000 -> 60.0, "nope" -> 2.0). The
+        row's named classes covered only the huge-int
+        shape (TestHugeExtensionPollIntervalDefaultsTo2)
+        and the booleans
+        (TestBooleanExtensionPollIntervalDefaultsTo2);
+        this key had never itself been walked through all
+        fifteen shapes. Provenance finding from the
+        step-8 list, re-verified this tick: the runner's
+        runtime-config projection
+        (runner/transports.py, _runtime_config) never
+        passes a TOP-LEVEL extension_poll_interval_sec to
+        an extension -- with the key only at top level the
+        projected config has no such key at all; only a
+        copy inside a transport_<name> block reaches the
+        reader verbatim (a block copy of 7 projected as 7
+        while a top-level 9 was dropped).
+
+    (b) How it was hunted: step 8 Target 3 -- the second
+        row with no documented default in any current
+        doc. On 2026-10-23 this tick called
+        channel.poll_interval -- the actual reader every
+        polling transport extension takes its cadence
+        from -- with the table hunt's fifteen shapes,
+        plus genuine values and both clamp ends.
+
+    (c) Behavior actually observed: NO divergence in
+        the reader. Every unusable shape -- omitted,
+        null, the empty string, true, false, a
+        non-numeric string, a several-hundred-digit
+        integer, inf, -inf, NaN, and a list -- returned
+        exactly 2.0. Zero and a negative number are
+        usable numbers for this reader, so they do not
+        read as the default: they clamp to the 0.2 floor,
+        exactly as the documented clamp contract and the
+        transport-shells pin say. The explicit default 2
+        and the numeric string "2" returned 2.0, and a
+        numeric string "10" counted as 10.0. Genuine
+        values are honored exactly (0.5, 5, 10, 30) and
+        the clamp ends hold (0.1 -> 0.2, 1000 -> 60.0).
+
+    (d) This is a coverage record, not a divergence: it
+        stays green as long as the reader keeps the
+        registry default and clamp. If a shape above
+        ever stops reading as stated, this test is the
+        failing record of that change. The documentation
+        and projection findings in (a) are recorded
+        here and in the registry; no production code or
+        doc was changed by this hunt.
+    """
+
+    def test_fifteen_shapes(self):
+        from runner.transport_extensions import channel as ch
+        shapes = [
+            ("omitted", None, 2.0), ("null", None, 2.0),
+            ("empty-string", "", 2.0), ("true", True, 2.0),
+            ("false", False, 2.0), ("zero", 0, 0.2),
+            ("negative", -5, 0.2),
+            ("default-explicit", 2, 2.0),
+            ("numeric-string", "2", 2.0),
+            ("non-numeric-string", "bogus", 2.0),
+            ("huge-int", 10 ** 400, 2.0),
+            ("inf", float("inf"), 2.0),
+            ("neg-inf", float("-inf"), 2.0),
+            ("nan", float("nan"), 2.0),
+            ("wrong-container", ["x"], 2.0),
+        ]
+        for name, value, want in shapes:
+            with self.subTest(shape=name):
+                cfg = {} if name == "omitted" else {
+                    "extension_poll_interval_sec": value}
+                self.assertEqual(ch.poll_interval(cfg), want)
+
+    def test_genuine_values_and_clamps_are_honored(self):
+        from runner.transport_extensions import channel as ch
+        for value, want in ((0.5, 0.5), (5, 5.0), (10, 10.0),
+                            ("10", 10.0), (30, 30.0),
+                            (0.1, 0.2), (1000, 60.0)):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    ch.poll_interval(
+                        {"extension_poll_interval_sec": value}),
+                    want)
+
+    def test_top_level_key_never_reaches_an_extension(self):
+        # The projection finding in (a), pinned: only a
+        # transport block's copy of the key is projected
+        # into an extension's runtime config.
+        from runner import transports
+        paths = {"root": "/tmp/hp-projection-probe"}
+        out = transports._runtime_config(
+            {"extension_poll_interval_sec": 9},
+            "file", "/tmp/hp-projection-probe", paths)
+        self.assertNotIn("extension_poll_interval_sec", out)
+        out = transports._runtime_config(
+            {"transport_file":
+             {"extension_poll_interval_sec": 7}},
+            "file", "/tmp/hp-projection-probe", paths)
+        self.assertEqual(out["extension_poll_interval_sec"], 7)
+
+
+
 if __name__ == "__main__":
     unittest.main()
