@@ -19063,6 +19063,174 @@ class TestZeroNegativeJobWatcherFlakyAndDurationTunablesReadLiterallyInsteadOfDe
             self._signals({"duration_z": 3.5},
                           self._z_records(20.0)))
 
+class TestJobWatcherHistoryAndPassCapsFifteenShapes(unittest.TestCase):
+    """Coverage: the job-watcher history and pass caps
+    (max_history_runs, default 60, and
+    max_records_per_pass, default 500) read every
+    unusable shape as their documented defaults.
+
+    (a) Doc claims: the manifest ships both
+        (extensions/job-watcher/extension.json:
+        "max_history_runs": 60,
+        "max_records_per_pass": 500). The README's
+        Light mode section names both as the bounds
+        an owner lowers to bound the watcher's memory
+        and a single pass (README.md lines 108-110:
+        "Lower `max_history_runs` (30 is plenty of
+        baseline) and `max_records_per_pass` to bound
+        a single pass over a large retained store").
+        Policy default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default. Both readers gate
+        explicitly: decide() resets a max_history
+        below 1 to 60 (job_watcher.py lines 403-405)
+        and read_live() resets a cap below 1 to 500
+        (lines 283-285).
+
+    (b) How this was probed: step-8 Targets 5-6 --
+        the extension tunables were covered only for
+        the shapes their named classes exercised, and
+        these two caps had no fifteen-shape class at
+        all (max_history_runs was quoted only inside
+        the previous tick's flaky/duration divergence
+        docstring). On 2026-10-24 this tick probed
+        both readers with the table hunt's fifteen
+        shapes (omitted, null, empty string, true,
+        false, zero, negative, the explicit default,
+        numeric string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, wrong containers
+        (list and dict)), plus a sub-1 fractional and
+        genuine values. The max_history_runs
+        observable is the retained run count in the
+        new state after decide() folds seventy runs
+        of one job in a single pass: the default
+        keeps exactly 60. The max_records_per_pass
+        observable is read_live() against a retained
+        folder of ten records: the default reads all
+        ten with nothing truncated.
+
+    (c) Behavior actually observed: NO divergence.
+        Every shape listed above, the sub-1
+        fractional included, reads as the documented
+        default for both keys: seventy folded runs
+        are kept at exactly 60, and ten retained
+        records are all read with truncated 0.
+        Numeric strings are not parsed. Genuine
+        values are honored exactly: a history cap of
+        10 keeps 10 runs, a cap of 100 keeps all 70,
+        10.9 truncates to 10; a pass cap of 3 reads 3
+        records and reports 7 truncated, and 3.9
+        truncates to 3. Observed on 2026-10-24
+        against current main.
+    """
+
+    _NOW = 1000000.0
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "job-watcher",
+            "job_watcher.py")
+        spec = importlib.util.spec_from_file_location(
+            "job_watcher_caps_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _kept_runs(self, mod, tunables, n=70):
+        records = [{"job_id": f"k1-{i}", "key": "k1",
+                    "kind": "exec", "label": "probek1",
+                    "saved_at": self._NOW - 1000 + i * 10,
+                    "exit_code": 0, "duration_sec": 10.0,
+                    "error": ""}
+                   for i in range(n)]
+        manifest = {"name": "job_watcher",
+                    "tunables": dict(tunables)}
+        _alerts, state = mod.decide(
+            {"now": self._NOW, "records": records},
+            manifest, {})
+        return len(state["jobs"]["k1"]["runs"])
+
+    def _pass_read(self, mod, tunables, nfiles=10):
+        import json
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            retained = os.path.join(td, "retained")
+            os.mkdir(retained)
+            for i in range(nfiles):
+                record = {"job_id": f"job-{i}",
+                          "kind": "exec",
+                          "script": "echo hi",
+                          "exit_code": 0,
+                          "duration_sec": 1.0,
+                          "saved_at": self._NOW - 100 + i}
+                with open(os.path.join(
+                        retained, f"job-{i:03d}.json"),
+                        "w", encoding="utf-8") as fh:
+                    json.dump(record, fh)
+            merged = dict(tunables)
+            merged["runner_base_dir"] = td
+            readings = mod.read_live(
+                {"name": "job_watcher", "tunables": merged})
+            return len(readings["records"]), readings["truncated"]
+
+    _SHAPES_TAIL = [
+        ("empty-string", ""), ("true", True),
+        ("false", False), ("zero", 0),
+        ("negative", -5),
+        ("non-numeric-string", "bogus"),
+        ("huge-int", 10 ** 400),
+        ("inf", float("inf")),
+        ("-inf", float("-inf")),
+        ("nan", float("nan")),
+        ("list", ["x"]), ("dict", {"x": 1}),
+        ("sub-1-fractional", 0.5)]
+
+    def _all_shapes(self, default, numeric_string):
+        return ([("omitted", None), ("null", None)]
+                + self._SHAPES_TAIL[:2]
+                + self._SHAPES_TAIL[2:4]
+                + [("explicit-default", default),
+                   ("numeric-string", numeric_string)]
+                + self._SHAPES_TAIL[4:])
+
+    def test_max_history_runs_fifteen_shapes_read_as_default_60(self):
+        mod = self._module()
+        for name, value in self._all_shapes(60, "60"):
+            tunables = {} if name == "omitted" else {
+                "max_history_runs": value}
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    self._kept_runs(mod, tunables), 60)
+
+    def test_max_records_per_pass_fifteen_shapes_read_as_default_500(self):
+        mod = self._module()
+        for name, value in self._all_shapes(500, "500"):
+            tunables = {} if name == "omitted" else {
+                "max_records_per_pass": value}
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    self._pass_read(mod, tunables), (10, 0))
+
+    def test_genuine_cap_values_are_honored(self):
+        mod = self._module()
+        self.assertEqual(
+            self._kept_runs(mod, {"max_history_runs": 10}), 10)
+        self.assertEqual(
+            self._kept_runs(mod, {"max_history_runs": 100}), 70)
+        self.assertEqual(
+            self._kept_runs(mod, {"max_history_runs": 10.9}), 10)
+        self.assertEqual(
+            self._pass_read(mod, {"max_records_per_pass": 3}),
+            (3, 7))
+        self.assertEqual(
+            self._pass_read(mod, {"max_records_per_pass": 3.9}),
+            (3, 7))
+
 if __name__ == "__main__":
 
     unittest.main()
