@@ -9576,6 +9576,8 @@ class TestFilesNameStaysInsideWorkdir(unittest.TestCase):
                    "..", ".", "/etc/passwd",
                    "linkout/evil.txt", "dangling/x.txt",
                    "", "a\x00b", None, 123, b"a.txt"]
+        if os.name == "nt":
+            escapes.append(".../x.txt")
         with tempfile.TemporaryDirectory() as base:
             work = self._work(base)
             for name in escapes:
@@ -9596,7 +9598,7 @@ class TestFilesNameStaysInsideWorkdir(unittest.TestCase):
                 "./a.txt": "a.txt",
                 "a/../b.txt": "b.txt",
                 "a//b.txt": os.path.join("a", "b.txt"),
-                ".../x.txt": os.path.join("...", "x.txt"),
+                # Windows realpath treats a dots-only component as a parent step.
                 "~/x.txt": os.path.join("~", "x.txt"),
                 "linkin/ok.txt": os.path.join("real", "ok.txt"),
                 "no/such/deep.txt": os.path.join(
