@@ -45271,6 +45271,534 @@ class TestAirwavesCleanStateAndMainModesFifteenShapes(unittest.TestCase):
             self.assertEqual((rc, out), (2, ""))
             self.assertIsNone(state)
 
+class TestUsbArrivalsMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: usb-arrivals
+    main()'s remaining manifest / readings /
+    state modes, its live mode and its
+    --local-dir delivery modes varied with the
+    fifteen shapes for the first time (step-8
+    Target 5 / family (b) -- usb-arrivals'
+    earlier classes covered its learn_first_pass
+    and kinds tunables and, called directly, its
+    _clean_devices() / _clean_state() cleaners,
+    decide() and the live readers, plus main()
+    in --readings mode for a genuine pass, a
+    no-learn pass, one malformed state file, a
+    list manifest, a list readings file and
+    missing / malformed / unwritable paths;
+    main()'s scalar / string / null / bool /
+    float manifests and readings files, its
+    junk-carrying and broken pre-state files, a
+    directory as the state path, its live mode
+    through main() and its --local-dir delivery
+    gate were never run at all, the same gap the
+    clean / main hunts closed for the other
+    watchers in the ticks before this one).
+
+    (a) Doc claims: the module header states the
+        first pass learns what is plugged in
+        quietly (learn_first_pass, default true),
+        a new device whose class is 08 files
+        storage_arrived (medium) INSTEAD of
+        device_arrived (info), departures file
+        nothing, and local delivery signs each
+        payload with this sense's key read from
+        the environment variable named by
+        --secret-env and drops it into the
+        runner's local inbox, or pushes it to
+        the loopback listener when --local-port
+        is given -- "Same envelope, same
+        signature -- only the transport differs".
+        _deliver_local()'s docstring states it
+        returns how many alerts were delivered,
+        or None when local delivery is not set
+        up (the reason is printed), and main()'s
+        own comment states a failed delivery
+        leaves the state unwritten, so the next
+        pass reports these arrivals again.
+
+    (b) How this was probed: on 2026-10-24
+        main() was run against isolated temp
+        dirs for list / number / string / null /
+        bool / float manifests, number / string /
+        null / bool / float / list / empty
+        readings files and a non-list devices
+        field, malformed and missing readings /
+        manifest files with a pre-state present,
+        a junk-carrying pre-state (learned the
+        string "yes", junk seen entries), a
+        learned pre-state holding the arriving
+        devices, broken-JSON / list / string /
+        null / number / bool state files, a
+        directory as the state path (learn and
+        no-learn passes), live mode with
+        read_live() stubbed, and --local-dir
+        with the secret env var unset and empty
+        (the alert case's state file compared
+        byte-for-byte), with a genuine secret
+        (the dropped envelopes read back from
+        local-inbox and parsed), with a custom
+        --secret-env and --key-id, with a
+        genuine secret on a quiet learn pass,
+        and with a closed --local-port.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. Every non-dict manifest reads
+        the documented defaults and learns the
+        scan quietly exactly like the genuine
+        manifest. Every non-dict readings file,
+        an empty readings dict and a readings
+        dict whose devices field is not a list
+        are a no-device pass -- rc 0, nothing
+        filed, and a learned empty state written
+        (usb-arrivals has no not-a-JSON-object
+        gate on readings; _clean_devices() reads
+        them as no devices). A malformed or
+        missing readings or manifest file is
+        rc 2 with a pre-state file left
+        untouched. The junk pre-state's learned
+        flag is the string "yes", which reads as
+        False, so the pass re-learns quietly and
+        the junk seen table is discarded; a
+        learned pre-state whose seen entry for
+        the arriving device carries junk fields
+        still suppresses its alert (the id alone
+        decides), and a second, new device files
+        device_arrived alone. Broken-JSON, list,
+        string, null, number and bool state
+        files read as a fresh state and learn.
+        A directory as the state path is rc 2:
+        the learn pass prints nothing, then the
+        state write fails; a no-learn pass
+        prints its storage_arrived payload
+        first, then answers rc 2. Live mode with
+        read_live() stubbed behaves exactly like
+        --readings mode. --local-dir with no
+        secret in the env var (unset or empty)
+        is rc 2 with the no-signing-secret
+        message and the state file left
+        byte-identical when an alert was
+        pending, and no state file created on a
+        quiet learn -- the delivery gate is
+        checked before any state is written, as
+        main()'s comment states. With a genuine
+        secret an arrival is signed and dropped
+        into <base>/local-inbox (kind
+        sensor_alert, this sense's name, the
+        signal and a sig field; a class-08
+        arrival files storage_arrived at
+        medium), rc is 0 and the state IS
+        written; a custom --secret-env name and
+        --key-id are honored verbatim; a genuine
+        secret on a quiet learn pass is rc 0
+        with the state written and nothing
+        dropped. A closed --local-port makes the
+        delivery fail per-alert: rc 2, the
+        not-delivered message names the count,
+        and the state file is left byte-identical
+        so the arrival is reported again next
+        pass.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the readings above
+        keep matching the docs. If a shape above
+        ever stops behaving as documented, this test
+        is the failing record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "usb-arrivals",
+            "usb_arrivals.py")
+        spec = importlib.util.spec_from_file_location(
+            "usb_arrivals_main_modes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _gen(self):
+        return {"name": "usb_arrivals", "tunables": {
+            "learn_first_pass": True}}
+
+    def _nolearn(self):
+        return {"name": "usb_arrivals", "tunables": {
+            "learn_first_pass": False}}
+
+    def _storage(self):
+        return {"id": "0781:5567", "kind": "usb",
+                "description": "Cruzer Blade",
+                "device_class": "08"}
+
+    def _plain(self):
+        return {"id": "1234:5678", "kind": "usb",
+                "description": "Plain",
+                "device_class": "00"}
+
+    def _scan(self):
+        return {"now": 1000.0, "devices": [self._storage()]}
+
+    def _seen_storage(self):
+        return {"kind": "usb", "device_class": "08",
+                "description": "Cruzer Blade"}
+
+    def _learned(self):
+        return {"learned": True, "seen": {
+            "0781:5567": self._seen_storage()}}
+
+    def _learned_scan_state(self):
+        return {"learned": True, "seen": {
+            "0781:5567": self._seen_storage()}}
+
+    _READINGS = object()
+
+    def _main(self, mod, td, manifest_obj,
+              readings_obj=_READINGS, extra=(),
+              pre_state=None, pre_raw=None,
+              manifest_raw=None, readings_raw=None,
+              state_is_dir=False, live=None, env=None,
+              base=None):
+        import io
+        import os
+        from contextlib import redirect_stderr, redirect_stdout
+        from unittest import mock
+        man = os.path.join(td, "m.json")
+        rd = os.path.join(td, "r.json")
+        st = td if state_is_dir else os.path.join(td, "s.json")
+        with open(man, "w", encoding="utf-8") as fh:
+            if manifest_raw is not None:
+                fh.write(manifest_raw)
+            else:
+                json.dump(manifest_obj, fh)
+        args = ["--manifest", man, "--state", st]
+        if live is None:
+            with open(rd, "w", encoding="utf-8") as fh:
+                if readings_raw is not None:
+                    fh.write(readings_raw)
+                else:
+                    json.dump(
+                        self._scan()
+                        if readings_obj is self._READINGS
+                        else readings_obj, fh)
+            args += ["--readings", rd]
+        before = None
+        if not state_is_dir:
+            if pre_raw is not None:
+                with open(st, "w", encoding="utf-8") as fh:
+                    fh.write(pre_raw)
+            elif pre_state is not None:
+                with open(st, "w", encoding="utf-8") as fh:
+                    json.dump(pre_state, fh)
+            if os.path.isfile(st):
+                with open(st, encoding="utf-8") as fh:
+                    before = fh.read()
+        clean = {k: v for k, v in os.environ.items()
+                 if k not in ("HOMING_PIGEON_SENSOR_SECRET",
+                              "USB_HUNT_SECRET")}
+        if env:
+            clean.update(env)
+        patches = [mock.patch.dict(os.environ, clean, clear=True)]
+        if live is not None:
+            patches.append(mock.patch.object(
+                mod, "read_live", return_value=live))
+        for patch in patches:
+            patch.start()
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with redirect_stdout(out), redirect_stderr(err):
+                rc = mod.main(args + [
+                    (base if a == "@BASE@" else a)
+                    for a in extra])
+        finally:
+            for patch in patches:
+                patch.stop()
+        state = None
+        after = None
+        if not state_is_dir and os.path.isfile(st):
+            with open(st, encoding="utf-8") as fh:
+                after = fh.read()
+            state = json.loads(after)
+        inbox = []
+        if base is not None:
+            ib = os.path.join(base, "local-inbox")
+            if os.path.isdir(ib):
+                for name in sorted(os.listdir(ib)):
+                    with open(os.path.join(ib, name),
+                              encoding="utf-8") as fh:
+                        inbox.append(json.load(fh))
+        return rc, out.getvalue(), err.getvalue(), state, \
+            before, after, inbox
+
+    def test_main_manifest_shapes(self):
+        mod = self._mod()
+        for raw in ["[1, 2]", "42", '"hi"', "null",
+                    "true", "2.5"]:
+            with self.subTest(manifest=raw):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, err, state, *_ = self._main(
+                        mod, td, None, manifest_raw=raw)
+                self.assertEqual((rc, out), (0, ""))
+                self.assertEqual(
+                    state, self._learned_scan_state())
+
+    def test_main_readings_shapes_and_bad_files(self):
+        mod = self._mod()
+        empty = {"learned": True, "seen": {}}
+        for raw in ["42", '"hi"', "null", "true", "2.5",
+                    "[1, 2]", "{}", '{"devices": "x"}',
+                    '{"devices": []}']:
+            with self.subTest(readings=raw):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, err, state, *_ = self._main(
+                        mod, td, self._gen(),
+                        readings_raw=raw)
+                self.assertEqual((rc, out), (0, ""))
+                self.assertEqual(state, empty)
+        # Malformed readings / manifest files are rc 2
+        # with a pre-state left byte-identical.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, before, after, _ = \
+                self._main(mod, td, self._gen(),
+                           readings_raw="{bad",
+                           pre_state=self._learned())
+            self.assertEqual(rc, 2)
+            self.assertEqual(after, before)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, before, after, _ = \
+                self._main(mod, td, None,
+                           manifest_raw="{bad",
+                           pre_state=self._learned())
+            self.assertEqual(rc, 2)
+            self.assertEqual(after, before)
+
+    def test_main_junk_and_broken_prestate(self):
+        mod = self._mod()
+        # The junk pre-state's learned flag is the
+        # string "yes", which reads as False, so the
+        # pass re-learns: the junk seen table is
+        # discarded and the scan is absorbed quietly.
+        junk = {"learned": "yes", "seen": {
+            "0781:5567": {"kind": 5, "device_class": None},
+            "": {"kind": "usb"}, "AA:01": "notdict"},
+            "extra": 1}
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._gen(), pre_state=junk)
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, self._learned_scan_state())
+        # A learned pre-state whose seen entry for the
+        # arriving device carries junk fields still
+        # suppresses its alert: the id alone decides.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._nolearn(),
+                pre_state={"learned": True, "seen": {
+                    "0781:5567": {"kind": 5}}})
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, self._learned_scan_state())
+        # ...while a second, new device files alone.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._nolearn(),
+                readings_obj={"now": 1.0, "devices": [
+                    self._storage(), self._plain()]},
+                pre_state=self._learned())
+            self.assertEqual(rc, 0)
+            self.assertIn('"device_arrived"', out)
+            self.assertNotIn("storage_arrived", out)
+            self.assertEqual(sorted(state["seen"]),
+                             ["0781:5567", "1234:5678"])
+        # Broken-JSON, list, string, null, number and
+        # bool state files read as a fresh state and
+        # learn.
+        for raw in ["{bad", "[1, 2]", '"hi"', "null",
+                    "42", "true"]:
+            with self.subTest(state_file=raw):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, err, state, *_ = self._main(
+                        mod, td, self._gen(), pre_raw=raw)
+                self.assertEqual((rc, out), (0, ""))
+                self.assertEqual(
+                    state, self._learned_scan_state())
+
+    def test_main_directory_state_and_live_mode(self):
+        mod = self._mod()
+        # A directory as the state path is rc 2 with
+        # nothing printed on a learn pass: the pass
+        # files nothing, then the state write fails.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._gen(), state_is_dir=True)
+            self.assertEqual((rc, out), (2, ""))
+            self.assertIn("cannot write state", err)
+        # A no-learn pass prints its storage payload
+        # first, then answers rc 2 on the write.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._nolearn(), state_is_dir=True)
+            self.assertEqual(rc, 2)
+            self.assertIn('"storage_arrived"', out)
+            self.assertIn("cannot write state", err)
+        # Live mode with read_live() stubbed behaves
+        # exactly like --readings mode.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._gen(), live=self._scan())
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, self._learned_scan_state())
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._gen(),
+                readings_obj=None,
+                live={"now": 2.0, "devices": [
+                    self._storage(), self._plain()]},
+                pre_state=self._learned())
+            self.assertEqual(rc, 0)
+            self.assertIn('"device_arrived"', out)
+            self.assertEqual(sorted(state["seen"]),
+                             ["0781:5567", "1234:5678"])
+
+    def test_main_local_dir_no_secret_gate(self):
+        import os
+        mod = self._mod()
+        # Unset and empty secrets are both rc 2 with
+        # the state file left byte-identical while an
+        # alert is pending.
+        for env in [None, {"HOMING_PIGEON_SENSOR_SECRET": ""}]:
+            with self.subTest(env=env):
+                with tempfile.TemporaryDirectory() as td:
+                    base = os.path.join(td, "base")
+                    rc, out, err, state, before, after, \
+                        inbox = self._main(
+                            mod, td, self._gen(),
+                            readings_obj={"now": 1.0,
+                                          "devices": [
+                                              self._plain()]},
+                            extra=["--local-dir", "@BASE@"],
+                            pre_state=self._learned(),
+                            env=env, base=base)
+                    self.assertEqual(rc, 2)
+                    self.assertIn("no signing secret", err)
+                    self.assertEqual(after, before)
+                    self.assertEqual(inbox, [])
+                    self.assertFalse(os.path.exists(
+                        os.path.join(base, "local-inbox")))
+        # A quiet learn pass is rc 2 too, and no state
+        # file is created: the gate is checked before
+        # any state is written.
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox = \
+                self._main(mod, td, self._gen(),
+                           extra=["--local-dir", "@BASE@"],
+                           env=None, base=base)
+            self.assertEqual(rc, 2)
+            self.assertIn("no signing secret", err)
+            self.assertIsNone(state)
+            self.assertIsNone(after)
+
+    def test_main_local_dir_signed_drop_and_closed_port(self):
+        mod = self._mod()
+        import os
+        secret = {"HOMING_PIGEON_SENSOR_SECRET": "hunt-secret"}
+        # A genuine secret drops the signed envelope
+        # into local-inbox, answers rc 0 and writes
+        # the state.
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox = \
+                self._main(
+                    mod, td, self._gen(),
+                    readings_obj={"now": 1.0, "devices": [
+                        self._plain()]},
+                    extra=["--local-dir", "@BASE@"],
+                    pre_state=self._learned(),
+                    env=secret, base=base)
+            self.assertEqual(rc, 0)
+            self.assertIn("filed device_arrived", err)
+            self.assertEqual(len(inbox), 1)
+            self.assertEqual(inbox[0]["kind"], "sensor_alert")
+            self.assertEqual(inbox[0]["signal"],
+                             "device_arrived")
+            self.assertEqual(inbox[0]["sensor"], "usb_arrivals")
+            self.assertIn("sig", inbox[0])
+            # The written state holds exactly the
+            # current devices: the storage device was
+            # absent from this pass, so it departed
+            # and dropped out silently.
+            self.assertEqual(sorted(state["seen"]),
+                             ["1234:5678"])
+        # A class-08 arrival drops as storage_arrived
+        # at medium.
+        stick = {"id": "9999:0001", "kind": "usb",
+                 "description": "Stick", "device_class": "08"}
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox = \
+                self._main(
+                    mod, td, self._gen(),
+                    readings_obj={"now": 1.0,
+                                  "devices": [stick]},
+                    extra=["--local-dir", "@BASE@"],
+                    pre_state=self._learned(),
+                    env=secret, base=base)
+            self.assertEqual(rc, 0)
+            self.assertEqual(len(inbox), 1)
+            self.assertEqual(inbox[0]["signal"],
+                             "storage_arrived")
+            self.assertEqual(inbox[0]["severity"], "medium")
+        # A custom --secret-env name and --key-id are
+        # honored verbatim.
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox = \
+                self._main(
+                    mod, td, self._gen(),
+                    readings_obj={"now": 1.0, "devices": [
+                        self._plain()]},
+                    extra=["--local-dir", "@BASE@",
+                           "--secret-env", "USB_HUNT_SECRET",
+                           "--key-id", "usb-1"],
+                    pre_state=self._learned(),
+                    env={"USB_HUNT_SECRET": "custom-secret"},
+                    base=base)
+            self.assertEqual(rc, 0)
+            self.assertEqual(len(inbox), 1)
+            self.assertEqual(inbox[0]["key_id"], "usb-1")
+        # A genuine secret on a quiet learn pass is
+        # rc 0 with the state written and nothing
+        # dropped.
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox = \
+                self._main(mod, td, self._gen(),
+                           extra=["--local-dir", "@BASE@"],
+                           env=secret, base=base)
+            self.assertEqual(rc, 0)
+            self.assertEqual(state, self._learned_scan_state())
+            self.assertEqual(inbox, [])
+        # A closed --local-port makes the delivery fail
+        # per-alert: rc 2, the not-delivered message
+        # names the count, and the state file is left
+        # byte-identical.
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox = \
+                self._main(
+                    mod, td, self._gen(),
+                    readings_obj={"now": 1.0, "devices": [
+                        self._plain()]},
+                    extra=["--local-dir", "@BASE@",
+                           "--local-port", "1"],
+                    pre_state=self._learned(),
+                    env=secret, base=base)
+            self.assertEqual(rc, 2)
+            self.assertIn("1 of 1 alert(s) not delivered", err)
+            self.assertEqual(after, before)
+
 if __name__ == "__main__":
 
     unittest.main()
