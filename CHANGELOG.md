@@ -4,8 +4,38 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## Unreleased
+## 3.12.60 - 2026-10-24
 
+- **The root holds the manuals, `pyproject.toml`, and six folders.**
+  `examples/extensions/` is `extensions/` and there is no
+  `examples/`; `cloud/` is `runner/cloud/` (the console script is
+  `runner.cloud.send_job:main`, and the wheel ships one package,
+  `runner`); `hardening/` is `docs/hardening/`; the build and CI
+  scripts in `tools/` are `.github/tools/` (the root `tools/` is the
+  agents' work areas now, `tools/airgap/` once `topaz/`); the root
+  `Dockerfile`, `docker/entrypoint.sh` and `docker/minimal-userland/`
+  are under `.github/docker/`, with `.dockerignore` beside the
+  Dockerfile as `Dockerfile.dockerignore`; `requirements-ci.txt` is
+  `.github/requirements-ci.txt`; `pyrefly.toml` is `[tool.pyrefly]`
+  in `pyproject.toml`; `.gitattributes` lives in `extensions/`, its
+  patterns relative to it; and `CONTRIBUTING.md` is
+  `docs/CONTRIBUTING.md`, with a short pointer in the README.
+  Every workflow, test, tool, doc and the Dependabot config
+  follow; there are no shims, and `tests/test_layout.py` fails on
+  a path into a retired folder. `pyproject.toml`, `.gitignore` and
+  `.github/` stay at the root because pip, git and GitHub read
+  them there. AGENTS.md has the layout.
+- **A bad live value reads as its documented default.** A hot key
+  written live with an unusable value (zero, a negative, a string,
+  null, Infinity, NaN, a list) kept the last good value. It now
+  reads as the documented default (`poll_interval_sec` 20,
+  `workers` 1, `default_timeout_sec` 300, `max_output_bytes`
+  100000, `max_job_age_sec` 3600) and is named in the log, as
+  Decision 1 has it: no hidden last-good state.
+- **A senses query's zero limit returns no alerts.** The store reader
+  sliced `out[-0:]`, the whole list, so `"limit": 0` (or 0.5) read as
+  no cap. The job-watcher's `failure_window_sec` of zero or below now
+  reads as its documented day instead of a window no failure fits.
 - **Addressing values refuse instead of defaulting (Decision 1).**
   `docs/design/present-but-invalid-config.md` is decided: a setting
   present but not usable reads as its documented default, unless it
