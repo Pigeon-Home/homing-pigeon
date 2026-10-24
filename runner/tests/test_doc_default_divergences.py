@@ -40236,6 +40236,734 @@ class TestWazuhFeedParseTsCleanStateAndMainModesFifteenShapes(unittest.TestCase)
                               os.path.join(d, "sl3.json")])
                     self.assertEqual((rc, out), (0, ""))
 
+class TestSysmonFeedParseSplitStateAndMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: sysmon-feed's
+    parse_event() XML and Windows-text shapes,
+    _split_text() block splitting, _clean_state()
+    and _clean_events() called directly, the
+    _temp_match() / _encoded_match() matchers, and
+    main() in --readings, --log-file and live modes
+    varied with the fifteen shapes for the first
+    time (step-8 Target 5 / family (b) --
+    sysmon-feed's earlier class covers its
+    log_paths / poll_interval tunables,
+    read_new_events() tailing, decide()'s event
+    cleaning basics and parse_event() with
+    non-string input only; the two parsers' field
+    mapping, the splitter, the cleaners and
+    main()'s fixture modes were never varied).
+
+    (a) Doc claims: the module docstring states
+        parse_event() "takes ONE event's text --
+        either shape -- and answers one event dict
+        or None", that "Both signals are Event ID 1
+        only. Other Event IDs parse to nothing in
+        this version", that the event fields are
+        "the Event ID 1 model, normalized:
+        event_id, utc_time, process_guid,
+        process_id, image, command_line,
+        current_directory, user, parent_process_id,
+        parent_image, parent_command_line, hashes",
+        that a temp image is one under "/tmp/,
+        /dev/shm/, /var/tmp/, a Windows per-user
+        AppData\\Local\\Temp folder, or a path
+        containing %TEMP%", that an encoded command
+        carries "the PowerShell -enc /
+        -encodedcommand flag (case-insensitive),
+        or a base64-looking token of at least 100
+        characters from the [A-Za-z0-9+/=]
+        alphabet", that "The 'partial' entry
+        carries the remainder of an event that has
+        not terminated yet ... so a block is never
+        split across a chunk boundary", that the
+        state dict carries a "_reader" sub-dict
+        which decide() "preserves opaquely and
+        ignores", and that "Two fixture modes feed
+        decide() without a live Sysmon: --readings
+        FILE reads a readings dict ({"now",
+        "events"}) from JSON, and --log-file FILE
+        parses a whole fixture file from offset 0
+        (flushing the final block), ignoring the
+        reader offsets". _is_number()'s docstring
+        says infinity, NaN and an integer too large
+        for a float are each "not a number".
+
+    (b) How this was probed: on 2026-10-24
+        parse_event() was probed with the fifteen
+        shapes and with genuine and edge XML events
+        (a syslog prefix and suffix, a non-1 ID, a
+        whitespace-padded ID, malformed and
+        unclosed XML, a namespaced root, a Data
+        element with no Name, an empty Data text
+        and a non-numeric ProcessId) and genuine
+        and edge Windows text blocks (a non-1 ID,
+        no ID line, no image or command line, a
+        lower-case field name, a field line with
+        no space after its colon and padded
+        values); _split_text() was probed in XML
+        and text modes, terminated, unterminated
+        and flushed; _clean_state() and
+        _clean_events() were called directly with
+        the fifteen shapes and with mixed entries;
+        the matchers were probed directly at their
+        boundaries; main() was run against temp
+        manifests, readings, log files and state
+        files in all three modes, including
+        missing, malformed, list-shaped and
+        unwritable files, a broken pre-existing
+        state, a repeat pass, and the two shipped
+        synthetic fixtures in --log-file mode.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. The XML parser slices from the
+        first "<Event" to the last "</Event>" (a
+        syslog prefix and suffix are ignored),
+        maps Data Name attributes case- and
+        space-insensitively onto the normalized
+        fields, ignores unknown names and a Data
+        element with no Name, reads an empty Data
+        text as "", converts a numeric ProcessId /
+        ParentProcessId to an int via _as_id()
+        while a non-numeric one stays a string, is
+        namespace-blind, and answers None for a
+        non-1 ID, malformed or unclosed XML, and
+        an event with neither image nor command
+        line. The text parser requires an
+        "Event ID:" line, reads field lines only
+        in the "Name: value" form (no space after
+        the colon reads as no field), normalizes
+        field names the same way (a lower-case
+        "image:" works), strips values, and
+        answers None on the same ID / emptiness
+        rules. _split_text() in XML mode (any
+        "<Event" in the buffer) splits per line
+        and holds an unterminated trailing line as
+        the remainder, flushing it only with
+        flush=True and dropping blank lines there;
+        in text mode a block ends at a blank line
+        or at a "Log Name:" / "Event[" header, an
+        unterminated trailing block is the
+        remainder (its final newline preserved),
+        and flush=True returns it as a final
+        block. Its crashes on non-string shapes
+        occur only for arguments its file-reading
+        callers never pass, so they are not
+        recorded as divergences. _clean_state()
+        reads every non-dict shape as a fresh
+        {"filed": {}}, keeps only string filed
+        keys (values normalized to True), drops
+        unknown keys and preserves a dict _reader
+        verbatim. _clean_events() drops a non-list
+        events value, non-dict entries, an
+        event_id that is not None and != 1 (the
+        string "1" is dropped, while 1.0 and True
+        compare equal to 1 and are kept -- as the
+        earlier class pinned), and entries with
+        neither image nor command line, and reads
+        non-string fields as "". The matchers
+        behave exactly as documented at their
+        boundaries (a 100-character base64 token
+        matches, 99 does not; -encoding does not;
+        /tmpfoo/ and C:\\Windows\\Temp do not).
+        main() in --readings mode files both
+        signals for a genuine event once (a repeat
+        pass with the saved state files nothing),
+        list / empty / scalar readings read as an
+        empty pass (rc 0), a list-shaped manifest
+        still files with the fallback sensor name,
+        a broken pre-existing state reads as
+        fresh, a pre-existing _reader survives a
+        --readings pass, and missing or malformed
+        manifest or readings is rc 2. In
+        --log-file mode a pure XML file and a pure
+        text file each file their events (the
+        shipped synthetic fixtures file exactly
+        their documented signals), a mixed file is
+        read in XML line mode so its text lines
+        file nothing on their own, and empty or
+        garbage files are a quiet rc 0. Live mode
+        over a genuine file files once and
+        advances the offset so a repeat files
+        nothing; over a missing path it is a quiet
+        rc 0 writing an empty _reader. An
+        unwritable state path is rc 2 with the
+        alerts still printed first. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        the readings above keep holding. If a
+        shape ever stops behaving as described,
+        this test is the failing record of that
+        change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -1), ("numeric-string", "5"),
+               ("junk-string", "x"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("neg-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", [1]), ("dict", {"a": 1})]
+
+    _MANIFEST = {"name": "sysmon_feed",
+                 "tunables": {"log_paths": [],
+                              "poll_interval_sec": 60}}
+
+    _EVENT = {"event_id": 1, "image": "/tmp/evil",
+              "command_line": "evil -enc AAAA",
+              "parent_image": "/bin/bash",
+              "user": "alice"}
+
+    _XML = ('prefix <Event><System><EventID>1</EventID>'
+            '</System><EventData>'
+            '<Data Name="UtcTime">2026-01-01 00:00:00.000</Data>'
+            '<Data Name="ProcessGuid">{abc}</Data>'
+            '<Data Name="ProcessId">1234</Data>'
+            '<Data Name="Image">/tmp/evil</Data>'
+            '<Data Name="CommandLine">evil -enc AAAA</Data>'
+            '<Data Name="CurrentDirectory">/tmp/</Data>'
+            '<Data Name="User">alice</Data>'
+            '<Data Name="ParentProcessId">99</Data>'
+            '<Data Name="ParentImage">/bin/bash</Data>'
+            '<Data Name="ParentCommandLine">bash</Data>'
+            '<Data Name="Hashes">SHA256=dead</Data>'
+            '<Data Name="UnknownField">zzz</Data>'
+            '</EventData></Event> suffix')
+
+    _XML_EVENT = {"event_id": 1,
+                  "utc_time": "2026-01-01 00:00:00.000",
+                  "process_guid": "{abc}",
+                  "process_id": 1234, "image": "/tmp/evil",
+                  "command_line": "evil -enc AAAA",
+                  "current_directory": "/tmp/",
+                  "user": "alice", "parent_process_id": 99,
+                  "parent_image": "/bin/bash",
+                  "parent_command_line": "bash",
+                  "hashes": "SHA256=dead"}
+
+    _TEXT = ("Log Name: Security\nEvent ID: 1\n"
+             "Utc Time: 2026-01-01\nProcess ID: 4321\n"
+             "Image: C:\\Users\\bob\\AppData\\Local\\Temp\\evil.exe\n"
+             "Command Line: evil.exe -EncodedCommand AAAA\n"
+             "Parent Image: C:\\Windows\\explorer.exe\n"
+             "User: bob\nHashes: MD5=beef\n"
+             "Unknown Field: zzz\n")
+
+    _TEXT_EVENT = {"event_id": 1,
+                   "utc_time": "2026-01-01",
+                   "process_guid": "", "process_id": 4321,
+                   "image": "C:\\Users\\bob\\AppData\\Local\\Temp\\evil.exe",
+                   "command_line": "evil.exe -EncodedCommand AAAA",
+                   "current_directory": "", "user": "bob",
+                   "parent_process_id": "",
+                   "parent_image": "C:\\Windows\\explorer.exe",
+                   "parent_command_line": "",
+                   "hashes": "MD5=beef"}
+
+    _EMPTY_EVENT = {"event_id": 1, "utc_time": "",
+                    "process_guid": "", "process_id": "",
+                    "image": "", "command_line": "",
+                    "current_directory": "", "user": "",
+                    "parent_process_id": "",
+                    "parent_image": "",
+                    "parent_command_line": "", "hashes": ""}
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "sysmon-feed",
+            "sysmon_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "sysmon_feed_parse_main_hunt", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_parse_event_xml_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertIsNone(mod.parse_event(value))
+        self.assertIsNone(mod.parse_event("   "))
+        self.assertEqual(mod.parse_event(self._XML),
+                         self._XML_EVENT)
+        self.assertEqual(
+            mod.parse_event(self._XML.replace(
+                "<EventID>1</EventID>",
+                "<EventID> 1 </EventID>")),
+            self._XML_EVENT)
+        self.assertIsNone(mod.parse_event(
+            self._XML.replace("<EventID>1</EventID>",
+                              "<EventID>3</EventID>")))
+        self.assertIsNone(mod.parse_event(
+            '<Event><System><EventID>1</EventID></System>'
+            '<EventData><Data Name="User">alice</Data>'
+            '</EventData></Event>'))
+        self.assertIsNone(mod.parse_event(
+            '<Event><System><EventID>1</EventID>'))
+        self.assertIsNone(mod.parse_event("<Event>foo"))
+        ns = dict(self._EMPTY_EVENT, image="/tmp/x")
+        self.assertEqual(
+            mod.parse_event(
+                '<Event xmlns="http://x"><System>'
+                '<EventID>1</EventID></System><EventData>'
+                '<Data Name="Image">/tmp/x</Data>'
+                '</EventData></Event>'), ns)
+        self.assertIsNone(mod.parse_event(
+            '<Event><System><EventID>1</EventID></System>'
+            '<EventData><Data>/tmp/x</Data>'
+            '</EventData></Event>'))
+        empty = dict(self._EMPTY_EVENT,
+                     command_line="ls")
+        self.assertEqual(
+            mod.parse_event(
+                '<Event><System><EventID>1</EventID>'
+                '</System><EventData>'
+                '<Data Name="Image"></Data>'
+                '<Data Name="CommandLine">ls</Data>'
+                '</EventData></Event>'), empty)
+        nonnum = dict(self._EMPTY_EVENT,
+                      process_id="abc", image="/tmp/x")
+        self.assertEqual(
+            mod.parse_event(
+                '<Event><System><EventID>1</EventID>'
+                '</System><EventData>'
+                '<Data Name="ProcessId">abc</Data>'
+                '<Data Name="Image">/tmp/x</Data>'
+                '</EventData></Event>'), nonnum)
+
+    def test_parse_event_text_and_split_shapes(self):
+        mod = self._module()
+        self.assertEqual(mod.parse_event(self._TEXT),
+                         self._TEXT_EVENT)
+        self.assertIsNone(mod.parse_event(
+            self._TEXT.replace("Event ID: 1",
+                               "Event ID: 5")))
+        self.assertIsNone(
+            mod.parse_event("Image: /tmp/x\n"))
+        self.assertIsNone(mod.parse_event(
+            "Event ID: 1\nUser: bob\n"))
+        lower = dict(self._EMPTY_EVENT, image="/tmp/x")
+        self.assertEqual(
+            mod.parse_event("Event ID: 1\nimage: /tmp/x\n"),
+            lower)
+        self.assertIsNone(mod.parse_event(
+            "Event ID: 1\nImage:/tmp/x\n"))
+        self.assertEqual(
+            mod.parse_event(
+                "Event ID:   1\nImage:   /tmp/x  \n"),
+            lower)
+        self.assertEqual(
+            mod._split_text("<Event>a</Event>\n"
+                            "<Event>b</Event>\n"),
+            (["<Event>a</Event>", "<Event>b</Event>"], ""))
+        self.assertEqual(
+            mod._split_text("<Event>a</Event>\n"
+                            "<Event>b</Event>"),
+            (["<Event>a</Event>"], "<Event>b</Event>"))
+        self.assertEqual(
+            mod._split_text("<Event>a</Event>\n\n"
+                            "<Event>b</Event>\n",
+                            flush=True),
+            (["<Event>a</Event>", "<Event>b</Event>"], ""))
+        self.assertEqual(
+            mod._split_text("Event ID: 1\nImage: /tmp/a\n\n"
+                            "Event ID: 1\nImage: /tmp/b\n\n"),
+            (["Event ID: 1\nImage: /tmp/a",
+              "Event ID: 1\nImage: /tmp/b"], ""))
+        self.assertEqual(
+            mod._split_text("Event ID: 1\nImage: /tmp/a\n"),
+            ([], "Event ID: 1\nImage: /tmp/a\n"))
+        self.assertEqual(
+            mod._split_text("Event ID: 1\nImage: /tmp/a\n",
+                            flush=True),
+            (["Event ID: 1\nImage: /tmp/a"], ""))
+        self.assertEqual(
+            mod._split_text(
+                "Log Name: X\nEvent ID: 1\nImage: /tmp/a\n"
+                "Log Name: Y\nEvent ID: 1\nImage: /tmp/b\n"),
+            (["Log Name: X\nEvent ID: 1\nImage: /tmp/a"],
+             "Log Name: Y\nEvent ID: 1\nImage: /tmp/b\n"))
+        self.assertEqual(
+            mod._split_text(
+                "Event[0]:\nEvent ID: 1\nImage: /tmp/a\n\n"
+                "Event[1]:\nEvent ID: 1\nImage: /tmp/b\n",
+                flush=True),
+            (["Event[0]:\nEvent ID: 1\nImage: /tmp/a",
+              "Event[1]:\nEvent ID: 1\nImage: /tmp/b"], ""))
+        self.assertEqual(mod._split_text(""), ([], ""))
+        self.assertEqual(
+            mod._split_text("", flush=True), ([], ""))
+
+    def test_clean_state_events_and_matchers(self):
+        mod = self._module()
+        fresh = {"filed": {}}
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    mod._clean_state(value), fresh)
+                self.assertEqual(
+                    mod._clean_events(value), [])
+        self.assertEqual(mod._clean_state({}), fresh)
+        self.assertEqual(
+            mod._clean_state({"filed": ["a"]}), fresh)
+        self.assertEqual(
+            mod._clean_state({
+                "filed": {"a": 1, "b": False, 5: True,
+                          None: True},
+                "_reader": {"p": {"inode": 1}},
+                "unknown": 9}),
+            {"filed": {"a": True, "b": True},
+             "_reader": {"p": {"inode": 1}}})
+        self.assertEqual(
+            mod._clean_state({"filed": {},
+                              "_reader": [1]}), fresh)
+        self.assertEqual(mod._clean_events({}), [])
+        self.assertEqual(
+            mod._clean_events({"events": [
+                {"event_id": 1, "image": "/tmp/a"},
+                {"event_id": 3, "image": "/tmp/b"},
+                {"event_id": "1", "image": "/tmp/c"},
+                {"event_id": None, "command_line": "ls"},
+                {"event_id": 1.0, "image": "/tmp/d"},
+                {"event_id": True, "image": "/tmp/e"},
+                "junk",
+                {"image": 5, "command_line": None},
+                {"image": "/tmp/f", "parent_image": 5,
+                 "user": None}]}),
+            [{"image": "/tmp/a", "command_line": "",
+              "parent_image": "", "user": ""},
+             {"image": "", "command_line": "ls",
+              "parent_image": "", "user": ""},
+             {"image": "/tmp/d", "command_line": "",
+              "parent_image": "", "user": ""},
+             {"image": "/tmp/e", "command_line": "",
+              "parent_image": "", "user": ""},
+             {"image": "/tmp/f", "command_line": "",
+              "parent_image": "", "user": ""}])
+        for image, marker in (
+                ("/tmp/x", "/tmp/"), ("/TMP/X", "/tmp/"),
+                ("/dev/shm/x", "/dev/shm/"),
+                ("/var/tmp/x", "/var/tmp/"),
+                ("/tmpfoo/x", None),
+                ("C:\\Windows\\Temp\\e.exe", None),
+                ("", None), (None, None), (5, None)):
+            with self.subTest(image=image):
+                self.assertEqual(
+                    mod._temp_match(image), marker)
+        self.assertEqual(
+            mod._temp_match(
+                "C:\\Users\\bob\\AppData\\Local\\Temp\\e.exe"),
+            "c:/users/bob/appdata/local/temp/")
+        self.assertEqual(
+            mod._temp_match("%TEMP%\\e.exe"), "%TEMP%")
+        self.assertEqual(
+            mod._temp_match("foo%temp%bar"), "%TEMP%")
+        for cmd, marker in (
+                ("x -enc AAAA", "-enc"),
+                ("x -ENC AAAA", "-enc"),
+                ("x -encodedcommand AAAA",
+                 "-encodedcommand"),
+                ("x -EncodedCommand AAAA",
+                 "-encodedcommand"),
+                ("x -encoding AAAA", None),
+                ("powershell " + "A" * 100, "A" * 100),
+                ("powershell " + "A" * 99, None),
+                ("", None), (None, None), (5, None)):
+            with self.subTest(cmd=str(cmd)[:30]):
+                self.assertEqual(
+                    mod._encoded_match(cmd), marker)
+        for name, value in self._SHAPES:
+            with self.subTest(is_number=name):
+                self.assertEqual(
+                    mod._is_number(value),
+                    name in ("zero", "negative"))
+        self.assertTrue(mod._is_number(5.5))
+        self.assertEqual(mod._as_id(" 12 "), 12)
+        self.assertEqual(mod._as_id("12.5"), "12.5")
+        self.assertEqual(mod._as_id("abc"), "abc")
+        self.assertIsNone(mod._as_id(None))
+
+    def _run_main(self, mod, argv):
+        import contextlib
+        import io
+        buf = io.StringIO()
+        err = io.StringIO()
+        with contextlib.redirect_stdout(buf), \
+                contextlib.redirect_stderr(err):
+            rc = mod.main(argv)
+        return rc, buf.getvalue(), err.getvalue()
+
+    def _write(self, d, name, obj=None, raw=None):
+        import json
+        import os
+        p = os.path.join(d, name)
+        with open(p, "w", encoding="utf-8") as fh:
+            if raw is not None:
+                fh.write(raw)
+            else:
+                json.dump(obj, fh)
+        return p
+
+    def _sub(self, d, name):
+        import os
+        p = os.path.join(d, name)
+        os.makedirs(p)
+        return p
+
+    def test_main_readings_mode(self):
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as base:
+            d = self._sub(base, "genuine")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            rp = self._write(
+                d, "r.json",
+                {"now": 1000, "events": [self._EVENT]})
+            sp = os.path.join(d, "s.json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                out.count("sysmon_process_from_temp"), 1)
+            self.assertEqual(
+                out.count("sysmon_encoded_command"), 1)
+            with open(sp, encoding="utf-8") as fh:
+                saved = json.load(fh)
+            self.assertEqual(len(saved["filed"]), 2)
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings", rp])
+            self.assertEqual((rc, out), (0, ""))
+            for name, readings in (
+                    ("list", [1, 2]), ("empty", {}),
+                    ("scalar", "bogus")):
+                d = self._sub(base, name)
+                mp = self._write(d, "m.json",
+                                 self._MANIFEST)
+                rp = self._write(d, "r.json", readings)
+                sp = os.path.join(d, "s.json")
+                rc, out, _ = self._run_main(
+                    mod, ["--manifest", mp, "--state", sp,
+                          "--readings", rp])
+                self.assertEqual((rc, out), (0, ""))
+                with open(sp, encoding="utf-8") as fh:
+                    self.assertEqual(json.load(fh),
+                                     {"filed": {}})
+            d = self._sub(base, "listman")
+            mp = self._write(d, "m.json", [1, 2])
+            rp = self._write(
+                d, "r.json",
+                {"now": 1, "events": [self._EVENT]})
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertIn('"sensor": "sysmon_feed"', out)
+            d = self._sub(base, "errors")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            rp = self._write(
+                d, "r.json",
+                {"now": 1, "events": [self._EVENT]})
+            rc, _, _ = self._run_main(
+                mod, ["--manifest",
+                      os.path.join(d, "missing.json"),
+                      "--state", os.path.join(d, "s.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            bad = self._write(d, "bad.json", raw="{no")
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", bad, "--state",
+                      os.path.join(d, "s.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s.json"),
+                      "--readings",
+                      os.path.join(d, "missing.json")])
+            self.assertEqual(rc, 2)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s.json"),
+                      "--readings", bad])
+            self.assertEqual(rc, 2)
+            d = self._sub(base, "brokenstate")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            rp = self._write(
+                d, "r.json",
+                {"now": 1, "events": [self._EVENT]})
+            sp = self._write(d, "s.json", raw="{broken")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                out.count("sysmon_process_from_temp"), 1)
+            d = self._sub(base, "reader")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            rp = self._write(d, "r.json",
+                             {"now": 5, "events": []})
+            sp = self._write(
+                d, "s.json",
+                {"filed": {},
+                 "_reader": {"p": {"inode": 7}}})
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            with open(sp, encoding="utf-8") as fh:
+                self.assertEqual(
+                    json.load(fh)["_reader"],
+                    {"p": {"inode": 7}})
+            d = self._sub(base, "unwritable")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            rp = self._write(
+                d, "r.json",
+                {"now": 1, "events": [self._EVENT]})
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", d,
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            self.assertEqual(
+                out.count("sysmon_process_from_temp"), 1)
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "nodir", "s.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            self.assertEqual(
+                out.count("sysmon_process_from_temp"), 1)
+
+    def test_main_logfile_and_live_modes(self):
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as base:
+            d = self._sub(base, "xmlfile")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            lp = self._write(d, "f.log", raw=self._XML + "\n")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s.json"),
+                      "--log-file", lp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                out.count("sysmon_process_from_temp"), 1)
+            d = self._sub(base, "textfile")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            lp = self._write(d, "f.txt", raw=self._TEXT)
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s.json"),
+                      "--log-file", lp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                out.count("sysmon_process_from_temp"), 1)
+            self.assertEqual(
+                out.count("sysmon_encoded_command"), 1)
+            d = self._sub(base, "mixed")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            lp = self._write(
+                d, "f.log",
+                raw=self._XML + "\ngarbage line\n\n"
+                + self._TEXT)
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s.json"),
+                      "--log-file", lp])
+            self.assertEqual(rc, 0)
+            # XML line mode: only the XML event files.
+            self.assertEqual(
+                out.count('"sensor": "sysmon_feed"'), 2)
+            for name, raw in (("emptylog", ""),
+                              ("garbage", "garbage\nmore\n")):
+                d = self._sub(base, name)
+                mp = self._write(d, "m.json",
+                                 self._MANIFEST)
+                lp = self._write(d, "f.log", raw=raw)
+                rc, out, _ = self._run_main(
+                    mod, ["--manifest", mp, "--state",
+                          os.path.join(d, "s.json"),
+                          "--log-file", lp])
+                self.assertEqual((rc, out), (0, ""))
+            d = self._sub(base, "missinglog")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s.json"),
+                      "--log-file",
+                      os.path.join(d, "nope.log")])
+            self.assertEqual(rc, 2)
+            here = os.path.dirname(os.path.abspath(__file__))
+            fixdir = os.path.join(
+                os.path.dirname(os.path.dirname(here)),
+                "runner", "extensions", "sysmon-feed",
+                "fixtures")
+            for idx, (fixture, signals) in enumerate((
+                    ("synthetic-linux-sysmon.log",
+                     ("sysmon_process_from_temp",
+                      "sysmon_encoded_command")),
+                    ("synthetic-windows-sysmon.txt",
+                     ("sysmon_process_from_temp",
+                      "sysmon_encoded_command")))):
+                d = self._sub(base, "fix%d" % idx)
+                mp = self._write(d, "m.json",
+                                 self._MANIFEST)
+                rc, out, _ = self._run_main(
+                    mod, ["--manifest", mp, "--state",
+                          os.path.join(d, "s.json"),
+                          "--log-file",
+                          os.path.join(fixdir, fixture)])
+                self.assertEqual(rc, 0)
+                for signal in signals:
+                    self.assertIn(signal, out)
+            d = self._sub(base, "live")
+            live = self._write(d, "live.log",
+                               raw=self._XML + "\n")
+            man = {"name": "sysmon_feed",
+                   "tunables": {"log_paths": [live]}}
+            mp = self._write(d, "m.json", man)
+            sp = os.path.join(d, "s.json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                out.count("sysmon_process_from_temp"), 1)
+            with open(sp, encoding="utf-8") as fh:
+                state = json.load(fh)
+            self.assertEqual(
+                state["_reader"][live]["offset"],
+                os.path.getsize(live))
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp])
+            self.assertEqual((rc, out), (0, ""))
+            d = self._sub(base, "livemissing")
+            man = {"name": "sysmon_feed",
+                   "tunables": {
+                       "log_paths": ["/nonexistent-xyz.log"]}}
+            mp = self._write(d, "m.json", man)
+            sp = os.path.join(d, "s.json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp])
+            self.assertEqual((rc, out), (0, ""))
+            with open(sp, encoding="utf-8") as fh:
+                self.assertEqual(
+                    json.load(fh),
+                    {"_reader": {}, "filed": {}})
+
 if __name__ == "__main__":
 
     unittest.main()
