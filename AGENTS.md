@@ -54,6 +54,11 @@ Those values live on the runner host. They do not travel through the SI chat.
    commit. The owner reads and answers in the file. The CHANGELOG is
    a release record and carries none of this. Nothing personal about
    anyone goes in that file or anywhere else in the repository.
+8. **Lanes (owner's split, 2026-10-24).** Production code and releases
+   are Claude's lane; tests, probes, questions and docs are Muse's. A
+   question Muse files is Claude's to implement, and Muse does not
+   land a code fix for its own question. Both pull before every
+   change and every push, so two agents never land the same fix.
 
 
 ## Where things live

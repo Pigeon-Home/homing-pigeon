@@ -396,7 +396,8 @@ class PipelineLiftsTest(unittest.TestCase):
     """
 
     WORKFLOWS = ("build.yml", "docker.yml", "security.yml",
-                 "minimal-userland.yml", "platform-matrix.yml")
+                 "minimal-userland.yml", "platform-matrix.yml",
+                 "env-axes.yml")
 
     def _wf(self, name):
         with open(os.path.join(_root(), ".github", "workflows", name),

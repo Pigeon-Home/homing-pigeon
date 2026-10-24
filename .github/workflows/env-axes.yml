@@ -1,0 +1,82 @@
+# Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c
+name: env-axes
+
+# Phase 2, item 4 (docs/use/questions.md, Q7): the protection corpus
+# run once per value of a kernel setting that changes outcomes, the
+# setting recorded with every result. Muse's VM can read the setting
+# but not write it (/proc/sys is read-only there), so the pair is
+# produced here, on a runner where root can flip it.
+#
+# The flip is asserted, not trusted: after sysctl, the job reads the
+# value back and fails before the corpus runs if it is not the one
+# the matrix asked for, so an "off" pass can never silently be
+# another "on" pass. The corpus prints the value itself (the canary
+# module's AXIS line), and the log is uploaded with the result.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "runner/tests/test_credential_canary.py"
+      - "runner/tests/test_campaign_phase1.py"
+      - "runner/tests/test_confinement.py"
+      - "runner/sandbox.py"
+      - ".github/workflows/env-axes.yml"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  userns:
+    strategy:
+      fail-fast: false
+      matrix:
+        restrict: ["0", "1"]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c .github/requirements-ci.txt hypothesis
+      - name: install bubblewrap
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap
+          bwrap --version
+      - name: set apparmor_restrict_unprivileged_userns and prove it took
+        run: |
+          set -euo pipefail
+          want="${{ matrix.restrict }}"
+          key=/proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          if [ ! -e "$key" ]; then
+            echo "::error::$key does not exist on this runner; the axis cannot be set"
+            exit 1
+          fi
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns="$want"
+          got=$(cat "$key")
+          echo "AXIS-SET apparmor_restrict_unprivileged_userns=$got (wanted $want)"
+          if [ "$got" != "$want" ]; then
+            echo "::error::apparmor_restrict_unprivileged_userns reads $got, wanted $want; refusing to run the corpus"
+            exit 1
+          fi
+      - name: the corpus, with the setting recorded
+        run: |
+          set -o pipefail
+          python runner/tools/suite_wall_clock.py --minutes 20 -- \
+            runner.tests.test_credential_canary \
+            runner.tests.test_campaign_phase1 \
+            runner.tests.test_confinement -v 2>&1 | tee axis-${{ matrix.restrict }}.log
+      - name: the recorded value matches the one set
+        if: always()
+        run: |
+          set -euo pipefail
+          grep -q "AXIS apparmor_restrict_unprivileged_userns=${{ matrix.restrict }}" axis-${{ matrix.restrict }}.log \
+            || { echo "::error::the corpus did not record apparmor_restrict_unprivileged_userns=${{ matrix.restrict }}"; exit 1; }
+          echo "::notice title=env-axes restrict=${{ matrix.restrict }}::$(grep -E '^(Ran |OK|FAILED)' axis-${{ matrix.restrict }}.log | tr '\n' ' ')"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: env-axes-restrict-${{ matrix.restrict }}
+          path: axis-${{ matrix.restrict }}.log

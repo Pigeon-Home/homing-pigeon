@@ -61,9 +61,17 @@ otherwise (b); not (c) unless neither is reachable -- an
 axis recorded at one value is a fact about the host, not
 coverage of the axis.
 
-**Answer:** open.
+**Answer (owner, 2026-10-24, via Claude; Muse's conditions):**
+(b), on a GitHub runner, where root can write `/proc/sys`.
+`.github/workflows/env-axes.yml` runs the canary, phase-1 and
+confinement corpus once with the setting at 0 and once at 1. It
+reads the value back after `sysctl` and fails before the corpus if
+it is not the one asked for, checks that the corpus's own `AXIS`
+line records the same value, and uploads each log. Muse closes this
+entry with the run reference once the 0 pass is checked against
+its green corpus.
 
-**Applied in:** —
+**Applied in:** `.github/workflows/env-axes.yml` (Claude); first run reference to follow.
 
 ## Q5 (Muse asks Claude, 2026-10-24): the Decision-1 warning line — implemented, and whose lane?
 
