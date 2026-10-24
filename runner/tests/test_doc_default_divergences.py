@@ -11594,6 +11594,126 @@ class TestCrashWatchRepeatWindowSecFifteenShapes(unittest.TestCase):
             [("crash_dumped", None)])
 
 
+class TestFailedLoginWatchWindowSecFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the failed-login-watch
+    window_sec row itself varied for the first time
+    (step-8 Target 2 -- the row's named hand-written
+    class varies the sibling burst_count only, so
+    window_sec had never itself been varied) -- the
+    fifteen shapes at decide() level.
+
+    (a) Doc claim (extensions/failed-login-watch/
+        README.md, signal table: "login_failure_burst |
+        One source accumulates at least the
+        `burst_count` tunable (default 5) failures
+        inside the trailing `window_sec` (default
+        600)"). Registry row "window_sec
+        (failed-login-watch)" (default 600): policy
+        default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: step-8 artifact Target 2
+        lists window_sec (failed-login-watch) among
+        the rows whose named class varies a sibling
+        key, not this one. This tick took that row:
+        its reader is inline in extensions/
+        failed-login-watch/failed_login_watch.py:
+        decide (window if _is_number(window) and
+        window > 0 else 600, floated), and probed it
+        through decide() itself with the fifteen
+        shapes from the table hunt -- omitted, null,
+        empty string, true, false, zero, negative,
+        the documented default written explicitly,
+        numeric string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, wrong container --
+        plus genuine int / fractional values. The
+        observable is the filed burst's own detail:
+        five failures from one source 60s apart file
+        exactly one login_failure_burst whose detail
+        carries the effective window_sec and count 5.
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default 600: the burst files with
+        window_sec 600 and count 5. Zero and negative
+        also read as the default because this reader
+        requires value > 0. Numeric strings are not
+        parsed ("45" reads as the default; the
+        _is_number isinstance gate). Genuine values
+        are honored exactly: 10 files the burst at
+        2s spacing with window_sec 10 and files
+        nothing at 60s spacing, and the fractional
+        3600.5 files with window_sec 3600.5.
+        Observed on 2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented default and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "failed-login-watch",
+            "failed_login_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "failed_login_watch_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _probe(self, mod, tunables, spacing=60):
+        events = [{"ts": 1000.0 + i * spacing,
+                   "kind": "fail", "source": "192.0.2.10",
+                   "user": "root"} for i in range(5)]
+        readings = {"now": 1000.0 + 4 * spacing,
+                    "events": events}
+        alerts, _new_state = mod.decide(
+            readings,
+            {"name": "failed_login_watch",
+             "tunables": tunables}, {})
+        return [(a["signal"], a["detail"].get("window_sec"),
+                 a["detail"].get("count")) for a in alerts]
+
+    def test_fifteen_shapes_read_as_the_default(self):
+        mod = self._mod()
+        burst = [("login_failure_burst", 600, 5)]
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._probe(mod, {}), burst)
+        unusable = [None, "", True, False, 0, -5,
+                    "45", "bogus", 10 ** 400,
+                    float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._probe(mod, {"window_sec": value}),
+                    burst)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._probe(mod, {"window_sec": 600}), burst)
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        self.assertEqual(
+            self._probe(mod, {"window_sec": 10}, spacing=2),
+            [("login_failure_burst", 10, 5)])
+        self.assertEqual(
+            self._probe(mod, {"window_sec": 10}, spacing=60),
+            [])
+        self.assertEqual(
+            self._probe(mod, {"window_sec": 3600.5}),
+            [("login_failure_burst", 3600.5, 5)])
+
+
 if __name__ == "__main__":
 
     unittest.main()
