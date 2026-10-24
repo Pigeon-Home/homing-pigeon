@@ -37181,6 +37181,541 @@ class TestJobFuzzStateClassesAndTriageFifteenShapes(unittest.TestCase):
                 os.path.join(td, "nope"), 3))
             self.assertIsNone(mod._prune_archive(note, 3))
 
+class TestJobWatcherRecordsStateAndMainFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: job-watcher's
+    record reader, state cleaning, duration
+    scorer, decide() signal surface, read_live()
+    and main() in --readings mode varied with
+    the fifteen shapes for the first time (step-8
+    Target 5 / family (b) -- job-watcher's
+    earlier classes cover its tunables at their
+    readers, the zero/negative literal family
+    and its history/pass caps; _record_observation(),
+    _clean_runs()/_clean_state(), score_duration(),
+    the four signals' gates and dedup,
+    read_live() and main() had no fifteen-shapes
+    class before this one).
+
+    (a) Doc claims: the module docstring states
+    read_live() is the only function that touches
+    the machine, decide() is pure (readings plus
+    manifest plus last pass's state), current
+    time arrives as readings["now"], a missing
+    retained directory, an unreadable or
+    half-written record and an oversized file
+    are each skipped quietly (absence is a normal
+    case, not an error), and the four signals:
+    job_failing_repeatedly at repeat_failures
+    (default 3) inside failure_window_sec
+    (default a day), job_flaky over the last
+    flaky_runs (default 6) with at least
+    flaky_min_transitions (default 3) and both
+    outcomes present, job_duration_anomaly only
+    with at least duration_min_baseline (default
+    5) earlier durations, and failure_cluster at
+    cluster_min_jobs (default 3) distinct jobs
+    inside cluster_window_sec (default 15
+    minutes). extension.json ships exactly those
+    defaults plus duration_z 3.5,
+    max_history_runs 60, max_records_per_pass
+    500 and poll_interval_sec 300.
+
+    (b) How this was probed: on 2026-10-24
+    _tunable/_count_tunable/_span_tunable/
+    _positive_tunable, _record_observation(),
+    _clean_runs(), _clean_state(),
+    score_duration(), decide(), read_live() and
+    main() were probed with the table hunt's
+    fifteen shapes (omitted-equivalent empty
+    list, null, empty string, true, false, zero,
+    negative, numeric string, non-numeric
+    string, huge-int (10**400), inf, -inf, NaN,
+    list, dict) at every field: each tunable
+    helper, each record field, each run-row
+    position and cap, the state object and its
+    seen/jobs/cluster_fired fields, the readings
+    object, its now and records fields, each
+    record's job_id/key/saved_at/exit_code, the
+    manifest and its name, every decide()
+    tunable (including genuine 2.9, 5 and 10
+    failure windows), the four signals
+    individually, fingerprint and cluster dedup,
+    read_live() against a temp retained store
+    (cap truncation, non-.json and symlink files
+    skipped), and main() in --readings mode
+    against temp manifests, readings and state
+    files, including missing, malformed,
+    list-shaped and unwritable files.
+
+    (c) Behavior actually observed: NO
+    divergence in this class. The tunable
+    helpers share _is_number (a finite non-bool
+    int/float; strings are never parsed):
+    _tunable keeps zero and a negative literally
+    and reads every unusable shape as the
+    default; _count_tunable truncates a genuine
+    value of at least 1 and reads zero, a
+    negative, a fraction below 1 and every
+    unusable shape as the default;
+    _span_tunable keeps a genuine value of at
+    least 1 (2.9 kept, 0.5 defaulted);
+    _positive_tunable keeps any genuine positive
+    value (0.5 kept). _record_observation()
+    returns None for a non-JSON file, a non-dict
+    record and any record whose exit_code is not
+    a usable number (bool included); a missing
+    or unusable saved_at falls back to the file
+    mtime argument, a missing or non-string
+    job_id falls back to the file basename
+    without .json, non-string kind/script read
+    as "", an unusable duration reads as None,
+    timed_out is plain truthiness, and the error
+    is the first non-empty stderr line trimmed
+    to 120 chars. _clean_runs() reads every
+    non-list runs shape as [], drops rows that
+    are not 4-element lists/tuples or whose ts
+    or exit_code is unusable, keeps a usable
+    duration as a float (unusable as None) and
+    a string error verbatim (non-string as ""),
+    sorts by ts, and a cap of 0 or negative
+    keeps all rows (unreachable from decide(),
+    which guards max_history_runs below 1 to
+    60). _clean_state() reads every non-dict
+    state as fresh, keeps only seen entries with
+    a string key and a usable number value,
+    cleans each job entry's runs and keeps only
+    string-to-string fired entries, and reads a
+    non-string cluster_fired as "".
+    score_duration() returns no anomaly with
+    fewer than min_baseline history values,
+    judges by median/MAD (zero spread: anomalous
+    only past twice the median and at least 5s
+    beyond it), and never fires at or below the
+    median; helper-level TypeErrors from
+    non-number min_baseline shapes occur only
+    for arguments decide() never passes (it
+    passes the _count_tunable result), so they
+    were not recorded as divergences. decide()
+    reads every non-dict readings/manifest/state
+    shape, every unusable now (as 0.0) and every
+    non-list records shape as an empty pass;
+    a record folds only with a non-empty string
+    job_id and key and usable saved_at and
+    exit_code (zero and a negative kept
+    literally), already-seen job ids are
+    skipped, and the four signals fire as
+    documented: 3 failures inside the window
+    file job_failing_repeatedly (medium, dominant
+    exit and error named, refiling only on a new
+    fingerprint), alternating P/F outcomes file
+    job_flaky (info), a 100s run against five
+    10s baselines files job_duration_anomaly
+    (medium), and 3 distinct failing keys inside
+    900s file failure_cluster (high, deduped by
+    the sorted-key fingerprint across passes
+    while the runs stay in window).
+    failure_window_sec reads every unusable
+    shape, zero and a negative as 86400 through
+    the decide() guard, a genuine 10 keeps the
+    3 failures at now-10..now-8 inside, and
+    genuine 5 and 2.9 leave them outside so
+    nothing files. read_live() returns exactly
+    {now, records, truncated} for every manifest
+    shape, reads a missing base as empty, folds
+    only non-symlink .json files sorted by
+    saved_at, and a cap of 1 keeps the newest
+    record and counts 1 truncated. main()
+    returns 2 for a missing or malformed
+    manifest and for a missing or malformed
+    readings file, 0 for a list manifest, a list
+    or scalar readings file (read as no readings)
+    and a malformed or list state file (read as
+    fresh), 0 with the firing alert printed as a
+    sorted-key JSON line and the state written,
+    and 2 for an unwritable state path.
+    Observed on 2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+    divergence: it stays green as long as the
+    readings above keep holding. If a shape
+    ever stops behaving as described, this
+    test is the failing record of that change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+    _UNUSABLE = {"empty-list", "null", "empty-string",
+                 "true", "false", "numeric-string",
+                 "non-numeric-string", "huge-int", "inf",
+                 "-inf", "nan", "list", "dict"}
+    _NOW = 100000.0
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "job-watcher",
+            "job_watcher.py")
+        spec = importlib.util.spec_from_file_location(
+            "job_watcher_records_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _manifest(self, **tunables):
+        return {"name": "job_watcher",
+                "tunables": dict(tunables)}
+
+    def _rec(self, jid, key, ts, exit_code, duration=None,
+             error=""):
+        return {"job_id": jid, "key": key, "kind": "shell",
+                "label": "do thing", "exit_code": exit_code,
+                "saved_at": ts, "duration_sec": duration,
+                "error": error}
+
+    def test_tunable_helpers_fifteen_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(helper="_tunable", shape=name):
+                got = mod._tunable({"k": value}, "k", 86400.0)
+                if name in ("zero", "negative"):
+                    self.assertEqual(got, float(value))
+                else:
+                    self.assertEqual(got, 86400.0)
+            with self.subTest(helper="_count", shape=name):
+                self.assertEqual(
+                    mod._count_tunable({"k": value}, "k", 3), 3)
+            with self.subTest(helper="_span", shape=name):
+                self.assertEqual(
+                    mod._span_tunable({"k": value}, "k", 900.0),
+                    900.0)
+            with self.subTest(helper="_positive", shape=name):
+                self.assertEqual(
+                    mod._positive_tunable({"k": value}, "k", 3.5),
+                    3.5)
+        self.assertEqual(mod._tunable({"k": 2.9}, "k", 86400.0), 2.9)
+        self.assertEqual(mod._count_tunable({"k": 2.9}, "k", 3), 2)
+        self.assertEqual(mod._count_tunable({"k": 0.5}, "k", 3), 3)
+        self.assertEqual(mod._span_tunable({"k": 2.9}, "k", 900.0), 2.9)
+        self.assertEqual(mod._span_tunable({"k": 0.5}, "k", 900.0), 900.0)
+        self.assertEqual(
+            mod._positive_tunable({"k": 0.5}, "k", 3.5), 0.5)
+
+    def test_record_observation_fifteen_shapes(self):
+        import json as _json
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, "rec.json")
+
+            def obs(content):
+                with open(path, "w", encoding="utf-8") as fh:
+                    fh.write(content if isinstance(content, str)
+                             else _json.dumps(content))
+                return mod._record_observation(path, 999.0)
+
+            self.assertIsNone(obs("not json"))
+            self.assertIsNone(obs([1, 2]))
+            for name, value in self._SHAPES:
+                with self.subTest(field="exit_code", shape=name):
+                    got = obs({"exit_code": value, "saved_at": 100})
+                    if name in ("zero", "negative"):
+                        self.assertIsNotNone(got)
+                        self.assertEqual(got["exit_code"], value)
+                    else:
+                        self.assertIsNone(got)
+            base = obs({"exit_code": 2})
+            self.assertEqual(base["saved_at"], 999.0)
+            self.assertEqual(base["job_id"], "rec")
+            self.assertEqual(base["kind"], "")
+            self.assertEqual(base["label"], "job")
+            self.assertIsNone(base["duration_sec"])
+            shaped = obs({"exit_code": 2, "saved_at": "120",
+                          "job_id": 123, "kind": 123,
+                          "script": 123, "duration_sec": "x",
+                          "timed_out": "yes", "stderr": 123})
+            self.assertEqual(shaped["saved_at"], 999.0)
+            self.assertEqual(shaped["job_id"], "rec")
+            self.assertTrue(shaped["timed_out"])
+            self.assertEqual(shaped["error"], "")
+            good = obs({"exit_code": 0, "saved_at": 100,
+                        "job_id": "j1", "kind": "shell",
+                        "script": "echo hi", "duration_sec": 5,
+                        "stderr": "\n  err line  \nsecond"})
+            self.assertEqual(good["label"], "echo hi")
+            self.assertEqual(good["duration_sec"], 5.0)
+            self.assertEqual(good["error"], "err line")
+            self.assertFalse(good["timed_out"])
+
+    def test_clean_runs_and_state_fifteen_shapes(self):
+        mod = self._module()
+        fresh = {"seen": {}, "jobs": {}, "cluster_fired": ""}
+        for name, value in self._SHAPES:
+            with self.subTest(kind="runs", shape=name):
+                self.assertEqual(mod._clean_runs(value, 60), [])
+            with self.subTest(kind="state", shape=name):
+                self.assertEqual(mod._clean_state(value, 60), fresh)
+        rows = [[100, 0, 5.0, "err"], [90, 1, None, ""],
+                "bogus", [1, 2], [100, "120", "x", 123],
+                [50, 0, float("inf"), "e"]]
+        cleaned = [[50.0, 0, None, "e"], [90.0, 1, None, ""],
+                   [100.0, 0, 5.0, "err"]]
+        self.assertEqual(mod._clean_runs(rows, 60), cleaned)
+        self.assertEqual(mod._clean_runs(rows, 0), cleaned)
+        self.assertEqual(mod._clean_runs(rows, -1), cleaned)
+        self.assertEqual(mod._clean_runs(rows, 2), cleaned[-2:])
+        state = mod._clean_state({
+            "seen": {"a": 100, "b": "120", "c": True, 123: 5},
+            "jobs": {"k1": {"kind": 123, "label": None,
+                            "runs": rows,
+                            "fired": {"s": "f", "x": 1, 2: "y"}}},
+            "cluster_fired": 123}, 60)
+        self.assertEqual(state["seen"], {"a": 100.0})
+        self.assertEqual(state["jobs"]["k1"]["runs"], cleaned)
+        self.assertEqual(state["jobs"]["k1"]["fired"], {"s": "f"})
+        self.assertEqual(state["cluster_fired"], "")
+
+    def test_score_duration_baseline(self):
+        mod = self._module()
+        self.assertFalse(mod.score_duration([], 10)[0])
+        self.assertFalse(
+            mod.score_duration([10, 10, 10, 10], 100)[0])
+        self.assertTrue(
+            mod.score_duration([10, 11, 9, 10, 10], 100)[0])
+        self.assertFalse(
+            mod.score_duration([10, 11, 9, 10, 10], 11)[0])
+        self.assertFalse(
+            mod.score_duration([10, 11, 9, 10, 10], 10)[0])
+        self.assertTrue(
+            mod.score_duration([10, 10, 10, 10, 10], 30)[0])
+        self.assertTrue(
+            mod.score_duration([10, 10, 10, 10, 10], 24)[0])
+        self.assertFalse(
+            mod.score_duration([10, 10, 10, 10, 10], 15)[0])
+
+    def test_decide_containers_fifteen_shapes(self):
+        mod = self._module()
+        empty = {"seen": {}, "jobs": {}, "cluster_fired": ""}
+        for name, value in self._SHAPES:
+            with self.subTest(kind="readings", shape=name):
+                alerts, state = mod.decide(
+                    value, self._manifest(), {})
+                self.assertEqual(alerts, [])
+                self.assertEqual(state, empty)
+            with self.subTest(kind="manifest", shape=name):
+                alerts, _ = mod.decide(
+                    {"now": self._NOW, "records": []}, value, {})
+                self.assertEqual(alerts, [])
+            with self.subTest(kind="now", shape=name):
+                alerts, _ = mod.decide(
+                    {"now": value, "records": []},
+                    self._manifest(), {})
+                self.assertEqual(alerts, [])
+            with self.subTest(kind="records", shape=name):
+                alerts, state = mod.decide(
+                    {"now": self._NOW, "records": value},
+                    self._manifest(), {})
+                self.assertEqual(alerts, [])
+                self.assertEqual(state["jobs"], {})
+            with self.subTest(kind="exit_code", shape=name):
+                rec = self._rec("x", "k1", self._NOW, 1)
+                rec["exit_code"] = value
+                _, state = mod.decide(
+                    {"now": self._NOW, "records": [rec]},
+                    self._manifest(), {})
+                if name in ("zero", "negative"):
+                    self.assertEqual(
+                        len(state["jobs"]["k1"]["runs"]), 1)
+                else:
+                    self.assertEqual(state["jobs"], {})
+
+    def test_decide_four_signals_and_dedup(self):
+        mod = self._module()
+        now = self._NOW
+        recs = [self._rec(f"j{i}", "k1", now - 10 + i, 3, 5.0,
+                          "boom") for i in range(3)]
+        alerts, state = mod.decide(
+            {"now": now, "records": recs}, self._manifest(), {})
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["job_failing_repeatedly"])
+        self.assertEqual(alerts[0]["severity"], "medium")
+        self.assertEqual(alerts[0]["detail"]["failures"], 3)
+        self.assertEqual(
+            alerts[0]["detail"]["dominant_exit_code"], 3)
+        self.assertEqual(
+            alerts[0]["detail"]["dominant_error"], "boom")
+        alerts2, _ = mod.decide(
+            {"now": now, "records": recs}, self._manifest(), state)
+        self.assertEqual(alerts2, [])
+        flaky = [self._rec(f"f{i}", "k2", now - 60 + i,
+                           0 if i % 2 == 0 else 1, 5.0)
+                 for i in range(6)]
+        alerts, _ = mod.decide(
+            {"now": now, "records": flaky}, self._manifest(), {})
+        self.assertIn("job_flaky", [a["signal"] for a in alerts])
+        flaky_alert = [a for a in alerts
+                       if a["signal"] == "job_flaky"][0]
+        self.assertEqual(flaky_alert["severity"], "info")
+        self.assertEqual(flaky_alert["detail"]["pattern"],
+                         "PFPFPF")
+        dur = [self._rec(f"d{i}", "k3", now - 100 + i, 0, 10.0)
+               for i in range(5)]
+        dur.append(self._rec("d5", "k3", now, 0, 100.0))
+        alerts, _ = mod.decide(
+            {"now": now, "records": dur}, self._manifest(), {})
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["job_duration_anomaly"])
+        self.assertEqual(
+            alerts[0]["detail"]["baseline_median_sec"], 10.0)
+        cluster = [self._rec("c0", "ka", now - 5, 1),
+                   self._rec("c1", "kb", now - 4, 1),
+                   self._rec("c2", "kc", now - 3, 1)]
+        alerts, state = mod.decide(
+            {"now": now, "records": cluster},
+            self._manifest(), {})
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["failure_cluster"])
+        self.assertEqual(alerts[0]["severity"], "high")
+        self.assertEqual(state["cluster_fired"], "ka,kb,kc")
+        alerts2, state2 = mod.decide(
+            {"now": now, "records": []}, self._manifest(), state)
+        self.assertEqual(alerts2, [])
+        self.assertEqual(state2["cluster_fired"], "ka,kb,kc")
+
+    def test_decide_failure_window_shapes(self):
+        mod = self._module()
+        now = self._NOW
+        for name, value in self._SHAPES:
+            with self.subTest(kind="fw", shape=name):
+                recs = [self._rec(f"j{i}", "k1", now - 10 + i, 3)
+                        for i in range(3)]
+                alerts, _ = mod.decide(
+                    {"now": now, "records": recs},
+                    self._manifest(failure_window_sec=value), {})
+                self.assertEqual([a["signal"] for a in alerts],
+                                 ["job_failing_repeatedly"])
+        for value, fires in [(10, True), (5, False), (2.9, False)]:
+            with self.subTest(kind="fw-genuine", value=value):
+                recs = [self._rec(f"j{i}", "k1", now - 10 + i, 3)
+                        for i in range(3)]
+                alerts, _ = mod.decide(
+                    {"now": now, "records": recs},
+                    self._manifest(failure_window_sec=value), {})
+                self.assertEqual(
+                    [a["signal"] for a in alerts],
+                    ["job_failing_repeatedly"] if fires else [])
+
+    def test_read_live_retained_store(self):
+        import json as _json
+        import os
+        import tempfile
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(kind="manifest", shape=name):
+                got = mod.read_live(value)
+                self.assertEqual(set(got),
+                                 {"now", "records", "truncated"})
+                self.assertEqual(got["records"], [])
+                self.assertEqual(got["truncated"], 0)
+        with tempfile.TemporaryDirectory() as td:
+            retained = os.path.join(td, "retained")
+            os.makedirs(retained)
+            for i, name in enumerate(["r1.json", "r2.json"]):
+                with open(os.path.join(retained, name), "w",
+                          encoding="utf-8") as fh:
+                    _json.dump({"exit_code": i % 2,
+                                "saved_at": 100 + i,
+                                "job_id": f"id{i}", "kind": "shell",
+                                "script": "echo x",
+                                "duration_sec": 2}, fh)
+            with open(os.path.join(retained, "note.txt"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("x")
+            os.symlink(os.path.join(retained, "r1.json"),
+                       os.path.join(retained, "link.json"))
+            got = mod.read_live(
+                {"tunables": {"runner_base_dir": td}})
+            self.assertEqual([r["job_id"] for r in got["records"]],
+                             ["id0", "id1"])
+            capped = mod.read_live({"tunables": {
+                "runner_base_dir": td,
+                "max_records_per_pass": 1}})
+            self.assertEqual(capped["truncated"], 1)
+            self.assertEqual(
+                [r["job_id"] for r in capped["records"]], ["id1"])
+
+    def test_main_readings_mode(self):
+        import io
+        import json as _json
+        import os
+        import tempfile
+        from unittest import mock
+        mod = self._module()
+        now = self._NOW
+        recs = [self._rec(f"j{i}", "k1", now - 10 + i, 3, 5.0,
+                          "boom") for i in range(3)]
+        readings = _json.dumps({"now": now, "records": recs})
+        manifest = _json.dumps(
+            {"name": "job_watcher", "tunables": {}})
+
+        def run(manifest_content, readings_content,
+                state_content=None, state_path=None):
+            with tempfile.TemporaryDirectory() as td:
+                mp = os.path.join(td, "ext.json")
+                rp = os.path.join(td, "r.json")
+                sp = state_path or os.path.join(td, "s.json")
+                if manifest_content is not None:
+                    with open(mp, "w", encoding="utf-8") as fh:
+                        fh.write(manifest_content)
+                if readings_content is not None:
+                    with open(rp, "w", encoding="utf-8") as fh:
+                        fh.write(readings_content)
+                if state_content is not None and not state_path:
+                    with open(sp, "w", encoding="utf-8") as fh:
+                        fh.write(state_content)
+                out = io.StringIO()
+                with mock.patch("sys.stdout", out), \
+                        mock.patch("sys.stderr", io.StringIO()):
+                    rc = mod.main(["--manifest", mp,
+                                   "--readings", rp,
+                                   "--state", sp])
+                saved = None
+                if os.path.exists(sp):
+                    with open(sp, encoding="utf-8") as fh:
+                        saved = _json.load(fh)
+                return rc, out.getvalue(), saved
+
+        rc, out, saved = run(manifest, readings)
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(out.strip().splitlines()), 1)
+        self.assertEqual(
+            _json.loads(out)["signal"], "job_failing_repeatedly")
+        self.assertIn("k1", saved["jobs"])
+        self.assertEqual(run(None, readings)[0], 2)
+        self.assertEqual(run("not json", readings)[0], 2)
+        self.assertEqual(run("[1]", readings)[0], 0)
+        self.assertEqual(run(manifest, None)[0], 2)
+        self.assertEqual(run(manifest, "nope")[0], 2)
+        self.assertEqual(run(manifest, "[1]")[0], 0)
+        self.assertEqual(run(manifest, "5")[0], 0)
+        self.assertEqual(run(manifest, readings, "junk")[0], 0)
+        self.assertEqual(run(manifest, readings, "[1]")[0], 0)
+        with tempfile.TemporaryDirectory() as td:
+            bad = os.path.join(td, "nope", "s.json")
+            self.assertEqual(
+                run(manifest, readings, state_path=bad)[0], 2)
+
 if __name__ == "__main__":
 
     unittest.main()
