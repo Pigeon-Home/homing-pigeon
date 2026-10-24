@@ -17971,6 +17971,173 @@ class TestGrepMaxMatchesFifteenShapesAtReader(unittest.TestCase):
             ["ERROR line 0", "ERROR line 1",
              "ERROR line 2"])
 
+class TestAgentWallClockSecFifteenShapesAtReader(unittest.TestCase):
+    """Second-run hunt coverage: agent_wall_clock_sec
+    itself varied with the fifteen shapes through its
+    actual reader (runner/runner.py ask_model_agent:
+    _confval.integer(cfg.get("agent_wall_clock_sec"),
+    300, lo=1)) for the first time at reader level. The
+    row's registry-named class
+    (TestBooleanAgentWallClockDefaultsTo300) probed the
+    booleans plus omitted, bogus and a genuine 42.
+
+    (a) Doc claim: registry row "agent_wall_clock_sec":
+        core, integer, default 300, policy default under
+        Decision 1, lo 1, doc_status verified --
+        docs/configuring-oracle.md (line 82 in the
+        registry; the named class quotes line 70):
+        "`agent_wall_clock_sec` (default 300; the
+        whole-conversation wall clock for the `--oracle`
+        agent loop, on top of the per-call
+        `timeout_sec`)". The reader's own comment states
+        the same: "agent_wall_clock_sec default 300. A
+        boolean is not a wall clock (true once gave the
+        agent loop one second)."
+
+    (b) How it was hunted: step-8 Target 6 (core rows
+        covered only for the shapes their class
+        exercised). This tick probed ask_model_agent --
+        the same direct-call surface the named class and
+        the repo's own agent tests use -- with the
+        fifteen shapes from the table hunt (omitted,
+        null, empty string, true, false, zero, negative,
+        the explicit default, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong containers (list and dict)),
+        plus genuine values and fractional shapes. The
+        clock was controlled by patching time.monotonic
+        so the loop starts at 0 and stands at a fixed
+        elapsed time on every later reading;
+        _inference_chat was faked to answer the first
+        round with one read_file tool call and later
+        rounds with a plain answer, and _run_oracle_tool
+        was stubbed. Whether the agent was forced into
+        its out-of-investigation-time wrap-up is the
+        observable signal of the wall clock actually
+        used: at elapsed 10 a clock of 300 does not wrap
+        up; at elapsed 400 it does, which pins every
+        unusable shape to the documented default rather
+        than to any value inside (10, 400] alone when
+        combined with the explicit-default control
+        behaving identically.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape reads as the documented
+        default 300 -- omitted, null, empty string,
+        true, false, zero, negative, non-numeric string,
+        huge-int, inf, -inf, NaN, list and dict alike
+        (no wrap-up at 10 seconds elapsed, wrap-up at
+        400). Zero and negatives are below lo 1 and so
+        unusable. The boolean-as-number reading the
+        named class recorded on 2026-10-23 (true as a
+        1-second clock) no longer occurs on current
+        main: the reader now routes through
+        confval.integer, which never counts a boolean
+        as a number. Genuine values are honored exactly
+        (1, 5 and 10 wrap up at 10 seconds elapsed; 11,
+        42 and 1000 do not; 42 wraps up at 50; the
+        numeric strings "5" and "42" behave as 5 and
+        42), there is no reader ceiling (1000 does not
+        wrap up at 400), and fractionals truncate via
+        int() (5.9 behaves as 5, while 0.5 truncates to
+        0, falls below lo 1, and reads as the default).
+        Observed on 2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes keep
+        reading as the documented default and genuine
+        values keep being honored with no ceiling. If a
+        shape above ever stops behaving as stated, this
+        test is the failing record of that change. No
+        production code or doc was changed by this hunt.
+    """
+
+    _BASE = {"endpoint": "http://127.0.0.1:9/v1",
+             "model": "m"}
+
+    def _out_of_time(self, extra, elapsed, omit=False):
+        from unittest import mock
+
+        from runner import runner
+        cfg = dict(self._BASE)
+        if not omit:
+            cfg.update(extra)
+        seq = {"n": 0}
+
+        def mono():
+            seq["n"] += 1
+            return 0 if seq["n"] == 1 else elapsed
+
+        seen = {"tools": [], "out": False}
+
+        def chat(cfg, messages, tools, opener, timeout):
+            seen["tools"].append(tools)
+            for m in messages:
+                if "out of investigation time" in (
+                        m.get("content") or ""):
+                    seen["out"] = True
+            if len(seen["tools"]) == 1:
+                return {"role": "assistant", "content": "",
+                        "tool_calls": [{
+                            "id": "c1",
+                            "function": {
+                                "name": "read_file",
+                                "arguments":
+                                    {"path":
+                                     "/no/such/hp-gap"}}}]}
+            return {"role": "assistant",
+                    "content": "final answer"}
+
+        with mock.patch.object(runner.time, "monotonic",
+                               side_effect=mono), \
+             mock.patch.object(runner, "_inference_chat",
+                               side_effect=chat), \
+             mock.patch.object(runner, "_run_oracle_tool",
+                               return_value="(no output)"):
+            runner.ask_model_agent(cfg, "why?",
+                                   "some output", 100)
+        return seen["out"]
+
+    def test_fifteen_shapes_read_as_default(self):
+        unusable = [None, "", True, False, 0, -5,
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        cases = [("omitted", {}, True)]
+        cases += [(repr(v),
+                   {"agent_wall_clock_sec": v}, False)
+                  for v in unusable]
+        cases.append(("explicit-default",
+                      {"agent_wall_clock_sec": 300}, False))
+        cases.append(("numeric-string",
+                      {"agent_wall_clock_sec": "300"}, False))
+        for name, extra, omit in cases:
+            with self.subTest(shape=name):
+                self.assertFalse(
+                    self._out_of_time(extra, 10, omit=omit))
+                self.assertTrue(
+                    self._out_of_time(extra, 400, omit=omit))
+
+    def test_genuine_values_honored_no_ceiling(self):
+        for value in [1, 5, 10, "5", 5.9]:
+            with self.subTest(value=repr(value)):
+                self.assertTrue(self._out_of_time(
+                    {"agent_wall_clock_sec": value}, 10))
+        for value in [11, 42, 1000, "42"]:
+            with self.subTest(value=repr(value)):
+                self.assertFalse(self._out_of_time(
+                    {"agent_wall_clock_sec": value}, 10))
+        self.assertTrue(self._out_of_time(
+            {"agent_wall_clock_sec": 42}, 50))
+        self.assertFalse(self._out_of_time(
+            {"agent_wall_clock_sec": 1000}, 400))
+
+    def test_fractional_below_lo_reads_as_default(self):
+        self.assertFalse(self._out_of_time(
+            {"agent_wall_clock_sec": 0.5}, 10))
+        self.assertTrue(self._out_of_time(
+            {"agent_wall_clock_sec": 0.5}, 400))
+
 if __name__ == "__main__":
 
     unittest.main()
