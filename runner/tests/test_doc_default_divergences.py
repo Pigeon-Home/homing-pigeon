@@ -12693,6 +12693,172 @@ class TestResourceSentinelSampleCountTunablesFifteenShapes(unittest.TestCase):
 
 
 
+class TestLabResultsAnomalyMinHistoryFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: anomaly_min_history
+    (lab-results) itself, varied with the fifteen
+    shapes through its actual reader for the first
+    time (step-8 Target 5, extension-tunable table).
+
+    (a) Doc claim (extensions/lab-results/README.md,
+        line 37): "`anomaly_min_history` (default 3)
+        is how many earlier finished runs the folder
+        needs before `result_anomaly` is judged at
+        all; with fewer, nothing is called an
+        anomaly." The manifest ships the same default
+        (extension.json: "anomaly_min_history": 3),
+        docs/extensions.md states the same contract
+        (line 399: result_anomaly requires "at least
+        `anomaly_min_history` of them"), and the
+        registry row records the key with policy
+        default under Decision 1 -- a present-but-
+        unusable value reads as its documented
+        default. The reader is lab_results.py scan():
+        min_history = int(min_history) if
+        _is_number(min_history) and min_history >= 1
+        else 3.
+
+    (b) How it was hunted: the row's named class
+        (TestNonFiniteLabResultsTunablesDefaultInstead
+        OfCrashOrSilence) covered only the non-finite
+        shapes, and TestLabResultsAnomalyBandDefaults
+        To025 walked the sibling anomaly_band key;
+        this key's full shape table had never been
+        walked. This tick probed scan() -- the pure
+        folder pass -- with the fifteen shapes from
+        the table hunt (omitted, null, empty string,
+        true, false, zero, negative, the documented
+        default written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, list, dict), each in two scenarios:
+        three earlier runs (history 1.0, 1.0, 1.0) and
+        two earlier runs (1.0, 1.0), both with a far
+        finished value (accuracy 2.0 against mean 1.0,
+        distance 1.0, beyond the default band), plus
+        genuine values at their own boundaries.
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default 3 (three-history files
+        experiment_finished and result_anomaly;
+        two-history files only experiment_finished):
+        omitted, null, empty string, true, false,
+        zero, negative, numeric and non-numeric
+        strings, huge-int, inf, -inf, NaN, list and
+        dict. This reader's _is_number accepts only
+        genuine finite numbers and never a bool, so
+        numeric strings are not parsed, and zero and
+        negative numbers are not usable counts (the
+        reader requires min_history >= 1), so they
+        also read as the default; the +inf crash
+        recorded by the row's named non-finite class
+        no longer occurs on current main, because
+        _is_number now excludes non-finite values.
+        Genuine values are honored exactly: 1 and 2
+        file the anomaly with only two earlier runs,
+        5 stays silent even with three, fractional
+        values truncate via int() (3.9 reads as 3 and
+        files with three; 2.9 reads as 2 and files
+        with two), and the string "5" reads as the
+        default 3 (files with three) where a genuine
+        5 stays silent. Observed on 2026-10-24
+        against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the reader keeps
+        the documented default. If a shape above ever
+        stops reading as stated, this test is the
+        failing record of that change.
+    """
+
+    def _signals(self, tunables, history):
+        import importlib.util
+        import json as _json
+        import os
+        import tempfile
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "lab-results",
+            "lab_results.py")
+        spec = importlib.util.spec_from_file_location(
+            "lab_results_min_history_hunt", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as folder:
+            with open(os.path.join(folder, "exp.json"),
+                      "w", encoding="utf-8") as fh:
+                _json.dump(
+                    {"run": "exp-new", "status": "finished",
+                     "metrics": {"accuracy": 2.0}}, fh)
+            manifest = {"name": "lab_results",
+                        "tunables": dict(tunables)}
+            state = {"reported": {},
+                     "history": list(history)}
+            alerts, _state = mod.scan(folder, manifest, state)
+            return [a["signal"] for a in alerts]
+
+    _ONLY = ["experiment_finished"]
+    _BOTH = ["experiment_finished", "result_anomaly"]
+
+    def test_fifteen_shapes_read_as_default(self):
+        shapes = [
+            ("omitted", None), ("null", None),
+            ("empty-string", ""), ("true", True),
+            ("false", False), ("zero", 0),
+            ("negative", -2),
+            ("default-explicit", 3),
+            ("numeric-string", "3"),
+            ("non-numeric-string", "bogus"),
+            ("huge-int", 10 ** 400),
+            ("inf", float("inf")),
+            ("neg-inf", float("-inf")),
+            ("nan", float("nan")),
+            ("list", ["x"]), ("dict", {"x": 1}),
+        ]
+        for name, value in shapes:
+            with self.subTest(shape=name):
+                tunables = {} if name == "omitted" else {
+                    "anomaly_min_history": value}
+                self.assertEqual(
+                    self._signals(tunables, [1.0, 1.0, 1.0]),
+                    self._BOTH)
+                self.assertEqual(
+                    self._signals(tunables, [1.0, 1.0]),
+                    self._ONLY)
+
+    def test_genuine_values_are_honored(self):
+        # Genuine 1 and 2 judge with only two earlier runs.
+        for value in (1, 2):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    self._signals(
+                        {"anomaly_min_history": value},
+                        [1.0, 1.0]),
+                    self._BOTH)
+        # A genuine 5 demands five earlier runs.
+        self.assertEqual(
+            self._signals({"anomaly_min_history": 5},
+                          [1.0, 1.0, 1.0]),
+            self._ONLY)
+        # The string "5" reads as the default 3, where a
+        # genuine 5 stays silent.
+        self.assertEqual(
+            self._signals({"anomaly_min_history": "5"},
+                          [1.0, 1.0, 1.0]),
+            self._BOTH)
+        # Fractional values truncate via int().
+        self.assertEqual(
+            self._signals({"anomaly_min_history": 3.9},
+                          [1.0, 1.0, 1.0]),
+            self._BOTH)
+        self.assertEqual(
+            self._signals({"anomaly_min_history": 2.9},
+                          [1.0, 1.0]),
+            self._BOTH)
+
+
+
+
 if __name__ == "__main__":
 
     unittest.main()
