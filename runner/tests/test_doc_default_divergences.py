@@ -12478,6 +12478,221 @@ class TestTrainingWatchTunablesFifteenShapes(unittest.TestCase):
 
 
 
+class TestResourceSentinelSampleCountTunablesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the resource-sentinel
+    sample-count rows (step-8 Target 5, extension-tunable
+    table probe) -- the fifteen shapes at reader level
+    for min_samples and max_samples, plus decide()-level
+    checks of the int() conversion and the two floors
+    decide() applies after the reader.
+
+    (a) Doc claims (extensions/resource-sentinel/
+        README.md lines 29-31): a signal needs at least
+        `min_samples` samples spanning `min_span_sec`
+        inside `window_sec` before it can fire at all;
+        README.md line 66: "`max_samples` (default 240)
+        bounds how many samples the rolling window
+        keeps, and is raised to the window's minimum if
+        set lower". extension.json ships the same
+        defaults ("min_samples": 4, "max_samples": 240),
+        and the registry rows record both keys with
+        policy default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: the rows' named class
+        (TestNonFiniteResourceSentinelSampleCountsCrash
+        InsteadOfDefault) covered only the non-finite
+        shapes, and TestResourceSentinelMinSamples
+        DefaultsTo4 covered Target 3's doc-provenance
+        question; neither walked the full shape table.
+        This tick probed resource_sentinel.py:_tunable
+        directly with the fifteen shapes from the table
+        hunt -- omitted, null, empty string, true,
+        false, zero, negative, the documented default
+        written explicitly, numeric string, non-numeric
+        string, huge-int (10**400), inf, -inf, NaN,
+        list, dict -- for both keys, plus genuine and
+        fractional values, and decide() with the named
+        class's four seeded samples (spanning exactly
+        min_span_sec, CPU busy 97 percent, memory
+        falling 40 to 14 percent) varying each count.
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default at reader level for both keys (omitted,
+        null, empty string, true, false, non-numeric
+        string, huge-int, inf, -inf, NaN, list, dict
+        all return 4 / 240); the non-finite crash the
+        named class recorded no longer occurs on
+        current main. Numeric strings are NOT parsed
+        (the isinstance-gate family): "4", "240" and
+        "45" all read as the defaults, and at decide()
+        level the string "5" for min_samples fires
+        (reads as the default 4) where a genuine 5
+        stays silent. Zero and negative are honored
+        literally at reader level (0.0 and -5.0);
+        decide() then applies its documented-shape
+        floors: min_samples is int()-truncated
+        (5.9 reads as 5 and stays silent with four
+        samples) and floored at 2 (0 and -5 still fire
+        with four samples), and max_samples below
+        min_samples is raised to min_samples exactly
+        as README line 66 states (0 and 2 both keep
+        all four samples and fire). A genuine
+        max_samples of 3 with min_samples 2 truncates
+        the window to the last three samples, whose
+        400-second span is under min_span_sec, so
+        nothing fires; 3.9 truncates the same way via
+        int(). Genuine values are honored exactly at
+        reader level (7 -> 7.0, 2.9 -> 2.9).
+        Observed on 2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes keep
+        reading as the documented defaults, the floors
+        keep behaving as described, and genuine values
+        keep being honored. If a shape above ever
+        stops behaving as the README states, this test
+        is the failing record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "resource-sentinel",
+            "resource_sentinel.py")
+        spec = importlib.util.spec_from_file_location(
+            "resource_sentinel_count_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    ROWS = [("min_samples", 4), ("max_samples", 240)]
+
+    def _signals(self, mod, tunables):
+        gib = 1024.0 ** 3
+        samples = [
+            [1000000.0, 10000, 9000, 100 * gib, 100, 40.0],
+            [1000200.0, 10333, 9010, 100 * gib, 100, 35.0],
+            [1000400.0, 10666, 9020, 100 * gib, 100, 30.0],
+            [1000600.0, 11000, 9030, 100 * gib, 100, 14.0],
+        ]
+        state = {"samples": samples, "fired": {}}
+        manifest = {"name": "resource_sentinel",
+                    "tunables": dict(tunables)}
+        readings = {"now": 1000600.0, "cpu_total": 11000,
+                    "cpu_idle": 9030,
+                    "disk_free_bytes": 100 * gib,
+                    "processes": 100, "mem_avail_pct": 14.0}
+        alerts, _state = mod.decide(readings, manifest, state)
+        return [a["signal"] for a in alerts]
+
+    def test_fifteen_shapes_for_both_rows(self):
+        mod = self._mod()
+        unusable = [None, "", True, False, "bogus",
+                    10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        for key, default in self.ROWS:
+            self.assertEqual(
+                mod._tunable({}, key, default), default)
+            for value in unusable:
+                with self.subTest(key=key, value=repr(value)):
+                    self.assertEqual(
+                        mod._tunable({key: value}, key, default),
+                        default)
+            with self.subTest(key=key, shape="zero"):
+                self.assertEqual(
+                    mod._tunable({key: 0}, key, default), 0.0)
+            with self.subTest(key=key, shape="negative"):
+                self.assertEqual(
+                    mod._tunable({key: -5}, key, default), -5.0)
+            with self.subTest(key=key, shape="explicit-default"):
+                self.assertEqual(
+                    mod._tunable({key: default}, key, default),
+                    float(default))
+
+    def test_numeric_strings_and_genuine_values_at_reader(self):
+        mod = self._mod()
+        for key, default in self.ROWS:
+            for value in (str(default), "45"):
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(
+                        mod._tunable({key: value}, key, default),
+                        default)
+            self.assertEqual(
+                mod._tunable({key: 7}, key, default), 7.0)
+            self.assertEqual(
+                mod._tunable({key: 2.9}, key, default), 2.9)
+
+    def test_decide_min_samples_shapes(self):
+        mod = self._mod()
+        both = ["cpu_saturation_sustained",
+                "memory_exhaustion_trend"]
+        for value in (None, "", True, False, "bogus",
+                      10 ** 400, float("inf"),
+                      float("-inf"), float("nan"),
+                      ["x"], {"x": 1}):
+            with self.subTest(shape="unusable", value=repr(value)):
+                self.assertEqual(
+                    self._signals(mod, {"min_samples": value}),
+                    both)
+        # The string "5" reads as the default 4 and
+        # fires; a genuine 5 (and 5.9, int()-truncated
+        # to 5) demands a fifth sample and stays silent.
+        self.assertEqual(
+            self._signals(mod, {"min_samples": "5"}), both)
+        self.assertEqual(
+            self._signals(mod, {"min_samples": 5}), [])
+        self.assertEqual(
+            self._signals(mod, {"min_samples": 5.9}), [])
+        # Zero and negative are floored at 2 by
+        # decide(), so four samples still fire.
+        self.assertEqual(
+            self._signals(mod, {"min_samples": 0}), both)
+        self.assertEqual(
+            self._signals(mod, {"min_samples": -5}), both)
+        self.assertEqual(
+            self._signals(mod, {"min_samples": 2}), both)
+
+    def test_decide_max_samples_shapes(self):
+        mod = self._mod()
+        both = ["cpu_saturation_sustained",
+                "memory_exhaustion_trend"]
+        # Below the minimum, max_samples is raised to
+        # min_samples (README line 66): 0 and 2 keep
+        # all four samples under the default minimum.
+        self.assertEqual(
+            self._signals(mod, {"max_samples": 0}), both)
+        self.assertEqual(
+            self._signals(mod, {"max_samples": 2}), both)
+        for value in (float("inf"), float("nan"), "bogus"):
+            with self.subTest(shape="unusable", value=repr(value)):
+                self.assertEqual(
+                    self._signals(
+                        mod, {"min_samples": 2,
+                              "max_samples": value}),
+                    both)
+        # A genuine cap of 3 (or 3.9, int()-truncated)
+        # with min_samples 2 keeps only the last three
+        # samples; their 400-second span is under
+        # min_span_sec, so nothing fires.
+        self.assertEqual(
+            self._signals(
+                mod, {"min_samples": 2, "max_samples": 3}), [])
+        self.assertEqual(
+            self._signals(
+                mod, {"min_samples": 2, "max_samples": 3.9}), [])
+        self.assertEqual(
+            self._signals(
+                mod, {"min_samples": 2, "max_samples": 4}), both)
+
+
+
 if __name__ == "__main__":
 
     unittest.main()
