@@ -262,7 +262,7 @@ def _deliver_local(alerts, args):
     if repo_root not in sys.path:
         sys.path.insert(0, repo_root)
     try:
-        from runner import extensions as hp_extensions
+        from runner.ops import extensions as hp_extensions
     except ImportError as e:
         print(f"backup-freshness: local delivery needs the homing-pigeon "
               f"repo importable ({e}); run me from a clone",

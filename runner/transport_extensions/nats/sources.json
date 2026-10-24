@@ -8,7 +8,7 @@
       "project": [
         "runner/transport_extensions/nats",
         "runner/transport_extensions/channel.py",
-        "runner/transports.py"
+        "runner/wire/transports.py"
       ]
     },
     {

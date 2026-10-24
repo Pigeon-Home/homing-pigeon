@@ -22,9 +22,9 @@ import threading
 import time
 
 try:
-    from runner import confval as _confval
+    from runner.guard import confval as _confval
 except ImportError:
-    import confval as _confval  # type: ignore
+    from guard import confval as _confval  # type: ignore
 from datetime import datetime, timezone
 
 STATE_FILE = "resources.json"

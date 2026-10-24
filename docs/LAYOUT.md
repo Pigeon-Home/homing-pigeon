@@ -20,30 +20,38 @@
   (historical notes, kept for the record; not current guidance).
 - `runner/runner.py` — the agent. Polls, verifies, executes,
   replies. No dependencies beyond the Python 3.9+ standard library.
-  Two pieces of it now live beside it and are bound back onto it:
-  `runner/verify.py` (signing, verification, secrets, key policies,
-  audience — PROTOCOL.md sections 4, 5, 14) and `runner/board.py`
-  (the task board, section 13). `runner/platformcard.py` is the
-  card a pong and the DTLS greeting carry; `runner/textutil.py` the
+  Its modules live in four role folders beside it: `runner/oracle/`
+  (the Oracle: opinion, learning, review, remediation, detection,
+  senses, resources, dri, personal_docs), `runner/wire/` (transports,
+  mailbox, DTLS, protocol v2, job crypto, OAuth, verification, the
+  board, the platform card), `runner/guard/` (security controls,
+  the sandbox, typed config readers, text helpers) and `runner/ops/`
+  (install, setup, extensions and their sources, the harness, the
+  local test, posture, the audit report, the Windows event log).
+  Two of them are bound back onto it:
+  `runner/wire/verify.py` (signing, verification, secrets, key policies,
+  audience — PROTOCOL.md sections 4, 5, 14) and `runner/wire/board.py`
+  (the task board, section 13). `runner/wire/platformcard.py` is the
+  card a pong and the DTLS greeting carry; `runner/guard/textutil.py` the
   text helpers they share.
-- `runner/transports.py` — the transport-extension contract
+- `runner/wire/transports.py` — the transport-extension contract
   (v1), discovery, and supervision: the core is transport-blind,
   and email, the watched folder, core NATS, and the DTLS
   listener all run as supervised extension programs under
   `runner/transport_extensions/`, enabled by the `transports`
   config key.
-- `runner/extsources.py` — extension sources: the first time an
+- `runner/ops/extsources.py` — extension sources: the first time an
   extension runs, its own code and the upstream sources and specs
   its `sources.json` declares reach the Oracle — fetched in the
   background, held to the build's SHA-384 pins, never executed,
   and under the disclosure rule (`docs/extensions.md`, "Sources").
-- `runner/opinion.py` — the Oracle's opinion: the pre-run checks,
+- `runner/oracle/opinion.py` — the Oracle's opinion: the pre-run checks,
   the prediction, and the one mechanical repair.
-- `runner/learning.py` — the self-learning ledger: frozen calls,
+- `runner/oracle/learning.py` — the self-learning ledger: frozen calls,
   scored outcomes, and the lessons the next opinion reads.
-- `runner/remediation.py` — the running-job monitor: tripwires,
+- `runner/oracle/remediation.py` — the running-job monitor: tripwires,
   quarantine, antivirus referral, the page.
-- `runner/install.py` — installs it as a boot-start service: systemd
+- `runner/ops/install.py` — installs it as a boot-start service: systemd
   (Linux), launchd (macOS), cron @reboot (FreeBSD), Scheduled Task
   (Windows).
 - `runner/config.example.json` — copy to `config.json` and fill in.

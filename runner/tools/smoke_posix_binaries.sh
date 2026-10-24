@@ -9,13 +9,13 @@
 # proof; runnable locally against the source tree for a dry rehearsal:
 #
 #   runner/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
-#   runner/tools/smoke_posix_binaries.sh "python3 runner/runner.py" "python3 runner/install.py"
+#   runner/tools/smoke_posix_binaries.sh "python3 runner/runner.py" "python3 runner/ops/install.py"
 #
 # Exit 0 only if every check passed.
 set -eu
 
 RUNNER=${1:?runner binary (or 'python3 runner/runner.py')}
-INSTALL=${2:?install binary (or 'python3 runner/install.py')}
+INSTALL=${2:?install binary (or 'python3 runner/ops/install.py')}
 
 ver=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
 

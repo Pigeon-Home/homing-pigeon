@@ -28,7 +28,8 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import jobcrypto, senses  # noqa: E402
+from runner.oracle import senses  # noqa: E402
+from runner.wire import jobcrypto  # noqa: E402
 from runner.runner import (  # noqa: E402
     answer_queries,
     fetch_job_mails,
@@ -151,9 +152,9 @@ class BadExtensionTest(unittest.TestCase):
         for shape in shapes:
             with tempfile.TemporaryDirectory() as d:
                 seen = {}
-                with mock.patch("runner.resources.check_resources",
+                with mock.patch("runner.oracle.resources.check_resources",
                                 return_value=shape), \
-                     mock.patch("runner.dri.maybe_page",
+                     mock.patch("runner.oracle.dri.maybe_page",
                                 side_effect=RuntimeError("pager down")):
                     poll_once(_cfg(), d, seen, os.path.join(d, "seen.json"),
                               imap=_IMAP(_pings()), smtp=_SMTP(), opts=_Opts())
@@ -309,7 +310,7 @@ class ReviewAndAgeTest(unittest.TestCase):
             def boom(*a, **k):
                 raise RuntimeError("review exploded")
 
-            with mock.patch("runner.review.review_job", side_effect=boom):
+            with mock.patch("runner.oracle.review.review_job", side_effect=boom):
                 poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                           imap=_IMAP(self._two()), smtp=_SMTP(), opts=_Opts())
             self.assertEqual(sorted(seen), ["good", "reviewed"])
@@ -317,7 +318,7 @@ class ReviewAndAgeTest(unittest.TestCase):
     def test_non_json_review_is_dropped_and_the_job_finishes(self):
         with tempfile.TemporaryDirectory() as d:
             seen = {}
-            with mock.patch("runner.review.review_job",
+            with mock.patch("runner.oracle.review.review_job",
                             return_value={"notes": {1, 2}, "blob": b"\xff"}):
                 poll_once(_cfg(), d, seen, os.path.join(d, "seen.json"),
                           imap=_IMAP(self._two()), smtp=_SMTP(), opts=_Opts())
@@ -426,7 +427,7 @@ class MailboxConnectionLockTest(unittest.TestCase):
     """
 
     def test_fetch_and_store_do_not_overlap(self):
-        from runner import mailbox
+        from runner.wire import mailbox
 
         state = {"inside": 0, "overlap": 0}
         gate = threading.Lock()
@@ -494,7 +495,7 @@ class MailboxConnectionLockTest(unittest.TestCase):
         self.assertEqual(state["overlap"], 0)
 
     def test_a_failed_store_does_not_deadlock_the_runner_lock(self):
-        from runner import mailbox
+        from runner.wire import mailbox
         from runner.runner import _MAIL_LOCK
 
         in_store = threading.Event()

@@ -23,7 +23,8 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import dri, jobcrypto, resources, review  # noqa: E402
+from runner.oracle import dri, resources, review  # noqa: E402
+from runner.wire import jobcrypto  # noqa: E402
 from runner.runner import (  # noqa: E402
     _redact_patterns,
     answer_queries,
@@ -479,8 +480,8 @@ class WindowsExtensionTest(unittest.TestCase):
                 self.assertNotIn(FLAG, open(store, encoding="utf-8").read())
 
     def test_winlog_swallows_a_broken_event_log(self):
-        from runner import winlog
-        with mock.patch("runner.winlog.os.name", "nt"):
+        from runner.ops import winlog
+        with mock.patch("runner.ops.winlog.os.name", "nt"):
             with mock.patch.dict("sys.modules", {"ctypes": None}):
                 winlog.report_event(FLAG)
                 winlog.report_event(None)
@@ -571,7 +572,7 @@ class WindowsReservedNameTest(unittest.TestCase):
                 return True
 
             with mock.patch("runner.runner.os.name", "nt"), \
-                 mock.patch("runner.dri.send_telegram", side_effect=grab):
+                 mock.patch("runner.oracle.dri.send_telegram", side_effect=grab):
                 dri.maybe_page(cfg, d)
             self.assertNotIn("Traceback", sent.get("text", ""))
 
@@ -630,7 +631,7 @@ class WindowsEnvAndReviewTest(unittest.TestCase):
                 "kind": "exec", "script": "#!/bin/bash\\necho hi",
                 "interpreter": ["powershell", "-File"],
             })
-            with mock.patch("runner.review.os.name", "nt"):
+            with mock.patch("runner.oracle.review.os.name", "nt"):
                 notes = review.review_job({}, {
                     "kind": "exec", "script": "#!/bin/bash\\necho hi",
                 })
@@ -849,7 +850,7 @@ class ConcurrencyAndExtensionFaultTest(unittest.TestCase):
             self.assertIn("still-runs", seen)
 
     def test_concurrent_alert_writes_stay_readable(self):
-        from runner import senses as S
+        from runner.oracle import senses as S
         import threading
         with tempfile.TemporaryDirectory() as d:
             def write(i):
@@ -1041,7 +1042,7 @@ class TraversalAndDoubleCompleteTest(unittest.TestCase):
             self.assertIn(tasks["only"]["state"], ("done", "claimed"))
 
     def test_bad_profile_floor_does_not_raise(self):
-        from runner import senses as S
+        from runner.oracle import senses as S
         reason = S.gate_alert(
             {"profile": {"severity_floor": "nope", "cooldown_sec": "hot"}},
             {"severity": "low", "title": "t"}, [])
@@ -1359,7 +1360,7 @@ class OAuthShapeFaultTest(unittest.TestCase):
     """
 
     def test_list_token_response_is_auth_dead(self):
-        from runner.oauth import refresh_access_token, OAuthRefreshError
+        from runner.wire.oauth import refresh_access_token, OAuthRefreshError
         class R:
             def read(self):
                 return b"[1, 2, 3]"
@@ -1373,7 +1374,7 @@ class OAuthShapeFaultTest(unittest.TestCase):
                     "oauth_client_id": "c", "oauth_refresh_token": "r"})
 
     def test_non_ascii_token_is_auth_dead(self):
-        from runner.oauth import xoauth2_raw, OAuthRefreshError
+        from runner.wire.oauth import xoauth2_raw, OAuthRefreshError
         with self.assertRaises(OAuthRefreshError):
             xoauth2_raw("a@b.c", "tok\u2603")
 
@@ -1872,7 +1873,7 @@ class StateWriteFaultTest(unittest.TestCase):
     """
 
     def test_concurrent_resource_state_writes(self):
-        from runner import resources
+        from runner.oracle import resources
         import threading
         with tempfile.TemporaryDirectory() as d:
             errors = []
@@ -1894,7 +1895,7 @@ class StateWriteFaultTest(unittest.TestCase):
             self.assertIn("n", state)
 
     def test_concurrent_dri_state_writes(self):
-        from runner import dri
+        from runner.oracle import dri
         import threading
         with tempfile.TemporaryDirectory() as d:
             errors = []
@@ -1989,7 +1990,7 @@ class AlertNanAndBoardRaceTest(unittest.TestCase):
     """
 
     def test_nan_alert_is_stored_as_null(self):
-        from runner.senses import store_alert, load_alerts
+        from runner.oracle.senses import store_alert, load_alerts
         with tempfile.TemporaryDirectory() as d:
             store_alert(d, {"sensor": "s", "detail": {"x": float("nan")}})
             recs = load_alerts(d)

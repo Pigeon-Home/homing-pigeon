@@ -517,7 +517,7 @@ def with_model_note(member, model_note):
 
 def with_lesson_notes(member, notes):
     """Return the member with learned-context sentences
-    appended (runner/learning.py). Lessons inform the note;
+    appended (runner/oracle/learning.py). Lessons inform the note;
     they never change the verdict the tiers formed, and a
     candidate lesson arrives already labeled uncorroborated
     in its sentence."""
@@ -592,7 +592,7 @@ def plan_before(cfg, job, facts, lessons=None):
     runner may apply. Side effects (applying the repair,
     re-judging, asking the model) are the runner's. `lessons`
     is an optional list of learned-context sentences from
-    runner/learning.py, appended to an attached prediction's
+    runner/oracle/learning.py, appended to an attached prediction's
     note; lessons never alter findings, verdicts, or repairs.
     """
     mode = effective_mode(cfg, job)

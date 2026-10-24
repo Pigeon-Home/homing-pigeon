@@ -23,8 +23,8 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(REPO, "runner"))
 
-import install  # noqa: E402
-from install import (  # noqa: E402
+from ops import install  # noqa: E402
+from ops.install import (  # noqa: E402
     aide_cron_text,
     aide_rules_text,
     chosen_collectors,
@@ -288,6 +288,7 @@ class InstallCollectorsDispatchTest(unittest.TestCase):
         import subprocess
         out = subprocess.run(
             [sys.executable, os.path.join(REPO, "runner",
+                                          "ops",
                                           "install.py"), "--help"],
             capture_output=True, text=True, timeout=60)
         self.assertEqual(out.returncode, 0)

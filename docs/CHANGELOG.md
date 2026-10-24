@@ -6,6 +6,21 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## Unreleased
 
+- **`runner/` holds `runner.py` and folders.** The 35 modules that sat
+  beside it are in four role folders: `runner/oracle/` (opinion,
+  learning, review, remediation, detection, senses, resources, dri,
+  personal_docs), `runner/wire/` (transports, mailbox, dtlsproto,
+  protocol_v2, jobcrypto, oauth, verify, board, platformcard),
+  `runner/guard/` (security, sandbox, confval, textutil) and
+  `runner/ops/` (install, setup, extensions, extsources, harness,
+  local_test, posture, auditreport, winlog). Imports are
+  `runner.<folder>.<module>`; a script run by path falls back to
+  `<folder>.<module>` with `runner/` on `sys.path`. The installer
+  copies `runner.py`, `wire/oauth.py` and `ops/winlog.py` with their
+  folders, and the console scripts are `runner.ops.install:main` and
+  `runner.wire.oauth:main`. No shims; `test_layout` fails on a module
+  at the top of `runner/` or a path to its old place.
+
 - **`extensions/` is `runner/extensions/`.** The root holds the manuals,
   `pyproject.toml`, and three folders (`runner/`, `docs/`, `assets/`)
   beside `.github/`. Like the suite and the CI scripts it is kept out

@@ -16,10 +16,10 @@ import unittest
 from io import StringIO
 from unittest import mock
 
-from runner import resources as RS
-from runner import sandbox as SB
-from runner import security as SEC
-from runner.install import (
+from runner.oracle import resources as RS
+from runner.guard import sandbox as SB
+from runner.guard import security as SEC
+from runner.ops.install import (
     detect_default_profile,
     do_wipe,
     install_files,
@@ -27,13 +27,13 @@ from runner.install import (
     store_additional_secret,
     uninstall_linux,
 )
-from runner.posture import (
+from runner.ops.posture import (
     _check_confinement_backend,
     _check_file_perms,
     _check_recommended_features,
     _check_service_unit,
 )
-from runner.senses import load_alerts, store_alert
+from runner.oracle.senses import load_alerts, store_alert
 from runner.runner import (
     _artifact_findings,
     _artifact_scan_enabled,
@@ -210,7 +210,7 @@ class SystemdUnitTest(unittest.TestCase):
             calls = []
             with mock.patch.object(os.path, "expanduser",
                                    side_effect=lambda p: p.replace("~", home)), \
-                 mock.patch("runner.install.run",
+                 mock.patch("runner.ops.install.run",
                             side_effect=lambda cmd, **kw: calls.append(list(cmd))):
                 install_linux("/opt/homing pigeon", "/cfg/a.json", False,
                               ("--workers", "2", "has space"))
@@ -246,7 +246,7 @@ class SystemdUnitTest(unittest.TestCase):
              mock.patch("os.write", side_effect=_write), \
              mock.patch("os.close"), \
              mock.patch("os.chmod"), \
-             mock.patch("runner.install.run",
+             mock.patch("runner.ops.install.run",
                         side_effect=lambda cmd, **kw: calls.append(list(cmd))):
             install_linux("/opt/hp", "/cfg/a.json", True, ())
         self.assertIn("WantedBy=multi-user.target", written["unit"])
@@ -259,9 +259,9 @@ class SystemdUnitTest(unittest.TestCase):
         order = []
         with mock.patch.object(os.path, "expanduser",
                                return_value="/tmp/hp-unit-not-real.service"), \
-             mock.patch("runner.install.run",
+             mock.patch("runner.ops.install.run",
                         side_effect=lambda cmd, **kw: order.append("run")), \
-             mock.patch("runner.install.os.remove",
+             mock.patch("runner.ops.install.os.remove",
                         side_effect=lambda path: order.append("remove")):
             uninstall_linux(False)
         self.assertEqual(order[0], "run")
@@ -272,8 +272,8 @@ class PostureLinuxTest(unittest.TestCase):
     def test_confinement_backend_mutations(self):
         def check(plat, found):
             results = []
-            with mock.patch("runner.posture.sys.platform", plat), \
-                 mock.patch("runner.posture.shutil.which", return_value=found):
+            with mock.patch("runner.ops.posture.sys.platform", plat), \
+                 mock.patch("runner.ops.posture.shutil.which", return_value=found):
                 _check_confinement_backend(results)
             return results[0]
 
@@ -297,8 +297,8 @@ class PostureLinuxTest(unittest.TestCase):
                 return path == unit
 
             results = []
-            with mock.patch("runner.posture.os.path.exists", side_effect=exists), \
-                 mock.patch("runner.posture.os.path.expanduser", return_value=unit):
+            with mock.patch("runner.ops.posture.os.path.exists", side_effect=exists), \
+                 mock.patch("runner.ops.posture.os.path.expanduser", return_value=unit):
                 _check_service_unit(results)
             self.assertEqual(results[0][0], "OK")
             self.assertIn("NoNewPrivileges", results[0][2])
@@ -306,22 +306,22 @@ class PostureLinuxTest(unittest.TestCase):
             with open(unit, "w", encoding="utf-8") as fh:
                 fh.write("ExecStart=/usr/bin/homing-pigeon\n")
             results = []
-            with mock.patch("runner.posture.os.path.exists", side_effect=exists), \
-                 mock.patch("runner.posture.os.path.expanduser", return_value=unit):
+            with mock.patch("runner.ops.posture.os.path.exists", side_effect=exists), \
+                 mock.patch("runner.ops.posture.os.path.expanduser", return_value=unit):
                 _check_service_unit(results)
             self.assertEqual(results[0][0], "WARN")
             self.assertIn("lacks hardening", results[0][2])
 
             results = []
-            with mock.patch("runner.posture.os.path.exists", side_effect=exists), \
-                 mock.patch("runner.posture.os.path.expanduser", return_value=unit), \
+            with mock.patch("runner.ops.posture.os.path.exists", side_effect=exists), \
+                 mock.patch("runner.ops.posture.os.path.expanduser", return_value=unit), \
                  mock.patch("builtins.open", side_effect=OSError("busy")):
                 _check_service_unit(results)
             self.assertEqual(results[0][0], "WARN")
             self.assertIn("cannot read", results[0][2])
 
         results = []
-        with mock.patch("runner.posture.os.path.exists", return_value=False):
+        with mock.patch("runner.ops.posture.os.path.exists", return_value=False):
             _check_service_unit(results)
         self.assertIn("no homing-pigeon systemd unit", results[0][2])
 
@@ -510,9 +510,9 @@ class JournalFallbackTest(unittest.TestCase):
 class LinuxWipeTest(unittest.TestCase):
     def test_system_uninstall_disables_then_removes_the_unit(self):
         order = []
-        with mock.patch("runner.install.run",
+        with mock.patch("runner.ops.install.run",
                         side_effect=lambda cmd, **kw: order.append(("run", list(cmd)))), \
-             mock.patch("runner.install.os.remove",
+             mock.patch("runner.ops.install.os.remove",
                         side_effect=lambda path: order.append(("remove", path))):
             uninstall_linux(True)
         self.assertEqual(order, [
@@ -523,10 +523,10 @@ class LinuxWipeTest(unittest.TestCase):
 
     def test_wipe_disables_both_units_and_deletes_nothing(self):
         calls = []
-        with mock.patch("runner.install.sys.platform", "linux"), \
-             mock.patch("runner.install._kill_runner_processes"), \
-             mock.patch("runner.install._candidate_state_dirs", return_value=[]), \
-             mock.patch("runner.install._run_quiet",
+        with mock.patch("runner.ops.install.sys.platform", "linux"), \
+             mock.patch("runner.ops.install._kill_runner_processes"), \
+             mock.patch("runner.ops.install._candidate_state_dirs", return_value=[]), \
+             mock.patch("runner.ops.install._run_quiet",
                         side_effect=lambda cmd: calls.append(list(cmd))):
             code = do_wipe(no_backup=True)
         self.assertEqual(code, 0)
@@ -1156,7 +1156,7 @@ class PosixModeTest(unittest.TestCase):
             st_mode = 0o100600
 
         results = []
-        with mock.patch("runner.posture.os.stat", return_value=_Stat()):
+        with mock.patch("runner.ops.posture.os.stat", return_value=_Stat()):
             _check_file_perms("/tmp/hp-config.json", results)
         self.assertEqual(results[0][0], "OK")
 
@@ -1202,7 +1202,7 @@ class RulesAndModeFuzzTest(unittest.TestCase):
                     class _Stat:
                         st_mode = 0o100000 | mode
 
-                    with mock.patch("runner.posture.os.stat", return_value=_Stat()):
+                    with mock.patch("runner.ops.posture.os.stat", return_value=_Stat()):
                         _check_file_perms(path, results)
                 except Exception as exc:
                     crashes.append((type(exc).__name__, i))
@@ -1447,19 +1447,19 @@ class SandboxNameTest(unittest.TestCase):
         bad = ("", ".", "..", "../etc/passwd", "/bin/sh",
                "a/b", "a\\b", "a\x00b", None, 1)
         for name in bad:
-            with mock.patch("runner.sandbox.shutil.which",
+            with mock.patch("runner.guard.sandbox.shutil.which",
                             side_effect=AssertionError("which")):
                 with self.assertRaises(RuntimeError):
                     SB.build_bwrap_command(
                         {}, ["sh"], name, "/work", [], {})
-        with mock.patch("runner.sandbox.shutil.which", return_value="/bin/sh"):
+        with mock.patch("runner.guard.sandbox.shutil.which", return_value="/bin/sh"):
             argv = SB.build_bwrap_command(
                 {}, ["sh", "-c"], "job.sh", "/work", ["--x"], {"OK": "1"})
         self.assertEqual(argv[-2:], ["/work/job.sh", "--x"])
         self.assertNotIn("..", argv[-1])
 
     def test_workdir_args_and_env_mutations(self):
-        with mock.patch("runner.sandbox.shutil.which",
+        with mock.patch("runner.guard.sandbox.shutil.which",
                         side_effect=AssertionError("which")):
             for workdir, args, env in (
                 ("", [], {}),
@@ -1508,7 +1508,7 @@ class SandboxAndUserFuzzTest(unittest.TestCase):
                 return mock.Mock()
             raise KeyError(name)
 
-        with mock.patch("runner.sandbox.shutil.which", return_value="/bin/sh"), \
+        with mock.patch("runner.guard.sandbox.shutil.which", return_value="/bin/sh"), \
              mock.patch("pwd.getpwnam", side_effect=lookup):
             for _ in range(200):
                 name = "".join(chr(rng.randrange(0, 128))
@@ -1565,19 +1565,19 @@ class AuditAndDiskTest(unittest.TestCase):
         def usage(total, used):
             return mock.Mock(total=total, used=used)
 
-        with mock.patch("runner.resources.shutil.disk_usage",
+        with mock.patch("runner.oracle.resources.shutil.disk_usage",
                         return_value=usage(0, 0)):
             self.assertIsNone(RS._disk_fraction("/tmp"))
-        with mock.patch("runner.resources.shutil.disk_usage",
+        with mock.patch("runner.oracle.resources.shutil.disk_usage",
                         return_value=usage(100, 150)):
             self.assertEqual(RS._disk_fraction("/tmp"), 1.0)
-        with mock.patch("runner.resources.shutil.disk_usage",
+        with mock.patch("runner.oracle.resources.shutil.disk_usage",
                         return_value=usage(100, 0)):
             self.assertEqual(RS._disk_fraction("/tmp"), 0.0)
-        with mock.patch("runner.resources.shutil.disk_usage",
+        with mock.patch("runner.oracle.resources.shutil.disk_usage",
                         return_value=usage("n", 1)):
             self.assertIsNone(RS._disk_fraction("/tmp"))
-        with mock.patch("runner.resources.shutil.disk_usage",
+        with mock.patch("runner.oracle.resources.shutil.disk_usage",
                         side_effect=OSError("nope")):
             self.assertIsNone(RS._disk_fraction("/tmp"))
         self.assertIsNone(RS._disk_fraction(1))
@@ -1832,29 +1832,32 @@ def _mode(path):
 
 class InstallModeTest(unittest.TestCase):
     def _src(self, d):
-        for name in ("runner.py", "oauth.py", "winlog.py",
+        for name in ("runner.py", "wire/__init__.py", "wire/oauth.py",
+                     "ops/__init__.py", "ops/winlog.py",
                      "homing-pigeon", "install", "install.exe",
                      "config.example.json"):
-            with open(os.path.join(d, name), "w", encoding="utf-8") as fh:
+            path = os.path.join(d, *name.split("/"))
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as fh:
                 fh.write("{}\n" if name.endswith(".json") else "# stub\n")
 
     def test_a_seeded_config_is_owner_only_and_an_existing_one_is_left_alone(self):
         with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
             self._src(src)
-            with mock.patch("runner.install.FROZEN", False):
+            with mock.patch("runner.ops.install.FROZEN", False):
                 self.assertTrue(install_files(src, dst))
             cfg = os.path.join(dst, "config.json")
             self.assertEqual(_mode(cfg), 0o600)
             os.chmod(cfg, 0o644)
-            with mock.patch("runner.install.FROZEN", False):
+            with mock.patch("runner.ops.install.FROZEN", False):
                 self.assertTrue(install_files(src, dst))
             self.assertEqual(_mode(cfg), 0o644)
 
     def test_a_frozen_binary_is_executable_only_on_posix(self):
         with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
             self._src(src)
-            with mock.patch("runner.install.FROZEN", True), \
-                 mock.patch("runner.install.os.name", "posix"):
+            with mock.patch("runner.ops.install.FROZEN", True), \
+                 mock.patch("runner.ops.install.os.name", "posix"):
                 self.assertTrue(install_files(src, dst))
             self.assertEqual(_mode(os.path.join(dst, "homing-pigeon")), 0o755)
             self.assertEqual(_mode(os.path.join(dst, "install")), 0o755)
@@ -1862,9 +1865,9 @@ class InstallModeTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
             self._src(src)
-            with mock.patch("runner.install.FROZEN", True), \
-                 mock.patch("runner.install.os.name", "nt"), \
-                 mock.patch("runner.install.os.chmod") as chmod:
+            with mock.patch("runner.ops.install.FROZEN", True), \
+                 mock.patch("runner.ops.install.os.name", "nt"), \
+                 mock.patch("runner.ops.install.os.chmod") as chmod:
                 self.assertTrue(install_files(src, dst))
             self.assertNotIn(0o755, [call.args[-1] for call in chmod.call_args_list])
 
@@ -2125,7 +2128,7 @@ class PosixKillTest(unittest.TestCase):
 class AlertStoreTest(unittest.TestCase):
     def test_the_cap_keeps_the_newest_and_a_bad_record_is_dropped(self):
         with tempfile.TemporaryDirectory() as d:
-            with mock.patch("runner.senses.MAX_STORED", 3):
+            with mock.patch("runner.oracle.senses.MAX_STORED", 3):
                 store_alert("", {"sensor": "x"})
                 store_alert(d, ["not", "a", "dict"])
                 store_alert(d, {"sensor": "bad", "n": float("nan")})
@@ -2159,7 +2162,7 @@ class KillAndStoreFuzzTest(unittest.TestCase):
              mock.patch("runner.runner.os.name", "posix"), \
              mock.patch("runner.runner.os.killpg", side_effect=killpg), \
              mock.patch("runner.runner.subprocess.run", side_effect=fake_run), \
-             mock.patch("runner.senses.MAX_STORED", 5):
+             mock.patch("runner.oracle.senses.MAX_STORED", 5):
             for _ in range(200):
                 proc = mock.Mock()
                 proc.pid = rng.choice([1, 42, None, "x"])

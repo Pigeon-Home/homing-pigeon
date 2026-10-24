@@ -43,7 +43,7 @@ import unittest
 from datetime import datetime, timezone
 
 from runner import runner as R
-from runner import sandbox as SB
+from runner.guard import sandbox as SB
 
 SECRET = "scenario-secret-" + "7f2a" * 16  # >= 128 bits, test-only
 

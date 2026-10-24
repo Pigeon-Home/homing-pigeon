@@ -10,13 +10,14 @@ from unittest import mock
 M = mock.patch.object
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
-from runner import posture as P  # noqa: E402
+from runner.ops import posture as P  # noqa: E402
 def _load(allow):
     real = builtins.__import__
     def guarded(name, g=None, loc=None, fromlist=(), level=0):
-        runner = name == "runner" and fromlist and "security" in fromlist
-        bare = name == "security" and not allow
-        if name == "runner.security" or runner or bare:
+        wants = bool(fromlist) and "security" in fromlist
+        runner = name == "runner.guard" and wants
+        bare = name == "guard" and wants and not allow
+        if name == "runner.guard.security" or runner or bare:
             raise ImportError("no")
         return real(name, g, loc, fromlist, level)
     spec = importlib.util.spec_from_file_location("pf_%s" % allow, P.__file__)
@@ -61,7 +62,10 @@ class PostureGapTest(unittest.TestCase):
         if os.name == "nt":
             self.skipTest("geteuid is POSIX")
         bare = types.ModuleType("security")
-        with mock.patch.dict(sys.modules, {"security": bare}):
+        guard_pkg = types.ModuleType("guard")
+        guard_pkg.security = bare
+        with mock.patch.dict(sys.modules, {"guard": guard_pkg,
+                                           "guard.security": bare}):
             self.assertIs(_load(True), bare)
         self.assertIsNone(_load(False))
         rows, cp = [], P._check_privileges
@@ -79,16 +83,21 @@ class PostureGapTest(unittest.TestCase):
         kp(None, rows)
         extra = {"": "a", "k": "b", "z": "c"}
         kp({"additional_secrets": extra, "key_policies": {"k": {}}}, rows)
-        b = {"runner.install": None, "install": None}
+        b = {"runner.ops.install": None, "ops.install": None}
         with mock.patch.dict(sys.modules, b):
             self.assertFalse(ph("x"))
-        inst = types.ModuleType("install")
+        inst = types.ModuleType("ops.install")
         inst._looks_like_placeholder = lambda v: 1
-        with mock.patch.dict(sys.modules, {"runner.install": None, "install": inst}):
+        ops_pkg = types.ModuleType("ops")
+        ops_pkg.__path__ = []
+        ops_pkg.install = inst
+        with mock.patch.dict(sys.modules, {"runner.ops.install": None,
+                                           "ops": ops_pkg,
+                                           "ops.install": inst}):
             self.assertTrue(ph("ph"))
-        bad = types.ModuleType("runner.install")
+        bad = types.ModuleType("runner.ops.install")
         bad._looks_like_placeholder = mock.Mock(side_effect=ValueError("x"))
-        with mock.patch.dict(sys.modules, {"runner.install": bad}):
+        with mock.patch.dict(sys.modules, {"runner.ops.install": bad}):
             self.assertFalse(P._looks_like_placeholder("x"))
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "c.json")

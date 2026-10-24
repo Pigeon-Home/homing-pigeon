@@ -3,7 +3,7 @@
 
 Findings documented here (simulation in virtual environment, 2026-10-15):
 
-1. Commit a2b6ff8 truncated runner/dri.py to 154 lines, removing
+1. Commit a2b6ff8 truncated runner/oracle/dri.py to 154 lines, removing
    maybe_page and the rest of the playbook. The agent imported but
    DRI paging became AttributeError. The full module is restored.
 2. _save_state did json.dump on a state dict. Non-string keys raised
@@ -18,7 +18,7 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import dri  # noqa: E402
+from runner.oracle import dri  # noqa: E402
 
 
 class DriTruncatedAndObjectKeyTest(unittest.TestCase):

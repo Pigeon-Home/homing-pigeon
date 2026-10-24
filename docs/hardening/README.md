@@ -1,7 +1,7 @@
 # Hardening templates (M7) — NOT installed by default
 
 These are opt-in OS-level hardening for the Homing Pigeon runner.
-The installer (`runner/install.py`) never references them; apply them
+The installer (`runner/ops/install.py`) never references them; apply them
 by hand after you understand what each line does.
 
 Render the `@PLACEHOLDERS@` with your real paths, e.g.:

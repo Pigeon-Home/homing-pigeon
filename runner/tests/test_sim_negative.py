@@ -25,7 +25,8 @@ from runner.runner import (  # noqa: E402
     answer_queries,
     _redact_patterns,
 )
-from runner import jobcrypto, resources, dri  # noqa: E402
+from runner.oracle import resources, dri  # noqa: E402
+from runner.wire import jobcrypto  # noqa: E402
 
 SECRET = "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"
 

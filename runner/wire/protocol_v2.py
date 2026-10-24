@@ -28,9 +28,9 @@ import time
 import uuid
 
 try:
-    from runner import confval as _confval
+    from runner.guard import confval as _confval
 except ImportError:
-    import confval as _confval  # type: ignore
+    from guard import confval as _confval  # type: ignore
 
 V2 = 2
 _ID = re.compile(r"\A[A-Za-z0-9._-]{1,128}\Z")

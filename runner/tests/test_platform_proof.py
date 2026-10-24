@@ -36,7 +36,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from runner import opinion as op
+from runner.oracle import opinion as op
 from runner import runner
 from runner.tests import test_oracle_opinion as oo
 

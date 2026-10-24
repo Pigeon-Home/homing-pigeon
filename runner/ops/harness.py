@@ -39,13 +39,14 @@ from urllib.request import Request
 # Works both as a package module (CI) and as a sibling script.
 try:
     from runner import runner as R  # package: runner/runner.py
-    from runner import local_test as LT
-    from runner import jobcrypto as JC
+    from runner.ops import local_test as LT
+    from runner.wire import jobcrypto as JC
 except ImportError:
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    import runner as R  # script: python3 runner/harness.py
-    import local_test as LT
-    import jobcrypto as JC
+    sys.path.insert(0, os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
+    import runner as R  # script: python3 runner/ops/harness.py
+    from ops import local_test as LT
+    from wire import jobcrypto as JC
 
 
 PASS = "PASS"

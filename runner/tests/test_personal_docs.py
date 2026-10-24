@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from runner.personal_docs import (
+from runner.oracle.personal_docs import (
     BANNER,
     personal_documents_present,
     warn_if_personal_documents,
@@ -171,7 +171,7 @@ class SwitchTest(unittest.TestCase):
 
     def test_install_bakes_the_switch_into_the_service(self):
         import types
-        from runner import install
+        from runner.ops import install
         baked = install._forwarded_args(types.SimpleNamespace(
             dry_run=False, no_send=False, pdb=False,
             allow_cleartext=False, verbose=True,
@@ -266,20 +266,20 @@ class WarningEdgesTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as home:
             os.makedirs(os.path.join(home, "Documents"))
-            with mock.patch("runner.personal_docs.os.scandir", deny_documents):
+            with mock.patch("runner.oracle.personal_docs.os.scandir", deny_documents):
                 self.assertFalse(personal_documents_present(home))
 
         def deny_home(path):
             raise OSError("denied")
 
         with tempfile.TemporaryDirectory() as home:
-            with mock.patch("runner.personal_docs.os.scandir", deny_home):
+            with mock.patch("runner.oracle.personal_docs.os.scandir", deny_home):
                 self.assertFalse(personal_documents_present(home))
 
     def test_a_crash_in_the_check_prints_nothing(self):
         buf = io.StringIO()
         with mock.patch(
-                "runner.personal_docs.personal_documents_present",
+                "runner.oracle.personal_docs.personal_documents_present",
                 side_effect=RuntimeError("disk")):
             self.assertFalse(warn_if_personal_documents(
                 "/tmp", stream=buf))
@@ -298,7 +298,7 @@ class WarningEdgesTest(unittest.TestCase):
                 if path == papers:
                     raise OSError("gone")
                 return real(path)
-            with mock.patch("runner.personal_docs.os.path.realpath", boom):
+            with mock.patch("runner.oracle.personal_docs.os.path.realpath", boom):
                 self.assertFalse(personal_documents_present(home))
 
     def test_a_symlink_inside_documents_is_not_a_paper(self):

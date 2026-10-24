@@ -240,10 +240,10 @@ def validate_security_config(cfg):
     # owns the schema; import lazily to avoid a cycle.
     if "confinement" in sec:
         try:
-            from runner import sandbox as _sandbox
+            from runner.guard import sandbox as _sandbox
         except ImportError:
             try:
-                import sandbox as _sandbox
+                from guard import sandbox as _sandbox
             except ImportError:
                 _sandbox = None
         if _sandbox is not None:

@@ -19,7 +19,7 @@ REPEATED = "0123456789abcdef" * 4
 
 class RepeatedSecretTest(unittest.TestCase):
     def test_the_entropy_estimate_accepts_a_repeated_hex_block(self):
-        from runner.security import (
+        from runner.guard.security import (
             _estimate_secret_entropy, validate_shared_secret)
 
         # 64 hex chars, 16-symbol alphabet: 256 bits on paper.
@@ -30,7 +30,7 @@ class RepeatedSecretTest(unittest.TestCase):
         self.assertIn("repeats the 16-character unit", str(caught.exception))
 
     def test_one_character_is_weak_for_a_different_reason_than_two(self):
-        from runner.security import validate_shared_secret
+        from runner.guard.security import validate_shared_secret
 
         with self.assertRaises(RuntimeError) as one:
             validate_shared_secret("a")
@@ -42,7 +42,7 @@ class RepeatedSecretTest(unittest.TestCase):
         self.assertIn("repeats the 1-character unit", str(two.exception))
 
     def test_the_solver_rejects_are_stable(self):
-        from runner.security import validate_shared_secret
+        from runner.guard.security import validate_shared_secret
 
         cases = {
             "": "shared_secret is required",
@@ -55,7 +55,7 @@ class RepeatedSecretTest(unittest.TestCase):
             self.assertIn(fragment, str(caught.exception), secret)
 
     def test_posture_fails_the_repeated_block(self):
-        from runner.posture import main
+        from runner.ops.posture import main
 
         with tempfile.TemporaryDirectory() as directory:
             path = os.path.join(directory, "config.json")
@@ -163,7 +163,7 @@ class InfinityFromFileTest(unittest.TestCase):
     def test_the_poll_sleeps_the_default_and_the_worker_count_stays_one(self):
         import sys
         from runner import runner
-        from runner import setup
+        from runner.ops import setup
 
         delays = []
 
@@ -286,9 +286,9 @@ class InfinityFromFileTest(unittest.TestCase):
 
 class NonFiniteElsewhereTest(unittest.TestCase):
     def test_dri_and_sensor_weight_and_exit_code(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         from runner.runner import _as_int, download
-        from runner.senses import parse_sensors
+        from runner.oracle.senses import parse_sensors
 
         with self.assertRaises(RuntimeError) as caught:
             parse_dri({
@@ -326,9 +326,9 @@ class NonFiniteElsewhereTest(unittest.TestCase):
 
 class ResourceAndFragmentTest(unittest.TestCase):
     def test_infinite_cooldown_and_fragment_length_do_not_escape(self):
-        from runner.resources import parse_resources
+        from runner.oracle.resources import parse_resources
         from runner.runner import answer_queries, secret_fragment_hit
-        from runner.senses import _path
+        from runner.oracle.senses import _path
 
         with self.assertRaises(RuntimeError) as caught:
             parse_resources({
@@ -354,7 +354,7 @@ class RetentionAndGateTest(unittest.TestCase):
     def test_a_non_finite_timestamp_is_expired_and_does_not_silence(self):
         import time
         from runner.runner import retained_expired
-        from runner.senses import gate_alert
+        from runner.oracle.senses import gate_alert
 
         cfg = {"output_retention_days": 7}
         self.assertTrue(retained_expired({"saved_at": float("inf")}, cfg))
@@ -373,7 +373,7 @@ class RetentionAndGateTest(unittest.TestCase):
 
 class SensorRecordTest(unittest.TestCase):
     def test_nan_is_stored_as_null_and_a_cycle_does_not_recurse(self):
-        from runner.senses import load_alerts, store_alert
+        from runner.oracle.senses import load_alerts, store_alert
 
         cycle = {"title": "loop"}
         cycle["self"] = cycle
@@ -392,7 +392,7 @@ class SensorRecordTest(unittest.TestCase):
         self.assertIsNone(looped[0]["self"])
 
     def test_a_record_whose_items_raise_is_not_stored(self):
-        from runner.senses import store_alert
+        from runner.oracle.senses import store_alert
 
         class Boom(dict):
             def items(self):
@@ -419,8 +419,8 @@ class SensorRecordTest(unittest.TestCase):
 class OAuthLatchTest(unittest.TestCase):
     def test_a_dead_token_is_shouted_once_and_recovery_is_logged(self):
         from runner import runner
-        from runner import setup
-        from runner.oauth import OAuthRefreshError
+        from runner.ops import setup
+        from runner.wire.oauth import OAuthRefreshError
 
         secret = (
             "0123456789abcdef"
@@ -476,7 +476,7 @@ class OAuthLatchTest(unittest.TestCase):
 class ShellOrderingTest(unittest.TestCase):
     def test_the_event_source_is_registered_only_on_the_first_report(self):
         import ctypes
-        from runner import winlog
+        from runner.ops import winlog
 
         class Adv:
             def RegisterEventSourceW(self, *args):
@@ -489,10 +489,10 @@ class ShellOrderingTest(unittest.TestCase):
                 return 1
 
         winlog._reported_ok = False
-        with mock.patch("runner.winlog.os.name", "nt"), \
+        with mock.patch("runner.ops.winlog.os.name", "nt"), \
              mock.patch.object(ctypes, "windll",
                                mock.Mock(advapi32=Adv()), create=True), \
-             mock.patch("runner.winlog._ensure_source") as ensure:
+             mock.patch("runner.ops.winlog._ensure_source") as ensure:
             winlog.report_event("one")
             winlog.report_event("two")
         self.assertEqual(ensure.call_count, 1)
@@ -500,7 +500,7 @@ class ShellOrderingTest(unittest.TestCase):
 
     def test_the_event_source_points_at_the_system_message_file(self):
         import sys
-        from runner import winlog
+        from runner.ops import winlog
 
         class Key:
             def __enter__(self):
@@ -534,7 +534,7 @@ class ShellOrderingTest(unittest.TestCase):
         self.assertEqual(names["TypesSupported"], 7)
 
     def test_a_google_error_wins_over_a_missing_code(self):
-        from runner.oauth import browser_consent
+        from runner.wire.oauth import browser_consent
 
         class Server:
             def __init__(self, addr, handler):
@@ -551,8 +551,8 @@ class ShellOrderingTest(unittest.TestCase):
         # (the hardened HTTPServer subclass) since 3e61d86; patching
         # HTTPServer left a real listener waiting out the full
         # consent window and failing with "no sign-in code".
-        with mock.patch("runner.oauth._ConsentServer", Server), \
-             mock.patch("runner.oauth.webbrowser.open"):
+        with mock.patch("runner.wire.oauth._ConsentServer", Server), \
+             mock.patch("runner.wire.oauth.webbrowser.open"):
             with self.assertRaises(SystemExit) as caught:
                 browser_consent({"oauth_client_id": "cid"})
         text = str(caught.exception)
@@ -560,7 +560,7 @@ class ShellOrderingTest(unittest.TestCase):
         self.assertNotIn("no sign-in code", text)
 
     def test_home_on_this_platform_is_a_note_not_a_switch(self):
-        from runner import install
+        from runner.ops import install
 
         buf = io.StringIO()
         with mock.patch.object(sys, "argv",

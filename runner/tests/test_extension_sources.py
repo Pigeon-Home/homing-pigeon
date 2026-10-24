@@ -2,7 +2,7 @@
 # Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854
 """Extension sources: each extension brings its own code for the Oracle.
 
-The contract under test (runner/extsources.py, docs/extensions.md
+The contract under test (runner/ops/extsources.py, docs/extensions.md
 "Sources"):
 
 - sources.json is validated like a manifest: unknown fields refused
@@ -41,7 +41,7 @@ from urllib.error import HTTPError, URLError
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import extsources as X  # noqa: E402
+from runner.ops import extsources as X  # noqa: E402
 from runner import runner as R  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location(
@@ -287,13 +287,13 @@ class DeclarationTest(unittest.TestCase):
                             {"id": "doc", "role": "spec",
                              "url": "https://example.org/rfc.txt"},
                             {"id": "code", "role": "self",
-                             "project": ["runner/transports.py"]}]})
+                             "project": ["runner/wire/transports.py"]}]})
         self.assertEqual(d["oracle"], "withhold")
         up, doc, code = d["sources"]
         self.assertEqual((up["ref"], up["archive"], up["max_mb"]),
                          ("latest", False, X.DEFAULT_ENTRY_MB))
         self.assertEqual(doc["location"], "url")
-        self.assertEqual(code["project"], ["runner/transports.py"])
+        self.assertEqual(code["project"], ["runner/wire/transports.py"])
         self.assertIsNone(up["oracle"])
 
     def test_unknown_fields_are_refused_by_name(self):
@@ -467,7 +467,7 @@ class ShippedDeclarationsTest(unittest.TestCase):
         self.assertEqual(found, want)
 
     def test_each_parses_next_to_a_valid_manifest(self):
-        from runner import extensions as E
+        from runner.ops import extensions as E
         for folder in self.folders():
             decl, problem = X.load_declaration(folder)
             self.assertIsNone(problem, folder)
@@ -1033,31 +1033,31 @@ class ProvisionTest(_Base):
     def test_project_paths_are_referenced_in_place_or_copied(self):
         decl = {"sources_version": 1, "sources": [
             {"id": "code", "role": "self",
-             "project": ["runner/mailbox.py", "runner/transport_extensions"
+             "project": ["runner/wire/mailbox.py", "runner/transport_extensions"
                          "/email"]}]}
         write_ext(self.ext, decl)
         self.run_pass(project_root=REPO)
         code = self.state()["entries"]["code"]
         self.assertEqual(code["status"], "fetched")
         items = code["project"]["items"]
-        self.assertEqual(items["runner/mailbox.py"],
+        self.assertEqual(items["runner/wire/mailbox.py"],
                          "extension-sources/sense/feed/code/files/runner/"
-                         "mailbox.py")
+                         "wire/mailbox.py")
         self.assertTrue(items["runner/transport_extensions/email"]
                         .endswith("/email/"))
         self.assertTrue(os.path.isfile(os.path.join(
-            self.entry_dir("code"), "files", "runner", "mailbox.py")))
+            self.entry_dir("code"), "files", "runner", "wire", "mailbox.py")))
         # An installed project snapshot inside the state dir is read
         # where it sits.
-        snap = os.path.join(self.base, "project", "runner")
+        snap = os.path.join(self.base, "project", "runner", "wire")
         os.makedirs(snap)
-        shutil.copy(os.path.join(REPO, "runner", "mailbox.py"), snap)
-        decl["sources"][0]["project"] = ["runner/mailbox.py"]
+        shutil.copy(os.path.join(REPO, "runner", "wire", "mailbox.py"), snap)
+        decl["sources"][0]["project"] = ["runner/wire/mailbox.py"]
         write_ext(self.ext, decl)
         self.run_pass()
         code = self.state()["entries"]["code"]
-        self.assertEqual(code["project"]["items"]["runner/mailbox.py"],
-                         "project/runner/mailbox.py")
+        self.assertEqual(code["project"]["items"]["runner/wire/mailbox.py"],
+                         "project/runner/wire/mailbox.py")
 
     def test_a_pi_light_box_fetches_nothing_under_the_default(self):
         # No model reads the material on a deterministic box, so the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for the detection gaps filled by runner/detection.py.
+"""Tests for the detection gaps filled by runner/oracle/detection.py.
 
 Canary tripwires are already covered by test_canary_watch.py and
 are not re-tested here.
@@ -12,7 +12,7 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import detection  # noqa: E402
+from runner.oracle import detection  # noqa: E402
 
 
 class DetectionGapsTest(unittest.TestCase):
@@ -54,7 +54,7 @@ class DetectionHookIntegrationTest(unittest.TestCase):
 
     def test_hook_records_hits_and_plan_budget(self):
         # Simulate the hook logic directly (the runner call site is thin).
-        from runner import detection
+        from runner.oracle import detection
         job = {
             "interpreter": "python2",
             "script": "eval(x)",

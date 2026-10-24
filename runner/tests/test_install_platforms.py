@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "runner"))
 
-import install as inst  # noqa: E402
+from ops import install as inst  # noqa: E402
 
 
 def _args(**kw):

@@ -19,9 +19,9 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 try:
-    from runner import confval as _confval
+    from runner.guard import confval as _confval
 except ImportError:
-    import confval as _confval  # type: ignore
+    from guard import confval as _confval  # type: ignore
 
 
 # ---------------------------------------------------------------------------

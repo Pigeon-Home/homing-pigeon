@@ -2,7 +2,7 @@
 
 Status: design, recorded 2026-10-18, expanded the same evening
 at the owner's direction to incorporate the full discussion.
-Built 2026-10-18 (`runner/remediation.py`, wired into
+Built 2026-10-18 (`runner/oracle/remediation.py`, wired into
 `execute_job`; tests in `runner/tests/test_remediation.py`). This
 document is the design of record: the build is a transcription
 of this text, and every place the code departs from it is a

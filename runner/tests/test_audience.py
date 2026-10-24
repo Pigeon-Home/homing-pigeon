@@ -182,7 +182,7 @@ class QueryAudienceTest(unittest.TestCase):
     def _query_mail(self, qid, runner_id="MISSING"):
         from datetime import datetime, timezone
         from email.message import EmailMessage
-        from runner import jobcrypto
+        from runner.wire import jobcrypto
         from runner.tests.security_parity import SENDER, sign_payload
         p = {"v": 1, "type": "query", "query_id": qid,
              "issued_at": datetime.now(timezone.utc).strftime(
@@ -231,7 +231,7 @@ class QueryAudienceTest(unittest.TestCase):
 class BoardAudienceTest(unittest.TestCase):
     def _board(self, subject, payload):
         from email.message import EmailMessage
-        from runner import jobcrypto
+        from runner.wire import jobcrypto
         from runner.tests.security_parity import SENDER, sign_payload
         signed = sign_payload(payload, SECRET)
         ident = subject.rsplit(" ", 1)[-1]

@@ -9,7 +9,7 @@ import os
 import tempfile
 import unittest
 
-from runner import security as S
+from runner.guard import security as S
 from runner.runner import _answer_format_problem
 
 # The field-report dump, then one-field mutations of it.

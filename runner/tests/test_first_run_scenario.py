@@ -42,7 +42,7 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import setup as SU  # noqa: E402
+from runner.ops import setup as SU  # noqa: E402
 from runner.runner import (  # noqa: E402
     _redact_patterns,
     ask_model,

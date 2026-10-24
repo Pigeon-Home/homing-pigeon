@@ -30,7 +30,8 @@ from datetime import datetime, timezone
 from email.message import EmailMessage
 from unittest import mock
 
-from runner import jobcrypto, runner
+from runner import runner
+from runner.wire import jobcrypto
 from runner._version import __version__
 from runner.runner import (
     Board, apply_cli_overrides, handle_mail, handle_v2_mail, poll_once,
@@ -166,7 +167,7 @@ def _main_rig(argv, cfg_extra=None):
     """Drive runner.main() the way test_coverage_resolve does:
     mailbox, model, and poll stubbed; reload spied on so the
     pinned set is observable."""
-    from runner import setup
+    from runner.ops import setup
     stack = contextlib.ExitStack()
     stack.enter_context(mock.patch.object(
         runner, "ensure_inference_ready"))
@@ -580,7 +581,7 @@ class Version2IngestTest(_VerbosityGuard):
         return cfg
 
     def _question(self):
-        from runner import protocol_v2 as v2
+        from runner.wire import protocol_v2 as v2
         return v2.question_for(
             {"protocol_v2": True},
             {"job_id": "j1", "kind": "exec"})
@@ -638,7 +639,7 @@ class Version2IngestTest(_VerbosityGuard):
         self.assertIn("deadline_sec", out)
 
     def test_the_answerer_uses_the_model_and_survives_it_failing(self):
-        from runner import protocol_v2 as v2
+        from runner.wire import protocol_v2 as v2
         q = self._question()
         cfg = self._cfg(answer_only=True)
         subject = "[HOMING-PIGEON] question " + q["msg_id"]
@@ -691,7 +692,7 @@ class Version2IngestTest(_VerbosityGuard):
         self.assertEqual(len(imap.marked), 1)
 
     def test_a_determination_is_logged_and_not_executed(self):
-        from runner import protocol_v2 as v2
+        from runner.wire import protocol_v2 as v2
         det = v2.determination_for(
             {"job_id": "j1"},
             {"findings": [{"detail": "rm"}]})
@@ -1122,7 +1123,7 @@ class InstallHelpDocumentTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.proc = _help_output(
-            os.path.join("runner", "install.py"), "--help")
+            os.path.join("runner", "ops", "install.py"), "--help")
         cls.out = cls.proc.stdout
 
     def test_help_exits_0(self):

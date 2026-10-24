@@ -15,8 +15,8 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import harness as H  # noqa: E402
-from runner import jobcrypto  # noqa: E402
+from runner.ops import harness as H  # noqa: E402
+from runner.wire import jobcrypto  # noqa: E402
 from runner import runner as R  # noqa: E402
 
 

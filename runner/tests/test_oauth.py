@@ -1,4 +1,4 @@
-"""Tests for runner/oauth.py token exchange error reporting."""
+"""Tests for runner/wire/oauth.py token exchange error reporting."""
 import http.client
 import io
 import json
@@ -13,8 +13,8 @@ import urllib.error
 import urllib.parse
 from unittest import mock
 
-from runner import oauth
-from runner.oauth import exchange_code
+from runner.wire import oauth
+from runner.wire.oauth import exchange_code
 
 
 def _http_error(payload: bytes, code: int = 400) -> urllib.error.HTTPError:
@@ -69,10 +69,10 @@ class ExchangeCodeErrorDescriptionTests(unittest.TestCase):
 
 class RefreshAndExchangeShapeTest(unittest.TestCase):
     def test_an_unparseable_refresh_error_still_says_relogin(self):
-        from runner.oauth import OAuthRefreshError, refresh_access_token
+        from runner.wire.oauth import OAuthRefreshError, refresh_access_token
 
         with unittest.mock.patch(
-                "runner.oauth.urllib.request.urlopen",
+                "runner.wire.oauth.urllib.request.urlopen",
                 side_effect=_http_error(b"<html>")):
             with self.assertRaises(OAuthRefreshError) as ctx:
                 refresh_access_token({
@@ -83,7 +83,7 @@ class RefreshAndExchangeShapeTest(unittest.TestCase):
         self.assertIn("Re-run", str(ctx.exception))
 
     def test_a_refresh_without_a_token_is_refused(self):
-        from runner.oauth import OAuthRefreshError, refresh_access_token
+        from runner.wire.oauth import OAuthRefreshError, refresh_access_token
 
         class Resp:
             def __init__(self, body):
@@ -96,14 +96,14 @@ class RefreshAndExchangeShapeTest(unittest.TestCase):
                 return False
 
         with unittest.mock.patch(
-                "runner.oauth.urllib.request.urlopen",
+                "runner.wire.oauth.urllib.request.urlopen",
                 return_value=Resp(b"[]")):
             with self.assertRaises(OAuthRefreshError) as ctx:
                 refresh_access_token({
                     "oauth_client_id": "x", "oauth_refresh_token": "r"})
         self.assertIn("non-object", str(ctx.exception))
         with unittest.mock.patch(
-                "runner.oauth.urllib.request.urlopen",
+                "runner.wire.oauth.urllib.request.urlopen",
                 return_value=Resp(b"{}")):
             with self.assertRaises(OAuthRefreshError) as ctx:
                 refresh_access_token({
@@ -145,7 +145,7 @@ class RefreshAndExchangeShapeTest(unittest.TestCase):
         self.assertIn("refresh_token", str(ctx.exception))
 
     def test_a_refresh_returns_the_access_token(self):
-        from runner.oauth import refresh_access_token
+        from runner.wire.oauth import refresh_access_token
 
         class Resp:
             def read(self):
@@ -155,7 +155,7 @@ class RefreshAndExchangeShapeTest(unittest.TestCase):
             def __exit__(self, *args):
                 return False
 
-        with mock.patch("runner.oauth.urllib.request.urlopen",
+        with mock.patch("runner.wire.oauth.urllib.request.urlopen",
                         return_value=Resp()):
             token = refresh_access_token({
                 "oauth_client_id": "x",
@@ -164,12 +164,12 @@ class RefreshAndExchangeShapeTest(unittest.TestCase):
         self.assertEqual(token, "ya29.token")
 
     def test_a_failed_write_does_not_leave_the_token(self):
-        from runner.oauth import store_refresh_token
+        from runner.wire.oauth import store_refresh_token
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "config.json")
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write("{}\n")
-            with mock.patch("runner.oauth.os.replace",
+            with mock.patch("runner.wire.oauth.os.replace",
                             side_effect=OSError("full")):
                 with self.assertRaises(OSError):
                     store_refresh_token(path, {"auth": "password"}, "tok")
@@ -179,7 +179,7 @@ class RefreshAndExchangeShapeTest(unittest.TestCase):
             self.assertEqual(leftovers, [])
 
     def test_main_refuses_a_symlink_and_a_token_with_a_newline(self):
-        from runner import oauth
+        from runner.wire import oauth
         with tempfile.TemporaryDirectory() as d:
             real = os.path.join(d, "real.json")
             with open(real, "w", encoding="utf-8") as fh:

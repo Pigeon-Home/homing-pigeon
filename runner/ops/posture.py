@@ -17,10 +17,10 @@ import stat
 import sys
 
 try:
-    from runner import security as _security
+    from runner.guard import security as _security
 except ImportError:  # running from inside runner/ as __main__
     try:
-        import security as _security
+        from guard import security as _security
     except ImportError:
         _security = None
 
@@ -162,10 +162,10 @@ def _check_service_unit(results):
 def _looks_like_placeholder(value):
     """Lazy import of the shared placeholder check; never copied."""
     try:
-        from runner.install import _looks_like_placeholder as f
+        from runner.ops.install import _looks_like_placeholder as f
     except ImportError:
         try:
-            from install import _looks_like_placeholder as f
+            from ops.install import _looks_like_placeholder as f
         except ImportError:
             return False
     try:

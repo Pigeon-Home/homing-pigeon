@@ -12,7 +12,7 @@ import threading
 import unittest
 from unittest import mock
 
-from runner import dri
+from runner.oracle import dri
 
 
 def _mode(path):

@@ -28,8 +28,9 @@ from datetime import datetime, timezone
 try:
     from runner import runner as R  # package: runner/runner.py
 except ImportError:
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    import runner as R  # script: python3 runner/local_test.py
+    sys.path.insert(0, os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
+    import runner as R  # script: python3 runner/ops/local_test.py
 
 
 SI_PORT = 11435
@@ -83,9 +84,9 @@ def start_si_instance() -> bool:
         # starts and the browser page never opens. Use the same
         # Windows-safe kwargs the installer uses.
         try:
-            from runner.install import daemon_popen_kwargs
+            from runner.ops.install import daemon_popen_kwargs
         except ImportError:
-            from install import daemon_popen_kwargs
+            from ops.install import daemon_popen_kwargs
         subprocess.Popen(
             ["ollama", "serve"],
             env=env,

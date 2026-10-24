@@ -2,7 +2,7 @@
 """Resource Sentinel: a Homing Pigeon user extension (example sense).
 
 The security-focused resource monitor. The runner already
-carries a built-in pressure monitor (runner/resources.py):
+carries a built-in pressure monitor (runner/oracle/resources.py):
 single thresholds on CPU, memory and disk that feed the DRI
 paging path. This sense is the other half of that story --
 it watches the same machine the way an intrusion analyst
@@ -397,7 +397,7 @@ def _deliver_local(alerts, args):
     if repo_root not in sys.path:
         sys.path.insert(0, repo_root)
     try:
-        from runner import extensions as hp_extensions
+        from runner.ops import extensions as hp_extensions
     except ImportError as e:
         print(f"resource-sentinel: local delivery needs the "
               f"homing-pigeon repo importable ({e}); run me from "

@@ -35,7 +35,7 @@ from email.message import EmailMessage
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import senses
+from runner.oracle import senses
 from runner.runner import (
     Board, ask_model, poll_once, sign_payload
 )

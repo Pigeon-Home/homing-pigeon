@@ -1113,7 +1113,7 @@ constraints, a pinned script could still be subverted through
 `BASH_ENV`, `LD_PRELOAD`, or a staged file. Env names that subvert
 execution (the plan's Appendix A list — `BASH_ENV`, `PATH`,
 `LD_PRELOAD`, `PYTHONPATH`, `DYLD_*`, `GIT_CONFIG_*`, and others; see
-`DANGEROUS_ENV_NAMES`/`DANGEROUS_ENV_PREFIXES` in `runner/security.py`)
+`DANGEROUS_ENV_NAMES`/`DANGEROUS_ENV_PREFIXES` in `runner/guard/security.py`)
 are denied for keys with a policy entry **even when explicitly listed
 in `allowed_env`**, unless the policy also sets
 `allow_dangerous_env: true` (boolean `true` only — anything else keeps

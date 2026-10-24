@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "runner"))
 
-import install as inst  # noqa: E402
+from ops import install as inst  # noqa: E402
 
 
 class _Proc:
@@ -226,8 +226,9 @@ class FetchAndConfigTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as src, \
                 tempfile.TemporaryDirectory() as dst:
             for name in inst.FILES:
-                with open(os.path.join(src, name), "w",
-                          encoding="utf-8") as fh:
+                path = os.path.join(src, *name.split("/"))
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "w", encoding="utf-8") as fh:
                     fh.write("x")
             cfg = os.path.join(dst, "sub", "config.json")
             self.assertFalse(inst.install_files(src, dst, cfg))
@@ -446,14 +447,14 @@ class LastBranchesTest(unittest.TestCase):
             # falls back to the top-level `setup`; the two are separate
             # module objects. Load both, then patch every loaded copy,
             # so the real wizard never reaches input() whichever one
-            # the installer picks (in the full suite runner.setup is
+            # the installer picks (in the full suite runner.ops.setup is
             # usually imported already).
-            import setup  # noqa: F401
+            from ops import setup  # noqa: F401
             try:
-                import runner.setup  # noqa: F401
+                import runner.ops.setup  # noqa: F401
             except ImportError:
                 pass
-            copies = [sys.modules[n] for n in ("setup", "runner.setup")
+            copies = [sys.modules[n] for n in ("setup", "runner.ops.setup")
                       if n in sys.modules]
             wizards = []
             with contextlib.ExitStack() as stack:
@@ -635,8 +636,9 @@ class TailTest(unittest.TestCase):
                 self.assertTrue(inst.install_files(
                     src, os.path.join(dst, "bin"), cfg))
             for name in inst.FILES:
-                with open(os.path.join(src, name), "w",
-                          encoding="utf-8") as fh:
+                path = os.path.join(src, *name.split("/"))
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "w", encoding="utf-8") as fh:
                     fh.write("x")
             fresh = os.path.join(dst, "fresh", "config.json")
             with mock.patch.object(os, "chmod", chmod):

@@ -153,7 +153,7 @@ class WindowsDispatchPinsTest(unittest.TestCase):
     with the POSIX attributes genuinely deleted."""
 
     def test_total_memory_takes_the_windows_route(self):
-        from runner import remediation
+        from runner.oracle import remediation
         restore = surface.apply_surface()
         try:
             with mock.patch.object(
@@ -174,7 +174,7 @@ class WindowsDispatchPinsTest(unittest.TestCase):
         # Linux /proc route nor nt reaches the sysconf fallback;
         # where sysconf does not exist the AttributeError is the
         # documented "no route" answer, not a crash.
-        from runner import remediation
+        from runner.oracle import remediation
         # sysconf may already be absent (the sim harness deletes
         # it for the whole process); the pin then starts from the
         # environment it is actually testing and restores only
@@ -191,7 +191,7 @@ class WindowsDispatchPinsTest(unittest.TestCase):
                 os.sysconf = saved
 
     def test_privilege_check_takes_the_windows_branch(self):
-        from runner import posture
+        from runner.ops import posture
         restore = surface.apply_surface()
         try:
             results = []

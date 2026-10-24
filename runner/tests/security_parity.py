@@ -21,8 +21,8 @@ sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 
 from runner.runner import poll_once, verify_body  # noqa: E402
-from runner import jobcrypto  # noqa: E402
-from runner import security as _security  # noqa: E402
+from runner.wire import jobcrypto  # noqa: E402
+from runner.guard import security as _security  # noqa: E402
 from send_job import sign_payload  # noqa: E402
 from runner.tests.test_runner import FakeIMAP, FakeSMTP  # noqa: E402
 

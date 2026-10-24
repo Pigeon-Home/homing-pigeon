@@ -12,7 +12,7 @@ import unittest
 from datetime import datetime, timezone
 from unittest import mock
 
-from runner import harness as H
+from runner.ops import harness as H
 
 
 def _mode(path):
@@ -75,7 +75,7 @@ class ReportFileTest(unittest.TestCase):
             link = os.path.join(d, "harness-report-20261017T000000Z.txt")
             os.symlink(target, link)
             lines = []
-            with mock.patch("runner.harness.datetime", _Clock):
+            with mock.patch("runner.ops.harness.datetime", _Clock):
                 fails = H.run_diagnose(
                     {}, out=lines.append, base_dir=d, sections=[("first", _ok)])
             self.assertEqual(fails, 0)
@@ -156,7 +156,7 @@ class ReportFuzzTest(unittest.TestCase):
                 os.remove(link)
             os.symlink(target, link)
             try:
-                with mock.patch("runner.harness.datetime", _Clock):
+                with mock.patch("runner.ops.harness.datetime", _Clock):
                     H.run_diagnose({}, out=lambda _line: None, base_dir=os.path.join(d, "r0"),
                                    sections=[("first", _ok)])
             except Exception as exc:

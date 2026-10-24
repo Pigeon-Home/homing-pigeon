@@ -27,7 +27,7 @@ def _dynamic_runner_modules():
               encoding="utf-8") as fh:
         src = fh.read()
     return set(re.findall(
-        r'_load_(?:mod|attr)\(\s*"runner\.([A-Za-z0-9_]+)"', src))
+        r'_load_(?:mod|attr)\(\s*"runner\.([A-Za-z0-9_.]+)"', src))
 
 
 def _workflow():

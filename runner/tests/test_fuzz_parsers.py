@@ -5,14 +5,14 @@ test_fuzz_surfaces campaigns the original parsers (verify, config
 validators, the IMAP fetch). The surfaces here are the ones that
 arrived after it:
 
-- the transport envelope readers (runner.transports.parse_envelope,
+- the transport envelope readers (runner.wire.transports.parse_envelope,
   the extension-side twin in transport_extensions.channel, and the
   channel directory readers on both sides),
 - the email extension's raw-message extraction (_subject_body,
   reply_target) -- the header/subject parsing an untrusted mail
   hits first,
 - mailbox._valid_reply_to, the signed body's routing parser,
-- runner.jobcrypto's envelope handling (per-job encryption):
+- runner.wire.jobcrypto's envelope handling (per-job encryption):
   decrypt_body / is_envelope / aead_decrypt / hkdf under
   structured mutation of a valid envelope.
 
@@ -30,7 +30,7 @@ is a crash, reported with the input that caused it.
 
 jobcrypto lands with the per-job-encryption build; until then
 its campaign skips (the module import is guarded), and the
-campaign activates unchanged the moment runner/jobcrypto.py
+campaign activates unchanged the moment runner/wire/jobcrypto.py
 exists. Campaigns here were also run against the encryption
 branch's copy during the pipeline-hardening pass.
 
@@ -64,7 +64,7 @@ CRASH = (AttributeError, SystemExit, MemoryError, NameError,
          IndexError, OverflowError)
 
 try:
-    from runner import jobcrypto as _jobcrypto
+    from runner.wire import jobcrypto as _jobcrypto
 except Exception:  # module not landed yet; campaign skips
     _jobcrypto = None
 
@@ -145,7 +145,7 @@ def _jsonish(rng, blob):
 # ------------------------------------------------------------------
 
 def _exercise_envelopes(rng, blob):
-    from runner.transports import parse_envelope as core_parse
+    from runner.wire.transports import parse_envelope as core_parse
     from runner.transport_extensions.channel import (
         parse_envelope as ext_parse,
     )
@@ -186,7 +186,7 @@ def _exercise_envelopes(rng, blob):
 
 
 def _exercise_config_surface(rng, blob):
-    from runner.transports import enabled_transports
+    from runner.wire.transports import enabled_transports
     crashes = []
     value = _jsonish(rng, blob)
     candidates = [value, _mutate_value(rng, value),
@@ -211,7 +211,7 @@ def _exercise_mail_extract(rng, blob):
     from runner.transport_extensions.email.__main__ import (
         _subject_body, reply_target,
     )
-    from runner.mailbox import _valid_reply_to
+    from runner.wire.mailbox import _valid_reply_to
     crashes = []
     try:
         subject, body = _subject_body(blob)
@@ -245,7 +245,7 @@ def _exercise_mail_extract(rng, blob):
 def _exercise_channels(rng, blob):
     """The channel directory readers, against a throwaway tree
     whose inbox holds the mutated blob under several filenames."""
-    from runner.transports import fetch_channel_messages
+    from runner.wire.transports import fetch_channel_messages
     from runner.transport_extensions.channel import (
         deliver_job, pending_results,
     )
@@ -422,7 +422,7 @@ class FuzzParsersTest(unittest.TestCase):
         self.assertEqual(campaign(60, MASTER_SEED), [])
 
     def test_envelope_readers_agree_on_the_canonical_shape(self):
-        from runner.transports import parse_envelope as core_parse
+        from runner.wire.transports import parse_envelope as core_parse
         from runner.transport_extensions.channel import (
             parse_envelope as ext_parse,
         )

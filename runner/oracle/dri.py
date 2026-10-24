@@ -22,10 +22,10 @@ import time
 from datetime import datetime, timezone
 
 try:
-    from runner import senses as _senses
+    from runner.oracle import senses as _senses
 except ImportError:
     try:
-        import senses as _senses
+        from oracle import senses as _senses
     except ImportError:
         _senses = None
 

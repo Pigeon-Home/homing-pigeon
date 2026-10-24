@@ -14,7 +14,7 @@ from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
-from runner.local_test import (  # noqa: E402
+from runner.ops.local_test import (  # noqa: E402
     answer_as_oracle,
     browser_chat,
     build_ask_job,
@@ -100,7 +100,7 @@ class LocalSITest(unittest.TestCase):
                 raise ValueError("start_new_session is not supported on Windows")
             return mock.Mock()
 
-        with mock.patch("runner.local_test._port_up", side_effect=[False, True]), \
+        with mock.patch("runner.ops.local_test._port_up", side_effect=[False, True]), \
              mock.patch("shutil.which", return_value="ollama"), \
              mock.patch("os.name", "nt"), \
              mock.patch("subprocess.Popen", side_effect=fake_popen):
@@ -118,7 +118,7 @@ class LocalSITest(unittest.TestCase):
             seen["kw"] = kw
             return mock.Mock()
 
-        with mock.patch("runner.local_test._port_up", side_effect=[False, True]), \
+        with mock.patch("runner.ops.local_test._port_up", side_effect=[False, True]), \
              mock.patch("shutil.which", return_value="ollama"), \
              mock.patch("os.name", "posix"), \
              mock.patch("subprocess.Popen", side_effect=fake_popen):
@@ -128,14 +128,14 @@ class LocalSITest(unittest.TestCase):
         self.assertNotIn("creationflags", seen["kw"])
 
     def test_already_listening_does_not_spawn(self):
-        with mock.patch("runner.local_test._port_up", return_value=True), \
+        with mock.patch("runner.ops.local_test._port_up", return_value=True), \
              mock.patch("subprocess.Popen") as popen:
             ok = start_si_instance()
         self.assertTrue(ok)
         popen.assert_not_called()
 
     def test_missing_ollama_returns_false_and_does_not_raise(self):
-        with mock.patch("runner.local_test._port_up", return_value=False), \
+        with mock.patch("runner.ops.local_test._port_up", return_value=False), \
              mock.patch("shutil.which", return_value=None):
             ok = start_si_instance()
         self.assertFalse(ok)
@@ -144,7 +144,7 @@ class LocalSITest(unittest.TestCase):
         def boom(*a, **k):
             raise OSError("cannot spawn")
 
-        with mock.patch("runner.local_test._port_up", return_value=False), \
+        with mock.patch("runner.ops.local_test._port_up", return_value=False), \
              mock.patch("shutil.which", return_value="ollama"), \
              mock.patch("subprocess.Popen", side_effect=boom):
             ok = start_si_instance()
@@ -157,7 +157,7 @@ class LocalSITest(unittest.TestCase):
         def boom(*a, **k):
             raise ValueError("start_new_session is not supported on Windows")
 
-        with mock.patch("runner.local_test._port_up", return_value=False), \
+        with mock.patch("runner.ops.local_test._port_up", return_value=False), \
              mock.patch("shutil.which", return_value="ollama"), \
              mock.patch("subprocess.Popen", side_effect=boom):
             try:
@@ -167,22 +167,22 @@ class LocalSITest(unittest.TestCase):
         self.assertFalse(ok)
 
     def test_browser_chat_does_not_open_when_si_fails(self):
-        with mock.patch("runner.local_test.start_si_instance", return_value=False), \
+        with mock.patch("runner.ops.local_test.start_si_instance", return_value=False), \
              mock.patch("webbrowser.open") as opened:
             code = browser_chat(_cfg())
         self.assertEqual(code, 2)
         opened.assert_not_called()
 
     def test_browser_chat_does_not_open_without_open_webui(self):
-        with mock.patch("runner.local_test.start_si_instance", return_value=True), \
-             mock.patch("runner.local_test._open_webui_available", return_value=False), \
+        with mock.patch("runner.ops.local_test.start_si_instance", return_value=True), \
+             mock.patch("runner.ops.local_test._open_webui_available", return_value=False), \
              mock.patch("webbrowser.open") as opened:
             code = browser_chat(_cfg())
         self.assertEqual(code, 2)
         opened.assert_not_called()
 
     def test_si_port_is_not_the_oracle_port(self):
-        from runner.local_test import SI_PORT, ORACLE_PORT
+        from runner.ops.local_test import SI_PORT, ORACLE_PORT
         self.assertNotEqual(SI_PORT, ORACLE_PORT)
         self.assertEqual(SI_PORT, 11435)
         self.assertEqual(ORACLE_PORT, 11434)

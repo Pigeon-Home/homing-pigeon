@@ -25,7 +25,7 @@ from datetime import datetime
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import extensions as E  # noqa: E402
+from runner.ops import extensions as E  # noqa: E402
 
 EXAMPLE_DIR = os.path.join(
     REPO, "runner", "extensions", "failed-login-watch")

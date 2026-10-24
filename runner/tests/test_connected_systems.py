@@ -23,7 +23,7 @@ from runner.runner import (
     update_llama_from_config,
 )
 sys.path.insert(0, os.path.join(REPO, 'runner'))
-from install import set_instructions, apply_profile
+from ops.install import set_instructions, apply_profile
 
 
 def _fake_opener(captured, reply="ok"):

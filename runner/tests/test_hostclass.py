@@ -14,7 +14,7 @@ from contextlib import redirect_stdout
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from runner import install as I
+from runner.ops import install as I
 
 
 def facts(**kw):

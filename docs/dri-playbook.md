@@ -1,6 +1,6 @@
 # DRI playbook ("presence of mind")
 
-> **Status: implemented, off by default.** `runner/dri.py`
+> **Status: implemented, off by default.** `runner/oracle/dri.py`
 > evaluates triggers every poll cycle (`maybe_page`), with per-trigger
 > cooldown and digest batching in `dri-state.json`. The only channel
 > the runner accepts is Telegram (`send_telegram`, Bot API over HTTPS).
@@ -57,7 +57,7 @@ not code, and every trigger can be disabled.
   antivirus verdict, and the quarantine path when one was taken).
   Boolean trigger (`triggers.remediation`).
 
-`evaluate_page_triggers` is implemented in `runner/dri.py`. It
+`evaluate_page_triggers` is implemented in `runner/oracle/dri.py`. It
 consumes stored senses, retained job results, and the mail-flow
 rejection counters, and returns page-worthy events. `maybe_page`
 is what the poll loop calls. The sketch below is not the live
@@ -85,7 +85,7 @@ Twilio-style provider, no per-message cost, no carrier metadata.
 ## The page
 
 All pending events are batched into one plain-text message
-(`format_page` in `runner/dri.py`). The renderer applies no
+(`format_page` in `runner/oracle/dri.py`). The renderer applies no
 redaction step; the message carries only what the events carry —
 per event a title line, a detail line, and one line per signal:
 

@@ -16,7 +16,7 @@
   across store-and-forward hops, which hop TLS never can;
   it does not create a session. The change that ships it MUST revise the
   confidentiality claims (then draft Section 16.2) in
-  step -- BUILT: runner/jobcrypto.py
+  step -- BUILT: runner/wire/jobcrypto.py
   (pure-Python AES-256-GCM per NIST SP 800-38D, HKDF-SHA-384
   per RFC 5869, stdlib only); runner/cloud/send_job.py encrypts by
   default and takes --cleartext; the runner unwraps after
@@ -80,7 +80,7 @@
   The design now has a protocol document of its own --
   docs/ietf/draft-homing-pigeon-v2-00.md, in progress --
   backwards compatible with version 1 by construction.
-  The reference slice is runner/protocol_v2.py. It is off
+  The reference slice is runner/wire/protocol_v2.py. It is off
   unless protocol_v2 is set. answer_only is the laptop
   mode: it answers, and it does not execute. The rest of
   Mirror (the Oracle's full context, extension segment
@@ -146,7 +146,7 @@
   secrecy is not worth building.
   BUILT (DRU's order: implement the
   future now). Shipped as the dtls transport extension:
-  `runner/dtlsproto.py` (the bounded profile: one
+  `runner/wire/dtlsproto.py` (the bounded profile: one
   ciphersuite, psk_dhe_ke only, stateless cookie exchange,
   Connection IDs), `runner/transport_extensions/dtls/`,
   client `runner/cloud/send_dtls.py`, specified in
@@ -215,7 +215,7 @@
 - The Oracle's opinion, as a result member — BUILT
   (DRU). The design is
   `docs/design/oracle-opinion-design.md`; the member is specified in
-  PROTOCOL 3.1/3.2 and implemented in `runner/opinion.py`:
+  PROTOCOL 3.1/3.2 and implemented in `runner/oracle/opinion.py`:
   diagnose / advise / repair latitudes under the
   `oracle_opinion_mode` ceiling, deterministic tier-1 checks,
   an optional labeled model note, and the one mechanical
@@ -315,7 +315,7 @@
   on the audit log, and checking SHA384SUMS during install.
   `docs/security-gaps.md`.
 - A separate Oracle signing key. (Job review once message
-  bodies are encrypted is BUILT -- runner/review.py, and
+  bodies are encrypted is BUILT -- runner/oracle/review.py, and
   bodies are encrypted by default now; this entry remains
   for the signing key alone.) `docs/job-review.md`.
 - The local test chat runs the whole exchange on one box:
@@ -324,7 +324,7 @@
 
 ## What an extension brings
 
-- Extension sources ship (runner/extsources.py, docs/extensions.md
+- Extension sources ship (runner/ops/extsources.py, docs/extensions.md
   "Sources"); three follow-ups are not built. Verifying an
   upstream's own release signature (a `.asc` beside the tarball)
   where a project publishes one: today the build's pin proves the
@@ -337,7 +337,7 @@
 - One declaration, not three -- RESOLVED (2026-10-22, same day
   it was filed). The manifest's `upstream` block is the one
   declaration: runner/tools/fetch_upstream.py keeps its pinned files in
-  the tree for the build and the drift tests, runner/extsources.py
+  the tree for the build and the drift tests, runner/ops/extsources.py
   hands the same files to the Oracle as the entry `pinned` under
   the digests `upstream/PIN.json` recorded, and a `sources.json`
   entry says `"upstream": true` to fetch more from that repository
@@ -364,7 +364,7 @@
   3.10.0 — docs/TRANSPORTS.md.)
   (The local-signal socket shipped — signed `sensor_alert`
   envelopes only, not a job transport.) docs/TRANSPORTS.md.
-- SMS paging -- decided against (DRU; see runner/dri.py).
+- SMS paging -- decided against (DRU; see runner/oracle/dri.py).
   `docs/dri-playbook.md`.
 - TLS inspection and a WAF. `docs/networking.md`.
 - Line-rate network detection, a 24/7 ML pipeline, and adopting

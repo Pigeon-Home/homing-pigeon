@@ -317,7 +317,7 @@ Oracle runs deterministically.
 Install, or re-apply, like this:
 
 ```
-python3 runner/install.py --no-profile --no-inference
+python3 runner/ops/install.py --no-profile --no-inference
 ```
 
 On a config that already exists, set these keys. Leave the mailbox

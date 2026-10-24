@@ -34,7 +34,7 @@ from email.message import EmailMessage
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import review
+from runner.oracle import review
 from runner.runner import (
     verify_body_keyed, build_secrets, _append_security_event,
     poll_once, sign_payload

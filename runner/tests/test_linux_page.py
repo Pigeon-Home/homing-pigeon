@@ -10,7 +10,7 @@ import random
 import tempfile
 import unittest
 
-from runner.dri import EVENTS_FILE, evaluate_page_triggers
+from runner.oracle.dri import EVENTS_FILE, evaluate_page_triggers
 
 
 def _cfg():

@@ -21,10 +21,16 @@ def _sources():
     import runner
     root = os.path.dirname(os.path.dirname(os.path.abspath(runner.__file__)))
     pkg = os.path.join(root, "runner")
-    for name in sorted(os.listdir(pkg)):
-        if name.endswith(".py"):
-            with open(os.path.join(pkg, name), encoding="utf-8") as fh:
-                yield name, fh.read()
+    for dirpath, dirnames, filenames in os.walk(pkg):
+        # The suite and the example extensions are not the runner.
+        if dirpath == pkg:
+            skip = "tests extensions tools __pycache__".split()
+            dirnames[:] = [d for d in dirnames if d not in skip]
+        for name in sorted(filenames):
+            if name.endswith(".py"):
+                path = os.path.join(dirpath, name)
+                with open(path, encoding="utf-8") as fh:
+                    yield os.path.relpath(path, pkg), fh.read()
 
 
 class BinaryWriteFlagsTest(unittest.TestCase):

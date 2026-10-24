@@ -1,7 +1,7 @@
 # Design: the Oracle's opinion, carried on the result
 
 Status: implemented 2026-10-18. The member is specified in
-PROTOCOL 3.1/3.2 and built in `runner/opinion.py` (latitude
+PROTOCOL 3.1/3.2 and built in `runner/oracle/opinion.py` (latitude
 ceiling `oracle_opinion_mode`, default repair — diagnose at
 first build, raised 2026-10-19 at the owner's direction;
 prediction and
@@ -149,7 +149,7 @@ middle editing someone else's message.
 
 ## Self-learning: the loop closes (2026-10-19)
 
-DRU's direction, built in `runner/learning.py`: the Oracle
+DRU's direction, built in `runner/oracle/learning.py`: the Oracle
 compares what it said about a job with what the job actually
 did, saves the comparison immediately, and reads it fresh when
 the next job arrives — so a later job can be assessed, and

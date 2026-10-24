@@ -104,7 +104,7 @@ class ImportFaceTest(unittest.TestCase):
         from runner.runner import _load_attr, _load_mod, __version__
         loaded = _load_attr("runner._version", "_version", "__version__", "nope")
         self.assertEqual(loaded, __version__)
-        self.assertIsNotNone(_load_mod("runner.security", "security"))
+        self.assertIsNotNone(_load_mod("runner.guard.security", "guard.security"))
 
     def test_a_module_without_the_attribute_returns_the_default(self):
         from runner.runner import _load_attr
@@ -115,7 +115,7 @@ class ImportFaceTest(unittest.TestCase):
     def test_a_broken_detection_import_is_swallowed(self):
         from runner.runner import _load_mod
         with mock.patch("importlib.import_module", side_effect=RuntimeError("boom")):
-            self.assertIsNone(_load_mod("runner.detection", "detection", broad=True))
+            self.assertIsNone(_load_mod("runner.oracle.detection", "oracle.detection", broad=True))
 
 
 class JobUserFaceTest(unittest.TestCase):
@@ -172,7 +172,7 @@ class JobUserFaceTest(unittest.TestCase):
         self.assertIsNotNone(fn)
 
     def test_an_audit_write_failure_is_swallowed(self):
-        from runner import security
+        from runner.guard import security
         face = _Face()
         with mock.patch.object(security, "write_audit_entry", side_effect=RuntimeError("disk")):
             fn = self._run(face)
@@ -417,7 +417,7 @@ class FasterFlagTest(unittest.TestCase):
         import contextlib
         import sys
         from runner import runner
-        from runner import setup
+        from runner.ops import setup
         with contextlib.ExitStack() as stack:
             oracle = stack.enter_context(
                 mock.patch.object(runner, "oracle_window", return_value=7))

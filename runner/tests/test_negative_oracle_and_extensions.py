@@ -78,7 +78,7 @@ from runner.runner import (  # noqa: E402
     script_filename,
     _preview,
 )
-from runner import senses, dri  # noqa: E402
+from runner.oracle import senses, dri  # noqa: E402
 
 
 SECRET = "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"
@@ -240,7 +240,7 @@ class ExtensionBadReturnTest(unittest.TestCase):
         seen = {}
         tmp = tempfile.mkdtemp()
         cfg = {"mailbox_user": "a@b.c", "shared_secret": SECRET}
-        with mock.patch("runner.resources.check_resources", return_value="not a dict"), \
+        with mock.patch("runner.oracle.resources.check_resources", return_value="not a dict"), \
              mock.patch("runner.runner.connect_imap", side_effect=OSError("no")), \
              mock.patch("runner.runner.connect_smtp", side_effect=OSError("no")):
             try:
@@ -258,7 +258,7 @@ class ExtensionBadReturnTest(unittest.TestCase):
         # We pin that review.review_job itself does not raise on hostile
         # jobs (already covered elsewhere) and that a forced raise in
         # the extension is caught by the worker exception path.
-        with mock.patch("runner.review.review_job", side_effect=RuntimeError("review boom")):
+        with mock.patch("runner.oracle.review.review_job", side_effect=RuntimeError("review boom")):
             # Direct call to the wrapper path used by poll.
             # If review raises inside handle_mail the worker logs and continues.
             pass  # covered by the concurrent worker test below
@@ -268,7 +268,7 @@ class ExtensionBadReturnTest(unittest.TestCase):
         TypeError inside answer_queries (for rec in recs). The caller
         now treats a non-list as unavailable and continues.
         """
-        with mock.patch("runner.senses.load_alerts", return_value=None):
+        with mock.patch("runner.oracle.senses.load_alerts", return_value=None):
             try:
                 answers, spent = answer_queries(
                     [{"op": "senses"}],
@@ -286,7 +286,7 @@ class ExtensionBadReturnTest(unittest.TestCase):
         AttributeError. Non-dicts are now skipped.
         """
         with mock.patch(
-            "runner.senses.load_alerts",
+            "runner.oracle.senses.load_alerts",
             return_value=[None, "str", 1, {"sensor": "s", "severity": "high"}],
         ):
             try:
@@ -394,7 +394,7 @@ class SensesHelperFaultTest(unittest.TestCase):
             "v": 1, "type": "job", "kind": "sensor_alert",
             "sensor": "host", "severity": "high", "title": "t",
         }
-        with mock.patch("runner.senses.parse_sensors", return_value={"host": "not-a-dict"}):
+        with mock.patch("runner.oracle.senses.parse_sensors", return_value={"host": "not-a-dict"}):
             try:
                 _ingest_sensor_alert(
                     cfg, None, b"1", "a1", job, "k",
@@ -503,7 +503,7 @@ class DriExtensionFaultTest(unittest.TestCase):
                 },
             },
         }
-        with mock.patch("runner.senses.load_alerts", return_value=None):
+        with mock.patch("runner.oracle.senses.load_alerts", return_value=None):
             try:
                 dri.maybe_page(cfg, tmp, now=2000.0)
             except TypeError as e:
@@ -522,7 +522,7 @@ class DriExtensionFaultTest(unittest.TestCase):
                 },
             },
         }
-        with mock.patch("runner.senses.load_alerts", return_value="not a list"):
+        with mock.patch("runner.oracle.senses.load_alerts", return_value="not a list"):
             try:
                 dri.maybe_page(cfg, tmp, now=2000.0)
             except TypeError as e:
@@ -545,7 +545,7 @@ class DriExtensionFaultTest(unittest.TestCase):
             },
         }
         with mock.patch(
-            "runner.senses.load_alerts",
+            "runner.oracle.senses.load_alerts",
             return_value=[None, "str", {"sensor": "s", "severity": "high",
                                          "observed_at": "2026-01-01T00:00:00Z"}],
         ):
@@ -625,8 +625,8 @@ class SensesQueryPoisonTest(unittest.TestCase):
 
     def test_truthy_non_dict_sensor_does_not_crash(self):
         tmp = tempfile.mkdtemp()
-        with mock.patch("runner.senses.parse_sensors", return_value={"s": "not-a-dict"}), \
-             mock.patch("runner.senses.load_alerts",
+        with mock.patch("runner.oracle.senses.parse_sensors", return_value={"s": "not-a-dict"}), \
+             mock.patch("runner.oracle.senses.load_alerts",
                         return_value=[{"sensor": "s", "severity": "high", "title": "t"}]):
             try:
                 answers, spent = answer_queries(
@@ -645,9 +645,9 @@ class SensesQueryPoisonTest(unittest.TestCase):
         is now kept with a neutral score and the query continues.
         """
         tmp = tempfile.mkdtemp()
-        with mock.patch("runner.senses.load_alerts",
+        with mock.patch("runner.oracle.senses.load_alerts",
                         return_value=[{"sensor": "s", "severity": "high", "title": "t"}]), \
-             mock.patch("runner.senses.alert_score", side_effect=RuntimeError("score boom")):
+             mock.patch("runner.oracle.senses.alert_score", side_effect=RuntimeError("score boom")):
             try:
                 answers, spent = answer_queries(
                     [{"op": "senses"}],

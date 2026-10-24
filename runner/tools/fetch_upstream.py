@@ -95,7 +95,7 @@ def _git(args, cwd=None, timeout=600):
 
 
 def validate_upstream(block, where="upstream"):
-    """The manifest-side rules; runner/extensions.py applies the same."""
+    """The manifest-side rules; runner/ops/extensions.py applies the same."""
     if not isinstance(block, dict):
         raise UpstreamError(f"{where}: must be an object")
     extra = sorted(set(block) - {"repo", "ref", "pin", "paths", "license"})

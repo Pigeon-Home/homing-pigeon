@@ -24,8 +24,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "runner", "tests"))
 
-from runner import jobcrypto  # noqa: E402
-from runner import protocol_v2 as v2  # noqa: E402
+from runner.wire import jobcrypto  # noqa: E402
+from runner.wire import protocol_v2 as v2  # noqa: E402
 from runner.runner import (  # noqa: E402
     _disk_owns, _disk_release, _pid_alive, load_seen, poll_once,
     process_transport_message, save_seen, sign_payload, verify_body)
@@ -1001,7 +1001,7 @@ class Version2EdgesTest(unittest.TestCase):
                 return start
             return start + 100
 
-        with mock.patch("runner.protocol_v2.time.monotonic", mono):
+        with mock.patch("runner.wire.protocol_v2.time.monotonic", mono):
             got = v2.await_answer(
                 tmp, q, time.time(), pending=lambda: False)
         self.assertEqual(got[0]["kind"], "local_default")

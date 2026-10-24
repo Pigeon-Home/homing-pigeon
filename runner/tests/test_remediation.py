@@ -20,10 +20,10 @@ from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from runner import remediation as rem
-from runner import opinion as op
+from runner.oracle import remediation as rem
+from runner.oracle import opinion as op
 from runner import runner
-from runner import dri
+from runner.oracle import dri
 
 POSIX = os.name != "nt"
 CRED = "/home/user/.aws/credentials"
@@ -895,7 +895,7 @@ class DriRemediationTest(unittest.TestCase):
 
 class ReleaseDoorTest(unittest.TestCase):
     def test_main_release_door_round_trip(self):
-        from runner import setup
+        from runner.ops import setup
         with tempfile.TemporaryDirectory() as base:
             work = os.path.join(base, "work", "job-rel")
             os.makedirs(work)
@@ -924,7 +924,7 @@ class ReleaseDoorTest(unittest.TestCase):
                 and e.get("decision") == "released" for e in audit))
 
     def test_main_release_door_unknown_job(self):
-        from runner import setup
+        from runner.ops import setup
         with tempfile.TemporaryDirectory() as base:
             cfg_path = os.path.join(base, "config.json")
             with open(cfg_path, "w", encoding="utf-8") as fh:

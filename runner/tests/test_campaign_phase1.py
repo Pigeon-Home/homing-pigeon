@@ -33,7 +33,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from runner import runner as R  # noqa: E402
-from runner import jobcrypto  # noqa: E402
+from runner.wire import jobcrypto  # noqa: E402
 
 AWS_VALUE = "AKIA" "IOSFODNN7EXAMPLE"
 FLAG_TEXT = (

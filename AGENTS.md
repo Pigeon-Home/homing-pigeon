@@ -63,7 +63,7 @@ new paths against this layout; the old ones are gone, with no shims.
 
 | Folder | What |
 |--------|------|
-| `runner/` | The runner and the Oracle. `runner/cloud/` is the cloud-side helpers (`send_job.py`, `send_dtls.py`). `runner/extensions/` is the shipped extensions, one folder each, `runner/tools/` the build and CI scripts, and `runner/tests/` the suite; all three are kept out of the wheel and the image. `runner/tests/airgap/` (once `topaz/`) and `runner/tests/archive/` sit beside the suite, outside discovery |
+| `runner/` | The runner and the Oracle. `runner/runner.py` is the agent; its modules are in four role folders: `runner/oracle/` (the Oracle), `runner/wire/` (transports, signing, the board), `runner/guard/` (security, sandbox, config readers) and `runner/ops/` (install, setup, extensions, diagnostics). `runner/cloud/` is the cloud-side helpers (`send_job.py`, `send_dtls.py`). `runner/extensions/` is the shipped extensions, one folder each, `runner/tools/` the build and CI scripts, and `runner/tests/` the suite; all three are kept out of the wheel and the image. `runner/tests/airgap/` (once `topaz/`) and `runner/tests/archive/` sit beside the suite, outside discovery |
 | `docs/` | Everything else to read. `docs/hardening/` is the opt-in OS hardening templates, `docs/CHANGELOG.md` the release record |
 | `assets/` | Images |
 | `.github/` | CI: `workflows/`, `docker/` (the published image and the CI test image), `requirements-ci.txt` (the CI pins) |
@@ -77,6 +77,13 @@ A test finds the tree three levels up
 (`os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))`),
 its module id is `runner.tests.test_<name>`, and the suite runs as
 `python -m unittest discover -s runner/tests -t .`.
+
+A module imports a sibling by its role folder, `from runner.guard import
+confval`, with the script-mode fallback `from guard import confval`
+(`python3 runner/runner.py` puts `runner/` on `sys.path`; an entry script
+in a role folder puts it there itself). `runner/` holds `runner.py`,
+`__init__.py`, `_version.py`, `config.example.json` and folders, and
+`test_layout` fails on a module at its root.
 
 ## Sending a job
 

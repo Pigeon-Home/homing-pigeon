@@ -321,7 +321,7 @@ and that board does not need Python either.
      `oauth_client_id` (and `oauth_client_secret` if Google gave you one),
      and set `shared_secret` to a random string — that's the HMAC key your
      SI uses to sign jobs. Then run `homing-pigeon-auth` (or
-     `python runner/oauth.py --config config.json` from source): a browser
+     `python runner/wire/oauth.py --config config.json` from source): a browser
      opens, you sign in and grant access, and the refresh token is stored.
      IMAP and SMTP then use XOAUTH2. Tested end to end on Windows 11.
      One gotcha: in the Cloud Console, set the OAuth consent screen to
@@ -334,7 +334,7 @@ and that board does not need Python either.
    config.json matches the string you pasted to the SI in chat
    (the wizard shows you a fresh one; `openssl rand -hex 32` works too).
 6. **More than one signer?** Give each its own key instead of sharing
-   the one secret: `python3 runner/install.py --additional-secret
+   the one secret: `python3 runner/ops/install.py --additional-secret
    grok-4` generates a 256-bit secret under `additional_secrets`
    with that key ID (on a fresh install; on an existing Windows
    one-home install edit `config.json` by hand), and a matching

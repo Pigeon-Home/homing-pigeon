@@ -87,7 +87,7 @@ class FetchJobMailsTest(unittest.TestCase):
 
 class SecretAndAuditTest(unittest.TestCase):
     def test_a_one_character_secret_is_too_weak(self):
-        from runner.security import (
+        from runner.guard.security import (
             _estimate_secret_entropy, validate_shared_secret)
 
         self.assertEqual(_estimate_secret_entropy("a"), 0.0)
@@ -96,10 +96,10 @@ class SecretAndAuditTest(unittest.TestCase):
         self.assertIn("too weak", str(caught.exception))
 
     def test_audit_chmod_failure_is_swallowed(self):
-        from runner.security import write_audit_entry
+        from runner.guard.security import write_audit_entry
 
         with tempfile.TemporaryDirectory() as directory:
-            with mock.patch("runner.security.os.chmod",
+            with mock.patch("runner.guard.security.os.chmod",
                             side_effect=OSError("no")):
                 write_audit_entry(directory, "audience", "denied", "why",
                                   mode="enforce", detail="d")
@@ -107,7 +107,7 @@ class SecretAndAuditTest(unittest.TestCase):
             self.assertTrue(os.path.exists(path))
 
     def test_a_hostile_context_does_not_raise(self):
-        from runner.security import sec_decide
+        from runner.guard.security import sec_decide
 
         class Bad:
             def __str__(self):
@@ -121,7 +121,7 @@ class SecretAndAuditTest(unittest.TestCase):
         self.assertTrue(ok)
 
     def test_a_non_object_count_file_is_replaced(self):
-        from runner.security import _bump_counts
+        from runner.guard.security import _bump_counts
 
         with tempfile.TemporaryDirectory() as directory:
             path = os.path.join(directory, "security-audit-counts.json")
@@ -135,7 +135,7 @@ class SecretAndAuditTest(unittest.TestCase):
 
 class ReviewGapTest(unittest.TestCase):
     def test_each_bad_extra_pattern_is_a_config_error(self):
-        from runner.review import parse_review_patterns
+        from runner.oracle.review import parse_review_patterns
 
         bad = [
             ["nope"],
@@ -150,20 +150,20 @@ class ReviewGapTest(unittest.TestCase):
                 parse_review_patterns({"review_patterns_extra": raw})
 
     def test_a_windows_shebang_and_a_posix_powershell_shebang(self):
-        from runner.review import _metadata_notes
+        from runner.oracle.review import _metadata_notes
 
-        with mock.patch("runner.review.os.name", "nt"):
+        with mock.patch("runner.oracle.review.os.name", "nt"):
             notes = _metadata_notes({"script": "#!/bin/bash\necho"})
         self.assertTrue(any(n["id"] == "shebang_platform_mismatch"
                             for n in notes))
-        with mock.patch("runner.review.os.name", "posix"):
+        with mock.patch("runner.oracle.review.os.name", "posix"):
             notes = _metadata_notes({"script": "#!powershell\necho"})
         self.assertTrue(any("powershell" in n["note"].lower()
                             or n["id"] == "shebang_platform_mismatch"
                             for n in notes))
 
     def test_five_dangling_refs_stop_the_scan(self):
-        from runner.review import _content_notes
+        from runner.oracle.review import _content_notes
 
         script = " ".join("'f%d.txt'" % i for i in range(8))
         notes = _content_notes({"script": script, "files": []}, [])
@@ -171,7 +171,7 @@ class ReviewGapTest(unittest.TestCase):
         self.assertEqual(len(dangling), 5)
 
     def test_review_swallows_a_broken_job_and_a_broken_pattern(self):
-        from runner.review import review_job
+        from runner.oracle.review import review_job
 
         class Boom:
             def get(self, *args, **kwargs):
@@ -189,7 +189,7 @@ class ReviewGapTest(unittest.TestCase):
             {"script": "echo hi"})
         # A pattern object that is not a regex is reported, not raised.
         out = review_job.__wrapped__ if hasattr(review_job, "__wrapped__") else None
-        from runner import review
+        from runner.oracle import review
         with mock.patch.object(review, "parse_review_patterns",
                                return_value=[{"id": "x", "pattern": SearchBoom(),
                                               "severity": "info", "note": "n"}]):
@@ -211,7 +211,7 @@ class SensesGapTest(unittest.TestCase):
         }
 
     def test_profile_knobs_must_be_numbers(self):
-        from runner.senses import parse_sensors
+        from runner.oracle.senses import parse_sensors
 
         with self.assertRaises(RuntimeError):
             parse_sensors(self._sensor(cooldown_sec="nope"))
@@ -221,7 +221,7 @@ class SensesGapTest(unittest.TestCase):
         self.assertEqual(cleaned["disk"]["profile"]["cooldown_sec"], 5.0)
 
     def test_file_sensor_alert_rejects_bad_inputs_and_a_broken_gate(self):
-        from runner import senses
+        from runner.oracle import senses
 
         self.assertEqual(senses.file_sensor_alert("", {}, {}), "bad base dir")
         self.assertEqual(senses.file_sensor_alert("/tmp", {}, "nope"),
@@ -236,7 +236,7 @@ class SensesGapTest(unittest.TestCase):
             self.assertIn("gate failed", reason)
 
     def test_store_alert_drops_a_value_that_will_not_encode(self):
-        from runner.senses import store_alert
+        from runner.oracle.senses import store_alert
 
         with tempfile.TemporaryDirectory() as directory:
             class Boom(dict):
@@ -250,7 +250,7 @@ class SensesGapTest(unittest.TestCase):
             self.assertFalse(os.path.exists(path))
 
     def test_load_alerts_honors_since_and_until(self):
-        from runner.senses import load_alerts, store_alert
+        from runner.oracle.senses import load_alerts, store_alert
 
         with tempfile.TemporaryDirectory() as directory:
             store_alert(directory, {
@@ -275,7 +275,7 @@ class SensesGapTest(unittest.TestCase):
 
 class DriTelegramTest(unittest.TestCase):
     def test_a_value_that_cannot_be_encoded_is_not_sent(self):
-        from runner.dri import send_telegram
+        from runner.oracle.dri import send_telegram
 
         class Bad:
             def __str__(self):
@@ -284,7 +284,7 @@ class DriTelegramTest(unittest.TestCase):
         self.assertFalse(send_telegram("tok", Bad(), "hi"))
 
     def test_a_non_string_chat_id_is_stringified_and_posted(self):
-        from runner.dri import send_telegram
+        from runner.oracle.dri import send_telegram
 
         class Resp:
             status = 200
@@ -304,7 +304,7 @@ class DriTelegramTest(unittest.TestCase):
 class WinlogFakeTest(unittest.TestCase):
     def test_report_event_writes_and_then_skips_registration(self):
         import ctypes
-        from runner import winlog
+        from runner.ops import winlog
 
         class Adv:
             def __init__(self):
@@ -322,7 +322,7 @@ class WinlogFakeTest(unittest.TestCase):
 
         adv = Adv()
         winlog._reported_ok = False
-        with mock.patch("runner.winlog.os.name", "nt"), \
+        with mock.patch("runner.ops.winlog.os.name", "nt"), \
              mock.patch.object(ctypes, "windll", mock.Mock(advapi32=adv),
                                create=True):
             winlog.report_event("first", "INFO")
@@ -333,14 +333,14 @@ class WinlogFakeTest(unittest.TestCase):
 
     def test_a_missing_handle_and_a_raised_call_do_not_escape(self):
         import ctypes
-        from runner import winlog
+        from runner.ops import winlog
 
         class Adv:
             def RegisterEventSourceW(self, *args):
                 return 0
 
         winlog._reported_ok = False
-        with mock.patch("runner.winlog.os.name", "nt"), \
+        with mock.patch("runner.ops.winlog.os.name", "nt"), \
              mock.patch.object(ctypes, "windll", mock.Mock(advapi32=Adv()),
                                create=True):
             winlog.report_event("no handle")
@@ -349,7 +349,7 @@ class WinlogFakeTest(unittest.TestCase):
                 raise OSError("no log")
 
         winlog._reported_ok = False
-        with mock.patch("runner.winlog.os.name", "nt"), \
+        with mock.patch("runner.ops.winlog.os.name", "nt"), \
              mock.patch.object(ctypes, "windll", mock.Mock(advapi32=Boom()),
                                create=True):
             winlog.report_event("boom")
@@ -358,7 +358,7 @@ class WinlogFakeTest(unittest.TestCase):
 
 class OAuthBrowserTest(unittest.TestCase):
     def test_consent_refuses_a_missing_client_and_a_missing_code(self):
-        from runner.oauth import browser_consent
+        from runner.wire.oauth import browser_consent
 
         with self.assertRaises(SystemExit):
             browser_consent({})
@@ -376,15 +376,15 @@ class OAuthBrowserTest(unittest.TestCase):
         # The listener is _ConsentServer since 3e61d86, and the wait
         # loops until its deadline: a server that never delivers a
         # callback ends the wait at once only with no wait window.
-        with mock.patch("runner.oauth._ConsentServer", Server), \
-             mock.patch("runner.oauth._CONSENT_WAIT_SEC", 0), \
-             mock.patch("runner.oauth.webbrowser.open"):
+        with mock.patch("runner.wire.oauth._ConsentServer", Server), \
+             mock.patch("runner.wire.oauth._CONSENT_WAIT_SEC", 0), \
+             mock.patch("runner.wire.oauth.webbrowser.open"):
             with self.assertRaises(SystemExit) as caught:
                 browser_consent({"oauth_client_id": "cid"})
         self.assertIn("no sign-in code", str(caught.exception))
 
     def test_consent_returns_the_exchanged_token(self):
-        from runner import oauth
+        from runner.wire import oauth
 
         class Server:
             def __init__(self, addr, handler):
@@ -397,14 +397,14 @@ class OAuthBrowserTest(unittest.TestCase):
             def server_close(self):
                 return None
 
-        with mock.patch("runner.oauth._ConsentServer", Server), \
-             mock.patch("runner.oauth.webbrowser.open"), \
-             mock.patch("runner.oauth.exchange_code", return_value="refresh"):
+        with mock.patch("runner.wire.oauth._ConsentServer", Server), \
+             mock.patch("runner.wire.oauth.webbrowser.open"), \
+             mock.patch("runner.wire.oauth.exchange_code", return_value="refresh"):
             token = oauth.browser_consent({"oauth_client_id": "cid"})
         self.assertEqual(token, "refresh")
 
     def test_a_google_error_is_a_system_exit(self):
-        from runner.oauth import browser_consent
+        from runner.wire.oauth import browser_consent
 
         class Server:
             def __init__(self, addr, handler):
@@ -417,20 +417,20 @@ class OAuthBrowserTest(unittest.TestCase):
             def server_close(self):
                 return None
 
-        with mock.patch("runner.oauth._ConsentServer", Server), \
-             mock.patch("runner.oauth.webbrowser.open"):
+        with mock.patch("runner.wire.oauth._ConsentServer", Server), \
+             mock.patch("runner.wire.oauth.webbrowser.open"):
             with self.assertRaises(SystemExit) as caught:
                 browser_consent({"oauth_client_id": "cid"})
         self.assertIn("access_denied", str(caught.exception))
 
     def test_main_writes_the_refresh_token(self):
-        from runner.oauth import main
+        from runner.wire.oauth import main
 
         with tempfile.TemporaryDirectory() as directory:
             path = os.path.join(directory, "config.json")
             with open(path, "w", encoding="utf-8") as fh:
                 json.dump({"oauth_client_id": "cid"}, fh)
-            with mock.patch("runner.oauth.browser_consent",
+            with mock.patch("runner.wire.oauth.browser_consent",
                             return_value="refresh-1"), \
                  mock.patch.object(sys, "argv", ["oauth", "--config", path]):
                 code = main()
@@ -443,16 +443,16 @@ class OAuthBrowserTest(unittest.TestCase):
 
 class PostureWindowsTest(unittest.TestCase):
     def test_service_unit_present_missing_and_unreadable(self):
-        from runner.posture import _check_service_unit
+        from runner.ops.posture import _check_service_unit
 
         results = []
-        with mock.patch("runner.posture.os.name", "nt"):
+        with mock.patch("runner.ops.posture.os.name", "nt"):
             _check_service_unit(results)
         self.assertIn("Windows", results[0][2])
 
         results = []
-        with mock.patch("runner.posture.os.name", "posix"), \
-             mock.patch("runner.posture.os.path.exists", return_value=False):
+        with mock.patch("runner.ops.posture.os.name", "posix"), \
+             mock.patch("runner.ops.posture.os.path.exists", return_value=False):
             _check_service_unit(results)
         self.assertIn("no homing-pigeon", results[0][2])
 
@@ -460,23 +460,23 @@ class PostureWindowsTest(unittest.TestCase):
             return path.endswith("homing-pigeon.service")
 
         results = []
-        with mock.patch("runner.posture.os.name", "posix"), \
-             mock.patch("runner.posture.os.path.exists", side_effect=exists), \
+        with mock.patch("runner.ops.posture.os.name", "posix"), \
+             mock.patch("runner.ops.posture.os.path.exists", side_effect=exists), \
              mock.patch("builtins.open", mock.mock_open(
                  read_data="NoNewPrivileges=yes\nProtectSystem=strict\n")):
             _check_service_unit(results)
         self.assertEqual(results[0][0], "OK")
 
         results = []
-        with mock.patch("runner.posture.os.name", "posix"), \
-             mock.patch("runner.posture.os.path.exists", side_effect=exists), \
+        with mock.patch("runner.ops.posture.os.name", "posix"), \
+             mock.patch("runner.ops.posture.os.path.exists", side_effect=exists), \
              mock.patch("builtins.open", side_effect=OSError("no")):
             _check_service_unit(results)
         self.assertEqual(results[0][0], "WARN")
 
     def test_windows_acl_stand_in_covers_the_three_answers(self):
         import ctypes
-        from runner.posture import _windows_file_restricted
+        from runner.ops.posture import _windows_file_restricted
 
         class DWORD(ctypes.c_uint32):
             pass
@@ -559,7 +559,7 @@ class PostureWindowsTest(unittest.TestCase):
 
 class InstallMainGapTest(unittest.TestCase):
     def _main(self, argv, plat=None, **patches):
-        from runner import install
+        from runner.ops import install
         stack = mock.patch.multiple(
             install,
             install_files=mock.DEFAULT,
@@ -668,7 +668,7 @@ class InstallMainGapTest(unittest.TestCase):
 
 class FreeBsdCronTest(unittest.TestCase):
     def test_install_and_uninstall_use_crontab(self):
-        from runner import install
+        from runner.ops import install
 
         calls = []
 
@@ -679,7 +679,7 @@ class FreeBsdCronTest(unittest.TestCase):
             proc.stdout = ""
             return proc
 
-        with mock.patch("runner.install.subprocess.run", side_effect=run):
+        with mock.patch("runner.ops.install.subprocess.run", side_effect=run):
             install.install_freebsd("/opt/hp", "/opt/hp/config.json", ("--once",))
             install.uninstall_freebsd()
         self.assertTrue(any(c[0][:1] == ["crontab"] for c in calls))
@@ -689,7 +689,7 @@ class RunnerMainOnceTest(unittest.TestCase):
     def _run(self, argv, cfg=None, text=None, present=True, **stubs):
         import contextlib
         from runner import runner
-        from runner import setup
+        from runner.ops import setup
         stack = contextlib.ExitStack()
         stack.enter_context(mock.patch.object(runner, "ensure_inference_ready"))
         stack.enter_context(mock.patch.object(runner, "update_llama_from_config"))
@@ -797,7 +797,7 @@ class RunnerMainOnceTest(unittest.TestCase):
         self.assertFalse(poll.called)
 
     def test_a_poll_failure_is_logged_and_once_still_exits(self):
-        from runner.oauth import OAuthRefreshError
+        from runner.wire.oauth import OAuthRefreshError
         from runner import runner
 
         code, _poll, _wizard = self._run(
@@ -819,8 +819,8 @@ class RunnerMainOnceTest(unittest.TestCase):
     def test_oauth_and_generic_poll_errors_do_not_escape(self):
         import contextlib
         from runner import runner
-        from runner import setup
-        from runner.oauth import OAuthRefreshError
+        from runner.ops import setup
+        from runner.wire.oauth import OAuthRefreshError
 
         def drive(exc, pdb=False):
             stack = contextlib.ExitStack()
@@ -859,7 +859,7 @@ class RunnerMainOnceTest(unittest.TestCase):
     def test_a_bad_poll_interval_falls_back_to_twenty(self):
         import contextlib
         from runner import runner
-        from runner import setup
+        from runner.ops import setup
 
         slept = []
         stack = contextlib.ExitStack()
@@ -928,7 +928,7 @@ class RunnerMainOnceTest(unittest.TestCase):
 
     def test_a_changed_inference_block_reloads_the_model(self):
         from runner import runner
-        from runner import setup
+        from runner.ops import setup
 
         with tempfile.TemporaryDirectory() as directory:
             path = os.path.join(directory, "config.json")

@@ -76,7 +76,7 @@ CLI reports it via `--version`, and the frozen binaries cannot read
 drift.
 
 Two more files carry the version and move in the same commit:
-`runner/install.py` (`__version__`) and the pin in
+`runner/ops/install.py` (`__version__`) and the pin in
 `runner/tests/test_install_edges.py`. A release commit touches all four.
 
 ### The looking is the gate

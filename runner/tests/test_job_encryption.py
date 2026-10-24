@@ -27,7 +27,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 
-from runner import jobcrypto  # noqa: E402
+from runner.wire import jobcrypto  # noqa: E402
 from runner import runner as runner_mod  # noqa: E402
 from runner.runner import poll_once, verify_body, verify_body_keyed  # noqa: E402
 import send_job  # noqa: E402

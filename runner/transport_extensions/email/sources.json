@@ -8,9 +8,9 @@
       "project": [
         "runner/transport_extensions/email",
         "runner/transport_extensions/channel.py",
-        "runner/mailbox.py",
-        "runner/oauth.py",
-        "runner/transports.py"
+        "runner/wire/mailbox.py",
+        "runner/wire/oauth.py",
+        "runner/wire/transports.py"
       ]
     },
     {

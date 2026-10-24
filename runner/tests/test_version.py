@@ -39,7 +39,7 @@ class VersionFlagTest(unittest.TestCase):
         self.assertIn(_repo_version(), out)
 
     def test_install_version(self):
-        from runner.install import main
+        from runner.ops.install import main
         code, out = _run_version_flag(main, "install")
         self.assertEqual(code, 0)
         self.assertIn(_repo_version(), out)
@@ -51,7 +51,7 @@ class VersionFlagTest(unittest.TestCase):
         self.assertIn(_repo_version(), out)
 
     def test_oauth_version(self):
-        from runner.oauth import main
+        from runner.wire.oauth import main
         code, out = _run_version_flag(main, "oauth")
         self.assertEqual(code, 0)
         self.assertIn(_repo_version(), out)
@@ -83,10 +83,10 @@ class VersionFlagTest(unittest.TestCase):
 
 class FrozenPackageImportsTest(unittest.TestCase):
     """The release `install` binary is PyInstaller-built from
-    runner/install.py with no --hidden-import list, so it bundles only
+    runner/ops/install.py with no --hidden-import list, so it bundles only
     what static imports reach. `import runner` re-exports names that
-    runner.runner takes from runner.mailbox, which runner.runner loads
-    dynamically; if nothing imports runner.mailbox statically, the
+    runner.runner takes from runner.wire.mailbox, which runner.runner loads
+    dynamically; if nothing imports runner.wire.mailbox statically, the
     frozen `import runner` fails (install --version printed 'unknown'
     and the setup wizard was skipped). modulefinder traces static
     imports the way PyInstaller's analysis does."""
@@ -115,7 +115,7 @@ class FrozenPackageImportsTest(unittest.TestCase):
                 and "dist-packages" not in p]
         finder = modulefinder.ModuleFinder(path=[root] + rest)
         finder.import_hook("runner")
-        for name in ("runner.runner", "runner.mailbox"):
+        for name in ("runner.runner", "runner.wire.mailbox"):
             self.assertIn(name, finder.modules,
                           f"{name} is not statically reachable from "
                           f"`import runner`; a frozen build without a "

@@ -17,10 +17,10 @@ import sys
 import time
 
 try:
-    from runner import security as _security
+    from runner.guard import security as _security
 except ImportError:  # running from inside runner/ as __main__
     try:
-        import security as _security
+        from guard import security as _security
     except ImportError:
         _security = None
 

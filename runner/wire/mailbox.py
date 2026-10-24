@@ -49,9 +49,9 @@ def set_logger(fn):
 def _load_oauth():
     import importlib
     try:
-        return importlib.import_module("runner.oauth")
+        return importlib.import_module("runner.wire.oauth")
     except ImportError:
-        return importlib.import_module("oauth")
+        return importlib.import_module("wire.oauth")
 
 
 def _use_oauth(cfg) -> bool:

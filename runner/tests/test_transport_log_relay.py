@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Transport extension output: the log relay (runner/transports.py).
+"""Transport extension output: the log relay (runner/wire/transports.py).
 
 Field failure behind this suite (2026-10-21): the email transport
 failed every poll for an afternoon -- OAuth invalid_grant -- and
@@ -27,7 +27,7 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import transports  # noqa: E402
+from runner.wire import transports  # noqa: E402
 
 SECRET = "2d2d42b99b668d4bcc0120c172c09e1059cdf4dd94d3422524519e3708937be4"
 SENDER = "runner@example.com"

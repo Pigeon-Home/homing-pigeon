@@ -15,7 +15,7 @@ declared file and archive, and record the SHA-384 of each in one lock:
 The release job writes it into the project snapshot as
 project/EXTENSION-SOURCES.lock.json. On an extension's first run a box
 fetches exactly what the lock names and refuses bytes whose digest
-differs (runner/extsources.py). An extension author pins one extension
+differs (runner/ops/extsources.py). An extension author pins one extension
 the same way and ships the result beside its declaration as
 sources.lock.json:
 
@@ -40,8 +40,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import extensions as E  # noqa: E402
-from runner import extsources as X  # noqa: E402
+from runner.ops import extensions as E  # noqa: E402
+from runner.ops import extsources as X  # noqa: E402
 
 SHIPPED_PARENTS = ("runner/extensions", "runner/transport_extensions")
 

@@ -217,8 +217,8 @@ class LastSlotRaceTest(unittest.TestCase):
 
 class HostDriftTest(unittest.TestCase):
     def test_a_torn_audit_log_does_not_crash_the_report(self):
-        from runner.auditreport import main as audit_main
-        from runner.posture import main as posture_main
+        from runner.ops.auditreport import main as audit_main
+        from runner.ops.posture import main as posture_main
 
         with tempfile.TemporaryDirectory() as directory:
             with open(os.path.join(directory, "security-audit.jsonl"),

@@ -13,7 +13,7 @@ import threading
 import unittest
 from unittest import mock
 
-from runner.install import (
+from runner.ops.install import (
     _write_json,
     ensure_runner_id,
     ensure_shared_secret,

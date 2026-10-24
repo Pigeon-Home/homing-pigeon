@@ -11,7 +11,7 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import senses
+from runner.oracle import senses
 from runner.runner import answer_queries, build_attestations
 
 

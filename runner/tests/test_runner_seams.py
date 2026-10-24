@@ -516,7 +516,7 @@ class ChatAndPolicyTest(unittest.TestCase):
         self.assertTrue(ran.startswith("error: cannot run"))
 
     def test_release_without_the_module_is_an_error(self):
-        from runner import setup
+        from runner.ops import setup
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         path = _cfg_file(tmp.name, {

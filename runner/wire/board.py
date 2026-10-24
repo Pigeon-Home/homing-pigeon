@@ -27,14 +27,14 @@ import time
 from datetime import datetime, timezone
 
 try:
-    from runner import confval as _confval
+    from runner.guard import confval as _confval
 except ImportError:
-    import confval as _confval  # type: ignore
+    from guard import confval as _confval  # type: ignore
 
 try:
-    from runner.textutil import _as_str, _json_safe
+    from runner.guard.textutil import _as_str, _json_safe
 except ImportError:  # run as a script from the runner/ directory
-    from textutil import _as_str, _json_safe  # type: ignore
+    from guard.textutil import _as_str, _json_safe  # type: ignore
 
 
 def _noop(*_a, **_k):

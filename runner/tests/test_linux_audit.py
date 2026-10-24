@@ -11,7 +11,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from runner.security import (
+from runner.guard.security import (
     COUNTS_FILE, bump_evaluated, write_audit_entry)
 
 

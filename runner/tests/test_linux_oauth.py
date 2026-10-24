@@ -13,7 +13,7 @@ import threading
 import unittest
 from unittest import mock
 
-from runner.oauth import main, store_refresh_token
+from runner.wire.oauth import main, store_refresh_token
 
 
 def _mode(path):
@@ -74,7 +74,7 @@ class OauthFileTest(unittest.TestCase):
             err = __import__("io").StringIO()
             with mock.patch("sys.argv", ["oauth", "--config", path]), \
                  mock.patch("sys.stderr", err), \
-                 mock.patch("runner.oauth.browser_consent",
+                 mock.patch("runner.wire.oauth.browser_consent",
                             return_value="should-not-run") as consent:
                 code = main()
             self.assertEqual(code, 2)

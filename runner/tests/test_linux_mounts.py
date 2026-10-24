@@ -7,7 +7,7 @@ import random
 import unittest
 from unittest import mock
 
-from runner import sandbox as SB
+from runner.guard import sandbox as SB
 
 
 def _build(**conf):

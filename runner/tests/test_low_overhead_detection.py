@@ -13,7 +13,7 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import detection  # noqa: E402
+from runner.oracle import detection  # noqa: E402
 
 
 class LowOverheadDetectionTest(unittest.TestCase):

@@ -24,9 +24,9 @@ from unittest import mock
 
 from hypothesis import given, settings, strategies as st
 
-from runner.detection import baseline_anomaly
-from runner.learning import feature_keys, touched_keys
-from runner.extensions import (
+from runner.oracle.detection import baseline_anomaly
+from runner.oracle.learning import feature_keys, touched_keys
+from runner.ops.extensions import (
     api_refusal,
     build_sensor_alert,
     load_extensions,
@@ -34,8 +34,8 @@ from runner.extensions import (
     sign_envelope,
     signal_description,
 )
-from runner.review import review_job
-from runner.jobcrypto import decrypt_body, encrypt_body
+from runner.oracle.review import review_job
+from runner.wire.jobcrypto import decrypt_body, encrypt_body
 from runner.runner import (
     Board,
     _handle_local_signal_conn,
@@ -54,8 +54,8 @@ from runner.runner import (
     execute_job,
     judge_job,
 )
-from runner.security import validate_security_config
-from runner.senses import (
+from runner.guard.security import validate_security_config
+from runner.oracle.senses import (
     file_sensor_alert,
     gate_alert,
     load_alerts,

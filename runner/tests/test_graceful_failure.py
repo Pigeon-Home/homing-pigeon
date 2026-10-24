@@ -15,7 +15,7 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import dri, resources, review, senses  # noqa: E402
+from runner.oracle import dri, resources, review, senses  # noqa: E402
 from runner.runner import (  # noqa: E402
     Board,
     answer_queries,
@@ -34,7 +34,7 @@ class ExtensionRaisesTest(unittest.TestCase):
         cfg = {"mailbox_user": "a@b.c", "shared_secret": "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d",
                "oracle_enabled": False}
         seen = {}
-        with mock.patch("runner.resources.check_resources", side_effect=RuntimeError("boom")), \
+        with mock.patch("runner.oracle.resources.check_resources", side_effect=RuntimeError("boom")), \
              mock.patch("runner.runner.connect_imap", side_effect=OSError("no mail")), \
              mock.patch("runner.runner.connect_smtp", side_effect=OSError("no mail")):
             try:
@@ -48,7 +48,7 @@ class ExtensionRaisesTest(unittest.TestCase):
         tmp = tempfile.mkdtemp()
         cfg = {"mailbox_user": "a@b.c", "shared_secret": "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"}
         seen = {}
-        with mock.patch("runner.dri.maybe_page", side_effect=RuntimeError("page boom")), \
+        with mock.patch("runner.oracle.dri.maybe_page", side_effect=RuntimeError("page boom")), \
              mock.patch("runner.runner.connect_imap", side_effect=OSError("no")), \
              mock.patch("runner.runner.connect_smtp", side_effect=OSError("no")):
             try:
@@ -861,7 +861,7 @@ class ExcludeAndTokenGracefulTest(unittest.TestCase):
             self.assertIsInstance(snap, dict)
 
     def test_refresh_bad_cfg(self):
-        from runner import oauth
+        from runner.wire import oauth
         for cfg in ({}, {"oauth_client_id": ""}, {"oauth_refresh_token": None}):
             try:
                 oauth.refresh_access_token(cfg)
@@ -869,7 +869,7 @@ class ExcludeAndTokenGracefulTest(unittest.TestCase):
                 pass  # contained failure is graceful
 
     def test_xoauth2_odd(self):
-        from runner import oauth
+        from runner.wire import oauth
         for user, token in (("", ""), (None, None), (42, "tok")):
             try:
                 raw = oauth.xoauth2_raw(user if isinstance(user, str) else "",

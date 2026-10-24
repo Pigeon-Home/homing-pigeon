@@ -11,8 +11,8 @@ import unittest
 
 from hypothesis import given, settings, strategies as st
 
-from runner.jobcrypto import JobCryptoError
-from runner.dtlsproto import (
+from runner.wire.jobcrypto import JobCryptoError
+from runner.wire.dtlsproto import (
     DtlsError,
     DtlsServerCore,
     _FragmentBuffer,

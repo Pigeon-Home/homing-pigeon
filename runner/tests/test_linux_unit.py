@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from runner.install import install_linux
+from runner.ops.install import install_linux
 
 
 def _mode(path):
@@ -21,7 +21,7 @@ def _install(home, dst, cfg, extra=()):
     calls = []
     with mock.patch.object(os.path, "expanduser",
                            side_effect=lambda p: p.replace("~", home)), \
-         mock.patch("runner.install.run",
+         mock.patch("runner.ops.install.run",
                     side_effect=lambda cmd, **kw: calls.append(list(cmd))):
         install_linux(dst, cfg, False, extra)
     return calls
@@ -68,7 +68,7 @@ class UnitFileTest(unittest.TestCase):
             calls = []
             with mock.patch.object(os.path, "expanduser",
                                    side_effect=lambda p: p.replace("~", home)), \
-                 mock.patch("runner.install.run",
+                 mock.patch("runner.ops.install.run",
                             side_effect=lambda cmd, **kw: calls.append(list(cmd))):
                 with self.assertRaises(OSError):
                     install_linux("/opt/hp", "/cfg/a.json", False, ())
@@ -89,7 +89,7 @@ class UnitMutations(unittest.TestCase):
             calls = []
             with mock.patch.object(os.path, "expanduser",
                                    side_effect=lambda p: p.replace("~", home)), \
-                 mock.patch("runner.install.run",
+                 mock.patch("runner.ops.install.run",
                             side_effect=lambda cmd, **kw: calls.append(list(cmd))):
                 with self.assertRaises(ValueError):
                     install_linux("/opt/hp", "/cfg/a.json", False, ("a\nb",))
@@ -154,7 +154,7 @@ class UnitFuzzTest(unittest.TestCase):
             try:
                 with mock.patch.object(os.path, "expanduser",
                                        side_effect=lambda p: p.replace("~", home)), \
-                     mock.patch("runner.install.run",
+                     mock.patch("runner.ops.install.run",
                                 side_effect=lambda cmd, **kw: calls.append(list(cmd))):
                     install_linux("/opt/hp", "/cfg/a.json", False, ())
                 crashes.append("no-raise")

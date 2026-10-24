@@ -62,13 +62,13 @@ import threading
 import time
 import uuid
 
-try:  # package context (runner.transports)
-    from runner import extensions as _extensions
+try:  # package context (runner.wire.transports)
+    from runner.ops import extensions as _extensions
 except Exception:  # pragma: no cover - sibling context
     try:
-        from . import extensions as _extensions  # type: ignore
+        from ..ops import extensions as _extensions  # type: ignore
     except Exception:
-        import extensions as _extensions  # type: ignore
+        from ops import extensions as _extensions  # type: ignore
 
 TRANSPORT_API_VERSION = 1
 
@@ -210,7 +210,7 @@ def _extensions_dir_for(cfg, base_dir):
 def builtin_transport_roots():
     """Where the shipped first-party transport extensions live."""
     roots = []
-    here = os.path.dirname(os.path.abspath(__file__))
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     roots.append(os.path.join(here, "transport_extensions"))
     meipass = getattr(sys, "_MEIPASS", None)
     if meipass:
@@ -624,7 +624,7 @@ def _runtime_config(cfg, name, base_dir, paths):
             out.update(_dtls_secret_material(cfg))
             # The greeting's platform card names the default
             # interpreter and the protocol versions this runner
-            # speaks (runner/platformcard.py), so those two ride too.
+            # speaks (runner/wire/platformcard.py), so those two ride too.
             for key in ("dtls_greeting", "default_interpreter",
                         "protocol_v2"):
                 if key in cfg:
@@ -733,7 +733,7 @@ class TransportSupervisor:
             # package parent must be importable from the child's
             # cwd (the extension folder).
             pkg_parent = os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__)))
+                os.path.dirname(os.path.abspath(__file__))))
             existing = env.get("PYTHONPATH", "")
             parts = existing.split(os.pathsep) if existing else []
             if pkg_parent not in parts:

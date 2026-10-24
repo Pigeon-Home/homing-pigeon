@@ -503,7 +503,7 @@ def test_marker_tolerates_surrounding_whitespace(self):
 
 # runner/tests/test_protocol_and_edges.py OAuthRefreshErrorTests.test_refresh_error_is_a_runtime_error lines 1093-1095
 def test_refresh_error_is_a_runtime_error(self):
-        from runner.oauth import OAuthRefreshError
+        from runner.wire.oauth import OAuthRefreshError
         self.assertTrue(issubclass(OAuthRefreshError, RuntimeError))
 
 # runner/tests/test_oracle_opinion.py ScriptHintTests.test_url_is_not_a_path lines 177-179
@@ -724,7 +724,7 @@ def test_infinite_repeat_window_defaults_to_3600(self):
 
 # runner/tests/test_doc_default_divergences.py TestNegativeOrNonFiniteSensorWeightDefaultsToOne.test_negative_weight_defaults_to_one lines 3820-3823
 def test_negative_weight_defaults_to_one(self):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, -1), 0.5)
 
@@ -778,13 +778,13 @@ def test_huge_corpus_max_age_days_defaults_to_30(self):
 
 # runner/tests/test_doc_default_divergences.py TestHugeSensorWeightDefaultsToOne.test_huge_int_weight_defaults_to_one lines 920-923
 def test_huge_int_weight_defaults_to_one(self):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, 10**400), 0.5)
 
 # runner/tests/test_doc_default_divergences.py TestNegativeOrNonFiniteSensorWeightDefaultsToOne.test_nan_weight_defaults_to_one lines 3840-3843
 def test_nan_weight_defaults_to_one(self):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, float("nan")), 0.5)
 
@@ -796,7 +796,7 @@ def test_infinite_poll_interval_defaults_to_20(self):
 
 # runner/tests/test_doc_default_divergences.py TestNegativeOrNonFiniteSensorWeightDefaultsToOne.test_large_negative_weight_defaults_to_one lines 3825-3828
 def test_large_negative_weight_defaults_to_one(self):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, -5), 0.5)
 
@@ -862,7 +862,7 @@ def test_true_max_query_budget_defaults_to_8(self):
 
 # runner/tests/test_doc_default_divergences.py TestNegativeOrNonFiniteSensorWeightDefaultsToOne.test_infinite_weight_defaults_to_one lines 3830-3833
 def test_infinite_weight_defaults_to_one(self):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, float("inf")), 0.5)
 
@@ -892,7 +892,7 @@ def test_boundary_number_needs_a_number(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanDriValuesAreConfigErrors.test_true_cooldown_is_config_error lines 1905-1908
 def test_true_cooldown_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"cooldown_sec": True}})
 
@@ -928,7 +928,7 @@ def test_candidate_never_selects(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanDriValuesAreConfigErrors.test_false_cooldown_is_config_error lines 1910-1913
 def test_false_cooldown_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"cooldown_sec": False}})
 
@@ -940,13 +940,13 @@ def test_undeclared_signal_rejected_not_stored(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanMailboxPortIsConfigError.test_true_imap_port_is_config_error lines 1994-1997
 def test_true_imap_port_is_config_error(self):
-        from runner.mailbox import _port
+        from runner.wire.mailbox import _port
         with self.assertRaises(RuntimeError):
             _port({"imap_port": True}, "imap_port", 993)
 
 # runner/tests/test_doc_default_divergences.py TestBooleanMailboxPortIsConfigError.test_true_smtp_port_is_config_error lines 2004-2007
 def test_true_smtp_port_is_config_error(self):
-        from runner.mailbox import _port
+        from runner.wire.mailbox import _port
         with self.assertRaises(RuntimeError):
             _port({"smtp_port": True}, "smtp_port", 587)
 
@@ -994,13 +994,13 @@ def test_bogus_agent_timeout_defaults_to_180(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanMailboxPortIsConfigError.test_false_imap_port_is_config_error lines 1999-2002
 def test_false_imap_port_is_config_error(self):
-        from runner.mailbox import _port
+        from runner.wire.mailbox import _port
         with self.assertRaises(RuntimeError):
             _port({"imap_port": False}, "imap_port", 993)
 
 # runner/tests/test_doc_default_divergences.py TestBooleanMailboxPortIsConfigError.test_false_smtp_port_is_config_error lines 2009-2012
 def test_false_smtp_port_is_config_error(self):
-        from runner.mailbox import _port
+        from runner.wire.mailbox import _port
         with self.assertRaises(RuntimeError):
             _port({"smtp_port": False}, "smtp_port", 587)
 
@@ -1012,7 +1012,7 @@ def test_false_retention_days_defaults_to_7(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanV2AnswerDeadlineDefaultsTo0.test_true_v2_answer_deadline_defaults_to_0 lines 1260-1263
 def test_true_v2_answer_deadline_defaults_to_0(self):
-        from runner.protocol_v2 import deadline_of
+        from runner.wire.protocol_v2 import deadline_of
         self.assertEqual(
             deadline_of({"v2_answer_deadline_sec": True}), 0)
 
@@ -1054,13 +1054,13 @@ def test_no_optional_flags_still_prints_cleanly(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanPromoteAfterDefaultsTo2.test_true_promote_after_defaults_to_2 lines 1708-1711
 def test_true_promote_after_defaults_to_2(self):
-        from runner.learning import promote_after
+        from runner.oracle.learning import promote_after
         self.assertEqual(
             promote_after({"oracle_learning_promote_after": True}), 2)
 
 # runner/tests/test_doc_default_divergences.py TestNegativeOrNonFiniteSensorWeightDefaultsToOne.test_negative_infinite_weight_defaults_to_one lines 3835-3838
 def test_negative_infinite_weight_defaults_to_one(self):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, float("-inf")), 0.5)
 
@@ -1108,7 +1108,7 @@ def test_one_job_one_shard(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanDriValuesAreConfigErrors.test_true_digest_window_is_config_error lines 1915-1918
 def test_true_digest_window_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"digest_window_sec": True}})
 
@@ -1192,7 +1192,7 @@ def test_forbid_is_repeatable(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanReviewScanBytesDefaultsTo65536.test_true_review_scan_bytes_defaults_to_65536 lines 1147-1150
 def test_true_review_scan_bytes_defaults_to_65536(self):
-        from runner.review import _review_scan_bytes
+        from runner.oracle.review import _review_scan_bytes
         self.assertEqual(
             _review_scan_bytes({"review_scan_bytes": True}), 65536)
 
@@ -1294,7 +1294,7 @@ def test_true_agent_wall_clock_defaults_to_300(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanResourcesValuesAreConfigErrors.test_true_threshold_is_config_error lines 1643-1646
 def test_true_threshold_is_config_error(self):
-        from runner.resources import parse_resources
+        from runner.oracle.resources import parse_resources
         with self.assertRaises(RuntimeError):
             parse_resources({"resources": {"threshold": True}})
 
@@ -1324,13 +1324,13 @@ def test_extend_leaves_failure_member(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanResourcesValuesAreConfigErrors.test_true_cooldown_is_config_error lines 1648-1651
 def test_true_cooldown_is_config_error(self):
-        from runner.resources import parse_resources
+        from runner.oracle.resources import parse_resources
         with self.assertRaises(RuntimeError):
             parse_resources({"resources": {"cooldown_sec": True}})
 
 # runner/tests/test_doc_default_divergences.py TestHugeResourcesValueIsConfigError.test_huge_threshold_is_config_error lines 999-1002
 def test_huge_threshold_is_config_error(self):
-        from runner.resources import parse_resources
+        from runner.oracle.resources import parse_resources
         with self.assertRaises(RuntimeError):
             parse_resources({"resources": {"threshold": 10**400}})
 
@@ -1342,7 +1342,7 @@ def test_huge_threshold_is_config_error(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanResourcesValuesAreConfigErrors.test_false_cooldown_is_config_error lines 1653-1656
 def test_false_cooldown_is_config_error(self):
-        from runner.resources import parse_resources
+        from runner.oracle.resources import parse_resources
         with self.assertRaises(RuntimeError):
             parse_resources({"resources": {"cooldown_sec": False}})
 
@@ -1632,7 +1632,7 @@ def test_wire_arguments_keep_a_string_and_dump_a_dict(self):
 def test_a_broken_detection_import_is_swallowed(self):
         from runner.runner import _load_mod
         with mock.patch("importlib.import_module", side_effect=RuntimeError("boom")):
-            self.assertIsNone(_load_mod("runner.detection", "detection", broad=True))
+            self.assertIsNone(_load_mod("runner.oracle.detection", "oracle.detection", broad=True))
 
 # runner/tests/test_upstream_pins.py FormatDrift.test_aide_plain_report_keeps_its_headings lines 280-283
 def test_aide_plain_report_keeps_its_headings(self):
@@ -2041,7 +2041,7 @@ def test_future_beyond_skew(self):
 
 # runner/tests/test_doc_default_divergences.py TestZeroOrNegativePlanBudgetDefaults.test_zero_max_plan_steps_defaults_to_8 lines 692-696
 def test_zero_max_plan_steps_defaults_to_8(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_steps": 0})
         self.assertTrue(ok, reason)
@@ -2062,14 +2062,14 @@ def test_unreadable_readings_is_exit_2(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanPlanBudgetDefaults.test_true_max_plan_steps_defaults_to_8 lines 1548-1552
 def test_true_max_plan_steps_defaults_to_8(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_steps": True})
         self.assertTrue(ok, reason)
 
 # runner/tests/test_doc_default_divergences.py TestHugeResourcesValueIsConfigError.test_huge_cooldown_is_config_error lines 1004-1008
 def test_huge_cooldown_is_config_error(self):
-        from runner.resources import parse_resources
+        from runner.oracle.resources import parse_resources
         with self.assertRaises(RuntimeError):
             parse_resources(
                 {"resources": {"cooldown_sec": 10**400}})
@@ -2090,14 +2090,14 @@ def test_true_max_job_age_defaults_to_3600(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanPlanBudgetDefaults.test_false_max_plan_steps_defaults_to_8 lines 1554-1558
 def test_false_max_plan_steps_defaults_to_8(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_steps": False})
         self.assertTrue(ok, reason)
 
 # runner/tests/test_doc_default_divergences.py TestZeroOrNegativePlanBudgetDefaults.test_negative_max_plan_steps_defaults_to_8 lines 698-702
 def test_negative_max_plan_steps_defaults_to_8(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_steps": -5})
         self.assertTrue(ok, reason)
@@ -2167,7 +2167,7 @@ def test_no_observer_no_alerts(self):
 
 # runner/tests/test_doc_default_divergences.py TestZeroOrNegativePlanBudgetDefaults.test_zero_max_plan_timeout_defaults_to_600 lines 704-708
 def test_zero_max_plan_timeout_defaults_to_600(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_timeout_sec": 0})
         self.assertTrue(ok, reason)
@@ -2181,7 +2181,7 @@ def test_selinux_module_name(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanDriWindowSecIsConfigError.test_true_key_probe_window_is_config_error lines 2533-2537
 def test_true_key_probe_window_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"triggers": {
                 "key_probe": {"window_sec": True}}}})
@@ -2202,7 +2202,7 @@ def test_the_mirrors_count_four_install_archives(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanPlanBudgetDefaults.test_true_max_plan_timeout_defaults_to_600 lines 1560-1564
 def test_true_max_plan_timeout_defaults_to_600(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_timeout_sec": True})
         self.assertTrue(ok, reason)
@@ -2237,14 +2237,14 @@ def test_no_flag_no_key_is_the_base_level(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanDriValuesAreConfigErrors.test_true_key_probe_threshold_is_config_error lines 1926-1930
 def test_true_key_probe_threshold_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"triggers": {
                 "key_probe": {"threshold": True}}}})
 
 # runner/tests/test_doc_default_divergences.py TestBooleanDriWindowSecIsConfigError.test_false_key_probe_window_is_config_error lines 2539-2543
 def test_false_key_probe_window_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"triggers": {
                 "key_probe": {"window_sec": False}}}})
@@ -2258,14 +2258,14 @@ def test_forbidden_substring_fails(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanPlanBudgetDefaults.test_false_max_plan_timeout_defaults_to_600 lines 1566-1570
 def test_false_max_plan_timeout_defaults_to_600(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_timeout_sec": False})
         self.assertTrue(ok, reason)
 
 # runner/tests/test_doc_default_divergences.py TestZeroOrNegativePlanBudgetDefaults.test_negative_max_plan_timeout_defaults_to_600 lines 710-714
 def test_negative_max_plan_timeout_defaults_to_600(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_timeout_sec": -5})
         self.assertTrue(ok, reason)
@@ -2370,7 +2370,7 @@ def test_advise_not_requested_stays_silent(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanDriWindowSecIsConfigError.test_true_sensor_fused_window_is_config_error lines 2521-2525
 def test_true_sensor_fused_window_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"triggers": {
                 "sensor_fused_score": {"window_sec": True}}}})
@@ -2391,14 +2391,14 @@ def test_true_max_timeout_sec_is_config_error(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanDriValuesAreConfigErrors.test_true_sensor_fused_threshold_is_config_error lines 1920-1924
 def test_true_sensor_fused_threshold_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"triggers": {
                 "sensor_fused_score": {"threshold": True}}}})
 
 # runner/tests/test_doc_default_divergences.py TestBooleanDriWindowSecIsConfigError.test_false_sensor_fused_window_is_config_error lines 2527-2531
 def test_false_sensor_fused_window_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"triggers": {
                 "sensor_fused_score": {"window_sec": False}}}})
@@ -2678,7 +2678,7 @@ def test_true_default_timeout_defaults_to_300(self):
 
 # runner/tests/test_doc_default_divergences.py TestHugeResourcesValueIsConfigError.test_huge_threshold_check_resources_returns_none lines 1010-1014
 def test_huge_threshold_check_resources_returns_none(self):
-        from runner.resources import check_resources
+        from runner.oracle.resources import check_resources
         with tempfile.TemporaryDirectory() as base:
             self.assertIsNone(check_resources(
                 {"resources": {"threshold": 10**400}}, base))
@@ -2846,7 +2846,7 @@ def test_shared_rules_with_the_tool(self):
 
 # runner/tests/test_make_snapshot.py InstallAndOracleTest.test_no_snapshot_in_the_archive_is_not_an_error lines 296-300
 def test_no_snapshot_in_the_archive_is_not_an_error(self):
-        from runner import install
+        from runner.ops import install
         self.assertFalse(install.install_project_snapshot(
             os.path.join(self.tmp, "nothing"), self.base))
         self.assertFalse(os.path.exists(os.path.join(self.base, "project")))
@@ -2961,7 +2961,7 @@ def test_a_present_module_returns_the_attribute(self):
         from runner.runner import _load_attr, _load_mod, __version__
         loaded = _load_attr("runner._version", "_version", "__version__", "nope")
         self.assertEqual(loaded, __version__)
-        self.assertIsNotNone(_load_mod("runner.security", "security"))
+        self.assertIsNotNone(_load_mod("runner.guard.security", "guard.security"))
 
 # runner/tests/test_upstream_pins.py ManifestUpstreamBlock.test_good_block_round_trips lines 71-75
 def test_good_block_round_trips(self):
@@ -3067,7 +3067,7 @@ def test_stale_issued_at_rejected(self):
 
 # runner/tests/test_doc_default_divergences.py TestInfinitePromoteAfterDefaultsTo2.test_infinite_promote_after_defaults_to_2 lines 849-854
 def test_infinite_promote_after_defaults_to_2(self):
-        from runner.learning import promote_after
+        from runner.oracle.learning import promote_after
         self.assertEqual(
             promote_after(
                 {"oracle_learning_promote_after": float("inf")}),
@@ -3115,7 +3115,7 @@ def test_job_id_mismatch(self):
 
 # runner/tests/test_doc_default_divergences.py TestInfinitePromoteAfterDefaultsTo2.test_negative_infinite_promote_after_defaults_to_2 lines 856-861
 def test_negative_infinite_promote_after_defaults_to_2(self):
-        from runner.learning import promote_after
+        from runner.oracle.learning import promote_after
         self.assertEqual(
             promote_after(
                 {"oracle_learning_promote_after": float("-inf")}),
@@ -3323,7 +3323,7 @@ def test_nan_dark_threshold_defaults_to_minus_6(self):
 
 # runner/tests/test_runner_face.py JobUserFaceTest.test_an_audit_write_failure_is_swallowed lines 174-179
 def test_an_audit_write_failure_is_swallowed(self):
-        from runner import security
+        from runner.guard import security
         face = _Face()
         with mock.patch.object(security, "write_audit_entry", side_effect=RuntimeError("disk")):
             fn = self._run(face)
@@ -3453,7 +3453,7 @@ def test_the_window_constants_are_present(self):
 def test_explicit_two_weight_is_honored(self):
         # Control: a genuine in-domain weight is used as
         # given; the fix must not flatten it to 1.0.
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, 2), 1.0)
 
@@ -3547,7 +3547,7 @@ def test_learn_pass_files_nothing(self):
 
 # runner/tests/test_doc_default_divergences.py TestHugeSensorWeightDefaultsToOne.test_huge_int_weight_from_json_defaults_to_one lines 925-930
 def test_huge_int_weight_from_json_defaults_to_one(self):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         record = json.loads(
             '{"severity": "high", "weight": 1' + "0" * 400 + "}")
         self.assertEqual(
@@ -4588,7 +4588,7 @@ def test_group_titles_appear_in_order(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanPlanStepTimeoutCountsAs60.test_true_step_timeout_counts_as_60 lines 3689-3695
 def test_true_step_timeout_counts_as_60(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             [{"timeout_sec": True}],
             {"max_plan_timeout_sec": 30})
@@ -4708,7 +4708,7 @@ def test_report_event_never_raises(self):
         # Even if ctypes/winreg blow up, the runner must survive.
         import sys
         from unittest import mock
-        from runner import winlog
+        from runner.ops import winlog
         with mock.patch.dict(sys.modules, {"ctypes": None}):
             winlog.report_event("test")  # must not raise
 
@@ -4789,7 +4789,7 @@ def test_explicit_zero_weight_still_mutes(self):
         # Control: 0 is the documented mute (weight >= 0
         # includes it); the fix must not flatten a
         # genuine zero to the default.
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, 0), 0.0)
 
@@ -5489,7 +5489,7 @@ def test_missing_tool(self):
 # runner/tests/test_protocol_and_edges.py WinlogTests.test_report_event_is_noop_off_windows lines 1099-1105
 def test_report_event_is_noop_off_windows(self):
         # We're on Linux here; must not raise and must do nothing.
-        from runner import winlog
+        from runner.ops import winlog
         self.assertFalse(winlog._reported_ok)
         winlog.report_event("test message")  # must not raise
         winlog.report_event("test message", level="WARN")
@@ -5902,7 +5902,7 @@ def test_keyboard_interrupt_exits_quietly(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanPlanStepTimeoutCountsAs60.test_true_steps_total_counts_as_60_each lines 3697-3704
 def test_true_steps_total_counts_as_60_each(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             [{"timeout_sec": True}] * 11,
             {"max_plan_steps": 20,
@@ -5994,7 +5994,7 @@ def test_quiet_cases_file_nothing(self):
 def test_a_crash_in_the_check_prints_nothing(self):
         buf = io.StringIO()
         with mock.patch(
-                "runner.personal_docs.personal_documents_present",
+                "runner.oracle.personal_docs.personal_documents_present",
                 side_effect=RuntimeError("disk")):
             self.assertFalse(warn_if_personal_documents(
                 "/tmp", stream=buf))
@@ -6006,7 +6006,7 @@ def test_bogus_weight_defaults_to_one(self):
         # back to the documented default today; it must
         # keep doing so after the out-of-domain cases
         # are fixed.
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, "bogus"), 0.5)
 
@@ -6163,7 +6163,7 @@ def test_host_isolation(self):
 # runner/tests/test_hardening_templates.py TemplateTest.test_install_help_mentions_no_templates lines 94-101
 def test_install_help_mentions_no_templates(self):
         out = subprocess.run(
-            [sys.executable, os.path.join(REPO, "runner/install.py"),
+            [sys.executable, os.path.join(REPO, "runner/ops/install.py"),
              "--help"],
             capture_output=True, text=True, timeout=30).stdout.lower()
         for word in ("hardening/", "apparmor", "selinux",
@@ -6332,7 +6332,7 @@ def test_key_policy_without_sensor_alert_rejected(self):
 
 # runner/tests/test_extension_sources.py ShippedDeclarationsTest.test_each_parses_next_to_a_valid_manifest lines 469-476
 def test_each_parses_next_to_a_valid_manifest(self):
-        from runner import extensions as E
+        from runner.ops import extensions as E
         for folder in self.folders():
             decl, problem = X.load_declaration(folder)
             self.assertIsNone(problem, folder)
@@ -7044,7 +7044,7 @@ def test_a_symlink_inside_documents_is_not_a_paper(self):
 def test_non_json_review_is_dropped_and_the_job_finishes(self):
         with tempfile.TemporaryDirectory() as d:
             seen = {}
-            with mock.patch("runner.review.review_job",
+            with mock.patch("runner.oracle.review.review_job",
                             return_value={"notes": {1, 2}, "blob": b"\xff"}):
                 poll_once(_cfg(), d, seen, os.path.join(d, "seen.json"),
                           imap=_IMAP(self._two()), smtp=_SMTP(), opts=_Opts())
@@ -7269,7 +7269,7 @@ def test_explicit_10_step_timeout_is_honored(self):
         # Control: a genuine explicit step timeout is
         # counted as given; the fix must not flatten
         # it to the 60-second fallback.
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             [{"timeout_sec": 10}],
             {"max_plan_timeout_sec": 30})
@@ -7290,7 +7290,7 @@ def test_title_discriminates_when_no_signal(self):
 def test_bogus_step_timeout_counts_as_60(self):
         # Control: an unparseable step timeout already
         # counts as 60 today; it must keep doing so.
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             [{"timeout_sec": "bogus"}],
             {"max_plan_timeout_sec": 30})
@@ -8656,7 +8656,7 @@ def test_garbage_never_raises(self):
 def test_true_cooldown_defaults_to_zero_no_dedup(self):
         from datetime import datetime, timezone
 
-        from runner.senses import gate_alert
+        from runner.oracle.senses import gate_alert
         now = datetime(2026, 10, 23, 5, 50, 22,
                        tzinfo=timezone.utc).timestamp()
         self.assertIsNone(gate_alert(
@@ -8692,7 +8692,7 @@ def test_help_blank_and_exit_do_not_ask_the_model(self):
 def test_true_max_per_hour_defaults_to_zero_unlimited(self):
         from datetime import datetime, timezone
 
-        from runner.senses import gate_alert
+        from runner.oracle.senses import gate_alert
         now = datetime(2026, 10, 23, 5, 50, 22,
                        tzinfo=timezone.utc).timestamp()
         self.assertIsNone(gate_alert(
@@ -8990,7 +8990,7 @@ def test_a_lesson_about_a_different_tool_is_not_this_job(self):
 
 # runner/tests/test_make_snapshot.py InstallAndOracleTest.test_a_broken_ci_file_still_points_at_the_index lines 326-335
 def test_a_broken_ci_file_still_points_at_the_index(self):
-        from runner import install
+        from runner.ops import install
         from runner.runner import _project_snapshot_note
         install.install_project_snapshot(self.src, self.base)
         with open(os.path.join(self.base, "project", "CI-SNAPSHOT.json"),
@@ -9266,7 +9266,7 @@ def test_status_command_reports_liveness(self):
 
 # runner/tests/test_make_snapshot.py InstallAndOracleTest.test_the_cfg_base_dir_matches_the_runner lines 302-311
 def test_the_cfg_base_dir_matches_the_runner(self):
-        from runner import install
+        from runner.ops import install
         from runner.runner import _base_dir_for
         cfg_path = os.path.join(self.tmp, "home", "config.json")
         os.makedirs(os.path.dirname(cfg_path))
@@ -9904,7 +9904,7 @@ def test_send_mail_defaults_to_mailbox(self):
 
 # runner/tests/test_windows_surface.py WindowsDispatchPinsTest.test_privilege_check_takes_the_windows_branch lines 193-203
 def test_privilege_check_takes_the_windows_branch(self):
-        from runner import posture
+        from runner.ops import posture
         restore = surface.apply_surface()
         try:
             results = []
@@ -9930,7 +9930,7 @@ def test_sha384_of_known(self):
 
 # runner/tests/test_protocol_and_edges.py OAuthAuthTests.test_xoauth2_string_shape lines 1042-1052
 def test_xoauth2_string_shape(self):
-        from runner.oauth import xoauth2_raw
+        from runner.wire.oauth import xoauth2_raw
         raw = xoauth2_raw("a@b.com", "ya29.token")
         self.assertEqual(
             raw,
@@ -9973,7 +9973,7 @@ def test_false_step_timeout_counts_as_60(self):
         # 60-second fallback today (the "or" treats
         # it as missing); it must keep doing so after
         # the true case is fixed.
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             [{"timeout_sec": False}],
             {"max_plan_timeout_sec": 30})
@@ -10531,9 +10531,9 @@ def test_uninstall_calls_disable_before_remove(self):
         order = []
         with mock.patch.object(os.path, "expanduser",
                                return_value="/tmp/hp-unit-not-real.service"), \
-             mock.patch("runner.install.run",
+             mock.patch("runner.ops.install.run",
                         side_effect=lambda cmd, **kw: order.append("run")), \
-             mock.patch("runner.install.os.remove",
+             mock.patch("runner.ops.install.os.remove",
                         side_effect=lambda path: order.append("remove")):
             uninstall_linux(False)
         self.assertEqual(order[0], "run")
@@ -10816,12 +10816,12 @@ def test_long_lived_fires_at_the_threshold_only(self):
 def test_a_seeded_config_is_owner_only_and_an_existing_one_is_left_alone(self):
         with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
             self._src(src)
-            with mock.patch("runner.install.FROZEN", False):
+            with mock.patch("runner.ops.install.FROZEN", False):
                 self.assertTrue(install_files(src, dst))
             cfg = os.path.join(dst, "config.json")
             self.assertEqual(_mode(cfg), 0o600)
             os.chmod(cfg, 0o644)
-            with mock.patch("runner.install.FROZEN", False):
+            with mock.patch("runner.ops.install.FROZEN", False):
                 self.assertTrue(install_files(src, dst))
             self.assertEqual(_mode(cfg), 0o644)
 
@@ -11129,7 +11129,7 @@ def test_proc_stat_mutations(self):
 
 # runner/tests/test_cli_options.py Version2IngestTest.test_a_determination_is_logged_and_not_executed lines 693-704
 def test_a_determination_is_logged_and_not_executed(self):
-        from runner import protocol_v2 as v2
+        from runner.wire import protocol_v2 as v2
         det = v2.determination_for(
             {"job_id": "j1"},
             {"findings": [{"detail": "rm"}]})
@@ -11816,9 +11816,9 @@ def test_barren_machine_only_disk_can_fire(self):
 # runner/tests/test_linux_platform.py LinuxWipeTest.test_system_uninstall_disables_then_removes_the_unit lines 511-522
 def test_system_uninstall_disables_then_removes_the_unit(self):
         order = []
-        with mock.patch("runner.install.run",
+        with mock.patch("runner.ops.install.run",
                         side_effect=lambda cmd, **kw: order.append(("run", list(cmd)))), \
-             mock.patch("runner.install.os.remove",
+             mock.patch("runner.ops.install.os.remove",
                         side_effect=lambda path: order.append(("remove", path))):
             uninstall_linux(True)
         self.assertEqual(order, [
@@ -11941,7 +11941,7 @@ def test_windows_fixture_blocks_parse_and_decide(self):
 
 # runner/tests/test_make_snapshot.py InstallAndOracleTest.test_the_oracle_context_points_at_the_snapshot lines 313-324
 def test_the_oracle_context_points_at_the_snapshot(self):
-        from runner import install
+        from runner.ops import install
         from runner.runner import _project_snapshot_note, oracle_context
         self.assertEqual(_project_snapshot_note(self.base), "")
         install.install_project_snapshot(self.src, self.base)
@@ -12193,7 +12193,7 @@ def test_the_higher_priority_is_claimed_first(self):
 
 # runner/tests/test_make_snapshot.py InstallAndOracleTest.test_install_places_and_replaces_the_snapshot lines 283-294
 def test_install_places_and_replaces_the_snapshot(self):
-        from runner import install
+        from runner.ops import install
         self.assertTrue(install.install_project_snapshot(self.src, self.base))
         dst = os.path.join(self.base, "project")
         stale = os.path.join(dst, "stale.txt")
@@ -12388,7 +12388,7 @@ def test_a_missing_file_fails_and_the_type_bits_are_ignored(self):
             st_mode = 0o100600
 
         results = []
-        with mock.patch("runner.posture.os.stat", return_value=_Stat()):
+        with mock.patch("runner.ops.posture.os.stat", return_value=_Stat()):
             _check_file_perms("/tmp/hp-config.json", results)
         self.assertEqual(results[0][0], "OK")
 
@@ -12447,7 +12447,7 @@ def test_word_age_and_a_raising_review_still_run_both_jobs(self):
             def boom(*a, **k):
                 raise RuntimeError("review exploded")
 
-            with mock.patch("runner.review.review_job", side_effect=boom):
+            with mock.patch("runner.oracle.review.review_job", side_effect=boom):
                 poll_once(cfg, d, seen, os.path.join(d, "seen.json"),
                           imap=_IMAP(self._two()), smtp=_SMTP(), opts=_Opts())
             self.assertEqual(sorted(seen), ["good", "reviewed"])
@@ -12457,7 +12457,7 @@ def test_documented_windows_are_honored(self):
         # Control: the documented defaults pass validation
         # untouched; the fix must not flatten genuine
         # values into an error.
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         out = parse_dri({"dri": {"triggers": {
             "sensor_fused_score": {"window_sec": 600},
             "key_probe": {"window_sec": 3600}}}})
@@ -14108,10 +14108,10 @@ def test_manifest_is_valid_through_the_real_loader(self):
 # runner/tests/test_linux_platform.py LinuxWipeTest.test_wipe_disables_both_units_and_deletes_nothing lines 524-537
 def test_wipe_disables_both_units_and_deletes_nothing(self):
         calls = []
-        with mock.patch("runner.install.sys.platform", "linux"), \
-             mock.patch("runner.install._kill_runner_processes"), \
-             mock.patch("runner.install._candidate_state_dirs", return_value=[]), \
-             mock.patch("runner.install._run_quiet",
+        with mock.patch("runner.ops.install.sys.platform", "linux"), \
+             mock.patch("runner.ops.install._kill_runner_processes"), \
+             mock.patch("runner.ops.install._candidate_state_dirs", return_value=[]), \
+             mock.patch("runner.ops.install._run_quiet",
                         side_effect=lambda cmd: calls.append(list(cmd))):
             code = do_wipe(no_backup=True)
         self.assertEqual(code, 0)
@@ -14382,12 +14382,12 @@ def test_script_name_mutations_never_resolve_a_binary(self):
         bad = ("", ".", "..", "../etc/passwd", "/bin/sh",
                "a/b", "a\\b", "a\x00b", None, 1)
         for name in bad:
-            with mock.patch("runner.sandbox.shutil.which",
+            with mock.patch("runner.guard.sandbox.shutil.which",
                             side_effect=AssertionError("which")):
                 with self.assertRaises(RuntimeError):
                     SB.build_bwrap_command(
                         {}, ["sh"], name, "/work", [], {})
-        with mock.patch("runner.sandbox.shutil.which", return_value="/bin/sh"):
+        with mock.patch("runner.guard.sandbox.shutil.which", return_value="/bin/sh"):
             argv = SB.build_bwrap_command(
                 {}, ["sh", "-c"], "job.sh", "/work", ["--x"], {"OK": "1"})
         self.assertEqual(argv[-2:], ["/work/job.sh", "--x"])
@@ -14654,7 +14654,7 @@ def test_one_pass_at_a_time(self):
 
 # runner/tests/test_linux_platform.py SandboxNameTest.test_workdir_args_and_env_mutations lines 1461-1475
 def test_workdir_args_and_env_mutations(self):
-        with mock.patch("runner.sandbox.shutil.which",
+        with mock.patch("runner.guard.sandbox.shutil.which",
                         side_effect=AssertionError("which")):
             for workdir, args, env in (
                 ("", [], {}),
@@ -15040,7 +15040,7 @@ def test_a_path_realpath_cannot_resolve_is_not_papers(self):
                 if path == papers:
                     raise OSError("gone")
                 return real(path)
-            with mock.patch("runner.personal_docs.os.path.realpath", boom):
+            with mock.patch("runner.oracle.personal_docs.os.path.realpath", boom):
                 self.assertFalse(personal_documents_present(home))
 
 # runner/tests/test_sysmon_feed.py ManifestTest.test_manifest_is_valid_through_the_real_loader lines 103-117
@@ -15698,7 +15698,7 @@ def test_nondict_body_rejected(self):
 
 # runner/tests/test_windows_surface.py WindowsDispatchPinsTest.test_total_memory_takes_the_windows_route lines 155-170
 def test_total_memory_takes_the_windows_route(self):
-        from runner import remediation
+        from runner.oracle import remediation
         restore = surface.apply_surface()
         try:
             with mock.patch.object(
@@ -16545,7 +16545,7 @@ def test_github_rules(self):
 # runner/tests/test_linux_platform.py AlertStoreTest.test_the_cap_keeps_the_newest_and_a_bad_record_is_dropped lines 2126-2141
 def test_the_cap_keeps_the_newest_and_a_bad_record_is_dropped(self):
         with tempfile.TemporaryDirectory() as d:
-            with mock.patch("runner.senses.MAX_STORED", 3):
+            with mock.patch("runner.oracle.senses.MAX_STORED", 3):
                 store_alert("", {"sensor": "x"})
                 store_alert(d, ["not", "a", "dict"])
                 store_alert(d, {"sensor": "bad", "n": float("nan")})
@@ -16569,13 +16569,13 @@ def test_full_declaration_parses_with_defaults(self):
                             {"id": "doc", "role": "spec",
                              "url": "https://example.org/rfc.txt"},
                             {"id": "code", "role": "self",
-                             "project": ["runner/transports.py"]}]})
+                             "project": ["runner/wire/transports.py"]}]})
         self.assertEqual(d["oracle"], "withhold")
         up, doc, code = d["sources"]
         self.assertEqual((up["ref"], up["archive"], up["max_mb"]),
                          ("latest", False, X.DEFAULT_ENTRY_MB))
         self.assertEqual(doc["location"], "url")
-        self.assertEqual(code["project"], ["runner/transports.py"])
+        self.assertEqual(code["project"], ["runner/wire/transports.py"])
         self.assertIsNone(up["oracle"])
 
 # runner/tests/test_personal_docs.py ScanTest.test_xdg_inside_home_counts_and_outside_does_not lines 85-100
@@ -16788,8 +16788,8 @@ def test_omitted_and_explicit_values_are_honored(self):
 def test_confinement_backend_mutations(self):
         def check(plat, found):
             results = []
-            with mock.patch("runner.posture.sys.platform", plat), \
-                 mock.patch("runner.posture.shutil.which", return_value=found):
+            with mock.patch("runner.ops.posture.sys.platform", plat), \
+                 mock.patch("runner.ops.posture.shutil.which", return_value=found):
                 _check_confinement_backend(results)
             return results[0]
 
@@ -16852,9 +16852,9 @@ def test_bad_resource_events_do_not_skip_mail(self):
         for shape in shapes:
             with tempfile.TemporaryDirectory() as d:
                 seen = {}
-                with mock.patch("runner.resources.check_resources",
+                with mock.patch("runner.oracle.resources.check_resources",
                                 return_value=shape), \
-                     mock.patch("runner.dri.maybe_page",
+                     mock.patch("runner.oracle.dri.maybe_page",
                                 side_effect=RuntimeError("pager down")):
                     poll_once(_cfg(), d, seen, os.path.join(d, "seen.json"),
                               imap=_IMAP(_pings()), smtp=_SMTP(), opts=_Opts())
@@ -16977,7 +16977,7 @@ def test_alert_cap_prioritizes_hard_failures(self):
 # runner/tests/test_personal_docs.py SwitchTest.test_install_bakes_the_switch_into_the_service lines 172-188
 def test_install_bakes_the_switch_into_the_service(self):
         import types
-        from runner import install
+        from runner.ops import install
         baked = install._forwarded_args(types.SimpleNamespace(
             dry_run=False, no_send=False, pdb=False,
             allow_cleartext=False, verbose=True,
@@ -17249,7 +17249,7 @@ def test_a_symlink_is_not_followed(self):
             link = os.path.join(d, "harness-report-20261017T000000Z.txt")
             os.symlink(target, link)
             lines = []
-            with mock.patch("runner.harness.datetime", _Clock):
+            with mock.patch("runner.ops.harness.datetime", _Clock):
                 fails = H.run_diagnose(
                     {}, out=lines.append, base_dir=d, sections=[("first", _ok)])
             self.assertEqual(fails, 0)
@@ -17850,7 +17850,7 @@ def test_refresh_rejection_raises_distinct_error(self):
         import io
         import urllib.error
         from unittest import mock
-        from runner.oauth import refresh_access_token, OAuthRefreshError
+        from runner.wire.oauth import refresh_access_token, OAuthRefreshError
 
         err_body = json.dumps({"error": "invalid_grant",
                                "error_description": "Token has been revoked"}).encode()
@@ -18440,14 +18440,14 @@ def test_an_unreadable_folder_is_quiet(self):
 
         with tempfile.TemporaryDirectory() as home:
             os.makedirs(os.path.join(home, "Documents"))
-            with mock.patch("runner.personal_docs.os.scandir", deny_documents):
+            with mock.patch("runner.oracle.personal_docs.os.scandir", deny_documents):
                 self.assertFalse(personal_documents_present(home))
 
         def deny_home(path):
             raise OSError("denied")
 
         with tempfile.TemporaryDirectory() as home:
-            with mock.patch("runner.personal_docs.os.scandir", deny_home):
+            with mock.patch("runner.oracle.personal_docs.os.scandir", deny_home):
                 self.assertFalse(personal_documents_present(home))
 
 # runner/tests/test_pi_light.py DeterministicAnswerTest.test_answer_carries_index_and_notable_lines lines 245-263
@@ -19163,7 +19163,7 @@ def test_sysconf_fallback_swallows_attribute_error(self):
         # Linux /proc route nor nt reaches the sysconf fallback;
         # where sysconf does not exist the AttributeError is the
         # documented "no route" answer, not a crash.
-        from runner import remediation
+        from runner.oracle import remediation
         # sysconf may already be absent (the sim harness deletes
         # it for the whole process); the pin then starts from the
         # environment it is actually testing and restores only

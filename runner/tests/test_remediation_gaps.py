@@ -7,7 +7,7 @@ import tempfile
 import time
 import unittest
 from unittest import mock
-from runner import remediation as rem
+from runner.oracle import remediation as rem
 
 class _S:
     def __init__(self, *a, **k):

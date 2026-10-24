@@ -13,7 +13,7 @@ import unittest
 from unittest import mock
 
 from runner.runner import _append_security_event
-from runner.senses import MAX_STORED, store_alert
+from runner.oracle.senses import MAX_STORED, store_alert
 
 
 def _mode(path):

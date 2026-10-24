@@ -12,7 +12,7 @@ import unittest
 from unittest import mock
 
 from runner.runner import _spawn_daemon, daemon_popen_kwargs, kill_tree
-from runner.install import daemon_popen_kwargs as install_daemon_kwargs
+from runner.ops.install import daemon_popen_kwargs as install_daemon_kwargs
 
 
 def _proc(pid=42):

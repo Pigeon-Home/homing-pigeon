@@ -15,7 +15,7 @@ from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _spec = importlib.util.spec_from_file_location(
-    "install", os.path.join(REPO, "runner", "install.py"))
+    "install", os.path.join(REPO, "runner", "ops", "install.py"))
 install = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(install)
 

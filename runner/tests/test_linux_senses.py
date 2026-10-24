@@ -8,7 +8,7 @@ import random
 import tempfile
 import unittest
 
-from runner.senses import load_alerts, store_alert
+from runner.oracle.senses import load_alerts, store_alert
 
 
 def _mode(path):

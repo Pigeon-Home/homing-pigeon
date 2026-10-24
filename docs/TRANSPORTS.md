@@ -265,7 +265,7 @@ transport: it is the DTLS session binding of protocol
 version 1 from `docs/ietf/draft-homing-pigeon-00.md` — a direct DTLS 1.3
 session between the SI and the runner, specified there and
 implemented as a bounded pure-Python profile
-(`runner/dtlsproto.py`, stdlib only) in the extension at
+(`runner/wire/dtlsproto.py`, stdlib only) in the extension at
 `runner/transport_extensions/dtls/`.
 
 - **Off unless enabled, and it listens.** Add `"dtls"` to
@@ -452,7 +452,7 @@ the signature still checks every job inside it. See
 The protocol is deliberately transport-agnostic, and transports
 are now *extensions*: a new transport is a new program, not a
 patch to the runner. The contract is versioned at one —
-`TRANSPORT_API_VERSION = 1` in `runner/transports.py`.
+`TRANSPORT_API_VERSION = 1` in `runner/wire/transports.py`.
 
 A transport extension is a folder with an `extension.json`
 manifest:

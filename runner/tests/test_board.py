@@ -12,7 +12,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 
-from runner import jobcrypto
+from runner.wire import jobcrypto
 from runner.runner import Board, poll_once
 from send_job import sign_payload
 from runner.tests.test_runner import FakeIMAP, FakeSMTP

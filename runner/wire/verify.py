@@ -7,8 +7,8 @@ Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 Carved out of runner/runner.py, which binds every name here on
 itself, so `runner.runner.verify_body` and the rest resolve as they
 always did. Stdlib plus the sibling modules it leans on
-(runner.security for the entropy gate and the dangerous-env list,
-runner.jobcrypto for the result envelope, runner.platformcard for
+(runner.guard.security for the entropy gate and the dangerous-env list,
+runner.wire.jobcrypto for the result envelope, runner.wire.platformcard for
 the platform's default interpreter); no import of runner.runner.
 """
 import hashlib
@@ -19,31 +19,31 @@ import re
 import time
 
 try:
-    from runner import security as _security
+    from runner.guard import security as _security
 except ImportError:  # run as a script from the runner/ directory
     try:
-        import security as _security  # type: ignore
+        from guard import security as _security  # type: ignore
     except ImportError:  # pragma: no cover - fatal elsewhere
         _security = None
 try:
-    from runner import jobcrypto as _jobcrypto
+    from runner.wire import jobcrypto as _jobcrypto
 except ImportError:
     try:
-        import jobcrypto as _jobcrypto  # type: ignore
+        from wire import jobcrypto as _jobcrypto  # type: ignore
     except ImportError:
         _jobcrypto = None
 try:
-    from runner.platformcard import platform_interpreter
+    from runner.wire.platformcard import platform_interpreter
 except ImportError:
-    from platformcard import platform_interpreter  # type: ignore
+    from wire.platformcard import platform_interpreter  # type: ignore
 try:
-    from runner.textutil import _json_safe
+    from runner.guard.textutil import _json_safe
 except ImportError:
-    from textutil import _json_safe  # type: ignore
+    from guard.textutil import _json_safe  # type: ignore
 try:
-    from runner import confval as _confval
+    from runner.guard import confval as _confval
 except ImportError:
-    import confval as _confval  # type: ignore
+    from guard import confval as _confval  # type: ignore
 
 PROTOCOL_VERSION = 1
 
@@ -486,7 +486,7 @@ def check_key_policy(policies: dict, key_id: str, cfg, job):
     return None
 
 
-# Hardening M2/M4: moved to runner/security.py; re-exported here so
+# Hardening M2/M4: moved to runner/guard/security.py; re-exported here so
 # existing imports (runner.runner.validate_shared_secret, ...) keep
 # working. If the security module failed to import, the stubs below
 # fail closed instead of silently passing weak secrets.

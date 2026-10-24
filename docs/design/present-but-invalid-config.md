@@ -29,7 +29,7 @@ used as is).
 **Policy A, read as the default.** The reader treats anything that
 is not a usable value as if the key were absent: the documented
 default applies, a warning names the key and the value it ignored,
-and the process keeps running. `runner/confval.py` is this policy
+and the process keeps running. `runner/guard/confval.py` is this policy
 written once (`number`, `integer`, `port`, `choice`), and after the
 campaign every runner reader that documents a default goes through
 it: poll intervals, timeouts, budgets, limits, retention, cooldowns,

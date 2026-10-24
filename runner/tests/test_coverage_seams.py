@@ -10,7 +10,7 @@ class PkceTest(unittest.TestCase):
     def test_challenge_is_s256_of_the_verifier(self):
         import base64
         import hashlib
-        from runner.oauth import _pkce
+        from runner.wire.oauth import _pkce
 
         verifier, challenge = _pkce()
         self.assertIsInstance(verifier, str)
@@ -23,7 +23,7 @@ class PkceTest(unittest.TestCase):
         self.assertEqual(challenge, expected)
 
     def test_two_calls_do_not_reuse_the_verifier(self):
-        from runner.oauth import _pkce
+        from runner.wire.oauth import _pkce
 
         first, _ = _pkce()
         second, _ = _pkce()
@@ -33,7 +33,7 @@ class PkceTest(unittest.TestCase):
 class AuthorizeUrlTest(unittest.TestCase):
     def test_url_carries_the_pkce_and_offline_params(self):
         import urllib.parse
-        from runner.oauth import AUTH_URL, REDIRECT_URI, SCOPE, build_authorize_url
+        from runner.wire.oauth import AUTH_URL, REDIRECT_URI, SCOPE, build_authorize_url
 
         url = build_authorize_url(
             {"oauth_client_id": "cid"}, "ver", "chal", "st")
@@ -51,7 +51,7 @@ class AuthorizeUrlTest(unittest.TestCase):
 
     def test_a_second_state_is_not_the_first(self):
         import urllib.parse
-        from runner.oauth import build_authorize_url
+        from runner.wire.oauth import build_authorize_url
 
         first = build_authorize_url({}, "ver", "chal", "one")
         second = build_authorize_url({}, "ver", "chal", "two")
@@ -86,7 +86,7 @@ class ExchangeCodeTest(unittest.TestCase):
 
     def test_refresh_token_is_returned(self):
         import urllib.parse
-        from runner.oauth import exchange_code
+        from runner.wire.oauth import exchange_code
 
         seen = []
         token = exchange_code(
@@ -102,7 +102,7 @@ class ExchangeCodeTest(unittest.TestCase):
 
     def test_secret_is_omitted_when_empty(self):
         import urllib.parse
-        from runner.oauth import exchange_code
+        from runner.wire.oauth import exchange_code
 
         seen = []
         exchange_code(
@@ -114,7 +114,7 @@ class ExchangeCodeTest(unittest.TestCase):
     def test_http_error_with_bad_json_is_system_exit(self):
         import io
         import urllib.error
-        from runner.oauth import TOKEN_URL, exchange_code
+        from runner.wire.oauth import TOKEN_URL, exchange_code
 
         def opener(req, timeout=30):
             raise urllib.error.HTTPError(
@@ -124,7 +124,7 @@ class ExchangeCodeTest(unittest.TestCase):
             exchange_code({"oauth_client_id": "cid"}, "code", "ver", opener=opener)
 
     def test_a_list_body_is_system_exit(self):
-        from runner.oauth import exchange_code
+        from runner.wire.oauth import exchange_code
 
         with self.assertRaises(SystemExit):
             exchange_code(
@@ -132,7 +132,7 @@ class ExchangeCodeTest(unittest.TestCase):
                 opener=self._opener(b"[1]", []))
 
     def test_missing_refresh_token_is_system_exit(self):
-        from runner.oauth import exchange_code
+        from runner.wire.oauth import exchange_code
 
         with self.assertRaises(SystemExit):
             exchange_code(
@@ -146,14 +146,14 @@ class CatchHandlerTest(unittest.TestCase):
     ignored, so a favicon or a stale tab cannot end the sign-in."""
 
     def setUp(self):
-        from runner.oauth import _Catch
+        from runner.wire.oauth import _Catch
         _Catch.code = None
         _Catch.error = None
         _Catch.expected_state = "s1"
         self.addCleanup(setattr, _Catch, "expected_state", None)
 
     def _handler(self, path):
-        from runner.oauth import _Catch
+        from runner.wire.oauth import _Catch
         handler = _Catch.__new__(_Catch)
         handler.path = path
         handler.request_version = "HTTP/1.1"
@@ -162,7 +162,7 @@ class CatchHandlerTest(unittest.TestCase):
         return handler
 
     def test_code_is_stored_and_the_page_is_200(self):
-        from runner.oauth import _Catch
+        from runner.wire.oauth import _Catch
         handler = self._handler("/?code=abc&state=s1")
         handler.do_GET()
         self.assertEqual(_Catch.code, "abc")
@@ -172,7 +172,7 @@ class CatchHandlerTest(unittest.TestCase):
         self.assertIn(b"Signed in", page)
 
     def test_error_is_stored_and_code_stays_unset(self):
-        from runner.oauth import _Catch
+        from runner.wire.oauth import _Catch
         handler = self._handler("/?error=access_denied&state=s1")
         handler.do_GET()
         self.assertEqual(_Catch.error, "access_denied")
@@ -180,7 +180,7 @@ class CatchHandlerTest(unittest.TestCase):
         self.assertIn(b"access_denied", handler.wfile.getvalue())
 
     def test_a_bare_path_is_answered_and_ignored(self):
-        from runner.oauth import _Catch
+        from runner.wire.oauth import _Catch
         handler = self._handler("/")
         handler.do_GET()
         self.assertIsNone(_Catch.error)
@@ -188,7 +188,7 @@ class CatchHandlerTest(unittest.TestCase):
         self.assertIn(b"Still waiting", handler.wfile.getvalue())
 
     def test_another_consents_callback_is_ignored(self):
-        from runner.oauth import _Catch
+        from runner.wire.oauth import _Catch
         for path in ("/?code=old&state=s0", "/?error=access_denied&state=s0",
                      "/?state=s1"):
             handler = self._handler(path)
@@ -204,14 +204,14 @@ class CatchHandlerTest(unittest.TestCase):
 
 class MailboxProbeTest(unittest.TestCase):
     def test_a_missing_helper_is_a_string(self):
-        from runner import setup
+        from runner.ops import setup
         with mock.patch.object(setup, "refresh_access_token", None):
             text = setup._mailbox_probe({"mailbox_user": "a@b.c"})
         self.assertIsInstance(text, str)
         self.assertIn("oauth", text)
 
     def test_a_failed_refresh_names_the_token(self):
-        from runner import setup
+        from runner.ops import setup
         with mock.patch.object(setup, "refresh_access_token",
                                side_effect=RuntimeError("nope")):
             text = setup._mailbox_probe({"mailbox_user": "a@b.c"})
@@ -219,7 +219,7 @@ class MailboxProbeTest(unittest.TestCase):
         self.assertIn("token", text)
 
     def test_a_failed_constructor_names_imap(self):
-        from runner import setup
+        from runner.ops import setup
         with mock.patch.object(setup, "refresh_access_token", return_value="tok"), \
              mock.patch.object(setup.imaplib, "IMAP4_SSL",
                                side_effect=OSError("down")):
@@ -228,7 +228,7 @@ class MailboxProbeTest(unittest.TestCase):
         self.assertIn("IMAP", text)
 
     def test_a_failed_authenticate_names_imap(self):
-        from runner import setup
+        from runner.ops import setup
 
         class Boom:
             def __init__(self, host, port, ssl_context=None):
@@ -245,7 +245,7 @@ class MailboxProbeTest(unittest.TestCase):
         self.assertIn("IMAP", text)
 
     def test_a_successful_login_returns_none_and_logs_out(self):
-        from runner import setup
+        from runner.ops import setup
         seen = []
 
         class Ok:
@@ -271,7 +271,7 @@ class SharedSecretTest(unittest.TestCase):
         return path
 
     def test_a_real_secret_is_left_alone(self):
-        from runner.install import ensure_shared_secret
+        from runner.ops.install import ensure_shared_secret
         real = "ab" * 32
         with tempfile.TemporaryDirectory() as directory:
             path = self._write(directory, real)
@@ -280,7 +280,7 @@ class SharedSecretTest(unittest.TestCase):
             self.assertEqual(open(path, "rb").read(), before)
 
     def test_a_placeholder_is_replaced(self):
-        from runner.install import ensure_shared_secret
+        from runner.ops.install import ensure_shared_secret
         with tempfile.TemporaryDirectory() as directory:
             path = self._write(directory, "changeme")
             ensure_shared_secret(path, None)
@@ -291,7 +291,7 @@ class SharedSecretTest(unittest.TestCase):
             self.assertEqual(written["mailbox_user"], "a@b.c")
 
     def test_a_weak_provided_secret_exits(self):
-        from runner.install import ensure_shared_secret
+        from runner.ops.install import ensure_shared_secret
         with tempfile.TemporaryDirectory() as directory:
             path = self._write(directory, "")
             before = open(path, "rb").read()
@@ -301,7 +301,7 @@ class SharedSecretTest(unittest.TestCase):
             self.assertEqual(open(path, "rb").read(), before)
 
     def test_an_empty_secret_is_generated(self):
-        from runner.install import ensure_shared_secret
+        from runner.ops.install import ensure_shared_secret
         with tempfile.TemporaryDirectory() as directory:
             path = self._write(directory, "")
             ensure_shared_secret(path, None)
@@ -333,7 +333,7 @@ class InstallMainTest(unittest.TestCase):
     def _run(self, argv):
         import contextlib
         import sys
-        from runner import install
+        from runner.ops import install
         stack = contextlib.ExitStack()
         for name in self._SIDES:
             stack.enter_context(mock.patch.object(install, name))
@@ -515,7 +515,7 @@ class RunnerMainTest(unittest.TestCase):
         import contextlib
         import sys
         from runner import runner
-        from runner import setup
+        from runner.ops import setup
         stack = contextlib.ExitStack()
         oracle = stack.enter_context(
             mock.patch.object(runner, "oracle_window", return_value=7))
@@ -527,7 +527,7 @@ class RunnerMainTest(unittest.TestCase):
         stack.enter_context(mock.patch.object(setup, "needs_setup", return_value=None))
         stack.enter_context(mock.patch.object(setup, "prompt_yes_no", return_value=False))
         local = stack.enter_context(
-            mock.patch("runner.local_test.main", return_value=4))
+            mock.patch("runner.ops.local_test.main", return_value=4))
         stack.enter_context(mock.patch.object(
             runner, "poll_once", side_effect=AssertionError("poll")))
         stack.enter_context(mock.patch.object(
@@ -701,7 +701,7 @@ class ConnectMailTest(unittest.TestCase):
         import base64
         from runner import runner
         with mock.patch.object(runner.imaplib, "IMAP4_SSL", _FakeIMAP), \
-             mock.patch("runner.mailbox._xoauth2_raw", return_value="raw-token"):
+             mock.patch("runner.wire.mailbox._xoauth2_raw", return_value="raw-token"):
             conn = runner.connect_imap(self._imap_cfg(auth="oauth"))
         sent = b"".join(conn.sent)
         self.assertIn(b"AUTHENTICATE XOAUTH2", sent)
@@ -714,7 +714,7 @@ class ConnectMailTest(unittest.TestCase):
         from runner import runner
         _FakeIMAP.tagged = ("NO", [b"bad"])
         with mock.patch.object(runner.imaplib, "IMAP4_SSL", _FakeIMAP), \
-             mock.patch("runner.mailbox._xoauth2_raw", return_value="raw-token"):
+             mock.patch("runner.wire.mailbox._xoauth2_raw", return_value="raw-token"):
             with self.assertRaises(imaplib.IMAP4.error):
                 runner.connect_imap(self._imap_cfg(auth="oauth"))
 
@@ -729,7 +729,7 @@ class ConnectMailTest(unittest.TestCase):
     def test_smtp_oauth_calls_the_callback_with_no_arguments(self):
         from runner import runner
         with mock.patch.object(runner.smtplib, "SMTP", _FakeSMTP), \
-             mock.patch("runner.mailbox._xoauth2_raw", return_value="raw-token"):
+             mock.patch("runner.wire.mailbox._xoauth2_raw", return_value="raw-token"):
             smtp = runner.connect_smtp(self._smtp_cfg(auth="oauth"))
         self.assertEqual(smtp.auth_mech, "XOAUTH2")
         self.assertEqual(smtp.callback_result, "raw-token")
@@ -746,13 +746,13 @@ class ConnectMailTest(unittest.TestCase):
 
 class AnswerAsOracleTest(unittest.TestCase):
     def test_no_inference_is_rejected(self):
-        from runner.local_test import answer_as_oracle
+        from runner.ops.local_test import answer_as_oracle
         self.assertEqual(
             answer_as_oracle({}, "hello"),
             {"rejected": "inference_unconfigured"})
 
     def test_no_secret_is_rejected(self):
-        from runner.local_test import answer_as_oracle
+        from runner.ops.local_test import answer_as_oracle
         cfg = {"inference": {
             "endpoint": "http://127.0.0.1:9/v1",
             "model": "m",
@@ -763,7 +763,7 @@ class AnswerAsOracleTest(unittest.TestCase):
 
     def test_a_signed_ask_returns_the_model_answer(self):
         from runner import runner
-        from runner.local_test import answer_as_oracle
+        from runner.ops.local_test import answer_as_oracle
         cfg = {
             "inference": {
                 "endpoint": "http://127.0.0.1:9/v1",
@@ -778,7 +778,7 @@ class AnswerAsOracleTest(unittest.TestCase):
 
     def test_a_model_error_is_a_dict(self):
         from runner import runner
-        from runner.local_test import answer_as_oracle
+        from runner.ops.local_test import answer_as_oracle
         cfg = {
             "inference": {
                 "endpoint": "http://127.0.0.1:9/v1",
@@ -796,7 +796,7 @@ class AnswerAsOracleTest(unittest.TestCase):
 class ReplTest(unittest.TestCase):
     def _run(self, cfg, lines, answer):
         import contextlib
-        from runner import local_test
+        from runner.ops import local_test
         buf = io.StringIO()
         queued = iter(lines)
 
@@ -883,7 +883,7 @@ class BrowserChatTest(unittest.TestCase):
 
     def _patches(self, stack, start=True, webui=True, popen=None):
         import subprocess
-        from runner import local_test
+        from runner.ops import local_test
         stack.enter_context(mock.patch.object(
             local_test, "start_si_instance", return_value=start))
         stack.enter_context(mock.patch.object(
@@ -898,7 +898,7 @@ class BrowserChatTest(unittest.TestCase):
 
     def test_a_missing_si_does_not_spawn(self):
         import contextlib
-        from runner.local_test import browser_chat
+        from runner.ops.local_test import browser_chat
         with contextlib.ExitStack() as stack:
             self._patches(stack, start=False)
             code = browser_chat({})
@@ -907,7 +907,7 @@ class BrowserChatTest(unittest.TestCase):
 
     def test_a_missing_webui_does_not_spawn(self):
         import contextlib
-        from runner.local_test import browser_chat
+        from runner.ops.local_test import browser_chat
         buf = io.StringIO()
         with contextlib.ExitStack() as stack, contextlib.redirect_stdout(buf):
             self._patches(stack, start=True, webui=False)
@@ -918,7 +918,7 @@ class BrowserChatTest(unittest.TestCase):
 
     def test_a_ready_chat_terminates_on_interrupt(self):
         import contextlib
-        from runner.local_test import browser_chat
+        from runner.ops.local_test import browser_chat
         with contextlib.ExitStack() as stack:
             self._patches(stack)
             code = browser_chat({})
@@ -934,7 +934,7 @@ class BrowserChatTest(unittest.TestCase):
 
     def test_a_custom_port_is_passed_through(self):
         import contextlib
-        from runner.local_test import browser_chat
+        from runner.ops.local_test import browser_chat
         with contextlib.ExitStack() as stack:
             self._patches(stack)
             code = browser_chat({}, port=9090)
@@ -943,7 +943,7 @@ class BrowserChatTest(unittest.TestCase):
 
     def test_a_spawn_error_returns_1(self):
         import contextlib
-        from runner.local_test import browser_chat
+        from runner.ops.local_test import browser_chat
         with contextlib.ExitStack() as stack:
             self._patches(stack, popen=mock.Mock(side_effect=OSError("missing")))
             code = browser_chat({})

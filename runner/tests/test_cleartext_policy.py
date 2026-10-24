@@ -54,8 +54,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 
-from runner import install as install_mod  # noqa: E402
-from runner import jobcrypto  # noqa: E402
+from runner.ops import install as install_mod  # noqa: E402
+from runner.wire import jobcrypto  # noqa: E402
 from runner import runner as runner_mod  # noqa: E402
 from runner.runner import (  # noqa: E402
     apply_cli_overrides, poll_once, process_transport_message,

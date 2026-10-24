@@ -12,7 +12,7 @@ import threading
 import unittest
 from unittest import mock
 
-from runner.detection import baseline_anomaly, update_baseline
+from runner.oracle.detection import baseline_anomaly, update_baseline
 
 
 def _mode(path):

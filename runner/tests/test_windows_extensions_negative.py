@@ -15,7 +15,7 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import dri, resources, review, senses  # noqa: E402
+from runner.oracle import dri, resources, review, senses  # noqa: E402
 from runner.runner import answer_queries, _redact_patterns  # noqa: E402
 
 
@@ -151,7 +151,7 @@ class WindowsSetupAndWinlogTest(unittest.TestCase):
 
     def test_setup_parse_with_windows_paths(self):
         try:
-            from runner import setup
+            from runner.ops import setup
         except ImportError:
             self.skipTest("setup module not importable")
         cfg = {"base_dir": r"C:\Users\me\.homing-pigeon", "workspace_root": r"D:\work"}
@@ -217,7 +217,7 @@ class WindowsRetentionNegativeTest(unittest.TestCase):
 
 class WindowsSetupNeedsTest(unittest.TestCase):
     def test_needs_setup_on_blank_and_partial(self):
-        from runner import setup
+        from runner.ops import setup
         for cfg in ({}, {"mailbox_user": ""}, {"mailbox_user": "a@b.c"},
                     {"auth": "oauth", "mailbox_user": "a@b.c"}):
             try:
@@ -226,7 +226,7 @@ class WindowsSetupNeedsTest(unittest.TestCase):
                 self.fail(f"needs_setup crashed on {cfg}: {e}")
 
     def test_secret_is_real_rejects_placeholders(self):
-        from runner import setup
+        from runner.ops import setup
         for secret in ("", "generate-with-openssl-rand-hex-32", "changeme", "x" * 8):
             try:
                 setup._secret_is_real(secret)
@@ -236,14 +236,14 @@ class WindowsSetupNeedsTest(unittest.TestCase):
 
 class WindowsOAuthGarbageTest(unittest.TestCase):
     def test_refresh_with_empty_cfg_is_contained(self):
-        from runner import oauth
+        from runner.wire import oauth
         try:
             oauth.refresh_access_token({})
         except Exception:
             pass  # a clean failure is fine; a crash with a weird type is not
 
     def test_xoauth2_raw_with_empty(self):
-        from runner import oauth
+        from runner.wire import oauth
         try:
             raw = oauth.xoauth2_raw("", "")
         except Exception as e:
@@ -253,7 +253,7 @@ class WindowsOAuthGarbageTest(unittest.TestCase):
 
 class WindowsWinlogMessageTest(unittest.TestCase):
     def test_report_event_with_odd_messages(self):
-        from runner.winlog import report_event
+        from runner.ops.winlog import report_event
         for msg in ("", "line\r\nbreak", "üñícode", "x" * 10000, None):
             try:
                 report_event(msg if isinstance(msg, str) else "none", level="WARN")

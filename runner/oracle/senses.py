@@ -459,7 +459,7 @@ def alert_score(alert: dict, weight: float) -> float:
 # ---------------------------------------------------------------------------
 # Optional low-overhead detection (rules, plan budgets, baseline)
 # ---------------------------------------------------------------------------
-# The runner evaluates runner/detection.py after job completion and
+# The runner evaluates runner/oracle/detection.py after job completion and
 # records advisory fields on the result (detection_hits,
 # detection_anomaly, plan_budget_ok). Canary tripwires are separate:
 # they live in runner._canary_watch. This module stays free of heavy

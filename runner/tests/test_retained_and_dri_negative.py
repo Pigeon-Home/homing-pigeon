@@ -15,7 +15,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, REPO)
 
 from runner.runner import save_retained, load_retained  # noqa: E402
-from runner import dri  # noqa: E402
+from runner.oracle import dri  # noqa: E402
 
 
 class RetainedAndDriNegative(unittest.TestCase):

@@ -22,7 +22,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 # file can never shadow the runner package for other test modules.
 _spec = importlib.util.spec_from_file_location(
     "install_onehome_under_test",
-    os.path.join(REPO, "runner", "install.py"))
+    os.path.join(REPO, "runner", "ops", "install.py"))
 install = importlib.util.module_from_spec(_spec)
 sys.modules["install_onehome_under_test"] = install
 _spec.loader.exec_module(install)
@@ -149,9 +149,10 @@ class ReceiptTest(unittest.TestCase):
 class InstallFilesTest(unittest.TestCase):
     def _src(self, t):
         src = os.path.join(t, "src")
-        for name in ("runner.py", "oauth.py", "winlog.py",
+        for name in ("runner.py", "wire/__init__.py", "wire/oauth.py",
+                     "ops/__init__.py", "ops/winlog.py",
                      "config.example.json"):
-            _seed(os.path.join(src, name), '{"example": true}\n')
+            _seed(os.path.join(src, *name.split("/")), '{"example": true}\n')
         return src
 
     def test_seeds_config_and_never_overwrites(self):
@@ -161,8 +162,9 @@ class InstallFilesTest(unittest.TestCase):
             cfg = os.path.join(t, "home", "config.json")
             with redirect_stdout(io.StringIO()):
                 self.assertTrue(install_files(src, bin_dir, cfg))
-            for name in ("runner.py", "oauth.py", "winlog.py"):
-                self.assertTrue(os.path.isfile(os.path.join(bin_dir, name)))
+            for name in ("runner.py", "wire/oauth.py", "ops/winlog.py"):
+                self.assertTrue(os.path.isfile(
+                    os.path.join(bin_dir, *name.split("/"))))
             with open(cfg, encoding="utf-8") as fh:
                 self.assertEqual(json.load(fh), {"example": True})
             # A second run leaves an existing config alone.

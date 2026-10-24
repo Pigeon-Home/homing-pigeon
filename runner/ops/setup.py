@@ -26,21 +26,21 @@ import sys
 import threading
 
 try:
-    from runner.oauth import browser_consent, refresh_access_token
+    from runner.wire.oauth import browser_consent, refresh_access_token
 except ImportError:  # running from inside runner/ as __main__
     try:
-        from oauth import browser_consent, refresh_access_token
+        from wire.oauth import browser_consent, refresh_access_token
     except ImportError:
         browser_consent = None
         refresh_access_token = None
 
 try:
-    from runner.install import _looks_like_placeholder as _placeholder
-    from runner.install import _looks_patterned as _patterned
+    from runner.ops.install import _looks_like_placeholder as _placeholder
+    from runner.ops.install import _looks_patterned as _patterned
 except ImportError:
     try:
-        from install import _looks_like_placeholder as _placeholder
-        from install import _looks_patterned as _patterned
+        from ops.install import _looks_like_placeholder as _placeholder
+        from ops.install import _looks_patterned as _patterned
     except ImportError:
         _placeholder = _patterned = None
 
@@ -88,7 +88,7 @@ def _example_candidates():
     next to homing-pigeon.exe. A frozen build may also unpack it under
     _MEIPASS. The first readable file wins.
     """
-    here = os.path.dirname(os.path.abspath(__file__))
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     found = [os.path.join(here, "config.example.json")]
     meipass = getattr(sys, "_MEIPASS", None)
     if meipass:
@@ -234,9 +234,9 @@ def _mailbox_probe(cfg: dict) -> str | None:
         ctx = ssl.create_default_context()
         imap = imaplib.IMAP4_SSL("imap.gmail.com", 993, ssl_context=ctx)
         try:
-            from runner.oauth import xoauth2_raw
+            from runner.wire.oauth import xoauth2_raw
         except ImportError:
-            from oauth import xoauth2_raw
+            from wire.oauth import xoauth2_raw
         auth_str = xoauth2_raw(cfg["mailbox_user"], token)
         imap.authenticate("XOAUTH2", lambda _: auth_str)  # pyrefly: ignore[bad-argument-type]  # imaplib accepts the str at runtime; typeshed wants bytes
         imap.logout()
@@ -253,7 +253,7 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
     shared secret once for the owner to accept, writes the file.
     """
     if browser_consent is None:
-        raise SystemExit("setup needs runner/oauth.py on the path")
+        raise SystemExit("setup needs runner/wire/oauth.py on the path")
     if cfg is None:
         try:
             with open(cfg_path, encoding="utf-8") as fh:

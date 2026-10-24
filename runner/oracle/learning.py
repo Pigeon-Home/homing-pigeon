@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The Oracle's self-learning loop: episodic, auditable, local.
 
-The opinion machinery (runner/opinion.py) forms a call before a
+The opinion machinery (runner/oracle/opinion.py) forms a call before a
 job runs. This module closes the loop DRU asked for
 (2026-10-19): when the job finishes, the call is compared with
 what actually happened, the comparison is written to a local
@@ -70,9 +70,9 @@ import re
 import threading
 
 try:
-    from runner import confval as _confval
+    from runner.guard import confval as _confval
 except ImportError:
-    import confval as _confval  # type: ignore
+    from guard import confval as _confval  # type: ignore
 from datetime import datetime, timezone
 
 LEDGER_FILE = "oracle-learning.jsonl"

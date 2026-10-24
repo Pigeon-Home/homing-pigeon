@@ -1,4 +1,4 @@
-"""The Oracle's self-learning loop (runner/learning.py).
+"""The Oracle's self-learning loop (runner/oracle/learning.py).
 
 The loop: an opinion call is frozen before a job runs, scored
 against the verified outcome when the job finishes, written to
@@ -22,9 +22,9 @@ from datetime import datetime, timezone
 from email.message import EmailMessage
 from unittest import mock
 
-from runner import jobcrypto
-from runner import learning as L
-from runner import opinion as op
+from runner.wire import jobcrypto
+from runner.oracle import learning as L
+from runner.oracle import opinion as op
 from runner import runner
 
 SECRET = "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"

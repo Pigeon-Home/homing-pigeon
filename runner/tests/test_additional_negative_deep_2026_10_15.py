@@ -35,7 +35,7 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import dri, resources
+from runner.oracle import dri, resources
 from runner.runner import (
     check_rate_limit, load_retained, save_retained,
     snapshot_outside, confinement_violated, poll_once, sign_payload

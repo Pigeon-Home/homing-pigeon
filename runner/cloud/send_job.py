@@ -25,7 +25,7 @@ Usage:
 
 Jobs are ENCRYPTED by default (per-job encryption: the signed body is
 wrapped in a signed AES-256-GCM envelope keyed from the shared
-secret -- see runner/jobcrypto.py). `new --cleartext` produces the
+secret -- see runner/wire/jobcrypto.py). `new --cleartext` produces the
 plain HMAC-signed body instead. The runner refuses that body unless
 it was started with --allow-cleartext. The shared secret is required
 either way.
@@ -49,14 +49,14 @@ from datetime import datetime, timezone
 _RUNNER_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from runner import jobcrypto
+    from runner.wire import jobcrypto
 except ImportError:  # run by path: load the one implementation by file
     import importlib.util
-    _jc_path = os.path.join(_RUNNER_DIR, "jobcrypto.py")
+    _jc_path = os.path.join(_RUNNER_DIR, "wire", "jobcrypto.py")
     _jc_spec = importlib.util.spec_from_file_location(
         "hp_jobcrypto", _jc_path)
     if _jc_spec is None or _jc_spec.loader is None:
-        raise ImportError("runner/jobcrypto.py not loadable")
+        raise ImportError("runner/wire/jobcrypto.py not loadable")
     jobcrypto = importlib.util.module_from_spec(_jc_spec)
     _jc_spec.loader.exec_module(jobcrypto)
 
@@ -88,7 +88,7 @@ def normalize(text: str) -> str:
 
 # The protocol requires the shared secret to carry at least 128 bits
 # of entropy on the sender as well as the runner. The estimator and
-# the pattern check mirror runner/security.py (validate_shared_
+# the pattern check mirror runner/guard/security.py (validate_shared_
 # secret); the two implementations must stay in step.
 def _estimate_secret_entropy(secret) -> float:
     """Rough entropy estimate in bits: length x log2(alphabet size)."""

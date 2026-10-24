@@ -9,7 +9,7 @@ numeric string; a non-numeric string; a several-hundred-digit integer
 -inf; NaN; the wrong container type -- and the row's policy is
 asserted:
 
-- probe "confval": the value goes through runner/confval.py, the
+- probe "confval": the value goes through runner/guard/confval.py, the
   reader the row's code uses, with the row's default and bounds.
   An unusable shape must read as the documented default; a usable
   one must come through. (At the reader, "omitted" and "null"
@@ -54,11 +54,11 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from runner import confval  # noqa: E402
-from runner import dri as _dri  # noqa: E402
-from runner import mailbox as _mailbox  # noqa: E402
-from runner import resources as _resources  # noqa: E402
-from runner import verify as _verify  # noqa: E402
+from runner.guard import confval  # noqa: E402
+from runner.oracle import dri as _dri  # noqa: E402
+from runner.wire import mailbox as _mailbox  # noqa: E402
+from runner.oracle import resources as _resources  # noqa: E402
+from runner.wire import verify as _verify  # noqa: E402
 from runner.tests.defaults_registry import ROWS  # noqa: E402
 from runner.tests.defaults_registry import (  # noqa: E402,F401
     ConfvalCoverageGuardTests, DocDriftGuardTests, RegistryShapeTests)

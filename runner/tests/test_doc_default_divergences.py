@@ -10,7 +10,7 @@ import json
 import tempfile
 import unittest
 
-from runner.senses import load_alerts, store_alert
+from runner.oracle.senses import load_alerts, store_alert
 
 NOW = "2026-10-23T05:50:22Z"
 
@@ -32,7 +32,7 @@ class TestMissingSeverityDefaultsToInfoOnReadBack(unittest.TestCase):
         stored alerts back through load_alerts(severity_floor=...).
 
     (b) How the bug was found: the campaign's doc-default hunt
-        (2026-10-22 22:51 PDT tick) exercised runner/senses.py with
+        (2026-10-22 22:51 PDT tick) exercised runner/oracle/senses.py with
         the severity key omitted and varied -- omitted key, explicit
         None, the ingest gate, and the score function -- then stored
         a severity-less record with the module's own store_alert and
@@ -673,11 +673,11 @@ class TestZeroOrNegativePlanBudgetDefaults(unittest.TestCase):
 
     (a) Doc claim (docs/configuring-oracle.md, line 68):
         "`max_plan_steps` / `max_plan_timeout_sec` -- caps the
-        detection layer (`runner/detection.py`) applies to a
+        detection layer (`runner/oracle/detection.py`) applies to a
         multi-step plan: at most this many steps (default 8)
         and this much total timeout in seconds (default 600)."
         The function's own docstring states the same
-        (runner/detection.py, lines 104-105): "cfg may contain
+        (runner/oracle/detection.py, lines 104-105): "cfg may contain
         max_plan_steps (default 8) and max_plan_timeout_sec
         (default 600)."
         Neither document gives 0 a special meaning for these
@@ -686,7 +686,7 @@ class TestZeroOrNegativePlanBudgetDefaults(unittest.TestCase):
 
     (b) How the bug was found: the campaign's doc-default hunt
         (2026-10-23 03:36 PDT tick) exercised
-        runner.detection.check_plan_budget with the caps left
+        runner.oracle.detection.check_plan_budget with the caps left
         unset and varied around them -- keys omitted, explicit
         8 / 600, explicit None (JSON null), a non-numeric
         string ("bogus"), 0, and -5 -- each against a one-step
@@ -716,25 +716,25 @@ class TestZeroOrNegativePlanBudgetDefaults(unittest.TestCase):
     _PLAN = [{"timeout_sec": 10}]
 
     def test_zero_max_plan_steps_defaults_to_8(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_steps": 0})
         self.assertTrue(ok, reason)
 
     def test_negative_max_plan_steps_defaults_to_8(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_steps": -5})
         self.assertTrue(ok, reason)
 
     def test_zero_max_plan_timeout_defaults_to_600(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_timeout_sec": 0})
         self.assertTrue(ok, reason)
 
     def test_negative_max_plan_timeout_defaults_to_600(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_timeout_sec": -5})
         self.assertTrue(ok, reason)
@@ -825,14 +825,14 @@ class TestInfinitePromoteAfterDefaultsTo2(unittest.TestCase):
         it is treated as corroborated and may select among
         the existing mechanical repairs ... Default `2`."
         The same default is stated in the learning module's
-        own docstring (runner/learning.py, line 29:
+        own docstring (runner/oracle/learning.py, line 29:
         "(oracle_learning_promote_after, default 2, with no
         intervening contradiction)") and in
         docs/design/oracle-opinion-design.md (line 188).
 
     (b) How the bug was found: the campaign's doc-default hunt
         (2026-10-23 06:21 PDT tick) exercised
-        runner.learning.promote_after with the key left unset
+        runner.oracle.learning.promote_after with the key left unset
         and varied around it -- key omitted, explicit None,
         a non-numeric string ("bogus"), 0, -5, NaN, a valid
         3, a numeric string ("4"), float("inf"), and
@@ -847,7 +847,7 @@ class TestInfinitePromoteAfterDefaultsTo2(unittest.TestCase):
         (2) -- 0 and -5 through the reader's own below-1
         fallback, the rest through its unparseable fallback
         -- and 3 / "4" are honored. The infinite forms do
-        not: promote_after (runner/learning.py lines
+        not: promote_after (runner/oracle/learning.py lines
         137-139) guards int(cfg.get(...)) with
         `except (TypeError, ValueError)` only, and
         int(float("inf")) raises OverflowError, which
@@ -873,14 +873,14 @@ class TestInfinitePromoteAfterDefaultsTo2(unittest.TestCase):
     """
 
     def test_infinite_promote_after_defaults_to_2(self):
-        from runner.learning import promote_after
+        from runner.oracle.learning import promote_after
         self.assertEqual(
             promote_after(
                 {"oracle_learning_promote_after": float("inf")}),
             2)
 
     def test_negative_infinite_promote_after_defaults_to_2(self):
-        from runner.learning import promote_after
+        from runner.oracle.learning import promote_after
         self.assertEqual(
             promote_after(
                 {"oracle_learning_promote_after": float("-inf")}),
@@ -900,11 +900,11 @@ class TestHugeSensorWeightDefaultsToOne(unittest.TestCase):
         (docs/senses.md, line 325): alerts are ranked by
         "score = weight x severity", and alert_score's own
         fallback for an unparseable weight is the default
-        1.0 (runner/senses.py, lines 407-410).
+        1.0 (runner/oracle/senses.py, lines 407-410).
 
     (b) How the bug was found: the campaign's doc-default hunt
         (2026-10-23 06:41 PDT tick) exercised
-        runner.senses.alert_score with the weight left unset
+        runner.oracle.senses.alert_score with the weight left unset
         and varied around it -- key omitted via the callers'
         rec.get("weight", 1.0), explicit None, a non-numeric
         string ("bogus"), a numeric string ("2"), 0, -1,
@@ -914,7 +914,7 @@ class TestHugeSensorWeightDefaultsToOne(unittest.TestCase):
         Python's json parses a several-hundred-digit number
         into an arbitrary-precision int, and the DRI fused
         score path passes a stored record's own weight
-        straight in (runner/dri.py: rec.get("weight", 1.0)).
+        straight in (runner/oracle/dri.py: rec.get("weight", 1.0)).
 
     (c) Behavior actually observed: omitted, None, and
         "bogus" all read as the documented default (an info
@@ -944,12 +944,12 @@ class TestHugeSensorWeightDefaultsToOne(unittest.TestCase):
     """
 
     def test_huge_int_weight_defaults_to_one(self):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, 10**400), 0.5)
 
     def test_huge_int_weight_from_json_defaults_to_one(self):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         record = json.loads(
             '{"severity": "high", "weight": 1' + "0" * 400 + "}")
         self.assertEqual(
@@ -965,7 +965,7 @@ class TestHugeResourcesValueIsConfigError(unittest.TestCase):
 
     (a) Doc claim (docs/configuring-oracle.md, line 72):
         "`resources` -- the built-in resource monitor
-        (`runner/resources.py`) ... `enabled` (default
+        (`runner/oracle/resources.py`) ... `enabled` (default
         true), `threshold` (default 0.95; the CPU, memory,
         or disk fraction whose crossing files a
         `resource_pressure` security event; must be in
@@ -983,7 +983,7 @@ class TestHugeResourcesValueIsConfigError(unittest.TestCase):
 
     (b) How the bug was found: the campaign's doc-default
         hunt (2026-10-23 07:01 PDT tick) exercised
-        runner.resources.parse_resources with the block
+        runner.oracle.resources.parse_resources with the block
         left unset and varied around it -- block omitted,
         explicit None, keys omitted, a non-numeric string
         ("bogus"), infinity, and huge integers (10**400)
@@ -1001,7 +1001,7 @@ class TestHugeResourcesValueIsConfigError(unittest.TestCase):
         OverflowError, and parse_resources guards its
         float() conversions with
         `except (TypeError, ValueError)` only
-        (runner/resources.py lines 45-46 and 51-52), so
+        (runner/oracle/resources.py lines 45-46 and 51-52), so
         the error escapes the reader raw. It escapes the
         next layer too: check_resources catches only
         (RuntimeError, AttributeError, TypeError) around
@@ -1013,7 +1013,7 @@ class TestHugeResourcesValueIsConfigError(unittest.TestCase):
         once as the config error the docs promise.
         Sibling float readers include OverflowError in
         their fallback guard: parse_sensors and
-        gate_alert (runner/senses.py) and _cfg_size
+        gate_alert (runner/oracle/senses.py) and _cfg_size
         (runner/runner.py) all catch it; this reader is
         the outlier.
 
@@ -1023,18 +1023,18 @@ class TestHugeResourcesValueIsConfigError(unittest.TestCase):
     """
 
     def test_huge_threshold_is_config_error(self):
-        from runner.resources import parse_resources
+        from runner.oracle.resources import parse_resources
         with self.assertRaises(RuntimeError):
             parse_resources({"resources": {"threshold": 10**400}})
 
     def test_huge_cooldown_is_config_error(self):
-        from runner.resources import parse_resources
+        from runner.oracle.resources import parse_resources
         with self.assertRaises(RuntimeError):
             parse_resources(
                 {"resources": {"cooldown_sec": 10**400}})
 
     def test_huge_threshold_check_resources_returns_none(self):
-        from runner.resources import check_resources
+        from runner.oracle.resources import check_resources
         with tempfile.TemporaryDirectory() as base:
             self.assertIsNone(check_resources(
                 {"resources": {"threshold": 10**400}}, base))
@@ -1140,7 +1140,7 @@ class TestBooleanReviewScanBytesDefaultsTo65536(unittest.TestCase):
 
     (b) How the bug was found: the campaign's doc-default hunt
         (2026-10-23 07:16 PDT tick) exercised
-        runner.review._review_scan_bytes with the key left
+        runner.oracle.review._review_scan_bytes with the key left
         unset and varied around it -- key omitted, explicit
         None, False, a non-numeric string ("bogus"), 0, a
         negative value (-5), float("inf"), a valid value
@@ -1150,7 +1150,7 @@ class TestBooleanReviewScanBytesDefaultsTo65536(unittest.TestCase):
     (c) Behavior actually observed: omitted, None, False,
         "bogus", 0, -5, and infinity all return the
         documented default 65536, and 123 is honored. True
-        does not: _review_scan_bytes (runner/review.py)
+        does not: _review_scan_bytes (runner/oracle/review.py)
         computes int(cfg.get("review_scan_bytes", 65536))
         with no boolean guard, int(True) is 1, and 1 passes
         its `n > 0` check, so the reviewer scans exactly
@@ -1159,7 +1159,7 @@ class TestBooleanReviewScanBytesDefaultsTo65536(unittest.TestCase):
         Sibling size/count readers in the same codebase
         exclude booleans explicitly -- runner.runner._cfg_size
         ("Booleans are not sizes") and
-        runner.remediation._pos_int both return the default
+        runner.oracle.remediation._pos_int both return the default
         for a boolean -- only this reader lets one through
         as the number 1. Observed on 2026-10-23:
         _review_scan_bytes({"review_scan_bytes": True})
@@ -1171,7 +1171,7 @@ class TestBooleanReviewScanBytesDefaultsTo65536(unittest.TestCase):
     """
 
     def test_true_review_scan_bytes_defaults_to_65536(self):
-        from runner.review import _review_scan_bytes
+        from runner.oracle.review import _review_scan_bytes
         self.assertEqual(
             _review_scan_bytes({"review_scan_bytes": True}), 65536)
 
@@ -1214,7 +1214,7 @@ class TestBooleanRetentionDaysDefaultsTo7(unittest.TestCase):
         retained-output store from a boolean typo. Sibling
         readers exclude booleans explicitly --
         runner.runner._cfg_size ("Booleans are not sizes"),
-        runner.remediation._pos_int, and the inference
+        runner.oracle.remediation._pos_int, and the inference
         config validator's `is True` refusal -- only this
         reader lets one through as a number. Observed on
         2026-10-23: _retention_days({"output_retention_days":
@@ -1248,7 +1248,7 @@ class TestBooleanV2AnswerDeadlineDefaultsTo0(unittest.TestCase):
 
     (b) How the bug was found: the campaign's doc-default
         hunt (2026-10-23 08:01 PDT tick) exercised
-        runner.protocol_v2.deadline_of -- the reader for
+        runner.wire.protocol_v2.deadline_of -- the reader for
         this config key -- with the key left unset and
         varied around it -- omitted, explicit None, a
         non-numeric string ("bogus"), float("inf"),
@@ -1265,12 +1265,12 @@ class TestBooleanV2AnswerDeadlineDefaultsTo0(unittest.TestCase):
         for, instead of the documented one-look-no-wait
         default. The same module excludes booleans for
         this very concept elsewhere: the wait loop
-        (runner/protocol_v2.py line 482) reads a deadline
+        (runner/wire/protocol_v2.py line 482) reads a deadline
         with `not isinstance(deadline, int) or
         isinstance(deadline, bool)` and falls back to 0,
         and validate (line 263) rejects a boolean
         deadline outright; sibling config readers
-        (runner.runner._cfg_size, runner.remediation
+        (runner.runner._cfg_size, runner.oracle.remediation
         ._pos_int) likewise exclude booleans. Only this
         reader lets one through as a number. Observed on
         2026-10-23: deadline_of({"v2_answer_deadline_sec":
@@ -1284,7 +1284,7 @@ class TestBooleanV2AnswerDeadlineDefaultsTo0(unittest.TestCase):
     """
 
     def test_true_v2_answer_deadline_defaults_to_0(self):
-        from runner.protocol_v2 import deadline_of
+        from runner.wire.protocol_v2 import deadline_of
         self.assertEqual(
             deadline_of({"v2_answer_deadline_sec": True}), 0)
 
@@ -1326,7 +1326,7 @@ class TestBooleanQueryBudgetDefaultsTo8(unittest.TestCase):
         Sibling readers exclude booleans explicitly --
         runner.runner._cfg_size ("Booleans are not
         sizes"), runner.runner._query_limit (True is -1,
-        never 1), runner.remediation._pos_int, and the
+        never 1), runner.oracle.remediation._pos_int, and the
         inference config validator's `is True` refusal --
         only this reader lets one through as a number on
         both of its inputs. Observed on 2026-10-23:
@@ -1409,7 +1409,7 @@ class TestBooleanWakeCooldownDefaultsTo900(unittest.TestCase):
         for True and the documented off value for False;
         sibling config readers likewise exclude booleans
         explicitly -- runner.runner._cfg_size ("Booleans
-        are not sizes"), runner.remediation._pos_int, and
+        are not sizes"), runner.oracle.remediation._pos_int, and
         runner.runner._retention_days' sibling readers
         recorded above -- only this reader lets one
         through as a number. Observed on 2026-10-23:
@@ -1481,7 +1481,7 @@ class TestBooleanMaxOutputBytesDefaultsTo100000(unittest.TestCase):
         effectively destroyed by a boolean typo. Sibling
         readers exclude booleans explicitly --
         runner.runner._cfg_size ("Booleans are not
-        sizes"), runner.remediation._pos_int, and the
+        sizes"), runner.oracle.remediation._pos_int, and the
         inference config validator's `is True` refusal --
         only this reader lets one through as a number.
         Observed on 2026-10-23: execute_job with
@@ -1521,12 +1521,12 @@ class TestBooleanPlanBudgetDefaults(unittest.TestCase):
 
     (a) Doc claim (docs/configuring-oracle.md, line 68):
         "`max_plan_steps` / `max_plan_timeout_sec` -- caps
-        the detection layer (`runner/detection.py`) applies
+        the detection layer (`runner/oracle/detection.py`) applies
         to a multi-step plan: at most this many steps
         (default 8) and this much total timeout in seconds
         (default 600)."
         The function's own docstring states the same
-        (runner/detection.py, lines 104-105): "cfg may
+        (runner/oracle/detection.py, lines 104-105): "cfg may
         contain max_plan_steps (default 8) and
         max_plan_timeout_sec (default 600)."
         No document gives a boolean a special meaning for
@@ -1537,7 +1537,7 @@ class TestBooleanPlanBudgetDefaults(unittest.TestCase):
 
     (b) How the bug was found: the campaign's doc-default
         hunt (2026-10-23 08:21 PDT tick) exercised
-        runner.detection.check_plan_budget with the caps
+        runner.oracle.detection.check_plan_budget with the caps
         left unset and varied around them -- keys omitted,
         explicit 8 / 600, explicit None (JSON null), a
         non-numeric string ("bogus"), 0, -5, and the
@@ -1555,7 +1555,7 @@ class TestBooleanPlanBudgetDefaults(unittest.TestCase):
         -- and False reads as a cap of 0, rejecting every
         plan outright. Sibling readers exclude booleans
         explicitly -- runner.runner._cfg_size ("Booleans
-        are not sizes"), runner.remediation._pos_int, and
+        are not sizes"), runner.oracle.remediation._pos_int, and
         the inference config validator's `is True`
         refusal -- only this reader lets one through as
         a number on both of its inputs. Observed on
@@ -1572,25 +1572,25 @@ class TestBooleanPlanBudgetDefaults(unittest.TestCase):
     _PLAN = [{"timeout_sec": 10}, {"timeout_sec": 10}]
 
     def test_true_max_plan_steps_defaults_to_8(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_steps": True})
         self.assertTrue(ok, reason)
 
     def test_false_max_plan_steps_defaults_to_8(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_steps": False})
         self.assertTrue(ok, reason)
 
     def test_true_max_plan_timeout_defaults_to_600(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_timeout_sec": True})
         self.assertTrue(ok, reason)
 
     def test_false_max_plan_timeout_defaults_to_600(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             self._PLAN, {"max_plan_timeout_sec": False})
         self.assertTrue(ok, reason)
@@ -1604,7 +1604,7 @@ class TestBooleanResourcesValuesAreConfigErrors(unittest.TestCase):
 
     (a) Doc claim (docs/configuring-oracle.md, line 72):
         "`resources` -- the built-in resource monitor
-        (`runner/resources.py`) ... `enabled` (default
+        (`runner/oracle/resources.py`) ... `enabled` (default
         true), `threshold` (default 0.95; the CPU, memory,
         or disk fraction whose crossing files a
         `resource_pressure` security event; must be in
@@ -1613,7 +1613,7 @@ class TestBooleanResourcesValuesAreConfigErrors(unittest.TestCase):
         resource). A malformed block is a startup config
         error."
         The reader's own error strings state the same
-        contract (runner/resources.py): a threshold that
+        contract (runner/oracle/resources.py): a threshold that
         is not a number raises "config error:
         resources.threshold must be a number", a cooldown
         that is not a number raises "config error:
@@ -1625,7 +1625,7 @@ class TestBooleanResourcesValuesAreConfigErrors(unittest.TestCase):
 
     (b) How the bug was found: the campaign's doc-default
         hunt (2026-10-23 08:56 PDT tick) exercised
-        runner.resources.parse_resources -- the single
+        runner.oracle.resources.parse_resources -- the single
         reader that validates the resources block -- with
         the block left unset and varied around it: block
         omitted, empty block, explicit documented defaults
@@ -1649,7 +1649,7 @@ class TestBooleanResourcesValuesAreConfigErrors(unittest.TestCase):
         range check, not because the boolean was refused.)
         Sibling readers exclude booleans explicitly --
         runner.runner._cfg_size ("Booleans are not
-        sizes"), runner.remediation._pos_int, this same
+        sizes"), runner.oracle.remediation._pos_int, this same
         reader's own `enabled` check, and the inference
         config validator's `is True` refusal -- only these
         two float() conversions let one through as a
@@ -1667,17 +1667,17 @@ class TestBooleanResourcesValuesAreConfigErrors(unittest.TestCase):
     """
 
     def test_true_threshold_is_config_error(self):
-        from runner.resources import parse_resources
+        from runner.oracle.resources import parse_resources
         with self.assertRaises(RuntimeError):
             parse_resources({"resources": {"threshold": True}})
 
     def test_true_cooldown_is_config_error(self):
-        from runner.resources import parse_resources
+        from runner.oracle.resources import parse_resources
         with self.assertRaises(RuntimeError):
             parse_resources({"resources": {"cooldown_sec": True}})
 
     def test_false_cooldown_is_config_error(self):
-        from runner.resources import parse_resources
+        from runner.oracle.resources import parse_resources
         with self.assertRaises(RuntimeError):
             parse_resources({"resources": {"cooldown_sec": False}})
 
@@ -1693,12 +1693,12 @@ class TestBooleanPromoteAfterDefaultsTo2(unittest.TestCase):
         it is treated as corroborated and may select among
         the existing mechanical repairs ... Default `2`."
         The same default is stated in the reader's own
-        docstring (runner/learning.py, promote_after:
+        docstring (runner/oracle/learning.py, promote_after:
         "Default 2").
 
     (b) How the bug was found: the campaign's doc-default
         hunt (2026-10-23 09:01 PDT tick) exercised
-        runner.learning.promote_after -- the single reader
+        runner.oracle.learning.promote_after -- the single reader
         for this config key -- with the key left unset and
         varied around it: omitted, explicit None, a
         non-numeric string ("bogus"), 0, -5, NaN, a valid
@@ -1719,8 +1719,8 @@ class TestBooleanPromoteAfterDefaultsTo2(unittest.TestCase):
         boolean was refused. Sibling numeric readers
         exclude booleans explicitly (runner.runner
         ._cfg_size: "Booleans are not sizes";
-        runner.remediation._pos_int;
-        runner.protocol_v2.deadline_of's sibling wait
+        runner.oracle.remediation._pos_int;
+        runner.wire.protocol_v2.deadline_of's sibling wait
         reader); this reader is the outlier for this key.
         Observed on 2026-10-23: promote_after(
         {"oracle_learning_promote_after": True})
@@ -1732,7 +1732,7 @@ class TestBooleanPromoteAfterDefaultsTo2(unittest.TestCase):
     """
 
     def test_true_promote_after_defaults_to_2(self):
-        from runner.learning import promote_after
+        from runner.oracle.learning import promote_after
         self.assertEqual(
             promote_after({"oracle_learning_promote_after": True}), 2)
 
@@ -1749,7 +1749,7 @@ class TestBooleanSensorCooldownDefaultsToZero(unittest.TestCase):
 
     (b) How the bug was found: the campaign's doc-default hunt
         (2026-10-23 09:06 PDT tick) exercised
-        runner.senses.gate_alert -- the ingest gate that reads
+        runner.oracle.senses.gate_alert -- the ingest gate that reads
         this profile knob -- with the key left unset and varied
         around it: omitted, explicit None, a non-numeric string
         ("bogus"), 0, a valid 300, and the booleans True and
@@ -1769,8 +1769,8 @@ class TestBooleanSensorCooldownDefaultsToZero(unittest.TestCase):
         cooldown_sec to 1.0 instead of refusing it or reading
         the default. Sibling numeric readers exclude booleans
         explicitly (runner.runner._cfg_size: "Booleans are
-        not sizes"; runner.remediation._pos_int;
-        runner.security.audit_max_lines); this reader is the
+        not sizes"; runner.oracle.remediation._pos_int;
+        runner.guard.security.audit_max_lines); this reader is the
         outlier. Observed on 2026-10-23: gate_alert(
         {"profile": {"cooldown_sec": True}},
         {"severity": "info", "title": "same"},
@@ -1786,7 +1786,7 @@ class TestBooleanSensorCooldownDefaultsToZero(unittest.TestCase):
     def test_true_cooldown_defaults_to_zero_no_dedup(self):
         from datetime import datetime, timezone
 
-        from runner.senses import gate_alert
+        from runner.oracle.senses import gate_alert
         now = datetime(2026, 10, 23, 5, 50, 22,
                        tzinfo=timezone.utc).timestamp()
         self.assertIsNone(gate_alert(
@@ -1807,7 +1807,7 @@ class TestBooleanSensorMaxPerHourDefaultsToZero(unittest.TestCase):
 
     (b) How the bug was found: the campaign's doc-default hunt
         (2026-10-23 09:16 PDT tick) exercised
-        runner.senses.gate_alert -- the ingest gate that reads
+        runner.oracle.senses.gate_alert -- the ingest gate that reads
         this profile knob -- with the key left unset and varied
         around it: omitted, explicit None, a non-numeric string
         ("bogus"), 0, a valid 60, a huge integer (10**400), and
@@ -1822,16 +1822,16 @@ class TestBooleanSensorMaxPerHourDefaultsToZero(unittest.TestCase):
         unlimited default or a cap not yet reached). True does
         not fall back: gate_alert computes
         float(profile.get("max_per_hour") or 0) with no boolean
-        guard (runner/senses.py line 221), so float(True) is
+        guard (runner/oracle/senses.py line 221), so float(True) is
         1.0, the > 0 check passes, the one recent alert counts
         as n=1 >= cap=1, and the new alert is dropped as
         "over max_per_hour 1". The config validator shares the
         shape: parse_sensors likewise converts a boolean
-        max_per_hour to 1.0 (runner/senses.py lines 93-103)
+        max_per_hour to 1.0 (runner/oracle/senses.py lines 93-103)
         instead of refusing it or reading the default.
         Sibling numeric readers exclude booleans explicitly
         (runner.runner._cfg_size: "Booleans are not sizes";
-        runner.remediation._pos_int; runner.resources'
+        runner.oracle.remediation._pos_int; runner.oracle.resources'
         enabled check); this reader is the outlier. Observed
         on 2026-10-23: gate_alert(
         {"profile": {"max_per_hour": True}},
@@ -1848,7 +1848,7 @@ class TestBooleanSensorMaxPerHourDefaultsToZero(unittest.TestCase):
     def test_true_max_per_hour_defaults_to_zero_unlimited(self):
         from datetime import datetime, timezone
 
-        from runner.senses import gate_alert
+        from runner.oracle.senses import gate_alert
         now = datetime(2026, 10, 23, 5, 50, 22,
                        tzinfo=timezone.utc).timestamp()
         self.assertIsNone(gate_alert(
@@ -1871,7 +1871,7 @@ class TestBooleanDriValuesAreConfigErrors(unittest.TestCase):
         "digest_window_sec": 300 -- and those are exactly
         the values the reader returns when the keys are
         omitted, i.e. they are the defaults. The reader's
-        own contract states the rest (runner/dri.py,
+        own contract states the rest (runner/oracle/dri.py,
         parse_dri): it validates cfg["dri"] and raises
         RuntimeError on a config error; a threshold or
         window that is not a number raises "config error:
@@ -1885,7 +1885,7 @@ class TestBooleanDriValuesAreConfigErrors(unittest.TestCase):
 
     (b) How the bug was found: the campaign's doc-default
         hunt (2026-10-23 09:21 PDT tick) exercised
-        runner.dri.parse_dri -- the single reader that
+        runner.oracle.dri.parse_dri -- the single reader that
         validates the dri block -- with the block left
         unset and varied around it: block omitted, empty
         block, explicit documented defaults (6.0/600,
@@ -1902,7 +1902,7 @@ class TestBooleanDriValuesAreConfigErrors(unittest.TestCase):
         digest 300.0); "bogus" and the huge integer raise
         the documented RuntimeError config error.
         The booleans do not: parse_dri converts with
-        float()/int() and no boolean guard (runner/dri.py
+        float()/int() and no boolean guard (runner/oracle/dri.py
         lines 80-81, 98-99, and 106-107), so
         cooldown_sec True reads as 1.0 second and False
         as 0.0 instead of the documented 3600,
@@ -1912,8 +1912,8 @@ class TestBooleanDriValuesAreConfigErrors(unittest.TestCase):
         trigger), and key_probe threshold True reads as
         1 instead of 5. Sibling readers exclude booleans
         explicitly -- runner.runner._cfg_size ("Booleans
-        are not sizes"), runner.remediation._pos_int,
-        runner.security.audit_max_lines, and this same
+        are not sizes"), runner.oracle.remediation._pos_int,
+        runner.guard.security.audit_max_lines, and this same
         reader's own `enabled` check; these float()/int()
         conversions are the outliers. Observed on
         2026-10-23: parse_dri({"dri": {"cooldown_sec":
@@ -1929,28 +1929,28 @@ class TestBooleanDriValuesAreConfigErrors(unittest.TestCase):
     """
 
     def test_true_cooldown_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"cooldown_sec": True}})
 
     def test_false_cooldown_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"cooldown_sec": False}})
 
     def test_true_digest_window_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"digest_window_sec": True}})
 
     def test_true_sensor_fused_threshold_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"triggers": {
                 "sensor_fused_score": {"threshold": True}}}})
 
     def test_true_key_probe_threshold_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"triggers": {
                 "key_probe": {"threshold": True}}}})
@@ -1967,7 +1967,7 @@ class TestBooleanMailboxPortIsConfigError(unittest.TestCase):
         TLS (993/587)" -- and those are exactly the values
         the reader returns when the keys are omitted, i.e.
         they are the defaults. The reader's own contract
-        states the rest (runner/mailbox.py, _port, lines
+        states the rest (runner/wire/mailbox.py, _port, lines
         80-87): "A missing or non-numeric port is a config
         error, not a crash", raising RuntimeError
         "config error: <key> must be a number". The
@@ -1978,13 +1978,13 @@ class TestBooleanMailboxPortIsConfigError(unittest.TestCase):
         boolean a numeric meaning as a port; sibling
         readers exclude booleans explicitly (for example
         runner.runner._cfg_size, "Booleans are not
-        sizes", and runner.dri.parse_dri's own `enabled`
+        sizes", and runner.oracle.dri.parse_dri's own `enabled`
         check, where booleans are a distinct type, never
         numbers).
 
     (b) How the bug was found: the campaign's doc-default
         hunt (2026-10-23 09:31 PDT tick) exercised
-        runner.mailbox._port -- the single reader that
+        runner.wire.mailbox._port -- the single reader that
         validates imap_port and smtp_port, called from
         connect_imap, connect_smtp, and the runner's
         startup validation -- with each key left unset
@@ -1998,7 +1998,7 @@ class TestBooleanMailboxPortIsConfigError(unittest.TestCase):
         the documented defaults (993, 587); "bogus" and
         None raise the documented RuntimeError config
         error. The booleans do not: _port converts with
-        int() and no boolean guard (runner/mailbox.py
+        int() and no boolean guard (runner/wire/mailbox.py
         line 85), so imap_port True reads as port 1 and
         False as port 0 instead of raising, and
         smtp_port True reads as port 1 and False as
@@ -2018,22 +2018,22 @@ class TestBooleanMailboxPortIsConfigError(unittest.TestCase):
     """
 
     def test_true_imap_port_is_config_error(self):
-        from runner.mailbox import _port
+        from runner.wire.mailbox import _port
         with self.assertRaises(RuntimeError):
             _port({"imap_port": True}, "imap_port", 993)
 
     def test_false_imap_port_is_config_error(self):
-        from runner.mailbox import _port
+        from runner.wire.mailbox import _port
         with self.assertRaises(RuntimeError):
             _port({"imap_port": False}, "imap_port", 993)
 
     def test_true_smtp_port_is_config_error(self):
-        from runner.mailbox import _port
+        from runner.wire.mailbox import _port
         with self.assertRaises(RuntimeError):
             _port({"smtp_port": True}, "smtp_port", 587)
 
     def test_false_smtp_port_is_config_error(self):
-        from runner.mailbox import _port
+        from runner.wire.mailbox import _port
         with self.assertRaises(RuntimeError):
             _port({"smtp_port": False}, "smtp_port", 587)
 
@@ -2250,7 +2250,7 @@ class TestBooleanPollIntervalDefaultsTo20(unittest.TestCase):
         watching on the runner's poll cycle -- every 20 seconds
         by default (`poll_interval_sec`)."
         The same 20 is the value in runner/config.example.json
-        and runner/setup.py's generated config, and the core
+        and runner/ops/setup.py's generated config, and the core
         loop's own fallback for an unreadable value is 20
         (runner/runner.py, the poll delay read in main()).
 
@@ -2258,7 +2258,7 @@ class TestBooleanPollIntervalDefaultsTo20(unittest.TestCase):
         (2026-10-23 10:11 PDT tick) exercised the email
         transport extension's run loop -- the extension the
         core hands poll_interval_sec to verbatim via
-        runner/transports.py's _runtime_config -- with the
+        runner/wire/transports.py's _runtime_config -- with the
         key varied around the documented default: omitted,
         explicit None, 0, boolean false, the string "bogus",
         a valid 42, and boolean true. EmailPipe.run computes
@@ -2503,7 +2503,7 @@ class TestBooleanDriWindowSecIsConfigError(unittest.TestCase):
         "window_sec": 3600} -- and those are exactly the
         values the reader returns when the keys are omitted,
         i.e. they are the defaults. The reader's own contract
-        states the rest (runner/dri.py, parse_dri): a
+        states the rest (runner/oracle/dri.py, parse_dri): a
         threshold or window that is not a number raises
         "config error: dri.triggers... threshold/window_sec
         must be numbers", and a non-boolean `enabled` raises
@@ -2517,7 +2517,7 @@ class TestBooleanDriWindowSecIsConfigError(unittest.TestCase):
 
     (b) How the bug was found: the campaign's doc-default
         hunt (2026-10-23 10:36 PDT tick) exercised
-        runner.dri.parse_dri -- the single reader that
+        runner.oracle.dri.parse_dri -- the single reader that
         validates the dri block -- with each trigger's
         window_sec left unset and varied around the
         documented defaults: key omitted, the documented
@@ -2530,7 +2530,7 @@ class TestBooleanDriWindowSecIsConfigError(unittest.TestCase):
         values are honored, and "bogus" raises the
         documented RuntimeError config error. The booleans
         do not: parse_dri converts with float() and no
-        boolean guard (runner/dri.py lines 81 and 99), so
+        boolean guard (runner/oracle/dri.py lines 81 and 99), so
         sensor_fused_score window_sec True reads as 1.0
         second and False as 0.0 instead of raising, and
         key_probe window_sec True reads as 1.0 and False
@@ -2539,8 +2539,8 @@ class TestBooleanDriWindowSecIsConfigError(unittest.TestCase):
         of the documented 600 / 3600 seconds. Sibling
         readers exclude booleans explicitly --
         runner.runner._cfg_size ("Booleans are not sizes"),
-        runner.remediation._pos_int,
-        runner.security.audit_max_lines, and this same
+        runner.oracle.remediation._pos_int,
+        runner.guard.security.audit_max_lines, and this same
         reader's own `enabled` check; these float()
         conversions are the outliers. This is the known
         boolean-as-number family. Observed on 2026-10-23:
@@ -2557,25 +2557,25 @@ class TestBooleanDriWindowSecIsConfigError(unittest.TestCase):
     """
 
     def test_true_sensor_fused_window_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"triggers": {
                 "sensor_fused_score": {"window_sec": True}}}})
 
     def test_false_sensor_fused_window_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"triggers": {
                 "sensor_fused_score": {"window_sec": False}}}})
 
     def test_true_key_probe_window_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"triggers": {
                 "key_probe": {"window_sec": True}}}})
 
     def test_false_key_probe_window_is_config_error(self):
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         with self.assertRaises(RuntimeError):
             parse_dri({"dri": {"triggers": {
                 "key_probe": {"window_sec": False}}}})
@@ -2584,7 +2584,7 @@ class TestBooleanDriWindowSecIsConfigError(unittest.TestCase):
         # Control: the documented defaults pass validation
         # untouched; the fix must not flatten genuine
         # values into an error.
-        from runner.dri import parse_dri
+        from runner.oracle.dri import parse_dri
         out = parse_dri({"dri": {"triggers": {
             "sensor_fused_score": {"window_sec": 600},
             "key_probe": {"window_sec": 3600}}}})
@@ -2609,7 +2609,7 @@ class TestHugeEmailPollIntervalDefaultsTo20(unittest.TestCase):
         (flag-to-key map, line 82) maps `--poll-interval
         SECONDS` to the same key. The core hands this key
         to every transport extension as its cadence
-        (runner/transports.py, _runtime_config:
+        (runner/wire/transports.py, _runtime_config:
         "poll_interval_sec": cfg.get("poll_interval_sec",
         20)), and the email extension's own reader states
         the same fallback in code: an unparseable value
@@ -2648,7 +2648,7 @@ class TestHugeEmailPollIntervalDefaultsTo20(unittest.TestCase):
         never again, instead of every 20 seconds. Sibling
         float readers include OverflowError in their
         fallback guard: the core's poll-interval reader,
-        parse_sensors and gate_alert (runner/senses.py),
+        parse_sensors and gate_alert (runner/oracle/senses.py),
         and _cfg_size (runner/runner.py) all catch it;
         this reader is the outlier.
 
@@ -3044,7 +3044,7 @@ class TestHugeExtensionPollIntervalDefaultsTo2(unittest.TestCase):
         supervisor restarts a permanently dead transport.
         Sibling float readers include OverflowError in
         their fallback guard: the core's poll-interval
-        reader, parse_sensors (runner/senses.py), and
+        reader, parse_sensors (runner/oracle/senses.py), and
         _cfg_size (runner/runner.py) all catch it; this
         reader is the outlier -- the same missing-
         OverflowError root cause already recorded for
@@ -3096,7 +3096,7 @@ class TestBooleanExtensionPollIntervalDefaultsTo2(unittest.TestCase):
         every sibling numeric config reader in the codebase
         excludes booleans explicitly -- runner.runner
         ._cfg_size ("Booleans are not sizes"),
-        runner.remediation._pos_int / _pos_float, and the
+        runner.oracle.remediation._pos_int / _pos_float, and the
         core poll-interval reader whose boolean fallback to
         its documented default is already pinned in
         TestBooleanPollIntervalDefaultsTo20 above.
@@ -3688,12 +3688,12 @@ class TestBooleanPlanStepTimeoutCountsAs60(unittest.TestCase):
         (line 68) gives the detection layer's plan
         caps: "`max_plan_steps` /
         `max_plan_timeout_sec` -- caps the detection
-        layer (`runner/detection.py`) applies to a
+        layer (`runner/oracle/detection.py`) applies to a
         multi-step plan: at most this many steps
         (default 8) and this much total timeout in
         seconds (default 600)." The total is a sum
         over steps, and the reader's own code states
-        the per-step fallback: runner/detection.py,
+        the per-step fallback: runner/oracle/detection.py,
         check_plan_budget (lines 122-129), computes
         int(step.get("timeout_sec") or 60) and, on
         (TypeError, ValueError, OverflowError), adds
@@ -3704,7 +3704,7 @@ class TestBooleanPlanStepTimeoutCountsAs60(unittest.TestCase):
 
     (b) How the bug was found: the campaign's
         doc-default hunt (2026-10-23 12:16 PDT tick)
-        exercised runner.detection.check_plan_budget
+        exercised runner.oracle.detection.check_plan_budget
         directly, varying only a step's timeout_sec
         around the reader's fallback -- omitted,
         explicit None, the string "bogus", an
@@ -3749,7 +3749,7 @@ class TestBooleanPlanStepTimeoutCountsAs60(unittest.TestCase):
     """
 
     def test_true_step_timeout_counts_as_60(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             [{"timeout_sec": True}],
             {"max_plan_timeout_sec": 30})
@@ -3757,7 +3757,7 @@ class TestBooleanPlanStepTimeoutCountsAs60(unittest.TestCase):
         self.assertIn("exceeds", reason)
 
     def test_true_steps_total_counts_as_60_each(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             [{"timeout_sec": True}] * 11,
             {"max_plan_steps": 20,
@@ -3770,7 +3770,7 @@ class TestBooleanPlanStepTimeoutCountsAs60(unittest.TestCase):
         # 60-second fallback today (the "or" treats
         # it as missing); it must keep doing so after
         # the true case is fixed.
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             [{"timeout_sec": False}],
             {"max_plan_timeout_sec": 30})
@@ -3780,7 +3780,7 @@ class TestBooleanPlanStepTimeoutCountsAs60(unittest.TestCase):
     def test_bogus_step_timeout_counts_as_60(self):
         # Control: an unparseable step timeout already
         # counts as 60 today; it must keep doing so.
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             [{"timeout_sec": "bogus"}],
             {"max_plan_timeout_sec": 30})
@@ -3791,7 +3791,7 @@ class TestBooleanPlanStepTimeoutCountsAs60(unittest.TestCase):
         # Control: a genuine explicit step timeout is
         # counted as given; the fix must not flatten
         # it to the 60-second fallback.
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         ok, reason = check_plan_budget(
             [{"timeout_sec": 10}],
             {"max_plan_timeout_sec": 30})
@@ -3810,11 +3810,11 @@ class TestNegativeOrNonFiniteSensorWeightDefaultsToOne(unittest.TestCase):
         down, a trusted one up, or to 0 to mute it without
         disabling ingest."
         The config validator enforces exactly that domain
-        (runner/senses.py, parse_sensors): a weight that
+        (runner/oracle/senses.py, parse_sensors): a weight that
         is NaN, infinite, or below 0 raises a config error
         ("must be a finite number >= 0"). The scorer's own
         fallback for an unparseable weight is likewise the
-        default 1.0 (runner/senses.py, alert_score), and
+        default 1.0 (runner/oracle/senses.py, alert_score), and
         the sibling senses-query reader in runner/runner.py
         (the answer_queries senses branch) explicitly
         resets a weight that is NaN, negative, or infinite
@@ -3822,10 +3822,10 @@ class TestNegativeOrNonFiniteSensorWeightDefaultsToOne(unittest.TestCase):
 
     (b) How the bug was found: the campaign's
         doc-default hunt (2026-10-23 12:56 PDT tick)
-        exercised runner.senses.alert_score -- the scorer
+        exercised runner.oracle.senses.alert_score -- the scorer
         the DRI fused-score path calls with a stored
         record's own raw weight
-        (runner/dri.py: rec.get("weight", 1.0)) -- with
+        (runner/oracle/dri.py: rec.get("weight", 1.0)) -- with
         the weight left unset and varied around the
         documented domain: omitted via the caller's
         default, explicit None, a non-numeric string
@@ -3849,7 +3849,7 @@ class TestNegativeOrNonFiniteSensorWeightDefaultsToOne(unittest.TestCase):
         1.0, as given. The out-of-domain values do not
         fall back: alert_score converts with float() and
         checks nothing after the conversion
-        (runner/senses.py, alert_score), so -1 scores
+        (runner/oracle/senses.py, alert_score), so -1 scores
         -0.5 and -5 scores -2.5 -- a negative total that
         drags a sensor's fused score down and can keep
         it under the DRI paging threshold; float("inf")
@@ -3880,27 +3880,27 @@ class TestNegativeOrNonFiniteSensorWeightDefaultsToOne(unittest.TestCase):
     """
 
     def test_negative_weight_defaults_to_one(self):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, -1), 0.5)
 
     def test_large_negative_weight_defaults_to_one(self):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, -5), 0.5)
 
     def test_infinite_weight_defaults_to_one(self):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, float("inf")), 0.5)
 
     def test_negative_infinite_weight_defaults_to_one(self):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, float("-inf")), 0.5)
 
     def test_nan_weight_defaults_to_one(self):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, float("nan")), 0.5)
 
@@ -3908,14 +3908,14 @@ class TestNegativeOrNonFiniteSensorWeightDefaultsToOne(unittest.TestCase):
         # Control: 0 is the documented mute (weight >= 0
         # includes it); the fix must not flatten a
         # genuine zero to the default.
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, 0), 0.0)
 
     def test_explicit_two_weight_is_honored(self):
         # Control: a genuine in-domain weight is used as
         # given; the fix must not flatten it to 1.0.
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, 2), 1.0)
 
@@ -3924,7 +3924,7 @@ class TestNegativeOrNonFiniteSensorWeightDefaultsToOne(unittest.TestCase):
         # back to the documented default today; it must
         # keep doing so after the out-of-domain cases
         # are fixed.
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         self.assertEqual(
             alert_score({"severity": "info"}, "bogus"), 0.5)
 
@@ -3961,7 +3961,7 @@ class TestNonFinitePiHealthTunableDefaults(unittest.TestCase):
         silences the alert instead of reading as the
         documented default. Sibling readers in this codebase
         exclude non-finite values and fall back to their
-        defaults (e.g. runner.remediation._pos_float,
+        defaults (e.g. runner.oracle.remediation._pos_float,
         runner.runner._local_wake_cooldown, the senses
         weight validation); this reader does not. Observed
         on 2026-10-23: decide({"temp_c": 100},
@@ -4063,7 +4063,7 @@ class TestNonFiniteAirwavesGoneAfterScansDefaultsTo3(unittest.TestCase):
         whole watcher pass instead of reading as the
         documented default 3. Sibling readers in this
         codebase exclude non-finite values and fall back
-        to their defaults (e.g. runner.remediation
+        to their defaults (e.g. runner.oracle.remediation
         ._pos_float, runner.runner._local_wake_cooldown);
         this reader converts without guarding. Observed
         on 2026-10-23: decide() with tunables
@@ -4184,7 +4184,7 @@ class TestNonFiniteSkyWatcherApproachRadiusDefaultsTo5000(unittest.TestCase):
         reading as the documented default. Sibling readers
         in this codebase exclude non-finite values and fall
         back to their defaults (e.g.
-        runner.remediation._pos_float,
+        runner.oracle.remediation._pos_float,
         runner.runner._local_wake_cooldown); this reader
         does not. Observed on 2026-10-23: update() with
         approach_radius_km float("inf") and float("nan")
@@ -4298,7 +4298,7 @@ class TestNonFiniteSkyWatcherDarkThresholdDefaultsToMinus6(unittest.TestCase):
         reading as the documented -6 degree default.
         Sibling readers in this codebase exclude non-finite
         values and fall back to their defaults (e.g.
-        runner.remediation._pos_float,
+        runner.oracle.remediation._pos_float,
         runner.runner._local_wake_cooldown); this reader
         does not. Observed on 2026-10-23: update() at
         midnight with dark_sun_elevation_deg float("nan")
@@ -4769,7 +4769,7 @@ class TestNonFiniteSkyWatcherLeadAndBrightDefaults(unittest.TestCase):
         heads-up instead of reading as the documented
         defaults. Sibling readers in this codebase exclude
         non-finite values and fall back to their defaults
-        (e.g. runner.remediation._pos_float,
+        (e.g. runner.oracle.remediation._pos_float,
         runner.runner._local_wake_cooldown); this reader
         does not. Observed on 2026-10-23: update() with
         visible_lead_sec float("nan") and float("-inf")
@@ -4907,7 +4907,7 @@ class TestInfiniteBackupStaleAfterDefaultsTo90000(unittest.TestCase):
         seconds old files nothing. Sibling readers in
         this codebase exclude non-finite values and
         fall back to their defaults (e.g.
-        runner.remediation._pos_float,
+        runner.oracle.remediation._pos_float,
         runner.runner._local_wake_cooldown); this
         reader does not. This is the campaign's known
         non-finite-tunable root-cause family.
@@ -7484,7 +7484,7 @@ class TestPlanStepTimeoutSecDefaultsTo60(unittest.TestCase):
         default, doc_status unverified -- no
         prose document states this default. The
         only statement is the reader's own
-        docstring (runner/detection.py,
+        docstring (runner/oracle/detection.py,
         check_plan_budget, lines 113-114): "A
         step whose timeout_sec is omitted,
         unparseable, or a boolean counts as 60
@@ -7493,7 +7493,7 @@ class TestPlanStepTimeoutSecDefaultsTo60(unittest.TestCase):
         line 80) states only the totals it sums
         toward: "`max_plan_steps` /
         `max_plan_timeout_sec` -- caps the
-        detection layer (`runner/detection.py`)
+        detection layer (`runner/oracle/detection.py`)
         applies to a multi-step plan: at most
         this many steps (default 8) and this
         much total timeout in seconds (default
@@ -7560,7 +7560,7 @@ class TestPlanStepTimeoutSecDefaultsTo60(unittest.TestCase):
     """
 
     def _check(self, step, cap):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         return check_plan_budget(
             [step], {"max_plan_timeout_sec": cap})
 
@@ -7606,7 +7606,7 @@ class TestPlanStepTimeoutSecDefaultsTo60(unittest.TestCase):
         # total exactly 2 against that cap.
         self.assertEqual(
             self._check({"timeout_sec": 1}, 1), (True, ""))
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         self.assertEqual(
             check_plan_budget(
                 [{"timeout_sec": 1}] * 2,
@@ -7642,7 +7642,7 @@ class TestExtensionPollIntervalSecDefaultsTo2(unittest.TestCase):
         fifteen shapes. Provenance finding from the
         step-8 list, re-verified this tick: the runner's
         runtime-config projection
-        (runner/transports.py, _runtime_config) never
+        (runner/wire/transports.py, _runtime_config) never
         passes a TOP-LEVEL extension_poll_interval_sec to
         an extension -- with the key only at top level the
         projected config has no such key at all; only a
@@ -7720,7 +7720,7 @@ class TestExtensionPollIntervalSecDefaultsTo2(unittest.TestCase):
         # The projection finding in (a), pinned: only a
         # transport block's copy of the key is projected
         # into an extension's runtime config.
-        from runner import transports
+        from runner.wire import transports
         paths = {"root": "/tmp/hp-projection-probe"}
         out = transports._runtime_config(
             {"extension_poll_interval_sec": 9},
@@ -8021,7 +8021,7 @@ class TestSensesLimitDefaultsTo20(unittest.TestCase):
         zero returns no lines, and the tail branch reads
         its lines as "text.splitlines()[-n:] if n else
         []" -- an explicit zero guard. The store reader
-        itself (runner/senses.py, load_alerts) treats
+        itself (runner/oracle/senses.py, load_alerts) treats
         limit None -- and only None -- as no cap: "if
         limit is not None: ... out = out[-n:]", so a
         zero limit is a real cap of zero alerts. The
@@ -8043,7 +8043,7 @@ class TestSensesLimitDefaultsTo20(unittest.TestCase):
         holding 30 alerts, with the table hunt's
         fifteen shapes, plus genuine values, a
         no-ceiling check, and float shapes, and also
-        called runner.senses.load_alerts directly
+        called runner.oracle.senses.load_alerts directly
         with limit 0.
 
     (c) Behavior actually observed: NO divergence for
@@ -8151,7 +8151,7 @@ class TestSensesLimitDefaultsTo20(unittest.TestCase):
                     self._senses_count({"limit": value}), want)
 
     def test_load_alerts_zero_limit_returns_no_alerts(self):
-        from runner import senses as S
+        from runner.oracle import senses as S
         with tempfile.TemporaryDirectory() as base:
             self._write_store(base)
             self.assertEqual(S.load_alerts(base, limit=0), [])
@@ -8883,7 +8883,7 @@ class TestDriNumericRowsRefuseUnusableShapes(unittest.TestCase):
         policy refuse (Decision 1: a present-but-
         unusable value in a refuse-class row must
         make the runner refuse, not read as the
-        default), reader runner/dri.py:parse_dri,
+        default), reader runner/oracle/dri.py:parse_dri,
         doc_status verified by that sketch only.
         The rows' named classes
         (TestBooleanDriValuesAreConfigErrors and
@@ -8897,7 +8897,7 @@ class TestDriNumericRowsRefuseUnusableShapes(unittest.TestCase):
         six dri.* numeric rows, after max_query_budget
         was completed by the previous tick. On
         2026-10-23 this tick probed
-        runner.dri.parse_dri with the table hunt's
+        runner.oracle.dri.parse_dri with the table hunt's
         fifteen shapes placed at each key's own
         path (the trigger dicts present, the probed
         leaf varied), plus genuine values per row.
@@ -8974,7 +8974,7 @@ class TestDriNumericRowsRefuseUnusableShapes(unittest.TestCase):
         return cur
 
     def _probe(self, path, value):
-        from runner import dri
+        from runner.oracle import dri
         return dri.parse_dri(self._cfg(path, value))
 
     def test_fifteen_shapes_per_row(self):
@@ -9671,11 +9671,11 @@ class TestNestedObjectsWithEverySubKeyNull(unittest.TestCase):
         axis (b) -- nested objects with every
         sub-key null. On 2026-10-24 this tick probed
         the three startup validators the runner
-        itself uses -- runner.resources
-        .parse_resources, runner.security
+        itself uses -- runner.oracle.resources
+        .parse_resources, runner.guard.security
         .validate_security_config (with the
         defensive readers sec_mode and
-        audit_max_lines beside it), and runner.dri
+        audit_max_lines beside it), and runner.oracle.dri
         .parse_dri -- with each block present and
         every sub-key set to JSON null, with each
         single sub-key null in turn for resources,
@@ -9716,21 +9716,21 @@ class TestNestedObjectsWithEverySubKeyNull(unittest.TestCase):
     """
 
     def test_resources_every_sub_key_null_refuses(self):
-        from runner import resources as RES
+        from runner.oracle import resources as RES
         with self.assertRaises(RuntimeError):
             RES.parse_resources({"resources": {
                 "enabled": None, "threshold": None,
                 "cooldown_sec": None}})
 
     def test_resources_each_single_null_refuses(self):
-        from runner import resources as RES
+        from runner.oracle import resources as RES
         for key in ("enabled", "threshold", "cooldown_sec"):
             with self.subTest(key=key):
                 with self.assertRaises(RuntimeError):
                     RES.parse_resources({"resources": {key: None}})
 
     def test_resources_null_or_empty_block_reads_defaults(self):
-        from runner import resources as RES
+        from runner.oracle import resources as RES
         want = {"enabled": True, "threshold": 0.95,
                 "cooldown_sec": 900.0}
         self.assertEqual(RES.parse_resources({"resources": None}), want)
@@ -9738,7 +9738,7 @@ class TestNestedObjectsWithEverySubKeyNull(unittest.TestCase):
         self.assertEqual(RES.parse_resources({}), want)
 
     def test_security_every_sub_key_null_refuses(self):
-        from runner import security as SEC
+        from runner.guard import security as SEC
         modes = {name: None for name in SEC.FEATURES}
         with self.assertRaises(RuntimeError):
             SEC.validate_security_config({"security": {
@@ -9751,13 +9751,13 @@ class TestNestedObjectsWithEverySubKeyNull(unittest.TestCase):
                 {"security": {"audit_max_lines": None}})
 
     def test_security_null_or_empty_block_is_accepted(self):
-        from runner import security as SEC
+        from runner.guard import security as SEC
         SEC.validate_security_config({"security": None})
         SEC.validate_security_config({"security": {}})
         SEC.validate_security_config({})
 
     def test_security_defensive_readers_on_all_null_block(self):
-        from runner import security as SEC
+        from runner.guard import security as SEC
         cfg = {"security": {
             "modes": {name: None for name in SEC.FEATURES},
             "audit_max_lines": None}}
@@ -9767,7 +9767,7 @@ class TestNestedObjectsWithEverySubKeyNull(unittest.TestCase):
         self.assertEqual(SEC.audit_max_lines(cfg), 20000)
 
     def test_dri_every_sub_key_null_refuses(self):
-        from runner import dri as DRI
+        from runner.oracle import dri as DRI
         with self.assertRaises(RuntimeError):
             DRI.parse_dri({"dri": {
                 "enabled": None, "channel": None,
@@ -9777,7 +9777,7 @@ class TestNestedObjectsWithEverySubKeyNull(unittest.TestCase):
                 "digest_window_sec": None}})
 
     def test_dri_trigger_object_sub_keys_null_refuses(self):
-        from runner import dri as DRI
+        from runner.oracle import dri as DRI
         for trig in ("sensor_fused_score", "key_probe"):
             with self.subTest(trigger=trig):
                 with self.assertRaises(RuntimeError):
@@ -9786,7 +9786,7 @@ class TestNestedObjectsWithEverySubKeyNull(unittest.TestCase):
                                "window_sec": None}}}})
 
     def test_dri_null_triggers_and_null_block_read_defaults(self):
-        from runner import dri as DRI
+        from runner.oracle import dri as DRI
         want = {"enabled": False, "channel": "telegram",
                 "telegram_bot_token": "", "telegram_chat_id": "",
                 "triggers": {}, "cooldown_sec": 3600.0,
@@ -9830,7 +9830,7 @@ class TestListKeysWrongElementEmptyAndScalarListShapes(unittest.TestCase):
         timeout_sec, env, job_id) given lists; the
         config `default_interpreter` in the same shapes
         (job interpreter absent); and
-        runner.transports.enabled_transports with the
+        runner.wire.transports.enabled_transports with the
         same shape family.
 
     (c) Behavior actually observed: NO divergence.
@@ -9935,7 +9935,7 @@ class TestListKeysWrongElementEmptyAndScalarListShapes(unittest.TestCase):
         self._runs(job, cfg={"default_interpreter": ["sh"]})
 
     def test_transports_list_shapes(self):
-        from runner import transports as T
+        from runner.wire import transports as T
         self.assertEqual(T.enabled_transports({}), ["email"])
         self.assertEqual(
             T.enabled_transports({"transports": ["file"]}), ["file"])
@@ -9978,9 +9978,9 @@ class TestWorkspaceRootSymlinkCountsWorkspaceFilesAsOutside(unittest.TestCase):
         holding a workspace directory, a sibling
         file outside it, and a symlink to the
         workspace, and, for the other path-string
-        config key, runner.extensions
+        config key, runner.ops.extensions
         .extensions_dir_for against
-        runner.transports._extensions_dir_for.
+        runner.wire.transports._extensions_dir_for.
 
     (c) Behavior actually observed: DIVERGENCE on
         the symlink shape only. The plain absolute
@@ -10077,8 +10077,8 @@ class TestWorkspaceRootSymlinkCountsWorkspaceFilesAsOutside(unittest.TestCase):
     @unittest.skipUnless(__import__("os").name == "posix",
                          "exec jobs are POSIX sh scripts")
     def test_extensions_dir_readers_agree_on_string_shapes(self):
-        from runner import extensions as E
-        from runner import transports as T
+        from runner.ops import extensions as E
+        from runner.wire import transports as T
         cases = [
             ({}, "/b"), ({"extensions_dir": ""}, "/b"),
             ({"extensions_dir": "   "}, "/b"),
@@ -14636,7 +14636,7 @@ class TestTransportEnvelopeParityFromFixtures(unittest.TestCase):
         is an opaque blob either way -- so encryption
         is identical on email, NATS, and file, and no
         transport code knows it exists."
-        runner/transports.py (module docstring): "A
+        runner/wire/transports.py (module docstring): "A
         job envelope is a subject line, a blank line,
         then the signed body"; "The HMAC signature on
         the body is checked by the runner's core for
@@ -14675,7 +14675,7 @@ class TestTransportEnvelopeParityFromFixtures(unittest.TestCase):
         core then sees was read back with the core's
         own transports.fetch_channel_messages, and the
         body's fate was judged with
-        runner.verify.verify_body.
+        runner.wire.verify.verify_body.
 
     (c) Behavior actually observed: NO divergence in
         the documented core parity. For the cleartext,
@@ -14742,8 +14742,8 @@ class TestTransportEnvelopeParityFromFixtures(unittest.TestCase):
                 "script": "echo parity\n", "env": {}}
 
     def _bodies(self):
-        from runner import jobcrypto
-        from runner.verify import sign_payload
+        from runner.wire import jobcrypto
+        from runner.wire.verify import sign_payload
         clear = sign_payload(self._job("parity-1"), self.SECRET)
         enc = jobcrypto.encrypt_body(
             sign_payload(self._job("parity-2"), self.SECRET),
@@ -14760,7 +14760,7 @@ class TestTransportEnvelopeParityFromFixtures(unittest.TestCase):
         return chan
 
     def _core(self, base, name):
-        from runner import transports as T
+        from runner.wire import transports as T
         msgs = T.fetch_channel_messages(
             base, name, log=lambda m, level="INFO": None)
         return [(m.subject, m.body) for m in msgs]
@@ -14837,8 +14837,8 @@ class TestTransportEnvelopeParityFromFixtures(unittest.TestCase):
         return out
 
     def _verdict(self, body):
-        from runner import jobcrypto
-        from runner.verify import verify_body
+        from runner.wire import jobcrypto
+        from runner.wire.verify import verify_body
         try:
             payload = verify_body(body.strip(), self.SECRET)
         except Exception as exc:
@@ -15013,7 +15013,7 @@ class TestSensesGateProfileTunablesFifteenShapes(unittest.TestCase):
         names the senses.py readers among the core
         rows covered only for the shapes their classes
         exercised. This tick took gate_alert in
-        runner/senses.py (cooldown_sec through
+        runner/oracle/senses.py (cooldown_sec through
         _finite_number(profile.get("cooldown_sec"),
         0, lo=0); max_per_hour through gate_alert's
         own float() reader) and probed both keys with
@@ -15079,7 +15079,7 @@ class TestSensesGateProfileTunablesFifteenShapes(unittest.TestCase):
             "%Y-%m-%dT%H:%M:%SZ")
 
     def _gate(self, profile, recent):
-        from runner.senses import gate_alert
+        from runner.oracle.senses import gate_alert
         alert = {"title": "T", "severity": "info"}
         return gate_alert({"profile": profile}, alert,
                           recent, now=self._NOW)
@@ -15754,7 +15754,7 @@ class TestLoadAlertsUnhashableSeverityFloorDropsAllInsteadOfInfo(unittest.TestCa
     """
 
     def _gate(self, floor, severity):
-        from runner.senses import gate_alert
+        from runner.oracle.senses import gate_alert
         return gate_alert({"profile": {"severity_floor": floor}},
                           {"title": "T", "severity": severity},
                           [], now=1700000000.0)
@@ -15839,7 +15839,7 @@ class TestSensorWeightFifteenShapesAtAlertScore(unittest.TestCase):
         (line 325): alerts are ranked by "score =
         weight x severity". Registry row
         "sensors.<sense>.weight" (default 1.0,
-        reader runner/senses.py:alert_score):
+        reader runner/oracle/senses.py:alert_score):
         policy default under Decision 1 -- a
         present-but-unusable value reads as its
         documented default.
@@ -15848,10 +15848,10 @@ class TestSensorWeightFifteenShapesAtAlertScore(unittest.TestCase):
         names the senses.py readers among the core
         rows covered only for the shapes their
         classes exercised. This tick took
-        alert_score in runner/senses.py (weight
+        alert_score in runner/oracle/senses.py (weight
         through _finite_number(weight, 1.0, lo=0),
         the stored-record path that
-        runner/dri.py's fused-score reader feeds
+        runner/oracle/dri.py's fused-score reader feeds
         with rec.get("weight", 1.0)) and probed the
         weight with the fifteen shapes from the
         table hunt -- omitted (the .get default
@@ -15897,13 +15897,13 @@ class TestSensorWeightFifteenShapesAtAlertScore(unittest.TestCase):
     """
 
     def _score(self, weight, severity="high"):
-        from runner.senses import alert_score
+        from runner.oracle.senses import alert_score
         return alert_score({"severity": severity}, weight)
 
     def _stored_score(self, record):
         # The stored-record path exactly as
-        # runner/dri.py feeds it.
-        from runner.senses import alert_score
+        # runner/oracle/dri.py feeds it.
+        from runner.oracle.senses import alert_score
         return alert_score(record, record.get("weight", 1.0))
 
     def test_weight_fifteen_shapes_read_as_default(self):
@@ -16447,7 +16447,7 @@ class TestTaskTimeoutFifteenShapesAtBoardReader(unittest.TestCase):
         two-day-old claim; the table hunt probes this
         row through runner/confval, not through the
         board reader itself. This tick took that row:
-        its reader is runner/board.py
+        its reader is runner/wire/board.py
         _reoffer_expired_unlocked
         (_confval.number(task_timeout, 86400, lo=0)),
         reached through the exact caller expression
@@ -17022,7 +17022,7 @@ class TestMaxJobAgeSecLiteralAtLocalIngestInsteadOfDefault(
         import os
         import shutil
         from datetime import datetime, timedelta, timezone
-        from runner import extensions as E
+        from runner.ops import extensions as E
         from runner import runner as R
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp, True)
@@ -17329,7 +17329,7 @@ class TestInferenceTimeoutSecFifteenShapesAtReader(unittest.TestCase):
 class TestPromoteAfterFifteenShapesAtReader(unittest.TestCase):
     """Second-run hunt coverage: oracle_learning_promote_after
     itself varied with the fifteen shapes at its single
-    reader (runner/learning.py: promote_after, through
+    reader (runner/oracle/learning.py: promote_after, through
     confval.integer lo=1, returning an int) for the first
     time at reader level. The row's registry-named class
     (TestInfinitePromoteAfterDefaultsTo2) probed only
@@ -17341,7 +17341,7 @@ class TestPromoteAfterFifteenShapesAtReader(unittest.TestCase):
         needs before it is treated as corroborated ...
         Default `2`." Registry row
         "oracle_learning_promote_after" (kind integer,
-        default 2, reader runner/learning.py:promote_after,
+        default 2, reader runner/oracle/learning.py:promote_after,
         policy default under Decision 1, lo=1, hi=None).
 
     (b) How it was hunted: step-8 Target 6 (core rows
@@ -17382,7 +17382,7 @@ class TestPromoteAfterFifteenShapesAtReader(unittest.TestCase):
     """
 
     def test_fifteen_shapes_read_as_default(self):
-        from runner.learning import promote_after
+        from runner.oracle.learning import promote_after
         unusable = [None, "", True, False, 0, -5,
                     "bogus", 10 ** 400, float("inf"),
                     float("-inf"), float("nan"),
@@ -17397,14 +17397,14 @@ class TestPromoteAfterFifteenShapesAtReader(unittest.TestCase):
                 self.assertEqual(promote_after(cfg), 2)
 
     def test_non_dict_config_reads_as_default(self):
-        from runner.learning import promote_after
+        from runner.oracle.learning import promote_after
         self.assertEqual(promote_after(None), 2)
         self.assertEqual(promote_after(["x"]), 2)
         self.assertEqual(promote_after("bogus"), 2)
         self.assertEqual(promote_after(42), 2)
 
     def test_genuine_values_are_honored(self):
-        from runner.learning import promote_after
+        from runner.oracle.learning import promote_after
         for value, expected in ((1, 1), (3, 3),
                                 ("3", 3), (2.5, 2),
                                 ("2.5", 2), (10, 10),
@@ -17416,14 +17416,14 @@ class TestPromoteAfterFifteenShapesAtReader(unittest.TestCase):
                     expected)
 
     def test_sub_one_fraction_reads_as_default(self):
-        from runner.learning import promote_after
+        from runner.oracle.learning import promote_after
         self.assertEqual(
             promote_after({"oracle_learning_promote_after": 0.5}), 2)
 
 class TestReviewScanBytesFifteenShapesAtReader(unittest.TestCase):
     """Second-run hunt coverage: review_scan_bytes
     itself varied with the fifteen shapes at its single
-    reader (runner/review.py: _review_scan_bytes, through
+    reader (runner/oracle/review.py: _review_scan_bytes, through
     confval.integer lo=1, returning an int) for the first
     time at reader level. The row's registry-named class
     (TestBooleanReviewScanBytesDefaultsTo65536) probed only
@@ -17435,7 +17435,7 @@ class TestReviewScanBytesFifteenShapesAtReader(unittest.TestCase):
         for file-name references. Default 65536."
         Registry row "review_scan_bytes" (kind integer,
         default 65536, reader
-        runner/review.py:_review_scan_bytes,
+        runner/oracle/review.py:_review_scan_bytes,
         policy default under Decision 1, lo=1, hi=None).
 
     (b) How it was hunted: step-8 Target 6 (core rows
@@ -17477,7 +17477,7 @@ class TestReviewScanBytesFifteenShapesAtReader(unittest.TestCase):
     """
 
     def test_fifteen_shapes_read_as_default(self):
-        from runner.review import _review_scan_bytes
+        from runner.oracle.review import _review_scan_bytes
         unusable = [None, "", True, False, 0, -5,
                     "bogus", 10 ** 400, float("inf"),
                     float("-inf"), float("nan"),
@@ -17492,14 +17492,14 @@ class TestReviewScanBytesFifteenShapesAtReader(unittest.TestCase):
                 self.assertEqual(_review_scan_bytes(cfg), 65536)
 
     def test_non_dict_config_reads_as_default(self):
-        from runner.review import _review_scan_bytes
+        from runner.oracle.review import _review_scan_bytes
         self.assertEqual(_review_scan_bytes(None), 65536)
         self.assertEqual(_review_scan_bytes(["x"]), 65536)
         self.assertEqual(_review_scan_bytes("bogus"), 65536)
         self.assertEqual(_review_scan_bytes(42), 65536)
 
     def test_genuine_values_are_honored(self):
-        from runner.review import _review_scan_bytes
+        from runner.oracle.review import _review_scan_bytes
         for value, expected in ((1, 1), (3, 3),
                                 ("3", 3), (2.5, 2),
                                 ("2.5", 2), (10, 10),
@@ -17511,7 +17511,7 @@ class TestReviewScanBytesFifteenShapesAtReader(unittest.TestCase):
                     expected)
 
     def test_sub_one_fraction_reads_as_default(self):
-        from runner.review import _review_scan_bytes
+        from runner.oracle.review import _review_scan_bytes
         self.assertEqual(
             _review_scan_bytes({"review_scan_bytes": 0.5}), 65536)
 
@@ -17519,7 +17519,7 @@ class TestPlanBudgetFifteenShapesAtReader(unittest.TestCase):
     """Second-run hunt coverage: max_plan_steps and
     max_plan_timeout_sec themselves varied with the
     fifteen shapes at their single reader
-    (runner/detection.py: check_plan_budget, through
+    (runner/oracle/detection.py: check_plan_budget, through
     confval.integer lo=1 for both keys) for the first
     time at reader level. The rows' registry-named class
     (TestZeroOrNegativePlanBudgetDefaults) probed only
@@ -17527,14 +17527,14 @@ class TestPlanBudgetFifteenShapesAtReader(unittest.TestCase):
 
     (a) Doc claim (docs/configuring-oracle.md, line 80):
         "`max_plan_steps` / `max_plan_timeout_sec` --
-        caps the detection layer (runner/detection.py)
+        caps the detection layer (runner/oracle/detection.py)
         applies to a multi-step plan: at most this many
         steps (default 8) and this much total timeout
         in seconds (default 600)."
         Registry rows "max_plan_steps" (kind integer,
         default 8) and "max_plan_timeout_sec" (kind
         integer, default 600), both reader
-        runner/detection.py:check_plan_budget, policy
+        runner/oracle/detection.py:check_plan_budget, policy
         default under Decision 1, lo=1, hi=None.
 
     (b) How it was hunted: step-8 Target 6 (core rows
@@ -17588,7 +17588,7 @@ class TestPlanBudgetFifteenShapesAtReader(unittest.TestCase):
         return [{"timeout_sec": timeout} for _ in range(n)]
 
     def test_max_plan_steps_fifteen_shapes_read_as_default(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         unusable = [None, "", True, False, 0, -5,
                     "bogus", 10 ** 400, float("inf"),
                     float("-inf"), float("nan"),
@@ -17607,7 +17607,7 @@ class TestPlanBudgetFifteenShapesAtReader(unittest.TestCase):
                     (False, "plan has 9 steps (max 8)"))
 
     def test_max_plan_timeout_fifteen_shapes_read_as_default(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         unusable = [None, "", True, False, 0, -5,
                     "bogus", 10 ** 400, float("inf"),
                     float("-inf"), float("nan"),
@@ -17626,7 +17626,7 @@ class TestPlanBudgetFifteenShapesAtReader(unittest.TestCase):
                     (False, "plan timeout 700s exceeds 600s"))
 
     def test_non_dict_config_reads_as_defaults(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         for cfg in (None, ["x"], "bogus", 42):
             with self.subTest(cfg=repr(cfg)):
                 self.assertEqual(
@@ -17643,7 +17643,7 @@ class TestPlanBudgetFifteenShapesAtReader(unittest.TestCase):
                     (True, ""))
 
     def test_genuine_step_values_are_honored(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         self.assertEqual(
             check_plan_budget(self._plan(4),
                               {"max_plan_steps": 3,
@@ -17671,7 +17671,7 @@ class TestPlanBudgetFifteenShapesAtReader(unittest.TestCase):
             (True, ""))
 
     def test_genuine_timeout_values_are_honored(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         self.assertEqual(
             check_plan_budget(self._plan(1, 250),
                               {"max_plan_timeout_sec": 300,
@@ -17699,7 +17699,7 @@ class TestPlanBudgetFifteenShapesAtReader(unittest.TestCase):
             (True, ""))
 
     def test_sub_one_fraction_reads_as_default(self):
-        from runner.detection import check_plan_budget
+        from runner.oracle.detection import check_plan_budget
         self.assertEqual(
             check_plan_budget(self._plan(9),
                               {"max_plan_steps": 0.5,
@@ -17714,7 +17714,7 @@ class TestPlanBudgetFifteenShapesAtReader(unittest.TestCase):
 class TestV2AnswerDeadlineSecFifteenShapesAtReader(unittest.TestCase):
     """Second-run hunt coverage: v2_answer_deadline_sec
     itself varied with the fifteen shapes at its single
-    reader (runner/protocol_v2.py: deadline_of, through
+    reader (runner/wire/protocol_v2.py: deadline_of, through
     confval.integer with the reader's own [0, 30] clamp)
     for the first time at reader level. The row's
     registry-named class
@@ -17728,7 +17728,7 @@ class TestV2AnswerDeadlineSecFifteenShapesAtReader(unittest.TestCase):
         (0 to 30, default 0 -- one look, no wait)."
         Registry row "v2_answer_deadline_sec" (kind
         integer, default 0), reader
-        runner/protocol_v2.py:deadline_of, policy
+        runner/wire/protocol_v2.py:deadline_of, policy
         default under Decision 1. The reader's own
         docstring states the same contract: "How long
         to look for an answer: 0 to 30, documented
@@ -17736,7 +17736,7 @@ class TestV2AnswerDeadlineSecFifteenShapesAtReader(unittest.TestCase):
         seconds (true once meant a one-second wait);
         a negative number reads as 0, and the cap
         holds above 30." The cap is _DEADLINE_CAP = 30
-        (runner/protocol_v2.py, line 42).
+        (runner/wire/protocol_v2.py, line 42).
 
     (b) How it was hunted: step-8 Target 6 (core rows
         covered only for the shapes their classes
@@ -17790,7 +17790,7 @@ class TestV2AnswerDeadlineSecFifteenShapesAtReader(unittest.TestCase):
     _KEY = "v2_answer_deadline_sec"
 
     def _deadline(self, cfg):
-        from runner.protocol_v2 import deadline_of
+        from runner.wire.protocol_v2 import deadline_of
         return deadline_of(cfg)
 
     def test_fifteen_shapes_read_as_default(self):

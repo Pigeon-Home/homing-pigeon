@@ -17,7 +17,7 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import local_test as LT  # noqa: E402
+from runner.ops import local_test as LT  # noqa: E402
 
 SECRET = "0123456789abcdef" * 4
 
@@ -80,7 +80,8 @@ class ImportFallbackTest(unittest.TestCase):
     def test_the_script_import_is_the_fallback(self):
         import builtins
         real = builtins.__import__
-        runner_dir = os.path.dirname(os.path.abspath(LT.__file__))
+        runner_dir = os.path.dirname(os.path.dirname(
+            os.path.abspath(LT.__file__)))
         before = sys.path.count(runner_dir)
 
         def guarded(name, globals=None, locals=None, fromlist=(), level=0):
@@ -166,7 +167,10 @@ class StartSiImportTest(unittest.TestCase):
     def test_install_import_falls_back_to_the_script(self):
         import builtins
         real = builtins.__import__
-        fake = types.ModuleType("install")
+        fake = types.ModuleType("ops.install")
+        ops_pkg = types.ModuleType("ops")
+        ops_pkg.__path__ = []
+        ops_pkg.install = fake
         seen = {}
 
         def daemon_popen_kwargs(windows):
@@ -174,14 +178,15 @@ class StartSiImportTest(unittest.TestCase):
             return {"_fallback": True}
 
         fake.daemon_popen_kwargs = daemon_popen_kwargs
-        previous = sys.modules.get("install")
+        previous = {k: sys.modules.get(k) for k in ("ops", "ops.install")}
 
         def guarded(name, globals=None, locals=None, fromlist=(), level=0):
-            if name == "runner.install":
+            if name == "runner.ops.install":
                 raise ImportError("script")
             return real(name, globals, locals, fromlist, level)
 
-        sys.modules["install"] = fake
+        sys.modules["ops"] = ops_pkg
+        sys.modules["ops.install"] = fake
         try:
             with mock.patch("builtins.__import__", guarded), \
                     mock.patch.object(
@@ -192,10 +197,11 @@ class StartSiImportTest(unittest.TestCase):
                     redirect_stdout(io.StringIO()):
                 ok = LT.start_si_instance()
         finally:
-            if previous is None:
-                sys.modules.pop("install", None)
-            else:
-                sys.modules["install"] = previous
+            for key, mod in previous.items():
+                if mod is None:
+                    sys.modules.pop(key, None)
+                else:
+                    sys.modules[key] = mod
         self.assertTrue(ok)
         self.assertIn("windows", seen)
         self.assertTrue(popen.call_args.kwargs.get("_fallback"))

@@ -1,4 +1,4 @@
-"""Branch gaps for runner.setup. No network and no real IMAP."""
+"""Branch gaps for runner.ops.setup. No network and no real IMAP."""
 
 import importlib
 import io
@@ -16,7 +16,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from runner import setup as SU  # noqa: E402
+from runner.ops import setup as SU  # noqa: E402
 
 
 def go(path, cfg, inputs, probe=None, gp=None, consent="tok"):
@@ -201,10 +201,10 @@ class SetupGapsTest(unittest.TestCase):
         real = builtins.__import__
 
         def wrapped(name, g=None, loc=None, frm=(), level=0, fail=False):
-            blocked = ("runner.oauth", "runner.install")
-            if name in blocked or (fail and name in ("oauth", "install")):
+            blocked = ("runner.wire.oauth", "runner.ops.install")
+            if name in blocked or (fail and name in ("wire.oauth", "ops.install")):
                 raise ImportError(name)
-            if name not in ("oauth", "install"):
+            if name not in ("wire.oauth", "ops.install"):
                 return real(name, g, loc, frm, level)
             # Always a FRESH stub module, registered for the
             # duration of the reload. setdefault here returned
@@ -227,14 +227,14 @@ class SetupGapsTest(unittest.TestCase):
 
         # The pops in the finally below must not leak: other
         # modules hold the real "install" module object (bound at
-        # their import) while string-form mock.patch("install...")
+        # their import) while string-form mock.patch("ops.install...")
         # resolves through sys.modules at patch time. Leaving
         # "install" popped makes a later patch import a SECOND
         # module object and silently miss the first -- the
         # shuffled-order failures in test_install_gaps /
         # test_install_platforms. Capture and restore.
         previous = {name: sys.modules.get(name)
-                    for name in ("oauth", "install")}
+                    for name in ("wire.oauth", "ops.install")}
         try:
             for fail in (False, True):
                 def importer(*a, _f=fail, **k):
@@ -244,8 +244,8 @@ class SetupGapsTest(unittest.TestCase):
             self.assertIsNone(SU.browser_consent)
             self.assertIsNone(SU._placeholder)
         finally:
-            sys.modules.pop("oauth", None)
-            sys.modules.pop("install", None)
+            sys.modules.pop("wire.oauth", None)
+            sys.modules.pop("ops.install", None)
             importlib.reload(SU)
             for name, module in previous.items():
                 if module is None:
@@ -254,7 +254,7 @@ class SetupGapsTest(unittest.TestCase):
                     sys.modules[name] = module
 
         def blocked(name, g=None, loc=None, frm=(), level=0):
-            if name in ("runner.oauth", "oauth"):
+            if name in ("runner.wire.oauth", "wire.oauth"):
                 raise ImportError(name)
             return real(name, g, loc, frm, level)
 

@@ -26,7 +26,8 @@ from email.message import EmailMessage
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import dri, jobcrypto, resources, review, senses
+from runner.oracle import dri, resources, review, senses
+from runner.wire import jobcrypto
 from runner.runner import (
     Board,
     _IN_FLIGHT,
@@ -1117,7 +1118,7 @@ class ConcurrentKillTreeAndSetupTest(unittest.TestCase):
         """Finding: _blank_config returns a dict even when the
         example is missing. The fallback has the Gmail endpoints.
         """
-        from runner.setup import _blank_config
+        from runner.ops.setup import _blank_config
         cfg = _blank_config()
         self.assertIsInstance(cfg, dict)
         self.assertIn("imap_host", cfg)
@@ -1297,7 +1298,7 @@ class ConcurrentOracleWritersAndSetupWriteTest(unittest.TestCase):
         raise FileNotFoundError or lose updates. The process does
         not crash.
         """
-        from runner.setup import _write_config
+        from runner.ops.setup import _write_config
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "config.json")
             errors = []

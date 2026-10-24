@@ -12,7 +12,7 @@ import threading
 import unittest
 from unittest import mock
 
-from runner.setup import _write_config
+from runner.ops.setup import _write_config
 
 
 def _mode(path):

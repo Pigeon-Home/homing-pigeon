@@ -19,7 +19,7 @@ def _result_text(msg):
     """Inner signed text of a result mail, unwrapping the hp_enc
     envelope an encrypted job's result mirrors. Falls back to the
     raw body when the mail is not a verifiable envelope."""
-    from runner import jobcrypto
+    from runner.wire import jobcrypto
     from runner.runner import verify_body
     text = msg.get_content()
     try:
@@ -223,7 +223,7 @@ class BoardTailTest(unittest.TestCase):
             self.assertEqual(chosen["task_id"], "claimed")
 
     def test_task_approve_and_a_board_that_raises(self):
-        from runner import jobcrypto
+        from runner.wire import jobcrypto
         from runner.cloud.send_job import sign_payload
         from runner.runner import Board, handle_board_mail
         with tempfile.TemporaryDirectory() as d:
@@ -608,7 +608,7 @@ class StartupTailTest(unittest.TestCase):
         import contextlib
         import sys
         from runner import runner
-        from runner import setup
+        from runner.ops import setup
         with contextlib.ExitStack() as stack:
             stack.enter_context(mock.patch.object(setup, "is_tty", return_value=True))
             stack.enter_context(mock.patch.object(setup, "prompt_yes_no", return_value=True))
@@ -622,7 +622,7 @@ class StartupTailTest(unittest.TestCase):
                     "smtp_port": 587,
                 }))
             stack.enter_context(mock.patch.object(setup, "needs_setup", return_value=None))
-            harness = stack.enter_context(mock.patch("runner.harness.main", return_value=5))
+            harness = stack.enter_context(mock.patch("runner.ops.harness.main", return_value=5))
             stack.enter_context(mock.patch.object(runner, "ensure_inference_ready"))
             directory = stack.enter_context(tempfile.TemporaryDirectory())
             path = os.path.join(directory, "missing.json")

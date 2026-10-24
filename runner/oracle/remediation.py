@@ -25,7 +25,7 @@ document is written there, in the open. The short form:
   box's antivirus for its own verdict, and page the owner
   through the DRI channel with the whole story.
 
-This module is free of runner imports, like runner/opinion.py:
+This module is free of runner imports, like runner/oracle/opinion.py:
 the runner wires the live probes (findings, the model call,
 the senses store, the audit log) in as callables.
 """
@@ -167,7 +167,7 @@ def settings(cfg):
 def received_digest(job):
     """SHA-384 of the job as received, sig member excluded.
 
-    The same definition as runner/opinion.py's: compact JSON,
+    The same definition as runner/oracle/opinion.py's: compact JSON,
     sorted keys, UTF-8, over the job object with `sig` removed,
     so the sender can recompute and diff.
     """

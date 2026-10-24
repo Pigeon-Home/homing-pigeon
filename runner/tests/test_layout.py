@@ -18,6 +18,18 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 
+# The runner modules, by role folder (runner/<group>/<module>.py).
+_ROLES = {
+    "oracle": "opinion learning review remediation detection dri senses "
+              "resources personal_docs",
+    "wire": "transports mailbox dtlsproto protocol_v2 jobcrypto oauth "
+            "verify board platformcard",
+    "guard": "security sandbox confval textutil",
+    "ops": "install setup extensions extsources harness local_test "
+           "posture auditreport winlog",
+}
+_MODULES = "|".join(m for ms in _ROLES.values() for m in ms.split())
+
 # Retired root entry -> where it lives now.
 RETIRED = {
     "examples": "runner/extensions/",
@@ -41,6 +53,11 @@ RETIRED = {
 # A path into a retired folder, written the ways the tree writes paths.
 _EDGE = r"(?<![\w./\\-])"
 STALE = [
+    # a runner module at the top of runner/ instead of its role folder
+    (re.compile(_EDGE + r"runner/(?:" + _MODULES + r")\.py\b"),
+     "runner/<oracle|wire|guard|ops>/<module>.py"),
+    (re.compile(r"(?<![\w.])runner\.(?:" + _MODULES + r")\b(?!\.py)"),
+     "runner.<oracle|wire|guard|ops>.<module>"),
     (re.compile(r"examples/extensions"), "runner/extensions/"),
     (re.compile(r"[\"']examples[\"'],\s*[\"']extensions[\"']"),
      '"runner", "extensions"'),
@@ -127,6 +144,25 @@ class RootLayoutTest(unittest.TestCase):
             with self.subTest(path=rel):
                 self.assertTrue(os.path.exists(
                     os.path.join(REPO, *rel.split("/"))), rel)
+
+
+class RunnerRootTest(unittest.TestCase):
+    def test_runner_holds_the_entry_script_and_folders(self):
+        allowed = {"runner.py", "__init__.py", "_version.py",
+                   "config.example.json"}
+        root = os.path.join(REPO, "runner")
+        files = {n for n in os.listdir(root)
+                 if os.path.isfile(os.path.join(root, n))}
+        self.assertEqual(files - allowed, set(),
+                         "a module at the top of runner/; it belongs in "
+                         "oracle/, wire/, guard/ or ops/")
+
+    def test_every_module_is_in_its_role_folder(self):
+        for group, names in sorted(_ROLES.items()):
+            for name in names.split():
+                with self.subTest(module=name):
+                    self.assertTrue(os.path.isfile(os.path.join(
+                        REPO, "runner", group, name + ".py")), name)
 
 
 class NoStalePathTest(unittest.TestCase):

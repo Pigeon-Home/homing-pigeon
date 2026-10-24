@@ -12,7 +12,7 @@ import tempfile
 import unittest
 
 from runner.runner import _file_fresh_lines
-from runner.senses import load_alerts
+from runner.oracle.senses import load_alerts
 
 
 def _mode(path):

@@ -13,7 +13,7 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import dri  # noqa: E402
+from runner.oracle import dri  # noqa: E402
 
 
 class DriFormatAndEvaluateNegative(unittest.TestCase):

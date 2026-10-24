@@ -35,7 +35,7 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import extensions as E  # noqa: E402
+from runner.ops import extensions as E  # noqa: E402
 
 EXAMPLES_DIR = os.path.join(REPO, "runner", "extensions")
 
@@ -207,7 +207,7 @@ class CatalogProducerTest(unittest.TestCase):
                             roots.add(node.module.split(".")[0])
                 # "runner" is the one sanctioned non-stdlib
                 # import: the producer helpers in
-                # runner/extensions.py, imported lazily by the
+                # runner/ops/extensions.py, imported lazily by the
                 # delivery path.
                 outsiders = roots - set(stdlib) - {"runner"}
                 self.assertEqual(outsiders, set(),

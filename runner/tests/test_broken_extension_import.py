@@ -3,7 +3,7 @@
 
 Findings documented here (simulation in virtual environment, 2026-10-15):
 
-1. The latest main replaced runner/dri.py with the single word PLACEHOLDER.
+1. The latest main replaced runner/oracle/dri.py with the single word PLACEHOLDER.
    Importing the runner then raised NameError and the agent could not
    start. Extension imports now catch Exception (not only ImportError)
    so a broken module (NameError, SyntaxError, etc.) makes that

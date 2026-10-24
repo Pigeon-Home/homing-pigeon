@@ -106,7 +106,7 @@ class _JobCryptoErrorFallback(ValueError):
 
 
 JobCryptoError = _load_attr(
-    "runner.jobcrypto", "jobcrypto", "JobCryptoError",
+    "runner.wire.jobcrypto", "wire.jobcrypto", "JobCryptoError",
     _JobCryptoErrorFallback)
 
 
@@ -115,38 +115,39 @@ class _OAuthRefreshErrorFallback(RuntimeError):
 
 
 OAuthRefreshError = _load_attr(
-    "runner.oauth", "oauth", "OAuthRefreshError", _OAuthRefreshErrorFallback)
-_senses = _load_mod("runner.senses", "senses")
-_extensions = _load_mod("runner.extensions", "extensions")
-_review = _load_mod("runner.review", "review")
-_opinion = _load_mod("runner.opinion", "opinion")
-_learning = _load_mod("runner.learning", "learning")
-_remediation = _load_mod("runner.remediation", "remediation")
-_resources = _load_mod("runner.resources", "resources")
-_dri = _load_mod("runner.dri", "dri")
-_detection = _load_mod("runner.detection", "detection", broad=True)
-_setup = _load_mod("runner.setup", "setup")
-_security = _load_mod("runner.security", "security")
-_sandbox = _load_mod("runner.sandbox", "sandbox")
-_transports = _load_mod("runner.transports", "transports")
-_extsources = _load_mod("runner.extsources", "extsources")
-_jobcrypto = _load_mod("runner.jobcrypto", "jobcrypto")
-_protocol_v2 = _load_mod("runner.protocol_v2", "protocol_v2")
-_personal_docs = _load_mod("runner.personal_docs", "personal_docs")
-_platformcard = _load_mod("runner.platformcard", "platformcard")
-_textutil = _load_mod("runner.textutil", "textutil")
+    "runner.wire.oauth", "wire.oauth", "OAuthRefreshError",
+    _OAuthRefreshErrorFallback)
+_senses = _load_mod("runner.oracle.senses", "oracle.senses")
+_extensions = _load_mod("runner.ops.extensions", "ops.extensions")
+_review = _load_mod("runner.oracle.review", "oracle.review")
+_opinion = _load_mod("runner.oracle.opinion", "oracle.opinion")
+_learning = _load_mod("runner.oracle.learning", "oracle.learning")
+_remediation = _load_mod("runner.oracle.remediation", "oracle.remediation")
+_resources = _load_mod("runner.oracle.resources", "oracle.resources")
+_dri = _load_mod("runner.oracle.dri", "oracle.dri")
+_detection = _load_mod("runner.oracle.detection", "oracle.detection", broad=True)
+_setup = _load_mod("runner.ops.setup", "ops.setup")
+_security = _load_mod("runner.guard.security", "guard.security")
+_sandbox = _load_mod("runner.guard.sandbox", "guard.sandbox")
+_transports = _load_mod("runner.wire.transports", "wire.transports")
+_extsources = _load_mod("runner.ops.extsources", "ops.extsources")
+_jobcrypto = _load_mod("runner.wire.jobcrypto", "wire.jobcrypto")
+_protocol_v2 = _load_mod("runner.wire.protocol_v2", "wire.protocol_v2")
+_personal_docs = _load_mod("runner.oracle.personal_docs", "oracle.personal_docs")
+_platformcard = _load_mod("runner.wire.platformcard", "wire.platformcard")
+_textutil = _load_mod("runner.guard.textutil", "guard.textutil")
 # Typed config/job value readers (Agent-Stamp
 # 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c): the one answer to "is this
 # a usable number, and if not what do I use" -- see confval.py for
 # the fifty-six documented defaults that motivated it.
-_confval = _load_mod("runner.confval", "confval")
+_confval = _load_mod("runner.guard.confval", "guard.confval")
 if _textutil is None:
-    raise ImportError("runner/textutil.py is missing")
+    raise ImportError("runner/guard/textutil.py is missing")
 _as_str = _textutil._as_str
 _json_safe = _textutil._json_safe
-_mailbox_lib = _load_mod("runner.mailbox", "mailbox")
+_mailbox_lib = _load_mod("runner.wire.mailbox", "wire.mailbox")
 if _mailbox_lib is not None:
-    # The mailbox client library lives in runner/mailbox.py; the
+    # The mailbox client library lives in runner/wire/mailbox.py; the
     # email transport extension owns its lifecycle. These names
     # stay on this module because handle_mail, the harness, and
     # the local SI test address a mailbox-shaped client directly.
@@ -268,8 +269,7 @@ def _report_event_fallback(message: str, level: str = "ERROR") -> None:
     return None
 
 
-report_event = _load_attr(
-    "runner.winlog", "winlog", "report_event", _report_event_fallback)
+report_event = _load_attr("runner.ops.winlog", "ops.winlog", "report_event", _report_event_fallback)
 
 SUBJECT_JOB = "[HOMING-PIGEON] job "
 SUBJECT_RESULT = "[HOMING-PIGEON] result "
@@ -291,11 +291,11 @@ def _version_ok(v) -> bool:
 
 
 # Signing, verification, secrets, key policies, and audience live in
-# runner/verify.py (PROTOCOL sections 4, 5, 14). Every name stays
+# runner/wire/verify.py (PROTOCOL sections 4, 5, 14). Every name stays
 # bound here for callers and tests.
-_verify = _load_mod("runner.verify", "verify")
+_verify = _load_mod("runner.wire.verify", "wire.verify")
 if _verify is None:
-    raise ImportError("runner/verify.py is missing: nothing can be "
+    raise ImportError("runner/wire/verify.py is missing: nothing can be "
                       "verified")
 SEEN_CAP = _verify.SEEN_CAP
 _normalize = _verify._normalize
@@ -1638,7 +1638,7 @@ _WITHHELD_TOOL_ERROR = ("error: withheld from the Oracle by the extension "
 
 
 def _withheld_for_tools(base_dir) -> list:
-    """Paths the file tools refuse (runner/extsources.py). Never raises."""
+    """Paths the file tools refuse (runner/ops/extsources.py). Never raises."""
     if _extsources is None or not _tool_base_dir(base_dir):
         return []
     try:
@@ -2836,11 +2836,11 @@ def retained_expired(data, cfg):
 
 
 # ---------------------------------------------------------------- board (v3 §13)
-# The board lives in runner/board.py (the first module carved out of
+# The board lives in runner/wire/board.py (the first module carved out of
 # this file). The names stay bound here for callers and tests.
-_board = _load_mod("runner.board", "board")
+_board = _load_mod("runner.wire.board", "wire.board")
 if _board is None:
-    raise ImportError("runner/board.py is missing: the task board "
+    raise ImportError("runner/wire/board.py is missing: the task board "
                       "(PROTOCOL.md section 13) cannot load")
 Board = _board.Board
 _BOARD_LOCK = _board.BOARD_LOCK
@@ -2851,7 +2851,7 @@ class JobRejected(Exception):
 
 
 # ------------------------------------------------- mail handling
-# (the IMAP/SMTP client library lives in runner/mailbox.py; the
+# (the IMAP/SMTP client library lives in runner/wire/mailbox.py; the
 # email transport extension owns its lifecycle)
 def get_text_body(msg) -> str:
     if msg.is_multipart():
@@ -3094,7 +3094,7 @@ def _staged_dest(work, name):
 # ---------------------------------------------------------------- remediation
 # The acts are core (docs/design/remediation-design.md): only the runner
 # holds the process tree, the workdir, and the result channel.
-# runner/remediation.py holds the policy; the glue below wires
+# runner/oracle/remediation.py holds the policy; the glue below wires
 # the live probes in. Everything here is best-effort: a broken
 # monitor must never break the job it watches.
 
@@ -4443,7 +4443,7 @@ def _report_extensions(cfg, base_dir) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Extension sources (runner/extsources.py). The first time this agent
+# Extension sources (runner/ops/extsources.py). The first time this agent
 # runs an extension -- loads a sense, starts a transport -- a
 # background pass gives the Oracle that extension's own code and the
 # upstream sources and specs its sources.json declares, under the
@@ -4620,7 +4620,7 @@ def run_fetch_sources(cfg, args, fetcher=None) -> int:
     per-extension fetch false) still stops it.
     """
     if _extsources is None:
-        print("extension sources: runner/extsources.py is unavailable",
+        print("extension sources: runner/ops/extsources.py is unavailable",
               file=sys.stderr)
         return 1
     base = _base_dir_for(cfg, getattr(args, "config", None))
@@ -5962,7 +5962,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         secret = secrets[key_id]
         if isinstance(job, dict) \
                 and isinstance(job.get("hp_enc"), dict):
-            # Per-job encryption (runner/jobcrypto.py): the
+            # Per-job encryption (runner/wire/jobcrypto.py): the
             # signature just verified covers the envelope as
             # transmitted, so decryption happens only after that
             # gate. The recovered signed body then goes through
@@ -6208,7 +6208,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                         else ""))
             if cfg.get("judge") == "enforce" and reasons:
                 raise JobRejected("judge blocked: " + "; ".join(reasons))
-            # The Oracle's opinion (PROTOCOL 3.2; runner/opinion.py):
+            # The Oracle's opinion (PROTOCOL 3.2; runner/oracle/opinion.py):
             # tier-1 deterministic checks, an optional repair, and a
             # member on the result. Advisory by construction -- the
             # opinion never blocks a job by itself. The one refusal
@@ -6382,7 +6382,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # segments are attached after it, as the opinion is.
             if v2_segments:
                 result["context"] = v2_segments
-            # Self-learning (runner/learning.py): score the
+            # Self-learning (runner/oracle/learning.py): score the
             # frozen call against this outcome and persist what
             # it teaches BEFORE the result is sent, so the next
             # job's opinion evaluation reads it fresh from the
@@ -7525,7 +7525,7 @@ def run_inspect(cfg, args) -> int:
         return 0
     if args.inspect == "sources":
         if _extsources is None:
-            print("extension sources: runner/extsources.py is unavailable",
+            print("extension sources: runner/ops/extsources.py is unavailable",
                   file=sys.stderr)
             return 1
         print(json.dumps(_extsources.status(base), indent=2))
@@ -10727,13 +10727,13 @@ def main() -> int:
     if args.audit_report:
         # Read-only: works with a config that has no mailbox
         # credentials, and never touches the mailbox or config.json.
-        _auditreport = _load_mod("runner.auditreport", "auditreport")
+        _auditreport = _load_mod("runner.ops.auditreport", "ops.auditreport")
         base_dir = _base_dir_for(cfg, args.config)
         return _auditreport.main(cfg, base_dir, since=args.since,
                                  key=args.key, feature=args.feature)
     if args.posture:
         # Read-only posture report; no mailbox needed.
-        _posture = _load_mod("runner.posture", "posture")
+        _posture = _load_mod("runner.ops.posture", "ops.posture")
         base_dir = _base_dir_for(cfg, args.config)
         return _posture.main(cfg, cfg_path, base_dir)
     if args.run_variant:
@@ -10795,7 +10795,7 @@ def main() -> int:
         # Black-box gauntlet against the configured system. Runs
         # before any model warm-up or daemon spawning: the harness
         # measures the system as it is, it does not fix it up first.
-        _harness = _load_mod("runner.harness", "harness")
+        _harness = _load_mod("runner.ops.harness", "ops.harness")
         base_dir = _base_dir_for(cfg, args.config)
         return _harness.main(cfg, base_dir, cfg_path=args.config,
                              roundtrip_timeout=args.diagnose_timeout)
@@ -10835,7 +10835,7 @@ def main() -> int:
     if args.oracle_cli:
         return oracle_cli(cfg, cfg_path=args.config)
     if args.local_test:
-        _lt = _load_mod("runner.local_test", "local_test")
+        _lt = _load_mod("runner.ops.local_test", "ops.local_test")
         return _lt.main(cfg, browser=args.browser)
     # The shared secret is required in all auth modes and must carry
     # enough entropy to resist offline brute force. It is separate from

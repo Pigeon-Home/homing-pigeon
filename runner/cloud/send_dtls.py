@@ -12,7 +12,7 @@ The shared secret does double duty here, by design: it is the
 HMAC key that signs the job AND the external PSK that
 authenticates the session. The session adds confidentiality
 and forward secrecy (psk_dhe_ke only -- see
-runner/dtlsproto.py); the signature stays the authorization,
+runner/wire/dtlsproto.py); the signature stays the authorization,
 exactly as on every other binding. A per-job encrypted job
 (the hp_enc envelope) composes with the session unchanged:
 --encrypt is the default, --cleartext selects the plain
@@ -50,7 +50,7 @@ for _p in (_ROOT, _HERE):
 
 from send_job import (PROTOCOL_VERSION, require_signable_secret,  # noqa: E402
                       sign_payload, verify_body)
-from runner import dtlsproto, jobcrypto  # noqa: E402
+from runner.wire import dtlsproto, jobcrypto  # noqa: E402
 
 DEFAULT_PORT = 20220
 

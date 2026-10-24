@@ -11,7 +11,7 @@ Create a local user for the runner (no admin rights, password that
 doesn't expire), then install with:
 
 ```
-python runner/install.py --run-as .\pigeon-runner
+python runner/ops/install.py --run-as .\pigeon-runner
 ```
 
 Named (non-SYSTEM) accounts get run level `LIMITED` instead of

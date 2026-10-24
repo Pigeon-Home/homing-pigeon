@@ -30,8 +30,8 @@ from runner.runner import (  # noqa: E402
     poll_once,
     save_retained,
 )
-from runner import jobcrypto  # noqa: E402
-from runner.install import store_additional_secret  # noqa: E402
+from runner.wire import jobcrypto  # noqa: E402
+from runner.ops.install import store_additional_secret  # noqa: E402
 from send_job import sign_payload, verify_body  # noqa: E402
 from runner.tests.test_runner import (  # noqa: E402
     SECRET, SENDER, FakeIMAP, FakeSMTP, job_email, job_payload,

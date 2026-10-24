@@ -14,8 +14,8 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import posture as P  # noqa: E402
-from runner import security as S  # noqa: E402
+from runner.ops import posture as P  # noqa: E402
+from runner.guard import security as S  # noqa: E402
 
 STRONG = secrets.token_hex(32)
 

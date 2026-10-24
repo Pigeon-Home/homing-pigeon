@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fuzz family for the transport log relay (runner/transports.py).
+"""Fuzz family for the transport log relay (runner/wire/transports.py).
 
 test_transport_log_relay.py pins the relay's designed behaviors
 with hand-picked cases. This module attacks the same code the way
@@ -39,7 +39,7 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import transports  # noqa: E402
+from runner.wire import transports  # noqa: E402
 
 SECRET = "2d2d42b99b668d4bcc0120c172c09e1059cdf4dd94d3422524519e3708937be4"
 SENDER = "runner@example.com"
@@ -585,8 +585,8 @@ class SpawnContractTest(unittest.TestCase):
             sup.start()
         env = self.kw_seen[0]["env"]
         self.assertNotIn("MUTANT_UNDER_TEST", env)
-        pkg_parent = os.path.dirname(os.path.dirname(
-            os.path.abspath(transports.__file__)))
+        pkg_parent = os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.abspath(transports.__file__))))
         self.assertEqual(env["PYTHONPATH"],
                          pkg_parent + os.pathsep + spaced)
         paths = transports.channel_paths(self.tmp, "file")
@@ -605,8 +605,8 @@ class SpawnContractTest(unittest.TestCase):
         sup = self._supervisor()
         with mock.patch.dict(os.environ, {}, clear=True):
             sup.start()
-        pkg_parent = os.path.dirname(os.path.dirname(
-            os.path.abspath(transports.__file__)))
+        pkg_parent = os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.abspath(transports.__file__))))
         self.assertEqual(self.kw_seen[0]["env"]["PYTHONPATH"],
                          pkg_parent)
         self._finish(sup)

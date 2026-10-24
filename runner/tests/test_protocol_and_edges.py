@@ -42,9 +42,9 @@ from runner.runner import (  # noqa: E402
     verify_body,
     SEEN_CAP,
 )
-from runner import install as install_mod  # noqa: E402
-from runner import jobcrypto  # noqa: E402
-from runner import opinion as opinion_mod  # noqa: E402
+from runner.ops import install as install_mod  # noqa: E402
+from runner.wire import jobcrypto  # noqa: E402
+from runner.oracle import opinion as opinion_mod  # noqa: E402
 from send_job import sign_payload as cloud_sign  # noqa: E402
 
 SECRET = "f293c686da58b28fc08f44e13d722e6c0533a94e08c0ae6cb20f2aa1be1a74bf"
@@ -518,8 +518,12 @@ class InstallHelperTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
             # minimal source layout
             open(os.path.join(src, "runner.py"), "w").write("# stub\n")
-            open(os.path.join(src, "oauth.py"), "w").write("# stub\n")
-            open(os.path.join(src, "winlog.py"), "w").write("# stub\n")
+            for sub_dir, name in (("wire", "__init__.py"),
+                                  ("wire", "oauth.py"),
+                                  ("ops", "__init__.py"),
+                                  ("ops", "winlog.py")):
+                os.makedirs(os.path.join(src, sub_dir), exist_ok=True)
+                open(os.path.join(src, sub_dir, name), "w").write("# stub\n")
             open(os.path.join(src, "config.example.json"), "w").write("{}\n")
             with patch.object(install_mod, "FROZEN", False):
                 install_mod.install_files(src, dst)
@@ -1040,7 +1044,7 @@ if __name__ == "__main__":
 
 class OAuthAuthTests(unittest.TestCase):
     def test_xoauth2_string_shape(self):
-        from runner.oauth import xoauth2_raw
+        from runner.wire.oauth import xoauth2_raw
         raw = xoauth2_raw("a@b.com", "ya29.token")
         self.assertEqual(
             raw,
@@ -1075,7 +1079,7 @@ class OAuthRefreshErrorTests(unittest.TestCase):
         import io
         import urllib.error
         from unittest import mock
-        from runner.oauth import refresh_access_token, OAuthRefreshError
+        from runner.wire.oauth import refresh_access_token, OAuthRefreshError
 
         err_body = json.dumps({"error": "invalid_grant",
                                "error_description": "Token has been revoked"}).encode()
@@ -1091,14 +1095,14 @@ class OAuthRefreshErrorTests(unittest.TestCase):
         self.assertIn("browser login", str(cm.exception))
 
     def test_refresh_error_is_a_runtime_error(self):
-        from runner.oauth import OAuthRefreshError
+        from runner.wire.oauth import OAuthRefreshError
         self.assertTrue(issubclass(OAuthRefreshError, RuntimeError))
 
 
 class WinlogTests(unittest.TestCase):
     def test_report_event_is_noop_off_windows(self):
         # We're on Linux here; must not raise and must do nothing.
-        from runner import winlog
+        from runner.ops import winlog
         self.assertFalse(winlog._reported_ok)
         winlog.report_event("test message")  # must not raise
         winlog.report_event("test message", level="WARN")
@@ -1108,7 +1112,7 @@ class WinlogTests(unittest.TestCase):
         # Even if ctypes/winreg blow up, the runner must survive.
         import sys
         from unittest import mock
-        from runner import winlog
+        from runner.ops import winlog
         with mock.patch.dict(sys.modules, {"ctypes": None}):
             winlog.report_event("test")  # must not raise
 

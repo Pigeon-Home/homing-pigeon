@@ -23,9 +23,9 @@ classifiers = [
 
 [project.scripts]
 homing-pigeon = "runner.runner:main"
-homing-pigeon-install = "runner.install:main"
+homing-pigeon-install = "runner.ops.install:main"
 homing-pigeon-send-job = "runner.cloud.send_job:main"
-homing-pigeon-auth = "runner.oauth:main"
+homing-pigeon-auth = "runner.wire.oauth:main"
 
 [project.urls]
 Homepage = "https://github.com/Pigeon-Home/homing-pigeon"
@@ -55,7 +55,7 @@ source_paths = ["runner"]
 # Broader scopes were measured: 4 files (security/senses/dri/posture,
 # 1567 mutants) extrapolates to ~45-50 min -- too slow for per-push CI.
 # Full runner/ (~10k lines) would be hours. Expand deliberately.
-only_mutate = ["runner/security.py"]
+only_mutate = ["runner/guard/security.py"]
 # The suite sits inside the source path (runner/tests/); it is the
 # oracle that kills mutants, never a mutation target.
 do_not_mutate = ["runner/tests/**", "runner/tools/**", "runner/extensions/**"]
@@ -104,14 +104,14 @@ select = ["E", "F"]
 
 [tool.ruff.lint.per-file-ignores]
 # Grandfathered E501 debt, counted 2026-10-18: runner/runner.py 64,
-# runner/install.py 10, runner/cloud/send_job.py 3, runner/senses.py 1,
-# runner/dri.py 1. New files conform from birth; these shrink as
+# runner/ops/install.py 10, runner/cloud/send_job.py 3, runner/oracle/senses.py 1,
+# runner/oracle/dri.py 1. New files conform from birth; these shrink as
 # their files are touched. Do not add files to this list.
 "runner/runner.py" = ["E501"]
-"runner/install.py" = ["E501"]
+"runner/ops/install.py" = ["E501"]
 "runner/cloud/send_job.py" = ["E501"]
-"runner/senses.py" = ["E501"]
-"runner/dri.py" = ["E501"]
+"runner/oracle/senses.py" = ["E501"]
+"runner/oracle/dri.py" = ["E501"]
 # The test suite's idiom: sys.path setup before imports (E402) and
 # long scenario/fixture lines (E501) are deliberate there.
 "runner/tests/**" = ["E402", "E501"]
@@ -129,7 +129,7 @@ project-excludes = [
     "runner/extensions/**",
 ]
 
-# Sibling modules are imported in two forms: `from runner.oauth import X`
+# Sibling modules are imported in two forms: `from runner.wire.oauth import X`
 # (primary) and `from oauth import X` (fallback when a file runs as
 # __main__ from inside runner/). The fallback names resolve to nothing
 # statically; treat them as Any instead of erroring.

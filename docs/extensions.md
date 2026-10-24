@@ -340,7 +340,7 @@ binds loopback only — it is not a network service — and an
 unsigned or malformed connection is logged and dropped without
 disturbing the listener.
 
-The producer helpers live in `runner/extensions.py`:
+The producer helpers live in `runner/ops/extensions.py`:
 `build_sensor_alert(...)` composes the envelope,
 `sign_envelope(payload, secret)` seals it, and
 `drop_local_signal(base_dir, payload, secret)` /

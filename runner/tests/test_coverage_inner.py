@@ -10,8 +10,8 @@ import time
 import unittest
 from unittest import mock
 
-from runner import opinion as op
-from runner import remediation as rem
+from runner.oracle import opinion as op
+from runner.oracle import remediation as rem
 
 
 class OpinionSettingsEdges(unittest.TestCase):

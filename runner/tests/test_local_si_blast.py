@@ -16,7 +16,7 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import local_test as LT
+from runner.ops import local_test as LT
 from runner.runner import sign_payload, verify_body
 
 SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"

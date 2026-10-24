@@ -38,7 +38,8 @@ from xml.sax.saxutils import escape
 __version__ = "3.12.61"
 
 SERVICE_NAME = "homing-pigeon"
-FILES = ["runner.py", "oauth.py", "winlog.py"]
+FILES = ["runner.py", "wire/__init__.py", "wire/oauth.py",
+         "ops/__init__.py", "ops/winlog.py"]
 
 # When frozen with PyInstaller (the release binaries), there is no Python
 # on the target machine: the runner ships as a sibling binary
@@ -50,7 +51,7 @@ RUNNER_BIN = "homing-pigeon.exe" if os.name == "nt" else "homing-pigeon"
 def _src_dir() -> str:
     if FROZEN:
         return os.path.dirname(sys.executable)
-    return os.path.dirname(os.path.abspath(__file__))
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _runner_argv(dst_dir: str):
@@ -272,8 +273,9 @@ def install_files(src_dir: str, bin_dir: str,
                 os.chmod(dst, 0o755)
     else:
         for name in FILES:
-            shutil.copy2(os.path.join(src_dir, name),
-                         os.path.join(bin_dir, name))
+            dst = os.path.join(bin_dir, *name.split("/"))
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copy2(os.path.join(src_dir, *name.split("/")), dst)
     if not os.path.exists(cfg_path):
         example = os.path.join(src_dir, "config.example.json")
         if not os.path.isfile(example):
@@ -1047,10 +1049,10 @@ def _setup_fresh_config(args, cfg_path):
     # JSON. Headless installs keep today's behavior (fail at first
     # run with a config error pointing at --setup).
     try:
-        from runner import setup as _setup
+        from runner.ops import setup as _setup
     except ImportError:
         try:
-            import setup as _setup
+            from ops import setup as _setup
         except ImportError:
             _setup = None
     if _setup is not None:
@@ -2442,7 +2444,7 @@ def _install_collector_windows(name, args) -> str:
                     "winget on this box to fetch the official "
                     "MSI. Install osquery from osquery.io; the "
                     "light pack config is osquery_config_text() "
-                    "in runner/install.py.")
+                    "in runner/ops/install.py.")
         run(["winget", "install", "--id", "osquery.osquery",
              "-e", "--silent", "--accept-source-agreements",
              "--accept-package-agreements"])
@@ -2923,9 +2925,9 @@ def _warn_personal_documents():
     """Best effort. A missing module must not stop an install."""
     try:
         try:
-            from runner.personal_docs import warn_if_personal_documents
+            from runner.oracle.personal_docs import warn_if_personal_documents
         except ImportError:
-            from personal_docs import warn_if_personal_documents
+            from oracle.personal_docs import warn_if_personal_documents
         warn_if_personal_documents()
     except Exception:
         return

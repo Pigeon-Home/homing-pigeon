@@ -281,7 +281,7 @@ class InstallAndOracleTest(unittest.TestCase):
         self.base = os.path.join(self.tmp, "state")
 
     def test_install_places_and_replaces_the_snapshot(self):
-        from runner import install
+        from runner.ops import install
         self.assertTrue(install.install_project_snapshot(self.src, self.base))
         dst = os.path.join(self.base, "project")
         stale = os.path.join(dst, "stale.txt")
@@ -294,13 +294,13 @@ class InstallAndOracleTest(unittest.TestCase):
         self.assertEqual(sorted(os.listdir(self.base)), ["project"])
 
     def test_no_snapshot_in_the_archive_is_not_an_error(self):
-        from runner import install
+        from runner.ops import install
         self.assertFalse(install.install_project_snapshot(
             os.path.join(self.tmp, "nothing"), self.base))
         self.assertFalse(os.path.exists(os.path.join(self.base, "project")))
 
     def test_the_cfg_base_dir_matches_the_runner(self):
-        from runner import install
+        from runner.ops import install
         from runner.runner import _base_dir_for
         cfg_path = os.path.join(self.tmp, "home", "config.json")
         os.makedirs(os.path.dirname(cfg_path))
@@ -311,7 +311,7 @@ class InstallAndOracleTest(unittest.TestCase):
                              _base_dir_for(cfg, cfg_path))
 
     def test_the_oracle_context_points_at_the_snapshot(self):
-        from runner import install
+        from runner.ops import install
         from runner.runner import _project_snapshot_note, oracle_context
         self.assertEqual(_project_snapshot_note(self.base), "")
         install.install_project_snapshot(self.src, self.base)
@@ -324,7 +324,7 @@ class InstallAndOracleTest(unittest.TestCase):
         self.assertIn("Project snapshot:", ctx)
 
     def test_a_broken_ci_file_still_points_at_the_index(self):
-        from runner import install
+        from runner.ops import install
         from runner.runner import _project_snapshot_note
         install.install_project_snapshot(self.src, self.base)
         with open(os.path.join(self.base, "project", "CI-SNAPSHOT.json"),

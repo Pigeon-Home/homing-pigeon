@@ -39,7 +39,8 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import dri, jobcrypto, resources  # noqa: E402
+from runner.oracle import dri, resources  # noqa: E402
+from runner.wire import jobcrypto  # noqa: E402
 from runner.runner import (  # noqa: E402
     Board,
     _redact_patterns,
@@ -553,7 +554,7 @@ class ConcurrentBoardAndSensesTest(unittest.TestCase):
             self.assertTrue(ok)
 
     def test_load_alerts_bad_limit_does_not_raise(self):
-        from runner import senses
+        from runner.oracle import senses
         with tempfile.TemporaryDirectory() as d:
             senses.store_alert(d, {
                 "sensor": "host_ids", "severity": "info",
@@ -656,7 +657,7 @@ class ExtensionBudgetAndPrunePoisonTest(unittest.TestCase):
 
     def test_budget_prune_senses_dri_tolerate_poison(self):
         from runner.runner import answer_queries, prune_retained
-        from runner import senses, dri
+        from runner.oracle import senses, dri
         answers, spent = answer_queries(
             [{"op": "grep", "pattern": "x"}],
             {"stdout": "hello"}, {}, budget="lots",
@@ -680,7 +681,7 @@ class ExtensionBudgetAndPrunePoisonTest(unittest.TestCase):
     def test_concurrent_budget_and_senses_do_not_raise(self):
         import threading
         from runner.runner import answer_queries, prune_retained
-        from runner import senses, dri
+        from runner.oracle import senses, dri
         errors = []
 
         def hammer():
@@ -724,7 +725,7 @@ class NameOracleResourcesPoisonTest(unittest.TestCase):
 
     def test_name_oracle_resources_tolerate_poison(self):
         from runner.runner import windows_reserved_name, record_oracle_turn
-        from runner import resources
+        from runner.oracle import resources
         self.assertFalse(windows_reserved_name(None))
         self.assertFalse(windows_reserved_name(5))
         self.assertFalse(windows_reserved_name(["a"]))
@@ -741,7 +742,7 @@ class NameOracleResourcesPoisonTest(unittest.TestCase):
     def test_concurrent_name_and_resources_do_not_raise(self):
         import threading
         from runner.runner import windows_reserved_name, record_oracle_turn
-        from runner import resources
+        from runner.oracle import resources
         errors = []
 
         def hammer():
@@ -786,7 +787,7 @@ class ConfigAndJobShapePoisonTest(unittest.TestCase):
             execute_job, JobRejected, build_secrets, build_key_policies,
             check_key_policy,
         )
-        from runner import senses, dri
+        from runner.oracle import senses, dri
         with tempfile.TemporaryDirectory() as d:
             for job in (None, "bad", 5, []):
                 with self.assertRaises(JobRejected):
@@ -808,7 +809,7 @@ class ConfigAndJobShapePoisonTest(unittest.TestCase):
         from runner.runner import (
             execute_job, JobRejected, build_secrets, check_key_policy,
         )
-        from runner import senses, dri
+        from runner.oracle import senses, dri
         errors = []
 
         def hammer():
@@ -1076,7 +1077,7 @@ class DriEvaluatePoisonTest(unittest.TestCase):
     """
 
     def test_bad_dcfg_returns_empty(self):
-        from runner import dri
+        from runner.oracle import dri
         with tempfile.TemporaryDirectory() as d:
             self.assertEqual(dri.evaluate_page_triggers(None, d, 0), [])
             self.assertEqual(dri.evaluate_page_triggers({}, d, 0), [])
@@ -1087,7 +1088,7 @@ class DriEvaluatePoisonTest(unittest.TestCase):
 
     def test_concurrent_evaluate_does_not_raise(self):
         import threading
-        from runner import dri
+        from runner.oracle import dri
         errors = []
 
         def hammer():
@@ -1125,7 +1126,7 @@ class RetainedResourcesPagePoisonTest(unittest.TestCase):
 
     def test_retained_resources_page_tolerate_poison(self):
         from runner.runner import retained_expired
-        from runner import resources, dri
+        from runner.oracle import resources, dri
         self.assertTrue(retained_expired(None, {}))
         self.assertTrue(retained_expired("bad", "bad"))
         self.assertTrue(retained_expired({}, None))
@@ -1140,7 +1141,7 @@ class RetainedResourcesPagePoisonTest(unittest.TestCase):
     def test_concurrent_retained_and_page_do_not_raise(self):
         import threading
         from runner.runner import retained_expired
-        from runner import resources, dri
+        from runner.oracle import resources, dri
         errors = []
 
         def hammer():
@@ -1182,7 +1183,7 @@ class AttestStoreResourcesBoardPoisonTest(unittest.TestCase):
 
     def test_attest_store_resources_board_tolerate_poison(self):
         from runner.runner import answer_queries, Board
-        from runner import senses, resources
+        from runner.oracle import senses, resources
         answers, spent = answer_queries(
             [{"op": "attest", "predicate": "no_secrets"}],
             {"stdout": "hello"},
@@ -1204,7 +1205,7 @@ class AttestStoreResourcesBoardPoisonTest(unittest.TestCase):
     def test_concurrent_attest_and_store_do_not_raise(self):
         import threading
         from runner.runner import answer_queries
-        from runner import senses, resources
+        from runner.oracle import senses, resources
         errors = []
 
         def hammer():
@@ -1248,7 +1249,7 @@ class DiskFractionPoisonTest(unittest.TestCase):
     """
 
     def test_bad_path_returns_none(self):
-        from runner import resources
+        from runner.oracle import resources
         self.assertIsNone(resources._disk_fraction(None))
         self.assertIsNone(resources._disk_fraction(5))
         self.assertIsNone(resources._disk_fraction([]))
@@ -1256,7 +1257,7 @@ class DiskFractionPoisonTest(unittest.TestCase):
 
     def test_concurrent_disk_fraction_does_not_raise(self):
         import threading
-        from runner import resources
+        from runner.oracle import resources
         errors = []
 
         def hammer():
@@ -1359,7 +1360,7 @@ class DriParseNumericPoisonTest(unittest.TestCase):
     """
 
     def test_bad_threshold_does_not_stop_page(self):
-        from runner import dri
+        from runner.oracle import dri
         with tempfile.TemporaryDirectory() as d:
             self.assertEqual(dri.maybe_page(
                 {"dri": {"enabled": True, "triggers": {
@@ -1376,7 +1377,7 @@ class DriParseNumericPoisonTest(unittest.TestCase):
 
     def test_concurrent_bad_dri_cfg_does_not_raise(self):
         import threading
-        from runner import dri
+        from runner.oracle import dri
         errors = []
 
         def hammer():
@@ -1458,7 +1459,7 @@ class AskAndPageShapeTest(unittest.TestCase):
 
     def test_bad_ask_config_returns_a_rejection(self):
         from runner.runner import ask_model
-        from runner import dri
+        from runner.oracle import dri
         inf = {"endpoint": "http://127.0.0.1:9/v1", "model": "m"}
         for cfg in (["x"], 5, None):
             got = ask_model(cfg, "what happened?", "out", 10)
@@ -1478,7 +1479,7 @@ class AskAndPageShapeTest(unittest.TestCase):
     def test_concurrent_bad_asks_and_pages_do_not_raise(self):
         import threading
         from runner.runner import ask_model
-        from runner import dri
+        from runner.oracle import dri
         errors = []
         inf = {"endpoint": "http://127.0.0.1:9/v1", "model": "m",
                "timeout_sec": "soon", "max_answer_chars": "x"}
@@ -1572,7 +1573,7 @@ class DriSaveStatePoisonTest(unittest.TestCase):
     """
 
     def test_bad_base_does_not_raise(self):
-        from runner import dri
+        from runner.oracle import dri
         dri._save_state(None, {})
         dri._save_state(5, {"x": 1})
         dri._save_state("", {"x": 1})
@@ -1584,7 +1585,7 @@ class DriSaveStatePoisonTest(unittest.TestCase):
 
     def test_concurrent_save_state_does_not_raise(self):
         import threading
-        from runner import dri
+        from runner.oracle import dri
         errors = []
 
         def hammer():
@@ -1624,7 +1625,7 @@ class SenseGateAndPageTextTest(unittest.TestCase):
     """
 
     def test_bad_gate_inputs_do_not_raise(self):
-        from runner import senses
+        from runner.oracle import senses
         from runner.runner import JobRejected, download, oracle_page, query_budget
         from unittest import mock
         alert = {"severity": "info", "title": "t"}
@@ -1665,7 +1666,7 @@ class SenseGateAndPageTextTest(unittest.TestCase):
 
     def test_two_alerts_cannot_both_pass_the_hourly_cap(self):
         import threading
-        from runner import senses
+        from runner.oracle import senses
         scfg = {"profile": {"max_per_hour": 1}}
         kept = []
         dropped = []
@@ -1722,7 +1723,7 @@ class BadBaseDirPoisonTest(unittest.TestCase):
 
     def test_bad_base_dir_does_not_raise(self):
         from runner.runner import save_retained, load_retained
-        from runner import senses, resources
+        from runner.oracle import senses, resources
         resources._save_state(None, {"x": 1})
         resources._save_state(5, {"x": 1})
         resources._save_state("", {"x": 1})
@@ -1738,7 +1739,7 @@ class BadBaseDirPoisonTest(unittest.TestCase):
     def test_concurrent_bad_base_does_not_raise(self):
         import threading
         from runner.runner import save_retained, load_retained
-        from runner import senses, resources
+        from runner.oracle import senses, resources
         errors = []
 
         def hammer():
@@ -1849,7 +1850,7 @@ class MoreBadBasePoisonTest(unittest.TestCase):
 
     def test_more_bad_base_does_not_raise(self):
         from runner.runner import prune_retained, _append_security_event
-        from runner import dri, resources
+        from runner.oracle import dri, resources
         self.assertEqual(prune_retained(None, 7), 0)
         self.assertEqual(prune_retained(5, "bad"), 0)
         self.assertEqual(prune_retained("", -1), 0)
@@ -1864,7 +1865,7 @@ class MoreBadBasePoisonTest(unittest.TestCase):
     def test_concurrent_more_bad_base_does_not_raise(self):
         import threading
         from runner.runner import prune_retained, _append_security_event
-        from runner import dri, resources
+        from runner.oracle import dri, resources
         errors = []
 
         def hammer():
@@ -1896,7 +1897,7 @@ class DriRecentPoisonTest(unittest.TestCase):
     """
 
     def test_bad_base_returns_empty(self):
-        from runner import dri
+        from runner.oracle import dri
         self.assertEqual(dri._recent_events(None, 0), [])
         self.assertEqual(dri._recent_events(5, "bad"), [])
         self.assertEqual(dri._recent_events("", None), [])
@@ -1906,7 +1907,7 @@ class DriRecentPoisonTest(unittest.TestCase):
 
     def test_concurrent_recent_does_not_raise(self):
         import threading
-        from runner import dri
+        from runner.oracle import dri
         errors = []
 
         def hammer():
@@ -1943,7 +1944,7 @@ class BoardRateAndResourceClockTest(unittest.TestCase):
 
     def test_bad_board_and_clock_do_not_raise(self):
         from runner.runner import Board, budget_status, check_rate_limit, _query_limit
-        from runner import resources
+        from runner.oracle import resources
         self.assertEqual(_query_limit(["x"]), 0)
         self.assertTrue(check_rate_limit("k", ["x"]))
         self.assertEqual(budget_status(None, ["x"]), [])
@@ -1967,7 +1968,7 @@ class BoardRateAndResourceClockTest(unittest.TestCase):
     def test_concurrent_board_and_clock_do_not_raise(self):
         import threading
         from runner.runner import Board, check_rate_limit
-        from runner import resources
+        from runner.oracle import resources
         errors = []
 
         def hammer(i):
@@ -2073,7 +2074,7 @@ class SensorKeyAndFusedScoreTest(unittest.TestCase):
     """
 
     def test_bad_sensor_map_and_fused_score_do_not_raise(self):
-        from runner import dri, senses
+        from runner.oracle import dri, senses
         self.assertIsNone(senses.sensor_for_key({"door": "nope"}, "k"))
         self.assertIsNone(senses.sensor_for_key({"door": {}}, "k"))
         self.assertIsNone(senses.sensor_for_key(None, "k"))
@@ -2101,7 +2102,7 @@ class SensorKeyAndFusedScoreTest(unittest.TestCase):
 
     def test_concurrent_sensor_and_fused_score_do_not_raise(self):
         import threading
-        from runner import dri, senses
+        from runner.oracle import dri, senses
         errors = []
 
         def hammer():
@@ -2149,7 +2150,7 @@ class DriWindowPoisonTest(unittest.TestCase):
     """
 
     def test_bad_window_does_not_raise(self):
-        from runner import dri
+        from runner.oracle import dri
         with tempfile.TemporaryDirectory() as d:
             self.assertEqual(dri.evaluate_page_triggers(
                 {"triggers": {"key_probe": {"threshold": "high", "window_sec": None}}},
@@ -2163,7 +2164,7 @@ class DriWindowPoisonTest(unittest.TestCase):
 
     def test_concurrent_bad_window_does_not_raise(self):
         import threading
-        from runner import dri
+        from runner.oracle import dri
         errors = []
 
         def hammer():
@@ -2267,7 +2268,7 @@ class SensesPathPoisonTest(unittest.TestCase):
     """
 
     def test_bad_base_returns_empty(self):
-        from runner import senses
+        from runner.oracle import senses
         self.assertEqual(senses._path(None), "")
         self.assertEqual(senses._path(5), "")
         self.assertEqual(senses._path(""), "")
@@ -2277,7 +2278,7 @@ class SensesPathPoisonTest(unittest.TestCase):
 
     def test_concurrent_path_does_not_raise(self):
         import threading
-        from runner import senses
+        from runner.oracle import senses
         errors = []
 
         def hammer():
@@ -2525,7 +2526,7 @@ class StateSavePoisonTest(unittest.TestCase):
     """
 
     def test_bad_state_does_not_raise(self):
-        from runner import dri, resources
+        from runner.oracle import dri, resources
 
         class Boom:
             def __str__(self):
@@ -2551,7 +2552,7 @@ class StateSavePoisonTest(unittest.TestCase):
 
     def test_concurrent_state_saves_do_not_raise(self):
         import threading
-        from runner import dri, resources
+        from runner.oracle import dri, resources
 
         class Boom:
             def __str__(self):
@@ -2951,9 +2952,9 @@ class ExecTextPoisonTest(unittest.TestCase):
     """
 
     def test_bad_arg_and_sensor_do_not_raise(self):
-        from runner.local_test import ask_si
+        from runner.ops.local_test import ask_si
         from runner.runner import JobRejected, execute_job
-        from runner.senses import load_alerts, store_alert
+        from runner.oracle.senses import load_alerts, store_alert
 
         class Boom:
             def __str__(self):
@@ -3037,7 +3038,7 @@ class SensesLoadBoomFilterPoisonTest(unittest.TestCase):
     """
 
     def test_boom_filter_does_not_raise(self):
-        from runner import senses
+        from runner.oracle import senses
 
         class Boom:
             def __str__(self):
@@ -3055,7 +3056,7 @@ class SensesLoadBoomFilterPoisonTest(unittest.TestCase):
 
     def test_concurrent_boom_filter_does_not_raise(self):
         import threading
-        from runner import senses
+        from runner.oracle import senses
 
         class Boom:
             def __str__(self):
@@ -3237,8 +3238,8 @@ class FusedSensorKeyTest(unittest.TestCase):
 
     def test_unhashable_sensor_does_not_raise(self):
         import time
-        from runner import dri
-        from runner.senses import store_alert
+        from runner.oracle import dri
+        from runner.oracle.senses import store_alert
 
         now = time.time()
         dcfg = {"triggers": {"sensor_fused_score": {
@@ -3261,8 +3262,8 @@ class FusedSensorKeyTest(unittest.TestCase):
     def test_concurrent_unhashable_sensors_do_not_raise(self):
         import threading
         import time
-        from runner import dri
-        from runner.senses import store_alert
+        from runner.oracle import dri
+        from runner.oracle.senses import store_alert
 
         dcfg = {"triggers": {"sensor_fused_score": {
             "window_sec": 3600, "threshold": 0.1,

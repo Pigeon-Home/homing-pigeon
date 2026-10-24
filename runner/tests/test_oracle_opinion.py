@@ -1,6 +1,6 @@
 """Oracle opinion (PROTOCOL 3.2): latitude, tier-1 checks, repair.
 
-runner/opinion.py is pure; the tier-1 tests stage a box through
+runner/oracle/opinion.py is pure; the tier-1 tests stage a box through
 gather_facts' injected probes. The wire tests run a signed job
 through poll_once with fake IMAP/SMTP in the style of
 runner/tests/test_protocol_and_edges.py, with only execute_job stubbed.
@@ -14,8 +14,8 @@ from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from runner import jobcrypto
-from runner import opinion as op
+from runner.wire import jobcrypto
+from runner.oracle import opinion as op
 from runner import runner
 
 

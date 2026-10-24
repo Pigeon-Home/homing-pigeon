@@ -14,7 +14,7 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import transports  # noqa: E402
+from runner.wire import transports  # noqa: E402
 from runner.transport_extensions import channel as ch  # noqa: E402
 from runner.transport_extensions.file.__main__ import FilePipe  # noqa: E402
 

@@ -136,7 +136,7 @@ class ConcurrencyNegativeTest(unittest.TestCase):
 
     def test_sensor_alert_extreme_detail(self):
         """Bad detail shapes must be rejected or accepted without raising."""
-        from runner import senses as S
+        from runner.oracle import senses as S
         extremes = [
             {"detail": None},
             {"detail": "string-not-object"},
@@ -157,7 +157,7 @@ class ConcurrencyNegativeTest(unittest.TestCase):
     def test_load_alerts_survives_non_utf8_store(self):
         """Finding: load_alerts returns [] on non-UTF-8 senses.jsonl
         instead of raising UnicodeDecodeError."""
-        from runner import senses as S
+        from runner.oracle import senses as S
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "senses.jsonl")
             with open(path, "wb") as f:

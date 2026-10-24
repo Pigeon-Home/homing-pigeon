@@ -5,7 +5,7 @@ Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 Three things are pinned here, none of which needs the network:
 
 1. The manifest `upstream` block parses under the extension API's
-   rules (runner/extensions.py), and the rules refuse the shapes
+   rules (runner/ops/extensions.py), and the rules refuse the shapes
    that would let a path escape or a pin lie.
 2. What sits under `<extension>/upstream/` matches the manifest and
    its PIN.json exactly, and everything together stays under the
@@ -28,7 +28,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "runner", "tools"))
 
-from runner import extensions as E  # noqa: E402
+from runner.ops import extensions as E  # noqa: E402
 import fetch_upstream as FU  # noqa: E402
 
 EXT = os.path.join(ROOT, "runner", "extensions")

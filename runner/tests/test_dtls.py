@@ -41,7 +41,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 
-from runner import dtlsproto, jobcrypto, runner, transports  # noqa: E402
+from runner import runner  # noqa: E402
+from runner.wire import dtlsproto, jobcrypto, transports  # noqa: E402
 from runner.runner import PROTOCOL_VERSION, poll_once  # noqa: E402
 from runner.transport_extensions import channel as ch  # noqa: E402
 import send_dtls  # noqa: E402
@@ -57,7 +58,7 @@ NOW = 1000.0
 
 
 # ------------------------------------------------------------------
-# In-test RFC 8446 machinery (independent of runner.dtlsproto)
+# In-test RFC 8446 machinery (independent of runner.wire.dtlsproto)
 # ------------------------------------------------------------------
 
 def _ext(prk, info, n):

@@ -17,7 +17,7 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import dri, resources, review, senses  # noqa: E402
+from runner.oracle import dri, resources, review, senses  # noqa: E402
 from runner.runner import Board, poll_once, answer_queries  # noqa: E402
 
 SECRET = "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"

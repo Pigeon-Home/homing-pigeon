@@ -28,7 +28,7 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import senses  # noqa: E402
+from runner.oracle import senses  # noqa: E402
 from runner.runner import (  # noqa: E402
     Board,
     answer_queries,

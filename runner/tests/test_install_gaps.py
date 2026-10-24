@@ -18,7 +18,7 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(REPO, "runner"))
 
-from install import (  # noqa: E402
+from ops.install import (  # noqa: E402
     DEFAULT_INFERENCE_MODEL,
     apply_profile,
     chosen_profile,
@@ -60,7 +60,7 @@ class ProfileSelectionTest(unittest.TestCase):
     def test_flags(self):
         self.assertIsNone(chosen_profile("raspberry-pi-home", True))
         self.assertEqual(chosen_profile("password-only", False), "password-only")
-        with mock.patch("install.detect_default_profile", return_value="password-only"):
+        with mock.patch("ops.install.detect_default_profile", return_value="password-only"):
             self.assertEqual(chosen_profile(None, False), "password-only")
         self.assertIsNone(chosen_profile(None, True))
 
@@ -204,7 +204,7 @@ class InstallOllamaTest(unittest.TestCase):
         with open(self.path, "rb") as fh:
             before = fh.read()
         buf = io.StringIO()
-        with redirect_stdout(buf), mock.patch("install.run") as run:
+        with redirect_stdout(buf), mock.patch("ops.install.run") as run:
             install_ollama_and_model(self.path, "llama3.2:3b", skip=True)
         run.assert_not_called()
         with open(self.path, "rb") as fh:
@@ -213,9 +213,9 @@ class InstallOllamaTest(unittest.TestCase):
         _assert_mode(self, self.path, 0o640)
 
     def test_present_ollama_pulls_without_curl_and_locks_mode(self):
-        with mock.patch("install._ollama_bin", return_value="ollama"), \
-             mock.patch("install.ensure_ollama_running", return_value=True), \
-             mock.patch("install.run") as run:
+        with mock.patch("ops.install._ollama_bin", return_value="ollama"), \
+             mock.patch("ops.install.ensure_ollama_running", return_value=True), \
+             mock.patch("ops.install.run") as run:
             ok = install_ollama_and_model(self.path, "llama3.2:3b; touch /tmp/nope", skip=False)
         self.assertTrue(ok)
         run.assert_called_once_with(
@@ -234,10 +234,10 @@ class InstallOllamaTest(unittest.TestCase):
 
     def test_linux_install_command_is_pinned_and_failures_do_not_write(self):
         curl = ["sh", "-c", "curl -fsSL https://ollama.com/install.sh | sh"]
-        with mock.patch("install._ollama_bin", return_value=None), \
-             mock.patch("install.sys.platform", "linux"), \
-             mock.patch("install.ensure_ollama_running", return_value=True), \
-             mock.patch("install.run", side_effect=subprocess.CalledProcessError(1, curl)) as run:
+        with mock.patch("ops.install._ollama_bin", return_value=None), \
+             mock.patch("ops.install.sys.platform", "linux"), \
+             mock.patch("ops.install.ensure_ollama_running", return_value=True), \
+             mock.patch("ops.install.run", side_effect=subprocess.CalledProcessError(1, curl)) as run:
             ok = install_ollama_and_model(self.path, "llama3.2:3b", skip=False)
         self.assertFalse(ok)
         run.assert_called_once_with(curl)
@@ -246,9 +246,9 @@ class InstallOllamaTest(unittest.TestCase):
         self.assertNotIn("inference", cfg)
         self.assertEqual(cfg["shared_secret"], "keep-secret")
 
-        with mock.patch("install._ollama_bin", return_value="/usr/bin/ollama"), \
-             mock.patch("install.ensure_ollama_running", return_value=True), \
-             mock.patch("install.run", side_effect=subprocess.CalledProcessError(1, "pull")):
+        with mock.patch("ops.install._ollama_bin", return_value="/usr/bin/ollama"), \
+             mock.patch("ops.install.ensure_ollama_running", return_value=True), \
+             mock.patch("ops.install.run", side_effect=subprocess.CalledProcessError(1, "pull")):
             ok = install_ollama_and_model(self.path, "llama3.2:3b", skip=False)
         self.assertFalse(ok)
         with open(self.path, encoding="utf-8") as fh:
@@ -265,22 +265,22 @@ class OllamaBinTest(unittest.TestCase):
     def test_windows_known_location_beats_path(self):
         fake = os.path.join("C:\\", "Users", "u", "AppData", "Local",
                             "Programs", "Ollama", "ollama.exe")
-        with mock.patch("install.sys.platform", "win32"), \
+        with mock.patch("ops.install.sys.platform", "win32"), \
              mock.patch.dict(os.environ, {"LOCALAPPDATA": os.path.join("C:\\", "Users", "u", "AppData", "Local")}), \
-             mock.patch("install.os.path.isfile", return_value=True), \
-             mock.patch("install._which", return_value=None):
+             mock.patch("ops.install.os.path.isfile", return_value=True), \
+             mock.patch("ops.install._which", return_value=None):
             self.assertEqual(_ollama_bin(), fake)
 
     def test_falls_back_to_which(self):
-        with mock.patch("install.sys.platform", "linux"), \
-             mock.patch("install.os.path.isfile", return_value=False), \
-             mock.patch("install._which", return_value="/usr/bin/ollama"):
+        with mock.patch("ops.install.sys.platform", "linux"), \
+             mock.patch("ops.install.os.path.isfile", return_value=False), \
+             mock.patch("ops.install._which", return_value="/usr/bin/ollama"):
             self.assertEqual(_ollama_bin(), "/usr/bin/ollama")
 
     def test_none_when_nowhere(self):
-        with mock.patch("install.sys.platform", "linux"), \
-             mock.patch("install.os.path.isfile", return_value=False), \
-             mock.patch("install._which", return_value=None):
+        with mock.patch("ops.install.sys.platform", "linux"), \
+             mock.patch("ops.install.os.path.isfile", return_value=False), \
+             mock.patch("ops.install._which", return_value=None):
             self.assertIsNone(_ollama_bin())
 
 
@@ -291,7 +291,7 @@ class InferenceOnlyFlagTest(unittest.TestCase):
         return d
 
     def test_inference_only_runs_just_the_model_setup(self):
-        import install
+        from ops import install
         with mock.patch.object(install, "install_ollama_and_model", return_value=True) as oll, \
              mock.patch.object(install, "install_files") as files, \
              mock.patch.object(install, "ensure_shared_secret"), \
@@ -306,7 +306,7 @@ class InferenceOnlyFlagTest(unittest.TestCase):
         self.assertIn("READY", buf.getvalue())
 
     def test_inference_only_reports_failure_actionably(self):
-        import install
+        from ops import install
         with mock.patch.object(install, "install_ollama_and_model", return_value=False), \
              mock.patch.object(install, "install_files"), \
              mock.patch.object(install, "ensure_shared_secret"), \

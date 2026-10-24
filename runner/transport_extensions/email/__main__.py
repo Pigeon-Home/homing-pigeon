@@ -34,8 +34,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))))
 
 from runner.transport_extensions import channel as ch  # noqa: E402
-from runner import mailbox as _mailbox  # noqa: E402
-from runner import confval as _confval  # noqa: E402
+from runner.wire import mailbox as _mailbox  # noqa: E402
+from runner.guard import confval as _confval  # noqa: E402
 
 _mailbox.set_logger(ch.log)
 

@@ -93,7 +93,7 @@ class TemplateTest(unittest.TestCase):
 
     def test_install_help_mentions_no_templates(self):
         out = subprocess.run(
-            [sys.executable, os.path.join(REPO, "runner/install.py"),
+            [sys.executable, os.path.join(REPO, "runner/ops/install.py"),
              "--help"],
             capture_output=True, text=True, timeout=30).stdout.lower()
         for word in ("hardening/", "apparmor", "selinux",

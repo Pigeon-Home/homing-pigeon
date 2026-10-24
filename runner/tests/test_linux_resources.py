@@ -13,7 +13,7 @@ import threading
 import unittest
 from unittest import mock
 
-from runner import resources as RS
+from runner.oracle import resources as RS
 
 
 def _mode(path):

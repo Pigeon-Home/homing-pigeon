@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for transport extensions (runner/transports.py).
+"""Tests for transport extensions (runner/wire/transports.py).
 
 Every transport -- email, file, NATS, and any drop-in -- is a
 standalone extension program the runner supervises as a child
@@ -36,7 +36,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 
-from runner import jobcrypto, mailbox, transports  # noqa: E402
+from runner.wire import jobcrypto, mailbox, transports  # noqa: E402
 from runner.runner import (  # noqa: E402
     _transports_arg, apply_cli_overrides, poll_once)
 from runner.transport_extensions.email import (  # noqa: E402
@@ -1869,7 +1869,7 @@ class ChannelEdgeTest(unittest.TestCase):
             def refuse(*args, **kwargs):
                 raise OSError("no fd")
 
-            with mock.patch("runner.transports.os.open", refuse):
+            with mock.patch("runner.wire.transports.os.open", refuse):
                 written = transports._write_runtime_config(
                     paths, {"name": "file"})
             with open(written, encoding="utf-8") as fh:
@@ -1996,7 +1996,7 @@ class SupervisorFailureTest(unittest.TestCase):
         cfg = {"transports": ["file"]}
         sup = self._sup(self.tmp, cfg, lambda argv, **kw: Stubborn(argv, **kw))
         sup.start()
-        with mock.patch("runner.transports._wait_down", return_value=False):
+        with mock.patch("runner.wire.transports._wait_down", return_value=False):
             sup.stop()
         self.assertTrue(sup.stopped)
 
@@ -2010,13 +2010,13 @@ class SupervisorFailureTest(unittest.TestCase):
             ticks["n"] += 1
             return ticks["n"] * 10
 
-        with mock.patch("runner.transports.time.monotonic", mono), \
-                mock.patch("runner.transports._SLEEP", lambda _s: None):
+        with mock.patch("runner.wire.transports.time.monotonic", mono), \
+                mock.patch("runner.wire.transports._SLEEP", lambda _s: None):
             self.assertFalse(transports._wait_down(Alive([],), 1))
 
     def test_the_same_config_reuses_the_supervisor(self):
         cfg = {"transports": ["file"]}
-        with mock.patch("runner.transports.subprocess.Popen",
+        with mock.patch("runner.wire.transports.subprocess.Popen",
                         lambda argv, **kw: SupervisorTest.FakeProc(argv, **kw)):
             first = transports.start_supervisor(cfg, self.tmp)
             second = transports.start_supervisor(cfg, self.tmp)
@@ -2124,7 +2124,7 @@ class SupervisorFailureTest(unittest.TestCase):
         def more():
             yield b"plain line\n"
 
-        with mock.patch("runner.transports._extension_line_parts", poison):
+        with mock.patch("runner.wire.transports._extension_line_parts", poison):
             sup._pump_extension_log("file", more(), log_path)
 
 

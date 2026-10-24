@@ -12,7 +12,7 @@ That is no longer the whole truth: the judge in enforce mode, key
 policy, and the security-policy modes also refuse signed jobs; the
 M2 constraints noted below are part of that. The signature says *who* sent it, not
 whether the owner would approve *this* job. The advisory reviewer
-(`runner/review.py`) notes concerns but never blocks, and the M2
+(`runner/oracle/review.py`) notes concerns but never blocks, and the M2
 policy constraints bound *how* a key may act but not *whether* a
 particular job should run. An approval gate adds the missing piece:
 for jobs the policy flags, a human says yes before execution.

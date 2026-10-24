@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from runner.posture import _check_service_unit
+from runner.ops.posture import _check_service_unit
 
 
 def _check(path, exists=True):
@@ -19,8 +19,8 @@ def _check(path, exists=True):
     def _exists(candidate):
         return exists and candidate == path
 
-    with mock.patch("runner.posture.os.path.exists", side_effect=_exists), \
-         mock.patch("runner.posture.os.path.expanduser", return_value=path):
+    with mock.patch("runner.ops.posture.os.path.exists", side_effect=_exists), \
+         mock.patch("runner.ops.posture.os.path.expanduser", return_value=path):
         _check_service_unit(results)
     return results[0]
 
@@ -66,8 +66,8 @@ class UnitPostureTest(unittest.TestCase):
                 return candidate == link
 
             with mock.patch("builtins.open", side_effect=spy), \
-                 mock.patch("runner.posture.os.path.exists", side_effect=_exists), \
-                 mock.patch("runner.posture.os.path.expanduser", return_value=link):
+                 mock.patch("runner.ops.posture.os.path.exists", side_effect=_exists), \
+                 mock.patch("runner.ops.posture.os.path.expanduser", return_value=link):
                 _check_service_unit(results)
             level, _topic, detail = results[0]
             self.assertEqual(level, "WARN")

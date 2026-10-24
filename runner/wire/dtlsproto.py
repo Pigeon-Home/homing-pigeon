@@ -9,7 +9,7 @@ side), and the profile is deliberately narrow:
 
 - DTLS 1.3 (RFC 9147) records and handshake, ONE ciphersuite:
   TLS_AES_256_GCM_SHA384. The AEAD is
-  runner.jobcrypto's AES-256-GCM, reused as-is;
+  runner.wire.jobcrypto's AES-256-GCM, reused as-is;
   DTLS differs from the per-job envelope in its key schedule,
   which needs raw HKDF-Expand against derived secrets (the
   envelope module's hkdf() is extract+expand for its own
@@ -57,13 +57,13 @@ import hmac
 import json
 import secrets
 
-try:  # package context (runner.dtlsproto)
-    from runner import jobcrypto
+try:  # package context (runner.wire.dtlsproto)
+    from runner.wire import jobcrypto
 except Exception:  # pragma: no cover - sibling context
     try:
         from . import jobcrypto  # type: ignore
     except Exception:
-        import jobcrypto  # type: ignore
+        from wire import jobcrypto  # type: ignore
 
 # ------------------------------------------------------------------
 # Constants

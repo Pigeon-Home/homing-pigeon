@@ -529,7 +529,7 @@ def manifest_upstream_of(ext_dir):
     """The extension manifest's `upstream` block, normalized for this
     module, or None: {"repo", "github" (owner/name), "ref", "pin",
     "paths", "license"}. The runner's manifest loader is the
-    validator of record (runner/extensions.py); this reads the same
+    validator of record (runner/ops/extensions.py); this reads the same
     file and takes only a block of the shape it validates, so a
     malformed manifest contributes nothing here rather than raising.
     Never raises."""
@@ -1281,8 +1281,9 @@ def _project_roots(base_dir, project_root=None):
     snap = os.path.join(base_dir, "project")
     if os.path.isdir(snap):
         roots.append(snap)
-    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    if os.path.isfile(os.path.join(here, "runner", "transports.py")):
+    here = os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
+    if os.path.isfile(os.path.join(here, "runner", "wire", "transports.py")):
         roots.append(here)
     return roots
 

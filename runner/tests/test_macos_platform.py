@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from runner.install import do_wipe, install_macos, uninstall_macos
+from runner.ops.install import do_wipe, install_macos, uninstall_macos
 from runner.runner import _firewall_posture, _parse_socketfilterfw
 
 
@@ -28,9 +28,9 @@ class LaunchdTest(unittest.TestCase):
             def expand(path):
                 return path.replace("~", home, 1)
 
-            with mock.patch("runner.install.run", side_effect=lambda cmd, **k: calls.append(cmd)), \
-                 mock.patch("runner.install.os.getuid", return_value=501), \
-                 mock.patch("runner.install.os.path.expanduser", side_effect=expand):
+            with mock.patch("runner.ops.install.run", side_effect=lambda cmd, **k: calls.append(cmd)), \
+                 mock.patch("runner.ops.install.os.getuid", return_value=501), \
+                 mock.patch("runner.ops.install.os.path.expanduser", side_effect=expand):
                 install_macos(dst, os.path.join(dst, "config.json"), ("--dry-run",))
             path = os.path.join(agents, "com.homing-pigeon.runner.plist")
             with open(path, "rb") as fh:
@@ -46,24 +46,24 @@ class LaunchdTest(unittest.TestCase):
             self.assertEqual(calls, [["launchctl", "bootstrap", "gui/501", path]])
 
             calls.clear()
-            with mock.patch("runner.install.run", side_effect=lambda cmd, **k: calls.append(cmd)), \
-                 mock.patch("runner.install.os.getuid", return_value=501), \
-                 mock.patch("runner.install.os.path.expanduser", side_effect=expand):
+            with mock.patch("runner.ops.install.run", side_effect=lambda cmd, **k: calls.append(cmd)), \
+                 mock.patch("runner.ops.install.os.getuid", return_value=501), \
+                 mock.patch("runner.ops.install.os.path.expanduser", side_effect=expand):
                 uninstall_macos()
             self.assertEqual(calls, [["launchctl", "bootout", "gui/501", path]])
             self.assertFalse(os.path.exists(path))
-            with mock.patch("runner.install.run", side_effect=lambda cmd, **k: calls.append(cmd)), \
-                 mock.patch("runner.install.os.getuid", return_value=501), \
-                 mock.patch("runner.install.os.path.expanduser", side_effect=expand):
+            with mock.patch("runner.ops.install.run", side_effect=lambda cmd, **k: calls.append(cmd)), \
+                 mock.patch("runner.ops.install.os.getuid", return_value=501), \
+                 mock.patch("runner.ops.install.os.path.expanduser", side_effect=expand):
                 uninstall_macos()
 
     def test_wipe_unloads_the_installed_plist(self):
         calls = []
-        with mock.patch("runner.install.sys.platform", "darwin"), \
-             mock.patch("runner.install._kill_runner_processes"), \
-             mock.patch("runner.install._candidate_state_dirs", return_value=[]), \
-             mock.patch("runner.install._run_quiet", side_effect=calls.append), \
-             mock.patch("runner.install.os.getuid", return_value=501):
+        with mock.patch("runner.ops.install.sys.platform", "darwin"), \
+             mock.patch("runner.ops.install._kill_runner_processes"), \
+             mock.patch("runner.ops.install._candidate_state_dirs", return_value=[]), \
+             mock.patch("runner.ops.install._run_quiet", side_effect=calls.append), \
+             mock.patch("runner.ops.install.os.getuid", return_value=501):
             self.assertEqual(do_wipe(no_backup=True), 0)
         self.assertEqual(len(calls), 1)
         argv = calls[0]

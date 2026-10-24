@@ -5,7 +5,7 @@
   "imap_host": "imap.gmail.com",
   "imap_port": 993,
   "job_encryption": true,
-  "_job_encryption": "per-job encryption for RESULT bodies (runner/jobcrypto.py). Absent or true: results mirror the arriving job -- encrypted job, encrypted result; with true set explicitly, every result is encrypted. Only literal false encrypts no results. This key governs results only; it never gates acceptance. Acceptance of the HMAC-only (cleartext) job form is off by default: a signed job whose body is not an hp_enc envelope is refused unless the runner was started with --allow-cleartext. That flag is the only switch -- there is deliberately no config key for it.",
+  "_job_encryption": "per-job encryption for RESULT bodies (runner/wire/jobcrypto.py). Absent or true: results mirror the arriving job -- encrypted job, encrypted result; with true set explicitly, every result is encrypted. Only literal false encrypts no results. This key governs results only; it never gates acceptance. Acceptance of the HMAC-only (cleartext) job form is off by default: a signed job whose body is not an hp_enc envelope is refused unless the runner was started with --allow-cleartext. That flag is the only switch -- there is deliberately no config key for it.",
   "mailbox_password": "paste-app-password-here-in-plaintext",
   "mailbox_user": "homing-pigeon-runner@gmail.com",
   "mail_tls_required": true,
@@ -176,6 +176,6 @@
     }
   },
   "_comments": {
-    "detection": "Optional low-overhead detection (runner/detection.py) runs after job completion when the module is importable. It records detection_hits (Sigma/YARA-style rules + ATT&CK tags), detection_anomaly (tiny baseline), and plan_budget_ok when a job carries a plan list. Canary tripwires are separate (_canary_watch). All advisory; never raises."
+    "detection": "Optional low-overhead detection (runner/oracle/detection.py) runs after job completion when the module is importable. It records detection_hits (Sigma/YARA-style rules + ATT&CK tags), detection_anomaly (tiny baseline), and plan_budget_ok when a job carries a plan list. Canary tripwires are separate (_canary_watch). All advisory; never raises."
   }
 }

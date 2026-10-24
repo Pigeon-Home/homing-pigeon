@@ -12,7 +12,7 @@ import threading
 import unittest
 from unittest import mock
 
-from runner.install import RECEIPT_NAME, _read_receipt, _write_receipt
+from runner.ops.install import RECEIPT_NAME, _read_receipt, _write_receipt
 
 
 def _mode(path):

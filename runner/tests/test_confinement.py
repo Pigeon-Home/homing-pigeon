@@ -11,8 +11,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 ))
 sys.path.insert(0, REPO)
 
-from runner import sandbox as SB  # noqa: E402
-from runner import security as S  # noqa: E402
+from runner.guard import sandbox as SB  # noqa: E402
+from runner.guard import security as S  # noqa: E402
 from runner.runner import execute_job  # noqa: E402
 
 BWRAP_HERE = SB.sandbox_available()

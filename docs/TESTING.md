@@ -28,7 +28,7 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 `--timeout`, `--workers`, `--max-output-bytes`, `--dry-run`,
 `--verbose` — and bakes them into the installed
 service, so the agent on boot runs exactly what you tested:
-`python3 runner/install.py --verbose --poll-interval 30`.
+`python3 runner/ops/install.py --verbose --poll-interval 30`.
 
 ```bash
 python3 -m unittest discover -s runner/tests -t .

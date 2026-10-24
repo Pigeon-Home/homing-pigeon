@@ -131,18 +131,18 @@ def _exercise(rng, blob):
         fetch_job_mails, load_config, reload_hot_config, verify_body,
         verify_body_keyed,
     )
-    from runner.security import (
+    from runner.guard.security import (
         validate_security_config, validate_shared_secret,
     )
-    from runner.senses import gate_alert, parse_sensors
-    from runner.review import parse_review_patterns
-    from runner.sandbox import _validate_confinement_block, build_bwrap_command
-    from runner.resources import parse_resources
-    from runner.opinion import (
+    from runner.oracle.senses import gate_alert, parse_sensors
+    from runner.oracle.review import parse_review_patterns
+    from runner.guard.sandbox import _validate_confinement_block, build_bwrap_command
+    from runner.oracle.resources import parse_resources
+    from runner.oracle.opinion import (
         effective_mode, plan_before, script_hints, script_shape,
         tier1_findings,
     )
-    from runner.remediation import (
+    from runner.oracle.remediation import (
         av_referral, classify_findings, mode_of, parse_oracle_order,
         received_digest, result_member, settings, tree_pids,
     )
@@ -263,8 +263,8 @@ class FuzzSurfacesTest(unittest.TestCase):
 
     def test_user_error_seeds_do_not_crash(self):
         """The cases the coverage run already named, as fuzz seeds."""
-        from runner.security import validate_shared_secret
-        from runner.senses import store_alert
+        from runner.guard.security import validate_shared_secret
+        from runner.oracle.senses import store_alert
         from runner.runner import fetch_job_mails
 
         for secret in ("", "a", "aa", "0123456789abcdef" * 4, "Xxxĳ", "ėė"):
@@ -297,8 +297,8 @@ class LearningSurfaceTest(unittest.TestCase):
 
     def test_the_shapes_do_not_escape(self):
         from runner.runner import fetch_job_mails, reload_hot_config
-        from runner.security import validate_shared_secret
-        from runner.senses import load_alerts, store_alert
+        from runner.guard.security import validate_shared_secret
+        from runner.oracle.senses import load_alerts, store_alert
 
         for unit in ("a", "ab", "0123456789abcdef", "ė", "X", "ĳ"):
             for copies in (1, 2, 4, 8):

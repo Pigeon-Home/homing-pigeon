@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for user extensions (runner/extensions.py + the wiring).
+"""Tests for user extensions (runner/ops/extensions.py + the wiring).
 
 The contract under test, end to end:
 
@@ -38,8 +38,8 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import extensions as E  # noqa: E402
-from runner import senses as S  # noqa: E402
+from runner.ops import extensions as E  # noqa: E402
+from runner.oracle import senses as S  # noqa: E402
 from runner import runner as R  # noqa: E402
 
 EXAMPLE_DIR = os.path.join(REPO, "runner", "extensions", "lab-results")

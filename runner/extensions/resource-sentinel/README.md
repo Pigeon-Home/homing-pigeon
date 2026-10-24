@@ -2,7 +2,7 @@
 
 A sense that watches the machine's resources the way an
 intrusion analyst would. The runner's built-in resource
-monitor (`runner/resources.py`) already files threshold
+monitor (`runner/oracle/resources.py`) already files threshold
 crossings — CPU, memory, or disk pressure at an instant —
 into the security event log that feeds the DRI paging path.
 This sense is the deliberate other half: it keeps a rolling

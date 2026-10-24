@@ -10,7 +10,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, REPO)
 from runner.runner import ASK_SYSTEM, answer_queries, ask_model, inference_config
 sys.path.insert(0, os.path.join(REPO, 'runner'))
-from install import apply_instruction_flags, set_instructions
+from ops.install import apply_instruction_flags, set_instructions
 
 
 class SystemPromptTest(unittest.TestCase):

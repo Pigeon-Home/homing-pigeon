@@ -15,7 +15,7 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import dri, resources, review, senses  # noqa: E402
+from runner.oracle import dri, resources, review, senses  # noqa: E402
 from runner.runner import (  # noqa: E402
     Board,
     _append_security_event,

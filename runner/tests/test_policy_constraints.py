@@ -20,7 +20,7 @@ sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "runner", "tests"))
 
 from runner import runner as RR  # noqa: E402
-from runner import security as S  # noqa: E402
+from runner.guard import security as S  # noqa: E402
 from runner.runner import poll_once  # noqa: E402
 from runner.tests.security_parity import (  # noqa: E402
     SECRET,

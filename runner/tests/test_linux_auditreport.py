@@ -11,7 +11,7 @@ import tempfile
 import time
 import unittest
 
-from runner.auditreport import _read_counts, _read_entries, build_report
+from runner.ops.auditreport import _read_counts, _read_entries, build_report
 
 
 def _ts():

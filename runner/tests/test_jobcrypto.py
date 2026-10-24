@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Per-job encryption (runner/jobcrypto.py): RFC vectors first.
+"""Per-job encryption (runner/wire/jobcrypto.py): RFC vectors first.
 
 The construction is only worth anything if the primitives are the
 standard ones, so this file pins AES-256, GCM, the AEAD
@@ -19,8 +19,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 
-from runner import jobcrypto  # noqa: E402
-from runner.jobcrypto import JobCryptoError  # noqa: E402
+from runner.wire import jobcrypto  # noqa: E402
+from runner.wire.jobcrypto import JobCryptoError  # noqa: E402
 from runner.runner import sign_payload, verify_body_keyed  # noqa: E402
 
 SECRET = ("kX9f" "2vQz" "7Lp4" "Wd8s" "Rb3N" "j6Hc" "5Ty1" "Mx0G" "aVqP")

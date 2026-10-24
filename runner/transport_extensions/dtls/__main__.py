@@ -24,7 +24,7 @@ Config (handed over by the runner):
     extension refuses to start: there is nothing to
     authenticate with.
 
-The session profile lives in runner/dtlsproto.py: DTLS 1.3,
+The session profile lives in runner/wire/dtlsproto.py: DTLS 1.3,
 one ciphersuite, PSK-only, psk_dhe_ke only (perfect forward
 secrecy is enforced, never negotiated away), a stateless
 cookie exchange before any state exists, Connection IDs so a
@@ -62,10 +62,10 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))))
 
-from runner import dtlsproto  # noqa: E402
-from runner import platformcard as _platformcard  # noqa: E402
-from runner import security as _security  # noqa: E402
-from runner import confval as _confval  # noqa: E402
+from runner.wire import dtlsproto  # noqa: E402
+from runner.wire import platformcard as _platformcard  # noqa: E402
+from runner.guard import security as _security  # noqa: E402
+from runner.guard import confval as _confval  # noqa: E402
 from runner.transport_extensions import channel as ch  # noqa: E402
 
 DEFAULT_PORT = 20220
@@ -79,7 +79,7 @@ def build_greeting(tier, cfg=None):
     as bytes. The object always goes out (it is the session's
     first application message at every tier); `tier` decides
     how much platform information rides in it. The card is the
-    one a ping's result carries (runner/platformcard.py), so the
+    one a ping's result carries (runner/wire/platformcard.py), so the
     two bindings describe the box the same way."""
     obj = {"type": "greeting", "transport": "dtls", "v": 1,
            "disclosure": tier}

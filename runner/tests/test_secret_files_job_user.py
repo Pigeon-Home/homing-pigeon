@@ -16,7 +16,7 @@ except ImportError:  # Windows has no pwd
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import security as S  # noqa: E402
+from runner.guard import security as S  # noqa: E402
 from runner.runner import build_secrets, execute_job  # noqa: E402
 
 STRONG = secrets.token_hex(32)

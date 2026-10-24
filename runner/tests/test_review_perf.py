@@ -9,7 +9,7 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import review as R  # noqa: E402
+from runner.oracle import review as R  # noqa: E402
 
 OLD_RE = R._OLD_FILENAME_RE
 

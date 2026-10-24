@@ -3,7 +3,7 @@
 
 Findings documented here (simulation in virtual environment, 2026-10-15):
 
-1. Several recent commits left runner/dri.py truncated (154-160 lines).
+1. Several recent commits left runner/oracle/dri.py truncated (154-160 lines).
    maybe_page was missing, so DRI paging raised AttributeError and
    could not run. The full 442-line module is restored.
 2. _save_state stringifies keys so a poisoned state with non-string
@@ -17,7 +17,7 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner import dri  # noqa: E402
+from runner.oracle import dri  # noqa: E402
 
 
 class DriFullRestoreTest(unittest.TestCase):
