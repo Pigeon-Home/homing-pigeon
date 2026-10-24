@@ -15684,6 +15684,141 @@ class TestFailedLoginWatchBurstCountFifteenShapes(unittest.TestCase):
 
 
 
+class TestLoadAlertsUnhashableSeverityFloorDropsAllInsteadOfInfo(unittest.TestCase):
+    """Divergence: a severity_floor given to load_alerts as a
+    list or a dict drops EVERY stored alert, instead of
+    reading as the documented default floor, info (keep all).
+
+    (a) Doc claim (docs/senses.md, lines 258-259):
+        "`severity_floor`: drop alerts below this severity
+        at ingest. One of critical/high/medium/low/info.
+        Default info (keep all)."
+        Registry row "severity_floor" (core, enum, default
+        info, policy default under Decision 1 -- a
+        present-but-unusable value reads as its documented
+        default). The same module's ingest gate honours
+        exactly that reading: gate_alert treats any floor
+        that is not a known level -- unhashable containers
+        included, via its try/except -- as info. The senses
+        query op in runner/runner.py likewise reduces a
+        non-string floor to None (no floor) before calling
+        load_alerts, so through every documented surface an
+        unusable floor keeps all alerts.
+
+    (b) How the bug was found: step-8 Target 6 -- the
+        senses.py readers. The gate profile's numeric
+        knobs were walked in
+        TestSensesGateProfileTunablesFifteenShapes, but
+        severity_floor itself had only ever been varied
+        as a stored record's severity (its named class,
+        TestMissingSeverityDefaultsToInfoOnReadBack) and
+        as a parse_sensors config error. This tick probed
+        the floor argument itself, at both readers that
+        consume it (gate_alert and load_alerts), with the
+        fifteen shapes from the table hunt -- omitted,
+        null, empty string, true, false, zero, negative,
+        numeric string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, list, dict -- plus
+        case/padded variants of the genuine levels and
+        the genuine levels themselves, against stored
+        info/low/high alerts.
+
+    (c) Behavior actually observed: gate_alert conforms
+        for every shape: every unusable floor (list and
+        dict included) reads as info, so an info alert is
+        kept, and a genuine "high" floor drops an info
+        alert and keeps a high one. load_alerts conforms
+        for every HASHABLE unusable shape: null, empty,
+        true, false, zero, negative, "bogus", "INFO",
+        padded " info", a number, huge-int, inf and NaN
+        all keep every stored alert (its
+        SEVERITY_SCORES.get(floor, 0) fallback scores an
+        unknown floor 0, below every level). A list or
+        dict floor does not: SEVERITY_SCORES.get raises
+        TypeError for the unhashable key inside the
+        per-record try, the except clause drops that
+        record, and the same happens for every record --
+        load_alerts(base, severity_floor=["high"]) and
+        load_alerts(base, severity_floor={"x": 1}) both
+        return [] on a store holding info, low and high
+        alerts, where the documented default keeps all
+        three. Observed on 2026-10-24 against current
+        main. This root cause (an unhashable dict key
+        raising inside a per-record try whose except
+        drops the record) is neither the boolean-as-number
+        nor the non-finite/huge-int family.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _gate(self, floor, severity):
+        from runner.senses import gate_alert
+        return gate_alert({"profile": {"severity_floor": floor}},
+                          {"title": "T", "severity": severity},
+                          [], now=1700000000.0)
+
+    def _stored_base(self, tmp):
+        for sev, title in (("info", "i"), ("low", "l"), ("high", "h")):
+            _store(tmp, {"sensor": "s", "title": title,
+                         "severity": sev, "received_at": NOW})
+        return tmp
+
+    def test_gate_unusable_floors_read_as_info(self):
+        unusable = [None, "", True, False, 0, -5, "bogus",
+                    "INFO", "High", " info", "info ", 123,
+                    10 ** 400, float("inf"), float("-inf"),
+                    float("nan"), ["high"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertIsNone(self._gate(value, "info"))
+                self.assertIsNone(self._gate(value, "low"))
+
+    def test_gate_genuine_floors_honored(self):
+        self.assertEqual(self._gate("high", "info"),
+                         "below severity_floor high")
+        self.assertIsNone(self._gate("high", "high"))
+        self.assertIsNone(self._gate("high", "critical"))
+        self.assertEqual(self._gate("low", "info"),
+                         "below severity_floor low")
+        self.assertIsNone(self._gate("low", "low"))
+
+    def test_load_alerts_hashable_unusable_floors_keep_all(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._stored_base(base)
+            for value in (None, "", True, False, 0, -5, "bogus",
+                          "INFO", " info", 123, 10 ** 400,
+                          float("inf"), float("nan")):
+                with self.subTest(value=repr(value)):
+                    titles = [r.get("title")
+                              for r in load_alerts(
+                                  base, severity_floor=value)]
+                    self.assertEqual(titles, ["i", "l", "h"])
+            with self.subTest(value="genuine-high"):
+                titles = [r.get("title")
+                          for r in load_alerts(
+                              base, severity_floor="high")]
+                self.assertEqual(titles, ["h"])
+
+    def test_load_alerts_list_floor_reads_as_info_keeps_all(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._stored_base(base)
+            titles = [r.get("title")
+                      for r in load_alerts(
+                          base, severity_floor=["high"])]
+            self.assertEqual(titles, ["i", "l", "h"])
+
+    def test_load_alerts_dict_floor_reads_as_info_keeps_all(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._stored_base(base)
+            titles = [r.get("title")
+                      for r in load_alerts(
+                          base, severity_floor={"x": 1})]
+            self.assertEqual(titles, ["i", "l", "h"])
+
+
+
 if __name__ == "__main__":
 
     unittest.main()
