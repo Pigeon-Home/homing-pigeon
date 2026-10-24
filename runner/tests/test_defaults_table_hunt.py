@@ -461,5 +461,136 @@ class PolicyConflictDivergenceTests(unittest.TestCase):
         self.assertEqual(nats_ext.NatsClient("nats://127.0.0.1").port, 4222)
 
 
+class Decision1WarningLineProbes(unittest.TestCase):
+    """Phase 2.5 (Q5): the Decision-1 warning line, as
+    failing-by-design probes for Claude's lane to ship against.
+
+    Decision 1 (2026-10-23), point 3 -- "Default, not silent":
+    when a present-but-unusable setting reads as its documented
+    default, startup prints one line, "config: N settings read
+    as their default", naming the keys, and the same list rides
+    in the platform card at the `full` tier. Point 4, default
+    class half: a bad value written live reads as the default
+    and is named in the log. Q5's answer (Claude, 2026-10-24):
+    none of the three exists in the runner today; Claude's
+    lane, next release; Muse writes the probes first.
+
+    These three tests FAIL BY DESIGN until that code lands.
+    Do not make them pass by editing the tests. Each carries a
+    control that passes today and must keep passing, so a
+    failure here is the missing feature, never the harness.
+    The keys used are squarely default-class in the registry:
+    poll_interval_sec (default 20) and output_retention_days
+    (default 7). The live-reload probe uses
+    output_retention_days because it is default-class but NOT
+    one of the five HOT_KEYS whose reload naming already
+    shipped (see its control).
+    """
+
+    _BAD = {"poll_interval_sec": "x", "output_retention_days": "many"}
+    _CLEAN = {"poll_interval_sec": 30, "output_retention_days": 9}
+
+    def _startup_output(self, cfg_extra):
+        import io
+        import json
+        import tempfile
+        from contextlib import redirect_stderr, redirect_stdout
+        from unittest import mock
+        from runner import runner as R
+        td = tempfile.mkdtemp(prefix="hp-q5-")
+        path = os.path.join(td, "config.json")
+        cfg = dict(cfg_extra, base_dir=td)
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(cfg, fh)
+        out = io.StringIO()
+        argv = ["runner", "--config", path, "--inspect", "board"]
+        with mock.patch.object(sys, "argv", argv):
+            with redirect_stdout(out), redirect_stderr(out):
+                rc = R.main()
+        self.assertEqual(rc, 0)
+        return out.getvalue()
+
+    def test_startup_line_names_every_defaulted_key(self):
+        text = self._startup_output(self._BAD)
+        lines = [ln for ln in text.splitlines()
+                 if "read as their default" in ln]
+        self.assertTrue(
+            lines,
+            "no startup line names the defaulted keys; got: %r"
+            % text[:400])
+        joined = "\n".join(lines)
+        self.assertIn("config:", joined)
+        self.assertIn("2 settings", joined)
+        self.assertIn("poll_interval_sec", joined)
+        self.assertIn("output_retention_days", joined)
+
+    def test_startup_line_control_clean_config_is_silent(self):
+        # Control (passes today, must keep passing): a config
+        # whose values are all usable prints no such line, so
+        # the probe above cannot pass by printing it always.
+        text = self._startup_output(self._CLEAN)
+        self.assertNotIn("read as their default", text)
+
+    def test_full_card_carries_the_defaulted_list(self):
+        import json
+        from runner import runner as R
+        cfg = dict(self._BAD, pong_platform="full")
+        card = R.pong_platform(cfg)
+        self.assertIsNotNone(card)
+        text = json.dumps(card)
+        self.assertIn("poll_interval_sec", text)
+        self.assertIn("output_retention_days", text)
+
+    def test_full_card_control_clean_config_names_nothing(self):
+        # Control: with every value usable, the full card must
+        # not claim any setting defaulted.
+        import json
+        from runner import runner as R
+        cfg = dict(self._CLEAN, pong_platform="full")
+        card = R.pong_platform(cfg)
+        self.assertIsNotNone(card)
+        text = json.dumps(card)
+        self.assertNotIn("poll_interval_sec", text)
+        self.assertNotIn("output_retention_days", text)
+
+    def test_live_reload_names_a_default_class_bad_value(self):
+        import io
+        import json
+        import tempfile
+        from contextlib import redirect_stderr, redirect_stdout
+        from runner import runner as R
+        td = tempfile.mkdtemp(prefix="hp-q5-")
+        path = os.path.join(td, "config.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"output_retention_days": "many"}, fh)
+        cfg, state = {}, {}
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(out):
+            R.reload_hot_config(cfg, path, state)
+        self.assertIn("output_retention_days", out.getvalue())
+        self.assertEqual(cfg.get("output_retention_days"), 7)
+
+    def test_live_reload_control_hot_key_already_named(self):
+        # Control (passes today, must keep passing): the five
+        # HOT_KEYS already read a live bad value as the default
+        # and name it in the log; the probe above targets the
+        # rest of the default class, not this shipped subset.
+        import io
+        import json
+        import tempfile
+        from contextlib import redirect_stderr, redirect_stdout
+        from runner import runner as R
+        td = tempfile.mkdtemp(prefix="hp-q5-")
+        path = os.path.join(td, "config.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"poll_interval_sec": "x"}, fh)
+        cfg, state = {}, {}
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(out):
+            R.reload_hot_config(cfg, path, state)
+        self.assertIn("poll_interval_sec", out.getvalue())
+        self.assertEqual(cfg.get("poll_interval_sec"), 20)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
