@@ -15290,6 +15290,140 @@ class TestChannelPollIntervalFifteenShapes(unittest.TestCase):
                 {"extension_poll_interval_sec": 10}, default=7.0),
             10.0)
 
+class TestInferenceKeepAliveFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: inference.keep_alive itself
+    varied with the fifteen shapes at reader level (step-8
+    Target 6 -- the ask_model keep-alive path; the row's
+    registry-named class TestAskModelKeepAliveDefaultsTo30m
+    OnOllama covers only the unset and explicit-string
+    shapes on the ask paths, so this key is probed here
+    across all fifteen shapes through its actual reader,
+    runner.runner._apply_keep_alive, the one place both
+    ask paths build the payload member).
+
+    (a) Doc claim (docs/configuring-oracle.md, line 82):
+        "`keep_alive` (passed to the model server so it
+        keeps the model loaded between questions; unset
+        by default, except that an endpoint on `:11434`
+        gets `\"30m\"` so Ollama does not cold-start
+        every ask)." Registry row "inference.keep_alive"
+        (kind string, default "30m", policy default under
+        Decision 1, doc_status verified): the conditional
+        default is the endpoint-dependent one quoted
+        here, not an unconditional 30m.
+
+    (b) How it was hunted: step-8 artifact Target 6
+        names "the ask_model keep-alive path" among the
+        core readers covered only for the shapes their
+        classes exercised. This tick took
+        _apply_keep_alive in runner/runner.py and probed
+        it with the fifteen shapes from the table hunt
+        -- omitted, null, empty string, true, false,
+        zero, negative, numeric string, non-numeric
+        string, huge-int (10**400), inf, -inf, NaN,
+        wrong containers (list and dict, plus their
+        empty forms) -- on both an Ollama-port endpoint
+        (":11434") and a non-Ollama loopback endpoint,
+        plus genuine string / int values, a missing or
+        non-string endpoint, and a non-dict config.
+
+    (c) Behavior actually observed: NO divergence in
+        the documented conditional default: omitted and
+        null read as "30m" on an endpoint containing
+        ":11434" and as no payload member on any other
+        endpoint; an explicit genuine value ("10m")
+        wins on both endpoints. Pinned as observed,
+        not divergences, because the doc states no
+        usable-shape contract for this pass-through
+        key beyond "passed to the model server": every
+        falsy explicit value ("", False, 0, [], {})
+        suppresses the payload member AND suppresses
+        the Ollama conditional default (only omitted /
+        null trigger it), which reads as an explicit
+        disable; and every truthy value is passed to
+        the payload verbatim with no parsing or
+        validation -- True, -5, 300, "600", "bogus",
+        the huge-int, inf, -inf, NaN, a list and a
+        dict all land in the payload exactly as
+        configured. A missing or non-string endpoint
+        never triggers the conditional default, and a
+        non-dict config yields no member. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as omitted / null keep
+        reading as the documented conditional default,
+        falsy explicit values keep suppressing the
+        member, and genuine values keep being honored
+        exactly. If a shape above ever stops behaving
+        as docs/configuring-oracle.md states, this test
+        is the failing record of that change.
+    """
+
+    _OLLAMA = "http://127.0.0.1:11434/v1"
+    _OTHER = "http://127.0.0.1:9999/v1"
+
+    def _payload(self, cfg):
+        from runner.runner import _apply_keep_alive
+        payload = {}
+        _apply_keep_alive(cfg, payload)
+        return payload
+
+    def test_conditional_default_fires_only_for_omitted_or_null(self):
+        self.assertEqual(
+            self._payload({"endpoint": self._OLLAMA}),
+            {"keep_alive": "30m"})
+        self.assertEqual(
+            self._payload(
+                {"endpoint": self._OLLAMA, "keep_alive": None}),
+            {"keep_alive": "30m"})
+        self.assertEqual(self._payload({"endpoint": self._OTHER}), {})
+        self.assertEqual(
+            self._payload(
+                {"endpoint": self._OTHER, "keep_alive": None}), {})
+        self.assertEqual(self._payload({"keep_alive": None}), {})
+        self.assertEqual(
+            self._payload({"endpoint": 11434, "keep_alive": None}), {})
+        self.assertEqual(self._payload(None), {})
+        self.assertEqual(self._payload("nope"), {})
+
+    def test_falsy_explicit_values_suppress_member_and_default(self):
+        for value in ("", False, 0, [], {}):
+            for endpoint in (self._OLLAMA, self._OTHER):
+                with self.subTest(value=repr(value), endpoint=endpoint):
+                    self.assertEqual(
+                        self._payload(
+                            {"endpoint": endpoint, "keep_alive": value}),
+                        {})
+
+    def test_genuine_values_honored_exactly_on_both_endpoints(self):
+        for endpoint in (self._OLLAMA, self._OTHER):
+            with self.subTest(endpoint=endpoint):
+                self.assertEqual(
+                    self._payload(
+                        {"endpoint": endpoint, "keep_alive": "10m"}),
+                    {"keep_alive": "10m"})
+                self.assertEqual(
+                    self._payload(
+                        {"endpoint": endpoint, "keep_alive": 300}),
+                    {"keep_alive": 300})
+
+    def test_truthy_unusable_shapes_pass_through_verbatim(self):
+        values = [True, -5, "600", "bogus", 10 ** 400,
+                  float("inf"), float("-inf"), ["30m"], {"x": 1}]
+        for value in values:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._payload(
+                        {"endpoint": self._OTHER, "keep_alive": value}),
+                    {"keep_alive": value})
+        with self.subTest(value="nan"):
+            payload = self._payload(
+                {"endpoint": self._OTHER, "keep_alive": float("nan")})
+            self.assertIn("keep_alive", payload)
+            self.assertTrue(payload["keep_alive"] != payload["keep_alive"])
+
+
 
 if __name__ == "__main__":
 
