@@ -35257,6 +35257,612 @@ class TestTrainingWatchReaderInodeCrashesInsteadOfNeverRaising(
                     [e["line"] for e in got["log_lines"]],
                     ["line1"])
 
+class TestTripwireFilesStateAndMainFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the tripwire
+    file-entry / state cleaning, decide() diff
+    surface, read_live() tree walk and main() in
+    --readings mode varied with the fifteen
+    shapes for the first time (step-8 Target 5 /
+    family (b) -- tripwire's only earlier classes
+    cover its integer tunables at the _int_tunable
+    reader and the infinite-tunable crash; the
+    files entries, _clean_state(), the
+    appeared / vanished / changed decision
+    surface, read_live() and main() had no
+    fifteen-shapes class before this one).
+
+    (a) Doc claims: the module docstring states
+    read_live() is the only function that touches
+    the tree, decide() is pure (readings plus
+    manifest plus last pass's state, out come
+    alerts and the new state), the first pass
+    learns with learn_first_pass set (the
+    default) and files nothing, after that a
+    pass files each difference once, the new
+    baseline is always absorbed in full even
+    for differences past the max_alerts_per_pass
+    cap, and a file over max_file_mb is recorded
+    as {"sha384": null, "size": n,
+    "oversize": true}, its bytes are never read,
+    and decide() compares such entries by size
+    only. read_live()'s docstring states it is
+    total (a missing root, an unreadable file or
+    a file that vanishes mid-pass yields empty
+    or partial data, never an exception), files
+    are walked in sorted order, only regular
+    files count, and at most max_files files are
+    recorded with the rest counted in
+    "truncated". The README states the three
+    signals (file_appeared medium, file_vanished
+    medium, file_changed high), that paths are
+    processed in sorted order, that excludes
+    (default *.pyc, __pycache__, .git,
+    .tripwire-state.json) are skipped, that a
+    same-size rewrite of an oversize file is not
+    detected while a size change is, and that a
+    root that does not exist reads as an empty
+    tree, never an error. extension.json ships
+    root ".", max_files 10000, max_file_mb 64,
+    max_alerts_per_pass 100 and
+    learn_first_pass true.
+
+    (b) How this was probed: on 2026-10-24
+    _clean_files(), _clean_state(), _changed()
+    (through decide()), decide(), _excluded(),
+    read_live() and main() were probed with the
+    table hunt's fifteen shapes (omitted-
+    equivalent empty list, null, empty string,
+    true, false, zero, negative, numeric
+    string, non-numeric string, huge-int
+    (10**400), inf, -inf, NaN, list, dict) at
+    every field: each file entry and its
+    sha384 / size / oversize fields, non-string
+    path keys, the state object and its learned
+    and files fields, the readings object and
+    its files container, the manifest, its
+    tunables and name, learn_first_pass and
+    max_alerts_per_pass (including genuine 0, 1,
+    2 and 2.9), the oversize-by-size and
+    normal-by-digest comparisons, sorted order
+    under the alert cap, read_live()'s root /
+    excludes / max_files / max_file_mb tunables
+    against a temp tree (real SHA-384 hashing,
+    a .pyc file, a __pycache__ directory and a
+    file symlink), and main() in --readings
+    mode against temp manifests, readings and
+    state files, including missing, malformed,
+    list-shaped and unwritable files.
+
+    (c) Behavior actually observed: NO
+    divergence in this class. _clean_files()
+    reads every non-dict files shape as no
+    files, drops every non-dict entry, every
+    entry with a non-string/non-null sha384,
+    and every entry whose size is not a finite
+    non-negative number (bools, strings, huge,
+    inf, -inf, NaN and negatives all drop the
+    entry), keeps a null or empty-string sha
+    verbatim, truncates a fractional size
+    (10.9 as 10, 0.5 as 0), drops non-string
+    path keys, and keeps oversize only when
+    the flag is truthy (any non-empty string,
+    a negative, a huge-int, inf, NaN, a
+    non-empty list and a non-empty dict all
+    set it; an empty list, an empty string,
+    null, false and zero do not).
+    _clean_state() reads every non-dict state
+    as fresh, cleans its files through the
+    same cleaner, and reads learned by plain
+    bool() coercion: only the falsy shapes
+    (empty list, null, empty string, false,
+    zero) read as not learned, while true,
+    a negative, any non-empty string ("120"
+    and "bogus" alike), a huge-int, inf, -inf,
+    NaN, a non-empty list and a dict all read
+    as learned -- so a learned-shaped state
+    diffs (a vanished file files) while an
+    unlearned-shaped one learns silently.
+    decide() learns on the first pass for
+    every non-bool learn_first_pass shape
+    (only genuine False disables it, filing
+    file_appeared for every file), files
+    file_appeared (medium, detail path+size),
+    file_vanished (medium, detail path only)
+    and file_changed (high, detail old/new
+    sha and new size) in sorted path order,
+    reads every non-dict readings shape as no
+    files (a learned baseline then files
+    vanished), every non-dict manifest or
+    tunables shape as the defaults with sensor
+    "tripwire", honors any non-empty string
+    manifest name verbatim as the sensor
+    ("120" included) and falls back to
+    "tripwire" for every other name shape,
+    and reads max_alerts_per_pass through the
+    int reader: every unusable shape and a
+    negative read as the default 100, genuine
+    0 files nothing while still absorbing the
+    full baseline, and 2 / 2.9 file the first
+    two / two differences in sorted order
+    with the rest absorbed, not re-filed.
+    A normal entry compares by digest only:
+    the same sha with a different size files
+    nothing, a different sha at the same size
+    files file_changed. An oversize entry
+    (the flag set, or a null sha with or
+    without the flag) compares by size only:
+    the same size files nothing even when
+    one side carries a sha, a different size
+    files file_changed. read_live() hashes
+    regular files with SHA-384 in sorted
+    order, skips .pyc files and __pycache__
+    by default, does not record a file
+    symlink (only regular files count),
+    reads every non-string or empty root
+    shape as "." (probed from an empty
+    working directory: no files), and a
+    nonexistent root or a root that is a
+    file as an empty tree; excludes reads
+    every non-list shape as the defaults,
+    a genuine empty list and a ["x"] list
+    as no exclusions at all (the .pyc file
+    and __pycache__ then appear), ["*.txt"]
+    excludes every text file, and a mixed
+    list keeps only its non-empty string
+    patterns; max_files reads every
+    unusable shape as 10000, genuine 0
+    records nothing and counts both files
+    truncated, 1 records the first sorted
+    file and counts one truncated, and 2.9
+    truncates to 2; max_file_mb reads every
+    unusable shape (a negative included) as
+    64 MB (the small file is hashed), and
+    genuine 0 records the file oversize
+    with a null sha. Its "now" is a float.
+    main() returns 0 for a learn pass
+    (nothing printed, state written learned)
+    and for an appeared pass (the alert
+    printed as one JSON line) and for a
+    vanished-plus-changed pass (both alerts
+    printed, changed first in sorted order),
+    returns 2 for a missing or malformed
+    manifest, a missing or malformed
+    readings file, and a readings file that
+    is a list or a scalar (an explicit
+    not-a-JSON-object check), reads a list
+    manifest as the defaults (rc 0, learn
+    pass), reads a malformed or list state
+    file as fresh (rc 0, learn pass), and
+    returns 2 for an unwritable state path
+    with the appeared alerts (learn disabled)
+    still printed.
+    Observed on 2026-10-24 against current
+    main.
+
+    (d) This is a coverage record, not a
+    divergence: it stays green as long as the
+    readings above keep holding. If a shape
+    ever stops behaving as described, this
+    test is the failing record of that change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+    _FALSY = {"empty-list", "null", "empty-string",
+              "false", "zero"}
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "tripwire", "tripwire.py")
+        spec = importlib.util.spec_from_file_location(
+            "tripwire_files_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _manifest(self, **tunables):
+        base = {"root": ".", "learn_first_pass": True,
+                "max_alerts_per_pass": 100}
+        base.update(tunables)
+        return {"name": "tripwire", "tunables": base}
+
+    def test_clean_files_fifteen_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(kind="container", shape=name):
+                self.assertEqual(mod._clean_files(value), {})
+            with self.subTest(kind="entry", shape=name):
+                self.assertEqual(
+                    mod._clean_files({"a.txt": value}), {})
+            with self.subTest(kind="size", shape=name):
+                if name == "zero":
+                    continue
+                self.assertEqual(mod._clean_files(
+                    {"a.txt": {"sha384": "s", "size": value}}), {})
+        self.assertEqual(mod._clean_files(
+            {"a.txt": {"sha384": "s", "size": 0}}),
+            {"a.txt": {"sha384": "s", "size": 0}})
+        for name, value in self._SHAPES:
+            with self.subTest(kind="sha", shape=name):
+                got = mod._clean_files(
+                    {"a.txt": {"sha384": value, "size": 10}})
+                if name in ("null", "empty-string",
+                            "numeric-string",
+                            "non-numeric-string"):
+                    self.assertEqual(got, {"a.txt": {
+                        "sha384": value, "size": 10}})
+                else:
+                    self.assertEqual(got, {})
+        for name, value in self._SHAPES:
+            with self.subTest(kind="oversize", shape=name):
+                got = mod._clean_files({"a.txt": {
+                    "sha384": None, "size": 10,
+                    "oversize": value}})
+                if name in self._FALSY:
+                    self.assertEqual(got, {"a.txt": {
+                        "sha384": None, "size": 10}})
+                else:
+                    self.assertEqual(got, {"a.txt": {
+                        "sha384": None, "size": 10,
+                        "oversize": True}})
+        self.assertEqual(mod._clean_files({
+            123: {"sha384": "a", "size": 1},
+            "b.txt": {"sha384": "b", "size": 2}}),
+            {"b.txt": {"sha384": "b", "size": 2}})
+        self.assertEqual(mod._clean_files(
+            {"a.txt": {"sha384": "x", "size": 10.9}}),
+            {"a.txt": {"sha384": "x", "size": 10}})
+        self.assertEqual(mod._clean_files(
+            {"a.txt": {"sha384": "x", "size": 0.5}}),
+            {"a.txt": {"sha384": "x", "size": 0}})
+
+    def test_clean_state_learned_coercion(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(kind="state", shape=name):
+                self.assertEqual(mod._clean_state(value),
+                                 {"learned": False, "files": {}})
+            with self.subTest(kind="learned", shape=name):
+                state = mod._clean_state(
+                    {"learned": value, "files": {}})
+                self.assertEqual(state["learned"],
+                                 name not in self._FALSY)
+                alerts, _ = mod.decide(
+                    {"files": {}}, self._manifest(),
+                    {"learned": value, "files": {
+                        "a.txt": {"sha384": "a", "size": 1}}})
+                self.assertEqual(len(alerts),
+                                 0 if name in self._FALSY else 1)
+                if alerts:
+                    self.assertEqual(alerts[0]["signal"],
+                                     "file_vanished")
+        self.assertEqual(mod._clean_state(
+            {"learned": True, "files": {
+                "a.txt": {"sha384": "a", "size": 1},
+                "bad": {"sha384": 9, "size": 1}}}),
+            {"learned": True, "files": {
+                "a.txt": {"sha384": "a", "size": 1}}})
+
+    def test_decide_signals_learn_and_sensor(self):
+        mod = self._module()
+        entry = {"sha384": "a" * 96, "size": 10}
+        for name, value in self._SHAPES:
+            with self.subTest(kind="learn", shape=name):
+                alerts, state = mod.decide(
+                    {"files": {"a.txt": entry}},
+                    self._manifest(learn_first_pass=value),
+                    {"learned": False, "files": {}})
+                self.assertEqual(
+                    len(alerts), 1 if name == "false" else 0)
+                self.assertTrue(state["learned"])
+        alerts, _ = mod.decide(
+            {"files": {"a.txt": entry}},
+            self._manifest(learn_first_pass=False),
+            {"learned": False, "files": {}})
+        self.assertEqual(alerts, [{
+            "sensor": "tripwire", "signal": "file_appeared",
+            "severity": "medium", "title": "file appeared: a.txt",
+            "detail": {"path": "a.txt", "size": 10}}])
+        previous = {"a.txt": {"sha384": "a" * 96, "size": 10},
+                    "gone.txt": {"sha384": "g" * 96, "size": 3}}
+        alerts, state = mod.decide(
+            {"files": {"a.txt": {"sha384": "b" * 96, "size": 11}}},
+            self._manifest(),
+            {"learned": True, "files": previous})
+        self.assertEqual(
+            [(a["signal"], a["severity"]) for a in alerts],
+            [("file_changed", "high"),
+             ("file_vanished", "medium")])
+        self.assertEqual(alerts[0]["detail"], {
+            "path": "a.txt", "old_sha384": "a" * 96,
+            "new_sha384": "b" * 96, "size": 11})
+        self.assertEqual(alerts[1]["detail"], {"path": "gone.txt"})
+        self.assertEqual(state, {"learned": True, "files": {
+            "a.txt": {"sha384": "b" * 96, "size": 11}}})
+        for name, value in self._SHAPES:
+            with self.subTest(kind="sensor", shape=name):
+                alerts, _ = mod.decide(
+                    {"files": {"a.txt": entry}},
+                    {"name": value, "tunables": {}},
+                    {"learned": True, "files": {}})
+                expected = value if name in (
+                    "numeric-string", "non-numeric-string") \
+                    else "tripwire"
+                self.assertEqual(alerts[0]["sensor"], expected)
+        alerts, _ = mod.decide(
+            {"files": {"a.txt": entry}},
+            {"name": "mywatch", "tunables": {}},
+            {"learned": True, "files": {}})
+        self.assertEqual(alerts[0]["sensor"], "mywatch")
+
+    def test_decide_shapes_and_alert_cap(self):
+        mod = self._module()
+        entry = {"sha384": "a", "size": 1}
+        for name, value in self._SHAPES:
+            with self.subTest(kind="readings", shape=name):
+                alerts, state = mod.decide(
+                    value, self._manifest(),
+                    {"learned": True, "files": {}})
+                self.assertEqual(alerts, [])
+                self.assertEqual(state,
+                                 {"learned": True, "files": {}})
+            with self.subTest(kind="files", shape=name):
+                alerts, state = mod.decide(
+                    {"files": value}, self._manifest(),
+                    {"learned": True, "files": {"a.txt": entry}})
+                self.assertEqual([a["signal"] for a in alerts],
+                                 ["file_vanished"])
+                self.assertEqual(state["files"], {})
+            with self.subTest(kind="manifest", shape=name):
+                alerts, _ = mod.decide(
+                    {"files": {"a.txt": entry}}, value,
+                    {"learned": True, "files": {}})
+                self.assertEqual([a["signal"] for a in alerts],
+                                 ["file_appeared"])
+                self.assertEqual(alerts[0]["sensor"], "tripwire")
+        many = {f"f{i:02d}.txt": {"sha384": "x", "size": 1}
+                for i in range(5)}
+        for name, value in self._SHAPES:
+            with self.subTest(kind="cap", shape=name):
+                alerts, state = mod.decide(
+                    {"files": many},
+                    self._manifest(max_alerts_per_pass=value),
+                    {"learned": True, "files": {}})
+                self.assertEqual(len(alerts),
+                                 0 if name == "zero" else 5)
+                self.assertEqual(len(state["files"]), 5)
+        for cap, expected in [(1, 1), (2, 2), (2.9, 2)]:
+            with self.subTest(cap=cap):
+                alerts, state = mod.decide(
+                    {"files": many},
+                    self._manifest(max_alerts_per_pass=cap),
+                    {"learned": True, "files": {}})
+                self.assertEqual(
+                    [a["detail"]["path"] for a in alerts],
+                    [f"f{i:02d}.txt" for i in range(expected)])
+                self.assertEqual(len(state["files"]), 5)
+                again, _ = mod.decide(
+                    {"files": many}, self._manifest(), state)
+                self.assertEqual(again, [])
+
+    def test_decide_digest_vs_size_comparison(self):
+        mod = self._module()
+
+        def changed(old, new):
+            alerts, _ = mod.decide(
+                {"files": {"a.txt": new}}, self._manifest(),
+                {"learned": True, "files": {"a.txt": old}})
+            return [a["signal"] for a in alerts]
+
+        self.assertEqual(changed(
+            {"sha384": "a", "size": 1},
+            {"sha384": "a", "size": 2}), [])
+        self.assertEqual(changed(
+            {"sha384": "a", "size": 1},
+            {"sha384": "b", "size": 1}), ["file_changed"])
+        self.assertEqual(changed(
+            {"sha384": None, "size": 5, "oversize": True},
+            {"sha384": "b", "size": 5}), [])
+        self.assertEqual(changed(
+            {"sha384": None, "size": 5, "oversize": True},
+            {"sha384": None, "size": 6, "oversize": True}),
+            ["file_changed"])
+        self.assertEqual(changed(
+            {"sha384": None, "size": 5},
+            {"sha384": "b", "size": 5}), [])
+        self.assertEqual(changed(
+            {"sha384": "a", "size": 5, "oversize": True},
+            {"sha384": "b", "size": 5}), [])
+
+    def test_read_live_tree_shapes(self):
+        import hashlib
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d, \
+                tempfile.TemporaryDirectory() as empty:
+            with open(os.path.join(d, "a.txt"), "w") as fh:
+                fh.write("hello")
+            os.mkdir(os.path.join(d, "sub"))
+            with open(os.path.join(d, "sub", "b.txt"), "w") as fh:
+                fh.write("world!")
+            with open(os.path.join(d, "skip.pyc"), "w") as fh:
+                fh.write("x")
+            os.mkdir(os.path.join(d, "__pycache__"))
+            with open(os.path.join(
+                    d, "__pycache__", "c.txt"), "w") as fh:
+                fh.write("y")
+            os.symlink(os.path.join(d, "a.txt"),
+                       os.path.join(d, "link.txt"))
+
+            def live(**tunables):
+                base = {"root": d}
+                base.update(tunables)
+                return mod.read_live(
+                    {"name": "tripwire", "tunables": base})
+
+            readings = live()
+            self.assertEqual(sorted(readings["files"]),
+                             ["a.txt", "sub/b.txt"])
+            self.assertEqual(readings["truncated"], 0)
+            self.assertIsInstance(readings["now"], float)
+            self.assertEqual(readings["files"]["a.txt"], {
+                "sha384": hashlib.sha384(b"hello").hexdigest(),
+                "size": 5})
+            old_cwd = os.getcwd()
+            os.chdir(empty)
+            try:
+                for name, value in self._SHAPES:
+                    with self.subTest(kind="root", shape=name):
+                        got = mod.read_live(
+                            {"name": "tripwire",
+                             "tunables": {"root": value}})
+                        self.assertEqual(got["files"], {})
+                        self.assertEqual(got["truncated"], 0)
+            finally:
+                os.chdir(old_cwd)
+            for root in ["/nonexistent-tripwire-probe",
+                         os.path.join(d, "a.txt")]:
+                with self.subTest(root=root):
+                    got = live(root=root)
+                    self.assertEqual(got["files"], {})
+            for name, value in self._SHAPES:
+                with self.subTest(kind="excludes", shape=name):
+                    got = live(excludes=value)
+                    if name in ("empty-list", "list"):
+                        self.assertEqual(
+                            sorted(got["files"]),
+                            ["__pycache__/c.txt", "a.txt",
+                             "skip.pyc", "sub/b.txt"])
+                    else:
+                        self.assertEqual(
+                            sorted(got["files"]),
+                            ["a.txt", "sub/b.txt"])
+            self.assertEqual(
+                sorted(live(excludes=["*.txt"])["files"]),
+                ["skip.pyc"])
+            self.assertEqual(
+                sorted(live(excludes=[123, "*.pyc", None, ""])[
+                    "files"]),
+                ["__pycache__/c.txt", "a.txt", "sub/b.txt"])
+            for name, value in self._SHAPES:
+                with self.subTest(kind="max_files", shape=name):
+                    got = live(max_files=value)
+                    if name == "zero":
+                        self.assertEqual(got["files"], {})
+                        self.assertEqual(got["truncated"], 2)
+                    else:
+                        self.assertEqual(len(got["files"]), 2)
+                        self.assertEqual(got["truncated"], 0)
+            got = live(max_files=1)
+            self.assertEqual(sorted(got["files"]), ["a.txt"])
+            self.assertEqual(got["truncated"], 1)
+            got = live(max_files=2.9)
+            self.assertEqual(len(got["files"]), 2)
+            for name, value in self._SHAPES:
+                with self.subTest(kind="max_file_mb", shape=name):
+                    got = live(max_file_mb=value)
+                    entry = got["files"]["a.txt"]
+                    if name == "zero":
+                        self.assertEqual(entry, {
+                            "sha384": None, "size": 5,
+                            "oversize": True})
+                    else:
+                        self.assertIsNotNone(entry["sha384"])
+                        self.assertNotIn("oversize", entry)
+
+    def test_main_readings_mode_and_errors(self):
+        import contextlib
+        import io
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            manifest = os.path.join(d, "extension.json")
+            state = os.path.join(d, "state.json")
+            readings = os.path.join(d, "readings.json")
+
+            def write(path, obj):
+                with open(path, "w", encoding="utf-8") as fh:
+                    if isinstance(obj, str):
+                        fh.write(obj)
+                    else:
+                        json.dump(obj, fh)
+
+            def run(manifest_path=manifest, state_path=state,
+                    readings_path=readings):
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out), \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    rc = mod.main(["--manifest", manifest_path,
+                                   "--state", state_path,
+                                   "--readings", readings_path])
+                return rc, out.getvalue()
+
+            entry = {"sha384": "a" * 96, "size": 10}
+            write(manifest, self._manifest())
+            write(readings, {"files": {"a.txt": entry}})
+            rc, out = run()
+            self.assertEqual((rc, out), (0, ""))
+            with open(state, encoding="utf-8") as fh:
+                self.assertTrue(json.load(fh)["learned"])
+            write(state, {"learned": True, "files": {}})
+            rc, out = run()
+            self.assertEqual(rc, 0)
+            self.assertIn("file_appeared", out)
+            write(state, {"learned": True, "files": {
+                "a.txt": {"sha384": "a" * 96, "size": 10},
+                "gone.txt": {"sha384": "g" * 96, "size": 3}}})
+            write(readings, {"files": {
+                "a.txt": {"sha384": "b" * 96, "size": 11}}})
+            rc, out = run()
+            self.assertEqual(rc, 0)
+            self.assertIn("file_changed", out)
+            self.assertIn("file_vanished", out)
+            self.assertLess(out.index("file_changed"),
+                            out.index("file_vanished"))
+            self.assertEqual(run(manifest_path=os.path.join(
+                d, "nope.json"))[0], 2)
+            self.assertEqual(run(readings_path=os.path.join(
+                d, "nope2.json"))[0], 2)
+            bad = os.path.join(d, "bad.json")
+            write(bad, "{not json")
+            self.assertEqual(run(manifest_path=bad)[0], 2)
+            self.assertEqual(run(readings_path=bad)[0], 2)
+            list_path = os.path.join(d, "list.json")
+            write(list_path, [1, 2])
+            self.assertEqual(run(readings_path=list_path)[0], 2)
+            scalar = os.path.join(d, "scalar.json")
+            write(scalar, "42")
+            self.assertEqual(run(readings_path=scalar)[0], 2)
+            write(readings, {"files": {"a.txt": entry}})
+            rc, _ = run(manifest_path=list_path)
+            self.assertEqual(rc, 0)
+            write(state, "{broken")
+            rc, out = run()
+            self.assertEqual((rc, out), (0, ""))
+            write(state, [1, 2])
+            rc, out = run()
+            self.assertEqual((rc, out), (0, ""))
+            # Unwritable state: the alerts are still printed.
+            write(manifest, self._manifest(learn_first_pass=False))
+            rc, out = run(state_path=d)
+            self.assertEqual(rc, 2)
+            self.assertIn("file_appeared", out)
+
 if __name__ == "__main__":
 
     unittest.main()
