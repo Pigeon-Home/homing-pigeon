@@ -18,7 +18,7 @@ parent discovers the same suite, counts it per module, and hands
 each worker the module names it would have run itself.
 
 Usage:
-    python .github/tools/run_tests_parallel.py [--jobs N]
+    python runner/tools/run_tests_parallel.py [--jobs N]
                                        [--start-dir runner/tests]
                                        [--top-level-dir .]
                                        [--durations N]
@@ -44,7 +44,7 @@ read from the run page, not only from a downloaded log
   Actions nothing is annotated. Annotation never changes the
   verdict and, like all reporting here, cannot crash the run.
 - ``--wall-clock MINUTES`` runs every shard under
-  .github/tools/suite_wall_clock.py, so a shard still running at the
+  runner/tools/suite_wall_clock.py, so a shard still running at the
   deadline stops and names the test it was in (stack in its dump,
   ``::error`` on the run page), instead of the job sitting until
   its own limit with nothing in the log. That is what happened on
@@ -228,7 +228,7 @@ def shard_command(extra, shard, wall_clock=0):
     """The unittest command for one shard.
 
     Plain ``python -m unittest`` by default; under a wall clock the
-    same arguments go through .github/tools/suite_wall_clock.py, which runs
+    same arguments go through runner/tools/suite_wall_clock.py, which runs
     unittest in-process and names the running test at the deadline.
     """
     if wall_clock and wall_clock > 0:
@@ -343,7 +343,7 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None,
     True or False forces it. Annotations are emitted after a
     failed shard's dump and never affect the exit code.
     ``wall_clock`` (minutes, 0 for none) runs each shard under
-    .github/tools/suite_wall_clock.py and hard-stops a shard that outlives
+    runner/tools/suite_wall_clock.py and hard-stops a shard that outlives
     the deadline by more than a grace period; a timed-out shard is
     a failed shard.
     """

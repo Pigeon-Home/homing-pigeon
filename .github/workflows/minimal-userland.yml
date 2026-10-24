@@ -34,4 +34,4 @@ jobs:
           docker run --rm hp-minimal 2>&1 | tee minimal-out.txt || true
           # Not `Ran 6 tests`: a count is a census that breaks when a
           # test is added. The guard wants N > 0, a bare OK, no skip.
-          python3 .github/tools/skip_guard.py minimal-out.txt --no-skips --require-ok --annotate
+          python3 runner/tools/skip_guard.py minimal-out.txt --no-skips --require-ok --annotate

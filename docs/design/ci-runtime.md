@@ -143,7 +143,7 @@ Put it in `.github/platform-legs.json`.
   name. It runs nightly. Do not put it on the push path to
   make the README look busier. The binary job for that OS
   already runs on the push.
-- The proof it runs is `.github/tools/platform_proof.sh` or
+- The proof it runs is `runner/tools/platform_proof.sh` or
   `runner/tests/test_platform_proof.py`. A skipped proof is a
   failure (`--no-skips --require-ok`). Do not add the whole
   suite to the leg.

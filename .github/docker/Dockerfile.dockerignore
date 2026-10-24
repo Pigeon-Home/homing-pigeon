@@ -3,5 +3,6 @@ __pycache__/
 .git/
 dist/
 *.egg-info/
-# The suite is not part of the published image.
+# The suite and the CI scripts are not part of the published image.
 runner/tests/
+runner/tools/

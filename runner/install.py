@@ -199,7 +199,7 @@ def _cfg_base_dir(cfg_path: str) -> str:
 def install_project_snapshot(src_dir: str, base_dir: str) -> bool:
     """Install the release's project snapshot as <base_dir>/project.
 
-    A release archive carries project/ (.github/tools/make_snapshot.py): every
+    A release archive carries project/ (runner/tools/make_snapshot.py): every
     tracked file, the full history as a git bundle, and the build's CI
     facts. It lands in the state dir so the Oracle's file tools reach
     it. An upgrade replaces it whole; nothing else in the state dir is

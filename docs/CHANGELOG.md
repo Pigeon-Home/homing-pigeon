@@ -28,7 +28,8 @@ facts a reader may need to cite. Git history carries the rest.
     `runner`.
   - `hardening/`, `CONTRIBUTING.md` and `CHANGELOG.md` are under
     `docs/`, with a short Contributing blurb in the README.
-  - The build and CI scripts (`tools/`), the Dockerfiles and
+  - The build and CI scripts (`tools/`) are `runner/tools/`, kept out
+    of the wheel and the image like the suite. The Dockerfiles and
     `docker/`, and `requirements-ci.txt` are under `.github/`, with
     `.dockerignore` beside each Dockerfile as
     `Dockerfile.dockerignore`.

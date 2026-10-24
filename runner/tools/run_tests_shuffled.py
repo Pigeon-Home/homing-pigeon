@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run the test suite in a shuffled order.
 
-    python .github/tools/run_tests_shuffled.py [--seed N] [--pattern 'test_*.py']
+    python runner/tools/run_tests_shuffled.py [--seed N] [--pattern 'test_*.py']
 
 unittest's discovery order is deterministic (alphabetical by
 module, then by class, then by method), and a suite that only

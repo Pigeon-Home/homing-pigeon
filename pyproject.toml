@@ -58,7 +58,7 @@ source_paths = ["runner"]
 only_mutate = ["runner/security.py"]
 # The suite sits inside the source path (runner/tests/); it is the
 # oracle that kills mutants, never a mutation target.
-do_not_mutate = ["runner/tests/**"]
+do_not_mutate = ["runner/tests/**", "runner/tools/**"]
 pytest_add_cli_args = [
     "-x",
     "-q",
@@ -74,11 +74,11 @@ also_copy = [
     # docs/hardening/; runner/cloud/ comes with source_paths.
     "docs/", "extensions/",
     # .github/ carries the CI pin file (.github/requirements-ci.txt,
-    # which runner/tests/test_build_config.py reads) and the CI tools
-    # (.github/tools/; runner/tests/test_parallel_runner.py imports the
-    # Windows shard runner at load time). mutmut's stats run dies if
-    # the mutant tree lacks either. Name the folder once: a nested
-    # entry would be copied over a copy.
+    # which runner/tests/test_build_config.py reads). The CI tools
+    # (runner/tools/; runner/tests/test_parallel_runner.py imports the
+    # Windows shard runner at load time) come with source_paths.
+    # mutmut's stats run dies if the mutant tree lacks the pin file.
+    # Name the folder once: a nested entry would be copied over a copy.
     ".github/",
     # Root manuals. The doc guards locate the tree from the runner
     # package, and mutmut's copy is only source_paths plus this list
@@ -124,6 +124,7 @@ project-includes = [
 # The suite (runner/tests/) is not part of the type gate.
 project-excludes = [
     "runner/tests/**",
+    "runner/tools/**",
 ]
 
 # Sibling modules are imported in two forms: `from runner.oauth import X`

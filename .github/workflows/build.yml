@@ -55,10 +55,10 @@ jobs:
       # extensions/*/upstream/, pinned by each manifest.
       # --check fails when a pin moved without a fetch, a file was
       # edited by hand, or the 5 MiB budget is spent. A refresh is
-      # `python3 .github/tools/fetch_upstream.py` (or --bump), committed;
+      # `python3 runner/tools/fetch_upstream.py` (or --bump), committed;
       # .github/workflows/upstream-pins.yml does that nightly.
       - name: upstream files the feed senses read are pinned and whole
-        run: python3 .github/tools/fetch_upstream.py --check
+        run: python3 runner/tools/fetch_upstream.py --check
       # bwrap is what the Linux sandbox is built on. Without it the
       # EnforceTest proofs in runner/tests/test_confinement.py skip and
       # "the sandbox walls the job in" is never shown in CI. The
@@ -79,7 +79,7 @@ jobs:
       # without profiling. The block lands between the failure
       # dumps and the "Ran N tests" line; skip_guard and
       # make_snapshot read neither shape differently.
-      # .github/tools/suite_wall_clock.py is `python -m unittest` with a
+      # runner/tools/suite_wall_clock.py is `python -m unittest` with a
       # 20-minute clock (the suite takes 4 to 6): a run still going
       # at the deadline stops, names the test it was in with its
       # stack, and annotates it on the run page. Not a job timer:
@@ -90,7 +90,7 @@ jobs:
       - name: run the suite
         run: |
           set -o pipefail
-          python .github/tools/suite_wall_clock.py --minutes 20 -- discover -s runner/tests -t . -v --durations 25 2>&1 | tee test-output.log
+          python runner/tools/suite_wall_clock.py --minutes 20 -- discover -s runner/tests -t . -v --durations 25 2>&1 | tee test-output.log
       # A skipped proof is green from the outside. On this box the
       # sandbox proofs must run; any other skip is listed, not fatal.
       # --annotate is the piece worth keeping from diag/bwrap-suite:
@@ -101,9 +101,9 @@ jobs:
       # sandbox diagnosis read a red probe as green.
       - name: no silent skips of must-run proofs
         if: always()
-        run: python .github/tools/skip_guard.py test-output.log --forbid "bwrap not available" --annotate
+        run: python runner/tools/skip_guard.py test-output.log --forbid "bwrap not available" --annotate
       # The release ships a snapshot of the whole project, and the
-      # snapshot carries this run's test results (.github/tools/make_snapshot.py).
+      # snapshot carries this run's test results (runner/tools/make_snapshot.py).
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -188,11 +188,11 @@ jobs:
       # runner also annotates every failed test by name, so a red
       # Windows job names its tests on the run page (the six-day
       # history had 257 of them with nothing but "exit code 1").
-      # --wall-clock 20 runs each shard under .github/tools/suite_wall_clock.py
+      # --wall-clock 20 runs each shard under runner/tools/suite_wall_clock.py
       # (see the Linux suite step): a shard still running at 20
       # minutes stops and names its test instead of holding the
       # job to its own limit.
-      - run: python .github/tools/run_tests_parallel.py --jobs 4 --durations 15 --wall-clock 20
+      - run: python runner/tools/run_tests_parallel.py --jobs 4 --durations 15 --wall-clock 20
       - run: pip install -c .github/requirements-ci.txt pyinstaller
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md;pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.extsources --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.learning --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test --hidden-import runner.transports --hidden-import runner.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.dtlsproto --hidden-import runner.jobcrypto --hidden-import runner.protocol_v2 --hidden-import runner.personal_docs --hidden-import runner.platformcard --hidden-import runner.board --hidden-import runner.textutil --hidden-import runner.confval --hidden-import runner.verify --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --add-data "runner/transport_extensions;pigeon-transport-extensions"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py --hidden-import runner._version --hidden-import runner.personal_docs
@@ -263,7 +263,7 @@ jobs:
           $stage = "stage/$name"
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item dist/homing-pigeon.exe, dist/install.exe, runner/config.example.json $stage
-          python .github/tools/stamp_provenance.py --job build-windows --out "$stage/BUILD-PROVENANCE.json"
+          python runner/tools/stamp_provenance.py --job build-windows --out "$stage/BUILD-PROVENANCE.json"
           Compress-Archive -Path $stage -DestinationPath "$name.zip" -Force
           python -c "import zipfile,sys; ns=zipfile.ZipFile(sys.argv[1]).namelist(); b=[n for n in ns if not n.startswith(sys.argv[2]+'/')]; sys.exit('entries outside top dir: %s' % b if b else 0)" "$name.zip" "$name"
           if ($LASTEXITCODE -ne 0) { throw "zip layout check failed: not all entries are under '$name/'" }
@@ -290,9 +290,9 @@ jobs:
       # inspector, and a --once --dry-run startup. One script for
       # Linux and Pi Light so both archives get the same proof.
       - name: smoke the built linux binaries
-        run: .github/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
+        run: runner/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
       - name: drop onto a machine with no Python
-        run: .github/tools/smoke_no_python.sh ./dist/homing-pigeon
+        run: runner/tools/smoke_no_python.sh ./dist/homing-pigeon
       - name: package linux binaries
         run: |
           set -euo pipefail
@@ -300,7 +300,7 @@ jobs:
           name="homing-pigeon-linux-x86_64-$ver"
           mkdir -p "pkg/$name"
           cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
-          python .github/tools/stamp_provenance.py --job build-linux --out "pkg/$name/BUILD-PROVENANCE.json"
+          python runner/tools/stamp_provenance.py --job build-linux --out "pkg/$name/BUILD-PROVENANCE.json"
           tar czf "$name.tar.gz" -C pkg "$name"
           bad=$(tar tzf "$name.tar.gz" | grep -v "^$name/" || true)
           [ -z "$bad" ] || { echo "tarball has entries outside '$name/': $bad"; exit 1; }
@@ -334,7 +334,7 @@ jobs:
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.extsources --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.learning --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test --hidden-import runner.transports --hidden-import runner.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.dtlsproto --hidden-import runner.jobcrypto --hidden-import runner.protocol_v2 --hidden-import runner.personal_docs --hidden-import runner.platformcard --hidden-import runner.board --hidden-import runner.textutil --hidden-import runner.confval --hidden-import runner.verify --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --add-data "runner/transport_extensions:pigeon-transport-extensions"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py --hidden-import runner._version --hidden-import runner.personal_docs
       - name: smoke the built pi-light binaries
-        run: .github/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
+        run: runner/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
       - name: package pi-light binaries
         run: |
           set -euo pipefail
@@ -343,7 +343,7 @@ jobs:
           mkdir -p "pkg/$name"
           cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
           printf 'pi-light\n' > "pkg/$name/default_profile"
-          python .github/tools/stamp_provenance.py --job build-pi-light --out "pkg/$name/BUILD-PROVENANCE.json"
+          python runner/tools/stamp_provenance.py --job build-pi-light --out "pkg/$name/BUILD-PROVENANCE.json"
           tar czf "$name.tar.gz" -C pkg "$name"
           bad=$(tar tzf "$name.tar.gz" | grep -v "^$name/" || true)
           [ -z "$bad" ] || { echo "tarball has entries outside '$name/': $bad"; exit 1; }
@@ -366,7 +366,7 @@ jobs:
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.extsources --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.learning --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test --hidden-import runner.transports --hidden-import runner.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.dtlsproto --hidden-import runner.jobcrypto --hidden-import runner.protocol_v2 --hidden-import runner.personal_docs --hidden-import runner.platformcard --hidden-import runner.board --hidden-import runner.textutil --hidden-import runner.confval --hidden-import runner.verify --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --add-data "runner/transport_extensions:pigeon-transport-extensions"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py --hidden-import runner._version --hidden-import runner.personal_docs
       - name: smoke the built macos binaries
-        run: .github/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
+        run: runner/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
       - name: package macos binaries
         run: |
           set -euo pipefail
@@ -374,7 +374,7 @@ jobs:
           name="homing-pigeon-macos-arm64-$ver"
           mkdir -p "pkg/$name"
           cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
-          python .github/tools/stamp_provenance.py --job build-macos --out "pkg/$name/BUILD-PROVENANCE.json"
+          python runner/tools/stamp_provenance.py --job build-macos --out "pkg/$name/BUILD-PROVENANCE.json"
           tar czf "$name.tar.gz" -C pkg "$name"
           bad=$(tar tzf "$name.tar.gz" | grep -v "^$name/" || true)
           [ -z "$bad" ] || { echo "tarball has entries outside '$name/': $bad"; exit 1; }
@@ -405,7 +405,7 @@ jobs:
       # inspector, and a --once --dry-run startup. One script for
       # Linux and Pi Light so both archives get the same proof.
       - name: smoke the built linux binaries
-        run: .github/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
+        run: runner/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
       - name: package linux binaries
         run: |
           set -euo pipefail
@@ -413,7 +413,7 @@ jobs:
           name="homing-pigeon-linux-arm64-$ver"
           mkdir -p "pkg/$name"
           cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
-          python .github/tools/stamp_provenance.py --job build-linux-arm64 --out "pkg/$name/BUILD-PROVENANCE.json"
+          python runner/tools/stamp_provenance.py --job build-linux-arm64 --out "pkg/$name/BUILD-PROVENANCE.json"
           tar czf "$name.tar.gz" -C pkg "$name"
           bad=$(tar tzf "$name.tar.gz" | grep -v "^$name/" || true)
           [ -z "$bad" ] || { echo "tarball has entries outside '$name/': $bad"; exit 1; }
@@ -507,7 +507,7 @@ jobs:
           $stage = "stage/$name"
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item dist/homing-pigeon.exe, dist/install.exe, runner/config.example.json $stage
-          python .github/tools/stamp_provenance.py --job build-windows-arm64 --out "$stage/BUILD-PROVENANCE.json"
+          python runner/tools/stamp_provenance.py --job build-windows-arm64 --out "$stage/BUILD-PROVENANCE.json"
           Compress-Archive -Path $stage -DestinationPath "$name.zip" -Force
           python -c "import zipfile,sys; ns=zipfile.ZipFile(sys.argv[1]).namelist(); b=[n for n in ns if not n.startswith(sys.argv[2]+'/')]; sys.exit('entries outside top dir: %s' % b if b else 0)" "$name.zip" "$name"
           if ($LASTEXITCODE -ne 0) { throw "zip layout check failed: not all entries are under '$name/'" }
@@ -539,7 +539,7 @@ jobs:
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md:pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.extsources --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.learning --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test --hidden-import runner.transports --hidden-import runner.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.dtlsproto --hidden-import runner.jobcrypto --hidden-import runner.protocol_v2 --hidden-import runner.personal_docs --hidden-import runner.platformcard --hidden-import runner.board --hidden-import runner.textutil --hidden-import runner.confval --hidden-import runner.verify --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --add-data "runner/transport_extensions:pigeon-transport-extensions"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py --hidden-import runner._version --hidden-import runner.personal_docs
       - name: smoke the built macos binaries
-        run: .github/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
+        run: runner/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
       - name: package macos binaries
         run: |
           set -euo pipefail
@@ -547,7 +547,7 @@ jobs:
           name="homing-pigeon-macos-x86_64-$ver"
           mkdir -p "pkg/$name"
           cp dist/homing-pigeon dist/install runner/config.example.json "pkg/$name/"
-          python .github/tools/stamp_provenance.py --job build-macos-x86_64 --out "pkg/$name/BUILD-PROVENANCE.json"
+          python runner/tools/stamp_provenance.py --job build-macos-x86_64 --out "pkg/$name/BUILD-PROVENANCE.json"
           tar czf "$name.tar.gz" -C pkg "$name"
           bad=$(tar tzf "$name.tar.gz" | grep -v "^$name/" || true)
           [ -z "$bad" ] || { echo "tarball has entries outside '$name/': $bad"; exit 1; }
@@ -568,7 +568,7 @@ jobs:
           python-version: "3.12"
       - run: pip install -c .github/requirements-ci.txt build
       - run: python -m build
-      - run: python .github/tools/stamp_provenance.py --job build-python --out dist/BUILD-PROVENANCE.json
+      - run: python runner/tools/stamp_provenance.py --job build-python --out dist/BUILD-PROVENANCE.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: homing-pigeon-python
@@ -612,7 +612,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           mkdir -p ci
-          python3 .github/tools/pin_extension_sources.py --out ci/EXTENSION-SOURCES.lock.json \
+          python3 runner/tools/pin_extension_sources.py --out ci/EXTENSION-SOURCES.lock.json \
             || { rm -f ci/EXTENSION-SOURCES.lock.json; echo "::warning title=extension sources::pinning failed; this release ships without a sources lock"; }
       - name: snapshot the project into every archive
         run: |
@@ -621,16 +621,16 @@ jobs:
           mv artifacts/test-output.log ci/ 2>/dev/null || true
           log=""; [ -f ci/test-output.log ] && log="--test-log ci/test-output.log"
           lock=""; [ -f ci/EXTENSION-SOURCES.lock.json ] && lock="--sources-lock ci/EXTENSION-SOURCES.lock.json"
-          python3 .github/tools/make_snapshot.py --out snapshot $log $lock
+          python3 runner/tools/make_snapshot.py --out snapshot $log $lock
           ver=$(python3 -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
           archives=$(ls artifacts/homing-pigeon-*.tar.gz artifacts/homing-pigeon-*.zip)
-          python3 .github/tools/make_snapshot.py --inject snapshot/project $archives
+          python3 runner/tools/make_snapshot.py --inject snapshot/project $archives
           tar czf "artifacts/homing-pigeon-project-${ver}.tar.gz" -C snapshot project
           ls -l artifacts
       # The SBOM (SPDX JSON) joins the artifact set here, before
       # the sums: SHA384SUMS then covers it, the attestation below
       # covers the sums, and the mirrors carry it for free.
-      - run: python3 .github/tools/make_sbom.py --out artifacts/SBOM.spdx.json
+      - run: python3 runner/tools/make_sbom.py --out artifacts/SBOM.spdx.json
       - run: |
           cd artifacts
           sha384sum * > SHA384SUMS

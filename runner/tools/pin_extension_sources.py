@@ -19,7 +19,7 @@ differs (runner/extsources.py). An extension author pins one extension
 the same way and ships the result beside its declaration as
 sources.lock.json:
 
-    python .github/tools/pin_extension_sources.py --out my-ext/sources.lock.json my-ext
+    python runner/tools/pin_extension_sources.py --out my-ext/sources.lock.json my-ext
 
 A problem -- a 404, an unreachable host, GitHub's rate limit -- is
 recorded in the lock and printed, never fatal: a box resolves what the
@@ -35,7 +35,7 @@ import os
 import sys
 import tempfile
 
-# This file lives in .github/tools/: the tree is two levels up.
+# This file lives in runner/tools/: the tree is two levels up.
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -83,7 +83,7 @@ def pin_dirs(dirs, fetcher, hash_archives=True, now=None, repo=REPO,
     now = now or datetime.datetime.now(datetime.timezone.utc)
     lock = {"lock_version": X.LOCK_VERSION,
             "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "generator": ".github/tools/pin_extension_sources.py",
+            "generator": "runner/tools/pin_extension_sources.py",
             "homing_pigeon": _version(repo),
             "extensions": {}}
     problems = 0

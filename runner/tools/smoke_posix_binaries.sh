@@ -8,8 +8,8 @@
 # Linux and Pi Light build jobs so the two archives get the same
 # proof; runnable locally against the source tree for a dry rehearsal:
 #
-#   .github/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
-#   .github/tools/smoke_posix_binaries.sh "python3 runner/runner.py" "python3 runner/install.py"
+#   runner/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install
+#   runner/tools/smoke_posix_binaries.sh "python3 runner/runner.py" "python3 runner/install.py"
 #
 # Exit 0 only if every check passed.
 set -eu

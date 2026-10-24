@@ -9,7 +9,7 @@ missing tool can silently retire the one test that backs a claim
 bwrap, so "the sandbox walls the job in" was never proven in CI).
 
 Usage:
-    python .github/tools/skip_guard.py test-output.log --forbid "bwrap not available"
+    python runner/tools/skip_guard.py test-output.log --forbid "bwrap not available"
 
 Reads a `unittest -v` log, prints every skip reason with its
 count (so the pipeline shows them without anyone scrolling), and

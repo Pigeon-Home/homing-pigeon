@@ -59,7 +59,7 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 
-# This file lives in .github/tools/: the tree is two levels up.
+# This file lives in runner/tools/: the tree is two levels up.
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 EXTENSIONS_DIR = os.path.join(ROOT, "extensions")

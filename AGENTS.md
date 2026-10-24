@@ -63,14 +63,14 @@ new paths against this layout; the old ones are gone, with no shims.
 
 | Folder | What |
 |--------|------|
-| `runner/` | The runner and the Oracle. `runner/cloud/` is the cloud-side helpers (`send_job.py`, `send_dtls.py`). `runner/tests/` is the suite, kept out of the wheel and the image; `runner/tests/airgap/` (once `topaz/`) and `runner/tests/archive/` sit beside it, outside discovery |
+| `runner/` | The runner and the Oracle. `runner/cloud/` is the cloud-side helpers (`send_job.py`, `send_dtls.py`). `runner/tools/` is the build and CI scripts, and `runner/tests/` the suite, both kept out of the wheel and the image; `runner/tests/airgap/` (once `topaz/`) and `runner/tests/archive/` sit beside it, outside discovery |
 | `extensions/` | The shipped extensions, one folder each |
 | `docs/` | Everything else to read. `docs/hardening/` is the opt-in OS hardening templates, `docs/CHANGELOG.md` the release record |
 | `assets/` | Images |
-| `.github/` | CI: `workflows/`, `tools/` (the build and CI scripts), `docker/` (the published image and the CI test image), `requirements-ci.txt` (the CI pins) |
+| `.github/` | CI: `workflows/`, `docker/` (the published image and the CI test image), `requirements-ci.txt` (the CI pins) |
 
 There is no root `tests/`, `tools/`, `examples/`, `cloud/`,
-`hardening/` or `docker/` any more, no root `Dockerfile`,
+`hardening/` or `docker/` any more, and no `tools/` under `.github/`, no root `Dockerfile`,
 `CHANGELOG.md` or `requirements-ci.txt`, and no `pyrefly.toml`: its
 settings are `[tool.pyrefly]` in `pyproject.toml`.
 

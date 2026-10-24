@@ -9,11 +9,11 @@
 # containers, QEMU-emulated containers, and BSD VMs; runnable by
 # hand on any POSIX host:
 #
-#   .github/tools/platform_proof.sh                   # this box, no mutation
-#   HP_MUTATION=no-bash .github/tools/platform_proof.sh
+#   runner/tools/platform_proof.sh                   # this box, no mutation
+#   HP_MUTATION=no-bash runner/tools/platform_proof.sh
 #
 # HP_SRC   where the tree is (default: two levels above this script,
-#          which lives in .github/tools/)
+#          which lives in runner/tools/)
 # HP_WORK  a writable scratch dir (default: a fresh one under $TMPDIR)
 # HP_MUTATION  none | no-bash | no-home | path-minimal | c-locale |
 #              umask-077 | closed-stdin   (noexec-tmp and readonly-root
@@ -101,8 +101,6 @@ STAGE="copy tree"
 WORK=${HP_WORK:-$(mktemp -d "${TMPDIR:-/tmp}/hp-proof.XXXXXX")}
 mkdir -p "$WORK"
 cp -R "$SRC/runner" "$SRC/pyproject.toml" "$WORK"/
-mkdir -p "$WORK/.github"
-cp -R "$SRC/.github/tools" "$WORK/.github/"
 cd "$WORK"
 
 # ---- 4. the fat-finger -----------------------------------------------
@@ -125,4 +123,4 @@ say "mutation: $MUT"
 STAGE="proof"
 export HP_PLATFORM_PROOF=1 HP_MUTATION="$MUT" PYTHONDONTWRITEBYTECODE=1
 "$PY" -m unittest runner.tests.test_platform_proof -v 2>&1 | tee "$WORK/proof.log" || true
-"$PY" .github/tools/skip_guard.py "$WORK/proof.log" --no-skips --require-ok --annotate
+"$PY" runner/tools/skip_guard.py "$WORK/proof.log" --no-skips --require-ok --annotate

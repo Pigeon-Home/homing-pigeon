@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run the test suite under the simulated Windows surface.
 
-    python .github/tools/run_tests_windows_sim.py [--pattern 'test_*.py']
+    python runner/tools/run_tests_windows_sim.py [--pattern 'test_*.py']
                                           [--start-dir runner/tests]
                                           [--top-level .]
                                           [--describe]
@@ -11,7 +11,7 @@ surface, 1 otherwise. Failures are printed with the standard
 unittest report; triage each as product bug, test bug (the
 d2da8e6 class: the test assumed a POSIX attribute the product
 never promised), or simulation artifact (see
-.github/tools/windows_surface.py's "not simulated" list) -- in that
+runner/tools/windows_surface.py's "not simulated" list) -- in that
 order of suspicion.
 
 Reading the results -- the boundary of what the surface can
@@ -58,7 +58,7 @@ from windows_surface import apply_surface, surface_description  # noqa: E402
 # time. They must be in sys.modules before the surface goes on,
 # or their import-time branches reach for Windows-only builtins
 # (nt, _winapi) that a POSIX build does not have. See
-# .github/tools/windows_surface.py's module docstring.
+# runner/tools/windows_surface.py's module docstring.
 _PREIMPORT = (
     "asyncio", "asyncio.events", "ctypes", "email", "email.policy",
     "imaplib", "json", "logging", "multiprocessing", "pathlib",

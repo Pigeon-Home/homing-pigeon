@@ -125,7 +125,7 @@ A feed sense reads what another program writes -- Suricata's
 report. The adapter is only as right as its reading of that
 format, and the format is defined in the other project's tree,
 not in yours. The `upstream` manifest field names the few files
-that define it, and `.github/tools/fetch_upstream.py` carries them into
+that define it, and `runner/tools/fetch_upstream.py` carries them into
 `<extension>/upstream/` beside the adapter, with the license that
 lets them ride along:
 
@@ -149,7 +149,7 @@ and the suite fails past it.
 
 Three things are checked, and none needs the network:
 
-- **The tree is whole.** `.github/tools/fetch_upstream.py --check` (and
+- **The tree is whole.** `runner/tools/fetch_upstream.py --check` (and
   `runner/tests/test_upstream_pins.py`) fail when a pin moved without a
   fetch, a file was edited by hand, a file sits under `upstream/`
   the manifest does not list, or the budget is spent. The build
@@ -187,7 +187,7 @@ target knows the field. The changelog names the release that
 added it.
 
 The block is the one place an extension names its upstream. It is
-read three ways from that one spot: `.github/tools/fetch_upstream.py` keeps
+read three ways from that one spot: `runner/tools/fetch_upstream.py` keeps
 the pinned files in the tree for the build and the drift tests;
 the extension sources pass (below) hands the same files to the
 Oracle as the entry `pinned`, vouched for by the digests
@@ -512,7 +512,7 @@ version installed on the box, and the index says so.
 ### Integrity: pinned by the build
 
 "latest" is resolved when Homing Pigeon is built. The release job
-runs `.github/tools/pin_extension_sources.py`: every declared upstream
+runs `runner/tools/pin_extension_sources.py`: every declared upstream
 pinned to a commit, every file and archive downloaded and hashed
 (SHA-384), all of it written to
 `project/EXTENSION-SOURCES.lock.json` inside every release
@@ -526,7 +526,7 @@ An extension author pins the same way and ships the result next
 to the declaration:
 
 ```bash
-python .github/tools/pin_extension_sources.py --out my-ext/sources.lock.json my-ext
+python runner/tools/pin_extension_sources.py --out my-ext/sources.lock.json my-ext
 ```
 
 The extension's own `sources.lock.json` is consulted first, then

@@ -80,7 +80,7 @@ class UnixVersionSmokeTest(unittest.TestCase):
     script existed, Linux, Pi Light and macOS checked --version
     and nothing else."""
 
-    SMOKE = ".github/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install"
+    SMOKE = "runner/tools/smoke_posix_binaries.sh ./dist/homing-pigeon ./dist/install"
 
     def test_every_posix_job_runs_the_shared_smoke(self):
         workflow = _workflow()
@@ -91,7 +91,7 @@ class UnixVersionSmokeTest(unittest.TestCase):
                           "%s does not smoke its built binaries" % job)
 
     def test_the_shared_smoke_checks_what_windows_checks(self):
-        with open(os.path.join(_root(), ".github", "tools",
+        with open(os.path.join(_root(), "runner", "tools",
                                "smoke_posix_binaries.sh"),
                   encoding="utf-8") as fh:
             script = fh.read()
@@ -102,7 +102,7 @@ class UnixVersionSmokeTest(unittest.TestCase):
         # The flag must be asserted absent, not merely present.
         self.assertIn("flag leaked", script)
         self.assertTrue(os.access(os.path.join(
-            _root(), ".github", "tools", "smoke_posix_binaries.sh"), os.X_OK),
+            _root(), "runner", "tools", "smoke_posix_binaries.sh"), os.X_OK),
             "smoke script is not executable")
 
 
@@ -205,7 +205,7 @@ class MutationGateTest(unittest.TestCase):
         # the Linux suite and the Windows shards past 80 minutes,
         # the job had no clock, and the stuck test's name was the
         # unfinished line at the end of a log nobody could read
-        # from the diagnosing seat. .github/tools/suite_wall_clock.py is
+        # from the diagnosing seat. runner/tools/suite_wall_clock.py is
         # `python -m unittest` with a 20-minute deadline that names
         # the running test and annotates it; the Windows shards get
         # the same through --wall-clock. The workflow's timer count
@@ -213,14 +213,14 @@ class MutationGateTest(unittest.TestCase):
         # (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
         workflow = _workflow()
         linux = _uncommented(_job_block(workflow, "test"))
-        self.assertIn("python .github/tools/suite_wall_clock.py --minutes 20 -- "
+        self.assertIn("python runner/tools/suite_wall_clock.py --minutes 20 -- "
                       "discover -s runner/tests -t . -v --durations 25", linux)
         self.assertNotIn("python -m unittest discover", linux)
         windows = _uncommented(_job_block(workflow, "build-windows"))
-        self.assertIn("python .github/tools/run_tests_parallel.py --jobs 4 "
+        self.assertIn("python runner/tools/run_tests_parallel.py --jobs 4 "
                       "--durations 15 --wall-clock 20", windows)
         self.assertTrue(os.path.exists(
-            os.path.join(_root(), ".github", "tools", "suite_wall_clock.py")))
+            os.path.join(_root(), "runner", "tools", "suite_wall_clock.py")))
 
     def test_real_gates_are_not_continue_on_error(self):
         # The mirror image of the pin above: if a job that gates
@@ -341,16 +341,16 @@ class MutationTreeTest(unittest.TestCase):
             _root(), ".github", "requirements-ci.txt")))
 
     def test_the_sharded_runner_is_copied(self):
-        # test_parallel_runner imports .github/tools/run_tests_parallel.py
+        # test_parallel_runner imports runner/tools/run_tests_parallel.py
         # at load time. A missing copy fails stats collection before any
         # mutant. The .github/ entry carries it.
         self.assertIn(".github/", _also_copy())
         self.assertTrue(os.path.isfile(os.path.join(
-            _root(), ".github", "tools", "run_tests_parallel.py")))
+            _root(), "runner", "tools", "run_tests_parallel.py")))
 
     def test_also_copy_never_nests(self):
         # mutmut copies each entry in turn. An entry inside another
-        # entry (".github/tools/" beside ".github/") is a second copy
+        # entry ("runner/tools/" beside ".github/") is a second copy
         # over the first, and source_paths (runner/) is copied anyway.
         entries = [e.rstrip("/") for e in _also_copy()] + ["runner"]
         for a in entries:
@@ -371,7 +371,7 @@ class MutationTreeTest(unittest.TestCase):
 def _load_tool(name):
     import importlib.util
     spec = importlib.util.spec_from_file_location(
-        name, os.path.join(_root(), ".github", "tools", name + ".py"))
+        name, os.path.join(_root(), "runner", "tools", name + ".py"))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -503,11 +503,11 @@ class PipelineLiftsTest(unittest.TestCase):
                             ("build-macos", "tar czf"),
                             ("build-macos-x86_64", "tar czf")):
             block = _job_block(workflow, job)
-            stamp = ".github/tools/stamp_provenance.py --job %s" % job
+            stamp = "runner/tools/stamp_provenance.py --job %s" % job
             self.assertIn(stamp, block, "%s never stamps" % job)
             self.assertLess(block.index(stamp), block.index(packer),
                             "%s stamps after archiving" % job)
-        self.assertIn(".github/tools/stamp_provenance.py --job build-python",
+        self.assertIn("runner/tools/stamp_provenance.py --job build-python",
                       _job_block(workflow, "build-python"))
 
     def test_the_stamp_carries_the_build_identity(self):
@@ -534,7 +534,7 @@ class PipelineLiftsTest(unittest.TestCase):
     # the sums; the publish job keeps non-distributions out.
     def test_release_generates_the_sbom_before_the_sums(self):
         block = _job_block(_workflow(), "release")
-        self.assertIn(".github/tools/make_sbom.py "
+        self.assertIn("runner/tools/make_sbom.py "
                       "--out artifacts/SBOM.spdx.json", block)
         self.assertLess(block.index("actions/checkout@"),
                         block.index("actions/download-artifact@"))
@@ -570,8 +570,10 @@ class PipelineLiftsTest(unittest.TestCase):
         for top in ("runner",):
             base = os.path.join(_root(), top)
             for dirpath, _dirs, names in os.walk(base):
-                # runner/tests/ is the suite, not a shipped module.
-                if os.path.relpath(dirpath, base).split(os.sep)[0] == "tests":
+                # runner/tests/ and runner/tools/ are the suite and the
+                # CI scripts, not shipped modules.
+                if os.path.relpath(dirpath, base).split(os.sep)[0] in (
+                        "tests", "tools"):
                     continue
                 for name in names:
                     if name.endswith(".py"):
@@ -621,8 +623,8 @@ class NoPythonDropTest(unittest.TestCase):
     def test_linux_job_drops_onto_a_machine_with_no_python(self):
         block = _job_block(_workflow(), "build-linux")
         self.assertIn(
-            ".github/tools/smoke_no_python.sh ./dist/homing-pigeon", block)
-        with open(os.path.join(_root(), ".github", "tools", "smoke_no_python.sh"),
+            "runner/tools/smoke_no_python.sh ./dist/homing-pigeon", block)
+        with open(os.path.join(_root(), "runner", "tools", "smoke_no_python.sh"),
                   encoding="utf-8") as fh:
             script = fh.read()
         for needle in ("debian:bookworm-slim", "command -v python3",
@@ -630,7 +632,7 @@ class NoPythonDropTest(unittest.TestCase):
                        "has Python"):
             self.assertIn(needle, script, "no-python smoke lacks %s" % needle)
         self.assertTrue(os.access(os.path.join(
-            _root(), ".github", "tools", "smoke_no_python.sh"), os.X_OK),
+            _root(), "runner", "tools", "smoke_no_python.sh"), os.X_OK),
             "no-python smoke is not executable")
 
     def test_windows_job_runs_with_python_off_the_path(self):
@@ -693,14 +695,14 @@ class PipelineLessonsTest(unittest.TestCase):
         # portable proof runs, the verdict step must forbid skips and
         # require a bare OK. Containers and VMs get it from the script;
         # the native job spells it out.
-        with open(os.path.join(_root(), ".github", "tools", "platform_proof.sh"),
+        with open(os.path.join(_root(), "runner", "tools", "platform_proof.sh"),
                   encoding="utf-8") as fh:
             script = fh.read()
         self.assertIn("skip_guard.py", script)
         self.assertIn("--no-skips --require-ok", script)
         wf = _workflow_text("platform-matrix.yml")
-        self.assertIn(".github/tools/skip_guard.py proof.log --no-skips --require-ok", wf)
-        self.assertIn(".github/tools/platform_proof.sh", wf)
+        self.assertIn("runner/tools/skip_guard.py proof.log --no-skips --require-ok", wf)
+        self.assertIn("runner/tools/platform_proof.sh", wf)
         # and the proof module refuses to be a platform-conditional
         with open(os.path.join(_root(), "runner", "tests", "test_platform_proof.py"),
                   encoding="utf-8") as fh:
@@ -756,7 +758,7 @@ class PipelineLessonsTest(unittest.TestCase):
         # and the plan itself: the full corpus is the schedule and
         # a manual dispatch. A push runs core legs on plentiful
         # runners only.
-        with open(os.path.join(_root(), ".github", "tools", "platform_plan.py"),
+        with open(os.path.join(_root(), "runner", "tools", "platform_plan.py"),
                   encoding="utf-8") as fh:
             plan = fh.read()
         self.assertIn('("schedule", "workflow_dispatch")', plan)
@@ -768,7 +770,7 @@ class PipelineLessonsTest(unittest.TestCase):
         # for Windows and ARM runners the binary build was already
         # using. Those legs stay in the corpus. They run nightly.
         import importlib.util
-        path = os.path.join(_root(), ".github", "tools", "platform_plan.py")
+        path = os.path.join(_root(), "runner", "tools", "platform_plan.py")
         spec = importlib.util.spec_from_file_location(
             "platform_plan", path)
         mod = importlib.util.module_from_spec(spec)
@@ -828,7 +830,7 @@ class PipelineLessonsTest(unittest.TestCase):
         # `grep -q 'Ran 6 tests'` and `assertEqual(count, 1)` both
         # broke on 2026-10-21 the moment someone added a test or a
         # build. A verdict step asks for N > 0, a bare OK and no skip
-        # (.github/tools/skip_guard.py --require-ok --no-skips), never a number.
+        # (runner/tools/skip_guard.py --require-ok --no-skips), never a number.
         for name in self.ALL:
             for line in _workflow_text(name).splitlines():
                 if line.strip().startswith("#"):
@@ -843,7 +845,7 @@ class PipelineLessonsTest(unittest.TestCase):
         for name in ("minimal-userland.yml", "platform-matrix.yml", "build.yml"):
             wf = _workflow_text(name)
             if "| tee" in wf:
-                self.assertIn(".github/tools/skip_guard.py", wf, name)
+                self.assertIn("runner/tools/skip_guard.py", wf, name)
 
 
 class PythonFloorTest(unittest.TestCase):
@@ -892,7 +894,7 @@ class PythonFloorTest(unittest.TestCase):
         files = sorted(f for f in glob.glob(
             os.path.join(_root(), "runner", "**", "*.py"), recursive=True)
             if not f.startswith(tests_dir))
-        files += sorted(glob.glob(os.path.join(_root(), ".github", "tools", "*.py")))
+        files += sorted(glob.glob(os.path.join(_root(), "runner", "tools", "*.py")))
         self.assertGreater(len(files), 30)
         sites = []
         for f in files:

@@ -46,11 +46,11 @@ from runner import runner as R  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location(
     "pin_extension_sources",
-    os.path.join(REPO, ".github", "tools", "pin_extension_sources.py"))
+    os.path.join(REPO, "runner", "tools", "pin_extension_sources.py"))
 PIN = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(PIN)
 _spec2 = importlib.util.spec_from_file_location(
-    "make_snapshot", os.path.join(REPO, ".github", "tools", "make_snapshot.py"))
+    "make_snapshot", os.path.join(REPO, "runner", "tools", "make_snapshot.py"))
 SNAP = importlib.util.module_from_spec(_spec2)
 _spec2.loader.exec_module(SNAP)
 
@@ -171,7 +171,7 @@ def pinned_routes():
 
 
 def write_pin_json(folder, pin=PINNED_SHA, files=PINNED_FILES):
-    """What .github/tools/fetch_upstream.py writes beside the files it carries."""
+    """What runner/tools/fetch_upstream.py writes beside the files it carries."""
     import hashlib
     updir = os.path.join(folder, "upstream")
     recs = {}

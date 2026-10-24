@@ -336,7 +336,7 @@
   a cloud SI knows what the box's Oracle can read.
 - One declaration, not three -- RESOLVED (2026-10-22, same day
   it was filed). The manifest's `upstream` block is the one
-  declaration: .github/tools/fetch_upstream.py keeps its pinned files in
+  declaration: runner/tools/fetch_upstream.py keeps its pinned files in
   the tree for the build and the drift tests, runner/extsources.py
   hands the same files to the Oracle as the entry `pinned` under
   the digests `upstream/PIN.json` recorded, and a `sources.json`

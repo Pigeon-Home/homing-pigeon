@@ -25,15 +25,15 @@ the results of the CI run without a network. A snapshot directory:
     project/EXTENSION-SOURCES.lock.json
                                  with --sources-lock: every declared
                                  extension source pinned by this
-                                 build (.github/tools/pin_extension_sources.py)
+                                 build (runner/tools/pin_extension_sources.py)
 
 Stdlib only, like the rest of the project. No YAML parser: workflow
 facts are read with line rules that match how build.yml is written.
 
 Usage:
-    python .github/tools/make_snapshot.py --out snapshot [--test-log test-output.log]
+    python runner/tools/make_snapshot.py --out snapshot [--test-log test-output.log]
                                   [--sources-lock EXTENSION-SOURCES.lock.json]
-    python .github/tools/make_snapshot.py --inject snapshot/project ARCHIVE...
+    python runner/tools/make_snapshot.py --inject snapshot/project ARCHIVE...
 
 --inject adds the snapshot to finished install archives as
 <archive's top dir>/project/, so the release job builds the snapshot
@@ -231,7 +231,7 @@ _INDEX = [
     ("The release pipeline", ".github/workflows/build.yml"),
     ("The platform matrix", ".github/workflows/platform-matrix.yml"),
     ("CI tool pins", ".github/requirements-ci.txt"),
-    ("CI and build tools", ".github/tools/"),
+    ("CI and build tools", "runner/tools/"),
     ("Coverage and mutation reports", "docs/reports/"),
     ("Everything not built yet", "docs/FUTURE.md"),
     ("The shipped extensions", "extensions/"),

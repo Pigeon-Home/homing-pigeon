@@ -9,7 +9,7 @@ Three things are pinned here, none of which needs the network:
    that would let a path escape or a pin lie.
 2. What sits under `<extension>/upstream/` matches the manifest and
    its PIN.json exactly, and everything together stays under the
-   5 MiB budget. .github/tools/fetch_upstream.py --check is the same
+   5 MiB budget. runner/tools/fetch_upstream.py --check is the same
    verdict from the command line; this is the one the suite runs.
 3. The format each feed adapter parses is still the format its
    upstream source defines: the fields the adapter reads are named
@@ -26,7 +26,7 @@ import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT)
-sys.path.insert(0, os.path.join(ROOT, ".github", "tools"))
+sys.path.insert(0, os.path.join(ROOT, "runner", "tools"))
 
 from runner import extensions as E  # noqa: E402
 import fetch_upstream as FU  # noqa: E402

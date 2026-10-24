@@ -1,5 +1,5 @@
 # Agent-Stamp: 30000f1a-3b4c-4d5e-8f6a-7b8c9d0e1f2a
-""".github/tools/skip_guard.py: a forbidden skip fails, everything else passes.
+"""runner/tools/skip_guard.py: a forbidden skip fails, everything else passes.
 
 The guard exists because a skipped proof looks exactly like a
 passed one from the outside. These tests pin the parsing of
@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
 def _load():
-    path = os.path.join(os.path.dirname(__file__), "..", "..", ".github", "tools",
+    path = os.path.join(os.path.dirname(__file__), "..", "..", "runner", "tools",
                         "skip_guard.py")
     spec = importlib.util.spec_from_file_location("skip_guard", path)
     mod = importlib.util.module_from_spec(spec)

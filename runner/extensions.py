@@ -61,7 +61,7 @@ _OPTIONAL_FIELDS = ("description", "tunables", "signals", "entry",
 # `upstream` (added in 3.12.x; api_version stays 1) names the files
 # of another project this extension's reading depends on -- a log
 # schema, a record layout, the license that lets them ride along.
-# .github/tools/fetch_upstream.py carries them into <extension>/upstream/.
+# runner/tools/fetch_upstream.py carries them into <extension>/upstream/.
 # The runner only validates the shape; it never fetches.
 _UPSTREAM_FIELDS = ("repo", "ref", "pin", "paths", "license")
 _UPSTREAM_REPO_RE = re.compile(

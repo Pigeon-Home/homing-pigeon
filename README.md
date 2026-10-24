@@ -470,7 +470,7 @@ pinned by default, and a written disclosure rule lets the owner
   IMAP/SMTP servers and a fake NATS broker.
 - `docs/RUNBOOK.md` — step-by-step instructions (written for a 5-year-old):
   cloning, pushing, cutting a release, installing, sending a job.
-- `.github/tools/make_snapshot.py` — packs the whole project into every
+- `runner/tools/make_snapshot.py` — packs the whole project into every
   release: each install archive carries `project/` (every tracked
   file, the full git history as a bundle, and the build's CI facts
   and test results, indexed by `project/PROJECT-SNAPSHOT.md`), and
@@ -478,7 +478,7 @@ pinned by default, and a written disclosure rule lets the owner
   `homing-pigeon-project-<version>.tar.gz`. An installed runner
   keeps it in its state dir, so the Oracle can read the source, the
   tests, and the CI that built it without a network.
-- `.github/tools/pin_extension_sources.py` — the release job's pins: every
+- `runner/tools/pin_extension_sources.py` — the release job's pins: every
   declared extension source resolved to a commit and hashed,
   shipped in the snapshot as `project/EXTENSION-SOURCES.lock.json`
   (the sources themselves never ship; the boxes fetch them).
@@ -487,9 +487,9 @@ pinned by default, and a written disclosure rule lets the owner
   catalog in `docs/extensions.md`.
 - `docs/hardening/` — opt-in OS hardening: a systemd unit, an
   AppArmor profile, an SELinux module, and Windows notes.
-- `.github/` — CI: the workflows, the build and CI scripts in
-  `.github/tools/`, the container images in `.github/docker/`, and
-  the CI pins in `.github/requirements-ci.txt`.
+- `.github/` — CI: the workflows, the container images in
+  `.github/docker/`, and the CI pins in `.github/requirements-ci.txt`.
+  The build and CI scripts are in `runner/tools/`.
 
 ## Setup
 

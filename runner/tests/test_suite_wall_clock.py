@@ -1,4 +1,4 @@
-# Tests for .github/tools/suite_wall_clock.py: `python -m unittest` under a
+# Tests for runner/tools/suite_wall_clock.py: `python -m unittest` under a
 # clock that names the test it killed.
 #
 # The 2026-10-23 stall: a test that looped forever held both CI
@@ -18,7 +18,7 @@ import tempfile
 import unittest
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-TOOL = os.path.join(REPO, ".github", "tools", "suite_wall_clock.py")
+TOOL = os.path.join(REPO, "runner", "tools", "suite_wall_clock.py")
 _spec = importlib.util.spec_from_file_location("suite_wall_clock", TOOL)
 swc = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(swc)

@@ -1398,7 +1398,7 @@ def test_parse_nmcli_junk_lines_are_skipped(self):
 def test_the_sharded_runner_is_copied(self):
         # test_parallel_runner imports this file at load time.
         # A missing copy fails stats collection before any mutant.
-        self.assertIn(".github/tools/", _also_copy())
+        self.assertIn("runner/tools/", _also_copy())
 
 # runner/tests/test_runner_oracle_tools.py OracleToolTest.test_a_missing_file_is_an_error_string_not_an_exception lines 78-81
 def test_a_missing_file_is_an_error_string_not_an_exception(self):
@@ -5457,7 +5457,7 @@ def test_verdict_steps_use_the_guard(self):
         for name in ("minimal-userland.yml", "platform-matrix.yml", "build.yml"):
             wf = _workflow_text(name)
             if "| tee" in wf:
-                self.assertIn(".github/tools/skip_guard.py", wf, name)
+                self.assertIn("runner/tools/skip_guard.py", wf, name)
 
 # runner/tests/test_build_config.py UnixVersionSmokeTest.test_every_posix_job_runs_the_shared_smoke lines 85-91
 def test_every_posix_job_runs_the_shared_smoke(self):
@@ -9603,7 +9603,7 @@ def test_synthetic_fixture_parses_five_events(self):
 # runner/tests/test_build_config.py PipelineLiftsTest.test_release_generates_the_sbom_before_the_sums lines 496-505
 def test_release_generates_the_sbom_before_the_sums(self):
         block = _job_block(_workflow(), "release")
-        self.assertIn(".github/tools/make_sbom.py "
+        self.assertIn("runner/tools/make_sbom.py "
                       "--out artifacts/SBOM.spdx.json", block)
         self.assertLess(block.index("actions/checkout@"),
                         block.index("actions/download-artifact@"))
@@ -12140,7 +12140,7 @@ def test_no_test_count_census_in_workflows(self):
         # `grep -q 'Ran 6 tests'` and `assertEqual(count, 1)` both
         # broke on 2026-10-21 the moment someone added a test or a
         # build. A verdict step asks for N > 0, a bare OK and no skip
-        # (.github/tools/skip_guard.py --require-ok --no-skips), never a number.
+        # (runner/tools/skip_guard.py --require-ok --no-skips), never a number.
         for name in self.ALL:
             for line in _workflow_text(name).splitlines():
                 if line.strip().startswith("#"):
@@ -12862,7 +12862,7 @@ def test_no_runtime_pep604_annotations_without_future_import(self):
         import glob
         files = sorted(glob.glob(os.path.join(_root(), "runner", "**", "*.py"),
                                  recursive=True))
-        files += sorted(glob.glob(os.path.join(_root(), ".github", "tools", "*.py")))
+        files += sorted(glob.glob(os.path.join(_root(), "runner", "tools", "*.py")))
         self.assertGreater(len(files), 30)
         sites = []
         for f in files:
@@ -14301,8 +14301,8 @@ def test_no_secrets_scans_output(self):
 def test_linux_job_drops_onto_a_machine_with_no_python(self):
         block = _job_block(_workflow(), "build-linux")
         self.assertIn(
-            ".github/tools/smoke_no_python.sh ./dist/homing-pigeon", block)
-        with open(os.path.join(_root(), ".github", "tools", "smoke_no_python.sh"),
+            "runner/tools/smoke_no_python.sh ./dist/homing-pigeon", block)
+        with open(os.path.join(_root(), "runner", "tools", "smoke_no_python.sh"),
                   encoding="utf-8") as fh:
             script = fh.read()
         for needle in ("debian:bookworm-slim", "command -v python3",
@@ -14310,7 +14310,7 @@ def test_linux_job_drops_onto_a_machine_with_no_python(self):
                        "has Python"):
             self.assertIn(needle, script, "no-python smoke lacks %s" % needle)
         self.assertTrue(os.access(os.path.join(
-            _root(), ".github", "tools", "smoke_no_python.sh"), os.X_OK),
+            _root(), "runner", "tools", "smoke_no_python.sh"), os.X_OK),
             "no-python smoke is not executable")
 
 # runner/tests/test_pi_light.py DeterministicBriefTest.test_llm_mode_still_assesses_with_the_model lines 217-230
@@ -14411,7 +14411,7 @@ def test_tree_matches_manifests_and_pins(self):
 
 # runner/tests/test_build_config.py UnixVersionSmokeTest.test_the_shared_smoke_checks_what_windows_checks lines 93-106
 def test_the_shared_smoke_checks_what_windows_checks(self):
-        with open(os.path.join(_root(), ".github", "tools",
+        with open(os.path.join(_root(), "runner", "tools",
                                "smoke_posix_binaries.sh"),
                   encoding="utf-8") as fh:
             script = fh.read()
@@ -14422,7 +14422,7 @@ def test_the_shared_smoke_checks_what_windows_checks(self):
         # The flag must be asserted absent, not merely present.
         self.assertIn("flag leaked", script)
         self.assertTrue(os.access(os.path.join(
-            _root(), ".github", "tools", "smoke_posix_binaries.sh"), os.X_OK),
+            _root(), "runner", "tools", "smoke_posix_binaries.sh"), os.X_OK),
             "smoke script is not executable")
 
 # runner/tests/test_watchers.py JobWatcherDecideTest.test_failure_cluster_needs_distinct_jobs lines 382-395
@@ -16607,11 +16607,11 @@ def test_every_packaging_step_stamps_provenance(self):
                             ("build-macos", "tar czf"),
                             ("build-macos-x86_64", "tar czf")):
             block = _job_block(workflow, job)
-            stamp = ".github/tools/stamp_provenance.py --job %s" % job
+            stamp = "runner/tools/stamp_provenance.py --job %s" % job
             self.assertIn(stamp, block, "%s never stamps" % job)
             self.assertLess(block.index(stamp), block.index(packer),
                             "%s stamps after archiving" % job)
-        self.assertIn(".github/tools/stamp_provenance.py --job build-python",
+        self.assertIn("runner/tools/stamp_provenance.py --job build-python",
                       _job_block(workflow, "build-python"))
 
 # runner/tests/test_linux_platform.py LoopbackTest.test_inference_config_mutations lines 2570-2585

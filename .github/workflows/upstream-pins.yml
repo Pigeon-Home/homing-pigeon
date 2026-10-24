@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: resolve refs, fetch the pinned files
-        run: python3 .github/tools/fetch_upstream.py --bump
+        run: python3 runner/tools/fetch_upstream.py --bump
       - name: nothing moved?
         id: diff
         run: |

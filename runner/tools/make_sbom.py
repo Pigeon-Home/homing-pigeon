@@ -20,7 +20,7 @@ into artifacts/ BEFORE SHA384SUMS is generated, so the sums
 cover the SBOM and the build attestation covers both; the
 mirrors then carry it like every other release asset.
 
-Usage: python .github/tools/make_sbom.py --out artifacts/SBOM.spdx.json
+Usage: python runner/tools/make_sbom.py --out artifacts/SBOM.spdx.json
 """
 
 import argparse
@@ -68,9 +68,11 @@ def _source_files(root):
     for top in SOURCE_DIRS:
         base = os.path.join(root, top)
         for dirpath, dirnames, filenames in os.walk(base):
-            # The suite (runner/tests/) is not shipped.
+            # The suite and the CI scripts (runner/tests/,
+            # runner/tools/) are not shipped.
             dirnames[:] = [d for d in dirnames if d != "__pycache__"
-                           and not (dirpath == base and d == "tests")]
+                           and not (dirpath == base
+                                    and d in "tests tools".split())]
             for name in filenames:
                 if name.endswith(".py"):
                     found.append(os.path.join(dirpath, name))
@@ -120,7 +122,7 @@ def build_sbom(root, env=None, now=None):
                              % (REPO_URL, ref, run),
         "creationInfo": {
             "created": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "creators": ["Tool: homing-pigeon .github/tools/make_sbom.py"],
+            "creators": ["Tool: homing-pigeon runner/tools/make_sbom.py"],
         },
         "documentDescribes": [root_pkg],
         "packages": [

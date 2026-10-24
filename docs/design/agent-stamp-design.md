@@ -69,7 +69,7 @@ Questions to settle before any of this goes into `PROTOCOL.md`:
 
 ## Idea: lint
 
-A small `.github/tools/stamp_check.py`, run in CI, that:
+A small `runner/tools/stamp_check.py`, run in CI, that:
 
 - lists every stamp in the tree and in recent history
 - flags spellings other than `Agent-Stamp`

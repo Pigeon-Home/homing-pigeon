@@ -24,7 +24,7 @@ Every field degrades to "unknown" outside CI (a local stamp is
 still a stamp), except the version, which is read from the
 tree being stamped. Stdlib only, like the rest of the project.
 
-Usage: python .github/tools/stamp_provenance.py --job build-linux \
+Usage: python runner/tools/stamp_provenance.py --job build-linux \
            --out pkg/<name>/BUILD-PROVENANCE.json
 """
 

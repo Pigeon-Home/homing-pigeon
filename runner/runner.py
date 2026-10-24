@@ -1562,7 +1562,7 @@ def _project_snapshot_note(base_dir):
     """One short context block pointing at the shipped project snapshot.
 
     A release install carries the whole project under <base_dir>/project
-    (.github/tools/make_snapshot.py): source, tests, docs, CI workflows, the
+    (runner/tools/make_snapshot.py): source, tests, docs, CI workflows, the
     full history as a git bundle, and the build's CI facts. The note
     names the paths so the model can read them with its tools. Returns
     "" when no snapshot is installed. Never raises.

@@ -32,7 +32,8 @@ RETIRED = {
     "CONTRIBUTING.md": "docs/CONTRIBUTING.md",
     "CHANGELOG.md": "docs/CHANGELOG.md",
     "tests": "runner/tests/",
-    "tools": "runner/tests/airgap/ (the CI scripts: .github/tools/)",
+    "tools": "runner/tools/ (the CI scripts), runner/tests/airgap/ (the work area)",
+    ".github/tools": "runner/tools/",
     "topaz": "runner/tests/airgap/",
 }
 
@@ -44,7 +45,10 @@ STALE = [
      '"extensions"'),
     (re.compile(_EDGE + r"cloud/send_"), "runner/cloud/"),
     (re.compile(r"(?<![\w.])cloud\.send_(job|dtls)\b"), "runner.cloud"),
-    (re.compile(_EDGE + r"tools/\w+\.(py|sh)\b"), ".github/tools/"),
+    (re.compile(_EDGE + r"tools/\w+\.(py|sh)\b"), "runner/tools/"),
+    (re.compile(r"\.github/tools\b"), "runner/tools/"),
+    (re.compile(r'["\']\.github["\'],\s*["\']tools["\']'),
+     '"runner", "tools"'),
     (re.compile(_EDGE + r"hardening/(systemd|apparmor|selinux|README|windows)"),
      "docs/hardening/"),
     (re.compile(_EDGE + r"docker/(entrypoint|minimal-userland)"),
@@ -53,8 +57,8 @@ STALE = [
     (re.compile(r'(?:-[cr]\s+|(?<!"\.github", )["\'])requirements-ci\.txt'),
      ".github/requirements-ci.txt"),
     # os.path.join(ROOT, "tools", ...) and its kin
-    (re.compile(r'(?<!"\.github", )(?<=, )["\']tools["\'](?=\s*[,)])'),
-     '".github", "tools"'),
+    (re.compile(r'(?<!"runner", )(?<=, )["\']tools["\'](?=\s*[,)])'),
+     '"runner", "tools"'),
     (re.compile(r'(?<!"runner", )(?:(?<=, )|(?<=join\())["\']cloud["\']'
                 r'(?=\s*[,)])'), '"runner", "cloud"'),
     (re.compile(r'(?<!"docs", )(?<=, )["\']hardening["\'](?=\s*[,)])'),
@@ -110,7 +114,7 @@ class RootLayoutTest(unittest.TestCase):
 
     def test_the_moved_homes_exist(self):
         for rel in ("extensions", "runner/cloud/send_job.py",
-                    ".github/tools", "docs/hardening",
+                    "runner/tools", "docs/hardening",
                     ".github/docker/Dockerfile",
                     ".github/requirements-ci.txt",
                     "extensions/.gitattributes",
