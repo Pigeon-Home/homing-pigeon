@@ -11451,6 +11451,149 @@ class TestBackupFreshnessStaleAfterSecFifteenShapes(unittest.TestCase):
             self._probe(mod, {"stale_after_sec": 3600.5}, 3601),
             [("backup_stale", 3600.5)])
 
+class TestCrashWatchRepeatWindowSecFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the crash-watch
+    decide-inline reader (step-8 Target 5,
+    extension-tunable table probe) -- the fifteen
+    shapes at decide() level for the family's one
+    registry row.
+
+    (a) Doc claim (extensions/crash-watch/README.md:16:
+        "crash_repeated | The same binary crashes again
+        within `repeat_window_sec` (default 3600) --
+        filed instead of `crash_dumped`, with the count
+        of that binary's crashes inside the window";
+        the module docstring states the same default as
+        "one hour", and extension.json carries the
+        tunable at 3600). Registry row
+        "repeat_window_sec (crash-watch)" (default
+        3600): policy default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: step-8 artifact Target 5
+        says the 51 extension tunables have no
+        reader-level table probe; their readers are
+        local helper families. This tick took the
+        crash-watch family, whose reader is inline in
+        extensions/crash-watch/crash_watch.py:decide
+        (float(value) if _is_number(value) and
+        value > 0 else 3600.0), and probed it through
+        decide() itself with the fifteen shapes from
+        the table hunt -- omitted, null, empty string,
+        true, false, zero, negative, the documented
+        default written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong container -- plus genuine
+        int / fractional values. The observable is the
+        filed signal: state already holds one crash
+        event for binary "app" at t=1000 and a fresh
+        dump of the same binary arrives at t=1000+age;
+        the prior event survives pruning exactly when
+        age <= window, so the new dump files
+        crash_repeated (count 2) inside the window and
+        crash_dumped past it.
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default 3600: at age 3000 exactly one
+        crash_repeated files with count 2, and at age
+        4000 exactly one crash_dumped files. Zero and
+        negative also read as the default because this
+        reader requires value > 0. Numeric strings are
+        not parsed ("45" reads as the default; the
+        _is_number isinstance gate). Genuine values are
+        honored exactly: 10 files crash_repeated at
+        age 5 and crash_dumped at age 11, and the
+        fractional 3600.5 files crash_repeated at age
+        3600 and crash_dumped at age 3601. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented default and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "crash-watch",
+            "crash_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "crash_watch_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _probe(self, mod, tunables, age):
+        state = {"seen": {}, "events": [["app", 1000.0]]}
+        readings = {"now": 1000.0 + age,
+                    "files": [{"name": "app.dmp",
+                               "dir": "/crashes",
+                               "size": 10,
+                               "mtime": 2000.0}]}
+        alerts, _new_state = mod.decide(
+            readings,
+            {"name": "crash_watch",
+             "tunables": tunables}, state)
+        return [(a["signal"], a["detail"].get("count"))
+                for a in alerts]
+
+    def test_fifteen_shapes_read_as_the_default(self):
+        mod = self._mod()
+        with self.subTest(shape="omitted"):
+            self.assertEqual(
+                self._probe(mod, {}, 3000),
+                [("crash_repeated", 2)])
+            self.assertEqual(self._probe(mod, {}, 4000),
+                             [("crash_dumped", None)])
+        unusable = [None, "", True, False, 0, -5,
+                    "45", "bogus", 10 ** 400,
+                    float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._probe(
+                        mod, {"repeat_window_sec": value},
+                        3000),
+                    [("crash_repeated", 2)])
+                self.assertEqual(
+                    self._probe(
+                        mod, {"repeat_window_sec": value},
+                        4000),
+                    [("crash_dumped", None)])
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._probe(mod, {"repeat_window_sec": 3600},
+                            3000),
+                [("crash_repeated", 2)])
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        self.assertEqual(
+            self._probe(mod, {"repeat_window_sec": 10}, 5),
+            [("crash_repeated", 2)])
+        self.assertEqual(
+            self._probe(mod, {"repeat_window_sec": 10}, 11),
+            [("crash_dumped", None)])
+        self.assertEqual(
+            self._probe(mod, {"repeat_window_sec": 3600.5},
+                        3600),
+            [("crash_repeated", 2)])
+        self.assertEqual(
+            self._probe(mod, {"repeat_window_sec": 3600.5},
+                        3601),
+            [("crash_dumped", None)])
+
+
 if __name__ == "__main__":
 
     unittest.main()
