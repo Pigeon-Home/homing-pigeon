@@ -5172,6 +5172,123 @@ class TestInfiniteFailedLoginBurstCountDefaultsTo5(unittest.TestCase):
             self._signals({"burst_count": 7}, count=6), [])
 
 
+class TestFailedLoginWindowSecDefaultsTo600(unittest.TestCase):
+    """Second-run hunt coverage: failed-login-watch
+    window_sec itself, varied for the first time.
+
+    (a) Doc claim (examples/extensions/failed-login-watch/
+        README.md, line 37): "`login_failure_burst` |
+        One source accumulates at least the
+        `burst_count` tunable (default 5) failures
+        inside the trailing `window_sec` (default
+        600)". The manifest ships the same default
+        (extension.json: "burst_count": 5,
+        "window_sec": 600). Registry row
+        "window_sec (failed-login-watch)": integer,
+        default 600, policy default.
+
+    (b) How it was hunted: step 8 Target 2 -- the
+        row's named class
+        (TestInfiniteFailedLoginBurstCountDefaultsTo5)
+        varies burst_count only, so window_sec had
+        never itself been varied. On 2026-10-23 this
+        tick probed decide() -- the pure decision
+        function -- with the table hunt's fifteen
+        shapes for window_sec, each in two scenarios:
+        five failures 700 seconds apart (a burst only
+        if the window is wrongly read as far larger
+        than 600) and five failures 100 seconds apart
+        (a burst exactly when the effective window
+        reaches across 400 seconds, as 600 does).
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape -- omitted, null, the
+        empty string, true, false, zero, a negative
+        number, a numeric string, a non-numeric
+        string, a several-hundred-digit integer,
+        inf, -inf, NaN, and a list -- read as the
+        documented default 600 (no burst at 700-second
+        spacing, a burst at 100-second spacing), and
+        the explicit default 600 did the same. This
+        reader's _is_number accepts only genuine
+        finite numbers, so a numeric string reads as
+        the default here (unlike the confval family,
+        which parses numeric strings). Genuine values
+        are honored: window_sec 60 and 1 file no
+        burst at 100-second spacing, and 10000 files
+        a burst at 700-second spacing.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the reader keeps
+        the documented default. If a shape above ever
+        stops reading as 600, this test is the
+        failing record of that change.
+    """
+
+    def _signals(self, tunables, offsets):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "failed-login-watch",
+            "failed_login_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "failed_login_watch_window_hunt", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        now = 1000000.0
+        manifest = {"name": "failed_login_watch",
+                    "tunables": dict(tunables)}
+        events = [{"ts": now + off, "kind": "fail",
+                   "source": "192.0.2.10",
+                   "user": "root"} for off in offsets]
+        readings = {"now": now + 10000, "events": events}
+        alerts, _state = mod.decide(readings, manifest, {})
+        return [a["signal"] for a in alerts]
+
+    SPACED = [0, 700, 1400, 2100, 2800]
+    CLOSE = [0, 100, 200, 300, 400]
+
+    def test_fifteen_shapes_read_as_default_600(self):
+        shapes = [
+            ("omitted", None), ("null", None),
+            ("empty-string", ""), ("true", True),
+            ("false", False), ("zero", 0),
+            ("negative", -5), ("default-explicit", 600),
+            ("numeric-string", "600"),
+            ("non-numeric-string", "bogus"),
+            ("huge-int", 10 ** 400), ("inf", float("inf")),
+            ("neg-inf", float("-inf")), ("nan", float("nan")),
+            ("wrong-container", ["x"]),
+        ]
+        for name, value in shapes:
+            with self.subTest(shape=name):
+                tunables = {} if name == "omitted" else {
+                    "window_sec": value}
+                self.assertEqual(
+                    self._signals(tunables, self.SPACED), [])
+                self.assertEqual(
+                    self._signals(tunables, self.CLOSE),
+                    ["login_failure_burst"])
+
+    def test_genuine_window_values_are_honored(self):
+        self.assertEqual(
+            self._signals({"window_sec": 60}, self.CLOSE), [])
+        self.assertEqual(
+            self._signals({"window_sec": 1}, self.CLOSE), [])
+        self.assertEqual(
+            self._signals({"window_sec": 10000}, self.SPACED),
+            ["login_failure_burst"])
+        # A numeric string is not a number to this
+        # reader: "10000" reads as the default 600,
+        # so the spaced scenario files no burst.
+        self.assertEqual(
+            self._signals({"window_sec": "10000"}, self.SPACED),
+            [])
+
+
+
 
 class TestInfiniteServiceWatchFlapCountDefaultsTo4(unittest.TestCase):
     """Divergence: an infinite service-watch
