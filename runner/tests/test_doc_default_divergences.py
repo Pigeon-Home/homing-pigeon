@@ -10340,8 +10340,8 @@ class TestCertSentinelTunableDaysFifteenShapes(unittest.TestCase):
         import importlib.util
         import os
         path = os.path.join(
-            os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__))),
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
             "extensions", "cert-sentinel",
             "cert_sentinel.py")
         spec = importlib.util.spec_from_file_location(
@@ -10501,8 +10501,8 @@ class TestPiHealthTunableFifteenShapes(unittest.TestCase):
         import importlib.util
         import os
         path = os.path.join(
-            os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__))),
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
             "extensions", "pi-health",
             "pi_health.py")
         spec = importlib.util.spec_from_file_location(
