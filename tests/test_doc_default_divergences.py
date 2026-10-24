@@ -10962,6 +10962,193 @@ class TestAirwavesGoneAfterScansFifteenShapes(unittest.TestCase):
                          ["access_point_gone"])
 
 
+class TestLogSentinelIntTunableFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the log-sentinel
+    _int_tunable reader (step-8 Target 5,
+    extension-tunable table probe) -- the fifteen
+    shapes at reader level for the family's three
+    registry rows.
+
+    (a) Doc claims (extensions/log-sentinel/README.md
+        lines 27-30 and 79, repeated in extension.json):
+        "further matches of the same subject inside
+        `cooldown_sec` (default 3600) are suppressed";
+        "at most `max_alerts_per_pass` alerts
+        (default 10) file per pass"; "`tail_bytes`
+        down -- 65536 by default". Registry rows
+        "cooldown_sec (log-sentinel)" (default 3600),
+        "max_alerts_per_pass (log-sentinel)"
+        (default 10) and "tail_bytes (log-sentinel)"
+        (default 65536): policy default under
+        Decision 1 -- a present-but-unusable value
+        reads as its documented default.
+
+    (b) How it was hunted: step-8 artifact Target 5
+        says the 51 extension tunables have no
+        reader-level table probe; their readers are
+        local helper families, one adapter per
+        family. This tick took the log-sentinel
+        _int_tunable family and probed
+        extensions/log-sentinel/log_sentinel.py
+        :_int_tunable directly, using each row's own
+        call-site default and minimum (cooldown_sec
+        3600 minimum 0, max_alerts_per_pass 10
+        minimum 0, tail_bytes 65536 minimum 1), with
+        the fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false,
+        zero, negative, the documented default
+        written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong container -- plus genuine
+        int / fractional values, and decide()-level
+        spot checks (an OOM line inside and outside
+        the cooldown, and twelve pattern hits
+        against the alerts cap).
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default for its row: omitted, null, empty
+        string, true, false (booleans never count as
+        numbers), negative, numeric and non-numeric
+        strings (numeric strings are not parsed),
+        huge-int, inf, -inf, NaN, list and dict all
+        return the default. Zero is honored
+        literally where the minimum allows it
+        (cooldown_sec and max_alerts_per_pass,
+        minimum 0) and reads as the default for
+        tail_bytes (minimum 1). Fractional values
+        truncate via int() where they clear the
+        minimum (2.9 -> 2 in every row; 0.5 -> 0 for
+        the minimum-0 rows and -> the default for
+        tail_bytes). Genuine integers are honored
+        exactly. The non-finite shapes that the
+        earlier class
+        TestInfiniteLogSentinelTunablesCrashInsteadOfDefault
+        recorded as a crash divergence now read as
+        the default as well (that class passes on
+        current main). Observed on 2026-10-24
+        against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented defaults and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "extensions", "log-sentinel", "log_sentinel.py")
+        spec = importlib.util.spec_from_file_location(
+            "log_sentinel_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    # (key, default, minimum)
+    ROWS = (("cooldown_sec", 3600, 0),
+            ("max_alerts_per_pass", 10, 0),
+            ("tail_bytes", 65536, 1))
+
+    def test_fifteen_shapes_read_as_their_defaults(self):
+        mod = self._mod()
+        for key, default, minimum in self.ROWS:
+            with self.subTest(key=key, shape="omitted"):
+                self.assertEqual(
+                    mod._int_tunable({}, key, default,
+                                     minimum=minimum), default)
+            unusable = [None, "", True, False, -5,
+                        "45", "bogus", 10 ** 400,
+                        float("inf"), float("-inf"),
+                        float("nan"), ["x"], {"x": 1}]
+            for value in unusable:
+                with self.subTest(key=key, value=repr(value)):
+                    self.assertEqual(
+                        mod._int_tunable(
+                            {key: value}, key, default,
+                            minimum=minimum), default)
+            with self.subTest(key=key, shape="explicit-default"):
+                self.assertEqual(
+                    mod._int_tunable(
+                        {key: default}, key, default,
+                        minimum=minimum), default)
+
+    def test_zero_and_fractional_follow_each_minimum(self):
+        mod = self._mod()
+        # Minimum 0: zero is a genuine value.
+        for key, default in (("cooldown_sec", 3600),
+                             ("max_alerts_per_pass", 10)):
+            with self.subTest(key=key, value=0):
+                self.assertEqual(
+                    mod._int_tunable({key: 0}, key, default,
+                                     minimum=0), 0)
+            with self.subTest(key=key, value=0.5):
+                self.assertEqual(
+                    mod._int_tunable({key: 0.5}, key, default,
+                                     minimum=0), 0)
+        # Minimum 1 (tail_bytes): zero and 0.5 default.
+        self.assertEqual(
+            mod._int_tunable({"tail_bytes": 0}, "tail_bytes",
+                             65536, minimum=1), 65536)
+        self.assertEqual(
+            mod._int_tunable({"tail_bytes": 0.5}, "tail_bytes",
+                             65536, minimum=1), 65536)
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        for key, default, minimum in self.ROWS:
+            for value, want in ((1, 1), (5, 5), (2.9, 2)):
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(
+                        mod._int_tunable(
+                            {key: value}, key, default,
+                            minimum=minimum), want)
+
+    def test_decide_level_spot_checks(self):
+        mod = self._mod()
+        now = 100000.0
+        oom = "Out of memory: Killed process 42 (foo)"
+
+        def decide(tunables, state=None, lines=None):
+            alerts, _state = mod.decide(
+                {"now": now,
+                 "lines": [oom] if lines is None else lines},
+                {"tunables": tunables}, state or {})
+            return alerts
+
+        state = {"last_fired": {
+            "kernel_distress:oom": now - 100}}
+        # Inside the documented 3600 cooldown: suppressed,
+        # for the omitted default and for unusable shapes.
+        self.assertEqual(decide({}, state), [])
+        self.assertEqual(
+            decide({"cooldown_sec": float("inf")}, state), [])
+        self.assertEqual(
+            decide({"cooldown_sec": "bogus"}, state), [])
+        # A genuine cooldown of 0 lets the same hit file.
+        self.assertEqual(
+            len(decide({"cooldown_sec": 0}, state)), 1)
+        # Twelve pattern hits cap at the documented 10,
+        # for the omitted default and unusable shapes,
+        # and at a genuine cap of 2.
+        patterns = [{"name": f"p{i}", "regex": f"hit{i}"}
+                    for i in range(12)]
+        lines = [f"hit{i}" for i in range(12)]
+        self.assertEqual(
+            len(decide({"patterns": patterns}, lines=lines)), 10)
+        self.assertEqual(
+            len(decide({"max_alerts_per_pass": float("inf"),
+                        "patterns": patterns}, lines=lines)), 10)
+        self.assertEqual(
+            len(decide({"max_alerts_per_pass": 2,
+                        "patterns": patterns}, lines=lines)), 2)
+
 if __name__ == "__main__":
 
     unittest.main()
