@@ -1,6 +1,11 @@
 # Future
 
-## Heading 1
+Ideas worth building, with the reasoning behind each. Some are
+chosen directions, some are open questions, and a few are already
+built and kept here for the story. If one grabs you, the linked
+design notes say where to start.
+
+## Core protocol and crypto
 
 - Encrypted credentials at rest
 - Ack messages

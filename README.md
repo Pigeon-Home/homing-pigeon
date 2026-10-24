@@ -1,6 +1,7 @@
 # Homing Pigeon
 
-**Works with Muse, Grok, ChatGPT, Claude, Gem..., Copilot, etc.**
+**Let the AI you already use run jobs on your own machine, by email, from anywhere.**
+Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that can send a message.
 
 > ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative
 > control** of the machine to whoever holds the shared secret. The
@@ -8,18 +9,19 @@
 > job, as a privileged user. It can install software,
 > read files, add users, and pivot to your network.
 
-Your cloud SI is smart, but it can't touch your computer. Homing Pigeon
-fixes that: tell your SI to complete a task and it will do it on your
-machine. The results return so that your SI can iterate — run the tests,
-read the failure, fix, repeat. From your phone or anywhere.
+Your cloud AI (called the SI throughout this repo) is smart, but it
+can't touch your computer. Homing Pigeon gives it a signed channel to one: ask for a task and it runs on your machine, and
+the results come back so the SI can iterate. Run the tests, read the
+failure, fix, repeat, from your phone or anywhere.
 
-Install the Homing Pigeon agent on a machine you own. At setup it
-walks you through connecting a dedicated email account — the
-recommended path is a browser sign-in, so the account password
-never lands in config; an app password is the other choice.
-Email is the default transport. This application bears a resemblance to GitHub self-hosted
-runners, they are small program on your hardware that picks up jobs from a source which
-you control and runs them.
+It works like a GitHub self-hosted runner. A small program on hardware
+you own picks up signed jobs from a mailbox you control and runs them.
+Nothing listens on the network: the runner only polls outward, so it
+works behind NAT with no open ports.
+
+Setup walks you through connecting a dedicated email account. The
+recommended path is a browser sign-in, so the account password never
+lands in config; an app password is the other choice.
 
 Then try this prompt in your cloud SI, it should return in less than 30 seconds.
 
@@ -104,8 +106,9 @@ stays the default; a credentialed transport adds
 its own required gate beside the signature, which makes it the
 more secure option even though it is not the default. (A
 sensor on the same box also delivers its signed alerts directly,
-by local inbox or loopback socket -- alerts, not jobs.) Anything
-else is in [docs/project/future.md](docs/project/future.md).
+by local inbox or loopback socket: alerts, not jobs.) Want another
+pipe? Transports are extensions, and the ones we'd love to see are
+sketched in [docs/project/future.md](docs/project/future.md).
 
 **Runbooks, not prompts.** The SI doesn't chat about the task — it ships
 a runbook: deterministic steps, each with a check that proves the step
