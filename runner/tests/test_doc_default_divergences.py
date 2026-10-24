@@ -40964,6 +40964,514 @@ class TestSysmonFeedParseSplitStateAndMainModesFifteenShapes(unittest.TestCase):
                     json.load(fh),
                     {"_reader": {}, "filed": {}})
 
+class TestOsqueryFeedParseCleanStateAndMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: osquery-feed's
+    _clean_state(), _identity_for(),
+    _identity_label() and _episode_key() called
+    directly, parse_event() timestamp and query-name
+    edges, query_kind() with the fifteen shapes, and
+    main() in --readings and --log-file modes varied
+    with the fifteen shapes for the first time
+    (step-8 Target 5 / family (b) -- osquery-feed's
+    earlier classes cover its filed_cap tunable, its
+    log_paths / read_new_events() tailing, decide()'s
+    event and state cleaning, parse_event()'s basic
+    field shapes and main()'s live-mode log_paths
+    fallback; the direct cleaners and identity
+    helpers and main()'s two fixture modes were
+    never varied).
+
+    (a) Doc claims: the module docstring states an
+        event's identity is its identifying columns
+        -- process: name/pid/path; user:
+        username/uid/gid; listener:
+        port/protocol/address/pid -- that the state
+        dict carries a "_reader" sub-dict which
+        main() owns and decide() "preserves
+        opaquely and ignores", that the episode
+        discipline is keyed on (kind, action,
+        identity) with an add filing once until the
+        matching remove arrives (which files and
+        re-arms the add), that "Two fixture modes
+        feed decide() without touching a live log:
+        --readings FILE reads a readings dict
+        ({"now", "events"}) from JSON, and
+        --log-file FILE parses a whole fixture
+        results log from offset 0, ignoring the
+        reader offsets", and that malformed lines
+        -- not JSON, no usable query name, an action
+        other than added/removed, columns that are
+        not an object -- answer None, quietly. The
+        README states a query name belongs to a
+        kind by containment (listening_ports, then
+        processes, then users), that osquery_added
+        is medium for users and listeners and info
+        for processes, and that osquery_removed is
+        info. _identity_for()'s docstring: "Only
+        columns actually present are carried; a row
+        with none of its kind's identifying columns
+        falls back to its whole column set, so it
+        still has a stable identity."
+
+    (b) How this was probed: on 2026-10-24
+        _clean_state(), _identity_for(),
+        _identity_label() and query_kind() were
+        called directly with the fifteen shapes
+        from the table hunt and with mixed entries;
+        _episode_key() was probed for key-order
+        independence and action distinction;
+        parse_event() was probed with timestamp
+        edges (zero, negative, fractional), a
+        whitespace-padded query name and empty
+        columns; main() was run against temp
+        manifests, readings, log files and state
+        files in --readings and --log-file modes,
+        including missing, malformed, list-shaped
+        and unwritable files, a broken and a list
+        pre-existing state, a repeat pass, and a
+        pre-existing _reader in both modes.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. _clean_state() reads every
+        non-dict shape as a fresh {"filed": []},
+        keeps only string filed entries in order
+        (duplicates preserved), reads a non-list
+        filed as [], drops unknown keys, and
+        preserves a dict _reader verbatim while
+        dropping a non-dict one. _identity_for()
+        carries only the kind's identifying columns
+        that are present, and for a kind with none
+        present -- or an unknown / non-string kind
+        -- falls back to the whole column set.
+        _identity_label() renders a process as
+        "name (pid N)" ("? (pid N)" with no name,
+        "?" with neither), a user as its username
+        else its uid else "?", a listener as
+        "address:port/protocol" with "*" for a
+        missing address and "?" for a missing port,
+        and any other kind as "?". _episode_key()
+        is a sorted-keys JSON key, independent of
+        identity key order and distinct per action.
+        query_kind() answers None for every
+        non-string / empty shape (a numeric string
+        included). parse_event() accepts a zero,
+        negative and fractional unixTime as that
+        float, strips surrounding whitespace from
+        the line, keeps a whitespace-padded query
+        name verbatim (its kind still maps by
+        containment), and returns an event with
+        empty columns and empty identity for a
+        well-formed line whose columns are empty.
+        main() in --readings mode files a genuine
+        user add once at medium (a repeat pass with
+        the saved state files nothing), reads
+        list / empty / scalar / numeric readings
+        and a readings dict with a non-list events
+        value as an empty pass (rc 0, state
+        written), still files for a list-shaped
+        manifest (fallback sensor name), reads a
+        broken or list pre-existing state as fresh,
+        preserves a pre-existing _reader, and
+        answers rc 2 for a missing or malformed
+        manifest or readings file (no state
+        written) and for an unwritable state path
+        (alerts still printed). In --log-file mode
+        a genuine fixture files its light-pack
+        events from offset 0 (an outside-pack line
+        in the same file files nothing), an empty
+        file and a garbage-plus-outside-pack file
+        are a quiet rc 0, a missing file and a
+        directory are rc 2, and a pre-existing
+        _reader is preserved (the fixture reader is
+        discarded). Observed on 2026-10-24 against
+        current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        the readings above keep holding. If a
+        shape ever stops behaving as described,
+        this test is the failing record of that
+        change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("junk-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("neg-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+
+    _MANIFEST = {"name": "osquery_feed", "tunables": {}}
+
+    _EVENT = {"ts": 1000.0, "kind": "user",
+              "action": "added", "query": "hp_users",
+              "host": "h1",
+              "columns": {"username": "alice",
+                          "uid": "1001", "gid": "1001"},
+              "identity": {"username": "alice",
+                           "uid": "1001", "gid": "1001"}}
+
+    _LINE = ('{"name": "hp_users", '
+             '"hostIdentifier": "h1", "unixTime": 1000, '
+             '"columns": {"username": "alice", '
+             '"uid": "1001", "gid": "1001"}, '
+             '"action": "added"}\n')
+
+    _LINE_OTHER = ('{"name": "hp_files", '
+                   '"hostIdentifier": "h1", '
+                   '"unixTime": 1500, "columns": '
+                   '{"path": "/x"}, "action": "added"}\n')
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "osquery-feed",
+            "osquery_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "osquery_feed_parse_main_hunt", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_clean_state_identity_and_episode_key(self):
+        mod = self._module()
+        fresh = {"filed": []}
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(mod._clean_state(value), fresh)
+                self.assertIsNone(mod.query_kind(value))
+        self.assertEqual(mod._clean_state({}), fresh)
+        self.assertEqual(
+            mod._clean_state({"filed": ["a", 123, "b", None,
+                                        True, 1.5]}),
+            {"filed": ["a", "b"]})
+        self.assertEqual(
+            mod._clean_state({"filed": ["a", "a"]}),
+            {"filed": ["a", "a"]})
+        self.assertEqual(
+            mod._clean_state({"filed": "nope"}), fresh)
+        self.assertEqual(
+            mod._clean_state(
+                {"filed": [], "extra": 1,
+                 "_reader": {"p": {"inode": 1}}}),
+            {"filed": [], "_reader": {"p": {"inode": 1}}})
+        self.assertEqual(
+            mod._clean_state({"filed": [], "_reader": "x"}),
+            fresh)
+        self.assertEqual(
+            mod._identity_for(
+                "process",
+                {"name": "sshd", "pid": "42", "path": "/x",
+                 "extra": "e"}),
+            {"name": "sshd", "pid": "42", "path": "/x"})
+        self.assertEqual(
+            mod._identity_for("user", {"username": "alice"}),
+            {"username": "alice"})
+        self.assertEqual(
+            mod._identity_for("listener", {"port": "80"}),
+            {"port": "80"})
+        for kind in ("bogus", None, ""):
+            with self.subTest(kind=kind):
+                self.assertEqual(
+                    mod._identity_for(kind, {"a": "1"}),
+                    {"a": "1"})
+        self.assertEqual(mod._identity_for("process", {}), {})
+        self.assertEqual(
+            mod._identity_for("process", {"cmdline": "x"}),
+            {"cmdline": "x"})
+        self.assertEqual(
+            mod._identity_label(
+                "process", {"name": "sshd", "pid": "42"}),
+            "sshd (pid 42)")
+        self.assertEqual(
+            mod._identity_label("process", {"pid": "42"}),
+            "? (pid 42)")
+        self.assertEqual(
+            mod._identity_label("process", {}), "?")
+        self.assertEqual(
+            mod._identity_label(
+                "user", {"username": "alice", "uid": "1"}),
+            "alice")
+        self.assertEqual(
+            mod._identity_label("user", {"uid": "1"}), "1")
+        self.assertEqual(mod._identity_label("user", {}), "?")
+        self.assertEqual(
+            mod._identity_label(
+                "listener",
+                {"address": "0.0.0.0", "port": "8080",
+                 "protocol": "6"}),
+            "0.0.0.0:8080/6")
+        self.assertEqual(
+            mod._identity_label("listener", {"port": "8080"}),
+            "*:8080")
+        self.assertEqual(
+            mod._identity_label("listener", {}), "*:?")
+        self.assertEqual(
+            mod._identity_label("bogus", {"a": "1"}), "?")
+        key_ab = mod._episode_key(
+            "user", "added", {"username": "alice", "uid": "1"})
+        self.assertEqual(
+            key_ab,
+            mod._episode_key(
+                "user", "added", {"uid": "1",
+                                  "username": "alice"}))
+        self.assertNotEqual(
+            key_ab,
+            mod._episode_key(
+                "user", "removed",
+                {"username": "alice", "uid": "1"}))
+        for name, value in self._SHAPES:
+            with self.subTest(is_number=name):
+                self.assertEqual(
+                    mod._is_number(value),
+                    name in ("zero", "negative"))
+
+    def test_parse_event_timestamp_and_name_edges(self):
+        mod = self._module()
+        base = ('{"name": "hp_users", "unixTime": %s, '
+                '"columns": {"username": "a"}, '
+                '"action": "added"}')
+        self.assertEqual(mod.parse_event(base % "0")["ts"], 0.0)
+        self.assertEqual(
+            mod.parse_event(base % "-5")["ts"], -5.0)
+        ev = mod.parse_event(
+            '{"name": "hp_users", "unixTime": 1000.5, '
+            '"columns": {"username": "a"}, '
+            '"action": "removed"}')
+        self.assertEqual((ev["ts"], ev["action"]),
+                         (1000.5, "removed"))
+        ev = mod.parse_event("  " + self._LINE.strip() + "  ")
+        self.assertEqual(ev["kind"], "user")
+        self.assertEqual(ev["ts"], 1000.0)
+        ev = mod.parse_event(
+            '{"name": " hp_users ", "unixTime": 1, '
+            '"columns": {}, "action": "added"}')
+        self.assertEqual(ev["query"], " hp_users ")
+        self.assertEqual(ev["kind"], "user")
+        self.assertEqual(ev["columns"], {})
+        self.assertEqual(ev["identity"], {})
+        self.assertEqual(ev["host"], "")
+
+    def _run_main(self, mod, argv):
+        import contextlib
+        import io
+        buf = io.StringIO()
+        err = io.StringIO()
+        with contextlib.redirect_stdout(buf), \
+                contextlib.redirect_stderr(err):
+            rc = mod.main(argv)
+        return rc, buf.getvalue(), err.getvalue()
+
+    def _write(self, d, name, obj=None, raw=None):
+        import json
+        import os
+        p = os.path.join(d, name)
+        with open(p, "w", encoding="utf-8") as fh:
+            if raw is not None:
+                fh.write(raw)
+            else:
+                json.dump(obj, fh)
+        return p
+
+    def _sub(self, d, name):
+        import os
+        p = os.path.join(d, name)
+        os.makedirs(p)
+        return p
+
+    def test_main_readings_mode(self):
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as base:
+            d = self._sub(base, "genuine")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            rp = self._write(
+                d, "r.json",
+                {"now": 1000, "events": [self._EVENT]})
+            sp = os.path.join(d, "s.json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.count("osquery_added"), 1)
+            self.assertIn('"severity": "medium"', out)
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings", rp])
+            self.assertEqual((rc, out), (0, ""))
+            for name, readings in (
+                    ("list", [1, 2]), ("empty", {}),
+                    ("scalar", "bogus"), ("num", 123),
+                    ("badevents", {"events": "x"}),
+                    ("emptyevents", {"events": []})):
+                d = self._sub(base, name)
+                mp = self._write(d, "m.json", self._MANIFEST)
+                rp = self._write(d, "r.json", readings)
+                sp = os.path.join(d, "s.json")
+                rc, out, _ = self._run_main(
+                    mod, ["--manifest", mp, "--state", sp,
+                          "--readings", rp])
+                self.assertEqual((rc, out), (0, ""))
+                with open(sp, encoding="utf-8") as fh:
+                    self.assertEqual(json.load(fh),
+                                     {"filed": []})
+            d = self._sub(base, "listman")
+            mp = self._write(d, "m.json", [1, 2])
+            rp = self._write(
+                d, "r.json",
+                {"now": 1, "events": [self._EVENT]})
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertIn('"sensor": "osquery_feed"', out)
+            d = self._sub(base, "errors")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            rp = self._write(
+                d, "r.json",
+                {"now": 1, "events": [self._EVENT]})
+            sp = os.path.join(d, "s.json")
+            rc, _, _ = self._run_main(
+                mod, ["--manifest",
+                      os.path.join(d, "missing.json"),
+                      "--state", sp, "--readings", rp])
+            self.assertEqual(rc, 2)
+            self.assertFalse(os.path.exists(sp))
+            bad = self._write(d, "bad.json", raw="{no")
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", bad, "--state", sp,
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings",
+                      os.path.join(d, "missing.json")])
+            self.assertEqual(rc, 2)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings", bad])
+            self.assertEqual(rc, 2)
+            self.assertFalse(os.path.exists(sp))
+            for name, raw_state, obj_state in (
+                    ("brokenstate", "{broken", None),
+                    ("liststate", None, [])):
+                d = self._sub(base, name)
+                mp = self._write(d, "m.json", self._MANIFEST)
+                rp = self._write(
+                    d, "r.json",
+                    {"now": 1, "events": [self._EVENT]})
+                if raw_state is not None:
+                    sp = self._write(d, "s.json",
+                                     raw=raw_state)
+                else:
+                    sp = self._write(d, "s.json", obj_state)
+                rc, out, _ = self._run_main(
+                    mod, ["--manifest", mp, "--state", sp,
+                          "--readings", rp])
+                self.assertEqual(rc, 0)
+                self.assertEqual(
+                    out.count("osquery_added"), 1)
+            d = self._sub(base, "readerkeep")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            rp = self._write(
+                d, "r.json",
+                {"now": 1, "events": [self._EVENT]})
+            sp = self._write(
+                d, "s.json",
+                {"filed": [],
+                 "_reader": {"/x": {"inode": 1,
+                                    "offset": 5}}})
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            with open(sp, encoding="utf-8") as fh:
+                self.assertEqual(
+                    json.load(fh)["_reader"],
+                    {"/x": {"inode": 1, "offset": 5}})
+            d = self._sub(base, "unwritable")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            rp = self._write(
+                d, "r.json",
+                {"now": 1, "events": [self._EVENT]})
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "nodir", "s.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            self.assertEqual(out.count("osquery_added"), 1)
+
+    def test_main_logfile_mode(self):
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as base:
+            d = self._sub(base, "genuine")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            lp = self._write(
+                d, "f.jsonl",
+                raw=self._LINE_OTHER + self._LINE)
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s.json"),
+                      "--log-file", lp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.count("osquery_added"), 1)
+            self.assertIn('"severity": "medium"', out)
+            for name, raw in (
+                    ("emptylog", ""),
+                    ("garbage", "not json\n\n"
+                     + self._LINE_OTHER)):
+                d = self._sub(base, name)
+                mp = self._write(d, "m.json", self._MANIFEST)
+                lp = self._write(d, "f.jsonl", raw=raw)
+                rc, out, _ = self._run_main(
+                    mod, ["--manifest", mp, "--state",
+                          os.path.join(d, "s.json"),
+                          "--log-file", lp])
+                self.assertEqual((rc, out), (0, ""))
+            d = self._sub(base, "missinglog")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s.json"),
+                      "--log-file",
+                      os.path.join(d, "nope.log")])
+            self.assertEqual(rc, 2)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s.json"),
+                      "--log-file", d])
+            self.assertEqual(rc, 2)
+            d = self._sub(base, "readerkeep")
+            mp = self._write(d, "m.json", self._MANIFEST)
+            lp = self._write(d, "f.jsonl", raw=self._LINE)
+            sp = self._write(
+                d, "s.json",
+                {"filed": [],
+                 "_reader": {"/x": {"inode": 1,
+                                    "offset": 5}}})
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--log-file", lp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.count("osquery_added"), 1)
+            with open(sp, encoding="utf-8") as fh:
+                self.assertEqual(
+                    json.load(fh)["_reader"],
+                    {"/x": {"inode": 1, "offset": 5}})
+
 if __name__ == "__main__":
 
     unittest.main()
