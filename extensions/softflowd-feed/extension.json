@@ -32,7 +32,7 @@
   "upstream": {
     "repo": "https://github.com/irino/softflowd",
     "ref": "master",
-    "pin": "bc013f05c82559dc7f7a75d2083cd5ef64f8d98d",
+    "pin": "15d23b9b39675e78a0145ae38a79a23e7a1640fc",
     "paths": [
       "softflowd.h",
       "compat/netflow5.c",
