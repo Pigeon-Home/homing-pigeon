@@ -19379,6 +19379,195 @@ class TestPortWatchBooleanTunablesFifteenShapes(unittest.TestCase):
                 self.assertEqual(
                     alerts[0]["signal"], "exposed_listener")
 
+class TestUsbArrivalsLearnAndKindsFifteenShapes(unittest.TestCase):
+    """Coverage: the usb-arrivals tunables
+    (learn_first_pass, default true, and kinds,
+    default ["usb", "serial"]) under the fifteen
+    shapes.
+
+    (a) Doc claims: the manifest ships both
+        (extensions/usb-arrivals/extension.json:
+        "learn_first_pass": true, "kinds":
+        ["usb", "serial"], "poll_interval_sec": 300).
+        The README states "`learn_first_pass`
+        (default true) makes the first pass absorb
+        everything currently plugged in as the
+        baseline without filing; set it false to
+        file every present device as an arrival on
+        the first pass"
+        (extensions/usb-arrivals/README.md line 72),
+        and "`kinds`: `["usb", "serial"]` by
+        default; `["usb"]` in Light mode" (lines
+        82-84). Neither key is a numeric registry
+        row, so Decision 1's default-on-unusable
+        policy for numeric readers does not name a
+        shape rule for them; this class pins the
+        observed readings instead of asserting one.
+
+    (b) How this was probed: step-8 Target 5 /
+        family (b) -- usb-arrivals had no test in
+        this file at all before this tick. On
+        2026-10-24 both readers were probed with
+        the table hunt's fifteen shapes (omitted,
+        null, empty string, true, false, zero,
+        negative, numeric string, non-numeric
+        string, huge-int (10**400), inf, -inf, NaN,
+        list, dict), plus empty containers, 1 and
+        0.5. The learn_first_pass observable is
+        the first-pass alert count for one storage
+        device (0781:5567, class 08) from a fresh
+        state: learning quietly files 0 and absorbs
+        the device. The kinds observable is the
+        _kinds() reader's return value itself (the
+        reader feeds read_live(); decide() does
+        not consult kinds).
+
+    (c) Behavior actually observed: NO divergence
+        recorded. learn_first_pass is a strict
+        bool reader (usb_arrivals.py line 112:
+        the value only when it is a bool, else
+        True): omitted, null and every non-bool
+        shape -- including every falsy shape
+        ("", 0, [], {}) and the string "false" --
+        read as the documented default True and
+        learn quietly; only the genuine bool
+        False files on the first pass (one
+        storage_arrived for the class-08 device,
+        device_arrived for a plain device) and
+        the genuine bool True learns. This
+        contrasts with port-watch's plain-
+        truthiness reading pinned in the previous
+        tick. kinds: omitted, null and every
+        non-list shape read as the documented
+        default ["usb", "serial"]; an empty list
+        and a list with no usable element ([123],
+        [None], [""]) read as the default too;
+        a genuine list is cleaned of non-string
+        and empty elements and otherwise honored
+        verbatim (["usb"], ["serial"],
+        ["bogus"], and duplicates all pass
+        through, with no validation against the
+        known bus names). Observed on 2026-10-24
+        against current main.
+    """
+
+    _STORAGE = {"id": "0781:5567", "kind": "usb",
+                "description": "Cruzer Blade",
+                "device_class": "08"}
+    _PLAIN = {"id": "1234:5678", "kind": "usb",
+              "description": "Plain",
+              "device_class": "00"}
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "usb-arrivals", "usb_arrivals.py")
+        spec = importlib.util.spec_from_file_location(
+            "usb_arrivals_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _first_pass_alerts(self, mod, tunables, device=None):
+        alerts, state = mod.decide(
+            {"now": 1.0,
+             "devices": [dict(device or self._STORAGE)]},
+            {"name": "usb_arrivals",
+             "tunables": dict(tunables)},
+            {})
+        self.assertTrue(state["learned"])
+        self.assertEqual(len(state["seen"]), 1)
+        return alerts
+
+    _NON_BOOL = [("null", None), ("empty-string", ""),
+                 ("zero", 0), ("negative", -5),
+                 ("numeric-string", "120"),
+                 ("non-numeric-string", "bogus"),
+                 ("string-false", "false"),
+                 ("huge-int", 10 ** 400),
+                 ("inf", float("inf")),
+                 ("-inf", float("-inf")),
+                 ("nan", float("nan")),
+                 ("list", ["x"]), ("dict", {"x": 1}),
+                 ("empty-list", []), ("empty-dict", {}),
+                 ("one", 1), ("fractional", 0.5)]
+
+    def test_learn_first_pass_shapes(self):
+        mod = self._module()
+        self.assertEqual(
+            self._first_pass_alerts(mod, {}), [])
+        for name, value in self._NON_BOOL:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    self._first_pass_alerts(
+                        mod, {"learn_first_pass": value}),
+                    [])
+                self.assertTrue(
+                    mod._learn_first_pass(
+                        {"tunables":
+                         {"learn_first_pass": value}}))
+        self.assertEqual(
+            self._first_pass_alerts(
+                mod, {"learn_first_pass": True}), [])
+        for device, signal in ((self._STORAGE,
+                                "storage_arrived"),
+                               (self._PLAIN,
+                                "device_arrived")):
+            alerts = self._first_pass_alerts(
+                mod, {"learn_first_pass": False}, device)
+            self.assertEqual(len(alerts), 1)
+            self.assertEqual(alerts[0]["signal"], signal)
+        self.assertFalse(
+            mod._learn_first_pass(
+                {"tunables": {"learn_first_pass": False}}))
+
+    def test_kinds_shapes(self):
+        mod = self._module()
+        default = ["usb", "serial"]
+        for tunables in ({}, {"kinds": None}):
+            self.assertEqual(
+                mod._kinds({"tunables": tunables}), default)
+        non_list = [("empty-string", ""),
+                    ("true", True), ("false", False),
+                    ("zero", 0), ("negative", -5),
+                    ("numeric-string", "120"),
+                    ("non-numeric-string", "bogus"),
+                    ("huge-int", 10 ** 400),
+                    ("inf", float("inf")),
+                    ("-inf", float("-inf")),
+                    ("nan", float("nan")),
+                    ("dict", {"x": 1}),
+                    ("one", 1), ("fractional", 0.5)]
+        for name, value in non_list:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    mod._kinds({"tunables": {"kinds": value}}),
+                    default)
+        for name, value in (("empty-list", []),
+                            ("ints-only", [123]),
+                            ("none-only", [None]),
+                            ("empty-only", [""])):
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    mod._kinds({"tunables": {"kinds": value}}),
+                    default)
+        genuine = [(["usb"], ["usb"]),
+                   (["serial"], ["serial"]),
+                   (["usb", "serial"], ["usb", "serial"]),
+                   (["x"], ["x"]),
+                   (["bogus"], ["bogus"]),
+                   (["usb", "usb"], ["usb", "usb"]),
+                   (["usb", 123, "", None, "serial"],
+                    ["usb", "serial"])]
+        for value, expected in genuine:
+            with self.subTest(shape=repr(value)):
+                self.assertEqual(
+                    mod._kinds({"tunables": {"kinds": value}}),
+                    expected)
+
 if __name__ == "__main__":
 
     unittest.main()
