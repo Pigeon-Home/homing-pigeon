@@ -23369,6 +23369,711 @@ class TestZeekFeedPathsAndDecideFifteenShapes(unittest.TestCase):
                                "/nonexistent/x.log"])
             self.assertEqual(rc, 2)
 
+class TestSoftflowdFeedDecodeAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the softflowd-feed
+    listen_addr tunable, the NetFlow v5 / v9 /
+    IPFIX decoder and decide() flow / state
+    handling (listen_addr default
+    "127.0.0.1:2055", collect_window_sec 10,
+    max_datagrams 1000, poll_interval_sec 60,
+    allowlist []) varied with the fifteen shapes
+    for the first time (step-8 Target 5 / family
+    (b) -- softflowd-feed's only earlier classes
+    cover its four numeric tunables at decide()
+    level; it is not a file tailer like the feeds
+    hunted before it, so its collector-side
+    shapes -- the address parser, the datagram
+    decoder and the flow cleaner -- were never
+    varied, the same gap aide-feed, sysmon-feed,
+    falco-feed, suricata-feed, wazuh-feed,
+    osquery-feed and zeek-feed closed in the
+    ticks before this one).
+
+    (a) Doc claims: the manifest ships the
+        tunables above (extensions/softflowd-feed/
+        extension.json). The README's tunables
+        table gives the same listen_addr /
+        collect_window_sec / max_datagrams /
+        poll_interval_sec / allowlist defaults,
+        and the module docstring states the
+        decoder boundary: "NetFlow v5 is decoded
+        COMPLETE -- header plus fixed 48-byte
+        records. NetFlow v9 is decoded from the
+        header, the template flowsets, and data
+        flowsets whose records use only the
+        known field set below; a record carrying
+        any other field is skipped and counted
+        in readings[\\"skipped_records\\"]. IPFIX
+        (version 10) gets the same treatment; a
+        template that carries an enterprise-
+        specific field ... marks its records
+        skipped-and-counted, never misdecoded.
+        Option templates, in both v9 and IPFIX,
+        are not decoded at all. Malformed or
+        truncated datagrams never raise: an
+        incomplete record decodes to nothing,
+        and a datagram with a truncated header
+        decodes to nothing at all." Where the
+        format carries switched times they are
+        converted with the header's unix_secs
+        and sysUpTime; where conversion is
+        impossible (IPFIX), "first and last both
+        take the collect time, so no duration is
+        ever fabricated". Templates must persist
+        across datagrams within a pass and are
+        re-learned across passes. decide() is
+        pure (now arrives as readings[\\"now\\"]);
+        a destination files flow_new_external_
+        peer the first pass state ever sees it,
+        "external" per the stdlib ipaddress
+        module (not private, loopback, link-
+        local, multicast or unspecified, and not
+        on the allowlist); a flow files its
+        volume and duration signals once per
+        episode, keyed by its addresses, ports,
+        protocol and first-seen time; peers and
+        filed fingerprints are bounded by the
+        caps, oldest evicted first. listen_addr,
+        allowlist and the decoder are not
+        numeric registry rows, so Decision 1's
+        default-on-unusable policy for numeric
+        readers does not name a shape rule for
+        them; this class pins the observed
+        readings instead of asserting one.
+
+    (b) How this was probed: on 2026-10-24
+        _parse_listen_addr() was probed with
+        the fifteen shapes (omitted-equivalent
+        empty string, null, true, false, zero,
+        negative, numeric string, non-numeric
+        string, huge-int (10**400), inf, -inf,
+        NaN, list, dict) plus genuine, host-only,
+        port-only, bad-port, out-of-range-port,
+        bracketed-IPv6 and whitespace-padded
+        addresses. decode_datagram() was probed
+        with the fifteen shapes as data, as
+        templates and as now, plus hand-built
+        v5 datagrams (genuine, truncated record,
+        count overstating the records present,
+        zero switched stamps), hand-built v9
+        datagrams (template then data in one
+        datagram, data before its template,
+        data threaded through a returned
+        template dict, an unknown field, a
+        wrongly sized fixed field, a truncated
+        header, a truncated set, an option
+        template set, trailing padding shorter
+        than one record), hand-built IPFIX
+        datagrams (genuine, an enterprise-bit
+        template field, a total length below
+        the header size) and stats dicts with
+        genuine, non-number and bool
+        skipped_records values. decide() was
+        probed with readings, flow, manifest,
+        allowlist and state shapes, responder
+        classifications and a replay against
+        the returned state. main() was run in
+        --readings mode against temp manifests
+        (genuine, missing manifest, missing
+        readings, malformed pre-existing
+        state). poll_interval_sec,
+        collect_window_sec and max_datagrams
+        are not read by decide() at all (the
+        first is the runner's cost knob, the
+        other two are read only by the live
+        collect_flows(), which binds a socket
+        and was not exercised live); decide()
+        consults only the four numeric
+        tunables, the allowlist and
+        manifest[\\"name\\"].
+
+    (c) Behavior actually observed: NO divergence
+        recorded. _parse_listen_addr() reads
+        every non-string shape and an empty or
+        whitespace-only string as the default
+        ("127.0.0.1", 2055); a genuine
+        "host:port" is honored, a host-only
+        string keeps the default port (a bare
+        numeric string is a HOST, not a port),
+        a ":port" string keeps the default
+        host, an unparseable or out-of-range
+        port (99999, -1) falls back to 2055
+        while the host is kept, surrounding
+        whitespace is stripped, and a
+        bracketed IPv6 host parses with or
+        without its port. decode_datagram()
+        answers ([], {}) for every non-bytes
+        shape, for empty / one-byte input and
+        for any version other than 5, 9 or 10,
+        accepts bytearray, replaces a non-dict
+        templates argument with a fresh dict,
+        and never raises. A genuine v5
+        datagram decodes completely with its
+        switched stamps converted from
+        unix_secs / sysUpTime (zero stamps
+        convert to unix_secs minus the full
+        uptime); a truncated record and a
+        header too short decode to nothing,
+        and a count overstating the records
+        present yields only the complete
+        records. A v9 template learned in one
+        datagram decodes data in the same and
+        in later datagrams threaded through
+        the returned templates dict, data
+        arriving before its template decodes
+        to nothing, a record using an unknown
+        field or a wrongly sized fixed field
+        is skipped and counted once in
+        stats["skipped_records"] (a bool or
+        non-number previous count restarts
+        from 0), trailing bytes shorter than
+        one record are ignored as padding, an
+        option template set is skipped whole,
+        and a truncated header or set decodes
+        to nothing. An IPFIX datagram decodes
+        with first == last == the collect time
+        (the now argument when it is a usable
+        number), an enterprise-bit template
+        field taints its template so its
+        records are skipped and counted, and
+        a total length below the header size
+        decodes to nothing. In decide(), a
+        non-dict readings value, a non-list
+        flows value and non-dict / incomplete
+        flow entries file nothing; a flow is
+        dropped whole when src / dst is not a
+        string, when any of src_port /
+        dst_port / proto / packets / bytes is
+        not a usable non-negative number
+        (bool included), or when a port
+        exceeds 65535; a non-number version
+        reads as 0 and a fractional version
+        truncates; non-number first / last
+        read as None and are then filled from
+        each other, or from now when both are
+        missing, so the duration is 0 rather
+        than fabricated. "External" follows
+        ipaddress exactly: private, loopback,
+        link-local, multicast, unspecified and
+        unparseable destinations never file,
+        a public IPv6 destination files, and
+        the allowlist -- read only as a list,
+        bad entries ignored, exact addresses
+        and CIDRs honored, the other address
+        family never matching -- suppresses
+        the peers it covers; every non-list
+        allowlist shape reads as no allowlist.
+        An unusable now falls back to the
+        latest flow last (0.0 with no flows),
+        which is the timestamp filed entries
+        are stamped with. State cleaning keeps
+        only string peers (an empty string is
+        kept) and only filed entries with a
+        string key and a usable-number value
+        (bool dropped), a known peer files
+        nothing again, and replaying a filed
+        flow against the returned state files
+        nothing twice. A non-dict manifest or
+        tunables value and a missing / empty
+        / non-string sensor name fall back to
+        "softflowd_feed". main() in --readings
+        mode prints one payload per alert and
+        writes the new state (rc 0), answers
+        rc 2 for a missing manifest or a
+        missing readings file, and reads a
+        malformed state file as fresh state.
+        Observed on 2026-10-24 against current
+        main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the shapes
+        above keep behaving as the README and
+        the module docstring state. If a shape
+        above ever stops behaving as stated,
+        this test is the failing record of
+        that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "softflowd-feed",
+            "softflowd_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "softflowd_feed_decode_decide_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    _UNUSABLE = [None, "", True, False, 0, -5, "45", "bogus",
+                 10 ** 400, float("inf"), float("-inf"),
+                 float("nan"), ["x"], {"x": 1}]
+
+    def _flow(self, dst="8.8.8.8", bytes_=100, first=1000,
+              last=1000, **kw):
+        flow = {"version": 5, "src": "192.168.1.20", "dst": dst,
+                "src_port": 12345, "dst_port": 443, "proto": 6,
+                "packets": 10, "bytes": bytes_,
+                "first": first, "last": last}
+        flow.update(kw)
+        return flow
+
+    def _signals(self, mod, readings, manifest=None, state=None):
+        if manifest is None:
+            manifest = {"name": "softflowd_feed", "tunables": {}}
+        alerts, new_state = mod.decide(
+            readings, manifest, {} if state is None else state)
+        return [a["signal"] for a in alerts], new_state
+
+    # -- _parse_listen_addr -------------------------------------
+
+    def test_listen_addr_fifteen_shapes_read_as_default(self):
+        mod = self._mod()
+        for value in self._UNUSABLE:
+            with self.subTest(value=repr(value)):
+                # "45" / "bogus" are strings and are hosts,
+                # not shapes: they are covered separately.
+                if isinstance(value, str) and value:
+                    continue
+                self.assertEqual(mod._parse_listen_addr(value),
+                                 ("127.0.0.1", 2055))
+        with self.subTest(shape="whitespace-only"):
+            self.assertEqual(mod._parse_listen_addr("   "),
+                             ("127.0.0.1", 2055))
+
+    def test_listen_addr_genuine_and_partial_forms(self):
+        mod = self._mod()
+        cases = [
+            ("127.0.0.1:2055", ("127.0.0.1", 2055)),
+            ("10.0.0.1:9999", ("10.0.0.1", 9999)),
+            ("example.com:123", ("example.com", 123)),
+            ("hostonly", ("hostonly", 2055)),
+            ("45", ("45", 2055)),
+            ("bogus", ("bogus", 2055)),
+            (":1234", ("127.0.0.1", 1234)),
+            ("host:abc", ("host", 2055)),
+            ("host:99999", ("host", 2055)),
+            ("host:-1", ("host", 2055)),
+            ("[::1]:2055", ("::1", 2055)),
+            ("[::1]", ("::1", 2055)),
+            ("[::1]:abc", ("::1", 2055)),
+            ("  10.1.2.3:7  ", ("10.1.2.3", 7)),
+        ]
+        for text, expected in cases:
+            with self.subTest(text=text):
+                self.assertEqual(mod._parse_listen_addr(text),
+                                 expected)
+
+    # -- decode_datagram: shapes --------------------------------
+
+    def test_decode_fifteen_shapes_answer_nothing(self):
+        mod = self._mod()
+        for value in self._UNUSABLE + [b"", b"\x00", 123]:
+            with self.subTest(value=repr(value)[:40]):
+                flows, templates = mod.decode_datagram(
+                    value, now=1000.0)
+                self.assertEqual(flows, [])
+                self.assertEqual(templates, {})
+        with self.subTest(shape="unknown-version"):
+            data = (7).to_bytes(2, "big") + b"\x00" * 30
+            self.assertEqual(
+                mod.decode_datagram(data, now=1000.0)[0], [])
+        with self.subTest(shape="bytearray-v5-header-only"):
+            data = bytearray((5).to_bytes(2, "big") + b"\x00" * 22)
+            self.assertEqual(
+                mod.decode_datagram(data, now=1000.0)[0], [])
+        with self.subTest(shape="non-dict-templates-replaced"):
+            import struct
+            hdr = struct.pack("!HHIIIIBBH", 5, 0, 100000,
+                              1700000000, 0, 0, 0, 0, 0)
+            for tpl in [None, "x", [], 123]:
+                flows, templates = mod.decode_datagram(
+                    hdr, templates=tpl, now=1000.0)
+                self.assertEqual(flows, [])
+                self.assertEqual(templates, {})
+
+    # -- decode_datagram: v5 -------------------------------------
+
+    def _v5(self, mod, count=1, records=1, first=90000,
+            last=100000):
+        import struct
+        hdr = struct.pack("!HHIIIIBBH", 5, count, 100000,
+                          1700000000, 0, 0, 0, 0, 0)
+        rec = struct.pack(
+            "!IIIHHIIIIHHBBBBHHBBH",
+            0xC0A80114, 0x08080808, 0, 0, 0, 10, 60000000,
+            first, last, 12345, 443, 0, 0, 6, 0, 0, 0, 0, 0, 0)
+        return hdr + rec * records
+
+    def test_decode_v5_genuine_truncated_and_overstated(self):
+        mod = self._mod()
+        flows, _ = mod.decode_datagram(self._v5(mod), now=1000.0)
+        self.assertEqual(flows, [{
+            "version": 5, "src": "192.168.1.20", "dst": "8.8.8.8",
+            "src_port": 12345, "dst_port": 443, "proto": 6,
+            "packets": 10, "bytes": 60000000,
+            "first": 1699999990.0, "last": 1700000000.0}])
+        with self.subTest(shape="zero-stamps"):
+            flows, _ = mod.decode_datagram(
+                self._v5(mod, first=0, last=0), now=555.0)
+            self.assertEqual(flows[0]["first"], 1699999900.0)
+            self.assertEqual(flows[0]["last"], 1699999900.0)
+        with self.subTest(shape="truncated-record"):
+            data = self._v5(mod)
+            flows, _ = mod.decode_datagram(
+                data[:24 + 20], now=1000.0)
+            self.assertEqual(flows, [])
+        with self.subTest(shape="count-overstates-records"):
+            flows, _ = mod.decode_datagram(
+                self._v5(mod, count=2, records=1), now=1000.0)
+            self.assertEqual(len(flows), 1)
+
+    # -- decode_datagram: v9 / IPFIX -----------------------------
+
+    def _flowset(self, sid, payload):
+        import struct
+        return struct.pack("!HH", sid, len(payload) + 4) + payload
+
+    def _v9(self, flowsets):
+        import struct
+        body = b"".join(flowsets)
+        return struct.pack("!HHIIII", 9, 0, 100000,
+                           1700000000, 0, 42) + body
+
+    def _template(self, tid, fields):
+        import struct
+        return struct.pack("!HH", tid, len(fields)) + b"".join(
+            struct.pack("!HH", ft, fl) for ft, fl in fields)
+
+    def test_decode_v9_template_data_and_skips(self):
+        mod = self._mod()
+        import struct
+        fields = [(8, 4), (12, 4), (1, 4), (7, 2), (11, 2),
+                  (4, 1), (22, 4), (21, 4)]
+        tpl = self._flowset(0, self._template(256, fields))
+        rec = ((0xC0A80114).to_bytes(4, "big")
+               + (0x08080808).to_bytes(4, "big")
+               + (5000).to_bytes(4, "big")
+               + (12345).to_bytes(2, "big")
+               + (443).to_bytes(2, "big") + bytes([6])
+               + (90000).to_bytes(4, "big")
+               + (100000).to_bytes(4, "big"))
+        data = self._flowset(256, rec)
+        expected = [{
+            "version": 9, "src": "192.168.1.20", "dst": "8.8.8.8",
+            "src_port": 12345, "dst_port": 443, "proto": 6,
+            "packets": 0, "bytes": 5000,
+            "first": 1699999990.0, "last": 1700000000.0}]
+        with self.subTest(shape="template-and-data-one-datagram"):
+            flows, templates = mod.decode_datagram(
+                self._v9([tpl, data]), now=1000.0)
+            self.assertEqual(flows, expected)
+            self.assertIn((9, 42, 256), templates)
+        with self.subTest(shape="data-before-template"):
+            flows, _ = mod.decode_datagram(
+                self._v9([data]), now=1000.0)
+            self.assertEqual(flows, [])
+        with self.subTest(shape="data-threaded-templates"):
+            _, templates = mod.decode_datagram(
+                self._v9([tpl]), now=1000.0)
+            flows, _ = mod.decode_datagram(
+                self._v9([data]), templates=templates, now=1000.0)
+            self.assertEqual(flows, expected)
+        with self.subTest(shape="unknown-field-skipped-counted"):
+            bad_tpl = self._flowset(
+                0, self._template(257, [(8, 4), (99, 4)]))
+            bad_rec = ((0xC0A80114).to_bytes(4, "big")
+                       + (1).to_bytes(4, "big"))
+            stats = {}
+            flows, _ = mod.decode_datagram(
+                self._v9([bad_tpl, self._flowset(257, bad_rec)]),
+                now=1000.0, stats=stats)
+            self.assertEqual(flows, [])
+            self.assertEqual(stats, {"skipped_records": 1})
+        with self.subTest(shape="bool-skip-count-restarts"):
+            bad_tpl = self._flowset(
+                0, self._template(257, [(8, 4), (99, 4)]))
+            bad_rec = ((0xC0A80114).to_bytes(4, "big")
+                       + (1).to_bytes(4, "big"))
+            stats = {"skipped_records": True}
+            mod.decode_datagram(
+                self._v9([bad_tpl, self._flowset(257, bad_rec)]),
+                now=1000.0, stats=stats)
+            self.assertEqual(stats, {"skipped_records": 1})
+        with self.subTest(shape="wrong-fixed-length-skipped"):
+            wl_tpl = self._flowset(0, self._template(258, [(8, 3)]))
+            stats = {}
+            flows, _ = mod.decode_datagram(
+                self._v9([wl_tpl,
+                          self._flowset(258, b"\x01\x02\x03")]),
+                now=1000.0, stats=stats)
+            self.assertEqual(flows, [])
+            self.assertEqual(stats, {"skipped_records": 1})
+        with self.subTest(shape="trailing-padding-ignored"):
+            pad_tpl = self._flowset(
+                0, self._template(256, [(8, 4), (12, 4)]))
+            rec8 = ((0xC0A80114).to_bytes(4, "big")
+                    + (0x08080808).to_bytes(4, "big"))
+            flows, _ = mod.decode_datagram(
+                self._v9([pad_tpl,
+                          self._flowset(256, rec8 + b"\x00\x00")]),
+                now=777.0)
+            self.assertEqual(len(flows), 1)
+            self.assertEqual(flows[0]["first"], 777.0)
+            self.assertEqual(flows[0]["last"], 777.0)
+        with self.subTest(shape="option-template-skipped"):
+            flows, _ = mod.decode_datagram(
+                self._v9([self._flowset(1, b"\x00" * 8)]),
+                now=1000.0)
+            self.assertEqual(flows, [])
+        with self.subTest(shape="truncated-header-and-set"):
+            self.assertEqual(mod.decode_datagram(
+                b"\x00\x09\x00", now=1000.0)[0], [])
+            trunc = struct.pack("!HH", 256, 100) + b"\x00" * 4
+            self.assertEqual(mod.decode_datagram(
+                self._v9([trunc]), now=1000.0)[0], [])
+
+    def test_decode_ipfix_genuine_enterprise_and_total(self):
+        mod = self._mod()
+        import struct
+
+        def ipfix(sets, total=None):
+            body = b"".join(sets)
+            tot = 16 + len(body) if total is None else total
+            return (struct.pack("!HHIII", 10, tot, 1700000000,
+                                0, 42) + body)
+
+        tpl = self._flowset(
+            2, self._template(256, [(8, 4), (12, 4)]))
+        rec = ((0x0A000001).to_bytes(4, "big")
+               + (0x08080404).to_bytes(4, "big"))
+        with self.subTest(shape="genuine-collect-time"):
+            flows, _ = mod.decode_datagram(
+                ipfix([tpl, self._flowset(256, rec)]), now=1234.5)
+            self.assertEqual(flows, [{
+                "version": 10, "src": "10.0.0.1",
+                "dst": "8.8.4.4", "src_port": 0, "dst_port": 0,
+                "proto": 0, "packets": 0, "bytes": 0,
+                "first": 1234.5, "last": 1234.5}])
+        with self.subTest(shape="enterprise-field-taints"):
+            ent_tpl = self._flowset(
+                2, struct.pack("!HH", 257, 1)
+                + struct.pack("!HH", 0x8008, 4)
+                + (12345).to_bytes(4, "big"))
+            stats = {}
+            flows, templates = mod.decode_datagram(
+                ipfix([ent_tpl,
+                       self._flowset(257,
+                                     (0x0A000001).to_bytes(4, "big"))]),
+                now=1000.0, stats=stats)
+            self.assertEqual(flows, [])
+            self.assertEqual(stats, {"skipped_records": 1})
+            self.assertTrue(templates[(10, 42, 257)]["tainted"])
+        with self.subTest(shape="total-below-header"):
+            self.assertEqual(mod.decode_datagram(
+                ipfix([tpl], total=5), now=1000.0)[0], [])
+
+    # -- decide(): readings / flows ------------------------------
+
+    def test_decide_readings_and_flow_shapes(self):
+        mod = self._mod()
+        for value in [None, "", True, 0, [], {"x": 1}]:
+            with self.subTest(readings=repr(value)):
+                self.assertEqual(
+                    self._signals(mod, value),
+                    ([], {"peers": [], "filed": {}}))
+        for value in [None, "x", 123, {"a": 1}, True]:
+            with self.subTest(flows=repr(value)):
+                signals, _ = self._signals(
+                    mod, {"now": 9000, "flows": value})
+                self.assertEqual(signals, [])
+        bad_entries = [
+            None, "x", 123, [], {},
+            {"src": 123, "dst": "8.8.8.8"},
+            {"src": "1.2.3.4"},
+            self._flow(src_port=70000),
+            self._flow(src_port=-1),
+            self._flow(bytes_=-1),
+            self._flow(bytes_="x"),
+            self._flow(bytes_=True),
+        ]
+        for entry in bad_entries:
+            with self.subTest(entry=repr(entry)[:60]):
+                signals, state = self._signals(
+                    mod, {"now": 9000, "flows": [entry]})
+                self.assertEqual(signals, [])
+                self.assertEqual(state, {"peers": [], "filed": {}})
+        with self.subTest(shape="non-number-times-filled"):
+            signals, _ = self._signals(
+                mod, {"now": 9000,
+                      "flows": [self._flow(first="x", last="y")]})
+            self.assertEqual(signals, ["flow_new_external_peer"])
+        with self.subTest(shape="version-cleaning"):
+            for version, kept in [("x", 0), (9.7, 9)]:
+                alerts, _ = mod.decide(
+                    {"now": 9000,
+                     "flows": [self._flow(version=version)]},
+                    {"name": "softflowd_feed", "tunables": {}}, {})
+                self.assertEqual(len(alerts), 1)
+
+    def test_decide_external_classification_and_allowlist(self):
+        mod = self._mod()
+        not_external = ["10.0.0.5", "127.0.0.1", "224.0.0.1",
+                        "169.254.1.1", "0.0.0.0", "bogus", "::1",
+                        "192.168.1.1", "172.16.0.1", "fe80::1"]
+        for dst in not_external:
+            with self.subTest(dst=dst):
+                signals, _ = self._signals(
+                    mod, {"now": 9000, "flows": [self._flow(dst=dst)]})
+                self.assertEqual(signals, [])
+        for dst in ["8.8.8.8", "2001:4860:4860::8888"]:
+            with self.subTest(dst=dst):
+                signals, _ = self._signals(
+                    mod, {"now": 9000, "flows": [self._flow(dst=dst)]})
+                self.assertEqual(signals, ["flow_new_external_peer"])
+        allow_cases = [
+            (None, True), ("8.8.8.8", True), (123, True),
+            ({"x": 1}, True), (True, True), ([], True),
+            (["8.8.8.8"], False), (["8.8.0.0/16"], False),
+            (["8.8.8.8/32"], False), (["0.0.0.0/0"], False),
+            (["bogus"], True), ([123, None], True),
+            (["2001:4860:4860::/48"], True),
+        ]
+        for allowlist, files in allow_cases:
+            with self.subTest(allowlist=repr(allowlist)):
+                signals, _ = self._signals(
+                    mod, {"now": 9000, "flows": [self._flow()]},
+                    {"name": "softflowd_feed",
+                     "tunables": {"allowlist": allowlist}})
+                self.assertEqual(
+                    signals,
+                    ["flow_new_external_peer"] if files else [])
+        with self.subTest(shape="v6-allowlist-covers-v6"):
+            signals, _ = self._signals(
+                mod, {"now": 9000,
+                      "flows": [self._flow(
+                          dst="2001:4860:4860::8888")]},
+                {"name": "softflowd_feed",
+                 "tunables": {"allowlist": ["2001:4860:4860::/48"]}})
+            self.assertEqual(signals, [])
+
+    def test_decide_now_state_manifest_and_replay(self):
+        mod = self._mod()
+        big = self._flow(bytes_=60000000)
+        for now in [None, "x", True, float("nan"),
+                    float("inf"), 10 ** 400]:
+            with self.subTest(now=repr(now)[:30]):
+                _, state = self._signals(
+                    mod, {"now": now, "flows": [big]})
+                self.assertEqual(
+                    list(state["filed"].values()), [1000.0])
+        with self.subTest(shape="state-cleaning"):
+            alerts, state = mod.decide(
+                {"now": 9000, "flows": [self._flow()]},
+                {"name": "softflowd_feed", "tunables": {}},
+                {"peers": [123, "8.8.8.8", None, ""],
+                 "filed": {"k": "bogus", "k2": 123, "k3": True,
+                           123: 1000}})
+            self.assertEqual(alerts, [])
+            self.assertEqual(state, {
+                "peers": ["8.8.8.8", ""], "filed": {"k2": 123.0}})
+        for bad_state in [None, "x", [], 123,
+                          {"peers": "bogus"}, {"filed": "bogus"}]:
+            with self.subTest(state=repr(bad_state)):
+                signals, _ = self._signals(
+                    mod, {"now": 9000, "flows": [self._flow()]},
+                    state=bad_state)
+                self.assertEqual(signals, ["flow_new_external_peer"])
+        for manifest, sensor in [
+                (None, "softflowd_feed"), ("x", "softflowd_feed"),
+                ([], "softflowd_feed"), ({}, "softflowd_feed"),
+                ({"name": 123}, "softflowd_feed"),
+                ({"name": ""}, "softflowd_feed"),
+                ({"name": "custom"}, "custom"),
+                ({"tunables": "bogus"}, "softflowd_feed"),
+                ({"tunables": None}, "softflowd_feed")]:
+            with self.subTest(manifest=repr(manifest)[:40]):
+                alerts, _ = mod.decide(
+                    {"now": 9000, "flows": [self._flow()]},
+                    manifest, {})
+                self.assertEqual(alerts[0]["sensor"], sensor)
+        with self.subTest(shape="replay-files-nothing-twice"):
+            flow = self._flow(bytes_=60000000, first=1000, last=8200)
+            alerts1, state1 = mod.decide(
+                {"now": 9000, "flows": [flow]},
+                {"name": "softflowd_feed", "tunables": {}}, {})
+            self.assertEqual(
+                [a["signal"] for a in alerts1],
+                ["flow_new_external_peer", "flow_high_volume",
+                 "flow_long_lived"])
+            alerts2, state2 = mod.decide(
+                {"now": 9001, "flows": [flow]},
+                {"name": "softflowd_feed", "tunables": {}}, state1)
+            self.assertEqual(alerts2, [])
+            self.assertEqual(state2, state1)
+
+    # -- main() in --readings mode --------------------------------
+
+    def test_main_readings_mode_and_failures(self):
+        import json
+        import os
+        import subprocess
+        import sys
+        script = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "softflowd-feed", "softflowd_feed.py")
+        manifest = {"name": "softflowd_feed",
+                    "tunables": {"high_volume_bytes": 50000000,
+                                 "long_lived_sec": 3600}}
+        readings = {"now": 9000, "flows": [dict(
+            self._flow(bytes_=60000000, first=1000, last=8200),
+            version=5)], "skipped_records": 3}
+        with tempfile.TemporaryDirectory() as tmp:
+            mpath = os.path.join(tmp, "m.json")
+            rpath = os.path.join(tmp, "r.json")
+            spath = os.path.join(tmp, "s.json")
+            with open(mpath, "w", encoding="utf-8") as fh:
+                json.dump(manifest, fh)
+            with open(rpath, "w", encoding="utf-8") as fh:
+                json.dump(readings, fh)
+
+            def run(*extra):
+                return subprocess.run(
+                    [sys.executable, script, "--manifest", mpath,
+                     "--state", spath, *extra],
+                    capture_output=True, text=True)
+
+            with self.subTest(shape="genuine"):
+                proc = run("--readings", rpath)
+                self.assertEqual(proc.returncode, 0)
+                lines = proc.stdout.strip().splitlines()
+                self.assertEqual(len(lines), 3)
+                with open(spath, encoding="utf-8") as fh:
+                    saved = json.load(fh)
+                self.assertEqual(saved["peers"], ["8.8.8.8"])
+            with self.subTest(shape="malformed-state-is-fresh"):
+                with open(spath, "w", encoding="utf-8") as fh:
+                    fh.write("{bogus")
+                proc = run("--readings", rpath)
+                self.assertEqual(proc.returncode, 0)
+                self.assertEqual(
+                    len(proc.stdout.strip().splitlines()), 3)
+            with self.subTest(shape="missing-readings-rc2"):
+                proc = run("--readings",
+                           os.path.join(tmp, "nope.json"))
+                self.assertEqual(proc.returncode, 2)
+            with self.subTest(shape="missing-manifest-rc2"):
+                proc = subprocess.run(
+                    [sys.executable, script, "--manifest",
+                     os.path.join(tmp, "nope.json"),
+                     "--state", spath, "--readings", rpath],
+                    capture_output=True, text=True)
+                self.assertEqual(proc.returncode, 2)
+
 if __name__ == "__main__":
 
     unittest.main()
