@@ -22,6 +22,7 @@ Usage:
                                        [--start-dir tests]
                                        [--top-level-dir .]
                                        [--durations N]
+                                       [--wall-clock MINUTES]
                                        [module ...]
 
 With explicit modules, only those run (still sharded). Exit code
@@ -42,6 +43,15 @@ read from the run page, not only from a downloaded log
   the test, so the run page lists the failing tests. Outside
   Actions nothing is annotated. Annotation never changes the
   verdict and, like all reporting here, cannot crash the run.
+- ``--wall-clock MINUTES`` runs every shard under
+  tools/suite_wall_clock.py, so a shard still running at the
+  deadline stops and names the test it was in (stack in its dump,
+  ``::error`` on the run page), instead of the job sitting until
+  its own limit with nothing in the log. That is what happened on
+  2026-10-23: one test looped forever and both CI suites sat past
+  80 minutes. The parent keeps a hard stop 90 seconds past the
+  deadline for a shard whose clock could not fire; that shard is
+  reported as timed out with whatever it had printed.
 """
 
 import argparse
@@ -209,6 +219,40 @@ def _child_env():
     return env
 
 
+_WALL_CLOCK_TOOL = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "suite_wall_clock.py")
+_HARD_STOP_GRACE_SEC = 90.0
+
+
+def shard_command(extra, shard, wall_clock=0):
+    """The unittest command for one shard.
+
+    Plain ``python -m unittest`` by default; under a wall clock the
+    same arguments go through tools/suite_wall_clock.py, which runs
+    unittest in-process and names the running test at the deadline.
+    """
+    if wall_clock and wall_clock > 0:
+        return ([sys.executable, _WALL_CLOCK_TOOL,
+                 "--minutes", "%g" % wall_clock, "--"] + extra + shard)
+    return [sys.executable, "-m", "unittest"] + extra + shard
+
+
+def _kill_tree(proc):
+    """Stop a shard and what it started; never raises."""
+    try:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)],
+                           capture_output=True, timeout=30)
+        else:
+            try:
+                os.killpg(proc.pid, 9)
+            except (ProcessLookupError, PermissionError, OSError):
+                proc.kill()
+        proc.wait(timeout=30)
+    except Exception:
+        pass
+
+
 def durations_args(durations, version_info=None):
     """The unittest arguments that ask for the slowest-test block.
 
@@ -278,7 +322,8 @@ def passing_tail(output, durations):
     return "\n".join(text.splitlines()[-4:])
 
 
-def run_shards(shards, top_level_dir, durations=None, annotate=None):
+def run_shards(shards, top_level_dir, durations=None, annotate=None,
+               wall_clock=0):
     """Run each shard as a unittest subprocess; return exit code.
 
     Output is captured per shard and printed when the shard
@@ -297,6 +342,10 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None):
     durations_args). ``annotate`` None means "when under Actions";
     True or False forces it. Annotations are emitted after a
     failed shard's dump and never affect the exit code.
+    ``wall_clock`` (minutes, 0 for none) runs each shard under
+    tools/suite_wall_clock.py and hard-stops a shard that outlives
+    the deadline by more than a grace period; a timed-out shard is
+    a failed shard.
     """
     if annotate is None:
         annotate = under_actions()
@@ -316,21 +365,38 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None):
         for i, shard in enumerate(shards):
             out_path = os.path.join(tmp.name, "shard-%d.log" % i)
             fh = open(out_path, "wb")
+            popen_kw = {}
+            if wall_clock and os.name != "nt":
+                # Its own process group, so the hard stop can take
+                # the shard and anything it spawned together.
+                popen_kw["start_new_session"] = True
             try:
                 proc = subprocess.Popen(
-                    [sys.executable, "-m", "unittest"] + extra + shard,
+                    shard_command(extra, shard, wall_clock),
                     cwd=top_level_dir, stdout=fh,
                     stderr=subprocess.STDOUT,
-                    env=_child_env())
+                    env=_child_env(), **popen_kw)
             except Exception:
                 fh.close()
                 raise
             procs.append((i, proc, fh, out_path))
             _emit("shard %d: %d module(s): %s"
                   % (i, len(shard), ", ".join(shard)))
+        hard_stop = (started + wall_clock * 60.0 + _HARD_STOP_GRACE_SEC
+                     if wall_clock else None)
         for i, proc, fh, out_path in procs:
+            timed_out = False
             try:
-                rc = proc.wait()
+                if hard_stop is None:
+                    rc = proc.wait()
+                else:
+                    try:
+                        rc = proc.wait(
+                            timeout=max(0.0, hard_stop - time.monotonic()))
+                    except subprocess.TimeoutExpired:
+                        timed_out = True
+                        _kill_tree(proc)
+                        rc = "timeout"
             except Exception:
                 rc = None
             finally:
@@ -338,6 +404,17 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None):
             elapsed = time.monotonic() - started
             if rc != 0:
                 failed.append(i)
+            if timed_out:
+                _emit_quietly(
+                    "=== shard %d TIMED OUT: still running %.0fs past "
+                    "its %g-minute wall clock; stopped by the parent ==="
+                    % (i, _HARD_STOP_GRACE_SEC, wall_clock))
+                if annotate:
+                    _emit_quietly(
+                        "::error title=shard %d::still running %g minutes "
+                        "past its wall clock and stopped by the parent; "
+                        "its partial output is in the log"
+                        % (i, _HARD_STOP_GRACE_SEC / 60.0))
             try:
                 with open(out_path, encoding="utf-8",
                           errors="replace") as rf:
@@ -375,12 +452,19 @@ def main(argv=None):
     parser.add_argument("--durations", type=int, default=0, metavar="N",
                         help="each shard lists its N slowest tests "
                              "(unittest --durations; Python 3.12+)")
+    parser.add_argument("--wall-clock", type=float, default=0.0,
+                        metavar="MINUTES",
+                        help="stop a shard still running after this many "
+                             "minutes and name the test it was in "
+                             "(0: no clock)")
     parser.add_argument("modules", nargs="*",
                         help="explicit modules to run instead of "
                              "discovering the whole suite")
     args = parser.parse_args(argv)
     if args.durations < 0:
         parser.error("--durations must be >= 0")
+    if args.wall_clock < 0:
+        parser.error("--wall-clock must be >= 0")
 
     if args.modules:
         counts = {mod: 1 for mod in args.modules}
@@ -395,7 +479,8 @@ def main(argv=None):
     _emit("running %d test(s) from %d module(s) in %d shard(s)"
           % (total, len(counts), len(shards)))
     started = time.monotonic()
-    rc = run_shards(shards, args.top_level_dir, durations=args.durations)
+    rc = run_shards(shards, args.top_level_dir, durations=args.durations,
+                    wall_clock=args.wall_clock)
     _emit("sharded run finished in %.1fs (exit %d)"
           % (time.monotonic() - started, rc))
     return rc

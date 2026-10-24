@@ -13,6 +13,7 @@ import io
 import os
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -408,6 +409,69 @@ class ReadableFromTheRunPageTest(_OutsideActions):
         with self.assertRaises(SystemExit) as cm, \
                 contextlib.redirect_stderr(io.StringIO()):
             rtp.main(["--durations", "-1"])
+        self.assertEqual(cm.exception.code, 2)
+
+
+_HANG = (
+    "import time, unittest\n\n"
+    "class T(unittest.TestCase):\n"
+    "    def test_stuck(self):\n"
+    "        time.sleep(600)\n"
+)
+
+
+# Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c
+class WallClockTest(_OutsideActions):
+    """A shard that never finishes must end, and say which test.
+
+    2026-10-23: one test looped forever and the Windows suite sat
+    past 80 minutes until someone cancelled it, with nothing in
+    the log to say which test. Under --wall-clock every shard
+    runs through tools/suite_wall_clock.py, which stops at the
+    deadline and names the running test; the parent keeps a hard
+    stop past that for a shard whose clock could not fire.
+    """
+
+    def test_shard_command_shapes(self):
+        plain = rtp.shard_command(["--durations", "5"], ["test_a"])
+        self.assertEqual(plain[1:], ["-m", "unittest", "--durations", "5",
+                                     "test_a"])
+        clocked = rtp.shard_command(["--durations", "5"], ["test_a"],
+                                    wall_clock=20)
+        self.assertTrue(clocked[1].endswith("suite_wall_clock.py"), clocked)
+        self.assertEqual(clocked[2:], ["--minutes", "20", "--",
+                                       "--durations", "5", "test_a"])
+        # Zero is "no clock", the plain shape.
+        self.assertEqual(rtp.shard_command([], ["test_a"], wall_clock=0),
+                         plain[:3] + ["test_a"])
+
+    def test_a_stuck_shard_fails_the_run_and_names_its_test(self):
+        fake = io.StringIO()
+        with tempfile.TemporaryDirectory() as d:
+            _write(d, "test_alpha.py", _PASS)
+            _write(d, "test_stuck.py", _HANG)
+            started = time.monotonic()
+            with contextlib.redirect_stdout(fake):
+                rc = rtp.main(["--jobs", "2", "--top-level-dir", d,
+                               "--wall-clock", "0.05",
+                               "test_alpha", "test_stuck"])
+            elapsed = time.monotonic() - started
+        self.assertEqual(rc, 1)
+        text = fake.getvalue()
+        self.assertIn("FAILED (exit 124)", text)
+        self.assertIn("running test: test_stuck.T.test_stuck", text)
+        self.assertRegex(text, r"shard \d: OK in")
+        # The clock, not the parent's hard stop, ended it: well
+        # inside the 90-second grace the parent allows.
+        self.assertLess(elapsed, 60.0)
+        self.assertNotIn("TIMED OUT", text)
+        # Outside Actions the shard's dump carries no annotation.
+        self.assertNotIn("::error", text)
+
+    def test_negative_wall_clock_is_a_usage_error(self):
+        with self.assertRaises(SystemExit) as cm, \
+                contextlib.redirect_stderr(io.StringIO()):
+            rtp.main(["--wall-clock", "-1"])
         self.assertEqual(cm.exception.code, 2)
 
 

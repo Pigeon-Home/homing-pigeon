@@ -200,6 +200,28 @@ class MutationGateTest(unittest.TestCase):
                 self.assertNotIn("timeout-minutes", _uncommented(fh.read()),
                                  "%s carries a job timer" % name)
 
+    def test_both_suites_run_under_a_wall_clock_that_names_the_test(self):
+        # Not a timer. 2026-10-23: a test that looped forever held
+        # the Linux suite and the Windows shards past 80 minutes,
+        # the job had no clock, and the stuck test's name was the
+        # unfinished line at the end of a log nobody could read
+        # from the diagnosing seat. tools/suite_wall_clock.py is
+        # `python -m unittest` with a 20-minute deadline that names
+        # the running test and annotates it; the Windows shards get
+        # the same through --wall-clock. The workflow's timer count
+        # (the scarce-runner pin above) is unchanged by this.
+        # (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
+        workflow = _workflow()
+        linux = _uncommented(_job_block(workflow, "test"))
+        self.assertIn("python tools/suite_wall_clock.py --minutes 20 -- "
+                      "discover -s tests -t . -v --durations 25", linux)
+        self.assertNotIn("python -m unittest discover", linux)
+        windows = _uncommented(_job_block(workflow, "build-windows"))
+        self.assertIn("python tools/run_tests_parallel.py --jobs 4 "
+                      "--durations 15 --wall-clock 20", windows)
+        self.assertTrue(os.path.exists(
+            os.path.join(_root(), "tools", "suite_wall_clock.py")))
+
     def test_real_gates_are_not_continue_on_error(self):
         # The mirror image of the pin above: if a job that gates
         # the release ever grows continue-on-error, a red suite

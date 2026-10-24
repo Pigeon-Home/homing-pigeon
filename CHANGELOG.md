@@ -4,6 +4,21 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## Unreleased
+
+- **The suites run under a wall clock that names the test.**
+  `tools/suite_wall_clock.py` is `python -m unittest` with a
+  deadline: a run still going at 20 minutes stops, prints the
+  running test and the main thread's stack, annotates the test on
+  the run page, and exits 124. The Linux suite step runs through it
+  and `tools/run_tests_parallel.py --wall-clock 20` puts every
+  Windows shard under it (the parent keeps a hard stop 90 seconds
+  past the deadline for a shard whose clock cannot fire). Not a
+  job timer: the workflow's only two timers stay on the two scarce
+  runners. The 2026-10-23 stall, one test looping forever and both
+  suites sitting past 80 minutes with nothing in the log, is the
+  reason.
+
 ## 3.12.58 - 2026-10-23
 
 - **The code now delivers every default the docs promise.** The VM

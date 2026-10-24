@@ -79,10 +79,18 @@ jobs:
       # without profiling. The block lands between the failure
       # dumps and the "Ran N tests" line; skip_guard and
       # make_snapshot read neither shape differently.
+      # tools/suite_wall_clock.py is `python -m unittest` with a
+      # 20-minute clock (the suite takes 4 to 6): a run still going
+      # at the deadline stops, names the test it was in with its
+      # stack, and annotates it on the run page. Not a job timer:
+      # a timer kills the job and says nothing, and on 2026-10-23
+      # a test that looped forever held both suites past 80
+      # minutes with nothing in the log to say which.
+      # (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
       - name: run the suite
         run: |
           set -o pipefail
-          python -m unittest discover -s tests -t . -v --durations 25 2>&1 | tee test-output.log
+          python tools/suite_wall_clock.py --minutes 20 -- discover -s tests -t . -v --durations 25 2>&1 | tee test-output.log
       # A skipped proof is green from the outside. On this box the
       # sandbox proofs must run; any other skip is listed, not fatal.
       # --annotate is the piece worth keeping from diag/bwrap-suite:
@@ -180,7 +188,11 @@ jobs:
       # runner also annotates every failed test by name, so a red
       # Windows job names its tests on the run page (the six-day
       # history had 257 of them with nothing but "exit code 1").
-      - run: python tools/run_tests_parallel.py --jobs 4 --durations 15
+      # --wall-clock 20 runs each shard under tools/suite_wall_clock.py
+      # (see the Linux suite step): a shard still running at 20
+      # minutes stops and names its test instead of holding the
+      # job to its own limit.
+      - run: python tools/run_tests_parallel.py --jobs 4 --durations 15 --wall-clock 20
       - run: pip install -c requirements-ci.txt pyinstaller
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md;pigeon-docs" --hidden-import runner._version --hidden-import runner.oauth --hidden-import runner.senses --hidden-import runner.extensions --hidden-import runner.extsources --hidden-import runner.review --hidden-import runner.opinion --hidden-import runner.learning --hidden-import runner.remediation --hidden-import runner.resources --hidden-import runner.dri --hidden-import runner.detection --hidden-import runner.setup --hidden-import runner.security --hidden-import runner.sandbox --hidden-import runner.winlog --hidden-import runner.auditreport --hidden-import runner.posture --hidden-import runner.harness --hidden-import runner.local_test --hidden-import runner.transports --hidden-import runner.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.dtlsproto --hidden-import runner.jobcrypto --hidden-import runner.protocol_v2 --hidden-import runner.personal_docs --hidden-import runner.platformcard --hidden-import runner.board --hidden-import runner.textutil --hidden-import runner.confval --hidden-import runner.verify --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --add-data "runner/transport_extensions;pigeon-transport-extensions"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/install.py --hidden-import runner._version --hidden-import runner.personal_docs
