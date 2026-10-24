@@ -17101,6 +17101,111 @@ class TestMaxJobAgeSecLiteralAtLocalIngestInsteadOfDefault(
             self._ingest({"max_job_age_sec": 10 ** 400}, 3700))
 
 
+
+class TestLocalWakeCooldownSecFifteenShapesAtReader(unittest.TestCase):
+    """Second-run hunt coverage: local_wake_cooldown_sec
+    itself varied with the fifteen shapes at its single
+    reader (runner/runner.py: _local_wake_cooldown,
+    through confval.number lo=0, returning a float)
+    for the first time at reader level. The row's
+    registry-named class
+    (TestBooleanWakeCooldownDefaultsTo900) varied
+    only the boolean shapes in the first run, when
+    the reader still computed float(raw) with no
+    boolean guard; the reader has since moved to
+    confval, and this class pins the full fifteen
+    shapes against the moved reader.
+
+    (a) Doc claim (docs/extensions.md, line 360,
+        config table): "`local_wake_cooldown_sec` |
+        `900` | Minimum seconds between Oracle
+        briefings for the same sensor + signal."
+        Registry row "local_wake_cooldown_sec"
+        (kind number, default 900, reader
+        runner/runner.py:_local_wake_cooldown,
+        policy default under Decision 1, lo=0,
+        hi=None).
+
+    (b) How it was hunted: step-8 Target 6 (core
+        rows covered only for the shapes their
+        classes exercised). This tick probed
+        _local_wake_cooldown with the fifteen
+        shapes from the table hunt -- omitted,
+        null, empty string, true, false, zero,
+        negative, the explicit default, numeric
+        string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, wrong containers
+        (list and dict) -- plus genuine values and
+        non-dict configs.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape reads as the
+        documented default 900.0 -- omitted, null,
+        empty string, true, false, negative,
+        non-numeric string, huge-int, inf, -inf,
+        NaN, list and dict alike, and a non-dict
+        config (None or a list) likewise reads as
+        900.0. The boolean readings recorded in the
+        first run (true as 1.0, false as 0.0) no
+        longer occur. Zero is honored literally as
+        0.0 (the reader's lo=0 admits it: no
+        cooldown, a briefing on every signal -- the
+        same value false used to produce by
+        accident, now reachable only by an explicit
+        0). Genuine values are honored exactly as
+        floats, with no truncation: 42 and the
+        numeric string "42" read as 42.0, 2.5 and
+        "2.5" read as 2.5, and 0.5 reads as 0.5.
+        Observed on 2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        unusable shapes keep reading as the
+        documented default and genuine values keep
+        being honored. If a shape above ever stops
+        behaving as docs/extensions.md states, this
+        test is the failing record of that change.
+    """
+
+    def test_fifteen_shapes_read_as_default(self):
+        from runner.runner import _local_wake_cooldown
+        unusable = [None, "", True, False, -5,
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        cases = [("omitted", {})]
+        cases += [(repr(v),
+                   {"local_wake_cooldown_sec": v})
+                  for v in unusable]
+        cases.append(("explicit-default",
+                      {"local_wake_cooldown_sec": 900}))
+        for name, cfg in cases:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    _local_wake_cooldown(cfg), 900.0)
+
+    def test_non_dict_config_reads_as_default(self):
+        from runner.runner import _local_wake_cooldown
+        self.assertEqual(_local_wake_cooldown(None), 900.0)
+        self.assertEqual(_local_wake_cooldown(["x"]), 900.0)
+
+    def test_zero_is_honored_literally(self):
+        from runner.runner import _local_wake_cooldown
+        self.assertEqual(
+            _local_wake_cooldown(
+                {"local_wake_cooldown_sec": 0}), 0.0)
+
+    def test_genuine_values_are_honored(self):
+        from runner.runner import _local_wake_cooldown
+        for value, expected in ((42, 42.0), ("42", 42.0),
+                                (2.5, 2.5), ("2.5", 2.5),
+                                (0.5, 0.5), (3600, 3600.0)):
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    _local_wake_cooldown(
+                        {"local_wake_cooldown_sec": value}),
+                    expected)
+
 if __name__ == "__main__":
 
     unittest.main()
