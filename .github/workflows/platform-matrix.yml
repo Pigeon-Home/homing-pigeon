@@ -24,7 +24,7 @@ name: platform-matrix
 # already using. The nightly schedule and a manual dispatch run the
 # whole corpus, including those scarce runners. A job-level `if:`
 # cannot read the matrix context, so the plan job feeds the matrices
-# via fromJSON. The README's "Proven platforms" table is pinned to
+# via fromJSON. The "Proven platforms" table in docs/PLATFORMS.md is pinned to
 # the leg names in that file by runner/tests/test_build_config.py.
 on:
   push:

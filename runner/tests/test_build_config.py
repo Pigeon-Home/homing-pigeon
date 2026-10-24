@@ -714,18 +714,18 @@ class PipelineLessonsTest(unittest.TestCase):
 
     def test_readme_lists_every_matrix_leg(self):
         # Claims track proof: every leg name in the matrix appears in
-        # the README's Proven platforms table, and nothing in that
+        # docs/PLATFORMS.md's Proven platforms table, and nothing in that
         # table is a leg the matrix does not run.
         legs = _matrix_leg_names("platform-matrix.yml")
         self.assertGreaterEqual(len(legs), 40, legs)
         self.assertEqual(len(legs), len(set(legs)), "duplicate leg names")
-        with open(os.path.join(_root(), "README.md"), encoding="utf-8") as fh:
-            readme = fh.read()
-        self.assertIn("## Proven platforms", readme)
-        table = readme.split("## Proven platforms", 1)[1].split("\n## ", 1)[0]
+        with open(os.path.join(_root(), "docs", "PLATFORMS.md"),
+                  encoding="utf-8") as fh:
+            table = fh.read()
+        self.assertIn("# Proven platforms", table)
         for leg in legs:
             self.assertIn("`%s`" % leg, table,
-                          "README Proven platforms lacks leg %s" % leg)
+                          "docs/PLATFORMS.md lacks leg %s" % leg)
         listed = set(re.findall(r"`([A-Za-z0-9._-]+)`", table))
         extra = {x for x in listed if ("-x86_64" in x or "-arm64" in x
                                         or "-qemu" in x or x.startswith(

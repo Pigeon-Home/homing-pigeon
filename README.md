@@ -318,61 +318,9 @@ members of a `"v": 1` message. They are not a separate message version.
 
 ## Proven platforms
 
-Every leg below runs the same portable proof
-(`runner/tests/test_platform_proof.py`) on every push or nightly: a signed job
-runs under the platform default and under that box's Python, a job
-with a bad signature produces no result at all, a job naming an absent
-interpreter is repaired to the platform default and the result says so,
-non-ASCII output survives the box's locale, and the result carries the
-members every consumer relies on. A leg fails unless every test ran and
-passed; a skipped proof is not a proof. Nothing is stubbed but the mail.
+Every push or nightly, one portable proof runs on native runners, distributions, other architectures, maker boards, BSD virtual machines and administrator fat-fingers, and a leg fails unless every test ran and passed. The full table and the board notes are in [docs/PLATFORMS.md](docs/PLATFORMS.md).
+
 [![platform-matrix](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/platform-matrix.yml/badge.svg)](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/platform-matrix.yml)
-
-| Kind | Legs |
-|------|------|
-| Native runners | `native-ubuntu-x86_64`, `native-ubuntu-arm64`, `native-windows-arm64`, `native-macos-x86_64`, `native-windows-x86_64`, `native-macos-arm64` |
-| Distributions, x86_64 (containers) | `alpine-3-x86_64`, `rocky-9-x86_64`, `python-3.9-floor-x86_64`, `debian-12-x86_64`, `ubuntu-22.04-x86_64`, `ubuntu-24.04-x86_64`, `fedora-latest-x86_64`, `almalinux-8-x86_64`, `ubi9-minimal-x86_64`, `ubi9-minimal-fips-x86_64`, `opensuse-leap-15-x86_64`, `archlinux-x86_64`, `amazonlinux-2023-x86_64`, `python-3.14-x86_64` |
-| Distributions, arm64 (containers, native ARM runner) | `debian-13-arm64`, `alpine-3-arm64`, `ubuntu-24.04-arm64`, `fedora-latest-arm64`, `rocky-9-arm64` |
-| Other architectures (QEMU) | `debian-12-armv7-qemu`, `debian-12-i386-qemu`, `debian-12-ppc64le-qemu`, `debian-12-s390x-qemu`, `debian-13-riscv64-qemu` |
-| Maker and robotics boards (QEMU, nightly) | `debian-12-arm64-qemu`, `ubuntu-22.04-arm64-qemu`, `ubuntu-22.04-armv7-qemu`, `ubuntu-24.04-armv7-qemu`, `alpine-3-armv7-qemu`, `ros-humble-arm64-qemu`, `ros-jazzy-arm64-qemu` |
-| BSD virtual machines (nightly) | `vm-freebsd-14`, `vm-openbsd-7`, `vm-netbsd-10` |
-| Administrator fat-fingers on a known-good base | `fatfinger-no-bash`, `fatfinger-noexec-tmp`, `fatfinger-no-home`, `fatfinger-path-minimal`, `fatfinger-c-locale`, `fatfinger-umask-077`, `fatfinger-closed-stdin`, `fatfinger-readonly-root` |
-
-A push runs the core legs whose runner is ubuntu-latest. macOS,
-Windows, and ARM hosted runners, and every full leg, run nightly
-and on dispatch. Each of these is the userspace those boards
-ship, not a boot of the board, and two boards on the same
-userspace share a leg instead of paying for the proof twice.
-Debian 12 armv7, already in the core tier: 32-bit Raspberry
-Pi OS, BeagleBone, the old CHIP, the Tinker Board, and
-Armbian's Debian image on the H3 boards (Orange Pi PC,
-NanoPi Neo). Ubuntu 22.04 and 24.04 armv7: PandaBoard,
-Odroid XU4, Cubieboard, Banana Pi M1. Debian 12 arm64:
-64-bit Raspberry Pi OS, and Armbian Debian on the 64-bit
-competitors (Orange Pi 5, ROCK 5, Banana Pi M5, NanoPi,
-Khadas, Pine64, Libre Computer). Ubuntu 22.04 arm64: the
-Ubuntu under a Jetson, Odroid N2, C4 and M1, and Armbian's
-Ubuntu image. Alpine armv7: those 32-bit boards reflashed
-to musl. The x86 boards (Atomic Pi, LattePanda, Up Board,
-Odroid H3) are the Debian and Ubuntu x86_64 legs. The
-RISC-V boards (VisionFive, Milk-V, Star64) are the riscv64
-leg. Humble and Jazzy are the ROS images a robot on any of
-those puts under its own packages. A JetPack image is not
-pulled. It is several gigabytes and it needs NVIDIA's
-runtime. Fat-fingers are not crossed with every board.
-`runner/tests/test_build_config.py` pins this table to the matrix, so a leg
-cannot be claimed here without running there. Not on the list: a box
-with no Python at all (BusyBox-only, bare firmware) -- the runner is
-stdlib Python, so that is the floor, not a gap. Also not a leg, and
-refused by the installer rather than simulated: a television
-(Tizen, webOS, Roku, Apple TV), and a USB accelerator with no
-Linux host under it. Those have no shell for a job to run in.
-Android-class sets (Android TV, Google TV, Fire TV, Shield) with a
-sideloaded shell are permitted with a stated warning -- no
-service, no model, no sandbox -- because the shell is what
-decides. A Linux board behind the screen is an ordinary leg;
-`--profile display-board` is that install with no model. To add a host or a
-fat-finger, add one matrix line and one table entry.
 
 ## Extending the agent: your own senses
 
@@ -417,79 +365,7 @@ pinned by default, and a written disclosure rule lets the owner
 
 ## Layout
 
-- `PROTOCOL.md` — the full wire protocol (message formats, signatures,
-  verification rules, security model).
-- `docs/FUTURE.md` — work that is not built. The only list.
-- `docs/TRANSPORTS.md` — the job transports as shipped: email (default),
-  file, core NATS, and the DTLS session binding (off unless
-  enabled — it is the one transport that listens). Everything
-  past those in that file is design notes, not code.
-- `docs/SAFEGUARDS.md` — how to run this without getting burned: the
-  non-negotiables, containment, the Oracle as a safeguard, and what
-  to do when something goes wrong.
-- `docs/` — the long shelf: the threat model and security gaps,
-  configuring the Oracle, the extensions walkthrough, fuzzing
-  (`docs/fuzzing.md`), and the four manuals above. Beneath it:
-  `docs/design/` (design records: opinions and self-learning,
-  remediation, the approval gate, asymmetric signing),
-  `docs/ietf/` (the Internet-Drafts), `docs/reports/` (dated
-  coverage and mutation reports), and `docs/archive/`
-  (historical notes, kept for the record; not current guidance).
-- `runner/runner.py` — the agent. Polls, verifies, executes,
-  replies. No dependencies beyond the Python 3.9+ standard library.
-  Two pieces of it now live beside it and are bound back onto it:
-  `runner/verify.py` (signing, verification, secrets, key policies,
-  audience — PROTOCOL.md sections 4, 5, 14) and `runner/board.py`
-  (the task board, section 13). `runner/platformcard.py` is the
-  card a pong and the DTLS greeting carry; `runner/textutil.py` the
-  text helpers they share.
-- `runner/transports.py` — the transport-extension contract
-  (v1), discovery, and supervision: the core is transport-blind,
-  and email, the watched folder, core NATS, and the DTLS
-  listener all run as supervised extension programs under
-  `runner/transport_extensions/`, enabled by the `transports`
-  config key.
-- `runner/extsources.py` — extension sources: the first time an
-  extension runs, its own code and the upstream sources and specs
-  its `sources.json` declares reach the Oracle — fetched in the
-  background, held to the build's SHA-384 pins, never executed,
-  and under the disclosure rule (`docs/extensions.md`, "Sources").
-- `runner/opinion.py` — the Oracle's opinion: the pre-run checks,
-  the prediction, and the one mechanical repair.
-- `runner/learning.py` — the self-learning ledger: frozen calls,
-  scored outcomes, and the lessons the next opinion reads.
-- `runner/remediation.py` — the running-job monitor: tripwires,
-  quarantine, antivirus referral, the page.
-- `runner/install.py` — installs it as a boot-start service: systemd
-  (Linux), launchd (macOS), cron @reboot (FreeBSD), Scheduled Task
-  (Windows).
-- `runner/config.example.json` — copy to `config.json` and fill in.
-- `runner/cloud/send_job.py` — cloud-side helper: builds signed job messages,
-  verifies result messages. (Your SI uses this logic when dispatching jobs.)
-- `runner/tests/` — the suite: the real runner driven against fake
-  IMAP/SMTP servers and a fake NATS broker.
-- `docs/RUNBOOK.md` — step-by-step instructions (written for a 5-year-old):
-  cloning, pushing, cutting a release, installing, sending a job.
-- `runner/tools/make_snapshot.py` — packs the whole project into every
-  release: each install archive carries `project/` (every tracked
-  file, the full git history as a bundle, and the build's CI facts
-  and test results, indexed by `project/PROJECT-SNAPSHOT.md`), and
-  the same snapshot ships alone as
-  `homing-pigeon-project-<version>.tar.gz`. An installed runner
-  keeps it in its state dir, so the Oracle can read the source, the
-  tests, and the CI that built it without a network.
-- `runner/tools/pin_extension_sources.py` — the release job's pins: every
-  declared extension source resolved to a commit and hashed,
-  shipped in the snapshot as `project/EXTENSION-SOURCES.lock.json`
-  (the sources themselves never ship; the boxes fetch them).
-- `extensions/` — the shipped extensions: 28 folders, from the
-  lab-results sense to the IDS feeds; 25 of them are the pinned
-  catalog in `docs/extensions.md`.
-- `docs/hardening/` — opt-in OS hardening: a systemd unit, an
-  AppArmor profile, an SELinux module, and Windows notes.
-- `.github/` — CI: the workflows, the container images in
-  `.github/docker/`, and the CI pins in `.github/requirements-ci.txt`.
-  The build and CI scripts are in `runner/tools/`.
+`PROTOCOL.md` is the wire protocol, `runner/` the code, `extensions/` the shipped extensions, `docs/` the long shelf and `.github/` the CI. The file-by-file map is in [docs/LAYOUT.md](docs/LAYOUT.md).
 
 ## Setup
 
@@ -500,109 +376,15 @@ secret, first job.
 
 ## How scripts run
 
-Jobs carry a `script` (or `script_url`) plus an optional `interpreter`
-list, e.g. `["bash"]` or `["pwsh", "-File"]`. The runner writes the
-script to the job's work dir and runs `<interpreter...> script <args...>`.
-Defaults: PowerShell on Windows, `sh` elsewhere; override per-install
-with `default_interpreter` in config.json, per-job with `interpreter`
-in the job (`send_job.py new --interpreter '["bash"]'`).
-
-**Ask before you guess.** A `ping` job's result carries a platform
-card at the tier the owner set (`pong_platform`, default `family`):
-the OS family, the default interpreter, and the protocol versions
-the runner speaks. Ping first and the interpreter-mismatch class of
-failure never happens; the same card rides the DTLS greeting.
-PROTOCOL.md section 3.2.
+A job carries a `script` and an optional `interpreter`; the default is PowerShell on Windows and `sh` elsewhere, and a `ping` first tells you which one a box has. Details are in [docs/SCRIPTS.md](docs/SCRIPTS.md).
 
 ## Sending a job (any SI)
 
-The runner is SI-agnostic: anything that can send email to the runner's
-mailbox and sign the body can drive it — your SI of choice, a cron
-script, whatever. The SI needs the `shared_secret` string from your
-`config.json` — the random value the installer generated, not the
-mailbox password. Then:
-
-```bash
-python3 runner/cloud/send_job.py new --kind ping --secret <the-string>
-# prints: subject line, blank line, signed body -> send as email to the runner mailbox
-
-python3 runner/cloud/send_job.py new --kind exec --script-file job.sh \
-  --interpreter '["bash"]' --file data.csv=https://... --timeout 300 \
-  --arg --verbose --env MODE=ci --secret <the-string>
-```
-
-`--arg` and `--env KEY=value` are repeatable. Two more subcommands
-drive the task board (PROTOCOL.md section 13): `send_job.py
-task-submit --task-id <id> --priority 1 --secret <the-string>` opens a
-task, and `send_job.py task-request --worker-id <name> --secret
-<the-string>` pulls one. Both take `--reply-to` so the ack or the
-offer lands in your inbox instead of the runner's, and `--cleartext`
-with the same meaning as for `new`.
-
-Or paste the string to your SI in chat — it composes, signs, and sends
-the job message itself, and reads the result message when it arrives. Large files
-are uploaded to cloud storage first; the job message carries the URLs.
-
-Verify a result body (results are encrypted by default, so pass
-the job id from the result's subject line to decrypt it):
-
-```bash
-python3 runner/cloud/send_job.py verify --secret <the-string> --job-id <id> result.txt
-```
-
-The `--job-id` can be left off only for a cleartext result.
+Anything that can email the runner's mailbox and sign the body can drive it: your SI, a cron script, whatever, using `runner/cloud/send_job.py` and the `shared_secret` from your `config.json`. Commands and verification are in [docs/SENDING.md](docs/SENDING.md).
 
 ## Testing
 
-**Watch before you trust.** The runner is fully inspectable — these flags
-exist so you can audit everything it would do before it does it:
-
-```bash
-python3 runner/runner.py --config config.json --once --dry-run --verbose
-# verifies signatures, prints what each job WOULD do, executes nothing,
-# sends nothing, changes nothing (mail stays unseen)
-```
-
-| Flag | What it does |
-|------|--------------|
-| `--dry-run` | Verify and describe; execute nothing, send nothing |
-| `--workers COUNT` | Concurrent job executions (default 1) |
-| `-v`, `--verbose` | Decision lines: every poll, ingest, wake-gate, judge and board call, with reasons. `-vv` adds more; `--quiet` turns them off. Also a config key: `"verbose": true` |
-| `--pdb` | Drop into pdb on unhandled exceptions |
-| `--no-send` | Execute, but log results instead of emailing them |
-| `--once` | Single poll cycle, then exit |
-| `--inspect {board,budget,job,redact,sources}` | Read local Oracle state and exit; no mailbox |
-| `--audit-report [--since 14d|48h] [--feature NAME]` | Summarize the security audit log and exit; no mailbox, read-only. `--feature` narrows it to one control's entries |
-| `--posture` | Report the runner's security posture (exit 0/1/2) and exit; no mailbox |
-| `--run-variant FILE` | Run one locally supplied fuzz variant job from FILE through validation and confined execution, print its outcome as JSON, and exit; no mailbox. The job-fuzz sense's execution door: variants are unsigned local artifacts, admitted only here, never through the job path |
-| `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. Turns are appended to `oracle-chat.jsonl` in the base dir (1 MiB, then one backup). See `docs/CONTRIBUTING.md` (maintainer notes: the `--oracle` flag). |
-| `--poll-interval SECONDS`, `--timeout SECONDS`, `--judge MODE`, `--dag-mode MODE`, `--oracle-mode MODE`, … | One-process config overrides: one flag per key, `config.json` untouched, and a flag beats a later config edit. The full map is in `--help` and `docs/configuring-oracle.md` |
-
-`install.py` accepts the common run flags — `--poll-interval`,
-`--timeout`, `--workers`, `--max-output-bytes`, `--dry-run`,
-`--verbose` — and bakes them into the installed
-service, so the agent on boot runs exactly what you tested:
-`python3 runner/install.py --verbose --poll-interval 30`.
-
-```bash
-python3 -m unittest discover -s runner/tests -t .
-```
-
-The suite drives the real runner code against fake IMAP/SMTP servers:
-ping roundtrip, script execution, timeout kill, poison-job rejection,
-signature/tamper rejection, any-sender acceptance.
-
-End-to-end without your SI:
-
-1. `python3 runner/cloud/send_job.py new --kind ping --secret <the-string>` → copy the
-   subject + body.
-2. From any email account, send it to the
-   runner mailbox.
-3. On the target machine: `python3 runner/runner.py --config config.json --once`.
-4. A result message should arrive in the mailbox (or at the job's
-   `reply_to` address, if you set one). It arrives as an encrypted
-   envelope; decrypt it with `verify --job-id` (above) and the
-   result inside says `stdout: "pong"`.
+The runner is fully inspectable, so audit what it would do before it does it, and run the suite with `python -m unittest discover -s runner/tests -t .`. The flags and the suite notes are in [docs/TESTING.md](docs/TESTING.md).
 
 ## Security notes
 

@@ -20029,7 +20029,7 @@ class TestSysmonFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         "/var/log/messages"] and poll_interval_sec
         60. Neither key is a numeric registry row
         (sysmon-feed has no row in
-        tests/defaults_registry.py), so Decision 1's
+        runner/tests/defaults_registry.py), so Decision 1's
         default-on-unusable policy for numeric
         readers does not name a shape rule for them;
         this class pins the observed readings
@@ -20301,7 +20301,7 @@ class TestFalcoFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         docstring saying the same of
         read_new_events(). log_paths is not a
         numeric registry row (falco-feed's only
-        row in tests/defaults_registry.py is
+        row in runner/tests/defaults_registry.py is
         episode_cooldown_sec), so Decision 1's
         default-on-unusable policy for numeric
         readers does not name a shape rule for it;
@@ -20738,7 +20738,7 @@ class TestSuricataFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         Suricata's own: 1 is high, 2 is medium, 3
         is info. log_paths is not a numeric
         registry row (suricata-feed's only row in
-        tests/defaults_registry.py is
+        runner/tests/defaults_registry.py is
         episode_cooldown_sec), so Decision 1's
         default-on-unusable policy for numeric
         readers does not name a shape rule for it;
@@ -21244,7 +21244,7 @@ class TestWazuhFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         pair re-arming once episode_quiet_sec has
         passed. log_paths is not a numeric registry
         row (wazuh-feed's only row in
-        tests/defaults_registry.py is
+        runner/tests/defaults_registry.py is
         episode_quiet_sec), so Decision 1's
         default-on-unusable policy for numeric
         readers does not name a shape rule for it;
@@ -21824,7 +21824,7 @@ class TestOsqueryFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         which files and re-arms the add. log_paths
         is not a numeric registry row (osquery-
         feed's only row in
-        tests/defaults_registry.py is filed_cap),
+        runner/tests/defaults_registry.py is filed_cap),
         so Decision 1's default-on-unusable policy
         for numeric readers does not name a shape
         rule for it; this class pins the observed
@@ -22426,7 +22426,7 @@ class TestZeekFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         current time arrives as readings["now"]
         and it never reads a clock. log_paths is
         not a numeric registry row (zeek-feed's
-        rows in tests/defaults_registry.py are
+        rows in runner/tests/defaults_registry.py are
         the four numeric tunables), so Decision
         1's default-on-unusable policy for
         numeric readers does not name a shape
@@ -25762,7 +25762,7 @@ class TestFailedLoginWatchPathsAndDecideFifteenShapes(unittest.TestCase):
         processed in timestamp order. log_paths
         is not a numeric registry row
         (failed-login-watch's rows in
-        tests/defaults_registry.py are
+        runner/tests/defaults_registry.py are
         burst_count and window_sec), so Decision
         1's default-on-unusable policy for numeric
         readers does not name a shape rule for
