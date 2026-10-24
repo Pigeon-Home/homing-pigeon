@@ -47,7 +47,7 @@ jobs:
           fi
       - name: the adapters still read what upstream writes
         if: steps.diff.outputs.moved == 'true'
-        run: python3 -m unittest -v tests.test_upstream_pins tests.test_extensions
+        run: python3 -m unittest -v runner.tests.test_upstream_pins runner.tests.test_extensions
       - name: commit the refreshed pins to main
         if: steps.diff.outputs.moved == 'true'
         run: |

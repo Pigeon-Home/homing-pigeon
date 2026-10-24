@@ -5,7 +5,7 @@
 The VM campaign of 2026-10-22/23 found fifty-six places where a
 documented default was promised and the code delivered something
 else when the key was present but not a sane number
-(tests/test_doc_default_divergences.py). Three shapes covered
+(runner/tests/test_doc_default_divergences.py). Three shapes covered
 fifty of them:
 
 - JSON ``true``/``false`` read as 1 and 0, because ``bool`` is an

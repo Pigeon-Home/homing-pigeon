@@ -1,7 +1,7 @@
 # idea321
 
 The pipe bomb is the fork bomb. The unit test is the pair in
-[tests/test_flag321_obfuscated.py](../../../tests/test_flag321_obfuscated.py):
+[runner/tests/test_flag321_obfuscated.py](../../../tests/test_flag321_obfuscated.py):
 the exact string `:(){ :|:& };:` is denied, and the same
 string with one space is not. The function under test is
 `judge_job`. It looks for four exact substrings in `script`

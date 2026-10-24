@@ -7,7 +7,7 @@ name: minimal-userland
 # syntax) is left alone, and every repair is stated in the result.
 # The run fails if the suite skips: a skip is not a proof. x86_64
 # and arm64 (the Raspberry Pi's architecture, and the proof the
-# Pi Light archive points at). See tests/test_minimal_userland.py.
+# Pi Light archive points at). See runner/tests/test_minimal_userland.py.
 on:
   push:
     branches: [main]

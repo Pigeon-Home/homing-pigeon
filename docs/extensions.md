@@ -150,7 +150,7 @@ and the suite fails past it.
 Three things are checked, and none needs the network:
 
 - **The tree is whole.** `.github/tools/fetch_upstream.py --check` (and
-  `tests/test_upstream_pins.py`) fail when a pin moved without a
+  `runner/tests/test_upstream_pins.py`) fail when a pin moved without a
   fetch, a file was edited by hand, a file sits under `upstream/`
   the manifest does not list, or the budget is spent. The build
   runs the check.
@@ -674,13 +674,13 @@ Starting from a clone of this repository:
    declaration as context.
 
 Testing: the contract this document states is the contract
-`tests/test_extensions.py` pins — manifest validation, the
+`runner/tests/test_extensions.py` pins — manifest validation, the
 api_version matrix, the undeclared-signal rejection, the
 glossary in the answer, and the example loading clean. Run it
 while you develop:
 
 ```bash
-python3 -m unittest tests.test_extensions
+python3 -m unittest runner.tests.test_extensions
 ```
 
 The agent's `--dry-run` flag also describes incoming alerts

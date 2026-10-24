@@ -13,7 +13,7 @@ Usage:
 """
 # Python 3.9 is the floor (pyproject): PEP 604 unions in annotations
 # must not be evaluated at definition time. Found by the platform
-# matrix on Rocky 9 and python:3.9; see tests/test_build_config.py.
+# matrix on Rocky 9 and python:3.9; see runner/tests/test_build_config.py.
 from __future__ import annotations
 
 import argparse
@@ -33,7 +33,7 @@ import zipfile
 from xml.sax.saxutils import escape
 
 # Frozen binaries cannot import the package the same way a live run can.
-# The constant is the source of truth for --version; tests/test_version.py
+# The constant is the source of truth for --version; runner/tests/test_version.py
 # fails the build if it drifts from pyproject.toml.
 __version__ = "3.12.60"
 

@@ -394,7 +394,7 @@ at it. The host never needs to know.
 
 Checked against a working simulation (Windows-shaped profile, no live
 mailbox, no live model). The same steps are locked in
-`tests/test_first_run_scenario.py`. The strings there are the ones
+`runner/tests/test_first_run_scenario.py`. The strings there are the ones
 the simulation used.
 
 1. First launch with no `config.json`, and no console, exits 2 and

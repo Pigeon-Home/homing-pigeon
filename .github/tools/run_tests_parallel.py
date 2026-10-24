@@ -13,13 +13,13 @@ over its shard, and this parent fails if any worker fails.
 Sharding is by measured test count per module (longest-processing-
 time greedy), so a few very large scenario/property modules do not
 pile onto one worker while the others idle. Discovery matches
-``python -m unittest discover -s tests -t .`` exactly -- the
+``python -m unittest discover -s runner/tests -t .`` exactly -- the
 parent discovers the same suite, counts it per module, and hands
 each worker the module names it would have run itself.
 
 Usage:
     python .github/tools/run_tests_parallel.py [--jobs N]
-                                       [--start-dir tests]
+                                       [--start-dir runner/tests]
                                        [--top-level-dir .]
                                        [--durations N]
                                        [--wall-clock MINUTES]
@@ -447,7 +447,7 @@ def main(argv=None):
     parser.add_argument("--jobs", type=int,
                         default=os.cpu_count() or 1,
                         help="worker processes (default: CPU count)")
-    parser.add_argument("--start-dir", default="tests")
+    parser.add_argument("--start-dir", default="runner/tests")
     parser.add_argument("--top-level-dir", default=".")
     parser.add_argument("--durations", type=int, default=0, metavar="N",
                         help="each shard lists its N slowest tests "

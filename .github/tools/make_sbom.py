@@ -68,7 +68,9 @@ def _source_files(root):
     for top in SOURCE_DIRS:
         base = os.path.join(root, top)
         for dirpath, dirnames, filenames in os.walk(base):
-            dirnames[:] = [d for d in dirnames if d != "__pycache__"]
+            # The suite (runner/tests/) is not shipped.
+            dirnames[:] = [d for d in dirnames if d != "__pycache__"
+                           and not (dirpath == base and d == "tests")]
             for name in filenames:
                 if name.endswith(".py"):
                     found.append(os.path.join(dirpath, name))

@@ -9,9 +9,9 @@ set -e
 cd "$(dirname "$0")/../.."
 PY="${PYTHON:-$HOME/workspace/.pfvenv/bin/python}"
 exec "$PY" -m pytest \
-    tests/test_job_fuzz.py \
-    tests/test_run_variant.py \
-    tests/test_dozen_extensions.py \
-    tests/test_extensions.py \
-    tests/test_local_signals.py \
+    runner/tests/test_job_fuzz.py \
+    runner/tests/test_run_variant.py \
+    runner/tests/test_dozen_extensions.py \
+    runner/tests/test_extensions.py \
+    runner/tests/test_local_signals.py \
     -q "$@"

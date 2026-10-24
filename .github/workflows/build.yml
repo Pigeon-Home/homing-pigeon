@@ -20,7 +20,7 @@ on:
 # Default-deny (OneFuzz lift, 2026-10-18): no job inherits the
 # token's default permissions. Each job below grants itself
 # exactly what it uses -- contents: read to check out, and the
-# two publish jobs their scoped writes. tests/test_build_config.py
+# two publish jobs their scoped writes. runner/tests/test_build_config.py
 # pins this block and the per-job grants.
 permissions: {}
 
@@ -60,7 +60,7 @@ jobs:
       - name: upstream files the feed senses read are pinned and whole
         run: python3 .github/tools/fetch_upstream.py --check
       # bwrap is what the Linux sandbox is built on. Without it the
-      # EnforceTest proofs in tests/test_confinement.py skip and
+      # EnforceTest proofs in runner/tests/test_confinement.py skip and
       # "the sandbox walls the job in" is never shown in CI. The
       # runner's userns works out of the box (probed on PR #87); the
       # sysctl is a belt for Ubuntu images that gate it.
@@ -90,7 +90,7 @@ jobs:
       - name: run the suite
         run: |
           set -o pipefail
-          python .github/tools/suite_wall_clock.py --minutes 20 -- discover -s tests -t . -v --durations 25 2>&1 | tee test-output.log
+          python .github/tools/suite_wall_clock.py --minutes 20 -- discover -s runner/tests -t . -v --durations 25 2>&1 | tee test-output.log
       # A skipped proof is green from the outside. On this box the
       # sandbox proofs must run; any other skip is listed, not fatal.
       # --annotate is the piece worth keeping from diag/bwrap-suite:
@@ -321,7 +321,7 @@ jobs:
     # Repair on a box with no bash is not proved here and not
     # copied into this archive. That proof is the arm64 leg of
     # .github/workflows/minimal-userland.yml, which runs
-    # tests/test_minimal_userland.py inside .github/docker/minimal-userland.
+    # runner/tests/test_minimal_userland.py inside .github/docker/minimal-userland.
     runs-on: ubuntu-22.04-arm
     permissions:
       contents: read

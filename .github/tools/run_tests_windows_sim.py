@@ -2,7 +2,7 @@
 """Run the test suite under the simulated Windows surface.
 
     python .github/tools/run_tests_windows_sim.py [--pattern 'test_*.py']
-                                          [--start-dir tests]
+                                          [--start-dir runner/tests]
                                           [--top-level .]
                                           [--describe]
 
@@ -80,7 +80,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Run the suite under the simulated Windows surface.")
     parser.add_argument("--pattern", default="test_*.py")
-    parser.add_argument("--start-dir", default="tests")
+    parser.add_argument("--start-dir", default="runner/tests")
     parser.add_argument("--top-level", default=".")
     parser.add_argument("--describe", action="store_true",
                         help="print the surface and exit")

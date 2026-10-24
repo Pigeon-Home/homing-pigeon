@@ -57,7 +57,7 @@ def main(argv=None):
         description="Run the suite with shuffled test order.")
     parser.add_argument("--seed", type=int, default=20261019)
     parser.add_argument("--pattern", default="test_*.py")
-    parser.add_argument("--start-dir", default="tests")
+    parser.add_argument("--start-dir", default="runner/tests")
     parser.add_argument("--top-level", default=".")
     args = parser.parse_args(argv)
 

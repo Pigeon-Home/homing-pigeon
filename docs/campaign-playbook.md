@@ -54,8 +54,8 @@ extension's 2-second poll on both legs).
 | shadow    | read /etc/shadow, report the read's exit code            | the script's own report is in the output |
 
 Each completed cycle becomes ONE test method in
-`tests/test_campaign_loop_cycles.py` (first campaign;
-`tests/archive/campaign-1/` after the core cut), replaying the
+`runner/tests/test_campaign_loop_cycles.py` (first campaign;
+`runner/tests/archive/campaign-1/` after the core cut), replaying the
 exact script its cycle sent — rebuilt from cycle number and
 variant exactly as the loop builds it — and asserting the recorded
 exit code and the deterministic marker. Non-deterministic output
@@ -70,7 +70,7 @@ each result view, protected-path reads, a write outside the work
 dir, timeout kill timing, exit-code preservation, output
 truncation at the configured cap, a tampered envelope, a duplicate
 delivery, a cleartext job at the default posture). Battery cases
-get bespoke contract tests in `tests/test_campaign_phase1.py`.
+get bespoke contract tests in `runner/tests/test_campaign_phase1.py`.
 The assurance target is that the basic OS protections — the ones
 that protect things like a GitHub credential — actually work.
 Tests are designed adversarially against our own system and many
@@ -102,12 +102,12 @@ against one key. This is not input fuzzing and must not become
 it: the shapes are the ordinary ways a configuration goes wrong
 when a person types it or a tool emits it.
 
-Since the defaults registry (`tests/defaults_registry.py`), the
-hunt is table-driven: `tests/test_defaults_table_hunt.py` walks
+Since the defaults registry (`runner/tests/defaults_registry.py`), the
+hunt is table-driven: `runner/tests/test_defaults_table_hunt.py` walks
 the registry and probes every row with the shapes, asserting the
 row's policy. A new documented key gets coverage by adding a
 registry row. The hand-written divergence tests
-(`tests/test_doc_default_divergences.py`) stay as the record.
+(`runner/tests/test_doc_default_divergences.py`) stay as the record.
 
 ### The present-but-invalid policy (Decision 1, 2026-10-23)
 
@@ -217,7 +217,7 @@ a tag is the frozen branch with nothing to delete later), then
 bug crushing on the owner's word, then group the failures by
 area and component and compile the CORE group of tests (the
 eight cycle shapes as parameterized scenario tests, with the
-per-cycle record archived under `tests/archive/campaign-1/`
+per-cycle record archived under `runner/tests/archive/campaign-1/`
 out of default discovery), then the second run against the
 registry — hunting the rows the registry says have no test, plus
 the environment axes (protected_symlinks/protected_regular,

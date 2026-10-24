@@ -29,5 +29,5 @@ query-filters:
 # server speaks or it cannot see that certificate.
 name: "Homing Pigeon"
 paths-ignore:
-  - tests/**
+  - runner/tests/**
   - extensions/**

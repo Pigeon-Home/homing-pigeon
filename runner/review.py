@@ -51,7 +51,7 @@ def _note(pid, tier, severity, note):
 _FILENAME_RE = re.compile(
     r"""['"]([^'"]*?[A-Za-z0-9_][A-Za-z0-9_.\-]*\.(?:py|sh|ps1|json|yaml|yml|toml|csv|txt|log|sql|js|ts))['"]"""
 )
-# Kept for the differential test in tests/test_review_perf.py, which
+# Kept for the differential test in runner/tests/test_review_perf.py, which
 # pins the new scan below to the old pattern's behavior.
 _OLD_FILENAME_RE = _FILENAME_RE
 

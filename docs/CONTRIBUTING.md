@@ -23,9 +23,9 @@ welcome but held to a high bar. Here's how to do it well.
 2. **Cross-platform or it doesn't ship.** Every change must work on
    Linux, macOS, FreeBSD, and Windows. Use `os.name` / `sys.platform`
    branches, and think about what each branch does on the other three.
-3. **Tests or it didn't happen.** `python -m unittest discover -s tests`
+3. **Tests or it didn't happen.** `python -m unittest discover -s runner/tests`
    must pass. New behavior gets a new test with the fake IMAP/SMTP
-   harness in `tests/test_runner.py`.
+   harness in `runner/tests/test_runner.py`.
 4. **No secrets in the repo.** Not in code, not in tests, not in docs,
    not in commit messages. Test credentials stay obviously fake
    (`runner@example.com` and friends).
@@ -36,7 +36,7 @@ welcome but held to a high bar. Here's how to do it well.
    (`fix-timeout-race`, `add-heartbeat`, ...).
 2. Make your change, add tests, update docs (README, PROTOCOL.md,
    docs/RUNBOOK.md — whichever your change affects).
-3. Run the full suite: `python -m unittest discover -s tests -v`.
+3. Run the full suite: `python -m unittest discover -s runner/tests -v`.
 4. Open a pull request against `main`. Describe **what** changed,
    **why**, and **what you tested**. If it touches anything listed
    under "Before you write code," flag it in the description.
@@ -72,12 +72,12 @@ if the version is wrong, bump again and tag the next patch version.
 
 Bump `runner/_version.py` (`__version__`) in the same commit. Every
 CLI reports it via `--version`, and the frozen binaries cannot read
-`pyproject.toml` — `tests/test_version.py` fails the build if the two
+`pyproject.toml` — `runner/tests/test_version.py` fails the build if the two
 drift.
 
 Two more files carry the version and move in the same commit:
 `runner/install.py` (`__version__`) and the pin in
-`tests/test_install_edges.py`. A release commit touches all four.
+`runner/tests/test_install_edges.py`. A release commit touches all four.
 
 ### The looking is the gate
 
@@ -145,7 +145,7 @@ through the result policy, the judge, redaction, and the board if
 those are configured. There is no config key and no CLI flag that
 puts the runner back onto a path that skips the Oracle.
 
-`tests/test_protocol_and_edges.py` still asserts that a generated
+`runner/tests/test_protocol_and_edges.py` still asserts that a generated
 unit file does not contain the string `--no-oracle`. That test is a
 guard so the installer does not start baking the dead flag into the
 service again. Leave the assertion. Do not add the flag back to
@@ -395,7 +395,7 @@ if not cfg.get("workspace_root"):
     log("confinement is off; workspace_root is not set", "WARN")
 ```
 
-`tests/test_oracle_chat.py` calls `log_startup` with a config that
+`runner/tests/test_oracle_chat.py` calls `log_startup` with a config that
 has no `workspace_root` and asserts it returns and that the warning
 is printed. That test is there so the `NameError` cannot come back
 quietly.
@@ -420,7 +420,7 @@ placeholder back into that workflow.
 
 ## Tests that lock the behavior
 
-`tests/test_oracle_chat.py`:
+`runner/tests/test_oracle_chat.py`:
 
 - `make_oracle_server` on `0.0.0.0` raises `ValueError`.
 - `oracle_context` reads a retained job and does not follow a path

@@ -2,7 +2,7 @@
 # Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c
 """Run unittest under a wall clock that names the test it killed.
 
-    python .github/tools/suite_wall_clock.py --minutes 20 -- discover -s tests -t . -v
+    python .github/tools/suite_wall_clock.py --minutes 20 -- discover -s runner/tests -t . -v
 
 Everything after ``--`` is handed to ``unittest.main`` unchanged, so
 this is ``python -m unittest ...`` with one addition: when the run is

@@ -14,7 +14,7 @@ step. One implementation for all three.
 """
 # Python 3.9 is the floor (pyproject): PEP 604 unions in annotations
 # must not be evaluated at definition time. Found by the platform
-# matrix on Rocky 9 and python:3.9; see tests/test_build_config.py.
+# matrix on Rocky 9 and python:3.9; see runner/tests/test_build_config.py.
 from __future__ import annotations
 import getpass
 import imaplib

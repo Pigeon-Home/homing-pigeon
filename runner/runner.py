@@ -1432,7 +1432,7 @@ _CONTENT_CALL_ID_PREFIX = "content-"
 # keeps its disclosure-boundary role on purpose. The shared
 # how-to-answer rules (watch sections, the notable: line, never
 # invent, never reveal secrets) live in both prompts; the acting
-# charter lives only here. tests/test_oracle_charter.py pins it.
+# charter lives only here. runner/tests/test_oracle_charter.py pins it.
 ASK_AGENT_SYSTEM = (
     "You are the Oracle, the owner's local debugging partner on this "
     "machine. The person talking to you is at this computer, and your "

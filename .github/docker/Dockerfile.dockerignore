@@ -3,3 +3,5 @@ __pycache__/
 .git/
 dist/
 *.egg-info/
+# The suite is not part of the published image.
+runner/tests/

@@ -2,7 +2,7 @@
 name: platform-matrix
 
 # Proof of work across hosts. One portable proof
-# (tests/test_platform_proof.py: a signed job runs under the platform
+# (runner/tests/test_platform_proof.py: a signed job runs under the platform
 # default and under this Python, a bad signature yields no result, an
 # absent interpreter is repaired and stated, non-ASCII survives the
 # locale, the result has its members) runs on every leg below, and a
@@ -25,7 +25,7 @@ name: platform-matrix
 # whole corpus, including those scarce runners. A job-level `if:`
 # cannot read the matrix context, so the plan job feeds the matrices
 # via fromJSON. The README's "Proven platforms" table is pinned to
-# the leg names in that file by tests/test_build_config.py.
+# the leg names in that file by runner/tests/test_build_config.py.
 on:
   push:
     branches: [main]
@@ -109,7 +109,7 @@ jobs:
         env:
           HP_PLATFORM_PROOF: "1"
         run: |
-          python -m unittest tests.test_platform_proof -v 2>&1 | tee proof.log || true
+          python -m unittest runner.tests.test_platform_proof -v 2>&1 | tee proof.log || true
           python .github/tools/skip_guard.py proof.log --no-skips --require-ok --annotate
           grep PLATFORM-REPORT proof.log | tail -1 >> "$GITHUB_STEP_SUMMARY"
 

@@ -1,0 +1,16 @@
+# one file per sitting. 60 minute cutoff.
+runner/tests/test_campaign_loop_cycles.py
+runner/tests/test_doc_default_divergences.py
+runner/tests/test_graceful_failure.py
+runner/tests/test_notable_access.py
+runner/tests/test_negative_concurrency.py
+runner/tests/test_linux_platform.py
+runner/tests/test_extension_poison.py
+runner/tests/test_oracle_intake_fuzz.py
+runner/tests/test_job_fuzz.py
+runner/tests/test_dtls.py
+runner/tests/test_concurrency_poison.py
+runner/tests/test_transport_log_relay_fuzz.py
+runner/tests/test_fuzz_guided.py
+runner/tests/test_campaign_loop_variants.py
+runner/tests/test_fuzz_parsers.py

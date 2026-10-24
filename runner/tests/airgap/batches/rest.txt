@@ -1,0 +1,10 @@
+# gated files and the five flag321 files
+runner/tests/test_confinement.py
+runner/tests/test_minimal_userland.py
+runner/tests/test_platform_proof.py
+runner/tests/test_runbook_constraints.py
+runner/tests/test_flag321.py
+runner/tests/test_flag321_indirect.py
+runner/tests/test_flag321_long_scripts.py
+runner/tests/test_flag321_obfuscated.py
+runner/tests/test_flag321_scenarios.py

@@ -44,7 +44,7 @@ Those values live on the runner host. They do not travel through the SI chat.
    - `ENTERPRISE.md` — a placeholder the owner keeps as-is; it ships
      in the sdist because the root-doc guard test copies every root
      `.md`.
-   - `CHANGELOG.md`, `docs/reports/**`, `docs/archive/**` — historical
+   - `docs/CHANGELOG.md`, `docs/reports/**`, `docs/archive/**` — historical
      records; banners mark them, content is not re-audited.
 7. **Questions go in `docs/QUESTIONS.md`, not through the owner.** A
    question from one agent to another, or to the owner — a policy to
@@ -58,23 +58,26 @@ Those values live on the runner host. They do not travel through the SI chat.
 
 ## Where things live
 
-The root holds the manuals, `pyproject.toml`, and six folders. Write
+The root holds the manuals, `pyproject.toml`, and four folders. Write
 new paths against this layout; the old ones are gone, with no shims.
 
 | Folder | What |
 |--------|------|
-| `runner/` | The runner and the Oracle. `runner/cloud/` is the cloud-side helpers (`send_job.py`, `send_dtls.py`) |
+| `runner/` | The runner and the Oracle. `runner/cloud/` is the cloud-side helpers (`send_job.py`, `send_dtls.py`). `runner/tests/` is the suite, kept out of the wheel and the image; `runner/tests/airgap/` (once `topaz/`) and `runner/tests/archive/` sit beside it, outside discovery |
 | `extensions/` | The shipped extensions, one folder each |
-| `tests/` | The suite |
-| `docs/` | Everything else to read. `docs/hardening/` is the opt-in OS hardening templates |
-| `tools/` | Work areas for the agents: `tools/airgap/` (once `topaz/`) |
+| `docs/` | Everything else to read. `docs/hardening/` is the opt-in OS hardening templates, `docs/CHANGELOG.md` the release record |
 | `assets/` | Images |
 | `.github/` | CI: `workflows/`, `tools/` (the build and CI scripts), `docker/` (the published image and the CI test image), `requirements-ci.txt` (the CI pins) |
 
-There is no `examples/`, root `cloud/`, `hardening/` or `docker/` any
-more, no root `Dockerfile` or `requirements-ci.txt`, and no
-`pyrefly.toml`: its settings are `[tool.pyrefly]` in `pyproject.toml`.
-The build and CI scripts are `.github/tools/`, not the root `tools/`.
+There is no root `tests/`, `tools/`, `examples/`, `cloud/`,
+`hardening/` or `docker/` any more, no root `Dockerfile`,
+`CHANGELOG.md` or `requirements-ci.txt`, and no `pyrefly.toml`: its
+settings are `[tool.pyrefly]` in `pyproject.toml`.
+
+A test finds the tree three levels up
+(`os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))`),
+its module id is `runner.tests.test_<name>`, and the suite runs as
+`python -m unittest discover -s runner/tests -t .`.
 
 ## Sending a job
 

@@ -84,7 +84,7 @@ jobs:
             echo "no earlier tag; nothing to compare"
             exit 0
           fi
-          changed=$(git diff --name-only "$last" HEAD | grep -v -E '^(pyproject\.toml|runner/_version\.py|runner/install\.py|tests/test_install_edges\.py|CHANGELOG\.md)$' || true)
+          changed=$(git diff --name-only "$last" HEAD | grep -v -E '^(pyproject\.toml|runner/_version\.py|runner/install\.py|runner/tests/test_install_edges\.py|docs/CHANGELOG\.md)$' || true)
           if [ -z "$changed" ]; then
             echo "::warning title=same code::$TAG carries the same code as $last (only the version carriers and CHANGELOG changed)"
           else

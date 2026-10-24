@@ -1,6 +1,6 @@
 # Agent-Stamp: 30000f1a-3b4c-4d5e-8f6a-7b8c9d0e1f2a
 #
-# A bare-bones box for tests/test_minimal_userland.py: Alpine, so
+# A bare-bones box for runner/tests/test_minimal_userland.py: Alpine, so
 # /bin/sh is BusyBox ash and bash is not installed. The repair
 # tests need exactly that absence. This image is a test fixture,
 # not a release artifact; the published image is ../Dockerfile.
@@ -15,10 +15,10 @@ RUN ! command -v bash && ! command -v zsh \
 
 RUN adduser -D pigeon
 WORKDIR /app
+# runner/ carries the suite (runner/tests/).
 COPY runner/ ./runner/
-COPY tests/ ./tests/
 RUN chown -R pigeon:pigeon /app
 USER pigeon
 
 ENV HP_MINIMAL_USERLAND=1 PYTHONDONTWRITEBYTECODE=1
-CMD ["python3", "-m", "unittest", "tests.test_minimal_userland", "-v"]
+CMD ["python3", "-m", "unittest", "runner.tests.test_minimal_userland", "-v"]

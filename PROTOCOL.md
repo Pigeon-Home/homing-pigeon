@@ -1119,7 +1119,7 @@ in `allowed_env`**, unless the policy also sets
 `allow_dangerous_env: true` (boolean `true` only — anything else keeps
 the gate shut). The test suite backs this: a pinned script smuggling
 `BASH_ENV` is denied in enforce mode
-(`tests/test_policy_constraints.py`, PinnedScriptTest).
+(`runner/tests/test_policy_constraints.py`, PinnedScriptTest).
 
 A policy may also be attached to the default key under the empty-string
 key ID (`"": {...}`). Violations are rejected like any other bad job:

@@ -51,7 +51,7 @@ artifact, including the wheel. A red suite still cannot
 publish. A tag's wall clock is the slower of the two, not
 the sum.
 
-The portable proof (`tests/test_platform_proof.py`) is the
+The portable proof (`runner/tests/test_platform_proof.py`) is the
 other duplicate, and it is the right size: one signed job,
 one bad signature, one repaired interpreter. It is not the
 suite. Copying the suite onto 41 legs would be the explosion.
@@ -144,9 +144,9 @@ Put it in `.github/platform-legs.json`.
   make the README look busier. The binary job for that OS
   already runs on the push.
 - The proof it runs is `.github/tools/platform_proof.sh` or
-  `tests/test_platform_proof.py`. A skipped proof is a
+  `runner/tests/test_platform_proof.py`. A skipped proof is a
   failure (`--no-skips --require-ok`). Do not add the whole
   suite to the leg.
 - The leg's name has to appear in the README's Proven
-  platforms table. `tests/test_build_config.py` pins that,
+  platforms table. `runner/tests/test_build_config.py` pins that,
   the tier size, and the push filter.

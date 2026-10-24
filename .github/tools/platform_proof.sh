@@ -1,7 +1,7 @@
 #!/bin/sh
 # Agent-Stamp: 30000f1a-3b4c-4d5e-8f6a-7b8c9d0e1f2a
 #
-# Run the portable proof (tests/test_platform_proof.py) on whatever
+# Run the portable proof (runner/tests/test_platform_proof.py) on whatever
 # box this is: install python3 with whichever package manager
 # exists, copy the tree somewhere writable, apply one administrator
 # fat-finger if asked, run, and fail unless every test ran and
@@ -100,7 +100,7 @@ fi
 STAGE="copy tree"
 WORK=${HP_WORK:-$(mktemp -d "${TMPDIR:-/tmp}/hp-proof.XXXXXX")}
 mkdir -p "$WORK"
-cp -R "$SRC/runner" "$SRC/tests" "$SRC/pyproject.toml" "$WORK"/
+cp -R "$SRC/runner" "$SRC/pyproject.toml" "$WORK"/
 mkdir -p "$WORK/.github"
 cp -R "$SRC/.github/tools" "$WORK/.github/"
 cd "$WORK"
@@ -124,5 +124,5 @@ say "mutation: $MUT"
 # ---- 5. run, and demand a full OK ------------------------------------
 STAGE="proof"
 export HP_PLATFORM_PROOF=1 HP_MUTATION="$MUT" PYTHONDONTWRITEBYTECODE=1
-"$PY" -m unittest tests.test_platform_proof -v 2>&1 | tee "$WORK/proof.log" || true
+"$PY" -m unittest runner.tests.test_platform_proof -v 2>&1 | tee "$WORK/proof.log" || true
 "$PY" .github/tools/skip_guard.py "$WORK/proof.log" --no-skips --require-ok --annotate

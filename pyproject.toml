@@ -36,6 +36,8 @@ Changelog = "https://github.com/Pigeon-Home/homing-pigeon/releases"
 
 [tool.setuptools.packages.find]
 include = ["runner*"]
+# The suite lives in runner/tests/ and never ships in the wheel.
+exclude = ["runner.tests", "runner.tests.*"]
 
 [tool.setuptools.package-data]
 runner = ["config.example.json"]
@@ -54,30 +56,34 @@ source_paths = ["runner"]
 # 1567 mutants) extrapolates to ~45-50 min -- too slow for per-push CI.
 # Full runner/ (~10k lines) would be hours. Expand deliberately.
 only_mutate = ["runner/security.py"]
+# The suite sits inside the source path (runner/tests/); it is the
+# oracle that kills mutants, never a mutation target.
+do_not_mutate = ["runner/tests/**"]
 pytest_add_cli_args = [
     "-x",
     "-q",
     "-p", "no:cacheprovider",
     # Timing-sensitive: hostile-regex perf probe (73s); not mutation-relevant.
-    "--deselect", "tests/test_policy_constraints.py::ArgsPatternTimingTest::test_hostile_pattern_rejected_at_parse",
+    "--deselect", "runner/tests/test_policy_constraints.py::ArgsPatternTimingTest::test_hostile_pattern_rejected_at_parse",
 ]
-pytest_add_cli_args_test_selection = ["tests/"]
+pytest_add_cli_args_test_selection = ["runner/tests/"]
 mutate_only_covered_lines = true
 also_copy = [
     # extensions/ carries the shipped extensions, which
-    # tests/test_extensions.py loads from the tree. docs/ includes
+    # runner/tests/test_extensions.py loads from the tree. docs/ includes
     # docs/hardening/; runner/cloud/ comes with source_paths.
     "docs/", "extensions/",
     # .github/ carries the CI pin file (.github/requirements-ci.txt,
-    # which tests/test_build_config.py reads) and the CI tools
-    # (.github/tools/; tests/test_parallel_runner.py imports the
+    # which runner/tests/test_build_config.py reads) and the CI tools
+    # (.github/tools/; runner/tests/test_parallel_runner.py imports the
     # Windows shard runner at load time). mutmut's stats run dies if
     # the mutant tree lacks either. Name the folder once: a nested
     # entry would be copied over a copy.
     ".github/",
     # Root manuals. The doc guards locate the tree from the runner
     # package, and mutmut's copy is only source_paths plus this list
-    # (plus tests/ and pyproject.toml, which it adds itself). Without
+    # (plus pyproject.toml, which it adds itself; the suite in
+    # runner/tests/ comes with source_paths). Without
     # these, stats collection dies on "INSTALL.md not found" before
     # any mutant runs.
     "AGENTS.md", "ENTERPRISE.md",
@@ -107,13 +113,17 @@ select = ["E", "F"]
 "runner/dri.py" = ["E501"]
 # The test suite's idiom: sys.path setup before imports (E402) and
 # long scenario/fixture lines (E501) are deliberate there.
-"tests/**" = ["E402", "E501"]
+"runner/tests/**" = ["E402", "E501"]
 
 [tool.pyrefly]
 # Type-check gate: pyrefly (Meta's Rust checker). `pyrefly check`
 # reads this table from pyproject.toml.
 project-includes = [
     "runner/**/*.py",
+]
+# The suite (runner/tests/) is not part of the type gate.
+project-excludes = [
+    "runner/tests/**",
 ]
 
 # Sibling modules are imported in two forms: `from runner.oauth import X`

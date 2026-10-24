@@ -319,7 +319,7 @@ members of a `"v": 1` message. They are not a separate message version.
 ## Proven platforms
 
 Every leg below runs the same portable proof
-(`tests/test_platform_proof.py`) on every push or nightly: a signed job
+(`runner/tests/test_platform_proof.py`) on every push or nightly: a signed job
 runs under the platform default and under that box's Python, a job
 with a bad signature produces no result at all, a job naming an absent
 interpreter is repaired to the platform default and the result says so,
@@ -360,7 +360,7 @@ leg. Humble and Jazzy are the ROS images a robot on any of
 those puts under its own packages. A JetPack image is not
 pulled. It is several gigabytes and it needs NVIDIA's
 runtime. Fat-fingers are not crossed with every board.
-`tests/test_build_config.py` pins this table to the matrix, so a leg
+`runner/tests/test_build_config.py` pins this table to the matrix, so a leg
 cannot be claimed here without running there. Not on the list: a box
 with no Python at all (BusyBox-only, bare firmware) -- the runner is
 stdlib Python, so that is the floor, not a gap. Also not a leg, and
@@ -466,7 +466,7 @@ pinned by default, and a written disclosure rule lets the owner
 - `runner/config.example.json` — copy to `config.json` and fill in.
 - `runner/cloud/send_job.py` — cloud-side helper: builds signed job messages,
   verifies result messages. (Your SI uses this logic when dispatching jobs.)
-- `tests/` — the suite: the real runner driven against fake
+- `runner/tests/` — the suite: the real runner driven against fake
   IMAP/SMTP servers and a fake NATS broker.
 - `docs/RUNBOOK.md` — step-by-step instructions (written for a 5-year-old):
   cloning, pushing, cutting a release, installing, sending a job.
@@ -585,7 +585,7 @@ service, so the agent on boot runs exactly what you tested:
 `python3 runner/install.py --verbose --poll-interval 30`.
 
 ```bash
-python3 -m unittest discover -s tests -t .
+python3 -m unittest discover -s runner/tests -t .
 ```
 
 The suite drives the real runner code against fake IMAP/SMTP servers:
@@ -657,7 +657,7 @@ The list is [docs/FUTURE.md](docs/FUTURE.md).
 What ships today is what's described above: the agent, the Oracle
 (opinions, self-learning, remediation), four job transports, and
 the example senses. The current release is in
-[CHANGELOG.md](CHANGELOG.md); the version number lives in
+[docs/CHANGELOG.md](docs/CHANGELOG.md); the version number lives in
 `pyproject.toml`, and the message field `"v"` is a different
 number — the protocol's version and the release number move on
 separate tracks.

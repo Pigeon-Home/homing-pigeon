@@ -74,7 +74,7 @@ refused from Claude's seat. Delete the four, or say which to keep.
 
 With the DTLS port and bind and the NATS URL port in the refuse
 class and refusing, `PolicyConflictDivergenceTests` in
-`tests/test_defaults_table_hunt.py` passes as written and its three
+`runner/tests/test_defaults_table_hunt.py` passes as written and its three
 registry rows still carry `probe: policy-conflict`. Proposal: move
 the three rows to `probe: refuse` with `REFUSE_PROBES` entries that
 call `DtlsPipe` (port and bind) and `url_port` (NATS), so the

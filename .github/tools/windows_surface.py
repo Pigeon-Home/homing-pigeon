@@ -66,7 +66,7 @@ build -- an artifact, not a finding. The runner therefore
 pre-imports the stdlib battery (.github/tools/run_tests_windows_sim.py's
 _PREIMPORT) before applying the surface; modules already in
 sys.modules never re-run their import-time branches. In-suite
-use (tests/test_windows_surface.py) gets this for free: by the
+use (runner/tests/test_windows_surface.py) gets this for free: by the
 time a test applies the surface, everything it needs is already
 imported.
 
@@ -92,7 +92,7 @@ What it deliberately does NOT change, and why:
 
 Everything is restored by the returned restore() callable, in
 reverse order, including when apply raised partway. The module
-is importable (the in-suite pins in tests/test_windows_surface.py
+is importable (the in-suite pins in runner/tests/test_windows_surface.py
 use it) and runnable: .github/tools/run_tests_windows_sim.py drives a
 whole suite run under the surface.
 

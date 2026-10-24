@@ -4,7 +4,7 @@
 
 ## Testing
 
-- [ ] `python -m unittest discover -s tests -v` passes
+- [ ] `python -m unittest discover -s runner/tests -v` passes
 - [ ] New behavior covered by a test (or: no new behavior)
 
 ## Security
