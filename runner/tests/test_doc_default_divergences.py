@@ -17206,6 +17206,126 @@ class TestLocalWakeCooldownSecFifteenShapesAtReader(unittest.TestCase):
                         {"local_wake_cooldown_sec": value}),
                     expected)
 
+class TestInferenceTimeoutSecFifteenShapesAtReader(unittest.TestCase):
+    """Second-run hunt coverage: timeout_sec (inference block)
+    itself varied with the fifteen shapes at its single
+    reader (runner/runner.py: _inference_timeout,
+    through confval.integer lo=1, returning an int)
+    for the first time at reader level. The row's
+    registry-named class
+    (TestBogusInferenceTimeoutDefaultsTo180) probed
+    the ask paths (ask_model and ask_model_agent,
+    with a recording opener) for a subset of shapes
+    -- omitted, null, zero, a valid 42, a
+    non-numeric string, a negative value, and
+    infinity -- when the reader still fell back to
+    a hardcoded 60 in its except path; the reader
+    has since moved to confval, and this class
+    pins the full fifteen shapes against the moved
+    reader itself.
+
+    (a) Doc claim (PROTOCOL.md, line 711):
+        "`max_answer_chars` (default 2000),
+        `timeout_sec` (default 180)." The same
+        default is stated in
+        docs/configuring-oracle.md (line 54):
+        "`timeout_sec` (default 180, per-question
+        model timeout; a cold model on a laptop
+        often needs more than 60, and the default
+        model thinks before answering, so long
+        questions can need the full budget)" --
+        60 is named there as the value the 180
+        default exists to avoid. Registry row
+        "timeout_sec (inference block)" (kind
+        integer, default 180, reader
+        runner/runner.py:_inference_timeout,
+        policy default under Decision 1, lo=1,
+        hi=None). This is the inference block's
+        timeout_sec, distinct from the job
+        timeout_sec / default_timeout_sec.
+
+    (b) How it was hunted: step-8 Target 6 (core
+        rows covered only for the shapes their
+        classes exercised). This tick probed
+        _inference_timeout with the fifteen
+        shapes from the table hunt -- omitted,
+        null, empty string, true, false, zero,
+        negative, the explicit default, numeric
+        string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, wrong
+        containers (list and dict) -- plus
+        genuine values, a sub-1 fractional, and
+        non-dict configs.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape reads as the
+        documented default 180 -- omitted, null,
+        empty string, true, false, zero,
+        negative, non-numeric string, huge-int,
+        inf, -inf, NaN, list and dict alike, and
+        a non-dict config (None, a list, a
+        string, or an int) likewise reads as 180.
+        The hardcoded-60 fallback recorded in
+        the first run no longer occurs. Zero and
+        negative are defaults here, not literal
+        timeouts: the reader's bound is lo=1.
+        Genuine values are honored exactly: 10
+        reads as 10, 42 and the numeric string
+        "42" read as 42, fractional 2.5 truncates
+        via int() to 2 and "2.5" likewise, and
+        3600 and 9999 are honored at the reader
+        (registry hi=None). A sub-1 fractional
+        (0.5) reads as the default, since it
+        truncates below lo=1. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        unusable shapes keep reading as the
+        documented default and genuine values keep
+        being honored. If a shape above ever stops
+        behaving as PROTOCOL.md states, this test
+        is the failing record of that change.
+    """
+
+    def test_fifteen_shapes_read_as_default(self):
+        from runner.runner import _inference_timeout
+        unusable = [None, "", True, False, 0, -5,
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        cases = [("omitted", {})]
+        cases += [(repr(v), {"timeout_sec": v})
+                  for v in unusable]
+        cases.append(("explicit-default",
+                      {"timeout_sec": 180}))
+        for name, cfg in cases:
+            with self.subTest(shape=name):
+                self.assertEqual(_inference_timeout(cfg), 180)
+
+    def test_non_dict_config_reads_as_default(self):
+        from runner.runner import _inference_timeout
+        self.assertEqual(_inference_timeout(None), 180)
+        self.assertEqual(_inference_timeout(["x"]), 180)
+        self.assertEqual(_inference_timeout("bogus"), 180)
+        self.assertEqual(_inference_timeout(42), 180)
+
+    def test_genuine_values_are_honored(self):
+        from runner.runner import _inference_timeout
+        for value, expected in ((10, 10), (42, 42),
+                                ("42", 42), (2.5, 2),
+                                ("2.5", 2), (3600, 3600),
+                                (9999, 9999)):
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    _inference_timeout({"timeout_sec": value}),
+                    expected)
+
+    def test_sub_one_fraction_reads_as_default(self):
+        from runner.runner import _inference_timeout
+        self.assertEqual(
+            _inference_timeout({"timeout_sec": 0.5}), 180)
+
 if __name__ == "__main__":
 
     unittest.main()
