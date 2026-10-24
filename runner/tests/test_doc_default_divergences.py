@@ -44762,6 +44762,515 @@ class TestServiceWatchMainModesFifteenShapes(unittest.TestCase):
             self.assertEqual((rc, out), (2, ""))
             self.assertIsNone(state)
 
+class TestAirwavesCleanStateAndMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: airwaves
+    _clean_state() called directly and main()'s
+    remaining manifest / readings / state modes,
+    its live mode and its --local-dir delivery
+    gate varied with the fifteen shapes for the
+    first time (step-8 Target 5 / family (b) --
+    airwaves' earlier classes covered its
+    gone_after_scans tunable, its scan parsers
+    and decide() tiers; _clean_state() called
+    directly, main()'s scalar / string / null /
+    bool manifests and readings files, its
+    junk-carrying and broken pre-state files, a
+    directory as the state path, its live mode
+    and its --local-dir delivery gate were never
+    run at all, the same gap the clean / main
+    hunts closed for the other watchers in the
+    ticks before this one).
+
+    (a) Doc claims: the README states the first
+        pass learns the neighborhood quietly
+        (learn_first_pass, default true), a pass
+        with no scan data (scan_ok false) "files
+        nothing and changes nothing -- no data
+        is not an absence, so missed-scan
+        counters do not advance", access_point_gone
+        fires after gone_after_scans (default 3)
+        successful scans, and local delivery
+        signs each payload with this sense's key
+        read from the environment variable named
+        by --secret-env. The module docstring
+        states decide() is pure ("readings plus
+        manifest plus last pass's state, out
+        come alerts and the new state") and
+        _is_number() is documented so a
+        non-finite or huge value reads as "not
+        a number" so the documented default
+        applies. main()'s own comment states a
+        failed delivery leaves the state
+        unwritten, so the next pass reports
+        these changes again.
+
+    (b) How this was probed: on 2026-10-24
+        _clean_state() was called directly with
+        non-dict shapes, a non-bool learned flag,
+        and a junk dict (empty / non-str /
+        lower-case BSSID keys, non-dict AP and
+        SSID entries, string / bool / float /
+        non-finite / huge-int rank and misses
+        values, a non-list and junk-carrying
+        bssids list, and link dicts whose
+        signal_ref is a string / bool /
+        non-finite shape); main() was then run
+        against isolated temp dirs for scalar /
+        string / null / bool / float and list
+        manifests, scalar / string / null /
+        bool / float / list / empty readings
+        files, scan_ok false and scan_ok []
+        readings, a junk-carrying pre-state,
+        broken-JSON / list / string state
+        files, a directory as the state path,
+        live mode with read_live() stubbed,
+        and --local-dir with the secret env
+        var unset (no delivery attempted; the
+        alert case's state file was also
+        compared byte-for-byte in the probe).
+
+    (c) Behavior actually observed: NO divergence
+        recorded. Every non-dict state shape
+        reads as the fresh state, and a junk
+        dict is cleaned field-wise: learned is
+        kept only when it is a bool, AP and
+        SSID entries with an empty key or a
+        non-dict value drop, BSSID keys and
+        list members are upper-cased (the
+        bssids list is de-duplicated and
+        sorted), non-string ssid / security
+        fields read as "", rank reads as
+        int(value) for a usable number (2.9
+        truncates to 2) and 0 for a string /
+        bool / non-finite / huge value, misses
+        reads the same way but negative values
+        also read as 0, a non-list bssids
+        reads as [], unknown keys drop, and
+        the link's signal_ref falls back to
+        signal_dbm whenever signal_ref itself
+        is not a usable number (string, bool
+        and inf all fall back), reading as
+        None when neither is usable. Through
+        main(): a non-dict manifest configures
+        the documented defaults and learns the
+        scan quietly exactly like the genuine
+        manifest; a non-dict readings file, an
+        empty readings dict, and a readings
+        dict with scan_ok false or [] are a
+        no-data pass -- rc 0, nothing filed,
+        and the seeded state written back
+        unchanged with its misses NOT advanced,
+        as the README states; one successful
+        empty scan advances the seeded AP's
+        misses to 1 and files nothing. A
+        junk-carrying pre-state whose learned
+        flag is the string "yes" is NOT
+        learned (the flag reads as False), so
+        the pass re-learns: an empty scan
+        writes a learned empty neighborhood
+        whose link still carries the cleaned
+        pre-state link as its reference, and
+        the genuine scan writes exactly the
+        state a fresh learn of that scan
+        produces. Broken-JSON, list and string
+        state files read as a fresh state and
+        learn. A malformed readings or
+        manifest file is rc 2 with a pre-state
+        file left untouched. A directory as
+        the state path is rc 2 with nothing
+        printed -- the fresh learn pass files
+        nothing, then the state write fails.
+        Live mode with read_live() stubbed
+        behaves exactly like --readings mode.
+        A seeded pass that sees a new AP files
+        new_access_point (medium, sensor
+        "airwaves") on stdout and advances the
+        known AP's misses. And --local-dir
+        with no secret in the env var is rc 2
+        with the state file left byte-identical
+        when the pass produced an alert, and
+        no state file created when there was
+        none, whether or not the pass produced
+        an alert -- the delivery gate is
+        checked before any state is written,
+        as main()'s comment states.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the readings above
+        keep matching the docs. If a shape above
+        ever stops behaving as documented, this test
+        is the failing record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "airwaves",
+            "airwaves.py")
+        spec = importlib.util.spec_from_file_location(
+            "airwaves_clean_main", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _gen(self):
+        return {"name": "airwaves", "tunables": {
+            "gone_after_scans": 3, "link_drop_db": 10,
+            "learn_first_pass": True}}
+
+    def _scan1(self):
+        return {"now": 1000.0, "scan_ok": True,
+                "scan": [{"bssid": "AA:BB:CC:DD:EE:01",
+                          "ssid": "HomeNet", "channel": 6,
+                          "signal_dbm": -55,
+                          "security": "WPA2"}],
+                "link": {"bssid": "AA:BB:CC:DD:EE:01",
+                         "ssid": "HomeNet",
+                         "signal_dbm": -55}}
+
+    def _learned(self):
+        return {"learned": True,
+                "aps": {"AA:BB:CC:DD:EE:01": {
+                    "ssid": "HomeNet", "security": "WPA2",
+                    "rank": 3, "misses": 0}},
+                "ssids": {"HomeNet": {
+                    "bssids": ["AA:BB:CC:DD:EE:01"],
+                    "rank": 3}},
+                "link": {"bssid": "AA:BB:CC:DD:EE:01",
+                         "signal_ref": -55.0}}
+
+    def _junk(self):
+        return {"learned": "yes",
+                "aps": {
+                    "aa:bb:cc:dd:ee:01": {
+                        "ssid": "Home", "security": "WPA2",
+                        "rank": 3, "misses": 2},
+                    "": {"ssid": "x"},
+                    "BB:02": {"ssid": 123, "security": None,
+                              "rank": "3", "misses": -1},
+                    "CC:03": "notdict",
+                    "DD:04": {"ssid": "Net",
+                              "security": "WPA3",
+                              "rank": True, "misses": 2.7},
+                    "EE:05": {"ssid": "N2",
+                              "security": "WEP",
+                              "rank": float("inf"),
+                              "misses": 10 ** 400},
+                    "FF:06": {"ssid": "N3",
+                              "security": "WPA",
+                              "rank": 2.9, "misses": True}},
+                "ssids": {
+                    "Home": {"bssids": [
+                        "aa:bb:cc:dd:ee:01",
+                        "AA:BB:CC:DD:EE:01", "", 123,
+                        "bb:02"], "rank": 3},
+                    "": {"bssids": ["AA:01"]},
+                    "Cafe": {"bssids": "notlist",
+                             "rank": "x"},
+                    "Shop": {"bssids": [], "rank": True},
+                    "Mall": {"bssids": ["cc:03"],
+                             "rank": float("inf")}},
+                "link": {"bssid": "aa:bb:cc:dd:ee:01",
+                         "signal_ref": -50, "extra": 9},
+                "extra_top": 5}
+
+    def _junk_cleaned(self):
+        return {"learned": False,
+                "aps": {
+                    "AA:BB:CC:DD:EE:01": {
+                        "ssid": "Home", "security": "WPA2",
+                        "rank": 3, "misses": 2},
+                    "BB:02": {"ssid": "", "security": "",
+                              "rank": 0, "misses": 0},
+                    "DD:04": {"ssid": "Net",
+                              "security": "WPA3",
+                              "rank": 0, "misses": 2},
+                    "EE:05": {"ssid": "N2",
+                              "security": "WEP",
+                              "rank": 0, "misses": 0},
+                    "FF:06": {"ssid": "N3",
+                              "security": "WPA",
+                              "rank": 2, "misses": 0}},
+                "ssids": {
+                    "Home": {"bssids": [
+                        "AA:BB:CC:DD:EE:01", "BB:02"],
+                        "rank": 3},
+                    "Cafe": {"bssids": [], "rank": 0},
+                    "Shop": {"bssids": [], "rank": 0},
+                    "Mall": {"bssids": ["CC:03"],
+                             "rank": 0}},
+                "link": {"bssid": "AA:BB:CC:DD:EE:01",
+                         "signal_ref": -50.0}}
+
+    _READINGS = object()
+
+    def _main(self, mod, td, manifest_obj,
+              readings_obj=_READINGS, extra=(),
+              pre_state=None, pre_raw=None,
+              state_is_dir=False, live=None,
+              no_secret=False):
+        import io
+        import os
+        from contextlib import redirect_stderr, redirect_stdout
+        from unittest import mock
+        man = os.path.join(td, "m.json")
+        rd = os.path.join(td, "r.json")
+        st = td if state_is_dir else os.path.join(td, "s.json")
+        with open(man, "w", encoding="utf-8") as fh:
+            if isinstance(manifest_obj, str) \
+                    and manifest_obj == "{bad":
+                fh.write(manifest_obj)
+            else:
+                json.dump(manifest_obj, fh)
+        args = ["--manifest", man, "--state", st]
+        if live is None:
+            with open(rd, "w", encoding="utf-8") as fh:
+                if isinstance(readings_obj, str) \
+                        and readings_obj == "{bad":
+                    fh.write(readings_obj)
+                else:
+                    json.dump(readings_obj, fh)
+            args += ["--readings", rd]
+        if not state_is_dir:
+            if pre_raw is not None:
+                with open(st, "w", encoding="utf-8") as fh:
+                    fh.write(pre_raw)
+            elif pre_state is not None:
+                with open(st, "w", encoding="utf-8") as fh:
+                    json.dump(pre_state, fh)
+        out = io.StringIO()
+        patches = []
+        if live is not None:
+            patches.append(mock.patch.object(
+                mod, "read_live", return_value=live))
+        if no_secret:
+            env = dict(os.environ)
+            env.pop("HOMING_PIGEON_SENSOR_SECRET", None)
+            patches.append(mock.patch.dict(
+                os.environ, env, clear=True))
+        for patch in patches:
+            patch.start()
+        try:
+            with redirect_stdout(out), \
+                    redirect_stderr(io.StringIO()):
+                rc = mod.main(args + list(extra))
+        finally:
+            for patch in patches:
+                patch.stop()
+        state = None
+        if not state_is_dir and os.path.isfile(st):
+            with open(st, encoding="utf-8") as fh:
+                state = json.load(fh)
+        return rc, out.getvalue(), state
+
+    def test_clean_state_non_dict_and_learned_shapes(self):
+        mod = self._mod()
+        fresh = {"learned": False, "aps": {},
+                 "ssids": {}, "link": None}
+        for value in [None, [1, 2], 42, "hi", True, 2.5,
+                      {}, float("inf")]:
+            with self.subTest(state=repr(value)):
+                self.assertEqual(
+                    mod._clean_state(value), fresh)
+        for value, want in [(True, True), (False, False),
+                            (1, False), ("true", False),
+                            (None, False), ([], False)]:
+            with self.subTest(learned=repr(value)):
+                self.assertEqual(
+                    mod._clean_state(
+                        {"learned": value})["learned"],
+                    want)
+
+    def test_clean_state_junk_dict_and_link_fallback(self):
+        mod = self._mod()
+        self.assertEqual(
+            mod._clean_state(self._junk()),
+            self._junk_cleaned())
+        base = {"learned": True, "aps": {}, "ssids": {}}
+        for link in [None, "hi", [], {"bssid": ""},
+                     {"bssid": 123}]:
+            with self.subTest(link=repr(link)):
+                state = dict(base, link=link)
+                self.assertIsNone(
+                    mod._clean_state(state)["link"])
+        for link, want in [
+                ({"bssid": "aa:01", "signal_ref": -50,
+                  "signal_dbm": -99}, -50.0),
+                ({"bssid": "aa:01", "signal_ref": "x",
+                  "signal_dbm": -60}, -60.0),
+                ({"bssid": "aa:01", "signal_dbm": -60},
+                 -60.0),
+                ({"bssid": "aa:01", "signal_ref": True,
+                  "signal_dbm": -61}, -61.0),
+                ({"bssid": "aa:01",
+                  "signal_ref": float("inf"),
+                  "signal_dbm": -62}, -62.0),
+                ({"bssid": "aa:01"}, None)]:
+            with self.subTest(link=repr(link)):
+                state = dict(base, link=link)
+                self.assertEqual(
+                    mod._clean_state(state)["link"],
+                    {"bssid": "AA:01", "signal_ref": want})
+
+    def test_main_manifest_and_readings_shapes(self):
+        mod = self._mod()
+        # A non-dict manifest reads the documented
+        # defaults and learns exactly like the
+        # genuine manifest.
+        for manifest in [[1, 2], 42, "hi", None, True, 2.5]:
+            with self.subTest(manifest=repr(manifest)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, manifest, self._scan1())
+                self.assertEqual((rc, out), (0, ""))
+                self.assertEqual(state, self._learned())
+        # A no-data readings pass files nothing and
+        # changes nothing: the seeded state is
+        # written back unchanged, misses included.
+        nodata = [42, "hi", None, True, [1, 2], 2.5, {},
+                  {"now": 1000.0},
+                  {"scan_ok": False,
+                   "scan": self._scan1()["scan"]},
+                  {"scan_ok": [],
+                   "scan": self._scan1()["scan"]}]
+        for value in nodata:
+            with self.subTest(readings=repr(value)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, self._gen(), value,
+                        pre_state=self._learned())
+                self.assertEqual((rc, out), (0, ""))
+                self.assertEqual(state, self._learned())
+        # One successful empty scan advances the
+        # seeded AP's misses to 1 and files nothing.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(),
+                {"now": 1010.0, "scan_ok": True,
+                 "scan": [], "link": None},
+                pre_state=self._learned())
+            self.assertEqual((rc, out), (0, ""))
+            want = self._learned()
+            want["aps"]["AA:BB:CC:DD:EE:01"]["misses"] = 1
+            self.assertEqual(state, want)
+        # Malformed readings / manifest files are
+        # rc 2 with a pre-state left untouched.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(), "{bad",
+                pre_state=self._learned())
+            self.assertEqual((rc, out), (2, ""))
+            self.assertEqual(state, self._learned())
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, "{bad", self._scan1(),
+                pre_state=self._learned())
+            self.assertEqual((rc, out), (2, ""))
+            self.assertEqual(state, self._learned())
+
+    def test_main_junk_broken_prestate_and_directory(self):
+        mod = self._mod()
+        # The junk pre-state's learned flag is the
+        # string "yes", which reads as False, so
+        # the pass re-learns: an empty scan writes
+        # a learned empty neighborhood that still
+        # carries the cleaned pre-state link.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(),
+                {"now": 1010.0, "scan_ok": True,
+                 "scan": [], "link": None},
+                pre_state=self._junk())
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, {
+                "learned": True, "aps": {}, "ssids": {},
+                "link": {"bssid": "AA:BB:CC:DD:EE:01",
+                         "signal_ref": -50.0}})
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(), self._scan1(),
+                pre_state=self._junk())
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, self._learned())
+        # Broken-JSON, list and string state files
+        # read as a fresh state and learn.
+        for raw in ["{bad", "[1, 2]", '"hi"']:
+            with self.subTest(state_file=raw):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, self._gen(),
+                        self._scan1(), pre_raw=raw)
+                self.assertEqual((rc, out), (0, ""))
+                self.assertEqual(state, self._learned())
+        # A directory as the state path is rc 2
+        # with nothing printed: the fresh learn
+        # pass files nothing, then the write fails.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(), self._scan1(),
+                state_is_dir=True)
+            self.assertEqual((rc, out), (2, ""))
+            self.assertIsNone(state)
+
+    def test_main_new_ap_live_mode_and_local_gate(self):
+        mod = self._mod()
+        new_ap = {"now": 1010.0, "scan_ok": True,
+                  "scan": [{"bssid": "AA:BB:CC:DD:EE:99",
+                            "ssid": "NewNet", "channel": 1,
+                            "signal_dbm": -70,
+                            "security": "WPA2"}],
+                  "link": None}
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(), new_ap,
+                pre_state=self._learned())
+            self.assertEqual(rc, 0)
+            self.assertIn("new_access_point", out)
+            self.assertIn('"airwaves"', out)
+            want = self._learned()
+            want["aps"]["AA:BB:CC:DD:EE:01"]["misses"] = 1
+            want["aps"]["AA:BB:CC:DD:EE:99"] = {
+                "ssid": "NewNet", "security": "WPA2",
+                "rank": 3, "misses": 0}
+            want["ssids"]["NewNet"] = {
+                "bssids": ["AA:BB:CC:DD:EE:99"], "rank": 3}
+            self.assertEqual(state, want)
+        # Live mode with read_live() stubbed behaves
+        # exactly like --readings mode.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(), live=self._scan1())
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, self._learned())
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(),
+                pre_state=self._learned(),
+                live=self._scan1())
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, self._learned())
+        # --local-dir with no secret in the env var
+        # is rc 2: the seeded state is left as it
+        # was when an alert was produced, and no
+        # state file is created when there was
+        # none and the pass was a quiet learn.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(), new_ap,
+                extra=["--local-dir", td],
+                pre_state=self._learned(), no_secret=True)
+            self.assertEqual((rc, out), (2, ""))
+            self.assertEqual(state, self._learned())
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(), self._scan1(),
+                extra=["--local-dir", td], no_secret=True)
+            self.assertEqual((rc, out), (2, ""))
+            self.assertIsNone(state)
+
 if __name__ == "__main__":
 
     unittest.main()
