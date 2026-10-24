@@ -8543,5 +8543,170 @@ class TestResourceSentinelMinSamplesDefaultsTo4(unittest.TestCase):
         self.assertEqual(
             self._signals({"min_samples": "2"}, 4), self._BOTH)
 
+
+class TestLabResultsAnomalyBandDefaultsTo025(unittest.TestCase):
+    """Second-run hunt coverage: anomaly_band
+    (lab-results) itself, varied with the fifteen
+    shapes through its actual reader for the first
+    time.
+
+    (a) Claim: registry row "anomaly_band
+        (lab-results)": extension, number, default
+        0.25, policy default, doc_status unverified
+        -- no prose document states this default;
+        it is in KNOWN_UNDOCUMENTED in
+        tests/defaults_registry.py. The statements
+        are the manifest, which ships the same value
+        (extension.json: "anomaly_band": 0.25), the
+        contract in docs/extensions.md (line 399:
+        "`result_anomaly` | A finished run's
+        `metric` value sits farther than
+        `anomaly_band` (relative) from the mean of
+        the folder's earlier finished runs, with at
+        least `anomaly_min_history` of them", with
+        the example tunables at lines 93-94 shipping
+        "anomaly_band": 0.25), and the reader itself
+        (lab_results.py, scan(): band =
+        float(band) if _is_number(band) and
+        band > 0 else 0.25). The row's named class
+        (TestNonFiniteLabResultsTunablesDefaultInsteadOfCrashOrSilence)
+        covered only the non-finite shapes for
+        anomaly_band (plus anomaly_min_history);
+        this key's full fifteen-shape behavior had
+        never been walked.
+
+    (b) How it was hunted: step 8 Target 3 -- the
+        eighth and last row with no documented
+        default in any current doc, after
+        timeout_sec, extension_poll_interval_sec,
+        max_matches, lines, limit, max_chars, and
+        min_samples. On 2026-10-23 this tick probed
+        scan() -- the pure folder pass -- with the
+        table hunt's fifteen shapes for
+        anomaly_band, each in two scenarios: a
+        close value (accuracy 1.2 against history
+        1.0, 1.0, 1.0; distance 0.2 from the mean,
+        an anomaly only when the effective band is
+        below 0.2) and a far value (accuracy 2.0;
+        distance 1.0, an anomaly only when the
+        effective band is below 1.0), plus genuine
+        values at their own boundaries.
+
+    (c) Behavior actually observed: NO divergence.
+        All fifteen shapes read as the registry
+        default 0.25 (close files only
+        experiment_finished, far files
+        experiment_finished and result_anomaly):
+        omitted, null, the empty string, true,
+        false, zero, a negative number, the
+        explicit default 0.25, a numeric string, a
+        non-numeric string, a several-hundred-digit
+        integer, inf, -inf, NaN, and a list. This
+        reader's _is_number accepts only genuine
+        finite numbers and never a bool, so a
+        numeric string reads as the default here,
+        and zero and negative numbers are not
+        usable bands (the reader requires
+        band > 0), so they also read as the
+        default; the +inf suppression recorded by
+        the row's named non-finite class no longer
+        occurs on current main, because _is_number
+        now excludes non-finite values. Genuine
+        values are honored exactly: band 0.1 files
+        the close value as an anomaly, band 0.5
+        and 2 do not file the far value at band 2
+        (and band 1.0 does not either, because the
+        comparison is strict: distance 1.0 is not
+        farther than 1.0 times the mean), and at
+        band 0.2 the close value's distance of
+        exactly 0.2 is likewise not an anomaly.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the reader keeps
+        the registry default. If a shape above ever
+        stops reading as stated, this test is the
+        failing record of that change. The missing
+        prose documentation for the default in (a)
+        is recorded here and in the registry; no
+        production code or doc was changed by this
+        hunt.
+    """
+
+    def _signals(self, tunables, value):
+        import importlib.util
+        import json as _json
+        import os
+        import tempfile
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "lab-results",
+            "lab_results.py")
+        spec = importlib.util.spec_from_file_location(
+            "lab_results_anomaly_band_hunt", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as folder:
+            with open(os.path.join(folder, "exp.json"),
+                      "w", encoding="utf-8") as fh:
+                _json.dump(
+                    {"run": "exp-new", "status": "finished",
+                     "metrics": {"accuracy": value}}, fh)
+            manifest = {"name": "lab_results",
+                        "tunables": dict(tunables)}
+            state = {"reported": {},
+                     "history": [1.0, 1.0, 1.0]}
+            alerts, _state = mod.scan(folder, manifest, state)
+            return [a["signal"] for a in alerts]
+
+    _CLOSE_ONLY = ["experiment_finished"]
+    _FAR_BOTH = ["experiment_finished", "result_anomaly"]
+
+    def test_fifteen_shapes_read_as_default(self):
+        shapes = [
+            ("omitted", None), ("null", None),
+            ("empty-string", ""), ("true", True),
+            ("false", False), ("zero", 0),
+            ("negative", -0.5),
+            ("default-explicit", 0.25),
+            ("numeric-string", "0.25"),
+            ("non-numeric-string", "bogus"),
+            ("huge-int", 10 ** 400),
+            ("inf", float("inf")),
+            ("neg-inf", float("-inf")),
+            ("nan", float("nan")),
+            ("wrong-container", ["x"]),
+        ]
+        for name, value in shapes:
+            with self.subTest(shape=name):
+                tunables = {} if name == "omitted" else {
+                    "anomaly_band": value}
+                self.assertEqual(
+                    self._signals(tunables, 1.2),
+                    self._CLOSE_ONLY)
+                self.assertEqual(
+                    self._signals(tunables, 2.0),
+                    self._FAR_BOTH)
+
+    def test_genuine_values_are_honored(self):
+        both = self._FAR_BOTH
+        # A narrow band files even the close value.
+        self.assertEqual(
+            self._signals({"anomaly_band": 0.1}, 1.2), both)
+        # The comparison is strict: a distance exactly
+        # equal to band * mean is not an anomaly.
+        self.assertEqual(
+            self._signals({"anomaly_band": 0.2}, 1.2),
+            self._CLOSE_ONLY)
+        self.assertEqual(
+            self._signals({"anomaly_band": 0.5}, 2.0), both)
+        self.assertEqual(
+            self._signals({"anomaly_band": 1.0}, 2.0),
+            self._CLOSE_ONLY)
+        self.assertEqual(
+            self._signals({"anomaly_band": 2}, 2.0),
+            self._CLOSE_ONLY)
+
+
 if __name__ == "__main__":
     unittest.main()
