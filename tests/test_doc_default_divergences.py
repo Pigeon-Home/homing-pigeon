@@ -5539,6 +5539,151 @@ class TestInfiniteServiceWatchFlapCountDefaultsTo4(unittest.TestCase):
 
 
 
+class TestJobWatcherFailureWindowSecDefaultsTo86400(unittest.TestCase):
+    """Divergence: a zero or negative job-watcher
+    failure_window_sec is read literally instead
+    of falling back to the documented 86400-second
+    (a day) default, so no past failure is ever
+    inside the window and job_failing_repeatedly
+    never files.
+
+    (a) Doc claim (examples/extensions/job-watcher/
+        README.md, line 18): "`job_failing_repeatedly`
+        | The same job -- same `kind` and script --
+        failed at least `repeat_failures` times
+        (default 3) inside `failure_window_sec`
+        (default a day)". The extension header states
+        the same default (job_watcher.py lines
+        35-36), and the manifest ships the numeric
+        default (extension.json:
+        "failure_window_sec": 86400). Registry row
+        "failure_window_sec (job-watcher)": integer,
+        default 86400, policy default.
+
+    (b) How the bug was found: step 8 Target 2 --
+        the row's named class
+        (TestInfiniteJobWatcherRepeatFailuresDefaultsTo3)
+        varies repeat_failures only, so
+        failure_window_sec had never itself been
+        varied. On 2026-10-23 this tick probed
+        decide() -- the pure decision function --
+        with the table hunt's fifteen shapes for
+        failure_window_sec, each in two scenarios:
+        three failures 100, 99 and 98 seconds
+        before now (inside a day, so a signal
+        exactly when the effective window reaches
+        across 100 seconds, as 86400 does) and
+        three failures 90000, 89900 and 89800
+        seconds before now (outside a day, so a
+        signal only if the window is wrongly read
+        as far larger than 86400), with
+        repeat_failures at its documented
+        default 3 throughout.
+
+    (c) Behavior actually observed: thirteen
+        shapes read as the documented default
+        86400 (no signal at 90000-second spacing,
+        a signal at 100-second spacing) --
+        omitted, null, the empty string, true,
+        false, the explicit default 86400, a
+        numeric string, a non-numeric string, a
+        several-hundred-digit integer, inf, -inf,
+        NaN, and a list. Zero and a negative
+        number do not: decide() computes
+        failure_window as _tunable(tunables,
+        "failure_window_sec", 86400.0)
+        (job_watcher.py line 415), and _tunable
+        (lines 131-133) returns float(value)
+        whenever _is_number(value) holds, with
+        no requirement that the value be
+        positive, so 0 reads as 0.0 and -5 reads
+        as -5.0 and the recent-failures test
+        r[0] >= now - failure_window excludes
+        every past failure. Sibling window
+        readers in this codebase require a
+        positive value before honoring it
+        (failed-login-watch: window > 0 else
+        600; service-watch: flap_window > 0
+        else 600; crash-watch: window > 0 else
+        3600); this reader has no such guard.
+        Observed on 2026-10-23: decide() with
+        failure_window_sec 0 and with -5
+        returned [] in the 100-second scenario
+        where the omitted tunable returned
+        ["job_failing_repeatedly"].
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _signals(self, tunables, offsets):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "job-watcher",
+            "job_watcher.py")
+        spec = importlib.util.spec_from_file_location(
+            "job_watcher_failure_window_hunt", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        now = 1000000.0
+        manifest = {"name": "job_watcher",
+                    "tunables": dict(tunables)}
+        records = [{"job_id": f"j{i}", "key": "k1",
+                    "kind": "shell", "label": "job1",
+                    "saved_at": now + off, "exit_code": 1,
+                    "duration_sec": 1.0,
+                    "error": "boom"}
+                   for i, off in enumerate(offsets)]
+        readings = {"now": now, "records": records}
+        alerts, _state = mod.decide(readings, manifest, {})
+        return [a["signal"] for a in alerts]
+
+    SPACED = [-90000, -89900, -89800]
+    CLOSE = [-100, -99, -98]
+
+    def test_fifteen_shapes_read_as_default_86400(self):
+        shapes = [
+            ("omitted", None), ("null", None),
+            ("empty-string", ""), ("true", True),
+            ("false", False), ("zero", 0),
+            ("negative", -5), ("default-explicit", 86400),
+            ("numeric-string", "86400"),
+            ("non-numeric-string", "bogus"),
+            ("huge-int", 10 ** 400), ("inf", float("inf")),
+            ("neg-inf", float("-inf")), ("nan", float("nan")),
+            ("wrong-container", ["x"]),
+        ]
+        for name, value in shapes:
+            with self.subTest(shape=name):
+                tunables = {} if name == "omitted" else {
+                    "failure_window_sec": value}
+                self.assertEqual(
+                    self._signals(tunables, self.SPACED), [])
+                self.assertEqual(
+                    self._signals(tunables, self.CLOSE),
+                    ["job_failing_repeatedly"])
+
+    def test_genuine_failure_window_values_are_honored(self):
+        self.assertEqual(
+            self._signals({"failure_window_sec": 60}, self.CLOSE), [])
+        self.assertEqual(
+            self._signals({"failure_window_sec": 1}, self.CLOSE), [])
+        self.assertEqual(
+            self._signals({"failure_window_sec": 100000}, self.SPACED),
+            ["job_failing_repeatedly"])
+        # A numeric string is not a number to this
+        # reader: "100000" reads as the default 86400,
+        # so the spaced scenario files no signal.
+        self.assertEqual(
+            self._signals({"failure_window_sec": "100000"}, self.SPACED),
+            [])
+
+
+
 class TestInfiniteJobWatcherRepeatFailuresDefaultsTo3(unittest.TestCase):
     """Divergence: a non-finite job-watcher
     repeat_failures (+inf, -inf, or NaN) crashes
