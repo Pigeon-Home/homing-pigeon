@@ -41472,6 +41472,474 @@ class TestOsqueryFeedParseCleanStateAndMainModesFifteenShapes(unittest.TestCase)
                     json.load(fh)["_reader"],
                     {"/x": {"inode": 1, "offset": 5}})
 
+class TestSoftflowdFeedCleanCollectAndMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: softflowd-feed
+    _clean_state() and _bound() called directly,
+    _clean_flow() called directly, collect_flows()
+    / read_live() with a fake socket (no network),
+    and main() in --readings mode's remaining error
+    and shape modes varied with the fifteen shapes
+    for the first time (step-8 Target 5 / family
+    (b) -- softflowd-feed's earlier classes covered
+    _parse_listen_addr(), decode_datagram(),
+    decide() and main()'s genuine / missing-file /
+    malformed-state modes; the state and flow
+    cleaners were only ever reached through
+    decide(), the bounded-eviction helper was never
+    varied directly, and the live collector -- the
+    one producer here that binds a socket instead
+    of tailing a file -- was never exercised at
+    all, the same gap the feeds hunted before it
+    closed for their log readers).
+
+    (a) Doc claims: the module docstring states
+        collect_flows() is the live reading entry
+        and "a bind failure or a silent window is
+        a quiet empty readings dict, never an
+        exception -- absence of flows is absence
+        of evidence"; templates are per-pass by
+        design (the state argument is "deliberately
+        not used for templates"); read_live() is
+        "a thin alias" for collect_flows();
+        decide() remembers external peers and
+        filed flows "both bounded by tunables with
+        the oldest entries evicted first"; a flow
+        dict is {"version", "src", "dst",
+        "src_port", "dst_port", "proto",
+        "packets", "bytes", "first", "last"}.
+
+    (b) How this was probed: on 2026-10-24
+        _clean_state() was called directly with
+        the fifteen shapes plus mixed peers /
+        filed tables (a tuple peers value, a
+        _reader key, unknown keys); _bound() was
+        called with under / exact / over-limit
+        lists and dicts (including tied ages);
+        _clean_flow() was called directly with
+        each field varied over the shapes;
+        collect_flows() was run against a fake
+        socket class (patched into the socket
+        module and restored afterwards) that
+        records its family and bind address,
+        raises OSError on recvfrom (a silent
+        window), can fail bind(), and can serve
+        hand-built v5 datagrams; main() was run
+        in --readings mode against temp files
+        for malformed / list / scalar manifests
+        and readings, list and junk-carrying
+        pre-states, and an unwritable (directory)
+        state path.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. _clean_state() reads every
+        non-dict shape as fresh {"peers": [],
+        "filed": {}}; keeps only string peers
+        (an empty string and duplicates are
+        kept, a tuple peers value reads as no
+        peers); keeps filed entries only with a
+        string key and a usable-number value
+        (bool, string, inf and huge-int values
+        dropped, zero and negative values kept
+        as floats); and drops unknown keys --
+        including a _reader key, which this
+        sense does NOT preserve (its state has
+        no reader offsets by design). _bound()
+        keeps the LAST limit entries of an
+        over-limit list, and for a dict evicts
+        the lowest-aged entries first (tied
+        ages evict in insertion order).
+        _clean_flow() called directly matches
+        its decide()-level behavior: a
+        non-string src / dst, a missing src, or
+        any of src_port / dst_port / proto /
+        packets / bytes that is not a usable
+        non-negative number (or a port over
+        65535, or a negative counter) drops the
+        flow whole; fractional ports truncate;
+        every unusable version reads as 0 and
+        every unusable first / last reads as
+        None (filled by decide(), not here).
+        collect_flows() with a silent fake
+        socket answers {"flows": [],
+        "skipped_records": 0} with a float now
+        for every manifest shape (non-dict,
+        non-dict tunables, unusable listen_addr
+        binding the default 127.0.0.1:2055), a
+        genuine listen_addr binds verbatim, a
+        bracketed IPv6 address selects AF_INET6,
+        a bogus-IP host string falls back to
+        AF_INET and binds the string (the fake
+        accepts it; a real bind would fail and
+        be a quiet empty pass), a bind OSError
+        is a quiet empty pass, the socket is
+        always closed, served v5 datagrams
+        decode into flows, max_datagrams 1
+        stops after one datagram, and
+        read_live() over a silent socket answers
+        the same empty readings. main() in
+        --readings mode: a genuine pass prints
+        one alert and writes state (rc 0), a
+        malformed manifest or malformed /
+        missing readings file is rc 2 with no
+        state written, a list or scalar manifest
+        still files (rc 0, defaults), list /
+        scalar / string / empty readings read
+        as an empty pass (rc 0, fresh state
+        written), a list or malformed
+        pre-state reads as fresh, a pre-state
+        carrying a _reader key files nothing
+        for the already-known peer and writes
+        state WITHOUT the _reader key, and an
+        unwritable state path is rc 2 with the
+        alert still printed first. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the shapes
+        above keep behaving as the docstring
+        states. If a shape above ever stops
+        behaving as stated, this test is the
+        failing record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "softflowd-feed",
+            "softflowd_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "softflowd_feed_clean_collect_main_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    _UNUSABLE = [None, "", True, False, 0, -5, "45", "bogus",
+                 10 ** 400, float("inf"), float("-inf"),
+                 float("nan"), ["x"], {"x": 1}]
+
+    _FRESH = {"peers": [], "filed": {}}
+
+    # -- _clean_state / _bound, called directly ------------------
+
+    def test_clean_state_fifteen_shapes_and_mixed_tables(self):
+        mod = self._mod()
+        for value in self._UNUSABLE:
+            with self.subTest(value=repr(value)[:30]):
+                self.assertEqual(mod._clean_state(value),
+                                 self._FRESH)
+        with self.subTest(shape="mixed-peers-and-filed"):
+            dirty = {"peers": ["a", 1, "", None, "a", True],
+                     "filed": {"k": 1, "b": True, "c": "x",
+                               "d": float("inf"),
+                               "e": 10 ** 400, 2: 5,
+                               "f": -2.5},
+                     "_reader": {"x": 1}, "extra": 9}
+            self.assertEqual(
+                mod._clean_state(dirty),
+                {"peers": ["a", "", "a"],
+                 "filed": {"k": 1.0, "f": -2.5}})
+        with self.subTest(shape="tuple-peers-and-zero-negative"):
+            self.assertEqual(
+                mod._clean_state({"peers": ("a", "b"),
+                                  "filed": {"z": 0, "n": -5}}),
+                {"peers": [], "filed": {"z": 0.0, "n": -5.0}})
+
+    def test_bound_list_and_dict_eviction(self):
+        mod = self._mod()
+        self.assertEqual(mod._bound([1, 2], 5), [1, 2])
+        self.assertEqual(mod._bound([1, 2], 2), [1, 2])
+        self.assertEqual(mod._bound([1, 2, 3, 4], 2), [3, 4])
+        self.assertEqual(mod._bound({"a": 1}, 5), {"a": 1})
+        self.assertEqual(mod._bound({"a": 1, "b": 3, "c": 2}, 2),
+                         {"c": 2, "b": 3})
+        self.assertEqual(mod._bound({"a": 1, "b": 1, "c": 1}, 2),
+                         {"b": 1, "c": 1})
+
+    # -- _clean_flow, called directly -----------------------------
+
+    def test_clean_flow_direct_field_shapes(self):
+        mod = self._mod()
+        base = {"version": 5, "src": "1.2.3.4", "dst": "8.8.8.8",
+                "src_port": 1, "dst_port": 2, "proto": 6,
+                "packets": 3, "bytes": 4, "first": 10, "last": 20}
+        self.assertEqual(mod._clean_flow(base),
+                         {"version": 5, "src": "1.2.3.4",
+                          "dst": "8.8.8.8", "src_port": 1,
+                          "dst_port": 2, "proto": 6, "packets": 3,
+                          "bytes": 4, "first": 10.0, "last": 20.0})
+        bad = [None, True, 10 ** 400, float("nan"), "x"]
+        for key in ("src_port", "dst_port", "proto",
+                    "packets", "bytes"):
+            for value in bad:
+                with self.subTest(key=key, value=repr(value)[:20]):
+                    flow = dict(base)
+                    flow[key] = value
+                    self.assertIsNone(mod._clean_flow(flow))
+        for key in ("src", "dst"):
+            for value in [None, True, 10 ** 400, float("nan")]:
+                with self.subTest(key=key, value=repr(value)[:20]):
+                    flow = dict(base)
+                    flow[key] = value
+                    self.assertIsNone(mod._clean_flow(flow))
+            with self.subTest(key=key, value="any-string-kept"):
+                flow = dict(base)
+                flow[key] = "x"
+                self.assertEqual(mod._clean_flow(flow)[key], "x")
+        for value in bad:
+            with self.subTest(field="version", value=repr(value)[:20]):
+                flow = dict(base)
+                flow["version"] = value
+                self.assertEqual(mod._clean_flow(flow)["version"], 0)
+            with self.subTest(field="first", value=repr(value)[:20]):
+                flow = dict(base)
+                flow["first"] = value
+                self.assertIsNone(mod._clean_flow(flow)["first"])
+        with self.subTest(shape="missing-src"):
+            flow = {k: v for k, v in base.items() if k != "src"}
+            self.assertIsNone(mod._clean_flow(flow))
+        with self.subTest(shape="non-dict"):
+            self.assertIsNone(mod._clean_flow([1]))
+            self.assertIsNone(mod._clean_flow(None))
+        with self.subTest(shape="port-over-and-fractional"):
+            flow = dict(base)
+            flow["dst_port"] = 65536
+            self.assertIsNone(mod._clean_flow(flow))
+            flow = dict(base)
+            flow["src_port"] = 1.9
+            self.assertEqual(mod._clean_flow(flow)["src_port"], 1)
+        with self.subTest(shape="negative-counter"):
+            flow = dict(base)
+            flow["packets"] = -1
+            self.assertIsNone(mod._clean_flow(flow))
+
+    # -- collect_flows / read_live with a fake socket --------------
+
+    def _fake_socket_class(self):
+        class FakeSock:
+            instances = []
+
+            def __init__(self, family, type_):
+                self.family = family
+                self.bound = None
+                self.items = []
+                self.closed = False
+                self.bind_fail = False
+                FakeSock.instances.append(self)
+
+            def bind(self, addr):
+                if self.bind_fail:
+                    raise OSError("bind fail")
+                self.bound = addr
+
+            def settimeout(self, t):
+                self.timeout = t
+
+            def recvfrom(self, n):
+                if self.items:
+                    return self.items.pop(0), ("127.0.0.1", 9999)
+                raise OSError("timeout")
+
+            def close(self):
+                self.closed = True
+
+        return FakeSock
+
+    def _collect(self, mod, manifest, items=None, bind_fail=False):
+        import socket as socket_module
+        fake_cls = self._fake_socket_class()
+        original = socket_module.socket
+
+        def factory(family, type_):
+            sock = fake_cls(family, type_)
+            sock.items = list(items or [])
+            sock.bind_fail = bind_fail
+            return sock
+
+        socket_module.socket = factory
+        try:
+            readings = mod.collect_flows(manifest, {"ignored": 1})
+        finally:
+            socket_module.socket = original
+        inst = fake_cls.instances[0] if fake_cls.instances else None
+        return readings, inst
+
+    def _v5_datagram(self):
+        import struct
+        hdr = struct.pack("!HHIIIIBBH", 5, 1, 100000,
+                          1700000000, 0, 0, 0, 0, 0)
+        rec = struct.pack(
+            "!IIIHHIIIIHHBBBBHHBBH",
+            0xC0A80114, 0x08080808, 0, 0, 0, 10, 600,
+            90000, 100000, 12345, 443, 0, 0, 6, 0, 0, 0, 0, 0, 0)
+        return hdr + rec
+
+    def test_collect_flows_fake_socket_shapes(self):
+        import socket as socket_module
+        mod = self._mod()
+        for manifest in [None, [], "x", {},
+                         {"tunables": None},
+                         {"tunables": {"listen_addr": 123}}]:
+            with self.subTest(manifest=repr(manifest)[:40]):
+                readings, inst = self._collect(mod, manifest)
+                self.assertEqual(readings["flows"], [])
+                self.assertEqual(readings["skipped_records"], 0)
+                self.assertIsInstance(readings["now"], float)
+                self.assertEqual(inst.bound, ("127.0.0.1", 2055))
+                self.assertEqual(inst.family, socket_module.AF_INET)
+                self.assertTrue(inst.closed)
+        with self.subTest(shape="genuine-listen-addr"):
+            readings, inst = self._collect(
+                mod, {"tunables": {"listen_addr": "10.0.0.9:7777",
+                                   "collect_window_sec": 0.01}})
+            self.assertEqual(inst.bound, ("10.0.0.9", 7777))
+            self.assertEqual(readings["flows"], [])
+        with self.subTest(shape="ipv6-listen-addr"):
+            readings, inst = self._collect(
+                mod, {"tunables": {"listen_addr": "[::1]:2066"}})
+            self.assertEqual(inst.family, socket_module.AF_INET6)
+            self.assertEqual(inst.bound, ("::1", 2066))
+        with self.subTest(shape="bogus-ip-host-falls-back-family"):
+            readings, inst = self._collect(
+                mod, {"tunables": {
+                    "listen_addr": "256.256.256.256:2055"}})
+            self.assertEqual(inst.family, socket_module.AF_INET)
+            self.assertEqual(readings["flows"], [])
+        with self.subTest(shape="bind-failure-quiet-empty"):
+            readings, inst = self._collect(mod, {}, bind_fail=True)
+            self.assertEqual(readings["flows"], [])
+            self.assertEqual(readings["skipped_records"], 0)
+        with self.subTest(shape="two-datagrams-decoded"):
+            readings, inst = self._collect(
+                mod, {}, items=[self._v5_datagram(),
+                                self._v5_datagram()])
+            self.assertEqual(len(readings["flows"]), 2)
+            self.assertEqual(readings["flows"][0]["dst"], "8.8.8.8")
+        with self.subTest(shape="max-datagrams-one"):
+            readings, inst = self._collect(
+                mod, {"tunables": {"max_datagrams": 1}},
+                items=[self._v5_datagram(), self._v5_datagram()])
+            self.assertEqual(len(readings["flows"]), 1)
+        with self.subTest(shape="read-live-silent"):
+            fake_cls = self._fake_socket_class()
+            original = socket_module.socket
+            socket_module.socket = lambda f, t: fake_cls(f, t)
+            try:
+                readings = mod.read_live({})
+            finally:
+                socket_module.socket = original
+            self.assertEqual(readings["flows"], [])
+            self.assertEqual(readings["skipped_records"], 0)
+
+    # -- main() --readings: remaining modes -------------------------
+
+    def _run_main(self, mod, td, manifest, readings,
+                  state=None, state_is_dir=False):
+        import contextlib
+        import io
+        import json
+        import os
+        mp = os.path.join(td, "m.json")
+        rp = os.path.join(td, "r.json")
+        sp = os.path.join(td, "s.json")
+        if manifest != "__missing__":
+            with open(mp, "w", encoding="utf-8") as fh:
+                fh.write(manifest if isinstance(manifest, str)
+                         else json.dumps(manifest))
+        if readings != "__missing__":
+            with open(rp, "w", encoding="utf-8") as fh:
+                fh.write(readings if isinstance(readings, str)
+                         else json.dumps(readings))
+        if state_is_dir:
+            os.mkdir(sp)
+        elif state is not None:
+            with open(sp, "w", encoding="utf-8") as fh:
+                fh.write(state if isinstance(state, str)
+                         else json.dumps(state))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), \
+                contextlib.redirect_stderr(io.StringIO()):
+            rc = mod.main(["--manifest", mp, "--readings", rp,
+                           "--state", sp])
+        after = None
+        if os.path.isfile(sp):
+            with open(sp, encoding="utf-8") as fh:
+                after = json.load(fh)
+        return rc, out.getvalue(), after
+
+    def test_main_readings_mode_error_and_shape_modes(self):
+        import tempfile
+        mod = self._mod()
+        flow = {"version": 5, "src": "192.168.1.20",
+                "dst": "8.8.8.8", "src_port": 12345,
+                "dst_port": 443, "proto": 6, "packets": 10,
+                "bytes": 100, "first": 1000, "last": 1000}
+        genuine = {"name": "softflowd_feed", "tunables": {}}
+        readings = {"now": 2000, "flows": [flow],
+                    "skipped_records": 0}
+        fresh = {"peers": [], "filed": {}}
+        filed = {"peers": ["8.8.8.8"], "filed": {}}
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, after = self._run_main(mod, td, genuine, readings)
+            self.assertEqual(rc, 0)
+            self.assertEqual(len(out.splitlines()), 1)
+            self.assertEqual(after, filed)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, after = self._run_main(mod, td, "{bad", readings)
+            self.assertEqual(rc, 2)
+            self.assertIsNone(after)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, after = self._run_main(mod, td, genuine, "{bad")
+            self.assertEqual(rc, 2)
+            self.assertIsNone(after)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, after = self._run_main(
+                mod, td, genuine, "__missing__")
+            self.assertEqual(rc, 2)
+            self.assertIsNone(after)
+        for manifest in ([], 42):
+            with tempfile.TemporaryDirectory() as td:
+                with self.subTest(manifest=repr(manifest)):
+                    rc, out, after = self._run_main(
+                        mod, td, manifest, readings)
+                    self.assertEqual(rc, 0)
+                    self.assertEqual(after, filed)
+        for value in ([], 42, '"hello"', {}):
+            with tempfile.TemporaryDirectory() as td:
+                with self.subTest(readings=repr(value)[:30]):
+                    rc, out, after = self._run_main(
+                        mod, td, genuine, value)
+                    self.assertEqual(rc, 0)
+                    self.assertEqual(out, "")
+                    self.assertEqual(after, fresh)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, after = self._run_main(
+                mod, td, genuine, {"now": 1, "flows": "x"})
+            self.assertEqual(rc, 0)
+            self.assertEqual(after, fresh)
+        for pre_state in ([], "{bad"):
+            with tempfile.TemporaryDirectory() as td:
+                with self.subTest(state=repr(pre_state)[:20]):
+                    rc, out, after = self._run_main(
+                        mod, td, genuine, readings, state=pre_state)
+                    self.assertEqual(rc, 0)
+                    self.assertEqual(after, filed)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, after = self._run_main(
+                mod, td, genuine, readings,
+                state={"peers": ["8.8.8.8"], "filed": {},
+                       "_reader": {"off": 3}})
+            self.assertEqual(rc, 0)
+            self.assertEqual(out, "")
+            self.assertEqual(after, filed)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, after = self._run_main(
+                mod, td, genuine, readings, state_is_dir=True)
+            self.assertEqual(rc, 2)
+            self.assertEqual(len(out.splitlines()), 1)
+
 if __name__ == "__main__":
 
     unittest.main()
