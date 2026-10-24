@@ -8708,5 +8708,161 @@ class TestLabResultsAnomalyBandDefaultsTo025(unittest.TestCase):
             self._CLOSE_ONLY)
 
 
+
+class TestMaxQueryBudgetDefaultsTo8(unittest.TestCase):
+    """Second-run hunt coverage: max_query_budget
+    (owner config) itself, varied with the fifteen
+    shapes through its actual reader for the first
+    time, on both sides of the reader.
+
+    (a) Claim: PROTOCOL.md (lines 529-533):
+        "`query_budget`: maximum queries answerable
+        for this job (default 8). The runner owner's
+        config caps it with `max_query_budget`
+        (default 8); the effective budget is the
+        smaller of the job's value and the cap, so
+        config can never raise a job above what the
+        job asked for, though a cap above 8 lets a
+        job ask for more." Registry row
+        "max_query_budget": core, integer, default
+        8, policy default, doc_status sketch --
+        the doc statement wraps across lines, which
+        is why Target 4 of the step-8 list counts
+        its provenance as sketch-grade. The row's
+        named class
+        (TestBooleanQueryBudgetDefaultsTo8) covered
+        only the boolean shapes; the table hunt
+        probes this row through confval.integer
+        generically, not through query_budget()
+        itself, whose min/max wrapping is part of
+        the reader's contract. docs/
+        configuring-oracle.md (line 42) states the
+        same cap from the other side: "the most
+        queries that may be answered for any single
+        job. The job's own `query_budget` can only
+        lower this number."
+
+    (b) How it was hunted: step 8 Target 4 -- the
+        first sketch-provenance row, after Targets
+        2 and 3 were completed by earlier second-
+        run ticks. On 2026-10-23 this tick probed
+        runner.runner.query_budget -- the reader
+        that computes the effective budget -- with
+        the table hunt's fifteen shapes, each shape
+        placed first at max_query_budget (with the
+        job asking for 20, so a cap read as the
+        default 8, as 1, or as 0 is distinguishable)
+        and then at the job's query_budget (with
+        the cap set to 100, so a job value read as
+        the default 8 is likewise distinguishable),
+        plus genuine values on both sides.
+
+    (c) Behavior actually observed: NO divergence.
+        Thirteen shapes read as the documented
+        default 8 on each side (effective 8 in both
+        probing scenarios): omitted, null, the
+        empty string, true, false, the explicit
+        default 8, a numeric string "8", a
+        non-numeric string, a several-hundred-digit
+        integer, inf, -inf, NaN, and a list. The
+        booleans reading as the default is the
+        confval migration's fix: the row's named
+        boolean class, which recorded True as 1
+        and False as 0, now passes as written.
+        The remaining two shapes are usable counts
+        under this reader's contract, not defaults:
+        zero is honored as 0, and a negative count
+        is clamped to 0 by the reader's
+        max(0, min(job, cap)) wrapping (confval
+        itself, called with no bounds, would
+        return the negative). Genuine values are
+        honored exactly on both sides: cap 3 with
+        a job asking 20 gives 3, cap 100 with a
+        job asking 20 gives 20 (a cap above 8 lets
+        a job ask for more, as PROTOCOL states),
+        a numeric string "5" gives 5, and floats
+        truncate toward zero (cap 3.9 gives 3,
+        job 2.9 gives 2, cap 0.5 gives 0).
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the reader keeps
+        the documented default and the min/max
+        contract. If a shape above ever stops
+        reading as stated, this test is the
+        failing record of that change. The
+        sketch-grade provenance in (a) is recorded
+        here; no production code or doc was
+        changed by this hunt.
+    """
+
+    _SHAPES = [
+        ("omitted", None), ("null", None),
+        ("empty-string", ""), ("true", True),
+        ("false", False),
+        ("default-explicit", 8),
+        ("numeric-string", "8"),
+        ("non-numeric-string", "bogus"),
+        ("huge-int", 10 ** 400),
+        ("inf", float("inf")),
+        ("neg-inf", float("-inf")),
+        ("nan", float("nan")),
+        ("wrong-container", ["x"]),
+    ]
+
+    def test_fifteen_shapes_config_side(self):
+        from runner.runner import query_budget
+        job = {"result_policy": {"query_budget": 20}}
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                cfg = {} if name == "omitted" else {
+                    "max_query_budget": value}
+                self.assertEqual(query_budget(cfg, job), 8)
+        # Usable counts, not defaults (see (c)).
+        self.assertEqual(
+            query_budget({"max_query_budget": 0}, job), 0)
+        self.assertEqual(
+            query_budget({"max_query_budget": -5}, job), 0)
+
+    def test_fifteen_shapes_job_side(self):
+        from runner.runner import query_budget
+        cfg = {"max_query_budget": 100}
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                job = {} if name == "omitted" else {
+                    "result_policy": {"query_budget": value}}
+                self.assertEqual(query_budget(cfg, job), 8)
+        self.assertEqual(
+            query_budget(cfg, {"result_policy": {
+                "query_budget": 0}}), 0)
+        self.assertEqual(
+            query_budget(cfg, {"result_policy": {
+                "query_budget": -5}}), 0)
+
+    def test_genuine_values_are_honored(self):
+        from runner.runner import query_budget
+        ask20 = {"result_policy": {"query_budget": 20}}
+        self.assertEqual(query_budget({}, {}), 8)
+        self.assertEqual(
+            query_budget({"max_query_budget": 3}, ask20), 3)
+        self.assertEqual(
+            query_budget({"max_query_budget": 100}, ask20), 20)
+        self.assertEqual(
+            query_budget({"max_query_budget": "5"}, ask20), 5)
+        self.assertEqual(
+            query_budget({"max_query_budget": 3.9}, ask20), 3)
+        self.assertEqual(
+            query_budget({"max_query_budget": 0.5}, ask20), 0)
+        cap100 = {"max_query_budget": 100}
+        self.assertEqual(
+            query_budget(cap100, {"result_policy": {
+                "query_budget": 3}}), 3)
+        self.assertEqual(
+            query_budget(cap100, {"result_policy": {
+                "query_budget": "5"}}), 5)
+        self.assertEqual(
+            query_budget(cap100, {"result_policy": {
+                "query_budget": 2.9}}), 2)
+
+
 if __name__ == "__main__":
     unittest.main()
