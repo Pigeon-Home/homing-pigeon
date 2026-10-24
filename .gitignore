@@ -7,3 +7,7 @@ build/
 .coverage
 
 mutants/
+
+# hypothesis example database, written beside the tests on every
+# local run of the property modules; scratch, never the record.
+.hypothesis/
