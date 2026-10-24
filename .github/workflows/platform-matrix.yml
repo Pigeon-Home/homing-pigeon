@@ -138,7 +138,7 @@ jobs:
           prepare: pkg_add -I python%3
           run: sh .github/tools/platform_proof.sh
       - if: ${{ matrix.os == 'netbsd' }}
-        uses: vmactions/netbsd-vm@fac0a63f3e5244c600cb9ca532d27ee774ecdb4b # v1.4.3
+        uses: vmactions/netbsd-vm@c8a0d7ddb84619a7a8cc4e652efa7950b3fd9f92 # v1.5.2
         with:
           usesh: true
           # NetBSD: pkg_add is the bootstrap tool (pkgin is itself a package),
