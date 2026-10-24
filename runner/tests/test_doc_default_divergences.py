@@ -15935,6 +15935,160 @@ class TestSensorWeightFifteenShapesAtAlertScore(unittest.TestCase):
 
 
 
+class TestRetentionDaysFifteenShapesAtRetentionReader(unittest.TestCase):
+    """Second-run hunt coverage: output_retention_days
+    itself varied with the fifteen shapes at the
+    _retention_days() reader level for the first time
+    (step-8 Target 6 -- core rows covered only for
+    the shapes their classes exercised; the table
+    hunt probes this row through confval.integer
+    generically, not through _retention_days, whose
+    own wrapper -- the None special case, the
+    +/-10**9 bounds, and the non-dict-config guard
+    -- had never itself been walked, and the row's
+    registry-named class
+    TestBooleanRetentionDaysDefaultsTo7 varies
+    only the boolean shapes plus a handful of
+    neighbours).
+
+    (a) Doc claim (docs/configuring-oracle.md,
+        line 44): "`output_retention_days` -- how
+        long retained outputs are kept for later
+        queries. Default 7. Zero (or negative)
+        keeps them indefinitely: nothing is pruned
+        and no retained output is reported
+        expired." Registry row
+        "output_retention_days" (default 7, reader
+        runner/runner.py:_retention_days, policy
+        default under Decision 1, bounds
+        lo=-1000000000 hi=1000000000, with the
+        registry note: "Only a boolean / non-number
+        / oversized value reads as the default; 0
+        and negatives are meaningful values, not
+        defaults"). The reader's own docstring
+        states the same contract: "Absent, None,
+        or unparseable values fall back to 7. An
+        explicit 0 or negative value is returned
+        as-is and means no expiry."
+
+    (b) How it was hunted: step-8 artifact Target 6
+        names the core rows covered only for the
+        shapes their classes exercised. This tick
+        took _retention_days in runner/runner.py
+        (the single reader every retention
+        consumer takes the window from, through
+        confval.integer(raw, 7, lo=-(10**9),
+        hi=10**9)) and probed the key with the
+        fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false,
+        zero, negative, the explicit default,
+        numeric string, non-numeric string,
+        huge-int (10**400), inf, -inf, NaN, wrong
+        containers (list and dict) -- plus genuine
+        values, fractional values, the documented
+        bounds at and past +/-10**9, and non-dict
+        configs. The observable is the integer
+        window the reader returns.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape reads as the
+        documented default 7 -- omitted, null,
+        empty string, true, false, non-numeric
+        string, huge-int, inf, -inf, NaN, list and
+        dict -- and a non-dict config (None, list,
+        string, number) also reads as 7. Zero and
+        negative are NOT defaults here: they come
+        through as-is (0 and -5), exactly as the
+        doc's keep-indefinitely sentence and the
+        registry note state. Genuine values are
+        honored exactly: 30 reads 30, the numeric
+        string "30" reads 30 (confval parses
+        numeric strings), fractional values
+        truncate via int() (2.5 reads 2, -2.5
+        reads -2, "2.5" reads 2), and the bounds
+        are exact: 10**9 and -(10**9) come
+        through, while 10**9 + 1 and -(10**9) - 1
+        read as the default 7. The boolean shapes
+        that the row's named class recorded as a
+        divergence in the first run now read as
+        the default on current main (the reader
+        routes through confval.integer, which
+        never counts a boolean as a number).
+        Observed on 2026-10-24 against current
+        main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        unusable shapes keep reading as the
+        documented default, zero / negative keep
+        coming through as the documented
+        keep-indefinitely values, and genuine
+        values keep being honored within the
+        stated bounds. If a shape above ever
+        stops behaving as
+        docs/configuring-oracle.md states, this
+        test is the failing record of that change.
+    """
+
+    def _days(self, cfg):
+        from runner.runner import _retention_days
+        return _retention_days(cfg)
+
+    def test_retention_fifteen_shapes_read_as_default(self):
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._days({}), 7)
+        unusable = [None, "", True, False, "bogus",
+                    10 ** 400, float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._days(
+                        {"output_retention_days": value}), 7)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._days({"output_retention_days": 7}), 7)
+
+    def test_retention_zero_and_negative_kept_as_is(self):
+        # Documented keep-indefinitely values, not
+        # defaults: they must come through exactly.
+        self.assertEqual(
+            self._days({"output_retention_days": 0}), 0)
+        self.assertEqual(
+            self._days({"output_retention_days": -5}), -5)
+        self.assertEqual(
+            self._days({"output_retention_days": -3}), -3)
+
+    def test_retention_genuine_and_bounds_honored(self):
+        self.assertEqual(
+            self._days({"output_retention_days": 30}), 30)
+        self.assertEqual(
+            self._days({"output_retention_days": "30"}), 30)
+        self.assertEqual(
+            self._days({"output_retention_days": 2.5}), 2)
+        self.assertEqual(
+            self._days({"output_retention_days": -2.5}), -2)
+        self.assertEqual(
+            self._days({"output_retention_days": "2.5"}), 2)
+        self.assertEqual(
+            self._days({"output_retention_days": 10 ** 9}),
+            10 ** 9)
+        self.assertEqual(
+            self._days({"output_retention_days": -(10 ** 9)}),
+            -(10 ** 9))
+        self.assertEqual(
+            self._days({"output_retention_days": 10 ** 9 + 1}),
+            7)
+        self.assertEqual(
+            self._days(
+                {"output_retention_days": -(10 ** 9) - 1}), 7)
+
+    def test_retention_non_dict_config_reads_as_default(self):
+        for cfg in (None, [], "x", 5):
+            with self.subTest(cfg=repr(cfg)):
+                self.assertEqual(self._days(cfg), 7)
+
+
 if __name__ == "__main__":
 
     unittest.main()
