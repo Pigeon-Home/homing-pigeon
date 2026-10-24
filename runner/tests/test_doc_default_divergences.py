@@ -37716,6 +37716,672 @@ class TestJobWatcherRecordsStateAndMainFifteenShapes(unittest.TestCase):
             self.assertEqual(
                 run(manifest, readings, state_path=bad)[0], 2)
 
+class TestAideFeedParseStateAndMainFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: aide-feed's
+    parse_report() section parsing, _fingerprint_text(),
+    _clean_state(), _changed_fingerprint(), decide()
+    readings/report/state shapes and main() in
+    --readings, --report-file and live modes varied
+    with the fifteen shapes for the first time (step-8
+    Target 5 / family (b) -- aide-feed's earlier class
+    covered read_report_file() path shapes and
+    decide()'s report/fingerprint basics only; the
+    parser's section rules, the state cleaner, the
+    fingerprint renderer, main() and the multi-path
+    reader sequence were never varied. The one
+    divergence this hunt found -- a second NEW report
+    swallowed on first sight -- is recorded in the
+    failing-by-design class that follows this one,
+    not pinned here).
+
+    (a) Doc claims: the module docstring states
+        parse_report() turns one report's text into
+        {"added": [...], "removed": [...],
+        "changed": [...], "differences": bool} from
+        the "Added entries:" / "Removed entries:" /
+        "Changed entries:" sections, entry lines are
+        an attribute mask and a path "f...: /path"
+        whose prefix letter is f, d or l and whose
+        mask may contain spaces; decide() files one
+        alert per non-empty class in the order
+        changed, removed, added, each detail carrying
+        the count, the first 20 paths and the report
+        fingerprint, and records the fingerprint in
+        its state so the same report files once; the
+        reader state rides in the state dict under
+        "_reader", preserved opaquely; --readings
+        reads a readings dict from JSON and
+        --report-file parses a whole fixture report
+        ignoring the reader state.
+
+    (b) How this was probed: on 2026-10-24
+        parse_report(), _fingerprint_text(),
+        _clean_state(), _clean_report() (through
+        decide()), _changed_fingerprint(), decide()
+        and main() were probed with the table hunt's
+        fifteen shapes (omitted-equivalent empty
+        list, null, empty string, true, false, zero,
+        negative, numeric string, non-numeric string,
+        huge-int (10**400), inf, -inf, NaN, list,
+        dict) at every input: the report text, each
+        fingerprint form, the state object and its
+        last_fingerprint/_reader fields, the
+        readings/report/manifest objects, and report
+        class containers and entries; with genuine
+        multi-section reports (section ends, repeated
+        sections, entry prefixes, paths with spaces
+        and colons), reader-state shapes against
+        real temp report files, and main() against
+        temp manifests, readings, report files and
+        state files in all three modes, including
+        missing, malformed, list-shaped and
+        unwritable files.
+
+    (c) Behavior actually observed: NO divergence
+        in this class (the multi-path first-sight
+        divergence is the next class).
+        parse_report() collects entries only inside
+        the three exact, case-sensitive section
+        headers (surrounding whitespace stripped),
+        ends a section at a line starting Detailed
+        information / The attributes / Summary: /
+        End timestamp, accumulates a repeated
+        section, takes f/d/l-prefixed entries whose
+        path starts with / (spaces and later colons
+        kept, the mask may contain spaces) and skips
+        other prefixes, relative paths and
+        colon-less forms; "differences" is the
+        summary's own claim -- "found no
+        differences" (checked first,
+        case-insensitively) wins even over listed
+        entries, "found differences" sets it, and
+        with no summary line it is exactly whether
+        any entry was listed; every non-string text
+        shape answers the empty report.
+        _fingerprint_text() returns a string
+        verbatim (the empty string included),
+        renders a dict as "inode:size:mtime" with
+        missing fields as None (an unrelated dict
+        renders "None:None:None"), and answers None
+        for every other shape. _clean_state() reads
+        every non-dict state as fresh, keeps a
+        string last_fingerprint verbatim (a dict
+        one drops to None), preserves a dict
+        _reader opaquely and drops a non-dict one,
+        and drops unknown keys. decide() reads
+        every non-dict readings/manifest shape as
+        an empty pass / the "aide_feed" sensor
+        fallback; a None report files nothing and
+        does NOT record the fingerprint, while any
+        other report shape -- an empty dict
+        included -- is cleaned (non-dict as empty,
+        non-list classes as empty, tuple classes as
+        empty, entries kept only as non-empty
+        strings) and DOES record a usable
+        fingerprint in the state even when zero
+        alerts file; the parsed "differences" flag
+        is not consulted, so entries listed under a
+        "found no differences" summary still file;
+        a fingerprint falls back to
+        report_fingerprint when the primary renders
+        None, an empty-string fingerprint gates
+        like any string, a None fingerprint files
+        on every pass and is never recorded, titles
+        singularize "1 ... entry", detail counts
+        are the full cleaned count with paths
+        capped at 20, and readings["now"] is never
+        consulted. _changed_fingerprint() returns
+        the rendered fingerprint of the first path
+        whose new reader entry is a dict differing
+        from the old, treating a non-dict old
+        reader as {} and answering None for a
+        non-dict new reader or non-dict entries.
+        main() in --readings mode files and writes
+        state (rc 0, a repeat pass with the same
+        fingerprint quiet), reads list/scalar
+        readings as an empty pass (rc 0, state
+        preserved), a malformed state as fresh, and
+        a list-shaped manifest as the defaults;
+        --report-file files with the file's own
+        rendered fingerprint and the state's second
+        gate makes a repeat quiet; live mode files
+        a new report once, saves both the
+        fingerprint and the _reader offsets, and is
+        quiet on the second pass, with a non-list
+        report_paths reading as the documented
+        default path; rc 2 for a missing/malformed
+        manifest, a missing/malformed readings
+        file, a missing report file, or an
+        unwritable state path (the alerts are still
+        printed before the state write fails).
+        Observed on 2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as the
+        readings above keep holding. If a shape
+        ever stops behaving as described, this
+        test is the failing record of that change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "aide-feed", "aide_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "aide_feed_parse_state_main_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_parse_report_sections_and_entries(self):
+        mod = self._module()
+        text = (
+            "Start timestamp: 2026-01-01\n"
+            "AIDE found differences between database and "
+            "filesystem!!\n"
+            "Added entries:\n"
+            "f+++++++++++++++++: /etc/newfile\n"
+            "d....: /opt/new dir with spaces\n"
+            "l...: /etc/link\n"
+            "x...: /bad/prefix\n"
+            "f...: relative/path\n"
+            "f...:/no-space-after-colon\n"
+            "Removed entries:\n"
+            "f---: /etc/gone\n"
+            "Changed entries:\n"
+            "f...: /etc/passwd\n"
+            "Detailed information about changes:\n"
+            "f...: /should/not/count\n"
+            "Changed entries:\n"
+            "f mask with spaces: /etc/second:colon\n"
+            "End timestamp: 2026\n"
+            "f...: /after/end\n")
+        self.assertEqual(mod.parse_report(text), {
+            "added": ["/etc/newfile",
+                      "/opt/new dir with spaces", "/etc/link"],
+            "removed": ["/etc/gone"],
+            "changed": ["/etc/passwd", "/etc/second:colon"],
+            "differences": True})
+        self.assertEqual(
+            mod.parse_report("  Added entries:  \n   f...: /a  \n"),
+            {"added": ["/a"], "removed": [], "changed": [],
+             "differences": True})
+        self.assertEqual(
+            mod.parse_report("added entries:\nf...: /a\n"),
+            {"added": [], "removed": [], "changed": [],
+             "differences": False})
+        self.assertEqual(
+            mod.parse_report(
+                "Added entries:\nf...: /a\nSummary: total\n"
+                "f...: /b\n"),
+            {"added": ["/a"], "removed": [], "changed": [],
+             "differences": True})
+        self.assertEqual(
+            mod.parse_report("Random entries:\nf...: /a\n"),
+            {"added": [], "removed": [], "changed": [],
+             "differences": False})
+
+    def test_parse_report_differences_flag_and_shapes(self):
+        mod = self._module()
+        empty = {"added": [], "removed": [], "changed": [],
+                 "differences": False}
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(mod.parse_report(value), empty)
+        self.assertEqual(mod.parse_report("hello\n"), empty)
+        self.assertEqual(
+            mod.parse_report(
+                "AIDE found no differences.\n"
+                "Added entries:\nf...: /etc/x\n"),
+            {"added": ["/etc/x"], "removed": [], "changed": [],
+             "differences": False})
+        self.assertTrue(mod.parse_report(
+            "aide FOUND DIFFERENCES here\n")["differences"])
+        self.assertEqual(
+            mod.parse_report("Added entries:\nf...: /a\n"),
+            {"added": ["/a"], "removed": [], "changed": [],
+             "differences": True})
+
+    def test_fingerprint_text_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                if name == "empty-string":
+                    self.assertEqual(mod._fingerprint_text(value), "")
+                elif name == "numeric-string":
+                    self.assertEqual(
+                        mod._fingerprint_text(value), "120")
+                elif name == "non-numeric-string":
+                    self.assertEqual(
+                        mod._fingerprint_text(value), "bogus")
+                elif name == "dict":
+                    self.assertEqual(
+                        mod._fingerprint_text(value),
+                        "None:None:None")
+                else:
+                    self.assertIsNone(mod._fingerprint_text(value))
+        self.assertEqual(
+            mod._fingerprint_text(
+                {"inode": 1, "size": 2, "mtime": 3.5}), "1:2:3.5")
+        self.assertEqual(
+            mod._fingerprint_text({"inode": 1}), "1:None:None")
+
+    def test_clean_state_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(mod._clean_state(value),
+                                 {"last_fingerprint": None})
+        self.assertEqual(
+            mod._clean_state({"last_fingerprint": "abc",
+                              "_reader": {"a": 1}, "extra": 9}),
+            {"last_fingerprint": "abc", "_reader": {"a": 1}})
+        self.assertEqual(
+            mod._clean_state({"last_fingerprint": {"inode": 1}}),
+            {"last_fingerprint": None})
+        self.assertEqual(
+            mod._clean_state({"last_fingerprint": "x",
+                              "_reader": [1]}),
+            {"last_fingerprint": "x"})
+
+    def test_decide_container_and_report_shapes(self):
+        mod = self._module()
+        man = {"name": "aide_feed", "tunables": {}}
+        rep = {"added": ["/a"], "removed": [],
+               "changed": ["/c1", "/c2"]}
+        for name, value in self._SHAPES:
+            with self.subTest(readings=name):
+                alerts, state = mod.decide(value, man, None)
+                self.assertEqual(alerts, [])
+                self.assertEqual(state, {"last_fingerprint": None})
+            with self.subTest(manifest=name):
+                alerts, _ = mod.decide(
+                    {"report": rep, "fingerprint": "fp1"}, value, None)
+                self.assertEqual(
+                    [a["sensor"] for a in alerts],
+                    ["aide_feed", "aide_feed"])
+            with self.subTest(state=name):
+                alerts, state = mod.decide(
+                    {"report": rep, "fingerprint": "fp1"}, man, value)
+                self.assertEqual(len(alerts), 2)
+                self.assertEqual(state, {"last_fingerprint": "fp1"})
+            with self.subTest(report=name):
+                alerts, state = mod.decide(
+                    {"report": value, "fingerprint": "fp1"}, man, None)
+                self.assertEqual(alerts, [])
+                if name == "null":
+                    self.assertEqual(
+                        state, {"last_fingerprint": None})
+                else:
+                    self.assertEqual(
+                        state, {"last_fingerprint": "fp1"})
+        alerts, _ = mod.decide(
+            {"report": {"added": "scalar", "removed": ("/r",),
+                        "changed": [123, "", None, "/ok", True]},
+             "fingerprint": "f"}, man, None)
+        self.assertEqual(
+            [(a["signal"], a["detail"]["paths"]) for a in alerts],
+            [("aide_changed", ["/ok"])])
+        alerts, _ = mod.decide(
+            {"report": {"added": ["/a"], "differences": False},
+             "fingerprint": "f2"}, man, None)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["aide_added"])
+
+    def test_decide_fingerprint_gates_and_detail(self):
+        mod = self._module()
+        man = {"name": "aide_feed", "tunables": {}}
+        rep = {"added": ["/a"], "removed": [], "changed": ["/c"]}
+        alerts, state = mod.decide(
+            {"report": rep, "fingerprint": 123,
+             "report_fingerprint": "rfp"}, man,
+            {"last_fingerprint": "rfp"})
+        self.assertEqual(alerts, [])
+        alerts, state = mod.decide(
+            {"report": rep,
+             "fingerprint": {"inode": 1, "size": 2, "mtime": 3}},
+            man, None)
+        self.assertEqual(state, {"last_fingerprint": "1:2:3"})
+        self.assertEqual(alerts[0]["detail"]["fingerprint"], "1:2:3")
+        alerts, _ = mod.decide(
+            {"report": rep,
+             "fingerprint": {"inode": 1, "size": 2, "mtime": 3}},
+            man, {"last_fingerprint": "1:2:3"})
+        self.assertEqual(alerts, [])
+        state = None
+        for _ in range(2):
+            alerts, state = mod.decide({"report": rep}, man, state)
+            self.assertEqual(len(alerts), 2)
+            self.assertEqual(state, {"last_fingerprint": None})
+        alerts, state = mod.decide(
+            {"report": rep}, man, {"last_fingerprint": "1:2:3"})
+        self.assertEqual(len(alerts), 2)
+        self.assertEqual(state, {"last_fingerprint": "1:2:3"})
+        alerts, _ = mod.decide(
+            {"report": {"added": ["/one"],
+                        "removed": ["/r1", "/r2"], "changed": []},
+             "fingerprint": "z"}, man, None)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["aide_removed", "aide_added"])
+        self.assertEqual([a["title"] for a in alerts],
+                         ["2 removed entries in AIDE report",
+                          "1 added entry in AIDE report"])
+        alerts, _ = mod.decide(
+            {"report": {"added": [f"/p{i}" for i in range(25)]},
+             "fingerprint": "z"}, man, None)
+        self.assertEqual(alerts[0]["detail"]["count"], 25)
+        self.assertEqual(len(alerts[0]["detail"]["paths"]), 20)
+
+    def test_changed_fingerprint_shapes(self):
+        mod = self._module()
+        fp = {"inode": 1, "size": 2, "mtime": 3}
+        self.assertIsNone(mod._changed_fingerprint([], {}, {}))
+        self.assertEqual(
+            mod._changed_fingerprint(["/a"], {}, {"/a": fp}), "1:2:3")
+        self.assertIsNone(mod._changed_fingerprint(
+            ["/a"], {"/a": {"inode": 1}}, {"/a": {"inode": 1}}))
+        self.assertEqual(
+            mod._changed_fingerprint(
+                ["/a", "/b"], {"/a": {"inode": 1}},
+                {"/a": {"inode": 1},
+                 "/b": {"inode": 9, "size": 1, "mtime": 2}}), "9:1:2")
+        self.assertEqual(
+            mod._changed_fingerprint(["/a"], "junk", {"/a": fp}),
+            "1:2:3")
+        self.assertIsNone(
+            mod._changed_fingerprint(["/a"], {}, "junk"))
+        self.assertIsNone(
+            mod._changed_fingerprint(["/a"], {}, {"/a": "junk"}))
+
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
+    def test_read_report_file_reader_state_shapes(self):
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "a.log")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("report-one")
+            for name, value in self._SHAPES:
+                with self.subTest(reader_state=name):
+                    text, reader = mod.read_report_file([path], value)
+                    self.assertEqual(text, "report-one")
+                    self.assertEqual(
+                        reader[path], mod._fingerprint(path))
+            text, reader = mod.read_report_file(
+                [path], {path: "junk"})
+            self.assertEqual(text, "report-one")
+            text, reader = mod.read_report_file(
+                [path], {path: {"inode": 999}})
+            self.assertEqual(text, "report-one")
+            missing = os.path.join(d, "gone.log")
+            kept = {"inode": 5, "size": 6, "mtime": 7}
+            self.assertEqual(
+                mod.read_report_file([missing], {missing: kept}),
+                (None, {missing: kept}))
+            self.assertEqual(
+                mod.read_report_file([missing], {missing: "junk"}),
+                (None, {}))
+
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
+    def test_main_modes(self):
+        import io
+        import contextlib
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+
+        def run(argv):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                rc = mod.main(argv)
+            return rc, out.getvalue()
+
+        with tempfile.TemporaryDirectory() as d:
+            manp = os.path.join(d, "extension.json")
+            statep = os.path.join(d, "state.json")
+            rp = os.path.join(d, "readings.json")
+            with open(manp, "w", encoding="utf-8") as fh:
+                json.dump({"name": "aide_feed", "tunables": {}}, fh)
+            with open(rp, "w", encoding="utf-8") as fh:
+                json.dump({"report": {"added": ["/a"],
+                                      "changed": ["/c"]},
+                           "fingerprint": "fpX"}, fh)
+            rc, out = run(["--manifest", manp, "--state", statep,
+                           "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                [json.loads(line)["signal"]
+                 for line in out.splitlines()],
+                ["aide_changed", "aide_added"])
+            with open(statep, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh),
+                                 {"last_fingerprint": "fpX"})
+            self.assertEqual(
+                run(["--manifest", manp, "--state", statep,
+                     "--readings", rp]), (0, ""))
+            with open(rp, "w", encoding="utf-8") as fh:
+                json.dump([1, 2], fh)
+            self.assertEqual(
+                run(["--manifest", manp, "--state", statep,
+                     "--readings", rp]), (0, ""))
+            with open(rp, "w", encoding="utf-8") as fh:
+                fh.write("{bad")
+            self.assertEqual(
+                run(["--manifest", manp, "--state", statep,
+                     "--readings", rp])[0], 2)
+            self.assertEqual(
+                run(["--manifest", manp, "--state", statep,
+                     "--readings", os.path.join(d, "nope")])[0], 2)
+            self.assertEqual(
+                run(["--manifest", os.path.join(d, "nope"),
+                     "--state", statep, "--readings", rp])[0], 2)
+            with open(manp, "w", encoding="utf-8") as fh:
+                fh.write("{bad")
+            self.assertEqual(
+                run(["--manifest", manp, "--state", statep,
+                     "--readings", rp])[0], 2)
+            with open(manp, "w", encoding="utf-8") as fh:
+                json.dump([1], fh)
+            with open(rp, "w", encoding="utf-8") as fh:
+                json.dump({"report": {"added": ["/a"]},
+                           "fingerprint": "fpY"}, fh)
+            rc, out = run(["--manifest", manp, "--state", statep,
+                           "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertIn("aide_added", out)
+            with open(manp, "w", encoding="utf-8") as fh:
+                json.dump({"name": "aide_feed", "tunables": {}}, fh)
+            rep = os.path.join(d, "rep.txt")
+            with open(rep, "w", encoding="utf-8") as fh:
+                fh.write("AIDE found differences!!\n"
+                         "Added entries:\nf...: /new\n")
+            rc, out = run(["--manifest", manp, "--state", statep,
+                           "--report-file", rep])
+            self.assertEqual(rc, 0)
+            self.assertIn("aide_added", out)
+            self.assertEqual(
+                run(["--manifest", manp, "--state", statep,
+                     "--report-file", rep]), (0, ""))
+            self.assertEqual(
+                run(["--manifest", manp, "--state", statep,
+                     "--report-file", os.path.join(d, "nope")])[0], 2)
+            with open(manp, "w", encoding="utf-8") as fh:
+                json.dump({"name": "aide_feed",
+                           "tunables": {"report_paths": [rep]}}, fh)
+            os.remove(statep)
+            rc, out = run(["--manifest", manp, "--state", statep])
+            self.assertEqual(rc, 0)
+            self.assertIn("aide_added", out)
+            with open(statep, encoding="utf-8") as fh:
+                saved = json.load(fh)
+            self.assertIn("_reader", saved)
+            self.assertIn("last_fingerprint", saved)
+            self.assertEqual(
+                run(["--manifest", manp, "--state", statep]), (0, ""))
+            if not os.path.exists("/var/log/aide/aide.log"):
+                with open(manp, "w", encoding="utf-8") as fh:
+                    json.dump({"name": "aide_feed", "tunables":
+                               {"report_paths": "bogus-scalar"}}, fh)
+                self.assertEqual(
+                    run(["--manifest", manp, "--state", statep]),
+                    (0, ""))
+            with open(manp, "w", encoding="utf-8") as fh:
+                json.dump({"name": "aide_feed", "tunables": {}}, fh)
+            with open(statep, "w", encoding="utf-8") as fh:
+                fh.write("{bad")
+            with open(rp, "w", encoding="utf-8") as fh:
+                json.dump({"report": {"added": ["/m"]},
+                           "fingerprint": "fpM"}, fh)
+            rc, out = run(["--manifest", manp, "--state", statep,
+                           "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertIn("aide_added", out)
+            rc, out = run(["--manifest", manp, "--state", d,
+                           "--readings", rp])
+            self.assertEqual(rc, 2)
+            self.assertIn("aide_added", out)
+
+
+class TestAideFeedSecondNewReportSwallowedOnFirstSight(unittest.TestCase):
+    """Divergence: when two report paths are both NEW
+    on the reader's first sight of them,
+    read_report_file() advances the second path's
+    fingerprint without reading it, so that report
+    is never read on any later pass either.
+
+    (a) Doc claim (runner/extensions/aide-feed/
+        aide_feed.py, read_report_file() docstring):
+        "The returned state advances the fingerprint
+        of the report that was read -- and only that
+        one, when several paths are new at once, so
+        the next pass reads the next." The inline
+        comment on the same branch says the previous
+        fingerprint is carried "so an unread new
+        report stays new for the next pass".
+
+    (b) How the bug was found: the campaign's
+        second-run hunt (2026-10-24 tick) probed
+        aide-feed's read_report_file() with two real
+        temp report files, both new, handed in one
+        paths list with an empty reader state, then
+        handed the returned reader state back for a
+        second pass -- the exact sequence main()
+        runs each pass with the shipped multi-path
+        shape of the report_paths tunable.
+
+    (c) Behavior actually observed: the first pass
+        returns the first file's text and advances
+        BOTH paths' fingerprints to their current
+        (inode, size, mtime); the second pass returns
+        None, and the second file's report is lost
+        until the file changes again. The branch
+        preserves the previous fingerprint only when
+        the previous entry is a dict that differs --
+        with a differing dict entry for the second
+        path the next pass does read it (the control
+        below) -- so a first-sight (or non-dict)
+        previous entry is where the unread report is
+        swallowed. Observed on 2026-10-24 against
+        current main.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "aide-feed", "aide_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "aide_feed_second_report_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
+    def test_second_new_report_reads_on_the_next_pass(self):
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            p1 = os.path.join(d, "a.log")
+            p2 = os.path.join(d, "b.log")
+            with open(p1, "w", encoding="utf-8") as fh:
+                fh.write("report-one")
+            with open(p2, "w", encoding="utf-8") as fh:
+                fh.write("report-two")
+            text, reader = mod.read_report_file([p1, p2], {})
+            self.assertEqual(text, "report-one")
+            text, reader = mod.read_report_file([p1, p2], reader)
+            self.assertEqual(text, "report-two")
+            text, _ = mod.read_report_file([p1, p2], reader)
+            self.assertIsNone(text)
+
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
+    def test_second_new_report_reads_on_the_next_pass_reversed(self):
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            p1 = os.path.join(d, "a.log")
+            p2 = os.path.join(d, "b.log")
+            with open(p1, "w", encoding="utf-8") as fh:
+                fh.write("report-one")
+            with open(p2, "w", encoding="utf-8") as fh:
+                fh.write("report-two")
+            text, reader = mod.read_report_file([p2, p1], {})
+            self.assertEqual(text, "report-two")
+            text, reader = mod.read_report_file([p2, p1], reader)
+            self.assertEqual(text, "report-one")
+
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
+    def test_controls_that_already_behave(self):
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            p1 = os.path.join(d, "a.log")
+            p2 = os.path.join(d, "b.log")
+            with open(p1, "w", encoding="utf-8") as fh:
+                fh.write("report-one")
+            with open(p2, "w", encoding="utf-8") as fh:
+                fh.write("report-two")
+            # A differing dict entry for the second path IS
+            # preserved today, and the next pass reads it.
+            prev = {p2: {"inode": 1, "size": 1, "mtime": 1.0}}
+            text, reader = mod.read_report_file([p1, p2], prev)
+            self.assertEqual(text, "report-one")
+            self.assertEqual(reader[p2],
+                             {"inode": 1, "size": 1, "mtime": 1.0})
+            text, _ = mod.read_report_file([p1, p2], reader)
+            self.assertEqual(text, "report-two")
+            # A single new path reads once, then is quiet.
+            text, reader = mod.read_report_file([p1], {})
+            self.assertEqual(text, "report-one")
+            self.assertEqual(mod.read_report_file([p1], reader),
+                             (None, reader))
+
 if __name__ == "__main__":
 
     unittest.main()
