@@ -31830,6 +31830,497 @@ class TestLabResultsWatchDirTunableCrashesInsteadOfReadingTheDefault(
                         os.chdir(old)
                     self.assertEqual(rc, 0)
 
+class TestReleaseDropWatchDirAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the release-drop
+    watch_dir string tunable (default "./drop"),
+    read_live() folder scan, _clean_state(),
+    decide() arrival/change handling and main()
+    varied with the fifteen shapes for the first
+    time (step-8 Target 5 / family (b) --
+    release-drop's only earlier class covers its
+    numeric max_hash_mb; its watch_dir, scan,
+    state, decision and main paths were never
+    varied, the same gap the other senses closed
+    in the ticks before this one).
+
+    (a) Doc claims: extension.json ships
+        watch_dir "./drop", max_hash_mb 512 and
+        poll_interval_sec 60. README.md states a
+        name never seen files artifact_arrived
+        with the name, size and full hex SHA-384,
+        a known name with a different SHA-384
+        files artifact_changed (high) with the old
+        and new digests side by side, a file over
+        max_hash_mb is skipped entirely (counted,
+        named on stderr, never watched), and "a
+        name that vanishes from the drop is
+        dropped from the state silently: no signal
+        is declared for departures, so none is
+        filed". The module docstring states
+        read_live() "never raises" and decide() is
+        pure ("readings plus manifest plus last
+        pass's state, out come alerts and the new
+        state"). watch_dir is not a numeric
+        registry row, so Decision 1's
+        default-on-unusable policy does not name a
+        shape rule for it; this class pins the
+        observed readings instead of asserting one.
+
+    (b) How this was probed: on 2026-10-24 the
+        fifteen shapes (omitted, null, empty
+        string, true, false, zero, negative,
+        numeric string, non-numeric string,
+        huge-int (10**400), inf, -inf, NaN, list,
+        dict) were fed to _watch_dir() /
+        _tunables(), to _clean_state() whole and
+        field-wise, to decide() as the readings,
+        files, entry, manifest and state values,
+        to read_live() over a real temp drop folder
+        (genuine files, a dotfile, a subdir, a
+        symlink to a file, a missing dir and a file
+        as the dir), and to main() in --readings
+        and live modes against temp manifests and
+        state files (including missing / malformed
+        / list manifests, readings and states, an
+        unwritable state path, a --watch-dir
+        override and the skipped-oversize stderr
+        line with genuine and unusable caps).
+        poll_interval_sec is read by no function in
+        release_drop.py; decide() consults the
+        manifest only for its sensor name.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. _watch_dir() reads every
+        non-string or empty shape as "./drop" and
+        honors any genuine string literally
+        (including "42", "bogus" and " ");
+        _tunables() reads a non-dict manifest or a
+        non-dict tunables as {}. read_live() lists
+        regular files in sorted name order with
+        size and the SHA-384 it computed, skips
+        dotfiles and subdirectories, follows a
+        symlink to a regular file, counts a file
+        over the cap in skipped_oversize without
+        listing it, and reads a missing dir, a file
+        as the dir, and every unusable watch_dir /
+        manifest shape as an empty pass (in a
+        temp cwd with no ./drop) -- it never
+        raises. _clean_state() reads every non-dict
+        state as the fresh {"seen": {}}, drops
+        entries whose key is not a string, whose
+        value is not a dict or whose sha384 is not
+        a non-empty string, and reads a non-number
+        size (string, bool, huge-int, inf included)
+        as 0. decide() files artifact_arrived
+        (info) for a new name and artifact_changed
+        (high, old and new digests) for a changed
+        one, files nothing for an unchanged name,
+        drops a vanished name silently, compares a
+        name listed twice in one pass against the
+        digest just recorded (same digest: one
+        arrival; moved digest: arrival then
+        change), skips a non-list files value and
+        every entry that is not a dict with a
+        non-empty string name, a non-empty string
+        sha384 and a genuine finite number size
+        (string / bool / huge-int / inf / NaN sizes
+        are skipped; zero, negative and fractional
+        sizes are honored literally), reads a
+        non-dict readings / state / manifest as
+        empty and falls back to the sensor name
+        "release_drop" for a non-string or empty
+        manifest name. main() prints one alert per
+        line and writes state (rc 0), files nothing
+        on a second identical pass, answers rc 2
+        for a missing or malformed manifest or
+        readings file and for an unwritable state
+        path (the alert is still printed), reads a
+        malformed or list state and a list manifest
+        as the defaults, names the genuine cap in
+        its skipped-oversize stderr line and "the
+        max_hash_mb cap" for an unusable one, and
+        its --watch-dir override steers the live
+        pass without touching the manifest on disk.
+        Observed on 2026-10-24 against current
+        main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the shapes above
+        keep behaving as pinned. If a shape ever
+        stops behaving as the README states, this
+        test is the failing record of that change.
+    """
+
+    _SHAPES = [("null", None), ("empty-string", ""),
+               ("true", True), ("false", False),
+               ("zero", 0), ("negative", -5),
+               ("numeric-string", "42"),
+               ("string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "release-drop",
+            "release_drop.py")
+        spec = importlib.util.spec_from_file_location(
+            "release_drop_watchdir_decide", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_watch_dir_fifteen_shapes_at_reader(self):
+        mod = self._mod()
+        self.assertEqual(mod._watch_dir({}), "./drop")
+        for label, value in self._SHAPES:
+            with self.subTest(shape=label):
+                if isinstance(value, str) and value:
+                    self.assertEqual(
+                        mod._watch_dir({"watch_dir": value}),
+                        value)
+                else:
+                    self.assertEqual(
+                        mod._watch_dir({"watch_dir": value}),
+                        "./drop")
+        self.assertEqual(
+            mod._watch_dir({"watch_dir": " "}), " ")
+        self.assertEqual(
+            mod._watch_dir({"watch_dir": "/tmp/x"}), "/tmp/x")
+        for bad in [None, [], "x", 123,
+                    {"tunables": []}, {"tunables": None}]:
+            with self.subTest(manifest=repr(bad)):
+                self.assertEqual(mod._tunables(bad), {})
+        self.assertEqual(
+            mod._tunables({"tunables": {"a": 1}}), {"a": 1})
+
+    def test_read_live_genuine_folder_and_shapes(self):
+        import hashlib
+        import os
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            with open(os.path.join(td, "b.txt"), "wb") as fh:
+                fh.write(b"hello")
+            with open(os.path.join(td, "a.txt"), "wb") as fh:
+                fh.write(b"hi")
+            with open(os.path.join(td, ".hidden"), "wb") as fh:
+                fh.write(b"x")
+            os.mkdir(os.path.join(td, "subdir"))
+            readings = mod.read_live(
+                {"name": "release_drop",
+                 "tunables": {"watch_dir": td}})
+            self.assertEqual(
+                [f["name"] for f in readings["files"]],
+                ["a.txt", "b.txt"])
+            self.assertEqual(readings["skipped_oversize"], 0)
+            self.assertIsInstance(readings["now"], float)
+            for entry in readings["files"]:
+                with open(os.path.join(td, entry["name"]),
+                          "rb") as fh:
+                    data = fh.read()
+                self.assertEqual(entry["size"], len(data))
+                self.assertEqual(
+                    entry["sha384"],
+                    hashlib.sha384(data).hexdigest())
+            try:
+                os.symlink(os.path.join(td, "a.txt"),
+                           os.path.join(td, "link.txt"))
+            except OSError:
+                pass
+            else:
+                names = [f["name"] for f in mod.read_live(
+                    {"tunables": {"watch_dir": td}})["files"]]
+                self.assertIn("link.txt", names)
+            tiny = mod.read_live(
+                {"tunables": {"watch_dir": td,
+                              "max_hash_mb": 0.000001}})
+            self.assertEqual(tiny["files"], [])
+            self.assertGreaterEqual(tiny["skipped_oversize"], 2)
+            for target in [os.path.join(td, "nope"),
+                           os.path.join(td, "a.txt")]:
+                with self.subTest(target=target):
+                    empty = mod.read_live(
+                        {"tunables": {"watch_dir": target}})
+                    self.assertEqual(empty["files"], [])
+                    self.assertEqual(empty["skipped_oversize"], 0)
+            cwd = os.getcwd()
+            os.chdir(td)
+            try:
+                for label, value in self._SHAPES:
+                    with self.subTest(shape=label):
+                        empty = mod.read_live(
+                            {"tunables": {"watch_dir": value}})
+                        self.assertEqual(empty["files"], [])
+                for bad in [None, [], "x",
+                            {"tunables": []},
+                            {"tunables": None}]:
+                    with self.subTest(manifest=repr(bad)):
+                        self.assertEqual(
+                            mod.read_live(bad)["files"], [])
+            finally:
+                os.chdir(cwd)
+
+    def test_clean_state_fifteen_shapes(self):
+        mod = self._mod()
+        fresh = {"seen": {}}
+        self.assertEqual(mod._clean_state({}), fresh)
+        for label, value in self._SHAPES:
+            with self.subTest(shape=label):
+                self.assertEqual(mod._clean_state(value), fresh)
+                self.assertEqual(
+                    mod._clean_state({"seen": value}), fresh)
+        state = {"seen": {
+            "a": {"sha384": "abc", "size": 5},
+            "b": {"sha384": "", "size": 5},
+            "c": {"sha384": 123, "size": 5},
+            123: {"sha384": "x", "size": 1},
+            "d": {"sha384": "y", "size": "5"},
+            "e": {"sha384": "z", "size": True},
+            "f": "not-a-dict",
+            "g": {"sha384": "w", "size": 10 ** 400},
+            "h": {"sha384": "v", "size": float("inf")}}}
+        self.assertEqual(mod._clean_state(state), {"seen": {
+            "a": {"sha384": "abc", "size": 5},
+            "d": {"sha384": "y", "size": 0},
+            "e": {"sha384": "z", "size": 0},
+            "g": {"sha384": "w", "size": 0},
+            "h": {"sha384": "v", "size": 0}}})
+
+    def test_decide_arrival_change_vanish_duplicates(self):
+        mod = self._mod()
+        man = {"name": "release_drop"}
+        entry = {"name": "a.tgz", "size": 3, "sha384": "aaa"}
+        alerts, state = mod.decide(
+            {"now": 1.0, "files": [entry]}, man, {"seen": {}})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["signal"], "artifact_arrived")
+        self.assertEqual(alerts[0]["severity"], "info")
+        self.assertEqual(alerts[0]["sensor"], "release_drop")
+        self.assertEqual(alerts[0]["detail"],
+                         {"name": "a.tgz", "size": 3,
+                          "sha384": "aaa"})
+        self.assertEqual(state, {"seen": {
+            "a.tgz": {"sha384": "aaa", "size": 3}}})
+        alerts, state2 = mod.decide(
+            {"files": [entry]}, man, state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state2, state)
+        moved = {"name": "a.tgz", "size": 4, "sha384": "bbb"}
+        alerts, state3 = mod.decide(
+            {"files": [moved]}, man, state)
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["signal"], "artifact_changed")
+        self.assertEqual(alerts[0]["severity"], "high")
+        self.assertEqual(alerts[0]["detail"],
+                         {"name": "a.tgz", "old_sha384": "aaa",
+                          "new_sha384": "bbb", "size": 4})
+        alerts, state4 = mod.decide({"files": []}, man, state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state4, {"seen": {}})
+        dup = [{"name": "a", "size": 1, "sha384": "x"},
+               {"name": "a", "size": 1, "sha384": "x"}]
+        alerts, _ = mod.decide({"files": dup}, man, {"seen": {}})
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["artifact_arrived"])
+        dup[1] = {"name": "a", "size": 2, "sha384": "y"}
+        alerts, state5 = mod.decide(
+            {"files": dup}, man, {"seen": {}})
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["artifact_arrived", "artifact_changed"])
+        self.assertEqual(state5, {"seen": {
+            "a": {"sha384": "y", "size": 2}}})
+
+    def test_decide_skips_unusable_entries_and_fallbacks(self):
+        mod = self._mod()
+        man = {"name": "release_drop"}
+        for label, value in self._SHAPES:
+            with self.subTest(files=label):
+                alerts, state = mod.decide(
+                    {"files": value}, man, {"seen": {}})
+                self.assertEqual(alerts, [])
+                self.assertEqual(state, {"seen": {}})
+            with self.subTest(readings=label):
+                self.assertEqual(
+                    mod.decide(value, man, {"seen": {}}),
+                    ([], {"seen": {}}))
+            with self.subTest(state=label):
+                self.assertEqual(
+                    mod.decide({"files": []}, man, value),
+                    ([], {"seen": {}}))
+        bad_entries = [
+            None, "x", 123, {},
+            {"name": "", "sha384": "a", "size": 1},
+            {"name": 123, "sha384": "a", "size": 1},
+            {"name": "a", "sha384": "", "size": 1},
+            {"name": "a", "sha384": 123, "size": 1},
+            {"name": "a", "sha384": "s", "size": "1"},
+            {"name": "a", "sha384": "s", "size": True},
+            {"name": "a", "sha384": "s", "size": 10 ** 400},
+            {"name": "a", "sha384": "s", "size": float("inf")},
+            {"name": "a", "sha384": "s", "size": float("nan")}]
+        for entry in bad_entries:
+            with self.subTest(entry=repr(entry)):
+                self.assertEqual(
+                    mod.decide({"files": [entry]}, man,
+                               {"seen": {}}),
+                    ([], {"seen": {}}))
+        for size in [0, -5, 2.5]:
+            with self.subTest(size=size):
+                alerts, _ = mod.decide(
+                    {"files": [{"name": "a", "sha384": "s",
+                                "size": size}]}, man, {"seen": {}})
+                self.assertEqual(len(alerts), 1)
+                self.assertEqual(alerts[0]["detail"]["size"], size)
+        good = {"files": [{"name": "a", "sha384": "s", "size": 1}]}
+        for badman in [None, [], {}, {"name": ""}, {"name": 123},
+                       {"name": None}]:
+            with self.subTest(manifest=repr(badman)):
+                alerts, _ = mod.decide(good, badman, {"seen": {}})
+                self.assertEqual(alerts[0]["sensor"], "release_drop")
+        alerts, _ = mod.decide(good, {"name": "custom"},
+                               {"seen": {}})
+        self.assertEqual(alerts[0]["sensor"], "custom")
+
+    def test_main_readings_mode_and_errors(self):
+        import contextlib
+        import io
+        import os
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            manp = os.path.join(td, "extension.json")
+            readp = os.path.join(td, "readings.json")
+            statep = os.path.join(td, "state.json")
+
+            def write(path, value):
+                with open(path, "w", encoding="utf-8") as fh:
+                    if isinstance(value, str):
+                        fh.write(value)
+                    else:
+                        json.dump(value, fh)
+
+            def run(args):
+                out, err = io.StringIO(), io.StringIO()
+                with contextlib.redirect_stdout(out), \
+                        contextlib.redirect_stderr(err):
+                    rc = mod.main(args)
+                return rc, out.getvalue(), err.getvalue()
+
+            write(manp, {"name": "release_drop",
+                         "tunables": {"watch_dir": "./drop",
+                                      "max_hash_mb": 512}})
+            write(readp, {"now": 1, "files": [
+                {"name": "a.tgz", "size": 3, "sha384": "aaa"}]})
+            rc, out, _ = run(["--manifest", manp,
+                              "--readings", readp,
+                              "--state", statep])
+            self.assertEqual(rc, 0)
+            lines = [ln for ln in out.splitlines() if ln.strip()]
+            self.assertEqual(len(lines), 1)
+            self.assertEqual(json.loads(lines[0])["signal"],
+                             "artifact_arrived")
+            with open(statep, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh), {"seen": {
+                    "a.tgz": {"sha384": "aaa", "size": 3}}})
+            rc, out, _ = run(["--manifest", manp,
+                              "--readings", readp,
+                              "--state", statep])
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(run(["--manifest",
+                                  os.path.join(td, "nope.json"),
+                                  "--state", statep])[0], 2)
+            self.assertEqual(run(["--manifest", manp,
+                                  "--readings",
+                                  os.path.join(td, "nope.json"),
+                                  "--state", statep])[0], 2)
+            badp = os.path.join(td, "bad.json")
+            write(badp, "{nope")
+            self.assertEqual(run(["--manifest", badp,
+                                  "--state", statep])[0], 2)
+            self.assertEqual(run(["--manifest", manp,
+                                  "--readings", badp,
+                                  "--state", statep])[0], 2)
+            for state_text in ["{bad", "[]"]:
+                with self.subTest(state=state_text):
+                    write(statep, state_text)
+                    rc, out, _ = run(["--manifest", manp,
+                                      "--readings", readp,
+                                      "--state", statep])
+                    self.assertEqual(rc, 0)
+                    self.assertIn("artifact_arrived", out)
+            listman = os.path.join(td, "list.json")
+            write(listman, [])
+            write(statep, "{}")
+            rc, out, _ = run(["--manifest", listman,
+                              "--readings", readp,
+                              "--state", statep])
+            self.assertEqual(rc, 0)
+            self.assertIn("artifact_arrived", out)
+            write(statep, "{}")
+            rc, out, _ = run(["--manifest", manp,
+                              "--readings", readp,
+                              "--state", os.path.join(
+                                  td, "nodir", "s.json")])
+            self.assertEqual(rc, 2)
+            self.assertIn("artifact_arrived", out)
+            for value in [[], "x", 123, None, {"files": "bogus"}]:
+                with self.subTest(readings=repr(value)):
+                    with open(readp, "w", encoding="utf-8") as fh:
+                        json.dump(value, fh)
+                    write(statep, "{}")
+                    self.assertEqual(
+                        run(["--manifest", manp,
+                             "--readings", readp,
+                             "--state", statep])[:2], (0, ""))
+            write(readp, {"now": 1, "files": [],
+                          "skipped_oversize": 2})
+            write(manp, {"name": "release_drop",
+                         "tunables": {"max_hash_mb": 512}})
+            rc, _, err = run(["--manifest", manp,
+                              "--readings", readp,
+                              "--state", statep])
+            self.assertEqual(rc, 0)
+            self.assertIn("over 512 MB", err)
+            write(manp, {"name": "release_drop",
+                         "tunables": {"max_hash_mb": "bogus"}})
+            rc, _, err = run(["--manifest", manp,
+                              "--readings", readp,
+                              "--state", statep])
+            self.assertEqual(rc, 0)
+            self.assertIn("over the max_hash_mb cap", err)
+            drop = os.path.join(td, "drop2")
+            os.mkdir(drop)
+            with open(os.path.join(drop, "z.bin"), "wb") as fh:
+                fh.write(b"zz")
+            write(manp, {"name": "release_drop", "tunables": {}})
+            write(statep, "{}")
+            rc, out, _ = run(["--manifest", manp,
+                              "--watch-dir", drop,
+                              "--state", statep])
+            self.assertEqual(rc, 0)
+            self.assertIn("artifact_arrived", out)
+            self.assertIn("z.bin", out)
+            cwd = os.getcwd()
+            os.chdir(td)
+            try:
+                for label, value in self._SHAPES:
+                    with self.subTest(watch_dir=label):
+                        write(manp, {"name": "release_drop",
+                                     "tunables":
+                                         {"watch_dir": value}})
+                        write(statep, "{}")
+                        self.assertEqual(
+                            run(["--manifest", manp,
+                                 "--state", statep])[:2],
+                            (0, ""))
+            finally:
+                os.chdir(cwd)
+
 if __name__ == "__main__":
 
     unittest.main()
