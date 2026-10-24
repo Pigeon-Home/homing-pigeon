@@ -11147,6 +11147,176 @@ class TestLogSentinelIntTunableFifteenShapes(unittest.TestCase):
             len(decide({"max_alerts_per_pass": 2,
                         "patterns": patterns}, lines=lines)), 2)
 
+
+class TestTripwireIntTunableFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the tripwire
+    _int_tunable reader (step-8 Target 5,
+    extension-tunable table probe) -- the fifteen
+    shapes at reader level for the family's two
+    registry rows.
+
+    (a) Doc claims (extensions/tripwire/README.md
+        lines 27-28 and 32-33, repeated in
+        extension.json): "At most `max_files` files
+        (default 10000) are recorded per pass"; "At
+        most `max_alerts_per_pass` alerts (default
+        100) are filed per pass, but the full new
+        baseline is always absorbed". Registry rows
+        "max_files (tripwire)" (default 10000) and
+        "max_alerts_per_pass (tripwire)" (default
+        100): policy default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: step-8 artifact Target 5
+        says the 51 extension tunables have no
+        reader-level table probe; their readers are
+        local helper families, one adapter per
+        family. This tick took the tripwire
+        _int_tunable family and probed
+        extensions/tripwire/tripwire.py
+        :_int_tunable directly, using each row's own
+        call-site default and minimum (both rows
+        minimum 0), with the fifteen shapes from
+        the table hunt -- omitted, null, empty
+        string, true, false, zero, negative, the
+        documented default written explicitly,
+        numeric string, non-numeric string,
+        huge-int (10**400), inf, -inf, NaN, wrong
+        container -- plus genuine int / fractional
+        values, and decide()-level spot checks
+        (105 appeared files against a learned empty
+        baseline, past the documented alerts cap).
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default for its row: omitted, null, empty
+        string, true, false (booleans never count as
+        numbers), negative, numeric and non-numeric
+        strings (numeric strings are not parsed),
+        huge-int, inf, -inf, NaN, list and dict all
+        return the default. Zero is honored
+        literally (minimum 0 in both rows).
+        Fractional values truncate via int() where
+        they clear the minimum (2.9 -> 2, 0.5 -> 0).
+        Genuine integers are honored exactly. The
+        non-finite shapes that the earlier class
+        TestInfiniteTripwireTunablesCrashInsteadOfDefault
+        recorded as a crash divergence now read as
+        the default as well (that class passes on
+        current main). At decide() level, 105
+        appeared files file exactly 100 alerts for
+        the omitted default and for unusable shapes,
+        exactly 2 for a genuine cap of 2, and 0 for
+        a genuine cap of 0, while the new state
+        always absorbs all 105 files. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented defaults and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "tripwire", "tripwire.py")
+        spec = importlib.util.spec_from_file_location(
+            "tripwire_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    # (key, default, minimum)
+    ROWS = (("max_files", 10000, 0),
+            ("max_alerts_per_pass", 100, 0))
+
+    def test_fifteen_shapes_read_as_their_defaults(self):
+        mod = self._mod()
+        for key, default, minimum in self.ROWS:
+            with self.subTest(key=key, shape="omitted"):
+                self.assertEqual(
+                    mod._int_tunable({}, key, default,
+                                     minimum=minimum), default)
+            unusable = [None, "", True, False, -5,
+                        "45", "bogus", 10 ** 400,
+                        float("inf"), float("-inf"),
+                        float("nan"), ["x"], {"x": 1}]
+            for value in unusable:
+                with self.subTest(key=key, value=repr(value)):
+                    self.assertEqual(
+                        mod._int_tunable(
+                            {key: value}, key, default,
+                            minimum=minimum), default)
+            with self.subTest(key=key, shape="explicit-default"):
+                self.assertEqual(
+                    mod._int_tunable(
+                        {key: default}, key, default,
+                        minimum=minimum), default)
+
+    def test_zero_and_fractional_follow_the_minimum(self):
+        mod = self._mod()
+        for key, default, minimum in self.ROWS:
+            with self.subTest(key=key, value=0):
+                self.assertEqual(
+                    mod._int_tunable({key: 0}, key, default,
+                                     minimum=minimum), 0)
+            with self.subTest(key=key, value=0.5):
+                self.assertEqual(
+                    mod._int_tunable({key: 0.5}, key, default,
+                                     minimum=minimum), 0)
+            with self.subTest(key=key, value=2.9):
+                self.assertEqual(
+                    mod._int_tunable({key: 2.9}, key, default,
+                                     minimum=minimum), 2)
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        for key, default, minimum in self.ROWS:
+            for value in (1, 5, 999):
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(
+                        mod._int_tunable(
+                            {key: value}, key, default,
+                            minimum=minimum), value)
+
+    def test_decide_level_spot_checks(self):
+        mod = self._mod()
+        files = {f"f{i:03}.txt": {"sha384": "a" * 96,
+                                  "size": 1}
+                 for i in range(105)}
+        state = {"learned": True, "files": {}}
+
+        def decide(tunables):
+            alerts, new_state = mod.decide(
+                {"files": files, "now": 1.0},
+                {"tunables": tunables}, state)
+            # The full new baseline is always absorbed,
+            # even past the alerts cap.
+            self.assertEqual(len(new_state["files"]), 105)
+            return alerts
+
+        # The documented cap of 100, for the omitted
+        # default and for unusable shapes.
+        self.assertEqual(len(decide({})), 100)
+        self.assertEqual(
+            len(decide({"max_alerts_per_pass":
+                        float("inf")})), 100)
+        self.assertEqual(
+            len(decide({"max_alerts_per_pass": "bogus"})), 100)
+        # Genuine caps are honored exactly.
+        self.assertEqual(
+            len(decide({"max_alerts_per_pass": 2})), 2)
+        self.assertEqual(
+            len(decide({"max_alerts_per_pass": 0})), 0)
+
 if __name__ == "__main__":
 
     unittest.main()
