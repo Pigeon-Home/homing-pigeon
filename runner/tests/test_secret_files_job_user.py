@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""M8 tests: secret files and job_user."""
+"""M8 tests: secret files and job_user.
+
+UID (phase 2.3): SecretFilesTest is pre-execution -- it
+tests what the runner accepts as its own credential, before
+any job exists, so no uid is in play. JobUserTest is the
+suite's OTHER-uid corpus: with job_user off (the default) a
+job runs as the runner's own uid, recorded below as a design
+fact; with job_user enforce (and root, and the pigeon-test
+user present) the job runs as that other uid, and the pair
+is the negative control for the feature (phase 2.2).
+"""
 import json
 import os
 import secrets
@@ -130,6 +140,20 @@ class JobUserTest(unittest.TestCase):
         result, audit = _run({}, _job("m8-off", "print('hi')"))
         self.assertEqual(result["stdout"].strip(), "hi")
         self.assertEqual(audit, [])
+
+    @unittest.skipUnless(POSIX, "uid reporting is POSIX")
+    def test_off_runs_as_the_runner_uid(self):
+        # Design fact / negative control (phases 2.2/2.3):
+        # with job_user off, the job's uid IS the runner's uid
+        # -- the same-uid side of the pair whose other side is
+        # test_enforce_runs_as_job_user. If this ever failed
+        # with the feature off, the enforce test's other-uid
+        # result would prove nothing.
+        script = chr(10).join(
+            ["import os", "print('uid:', os.getuid())", ""])
+        result, _audit = _run({}, _job("m8-off-uid", script))
+        self.assertEqual(result["exit_code"], 0, result["stderr"])
+        self.assertIn("uid: %d" % os.getuid(), result["stdout"])
 
     @unittest.skipUnless(POSIX, "job_user audit is POSIX")
     def test_audit_logs_and_runs(self):

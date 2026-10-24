@@ -33,6 +33,12 @@ This file pins that contract:
 - encrypted jobs are unaffected, flag off or on, on the mail
   path and on a transport channel (the form decides, not the
   channel -- DTLS included).
+
+UID (phase 2.3): this policy decides before execution
+whether a job may run at all; it does not choose who the job
+runs as. Every job here would run as the same uid as the
+runner, and the flag-on acceptance tests beside the refusal
+tests are the negative controls (phase 2.2).
 """
 
 import argparse

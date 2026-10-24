@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""M5 tests: audience binding (runner_id)."""
+"""M5 tests: audience binding (runner_id).
+
+UID (phase 2.3): audience binding names WHICH runner a job
+is for, not who it runs as; jobs here run as the same uid
+as the runner on both sides. The off / audit / enforce mode
+tests are each other's negative controls (phase 2.2): the
+wrong-runner job runs with the protection off and is
+rejected with it enforced.
+"""
 import json
 import os
 import sys
