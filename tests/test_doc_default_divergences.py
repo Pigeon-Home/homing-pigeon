@@ -10415,6 +10415,190 @@ class TestCertSentinelTunableDaysFifteenShapes(unittest.TestCase):
         self.assertEqual(signals({"warn_days": "45"}, 40), [])
 
 
+class TestPiHealthTunableFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the pi-health
+    _tunable reader family (step-8 Target 5,
+    extension-tunable table probe) -- the fifteen
+    shapes at reader level for all three rows.
+
+    (a) Doc claims (extensions/pi-health/README.md
+        lines 22-25, repeated in the extension header
+        lines 22-31 and its extension.json tunables):
+        "board_overheating -- CPU/SoC temperature
+        reaches the temp_high_c tunable (default 80)";
+        "disk_pressure -- The disk_mount mount
+        reaches the disk_high_pct tunable (default
+        90)"; "memory_pressure -- Available memory
+        falls to the mem_avail_low_pct tunable
+        (default 10)". Registry rows "temp_high_c
+        (pi-health)" (default 80), "disk_high_pct
+        (pi-health)" (default 90) and
+        "mem_avail_low_pct (pi-health)" (default 10):
+        policy default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: step-8 artifact Target 5
+        says the 51 extension tunables have no
+        reader-level table probe; their readers are
+        local helper families, one adapter per
+        family. This tick took the pi-health _tunable
+        family and probed extensions/pi-health/
+        pi_health.py:_tunable directly with the
+        fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false,
+        zero, negative, the documented default
+        written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong container -- for all three
+        keys, plus a genuine numeric string ("45"),
+        genuine int / float / fractional values, and
+        decide()-level spot checks (temperature,
+        disk and memory readings that file under the
+        documented defaults).
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default for all three keys: omitted, null,
+        empty string, true, false (booleans never
+        count as numbers), non-numeric string,
+        huge-int, inf, -inf, NaN, list and dict all
+        return 80.0 / 90.0 / 10.0. Numeric strings
+        are NOT parsed by this reader (the
+        isinstance-gate family): "80" and a genuine
+        "45" both read as the default. Zero and
+        negative values are honored literally (0.0
+        and -5.0 for every key; the registry rows
+        carry no floor), so a temp_high_c of 0 files
+        board_overheating for an 85-degree reading
+        and a mem_avail_low_pct of 0 files nothing
+        for 5% available. Genuine numbers are
+        honored exactly, including fractional
+        values (45 -> 45.0, 10.5 -> 10.5), and the
+        explicit defaults return the defaults. The
+        non-finite shapes that the earlier class
+        TestNonFinitePiHealthTunableDefaults
+        recorded as a divergence now read as the
+        defaults too (that class passes on current
+        main). Observed on 2026-10-24 against
+        current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented defaults and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "extensions", "pi-health",
+            "pi_health.py")
+        spec = importlib.util.spec_from_file_location(
+            "pi_health_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _read(self, mod, key, value, default):
+        return mod._tunable({key: value}, key, default)
+
+    def test_fifteen_shapes_for_all_three_rows(self):
+        mod = self._mod()
+        rows = [("temp_high_c", 80.0),
+                ("disk_high_pct", 90.0),
+                ("mem_avail_low_pct", 10.0)]
+        unusable = [None, "", True, False, "bogus",
+                    10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        for key, default in rows:
+            self.assertEqual(
+                mod._tunable({}, key, default), default)
+            for value in unusable:
+                with self.subTest(key=key, value=repr(value)):
+                    self.assertEqual(
+                        self._read(mod, key, value, default),
+                        default)
+            with self.subTest(key=key, shape="zero"):
+                self.assertEqual(
+                    self._read(mod, key, 0, default), 0.0)
+            with self.subTest(key=key, shape="negative"):
+                self.assertEqual(
+                    self._read(mod, key, -5, default), -5.0)
+            with self.subTest(key=key, shape="explicit-default"):
+                self.assertEqual(
+                    self._read(mod, key, int(default), default),
+                    default)
+
+    def test_numeric_strings_read_as_default_not_parsed(self):
+        mod = self._mod()
+        for key, default in (("temp_high_c", 80.0),
+                             ("disk_high_pct", 90.0),
+                             ("mem_avail_low_pct", 10.0)):
+            for value in (str(int(default)), "45"):
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(
+                        self._read(mod, key, value, default),
+                        default)
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        for key, default in (("temp_high_c", 80.0),
+                             ("disk_high_pct", 90.0),
+                             ("mem_avail_low_pct", 10.0)):
+            for value, want in ((45, 45.0), (10.5, 10.5),
+                                (7.5, 7.5), (1, 1.0)):
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(
+                        self._read(mod, key, value, default),
+                        want)
+
+    def test_decide_level_spot_checks(self):
+        mod = self._mod()
+
+        def signals(readings, tunables):
+            alerts, _state = mod.decide(
+                readings, {"tunables": tunables}, {})
+            return [a["signal"] for a in alerts]
+
+        self.assertEqual(signals({"temp_c": 100}, {}),
+                         ["board_overheating"])
+        self.assertEqual(
+            signals({"temp_c": 100},
+                    {"temp_high_c": float("inf")}),
+            ["board_overheating"])
+        self.assertEqual(
+            signals({"temp_c": 100},
+                    {"temp_high_c": float("nan")}),
+            ["board_overheating"])
+        self.assertEqual(
+            signals({"disk_pct": {"/": 95}}, {}),
+            ["disk_pressure"])
+        self.assertEqual(
+            signals({"mem_avail_pct": 5}, {}),
+            ["memory_pressure"])
+        self.assertEqual(
+            signals({"temp_c": 60}, {"temp_high_c": 50}),
+            ["board_overheating"])
+        self.assertEqual(signals({"temp_c": 60}, {}), [])
+        self.assertEqual(
+            signals({"temp_c": 85}, {"temp_high_c": 0}),
+            ["board_overheating"])
+        self.assertEqual(
+            signals({"mem_avail_pct": 5},
+                    {"mem_avail_low_pct": 0}), [])
+        self.assertEqual(
+            signals({"temp_c": 40}, {"temp_high_c": "45"}), [])
+
+
+
 if __name__ == "__main__":
 
     unittest.main()
