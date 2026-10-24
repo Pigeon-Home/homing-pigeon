@@ -7734,5 +7734,132 @@ class TestExtensionPollIntervalSecDefaultsTo2(unittest.TestCase):
 
 
 
+
+class TestGrepMaxMatchesDefaultsTo10(unittest.TestCase):
+    """Second-run hunt coverage: max_matches (grep query)
+    itself, varied with the fifteen shapes through its
+    actual reader for the first time.
+
+    (a) Claim: registry row "max_matches (grep query)":
+        core, integer, default 10, policy default, lo 0,
+        doc_status unverified -- no prose document states
+        this default; it is in KNOWN_UNDOCUMENTED in
+        tests/defaults_registry.py. The nearest statements
+        are PROTOCOL.md (line 516), whose section 10
+        example shows the grep query with
+        "max_matches": 10, and (line 688) defining the op
+        as "grep (regex over retained stdout+stderr, up
+        to `max_matches` lines)"; and docs/fuzzing.md
+        (lines 129-131): "A `max_matches` of zero returns
+        no lines" and a default limit applies when the
+        caller supplies no usable number. The reader's
+        own comment (runner/runner.py, answer_queries,
+        grep branch) states the contract directly:
+        "Default 10 for an omitted, unparseable, or
+        boolean max_matches; a usable number is clamped
+        to [0, 100]", read as
+        _confval.integer(q.get("max_matches"), 10, lo=0)
+        followed by min(limit, 100). The row's named
+        class (TestBooleanGrepMaxMatchesDefaultsTo10)
+        covered only the booleans plus bogus and zero
+        controls, and the table hunt probes this row
+        through confval generically; the answer_queries
+        reader itself -- including its extra 100 ceiling,
+        which confval alone does not apply -- had never
+        been walked through all fifteen shapes.
+
+    (b) How it was hunted: step 8 Target 3 -- the third
+        row with no documented default in any current
+        doc, after timeout_sec and
+        extension_poll_interval_sec. On 2026-10-23 this
+        tick called runner.runner.answer_queries -- the
+        actual reader -- with one grep query over
+        retained output holding 120 matching lines, with
+        the table hunt's fifteen shapes, plus genuine
+        values, the 100 ceiling, and float shapes.
+
+    (c) Behavior actually observed: NO divergence in
+        the reader. Every unusable shape -- omitted,
+        null, the empty string, true, false, a
+        non-numeric string, a several-hundred-digit
+        integer, inf, -inf, NaN, and a list -- returned
+        exactly 10 matches. Zero is usable (lo 0) and
+        returned 0, as docs/fuzzing.md documents. A
+        negative number is below lo, so it is unusable
+        under the confval contract and returned the
+        default 10 rather than clamping. The explicit
+        default 10 and the numeric string "10" returned
+        10. Genuine values are honored exactly (1, 2, 5,
+        50, 100) and the reader's ceiling holds (101,
+        150, and 1000 all returned 100). Floats truncate
+        toward zero through confval.integer (2.9 -> 2,
+        "2.9" -> 2, 0.5 -> 0). One behavior change from
+        the boolean class's 2026-10-23 record is noted:
+        a huge integer then clamped to the old reader's
+        100 ceiling and returned every line; through
+        confval it is unusable and now reads as the
+        default 10, which is the registry policy.
+
+    (d) This is a coverage record, not a divergence: it
+        stays green as long as the reader keeps the
+        registry default and ceiling. If a shape above
+        ever stops reading as stated, this test is the
+        failing record of that change. The missing
+        prose documentation in (a) is recorded here and
+        in the registry; no production code or doc was
+        changed by this hunt.
+    """
+
+    _RES = {"stdout": "\n".join(
+        "ERROR line %d" % i for i in range(120)) + "\n",
+            "stderr": "", "exit_code": 0}
+
+    def _grep_count(self, extra, omit=False):
+        from runner.runner import answer_queries
+        q = {"op": "grep", "pattern": "ERROR"}
+        if not omit:
+            q.update(extra)
+        answers, _spent = answer_queries(
+            [q], self._RES, None, 8, cfg=None, view="full")
+        return len(answers[0].get("matches", []))
+
+    def test_fifteen_shapes(self):
+        shapes = [
+            ("omitted", {}, True, 10),
+            ("null", {"max_matches": None}, False, 10),
+            ("empty-string", {"max_matches": ""}, False, 10),
+            ("true", {"max_matches": True}, False, 10),
+            ("false", {"max_matches": False}, False, 10),
+            ("zero", {"max_matches": 0}, False, 0),
+            ("negative", {"max_matches": -5}, False, 10),
+            ("default-explicit", {"max_matches": 10}, False, 10),
+            ("numeric-string", {"max_matches": "10"}, False, 10),
+            ("non-numeric-string", {"max_matches": "bogus"}, False, 10),
+            ("huge-int", {"max_matches": 10 ** 400}, False, 10),
+            ("inf", {"max_matches": float("inf")}, False, 10),
+            ("neg-inf", {"max_matches": float("-inf")}, False, 10),
+            ("nan", {"max_matches": float("nan")}, False, 10),
+            ("wrong-container", {"max_matches": ["x"]}, False, 10),
+        ]
+        for name, extra, omit, want in shapes:
+            with self.subTest(shape=name):
+                self.assertEqual(self._grep_count(extra, omit=omit), want)
+
+    def test_genuine_values_and_ceiling_are_honored(self):
+        for value, want in ((1, 1), (2, 2), (5, 5), (50, 50),
+                            (100, 100), (101, 100), (150, 100),
+                            (1000, 100), ("2", 2), ("50", 50)):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    self._grep_count({"max_matches": value}), want)
+
+    def test_floats_truncate_toward_zero(self):
+        for value, want in ((2.9, 2), (2.0, 2), ("2.9", 2), (0.5, 0)):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    self._grep_count({"max_matches": value}), want)
+
+
+
 if __name__ == "__main__":
     unittest.main()
