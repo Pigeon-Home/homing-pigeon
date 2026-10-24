@@ -32796,6 +32796,761 @@ class TestServiceWatchServicesAndDecideFifteenShapes(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertIn("service_down", out.getvalue())
 
+class TestSkyWatcherFeedStateAndMainFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the sky-watcher feed
+    parser, sample / state cleaning, observer reader,
+    geometry, update() pass state machine and main()
+    in --samples mode varied with the fifteen shapes
+    for the first time (step-8 Target 5 / family
+    (b) -- sky-watcher's only earlier classes cover
+    its five numeric tunables at the _tunable reader;
+    sample_from_feed(), _clean_sample(),
+    _clean_state(), _observer(), the pass state
+    machine and main() had no class before this one).
+    The one divergence found is recorded separately
+    in TestSkyWatcherBrightPassFiresWhenVisibleMin
+    AboveMaxElevation below.
+
+    (a) Doc claims: the module docstring states
+    fetch_position() is the only network code and
+    update() is pure geometry plus a small state
+    machine; a pass walks out -> approaching ->
+    visible -> out, each stage files once per pass,
+    and the state resets when the station leaves the
+    corridor; a feed outage is a quiet no-op (nothing
+    files, state left exactly as it was). The README
+    states the three signals and severities
+    (station_approaching info on corridor entry,
+    visible_pass_starting medium for a sunlit pass
+    over a dark sky beginning within visible_lead_sec
+    and culminating above visible_min_elevation_deg,
+    bright_pass high at or above
+    bright_min_elevation_deg), that with no observer
+    set the watcher files nothing and says so, and
+    that --samples replays one feed object or a list
+    of them with no network. sample_from_feed()'s
+    docstring: a response missing its position or
+    its timestamp is unusable and answers None.
+
+    (b) How this was probed: on 2026-10-24
+    sample_from_feed(), _clean_sample(),
+    _clean_state(), _observer(), the geometry
+    helpers, update() and main() were probed with
+    the table hunt's fifteen shapes (omitted-
+    equivalent empty, null, empty string, true,
+    false, zero, negative, numeric string,
+    non-numeric string, huge-int (10**400), inf,
+    -inf, NaN, list, dict), plus genuine feed objects
+    in kilometers and miles, every visibility shape,
+    latitude / altitude edges, a scripted dark
+    sunlit equatorial pass (samples at lon -30..0,
+    ts 1700000000, sun elevation about -61 deg), the
+    same pass eclipsed, sunlit-unknown and in
+    daylight (ts 1699963200, sun elevation about
+    +72 deg), corridor exit and re-entry, the
+    900 s pass-gap edge (900 vs 901), tunable
+    shaping at update level (approach radius 0 /
+    negative / bogus, visible_lead_sec 0 / 10 /
+    600, bright_min_elevation_deg 90 / 95,
+    dark_sun_elevation_deg 100 / bogus), and main()
+    in --samples mode against temp manifests,
+    samples and state files, including missing,
+    malformed, list-shaped and unwritable files and
+    a monkeypatched feed outage.
+
+    (c) Behavior actually observed: NO divergence
+    in this class (the bright-pass divergence is
+    the separate class below). sample_from_feed()
+    reads every non-dict shape and any response
+    missing latitude / longitude / altitude /
+    timestamp as None; numeric strings are NOT
+    parsed (a string latitude or timestamp reads
+    as no sample), a bool or huge-int latitude
+    reads as no sample, and an unusable or missing
+    velocity reads as the 27576 km/h default;
+    units "miles" converts altitude and velocity
+    by 1.609344; visibility "daylight" reads as
+    sunlit True, any other string (including a
+    bogus one) reads as False, and a non-string
+    visibility reads as None. _clean_sample()
+    reads every non-dict shape as None, rejects
+    latitude outside [-90, 90] and altitude <= 0,
+    does NOT range-check longitude (999 is honored
+    verbatim), reads an unusable velocity as the
+    default and a non-bool sunlit as None.
+    _clean_state() reads every non-dict shape as
+    the fresh state, an unknown stage as "out", a
+    bool / negative / float pass_id as 0, keeps
+    only known signals in fired (duplicates kept),
+    and reads non-number culmination / last_ts as
+    None. _observer() honors (0, 0), a negative
+    coordinate and the (+-90, +-180) edges and
+    reads every non-number fifteen-shape
+    coordinate and any out-of-range or string
+    coordinate as no observer. Geometry:
+    central angle is 0 / pi/2 / pi for the same
+    point / 90 deg / antipode, elevation overhead
+    is 90 deg, psi_for_elevation_deg inverts
+    elevation_deg at 0 / 30 / 65 deg, an overhead
+    track's culmination estimate is 90 deg and a
+    single sample or a repeated point estimates
+    None. update() reads every non-dict sample
+    shape as no sample (cleaned state returned,
+    nothing filed), every non-dict manifest or
+    non-dict tunables shape as no observer
+    (nothing filed), returns the cleaned incoming
+    state untouched when no observer is set, and
+    falls back to sensor "sky_watcher" for a
+    missing / empty / non-string manifest name. A
+    far sample (lon 90) files nothing and is kept
+    as prev; an overhead sample files
+    station_approaching (info, ground_distance_km
+    0, elevation_deg 90.0) and starts pass 1; the
+    scripted dark sunlit pass files
+    station_approaching on entry, then
+    visible_pass_starting (medium) and bright_pass
+    (high) together once the track gives a 90 deg
+    culmination estimate inside the lead, then
+    nothing more, with stage "visible"; the
+    eclipsed, sunlit-unknown and daylight variants
+    file only station_approaching (daylight files
+    visible + bright when dark_sun_elevation_deg
+    is genuinely set to 100, and not when it is
+    bogus). Leaving the corridor files nothing and
+    resets stage / fired / prev, and re-entry
+    starts pass 2 and refiles station_approaching;
+    a 901 s gap abandons the pass (refiles, pass 2)
+    while exactly 900 s does not. approach_radius_km
+    0 still files for an overhead station, -5 files
+    nothing, and "bogus" reads as the 5000 default;
+    visible_lead_sec 0 and 10 file no visible alert
+    for the -29 deg sample whose window is minutes
+    away while 600 files both; bright_min 90
+    exactly still files bright_pass and 95 files
+    visible only. visible_min_elevation_deg 95
+    suppresses visible_pass_starting (its bright
+    side is the divergence below). main() in
+    --samples mode replays a list or a single
+    object, skips unusable entries in a mixed list,
+    prints the three alerts as sorted JSON lines
+    and writes the state (rc 0); a replay against
+    the written state files nothing new; a scalar
+    or string samples file, a missing or malformed
+    manifest and missing or malformed samples all
+    answer rc 2; a list manifest and a manifest
+    with no observer answer rc 0 with nothing
+    filed (the no-observer run writes no state
+    file); a malformed state file reads as fresh;
+    an unwritable state path answers rc 2 with the
+    alerts still printed; a monkeypatched feed
+    outage (fetch_position raising OSError)
+    answers rc 0 and writes no state, and a feed
+    answering None answers rc 0 and writes the
+    fresh state. Observed on 2026-10-24 against
+    current main.
+
+    (d) This is a coverage record, not a
+    divergence: it stays green as long as the
+    readings above keep holding. If a shape
+    ever stops behaving as described, this
+    test is the failing record of that change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "sky-watcher",
+            "sky_watcher.py")
+        spec = importlib.util.spec_from_file_location(
+            "sky_watcher_feed_state_main_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _manifest(self, **tunables):
+        base = {"observer_lat": 0, "observer_lon": 0}
+        base.update(tunables)
+        return {"name": "sky_watcher", "tunables": base}
+
+    def _sample(self, lon=0.0, ts=1700000000.0, sunlit=True):
+        return {"lat": 0.0, "lon": lon, "alt_km": 420.0,
+                "velocity_kmh": 27576.0, "sunlit": sunlit,
+                "ts": ts}
+
+    def _feed(self, lon=0, ts=1700000000, vis="daylight"):
+        return {"latitude": 0, "longitude": lon, "altitude": 420,
+                "velocity": 27576, "timestamp": ts,
+                "visibility": vis, "units": "kilometers"}
+
+    def _track(self, mod, lons, ts0=1700000000.0, sunlit=True,
+               **tunables):
+        state, seen = None, []
+        for i, lon in enumerate(lons):
+            alerts, state = mod.update(
+                self._sample(lon=lon, ts=ts0 + 60 * i,
+                             sunlit=sunlit),
+                self._manifest(**tunables), state)
+            seen.append([a["signal"] for a in alerts])
+        return seen, state
+
+    def test_sample_from_feed_shapes_and_units(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertIsNone(mod.sample_from_feed(value))
+        good = self._feed(lon=20)
+        good["latitude"] = 10
+        self.assertEqual(mod.sample_from_feed(good), {
+            "lat": 10.0, "lon": 20.0, "alt_km": 420.0,
+            "velocity_kmh": 27576.0, "sunlit": True,
+            "ts": 1700000000.0})
+        miles = dict(good, units="miles")
+        converted = mod.sample_from_feed(miles)
+        self.assertAlmostEqual(converted["alt_km"], 675.92448)
+        self.assertAlmostEqual(converted["velocity_kmh"],
+                               44379.270144)
+        for drop in ("latitude", "longitude", "altitude",
+                     "timestamp"):
+            with self.subTest(drop=drop):
+                broken = dict(good)
+                del broken[drop]
+                self.assertIsNone(mod.sample_from_feed(broken))
+        for key, value in (("latitude", "10"),
+                           ("latitude", True),
+                           ("latitude", 10 ** 400),
+                           ("timestamp", "1700000000")):
+            with self.subTest(key=key, value=repr(value)):
+                self.assertIsNone(mod.sample_from_feed(
+                    dict(good, **{key: value})))
+        for value in ("fast", None):
+            with self.subTest(velocity=value):
+                self.assertEqual(mod.sample_from_feed(
+                    dict(good, velocity=value))["velocity_kmh"],
+                    27576.0)
+        for vis, want in (("daylight", True),
+                          ("eclipsed", False), ("bogus", False),
+                          (123, None), (None, None)):
+            with self.subTest(visibility=vis):
+                self.assertEqual(mod.sample_from_feed(
+                    dict(good, visibility=vis))["sunlit"], want)
+
+    def test_clean_sample_and_state_shapes(self):
+        mod = self._module()
+        fresh = {"stage": "out", "pass_id": 0, "fired": [],
+                 "prev": None, "culmination_deg": None,
+                 "last_ts": None}
+        for name, value in self._SHAPES:
+            with self.subTest(kind="sample", shape=name):
+                self.assertIsNone(mod._clean_sample(value))
+            with self.subTest(kind="state", shape=name):
+                self.assertEqual(mod._clean_state(value), fresh)
+        base = self._sample(ts=1000.0)
+        for key, value in (("lat", 91), ("lat", -91),
+                           ("alt_km", 0), ("alt_km", -5),
+                           ("ts", "1000")):
+            with self.subTest(key=key, value=value):
+                self.assertIsNone(mod._clean_sample(
+                    dict(base, **{key: value})))
+        self.assertEqual(mod._clean_sample(
+            dict(base, lat=90))["lat"], 90.0)
+        self.assertEqual(mod._clean_sample(
+            dict(base, lon=999))["lon"], 999.0)
+        self.assertEqual(mod._clean_sample(
+            dict(base, velocity_kmh="x"))["velocity_kmh"],
+            27576.0)
+        self.assertIsNone(mod._clean_sample(
+            dict(base, sunlit="yes"))["sunlit"])
+        self.assertIsNone(mod._clean_sample(
+            dict(base, sunlit=1))["sunlit"])
+        self.assertEqual(mod._clean_state({
+            "stage": "visible", "pass_id": 3,
+            "fired": ["bright_pass", "bogus", "bright_pass"],
+            "prev": base, "culmination_deg": "x",
+            "last_ts": "y"}),
+            {"stage": "visible", "pass_id": 3,
+             "fired": ["bright_pass", "bright_pass"],
+             "prev": mod._clean_sample(base),
+             "culmination_deg": None, "last_ts": None})
+        for pid in (True, -2, 2.0):
+            with self.subTest(pass_id=pid):
+                self.assertEqual(mod._clean_state(
+                    {"pass_id": pid})["pass_id"], 0)
+        self.assertEqual(mod._clean_state(
+            {"stage": "bogus"})["stage"], "out")
+
+    def test_observer_and_geometry(self):
+        import math
+        mod = self._module()
+        for name, value in self._SHAPES:
+            if name in ("zero", "negative"):
+                continue
+            with self.subTest(shape=name):
+                self.assertIsNone(mod._observer(
+                    {"observer_lat": value, "observer_lon": 0}))
+                self.assertIsNone(mod._observer(
+                    {"observer_lat": 0, "observer_lon": value}))
+        self.assertEqual(mod._observer(
+            {"observer_lat": 0, "observer_lon": 0}), (0.0, 0.0))
+        self.assertEqual(mod._observer(
+            {"observer_lat": -5, "observer_lon": 0}),
+            (-5.0, 0.0))
+        self.assertEqual(mod._observer(
+            {"observer_lat": 90, "observer_lon": 180}),
+            (90.0, 180.0))
+        self.assertEqual(mod._observer(
+            {"observer_lat": -90, "observer_lon": -180}),
+            (-90.0, -180.0))
+        self.assertIsNone(mod._observer(
+            {"observer_lat": 90.1, "observer_lon": 0}))
+        self.assertIsNone(mod._observer(
+            {"observer_lat": 0, "observer_lon": 180.1}))
+        self.assertAlmostEqual(
+            mod.central_angle_rad(0, 0, 0, 0), 0.0)
+        self.assertAlmostEqual(
+            mod.central_angle_rad(0, 0, 0, 90), math.pi / 2)
+        self.assertAlmostEqual(
+            mod.central_angle_rad(0, 0, 0, 180), math.pi)
+        self.assertAlmostEqual(mod.elevation_deg(0, 420), 90.0)
+        for el in (0, 30, 65):
+            with self.subTest(elevation=el):
+                self.assertAlmostEqual(mod.elevation_deg(
+                    mod.psi_for_elevation_deg(el, 420), 420),
+                    float(el))
+        psi, elev, dist = mod.station_geometry(0, 0, 0, 1, 420)
+        self.assertAlmostEqual(dist, 111.1949266, places=4)
+        self.assertAlmostEqual(elev, 74.2045647, places=4)
+        self.assertIsNone(mod.culmination_estimate_deg(
+            None, {"lat": 0, "lon": 0, "alt_km": 420}, 0, 0))
+        self.assertIsNone(mod.culmination_estimate_deg(
+            {"lat": 0, "lon": 0},
+            {"lat": 0, "lon": 0, "alt_km": 420}, 0, 0))
+        self.assertAlmostEqual(mod.culmination_estimate_deg(
+            {"lat": 0, "lon": -1},
+            {"lat": 0, "lon": 0, "alt_km": 420}, 0, 0), 90.0)
+        self.assertLess(mod.sun_elevation_deg(
+            0, 0, 1700000000), -6.0)
+        self.assertGreater(mod.sun_elevation_deg(
+            0, 0, 1699963200), 6.0)
+
+    def test_update_shapes_no_observer_and_sensor(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(kind="sample", shape=name):
+                alerts, state = mod.update(
+                    value, self._manifest(), None)
+                self.assertEqual(alerts, [])
+                self.assertEqual(state["stage"], "out")
+                self.assertIsNone(state["last_ts"])
+            with self.subTest(kind="manifest", shape=name):
+                alerts, _ = mod.update(
+                    self._sample(), value, None)
+                self.assertEqual(alerts, [])
+        for tunables in ([], "x", 5, None):
+            with self.subTest(tunables=tunables):
+                alerts, _ = mod.update(
+                    self._sample(),
+                    {"name": "sky_watcher", "tunables": tunables},
+                    None)
+                self.assertEqual(alerts, [])
+        preset = {"stage": "visible", "pass_id": 7}
+        for tunables in ({}, {"observer_lat": 0},
+                         {"observer_lon": 0},
+                         {"observer_lat": "0", "observer_lon": 0},
+                         {"observer_lat": 91, "observer_lon": 0}):
+            with self.subTest(tunables=tunables):
+                alerts, state = mod.update(
+                    self._sample(),
+                    {"name": "sky_watcher", "tunables": tunables},
+                    preset)
+                self.assertEqual(alerts, [])
+                self.assertEqual(state["stage"], "visible")
+                self.assertEqual(state["pass_id"], 7)
+        for name_value, want in ((None, "sky_watcher"),
+                                 ("", "sky_watcher"),
+                                 (123, "sky_watcher"),
+                                 ("custom", "custom")):
+            with self.subTest(name=name_value):
+                manifest = self._manifest()
+                if name_value is None:
+                    del manifest["name"]
+                else:
+                    manifest["name"] = name_value
+                alerts, _ = mod.update(
+                    self._sample(), manifest, None)
+                self.assertEqual(alerts[0]["sensor"], want)
+
+    def test_update_pass_state_machine(self):
+        mod = self._module()
+        alerts, state = mod.update(
+            self._sample(lon=90), self._manifest(), None)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["prev"]["lon"], 90.0)
+        alerts, state = mod.update(
+            self._sample(), self._manifest(), None)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["station_approaching"])
+        self.assertEqual(alerts[0]["severity"], "info")
+        self.assertEqual(alerts[0]["detail"], {
+            "ground_distance_km": 0, "elevation_deg": 90.0,
+            "observer_lat": 0.0, "observer_lon": 0.0})
+        self.assertEqual(state["pass_id"], 1)
+        seen, state = self._track(mod, [-30, -29, -28])
+        self.assertEqual(seen, [["station_approaching"],
+                                ["visible_pass_starting",
+                                 "bright_pass"], []])
+        self.assertEqual(state["stage"], "visible")
+        seen, _ = self._track(mod, [-10, -5, 0], sunlit=False)
+        self.assertEqual(seen, [["station_approaching"], [], []])
+        unknown = []
+        state = None
+        for i, lon in enumerate([-10, -5, 0]):
+            sample = self._sample(
+                lon=lon, ts=1700000000.0 + 60 * i)
+            sample["sunlit"] = None
+            alerts, state = mod.update(
+                sample, self._manifest(), state)
+            unknown.append([a["signal"] for a in alerts])
+        self.assertEqual(unknown, [["station_approaching"], [], []])
+        seen, _ = self._track(mod, [-10, -5, 0],
+                              ts0=1699963200.0)
+        self.assertEqual(seen, [["station_approaching"], [], []])
+        seen, _ = self._track(
+            mod, [-10, -5, 0], ts0=1699963200.0,
+            dark_sun_elevation_deg=100)
+        self.assertEqual(seen, [["station_approaching"],
+                                ["visible_pass_starting",
+                                 "bright_pass"], []])
+        seen, _ = self._track(
+            mod, [-10, -5, 0], ts0=1699963200.0,
+            dark_sun_elevation_deg="bogus")
+        self.assertEqual(seen, [["station_approaching"], [], []])
+        # Corridor exit resets; re-entry is a new pass.
+        _, state = mod.update(
+            self._sample(), self._manifest(), None)
+        alerts, state = mod.update(
+            self._sample(lon=90, ts=1700000060.0),
+            self._manifest(), state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["stage"], "out")
+        self.assertEqual(state["fired"], [])
+        self.assertIsNone(state["prev"])
+        alerts, state = mod.update(
+            self._sample(ts=1700000120.0), self._manifest(),
+            state)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["station_approaching"])
+        self.assertEqual(state["pass_id"], 2)
+        # The 900 s gap edge: 900 keeps the pass, 901 abandons it.
+        _, state = mod.update(
+            self._sample(), self._manifest(), None)
+        alerts, state = mod.update(
+            self._sample(ts=1700000900.0), self._manifest(),
+            state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["pass_id"], 1)
+        _, state = mod.update(
+            self._sample(), self._manifest(), None)
+        alerts, state = mod.update(
+            self._sample(ts=1700000901.0), self._manifest(),
+            state)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["station_approaching"])
+        self.assertEqual(state["pass_id"], 2)
+
+    def test_update_tunable_shaping(self):
+        mod = self._module()
+        for radius, want in ((0, ["station_approaching"]),
+                             (-5, []),
+                             ("bogus", ["station_approaching"])):
+            with self.subTest(radius=radius):
+                alerts, _ = mod.update(
+                    self._sample(),
+                    self._manifest(approach_radius_km=radius),
+                    None)
+                self.assertEqual(
+                    [a["signal"] for a in alerts], want)
+        for lead, want in ((0, []), (10, []),
+                           (600, ["visible_pass_starting",
+                                  "bright_pass"])):
+            with self.subTest(lead=lead):
+                seen, _ = self._track(
+                    mod, [-30, -29], visible_lead_sec=lead)
+                self.assertEqual(seen[1], want)
+        seen, _ = self._track(
+            mod, [-10, -5, 0], bright_min_elevation_deg=90)
+        self.assertEqual(seen[1], ["visible_pass_starting",
+                                   "bright_pass"])
+        seen, _ = self._track(
+            mod, [-10, -5, 0], bright_min_elevation_deg=95)
+        self.assertEqual(seen[1], ["visible_pass_starting"])
+        seen, _ = self._track(
+            mod, [-10, -5, 0], visible_min_elevation_deg=95)
+        self.assertNotIn("visible_pass_starting",
+                         [s for group in seen for s in group])
+
+    def test_main_samples_mode_and_errors(self):
+        import contextlib
+        import io
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            manifest = os.path.join(d, "extension.json")
+            state = os.path.join(d, "state.json")
+            samples = os.path.join(d, "samples.json")
+            with open(manifest, "w", encoding="utf-8") as fh:
+                json.dump(self._manifest(), fh)
+            with open(samples, "w", encoding="utf-8") as fh:
+                json.dump([self._feed(lon=-10),
+                           self._feed(lon=-5, ts=1700000060),
+                           self._feed(lon=0, ts=1700000120)], fh)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(["--manifest", manifest,
+                               "--state", state,
+                               "--samples", samples])
+            self.assertEqual(rc, 0)
+            lines = [json.loads(x) for x in
+                     out.getvalue().strip().splitlines()]
+            self.assertEqual([x["signal"] for x in lines],
+                             ["station_approaching",
+                              "visible_pass_starting",
+                              "bright_pass"])
+            self.assertEqual(
+                [x["severity"] for x in lines],
+                ["info", "medium", "high"])
+            with open(state, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh)["stage"],
+                                 "visible")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(["--manifest", manifest,
+                               "--state", state,
+                               "--samples", samples])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.getvalue(), "")
+            single = os.path.join(d, "single.json")
+            with open(single, "w", encoding="utf-8") as fh:
+                json.dump(self._feed(lon=0), fh)
+            state2 = os.path.join(d, "state2.json")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(["--manifest", manifest,
+                               "--state", state2,
+                               "--samples", single])
+            self.assertEqual(rc, 0)
+            self.assertIn("station_approaching",
+                          out.getvalue())
+            mixed = os.path.join(d, "mixed.json")
+            with open(mixed, "w", encoding="utf-8") as fh:
+                json.dump([{"bogus": 1}, self._feed(lon=0),
+                           "junk"], fh)
+            state3 = os.path.join(d, "state3.json")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(["--manifest", manifest,
+                               "--state", state3,
+                               "--samples", mixed])
+            self.assertEqual(rc, 0)
+            self.assertIn("station_approaching",
+                          out.getvalue())
+            for payload in (42, "hello"):
+                with self.subTest(samples=payload):
+                    with open(samples, "w",
+                              encoding="utf-8") as fh:
+                        json.dump(payload, fh)
+                    self.assertEqual(mod.main(
+                        ["--manifest", manifest,
+                         "--state", state3,
+                         "--samples", samples]), 2)
+            self.assertEqual(mod.main(
+                ["--manifest", os.path.join(d, "no.json"),
+                 "--state", state, "--samples", single]), 2)
+            bad = os.path.join(d, "bad.json")
+            with open(bad, "w", encoding="utf-8") as fh:
+                fh.write("{not json")
+            self.assertEqual(mod.main(
+                ["--manifest", bad, "--state", state,
+                 "--samples", single]), 2)
+            self.assertEqual(mod.main(
+                ["--manifest", manifest, "--state", state,
+                 "--samples", os.path.join(d, "no2.json")]), 2)
+            self.assertEqual(mod.main(
+                ["--manifest", manifest, "--state", state,
+                 "--samples", bad]), 2)
+            list_path = os.path.join(d, "list.json")
+            with open(list_path, "w", encoding="utf-8") as fh:
+                json.dump([1, 2], fh)
+            self.assertEqual(mod.main(
+                ["--manifest", list_path, "--state", state3,
+                 "--samples", single]), 0)
+            noobs = os.path.join(d, "noobs.json")
+            with open(noobs, "w", encoding="utf-8") as fh:
+                json.dump({"name": "sky_watcher",
+                           "tunables": {}}, fh)
+            state4 = os.path.join(d, "state4.json")
+            with contextlib.redirect_stderr(io.StringIO()):
+                rc = mod.main(["--manifest", noobs,
+                               "--state", state4,
+                               "--samples", single])
+            self.assertEqual(rc, 0)
+            self.assertFalse(os.path.exists(state4))
+            with open(state, "w", encoding="utf-8") as fh:
+                fh.write("{broken")
+            with open(samples, "w", encoding="utf-8") as fh:
+                json.dump(self._feed(lon=0), fh)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(["--manifest", manifest,
+                               "--state", state,
+                               "--samples", samples])
+            self.assertEqual(rc, 0)
+            self.assertIn("station_approaching",
+                          out.getvalue())
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(
+                    ["--manifest", manifest, "--state",
+                     os.path.join(d, "no-dir", "state.json"),
+                     "--samples", samples])
+            self.assertEqual(rc, 2)
+            self.assertIn("station_approaching",
+                          out.getvalue())
+            original = mod.fetch_position
+
+            def _down(*args, **kwargs):
+                raise OSError("down")
+
+            try:
+                mod.fetch_position = _down
+                state5 = os.path.join(d, "state5.json")
+                with contextlib.redirect_stderr(io.StringIO()):
+                    rc = mod.main(["--manifest", manifest,
+                                   "--state", state5])
+                self.assertEqual(rc, 0)
+                self.assertFalse(os.path.exists(state5))
+                mod.fetch_position = lambda *a, **k: None
+                with contextlib.redirect_stderr(io.StringIO()):
+                    rc = mod.main(["--manifest", manifest,
+                                   "--state", state5])
+                self.assertEqual(rc, 0)
+                with open(state5, encoding="utf-8") as fh:
+                    self.assertEqual(json.load(fh)["stage"],
+                                     "out")
+            finally:
+                mod.fetch_position = original
+
+
+class TestSkyWatcherBrightPassFiresWhenVisibleMinAboveMaxElevation(
+        unittest.TestCase):
+    """DIVERGENCE (failing by design): bright_pass
+    files for a pass that never becomes a visible
+    pass when visible_min_elevation_deg is set
+    above 90, the maximum elevation any station can
+    reach.
+
+    (a) The claims: extension.json declares
+    bright_pass as "A near-zenith visible ISS pass:
+    culmination at or above the bright threshold",
+    and the README's signal table states
+    visible_pass_starting fires for a pass
+    "culminating above `visible_min_elevation_deg`
+    (default 10°)" and bright_pass for "That pass"
+    -- that visible pass -- culminating at or above
+    `bright_min_elevation_deg`. update()'s
+    docstring adds that the visible and bright
+    signals "share one evaluation", and
+    _time_to_visible_sec()'s docstring states it
+    answers "None when this pass never enters (its
+    culmination is under the minimum)".
+
+    (b) How it was found: the 2026-10-24 sky-watcher
+    hunt probed update() at tunable level with
+    visible_min_elevation_deg shaped above the
+    physical maximum. With visible_min_elevation_deg
+    95 and the default bright_min_elevation_deg 65,
+    a dark, sunlit equatorial track (observer 0,0;
+    samples at lon -10, -5, 0; ts 1700000000, sun
+    elevation about -61 deg) culminates at 90 deg --
+    above the bright threshold but below the
+    configured visible minimum, so no visible pass
+    exists on this track.
+
+    (c) Behavior actually observed:
+    visible_pass_starting correctly never files and
+    the stage never becomes "visible", but
+    bright_pass (high) files on the second sample
+    anyway. The mechanism is in the geometry:
+    psi_for_elevation_deg(95, 420) returns about
+    170.3 deg, whose actual elevation is -85 deg,
+    so _time_to_visible_sec() sees the station's
+    psi already inside that spurious window and
+    answers 0.0 ("already inside") instead of the
+    documented None for a pass whose culmination
+    is under the minimum; the shared evaluation
+    then checks only culm >= bright_min for the
+    bright signal, with no culm >= visible_min
+    gate. Expected: no bright_pass for a pass that
+    cannot reach the visible minimum (and
+    _time_to_visible_sec answering None there).
+
+    (d) Do not make this test pass by editing the
+    test. It passes only when the bug described
+    above is fixed in the code.
+    """
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "sky-watcher",
+            "sky_watcher.py")
+        spec = importlib.util.spec_from_file_location(
+            "sky_watcher_bright_without_visible", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_time_to_visible_none_when_culmination_under_minimum(self):
+        mod = self._module()
+        sample = {"alt_km": 420.0, "velocity_kmh": 27576.0}
+        psi = mod.central_angle_rad(0, 0, 0, -5)
+        self.assertIsNone(mod._time_to_visible_sec(
+            sample, psi, 0.0, 95.0))
+
+    def test_bright_pass_requires_a_visible_pass(self):
+        mod = self._module()
+        manifest = {"name": "sky_watcher", "tunables": {
+            "observer_lat": 0, "observer_lon": 0,
+            "visible_min_elevation_deg": 95}}
+        state, seen = None, []
+        for i, lon in enumerate([-10, -5, 0]):
+            sample = {"lat": 0.0, "lon": lon,
+                      "alt_km": 420.0,
+                      "velocity_kmh": 27576.0,
+                      "sunlit": True,
+                      "ts": 1700000000.0 + 60 * i}
+            alerts, state = mod.update(sample, manifest, state)
+            seen.extend(a["signal"] for a in alerts)
+        self.assertEqual(seen, ["station_approaching"])
+
 if __name__ == "__main__":
 
     unittest.main()
