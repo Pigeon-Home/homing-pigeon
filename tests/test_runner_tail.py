@@ -224,7 +224,7 @@ class BoardTailTest(unittest.TestCase):
 
     def test_task_approve_and_a_board_that_raises(self):
         from runner import jobcrypto
-        from cloud.send_job import sign_payload
+        from runner.cloud.send_job import sign_payload
         from runner.runner import Board, handle_board_mail
         with tempfile.TemporaryDirectory() as d:
             board = Board(os.path.join(d, "board.json"))

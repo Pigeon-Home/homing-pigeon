@@ -39,7 +39,7 @@ readable by the runner principal and not by the job principal.
 | Linux | `job_user` (setuid), `install.py` writes owner-only `0600` | Default is still the same user. POSIX ACLs (`setfacl`) on the base dir should hide the secret from the job user when bwrap is off |
 | macOS | launchd agent as the installing user | `chmod +a` ACLs exist but nothing applies them; the real cage would be `sandbox-exec`, not an ACL |
 | FreeBSD | cron `@reboot` as the user | `setfacl` on ZFS/UFS unapplied; a jail is the real boundary |
-| Windows | Scheduled Task (SYSTEM by default, or `--run-as`); `hardening/windows.md` documents the account as the sandbox | On a fresh one-home install, `install.py`'s `_acl_home()` runs `icacls /inheritance:r /grant:r` — a real DACL set by code at install. The legacy non-one-home path remains chmod-only, which sets no real DACL. Low integrity or a restricted token is the stronger cousin |
+| Windows | Scheduled Task (SYSTEM by default, or `--run-as`); `docs/hardening/windows.md` documents the account as the sandbox | On a fresh one-home install, `install.py`'s `_acl_home()` runs `icacls /inheritance:r /grant:r` — a real DACL set by code at install. The legacy non-one-home path remains chmod-only, which sets no real DACL. Low integrity or a restricted token is the stronger cousin |
 
 `--posture` already warns about the Windows ACL; it should warn
 about a missing POSIX ACL too.
@@ -101,7 +101,7 @@ where each one stands. Items marked absent are listed in docs/FUTURE.md.
 - **Windows default privilege.** The out-of-box Scheduled Task runs
   as SYSTEM. `--run-as` exists, but the default is the
   highest-privilege account on the box and it's quiet about it.
-  Status: documented in `hardening/windows.md`, default unchanged by
+  Status: documented in `docs/hardening/windows.md`, default unchanged by
   owner choice.
 - **`reply_to` (v3.7.0).** The runner now emails results to a
   SI-named address. The signed-body-only rule keeps it sound, but it

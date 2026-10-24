@@ -61,7 +61,7 @@ _OPTIONAL_FIELDS = ("description", "tunables", "signals", "entry",
 # `upstream` (added in 3.12.x; api_version stays 1) names the files
 # of another project this extension's reading depends on -- a log
 # schema, a record layout, the license that lets them ride along.
-# tools/fetch_upstream.py carries them into <extension>/upstream/.
+# .github/tools/fetch_upstream.py carries them into <extension>/upstream/.
 # The runner only validates the shape; it never fetches.
 _UPSTREAM_FIELDS = ("repo", "ref", "pin", "paths", "license")
 _UPSTREAM_REPO_RE = re.compile(
@@ -394,7 +394,7 @@ def load_extensions(ext_dir, kinds=("sense",)):
 # build_sensor_alert composes the one envelope; sign_envelope
 # seals it with the sense's restricted key, byte-for-byte the
 # scheme the agent verifies (the same construction as
-# cloud/send_job.py). Two interchangeable front-ends then carry
+# runner/cloud/send_job.py). Two interchangeable front-ends then carry
 # the identical signed text to a runner on the same machine:
 #
 # - drop_local_signal: the periodic style. The signed envelope
@@ -429,7 +429,7 @@ def sign_envelope(payload, secret) -> str:
     The signature is HMAC-SHA-384 over the compact JSON body,
     carried in the body itself as a trailing ,"sig":"..." field --
     the exact construction the agent's verify accepts on every
-    path (mail included). Kept in step with cloud/send_job.py.
+    path (mail included). Kept in step with runner/cloud/send_job.py.
     """
     if not isinstance(payload, dict):
         raise ValueError("envelope payload must be an object")

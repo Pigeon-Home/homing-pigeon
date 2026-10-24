@@ -19,7 +19,7 @@ from email.message import EmailMessage
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
-sys.path.insert(0, os.path.join(REPO, "cloud"))
+sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 sys.path.insert(0, os.path.join(REPO, "tests"))
 
 import runner.runner as rr  # noqa: E402

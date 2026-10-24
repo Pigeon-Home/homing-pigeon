@@ -1,6 +1,6 @@
 """Sky Watcher: the example sense that files ISS passes.
 
-Pins the Sky Watcher example (examples/extensions/sky-watcher/)
+Pins the Sky Watcher example (extensions/sky-watcher/)
 the way test_local_signals.py pins Lab Results: the geometry
 against known values, the pass state machine across scripted
 great-circle tracks (the shape a real ground track takes over
@@ -35,7 +35,7 @@ from runner import runner as R  # noqa: E402
 from runner import senses as S  # noqa: E402
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "examples", "extensions", "sky-watcher")
+EXAMPLE_DIR = os.path.join(REPO, "extensions", "sky-watcher")
 
 DEFAULT_SECRET = "b109f3bbbc244eb82441917ed06d618b" + "9008dd09b3befd1b078a64781ac2f3e5"
 SKY_SECRET = "3f7a1c9e5b2d48a0f6c1e9b3d5a7082" + "c4e6f1a9b0d2e4f6a8c1b3d5e7f9a0b2"

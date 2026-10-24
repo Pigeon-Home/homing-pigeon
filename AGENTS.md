@@ -56,9 +56,29 @@ Those values live on the runner host. They do not travel through the SI chat.
    anyone goes in that file or anywhere else in the repository.
 
 
+## Where things live
+
+The root holds the manuals, `pyproject.toml`, and six folders. Write
+new paths against this layout; the old ones are gone, with no shims.
+
+| Folder | What |
+|--------|------|
+| `runner/` | The runner and the Oracle. `runner/cloud/` is the cloud-side helpers (`send_job.py`, `send_dtls.py`) |
+| `extensions/` | The shipped extensions, one folder each |
+| `tests/` | The suite |
+| `docs/` | Everything else to read. `docs/hardening/` is the opt-in OS hardening templates |
+| `tools/` | Work areas for the agents: `tools/airgap/` (once `topaz/`) |
+| `assets/` | Images |
+| `.github/` | CI: `workflows/`, `tools/` (the build and CI scripts), `docker/` (the published image and the CI test image), `requirements-ci.txt` (the CI pins) |
+
+There is no `examples/`, root `cloud/`, `hardening/` or `docker/` any
+more, no root `Dockerfile` or `requirements-ci.txt`, and no
+`pyrefly.toml`: its settings are `[tool.pyrefly]` in `pyproject.toml`.
+The build and CI scripts are `.github/tools/`, not the root `tools/`.
+
 ## Sending a job
 
-Use `cloud/send_job.py`. Do not hand-roll the signature. The shapes below
+Use `runner/cloud/send_job.py`. Do not hand-roll the signature. The shapes below
 were real failures from the test suite.
 
 **Subject.** Must contain `[HOMING-PIGEON]` and then `job <job_id>`.
@@ -125,7 +145,7 @@ The runner also deals work from a local task board (PROTOCOL.md
 section 13). Any holder of a trusted shared secret can pull. The
 loop, with the helper:
 
-1. **Pull.** `python3 cloud/send_job.py task-request --worker-id
+1. **Pull.** `python3 runner/cloud/send_job.py task-request --worker-id
    <name> --capability code --capability review --reply-to
    <your-address> --secret <the-string>` → send the printed email to
    the runner mailbox. Claim only tags you can honor: a task is

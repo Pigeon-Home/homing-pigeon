@@ -1005,7 +1005,7 @@ pattern: `[HOMING-PIGEON] <type> <id>`.
   board. The body is the task of section 13.1 — `task_id`, and
   optionally `requires[]`, `capabilities[]`, `compartments[]`,
   `priority`, `payload`. A `task_id` already on the board is not
-  replaced; the first submission stands. `cloud/send_job.py
+  replaced; the first submission stands. `runner/cloud/send_job.py
   task-submit` composes one.
 - `task_approve` (subject id: the `task_id`) is the human gate of
   section 13.4: it moves a task from `pending_review` to `done`.
@@ -1202,7 +1202,7 @@ ship with each piece, not after.
 other value.*
 
 ### Agent Guide
-- The python script to compose transport message: https://github.com/Pigeon-Home/homing-pigeon/blob/main/cloud/send_job.py
+- The python script to compose transport message: https://github.com/Pigeon-Home/homing-pigeon/blob/main/runner/cloud/send_job.py
 - Project context: https://github.com/Pigeon-Home/homing-pigeon/blob/main/AGENTS.md
 - The source: https://github.com/Pigeon-Home/homing-pigeon/tree/main/runner
 - The test suite: https://github.com/Pigeon-Home/homing-pigeon/tree/main/tests

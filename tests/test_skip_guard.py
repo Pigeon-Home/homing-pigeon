@@ -1,5 +1,5 @@
 # Agent-Stamp: 30000f1a-3b4c-4d5e-8f6a-7b8c9d0e1f2a
-"""tools/skip_guard.py: a forbidden skip fails, everything else passes.
+""".github/tools/skip_guard.py: a forbidden skip fails, everything else passes.
 
 The guard exists because a skipped proof looks exactly like a
 passed one from the outside. These tests pin the parsing of
@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 def _load():
-    path = os.path.join(os.path.dirname(__file__), "..", "tools",
+    path = os.path.join(os.path.dirname(__file__), "..", ".github", "tools",
                         "skip_guard.py")
     spec = importlib.util.spec_from_file_location("skip_guard", path)
     mod = importlib.util.module_from_spec(spec)
@@ -33,7 +33,7 @@ test_b (tests.t.T.test_b) ... skipped 'bwrap not available on this machine'
 test_c (tests.t.T.test_c) ... skipped "z3 is not installed"
 test_d (tests.t.T.test_d) ... skipped 'bwrap not available on this machine'
 test_e (tests.t.T.test_e) ... FAIL
-test_f (tests.t.T.test_f) ... skipped 'runs in the docker/minimal-userland image'
+test_f (tests.t.T.test_f) ... skipped 'runs in the .github/docker/minimal-userland image'
 """
 
 
@@ -43,7 +43,7 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(reasons["bwrap not available on this machine"], 2)
         self.assertEqual(reasons["z3 is not installed"], 1)
         self.assertEqual(
-            reasons["runs in the docker/minimal-userland image"], 1)
+            reasons["runs in the .github/docker/minimal-userland image"], 1)
         self.assertEqual(sum(reasons.values()), 4)
 
     def test_ok_and_fail_lines_are_not_skips(self):

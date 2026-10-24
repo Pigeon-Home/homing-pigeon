@@ -11,7 +11,7 @@ them through one file channel per extension under the base dir:
     <base_dir>/transport-extensions/<name>/inbox/
         Job envelopes, extension -> runner. A job envelope is a
         subject line, a blank line, then the signed body -- the
-        exact shape cloud/send_job.py prints.
+        exact shape runner/cloud/send_job.py prints.
     <base_dir>/transport-extensions/<name>/outbox/
         Result envelopes, runner -> extension, same shape. The
         extension carries each result home over its own pipe.

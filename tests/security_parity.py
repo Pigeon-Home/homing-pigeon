@@ -18,7 +18,7 @@ from email.message import EmailMessage
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
-sys.path.insert(0, os.path.join(REPO, "cloud"))
+sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 
 from runner.runner import poll_once, verify_body  # noqa: E402
 from runner import jobcrypto  # noqa: E402

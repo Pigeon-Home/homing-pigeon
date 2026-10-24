@@ -52,7 +52,7 @@ from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
-sys.path.insert(0, os.path.join(REPO, "cloud"))
+sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 
 from runner import install as install_mod  # noqa: E402
 from runner import jobcrypto  # noqa: E402
@@ -416,7 +416,7 @@ class SenderFlagsTest(CleartextBase):
     def test_send_dtls_help_lists_cleartext(self):
         proc = subprocess.run(
             [sys.executable,
-             os.path.join(REPO, "cloud", "send_dtls.py"), "--help"],
+             os.path.join(REPO, "runner", "cloud", "send_dtls.py"), "--help"],
             capture_output=True, text=True, timeout=60)
         self.assertEqual(proc.returncode, 0)
         self.assertIn("--cleartext", proc.stdout)

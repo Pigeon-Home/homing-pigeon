@@ -1,6 +1,6 @@
 """USB Arrivals: the example sense that files bus arrivals.
 
-Pins the USB Arrivals example (examples/extensions/usb-arrivals/)
+Pins the USB Arrivals example (extensions/usb-arrivals/)
 the way test_sky_watcher.py pins Sky Watcher: the manifest
 through the real extension loader, the learn/arrive state
 machine in decide() against table-driven fixtures, and the
@@ -24,7 +24,7 @@ sys.path.insert(0, REPO)
 
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "examples", "extensions", "usb-arrivals")
+EXAMPLE_DIR = os.path.join(REPO, "extensions", "usb-arrivals")
 
 NOW = 1792375113.0
 

@@ -464,13 +464,13 @@ pinned by default, and a written disclosure rule lets the owner
   (Linux), launchd (macOS), cron @reboot (FreeBSD), Scheduled Task
   (Windows).
 - `runner/config.example.json` — copy to `config.json` and fill in.
-- `cloud/send_job.py` — cloud-side helper: builds signed job messages,
+- `runner/cloud/send_job.py` — cloud-side helper: builds signed job messages,
   verifies result messages. (Your SI uses this logic when dispatching jobs.)
 - `tests/` — the suite: the real runner driven against fake
   IMAP/SMTP servers and a fake NATS broker.
 - `docs/RUNBOOK.md` — step-by-step instructions (written for a 5-year-old):
   cloning, pushing, cutting a release, installing, sending a job.
-- `tools/make_snapshot.py` — packs the whole project into every
+- `.github/tools/make_snapshot.py` — packs the whole project into every
   release: each install archive carries `project/` (every tracked
   file, the full git history as a bundle, and the build's CI facts
   and test results, indexed by `project/PROJECT-SNAPSHOT.md`), and
@@ -478,13 +478,18 @@ pinned by default, and a written disclosure rule lets the owner
   `homing-pigeon-project-<version>.tar.gz`. An installed runner
   keeps it in its state dir, so the Oracle can read the source, the
   tests, and the CI that built it without a network.
-- `tools/pin_extension_sources.py` — the release job's pins: every
+- `.github/tools/pin_extension_sources.py` — the release job's pins: every
   declared extension source resolved to a commit and hashed,
   shipped in the snapshot as `project/EXTENSION-SOURCES.lock.json`
   (the sources themselves never ship; the boxes fetch them).
-- `examples/extensions/` — the example senses: 28 folders ship,
-  from the lab-results sense to the IDS feeds; 25 of them are the
-  pinned catalog in `docs/extensions.md`.
+- `extensions/` — the shipped extensions: 28 folders, from the
+  lab-results sense to the IDS feeds; 25 of them are the pinned
+  catalog in `docs/extensions.md`.
+- `docs/hardening/` — opt-in OS hardening: a systemd unit, an
+  AppArmor profile, an SELinux module, and Windows notes.
+- `.github/` — CI: the workflows, the build and CI scripts in
+  `.github/tools/`, the container images in `.github/docker/`, and
+  the CI pins in `.github/requirements-ci.txt`.
 
 ## Setup
 
@@ -518,10 +523,10 @@ script, whatever. The SI needs the `shared_secret` string from your
 mailbox password. Then:
 
 ```bash
-python3 cloud/send_job.py new --kind ping --secret <the-string>
+python3 runner/cloud/send_job.py new --kind ping --secret <the-string>
 # prints: subject line, blank line, signed body -> send as email to the runner mailbox
 
-python3 cloud/send_job.py new --kind exec --script-file job.sh \
+python3 runner/cloud/send_job.py new --kind exec --script-file job.sh \
   --interpreter '["bash"]' --file data.csv=https://... --timeout 300 \
   --arg --verbose --env MODE=ci --secret <the-string>
 ```
@@ -542,7 +547,7 @@ Verify a result body (results are encrypted by default, so pass
 the job id from the result's subject line to decrypt it):
 
 ```bash
-python3 cloud/send_job.py verify --secret <the-string> --job-id <id> result.txt
+python3 runner/cloud/send_job.py verify --secret <the-string> --job-id <id> result.txt
 ```
 
 The `--job-id` can be left off only for a cleartext result.
@@ -570,7 +575,7 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | `--audit-report [--since 14d|48h] [--feature NAME]` | Summarize the security audit log and exit; no mailbox, read-only. `--feature` narrows it to one control's entries |
 | `--posture` | Report the runner's security posture (exit 0/1/2) and exit; no mailbox |
 | `--run-variant FILE` | Run one locally supplied fuzz variant job from FILE through validation and confined execution, print its outcome as JSON, and exit; no mailbox. The job-fuzz sense's execution door: variants are unsigned local artifacts, admitted only here, never through the job path |
-| `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. Turns are appended to `oracle-chat.jsonl` in the base dir (1 MiB, then one backup). See `CONTRIBUTING.md` (maintainer notes: the `--oracle` flag). |
+| `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. Turns are appended to `oracle-chat.jsonl` in the base dir (1 MiB, then one backup). See `docs/CONTRIBUTING.md` (maintainer notes: the `--oracle` flag). |
 | `--poll-interval SECONDS`, `--timeout SECONDS`, `--judge MODE`, `--dag-mode MODE`, `--oracle-mode MODE`, … | One-process config overrides: one flag per key, `config.json` untouched, and a flag beats a later config edit. The full map is in `--help` and `docs/configuring-oracle.md` |
 
 `install.py` accepts the common run flags — `--poll-interval`,
@@ -589,7 +594,7 @@ signature/tamper rejection, any-sender acceptance.
 
 End-to-end without your SI:
 
-1. `python3 cloud/send_job.py new --kind ping --secret <the-string>` → copy the
+1. `python3 runner/cloud/send_job.py new --kind ping --secret <the-string>` → copy the
    subject + body.
 2. From any email account, send it to the
    runner mailbox.
@@ -663,6 +668,12 @@ interval, workers, timeouts, output limits, and max job age (a
 OAuth sign-in is shipped for the mailbox. PowerShell jobs stage
 as `script.ps1`. Release files carry Sigstore build provenance
 (`docs/verification.md`).
+
+## Contributing
+
+Welcome, and held to a high bar: standard library only, the protocol
+doc changes with anything on the wire, and a security-sensitive change
+says so. [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) has the rest.
 
 ## Mirrors
 

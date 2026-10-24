@@ -40,7 +40,7 @@ It could even work as a marketable service.
   you turn on Linux bubblewrap (`security.modes.confinement` set to
   `enforce`, and `bwrap` installed). That switch is off by default.
   A VM, a locked-down user, and the OS policy still do the real
-  containment. AppArmor and SELinux profiles live under `hardening/`
+  containment. AppArmor and SELinux profiles live under `docs/hardening/`
   and are opt-in. They are not installed for you.
 - Every new sense, transport, and job kind added to this project
   widens the blast radius. `docs/archive/roadmap-spec.md` is exciting and

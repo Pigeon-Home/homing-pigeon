@@ -1,0 +1,16 @@
+# CI build tools, pinned exactly (OneFuzz lift, 2026-10-18: a
+# floating install lets a compromised or broken upstream release
+# enter the build silently). Workflows install with this file as
+# the constraint set -- `pip install -c .github/requirements-ci.txt
+# <tool>` -- so each job still installs only the tools it uses,
+# but every version comes from here and nowhere else.
+#
+# Each pin below is what the previously floating install
+# resolved to on the day it was pinned; Dependabot's pip
+# ecosystem watches this file and proposes the bumps.
+hypothesis==6.170.2
+pytest==9.1.1
+build==1.6.1
+mutmut==3.8.0
+pyrefly==1.4.0
+pyinstaller==6.22.3

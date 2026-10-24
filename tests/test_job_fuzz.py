@@ -1,6 +1,6 @@
 """The Job Fuzz example: a sense that fuzzes retained jobs.
 
-Pins examples/extensions/job-fuzz/: the manifest through
+Pins extensions/job-fuzz/: the manifest through
 the real extension loader, the mutation engine's
 determinism, the pure decide() core over fixture readings
 (divergence, hard failures, coverage novelty, triage
@@ -27,7 +27,7 @@ sys.path.insert(0, REPO)
 
 from runner import extensions as E  # noqa: E402
 
-JF_DIR = os.path.join(REPO, "examples", "extensions", "job-fuzz")
+JF_DIR = os.path.join(REPO, "extensions", "job-fuzz")
 
 T0 = 1_700_000_000.0
 

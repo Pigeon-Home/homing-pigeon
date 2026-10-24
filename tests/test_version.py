@@ -45,7 +45,7 @@ class VersionFlagTest(unittest.TestCase):
         self.assertIn(_repo_version(), out)
 
     def test_send_job_version(self):
-        from cloud.send_job import main
+        from runner.cloud.send_job import main
         code, out = _run_version_flag(main, "send-job")
         self.assertEqual(code, 0)
         self.assertIn(_repo_version(), out)

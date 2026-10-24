@@ -1,6 +1,6 @@
 """Service Watch: the example sense that files service outages.
 
-Pins the Service Watch example (examples/extensions/service-watch/):
+Pins the Service Watch example (extensions/service-watch/):
 the manifest through the real extension loader, the pure decide()
 state machine across scripted process tables (learn pass, down,
 recovery, silent recovery, flapping), and one end-to-end run --
@@ -29,7 +29,7 @@ from runner import runner as R  # noqa: E402
 from runner import senses as S  # noqa: E402
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "examples", "extensions", "service-watch")
+EXAMPLE_DIR = os.path.join(REPO, "extensions", "service-watch")
 
 DEFAULT_SECRET = "b109f3bbbc244eb82441917ed06d618b" + "9008dd09b3befd1b078a64781ac2f3e5"
 SVC_SECRET = "a1b2c3d4e5f60718293a4b5c6d7e8f90" + "1a2b3c4d5e6f708192a3b4c5d6e7f809"

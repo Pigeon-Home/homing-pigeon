@@ -125,7 +125,7 @@ A feed sense reads what another program writes -- Suricata's
 report. The adapter is only as right as its reading of that
 format, and the format is defined in the other project's tree,
 not in yours. The `upstream` manifest field names the few files
-that define it, and `tools/fetch_upstream.py` carries them into
+that define it, and `.github/tools/fetch_upstream.py` carries them into
 `<extension>/upstream/` beside the adapter, with the license that
 lets them ride along:
 
@@ -149,7 +149,7 @@ and the suite fails past it.
 
 Three things are checked, and none needs the network:
 
-- **The tree is whole.** `tools/fetch_upstream.py --check` (and
+- **The tree is whole.** `.github/tools/fetch_upstream.py --check` (and
   `tests/test_upstream_pins.py`) fail when a pin moved without a
   fetch, a file was edited by hand, a file sits under `upstream/`
   the manifest does not list, or the budget is spent. The build
@@ -187,7 +187,7 @@ target knows the field. The changelog names the release that
 added it.
 
 The block is the one place an extension names its upstream. It is
-read three ways from that one spot: `tools/fetch_upstream.py` keeps
+read three ways from that one spot: `.github/tools/fetch_upstream.py` keeps
 the pinned files in the tree for the build and the drift tests;
 the extension sources pass (below) hands the same files to the
 Oracle as the entry `pinned`, vouched for by the digests
@@ -512,7 +512,7 @@ version installed on the box, and the index says so.
 ### Integrity: pinned by the build
 
 "latest" is resolved when Homing Pigeon is built. The release job
-runs `tools/pin_extension_sources.py`: every declared upstream
+runs `.github/tools/pin_extension_sources.py`: every declared upstream
 pinned to a commit, every file and archive downloaded and hashed
 (SHA-384), all of it written to
 `project/EXTENSION-SOURCES.lock.json` inside every release
@@ -526,7 +526,7 @@ An extension author pins the same way and ships the result next
 to the declaration:
 
 ```bash
-python tools/pin_extension_sources.py --out my-ext/sources.lock.json my-ext
+python .github/tools/pin_extension_sources.py --out my-ext/sources.lock.json my-ext
 ```
 
 The extension's own `sources.lock.json` is consulted first, then
@@ -649,7 +649,7 @@ same with one file.
 Starting from a clone of this repository:
 
 1. Copy the example:
-   `cp -r examples/extensions/lab-results <base_dir>/extensions/my-sense`
+   `cp -r extensions/lab-results <base_dir>/extensions/my-sense`
    (any folder name; the manifest is the identity).
 2. Edit `extension.json`: set `name` to your sensor name, declare
    YOUR signals — names you will actually emit, each with the
@@ -689,7 +689,7 @@ envelope and signal names against a live config.
 
 ## The example: Lab Results
 
-`examples/extensions/lab-results/` is a working sense for
+`extensions/lab-results/` is a working sense for
 people who run experiments. Training and evaluation harnesses
 drop result files; Lab Results turns the folder into signals.
 
@@ -733,7 +733,7 @@ python3 lab_results.py --watch-dir path/to/results
 
 ## The Pi Light example: Pi Health
 
-`examples/extensions/pi-health/` is a working sense for the
+`extensions/pi-health/` is a working sense for the
 health of the machine it runs on, and the Pi Light showcase:
 on a Pi it runs with no local model anywhere in the loop, but
 nothing about it is Pi-only — the same extension runs on a
@@ -781,7 +781,7 @@ severity, title — with no inference involved at any step.
 
 ## The Pi Light example: Airwaves
 
-`examples/extensions/airwaves/` is the Pi's wireless
+`extensions/airwaves/` is the Pi's wireless
 neighborhood watch, and the second Pi Light showcase: a Pi
 sits on a desk with its radio on anyway, so it may as well
 keep the baseline of what the air around it normally looks
@@ -821,7 +821,7 @@ wakes the deterministic Oracle exactly as Pi Health's does.
 
 ## The example: Sky Watcher
 
-`examples/extensions/sky-watcher/` is a working sense for
+`extensions/sky-watcher/` is a working sense for
 people who like looking up. It polls the International Space
 Station's position from the free wheretheiss.at feed (no API
 key) and files the passes over one observer that are worth

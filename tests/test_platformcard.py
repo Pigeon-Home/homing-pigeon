@@ -17,7 +17,7 @@ from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-sys.path.insert(0, os.path.join(ROOT, "cloud"))
+sys.path.insert(0, os.path.join(ROOT, "runner", "cloud"))
 
 from runner import platformcard as PC  # noqa: E402
 from runner import runner as R  # noqa: E402

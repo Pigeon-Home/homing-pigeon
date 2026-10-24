@@ -14,7 +14,7 @@ silently exploring unseeded).
 
 The workflow is asserted as text, the same convention as
 tests/test_build_config.py: the CI test environment installs only
-the pinned tools in requirements-ci.txt, which carries no YAML
+the pinned tools in .github/requirements-ci.txt, which carries no YAML
 library, and a test that cannot run in CI pins nothing.
 """
 import os

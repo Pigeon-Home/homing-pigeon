@@ -1,6 +1,6 @@
 """Crash Watch: the example sense that files crash dumps.
 
-Pins the Crash Watch example (examples/extensions/crash-watch/)
+Pins the Crash Watch example (extensions/crash-watch/)
 the way test_sky_watcher.py pins Sky Watcher: the manifest
 through the real extension loader, the pure decide() state
 machine over fixture readings (new dump, repeat inside the
@@ -35,7 +35,7 @@ from runner import runner as R  # noqa: E402
 from runner import senses as S  # noqa: E402
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "examples", "extensions", "crash-watch")
+EXAMPLE_DIR = os.path.join(REPO, "extensions", "crash-watch")
 
 DEFAULT_SECRET = "b109f3bbbc244eb82441917ed06d618b" + "9008dd09b3befd1b078a64781ac2f3e5"
 CRASH_SECRET = "5c1d9a2e7f4b48a0b6d3e5f7a9c1b2d4" + "e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6"

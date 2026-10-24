@@ -199,7 +199,7 @@ def _cfg_base_dir(cfg_path: str) -> str:
 def install_project_snapshot(src_dir: str, base_dir: str) -> bool:
     """Install the release's project snapshot as <base_dir>/project.
 
-    A release archive carries project/ (tools/make_snapshot.py): every
+    A release archive carries project/ (.github/tools/make_snapshot.py): every
     tracked file, the full history as a git bundle, and the build's CI
     facts. It lands in the state dir so the Oracle's file tools reach
     it. An upgrade replaces it whole; nothing else in the state dir is
@@ -1952,7 +1952,7 @@ def apply_profile(cfg_path: str, profile: str) -> None:
 #
 # The collectors docs/senses.md names as sense suppliers: the
 # installer can set them up next to the runner, and the matching
-# examples/extensions/<name>-feed producer turns each one's
+# extensions/<name>-feed producer turns each one's
 # output into signed alerts. The measured comparison behind
 # these choices (footprints on a 2 vCPU / 7.7 GB box, next to
 # the local model) is the campaign the senses doc cites; the

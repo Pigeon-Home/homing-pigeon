@@ -7,7 +7,7 @@ name: platform-matrix
 # absent interpreter is repaired and stated, non-ASCII survives the
 # locale, the result has its members) runs on every leg below, and a
 # leg fails unless every test ran and passed -- a skipped proof is
-# not a proof (tools/skip_guard.py --no-skips --require-ok).
+# not a proof (.github/tools/skip_guard.py --no-skips --require-ok).
 #
 # Legs: native runners (Linux/Windows/macOS, x86_64 and arm64);
 # containers for glibc and musl distributions, the Python 3.9 floor,
@@ -58,7 +58,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - id: plan
-        run: python3 tools/platform_plan.py
+        run: python3 .github/tools/platform_plan.py
 
   container:
     name: ${{ matrix.name }}
@@ -85,7 +85,7 @@ jobs:
             -v "$PWD:/src:ro" \
             -e HP_MUTATION="${{ matrix.mutation }}" \
             -e HP_FIPS="${{ matrix.fips }}" \
-            "${{ matrix.image }}" sh /src/tools/platform_proof.sh 2>&1 | tee leg.log \
+            "${{ matrix.image }}" sh /src/.github/tools/platform_proof.sh 2>&1 | tee leg.log \
             || { tail -n 15 leg.log | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
           grep PLATFORM-REPORT leg.log | tail -1 >> "$GITHUB_STEP_SUMMARY"
 
@@ -110,7 +110,7 @@ jobs:
           HP_PLATFORM_PROOF: "1"
         run: |
           python -m unittest tests.test_platform_proof -v 2>&1 | tee proof.log || true
-          python tools/skip_guard.py proof.log --no-skips --require-ok --annotate
+          python .github/tools/skip_guard.py proof.log --no-skips --require-ok --annotate
           grep PLATFORM-REPORT proof.log | tail -1 >> "$GITHUB_STEP_SUMMARY"
 
   vm:
@@ -130,13 +130,13 @@ jobs:
         with:
           usesh: true
           prepare: pkg install -y python3
-          run: sh tools/platform_proof.sh
+          run: sh .github/tools/platform_proof.sh
       - if: ${{ matrix.os == 'openbsd' }}
         uses: vmactions/openbsd-vm@f1ca8bc8ecc5b6ef7218e5b914836e067e1546d3 # v1.4.9
         with:
           usesh: true
           prepare: pkg_add -I python%3
-          run: sh tools/platform_proof.sh
+          run: sh .github/tools/platform_proof.sh
       - if: ${{ matrix.os == 'netbsd' }}
         uses: vmactions/netbsd-vm@fac0a63f3e5244c600cb9ca532d27ee774ecdb4b # v1.4.3
         with:
@@ -144,4 +144,4 @@ jobs:
           # NetBSD: pkg_add is the bootstrap tool (pkgin is itself a package),
           # and /usr/pkg/bin is not on the default PATH over ssh.
           prepare: /usr/sbin/pkg_add -I python312 || /usr/sbin/pkg_add -I python311
-          run: PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH sh tools/platform_proof.sh
+          run: PATH=/usr/pkg/bin:/usr/pkg/sbin:$PATH sh .github/tools/platform_proof.sh

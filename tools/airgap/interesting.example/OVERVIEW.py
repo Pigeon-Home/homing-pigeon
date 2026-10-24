@@ -1398,7 +1398,7 @@ def test_parse_nmcli_junk_lines_are_skipped(self):
 def test_the_sharded_runner_is_copied(self):
         # test_parallel_runner imports this file at load time.
         # A missing copy fails stats collection before any mutant.
-        self.assertIn("tools/", _also_copy())
+        self.assertIn(".github/tools/", _also_copy())
 
 # tests/test_runner_oracle_tools.py OracleToolTest.test_a_missing_file_is_an_error_string_not_an_exception lines 78-81
 def test_a_missing_file_is_an_error_string_not_an_exception(self):
@@ -2923,10 +2923,10 @@ def test_title_line_is_trimmed_to_120_chars(self):
 
 # tests/test_build_config.py MutationTreeTest.test_the_ci_pin_file_is_copied lines 312-316
 def test_the_ci_pin_file_is_copied(self):
-        # PipelineLiftsTest reads requirements-ci.txt from the tree;
+        # PipelineLiftsTest reads .github/requirements-ci.txt from the tree;
         # without a copy the v3.8.5 tag build's mutation job died in
         # baseline stats collection on exactly that missing file.
-        self.assertIn("requirements-ci.txt", _also_copy())
+        self.assertIn(".github/requirements-ci.txt", _also_copy())
 
 # tests/test_build_config.py HiddenImportSyncTest.test_scan_finds_the_dynamic_loads lines 57-61
 def test_scan_finds_the_dynamic_loads(self):
@@ -5068,7 +5068,7 @@ def test_every_subcommand_help_exits_0(self):
         for cmd in ("task-submit", "task-request", "verify"):
             with self.subTest(cmd=cmd):
                 proc = _help_output(
-                    os.path.join("cloud", "send_job.py"), cmd,
+                    os.path.join("runner", "cloud", "send_job.py"), cmd,
                     "--help")
                 self.assertEqual(proc.returncode, 0, proc.stderr)
 
@@ -5303,7 +5303,7 @@ def test_counts_each_reason(self):
         self.assertEqual(reasons["bwrap not available on this machine"], 2)
         self.assertEqual(reasons["z3 is not installed"], 1)
         self.assertEqual(
-            reasons["runs in the docker/minimal-userland image"], 1)
+            reasons["runs in the .github/docker/minimal-userland image"], 1)
         self.assertEqual(sum(reasons.values()), 4)
 
 # tests/test_sysmon_feed.py DecideTest.test_non_temp_paths_are_quiet lines 295-301
@@ -5457,7 +5457,7 @@ def test_verdict_steps_use_the_guard(self):
         for name in ("minimal-userland.yml", "platform-matrix.yml", "build.yml"):
             wf = _workflow_text(name)
             if "| tee" in wf:
-                self.assertIn("tools/skip_guard.py", wf, name)
+                self.assertIn(".github/tools/skip_guard.py", wf, name)
 
 # tests/test_build_config.py UnixVersionSmokeTest.test_every_posix_job_runs_the_shared_smoke lines 85-91
 def test_every_posix_job_runs_the_shared_smoke(self):
@@ -9603,7 +9603,7 @@ def test_synthetic_fixture_parses_five_events(self):
 # tests/test_build_config.py PipelineLiftsTest.test_release_generates_the_sbom_before_the_sums lines 496-505
 def test_release_generates_the_sbom_before_the_sums(self):
         block = _job_block(_workflow(), "release")
-        self.assertIn("tools/make_sbom.py "
+        self.assertIn(".github/tools/make_sbom.py "
                       "--out artifacts/SBOM.spdx.json", block)
         self.assertLess(block.index("actions/checkout@"),
                         block.index("actions/download-artifact@"))
@@ -12140,7 +12140,7 @@ def test_no_test_count_census_in_workflows(self):
         # `grep -q 'Ran 6 tests'` and `assertEqual(count, 1)` both
         # broke on 2026-10-21 the moment someone added a test or a
         # build. A verdict step asks for N > 0, a bare OK and no skip
-        # (tools/skip_guard.py --require-ok --no-skips), never a number.
+        # (.github/tools/skip_guard.py --require-ok --no-skips), never a number.
         for name in self.ALL:
             for line in _workflow_text(name).splitlines():
                 if line.strip().startswith("#"):
@@ -12862,7 +12862,7 @@ def test_no_runtime_pep604_annotations_without_future_import(self):
         import glob
         files = sorted(glob.glob(os.path.join(_root(), "runner", "**", "*.py"),
                                  recursive=True))
-        files += sorted(glob.glob(os.path.join(_root(), "tools", "*.py")))
+        files += sorted(glob.glob(os.path.join(_root(), ".github", "tools", "*.py")))
         self.assertGreater(len(files), 30)
         sites = []
         for f in files:
@@ -13515,7 +13515,7 @@ def test_capabilities_that_are_not_strings_open_nothing(self):
 
 # tests/test_oracle_opinion.py RepairSpecimenTests.test_verify_says_what_ran lines 971-984
 def test_verify_says_what_ran(self):
-        from cloud.send_job import repair_line
+        from runner.cloud.send_job import repair_line
         digest = "ab" * 48
         self.assertEqual(
             repair_line({
@@ -14301,8 +14301,8 @@ def test_no_secrets_scans_output(self):
 def test_linux_job_drops_onto_a_machine_with_no_python(self):
         block = _job_block(_workflow(), "build-linux")
         self.assertIn(
-            "tools/smoke_no_python.sh ./dist/homing-pigeon", block)
-        with open(os.path.join(_root(), "tools", "smoke_no_python.sh"),
+            ".github/tools/smoke_no_python.sh ./dist/homing-pigeon", block)
+        with open(os.path.join(_root(), ".github", "tools", "smoke_no_python.sh"),
                   encoding="utf-8") as fh:
             script = fh.read()
         for needle in ("debian:bookworm-slim", "command -v python3",
@@ -14310,7 +14310,7 @@ def test_linux_job_drops_onto_a_machine_with_no_python(self):
                        "has Python"):
             self.assertIn(needle, script, "no-python smoke lacks %s" % needle)
         self.assertTrue(os.access(os.path.join(
-            _root(), "tools", "smoke_no_python.sh"), os.X_OK),
+            _root(), ".github", "tools", "smoke_no_python.sh"), os.X_OK),
             "no-python smoke is not executable")
 
 # tests/test_pi_light.py DeterministicBriefTest.test_llm_mode_still_assesses_with_the_model lines 217-230
@@ -14411,7 +14411,7 @@ def test_tree_matches_manifests_and_pins(self):
 
 # tests/test_build_config.py UnixVersionSmokeTest.test_the_shared_smoke_checks_what_windows_checks lines 93-106
 def test_the_shared_smoke_checks_what_windows_checks(self):
-        with open(os.path.join(_root(), "tools",
+        with open(os.path.join(_root(), ".github", "tools",
                                "smoke_posix_binaries.sh"),
                   encoding="utf-8") as fh:
             script = fh.read()
@@ -14422,7 +14422,7 @@ def test_the_shared_smoke_checks_what_windows_checks(self):
         # The flag must be asserted absent, not merely present.
         self.assertIn("flag leaked", script)
         self.assertTrue(os.access(os.path.join(
-            _root(), "tools", "smoke_posix_binaries.sh"), os.X_OK),
+            _root(), ".github", "tools", "smoke_posix_binaries.sh"), os.X_OK),
             "smoke script is not executable")
 
 # tests/test_watchers.py JobWatcherDecideTest.test_failure_cluster_needs_distinct_jobs lines 382-395
@@ -15020,7 +15020,7 @@ def test_codeql_ignores_tests_and_examples_only(self):
                   encoding="utf-8") as fh:
             config = fh.read()
         self.assertIn("- tests/**", config)
-        self.assertIn("- examples/**", config)
+        self.assertIn("- extensions/**", config)
         self.assertIn("py/clear-text-logging-sensitive-data", config)
         self.assertIn("py/polynomial-redos", config)
         self.assertIn("py/bind-socket-all-network-interfaces", config)
@@ -15336,9 +15336,9 @@ def test_changed_file_at_same_path_refiles(self):
 def test_ci_installs_come_from_the_pin_file(self):
         for line in _workflow().splitlines():
             if "pip install" in line:
-                self.assertIn("-c requirements-ci.txt", line,
+                self.assertIn("-c .github/requirements-ci.txt", line,
                               "unconstrained install: %s" % line)
-        with open(os.path.join(_root(), "requirements-ci.txt"),
+        with open(os.path.join(_root(), ".github/requirements-ci.txt"),
                   encoding="utf-8") as fh:
             pins = fh.read()
         for tool in ("hypothesis", "pytest", "build", "mutmut",
@@ -16384,7 +16384,7 @@ def test_spawn_does_not_use_a_shell_and_detaches(self):
 def test_adapters_bring_their_upstream_source(self):
         for name in self.ADAPTERS:
             decl, _ = X.load_declaration(
-                os.path.join(REPO, "examples", "extensions", name))
+                os.path.join(REPO, "extensions", name))
             ups = [e for e in decl["sources"] if e["role"] == "upstream"]
             self.assertTrue(ups, name)
             for e in ups:
@@ -16607,11 +16607,11 @@ def test_every_packaging_step_stamps_provenance(self):
                             ("build-macos", "tar czf"),
                             ("build-macos-x86_64", "tar czf")):
             block = _job_block(workflow, job)
-            stamp = "tools/stamp_provenance.py --job %s" % job
+            stamp = ".github/tools/stamp_provenance.py --job %s" % job
             self.assertIn(stamp, block, "%s never stamps" % job)
             self.assertLess(block.index(stamp), block.index(packer),
                             "%s stamps after archiving" % job)
-        self.assertIn("tools/stamp_provenance.py --job build-python",
+        self.assertIn(".github/tools/stamp_provenance.py --job build-python",
                       _job_block(workflow, "build-python"))
 
 # tests/test_linux_platform.py LoopbackTest.test_inference_config_mutations lines 2570-2585
@@ -18620,7 +18620,7 @@ def test_an_author_withheld_entry_hides_only_itself(self):
 
 # tests/test_cli_options.py SendJobHelpDocumentTest.test_new_help_groups_and_flags lines 1175-1193
 def test_new_help_groups_and_flags(self):
-        proc = _help_output(os.path.join("cloud", "send_job.py"),
+        proc = _help_output(os.path.join("runner", "cloud", "send_job.py"),
                             "new", "--help")
         self.assertEqual(proc.returncode, 0, proc.stderr)
         out = proc.stdout

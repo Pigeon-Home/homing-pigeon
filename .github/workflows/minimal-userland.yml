@@ -27,11 +27,11 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - run: docker build -f docker/minimal-userland/Dockerfile -t hp-minimal .
+      - run: docker build -f .github/docker/minimal-userland/Dockerfile -t hp-minimal .
       - name: prove repair, and fail if the suite skipped
         run: |
           set -euo pipefail
           docker run --rm hp-minimal 2>&1 | tee minimal-out.txt || true
           # Not `Ran 6 tests`: a count is a census that breaks when a
           # test is added. The guard wants N > 0, a bare OK, no skip.
-          python3 tools/skip_guard.py minimal-out.txt --no-skips --require-ok --annotate
+          python3 .github/tools/skip_guard.py minimal-out.txt --no-skips --require-ok --annotate

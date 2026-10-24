@@ -157,9 +157,10 @@ git rev-parse "vX.Y.Z^{commit}"   # matches "commit" in CI-SNAPSHOT.json
 `SBOM.spdx.json` (SPDX 2.3) ships with every release and is
 covered by both the sums and the attestation. Because the
 runtime is stdlib-only, it is short: the project with every
-shipped `runner/` and `cloud/` module (per-file checksums),
-CPython at the version range `pyproject.toml` declares, and
-PyInstaller at the version pinned in `requirements-ci.txt` —
+shipped `runner/` module (per-file checksums, the cloud helpers
+in `runner/cloud/` included), CPython at the version range
+`pyproject.toml` declares, and PyInstaller at the version pinned
+in `.github/requirements-ci.txt` —
 the one build tool whose output ships. Read it with any SPDX
 tool, or as plain JSON:
 

@@ -37,7 +37,7 @@ sys.path.insert(0, REPO)
 
 from runner import extensions as E  # noqa: E402
 
-EXAMPLES_DIR = os.path.join(REPO, "examples", "extensions")
+EXAMPLES_DIR = os.path.join(REPO, "extensions")
 
 # folder, producer file, sensor name, declared signals in
 # manifest order. This table is the catalog; docs/extensions.md

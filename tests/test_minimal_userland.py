@@ -11,7 +11,7 @@ transport: the job goes through poll_once and the repaired job
 actually runs on a box that has no bash.
 
 It runs only where HP_MINIMAL_USERLAND=1 is set -- the
-docker/minimal-userland image (Alpine: BusyBox ash is /bin/sh,
+.github/docker/minimal-userland image (Alpine: BusyBox ash is /bin/sh,
 bash is not installed) that .github/workflows/minimal-userland.yml
 builds on x86_64 and arm64. Anywhere else the module skips: on a
 box with bash these jobs would not need repairing, and the test
@@ -52,7 +52,7 @@ def _run(payload, cfg_over=None):
     return oo._read_result(smtp.sent[-1])
 
 
-@unittest.skipUnless(ENABLED, "runs in the docker/minimal-userland image")
+@unittest.skipUnless(ENABLED, "runs in the .github/docker/minimal-userland image")
 class MinimalUserlandRepairTests(unittest.TestCase):
 
     def test_box_really_is_minimal(self):

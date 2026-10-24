@@ -3,7 +3,7 @@
 
 The 2026-10-17 bump to version 2 changed the integer only and was
 reverted the same day. A job, query, or board message with any other
-`v` is rejected. Replies carry 1. cloud/send_job.py emits 1 and
+`v` is rejected. Replies carry 1. runner/cloud/send_job.py emits 1 and
 refuses to sign with a sub-128-bit or patterned secret. Verification
 stays signature-only: the floor is a signing rule, not a verify rule.
 """
@@ -21,7 +21,7 @@ from email.message import EmailMessage
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "tests"))
-sys.path.insert(0, os.path.join(REPO, "cloud"))
+sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 
 from runner import jobcrypto  # noqa: E402
 from runner import runner as R  # noqa: E402

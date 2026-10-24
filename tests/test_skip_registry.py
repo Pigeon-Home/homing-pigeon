@@ -110,7 +110,7 @@ REGISTERED = {
         "(the guard is a leftover from before it landed)",
     "setup module not importable": "guards an import; never expected to fire",
     # ---- opt-in proof modules: run by their own workflow legs ------
-    "runs in the docker/minimal-userland image":
+    "runs in the .github/docker/minimal-userland image":
         "run by .github/workflows/minimal-userland.yml, which fails on any skip",
     "set HP_PLATFORM_PROOF=1 to run the portable proof":
         "run by .github/workflows/platform-matrix.yml on every leg, "

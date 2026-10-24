@@ -35,15 +35,15 @@ jobs:
         with:
           python-version: "3.12"
       - name: resolve refs, fetch the pinned files
-        run: python3 tools/fetch_upstream.py --bump
+        run: python3 .github/tools/fetch_upstream.py --bump
       - name: nothing moved?
         id: diff
         run: |
-          if git diff --quiet -- examples/extensions; then
+          if git diff --quiet -- extensions; then
             echo "moved=false" >> "$GITHUB_OUTPUT"
           else
             echo "moved=true" >> "$GITHUB_OUTPUT"
-            git --no-pager diff --stat -- examples/extensions
+            git --no-pager diff --stat -- extensions
           fi
       - name: the adapters still read what upstream writes
         if: steps.diff.outputs.moved == 'true'
@@ -53,7 +53,7 @@ jobs:
         run: |
           git config user.name "upstream-pins"
           git config user.email "upstream-pins@users.noreply.github.com"
-          git add examples/extensions
+          git add extensions
           git commit -F - <<'MSG'
           extensions: refresh upstream pins
 

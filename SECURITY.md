@@ -34,7 +34,7 @@ no details.
 ## Scope
 
 In scope: the runner (`runner/runner.py`), the installer
-(`runner/install.py`), the cloud helper (`cloud/send_job.py`), the
+(`runner/install.py`), the cloud helper (`runner/cloud/send_job.py`), the
 protocol itself (PROTOCOL.md), and the build/release pipeline
 (`.github/workflows/`).
 

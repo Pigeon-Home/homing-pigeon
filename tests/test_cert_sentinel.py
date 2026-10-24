@@ -1,6 +1,6 @@
 """Cert Sentinel: the example sense that files certificate expiry.
 
-Pins the Cert Sentinel example (examples/extensions/cert-sentinel/)
+Pins the Cert Sentinel example (extensions/cert-sentinel/)
 the way test_sky_watcher.py pins Sky Watcher: the manifest through
 the real extension loader, the band discipline across scripted
 expiry fixtures (decide() is pure, so every boundary is a table
@@ -26,7 +26,7 @@ sys.path.insert(0, REPO)
 
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "examples", "extensions", "cert-sentinel")
+EXAMPLE_DIR = os.path.join(REPO, "extensions", "cert-sentinel")
 
 NOW = 1_700_000_000.0
 DAY = 86400.0

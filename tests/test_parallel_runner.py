@@ -1,4 +1,4 @@
-# Tests for tools/run_tests_parallel.py, the sharded suite runner
+# Tests for .github/tools/run_tests_parallel.py, the sharded suite runner
 # that takes the Windows CI build from ~5 minutes toward ~3.
 #
 # The sharding math is pinned directly; the runner's contract
@@ -20,7 +20,7 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _spec = importlib.util.spec_from_file_location(
     "run_tests_parallel",
-    os.path.join(REPO, "tools", "run_tests_parallel.py"))
+    os.path.join(REPO, ".github", "tools", "run_tests_parallel.py"))
 rtp = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(rtp)
 
@@ -427,7 +427,7 @@ class WallClockTest(_OutsideActions):
     2026-10-23: one test looped forever and the Windows suite sat
     past 80 minutes until someone cancelled it, with nothing in
     the log to say which test. Under --wall-clock every shard
-    runs through tools/suite_wall_clock.py, which stops at the
+    runs through .github/tools/suite_wall_clock.py, which stops at the
     deadline and names the running test; the parent keeps a hard
     stop past that for a shard whose clock could not fire.
     """

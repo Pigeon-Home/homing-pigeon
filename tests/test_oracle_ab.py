@@ -43,7 +43,7 @@ from runner import runner as R  # noqa: E402
 from runner import senses as S  # noqa: E402
 from runner import extensions as E  # noqa: E402
 
-PI_HEALTH_DIR = os.path.join(REPO, "examples", "extensions", "pi-health")
+PI_HEALTH_DIR = os.path.join(REPO, "extensions", "pi-health")
 PI_SECRET = "c06e9f8a2b4d47f1a3e5b6c7d8f9a0b1" + "2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f"
 INF = {"endpoint": "http://127.0.0.1:11434/v1", "model": "qwen3:1.7b"}
 FAKE_ANSWER = "Fake model assessment: the board is hot."

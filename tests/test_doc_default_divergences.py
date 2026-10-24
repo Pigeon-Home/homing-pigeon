@@ -3980,7 +3980,7 @@ class TestNonFinitePiHealthTunableDefaults(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "pi-health", "pi_health.py")
+            "extensions", "pi-health", "pi_health.py")
         spec = importlib.util.spec_from_file_location(
             "pi_health_divergence", path)
         mod = importlib.util.module_from_spec(spec)
@@ -4092,7 +4092,7 @@ class TestNonFiniteAirwavesGoneAfterScansDefaultsTo3(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "airwaves", "airwaves.py")
+            "extensions", "airwaves", "airwaves.py")
         spec = importlib.util.spec_from_file_location(
             "airwaves_divergence", path)
         mod = importlib.util.module_from_spec(spec)
@@ -4204,7 +4204,7 @@ class TestNonFiniteSkyWatcherApproachRadiusDefaultsTo5000(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "sky-watcher",
+            "extensions", "sky-watcher",
             "sky_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "sky_watcher_divergence", path)
@@ -4322,7 +4322,7 @@ class TestNonFiniteSkyWatcherDarkThresholdDefaultsToMinus6(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "sky-watcher",
+            "extensions", "sky-watcher",
             "sky_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "sky_watcher_dark_divergence", path)
@@ -4390,7 +4390,7 @@ class TestInfiniteCertSentinelDaysDefaults(unittest.TestCase):
     for certificates a year from expiry instead of falling
     back to the documented defaults.
 
-    (a) Doc claim (examples/extensions/cert-sentinel/
+    (a) Doc claim (extensions/cert-sentinel/
         cert_sentinel.py header, lines 13-16, repeated in
         the extension README lines 29-30, its extension.json
         tunables, and the docs/extensions.md table at line
@@ -4444,7 +4444,7 @@ class TestInfiniteCertSentinelDaysDefaults(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "cert-sentinel",
+            "extensions", "cert-sentinel",
             "cert_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "cert_sentinel_divergence", path)
@@ -4493,7 +4493,7 @@ class TestInfiniteLogSentinelTunablesCrashInsteadOfDefault(unittest.TestCase):
     crashes the pass with OverflowError instead of falling
     back to the documented defaults.
 
-    (a) Doc claim (examples/extensions/log-sentinel/README.md
+    (a) Doc claim (extensions/log-sentinel/README.md
         lines 27-30 and 79, repeated in the extension's
         extension.json tunables): "further matches of the
         same subject inside `cooldown_sec` (default 3600)
@@ -4552,7 +4552,7 @@ class TestInfiniteLogSentinelTunablesCrashInsteadOfDefault(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "log-sentinel",
+            "extensions", "log-sentinel",
             "log_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "log_sentinel_divergence", path)
@@ -4624,7 +4624,7 @@ class TestInfiniteTripwireTunablesCrashInsteadOfDefault(unittest.TestCase):
     pass with OverflowError instead of falling back to
     the documented defaults.
 
-    (a) Doc claim (examples/extensions/tripwire/README.md
+    (a) Doc claim (extensions/tripwire/README.md
         lines 27 and 32-33, repeated in the extension's
         extension.json tunables): "At most `max_files`
         files (default 10000) are recorded per pass"; "At
@@ -4671,7 +4671,7 @@ class TestInfiniteTripwireTunablesCrashInsteadOfDefault(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "tripwire",
+            "extensions", "tripwire",
             "tripwire.py")
         spec = importlib.util.spec_from_file_location(
             "tripwire_divergence", path)
@@ -4794,7 +4794,7 @@ class TestNonFiniteSkyWatcherLeadAndBrightDefaults(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "sky-watcher",
+            "extensions", "sky-watcher",
             "sky_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "sky_watcher_lead_bright_divergence", path)
@@ -4871,7 +4871,7 @@ class TestInfiniteBackupStaleAfterDefaultsTo90000(unittest.TestCase):
     alert instead of falling back to the documented
     90000-second default.
 
-    (a) Doc claim (examples/extensions/backup-freshness/
+    (a) Doc claim (extensions/backup-freshness/
         README.md, lines 12-13): "`stale_after_sec` (how
         old is too old, default 90000 -- just over a
         day)". The manifest ships the same default
@@ -4927,7 +4927,7 @@ class TestInfiniteBackupStaleAfterDefaultsTo90000(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "backup-freshness",
+            "extensions", "backup-freshness",
             "backup_freshness.py")
         spec = importlib.util.spec_from_file_location(
             "backup_freshness_divergence", path)
@@ -4974,7 +4974,7 @@ class TestInfiniteCrashWatchRepeatWindowDefaultsTo3600(unittest.TestCase):
     inside the window forever instead of falling back
     to the documented 3600-second default.
 
-    (a) Doc claim (examples/extensions/crash-watch/
+    (a) Doc claim (extensions/crash-watch/
         README.md, line 16): "`crash_repeated` | The
         same binary crashes again within
         `repeat_window_sec` (default 3600) -- filed
@@ -5030,7 +5030,7 @@ class TestInfiniteCrashWatchRepeatWindowDefaultsTo3600(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "crash-watch",
+            "extensions", "crash-watch",
             "crash_watch.py")
         spec = importlib.util.spec_from_file_location(
             "crash_watch_divergence", path)
@@ -5079,7 +5079,7 @@ class TestInfiniteFailedLoginBurstCountDefaultsTo5(unittest.TestCase):
     OverflowError instead of falling back to the
     documented 5-failure default.
 
-    (a) Doc claim (examples/extensions/failed-login-watch/
+    (a) Doc claim (extensions/failed-login-watch/
         README.md, line 37): "`login_failure_burst` |
         One source accumulates at least the
         `burst_count` tunable (default 5) failures
@@ -5132,7 +5132,7 @@ class TestInfiniteFailedLoginBurstCountDefaultsTo5(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "failed-login-watch",
+            "extensions", "failed-login-watch",
             "failed_login_watch.py")
         spec = importlib.util.spec_from_file_location(
             "failed_login_watch_divergence", path)
@@ -5176,7 +5176,7 @@ class TestFailedLoginWindowSecDefaultsTo600(unittest.TestCase):
     """Second-run hunt coverage: failed-login-watch
     window_sec itself, varied for the first time.
 
-    (a) Doc claim (examples/extensions/failed-login-watch/
+    (a) Doc claim (extensions/failed-login-watch/
         README.md, line 37): "`login_failure_burst` |
         One source accumulates at least the
         `burst_count` tunable (default 5) failures
@@ -5231,7 +5231,7 @@ class TestFailedLoginWindowSecDefaultsTo600(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "failed-login-watch",
+            "extensions", "failed-login-watch",
             "failed_login_watch.py")
         spec = importlib.util.spec_from_file_location(
             "failed_login_watch_window_hunt", path)
@@ -5294,7 +5294,7 @@ class TestServiceWatchFlapWindowSecDefaultsTo600(unittest.TestCase):
     """Second-run hunt coverage: service-watch
     flap_window_sec itself, varied for the first time.
 
-    (a) Doc claim (examples/extensions/service-watch/
+    (a) Doc claim (extensions/service-watch/
         README.md, line 18): the example configuration
         ships "\"flap_window_sec\": 600,
         \"flap_count\": 4", and line 28 states
@@ -5352,7 +5352,7 @@ class TestServiceWatchFlapWindowSecDefaultsTo600(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "service-watch",
+            "extensions", "service-watch",
             "service_watch.py")
         spec = importlib.util.spec_from_file_location(
             "service_watch_flap_window_hunt", path)
@@ -5431,7 +5431,7 @@ class TestInfiniteServiceWatchFlapCountDefaultsTo4(unittest.TestCase):
     OverflowError instead of falling back to the
     documented 4-transition default.
 
-    (a) Doc claim (examples/extensions/service-watch/
+    (a) Doc claim (extensions/service-watch/
         README.md, line 18): the example configuration
         ships "\"flap_window_sec\": 600,
         \"flap_count\": 4", and line 28 states
@@ -5487,7 +5487,7 @@ class TestInfiniteServiceWatchFlapCountDefaultsTo4(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "service-watch",
+            "extensions", "service-watch",
             "service_watch.py")
         spec = importlib.util.spec_from_file_location(
             "service_watch_divergence", path)
@@ -5547,7 +5547,7 @@ class TestJobWatcherFailureWindowSecDefaultsTo86400(unittest.TestCase):
     inside the window and job_failing_repeatedly
     never files.
 
-    (a) Doc claim (examples/extensions/job-watcher/
+    (a) Doc claim (extensions/job-watcher/
         README.md, line 18): "`job_failing_repeatedly`
         | The same job -- same `kind` and script --
         failed at least `repeat_failures` times
@@ -5623,7 +5623,7 @@ class TestJobWatcherFailureWindowSecDefaultsTo86400(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "job-watcher",
+            "extensions", "job-watcher",
             "job_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "job_watcher_failure_window_hunt", path)
@@ -5690,7 +5690,7 @@ class TestInfiniteJobWatcherRepeatFailuresDefaultsTo3(unittest.TestCase):
     decide() instead of falling back to the
     documented 3-failure default.
 
-    (a) Doc claim (examples/extensions/job-watcher/
+    (a) Doc claim (extensions/job-watcher/
         README.md, line 18): "`job_failing_repeatedly`
         | The same job -- same `kind` and script --
         failed at least `repeat_failures` times
@@ -5750,7 +5750,7 @@ class TestInfiniteJobWatcherRepeatFailuresDefaultsTo3(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "job-watcher",
+            "extensions", "job-watcher",
             "job_watcher.py")
         spec = importlib.util.spec_from_file_location(
             "job_watcher_divergence", path)
@@ -5810,7 +5810,7 @@ class TestNonFiniteResourceSentinelSampleCountsCrashInsteadOfDefault(unittest.Te
     crashes decide() instead of falling back to the
     documented defaults (4 and 240).
 
-    (a) Doc claim (examples/extensions/resource-sentinel/
+    (a) Doc claim (extensions/resource-sentinel/
         README.md, line 66): "`max_samples` (default 240)
         bounds how many samples the rolling window keeps,
         and is raised to the window's minimum if set
@@ -5875,7 +5875,7 @@ class TestNonFiniteResourceSentinelSampleCountsCrashInsteadOfDefault(unittest.Te
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "resource-sentinel",
+            "extensions", "resource-sentinel",
             "resource_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "resource_sentinel_divergence", path)
@@ -5954,7 +5954,7 @@ class TestNonFiniteLabResultsTunablesDefaultInsteadOfCrashOrSilence(unittest.Tes
     instead of falling back to the documented
     defaults (3 and 0.25).
 
-    (a) Doc claim (examples/extensions/lab-results/
+    (a) Doc claim (extensions/lab-results/
         README.md, line 37): "`anomaly_min_history`
         (default 3) is how many earlier finished runs
         the folder needs before `result_anomaly` is
@@ -6037,7 +6037,7 @@ class TestNonFiniteLabResultsTunablesDefaultInsteadOfCrashOrSilence(unittest.Tes
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "lab-results",
+            "extensions", "lab-results",
             "lab_results.py")
         spec = importlib.util.spec_from_file_location(
             "lab_results_divergence", path)
@@ -6107,7 +6107,7 @@ class TestNonFiniteLatencyPostTunablesDefaultInsteadOfSilence(unittest.TestCase)
     documented floor instead of falling back to the
     documented defaults (spike_ms 250, spike_factor 3).
 
-    (a) Doc claim (examples/extensions/latency-post/
+    (a) Doc claim (extensions/latency-post/
         README.md, line 30): "`latency_spike` | A
         probe's latency rises above both the
         `spike_ms` tunable (default 250) and
@@ -6181,7 +6181,7 @@ class TestNonFiniteLatencyPostTunablesDefaultInsteadOfSilence(unittest.TestCase)
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "latency-post",
+            "extensions", "latency-post",
             "latency_post.py")
         spec = importlib.util.spec_from_file_location(
             "latency_post_divergence", path)
@@ -6265,7 +6265,7 @@ class TestNonFiniteTrainingWatchTunablesDefaultInsteadOfSilenceOrCrash(unittest.
     95, loss_points 5, loss_history 200,
     crash_window_lines 100, max_checkpoints 200).
 
-    (a) Doc claim (examples/extensions/training-watch/
+    (a) Doc claim (extensions/training-watch/
         README.md, lines 21-22): "`gpu_overheating` |
         GPU temperature reaches `gpu_temp_high_c`
         (default 85)" and "`gpu_memory_pressure` |
@@ -6346,7 +6346,7 @@ class TestNonFiniteTrainingWatchTunablesDefaultInsteadOfSilenceOrCrash(unittest.
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "training-watch",
+            "extensions", "training-watch",
             "training_watch.py")
         spec = importlib.util.spec_from_file_location(
             "training_watch_divergence", path)
@@ -6437,7 +6437,7 @@ class TestInfiniteReleaseDropMaxHashDefaultsTo512(unittest.TestCase):
     crashes read_live() with OverflowError instead of
     falling back to the documented default of 512.
 
-    (a) Doc claim (examples/extensions/release-drop/
+    (a) Doc claim (extensions/release-drop/
         README.md, line 21): "A file larger than
         `max_hash_mb` (default 512) is skipped entirely
         for the pass". The module docstring states the
@@ -6495,7 +6495,7 @@ class TestInfiniteReleaseDropMaxHashDefaultsTo512(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "release-drop",
+            "extensions", "release-drop",
             "release_drop.py")
         spec = importlib.util.spec_from_file_location(
             "release_drop_divergence", path)
@@ -6566,7 +6566,7 @@ class TestNonFiniteZeekFeedTunablesDefaultInsteadOfCrashOrBoundlessWindow(unitte
     trailing window boundless instead of falling
     back to the documented defaults.
 
-    (a) Doc claim (examples/extensions/zeek-feed/
+    (a) Doc claim (extensions/zeek-feed/
         README.md, Tunables table lines 46-50):
         window_sec default 600 ("The trailing window
         first sightings accumulate in"),
@@ -6626,7 +6626,7 @@ class TestNonFiniteZeekFeedTunablesDefaultInsteadOfCrashOrBoundlessWindow(unitte
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "zeek-feed",
+            "extensions", "zeek-feed",
             "zeek_feed.py")
         spec = importlib.util.spec_from_file_location(
             "zeek_feed_divergence", path)
@@ -6732,7 +6732,7 @@ class TestInfiniteFalcoCooldownDefaultsTo3600(unittest.TestCase):
     forever instead of falling back to the documented
     3600-second default.
 
-    (a) Doc claim (examples/extensions/falco-feed/
+    (a) Doc claim (extensions/falco-feed/
         README.md, tunable table, line 73):
         "episode_cooldown_sec | 3600 | An episode refiles
         after this long, and clears after this long
@@ -6780,7 +6780,7 @@ class TestInfiniteFalcoCooldownDefaultsTo3600(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "falco-feed",
+            "extensions", "falco-feed",
             "falco_feed.py")
         spec = importlib.util.spec_from_file_location(
             "falco_feed_divergence", path)
@@ -6833,7 +6833,7 @@ class TestInfiniteSuricataCooldownDefaultsTo3600(unittest.TestCase):
     forever instead of falling back to the documented
     3600-second default.
 
-    (a) Doc claim (examples/extensions/suricata-feed/
+    (a) Doc claim (extensions/suricata-feed/
         README.md, tunable table, line 68):
         "episode_cooldown_sec | 3600 | An episode refiles
         after this long, and clears after this long
@@ -6883,7 +6883,7 @@ class TestInfiniteSuricataCooldownDefaultsTo3600(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "suricata-feed",
+            "extensions", "suricata-feed",
             "suricata_feed.py")
         spec = importlib.util.spec_from_file_location(
             "suricata_feed_divergence", path)
@@ -6934,7 +6934,7 @@ class TestInfiniteWazuhQuietDefaultsTo3600(unittest.TestCase):
     forever instead of falling back to the documented
     3600-second default.
 
-    (a) Doc claim (examples/extensions/wazuh-feed/
+    (a) Doc claim (extensions/wazuh-feed/
         README.md, tunable table, line 69):
         "episode_quiet_sec | 3600 | How long a (rule,
         agent) pair must stay quiet before its next
@@ -6984,7 +6984,7 @@ class TestInfiniteWazuhQuietDefaultsTo3600(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "wazuh-feed",
+            "extensions", "wazuh-feed",
             "wazuh_feed.py")
         spec = importlib.util.spec_from_file_location(
             "wazuh_feed_divergence", path)
@@ -7034,7 +7034,7 @@ class TestInfiniteOsqueryFiledCapCrashesInsteadOfDefault(unittest.TestCase):
     (+inf) crashes decide() with OverflowError instead
     of falling back to the documented 10000 default.
 
-    (a) Doc claim (examples/extensions/osquery-feed/
+    (a) Doc claim (extensions/osquery-feed/
         README.md, tunable table, line 46):
         "filed_cap | 10000 | Bound on remembered filed
         episodes; the oldest entries are evicted first";
@@ -7078,7 +7078,7 @@ class TestInfiniteOsqueryFiledCapCrashesInsteadOfDefault(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "osquery-feed",
+            "extensions", "osquery-feed",
             "osquery_feed.py")
         spec = importlib.util.spec_from_file_location(
             "osquery_feed_divergence", path)
@@ -7136,7 +7136,7 @@ class TestNonFiniteSoftflowdTunablesDefaultInsteadOfCrashOrSilence(unittest.Test
     flow_long_lived instead of falling back to the
     documented defaults.
 
-    (a) Doc claim (examples/extensions/softflowd-feed/
+    (a) Doc claim (extensions/softflowd-feed/
         README.md, Tunables table): "high_volume_bytes |
         50000000", "long_lived_sec | 3600",
         "max_known_peers | 1024", "max_filed_flows |
@@ -7182,7 +7182,7 @@ class TestNonFiniteSoftflowdTunablesDefaultInsteadOfCrashOrSilence(unittest.Test
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "softflowd-feed",
+            "extensions", "softflowd-feed",
             "softflowd_feed.py")
         spec = importlib.util.spec_from_file_location(
             "softflowd_feed_divergence", path)
@@ -7248,7 +7248,7 @@ class TestHugeIntJobFuzzFloatTunablesCrashInsteadOfDefault(unittest.TestCase):
     = 10**400) crashes decide() with OverflowError instead
     of falling back to the documented defaults.
 
-    (a) Doc claim (examples/extensions/job-fuzz/README.md,
+    (a) Doc claim (extensions/job-fuzz/README.md,
         line 61): the corpus is bounded by age with
         "`corpus_max_age_days` (default 30)"; and (line 113):
         "`filed_cooldown_sec` (default 604800, a week) is
@@ -7303,7 +7303,7 @@ class TestHugeIntJobFuzzFloatTunablesCrashInsteadOfDefault(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "job-fuzz",
+            "extensions", "job-fuzz",
             "job_fuzz.py")
         spec = importlib.util.spec_from_file_location(
             "job_fuzz_divergence", path)
@@ -7359,7 +7359,7 @@ class TestHugeIntLatencyPostTunablesCrashInsteadOfDefault(unittest.TestCase):
     crashes decide() with OverflowError instead of
     falling back to the documented defaults.
 
-    (a) Doc claim (examples/extensions/latency-post/
+    (a) Doc claim (extensions/latency-post/
         README.md, line 30): "`latency_spike` | A
         probe's latency rises above both the
         `spike_ms` tunable (default 250) and
@@ -7419,7 +7419,7 @@ class TestHugeIntLatencyPostTunablesCrashInsteadOfDefault(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "latency-post",
+            "extensions", "latency-post",
             "latency_post.py")
         spec = importlib.util.spec_from_file_location(
             "latency_post_huge_divergence", path)
@@ -8360,7 +8360,7 @@ class TestResourceSentinelMinSamplesDefaultsTo4(unittest.TestCase):
         tests/defaults_registry.py. The statements are
         the manifest, which ships the same value
         (extension.json: "min_samples": 4), the README
-        contract (examples/extensions/resource-sentinel/
+        contract (extensions/resource-sentinel/
         README.md, lines 29-31: a signal needs at least
         `min_samples` samples spanning `min_span_sec`
         inside `window_sec` before it can fire at all),
@@ -8447,7 +8447,7 @@ class TestResourceSentinelMinSamplesDefaultsTo4(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "resource-sentinel",
+            "extensions", "resource-sentinel",
             "resource_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "resource_sentinel_min_samples_hunt", path)
@@ -8640,7 +8640,7 @@ class TestLabResultsAnomalyBandDefaultsTo025(unittest.TestCase):
         path = os.path.join(
             os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__))),
-            "examples", "extensions", "lab-results",
+            "extensions", "lab-results",
             "lab_results.py")
         spec = importlib.util.spec_from_file_location(
             "lab_results_anomaly_band_hunt", path)

@@ -1,7 +1,7 @@
 """Falco Feed: the example sense that tails Falco's JSON alerts.
 
 Pins the Falco Feed example
-(examples/extensions/falco-feed/): the manifest through the
+(extensions/falco-feed/): the manifest through the
 real extension loader, the pure parse_event() and
 read_new_events() reader plumbing, and the pure decide()
 episode machine -- an episode (rule + output_fields digest)
@@ -30,7 +30,7 @@ sys.path.insert(0, REPO)
 
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "examples", "extensions", "falco-feed")
+EXAMPLE_DIR = os.path.join(REPO, "extensions", "falco-feed")
 FIXTURE = os.path.join(EXAMPLE_DIR, "fixtures", "falco-alerts.jsonl")
 
 

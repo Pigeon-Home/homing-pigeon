@@ -1,6 +1,6 @@
 """The Training Watch example: a sense for ML training runs.
 
-Pins examples/extensions/training-watch/ the way
+Pins extensions/training-watch/ the way
 test_watchers.py pins the watcher examples: the manifest
 through the real extension loader, the pure decide() core
 over fixture readings (every declared signal firing, its
@@ -35,7 +35,7 @@ from runner import runner as R  # noqa: E402
 from runner import senses as S  # noqa: E402
 from runner import extensions as E  # noqa: E402
 
-TW_DIR = os.path.join(REPO, "examples", "extensions", "training-watch")
+TW_DIR = os.path.join(REPO, "extensions", "training-watch")
 
 DEFAULT_SECRET = "b109f3bbbc244eb82441917ed06d618b" + \
     "9008dd09b3befd1b078a64781ac2f3e5"
@@ -510,7 +510,7 @@ class TrainingWatchEndToEndTest(unittest.TestCase):
         os.makedirs(self.base)
         self.ext_root = os.path.join(self._tmp.name, "exts")
         os.makedirs(self.ext_root)
-        shutil.copytree(os.path.join(REPO, "examples", "extensions",
+        shutil.copytree(os.path.join(REPO, "extensions",
                                      self.folder),
                         os.path.join(self.ext_root, self.folder))
         self.cfg = {

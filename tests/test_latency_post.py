@@ -1,7 +1,7 @@
 """Latency Post: the example sense that probes targets.
 
 Pins the Latency Post example
-(examples/extensions/latency-post/): the manifest through the
+(extensions/latency-post/): the manifest through the
 real extension loader, and the pure decide() state machine --
 a down target files once, recovery is silent, a spike files
 once against the median of its prior samples and re-files
@@ -25,7 +25,7 @@ sys.path.insert(0, REPO)
 
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "examples", "extensions", "latency-post")
+EXAMPLE_DIR = os.path.join(REPO, "extensions", "latency-post")
 
 
 def _load_example_module():

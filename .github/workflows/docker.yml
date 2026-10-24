@@ -58,7 +58,7 @@ jobs:
       - name: build the image locally and run it once
         run: |
           set -euo pipefail
-          docker build -t hp-image-smoke .
+          docker build -f .github/docker/Dockerfile -t hp-image-smoke .
           docker run --rm \
             -e PIGEON_MAILBOX_USER=pigeon-test@example.com \
             -e PIGEON_MAILBOX_PASSWORD=not-a-real-mailbox-password \
@@ -72,6 +72,7 @@ jobs:
         id: build
         with:
           context: .
+          file: .github/docker/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

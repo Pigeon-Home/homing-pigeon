@@ -22,7 +22,7 @@ variation tests is desired, not scope creep.
   cannot fit in the VM's memory is a bounded experiment, never a
   reason to let the loop starve.
 - Jobs are crafted per PROTOCOL.md with the project's own sender
-  tool (`cloud/send_job.py`), signed with the box's shared secret
+  tool (`runner/cloud/send_job.py`), signed with the box's shared secret
   (HMAC-SHA-384 in every mode; per-job AES-256-GCM encryption on by
   default; cleartext refused by default).
 - The platform blocks direct IMAP/SMTP from the VM, so the envelope

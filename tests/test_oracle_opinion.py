@@ -969,7 +969,7 @@ class RepairSpecimenTests(unittest.TestCase):
         self.assertIn("not present", note)
 
     def test_verify_says_what_ran(self):
-        from cloud.send_job import repair_line
+        from runner.cloud.send_job import repair_line
         digest = "ab" * 48
         self.assertEqual(
             repair_line({

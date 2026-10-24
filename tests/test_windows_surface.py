@@ -1,4 +1,4 @@
-"""Pins for the simulated Windows surface (tools/windows_surface.py).
+"""Pins for the simulated Windows surface (.github/tools/windows_surface.py).
 
 build-windows is the one CI job a local Linux gate cannot
 rehearse, and 3.8.9 died there on POSIX assumptions a POSIX gate
@@ -19,7 +19,7 @@ regression net:
   as their Windows sides promise.
 
 The wholesale suite run under the surface is a tool, not a
-test: tools/run_tests_windows_sim.py. These pins are the
+test: .github/tools/run_tests_windows_sim.py. These pins are the
 bounded in-suite sample.
 """
 import ctypes
@@ -32,7 +32,7 @@ from unittest import mock
 
 def _load_surface():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    path = os.path.join(root, "tools", "windows_surface.py")
+    path = os.path.join(root, ".github", "tools", "windows_surface.py")
     spec = importlib.util.spec_from_file_location(
         "hp_windows_surface", path)
     module = importlib.util.module_from_spec(spec)

@@ -43,7 +43,7 @@ FALCO_SECRET = "ids-e2e-falco-" + "2233445566778899" * 2
 
 def _load(folder, filename, modname):
     spec = importlib.util.spec_from_file_location(
-        modname, os.path.join(REPO, "examples", "extensions",
+        modname, os.path.join(REPO, "extensions",
                               folder, filename))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -68,7 +68,7 @@ class FeedFixture(unittest.TestCase):
         os.makedirs(self.base)
         self.ext_root = os.path.join(self._tmp.name, "exts")
         os.makedirs(self.ext_root)
-        shutil.copytree(os.path.join(REPO, "examples", "extensions",
+        shutil.copytree(os.path.join(REPO, "extensions",
                                      self.folder),
                         os.path.join(self.ext_root, self.folder))
         self.cfg = {
@@ -105,7 +105,7 @@ class FeedFixture(unittest.TestCase):
             raise last
 
     def run_producer(self):
-        fixture = os.path.join(REPO, "examples", "extensions",
+        fixture = os.path.join(REPO, "extensions",
                                self.folder, "fixtures", self.fixture)
         env = {"HOMING_PIGEON_SENSOR_SECRET": self.secret}
         with unittest.mock.patch.dict(os.environ, env):

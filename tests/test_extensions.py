@@ -42,8 +42,8 @@ from runner import extensions as E  # noqa: E402
 from runner import senses as S  # noqa: E402
 from runner import runner as R  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "examples", "extensions", "lab-results")
-EXAMPLE_PARENT = os.path.join(REPO, "examples", "extensions")
+EXAMPLE_DIR = os.path.join(REPO, "extensions", "lab-results")
+EXAMPLE_PARENT = os.path.join(REPO, "extensions")
 
 
 def _manifest(**kw):

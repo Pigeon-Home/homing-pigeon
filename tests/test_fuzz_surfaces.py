@@ -147,7 +147,7 @@ def _exercise(rng, blob):
         received_digest, result_member, settings, tree_pids,
     )
     from runner.runner import judge_job
-    from cloud.send_job import verify_body as cloud_verify
+    from runner.cloud.send_job import verify_body as cloud_verify
 
     expected = _expected()
     crashes = []

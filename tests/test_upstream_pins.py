@@ -9,7 +9,7 @@ Three things are pinned here, none of which needs the network:
    that would let a path escape or a pin lie.
 2. What sits under `<extension>/upstream/` matches the manifest and
    its PIN.json exactly, and everything together stays under the
-   5 MiB budget. tools/fetch_upstream.py --check is the same
+   5 MiB budget. .github/tools/fetch_upstream.py --check is the same
    verdict from the command line; this is the one the suite runs.
 3. The format each feed adapter parses is still the format its
    upstream source defines: the fields the adapter reads are named
@@ -26,12 +26,12 @@ import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-sys.path.insert(0, os.path.join(ROOT, "tools"))
+sys.path.insert(0, os.path.join(ROOT, ".github", "tools"))
 
 from runner import extensions as E  # noqa: E402
 import fetch_upstream as FU  # noqa: E402
 
-EXT = os.path.join(ROOT, "examples", "extensions")
+EXT = os.path.join(ROOT, "extensions")
 FEEDS_WITH_UPSTREAM = (
     "aide-feed", "falco-feed", "osquery-feed", "softflowd-feed",
     "suricata-feed", "sysmon-feed", "wazuh-feed", "zeek-feed",

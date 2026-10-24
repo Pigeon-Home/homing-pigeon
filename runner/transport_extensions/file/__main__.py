@@ -8,7 +8,7 @@ Config (transport_file block, handed over by the runner):
                 `outbox` is accepted too
 
 A job file is the send_job envelope as text (subject line,
-blank line, signed body); `cloud/send_job.py new --to-file`
+blank line, signed body); `runner/cloud/send_job.py new --to-file`
 writes exactly that. Each job is processed once: after the
 runner's result comes back through the channel, the job file
 moves to <inbox>/done/ and the result envelope lands in the

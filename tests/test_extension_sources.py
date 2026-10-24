@@ -46,11 +46,11 @@ from runner import runner as R  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location(
     "pin_extension_sources",
-    os.path.join(REPO, "tools", "pin_extension_sources.py"))
+    os.path.join(REPO, ".github", "tools", "pin_extension_sources.py"))
 PIN = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(PIN)
 _spec2 = importlib.util.spec_from_file_location(
-    "make_snapshot", os.path.join(REPO, "tools", "make_snapshot.py"))
+    "make_snapshot", os.path.join(REPO, ".github", "tools", "make_snapshot.py"))
 SNAP = importlib.util.module_from_spec(_spec2)
 _spec2.loader.exec_module(SNAP)
 
@@ -171,7 +171,7 @@ def pinned_routes():
 
 
 def write_pin_json(folder, pin=PINNED_SHA, files=PINNED_FILES):
-    """What tools/fetch_upstream.py writes beside the files it carries."""
+    """What .github/tools/fetch_upstream.py writes beside the files it carries."""
     import hashlib
     updir = os.path.join(folder, "upstream")
     recs = {}
@@ -454,7 +454,7 @@ class ShippedDeclarationsTest(unittest.TestCase):
     NAMED_REFS = {"softflowd": "master"}
 
     def folders(self):
-        return [os.path.join(REPO, "examples", "extensions", a)
+        return [os.path.join(REPO, "extensions", a)
                 for a in self.ADAPTERS] + [
             os.path.join(REPO, "runner", "transport_extensions", t)
             for t in self.TRANSPORTS]
@@ -478,7 +478,7 @@ class ShippedDeclarationsTest(unittest.TestCase):
     def test_adapters_bring_their_upstream_source(self):
         for name in self.ADAPTERS:
             decl, _ = X.load_declaration(
-                os.path.join(REPO, "examples", "extensions", name))
+                os.path.join(REPO, "extensions", name))
             ups = [e for e in decl["sources"] if e["role"] == "upstream"]
             self.assertTrue(ups, name)
             for e in ups:

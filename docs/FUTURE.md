@@ -18,7 +18,7 @@
   confidentiality claims (then draft Section 16.2) in
   step -- BUILT: runner/jobcrypto.py
   (pure-Python AES-256-GCM per NIST SP 800-38D, HKDF-SHA-384
-  per RFC 5869, stdlib only); cloud/send_job.py encrypts by
+  per RFC 5869, stdlib only); runner/cloud/send_job.py encrypts by
   default and takes --cleartext; the runner unwraps after
   the signature verifies and before the recovered body's own
   verification; results mirror the job's form, with the
@@ -149,7 +149,7 @@
   `runner/dtlsproto.py` (the bounded profile: one
   ciphersuite, psk_dhe_ke only, stateless cookie exchange,
   Connection IDs), `runner/transport_extensions/dtls/`,
-  client `cloud/send_dtls.py`, specified in
+  client `runner/cloud/send_dtls.py`, specified in
   `docs/ietf/draft-homing-pigeon-00.md` (Sections 19-22).
   Perfect
   forward secrecy is a hard requirement of the profile
@@ -336,13 +336,13 @@
   a cloud SI knows what the box's Oracle can read.
 - One declaration, not three -- RESOLVED (2026-10-22, same day
   it was filed). The manifest's `upstream` block is the one
-  declaration: tools/fetch_upstream.py keeps its pinned files in
+  declaration: .github/tools/fetch_upstream.py keeps its pinned files in
   the tree for the build and the drift tests, runner/extsources.py
   hands the same files to the Oracle as the entry `pinned` under
   the digests `upstream/PIN.json` recorded, and a `sources.json`
   entry says `"upstream": true` to fetch more from that repository
   without naming it again. `upstream.json`, the provenance
-  bundles, and tools/vendor_upstreams.py were retired. A pin bump
+  bundles, and the vendor_upstreams.py tool were retired. A pin bump
   touches one file. Kept here as the record of the decision.
 
 ## The hardware

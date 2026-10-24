@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854
-"""tools/make_snapshot.py: the project ships inside every release.
+""".github/tools/make_snapshot.py: the project ships inside every release.
 
 Each test builds a small throwaway git repo, so the tool is proven on
 history it can see end to end: the tree export is exact, the bundle
@@ -19,7 +19,7 @@ import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _spec = importlib.util.spec_from_file_location(
-    "make_snapshot", os.path.join(ROOT, "tools", "make_snapshot.py"))
+    "make_snapshot", os.path.join(ROOT, ".github", "tools", "make_snapshot.py"))
 snap_mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(snap_mod)
 

@@ -243,7 +243,7 @@ broker, nothing to sign up for.
 - A job is a file dropped in the inbox (default
   `<base_dir>/transport-file/inbox`): first line the subject
   line, blank line, then the signed body — exactly what
-  `cloud/send_job.py new ... --to-file <path>` writes.
+  `runner/cloud/send_job.py new ... --to-file <path>` writes.
 - The extension processes each file once: after the result
   comes back it moves the job file to a `done/` subfolder —
   never deletes. Results land in the outbox as
@@ -309,12 +309,12 @@ implemented as a bounded pure-Python profile
   session; a result that lands after its session is gone is
   logged loudly and acked, and the SI re-asks on a fresh
   session.
-- **The client** is `cloud/send_dtls.py`: it signs exactly
+- **The client** is `runner/cloud/send_dtls.py`: it signs exactly
   like `send_job.py` (per-job encryption on by default,
   `--cleartext` selects the plain signed form), prints the
   greeting, sends the job, prints the verified result, and
   can persist the resumption ticket between runs. Usage:
-  `python3 cloud/send_dtls.py --host <runner> [--port 20220]
+  `python3 runner/cloud/send_dtls.py --host <runner> [--port 20220]
   --secret <the-string> [--key-id ID] [--kind ping|exec
   --script-file job.sh --timeout 300] [--job-id ID]
   [--wait 120] [--ticket-file PATH] [--encrypt|--cleartext]`.

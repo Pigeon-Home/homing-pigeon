@@ -1,0 +1,45 @@
+# Hardened systemd unit for the Homing Pigeon runner (M7).
+# NOT installed by default. Render @PLACEHOLDERS@ (see docs/hardening/README.md)
+# and install by hand.
+#
+# Mirrors the unit install.py writes (Description, After/Wants
+# network-online.target, Restart=always), plus sandboxing directives.
+# Review every line against your setup before enabling.
+[Unit]
+Description=Homing Pigeon runner agent (hardened)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+ExecStart=@PYTHON@ @RUNNER_DIR@/runner.py --config @CONFIG@
+Restart=always
+RestartSec=10
+
+# --- hardening ---
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RemoveIPC=true
+# The runner needs TLS out (IMAP/SMTP) and DNS. Nothing else.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+# Writable: the base dir (state, audit log, workdirs) and nothing else.
+# The config file itself is read-only.
+ReadWritePaths=@BASE_DIR@
+ReadOnlyPaths=@CONFIG@
+# Capabilities: none needed.
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

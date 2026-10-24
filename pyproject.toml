@@ -24,7 +24,7 @@ classifiers = [
 [project.scripts]
 homing-pigeon = "runner.runner:main"
 homing-pigeon-install = "runner.install:main"
-homing-pigeon-send-job = "cloud.send_job:main"
+homing-pigeon-send-job = "runner.cloud.send_job:main"
 homing-pigeon-auth = "runner.oauth:main"
 
 [project.urls]
@@ -35,7 +35,7 @@ Changelog = "https://github.com/Pigeon-Home/homing-pigeon/releases"
 "Bug Tracker" = "https://github.com/Pigeon-Home/homing-pigeon/issues"
 
 [tool.setuptools.packages.find]
-include = ["runner*", "cloud*"]
+include = ["runner*"]
 
 [tool.setuptools.package-data]
 runner = ["config.example.json"]
@@ -64,28 +64,27 @@ pytest_add_cli_args = [
 pytest_add_cli_args_test_selection = ["tests/"]
 mutate_only_covered_lines = true
 also_copy = [
-    # examples/ carries the shipped example extension, which
-    # tests/test_extensions.py loads from the tree.
-    "cloud/", "docs/", "examples/", "hardening/", ".github/",
+    # extensions/ carries the shipped extensions, which
+    # tests/test_extensions.py loads from the tree. docs/ includes
+    # docs/hardening/; runner/cloud/ comes with source_paths.
+    "docs/", "extensions/",
+    # .github/ carries the CI pin file (.github/requirements-ci.txt,
+    # which tests/test_build_config.py reads) and the CI tools
+    # (.github/tools/; tests/test_parallel_runner.py imports the
+    # Windows shard runner at load time). mutmut's stats run dies if
+    # the mutant tree lacks either. Name the folder once: a nested
+    # entry would be copied over a copy.
+    ".github/",
     # Root manuals. The doc guards locate the tree from the runner
     # package, and mutmut's copy is only source_paths plus this list
     # (plus tests/ and pyproject.toml, which it adds itself). Without
     # these, stats collection dies on "INSTALL.md not found" before
     # any mutant runs.
-    "AGENTS.md", "CONTRIBUTING.md", "ENTERPRISE.md",
+    "AGENTS.md", "ENTERPRISE.md",
     "INSTALL.md",
     "PROTOCOL.md", "README.md",
     "SECURITY.md",
-    "requirements-ci.txt",
-    # The CI pin file. tests/test_build_config.py reads it, and
-    # mutmut's stats run dies if the mutant tree does not have it.
-    "requirements-ci.txt",
-    # The Windows shard runner. tests/test_parallel_runner.py
-    # imports it at load time, so stats collection dies if the
-    # mutant tree does not have it.
-    "tools/",
 ]
-
 [tool.ruff]
 line-length = 88
 target-version = "py39"
@@ -98,14 +97,51 @@ select = ["E", "F"]
 
 [tool.ruff.lint.per-file-ignores]
 # Grandfathered E501 debt, counted 2026-10-18: runner/runner.py 64,
-# runner/install.py 10, cloud/send_job.py 3, runner/senses.py 1,
+# runner/install.py 10, runner/cloud/send_job.py 3, runner/senses.py 1,
 # runner/dri.py 1. New files conform from birth; these shrink as
 # their files are touched. Do not add files to this list.
 "runner/runner.py" = ["E501"]
 "runner/install.py" = ["E501"]
-"cloud/send_job.py" = ["E501"]
+"runner/cloud/send_job.py" = ["E501"]
 "runner/senses.py" = ["E501"]
 "runner/dri.py" = ["E501"]
 # The test suite's idiom: sys.path setup before imports (E402) and
 # long scenario/fixture lines (E501) are deliberate there.
 "tests/**" = ["E402", "E501"]
+
+[tool.pyrefly]
+# Type-check gate: pyrefly (Meta's Rust checker). `pyrefly check`
+# reads this table from pyproject.toml.
+project-includes = [
+    "runner/**/*.py",
+]
+
+# Sibling modules are imported in two forms: `from runner.oauth import X`
+# (primary) and `from oauth import X` (fallback when a file runs as
+# __main__ from inside runner/). The fallback names resolve to nothing
+# statically; treat them as Any instead of erroring.
+ignore-missing-imports = [
+    "oauth",
+    "send_job",
+    "_version",
+    "install",
+    "setup",
+    "security",
+    "senses",
+    "sandbox",
+    "review",
+    "resources",
+    "posture",
+    "local_test",
+    "harness",
+    "dri",
+    "auditreport",
+    "winlog",
+    "detection",
+    "jobcrypto",
+]
+
+# Lenient to start: only check bodies of annotated functions.
+# Unannotated code is still parsed (syntax, imports), but its bodies
+# are not type-checked. Annotating a function opts it into checking.
+check-unannotated-defs = false

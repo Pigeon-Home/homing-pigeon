@@ -558,7 +558,7 @@ def manifest_pinned_entry(ext_dir, upstream=None):
     """(entry, pin) for the files the manifest pins, or (None, None).
 
     The manifest's `upstream` block is one declaration read three
-    ways: tools/fetch_upstream.py carries the files into
+    ways: .github/tools/fetch_upstream.py carries the files into
     <extension>/upstream/ for the build and the drift tests, and this
     turns the same block into a source entry (id "pinned") the Oracle
     gets, vouched for by the SHA-384 digests upstream/PIN.json

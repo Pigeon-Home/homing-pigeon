@@ -39,7 +39,7 @@ from datetime import datetime, timezone
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
-sys.path.insert(0, os.path.join(REPO, "cloud"))
+sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 
 from runner import dtlsproto, jobcrypto, runner, transports  # noqa: E402
 from runner.runner import PROTOCOL_VERSION, poll_once  # noqa: E402
@@ -961,7 +961,7 @@ class SupervisedDtlsRoundTripTest(unittest.TestCase):
             f.write(script_text)
         proc = subprocess.Popen(
             [sys.executable,
-             os.path.join(REPO, "cloud", "send_dtls.py"),
+             os.path.join(REPO, "runner", "cloud", "send_dtls.py"),
              "--host", "127.0.0.1",
              "--port", str(cfg["transport_dtls"]["port"]),
              "--secret", SECRET, "--kind", "exec",

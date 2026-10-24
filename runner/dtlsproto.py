@@ -4,7 +4,7 @@ protocol version 1.
 This module implements exactly the profile the IETF draft's
 DTLS binding section specifies -- no more. Both endpoints of
 every session in the project run this code (the dtls transport
-extension on the runner side, cloud/send_dtls.py on the SI
+extension on the runner side, runner/cloud/send_dtls.py on the SI
 side), and the profile is deliberately narrow:
 
 - DTLS 1.3 (RFC 9147) records and handshake, ONE ciphersuite:

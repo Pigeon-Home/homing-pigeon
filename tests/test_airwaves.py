@@ -1,6 +1,6 @@
 """Airwaves: the example sense that watches the Wi-Fi neighborhood.
 
-Pins the Airwaves example (examples/extensions/airwaves/) the
+Pins the Airwaves example (extensions/airwaves/) the
 way test_sky_watcher.py pins Sky Watcher: the manifest through
 the real extension loader, the pure parsers (nmcli's escaped
 colons and percentage signal, iw link/scan text, the security
@@ -35,7 +35,7 @@ from runner import runner as R  # noqa: E402
 from runner import senses as S  # noqa: E402
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "examples", "extensions", "airwaves")
+EXAMPLE_DIR = os.path.join(REPO, "extensions", "airwaves")
 
 DEFAULT_SECRET = "b109f3bbbc244eb82441917ed06d618b" + "9008dd09b3befd1b078a64781ac2f3e5"
 AIR_SECRET = "9d4c2b8a6f1e40d3a5b7c9e2f4a6b8d0" + "1c3e5f7a9b2d4f6a8c0e2f4a6b8d0c2e"

@@ -10,7 +10,7 @@ from email.message import EmailMessage
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
-sys.path.insert(0, os.path.join(REPO, "cloud"))
+sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 
 from runner import jobcrypto
 from runner.runner import Board, poll_once

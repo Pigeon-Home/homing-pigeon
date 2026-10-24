@@ -28,7 +28,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
 from runner.runner import poll_once, handle_mail, Board, answer_queries  # noqa: E402
-from cloud.send_job import sign_payload  # noqa: E402
+from runner.cloud.send_job import sign_payload  # noqa: E402
 
 SECRET = "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"
 

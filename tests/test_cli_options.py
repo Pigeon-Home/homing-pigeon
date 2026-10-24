@@ -1155,7 +1155,7 @@ class SendJobHelpDocumentTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.proc = _help_output(
-            os.path.join("cloud", "send_job.py"), "--help")
+            os.path.join("runner", "cloud", "send_job.py"), "--help")
         cls.out = cls.proc.stdout
 
     def test_help_exits_0(self):
@@ -1173,7 +1173,7 @@ class SendJobHelpDocumentTest(unittest.TestCase):
             self.assertIn(cmd, self.out)
 
     def test_new_help_groups_and_flags(self):
-        proc = _help_output(os.path.join("cloud", "send_job.py"),
+        proc = _help_output(os.path.join("runner", "cloud", "send_job.py"),
                             "new", "--help")
         self.assertEqual(proc.returncode, 0, proc.stderr)
         out = proc.stdout
@@ -1196,7 +1196,7 @@ class SendJobHelpDocumentTest(unittest.TestCase):
         for cmd in ("task-submit", "task-request", "verify"):
             with self.subTest(cmd=cmd):
                 proc = _help_output(
-                    os.path.join("cloud", "send_job.py"), cmd,
+                    os.path.join("runner", "cloud", "send_job.py"), cmd,
                     "--help")
                 self.assertEqual(proc.returncode, 0, proc.stderr)
 

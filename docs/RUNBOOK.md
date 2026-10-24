@@ -242,7 +242,7 @@ If you want to do it by hand with the helper script:
 2. To say hello (a ping), type this, press Enter:
 
 ```
-python3 cloud/send_job.py new --kind ping --secret PASTE_YOUR_SECRET_HERE
+python3 runner/cloud/send_job.py new --kind ping --secret PASTE_YOUR_SECRET_HERE
 ```
 
 3. It prints three things: a subject line, an empty line, and a big
@@ -259,7 +259,7 @@ python3 cloud/send_job.py new --kind ping --secret PASTE_YOUR_SECRET_HERE
    For a ping, the result says `pong` — once decrypted. Jobs and
    results are encrypted by default, so the reply shows an
    envelope, not the word; read it with
-   `python3 cloud/send_job.py verify --secret <the-string> --job-id <id> result.txt`.
+   `python3 runner/cloud/send_job.py verify --secret <the-string> --job-id <id> result.txt`.
 
 If this SI has its own key (see INSTALL.md step 6), add
 `--key-id <its-id>` and sign with that key's secret instead of
@@ -268,7 +268,7 @@ If this SI has its own key (see INSTALL.md step 6), add
 To run a script instead of a ping:
 
 ```
-python3 cloud/send_job.py new --kind exec --script-file myscript.sh --interpreter '["bash"]' --secret PASTE_YOUR_SECRET_HERE
+python3 runner/cloud/send_job.py new --kind exec --script-file myscript.sh --interpreter '["bash"]' --secret PASTE_YOUR_SECRET_HERE
 ```
 
 Same steps: copy what it prints, paste into an email, send.

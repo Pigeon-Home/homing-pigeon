@@ -1,6 +1,6 @@
 """Wire Arrivals: the example sense that files LAN neighbor events.
 
-Pins the Wire Arrivals example (examples/extensions/wire-arrivals/)
+Pins the Wire Arrivals example (extensions/wire-arrivals/)
 the way test_sky_watcher.py pins Sky Watcher: the manifest through
 the real extension loader, the baseline / new-neighbor / mac-moved
 state machine across scripted neighbor tables (decide() is pure,
@@ -32,7 +32,7 @@ from runner import runner as R  # noqa: E402
 from runner import senses as S  # noqa: E402
 from runner import extensions as E  # noqa: E402
 
-EXAMPLE_DIR = os.path.join(REPO, "examples", "extensions", "wire-arrivals")
+EXAMPLE_DIR = os.path.join(REPO, "extensions", "wire-arrivals")
 
 DEFAULT_SECRET = "b109f3bbbc244eb82441917ed06d618b" + "9008dd09b3befd1b078a64781ac2f3e5"
 WIRE_SECRET = "5c8e2a7f1b4d49a0e6c3f8b2d7a1e405" + "9f0b3c6d8e2a5f7b1c4d9e0a3f6b8c2d"
