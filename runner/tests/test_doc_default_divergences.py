@@ -32321,6 +32321,481 @@ class TestReleaseDropWatchDirAndDecideFifteenShapes(unittest.TestCase):
             finally:
                 os.chdir(cwd)
 
+class TestServiceWatchServicesAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the service-watch
+    services tunable and decide() (default
+    services [], flap_window_sec 600, flap_count 4,
+    learn_first_pass true) varied with the fifteen
+    shapes for the first time (step-8 Target 5 /
+    family (b) -- service-watch's only earlier classes
+    cover its numeric flap_count and flap_window_sec;
+    the services list itself, the learn pass, the
+    down/recovered/flap decision surface and main()
+    had no class before this one).
+
+    (a) Doc claims: the manifest ships services []
+    with flap_count 4, flap_window_sec 600 and
+    learn_first_pass true (extensions/service-watch/
+    extension.json). The README states each entry is
+    {"name": ..., "match": ...}: "exact" compares the
+    process name, "substring" looks for the name inside
+    the full command line; the first pass is a learn
+    pass by default that records which services start
+    up and which start down and files nothing; and
+    the watcher files service_down (high) when a
+    service that was up is no longer present,
+    service_recovered (info) when a service returns
+    after a filed outage, and service_flapping
+    (medium) when a service's transitions inside
+    flap_window_sec reach flap_count, filing once
+    per burst and rearming only after a full
+    flap_window_sec with no transitions. The module
+    docstring adds that a service is UP if any
+    process matches it, that the first pass can be
+    a learn pass, and that flapping counts from
+    state transitions. services is not a numeric
+    registry row (service-watch's registry rows are
+    flap_count and flap_window_sec), so Decision 1's
+    default-on-unusable policy for numeric readers
+    does not name a shape rule for it; this class
+    pins the observed readings instead of asserting
+    one.
+
+    (b) How this was probed: on 2026-10-24
+    _services_from_tunables(), _clean_state(),
+    _is_up() and decide() were probed with the
+    table hunt's fifteen shapes (omitted-equivalent
+    empty list, null, empty string, true, false,
+    zero, negative, numeric string, non-numeric
+    string, huge-int (10**400), inf, -inf, NaN,
+    list, dict), plus genuine, mixed, tuple and
+    duplicate service lists, exact vs substring
+    matching, non-dict processes and non-string
+    cmdlines, the learn / no-learn first-sight
+    paths, every readings / manifest / state /
+    now / processes shape, the sensor-name
+    fallback, the full down -> recovered -> flap
+    sequence, the quiet-window rearm, the
+    negative-downtime clamp, and main() in
+    --readings mode against temp manifests,
+    readings and state files, including missing,
+    malformed, list-shaped and unwritable files.
+
+    (c) Behavior actually observed: NO divergence
+    recorded. _services_from_tunables() reads every
+    non-list shape and a tuple as no services,
+    cleans genuine lists element-wise (a non-dict
+    entry, an empty or non-string name and an
+    entry without a name are dropped, an unknown
+    or missing match reads as "exact"), and
+    keeps duplicate names as separate entries that
+    still file only once (decide() keys state by
+    name). _clean_state() reads every non-dict
+    shape as a fresh state, reads a non-bool
+    learned as False, drops non-string service
+    keys and non-dict entries, reads a non-bool
+    up / down_filed / flap_fired as False, and
+    keeps only finite-number transitions (a
+    string, a bool, inf, -inf, NaN and a huge-int
+    are all dropped). _is_up() matches exact
+    against the process name only (a cmdline-only
+    hit does not count), substring against the
+    cmdline only (a non-string cmdline never
+    matches), and skips non-dict processes.
+    decide() learns on the first pass with
+    learn_first_pass true and files nothing,
+    seeds a first-sighted service silently when
+    learning is off, and distinguishes the two
+    only for a pre-existing entry under an
+    unlearned state: learning updates it silently
+    while no-learning files the change -- every
+    non-bool learn_first_pass shape reads as true
+    (true), only the genuine False disables
+    learning. A down files service_down (high)
+    and sets down_filed; a return after a filed
+    outage files service_recovered (info) with
+    downtime_sec measured from the previous
+    transition, clamped at 0.0 for a negative
+    span; a return after an unfiled outage is
+    silent. Four transitions inside the window
+    file service_flapping (medium) on the fourth
+    alongside the recovered alert, and a later
+    pass after a full quiet window clears the
+    flap flag and prunes the transitions to [].
+    decide() reads every non-dict readings shape
+    as empty readings (now 0.0, no processes,
+    learn pass, no alerts), every non-dict
+    manifest or tunables shape as no services
+    (learned True, no services), every non-dict
+    state shape as fresh, every non-number now
+    shape as 0.0 (a down still files, with the
+    transition timestamped 0.0; a genuine float
+    now is kept verbatim), and every non-list
+    processes shape as no processes (a seeded
+    service files service_down). The sensor falls
+    back to "service_watch" for a missing,
+    non-string or empty manifest name and honors
+    a genuine name. main() returns 0 for a learn
+    pass (nothing printed, state written learned)
+    and for a down pass (the service_down alert
+    printed as one JSON line), returns 2 for a
+    missing or malformed manifest, a missing or
+    malformed readings file, and an unwritable
+    state path (the alert still printed), reads
+    a malformed state file as fresh (rc 0, learn
+    pass), reads a list manifest as no services
+    (rc 0) and a list readings file as no
+    processes (rc 0, the seeded service's down
+    alert printed).
+    Observed on 2026-10-24 against current
+    main.
+
+    (d) This is a coverage record, not a
+    divergence: it stays green as long as the
+    readings above keep holding. If a shape
+    ever stops behaving as described, this
+    test is the failing record of that change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+    _UP = [{"name": "sshd", "pid": 1,
+            "cmdline": "/usr/sbin/sshd"}]
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "service-watch",
+            "service_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "service_watch_services_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _manifest(self, services=None, **extra):
+        tunables = {
+            "services": services if services is not None else
+            [{"name": "sshd", "match": "exact"}],
+            "learn_first_pass": True, "flap_count": 4,
+            "flap_window_sec": 600}
+        tunables.update(extra)
+        return {"name": "service_watch", "tunables": tunables}
+
+    def _seed_up(self):
+        return {"learned": True, "services": {"sshd": {
+            "up": True, "transitions": [],
+            "down_filed": False, "flap_fired": False}}}
+
+    def test_services_fifteen_shapes_at_reader(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    mod._services_from_tunables({"services": value}),
+                    [])
+        self.assertEqual(mod._services_from_tunables({}), [])
+        self.assertEqual(
+            mod._services_from_tunables(
+                {"services": ({"name": "sshd", "match": "exact"},)}), [])
+        self.assertEqual(
+            mod._services_from_tunables({"services": [
+                {"name": "sshd", "match": "exact"},
+                {"name": "helper", "match": "substring"},
+                {"name": "x", "match": "bogus"},
+                {"name": "", "match": "exact"},
+                {"name": 123}, "junk", {"match": "exact"},
+                {"name": "nomatch"}]}),
+            [{"name": "sshd", "match": "exact"},
+             {"name": "helper", "match": "substring"},
+             {"name": "x", "match": "exact"},
+             {"name": "nomatch", "match": "exact"}])
+
+    def test_clean_state_fifteen_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(mod._clean_state(value),
+                                 {"learned": False, "services": {}})
+        self.assertEqual(
+            mod._clean_state({"learned": "yes", "services": {
+                "sshd": {"up": "yes", "transitions": [
+                    1.0, "x", True, float("inf"), 10 ** 400, 2.5],
+                    "down_filed": 1, "flap_fired": None},
+                123: {"up": True}, "bad": "nope",
+                "ok": {"up": True, "transitions": [],
+                       "down_filed": True, "flap_fired": False}}}),
+            {"learned": False, "services": {
+                "sshd": {"up": False, "transitions": [1.0, 2.5],
+                         "down_filed": False, "flap_fired": False},
+                "ok": {"up": True, "transitions": [],
+                       "down_filed": True, "flap_fired": False}}})
+        self.assertEqual(mod._clean_state(
+            {"learned": True, "services": {}}),
+            {"learned": True, "services": {}})
+
+    def test_is_up_exact_substring_and_skips(self):
+        mod = self._module()
+        procs = [{"name": "sshd", "pid": 1, "cmdline": "/usr/sbin/sshd -D"},
+                 {"name": "other", "pid": 2,
+                  "cmdline": "python sshd-helper"}]
+        self.assertTrue(mod._is_up(
+            {"name": "sshd", "match": "exact"}, procs))
+        self.assertTrue(mod._is_up(
+            {"name": "sshd", "match": "substring"}, procs))
+        self.assertFalse(mod._is_up(
+            {"name": "sshd", "match": "exact"},
+            [{"name": "other", "cmdline": "sshd"}]))
+        self.assertTrue(mod._is_up(
+            {"name": "sshd", "match": "exact"},
+            ["junk", None, {"name": "sshd"}]))
+        self.assertFalse(mod._is_up(
+            {"name": "sshd", "match": "substring"},
+            [{"name": "x", "cmdline": 123}]))
+        self.assertFalse(mod._is_up(
+            {"name": "sshd", "match": "exact"}, []))
+
+    def test_decide_learn_down_recovered_and_silent(self):
+        import copy
+        mod = self._module()
+        alerts, state = mod.decide(
+            {"now": 1000.0, "processes": self._UP},
+            self._manifest(), None)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["services"]["sshd"]["up"], True)
+        alerts, state = mod.decide(
+            {"now": 1010.0, "processes": []},
+            self._manifest(), state)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["service_down"])
+        self.assertEqual(alerts[0]["severity"], "high")
+        self.assertEqual(alerts[0]["detail"], {"service": "sshd"})
+        alerts, state = mod.decide(
+            {"now": 1040.0, "processes": self._UP},
+            self._manifest(), state)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["service_recovered"])
+        self.assertEqual(alerts[0]["severity"], "info")
+        self.assertEqual(alerts[0]["detail"],
+                         {"service": "sshd", "downtime_sec": 30.0})
+        # A return after an unfiled outage is silent.
+        unfiled = {"learned": True, "services": {"sshd": {
+            "up": False, "transitions": [],
+            "down_filed": False, "flap_fired": False}}}
+        alerts, _ = mod.decide(
+            {"now": 1000.0, "processes": self._UP},
+            self._manifest(), unfiled)
+        self.assertEqual(alerts, [])
+        # No-learn first sight seeds silently, then files.
+        alerts, state = mod.decide(
+            {"now": 1000.0, "processes": self._UP},
+            self._manifest(learn_first_pass=False), None)
+        self.assertEqual(alerts, [])
+        alerts, _ = mod.decide(
+            {"now": 1010.0, "processes": []},
+            self._manifest(learn_first_pass=False), state)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["service_down"])
+        # Learn vs no-learn, pre-existing entry, unlearned state.
+        pre = {"learned": False, "services": {"sshd": {
+            "up": True, "transitions": [],
+            "down_filed": False, "flap_fired": False}}}
+        for value in [True, "bogus", None, 0, 1]:
+            with self.subTest(learn=value):
+                manifest = self._manifest()
+                manifest["tunables"]["learn_first_pass"] = value
+                alerts, _ = mod.decide(
+                    {"now": 1000.0, "processes": []},
+                    manifest, copy.deepcopy(pre))
+                self.assertEqual(alerts, [])
+        alerts, _ = mod.decide(
+            {"now": 1000.0, "processes": []},
+            self._manifest(learn_first_pass=False),
+            copy.deepcopy(pre))
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["service_down"])
+        # Negative downtime clamps to 0.0.
+        filed = {"learned": True, "services": {"sshd": {
+            "up": False, "transitions": [1000.0],
+            "down_filed": True, "flap_fired": False}}}
+        alerts, _ = mod.decide(
+            {"now": 900.0, "processes": self._UP},
+            self._manifest(), filed)
+        self.assertEqual(alerts[0]["detail"],
+                         {"service": "sshd", "downtime_sec": 0.0})
+        # Duplicate service names file only once.
+        dup = self._manifest(services=[
+            {"name": "sshd", "match": "exact"},
+            {"name": "sshd", "match": "exact"}])
+        _, state = mod.decide(
+            {"now": 1000.0, "processes": self._UP}, dup, None)
+        alerts, _ = mod.decide(
+            {"now": 1010.0, "processes": []}, dup, state)
+        self.assertEqual(len(alerts), 1)
+
+    def test_decide_readings_manifest_now_processes_shapes(self):
+        import copy
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(kind="readings", shape=name):
+                alerts, state = mod.decide(
+                    value, self._manifest(), None)
+                self.assertEqual(alerts, [])
+                self.assertTrue(state["learned"])
+        for name, value in self._SHAPES:
+            with self.subTest(kind="manifest", shape=name):
+                alerts, state = mod.decide(
+                    {"now": 1000.0, "processes": self._UP},
+                    value, None)
+                self.assertEqual(alerts, [])
+                self.assertEqual(state, {"learned": True,
+                                        "services": {}})
+        for name, value in self._SHAPES:
+            with self.subTest(kind="now", shape=name):
+                alerts, state = mod.decide(
+                    {"now": value, "processes": []},
+                    self._manifest(), copy.deepcopy(self._seed_up()))
+                self.assertEqual([a["signal"] for a in alerts],
+                                 ["service_down"])
+                self.assertFalse(state["services"]["sshd"]["up"])
+        alerts, state = mod.decide(
+            {"now": "120", "processes": []},
+            self._manifest(), copy.deepcopy(self._seed_up()))
+        self.assertEqual(state["services"]["sshd"]["transitions"],
+                         [0.0])
+        alerts, state = mod.decide(
+            {"now": 250.7, "processes": []},
+            self._manifest(), copy.deepcopy(self._seed_up()))
+        self.assertEqual(state["services"]["sshd"]["transitions"],
+                         [250.7])
+        for name, value in self._SHAPES:
+            with self.subTest(kind="processes", shape=name):
+                alerts, state = mod.decide(
+                    {"now": 1000.0, "processes": value},
+                    self._manifest(), copy.deepcopy(self._seed_up()))
+                self.assertEqual([a["signal"] for a in alerts],
+                                 ["service_down"])
+        for manifest, expected in [
+                (self._manifest(), "service_watch"),
+                (dict(self._manifest(), name="custom_watch"),
+                 "custom_watch"),
+                (dict(self._manifest(), name=123), "service_watch"),
+                (dict(self._manifest(), name=""), "service_watch")]:
+            with self.subTest(sensor=expected):
+                alerts, _ = mod.decide(
+                    {"now": 1000.0, "processes": []},
+                    manifest, copy.deepcopy(self._seed_up()))
+                self.assertEqual(alerts[0]["sensor"], expected)
+
+    def test_decide_flap_sequence_and_rearm(self):
+        mod = self._module()
+        state = self._seed_up()
+        seen = []
+        for now, procs in [(1000.0, []), (1010.0, self._UP),
+                           (1020.0, []), (1030.0, self._UP)]:
+            alerts, state = mod.decide(
+                {"now": now, "processes": procs},
+                self._manifest(), state)
+            seen.append([a["signal"] for a in alerts])
+        self.assertEqual(seen, [["service_down"],
+                                ["service_recovered"],
+                                ["service_down"],
+                                ["service_recovered",
+                                 "service_flapping"]])
+        self.assertTrue(state["services"]["sshd"]["flap_fired"])
+        alerts, state = mod.decide(
+            {"now": 2000.0, "processes": self._UP},
+            self._manifest(), state)
+        self.assertEqual(alerts, [])
+        self.assertFalse(state["services"]["sshd"]["flap_fired"])
+        self.assertEqual(state["services"]["sshd"]["transitions"], [])
+
+    def test_main_readings_mode_and_errors(self):
+        import contextlib
+        import io
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            manifest = os.path.join(d, "extension.json")
+            state = os.path.join(d, "state.json")
+            readings = os.path.join(d, "readings.json")
+            with open(manifest, "w", encoding="utf-8") as fh:
+                json.dump(self._manifest(), fh)
+            with open(readings, "w", encoding="utf-8") as fh:
+                json.dump({"now": 1000.0,
+                           "processes": self._UP}, fh)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(["--manifest", manifest, "--state",
+                               state, "--readings", readings])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.getvalue(), "")
+            with open(state, encoding="utf-8") as fh:
+                self.assertTrue(json.load(fh)["learned"])
+            with open(readings, "w", encoding="utf-8") as fh:
+                json.dump({"now": 1010.0, "processes": []}, fh)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(["--manifest", manifest, "--state",
+                               state, "--readings", readings])
+            self.assertEqual(rc, 0)
+            self.assertIn("service_down", out.getvalue())
+            self.assertEqual(mod.main(
+                ["--manifest", os.path.join(d, "nope.json"),
+                 "--state", state, "--readings", readings]), 2)
+            self.assertEqual(mod.main(
+                ["--manifest", manifest, "--state", state,
+                 "--readings", os.path.join(d, "nope2.json")]), 2)
+            bad = os.path.join(d, "bad.json")
+            with open(bad, "w", encoding="utf-8") as fh:
+                fh.write("{not json")
+            self.assertEqual(mod.main(
+                ["--manifest", bad, "--state", state,
+                 "--readings", readings]), 2)
+            self.assertEqual(mod.main(
+                ["--manifest", manifest, "--state", state,
+                 "--readings", bad]), 2)
+            self.assertEqual(mod.main(
+                ["--manifest", manifest, "--state",
+                 os.path.join(d, "no-dir", "state.json"),
+                 "--readings", readings]), 2)
+            with open(state, "w", encoding="utf-8") as fh:
+                fh.write("{broken")
+            with open(readings, "w", encoding="utf-8") as fh:
+                json.dump({"now": 1000.0,
+                           "processes": self._UP}, fh)
+            self.assertEqual(mod.main(
+                ["--manifest", manifest, "--state", state,
+                 "--readings", readings]), 0)
+            list_path = os.path.join(d, "list.json")
+            with open(list_path, "w", encoding="utf-8") as fh:
+                json.dump([1, 2], fh)
+            self.assertEqual(mod.main(
+                ["--manifest", list_path, "--state", state,
+                 "--readings", readings]), 0)
+            with open(state, "w", encoding="utf-8") as fh:
+                json.dump(self._seed_up(), fh)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = mod.main(
+                    ["--manifest", manifest, "--state", state,
+                     "--readings", list_path])
+            self.assertEqual(rc, 0)
+            self.assertIn("service_down", out.getvalue())
+
 if __name__ == "__main__":
 
     unittest.main()
