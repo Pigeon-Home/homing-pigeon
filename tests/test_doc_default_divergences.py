@@ -8157,5 +8157,194 @@ class TestSensesLimitDefaultsTo20(unittest.TestCase):
             self.assertEqual(S.load_alerts(base, limit=0), [])
 
 
+
+class TestAskMaxCharsDefaultsTo2000(unittest.TestCase):
+    """Second-run hunt coverage: max_chars (ask query)
+    itself, varied with the fifteen shapes through its
+    actual reader for the first time.
+
+    (a) Claim: registry row "max_chars (ask query)":
+        core, integer, default 2000, policy default, lo 0,
+        doc_status unverified -- no prose document states
+        this query parameter's own default; it is in
+        KNOWN_UNDOCUMENTED in tests/defaults_registry.py,
+        and the registry notes record that it falls back
+        to max_answer_chars. The fallback target is
+        documented: PROTOCOL.md (line 711) gives the
+        inference config "`max_answer_chars` (default
+        2000)", docs/configuring-oracle.md (line 54)
+        repeats "`max_answer_chars` (default 2000 --
+        answers are truncated past this)", and
+        PROTOCOL.md (line 730) shows the ask query
+        itself carrying "max_chars": 500. The reader's
+        own comment (runner/runner.py, answer_queries,
+        ask branch) states the contract directly: "The
+        inference block's max_answer_chars (default
+        2000) for an omitted, unparseable, or boolean
+        max_chars", read as
+        _confval.integer(q.get("max_chars"),
+        inf["max_answer_chars"], lo=0), with no reader
+        ceiling applied afterwards. The row's named
+        class (TestBooleanAskMaxCharsDefaultsTo2000)
+        covered only the booleans plus bogus, explicit
+        500, and explicit 0 controls -- and its boolean
+        test was recorded when the pre-confval reader
+        handed True to ask_model as a cap of 1; the
+        answer_queries reader itself, including its
+        fallback to a configured max_answer_chars and
+        its lack of a ceiling, had never been walked
+        through all fifteen shapes.
+
+    (b) How it was hunted: step 8 Target 3 -- the
+        sixth row with no documented default in any
+        current doc, after timeout_sec,
+        extension_poll_interval_sec, max_matches, lines,
+        and limit. On 2026-10-23 this tick called
+        runner.runner.answer_queries -- the actual
+        reader -- with one ask query over retained
+        output, with a loopback inference config whose
+        max_answer_chars is the documented 2000,
+        patching ask_model only to capture the
+        max_chars it was handed, with the table hunt's
+        fifteen shapes, plus genuine values, a
+        no-ceiling check, float shapes, a configured
+        fallback check (max_answer_chars 750), and a
+        direct downstream zero-cap check through
+        _sanitize_model_reply.
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape -- omitted, null, the
+        empty string, true, false, a non-numeric
+        string, a several-hundred-digit integer, inf,
+        -inf, NaN, and a list -- was handed a cap of
+        exactly 2000. Zero is usable (lo 0) and was
+        handed 0, and the downstream sanitizer honors
+        that zero as zero (_sanitize_model_reply with
+        cap 0 returns an empty answer, not the whole
+        reply -- unlike the senses store slice in
+        TestSensesLimitDefaultsTo20). A negative
+        number is below lo, so it is unusable under
+        the confval contract and was handed the
+        default 2000 rather than clamping. The
+        explicit default 2000 and the numeric string
+        "2000" were handed 2000. Genuine values are
+        honored exactly (1, 2, 5, 500, 2001) and
+        there is no reader ceiling (5000 and 100000
+        were handed through unchanged). Floats
+        truncate toward zero through confval.integer
+        (2.9 -> 2, "2.9" -> 2, 0.5 -> 0, and -0.5 is
+        below lo so it reads as the default). The
+        fallback is genuinely the configured value,
+        not a hard-coded 2000: with max_answer_chars
+        configured to 750, omitted, bogus, and true
+        were each handed 750, while a genuine 500
+        and a usable zero still overrode it. Two
+        behavior changes from the boolean class's
+        2026-10-23 record are noted: true now reads
+        as the default through confval instead of
+        truncating to 1, and a huge integer now reads
+        as the default instead of reaching int() in
+        the old reader.
+
+    (d) This is a coverage record, not a divergence: it
+        stays green as long as the reader keeps the
+        registry fallback and the no-ceiling contract.
+        If a shape above ever stops reading as stated,
+        this test is the failing record of that change.
+        The missing prose documentation for the query
+        parameter itself in (a) is recorded here and
+        in the registry; no production code or doc was
+        changed by this hunt.
+    """
+
+    _CFG = {"inference": {
+        "endpoint": "http://127.0.0.1:11434/v1",
+        "model": "qwen3:1.7b"}}
+    _CFG750 = {"inference": {
+        "endpoint": "http://127.0.0.1:11434/v1",
+        "model": "qwen3:1.7b", "max_answer_chars": 750}}
+    _RES = {"stdout": "hello\n", "stderr": "",
+            "exit_code": 0}
+
+    def _ask_cap(self, extra, omit=False, cfg=None):
+        from unittest import mock
+        import runner.runner as runner_mod
+        captured = {}
+
+        def fake(inf, question, text, max_chars,
+                 patterns, instructions=None):
+            captured["max_chars"] = max_chars
+            return {"op": "ask", "answer": "ok",
+                    "model": inf["model"],
+                    "sanitized": True}
+
+        q = {"op": "ask", "question": "why?"}
+        if not omit:
+            q.update(extra)
+        with mock.patch.object(runner_mod, "ask_model",
+                               fake):
+            answers, _spent = runner_mod.answer_queries(
+                [q], self._RES, None, 8,
+                cfg=self._CFG if cfg is None else cfg,
+                view="full")
+        self.assertEqual(answers[0].get("op"), "ask")
+        return captured["max_chars"]
+
+    def test_fifteen_shapes(self):
+        shapes = [
+            ("omitted", {}, True, 2000),
+            ("null", {"max_chars": None}, False, 2000),
+            ("empty-string", {"max_chars": ""}, False, 2000),
+            ("true", {"max_chars": True}, False, 2000),
+            ("false", {"max_chars": False}, False, 2000),
+            ("zero", {"max_chars": 0}, False, 0),
+            ("negative", {"max_chars": -5}, False, 2000),
+            ("default-explicit", {"max_chars": 2000}, False, 2000),
+            ("numeric-string", {"max_chars": "2000"}, False, 2000),
+            ("non-numeric-string", {"max_chars": "bogus"}, False, 2000),
+            ("huge-int", {"max_chars": 10 ** 400}, False, 2000),
+            ("inf", {"max_chars": float("inf")}, False, 2000),
+            ("neg-inf", {"max_chars": float("-inf")}, False, 2000),
+            ("nan", {"max_chars": float("nan")}, False, 2000),
+            ("wrong-container", {"max_chars": ["x"]}, False, 2000),
+        ]
+        for name, extra, omit, want in shapes:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    self._ask_cap(extra, omit=omit), want)
+
+    def test_genuine_values_are_honored_with_no_ceiling(self):
+        for value, want in ((1, 1), (2, 2), (5, 5), (500, 500),
+                            (2001, 2001), (5000, 5000),
+                            (100000, 100000), ("2", 2),
+                            ("500", 500)):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    self._ask_cap({"max_chars": value}), want)
+
+    def test_floats_truncate_toward_zero(self):
+        for value, want in ((2.9, 2), (2.0, 2), ("2.9", 2),
+                            (0.5, 0), (-0.5, 2000)):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    self._ask_cap({"max_chars": value}), want)
+
+    def test_fallback_is_the_configured_max_answer_chars(self):
+        self.assertEqual(self._ask_cap({}, omit=True, cfg=self._CFG750), 750)
+        self.assertEqual(
+            self._ask_cap({"max_chars": "bogus"}, cfg=self._CFG750), 750)
+        self.assertEqual(
+            self._ask_cap({"max_chars": True}, cfg=self._CFG750), 750)
+        self.assertEqual(
+            self._ask_cap({"max_chars": 500}, cfg=self._CFG750), 500)
+        self.assertEqual(
+            self._ask_cap({"max_chars": 0}, cfg=self._CFG750), 0)
+
+    def test_zero_cap_truncates_the_reply_to_empty(self):
+        from runner.runner import _sanitize_model_reply
+        result = _sanitize_model_reply(
+            "hello world", 0, "hello\n", None, "m")
+        self.assertEqual(result.get("answer"), "")
+
 if __name__ == "__main__":
     unittest.main()
