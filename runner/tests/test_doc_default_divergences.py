@@ -31177,6 +31177,659 @@ class TestUsbArrivalsDevicesAndDecideFifteenShapes(unittest.TestCase):
                                "--state", os.path.join(td, "s.json")])
             self.assertEqual(rc, 2)
 
+class TestLabResultsScanAndMainFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the lab-results
+    folder pass (scan()), state cleaning
+    (_clean_state()), the metric and threshold
+    tunables, result-file handling, anomaly
+    judging, and main() in its printing mode,
+    varied with the fifteen shapes for the first
+    time (step-8 Target 5 / family (b) -- the
+    extension's earlier classes cover ONLY its
+    numeric tunables anomaly_band and
+    anomaly_min_history; scan()'s file handling,
+    the state, the string / threshold tunables,
+    decide-equivalent alert filing and main()
+    were never varied).
+
+    (a) Doc claims: the module header declares
+        experiment_finished for a run that
+        "reached a finished state",
+        metric_threshold_crossed when "the
+        headline metric crossed the threshold
+        declared in the tunables", and
+        result_anomaly when the metric "sits far
+        outside the folder's earlier results"
+        (runner/extensions/lab-results/
+        lab_results.py, module header; README.md
+        signal table and extension.json repeat
+        them). It also states result files are
+        "diffed by content", that "a file still
+        being written, or one whose run has not
+        finished, files nothing and is retried on
+        the next pass", and that "editing a
+        finished result re-reports it".
+        extension.json ships the tunables
+        metric "accuracy", threshold 0.9,
+        anomaly_band 0.25, anomaly_min_history 3
+        and watch_dir "results"; README.md states
+        metric defaults to accuracy and
+        anomaly_min_history to 3. The metric /
+        status / run / metrics fields are not
+        registry rows, so this class pins the
+        observed readings for them; the one
+        shape family that does NOT behave --
+        a non-string watch_dir tunable reaching
+        main() -- is recorded separately in
+        TestLabResultsWatchDirTunableCrashes
+        InsteadOfReadingTheDefault below.
+
+    (b) How this was probed: on 2026-10-24 the
+        fifteen shapes (null, bool, string,
+        numeric string, float, zero, negative,
+        huge int 10**400, inf, -inf, NaN, empty
+        string / list / dict, list, dict) were
+        fed to _clean_state() as the state value
+        and field-wise, to scan() as the metric
+        and threshold tunables, as a result
+        file's metrics value and headline value,
+        and as the manifest / tunables / name
+        values; scan() was driven over temp
+        folders holding finished, unfinished,
+        malformed, undecodable, non-dict and
+        non-.json files, duplicate-content and
+        edited files, and multi-file passes
+        with seeded history at and past the
+        anomaly band edges; and main() was run
+        against temp manifests, watch folders
+        and state files.
+
+    (c) Behavior actually observed: NO divergence
+        in this class's scope. _clean_state()
+        reads every non-dict state as the fresh
+        state, a non-dict reported as {} and a
+        non-list history as [], drops reported
+        entries whose key or value is not a
+        string, and keeps history entries only
+        when they are genuine finite numbers
+        (bools, strings, huge ints and
+        non-finite values dropped, kept values
+        read as floats). scan() files
+        experiment_finished (info) exactly for
+        records whose status is the exact string
+        "finished", in sorted filename order,
+        skipping non-.json names, malformed or
+        undecodable files and non-dict records
+        without recording them; a missing or
+        non-string run names the file stem; a
+        non-dict metrics or a headline value
+        that is not a genuine finite number
+        files experiment_finished with value
+        None and adds no history. An unfinished
+        record is not recorded, so finishing it
+        later files it; the same content --
+        including the same record rewritten in
+        a different key order -- files once,
+        and an edited record files again. The
+        metric tunable reads every non-string
+        or empty shape as "accuracy" and honors
+        a genuine string verbatim (a numeric
+        string names a metric literally). The
+        threshold tunable reads every
+        non-number shape as no threshold (no
+        crossing alert), honors genuine numbers
+        literally (zero and negative thresholds
+        cross any finished value), and crosses
+        exactly at value == threshold. Anomaly
+        judging uses the history as it stood
+        before the file, requires at least
+        anomaly_min_history entries and a
+        non-zero mean, and is strict: a value
+        exactly band * |mean| from the mean is
+        not an anomaly, one just past it is;
+        history grows in file order within a
+        pass. The sensor falls back to
+        "lab_results" for a non-dict manifest
+        or a non-string / empty name, and a
+        non-dict tunables reads as {} (metric
+        accuracy, no threshold). main() prints
+        one alert per line and writes state
+        (rc 0), reads a malformed or list state
+        file as fresh, reads a list manifest as
+        the defaults, answers rc 0 for a
+        missing watch folder, and rc 2 for a
+        missing / malformed manifest or an
+        unwritable state path; the falsy
+        watch_dir tunables ("", None, False, 0)
+        read as the default "results" folder
+        through main()'s fallback. Observed on
+        2026-10-24 against current main.
+    """
+
+    _SHAPES = [("null", None), ("true", True),
+               ("false", False), ("empty-string", ""),
+               ("string", "bogus"),
+               ("numeric-string", "0.5"), ("zero", 0),
+               ("negative", -5), ("one", 1),
+               ("fractional", 0.5),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1}),
+               ("empty-list", []), ("empty-dict", {})]
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "lab-results",
+            "lab_results.py")
+        spec = importlib.util.spec_from_file_location(
+            "lab_results_scan_main", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _scan(self, mod, files, manifest, state=None):
+        import os
+        with tempfile.TemporaryDirectory() as td:
+            for name, content in files.items():
+                p = os.path.join(td, name)
+                if isinstance(content, bytes):
+                    with open(p, "wb") as fh:
+                        fh.write(content)
+                else:
+                    with open(p, "w", encoding="utf-8") as fh:
+                        fh.write(content if isinstance(
+                            content, str) else json.dumps(content))
+            return mod.scan(
+                td, manifest, {} if state is None else state)
+
+    _MAN = {"name": "lab_results",
+            "tunables": {"metric": "accuracy", "threshold": 0.9,
+                         "anomaly_band": 0.25,
+                         "anomaly_min_history": 3}}
+
+    def test_clean_state_shapes(self):
+        mod = self._module()
+        fresh = {"reported": {}, "history": []}
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(mod._clean_state(value), fresh)
+        self.assertEqual(
+            mod._clean_state({"reported": [], "history": {}}), fresh)
+        self.assertEqual(
+            mod._clean_state({
+                "reported": {"a": "fp", "b": 123, 1: "x"},
+                "history": [0.5, True, "0.9", None, 10 ** 400,
+                            float("inf"), float("nan"), 2, -1.5]}),
+            {"reported": {"a": "fp"}, "history": [0.5, 2.0, -1.5]})
+
+    def test_scan_finished_and_threshold(self):
+        mod = self._module()
+        alerts, state = self._scan(mod, {
+            "a.json": {"run": "exp-1", "status": "finished",
+                       "metrics": {"accuracy": 0.93, "loss": 0.2}}},
+            self._MAN)
+        self.assertEqual(
+            [(a["signal"], a["severity"], a["title"], a["detail"])
+             for a in alerts],
+            [("experiment_finished", "info",
+              "experiment exp-1 finished",
+              {"run": "exp-1", "metric": "accuracy", "value": 0.93}),
+             ("metric_threshold_crossed", "medium",
+              "experiment exp-1: accuracy 0.93 crossed threshold 0.9",
+              {"run": "exp-1", "metric": "accuracy", "value": 0.93,
+               "threshold": 0.9})])
+        self.assertEqual(state["history"], [0.93])
+        self.assertIn("a.json", state["reported"])
+        # Crossing is at value == threshold, not above it.
+        for threshold, crosses in ((0.95, True), (0.95001, False),
+                                   (0, True), (-1, True)):
+            with self.subTest(threshold=threshold):
+                alerts, _ = self._scan(mod, {
+                    "x.json": {"run": "r", "status": "finished",
+                               "metrics": {"accuracy": 0.95}}},
+                    {"name": "lab_results",
+                     "tunables": {"threshold": threshold}})
+                self.assertEqual(
+                    [a["signal"] for a in alerts],
+                    ["experiment_finished",
+                     "metric_threshold_crossed"] if crosses
+                    else ["experiment_finished"])
+
+    def test_threshold_shapes_read_as_no_threshold(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            if name in ("zero", "negative", "one", "fractional"):
+                continue  # genuine numbers are honored (above)
+            with self.subTest(shape=name):
+                alerts, _ = self._scan(mod, {
+                    "x.json": {"run": "r", "status": "finished",
+                               "metrics": {"accuracy": 0.95}}},
+                    {"name": "lab_results",
+                     "tunables": {"threshold": value}})
+                self.assertEqual([a["signal"] for a in alerts],
+                                 ["experiment_finished"])
+
+    def test_metric_tunable_shapes(self):
+        mod = self._module()
+        files = {"x.json": {"run": "r", "status": "finished",
+                            "metrics": {"accuracy": 0.95,
+                                        "bogus": 0.1, "0.5": 0.7}}}
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                alerts, _ = self._scan(mod, files, {
+                    "name": "lab_results",
+                    "tunables": {"metric": value, "threshold": 0.9}})
+                if isinstance(value, str) and value:
+                    self.assertEqual(
+                        alerts[0]["detail"]["metric"], value)
+                else:
+                    self.assertEqual(
+                        alerts[0]["detail"],
+                        {"run": "r", "metric": "accuracy",
+                         "value": 0.95})
+
+    def test_scan_skips_and_run_fallback(self):
+        mod = self._module()
+        alerts, state = self._scan(mod, {
+            "a.json": {"run": "e1", "status": "running",
+                       "metrics": {"accuracy": 0.99}},
+            "b.json": '{"run": ',
+            "c.json": [1, 2],
+            "d.txt": {"run": "e", "status": "finished"},
+            "e.json": {"status": "finished",
+                       "metrics": {"accuracy": 0.5}},
+            "f.json": b"\xff\xfe{}"}, self._MAN)
+        self.assertEqual(
+            [(a["signal"], a["detail"]["run"]) for a in alerts],
+            [("experiment_finished", "e")])
+        self.assertEqual(list(state["reported"]), ["e.json"])
+        for status in ("Finished", "", None, 123, True):
+            with self.subTest(status=repr(status)):
+                alerts, _ = self._scan(mod, {
+                    "x.json": {"run": "r", "status": status,
+                               "metrics": {"accuracy": 0.5}}},
+                    self._MAN)
+                self.assertEqual(alerts, [])
+        for run in ("", None, 123, True):
+            with self.subTest(run=repr(run)):
+                alerts, _ = self._scan(mod, {
+                    "file1.json": {"run": run, "status": "finished",
+                                   "metrics": {"accuracy": 0.5}}},
+                    self._MAN)
+                self.assertEqual(alerts[0]["detail"]["run"], "file1")
+
+    def test_scan_metrics_shapes(self):
+        mod = self._module()
+        for metrics in (None, [], "x", {}, {"accuracy": "0.99"},
+                        {"accuracy": True}, {"accuracy": 10 ** 400},
+                        {"accuracy": float("inf")},
+                        {"accuracy": float("nan")}):
+            with self.subTest(metrics=repr(metrics)[:30]):
+                alerts, state = self._scan(mod, {
+                    "x.json": {"status": "finished",
+                               "metrics": metrics}}, self._MAN)
+                self.assertEqual(
+                    [(a["signal"], a["detail"]["value"])
+                     for a in alerts],
+                    [("experiment_finished", None)])
+                self.assertEqual(state["history"], [])
+
+    def test_anomaly_boundaries_and_history_growth(self):
+        mod = self._module()
+        seeded = {"reported": {}, "history": [0.5, 0.5, 0.5]}
+        for value, anomaly in ((0.5, False), (0.625, False),
+                               (0.626, True), (0.375, False),
+                               (0.374, True), (0.0, True)):
+            with self.subTest(value=value):
+                alerts, state = self._scan(mod, {
+                    "x.json": {"run": "r", "status": "finished",
+                               "metrics": {"accuracy": value}}},
+                    self._MAN, state=dict(seeded))
+                self.assertEqual(
+                    "result_anomaly" in [a["signal"] for a in alerts],
+                    anomaly)
+                self.assertEqual(state["history"],
+                                 [0.5, 0.5, 0.5, float(value)])
+        # A zero mean never judges an anomaly.
+        alerts, _ = self._scan(mod, {
+            "x.json": {"run": "r", "status": "finished",
+                       "metrics": {"accuracy": 5}}}, self._MAN,
+            state={"reported": {}, "history": [-1.0, 1.0, 0.0]})
+        self.assertNotIn("result_anomaly",
+                         [a["signal"] for a in alerts])
+        # Too little history never judges an anomaly.
+        alerts, _ = self._scan(mod, {
+            "x.json": {"run": "r", "status": "finished",
+                       "metrics": {"accuracy": 5}}}, self._MAN,
+            state={"reported": {}, "history": [0.5, 0.5]})
+        self.assertNotIn("result_anomaly",
+                         [a["signal"] for a in alerts])
+        # History grows in file order within one pass and each
+        # file is judged against the history before it.
+        alerts, state = self._scan(mod, {
+            "a.json": {"run": "a", "status": "finished",
+                       "metrics": {"accuracy": 0.5}},
+            "b.json": {"run": "b", "status": "finished",
+                       "metrics": {"accuracy": 0.5}},
+            "c.json": {"run": "c", "status": "finished",
+                       "metrics": {"accuracy": 0.5}},
+            "d.json": {"run": "d", "status": "finished",
+                       "metrics": {"accuracy": 1.0}}}, self._MAN)
+        self.assertEqual(
+            [(a["detail"]["run"], a["signal"]) for a in alerts
+             if a["signal"] == "result_anomaly"],
+            [("d", "result_anomaly")])
+        self.assertEqual(state["history"], [0.5, 0.5, 0.5, 1.0])
+
+    def test_scan_dedup_edit_and_unfinished_retry(self):
+        mod = self._module()
+        import os
+        with tempfile.TemporaryDirectory() as td:
+            def write(name, rec):
+                with open(os.path.join(td, name), "w",
+                          encoding="utf-8") as fh:
+                    fh.write(rec if isinstance(rec, str)
+                             else json.dumps(rec))
+            write("a.json", {"run": "e1", "status": "finished",
+                             "metrics": {"accuracy": 0.5}})
+            alerts, state = mod.scan(td, self._MAN, {})
+            self.assertEqual(len(alerts), 1)
+            alerts, state = mod.scan(td, self._MAN, state)
+            self.assertEqual(alerts, [])
+            # Same record, different key order: same fingerprint.
+            write("a.json", '{"metrics": {"accuracy": 0.5}, '
+                            '"status": "finished", "run": "e1"}')
+            alerts, state = mod.scan(td, self._MAN, state)
+            self.assertEqual(alerts, [])
+            # An edit is a new result and files again.
+            write("a.json", {"run": "e1", "status": "finished",
+                             "metrics": {"accuracy": 0.6}})
+            alerts, state = mod.scan(td, self._MAN, state)
+            self.assertEqual(
+                [(a["signal"], a["detail"]["value"]) for a in alerts],
+                [("experiment_finished", 0.6)])
+            # Unfinished files nothing and is not recorded.
+            write("b.json", {"run": "e2", "status": "running",
+                             "metrics": {"accuracy": 0.7}})
+            alerts, state = mod.scan(td, self._MAN, state)
+            self.assertEqual(alerts, [])
+            self.assertNotIn("b.json", state["reported"])
+            write("b.json", {"run": "e2", "status": "finished",
+                             "metrics": {"accuracy": 0.7}})
+            alerts, state = mod.scan(td, self._MAN, state)
+            self.assertEqual([a["detail"]["run"] for a in alerts],
+                             ["e2"])
+        # A missing folder is an empty pass, never an error.
+        self.assertEqual(
+            mod.scan("/no/such/lab-results-dir-xyz", self._MAN, {}),
+            ([], {"reported": {}, "history": []}))
+
+    def test_sensor_and_manifest_shapes(self):
+        mod = self._module()
+        files = {"x.json": {"run": "r", "status": "finished",
+                            "metrics": {"accuracy": 0.5}}}
+        for manifest in (None, [], "x", {}, {"name": ""},
+                         {"name": 123}, {"tunables": []},
+                         {"tunables": None}):
+            with self.subTest(manifest=repr(manifest)):
+                alerts, _ = self._scan(mod, files, manifest)
+                self.assertEqual(alerts[0]["sensor"], "lab_results")
+                self.assertEqual(alerts[0]["detail"]["metric"],
+                                 "accuracy")
+        alerts, _ = self._scan(mod, files, {"name": "custom"})
+        self.assertEqual(alerts[0]["sensor"], "custom")
+
+    def _run_main(self, mod, argv, cwd=None):
+        import contextlib
+        import io
+        import os
+        out, err = io.StringIO(), io.StringIO()
+        old = os.getcwd()
+        try:
+            if cwd is not None:
+                os.chdir(cwd)
+            with contextlib.redirect_stdout(out), \
+                    contextlib.redirect_stderr(err):
+                rc = mod.main(argv)
+        finally:
+            os.chdir(old)
+        return rc, out.getvalue(), err.getvalue()
+
+    def test_main_modes(self):
+        mod = self._module()
+        import os
+        man = {"name": "lab_results",
+               "tunables": {"metric": "accuracy", "threshold": 0.9}}
+        fin = {"run": "exp-1", "status": "finished",
+               "metrics": {"accuracy": 0.93}}
+        with tempfile.TemporaryDirectory() as td:
+            wd = os.path.join(td, "results")
+            os.mkdir(wd)
+            with open(os.path.join(wd, "a.json"), "w",
+                      encoding="utf-8") as fh:
+                json.dump(fin, fh)
+            mp = os.path.join(td, "m.json")
+            with open(mp, "w", encoding="utf-8") as fh:
+                json.dump(man, fh)
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--watch-dir", wd])
+            self.assertEqual(rc, 0)
+            lines = [json.loads(x) for x in out.splitlines()]
+            self.assertEqual([x["signal"] for x in lines],
+                             ["experiment_finished",
+                              "metric_threshold_crossed"])
+            with open(os.path.join(
+                    wd, ".lab-results-state.json"),
+                    encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh)["history"], [0.93])
+            # Missing and malformed manifests answer rc 2.
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", os.path.join(td, "no.json"),
+                      "--watch-dir", wd])
+            self.assertEqual(rc, 2)
+            bad = os.path.join(td, "bad.json")
+            with open(bad, "w", encoding="utf-8") as fh:
+                fh.write("{bad")
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", bad, "--watch-dir", wd])
+            self.assertEqual(rc, 2)
+            # A list manifest reads as the defaults (rc 0); a
+            # malformed state file reads as fresh (rc 0, files).
+            lst = os.path.join(td, "list.json")
+            with open(lst, "w", encoding="utf-8") as fh:
+                fh.write("[]")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", lst, "--watch-dir", wd])
+            self.assertEqual(rc, 0)
+            sp = os.path.join(wd, ".lab-results-state.json")
+            with open(sp, "w", encoding="utf-8") as fh:
+                fh.write("{not json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--watch-dir", wd])
+            self.assertEqual(rc, 0)
+            self.assertIn('"experiment_finished"', out)
+            # A missing watch folder is a quiet rc 0.
+            rc, _, err = self._run_main(
+                mod, ["--manifest", mp, "--watch-dir",
+                      os.path.join(td, "nope")])
+            self.assertEqual(rc, 0)
+            self.assertIn("no results folder", err)
+            # An unwritable state path answers rc 2.
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--watch-dir", wd,
+                      "--state", os.path.join(
+                          td, "no-dir", "s.json")])
+            self.assertEqual(rc, 2)
+
+    def test_main_falsy_watch_dir_tunables_read_as_default(self):
+        mod = self._module()
+        import os
+        for value in ("", None, False, 0):
+            with self.subTest(watch_dir=repr(value)):
+                with tempfile.TemporaryDirectory() as td:
+                    mp = os.path.join(td, "m.json")
+                    with open(mp, "w", encoding="utf-8") as fh:
+                        json.dump({"name": "lab_results",
+                                   "tunables": {
+                                       "watch_dir": value}}, fh)
+                    rc, _, err = self._run_main(
+                        mod, ["--manifest", mp], cwd=td)
+                    self.assertEqual(rc, 0)
+                    self.assertIn("no results folder at results",
+                                  err)
+
+
+class TestLabResultsWatchDirTunableCrashesInsteadOfReadingTheDefault(
+        unittest.TestCase):
+    """Divergence: a non-string watch_dir tunable
+    crashes lab-results' main() with an uncaught
+    TypeError instead of reading as the documented
+    default folder (or failing quietly), so one
+    bad tunable value kills the whole pass.
+
+    (a) Doc claims: Decision 1, stated in
+        docs/oracle/configuring-oracle.md (lines
+        30-35): "a setting that is present but not
+        usable reads as its documented default and
+        is named in the startup warning, unless the
+        setting is a port, a bind address, a key
+        policy, a paging threshold, a secret, or a
+        security mode" -- watch_dir is none of the
+        refuse class. The documented default is
+        "results": extension.json ships
+        "watch_dir": "results", and main()'s own
+        --watch-dir help reads "(default: the
+        manifest's watch_dir tunable, else
+        ./results)". main() also promises a quiet
+        pass for a folder that is not there: "no
+        results folder at {watch_dir} yet; nothing
+        filed" with rc 0. The sibling string
+        tunables already hunted (backup-freshness
+        watch_dir, pi-health disk_mount) read every
+        non-string shape as their default through
+        their readers.
+
+    (b) How the bug was found: the campaign's
+        second-run hunt (2026-10-24 tick) varied
+        lab-results with the fifteen shapes from
+        the table hunt, feeding each shape as the
+        manifest's watch_dir tunable into main()
+        with no --watch-dir and no --state argument
+        (the state path is derived from watch_dir),
+        run in an empty temp working folder so the
+        documented default would take the quiet
+        no-folder path.
+
+    (c) Behavior actually observed: main() computes
+        watch_dir = args.watch_dir or
+        tunables.get("watch_dir") or "results" and
+        then state_path = args.state or
+        os.path.join(watch_dir,
+        ".lab-results-state.json") with no type
+        cleaning, so every truthy non-string shape
+        -- true, 123, -5, 10**400, 0.5, inf, -inf,
+        NaN, a list and a dict -- raises TypeError
+        ("expected str, bytes or os.PathLike
+        object") uncaught out of main(), instead
+        of reading as "results" or answering a
+        graceful rc. The falsy shapes ("", None,
+        False, 0) already read as the default
+        through the `or` fallback, and a genuine
+        string is honored (the control tests in
+        the coverage class above and below), so
+        the crash is exactly the truthy
+        wrong-type family. This is the campaign's
+        known crash-instead-of-default root-cause
+        family in a new place -- a string tunable
+        on the main() path, not this extension's
+        (already covered) numeric tunables.
+        Observed on 2026-10-24 against current
+        main.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "lab-results",
+            "lab_results.py")
+        spec = importlib.util.spec_from_file_location(
+            "lab_results_watch_dir_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_watch_dir_unusable_shapes_do_not_crash_main(self):
+        mod = self._module()
+        import contextlib
+        import io
+        import os
+        for value in (True, 123, -5, 10 ** 400, 0.5,
+                      float("inf"), float("-inf"), float("nan"),
+                      ["x"], {"x": 1}):
+            with self.subTest(watch_dir=repr(value)):
+                with tempfile.TemporaryDirectory() as td:
+                    mp = os.path.join(td, "m.json")
+                    with open(mp, "w", encoding="utf-8") as fh:
+                        json.dump({"name": "lab_results",
+                                   "tunables": {
+                                       "watch_dir": value}}, fh)
+                    old = os.getcwd()
+                    try:
+                        os.chdir(td)
+                        with contextlib.redirect_stdout(
+                                io.StringIO()), \
+                                contextlib.redirect_stderr(
+                                    io.StringIO()):
+                            rc = mod.main(["--manifest", mp])
+                    finally:
+                        os.chdir(old)
+                    # The documented default folder is
+                    # absent in the temp cwd, so a
+                    # cleaned reader takes the quiet
+                    # no-folder path.
+                    self.assertEqual(rc, 0)
+
+    def test_watch_dir_genuine_and_falsy_shapes_already_quiet(self):
+        # Controls: the shapes that already behave
+        # today and must keep doing so after the
+        # crashing cases are fixed.
+        mod = self._module()
+        import contextlib
+        import io
+        import os
+        for value in ("results", "45", "", None, False, 0):
+            with self.subTest(watch_dir=repr(value)):
+                with tempfile.TemporaryDirectory() as td:
+                    mp = os.path.join(td, "m.json")
+                    with open(mp, "w", encoding="utf-8") as fh:
+                        json.dump({"name": "lab_results",
+                                   "tunables": {
+                                       "watch_dir": value}}, fh)
+                    old = os.getcwd()
+                    try:
+                        os.chdir(td)
+                        with contextlib.redirect_stdout(
+                                io.StringIO()), \
+                                contextlib.redirect_stderr(
+                                    io.StringIO()):
+                            rc = mod.main(["--manifest", mp])
+                    finally:
+                        os.chdir(old)
+                    self.assertEqual(rc, 0)
+
 if __name__ == "__main__":
 
     unittest.main()
