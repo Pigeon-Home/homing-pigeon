@@ -9500,6 +9500,136 @@ class TestLiveReloadBadValueReadsAsDefault(unittest.TestCase):
                 self.assertEqual(cfg[key], want)
 
 
+
+class TestFilesNameStaysInsideWorkdir(unittest.TestCase):
+    """Coverage: every files[] name stays inside the
+    workdir; path traversal is rejected.
+
+    (a) Claim: PROTOCOL.md section 5, item 7 (line
+        356): job-shape validation requires that
+        "every `files[]` name stays inside the
+        workdir", failures producing the -2 rejection
+        result. PROTOCOL.md section 6 (lines
+        378-380): "`files[]` are downloaded over
+        HTTPS into the work dir. `name` must not
+        escape the work dir (path traversal is
+        rejected)."
+
+    (b) How it was hunted: Claude's plan, second-run
+        axis (b) -- string keys with .., trailing
+        slash, symlink, nonexistent and relative
+        paths. On 2026-10-23 this tick probed
+        runner.runner._staged_dest -- the staging
+        check execute_job applies to every files[]
+        name before any download -- inside a
+        temporary work dir holding a symlink to an
+        outside directory, a symlink to an inside
+        directory, and a dangling symlink whose
+        target is outside, plus one end-to-end
+        execute_job rejection check.
+
+    (c) Behavior actually observed: NO divergence.
+        Escapes are rejected with JobRejected:
+        "../escape.txt", "a/../../escape.txt", "..",
+        ".", the absolute "/etc/passwd", a name
+        through the outside symlink, a name through
+        the dangling symlink, the empty string, a
+        NUL-bearing name, and non-string names
+        (None, an int, bytes). Names that resolve
+        inside are accepted with the resolved path:
+        a plain name, a nested relative name,
+        "./a.txt", "a/../b.txt" (collapses inside),
+        a double-slash name, ".../x.txt", "~/x.txt"
+        (a literal directory name, not expanded),
+        a name through the inside symlink, and a
+        nonexistent deep path (staging accepts the
+        path; creating it is the download step's
+        separate concern). A trailing slash collapses
+        to the inner path ("sub/" resolves to the
+        sub path itself, "a.txt/" to a.txt) -- still
+        inside, never an escape. End to end, an
+        execute_job carrying a "../" files[] name is
+        rejected before any download is attempted
+        and nothing is created outside the workdir.
+        Observed on 2026-10-23 against current main.
+    """
+
+    def _work(self, base):
+        import os
+        work = os.path.join(base, "work")
+        os.makedirs(work)
+        outside = os.path.join(base, "outside")
+        os.makedirs(outside)
+        real = os.path.join(work, "real")
+        os.makedirs(real)
+        os.symlink(outside, os.path.join(work, "linkout"))
+        os.symlink(real, os.path.join(work, "linkin"))
+        os.symlink(os.path.join(outside, "missing"),
+                   os.path.join(work, "dangling"))
+        return work
+
+    def test_escapes_are_rejected(self):
+        import os
+        import tempfile
+        from runner import runner as R
+        escapes = ["../escape.txt", "a/../../escape.txt",
+                   "..", ".", "/etc/passwd",
+                   "linkout/evil.txt", "dangling/x.txt",
+                   "", "a\x00b", None, 123, b"a.txt"]
+        with tempfile.TemporaryDirectory() as base:
+            work = self._work(base)
+            for name in escapes:
+                with self.subTest(name=repr(name)):
+                    with self.assertRaises(R.JobRejected):
+                        R._staged_dest(work, name)
+
+    def test_names_inside_are_accepted_and_resolved(self):
+        import os
+        import tempfile
+        from runner import runner as R
+        with tempfile.TemporaryDirectory() as base:
+            work = self._work(base)
+            root = os.path.realpath(work)
+            cases = {
+                "a.txt": "a.txt",
+                "sub/a.txt": os.path.join("sub", "a.txt"),
+                "./a.txt": "a.txt",
+                "a/../b.txt": "b.txt",
+                "a//b.txt": os.path.join("a", "b.txt"),
+                ".../x.txt": os.path.join("...", "x.txt"),
+                "~/x.txt": os.path.join("~", "x.txt"),
+                "linkin/ok.txt": os.path.join("real", "ok.txt"),
+                "no/such/deep.txt": os.path.join(
+                    "no", "such", "deep.txt"),
+                "sub/": "sub",
+                "a.txt/": "a.txt",
+            }
+            for name, rel in cases.items():
+                with self.subTest(name=name):
+                    dest = R._staged_dest(work, name)
+                    self.assertEqual(
+                        dest, os.path.join(root, rel))
+                    self.assertTrue(
+                        dest.startswith(root + os.sep))
+
+    def test_execute_job_rejects_traversal_before_download(self):
+        import os
+        import tempfile
+        from runner import runner as R
+        with tempfile.TemporaryDirectory() as base:
+            job = {"v": 1, "type": "job",
+                   "job_id": "files-name-hunt",
+                   "issued_at": "2026-10-23T00:00:00Z",
+                   "kind": "exec", "interpreter": ["sh"],
+                   "script": "echo hi\n",
+                   "files": [{"name": "../escape.txt",
+                              "url": "https://x.invalid/f"}]}
+            with self.assertRaises(R.JobRejected):
+                R.execute_job({"base_dir": base}, job, base)
+            self.assertFalse(
+                os.path.exists(os.path.join(base, "escape.txt")))
+
+
 if __name__ == "__main__":
 
     unittest.main()
