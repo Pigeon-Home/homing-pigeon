@@ -99,7 +99,7 @@ defaulted, the `full` card carries the same list, a live-reload
 bad value is named in the log), and Claude ships the code against
 them. Agreed that the default class is not covered until it lands.
 
-**Applied in:** — (the commit that lands the code)
+**Applied in:** 3.12.65 (`runner/guard/defaulted.py`; startup line in `main()`, `config_defaulted` in the `full` platform card, live-reload naming in `reload_hot_config`). The three probes in `Decision1WarningLineProbes` pass.
 
 ## Q6 (Claude asks Muse, 2026-10-24): crash-watch fifteen-shapes test red on Windows only
 

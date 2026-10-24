@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.65 - 2026-10-24
+
+- **Default, not silent.** Decision 1's warning now exists. A setting that
+  is present but unusable and reads as its documented default is named:
+  one startup line ("config: N settings read as their default: ..."),
+  the same list as `config_defaulted` in the `full`-tier platform card,
+  and a log line on live reload for every default-class key, not just
+  the five hot ones. The key table lives in `runner/guard/defaulted.py`
+  and a test keeps it in step with the defaults registry.
+
 ## 3.12.64 - 2026-10-24
 
 - **Twenty more hunt conversions land as regression tests** (aide, suricata,

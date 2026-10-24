@@ -141,6 +141,7 @@ _textutil = _load_mod("runner.guard.textutil", "guard.textutil")
 # a usable number, and if not what do I use" -- see confval.py for
 # the fifty-six documented defaults that motivated it.
 _confval = _load_mod("runner.guard.confval", "guard.confval")
+_defaulted = _load_mod("runner.guard.defaulted", "guard.defaulted")
 if _textutil is None:
     raise ImportError("runner/guard/textutil.py is missing")
 _as_str = _textutil._as_str
@@ -2889,8 +2890,13 @@ def pong_platform(cfg):
     versions = [PROTOCOL_VERSION]
     if _protocol_v2 is not None and _protocol_v2.enabled(cfg):
         versions.append(2)
-    return _platformcard.build_card(tier, cfg, protocol_versions=versions,
+    card = _platformcard.build_card(tier, cfg, protocol_versions=versions,
                                     runner_version=__version__)
+    if card is not None and tier == "full" and _defaulted is not None:
+        # Decision 1: the settings that read as their default are
+        # named, at the tier that already tells the SI the most.
+        card["config_defaulted"] = _defaulted.defaulted_keys(cfg)
+    return card
 
 
 def script_filename(interpreter) -> str:
@@ -6946,6 +6952,18 @@ def reload_hot_config(cfg: dict, path: str, state: dict,
         if val != cfg.get(key):
             cfg[key] = val
             changed.append(key)
+    # The rest of the default class: a bad live value reads as the
+    # documented default and is named, like the hot keys above.
+    if _defaulted is not None:
+        for key in _defaulted.defaulted_keys(fresh):
+            if key in HOT_KEYS or key in pinned:
+                continue
+            val = _defaulted.default_for(key)
+            log(f"config reload: invalid {key}={fresh[key]!r} reads as "
+                f"the default {val}", "WARN")
+            if val != cfg.get(key):
+                cfg[key] = val
+                changed.append(key)
     for key in LIVE_KEYS:
         if key in pinned or key not in fresh:
             continue
@@ -10709,6 +10727,12 @@ def main() -> int:
     if _err:
         print(f"config error: {_err}", file=sys.stderr)
         return 2
+    # Decision 1 ("default, not silent"): one line names every
+    # present-but-unusable setting that reads as its default.
+    if _defaulted is not None:
+        _line = _defaulted.summary_line(_defaulted.defaulted_keys(cfg))
+        if _line:
+            log(_line, "WARN")
     # A bad key policy or port is a config error. Checked here so the
     # poll loop is not the thing that discovers it, every cycle.
     try:

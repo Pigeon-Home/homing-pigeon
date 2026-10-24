@@ -592,5 +592,35 @@ class Decision1WarningLineProbes(unittest.TestCase):
         self.assertEqual(cfg.get("poll_interval_sec"), 20)
 
 
+class DefaultedTableMatchesRegistryTests(unittest.TestCase):
+    """runner/guard/defaulted.py (the runtime table behind the
+    Decision-1 warning line) must agree with the registry rows."""
+
+    def test_every_core_numeric_confval_row_is_in_the_table(self):
+        from runner.guard import defaulted
+        want = {}
+        for r in ROWS:
+            if (r["policy"] == "default" and r["scope"] == "core"
+                    and r["probe"] == "confval"
+                    and r["key"].isidentifier()):
+                want[r["key"]] = (r["default"], r["lo"], r["hi"])
+        got = dict(defaulted.NUMERIC)
+        for k, v in defaulted.ENUM.items():
+            got[k] = (v[0], None, None)
+        self.assertEqual(got, want)
+
+    def test_unusable_shapes_are_named_and_usable_ones_are_not(self):
+        from runner.guard import defaulted
+        for bad in ("x", "", True, False, float("inf"), float("nan"),
+                    10 ** 400, [1], {"a": 1}, -5):
+            self.assertTrue(
+                defaulted.is_defaulted("max_job_age_sec", bad), repr(bad))
+        for good in (1, 3600, "45", 2.5):
+            self.assertFalse(
+                defaulted.is_defaulted("max_job_age_sec", good), repr(good))
+        self.assertFalse(defaulted.is_defaulted("max_job_age_sec", None))
+        self.assertIsNone(defaulted.summary_line([]))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
