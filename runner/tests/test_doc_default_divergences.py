@@ -17420,6 +17420,101 @@ class TestPromoteAfterFifteenShapesAtReader(unittest.TestCase):
         self.assertEqual(
             promote_after({"oracle_learning_promote_after": 0.5}), 2)
 
+class TestReviewScanBytesFifteenShapesAtReader(unittest.TestCase):
+    """Second-run hunt coverage: review_scan_bytes
+    itself varied with the fifteen shapes at its single
+    reader (runner/review.py: _review_scan_bytes, through
+    confval.integer lo=1, returning an int) for the first
+    time at reader level. The row's registry-named class
+    (TestBooleanReviewScanBytesDefaultsTo65536) probed only
+    the boolean shape.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 79):
+        "`review_scan_bytes` -- how many bytes of the
+        script the job reviewer (docs/job-review.md) scans
+        for file-name references. Default 65536."
+        Registry row "review_scan_bytes" (kind integer,
+        default 65536, reader
+        runner/review.py:_review_scan_bytes,
+        policy default under Decision 1, lo=1, hi=None).
+
+    (b) How it was hunted: step-8 Target 6 (core rows
+        covered only for the shapes their classes
+        exercised). This tick probed _review_scan_bytes
+        with the fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false, zero,
+        negative, the explicit default, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong containers (list and dict) --
+        plus genuine values, a sub-1 fractional, and
+        non-dict configs.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape reads as the documented
+        default 65536 -- omitted, null, empty string,
+        true, false, zero, negative, non-numeric string,
+        huge-int, inf, -inf, NaN, list and dict alike,
+        and a non-dict config (None, a list, a string,
+        or an int) likewise reads as 65536. Zero and
+        negative are defaults here, not literal byte
+        counts: the reader's bound is lo=1. Genuine
+        values are honored exactly: 1 reads as 1, 3 and
+        10 read as themselves, the numeric string "3"
+        reads as 3, fractional 2.5 truncates via int()
+        to 2 and "2.5" likewise, and 9999 and 100000
+        are honored at the reader (registry hi=None).
+        A sub-1 fractional (0.5) reads as the default,
+        since it truncates below lo=1. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes keep
+        reading as the documented default and genuine
+        values keep being honored. If a shape above ever
+        stops behaving as docs/configuring-oracle.md
+        states, this test is the failing record of that
+        change.
+    """
+
+    def test_fifteen_shapes_read_as_default(self):
+        from runner.review import _review_scan_bytes
+        unusable = [None, "", True, False, 0, -5,
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        cases = [("omitted", {})]
+        cases += [(repr(v), {"review_scan_bytes": v})
+                  for v in unusable]
+        cases.append(("explicit-default",
+                      {"review_scan_bytes": 65536}))
+        for name, cfg in cases:
+            with self.subTest(shape=name):
+                self.assertEqual(_review_scan_bytes(cfg), 65536)
+
+    def test_non_dict_config_reads_as_default(self):
+        from runner.review import _review_scan_bytes
+        self.assertEqual(_review_scan_bytes(None), 65536)
+        self.assertEqual(_review_scan_bytes(["x"]), 65536)
+        self.assertEqual(_review_scan_bytes("bogus"), 65536)
+        self.assertEqual(_review_scan_bytes(42), 65536)
+
+    def test_genuine_values_are_honored(self):
+        from runner.review import _review_scan_bytes
+        for value, expected in ((1, 1), (3, 3),
+                                ("3", 3), (2.5, 2),
+                                ("2.5", 2), (10, 10),
+                                (9999, 9999), (100000, 100000)):
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    _review_scan_bytes(
+                        {"review_scan_bytes": value}),
+                    expected)
+
+    def test_sub_one_fraction_reads_as_default(self):
+        from runner.review import _review_scan_bytes
+        self.assertEqual(
+            _review_scan_bytes({"review_scan_bytes": 0.5}), 65536)
+
 if __name__ == "__main__":
 
     unittest.main()
