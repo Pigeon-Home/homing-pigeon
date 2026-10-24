@@ -36546,6 +36546,641 @@ class TestResourceSentinelReadingsStateAndMainFifteenShapes(unittest.TestCase):
             self.assertEqual(rc, 2)
             self.assertEqual(out.getvalue(), "")
 
+class TestJobFuzzStateClassesAndTriageFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: job-fuzz's outcome
+    classes (_exit_class / _seed_class), its state
+    cleaning (_clean_state / _clean_distilled /
+    _clean_energy / _clean_buckets), the distilled
+    seed adapter (_distilled_seed), the seed-energy
+    score (_seed_score), the hard-failure bucket key
+    (_normalize_reason), the idle gate (_box_idle),
+    the runner-command split (_split_cmd), the
+    string tunable reader (_str_tunable / _tunables)
+    and the archive prune (_prune_archive) varied
+    with the fifteen shapes for the first time
+    (step-8 Target 5 / family (b) -- job-fuzz's
+    earlier classes cover only the huge-int float
+    tunables crash and the zero / negative tunable
+    readings through decide(); its state cleaners,
+    class helpers and triage surface had no
+    fifteen-shapes class before this one).
+
+    (a) Doc claims: the module docstring states the
+    corpus is bounded by count and by age with the
+    oldest seeds falling off first, the triage
+    memory is state "bounded like everything else
+    here", a distilled variant is promoted into a
+    bounded distilled tier (distilled_max_jobs,
+    default 50, same age bound) and later mutated
+    as a seed in its own right whose recorded class
+    is authoritative, hard failures file once per
+    reason bucket -- "the normalized refusal/error
+    reason, so ten seeds that hit the same
+    validation hole file one signal" -- seed
+    selection spends the pass on the seeds with the
+    best historical yield first, a campaign runs
+    only when no job record has landed within
+    idle_after_sec, every variant is archived and
+    the archive is "pruned to max_archived_variants,
+    default 200, oldest first", and with runner_cmd
+    empty the sense maintains its corpus and files
+    nothing. The README restates the corpus,
+    campaign, idle and archive bounds. _exit_class's
+    docstring names the five classes (refused /
+    error / timeout / exit0 / nonzero) and states
+    the seed baseline uses the same classes.
+
+    (b) How this was probed: on 2026-10-24 the
+    helpers above were probed directly with the
+    table hunt's fifteen shapes (omitted-equivalent
+    empty list, null, empty string, true, false,
+    zero, negative, numeric string, non-numeric
+    string, huge-int (10**400), inf, -inf, NaN,
+    list, dict) at every argument and field: each
+    _exit_class argument, the seed's force_class /
+    exit_code / timed_out, every state field and
+    every corpus / distilled / energy / bucket
+    entry field, the cleaners' caps (genuine 0, 1,
+    2 and -1 included), every _seed_score counter,
+    the reason and class arguments of
+    _normalize_reason (digit runs, case, runs of
+    whitespace and a 100-character reason
+    included), the idle gate's three numeric
+    arguments, runner_cmd strings (empty, quoted,
+    unclosed quote) and _prune_archive against a
+    temp archive at caps 2 and 0 and against
+    missing and file-shaped directories.
+
+    (c) Behavior actually observed: NO divergence
+    in this class. _exit_class honors only the
+    exact stage strings "refused" and "error"
+    (either wins even over a truthy timed_out);
+    every other stage shape falls through to the
+    timed_out test, which is plain truthiness
+    (any truthy shape -- a non-empty string, a
+    huge int, inf, NaN, a non-empty list or dict
+    -- reads as a timeout; every falsy shape does
+    not), and then to the exit code: a usable
+    finite number whose int is 0 (0 and 0.0) reads
+    exit0 and every other shape or value reads
+    nonzero; strings are never parsed. _seed_class
+    returns force_class only when it is exactly
+    one of the five classes and otherwise derives
+    the class from exit_code / timed_out.
+    _clean_state reads every non-dict state as the
+    fresh state; a corpus entry survives only with
+    a usable saved_at (kept as a float, zero and a
+    negative included), its exit_class is any
+    string kept verbatim (even "120" or "bogus")
+    and its digest any string, every non-string
+    reading as ""; novelty keeps only the string
+    members of a genuine list and reads every
+    non-list as []; filed keeps only string keys
+    with usable number values, read as floats; the
+    three counters (campaign_seed, campaigns,
+    dropped_total) read every unusable shape as 0,
+    truncate a genuine fraction and keep a
+    negative literally. The corpus and distilled
+    caps keep the newest entries by saved_at; at
+    the cleaner level a cap of 0 keeps everything
+    (the [-0:] slice) and -1 drops only the
+    oldest, but decide() guards both caps to
+    their defaults (200 / 50) below 1, so that
+    slice quirk is unreachable from a manifest.
+    _clean_distilled drops an entry whose script
+    is not a non-empty string or whose saved_at
+    is unusable, truncates the script to 500
+    characters, reads an unusable exit_code as
+    None, reads timed_out by plain truthiness,
+    and -- unlike the corpus cleaner -- keeps
+    exit_class only when it is one of the five
+    classes, else "". _distilled_seed returns
+    None for a non-dict entry or a bad script,
+    defaults an unusable saved_at to 0.0 instead
+    of dropping the entry, keeps the script
+    untruncated, keeps the entry id verbatim
+    (a non-string id included), and maps
+    exit_class to force_class under the same
+    five-class rule. _clean_energy and
+    _clean_buckets read every non-dict raw value
+    as empty; energy counters read unusable
+    shapes as 0, truncate fractions and keep
+    negatives; a bucket's count and last read
+    unusable shapes as 0 / 0.0 and its examples
+    keep only the first three string members of
+    a genuine list, every non-list reading as
+    []. _seed_score reads a non-dict entry as
+    0.5, counts every unusable counter as 0 and
+    applies (3*novel + 2*hard + diverged + 1) /
+    (runs + 2) to the truncated counters, so an
+    unusable runs with one of each yield gives
+    3.5 and a negative counter gives a negative
+    score. _normalize_reason buckets every
+    non-string or blank reason by class alone,
+    lowercases, collapses whitespace and flattens
+    each digit run to a single "#" ("120" alone
+    buckets as "#"), truncating at 80 characters.
+    _box_idle (whose callers pass only a clock
+    time, a scan mtime and a sanitized tunable)
+    reads a falsy newest-job time as idle, reads
+    the exact boundary (now - newest ==
+    idle_after_sec) as idle, an infinite newest
+    as not idle, a -inf newest as idle and a NaN
+    newest or now as idle, the comparison simply
+    not holding. _str_tunable keeps only a
+    genuine string (the empty string included)
+    and reads every other shape as the default;
+    _tunables reads a non-dict manifest or a
+    non-dict tunables value as {}. _split_cmd on
+    POSIX is shlex: an empty command splits to
+    [], quotes group, and an unclosed quote
+    raises ValueError, which _run_one_variant
+    catches and reports as a "bad runner_cmd"
+    error outcome. _prune_archive keeps the
+    newest cap .json files by mtime, never
+    touches other files, deletes every .json at
+    cap 0, and reads a missing or file-shaped
+    directory as nothing to do. Observed on
+    2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+    divergence: it stays green as long as the
+    readings above keep holding. If a shape ever
+    stops behaving as described, this test is the
+    failing record of that change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+    _UNUSABLE = {"empty-list", "null", "empty-string",
+                 "true", "false", "numeric-string",
+                 "non-numeric-string", "huge-int", "inf",
+                 "-inf", "nan", "list", "dict"}
+    _FRESH = {"corpus": {}, "novelty": [], "filed": {},
+              "distilled": {}, "energy": {}, "buckets": {},
+              "campaign_seed": 0, "campaigns": 0,
+              "dropped_total": 0}
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "job-fuzz",
+            "job_fuzz.py")
+        spec = importlib.util.spec_from_file_location(
+            "job_fuzz_state_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_exit_class_fifteen_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(kind="stage", shape=name):
+                self.assertEqual(
+                    mod._exit_class(value, 0, False), "exit0")
+            with self.subTest(kind="exit", shape=name):
+                self.assertEqual(
+                    mod._exit_class("ran", value, False),
+                    "exit0" if name == "zero" else "nonzero")
+            with self.subTest(kind="timed-out", shape=name):
+                got = mod._exit_class("ran", 0, value)
+                if name in ("true", "negative",
+                            "numeric-string",
+                            "non-numeric-string", "huge-int",
+                            "inf", "-inf", "nan", "list",
+                            "dict"):
+                    self.assertEqual(got, "timeout")
+                else:
+                    self.assertEqual(got, "exit0")
+        self.assertEqual(mod._exit_class(
+            "refused", 0, True), "refused")
+        self.assertEqual(mod._exit_class(
+            "error", 0, True), "error")
+        self.assertEqual(mod._exit_class(
+            "ran", 0.0, False), "exit0")
+        self.assertEqual(mod._exit_class(
+            "ran", 3, False), "nonzero")
+        self.assertEqual(mod._exit_class(
+            "ran", None, None), "nonzero")
+
+    def test_seed_class_fifteen_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(kind="force", shape=name):
+                self.assertEqual(mod._seed_class(
+                    {"force_class": value, "exit_code": 0,
+                     "timed_out": False}), "exit0")
+        for cls in ("refused", "error", "timeout", "exit0",
+                    "nonzero"):
+            with self.subTest(kind="force-genuine", cls=cls):
+                self.assertEqual(mod._seed_class(
+                    {"force_class": cls, "exit_code": 0,
+                     "timed_out": False}), cls)
+        self.assertEqual(mod._seed_class(
+            {"exit_code": 0}), "exit0")
+        self.assertEqual(mod._seed_class(
+            {"exit_code": 2}), "nonzero")
+        self.assertEqual(mod._seed_class(
+            {"timed_out": True, "exit_code": 0}), "timeout")
+        self.assertEqual(mod._seed_class({}), "nonzero")
+
+    def test_clean_state_fifteen_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(kind="state", shape=name):
+                self.assertEqual(
+                    mod._clean_state(value, 200), self._FRESH)
+        good = {"corpus": {"a": {"saved_at": 100,
+                                 "exit_class": "exit0",
+                                 "digest": "d"}},
+                "novelty": ["k1", 5, "k2", None],
+                "filed": {"f1": 100, "f2": "x", "f3": True},
+                "campaign_seed": 7, "campaigns": 3,
+                "dropped_total": 2}
+        cleaned = mod._clean_state(good, 200)
+        self.assertEqual(cleaned["corpus"], {"a": {
+            "saved_at": 100.0, "exit_class": "exit0",
+            "digest": "d"}})
+        self.assertEqual(cleaned["novelty"], ["k1", "k2"])
+        self.assertEqual(cleaned["filed"], {"f1": 100.0})
+        self.assertEqual(
+            (cleaned["campaign_seed"], cleaned["campaigns"],
+             cleaned["dropped_total"]), (7, 3, 2))
+        for field in ("corpus", "novelty", "filed",
+                      "distilled", "energy", "buckets"):
+            for name, value in self._SHAPES:
+                with self.subTest(kind=field, shape=name):
+                    got = mod._clean_state(
+                        {field: value}, 200)[field]
+                    if field == "novelty" and name == "list":
+                        self.assertEqual(got, ["x"])
+                    elif field == "filed" and name == "dict":
+                        self.assertEqual(got, {"x": 1.0})
+                    else:
+                        self.assertEqual(
+                            got, [] if field == "novelty"
+                            else {})
+        for field in ("campaign_seed", "campaigns",
+                      "dropped_total"):
+            for name, value in self._SHAPES:
+                with self.subTest(kind=field, shape=name):
+                    got = mod._clean_state(
+                        {field: value}, 200)[field]
+                    self.assertEqual(
+                        got, -5 if name == "negative" else 0)
+            with self.subTest(kind=field, shape="fraction"):
+                self.assertEqual(mod._clean_state(
+                    {field: 2.9}, 200)[field], 2)
+
+    def test_clean_state_corpus_entries_and_caps(self):
+        mod = self._module()
+        base = {"saved_at": 100, "exit_class": "exit0",
+                "digest": "d"}
+        for name, value in self._SHAPES:
+            with self.subTest(kind="saved-at", shape=name):
+                got = mod._clean_state({"corpus": {
+                    "a": dict(base, saved_at=value)}}, 200)
+                if name in ("zero", "negative"):
+                    self.assertEqual(
+                        got["corpus"]["a"]["saved_at"],
+                        float(value))
+                else:
+                    self.assertEqual(got["corpus"], {})
+            with self.subTest(kind="exit-class", shape=name):
+                got = mod._clean_state({"corpus": {
+                    "a": dict(base, exit_class=value)}}, 200)
+                self.assertEqual(
+                    got["corpus"]["a"]["exit_class"],
+                    value if name in ("numeric-string",
+                                      "non-numeric-string")
+                    else "")
+            with self.subTest(kind="digest", shape=name):
+                got = mod._clean_state({"corpus": {
+                    "a": dict(base, digest=value)}}, 200)
+                self.assertEqual(
+                    got["corpus"]["a"]["digest"],
+                    value if name in ("numeric-string",
+                                      "non-numeric-string")
+                    else "")
+        self.assertEqual(mod._clean_state(
+            {"corpus": {"a": 5, "b": {"saved_at": 1}}},
+            200)["corpus"],
+            {"b": {"saved_at": 1.0, "exit_class": "",
+                   "digest": ""}})
+        self.assertEqual(mod._clean_state(
+            {"corpus": {1: {"saved_at": 1}}}, 200)["corpus"],
+            {})
+        three = {str(i): {"saved_at": i} for i in range(3)}
+        self.assertEqual(list(mod._clean_state(
+            {"corpus": three}, 2)["corpus"]), ["1", "2"])
+        self.assertEqual(list(mod._clean_state(
+            {"corpus": dict(three)}, 0)["corpus"]),
+            ["0", "1", "2"])
+        self.assertEqual(list(mod._clean_state(
+            {"corpus": dict(three)}, -1)["corpus"]),
+            ["1", "2"])
+
+    def test_clean_distilled_fifteen_shapes(self):
+        mod = self._module()
+        ent = {"script": "echo hi", "saved_at": 100,
+               "exit_code": 0, "timed_out": False,
+               "exit_class": "exit0", "digest": "d"}
+        self.assertEqual(mod._clean_distilled(
+            {"x": ent}, 50), {"x": {
+                "script": "echo hi", "exit_code": 0,
+                "timed_out": False, "exit_class": "exit0",
+                "digest": "d", "saved_at": 100.0}})
+        for name, value in self._SHAPES:
+            with self.subTest(kind="raw", shape=name):
+                self.assertEqual(
+                    mod._clean_distilled(value, 50), {})
+            with self.subTest(kind="script", shape=name):
+                got = mod._clean_distilled(
+                    {"x": dict(ent, script=value)}, 50)
+                if name in ("numeric-string",
+                            "non-numeric-string"):
+                    self.assertEqual(
+                        got["x"]["script"], value)
+                else:
+                    self.assertEqual(got, {})
+            with self.subTest(kind="saved-at", shape=name):
+                got = mod._clean_distilled(
+                    {"x": dict(ent, saved_at=value)}, 50)
+                if name in ("zero", "negative"):
+                    self.assertEqual(
+                        got["x"]["saved_at"], float(value))
+                else:
+                    self.assertEqual(got, {})
+            with self.subTest(kind="exit-code", shape=name):
+                got = mod._clean_distilled(
+                    {"x": dict(ent, exit_code=value)}, 50)
+                self.assertEqual(
+                    got["x"]["exit_code"],
+                    value if name in ("zero", "negative")
+                    else None)
+            with self.subTest(kind="exit-class", shape=name):
+                got = mod._clean_distilled(
+                    {"x": dict(ent, exit_class=value)}, 50)
+                self.assertEqual(got["x"]["exit_class"], "")
+            with self.subTest(kind="digest", shape=name):
+                got = mod._clean_distilled(
+                    {"x": dict(ent, digest=value)}, 50)
+                self.assertEqual(
+                    got["x"]["digest"],
+                    value if name in ("numeric-string",
+                                      "non-numeric-string")
+                    else "")
+        self.assertEqual(len(mod._clean_distilled(
+            {"x": dict(ent, script="y" * 600)},
+            50)["x"]["script"]), 500)
+        two = {"a": dict(ent, saved_at=1),
+               "b": dict(ent, saved_at=2)}
+        self.assertEqual(list(mod._clean_distilled(
+            two, 1)), ["b"])
+        self.assertEqual(list(mod._clean_distilled(
+            dict(two), 0)), ["a", "b"])
+
+    def test_distilled_seed_fifteen_shapes(self):
+        mod = self._module()
+        ent = {"script": "echo hi", "saved_at": 100,
+               "exit_code": 0, "timed_out": False,
+               "exit_class": "exit0", "digest": "d"}
+        self.assertEqual(mod._distilled_seed("id1", ent), {
+            "job_id": "id1", "script": "echo hi",
+            "exit_code": 0, "timed_out": False,
+            "force_class": "exit0", "digest": "d",
+            "saved_at": 100.0, "distilled": True})
+        for name, value in self._SHAPES:
+            with self.subTest(kind="entry", shape=name):
+                self.assertIsNone(
+                    mod._distilled_seed("id1", value))
+            with self.subTest(kind="script", shape=name):
+                got = mod._distilled_seed(
+                    "id1", dict(ent, script=value))
+                if name in ("numeric-string",
+                            "non-numeric-string"):
+                    self.assertEqual(got["script"], value)
+                else:
+                    self.assertIsNone(got)
+            with self.subTest(kind="saved-at", shape=name):
+                got = mod._distilled_seed(
+                    "id1", dict(ent, saved_at=value))
+                self.assertEqual(
+                    got["saved_at"],
+                    float(value) if name in ("zero",
+                                             "negative")
+                    else 0.0)
+            with self.subTest(kind="timed-out", shape=name):
+                got = mod._distilled_seed(
+                    "id1", dict(ent, timed_out=value))
+                self.assertEqual(
+                    got["timed_out"],
+                    name in ("true", "negative",
+                             "numeric-string",
+                             "non-numeric-string",
+                             "huge-int", "inf", "-inf",
+                             "nan", "list", "dict"))
+            with self.subTest(kind="exit-class", shape=name):
+                got = mod._distilled_seed(
+                    "id1", dict(ent, exit_class=value))
+                self.assertEqual(got["force_class"], "")
+        self.assertEqual(mod._distilled_seed(
+            "id1", dict(ent, script="y" * 600))["script"],
+            "y" * 600)
+        self.assertEqual(mod._distilled_seed(
+            5, ent)["job_id"], 5)
+
+    def test_clean_energy_and_buckets_fifteen_shapes(self):
+        mod = self._module()
+        self.assertEqual(mod._clean_energy({"s": {
+            "runs": 3, "novel": 1, "hard": 2,
+            "diverged": 1}}), {"s": {
+                "runs": 3, "novel": 1, "hard": 2,
+                "diverged": 1}})
+        self.assertEqual(mod._clean_energy({"s": {
+            "runs": 2.9, "novel": -3, "hard": 0,
+            "diverged": 0}}), {"s": {
+                "runs": 2, "novel": -3, "hard": 0,
+                "diverged": 0}})
+        for name, value in self._SHAPES:
+            with self.subTest(kind="energy-raw", shape=name):
+                self.assertEqual(mod._clean_energy(value),
+                                 {})
+            with self.subTest(kind="buckets-raw", shape=name):
+                self.assertEqual(mod._clean_buckets(value),
+                                 {})
+            for field in ("runs", "novel", "hard",
+                          "diverged"):
+                with self.subTest(kind="energy", shape=name,
+                                  field=field):
+                    entry = {"runs": 1, "novel": 1,
+                             "hard": 1, "diverged": 1}
+                    entry[field] = value
+                    self.assertEqual(
+                        mod._clean_energy(
+                            {"s": entry})["s"][field],
+                        -5 if name == "negative" else 0)
+        self.assertEqual(mod._clean_buckets({"b": {
+            "count": 3, "last": 100,
+            "examples": ["a", 5, "b", "c", "d"]}}),
+            {"b": {"count": 3, "last": 100.0,
+                   "examples": ["a", "b", "c"]}})
+        for name, value in self._SHAPES:
+            with self.subTest(kind="count", shape=name):
+                got = mod._clean_buckets({"b": {
+                    "count": value, "last": 1,
+                    "examples": []}})
+                self.assertEqual(
+                    got["b"]["count"],
+                    value if name in ("zero", "negative")
+                    else 0)
+            with self.subTest(kind="last", shape=name):
+                got = mod._clean_buckets({"b": {
+                    "count": 1, "last": value,
+                    "examples": []}})
+                self.assertEqual(
+                    got["b"]["last"],
+                    float(value) if name in ("zero",
+                                             "negative")
+                    else 0.0)
+            with self.subTest(kind="examples", shape=name):
+                got = mod._clean_buckets({"b": {
+                    "count": 1, "last": 1,
+                    "examples": value}})
+                self.assertEqual(
+                    got["b"]["examples"],
+                    ["x"] if name == "list" else [])
+
+    def test_seed_score_fifteen_shapes(self):
+        mod = self._module()
+        base = {"runs": 10, "novel": 1, "hard": 1,
+                "diverged": 1}
+        self.assertAlmostEqual(
+            mod._seed_score(base), 7.0 / 12.0)
+        self.assertEqual(mod._seed_score({}), 0.5)
+        self.assertEqual(mod._seed_score([]), 0.5)
+        self.assertEqual(mod._seed_score(None), 0.5)
+        expected = {"runs": (3.5, -7.0 / 3.0),
+                    "novel": (1.0 / 3.0, -11.0 / 12.0),
+                    "hard": (5.0 / 12.0, -5.0 / 12.0),
+                    "diverged": (0.5, 1.0 / 12.0)}
+        for field, (unusable, negative) in expected.items():
+            for name, value in self._SHAPES:
+                with self.subTest(field=field, shape=name):
+                    entry = dict(base)
+                    entry[field] = value
+                    want = negative if name == "negative" \
+                        else unusable
+                    self.assertAlmostEqual(
+                        mod._seed_score(entry), want)
+        self.assertEqual(mod._seed_score(
+            {"runs": 2.9, "novel": 1.9, "hard": 0,
+             "diverged": 0}), 1.0)
+
+    def test_normalize_reason_fifteen_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                got = mod._normalize_reason(value, "error")
+                if name == "numeric-string":
+                    self.assertEqual(got, "#")
+                elif name == "non-numeric-string":
+                    self.assertEqual(got, "bogus")
+                else:
+                    self.assertEqual(got, "error")
+        self.assertEqual(mod._normalize_reason(
+            "Error 123 at  45 X9", "error"),
+            "error # at # x#")
+        self.assertEqual(mod._normalize_reason(
+            "   ", "refused"), "refused")
+        self.assertEqual(mod._normalize_reason(
+            "No Digits HERE", "timeout"),
+            "no digits here")
+        self.assertEqual(mod._normalize_reason(
+            "exit 007", "nonzero"), "exit #")
+        self.assertEqual(len(mod._normalize_reason(
+            "a" * 100, "error")), 80)
+
+    def test_box_idle_split_and_str_tunable(self):
+        mod = self._module()
+        self.assertTrue(mod._box_idle(1000, 100, 600))
+        self.assertFalse(mod._box_idle(1000, 500, 600))
+        self.assertTrue(mod._box_idle(1000, 400, 600))
+        for falsy in (None, 0, "", [], False):
+            with self.subTest(kind="newest-falsy",
+                              value=falsy):
+                self.assertTrue(
+                    mod._box_idle(1000, falsy, 600))
+        self.assertFalse(mod._box_idle(
+            1000, float("inf"), 600))
+        self.assertTrue(mod._box_idle(
+            1000, float("-inf"), 600))
+        self.assertTrue(mod._box_idle(
+            1000, float("nan"), 600))
+        self.assertTrue(mod._box_idle(
+            float("nan"), 100, 600))
+        self.assertEqual(mod._split_cmd(""), [])
+        self.assertEqual(mod._split_cmd(
+            "python3 runner.py --run-variant {variant}"),
+            ["python3", "runner.py", "--run-variant",
+             "{variant}"])
+        self.assertEqual(mod._split_cmd('a "b c" d'),
+                         ["a", "b c", "d"])
+        with self.assertRaises(ValueError):
+            mod._split_cmd('unclosed "quote')
+        for name, value in self._SHAPES:
+            with self.subTest(kind="str-tunable",
+                              shape=name):
+                self.assertEqual(
+                    mod._str_tunable({"k": value}, "k",
+                                     "DEF"),
+                    value if name in ("empty-string",
+                                      "numeric-string",
+                                      "non-numeric-string")
+                    else "DEF")
+            with self.subTest(kind="tunables", shape=name):
+                self.assertEqual(mod._tunables(value), {})
+                self.assertEqual(
+                    mod._tunables({"tunables": value}),
+                    {"x": 1} if name == "dict" else {})
+        self.assertEqual(
+            mod._str_tunable({"k": ""}, "k", "DEF"), "")
+
+    def test_prune_archive(self):
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as td:
+            for i in range(5):
+                p = os.path.join(td, f"f{i}.json")
+                with open(p, "w", encoding="utf-8") as fh:
+                    fh.write("{}")
+                os.utime(p, (1000 + i, 1000 + i))
+            note = os.path.join(td, "note.txt")
+            with open(note, "w", encoding="utf-8") as fh:
+                fh.write("x")
+            mod._prune_archive(td, 2)
+            self.assertEqual(sorted(os.listdir(td)),
+                             ["f3.json", "f4.json",
+                              "note.txt"])
+            mod._prune_archive(td, 0)
+            self.assertEqual(sorted(os.listdir(td)),
+                             ["note.txt"])
+            self.assertIsNone(mod._prune_archive(
+                os.path.join(td, "nope"), 3))
+            self.assertIsNone(mod._prune_archive(note, 3))
+
 if __name__ == "__main__":
 
     unittest.main()
