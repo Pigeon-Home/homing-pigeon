@@ -4,7 +4,7 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## Unreleased
+## 3.12.59 - 2026-10-24
 
 - **The suites run under a wall clock that names the test.**
   `tools/suite_wall_clock.py` is `python -m unittest` with a
