@@ -9943,6 +9943,188 @@ class TestListKeysWrongElementEmptyAndScalarListShapes(unittest.TestCase):
                     T.enabled_transports({"transports": bad})
 
 
+
+class TestWorkspaceRootSymlinkCountsWorkspaceFilesAsOutside(unittest.TestCase):
+    """Divergence: a workspace_root given through a
+    symlink counts the workspace's own files as
+    outside it, so a change inside the workspace is
+    reported as a confinement violation.
+
+    (a) Claim: PROTOCOL.md section 9.4 (lines
+        624-635): "`workspace_root`: absolute path
+        (e.g. `/home/user/workspace`). When set, it
+        names the root the confinement snapshot
+        watches. ... The Oracle snapshots file
+        metadata outside `workspace_root` before and
+        after." "`confined_to_workspace` reports only
+        files outside both `workspace_root` and the
+        runner's own tree." "`confined_to_workspace`
+        means no file outside `workspace_root` was
+        created or modified during the job."
+
+    (b) How it was hunted: Claude's plan, second-run
+        axis (b) -- string keys with .., trailing
+        slash, symlink, nonexistent and relative
+        paths. On 2026-10-24 this tick probed
+        runner.runner.snapshot_outside and
+        runner.runner.confinement_violated (the
+        confinement snapshot pair the poll loop
+        builds `confined` from) in a temporary tree
+        holding a workspace directory, a sibling
+        file outside it, and a symlink to the
+        workspace, and, for the other path-string
+        config key, runner.extensions
+        .extensions_dir_for against
+        runner.transports._extensions_dir_for.
+
+    (c) Behavior actually observed: DIVERGENCE on
+        the symlink shape only. The plain absolute
+        path, the same path with a trailing slash,
+        a relative path, and a path with a `..`
+        segment that collapses back onto the
+        workspace all snapshot only the sibling
+        file; a nonexistent path, the empty string,
+        None and non-string values snapshot nothing,
+        and "/" is refused (also nothing). The two
+        extensions_dir readers agree on every
+        config shape probed (unset, empty,
+        whitespace, relative, trailing slash, `..`,
+        `./`, absolute, None, non-string). But
+        snapshot_outside given the symlink path
+        returned BOTH the sibling file and the
+        workspace's own inside file: the walk
+        prunes roots by os.path.abspath equality,
+        the walked root is the real directory, and
+        abspath never resolves the symlink, so the
+        workspace is never pruned. Writing to the
+        inside file between the two snapshots then
+        makes confinement_violated return True --
+        a job that changed only a file inside its
+        own workspace is attested
+        confined_to_workspace ok=False,
+        reason=violation_detected. Observed on
+        2026-10-24 against current main.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _tree(self, base):
+        import os
+        ws = os.path.join(base, "ws")
+        os.makedirs(ws)
+        with open(os.path.join(ws, "inside.txt"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("inside\n")
+        with open(os.path.join(base, "sibling.txt"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("outside\n")
+        link = os.path.join(base, "ws_link")
+        os.symlink(ws, link)
+        return ws, link
+
+    def _names(self, snap):
+        import os
+        return sorted(os.path.basename(p) for p in snap)
+
+    @unittest.skipUnless(__import__("os").name == "posix",
+                         "exec jobs are POSIX sh scripts")
+    def test_plain_trailing_relative_and_dotdot_exclude_workspace(self):
+        import os
+        import tempfile
+        from runner import runner as R
+        with tempfile.TemporaryDirectory() as base:
+            ws, _link = self._tree(base)
+            self.assertEqual(
+                self._names(R.snapshot_outside(ws)),
+                ["sibling.txt"])
+            self.assertEqual(
+                self._names(R.snapshot_outside(ws + "/")),
+                ["sibling.txt"])
+            self.assertEqual(
+                self._names(R.snapshot_outside(
+                    os.path.join(ws, "..", "ws"))),
+                ["sibling.txt"])
+            cwd = os.getcwd()
+            try:
+                os.chdir(base)
+                self.assertEqual(
+                    self._names(R.snapshot_outside("ws")),
+                    ["sibling.txt"])
+            finally:
+                os.chdir(cwd)
+
+    @unittest.skipUnless(__import__("os").name == "posix",
+                         "exec jobs are POSIX sh scripts")
+    def test_unusable_workspace_roots_snapshot_nothing(self):
+        import os
+        import tempfile
+        from runner import runner as R
+        with tempfile.TemporaryDirectory() as base:
+            ws, _link = self._tree(base)
+            for bad in (os.path.join(base, "nope"), "", None,
+                        123, ["x"], True, "/"):
+                with self.subTest(workspace_root=repr(bad)):
+                    self.assertEqual(
+                        R.snapshot_outside(bad), {})
+
+    @unittest.skipUnless(__import__("os").name == "posix",
+                         "exec jobs are POSIX sh scripts")
+    def test_extensions_dir_readers_agree_on_string_shapes(self):
+        from runner import extensions as E
+        from runner import transports as T
+        cases = [
+            ({}, "/b"), ({"extensions_dir": ""}, "/b"),
+            ({"extensions_dir": "   "}, "/b"),
+            ({"extensions_dir": "ext"}, "/b"),
+            ({"extensions_dir": "ext/"}, "/b"),
+            ({"extensions_dir": "../ext"}, "/b"),
+            ({"extensions_dir": "./ext"}, "/b"),
+            ({"extensions_dir": "/abs/ext"}, "/b"),
+            ({"extensions_dir": "/abs/ext/"}, "/b"),
+            ({"extensions_dir": None}, "/b"),
+            ({"extensions_dir": 123}, "/b"),
+            ({"extensions_dir": ["x"]}, "/b"),
+            ({"extensions_dir": "ext"}, ""),
+            ({"extensions_dir": "ext"}, None),
+            ({}, ""), ({}, None),
+        ]
+        for cfg, base_dir in cases:
+            with self.subTest(cfg=cfg, base_dir=base_dir):
+                self.assertEqual(
+                    E.extensions_dir_for(cfg, base_dir),
+                    T._extensions_dir_for(cfg, base_dir))
+
+    @unittest.skipUnless(__import__("os").name == "posix",
+                         "exec jobs are POSIX sh scripts")
+    def test_symlink_workspace_snapshot_excludes_workspace_files(self):
+        import tempfile
+        from runner import runner as R
+        with tempfile.TemporaryDirectory() as base:
+            _ws, link = self._tree(base)
+            self.assertEqual(
+                self._names(R.snapshot_outside(link)),
+                ["sibling.txt"])
+
+    @unittest.skipUnless(__import__("os").name == "posix",
+                         "exec jobs are POSIX sh scripts")
+    def test_change_inside_symlinked_workspace_is_not_a_violation(self):
+        import os
+        import tempfile
+        from runner import runner as R
+        with tempfile.TemporaryDirectory() as base:
+            ws, link = self._tree(base)
+            before = R.snapshot_outside(link)
+            with open(os.path.join(ws, "inside.txt"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("inside, changed by the job\n")
+            after = R.snapshot_outside(link)
+            self.assertFalse(
+                R.confinement_violated(before, after))
+
+
+
 if __name__ == "__main__":
 
     unittest.main()
