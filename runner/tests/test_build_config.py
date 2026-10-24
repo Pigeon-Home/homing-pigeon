@@ -573,7 +573,7 @@ class PipelineLiftsTest(unittest.TestCase):
                 # runner/tests/ and runner/tools/ are the suite and the
                 # CI scripts, not shipped modules.
                 if os.path.relpath(dirpath, base).split(os.sep)[0] in (
-                        "tests", "tools"):
+                        "tests tools".split()):
                     continue
                 for name in names:
                     if name.endswith(".py"):
