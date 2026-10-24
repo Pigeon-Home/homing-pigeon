@@ -18277,6 +18277,108 @@ class TestPollIntervalSecFifteenShapesAtEmailReader(unittest.TestCase):
                         {"poll_interval_sec": value}),
                     [want])
 
+class TestDtlsGreetingFifteenShapesAtGreetingTier(unittest.TestCase):
+    """Second-run hunt coverage: dtls_greeting itself
+    varied with the fifteen shapes through its actual
+    reader (runner/transport_extensions/dtls/__main__.py
+    greeting_tier: _confval.choice(raw, GREETING_TIERS,
+    "family")) for the first time at reader level across
+    all shapes. The row's registry-named class
+    (TestNullDtlsGreetingDefaultsToFamily) probed only
+    the null and unrecognised-string shapes, through
+    DtlsPipe construction.
+
+    (a) Doc claim: registry row "dtls_greeting": core,
+        enum, default family, policy default under
+        Decision 1, doc_status verified --
+        docs/configuring-oracle.md line 77:
+        "`dtls_greeting` -- the DTLS session greeting's
+        disclosure tier: `none`, `family` (default: OS
+        family only), `standard` (plus OS release and
+        Python version), or `full` (plus a bounded
+        PATH-tools summary)." The reader's own docstring
+        states the same contract: "The greeting
+        disclosure tier: dtls_greeting, default family."
+
+    (b) How it was hunted: step-8 Target 6 (core rows
+        covered only for the shapes their class
+        exercised). This tick probed greeting_tier
+        directly -- the function DtlsPipe.__init__ and
+        the extension main both use (main logs a WARN
+        naming the key when the raw value differs from
+        the tier read, per Decision 1's default-not-
+        silent rule) -- with the fifteen shapes from
+        the table hunt (omitted, null, empty string,
+        true, false, zero, negative, the explicit
+        default, numeric string, non-numeric string,
+        huge-int (10**400), inf, -inf, NaN, wrong
+        containers (list and dict)), plus genuine tier
+        values, case/whitespace variants, a fractional,
+        and non-dict configs.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape reads as the documented
+        default "family" -- omitted, null, empty
+        string, true, false, zero, negative, numeric
+        string, non-numeric string, huge-int, inf,
+        -inf, NaN, list and dict alike, and a non-dict
+        config (None or a list) likewise reads as
+        "family". Genuine tiers are honored exactly:
+        "none", "family", "standard" and "full" each
+        read as themselves. Matching is exact, with no
+        normalization: the uppercase "FAMILY" and the
+        padded " family" are not tiers and read as the
+        default. Observed on 2026-10-24 against
+        current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes keep
+        reading as the documented default, genuine
+        tiers keep being honored exactly, and matching
+        stays exact. If a shape above ever stops
+        behaving as stated, this test is the failing
+        record of that change. No production code or
+        doc was changed by this hunt.
+    """
+
+    def _tier(self, cfg):
+        import importlib
+
+        mod = importlib.import_module(
+            "runner.transport_extensions.dtls.__main__")
+        return mod.greeting_tier(cfg)
+
+    def test_fifteen_shapes_read_as_default(self):
+        unusable = [None, "", True, False, 0, -5, "20",
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"), 2.5,
+                    ["family"], {"x": 1}]
+        cases = [("omitted", {})]
+        cases += [(repr(v), {"dtls_greeting": v})
+                  for v in unusable]
+        cases.append(("explicit-default",
+                      {"dtls_greeting": "family"}))
+        for name, cfg in cases:
+            with self.subTest(shape=name):
+                self.assertEqual(self._tier(cfg), "family")
+
+    def test_genuine_tiers_honored_exactly(self):
+        for tier in ["none", "family", "standard", "full"]:
+            with self.subTest(tier=tier):
+                self.assertEqual(
+                    self._tier({"dtls_greeting": tier}), tier)
+
+    def test_exact_matching_and_non_dict_configs(self):
+        for value in ["FAMILY", " family", "family ",
+                      "None", "STANDARD"]:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._tier({"dtls_greeting": value}),
+                    "family")
+        for cfg in [None, ["family"], "family", 42]:
+            with self.subTest(cfg=repr(cfg)):
+                self.assertEqual(self._tier(cfg), "family")
+
 if __name__ == "__main__":
 
     unittest.main()
