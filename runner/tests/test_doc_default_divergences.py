@@ -13164,6 +13164,165 @@ class TestFalcoFeedCooldownFifteenShapes(unittest.TestCase):
                           (1000.0, 4600.25)),
             ["falco_warning", "falco_warning"])
 
+class TestSuricataFeedCooldownFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the suricata-feed
+    episode_cooldown_sec row itself varied with the
+    fifteen shapes at decide() level for the first
+    time (step-8 Target 5 -- the extension-tunable
+    table; this row's registry-named class
+    TestInfiniteSuricataCooldownDefaultsTo3600 covered
+    only the +inf shape, plus omitted / explicit /
+    NaN controls).
+
+    (a) Doc claim (extensions/suricata-feed/README.md,
+        tunable table, line 68): "episode_cooldown_sec
+        | 3600 | An episode refiles after this long,
+        and clears after this long quiet; also the
+        anomaly dedup window"; the same default is in
+        the extension's extension.json tunables (3600)
+        and in suricata_feed.py's decide() docstring:
+        an episode files again when
+        episode_cooldown_sec has passed since it last
+        filed. Registry row
+        "episode_cooldown_sec (suricata-feed)" (default
+        3600): policy default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: step-8 Target 5 lists the
+        51 extension tunables as covered only for the
+        shapes their named classes exercised. This
+        tick took the suricata-feed row (the sibling
+        of last tick's falco-feed row): its reader is
+        extensions/suricata-feed/suricata_feed.py
+        decide() (cooldown = float(cooldown) if
+        _is_number(cooldown) and cooldown > 0 else
+        3600.0, where _is_number accepts only genuine
+        finite numbers, never a bool, and a huge int
+        that overflows float() is not a number), and
+        probed it through decide() itself with the
+        fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false,
+        zero, negative, the documented default
+        written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong containers (list and dict)
+        -- plus genuine int / fractional values. The
+        observable is the filed suricata_alert count
+        for one alert episode (signature_id 1,
+        1.2.3.4 -> 5.6.7.8) firing twice: at t=1000
+        and t=8200 (7200s apart, twice the documented
+        cooldown) an effective cooldown of 3600 files
+        twice, and at t=1000 and t=2000 it files once.
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default 3600 (twice at 7200s spacing, once
+        at 1000s spacing). Zero and negative also
+        read as the default because decide()
+        requires value > 0 before honoring the
+        cooldown. Numeric strings are not parsed
+        ("45" reads as the default; the _is_number
+        isinstance gate). Genuine values are honored
+        exactly: 10000 files once at 7200s spacing,
+        10 files twice at 15s spacing and once at
+        5s spacing, and the fractional 3600.5 holds
+        a second sighting 3600.25s later where a
+        cooldown of 3600 files it. Noted: the +inf
+        suppression recorded by the row's named
+        class TestInfiniteSuricataCooldownDefaultsTo3600
+        no longer occurs on current main -- that
+        class passes now, because _is_number now
+        excludes non-finite values. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented default and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "suricata-feed",
+            "suricata_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "suricata_feed_cooldown_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _signals(self, mod, tunables, stamps=(1000.0, 8200.0)):
+        events = [{
+            "ts": ts, "kind": "alert", "signature_id": 1,
+            "alert_severity": 1, "signature": "Test Sig",
+            "category": "test", "src_ip": "1.2.3.4",
+            "dest_ip": "5.6.7.8", "src_port": 1234,
+            "dest_port": 80, "proto": "TCP"} for ts in stamps]
+        alerts, _state = mod.decide(
+            {"now": stamps[-1], "events": events},
+            {"name": "suricata_feed", "tunables": dict(tunables)},
+            {})
+        return [a["signal"] for a in alerts]
+
+    def test_fifteen_shapes_read_as_the_default(self):
+        mod = self._mod()
+        twice = ["suricata_alert", "suricata_alert"]
+        once = ["suricata_alert"]
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._signals(mod, {}), twice)
+            self.assertEqual(
+                self._signals(mod, {}, (1000.0, 2000.0)), once)
+        unusable = [None, "", True, False, 0, -5,
+                    "45", "bogus", 10 ** 400,
+                    float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._signals(
+                        mod, {"episode_cooldown_sec": value}),
+                    twice)
+                self.assertEqual(
+                    self._signals(
+                        mod, {"episode_cooldown_sec": value},
+                        (1000.0, 2000.0)),
+                    once)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._signals(mod, {"episode_cooldown_sec": 3600}),
+                twice)
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        self.assertEqual(
+            self._signals(mod, {"episode_cooldown_sec": 10000}),
+            ["suricata_alert"])
+        self.assertEqual(
+            self._signals(mod, {"episode_cooldown_sec": 10},
+                          (1000.0, 1015.0)),
+            ["suricata_alert", "suricata_alert"])
+        self.assertEqual(
+            self._signals(mod, {"episode_cooldown_sec": 10},
+                          (1000.0, 1005.0)),
+            ["suricata_alert"])
+        self.assertEqual(
+            self._signals(mod, {"episode_cooldown_sec": 3600.5},
+                          (1000.0, 4600.25)),
+            ["suricata_alert"])
+        self.assertEqual(
+            self._signals(mod, {"episode_cooldown_sec": 3600},
+                          (1000.0, 4600.25)),
+            ["suricata_alert", "suricata_alert"])
+
+
 
 if __name__ == "__main__":
 
