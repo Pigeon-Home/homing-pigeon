@@ -8346,5 +8346,202 @@ class TestAskMaxCharsDefaultsTo2000(unittest.TestCase):
             "hello world", 0, "hello\n", None, "m")
         self.assertEqual(result.get("answer"), "")
 
+
+class TestResourceSentinelMinSamplesDefaultsTo4(unittest.TestCase):
+    """Second-run hunt coverage: min_samples
+    (resource-sentinel) itself, varied with the fifteen
+    shapes through its actual reader for the first time.
+
+    (a) Claim: registry row "min_samples
+        (resource-sentinel)": extension, integer,
+        default 4, policy default, doc_status
+        unverified -- no prose document states this
+        default; it is in KNOWN_UNDOCUMENTED in
+        tests/defaults_registry.py. The statements are
+        the manifest, which ships the same value
+        (extension.json: "min_samples": 4), the README
+        contract (examples/extensions/resource-sentinel/
+        README.md, lines 29-31: a signal needs at least
+        `min_samples` samples spanning `min_span_sec`
+        inside `window_sec` before it can fire at all),
+        and the reader itself (resource_sentinel.py,
+        decide(), line 260:
+        int(_tunable(tunables, "min_samples", 4)),
+        with the floor at lines 261-262: a computed
+        value below 2 is raised to 2). The extension
+        header states the reason for a floor in the
+        same shape: nothing fires on a single sample --
+        every signal is a rate or a trend. The row's
+        named class
+        (TestNonFiniteResourceSentinelSampleCountsCrashInsteadOfDefault)
+        covered only the non-finite shapes for
+        min_samples (plus max_samples) and the
+        omitted / explicit / boolean / 2 controls, at
+        a fixed four samples; this key's full
+        fifteen-shape behavior at the boundary counts
+        had never been walked.
+
+    (b) How it was hunted: step 8 Target 3 -- the
+        seventh row with no documented default in any
+        current doc, after timeout_sec,
+        extension_poll_interval_sec, max_matches,
+        lines, limit, and max_chars. On 2026-10-23
+        this tick probed decide() -- the pure decision
+        function -- with the table hunt's fifteen
+        shapes for min_samples, each at two, three,
+        and four seeded samples spanning exactly 600
+        seconds (CPU busy 97 percent, available
+        memory falling 40 to 14 percent, disk and
+        process counts flat, so exactly
+        cpu_saturation_sustained and
+        memory_exhaustion_trend can file, and only
+        when the sample count reaches the effective
+        minimum), plus genuine values at their own
+        boundary counts and float probes.
+
+    (c) Behavior actually observed: NO divergence.
+        Thirteen shapes read as the registry default
+        4 (no signals at two or three samples, both
+        signals at four): omitted, null, the empty
+        string, true, false, the explicit default 4,
+        a numeric string, a non-numeric string, a
+        several-hundred-digit integer, inf, -inf,
+        NaN, and a list. This reader's _is_number
+        (resource_sentinel.py, lines 80-98) accepts
+        only genuine finite numbers and never a
+        bool, so a numeric string reads as the
+        default here (unlike the confval family,
+        which parses numeric strings), and the
+        non-finite and huge shapes now read as the
+        default through that finite check -- the
+        crash recorded by the row's named non-finite
+        class no longer occurs on current main for
+        this key. Zero and a negative number are
+        usable numbers for this reader, so they do
+        not read as the default: they clamp to the
+        reader's own 2-sample floor at lines
+        261-262 (both signals at two samples),
+        exactly as a genuine 1 does; that floor is
+        the code's stated minimum for a rate or a
+        trend, not a literal zero window. Genuine
+        values are honored exactly at their
+        boundaries (2 files at two, 3 at three but
+        not two, 5 at five but not four, 6 at six
+        but not five). Floats truncate toward zero
+        through int() (2.9 behaves as 2, 3.9 as 3).
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the reader keeps
+        the registry default and the 2-sample floor.
+        If a shape above ever stops reading as
+        stated, this test is the failing record of
+        that change. The missing prose documentation
+        for the default in (a) is recorded here and
+        in the registry; no production code or doc
+        was changed by this hunt.
+    """
+
+    def _signals(self, tunables, count):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "resource-sentinel",
+            "resource_sentinel.py")
+        spec = importlib.util.spec_from_file_location(
+            "resource_sentinel_min_samples_hunt", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        gib = 1024.0 ** 3
+        samples = []
+        for i in range(count):
+            frac = i / (count - 1) if count > 1 else 0.0
+            samples.append([
+                1000000.0 + 600.0 * frac,
+                10000 + 1000 * frac, 9000 + 30 * frac,
+                100 * gib, 100, 40.0 - 26.0 * frac])
+        last = samples[-1]
+        state = {"samples": samples, "fired": {}}
+        manifest = {"name": "resource_sentinel",
+                    "tunables": dict(tunables)}
+        readings = {"now": last[0], "cpu_total": last[1],
+                    "cpu_idle": last[2],
+                    "disk_free_bytes": last[3],
+                    "processes": 100,
+                    "mem_avail_pct": last[5]}
+        alerts, _state = mod.decide(readings, manifest, state)
+        return [a["signal"] for a in alerts]
+
+    _BOTH = ["cpu_saturation_sustained",
+             "memory_exhaustion_trend"]
+
+    def test_fifteen_shapes(self):
+        # (shape, value, signals at two samples)
+        # Every shape except zero and negative reads
+        # as the default 4: nothing at two or three
+        # samples, both signals at four. Zero and
+        # negative clamp to the 2-sample floor: both
+        # signals already at two.
+        shapes = [
+            ("omitted", None, []),
+            ("null", None, []),
+            ("empty-string", "", []),
+            ("true", True, []),
+            ("false", False, []),
+            ("zero", 0, self._BOTH),
+            ("negative", -5, self._BOTH),
+            ("default-explicit", 4, []),
+            ("numeric-string", "4", []),
+            ("non-numeric-string", "bogus", []),
+            ("huge-int", 10 ** 400, []),
+            ("inf", float("inf"), []),
+            ("neg-inf", float("-inf"), []),
+            ("nan", float("nan"), []),
+            ("wrong-container", ["x"], []),
+        ]
+        for name, value, at_two in shapes:
+            with self.subTest(shape=name):
+                tunables = {} if name == "omitted" else {
+                    "min_samples": value}
+                self.assertEqual(
+                    self._signals(tunables, 2), at_two)
+                if at_two:
+                    continue
+                self.assertEqual(
+                    self._signals(tunables, 3), [])
+                self.assertEqual(
+                    self._signals(tunables, 4), self._BOTH)
+
+    def test_genuine_values_are_honored_at_their_boundaries(self):
+        for value, low, high in ((2, 2, 2), (3, 2, 3),
+                                 (5, 4, 5), (6, 5, 6)):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    self._signals({"min_samples": value}, low),
+                    self._BOTH if low == value else [])
+                self.assertEqual(
+                    self._signals({"min_samples": value}, high),
+                    self._BOTH)
+
+    def test_below_floor_and_float_truncation(self):
+        # 1 is below the floor and clamps to 2, like
+        # zero and negative; floats truncate to int.
+        self.assertEqual(
+            self._signals({"min_samples": 1}, 2), self._BOTH)
+        self.assertEqual(
+            self._signals({"min_samples": 2.9}, 2), self._BOTH)
+        self.assertEqual(
+            self._signals({"min_samples": 3.9}, 2), [])
+        self.assertEqual(
+            self._signals({"min_samples": 3.9}, 3), self._BOTH)
+        # A numeric string is not a number to this
+        # reader: "2" reads as the default 4, so two
+        # samples file nothing and four file both.
+        self.assertEqual(
+            self._signals({"min_samples": "2"}, 2), [])
+        self.assertEqual(
+            self._signals({"min_samples": "2"}, 4), self._BOTH)
+
 if __name__ == "__main__":
     unittest.main()
