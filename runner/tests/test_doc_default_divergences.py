@@ -17711,6 +17711,124 @@ class TestPlanBudgetFifteenShapesAtReader(unittest.TestCase):
                                "max_plan_steps": 100}),
             (False, "plan timeout 700s exceeds 600s"))
 
+class TestV2AnswerDeadlineSecFifteenShapesAtReader(unittest.TestCase):
+    """Second-run hunt coverage: v2_answer_deadline_sec
+    itself varied with the fifteen shapes at its single
+    reader (runner/protocol_v2.py: deadline_of, through
+    confval.integer with the reader's own [0, 30] clamp)
+    for the first time at reader level. The row's
+    registry-named class
+    (TestBooleanV2AnswerDeadlineDefaultsTo0) probed the
+    boolean shape plus a subset (omitted, null, bogus,
+    inf, NaN, zero, negative, genuine and numeric-string
+    controls).
+
+    (a) Doc claim (docs/configuring-oracle.md, line 56):
+        "`v2_answer_deadline_sec` is how long to look
+        (0 to 30, default 0 -- one look, no wait)."
+        Registry row "v2_answer_deadline_sec" (kind
+        integer, default 0), reader
+        runner/protocol_v2.py:deadline_of, policy
+        default under Decision 1. The reader's own
+        docstring states the same contract: "How long
+        to look for an answer: 0 to 30, documented
+        default 0. A boolean is not a number of
+        seconds (true once meant a one-second wait);
+        a negative number reads as 0, and the cap
+        holds above 30." The cap is _DEADLINE_CAP = 30
+        (runner/protocol_v2.py, line 42).
+
+    (b) How it was hunted: step-8 Target 6 (core rows
+        covered only for the shapes their classes
+        exercised). This tick probed deadline_of with
+        the fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false, zero,
+        negative, the explicit default, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong containers (list and dict) --
+        plus genuine values, the documented cap edges
+        (30 exact, 31, 100, 9999), fractionals, a
+        whitespace-padded numeric string, and non-dict
+        configs, asserting the exact returned deadline
+        each time.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape reads as the documented
+        default 0 -- omitted, null, empty string, true,
+        false, non-numeric string, huge-int, inf, -inf,
+        NaN, list and dict alike, and a non-dict config
+        (None, a list, a string, or an int) likewise
+        returns 0. The boolean-as-number reading the
+        named class recorded on 2026-10-23 (true as a
+        one-second wait) no longer occurs: the reader
+        now goes through confval.integer, which never
+        counts a boolean as a number. Zero is the
+        documented default itself, and a negative
+        value reads as 0 through the reader's
+        documented floor, not as a wait. Genuine
+        values inside the documented range are
+        honored exactly: 1, 5, 29 and 30 return
+        themselves, the numeric string "5" reads as
+        5 and " 7 " as 7 (confval parses and strips
+        numeric strings), fractional 2.5 truncates
+        via int() to 2 and "2.5" likewise, and a
+        sub-1 fractional (0.5) truncates to 0. The
+        documented cap holds above the range: 31,
+        100, 9999 and "100" all clamp to 30.
+        Observed on 2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes keep
+        reading as the documented default and genuine
+        values keep being honored inside the
+        documented 0-to-30 range. If a shape above
+        ever stops behaving as
+        docs/configuring-oracle.md states, this test
+        is the failing record of that change.
+    """
+
+    _KEY = "v2_answer_deadline_sec"
+
+    def _deadline(self, cfg):
+        from runner.protocol_v2 import deadline_of
+        return deadline_of(cfg)
+
+    def test_fifteen_shapes_read_as_default(self):
+        unusable = [None, "", True, False, 0, -5,
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        cases = [("omitted", {})]
+        cases += [(repr(v), {self._KEY: v}) for v in unusable]
+        cases.append(("explicit-default", {self._KEY: 0}))
+        for name, cfg in cases:
+            with self.subTest(shape=name):
+                self.assertEqual(self._deadline(cfg), 0)
+
+    def test_genuine_values_honored(self):
+        for value, expected in [(1, 1), (5, 5), (29, 29),
+                                (30, 30), ("5", 5),
+                                (" 7 ", 7), (2.5, 2),
+                                ("2.5", 2), (0.5, 0)]:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._deadline({self._KEY: value}), expected)
+
+    def test_documented_cap_and_floor_hold(self):
+        for value in (31, 100, 9999, "31", "100"):
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._deadline({self._KEY: value}), 30)
+        for value in (-1, -5, -5.9):
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._deadline({self._KEY: value}), 0)
+
+    def test_non_dict_config_reads_as_default(self):
+        for cfg in (None, ["x"], "bogus", 42):
+            with self.subTest(cfg=repr(cfg)):
+                self.assertEqual(self._deadline(cfg), 0)
+
 if __name__ == "__main__":
 
     unittest.main()
