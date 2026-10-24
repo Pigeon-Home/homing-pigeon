@@ -25150,6 +25150,557 @@ class TestNonFiniteTlsTargetPortCrashesInsteadOfNoRecord(unittest.TestCase):
                 self.assertIsNone(
                     mod._read_tls_target("example.invalid", port))
 
+class TestCrashWatchDirsAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the crash-watch
+    list tunable watch_dirs (default
+    ["./crashes"]), the max_files_per_pass
+    tunable (default 1000), read_live()'s
+    directory scan, _binary_for()'s filename
+    rule, and decide()'s file / state / manifest
+    handling varied with the fifteen shapes for
+    the first time (step-8 Target 5 / family
+    (b) -- crash-watch's earlier classes cover
+    only its numeric repeat_window_sec reader;
+    its list tunable, its file cap, its live
+    scan and its seen / repeated handling were
+    never varied, the same gap the feed hunts
+    closed in the ticks before this one).
+
+    (a) Doc claims: the manifest ships
+        watch_dirs ["./crashes"],
+        max_files_per_pass 1000,
+        poll_interval_sec 60 and
+        repeat_window_sec 3600
+        (extensions/crash-watch/extension.json).
+        The README states a pass scans at most
+        max_files_per_pass files (default 1000),
+        files beyond the cap are counted, not
+        silently dropped, and are not marked
+        seen -- they file on the next pass; a
+        crash file never seen before (a new
+        path, or the same path with a changed
+        size or mtime) files crash_dumped, and
+        the same binary crashing again within
+        repeat_window_sec files crash_repeated
+        instead, with the count inside the
+        window. Which binary a dump belongs to
+        is read off its filename: a known dump
+        suffix (.mdmp, .dmp, .core, .crash) is
+        stripped when present, and otherwise
+        the binary is the stem before the first
+        "." -- so app.mdmp belongs to app and
+        notes.txt to notes. The module header
+        repeats the cap / truncated rule, says
+        read_live() is the only function that
+        touches the machine, and decide() is
+        pure with the current time arriving as
+        readings["now"].
+
+    (b) How this was probed: on 2026-10-24
+        _watch_dirs() and _max_files_per_pass()
+        were probed directly with the fifteen
+        shapes (omitted, null, empty string,
+        true, false, zero, negative, numeric
+        string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, list, dict)
+        plus a tuple and genuine values.
+        read_live() was probed against real
+        temp directories (genuine files in
+        sorted order, dotfiles, .json files in
+        both cases, a directory whose name
+        looks like a dump, a missing directory,
+        a file named as the directory, a bare
+        string watch_dir, a duplicated
+        directory, the default ./crashes
+        against a temp cwd, and the cap with
+        its truncated count). _binary_for() was
+        probed with every documented suffix,
+        mixed case, dotted stems and edge
+        names. decide() was probed with
+        readings, file-entry, binary, dir, now,
+        manifest, sensor-name and state shapes,
+        exact / changed seen marks, duplicated
+        files inside one pass, and event
+        pruning at the window boundary. main()
+        was run in --readings mode against temp
+        manifests (genuine, missing and
+        malformed manifest, missing and
+        malformed readings, and a malformed
+        pre-existing state file).
+        poll_interval_sec is read by neither
+        decide() nor read_live().
+
+    (c) Behavior actually observed: NO
+        divergence. _watch_dirs() reads every
+        unusable shape -- a tuple included --
+        and an empty list or a list with no
+        usable element as the documented
+        default ["./crashes"]; a non-empty
+        bare string is honored as the single
+        directory (unlike cert-sentinel, whose
+        bare string reads as no sources);
+        a genuine list is cleaned element-wise
+        (non-string / empty entries skipped)
+        and duplicates are kept verbatim.
+        _max_files_per_pass() reads every
+        unusable shape, zero, a negative and
+        a sub-1 fractional as the default
+        1000, numeric strings are not parsed,
+        and genuine values truncate via int()
+        (2.9 reads as 2). read_live() returns
+        regular files in sorted name order
+        with size, mtime and the derived
+        binary, skips dotfiles, *.json files
+        in either case and directories, reads
+        a missing directory and a file named
+        as the directory as nothing (never an
+        error), reads a duplicated directory
+        twice, and at the cap keeps the first
+        files in order while counting the
+        rest in truncated. _binary_for()
+        strips the longest matching suffix
+        first (app.mdmp -> app, app.exe.dmp
+        -> app.exe), matches suffixes
+        case-insensitively, otherwise takes
+        the stem before the first dot
+        (notes.txt -> notes, a.b.c -> a,
+        x. -> x), and keeps a name that is
+        only a suffix or only a dotfile stem
+        (.dmp, .hidden) verbatim. decide()
+        reads a non-dict readings value as
+        empty and a non-list files value (a
+        tuple included) as no files, drops a
+        file entry whole for a non-dict entry,
+        a non-string / empty name, or a
+        non-usable size or mtime (bool,
+        string, inf and huge-int included),
+        derives the binary from the name when
+        the stated binary is non-string or
+        empty and honors a genuine stated
+        binary verbatim, reads a non-string
+        or missing dir as "" (so the seen
+        path is the bare name), files an
+        exact seen mark nothing, a changed
+        size or mtime as a fresh crash_dumped,
+        files a duplicated file in one pass
+        only once at the same size / mtime
+        but as crash_dumped then
+        crash_repeated (count 2) when the
+        second occurrence changed, and files
+        a second file of the same binary in
+        one pass as crash_repeated. An
+        unusable now reads as 0.0 (a prior
+        event at t=500 survives pruning
+        against the default window and the
+        new event is stamped 0.0). State is
+        cleaned field-wise: a non-dict state,
+        a non-dict seen value or a non-list
+        events value reads as fresh, a seen
+        entry is kept only for a string path
+        with a two-element list / tuple of
+        usable numbers, an event is kept only
+        for a non-empty string binary with a
+        usable timestamp, and events are
+        pruned to ts >= now - window (an
+        event exactly at the boundary is
+        kept). A non-string or empty sensor
+        name falls back to "crash_watch"; a
+        non-dict manifest or tunables value
+        reads as the defaults; a readings
+        truncated value is ignored by
+        decide(). main() in --readings mode
+        files, writes the state and answers
+        rc 0 (warning on stderr when the
+        readings carry a truncated count),
+        files nothing on the identical second
+        pass, reads a malformed state file as
+        fresh, and answers rc 2 for a missing
+        or malformed manifest or a missing or
+        malformed readings file.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        the readings above keep matching the
+        README, the manifest and the module
+        header. If a shape above ever stops
+        behaving as documented, this test is
+        the failing record of that change.
+    """
+
+    _NOW = 1700000000.0
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "crash-watch",
+            "crash_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "crash_watch_paths_decide", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _decide(self, mod, readings, tunables=None, state=None,
+                name="crash_watch", manifest=None):
+        m = manifest if manifest is not None else {
+            "name": name,
+            "tunables": {} if tunables is None else tunables}
+        return mod.decide(readings, m,
+                          {} if state is None else state)
+
+    def _file(self, name="app.dmp", dir="/c", size=1, mtime=2,
+              **extra):
+        entry = {"name": name, "dir": dir, "size": size,
+                 "mtime": mtime}
+        entry.update(extra)
+        return entry
+
+    def test_watch_dirs_fifteen_shapes(self):
+        mod = self._mod()
+        self.assertEqual(mod._watch_dirs({}), ["./crashes"])
+        unusable = [None, "", True, False, 0, -5, 10 ** 400,
+                    float("inf"), float("-inf"), float("nan"),
+                    {"x": 1}, ("/a",), [], [""],
+                    [123, None, ""]]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    mod._watch_dirs({"watch_dirs": value}),
+                    ["./crashes"])
+        for value in ["/tmp/x", "45", "bogus"]:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    mod._watch_dirs({"watch_dirs": value}),
+                    [value])
+
+    def test_watch_dirs_list_cleaning_and_duplicates(self):
+        mod = self._mod()
+        self.assertEqual(
+            mod._watch_dirs({"watch_dirs":
+                             ["/a", "", 123, None, True,
+                              ["/x"], "/b"]}),
+            ["/a", "/b"])
+        self.assertEqual(
+            mod._watch_dirs({"watch_dirs": ["/a", "/a"]}),
+            ["/a", "/a"])
+
+    def test_max_files_per_pass_fifteen_shapes(self):
+        mod = self._mod()
+        self.assertEqual(mod._max_files_per_pass({}), 1000)
+        unusable = [None, "", True, False, 0, -5, 0.5, "45",
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"), [2],
+                    {"x": 1}, (2,)]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    mod._max_files_per_pass(
+                        {"max_files_per_pass": value}), 1000)
+        for value, want in [(1, 1), (2, 2), (2.9, 2),
+                            (1.0, 1), (1000, 1000)]:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    mod._max_files_per_pass(
+                        {"max_files_per_pass": value}), want)
+
+    def _make_watch_dir(self, root):
+        import os
+        watch = os.path.join(root, "crashes")
+        os.makedirs(watch)
+        for name, text in [("b.dmp", "1234"), ("a.core", "12"),
+                           (".hidden", "x"),
+                           ("state.json", "{}"),
+                           ("UP.JSON", "{}"),
+                           ("sub.mdmp", "zz")]:
+            with open(os.path.join(watch, name), "w") as fh:
+                fh.write(text)
+        os.makedirs(os.path.join(watch, "dir.dmp"))
+        return watch
+
+    def test_read_live_scans_skips_and_orders(self):
+        import os
+        import tempfile
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            watch = self._make_watch_dir(td)
+            readings = mod.read_live({"tunables": {
+                "watch_dirs": [watch]}})
+            self.assertEqual(
+                [(f["name"], f["binary"], f["size"])
+                 for f in readings["files"]],
+                [("a.core", "a", 2), ("b.dmp", "b", 4),
+                 ("sub.mdmp", "sub", 2)])
+            self.assertEqual(readings["truncated"], 0)
+            self.assertIsInstance(readings["now"], float)
+            capped = mod.read_live({"tunables": {
+                "watch_dirs": [watch],
+                "max_files_per_pass": 2}})
+            self.assertEqual([f["name"] for f in capped["files"]],
+                             ["a.core", "b.dmp"])
+            self.assertEqual(capped["truncated"], 1)
+            bare = mod.read_live({"tunables": {
+                "watch_dirs": watch}})
+            self.assertEqual(len(bare["files"]), 3)
+            dup = mod.read_live({"tunables": {
+                "watch_dirs": [watch, watch]}})
+            self.assertEqual(len(dup["files"]), 6)
+
+    def test_read_live_missing_file_as_dir_and_default(self):
+        import os
+        import tempfile
+        mod = self._mod()
+        missing = mod.read_live({"tunables": {
+            "watch_dirs": "/nonexistent-crash-watch-xyz"}})
+        self.assertEqual(missing["files"], [])
+        self.assertEqual(missing["truncated"], 0)
+        with tempfile.TemporaryDirectory() as td:
+            watch = self._make_watch_dir(td)
+            as_file = mod.read_live({"tunables": {
+                "watch_dirs": [os.path.join(watch, "a.core")]}})
+            self.assertEqual(as_file["files"], [])
+            cwd = os.getcwd()
+            try:
+                os.chdir(td)
+                default = mod.read_live({"tunables": {}})
+            finally:
+                os.chdir(cwd)
+            self.assertEqual(
+                [f["name"] for f in default["files"]],
+                ["a.core", "b.dmp", "sub.mdmp"])
+
+    def test_binary_for_suffix_and_stem_rules(self):
+        mod = self._mod()
+        cases = {"app.mdmp": "app", "app.dmp": "app",
+                 "app.core": "app", "app.crash": "app",
+                 "app.exe.dmp": "app.exe",
+                 "app.MDMP": "app", "notes.txt": "notes",
+                 "noext": "noext", ".dmp": ".dmp",
+                 "a.b.c": "a", ".hidden": ".hidden",
+                 "x.": "x"}
+        for name, want in cases.items():
+            with self.subTest(name=name):
+                self.assertEqual(mod._binary_for(name), want)
+
+    def test_decide_entry_shapes_drop_whole(self):
+        mod = self._mod()
+        alerts, state = self._decide(mod, "bogus")
+        self.assertEqual((alerts, state),
+                         ([], {"seen": {}, "events": []}))
+        for files in ["x", 123, {"name": "a.dmp"},
+                      (self._file(),)]:
+            with self.subTest(files=repr(files)[:40]):
+                alerts, _ = self._decide(
+                    mod, {"now": 1000, "files": files})
+                self.assertEqual(alerts, [])
+        bad = [None, "x", 123, {}, {"name": ""},
+               {"name": 123}, {"name": "a.dmp"},
+               self._file(size="1"), self._file(size=True),
+               self._file(mtime=float("inf")),
+               self._file(size=10 ** 400),
+               self._file(mtime=float("nan"))]
+        for entry in bad:
+            with self.subTest(entry=repr(entry)[:50]):
+                alerts, state = self._decide(
+                    mod, {"now": 1000, "files": [entry]})
+                self.assertEqual(alerts, [])
+                self.assertEqual(state["seen"], {})
+
+    def test_decide_binary_dir_and_sensor_fallbacks(self):
+        mod = self._mod()
+        alerts, state = self._decide(
+            mod, {"now": 1000, "files": [
+                self._file(name="app.exe.dmp")]})
+        self.assertEqual(alerts[0]["detail"],
+                         {"binary": "app.exe",
+                          "file": "app.exe.dmp", "dir": "/c",
+                          "size": 1})
+        self.assertEqual(
+            (alerts[0]["signal"], alerts[0]["severity"]),
+            ("crash_dumped", "medium"))
+        self.assertEqual(alerts[0]["title"],
+                         "new crash dump from app.exe "
+                         "(app.exe.dmp)")
+        alerts, _ = self._decide(
+            mod, {"now": 1000, "files": [
+                self._file(binary="custom")]})
+        self.assertEqual(alerts[0]["detail"]["binary"],
+                         "custom")
+        alerts, _ = self._decide(
+            mod, {"now": 1000, "files": [
+                self._file(binary="")]})
+        self.assertEqual(alerts[0]["detail"]["binary"], "app")
+        for entry in [self._file(dir=123),
+                      {"name": "app.dmp", "size": 1,
+                       "mtime": 2}]:
+            with self.subTest(entry=repr(entry)[:50]):
+                alerts, state = self._decide(
+                    mod, {"now": 1000, "files": [entry]})
+                self.assertEqual(alerts[0]["detail"]["dir"],
+                                 "")
+                self.assertEqual(list(state["seen"]),
+                                 ["app.dmp"])
+        for name in [None, "", 123, []]:
+            with self.subTest(name=repr(name)):
+                alerts, _ = self._decide(
+                    mod, {"now": 1000,
+                          "files": [self._file()]}, name=name)
+                self.assertEqual(alerts[0]["sensor"],
+                                 "crash_watch")
+        alerts, _ = self._decide(
+            mod, {"now": 1000, "files": [self._file()]},
+            manifest="x")
+        self.assertEqual(alerts[0]["sensor"], "crash_watch")
+        alerts, _ = self._decide(
+            mod, {"now": 1000, "files": [self._file()]},
+            manifest={"name": "crash_watch",
+                      "tunables": "x"})
+        self.assertEqual(alerts[0]["signal"], "crash_dumped")
+
+    def test_decide_seen_dedup_repeated_and_duplicates(self):
+        mod = self._mod()
+        seen_state = {"seen": {"/c/app.dmp": [1, 2]},
+                      "events": []}
+        alerts, _ = self._decide(
+            mod, {"now": 1000, "files": [self._file()]},
+            state=dict(seen_state))
+        self.assertEqual(alerts, [])
+        alerts, _ = self._decide(
+            mod, {"now": 1000, "files": [self._file(size=9)]},
+            state=dict(seen_state))
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["crash_dumped"])
+        alerts, _ = self._decide(
+            mod, {"now": 1000,
+                  "files": [self._file(), self._file()]})
+        self.assertEqual(len(alerts), 1)
+        alerts, _ = self._decide(
+            mod, {"now": 1000,
+                  "files": [self._file(),
+                            self._file(size=5)]})
+        self.assertEqual(
+            [(a["signal"], a["detail"].get("count"))
+             for a in alerts],
+            [("crash_dumped", None), ("crash_repeated", 2)])
+        self.assertEqual(alerts[1]["severity"], "high")
+        alerts, _ = self._decide(
+            mod, {"now": 1000,
+                  "files": [self._file(),
+                            self._file(name="app2.dmp",
+                                       binary="app")]})
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["crash_dumped", "crash_repeated"])
+
+    def test_decide_state_cleaning_and_event_pruning(self):
+        mod = self._mod()
+        for state in [None, "x", [],
+                      {"seen": "x", "events": "y"}]:
+            with self.subTest(state=repr(state)):
+                _, cleaned = self._decide(
+                    mod, {"now": 1000, "files": []},
+                    state=state)
+                self.assertEqual(
+                    cleaned, {"seen": {}, "events": []})
+        messy = {"seen": {123: [1, 2], "/a": [1, 2],
+                          "/b": [1], "/c": ["1", 2],
+                          "/d": [1, 2, 3], "/e": (3, 4)},
+                 "events": [["app", 1000], [123, 1000],
+                            ["", 1000], ["app", "x"],
+                            ["app", 1000, 999],
+                            ["app", float("nan")]]}
+        _, cleaned = self._decide(
+            mod, {"now": 1000, "files": []}, state=messy)
+        self.assertEqual(cleaned["seen"],
+                         {"/a": [1, 2], "/e": [3, 4]})
+        self.assertEqual(cleaned["events"], [["app", 1000]])
+        _, cleaned = self._decide(
+            mod, {"now": 4600, "files": []},
+            state={"seen": {},
+                   "events": [["app", 1000], ["app", 999]]})
+        self.assertEqual(cleaned["events"], [["app", 1000]])
+
+    def test_decide_now_shapes_read_as_zero(self):
+        mod = self._mod()
+        for now in [None, "", True, "1000", 10 ** 400,
+                    float("inf"), float("nan"), [], {}]:
+            with self.subTest(now=repr(now)):
+                alerts, state = self._decide(
+                    mod, {"now": now, "files": [self._file(
+                        name="a.dmp", binary="a")]},
+                    state={"seen": {},
+                           "events": [["a", 500]]})
+                self.assertEqual([a["signal"] for a in alerts],
+                                 ["crash_repeated"])
+                self.assertEqual(state["events"],
+                                 [["a", 500], ["a", 0.0]])
+        alerts, _ = self._decide(
+            mod, {"now": 1000, "files": [], "truncated": 5})
+        self.assertEqual(alerts, [])
+
+    def test_main_readings_mode(self):
+        import contextlib
+        import io
+        import json
+        import os
+        import tempfile
+        mod = self._mod()
+
+        def run(args):
+            out, err = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(out), \
+                    contextlib.redirect_stderr(err):
+                rc = mod.main(args)
+            return rc, out.getvalue(), err.getvalue()
+
+        with tempfile.TemporaryDirectory() as td:
+            manifest = os.path.join(td, "m.json")
+            state = os.path.join(td, "s.json")
+            readings = os.path.join(td, "r.json")
+            with open(manifest, "w") as fh:
+                json.dump({"name": "crash_watch",
+                           "tunables": {}}, fh)
+            with open(readings, "w") as fh:
+                json.dump({"now": 1000, "truncated": 2,
+                           "files": [{"name": "app.dmp",
+                                      "dir": "/c", "size": 1,
+                                      "mtime": 2}]}, fh)
+            args = ["--manifest", manifest, "--state", state,
+                    "--readings", readings]
+            rc, out, err = run(args)
+            self.assertEqual(rc, 0)
+            self.assertIn('"crash_dumped"', out)
+            self.assertIn("2 file(s) beyond", err)
+            with open(state) as fh:
+                self.assertEqual(
+                    json.load(fh),
+                    {"events": [["app", 1000.0]],
+                     "seen": {"/c/app.dmp": [1, 2]}})
+            rc, out, _ = run(args)
+            self.assertEqual((rc, out), (0, ""))
+            with open(state, "w") as fh:
+                fh.write("{not json")
+            rc, out, _ = run(args)
+            self.assertEqual(rc, 0)
+            self.assertIn('"crash_dumped"', out)
+            bad = os.path.join(td, "bad.json")
+            with open(bad, "w") as fh:
+                fh.write("{x")
+            missing = os.path.join(td, "nope.json")
+            self.assertEqual(
+                run(["--manifest", missing, "--state", state,
+                     "--readings", readings])[0], 2)
+            self.assertEqual(
+                run(["--manifest", bad, "--state", state,
+                     "--readings", readings])[0], 2)
+            self.assertEqual(
+                run(["--manifest", manifest, "--state", state,
+                     "--readings", missing])[0], 2)
+            self.assertEqual(
+                run(["--manifest", manifest, "--state", state,
+                     "--readings", bad])[0], 2)
+
 if __name__ == "__main__":
 
     unittest.main()
