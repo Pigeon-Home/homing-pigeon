@@ -1,5 +1,5 @@
 # qwen2.5:3b. no token cap. 39 long strings.
 # cutoff 30s: 27 stop, 12 do not.
 # cutoff 90s: those 12 stop. slowest 83.9s.
-# the 12 names are in topaz/candidates-slow.txt.
+# the 12 names are in tools/airgap/candidates-slow.txt.
 # ok: the model stops. the reply is not saved.

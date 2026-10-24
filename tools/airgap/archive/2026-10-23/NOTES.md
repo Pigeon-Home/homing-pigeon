@@ -2,13 +2,13 @@
 
 | Tool | Record |
 |---|---|
-| `topaz/sweep.py` | Case list. `slow` names qwen2.5:3b. `default` names qwen3:1.7b. |
-| `topaz/cases/echo_one.py` | Ten short questions. No project context. |
-| `topaz/candidates.py` | 39 long strings from the five flag321 files. No string printed. No reply printed. |
-| `topaz/candidates-slow.txt` | 12 of those strings. Cutoff 90 seconds. |
-| `topaz/batches.py` | Three sittings: `fast`, `each`, `rest`. |
-| `topaz/run.cmd` | `fast`, or the sitting named on the command line. |
-| `topaz/interesting.example/OVERVIEW.py` | Held cases of 1000 characters or fewer. Shortest first. 1801 cases. |
+| `tools/airgap/sweep.py` | Case list. `slow` names qwen2.5:3b. `default` names qwen3:1.7b. |
+| `tools/airgap/cases/echo_one.py` | Ten short questions. No project context. |
+| `tools/airgap/candidates.py` | 39 long strings from the five flag321 files. No string printed. No reply printed. |
+| `tools/airgap/candidates-slow.txt` | 12 of those strings. Cutoff 90 seconds. |
+| `tools/airgap/batches.py` | Three sittings: `fast`, `each`, `rest`. |
+| `tools/airgap/run.cmd` | `fast`, or the sitting named on the command line. |
+| `tools/airgap/interesting.example/OVERVIEW.py` | Held cases of 1000 characters or fewer. Shortest first. 1801 cases. |
 
 `ok` — process exit 0. On a string pass, the model stops. The reply is not read.
 

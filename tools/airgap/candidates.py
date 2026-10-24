@@ -15,7 +15,7 @@ import time
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)
+ROOT = os.path.dirname(os.path.dirname(HERE))
 SLOW = os.path.join(HERE, "candidates-slow.txt")
 ENDPOINT = "http://127.0.0.1:11434/v1/chat/completions"
 MODEL = "qwen2.5:3b"
