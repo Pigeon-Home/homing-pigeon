@@ -41940,6 +41940,391 @@ class TestSoftflowdFeedCleanCollectAndMainModesFifteenShapes(unittest.TestCase):
             self.assertEqual(rc, 2)
             self.assertEqual(len(out.splitlines()), 1)
 
+class TestBackupFreshnessCleanersAndMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: backup-freshness
+    _clean_state() and _clean_newest() called
+    directly, read_live()'s tie and vanishing-file
+    handling, and main()'s remaining manifest /
+    readings / state modes plus its live mode and
+    local-delivery gate varied with the fifteen
+    shapes for the first time (step-8 Target 5 /
+    family (b) -- backup-freshness's earlier
+    classes covered its stale_after_sec reader,
+    its watch_dir / glob tunables, decide()'s
+    tiers and main()'s genuine / missing /
+    malformed modes through decide(); the two
+    cleaners were only ever reached through
+    decide(), tied mtimes and a file vanishing
+    mid-scan were never exercised, and main()'s
+    list / scalar manifest and readings shapes,
+    its live (no --readings) mode, its unwritable
+    state path and its --local-dir delivery gate
+    were never run at all, the same gap the feed
+    hunts closed for their parse / main modes in
+    the ticks before this one).
+
+    (a) Doc claims: the module docstring states
+        read_live() is "the only function that
+        touches the filesystem", decide() is pure
+        ("readings plus manifest plus last pass's
+        state, out come alerts and the new
+        state"), "a missing directory -- or one
+        with no matching file -- yields newest
+        None: no data, never an error", the age
+        clock keeps running on the last backup
+        ever seen when the directory goes empty,
+        and _is_number() is documented so a
+        non-finite or huge value "reads as 'not a
+        number' so the documented default
+        applies". The README states --readings
+        mode is "the way to try the sense (and
+        test it) against known readings", local
+        delivery signs with the sense's key read
+        from the environment variable named by
+        --secret-env, and main()'s own comment
+        states a failed delivery "leaves the
+        state unwritten, so the next pass reports
+        this condition again".
+
+    (b) How this was probed: on 2026-10-24
+        _clean_state() and _clean_newest() were
+        called directly with the fifteen shapes
+        (omitted-equivalent via a missing key,
+        null, empty string, true, false, zero,
+        negative, numeric string, non-numeric
+        string, huge-int (10**400), inf, -inf,
+        NaN, list, dict) and with mixed genuine /
+        junk fields; read_live() was run over two
+        files with identical mtimes, over a
+        mocked listdir naming a file whose stat
+        raises OSError (vanished mid-scan), and
+        over a mocked listdir that raises OSError
+        itself; main() was run against isolated
+        temp dirs for list / scalar / string /
+        null manifests, list / scalar / string /
+        empty / null / malformed readings, a
+        junk-carrying pre-state, a directory as
+        the state path, live mode with the
+        manifest's watch_dir on a real directory,
+        and --local-dir with the secret env var
+        unset (no delivery attempted).
+
+    (c) Behavior actually observed: NO divergence
+        recorded. _clean_state() reads every
+        non-dict shape as fresh {last_seen_name
+        None, last_seen_mtime None, tier "ok"},
+        cleans field-wise (a non-string name
+        reads as None but an empty-string name is
+        kept verbatim -- this cleaner does not
+        require a non-empty name; a usable mtime
+        converts to float; an unknown, cased or
+        tuple tier reads as "ok") and drops
+        unknown keys including a _reader key and
+        any junk key. _clean_newest() reads every
+        non-dict shape as None, requires a
+        non-empty string name (a whitespace name
+        is kept) and a usable-number mtime
+        (converted to float), carries a
+        usable-number size through verbatim (an
+        int stays an int, a float stays a float;
+        a bool, string or null size is dropped)
+        and drops extra keys. read_live() over
+        tied mtimes returns one of the tied files
+        with its own matching size (the strict->
+        comparison keeps the first maximum the
+        directory listing offered; which one is
+        listing-order dependent and is not
+        pinned), a file that vanishes between
+        listing and stat is skipped quietly for
+        the next candidate, and a listdir OSError
+        answers newest None with a float now,
+        never an exception. main() in --readings
+        mode: a list, scalar, string or null
+        manifest still files the arrival under
+        the default sensor name and writes state
+        (rc 0); a list, scalar, string, empty or
+        null readings value reads as an empty
+        pass (rc 0, fresh state written, nothing
+        printed); a malformed readings file is
+        rc 2 with no state file written; a
+        junk-carrying pre-state files on its
+        cleaned values and the written state
+        drops the junk key; a directory as the
+        state path is rc 2 with the alert still
+        printed first; live mode (no --readings)
+        scans the manifest's watch_dir, files
+        the arrival and writes state (rc 0); and
+        --local-dir with no secret in the env var
+        is rc 2 with the state file NOT written,
+        whether or not the pass produced an
+        alert -- the delivery gate is checked
+        before any alert is delivered, so the
+        next pass will report the condition
+        again, as main()'s comment states.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the readings above
+        keep matching the docs. If a shape above
+        ever stops behaving as documented, this test
+        is the failing record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "backup-freshness",
+            "backup_freshness.py")
+        spec = importlib.util.spec_from_file_location(
+            "backup_freshness_clean_main", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    _FRESH = {"last_seen_name": None, "last_seen_mtime": None,
+              "tier": "ok"}
+    _SHAPES = [None, "", True, False, 0, -5, "45", "x", 10 ** 400,
+               float("inf"), float("-inf"), float("nan"), ["x"],
+               {"x": 1}, 2.5]
+
+    def test_clean_state_direct_shapes(self):
+        mod = self._mod()
+        for value in self._SHAPES:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(mod._clean_state(value), self._FRESH)
+        # Mixed genuine / junk fields clean field-wise; unknown
+        # keys (a _reader key included) are dropped.
+        self.assertEqual(
+            mod._clean_state({"last_seen_name": "a",
+                              "last_seen_mtime": 1000,
+                              "tier": "stale", "extra": 1,
+                              "_reader": {"o": 1}}),
+            {"last_seen_name": "a", "last_seen_mtime": 1000.0,
+             "tier": "stale"})
+        # An empty-string name is a string and is kept verbatim;
+        # this cleaner does not require a non-empty name.
+        self.assertEqual(
+            mod._clean_state({"last_seen_name": "",
+                              "last_seen_mtime": 5, "tier": "ok"}),
+            {"last_seen_name": "", "last_seen_mtime": 5.0,
+             "tier": "ok"})
+        for tier in ["OK", ("ok",), ["ok"], None, 1]:
+            with self.subTest(tier=repr(tier)):
+                self.assertEqual(
+                    mod._clean_state({"tier": tier})["tier"], "ok")
+        for tier in ["stale", "critical"]:
+            with self.subTest(tier=tier):
+                self.assertEqual(
+                    mod._clean_state({"tier": tier})["tier"], tier)
+
+    def test_clean_newest_direct_shapes(self):
+        mod = self._mod()
+        for value in self._SHAPES:
+            with self.subTest(value=repr(value)):
+                self.assertIsNone(mod._clean_newest(value))
+        self.assertEqual(mod._clean_newest({"name": "a", "mtime": 1000}),
+                         {"name": "a", "mtime": 1000.0})
+        # A usable size is carried verbatim (type preserved);
+        # any other size is dropped; extra keys are dropped.
+        self.assertEqual(
+            mod._clean_newest({"name": "a", "mtime": 1000, "size": 42}),
+            {"name": "a", "mtime": 1000.0, "size": 42})
+        self.assertEqual(
+            mod._clean_newest({"name": "a", "mtime": 1000,
+                               "size": 42.5}),
+            {"name": "a", "mtime": 1000.0, "size": 42.5})
+        for size in [True, "42", None, ["x"], 10 ** 400,
+                     float("inf"), float("nan")]:
+            with self.subTest(size=repr(size)):
+                self.assertEqual(
+                    mod._clean_newest({"name": "a", "mtime": 1000,
+                                       "size": size, "extra": 9}),
+                    {"name": "a", "mtime": 1000.0})
+        # A whitespace name is non-empty and kept; an empty name
+        # or an unusable mtime drops the entry whole.
+        self.assertEqual(mod._clean_newest({"name": " ", "mtime": 1000}),
+                         {"name": " ", "mtime": 1000.0})
+        for raw in [{"name": "", "mtime": 1000},
+                    {"name": "a", "mtime": True},
+                    {"name": "a", "mtime": "1000"},
+                    {"name": "a"},
+                    {"mtime": 1000}]:
+            with self.subTest(raw=repr(raw)):
+                self.assertIsNone(mod._clean_newest(raw))
+
+    def test_read_live_tie_and_vanishing_file(self):
+        import os
+        from unittest import mock
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            pairs = {}
+            for name, content in [("a.tar", "x"), ("b.tar", "yyyy")]:
+                p = os.path.join(td, name)
+                with open(p, "w", encoding="utf-8") as fh:
+                    fh.write(content)
+                os.utime(p, (2000, 2000))
+                pairs[name] = len(content)
+            newest = mod.read_live({"tunables": {"watch_dir": td}})["newest"]
+            # Tied mtimes: one of the tied files wins, with its
+            # own size; which one is listing-order dependent.
+            self.assertEqual(newest["mtime"], 2000.0)
+            self.assertIn(newest["name"], pairs)
+            self.assertEqual(newest["size"], pairs[newest["name"]])
+            # A file vanishing between listing and stat is
+            # skipped quietly for the next candidate.
+            real_stat = os.stat
+
+            def flaky_stat(p, *a, **k):
+                if str(p).endswith("ghost.tar"):
+                    raise OSError("gone")
+                return real_stat(p, *a, **k)
+
+            with mock.patch("os.listdir",
+                            return_value=["ghost.tar", "a.tar"]), \
+                    mock.patch("os.stat", side_effect=flaky_stat):
+                self.assertEqual(
+                    mod.read_live({"tunables": {"watch_dir": td}})["newest"],
+                    {"name": "a.tar", "mtime": 2000.0, "size": 1})
+            # A listdir failure is no data, never an error.
+            with mock.patch("os.listdir", side_effect=OSError("boom")):
+                readings = mod.read_live({"tunables": {"watch_dir": td}})
+            self.assertIsNone(readings["newest"])
+            self.assertIsInstance(readings["now"], float)
+
+    _LIVE = object()
+
+    def _main(self, mod, td, manifest_obj, readings_obj=_LIVE, extra=(),
+              pre_state=None):
+        import io
+        import os
+        from contextlib import redirect_stderr, redirect_stdout
+        man = os.path.join(td, "ext.json")
+        rd = os.path.join(td, "r.json")
+        st = os.path.join(td, "s.json")
+        with open(man, "w", encoding="utf-8") as fh:
+            json.dump(manifest_obj, fh)
+        args = ["--manifest", man, "--state", st]
+        if readings_obj is not self._LIVE:
+            with open(rd, "w", encoding="utf-8") as fh:
+                if isinstance(readings_obj, str) and readings_obj == "{bad":
+                    fh.write(readings_obj)
+                else:
+                    json.dump(readings_obj, fh)
+            args += ["--readings", rd]
+        if pre_state is not None:
+            with open(st, "w", encoding="utf-8") as fh:
+                json.dump(pre_state, fh)
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(io.StringIO()):
+            rc = mod.main(args + list(extra))
+        state = None
+        if os.path.exists(st):
+            with open(st, encoding="utf-8") as fh:
+                state = json.load(fh)
+        return rc, out.getvalue(), state
+
+    def test_main_manifest_and_readings_shapes(self):
+        mod = self._mod()
+        gen = {"name": "backup_freshness",
+               "tunables": {"stale_after_sec": 10}}
+        arrival = {"now": 2000, "newest": {"name": "a.tar",
+                                           "mtime": 1000, "size": 5}}
+        seen = {"last_seen_name": "a.tar", "last_seen_mtime": 1000.0,
+                "tier": "ok"}
+        for manifest in [[1, 2], 42, "hi", None]:
+            with self.subTest(manifest=repr(manifest)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(mod, td, manifest, arrival)
+                self.assertEqual(rc, 0)
+                self.assertIn("backup_arrived", out)
+                self.assertIn('"backup_freshness"', out)
+                self.assertEqual(state, seen)
+        for readings in [[1], 42, "hi", {}, None]:
+            with self.subTest(readings=repr(readings)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(mod, td, gen, readings)
+                self.assertEqual(rc, 0)
+                self.assertEqual(out, "")
+                self.assertEqual(state, self._FRESH)
+        # A malformed readings file is rc 2 and writes no state.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(mod, td, gen, "{bad")
+            self.assertEqual(rc, 2)
+            self.assertIsNone(state)
+
+    def test_main_live_local_and_unwritable_modes(self):
+        import os
+        mod = self._mod()
+        gen = {"name": "backup_freshness",
+               "tunables": {"stale_after_sec": 10}}
+        arrival = {"now": 2000, "newest": {"name": "a.tar",
+                                           "mtime": 1000, "size": 5}}
+        # A junk-carrying pre-state files on its cleaned values
+        # and the written state drops the junk key.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, gen, {"now": 2000, "newest": None},
+                pre_state={"last_seen_name": "b",
+                           "last_seen_mtime": 1000, "tier": "ok",
+                           "junk": 1})
+            self.assertEqual(rc, 0)
+            self.assertIn("backup_critical", out)
+            self.assertEqual(state, {"last_seen_name": "b",
+                                     "last_seen_mtime": 1000.0,
+                                     "tier": "critical"})
+        # An unwritable (directory) state path is rc 2 with the
+        # alert still printed first.
+        with tempfile.TemporaryDirectory() as td:
+            man = os.path.join(td, "ext.json")
+            rd = os.path.join(td, "r.json")
+            with open(man, "w", encoding="utf-8") as fh:
+                json.dump(gen, fh)
+            with open(rd, "w", encoding="utf-8") as fh:
+                json.dump(arrival, fh)
+            import io
+            from contextlib import redirect_stderr, redirect_stdout
+            out = io.StringIO()
+            with redirect_stdout(out), redirect_stderr(io.StringIO()):
+                rc = mod.main(["--manifest", man, "--readings", rd,
+                               "--state", td])
+            self.assertEqual(rc, 2)
+            self.assertIn("backup_arrived", out.getvalue())
+        # Live mode: no --readings, the manifest's watch_dir is
+        # scanned, the arrival files and state is written. The
+        # backups dir is a subdirectory: the manifest and state
+        # files in the parent must not be scanned as backups.
+        with tempfile.TemporaryDirectory() as td:
+            bdir = os.path.join(td, "backups")
+            os.mkdir(bdir)
+            p = os.path.join(bdir, "z.tar")
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write("zz")
+            os.utime(p, (3000, 3000))
+            live = {"name": "backup_freshness",
+                    "tunables": {"watch_dir": bdir}}
+            rc, out, state = self._main(mod, td, live)
+            self.assertEqual(rc, 0)
+            self.assertIn("backup_arrived", out)
+            self.assertEqual(state, {"last_seen_name": "z.tar",
+                                     "last_seen_mtime": 3000.0,
+                                     "tier": "ok"})
+        # --local-dir with no secret in the env var: rc 2 and
+        # the state file is NOT written, with or without alerts.
+        from unittest import mock
+        for readings in [arrival, {"now": 1, "newest": None}]:
+            with self.subTest(readings=repr(readings)):
+                with tempfile.TemporaryDirectory() as td:
+                    with mock.patch.dict(os.environ, {}, clear=False):
+                        os.environ.pop(
+                            "HOMING_PIGEON_SENSOR_SECRET", None)
+                        rc, out, state = self._main(
+                            mod, td, gen, readings,
+                            extra=["--local-dir", td])
+                    self.assertEqual(rc, 2)
+                    self.assertIsNone(state)
+
 if __name__ == "__main__":
 
     unittest.main()
