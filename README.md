@@ -388,10 +388,8 @@ The runner is fully inspectable, so audit what it would do before it does it, an
 
 ## Security notes
 
-- Honest threat model: [docs/threat-model.md](docs/threat-model.md). Its
-  companion [docs/security-gaps.md](docs/security-gaps.md) covers
-  what the defaults don't protect you from, and the order to turn
-  things on.
+- Threat model: [docs/threat-model.md](docs/threat-model.md) and it's
+  companion [docs/security-gaps.md](docs/security-gaps.md).
 - Industry map: [docs/industry-map.md](docs/industry-map.md) — five years
   of commercial detection (2021–2026) read honestly against this project,
   sorted by local footprint cost.
