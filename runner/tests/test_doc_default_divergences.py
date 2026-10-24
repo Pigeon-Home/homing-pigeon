@@ -43677,6 +43677,359 @@ class TestPortWatchCleanStateAndMainModesFifteenShapes(unittest.TestCase):
                     self.assertEqual(rc, 2)
                     self.assertEqual(state, pre)
 
+class TestFailedLoginWatchCleanStateAndMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: failed-login-watch
+    _clean_state() called directly and main()'s
+    remaining manifest / readings / state modes,
+    its --log-file content shapes and its
+    --local-dir delivery gate varied with the
+    fifteen shapes for the first time (step-8
+    Target 5 / family (b) -- failed-login-watch's
+    earlier classes covered parse_event(),
+    read_new_events(), burst_count / window_sec
+    and decide()'s episode flow, window pruning
+    and event / readings / state shapes, and
+    main() only in genuine / missing / malformed
+    --readings mode, a list manifest, a garbled
+    pre-state, genuine / missing --log-file mode
+    and live mode with genuine and junk log_paths;
+    the state cleaner was never called directly,
+    and main()'s scalar / string / null manifests,
+    its junk-carrying pre-state, a directory as
+    the state path, garbage / empty --log-file
+    content and its --local-dir delivery gate
+    were never run at all, the same gap the feed
+    hunts closed for their clean / main modes in
+    the ticks before this one).
+
+    (a) Doc claims: the module docstring states
+        decide() is the pure shape ("readings plus
+        manifest plus last pass's state, out come
+        alerts and the new state"), the state dict
+        carries a "_reader" sub-dict which "the
+        decision code preserves opaquely and
+        ignores" and main() owns, a success closes
+        an episode, timestamps are pruned to the
+        trailing window_sec, local delivery signs
+        each payload with this sense's key read
+        from the environment variable named by
+        --secret-env, and _is_number() is
+        documented so a non-finite or huge value
+        reads as "not a number" so the documented
+        default applies. main()'s own comment
+        states a failed delivery leaves the state
+        unwritten, so the offsets do not advance
+        and the next pass re-reads the log lines.
+
+    (b) How this was probed: on 2026-10-24
+        _clean_state() was called directly with
+        the fifteen shapes (omitted-equivalent
+        via a missing key, null, empty string,
+        true, false, zero, negative, numeric
+        string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, list, dict)
+        and with mixed genuine / junk source
+        entries and every _reader shape; main()
+        was run against isolated temp dirs for
+        list / scalar / string / null manifests,
+        list / scalar / string / empty readings,
+        a malformed readings file, a junk-
+        carrying pre-state, a directory as the
+        state path, --log-file with a genuine
+        ISO-timestamp burst, garbage and empty
+        content, and --local-dir with the secret
+        env var unset (no delivery attempted).
+
+    (c) Behavior actually observed: NO divergence
+        recorded. _clean_state() reads every
+        non-dict shape and every non-dict sources
+        value as fresh {"sources": {}}. Cleaning
+        is entry-wise: a source kept only under
+        a string key with a dict entry, its fails
+        filtered through _is_number() (bool,
+        string, huge, inf and NaN drop; genuine
+        values sort as floats), burst_active is
+        plain bool() coercion, burst_filed_at is
+        a float only for a genuine number (a
+        numeric string, huge or bool reads
+        None), unknown entry keys drop, and an
+        empty entry reads as an empty source.
+        A dict _reader is preserved VERBATIM
+        (junk inode / offset values ride along
+        untouched); every non-dict _reader shape
+        drops. main() in --readings mode: a list,
+        scalar, string or null manifest still
+        files the burst under the fallback sensor
+        name "failed_login_watch" and writes
+        state (rc 0); a list, scalar, string or
+        empty readings value reads as an empty
+        pass (rc 0, nothing printed, empty state
+        written); a malformed readings file is
+        rc 2 with no state file written; a junk-
+        carrying pre-state files on its cleaned
+        values (burst_active coerced true, so the
+        genuine burst files no second alert, the
+        cleaned single fail survives the window
+        prune, the string-keyed junk source
+        survives with pruned fails, and the
+        _reader dict is preserved verbatim); a
+        directory as the state path is rc 2 with
+        the alert still printed first; --log-file
+        with five ISO failures inside four
+        seconds files one burst (rc 0) while
+        garbage and empty content file nothing
+        (rc 0, fresh state); and --local-dir
+        with no secret in the env var is rc 2
+        with the state file left byte-identical,
+        whether or not the pass produced an
+        alert -- the delivery gate is checked
+        before any alert is delivered, so the
+        next pass will re-read these log lines,
+        as main()'s comment states.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the readings above
+        keep matching the docs. If a shape above
+        ever stops behaving as documented, this test
+        is the failing record of that change.
+    """
+
+    _FRESH = {"sources": {}}
+    _SHAPES = [None, "", True, False, 0, -5, "45", "x", 10 ** 400,
+               float("inf"), float("-inf"), float("nan"), ["x"],
+               {"x": 1}, 2.5]
+    _FILED = {"sources": {"192.0.2.10": {
+        "fails": [1000.0, 1001.0, 1002.0, 1003.0, 1004.0],
+        "burst_active": True, "burst_filed_at": 1004.0}}}
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "failed-login-watch",
+            "failed_login_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "failed_login_watch_clean_main", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _fails():
+        return [{"ts": 1000.0 + i, "kind": "fail",
+                 "source": "192.0.2.10", "user": "bob"}
+                for i in range(5)]
+
+    def test_clean_state_direct_shapes(self):
+        mod = self._mod()
+        for value in self._SHAPES:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(mod._clean_state(value), self._FRESH)
+                self.assertEqual(
+                    mod._clean_state({"sources": value}), self._FRESH)
+        self.assertEqual(mod._clean_state({}), self._FRESH)
+        # Mixed sources: only genuine-number fails survive,
+        # sorted as floats; filed_at is a float only for a
+        # genuine number; unknown entry keys drop.
+        mixed = {"sources": {
+            "good": {"fails": [1000.0, 900, True, "x", 10 ** 400,
+                               float("inf"), float("nan"), None],
+                     "burst_active": 1, "burst_filed_at": 950.5,
+                     "extra": 9},
+            "strfiled": {"fails": "x", "burst_active": "x",
+                         "burst_filed_at": "950"},
+            "hugefiled": {"fails": [], "burst_active": 0,
+                          "burst_filed_at": 10 ** 400},
+            "boolfiled": {"fails": [], "burst_filed_at": True},
+            123: {"fails": [1]},
+            "nondict": "x",
+            "empty": {}}}
+        self.assertEqual(mod._clean_state(mixed), {"sources": {
+            "good": {"fails": [900.0, 1000.0], "burst_active": True,
+                     "burst_filed_at": 950.5},
+            "strfiled": {"fails": [], "burst_active": True,
+                         "burst_filed_at": None},
+            "hugefiled": {"fails": [], "burst_active": False,
+                          "burst_filed_at": None},
+            "boolfiled": {"fails": [], "burst_active": False,
+                          "burst_filed_at": None},
+            "empty": {"fails": [], "burst_active": False,
+                      "burst_filed_at": None}}})
+        # _reader: only a dict survives, preserved verbatim.
+        for value in self._SHAPES:
+            with self.subTest(reader=repr(value)):
+                want = self._FRESH
+                if isinstance(value, dict):
+                    want = {"sources": {}, "_reader": value}
+                self.assertEqual(
+                    mod._clean_state({"sources": {}, "_reader": value}),
+                    want)
+        junk_reader = {"/var/log/auth.log": {"inode": "junk",
+                                             "offset": -1}, "x": 123}
+        self.assertEqual(
+            mod._clean_state({"sources": {}, "_reader": junk_reader}),
+            {"sources": {}, "_reader": junk_reader})
+
+    _READINGS = object()
+
+    def _main(self, mod, td, manifest_obj, readings_obj=_READINGS,
+              extra=(), pre_state=None, state_is_dir=False,
+              log_content=None):
+        import io
+        import os
+        from contextlib import redirect_stderr, redirect_stdout
+        man = os.path.join(td, "m.json")
+        rd = os.path.join(td, "r.json")
+        lf = os.path.join(td, "auth.log")
+        st = td if state_is_dir else os.path.join(td, "s.json")
+        with open(man, "w", encoding="utf-8") as fh:
+            json.dump(manifest_obj, fh)
+        args = ["--manifest", man, "--state", st]
+        if log_content is not None:
+            with open(lf, "w", encoding="utf-8") as fh:
+                fh.write(log_content)
+            args += ["--log-file", lf]
+        elif readings_obj is not self._READINGS:
+            with open(rd, "w", encoding="utf-8") as fh:
+                if isinstance(readings_obj, str) \
+                        and readings_obj == "{bad":
+                    fh.write(readings_obj)
+                else:
+                    json.dump(readings_obj, fh)
+            args += ["--readings", rd]
+        if pre_state is not None and not state_is_dir:
+            with open(st, "w", encoding="utf-8") as fh:
+                json.dump(pre_state, fh)
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(io.StringIO()):
+            rc = mod.main(args + list(extra))
+        state = None
+        if not state_is_dir and os.path.isfile(st):
+            with open(st, encoding="utf-8") as fh:
+                state = json.load(fh)
+        return rc, out.getvalue(), state
+
+    def test_main_manifest_and_readings_shapes(self):
+        mod = self._mod()
+        gen = {"name": "failed_login_watch", "tunables": {}}
+        readings = {"now": 1040.0, "events": self._fails()}
+        pre = {"sources": {}}
+        for manifest in [[1, 2], 42, "hi", None]:
+            with self.subTest(manifest=repr(manifest)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, manifest, readings, pre_state=pre)
+                self.assertEqual(rc, 0)
+                self.assertIn("login_failure_burst", out)
+                self.assertIn('"failed_login_watch"', out)
+                self.assertEqual(state, self._FILED)
+        for value in [[1], 42, "hi", {}, {"now": 1040.0}]:
+            with self.subTest(readings=repr(value)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, gen, value, pre_state=pre)
+                self.assertEqual(rc, 0)
+                self.assertEqual(out, "")
+                self.assertEqual(state, pre)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(mod, td, gen, "{bad")
+            self.assertEqual(rc, 2)
+            self.assertIsNone(state)
+
+    def test_main_junk_prestate_and_directory_state(self):
+        mod = self._mod()
+        gen = {"name": "failed_login_watch", "tunables": {}}
+        readings = {"now": 1040.0, "events": self._fails()}
+        # On disk the integer key is the string "123" (JSON keys
+        # are strings); its fail at ts 1 is window-pruned in
+        # decide(). The genuine source's burst_active coerces
+        # true, so no second alert files, and its cleaned
+        # filed_at (from the string "no") reads None.
+        junk = {"sources": {
+            "192.0.2.10": {"fails": [1000.0, "x", True],
+                           "burst_active": 1,
+                           "burst_filed_at": "no", "extra": 1},
+            "bad": "x",
+            "123": {"fails": [1]}},
+            "_reader": {"/tmp/x": {"inode": 1, "offset": 2}}}
+        cleaned_src = {"fails": [1000.0, 1000.0, 1001.0, 1002.0,
+                                 1003.0, 1004.0],
+                       "burst_active": True, "burst_filed_at": None}
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, gen, readings, pre_state=junk)
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, {
+                "sources": {
+                    "192.0.2.10": cleaned_src,
+                    "123": {"fails": [], "burst_active": False,
+                            "burst_filed_at": None}},
+                "_reader": {"/tmp/x": {"inode": 1, "offset": 2}}})
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, gen, {"now": 1040.0, "events": []},
+                pre_state=junk)
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, {
+                "sources": {
+                    "192.0.2.10": {"fails": [1000.0],
+                                   "burst_active": True,
+                                   "burst_filed_at": None},
+                    "123": {"fails": [], "burst_active": False,
+                            "burst_filed_at": None}},
+                "_reader": {"/tmp/x": {"inode": 1, "offset": 2}}})
+        # A directory as the state path is rc 2 with the alert
+        # still printed first.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, gen, readings, state_is_dir=True)
+            self.assertEqual(rc, 2)
+            self.assertIn("login_failure_burst", out)
+
+    def test_main_logfile_and_local_modes(self):
+        import os
+        import unittest.mock
+        mod = self._mod()
+        gen = {"name": "failed_login_watch", "tunables": {}}
+        readings = {"now": 1040.0, "events": self._fails()}
+        pre = {"sources": {}}
+        # --log-file: five ISO failures inside four seconds
+        # file one burst; garbage and empty content file
+        # nothing and write fresh state.
+        iso = "".join(
+            f"2026-10-24 10:00:0{i} sshd[1]: Failed password "
+            f"for bob from 192.0.2.10 port 22 ssh2\n"
+            for i in range(5))
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, gen, log_content=iso)
+            self.assertEqual(rc, 0)
+            self.assertIn("login_failure_burst", out)
+        for content in ["not a log\n", ""]:
+            with self.subTest(content=repr(content)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, gen, log_content=content)
+                    self.assertEqual((rc, out), (0, ""))
+                    self.assertEqual(state, pre)
+        # --local-dir with no secret in the env var: rc 2 and
+        # the state file is left exactly as it was, with or
+        # without alerts.
+        for value in [readings, {"now": 1040.0, "events": []}]:
+            with self.subTest(readings=repr(value)[:40]):
+                with tempfile.TemporaryDirectory() as td:
+                    with unittest.mock.patch.dict(
+                            os.environ, {}, clear=False):
+                        os.environ.pop(
+                            "HOMING_PIGEON_SENSOR_SECRET", None)
+                        rc, out, state = self._main(
+                            mod, td, gen, value,
+                            extra=["--local-dir", td], pre_state=pre)
+                    self.assertEqual(rc, 2)
+                    self.assertEqual(state, pre)
+
 if __name__ == "__main__":
 
     unittest.main()
