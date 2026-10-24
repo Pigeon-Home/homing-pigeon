@@ -4,8 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## Unreleased
+## 3.12.62 - 2026-10-24
 
+- **Docs regrouped, README and FAQ sharpened.** `docs/` is grouped by reader
+  with lowercase names; the FAQ leads with use cases and the hard
+  security questions; the README gains an FAQ teaser and a "Where it
+  goes next" section. pi-health and lab-results now read unusable
+  values (huge digit strings, non-string folders, odd mounts) as the
+  documented default instead of crashing.
 - **`docs/` is grouped by reader and named in lowercase-kebab.** Guides
   moved into `use/`, `oracle/`, `extend/`, `security/` (with
   `hardening/`) and `project/`; `RUNBOOK.md` is `use/runbook.md`, and so

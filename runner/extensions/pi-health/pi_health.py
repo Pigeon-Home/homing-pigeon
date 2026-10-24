@@ -150,7 +150,7 @@ def _read_temp_c():
         try:
             with open(path, encoding="utf-8") as fh:
                 temp = int(fh.read().strip()) / 1000.0
-        except (OSError, ValueError):
+        except (OSError, ValueError, OverflowError):
             continue
         ztype = ""
         # The sibling "type" file. Kept as a forward-slash path
@@ -208,7 +208,7 @@ def _read_disk_pct(mount):
     """Percent of `mount` in use, or None when unmeasurable."""
     try:
         usage = shutil.disk_usage(mount)
-    except OSError:
+    except (OSError, TypeError, ValueError, OverflowError):
         return None
     if usage.total <= 0:
         return None
@@ -230,6 +230,9 @@ def _mem_avail_pct_meminfo():
     total = found.get("MemTotal") or 0
     avail = found.get("MemAvailable")
     if avail is None or total <= 0:
+        return None
+    # A digit string no real machine reports: unusable, not a crash.
+    if total >= 2 ** 62 or avail >= 2 ** 62:
         return None
     return round(100.0 * avail / total, 1)
 

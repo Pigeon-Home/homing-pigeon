@@ -262,7 +262,9 @@ def main(argv=None):
     tunables = manifest.get("tunables") if isinstance(manifest, dict) else {}
     if not isinstance(tunables, dict):
         tunables = {}
-    watch_dir = args.watch_dir or tunables.get("watch_dir") or "results"
+    watch_dir = args.watch_dir or tunables.get("watch_dir")
+    if not isinstance(watch_dir, str) or not watch_dir:
+        watch_dir = "results"
     state_path = args.state or os.path.join(
         watch_dir, ".lab-results-state.json")
     state = _fresh_state()
