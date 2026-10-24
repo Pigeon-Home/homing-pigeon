@@ -1,6 +1,6 @@
-# tests/. files 253. tests 9178.
+# tests/. files 253. tests 9267.
  3607  tests/archive/campaign-1/test_campaign_loop_cycles.py
-  561  tests/archive/campaign-2/test_campaign_loop_cycles.py
+  645  tests/archive/campaign-2/test_campaign_loop_cycles.py
     4  tests/test_additional_negative_2026_10_15.py
     4  tests/test_additional_negative_board_confine_2026_10_15.py
     3  tests/test_additional_negative_counts_query_2026_10_15.py
@@ -49,7 +49,7 @@
     8  tests/test_defaults_table_hunt.py
     2  tests/test_design_docs.py
    11  tests/test_detection_gaps.py
-  250  tests/test_doc_default_divergences.py
+  255  tests/test_doc_default_divergences.py
     3  tests/test_doc_gmail_discipline.py
     2  tests/test_doc_version_rot.py
     6  tests/test_dozen_extensions.py
