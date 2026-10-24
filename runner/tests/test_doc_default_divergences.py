@@ -30684,6 +30684,499 @@ class TestPiHealthLiveReadersCrashInsteadOfNoneOnUnusableShapes(
         finally:
             mod.shutil = orig
 
+class TestUsbArrivalsDevicesAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the usb-arrivals
+    device / state cleaning (_clean_devices(),
+    _clean_state()), the storage test (_is_storage()
+    as reached through decide()), the USB and
+    serial live readers (_read_usb_devices(),
+    _read_serial_devices(), read_live()), decide()'s
+    arrival / storage / departure handling, and
+    main() in --readings mode, varied with the
+    fifteen shapes for the first time (step-8
+    Target 5 / family (b) -- the extension's only
+    earlier class covers ONLY its learn_first_pass
+    and kinds tunables; the device list, the state,
+    the live readers, decide() and --readings mode
+    were never varied).
+
+    (a) Doc claims: the module header declares
+        device_arrived (info) for "a device id not
+        seen before" and storage_arrived (medium)
+        for "a NEW device whose USB device class
+        is 08 (mass storage) -- the stronger
+        statement, filed INSTEAD of device_arrived"
+        (runner/extensions/usb-arrivals/
+        usb_arrivals.py, module header; README.md
+        signal table and extension.json repeat
+        them). It also states "Departures file
+        nothing: a device leaving drops out of the
+        state silently, and if it is plugged back
+        in later that is a fresh arrival", that
+        live reads are "capability-based -- a
+        source the machine does not expose yields
+        absent data, never an error", that a USB
+        device's id is "<vendor>:<product>" and
+        "identical twin devices share that id and
+        are indistinguishable at this level, so
+        two of them are one entry", that serial
+        devices come from /dev/serial/by-id names
+        when present (the id is the by-id name),
+        "else serial tty names from /sys/class/tty
+        (ttyUSB*, ttyACM*, ttyAMA*, ttyS*)" with
+        device_class "serial", that on non-Linux
+        read_live() "returns an empty device list
+        -- a quiet no-op pass, never an error",
+        and that "--readings FILE reads a readings
+        dict from a JSON file instead of the
+        machine". The device / state fields are
+        not numeric registry rows, so Decision 1's
+        default-on-unusable policy does not name
+        a shape rule for them; this class pins the
+        observed readings instead of asserting one.
+
+    (b) How this was probed: on 2026-10-24 the
+        fifteen shapes (null, bool, string, numeric
+        string, float, zero, negative, huge int
+        10**400, inf, -inf, NaN, empty string /
+        list / dict, list, dict) were fed to
+        _clean_devices() as the readings value and
+        as its devices field, and to _clean_state()
+        as the state value, with genuine entries
+        mixing kept and dropped shapes, duplicate
+        ids and non-string fields; decide() was
+        probed with sorted multi-device passes,
+        storage classes ("08", padded " 08 ",
+        "8", "008"), a known-device pass, a
+        departure pass and a return pass, an
+        unlearned state with learn_first_pass
+        false, and malformed manifest / state
+        shapes; _read_usb_devices() was probed
+        through stubbed glob / _read_text seams
+        (twin devices, a missing vendor, a glob
+        OSError); _read_serial_devices() through
+        stubbed listdir / realpath seams (by-id
+        names covering ttys, the tty prefix
+        filter, missing directories); read_live()
+        through a stubbed platform and stubbed
+        bus readers for every kinds combination;
+        and main() was run in --readings mode
+        against temp manifests, readings and
+        state files. _is_storage() raises
+        AttributeError on a non-string argument
+        called directly, but it is only ever
+        called with a cleaned device (whose
+        device_class is always a string) or a
+        live device (whose class comes from
+        _read_text, always a string), so that
+        shape is unreachable from any documented
+        input path and was not recorded -- the
+        same ruling as the port-watch hex helpers
+        in an earlier tick.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. _clean_devices() reads every
+        non-dict readings value and every non-list
+        devices value (a tuple included) as no
+        devices, skips non-dict entries and
+        entries with a non-string or empty id,
+        keeps the FIRST entry for a duplicated id,
+        reads a non-string kind as "" (an empty
+        string kind stays ""), and reads a
+        non-string description or device_class
+        as "". _clean_state() reads every non-dict
+        state as the fresh state, reads a
+        non-bool learned as False and a non-dict
+        seen as {}, drops seen entries with a
+        non-string or empty key, and cleans each
+        kept entry field-wise (a non-dict info
+        becomes all-empty fields; non-string
+        kind / class / description become "").
+        decide() files in id-sorted order, files
+        storage_arrived (medium, detail carrying
+        device_class) exactly when the cleaned
+        class stripped is "08" (" 08 " files,
+        "8" and "008" file device_arrived), files
+        device_arrived (info, detail WITHOUT
+        device_class) otherwise, appends
+        ": <description>" to the title only when
+        the description is non-empty, prefixing
+        storage titles with "USB storage device"
+        and plain titles with "device"; a known
+        device files nothing and the new state
+        holds exactly the current devices; an
+        empty pass drops every seen device
+        silently and its return files again; an
+        unlearned state with learn_first_pass
+        false discards its seen table and files
+        every present device; and the sensor
+        falls back to "usb_arrivals" for a
+        non-dict manifest or a non-string / empty
+        name. _read_usb_devices() answers devices
+        in sorted directory order, skips a device
+        with an empty vendor or product, collapses
+        twin vendor:product ids to the first, and
+        answers [] when glob raises OSError.
+        _read_serial_devices() answers by-id names
+        sorted (each with description equal to
+        the name and class "serial"), covers the
+        ttys those names resolve to, then answers
+        the remaining ttyUSB / ttyACM / ttyAMA /
+        ttyS names sorted (other tty names are
+        skipped), and answers [] when neither
+        directory can be listed. read_live()
+        answers an empty device list off Linux,
+        and on Linux extends the USB list then
+        the serial list exactly for the kinds in
+        the cleaned kinds tunable (a bogus kinds
+        list reads neither bus; a missing
+        manifest reads the default both). main()
+        in --readings mode learns quietly on the
+        first pass (rc 0, state written), files
+        on a no-learn pass, reads a malformed
+        state file as fresh, reads a non-dict
+        (list) manifest as the defaults (rc 0)
+        and a non-dict readings file as no
+        devices (rc 0), and answers rc 2 for a
+        missing or malformed manifest or readings
+        file or an unwritable state path.
+        Observed on 2026-10-24 against current
+        main.
+    """
+
+    _SHAPES = [("null", None), ("true", True),
+               ("false", False), ("empty-string", ""),
+               ("string", "bogus"),
+               ("numeric-string", "08"), ("zero", 0),
+               ("negative", -5), ("one", 1),
+               ("fractional", 0.5),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1}),
+               ("empty-list", []), ("empty-dict", {})]
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "usb-arrivals",
+            "usb_arrivals.py")
+        spec = importlib.util.spec_from_file_location(
+            "usb_arrivals_devices_decide", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_clean_devices_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(mod._clean_devices(value), [])
+                self.assertEqual(
+                    mod._clean_devices({"devices": value}), [])
+        self.assertEqual(
+            mod._clean_devices({"devices": (
+                {"id": "a:1", "kind": "usb",
+                 "description": "D", "device_class": "08"},)}),
+            [])
+        entries = [None, "x", 123, [], {},
+                   {"id": None}, {"id": ""}, {"id": 123},
+                   {"id": "a:1"},
+                   {"id": "a:1", "kind": "usb",
+                    "description": "First",
+                    "device_class": "08"},
+                   {"id": "b:2", "kind": 123,
+                    "description": None, "device_class": 8},
+                   {"id": "c:3", "kind": "",
+                    "description": "Desc",
+                    "device_class": " 08 "}]
+        self.assertEqual(mod._clean_devices(
+            {"devices": entries}), [
+                {"id": "a:1", "kind": "",
+                 "description": "", "device_class": ""},
+                {"id": "b:2", "kind": "",
+                 "description": "", "device_class": ""},
+                {"id": "c:3", "kind": "",
+                 "description": "Desc",
+                 "device_class": " 08 "}])
+
+    def test_clean_state_shapes(self):
+        mod = self._module()
+        fresh = {"learned": False, "seen": {}}
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(mod._clean_state(value), fresh)
+        self.assertEqual(
+            mod._clean_state({"learned": 1, "seen": []}), fresh)
+        cleaned = mod._clean_state({"learned": True, "seen": {
+            "a:1": {"kind": "usb", "device_class": "08",
+                    "description": "D"},
+            "": {"kind": "x"}, 123: {"kind": "x"},
+            "b:2": "notdict",
+            "c:3": {"kind": 123, "device_class": None,
+                    "description": True}}})
+        self.assertEqual(cleaned, {"learned": True, "seen": {
+            "a:1": {"kind": "usb", "device_class": "08",
+                    "description": "D"},
+            "b:2": {"kind": "", "device_class": "",
+                    "description": ""},
+            "c:3": {"kind": "", "device_class": "",
+                    "description": ""}}})
+
+    def test_decide_order_storage_and_titles(self):
+        mod = self._module()
+        man = {"name": "usb_arrivals",
+               "tunables": {"learn_first_pass": False}}
+        alerts, state = mod.decide({"devices": [
+            {"id": "z:9", "kind": "usb", "description": "Zed",
+             "device_class": "00"},
+            {"id": "a:1", "kind": "usb",
+             "description": "Cruzer", "device_class": "08"},
+            {"id": "m:5", "kind": "serial", "description": "",
+             "device_class": "serial"}]}, man, {})
+        self.assertEqual(
+            [(a["signal"], a["severity"], a["title"])
+             for a in alerts],
+            [("storage_arrived", "medium",
+              "USB storage device a:1 arrived: Cruzer"),
+             ("device_arrived", "info", "device m:5 arrived"),
+             ("device_arrived", "info",
+              "device z:9 arrived: Zed")])
+        self.assertEqual(alerts[0]["detail"], {
+            "id": "a:1", "kind": "usb",
+            "description": "Cruzer", "device_class": "08"})
+        self.assertNotIn("device_class", alerts[1]["detail"])
+        self.assertEqual(set(state["seen"]),
+                         {"a:1", "m:5", "z:9"})
+        for cls, signal in ((" 08 ", "storage_arrived"),
+                            ("8", "device_arrived"),
+                            ("008", "device_arrived")):
+            with self.subTest(device_class=cls):
+                got, _ = mod.decide({"devices": [
+                    {"id": "w:1", "kind": "usb",
+                     "description": "W", "device_class": cls}]},
+                    man, {})
+                self.assertEqual(got[0]["signal"], signal)
+
+    def test_decide_known_departure_and_return(self):
+        mod = self._module()
+        man = {"name": "usb_arrivals", "tunables": {}}
+        dev = {"id": "a:1", "kind": "usb",
+               "description": "Cruzer", "device_class": "08"}
+        _, state = mod.decide({"devices": [dev]}, man, {})
+        alerts, state = mod.decide({"devices": [dev]}, man, state)
+        self.assertEqual(alerts, [])
+        alerts, state = mod.decide({"devices": []}, man, state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state, {"learned": True, "seen": {}})
+        alerts, state = mod.decide({"devices": [dev]}, man, state)
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["signal"], "storage_arrived")
+        # An unlearned state with learn_first_pass false
+        # discards its seen table and files again.
+        alerts, _ = mod.decide(
+            {"devices": [dev]},
+            {"name": "usb_arrivals",
+             "tunables": {"learn_first_pass": False}},
+            {"learned": False, "seen": {"a:1": {
+                "kind": "usb", "device_class": "08",
+                "description": "Cruzer"}}})
+        self.assertEqual(len(alerts), 1)
+
+    def test_decide_sensor_fallback(self):
+        mod = self._module()
+        dev = {"id": "a:1", "kind": "usb",
+               "description": "", "device_class": "00"}
+        for manifest in (None, {}, [], "x",
+                         {"name": ""}, {"name": 123}):
+            with self.subTest(manifest=repr(manifest)):
+                alerts, _ = mod.decide(
+                    {"devices": [dev]},
+                    manifest if not isinstance(manifest, dict)
+                    else {**manifest,
+                          "tunables": {"learn_first_pass": False}},
+                    {})
+                # Non-dict manifests carry no tunables, so
+                # the first pass learns and files nothing;
+                # dict manifests with learn false file with
+                # the fallback sensor name.
+                if isinstance(manifest, dict):
+                    self.assertEqual(alerts[0]["sensor"],
+                                     "usb_arrivals")
+        alerts, _ = mod.decide(
+            {"devices": [dev]},
+            {"name": "custom",
+             "tunables": {"learn_first_pass": False}}, {})
+        self.assertEqual(alerts[0]["sensor"], "custom")
+
+    def test_read_usb_devices(self):
+        mod = self._module()
+        from unittest import mock
+        texts = {
+            "/d/1-1/idVendor": "0781",
+            "/d/1-1/idProduct": "5567",
+            "/d/1-1/product": "Cruzer",
+            "/d/1-1/bDeviceClass": "08",
+            "/d/2-1/idVendor": "0781",
+            "/d/2-1/idProduct": "5567",
+            "/d/2-1/product": "Twin",
+            "/d/2-1/bDeviceClass": "08",
+            "/d/3-1/idVendor": "",
+            "/d/3-1/idProduct": "9999"}
+        with mock.patch.object(
+                mod.glob, "glob",
+                return_value=["/d/2-1/", "/d/1-1/", "/d/3-1/"]), \
+                mock.patch.object(
+                    mod, "_read_text",
+                    side_effect=lambda p: texts.get(p, "")):
+            self.assertEqual(mod._read_usb_devices(), [{
+                "id": "0781:5567", "kind": "usb",
+                "description": "Cruzer", "device_class": "08"}])
+        with mock.patch.object(
+                mod.glob, "glob", side_effect=OSError("no")):
+            self.assertEqual(mod._read_usb_devices(), [])
+        self.assertEqual(mod._read_text("/no/such/file"), "")
+
+    def test_read_serial_devices(self):
+        mod = self._module()
+        from unittest import mock
+
+        def listdir(path):
+            if "by-id" in path:
+                return ["usb-XYZ", "usb-ABC"]
+            return ["ttyUSB0", "ttyACM1", "ttyS0", "tty0",
+                    "console", "ttyAMA0"]
+
+        def realpath(path):
+            return ("/dev/ttyUSB0" if path.endswith("usb-XYZ")
+                    else "/dev/ttyACM1")
+        with mock.patch.object(mod.os, "listdir",
+                               side_effect=listdir), \
+                mock.patch.object(mod.os.path, "realpath",
+                                  side_effect=realpath):
+            got = mod._read_serial_devices()
+        self.assertEqual([d["id"] for d in got],
+                         ["usb-ABC", "usb-XYZ",
+                          "ttyAMA0", "ttyS0"])
+        for d in got:
+            self.assertEqual(d["kind"], "serial")
+            self.assertEqual(d["device_class"], "serial")
+            self.assertEqual(d["description"], d["id"])
+        with mock.patch.object(mod.os, "listdir",
+                               side_effect=OSError("no")):
+            self.assertEqual(mod._read_serial_devices(), [])
+
+    def test_read_live_platform_and_kinds(self):
+        mod = self._module()
+        import sys
+        from unittest import mock
+        with mock.patch.object(sys, "platform", "darwin"):
+            got = mod.read_live({"tunables": {}})
+            self.assertEqual(got["devices"], [])
+            self.assertIn("now", got)
+        with mock.patch.object(sys, "platform", "linux"), \
+                mock.patch.object(
+                    mod, "_read_usb_devices",
+                    return_value=[{"id": "u:1"}]), \
+                mock.patch.object(
+                    mod, "_read_serial_devices",
+                    return_value=[{"id": "s:1"}]):
+            self.assertEqual(
+                mod.read_live({})["devices"],
+                [{"id": "u:1"}, {"id": "s:1"}])
+            self.assertEqual(
+                mod.read_live(
+                    {"tunables": {"kinds": ["usb"]}})["devices"],
+                [{"id": "u:1"}])
+            self.assertEqual(
+                mod.read_live(
+                    {"tunables": {"kinds": ["bogus"]}})["devices"],
+                [])
+
+    def test_main_readings_mode(self):
+        mod = self._module()
+        import contextlib
+        import io
+        import os
+
+        def run(manifest_obj, readings_obj, state_raw=None,
+                manifest_raw=None, readings_raw=None,
+                state_path=None):
+            with tempfile.TemporaryDirectory() as td:
+                mp = os.path.join(td, "m.json")
+                rp = os.path.join(td, "r.json")
+                sp = state_path or os.path.join(td, "s.json")
+                with open(mp, "w", encoding="utf-8") as fh:
+                    fh.write(manifest_raw if manifest_raw
+                             is not None
+                             else json.dumps(manifest_obj))
+                with open(rp, "w", encoding="utf-8") as fh:
+                    fh.write(readings_raw if readings_raw
+                             is not None
+                             else json.dumps(readings_obj))
+                if state_raw is not None:
+                    with open(sp, "w", encoding="utf-8") as fh:
+                        fh.write(state_raw)
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out), \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    rc = mod.main(["--manifest", mp,
+                                   "--readings", rp,
+                                   "--state", sp])
+                state = None
+                if os.path.exists(sp):
+                    with open(sp, encoding="utf-8") as fh:
+                        state = json.load(fh)
+                return rc, out.getvalue(), state
+
+        man = {"name": "usb_arrivals",
+               "tunables": {"learn_first_pass": True}}
+        read = {"devices": [{"id": "0781:5567", "kind": "usb",
+                             "description": "Cruzer",
+                             "device_class": "08"}]}
+        rc, out, state = run(man, read)
+        self.assertEqual((rc, out), (0, ""))
+        self.assertEqual(state["seen"]["0781:5567"]
+                         ["device_class"], "08")
+        rc, out, _ = run(
+            {"name": "usb_arrivals",
+             "tunables": {"learn_first_pass": False}}, read)
+        self.assertEqual(rc, 0)
+        self.assertIn('"storage_arrived"', out)
+        rc, _, _ = run(man, read, state_raw="{not json")
+        self.assertEqual(rc, 0)
+        rc, _, state = run(None, read, manifest_raw="[]")
+        self.assertEqual(rc, 0)
+        self.assertTrue(state["learned"])
+        rc, _, state = run(man, None, readings_raw="[]")
+        self.assertEqual((rc, state["seen"]), (0, {}))
+        rc, _, _ = run(man, None, readings_raw="{bad")
+        self.assertEqual(rc, 2)
+        rc, _, _ = run(None, read, manifest_raw="{bad")
+        self.assertEqual(rc, 2)
+        with tempfile.TemporaryDirectory() as td:
+            mp = os.path.join(td, "m.json")
+            rp = os.path.join(td, "r.json")
+            with open(mp, "w", encoding="utf-8") as fh:
+                json.dump(man, fh)
+            with open(rp, "w", encoding="utf-8") as fh:
+                json.dump(read, fh)
+            with contextlib.redirect_stderr(io.StringIO()):
+                rc = mod.main(["--manifest", mp, "--readings", rp,
+                               "--state", os.path.join(
+                                   td, "no-dir", "s.json")])
+            self.assertEqual(rc, 2)
+            with contextlib.redirect_stderr(io.StringIO()):
+                rc = mod.main(["--manifest",
+                               os.path.join(td, "missing.json"),
+                               "--readings", rp,
+                               "--state", os.path.join(td, "s.json")])
+            self.assertEqual(rc, 2)
+
 if __name__ == "__main__":
 
     unittest.main()
