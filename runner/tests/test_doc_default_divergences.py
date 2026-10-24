@@ -45799,6 +45799,545 @@ class TestUsbArrivalsMainModesFifteenShapes(unittest.TestCase):
             self.assertIn("1 of 1 alert(s) not delivered", err)
             self.assertEqual(after, before)
 
+class TestWireArrivalsMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: wire-arrivals
+    main()'s remaining manifest / readings /
+    state modes, its live mode and its
+    --local-dir delivery modes varied with the
+    fifteen shapes for the first time (step-8
+    Target 5 / family (b) -- wire-arrivals'
+    earlier classes covered its learn_first_pass
+    and ifaces tunables and, called directly,
+    its parsers, _clean_state() cleaner,
+    decide() and the live readers, plus its
+    neighbors/decide surface; main()'s scalar /
+    string / null / bool / float manifests and
+    readings files, its junk-carrying and
+    broken pre-state files, a directory as the
+    state path, its live mode through main()
+    and its --local-dir delivery gate were
+    never run through main() at all, the same
+    gap the clean / main hunts closed for the
+    other watchers in the ticks before this
+    one, usb-arrivals most recently).
+
+    (a) Doc claims: the module header states
+        that with learn_first_pass on (the
+        default) the very first pass is a
+        baseline -- the whole table is absorbed,
+        the state learns, and nothing files; a
+        MAC never seen before files new_neighbor
+        (medium) and a known IP answering from
+        different hardware files ONLY mac_moved
+        (high), not also new_neighbor, but the
+        new MAC is still absorbed; the state
+        absorbs every reading, and a table
+        matching state files nothing. It also
+        states local delivery: --local-dir signs
+        each payload with this sense's key (read
+        from the environment variable named by
+        --secret-env) and drops it into the
+        runner's local inbox, or pushes it to
+        the loopback listener when --local-port
+        is given -- "Same envelope, same
+        signature -- only the transport
+        differs". _deliver_local()'s docstring
+        states it returns how many alerts were
+        delivered, or None when local delivery
+        is not set up (the reason is printed),
+        and main()'s own comment states a failed
+        delivery leaves the state unwritten, so
+        the next pass reports these arrivals
+        again.
+
+    (b) How this was probed: on 2026-10-24
+        main() was run against isolated temp
+        dirs for list / number / string / null /
+        bool / float manifests, number / string /
+        null / bool / float / list / empty
+        readings files and a non-list neighbors
+        field, malformed readings / manifest
+        files with a pre-state present, a
+        junk-carrying pre-state (learned the
+        string "yes", junk macs / ips entries),
+        a learned pre-state holding the arriving
+        neighbor, broken-JSON / list / string /
+        null / number / bool state files, a
+        directory as the state path (learn and
+        no-learn passes), live mode with
+        read_live() stubbed, and --local-dir
+        with the secret env var unset and empty
+        (the alert case's state file compared
+        byte-for-byte), with a genuine secret
+        (the dropped envelopes read back from
+        local-inbox and parsed, for both
+        new_neighbor and mac_moved), with a
+        custom --secret-env and --key-id, with
+        a genuine secret on a quiet learn pass,
+        and with a closed --local-port.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. Every non-dict manifest reads
+        the documented defaults and learns the
+        scan quietly exactly like the genuine
+        manifest, with MACs normalized to
+        lowercase in both state indexes. Every
+        non-dict readings file, an empty
+        readings dict and a readings dict whose
+        neighbors field is not a list are a
+        no-neighbor pass -- rc 0, nothing filed,
+        and a learned empty state written
+        (wire-arrivals has no not-a-JSON-object
+        gate on readings; decide() reads them as
+        no neighbors). A malformed readings or
+        manifest file is rc 2 with a pre-state
+        file left untouched. The junk pre-state's
+        learned flag is the string "yes", which
+        _clean_state() reads as True through
+        bool() -- so the pass does NOT re-learn:
+        the arriving neighbor is already known
+        through the cleaned ips index and files
+        nothing, the junk mac keys survive
+        cleaned (the empty-string key and a
+        mac whose ips field was a string both
+        keep an empty ips list, MAC keys are
+        lowercased), junk ips entries are
+        dropped, and the extra top-level key is
+        discarded. A known neighbor under a
+        learned pre-state files nothing; a
+        second, new neighbor files new_neighbor
+        alone at medium; a known IP answering
+        from a new MAC files mac_moved alone at
+        high (not also new_neighbor), the ips
+        index is repointed, and the old MAC's
+        entry remains with an empty ips list.
+        Broken-JSON, list, string, null, number
+        and bool state files read as a fresh
+        state and learn. A directory as the
+        state path is rc 2: the learn pass
+        prints nothing, then the state write
+        fails; a no-learn pass prints its
+        new_neighbor payload first, then answers
+        rc 2. Live mode with read_live() stubbed
+        behaves exactly like --readings mode.
+        --local-dir with no secret in the env
+        var (unset or empty) is rc 2 with the
+        no-signing-secret message and the state
+        file left byte-identical when an alert
+        was pending, and no state file created
+        on a quiet learn -- the delivery gate is
+        checked before any state is written, as
+        main()'s comment states. With a genuine
+        secret a new neighbor is signed and
+        dropped into <base>/local-inbox (kind
+        sensor_alert, this sense's name, the
+        signal, a sig field, medium severity),
+        a moved IP drops as mac_moved at high,
+        rc is 0 and the state IS written; a
+        custom --secret-env name and --key-id
+        are honored verbatim; a genuine secret
+        on a quiet learn pass is rc 0 with the
+        state written and nothing dropped. A
+        closed --local-port makes the delivery
+        fail per-alert: rc 2, the not-delivered
+        message names the count, and the state
+        file is left byte-identical so the
+        arrival is reported again next pass.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the readings above
+        keep matching the docs. If a shape above
+        ever stops behaving as documented, this test
+        is the failing record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "wire-arrivals",
+            "wire_arrivals.py")
+        spec = importlib.util.spec_from_file_location(
+            "wire_arrivals_main_modes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _gen(self):
+        return {"name": "wire_arrivals", "tunables": {
+            "learn_first_pass": True}}
+
+    def _nolearn(self):
+        return {"name": "wire_arrivals", "tunables": {
+            "learn_first_pass": False}}
+
+    def _n1(self):
+        return {"ip": "192.168.1.10",
+                "mac": "AA:BB:CC:DD:EE:01", "iface": "eth0"}
+
+    def _n2(self):
+        return {"ip": "192.168.1.11",
+                "mac": "aa:bb:cc:dd:ee:02", "iface": "eth0"}
+
+    def _scan(self):
+        return {"now": 1000.0, "neighbors": [self._n1()]}
+
+    def _learned(self):
+        return {"learned": True, "macs": {
+            "aa:bb:cc:dd:ee:01": {"ips": ["192.168.1.10"]}},
+            "ips": {"192.168.1.10": "aa:bb:cc:dd:ee:01"}}
+
+    def _learned_scan_state(self):
+        return self._learned()
+
+    _READINGS = object()
+
+    def _main(self, mod, td, manifest_obj,
+              readings_obj=_READINGS, extra=(),
+              pre_state=None, pre_raw=None,
+              manifest_raw=None, readings_raw=None,
+              state_is_dir=False, live=None, env=None,
+              base=None):
+        import io
+        import os
+        from contextlib import redirect_stderr, redirect_stdout
+        from unittest import mock
+        man = os.path.join(td, "m.json")
+        rd = os.path.join(td, "r.json")
+        st = td if state_is_dir else os.path.join(td, "s.json")
+        with open(man, "w", encoding="utf-8") as fh:
+            if manifest_raw is not None:
+                fh.write(manifest_raw)
+            else:
+                json.dump(manifest_obj, fh)
+        args = ["--manifest", man, "--state", st]
+        if live is None:
+            with open(rd, "w", encoding="utf-8") as fh:
+                if readings_raw is not None:
+                    fh.write(readings_raw)
+                else:
+                    json.dump(
+                        self._scan()
+                        if readings_obj is self._READINGS
+                        else readings_obj, fh)
+            args += ["--readings", rd]
+        before = None
+        if not state_is_dir:
+            if pre_raw is not None:
+                with open(st, "w", encoding="utf-8") as fh:
+                    fh.write(pre_raw)
+            elif pre_state is not None:
+                with open(st, "w", encoding="utf-8") as fh:
+                    json.dump(pre_state, fh)
+            if os.path.isfile(st):
+                with open(st, encoding="utf-8") as fh:
+                    before = fh.read()
+        clean = {k: v for k, v in os.environ.items()
+                 if k not in ("HOMING_PIGEON_SENSOR_SECRET",
+                              "WIRE_HUNT_SECRET")}
+        if env:
+            clean.update(env)
+        patches = [mock.patch.dict(os.environ, clean, clear=True)]
+        if live is not None:
+            patches.append(mock.patch.object(
+                mod, "read_live", return_value=live))
+        for patch in patches:
+            patch.start()
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with redirect_stdout(out), redirect_stderr(err):
+                rc = mod.main(args + [
+                    (base if a == "@BASE@" else a)
+                    for a in extra])
+        finally:
+            for patch in patches:
+                patch.stop()
+        state = None
+        after = None
+        if not state_is_dir and os.path.isfile(st):
+            with open(st, encoding="utf-8") as fh:
+                after = fh.read()
+            state = json.loads(after)
+        inbox = []
+        if base is not None:
+            ib = os.path.join(base, "local-inbox")
+            if os.path.isdir(ib):
+                for name in sorted(os.listdir(ib)):
+                    with open(os.path.join(ib, name),
+                              encoding="utf-8") as fh:
+                        inbox.append(json.load(fh))
+        return rc, out.getvalue(), err.getvalue(), state, \
+            before, after, inbox
+
+    def test_main_manifest_shapes(self):
+        mod = self._mod()
+        for raw in ["[1, 2]", "42", '"hi"', "null",
+                    "true", "2.5"]:
+            with self.subTest(manifest=raw):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, err, state, *_ = self._main(
+                        mod, td, None, manifest_raw=raw)
+                self.assertEqual((rc, out), (0, ""))
+                self.assertEqual(
+                    state, self._learned_scan_state())
+
+    def test_main_readings_shapes_and_bad_files(self):
+        mod = self._mod()
+        empty = {"learned": True, "macs": {}, "ips": {}}
+        for raw in ["42", '"hi"', "null", "true", "2.5",
+                    "[1, 2]", "{}", '{"neighbors": "x"}',
+                    '{"neighbors": []}']:
+            with self.subTest(readings=raw):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, err, state, *_ = self._main(
+                        mod, td, self._gen(),
+                        readings_raw=raw)
+                self.assertEqual((rc, out), (0, ""))
+                self.assertEqual(state, empty)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, before, after, _ = \
+                self._main(mod, td, self._gen(),
+                           readings_raw="{bad",
+                           pre_state=self._learned())
+            self.assertEqual(rc, 2)
+            self.assertIn("cannot read readings", err)
+            self.assertEqual(after, before)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, before, after, _ = \
+                self._main(mod, td, None,
+                           manifest_raw="{bad",
+                           pre_state=self._learned())
+            self.assertEqual(rc, 2)
+            self.assertIn("cannot read manifest", err)
+            self.assertEqual(after, before)
+
+    def test_main_junk_and_broken_prestate(self):
+        mod = self._mod()
+        # The junk pre-state's learned flag is the
+        # string "yes", which _clean_state() reads
+        # as True through bool(): the pass does not
+        # re-learn, the arriving neighbor is known
+        # through the cleaned ips index, the junk
+        # mac keys survive cleaned and the junk
+        # ips entries and extra key are dropped.
+        junk = {"learned": "yes", "macs": {
+            "AA:BB:CC:DD:EE:01": {
+                "ips": [5, "192.168.1.10", ""]},
+            "": "notdict",
+            "AA:BB:CC:DD:EE:09": {"ips": "x"}},
+            "ips": {"192.168.1.10": "AA:BB:CC:DD:EE:01",
+                    "": "aa:bb", "192.168.1.99": 5},
+            "extra": 1}
+        junk_state = {"learned": True, "macs": {
+            "": {"ips": []},
+            "aa:bb:cc:dd:ee:01": {"ips": ["192.168.1.10"]},
+            "aa:bb:cc:dd:ee:09": {"ips": []}},
+            "ips": {"192.168.1.10": "aa:bb:cc:dd:ee:01"}}
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._gen(), pre_state=junk)
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, junk_state)
+        # A learned pre-state holding the arriving
+        # neighbor files nothing.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._nolearn(),
+                pre_state=self._learned())
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, self._learned_scan_state())
+        # ...while a second, new neighbor files
+        # new_neighbor alone at medium.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._nolearn(),
+                readings_obj={"now": 1.0, "neighbors": [
+                    self._n1(), self._n2()]},
+                pre_state=self._learned())
+            self.assertEqual(rc, 0)
+            self.assertIn('"new_neighbor"', out)
+            self.assertIn('"medium"', out)
+            self.assertNotIn("mac_moved", out)
+            self.assertEqual(state["ips"], {
+                "192.168.1.10": "aa:bb:cc:dd:ee:01",
+                "192.168.1.11": "aa:bb:cc:dd:ee:02"})
+        # A known IP answering from a new MAC files
+        # mac_moved alone at high; the old MAC's
+        # entry remains with an empty ips list.
+        moved = {"ip": "192.168.1.10",
+                 "mac": "aa:bb:cc:dd:ee:99", "iface": "eth0"}
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._nolearn(),
+                readings_obj={"now": 1.0, "neighbors": [moved]},
+                pre_state=self._learned())
+            self.assertEqual(rc, 0)
+            self.assertIn('"mac_moved"', out)
+            self.assertIn('"high"', out)
+            self.assertNotIn("new_neighbor", out)
+            self.assertEqual(state, {
+                "learned": True, "macs": {
+                    "aa:bb:cc:dd:ee:01": {"ips": []},
+                    "aa:bb:cc:dd:ee:99": {
+                        "ips": ["192.168.1.10"]}},
+                "ips": {"192.168.1.10": "aa:bb:cc:dd:ee:99"}})
+        for raw in ["{bad", "[1, 2]", '"hi"', "null",
+                    "42", "true"]:
+            with self.subTest(state_file=raw):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, err, state, *_ = self._main(
+                        mod, td, self._gen(), pre_raw=raw)
+                self.assertEqual((rc, out), (0, ""))
+                self.assertEqual(
+                    state, self._learned_scan_state())
+
+    def test_main_directory_state_and_live_mode(self):
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._gen(), state_is_dir=True)
+            self.assertEqual((rc, out), (2, ""))
+            self.assertIn("cannot write state", err)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._nolearn(), state_is_dir=True)
+            self.assertEqual(rc, 2)
+            self.assertIn('"new_neighbor"', out)
+            self.assertIn("cannot write state", err)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._gen(), live=self._scan())
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, self._learned_scan_state())
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._gen(),
+                readings_obj=None,
+                live={"now": 2.0, "neighbors": [
+                    self._n1(), self._n2()]},
+                pre_state=self._learned())
+            self.assertEqual(rc, 0)
+            self.assertIn('"new_neighbor"', out)
+            self.assertEqual(state["ips"], {
+                "192.168.1.10": "aa:bb:cc:dd:ee:01",
+                "192.168.1.11": "aa:bb:cc:dd:ee:02"})
+
+    def test_main_local_dir_no_secret_gate(self):
+        import os
+        mod = self._mod()
+        for env in [None, {"HOMING_PIGEON_SENSOR_SECRET": ""}]:
+            with self.subTest(env=env):
+                with tempfile.TemporaryDirectory() as td:
+                    base = os.path.join(td, "base")
+                    rc, out, err, state, before, after, \
+                        inbox = self._main(
+                            mod, td, self._nolearn(),
+                            readings_obj={"now": 1.0,
+                                          "neighbors": [
+                                              self._n2()]},
+                            extra=["--local-dir", "@BASE@"],
+                            pre_state=self._learned(),
+                            env=env, base=base)
+                    self.assertEqual(rc, 2)
+                    self.assertIn("no signing secret", err)
+                    self.assertEqual(after, before)
+                    self.assertEqual(inbox, [])
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox = \
+                self._main(mod, td, self._gen(),
+                           extra=["--local-dir", "@BASE@"],
+                           env=None, base=base)
+            self.assertEqual(rc, 2)
+            self.assertIn("no signing secret", err)
+            self.assertIsNone(state)
+            self.assertIsNone(after)
+
+    def test_main_local_dir_signed_drop_and_closed_port(self):
+        mod = self._mod()
+        import os
+        secret = {"HOMING_PIGEON_SENSOR_SECRET": "hunt-secret"}
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox = \
+                self._main(
+                    mod, td, self._nolearn(),
+                    readings_obj={"now": 1.0, "neighbors": [
+                        self._n1(), self._n2()]},
+                    extra=["--local-dir", "@BASE@"],
+                    pre_state=self._learned(),
+                    env=secret, base=base)
+            self.assertEqual(rc, 0)
+            self.assertIn("filed new_neighbor", err)
+            self.assertEqual(len(inbox), 1)
+            self.assertEqual(inbox[0]["kind"], "sensor_alert")
+            self.assertEqual(inbox[0]["signal"],
+                             "new_neighbor")
+            self.assertEqual(inbox[0]["sensor"], "wire_arrivals")
+            self.assertEqual(inbox[0]["severity"], "medium")
+            self.assertIn("sig", inbox[0])
+            self.assertEqual(state["ips"], {
+                "192.168.1.10": "aa:bb:cc:dd:ee:01",
+                "192.168.1.11": "aa:bb:cc:dd:ee:02"})
+        # A moved IP drops as mac_moved at high.
+        moved = {"ip": "192.168.1.10",
+                 "mac": "aa:bb:cc:dd:ee:99", "iface": "eth0"}
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox = \
+                self._main(
+                    mod, td, self._nolearn(),
+                    readings_obj={"now": 1.0,
+                                  "neighbors": [moved]},
+                    extra=["--local-dir", "@BASE@"],
+                    pre_state=self._learned(),
+                    env=secret, base=base)
+            self.assertEqual(rc, 0)
+            self.assertEqual(len(inbox), 1)
+            self.assertEqual(inbox[0]["signal"], "mac_moved")
+            self.assertEqual(inbox[0]["severity"], "high")
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox = \
+                self._main(
+                    mod, td, self._nolearn(),
+                    readings_obj={"now": 1.0, "neighbors": [
+                        self._n2()]},
+                    extra=["--local-dir", "@BASE@",
+                           "--secret-env", "WIRE_HUNT_SECRET",
+                           "--key-id", "wire-1"],
+                    pre_state=self._learned(),
+                    env={"WIRE_HUNT_SECRET": "custom-secret"},
+                    base=base)
+            self.assertEqual(rc, 0)
+            self.assertEqual(len(inbox), 1)
+            self.assertEqual(inbox[0]["key_id"], "wire-1")
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox = \
+                self._main(mod, td, self._gen(),
+                           extra=["--local-dir", "@BASE@"],
+                           env=secret, base=base)
+            self.assertEqual(rc, 0)
+            self.assertEqual(state, self._learned_scan_state())
+            self.assertEqual(inbox, [])
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox = \
+                self._main(
+                    mod, td, self._nolearn(),
+                    readings_obj={"now": 1.0, "neighbors": [
+                        self._n2()]},
+                    extra=["--local-dir", "@BASE@",
+                           "--local-port", "1"],
+                    pre_state=self._learned(),
+                    env=secret, base=base)
+            self.assertEqual(rc, 2)
+            self.assertIn("1 of 1 alert(s) not delivered", err)
+            self.assertEqual(after, before)
+
 if __name__ == "__main__":
 
     unittest.main()
