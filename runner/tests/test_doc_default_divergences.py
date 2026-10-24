@@ -19568,6 +19568,194 @@ class TestUsbArrivalsLearnAndKindsFifteenShapes(unittest.TestCase):
                     mod._kinds({"tunables": {"kinds": value}}),
                     expected)
 
+class TestWireArrivalsLearnAndIfacesFifteenShapes(unittest.TestCase):
+    """Coverage: the wire-arrivals tunables
+    (learn_first_pass, default true, and ifaces,
+    default [] meaning no filter) under the fifteen
+    shapes.
+
+    (a) Doc claims: the manifest ships both
+        (extensions/wire-arrivals/extension.json:
+        "learn_first_pass": true, "ifaces": [],
+        "poll_interval_sec": 120). The README states
+        "With the `learn_first_pass` tunable on (the
+        default), the very first pass is a baseline:
+        the whole table is absorbed and nothing
+        files" (extensions/wire-arrivals/README.md
+        lines 27-30), and "`ifaces`: name just the
+        one LAN interface that matters (for example
+        `["eth0"]`) instead of watching every
+        interface the box has" (lines 78-81). Neither
+        key is a numeric registry row, so Decision
+        1's default-on-unusable policy for numeric
+        readers does not name a shape rule for them;
+        this class pins the observed readings
+        instead of asserting one.
+
+    (b) How this was probed: step-8 Target 5 /
+        family (b) -- wire-arrivals had no test in
+        this file at all before this tick. On
+        2026-10-24 both readers were probed with
+        the table hunt's fifteen shapes (omitted,
+        null, empty string, true, false, zero,
+        negative, numeric string, non-numeric
+        string, huge-int (10**400), inf, -inf, NaN,
+        list, dict), plus empty containers, 1 and
+        0.5. The learn_first_pass observable is
+        the first-pass alert count for one neighbor
+        (192.168.1.50 at aa:bb:cc:dd:ee:ff on eth0)
+        from a fresh state: learning quietly files
+        0 and absorbs the neighbor. The ifaces
+        observable is the _iface_filter() reader's
+        return value itself plus _keep() (the
+        reader feeds read_live(); decide() does
+        not consult ifaces).
+
+    (c) Behavior actually observed: NO divergence
+        recorded. learn_first_pass is a strict
+        bool reader (wire_arrivals.py decide():
+        the value only when it is a bool, else
+        True) -- the same reading as usb-arrivals:
+        omitted, null and every non-bool shape --
+        including every falsy shape ("", 0, [], {})
+        and the string "false" -- read as the
+        documented default True and learn quietly;
+        only the genuine bool False files on the
+        first pass (one new_neighbor, medium) and
+        the genuine bool True learns. ifaces: every
+        non-list shape reads as the documented
+        default [] (no filter, so _keep() keeps
+        every reading); a genuine list is cleaned
+        of non-string and empty elements and
+        otherwise honored verbatim (["eth0"],
+        ["bogus"], and duplicates all pass
+        through, with no validation against real
+        interface names); under a filter a reading
+        naming an unwanted interface is dropped,
+        while a reading naming no interface at all
+        is always kept. A known IP answering from
+        a different MAC files only mac_moved
+        (high), never also new_neighbor. Observed
+        on 2026-10-24 against current main.
+    """
+
+    _NEIGH = {"ip": "192.168.1.50",
+              "mac": "aa:bb:cc:dd:ee:ff", "iface": "eth0"}
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "wire-arrivals", "wire_arrivals.py")
+        spec = importlib.util.spec_from_file_location(
+            "wire_arrivals_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _first_pass_alerts(self, mod, tunables):
+        alerts, state = mod.decide(
+            {"now": 1.0, "neighbors": [dict(self._NEIGH)]},
+            {"name": "wire_arrivals",
+             "tunables": dict(tunables)},
+            {})
+        self.assertTrue(state["learned"])
+        self.assertEqual(state["ips"],
+                         {"192.168.1.50": "aa:bb:cc:dd:ee:ff"})
+        return alerts
+
+    _NON_BOOL = [("null", None), ("empty-string", ""),
+                 ("zero", 0), ("negative", -5),
+                 ("numeric-string", "120"),
+                 ("non-numeric-string", "bogus"),
+                 ("string-false", "false"),
+                 ("huge-int", 10 ** 400),
+                 ("inf", float("inf")),
+                 ("-inf", float("-inf")),
+                 ("nan", float("nan")),
+                 ("list", ["x"]), ("dict", {"x": 1}),
+                 ("empty-list", []), ("empty-dict", {}),
+                 ("one", 1), ("fractional", 0.5)]
+
+    def test_learn_first_pass_shapes(self):
+        mod = self._module()
+        self.assertEqual(self._first_pass_alerts(mod, {}), [])
+        for name, value in self._NON_BOOL:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    self._first_pass_alerts(
+                        mod, {"learn_first_pass": value}),
+                    [])
+        self.assertEqual(
+            self._first_pass_alerts(
+                mod, {"learn_first_pass": True}), [])
+        alerts = self._first_pass_alerts(
+            mod, {"learn_first_pass": False})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["signal"], "new_neighbor")
+        self.assertEqual(alerts[0]["severity"], "medium")
+
+    def test_mac_moved_files_alone(self):
+        mod = self._module()
+        _, state = mod.decide(
+            {"now": 1.0, "neighbors": [dict(self._NEIGH)]},
+            {"name": "wire_arrivals",
+             "tunables": {"learn_first_pass": False}},
+            {})
+        alerts, _ = mod.decide(
+            {"now": 2.0,
+             "neighbors": [{"ip": "192.168.1.50",
+                            "mac": "11:22:33:44:55:66",
+                            "iface": "eth0"}]},
+            {"name": "wire_arrivals", "tunables": {}}, state)
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["signal"], "mac_moved")
+        self.assertEqual(alerts[0]["severity"], "high")
+
+    def test_ifaces_shapes(self):
+        mod = self._module()
+        for tunables in ({}, {"ifaces": None}):
+            self.assertEqual(
+                mod._iface_filter({"tunables": tunables}), [])
+        non_list = [("empty-string", ""),
+                    ("true", True), ("false", False),
+                    ("zero", 0), ("negative", -5),
+                    ("numeric-string", "120"),
+                    ("non-numeric-string", "bogus"),
+                    ("string-eth0", "eth0"),
+                    ("huge-int", 10 ** 400),
+                    ("inf", float("inf")),
+                    ("-inf", float("-inf")),
+                    ("nan", float("nan")),
+                    ("dict", {"x": 1}),
+                    ("one", 1), ("fractional", 0.5)]
+        for name, value in non_list:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    mod._iface_filter(
+                        {"tunables": {"ifaces": value}}),
+                    [])
+        genuine = [([], []),
+                   (["eth0"], ["eth0"]),
+                   (["bogus"], ["bogus"]),
+                   (["eth0", "eth0"], ["eth0", "eth0"]),
+                   (["eth0", 123, "", None, "wlan0"],
+                    ["eth0", "wlan0"]),
+                   ([123], []), ([None], []), ([""], [])]
+        for value, expected in genuine:
+            with self.subTest(shape=repr(value)):
+                self.assertEqual(
+                    mod._iface_filter(
+                        {"tunables": {"ifaces": value}}),
+                    expected)
+        self.assertTrue(mod._keep("eth0", []))
+        self.assertTrue(mod._keep("eth0", ["eth0"]))
+        self.assertFalse(mod._keep("wlan0", ["eth0"]))
+        self.assertTrue(mod._keep("", ["eth0"]))
+        self.assertTrue(mod._keep(None, ["eth0"]))
+
 if __name__ == "__main__":
 
     unittest.main()
