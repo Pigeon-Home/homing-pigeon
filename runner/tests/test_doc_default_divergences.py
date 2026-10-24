@@ -13483,6 +13483,144 @@ class TestWazuhFeedQuietFifteenShapes(unittest.TestCase):
             ["wazuh_alert", "wazuh_alert"])
 
 
+class TestOsqueryFeedFiledCapFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the osquery-feed
+    filed_cap row itself varied with the fifteen
+    shapes at decide() level for the first time
+    (step-8 Target 5 -- the extension-tunable
+    table; this row's registry-named class
+    TestInfiniteOsqueryFiledCapCrashesInsteadOfDefault
+    covered only the +inf shape, plus omitted /
+    explicit / NaN / -inf controls).
+
+    (a) Doc claim (extensions/osquery-feed/README.md,
+        tunable table, line 46): "filed_cap | 10000 |
+        Bound on remembered filed episodes; the
+        oldest entries are evicted first"; the same
+        default is in the extension's extension.json
+        tunables (10000). Registry row
+        "filed_cap (osquery-feed)" (default 10000):
+        policy default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: step-8 Target 5 lists the
+        51 extension tunables as covered only for the
+        shapes their named classes exercised. This
+        tick took the osquery-feed row (the next feed
+        row after the falco-feed, suricata-feed and
+        wazuh-feed rows hunted in the preceding
+        ticks): its reader is
+        extensions/osquery-feed/osquery_feed.py
+        decide() (cap = int(cap) if _is_number(cap)
+        and cap >= 1 else 10000, where _is_number
+        accepts only genuine finite numbers, never a
+        bool, and a huge int that overflows float()
+        is not a number), and probed it through
+        decide() itself with the fifteen shapes from
+        the table hunt -- omitted, null, empty string,
+        true, false, zero, negative, the documented
+        default written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong containers (list and dict)
+        -- plus genuine int / fractional values. The
+        observable is the filed osquery_added count
+        for three added-user events (a, b, then a
+        again): an effective cap of 2 or more files
+        twice (the repeat of a is remembered), and
+        an effective cap of 1 files three times (b
+        evicts a, so its repeat files again).
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default 10000 (twice on the a-b-a sequence).
+        Zero and negative also read as the default
+        because decide() requires cap >= 1 before
+        honoring the bound. Numeric strings are not
+        parsed ("45" reads as the default; the
+        _is_number isinstance gate). Genuine values
+        are honored exactly: 1 files three times, 2
+        files twice, and the fractional 1.5 truncates
+        through int() to 1 and files three times
+        where 2.0 files twice. Noted: the +inf crash
+        recorded by the row's named class
+        TestInfiniteOsqueryFiledCapCrashesInsteadOfDefault
+        no longer occurs on current main -- that
+        class passes now, because _is_number now
+        excludes non-finite values. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented default and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "osquery-feed",
+            "osquery_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "osquery_feed_filed_cap_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _signals(self, mod, tunables):
+        def _add(name):
+            return {"ts": 1000, "action": "added",
+                    "kind": "user",
+                    "columns": {"username": name,
+                                "uid": "1", "gid": "1"}}
+        events = [_add("a"), _add("b"), _add("a")]
+        alerts, _state = mod.decide(
+            {"now": 1000, "events": events},
+            {"name": "osquery_feed", "tunables": dict(tunables)},
+            {})
+        return [a["signal"] for a in alerts]
+
+    def test_fifteen_shapes_read_as_the_default(self):
+        mod = self._mod()
+        twice = ["osquery_added", "osquery_added"]
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._signals(mod, {}), twice)
+        unusable = [None, "", True, False, 0, -5,
+                    "45", "bogus", 10 ** 400,
+                    float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._signals(mod, {"filed_cap": value}),
+                    twice)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._signals(mod, {"filed_cap": 10000}),
+                twice)
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        self.assertEqual(
+            self._signals(mod, {"filed_cap": 1}),
+            ["osquery_added", "osquery_added", "osquery_added"])
+        self.assertEqual(
+            self._signals(mod, {"filed_cap": 2}),
+            ["osquery_added", "osquery_added"])
+        self.assertEqual(
+            self._signals(mod, {"filed_cap": 1.5}),
+            ["osquery_added", "osquery_added", "osquery_added"])
+        self.assertEqual(
+            self._signals(mod, {"filed_cap": 2.0}),
+            ["osquery_added", "osquery_added"])
+
+
 
 if __name__ == "__main__":
 
