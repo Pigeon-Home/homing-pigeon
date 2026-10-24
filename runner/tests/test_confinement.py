@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""M6 tests: Linux confinement (bwrap sandbox builder)."""
+"""M6 tests: Linux confinement (bwrap sandbox builder).
+
+UID (phase 2.3): the sandbox runs the job as the SAME uid as
+the runner -- bwrap's user namespace maps the caller's uid --
+so confinement is not an other-uid boundary and these tests
+never claim one. The boundary under test is the mount /
+network / environment surface. Same-uid reach outside the
+sandbox (the default posture) is a design fact, asserted as
+the passing side of EnforceNegativeControl below.
+"""
 import json
 import os
 import sys
@@ -306,6 +315,41 @@ class EnforceTest(unittest.TestCase):
         r2, _, _ = _run(_conf("enforce"), _job("m6-c2", script))
         self.assertEqual(r1["stdout"], r2["stdout"])
         self.assertEqual(r1["exit_code"], r2["exit_code"])
+
+
+@unittest.skipUnless(BWRAP_HERE and sys.platform.startswith("linux"),
+                     "needs bwrap on Linux")
+class EnforceNegativeControl(unittest.TestCase):
+    """Phase 2.2 negative control for EnforceTest: the same
+    escape-shaped probes with confinement OFF (the default
+    posture) must SUCCEED -- if they also failed unsandboxed,
+    EnforceTest's denials would prove nothing about the
+    sandbox. UID: same-uid on both sides (see module note);
+    the only difference is whether the sandbox is in force."""
+
+    _SCRIPT = (
+        "import os\\n"
+        "print('home-seen:', os.path.exists('/home'))\\n"
+        "try:\\n"
+        "    print('host-read:', open(%r).read().strip())\\n"
+        "except Exception:\\n"
+        "    print('host-read: failed')\\n"
+    )
+
+    def test_escape_succeeds_with_confinement_off(self):
+        host = tempfile.mkdtemp(prefix="hp-m6-host-")
+        secret = os.path.join(host, "host-only.txt")
+        with open(secret, "w", encoding="utf-8") as fh:
+            fh.write("host-data")
+        script = self._SCRIPT % secret
+        off, _, _ = _run({}, _job("m6-off", script))
+        self.assertEqual(off["exit_code"], 0, off["stderr"])
+        self.assertIn("home-seen: True", off["stdout"])
+        self.assertIn("host-read: host-data", off["stdout"])
+        on, _, _ = _run(_conf("enforce"), _job("m6-on", script))
+        self.assertEqual(on["exit_code"], 0, on["stderr"])
+        self.assertIn("home-seen: False", on["stdout"])
+        self.assertIn("host-read: failed", on["stdout"])
 
 
 if __name__ == "__main__":

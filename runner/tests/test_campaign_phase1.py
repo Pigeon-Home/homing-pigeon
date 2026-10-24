@@ -23,6 +23,16 @@ substrate of one live observation:
 - a tampered encryption envelope is rejected, never executed (t10)
 - a cleartext (HMAC-only) job is classified unencrypted at intake
   and the process default refuses that form (t12)
+
+UID (phase 2.3): every job in this file runs as the SAME uid
+as the runner -- no confinement is configured unless a test
+says so, and same-uid reach (reading a file outside the work
+dir, writing outside it) is the documented default posture,
+recorded here as design fact, not failure. The other-uid
+boundary does not exist in this corpus; where a protection
+has an off switch, CampaignNegativeControls below runs the
+same test with the protection off and asserts it fails there
+(phase 2.2).
 """
 import json
 import os
@@ -235,6 +245,71 @@ class CampaignIntakeTests(unittest.TestCase):
             sealed, {"": self.SECRET}, "c-enc")
         self.assertTrue(encrypted)
         self.assertEqual(obj["job_id"], "c-enc")
+
+
+class CampaignNegativeControls(unittest.TestCase):
+    """Phase 2.2 negative controls for this file's protections:
+    each protection test above is re-run here with its
+    protection switched off, and the protection's assertion
+    must FAIL in that state -- otherwise the test was passing
+    both ways and proves nothing. UID: same-uid throughout;
+    none of these switches changes who the job runs as, only
+    whether the named protection is in force. (The tampered-
+    envelope test's control already exists as its pair:
+    test_encrypted_envelope_admits_as_encrypted.)"""
+
+    def test_redaction_off_control_full_view_keeps_the_value(self):
+        # Protection off: the same flag text rendered at the
+        # full view keeps the AWS value the redacted view
+        # scrubs, so the redacted absence is the view's doing.
+        job = _job("c-view-full", "unused")
+        job["result_policy"] = {"view": "full"}
+        exec_result = {"stdout": FLAG_TEXT, "stderr": "",
+                       "exit_code": 0, "timed_out": False,
+                       "duration_sec": 0.01}
+        result, _retain = R.apply_result_policy(
+            {}, job, exec_result, R._redact_patterns({}),
+            confined=False)
+        self.assertEqual(result["view"], "full")
+        self.assertIn(AWS_VALUE, result["stdout"])
+
+    def test_cleartext_off_control_the_flag_admits(self):
+        # Protection off: with the process flag the runner was
+        # started under --allow-cleartext, the gate predicate
+        # the intake path checks admits the same cleartext
+        # form the default refuses. Restored in finally: the
+        # refusal posture is process-global.
+        self.assertFalse(R._cleartext_jobs_allowed())
+        R._set_allow_cleartext_jobs(True)
+        try:
+            self.assertTrue(R._cleartext_jobs_allowed())
+        finally:
+            R._set_allow_cleartext_jobs(False)
+        self.assertFalse(R._cleartext_jobs_allowed())
+
+    def test_timeout_off_control_same_script_completes(self):
+        # Protection off: the same sleeping script with a
+        # timeout beyond its sleep runs to completion, so the
+        # kill in test_timeout_kills_the_job is the timeout's
+        # doing, not the script's.
+        killed, _ = _run(None, _job(
+            "c-timeout-off", "import time; time.sleep(2)",
+            timeout_sec=1))
+        self.assertTrue(killed["timed_out"])
+        done, _ = _run(None, _job(
+            "c-timeout-on", "import time; time.sleep(2)",
+            timeout_sec=5))
+        self.assertFalse(done["timed_out"])
+        self.assertEqual(done["exit_code"], 0)
+
+    def test_output_cap_off_control_no_truncation(self):
+        # Protection off: the same 3000-char output under a
+        # cap above its size arrives whole, unflagged.
+        result, _ = _run({"max_output_bytes": 100000}, _job(
+            "c-big-off", "import sys; sys.stdout.write('A' * 3000)"))
+        self.assertEqual(result["exit_code"], 0)
+        self.assertEqual(len(result["stdout"]), 3000)
+        self.assertFalse(result["stdout_truncated"])
 
 
 if __name__ == "__main__":
