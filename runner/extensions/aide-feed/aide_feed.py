@@ -199,11 +199,12 @@ def read_report_file(paths, reader_state):
             # Already have this pass's report, or this one is
             # not new: carry the previous fingerprint, so an
             # unread new report stays new for the next pass.
-            if isinstance(prev, dict) \
-                    and not _same_fingerprint(prev, fingerprint):
-                new_reader[path] = dict(prev)
-            else:
+            if _same_fingerprint(prev, fingerprint):
                 new_reader[path] = fingerprint
+            elif isinstance(prev, dict):
+                new_reader[path] = dict(prev)
+            # else: first sight of an unread new report -- record
+            # nothing, so it is still new (and read) next pass.
             continue
         try:
             with open(path, encoding="utf-8", errors="replace") as fh:

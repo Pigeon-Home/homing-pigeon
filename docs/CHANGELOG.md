@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.64 - 2026-10-24
+
+- **Twenty more hunt conversions land as regression tests** (aide, suricata,
+  falco, zeek, wazuh, sysmon, osquery, softflowd, and the watch senses).
+  aide-feed no longer swallows a second new report on first sight: both
+  paths new at once now read on consecutive passes.
+
 ## 3.12.63 - 2026-10-24
 
 - **More hunt conversions.** Muse's tripwire, resource-sentinel, job-fuzz and
