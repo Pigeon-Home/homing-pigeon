@@ -9046,5 +9046,114 @@ class TestDriNumericRowsRefuseUnusableShapes(unittest.TestCase):
 
 
 
+
+class TestJobIdLengthAndCharsetPerProtocol(unittest.TestCase):
+    """Second-run hunt coverage: job_id at the
+    128-character limit, with every allowed
+    character, and one past it.
+
+    (a) Doc claim (PROTOCOL.md, section 2, line 64):
+        "<job_id> is 1-128 characters from
+        [A-Za-z0-9._-], and it must not be `.` or
+        `..`. A UUID is recommended, not required."
+
+    (b) How it was hunted: Claude's plan, second-run
+        axis (b) -- job_id at the 128-character
+        limit, with every allowed character, and
+        one past it. On 2026-10-23 this tick probed
+        runner.runner.execute_job -- the execution
+        entry, whose first step is _safe_job_id --
+        with ids of length 1, 128 and 129, a
+        128-character id mixing every allowed
+        character class, each allowed character
+        repeated to the full 128, the empty string,
+        ".", "..", "...", and ids carrying a slash,
+        a space, a trailing newline, a plus, a colon
+        and a non-ASCII character, plus non-string
+        job_ids (None, an integer, a list).
+
+    (c) Behavior actually observed: NO divergence.
+        The 128-character ids are accepted and the
+        job runs; the 129-character id is rejected
+        with JobRejected ("job_id must be 1-128
+        chars of [A-Za-z0-9._-]"); a 1-character id
+        is accepted; every allowed character is
+        accepted; the empty string and every
+        disallowed character are rejected; "." and
+        ".." are rejected by the dedicated check,
+        while "..." is accepted -- the spec forbids
+        exactly "." and "..", and "..." names a
+        plain subdirectory of work/, no traversal.
+        Non-string job_ids are rejected. The
+        enforcing regex is anchored \\A...\\Z, so a
+        trailing newline does not slip past the
+        length or charset check.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the enforcement
+        keeps the documented limit. If a shape above
+        ever stops behaving as PROTOCOL.md states,
+        this test is the failing record of that
+        change.
+    """
+
+    ALLOWED = ("ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+               "abcdefghijklmnopqrstuvwxyz"
+               "0123456789._-")
+
+    def _run(self, job_id):
+        import os
+        import shutil
+        from runner import runner as R
+        with tempfile.TemporaryDirectory() as base:
+            job = {"v": 1, "type": "job",
+                   "job_id": job_id,
+                   "issued_at": "2026-10-23T00:00:00Z",
+                   "kind": "exec",
+                   "interpreter": ["sh"],
+                   "script": "echo job-id-probe\n",
+                   "env": {}}
+            return R.execute_job({"base_dir": base}, job, base)
+
+    def _rejected(self, job_id):
+        from runner import runner as R
+        with self.assertRaises(R.JobRejected):
+            self._run(job_id)
+
+    @unittest.skipUnless(__import__("os").name == "posix",
+                         "exec jobs are POSIX sh scripts")
+    def test_limit_and_charset_boundaries(self):
+        # At the limit: accepted, and the job runs.
+        result = self._run("a" * 128)
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("job-id-probe", result["stdout"])
+        # Every allowed character in one 65-char id,
+        # and each allowed character filling all 128.
+        result = self._run(self.ALLOWED)
+        self.assertEqual(result["exit_code"], 0)
+        for ch in self.ALLOWED:
+            with self.subTest(char=ch):
+                result = self._run(ch * 128)
+                self.assertEqual(result["exit_code"], 0)
+        # Minimum length, and "..." (only "." and
+        # ".." are forbidden by the spec).
+        self.assertEqual(self._run("a")["exit_code"], 0)
+        self.assertEqual(self._run("...")["exit_code"], 0)
+        # One past the limit, and everything the
+        # spec excludes.
+        self._rejected("a" * 129)
+        self._rejected("")
+        self._rejected(".")
+        self._rejected("..")
+        for bad in ("a/b", "a b", "a" * 127 + "\n",
+                    "a+b", "a:b", "\u00e9" * 10):
+            with self.subTest(bad=bad[:12]):
+                self._rejected(bad)
+        for bad in (None, 123, ["a"]):
+            with self.subTest(bad=repr(bad)):
+                self._rejected(bad)
+
+
 if __name__ == "__main__":
+
     unittest.main()
