@@ -739,6 +739,10 @@ def snapshot_outside(workspace_root, exclude=None):
             or not os.path.isdir(workspace_root):
         return snap
     parent = os.path.dirname(os.path.abspath(workspace_root))
+    try:
+        ws_real = os.path.realpath(workspace_root)
+    except OSError:
+        ws_real = os.path.abspath(workspace_root)
     # "/" as a workspace makes the parent the filesystem root. Walking
     # it stalls the poll. Refuse.
     if parent in ("/", "") or os.path.abspath(parent) == os.path.abspath(workspace_root):
@@ -754,7 +758,11 @@ def snapshot_outside(workspace_root, exclude=None):
         for root, dirs, files in walker:
             # prune workspace and excluded dirs
             abs_root = os.path.abspath(root)
-            if abs_root == os.path.abspath(workspace_root) or any(abs_root.startswith(os.path.abspath(e)) for e in exclude if e):
+            try:
+                root_real = os.path.realpath(root)
+            except OSError:
+                root_real = abs_root
+            if root_real == ws_real or any(abs_root.startswith(os.path.abspath(e)) for e in exclude if e):
                 dirs[:] = []
                 continue
             for name in files:

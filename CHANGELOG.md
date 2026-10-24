@@ -6,6 +6,11 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.12.60 - 2026-10-24
 
+- **A workspace given through a symlink no longer counts its own files as outside.**
+  `snapshot_outside` pruned by `abspath`, which does not resolve the link, so a
+  job that changed only a file inside that workspace was attested
+  `confined_to_workspace` false.
+
 - **The root holds the manuals, `pyproject.toml`, and six folders.**
   `examples/extensions/` is `extensions/` and there is no
   `examples/`; `cloud/` is `runner/cloud/` (the console script is
