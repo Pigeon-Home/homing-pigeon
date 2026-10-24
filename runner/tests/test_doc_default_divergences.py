@@ -34813,6 +34813,7 @@ class TestTrainingWatchReadingsStateAndMainFifteenShapes(unittest.TestCase):
         cleaned = mod._clean_state({"lines_total": 7.9})
         self.assertEqual(cleaned["lines_total"], 7)
 
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
     def test_log_reader_shapes(self):
         import os
         import tempfile
