@@ -10878,8 +10878,7 @@ class TestAirwavesGoneAfterScansFifteenShapes(unittest.TestCase):
         import importlib.util
         import os
         path = os.path.join(
-            os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__))),
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
             "extensions", "airwaves", "airwaves.py")
         spec = importlib.util.spec_from_file_location(
             "airwaves_fifteen_shapes", path)
