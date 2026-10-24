@@ -43369,6 +43369,314 @@ class TestCertSentinelCleanStateAndMainModesFifteenShapes(unittest.TestCase):
                     self.assertEqual(rc, 2)
                     self.assertIsNone(state)
 
+class TestPortWatchCleanStateAndMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: port-watch
+    _clean_state() called directly and main()'s
+    remaining manifest / readings / state modes
+    plus its live mode and local-delivery gate
+    varied with the fifteen shapes for the first
+    time (step-8 Target 5 / family (b) --
+    port-watch's earlier classes covered its
+    /proc hex helpers, _parse_proc_net(),
+    _clean_listener(), read_live() and decide()'s
+    listener / state / readings handling and
+    main() only in genuine / missing / malformed
+    --readings mode with list-manifest and
+    non-dict-readings cases; the state cleaner
+    was never called directly, and main()'s
+    scalar / string / null manifests, its junk-
+    carrying pre-state, a directory as the state
+    path, its live (no --readings) mode and its
+    --local-dir delivery gate were never run at
+    all, the same gap the feed hunts closed for
+    their clean / main modes in the ticks before
+    this one).
+
+    (a) Doc claims: the module docstring states
+        read_live() is "the only function that
+        touches the machine", decide() is pure
+        ("readings plus manifest plus last pass's
+        state, out come alerts and the new
+        state"), listeners that vanish leave the
+        state silently so one that returns files
+        again, local delivery signs each payload
+        with this sense's key read from the
+        environment variable named by
+        --secret-env, and _is_number() is
+        documented so a non-finite or huge value
+        reads as "not a number" so the documented
+        default applies. main()'s own comment
+        states a failed delivery leaves the state
+        unwritten, so the next pass reports the
+        listeners again.
+
+    (b) How this was probed: on 2026-10-24
+        _clean_state() was called directly with
+        the fifteen shapes (omitted-equivalent
+        via a missing key, null, empty string,
+        true, false, zero, negative, numeric
+        string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, list, dict)
+        and with mixed genuine / junk seen
+        entries and every learned shape; main()
+        was run against isolated temp dirs for
+        list / scalar / string / null manifests,
+        list / scalar / string / empty readings,
+        a malformed readings file, a junk-
+        carrying pre-state, a directory as the
+        state path (with learn_first_pass off so
+        an alert files first), live mode with
+        read_live() stubbed to a known listener,
+        and --local-dir with the secret env var
+        unset (no delivery attempted).
+
+    (c) Behavior actually observed: NO divergence
+        recorded. _clean_state() reads every
+        non-dict shape as fresh {learned False,
+        seen {}}, and a non-dict seen value also
+        reads as fresh. Cleaning is entry-wise
+        through _clean_listener(): a genuine
+        entry is kept and RE-KEYED to its
+        canonical proto/addr/port key (an old
+        key is not preserved, unknown keys in
+        the entry are dropped, a fractional port
+        truncates to int); entries with a
+        non-string key, a bad proto, an empty or
+        non-string addr, or a bool / string /
+        huge / negative / over-65535 port drop
+        whole. The learned flag is plain bool()
+        coercion (1, "x" and a dict read True;
+        0, null and [] read False). main() in
+        --readings mode: a list, scalar, string
+        or null manifest still files the exposed
+        listener under the fallback sensor name
+        "port_watch" and writes state (rc 0); a
+        list, scalar, string or empty readings
+        value reads as an empty pass (rc 0, the
+        pre-state's learned flag survives and
+        its seen entries vanish, nothing
+        printed); a malformed readings file is
+        rc 2 with no state file written; a junk-
+        carrying pre-state files on its cleaned
+        values (the genuine listener is already
+        seen, so nothing files, and an empty
+        pass writes the cleaned empty seen); a
+        directory as the state path is rc 2 with
+        the alert still printed first; live mode
+        (no --readings, read_live stubbed) files
+        the stubbed listener and writes it into
+        state (rc 0); and --local-dir with no
+        secret in the env var is rc 2 with the
+        state file left byte-identical, whether
+        or not the pass produced an alert -- the
+        delivery gate is checked before any
+        alert is delivered, so the next pass
+        will report the listeners again, as
+        main()'s comment states.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the readings above
+        keep matching the docs. If a shape above
+        ever stops behaving as documented, this test
+        is the failing record of that change.
+    """
+
+    _FRESH = {"learned": False, "seen": {}}
+    _SHAPES = [None, "", True, False, 0, -5, "45", "x", 10 ** 400,
+               float("inf"), float("-inf"), float("nan"), ["x"],
+               {"x": 1}, 2.5]
+    _LISTENER = {"proto": "tcp", "addr": "0.0.0.0", "port": 8080}
+    _SEEN = {"tcp/0.0.0.0/8080": {"proto": "tcp", "addr": "0.0.0.0",
+                                  "port": 8080}}
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "port-watch", "port_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "port_watch_clean_main", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_clean_state_direct_shapes(self):
+        mod = self._mod()
+        for value in self._SHAPES:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(mod._clean_state(value), self._FRESH)
+        for raw in [{"seen": "x"}, {"seen": [1]}, {"other": 1}, {}]:
+            with self.subTest(raw=repr(raw)):
+                self.assertEqual(mod._clean_state(raw), self._FRESH)
+        # A genuine entry is kept, re-keyed canonically, unknown
+        # entry keys dropped.
+        self.assertEqual(
+            mod._clean_state({"learned": True, "seen": {
+                "oldkey": {"proto": "tcp", "addr": "127.0.0.1",
+                           "port": 8080, "extra": 9}}}),
+            {"learned": True, "seen": {"tcp/127.0.0.1/8080": {
+                "proto": "tcp", "addr": "127.0.0.1", "port": 8080}}})
+        # learned is plain bool() coercion.
+        for value, want in [(1, True), ("x", True), ({"a": 1}, True),
+                            (0, False), (None, False), ([], False)]:
+            with self.subTest(learned=repr(value)):
+                self.assertEqual(
+                    mod._clean_state(
+                        {"learned": value, "seen": {}})["learned"],
+                    want)
+        # Mixed seen: only the fractional-port entry survives,
+        # truncated and re-keyed; everything else drops whole.
+        mixed = {"learned": 1, "seen": {
+            123: {"proto": "tcp", "addr": "a", "port": 1},
+            "k": {"proto": "tcp", "addr": "127.0.0.1",
+                  "port": 9000.9},
+            "bad": {"proto": "sctp", "addr": "a", "port": 1},
+            "boolport": {"proto": "udp", "addr": "a", "port": True},
+            "strport": {"proto": "udp", "addr": "a", "port": "53"},
+            "huge": {"proto": "udp", "addr": "a", "port": 10 ** 400},
+            "neg": {"proto": "udp", "addr": "a", "port": -1},
+            "big": {"proto": "udp", "addr": "a", "port": 65536},
+            "emptyaddr": {"proto": "udp", "addr": "", "port": 53},
+            "junk": "x"}}
+        self.assertEqual(
+            mod._clean_state(mixed),
+            {"learned": True, "seen": {"tcp/127.0.0.1/9000": {
+                "proto": "tcp", "addr": "127.0.0.1", "port": 9000}}})
+
+    _LIVE = object()
+
+    def _main(self, mod, td, manifest_obj, readings_obj=_LIVE,
+              extra=(), pre_state=None, state_is_dir=False):
+        import io
+        import os
+        from contextlib import redirect_stderr, redirect_stdout
+        man = os.path.join(td, "ext.json")
+        rd = os.path.join(td, "r.json")
+        st = td if state_is_dir else os.path.join(td, "s.json")
+        with open(man, "w", encoding="utf-8") as fh:
+            json.dump(manifest_obj, fh)
+        args = ["--manifest", man, "--state", st]
+        if readings_obj is not self._LIVE:
+            with open(rd, "w", encoding="utf-8") as fh:
+                if isinstance(readings_obj, str) \
+                        and readings_obj == "{bad":
+                    fh.write(readings_obj)
+                else:
+                    json.dump(readings_obj, fh)
+            args += ["--readings", rd]
+        if pre_state is not None and not state_is_dir:
+            with open(st, "w", encoding="utf-8") as fh:
+                json.dump(pre_state, fh)
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(io.StringIO()):
+            rc = mod.main(args + list(extra))
+        state = None
+        if not state_is_dir and os.path.isfile(st):
+            with open(st, encoding="utf-8") as fh:
+                state = json.load(fh)
+        return rc, out.getvalue(), state
+
+    def test_main_manifest_and_readings_shapes(self):
+        mod = self._mod()
+        gen = {"name": "port_watch", "tunables": {}}
+        readings = {"now": 1000.0, "listeners": [self._LISTENER]}
+        pre = {"learned": True, "seen": {}}
+        filed = {"learned": True, "seen": self._SEEN}
+        for manifest in [[1, 2], 42, "hi", None]:
+            with self.subTest(manifest=repr(manifest)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, manifest, readings, pre_state=pre)
+                self.assertEqual(rc, 0)
+                self.assertIn("exposed_listener", out)
+                self.assertIn('"port_watch"', out)
+                self.assertEqual(state, filed)
+        for value in [[1], 42, "hi", {}]:
+            with self.subTest(readings=repr(value)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, gen, value, pre_state=pre)
+                self.assertEqual(rc, 0)
+                self.assertEqual(out, "")
+                self.assertEqual(state, pre)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(mod, td, gen, "{bad")
+            self.assertEqual(rc, 2)
+            self.assertIsNone(state)
+
+    def test_main_junk_prestate_and_directory_state(self):
+        mod = self._mod()
+        gen = {"name": "port_watch", "tunables": {}}
+        readings = {"now": 1000.0, "listeners": [self._LISTENER]}
+        junk = {"learned": True, "seen": {
+            "old": dict(self._LISTENER), "bad": {"proto": "x"},
+            "nonstr": {}}}
+        # The genuine listener is already seen after cleaning, so
+        # nothing files; an empty pass writes the cleaned state
+        # (the seen listener vanished, so it leaves silently).
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, gen, readings, pre_state=junk)
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, {"learned": True,
+                                     "seen": self._SEEN})
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, gen, {"now": 1, "listeners": []},
+                pre_state=junk)
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, {"learned": True, "seen": {}})
+        # A directory as the state path is rc 2 with the alert
+        # still printed first (learn_first_pass off, so the pass
+        # files against the fresh baseline).
+        no_learn = {"name": "port_watch",
+                    "tunables": {"learn_first_pass": False}}
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, no_learn, readings, state_is_dir=True)
+            self.assertEqual(rc, 2)
+            self.assertIn("exposed_listener", out)
+
+    def test_main_live_local_modes(self):
+        import os
+        import unittest.mock
+        mod = self._mod()
+        gen = {"name": "port_watch", "tunables": {}}
+        readings = {"now": 1000.0, "listeners": [self._LISTENER]}
+        pre = {"learned": True, "seen": {}}
+        # Live mode (no --readings), read_live stubbed to a known
+        # listener: the pass files it and writes it into state.
+        stub = {"now": 5.0, "listeners": [
+            {"proto": "udp", "addr": "127.0.0.1", "port": 5353}]}
+        with tempfile.TemporaryDirectory() as td:
+            with unittest.mock.patch.object(
+                    mod, "read_live", return_value=stub):
+                rc, out, state = self._main(
+                    mod, td, gen, pre_state=pre)
+            self.assertEqual(rc, 0)
+            self.assertIn("new_listener", out)
+            self.assertEqual(state, {"learned": True, "seen": {
+                "udp/127.0.0.1/5353": {"proto": "udp",
+                                       "addr": "127.0.0.1",
+                                       "port": 5353}}})
+        # --local-dir with no secret in the env var: rc 2 and
+        # the state file is left exactly as it was, with or
+        # without alerts.
+        for value in [readings, {"now": 1, "listeners": []}]:
+            with self.subTest(readings=repr(value)[:40]):
+                with tempfile.TemporaryDirectory() as td:
+                    with unittest.mock.patch.dict(
+                            os.environ, {}, clear=False):
+                        os.environ.pop(
+                            "HOMING_PIGEON_SENSOR_SECRET", None)
+                        rc, out, state = self._main(
+                            mod, td, gen, value,
+                            extra=["--local-dir", td], pre_state=pre)
+                    self.assertEqual(rc, 2)
+                    self.assertEqual(state, pre)
+
 if __name__ == "__main__":
 
     unittest.main()
