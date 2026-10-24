@@ -27245,6 +27245,592 @@ class TestLogSentinelPathsAndDecideFifteenShapes(unittest.TestCase):
             rc, out = run(["--manifest", mp2, "--state", sp4])
             self.assertEqual((rc, out), (0, ""))
 
+class TestPortWatchListenersAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the port-watch
+    /proc hex helpers, the _parse_proc_net() socket
+    reader, _clean_listener(), read_live(), and
+    decide()'s listener / state / readings handling
+    varied with the fifteen shapes for the first
+    time (step-8 Target 5 / family (b) -- port-watch's
+    only earlier class covers its boolean tunables
+    learn_first_pass / high_only inside decide();
+    the socket parsing, listener cleaning and the
+    baseline diff were never varied).
+
+    (a) Doc claims: the README states the sources
+        are /proc/net/tcp, tcp6, udp and udp6, "each
+        missing file is skipped"; that "TCP counts
+        state 0A (LISTEN)"; that UDP has no LISTEN
+        state, so "an entry with no remote address
+        (an unconnected socket), or in state 07,
+        counts as a listener"; that IPv6 addresses
+        are rendered in compressed form via the
+        ipaddress module and "the wildcards
+        normalize to 0.0.0.0 and ::"; that the
+        watcher files exposed_listener (high) for
+        "a new listener bound to a wildcard address
+        (0.0.0.0 or ::), or to a port below 1024"
+        and new_listener (medium) for any other new
+        listener -- "a specific address and a port
+        at or above 1024"; that "a new listener
+        files once and is absorbed into the
+        baseline"; and that "listeners that vanish
+        leave the state silently, so a listener
+        that comes back files again". The module
+        header adds that read_live() "returns one
+        readings dict", that decide() is pure with
+        the current time arriving as
+        readings["now"], and that each missing
+        /proc file means the readings "carry no
+        listeners at all, which is absence of
+        evidence, never an error". The listeners
+        list and the state shape are not numeric
+        registry rows, so Decision 1's
+        default-on-unusable policy for numeric
+        readers does not name a shape rule for
+        them; this class pins the observed
+        readings instead of asserting one.
+
+    (b) How this was probed: on 2026-10-24 the
+        hex helpers were fed genuine, short,
+        non-hex and empty strings; _parse_proc_net()
+        was run against temp /proc-format files
+        mixing LISTEN and non-LISTEN TCP rows, the
+        three UDP shapes (state 07, unconnected,
+        connected), malformed rows and a tcp6 file;
+        _clean_listener() was probed with the
+        table hunt's fifteen shapes (omitted-
+        equivalent empty list, null, empty string,
+        true, false, zero, negative, numeric
+        string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, list, dict) for
+        port, proto and addr separately, plus
+        fractional and boundary ports; decide()
+        was probed with listeners / readings /
+        state shapes, duplicate and fractional
+        listeners, the 1023/1024 boundary, both
+        wildcards at high ports, vanish-and-return
+        sequences and mis-keyed state entries;
+        read_live() was checked structurally
+        against this box's real /proc; and main()
+        was run in --readings mode against temp
+        manifests, readings and state files.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. _ipv4_from_hex() reverses the
+        little-endian bytes (0100007F is 127.0.0.1,
+        lowercase hex accepted) and answers None
+        for a wrong length, non-hex or empty
+        input; _ipv6_from_hex() reverses each
+        32-bit word (the all-zero address is "::",
+        ...01000000 is "::1", a genuine fe80::1
+        proc row round-trips) with the same None
+        rule. _parse_proc_net() skips the header,
+        keeps only TCP state 0A rows, counts a UDP
+        row only when its remote is all-zero with
+        port 0000 or its state is 07, and skips
+        short rows, bad-hex addresses, bad-hex
+        ports and a local field with no colon; a
+        missing file yields []. _clean_listener()
+        accepts only proto "tcp"/"udp", any
+        non-empty string addr verbatim (never
+        IP-validated: "bogus" and "120" both
+        pass), and a usable number port in
+        0..65535 with fractional values truncating
+        (9000.9 files as 9000, 0 and 65535 kept,
+        65536 / negative / bool / string /
+        non-finite / huge shapes dropped whole);
+        extra keys are stripped. decide() reads
+        every non-list listeners shape (a tuple
+        included) as no listeners, drops malformed
+        entries whole, dedups within a pass,
+        files exposed exactly for a wildcard addr
+        at any port or a port below 1024 (1023
+        exposed, 1024 medium), emits alerts in
+        sorted key order, absorbs a filed listener
+        so the same pass repeated is quiet, drops
+        vanished listeners from the state so a
+        return files again, and flips learned to
+        true even on an empty first pass. State
+        cleaning re-keys each seen entry by its
+        cleaned listener (a mis-keyed entry is
+        kept under the recomputed key, its float
+        port truncated), drops non-string keys and
+        uncleanable entries, reads a non-dict seen
+        as empty and learned through bool().
+        Non-dict readings read as {}, a non-dict
+        manifest or a non-string/empty name falls
+        back to sensor "port_watch", and a
+        non-dict tunables value reads as {}.
+        read_live() returns {"now", "listeners"}
+        with the listeners unique, sorted by
+        (proto, addr, port) and each already in
+        cleaned form. main() in --readings mode
+        learns quietly on the first pass (rc 0,
+        state written), files the genuinely new
+        listener on the second, answers rc 2 for
+        a missing/malformed manifest, a missing/
+        malformed readings file or an unwritable
+        state path, reads a malformed state file
+        as fresh, and reads a non-dict (list)
+        readings file as empty (rc 0) and a
+        non-dict (list) manifest as the defaults
+        (rc 0, fallback sensor). Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as the
+        readings above keep holding. If a shape
+        ever stops behaving as described, this
+        test is the failing record of that change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+    _HDR = ("  sl  local_address rem_address   st "
+            "tx_queue rx_queue\n")
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "port-watch", "port_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "port_watch_listeners_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_hex_helpers(self):
+        mod = self._module()
+        self.assertEqual(mod._ipv4_from_hex("0100007F"),
+                         "127.0.0.1")
+        self.assertEqual(mod._ipv4_from_hex("0100007f"),
+                         "127.0.0.1")
+        self.assertEqual(mod._ipv4_from_hex("00000000"),
+                         "0.0.0.0")
+        self.assertEqual(mod._ipv4_from_hex("FFFFFFFF"),
+                         "255.255.255.255")
+        for bad in ("0101", "ZZZZZZZZ", "", "0100007F00"):
+            self.assertIsNone(mod._ipv4_from_hex(bad))
+        self.assertEqual(
+            mod._ipv6_from_hex("0" * 32), "::")
+        self.assertEqual(
+            mod._ipv6_from_hex(
+                "00000000000000000000000001000000"), "::1")
+        self.assertEqual(
+            mod._ipv6_from_hex(
+                "000080FE000000000000000001000000"),
+            "fe80::1")
+        for bad in ("0101", "Z" * 32, ""):
+            self.assertIsNone(mod._ipv6_from_hex(bad))
+
+    def test_parse_proc_net_tcp_udp_tcp6(self):
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            tcp = os.path.join(d, "tcp")
+            with open(tcp, "w", encoding="utf-8") as fh:
+                fh.write(self._HDR)
+                fh.write("   0: 0100007F:1F90 00000000:0000 "
+                         "0A rest\n")
+                fh.write("   1: 0100007F:0050 00000000:0000 "
+                         "01 rest\n")
+                fh.write("   2: 00000000:0035 00000000:0000 "
+                         "0A rest\n")
+                fh.write("short line\n")
+                fh.write("   3: ZZZZZZZZ:1F90 00000000:0000 "
+                         "0A x\n")
+                fh.write("   4: 0100007F:ZZZZ 00000000:0000 "
+                         "0A x\n")
+                fh.write("   5: 0100007F 00000000:0000 0A x\n")
+            self.assertEqual(
+                mod._parse_proc_net(tcp, "tcp", v6=False),
+                [{"proto": "tcp", "addr": "127.0.0.1",
+                  "port": 8080},
+                 {"proto": "tcp", "addr": "0.0.0.0",
+                  "port": 53}])
+            self.assertEqual(
+                mod._parse_proc_net(
+                    os.path.join(d, "nope"), "tcp", v6=False),
+                [])
+            udp = os.path.join(d, "udp")
+            with open(udp, "w", encoding="utf-8") as fh:
+                fh.write(self._HDR)
+                fh.write("   0: 00000000:0035 00000000:0000 "
+                         "07 rest\n")
+                fh.write("   1: 0100007F:14E9 0100007F:0035 "
+                         "01 rest\n")
+                fh.write("   2: 0100007F:14EA 00000000:0000 "
+                         "01 rest\n")
+                fh.write("   3: 0100007F:14EB 0200007F:0000 "
+                         "01 rest\n")
+            self.assertEqual(
+                mod._parse_proc_net(udp, "udp", v6=False),
+                [{"proto": "udp", "addr": "0.0.0.0",
+                  "port": 53},
+                 {"proto": "udp", "addr": "127.0.0.1",
+                  "port": 5354}])
+            tcp6 = os.path.join(d, "tcp6")
+            with open(tcp6, "w", encoding="utf-8") as fh:
+                fh.write(self._HDR)
+                fh.write("   0: " + "0" * 32 + ":1F90 "
+                         + "0" * 32 + ":0000 0A x\n")
+                fh.write("   1: 000000000000000000000000"
+                         "01000000:0050 " + "0" * 32
+                         + ":0000 0A x\n")
+            self.assertEqual(
+                mod._parse_proc_net(tcp6, "tcp", v6=True),
+                [{"proto": "tcp", "addr": "::",
+                  "port": 8080},
+                 {"proto": "tcp", "addr": "::1",
+                  "port": 80}])
+
+    def test_clean_listener_shapes(self):
+        mod = self._module()
+        base = {"proto": "tcp", "addr": "127.0.0.1",
+                "port": 8080}
+        self.assertEqual(mod._clean_listener(base), base)
+        self.assertEqual(
+            mod._clean_listener(
+                {"proto": "udp", "addr": "::", "port": 53,
+                 "extra": 1}),
+            {"proto": "udp", "addr": "::", "port": 53})
+        for name, value in self._SHAPES:
+            with self.subTest(port=name):
+                got = mod._clean_listener(
+                    {"proto": "tcp", "addr": "127.0.0.1",
+                     "port": value})
+                if name == "zero":
+                    self.assertEqual(
+                        got, {"proto": "tcp",
+                              "addr": "127.0.0.1", "port": 0})
+                else:
+                    self.assertIsNone(got)
+            with self.subTest(proto=name):
+                self.assertIsNone(mod._clean_listener(
+                    {"proto": value, "addr": "127.0.0.1",
+                     "port": 80}))
+            with self.subTest(addr=name):
+                got = mod._clean_listener(
+                    {"proto": "tcp", "addr": value,
+                     "port": 80})
+                if name in ("numeric-string",
+                            "non-numeric-string"):
+                    self.assertEqual(
+                        got, {"proto": "tcp", "addr": value,
+                              "port": 80})
+                else:
+                    self.assertIsNone(got)
+        for port, want in ((8080.9, 8080), (22.0, 22),
+                           (65535, 65535), (-0.0, 0)):
+            self.assertEqual(
+                mod._clean_listener(
+                    {"proto": "tcp", "addr": "127.0.0.1",
+                     "port": port})["port"], want)
+        for port in (65536, -1):
+            self.assertIsNone(mod._clean_listener(
+                {"proto": "tcp", "addr": "127.0.0.1",
+                 "port": port}))
+        for bad in ("x", None, {}, [], 42):
+            self.assertIsNone(mod._clean_listener(bad))
+
+    def test_decide_exposure_and_boundaries(self):
+        mod = self._module()
+        man = {"name": "port_watch", "tunables": {}}
+        learned = {"learned": True, "seen": {}}
+        alerts, _ = mod.decide(
+            {"listeners": [
+                {"proto": "tcp", "addr": "127.0.0.1",
+                 "port": 1023},
+                {"proto": "tcp", "addr": "127.0.0.1",
+                 "port": 1024},
+                {"proto": "tcp", "addr": "0.0.0.0",
+                 "port": 9000},
+                {"proto": "tcp", "addr": "::",
+                 "port": 9000},
+                {"proto": "tcp", "addr": "::1",
+                 "port": 9000}]}, man, learned)
+        self.assertEqual(
+            [(a["signal"], a["severity"],
+              a["detail"]["addr"], a["detail"]["port"])
+             for a in alerts],
+            [("exposed_listener", "high", "0.0.0.0", 9000),
+             ("exposed_listener", "high", "127.0.0.1", 1023),
+             ("new_listener", "medium", "127.0.0.1", 1024),
+             ("exposed_listener", "high", "::", 9000),
+             ("new_listener", "medium", "::1", 9000)])
+        self.assertEqual(
+            alerts[0]["title"],
+            "new exposed listener tcp 0.0.0.0:9000")
+        self.assertEqual(
+            alerts[2]["title"],
+            "new listener tcp 127.0.0.1:1024")
+        alerts, _ = mod.decide(
+            {"listeners": [
+                {"proto": "udp", "addr": "10.0.0.1",
+                 "port": 5000},
+                {"proto": "tcp", "addr": "10.0.0.1",
+                 "port": 5000},
+                {"proto": "tcp", "addr": "10.0.0.2",
+                 "port": 5000}]}, man,
+            {"learned": True, "seen": {}})
+        self.assertEqual(
+            [a["title"] for a in alerts],
+            ["new listener tcp 10.0.0.1:5000",
+             "new listener tcp 10.0.0.2:5000",
+             "new listener udp 10.0.0.1:5000"])
+
+    def test_decide_absorb_vanish_and_dedup(self):
+        mod = self._module()
+        man = {"name": "port_watch", "tunables": {}}
+        one = {"proto": "tcp", "addr": "127.0.0.1",
+               "port": 9000}
+        alerts, state = mod.decide(
+            {"listeners": [one, one, dict(one)]}, man,
+            {"learned": True, "seen": {}})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            state["seen"],
+            {"tcp/127.0.0.1/9000": one})
+        self.assertEqual(
+            mod.decide({"listeners": [one]}, man, state),
+            ([], state))
+        alerts, state = mod.decide(
+            {"listeners": []}, man, state)
+        self.assertEqual((alerts, state["seen"]), ([], {}))
+        alerts, state = mod.decide(
+            {"listeners": [one]}, man, state)
+        self.assertEqual(len(alerts), 1)
+        alerts, state = mod.decide(
+            {"listeners": [{"proto": "tcp",
+                            "addr": "127.0.0.1",
+                            "port": True},
+                           {"proto": "tcp",
+                            "addr": "127.0.0.1",
+                            "port": 9000.9}]}, man,
+            {"learned": True, "seen": {}})
+        self.assertEqual(
+            [a["detail"]["port"] for a in alerts], [9000])
+        self.assertEqual(
+            sorted(state["seen"]), ["tcp/127.0.0.1/9000"])
+        self.assertEqual(
+            mod.decide({"listeners": []}, man, {}),
+            ([], {"learned": True, "seen": {}}))
+
+    def test_decide_readings_state_sensor_shapes(self):
+        mod = self._module()
+        man = {"name": "port_watch", "tunables": {}}
+        for name, value in self._SHAPES:
+            with self.subTest(listeners=name):
+                self.assertEqual(
+                    mod.decide({"listeners": value}, man,
+                               {"learned": True, "seen": {}}),
+                    ([], {"learned": True, "seen": {}}))
+        self.assertEqual(
+            mod.decide(
+                {"listeners": ({"proto": "tcp",
+                                "addr": "127.0.0.1",
+                                "port": 9000},)}, man,
+                {"learned": True, "seen": {}}),
+            ([], {"learned": True, "seen": {}}))
+        for bad in (None, "x", [], 42, {}):
+            self.assertEqual(
+                mod.decide(bad, man, {}),
+                ([], {"learned": True, "seen": {}}))
+        st = {"learned": True,
+              "seen": {"wrong/key": {"proto": "tcp",
+                                     "addr": "127.0.0.1",
+                                     "port": 80},
+                       "k2": {"proto": "udp", "addr": "::",
+                              "port": 53.9},
+                       7: {"proto": "tcp",
+                           "addr": "127.0.0.1", "port": 81},
+                       "k3": {"proto": "tcp",
+                              "addr": "127.0.0.1",
+                              "port": "80"},
+                       "k4": "junk"}}
+        alerts, state = mod.decide(
+            {"listeners": [{"proto": "tcp",
+                            "addr": "127.0.0.1", "port": 80},
+                           {"proto": "udp", "addr": "::",
+                            "port": 53}]}, man, st)
+        self.assertEqual(alerts, [])
+        self.assertEqual(
+            state["seen"],
+            {"tcp/127.0.0.1/80": {"proto": "tcp",
+                                  "addr": "127.0.0.1",
+                                  "port": 80},
+             "udp/::/53": {"proto": "udp", "addr": "::",
+                           "port": 53}})
+        _, state = mod.decide(
+            {"listeners": []}, man,
+            {"learned": True, "seen": "nope"})
+        self.assertEqual(
+            state, {"learned": True, "seen": {}})
+        _, state = mod.decide(
+            {"listeners": []}, man, {"learned": "yes"})
+        self.assertEqual(
+            state, {"learned": True, "seen": {}})
+        for bad_man in (None, "x", [], {},
+                        {"name": 123}, {"name": ""},
+                        {"tunables": None}):
+            alerts, _ = mod.decide(
+                {"listeners": [{"proto": "tcp",
+                                "addr": "0.0.0.0",
+                                "port": 80}]}, bad_man,
+                {"learned": True, "seen": {}})
+            self.assertEqual(alerts[0]["sensor"],
+                             "port_watch")
+        alerts, _ = mod.decide(
+            {"listeners": [{"proto": "tcp",
+                            "addr": "0.0.0.0", "port": 80}]},
+            {"name": "pw2", "tunables": "nope"},
+            {"learned": True, "seen": {}})
+        self.assertEqual(alerts[0]["sensor"], "pw2")
+
+    def test_read_live_structure(self):
+        mod = self._module()
+        readings = mod.read_live(None)
+        self.assertEqual(sorted(readings),
+                         ["listeners", "now"])
+        self.assertIsInstance(readings["now"], float)
+        listeners = readings["listeners"]
+        keys = [(e["proto"], e["addr"], e["port"])
+                for e in listeners]
+        self.assertEqual(keys, sorted(keys))
+        self.assertEqual(len(keys), len(set(keys)))
+        for entry in listeners:
+            self.assertEqual(
+                mod._clean_listener(entry), entry)
+        again = mod.read_live({"tunables": "x"})
+        self.assertEqual(sorted(again),
+                         ["listeners", "now"])
+        for entry in again["listeners"]:
+            self.assertEqual(
+                mod._clean_listener(entry), entry)
+
+    def test_main_readings_modes(self):
+        import contextlib
+        import io
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            mp = os.path.join(d, "m.json")
+            sp = os.path.join(d, "s.json")
+            rp = os.path.join(d, "r.json")
+            with open(mp, "w", encoding="utf-8") as fh:
+                json.dump({"name": "port_watch",
+                           "tunables": {}}, fh)
+            with open(rp, "w", encoding="utf-8") as fh:
+                json.dump(
+                    {"now": 1.0,
+                     "listeners": [{"proto": "tcp",
+                                    "addr": "0.0.0.0",
+                                    "port": 8080}]}, fh)
+
+            def run(argv):
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf), \
+                        contextlib.redirect_stderr(
+                                io.StringIO()):
+                    rc = mod.main(argv)
+                return rc, buf.getvalue()
+
+            rc, out = run(["--manifest", mp, "--state", sp,
+                           "--readings", rp])
+            self.assertEqual((rc, out), (0, ""))
+            with open(sp, encoding="utf-8") as fh:
+                self.assertEqual(
+                    json.load(fh),
+                    {"learned": True,
+                     "seen": {"tcp/0.0.0.0/8080":
+                              {"addr": "0.0.0.0",
+                               "port": 8080,
+                               "proto": "tcp"}}})
+            with open(rp, "w", encoding="utf-8") as fh:
+                json.dump(
+                    {"now": 2.0,
+                     "listeners": [
+                         {"proto": "tcp", "addr": "0.0.0.0",
+                          "port": 8080},
+                         {"proto": "udp",
+                          "addr": "127.0.0.1",
+                          "port": 5353}]}, fh)
+            rc, out = run(["--manifest", mp, "--state", sp,
+                           "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertIn(
+                '"signal": "new_listener"', out)
+            self.assertEqual(out.count("\n"), 1)
+            bad = os.path.join(d, "bad.json")
+            with open(bad, "w", encoding="utf-8") as fh:
+                fh.write("{not json")
+            nd = os.path.join(d, "nd.json")
+            with open(nd, "w", encoding="utf-8") as fh:
+                fh.write("[1, 2]")
+            for argv in (
+                    ["--manifest", os.path.join(d, "nope.json"),
+                     "--state", sp, "--readings", rp],
+                    ["--manifest", bad, "--state", sp,
+                     "--readings", rp],
+                    ["--manifest", mp, "--state", sp,
+                     "--readings",
+                     os.path.join(d, "nope.json")],
+                    ["--manifest", mp, "--state", sp,
+                     "--readings", bad],
+                    ["--manifest", mp, "--state",
+                     os.path.join(d, "nodir", "s.json"),
+                     "--readings", rp]):
+                with self.subTest(argv=argv[1]):
+                    self.assertEqual(run(argv)[0], 2)
+            sp2 = os.path.join(d, "s2.json")
+            rc, out = run(["--manifest", mp, "--state", sp2,
+                           "--readings", nd])
+            self.assertEqual((rc, out), (0, ""))
+            with open(sp2, encoding="utf-8") as fh:
+                self.assertEqual(
+                    json.load(fh),
+                    {"learned": True, "seen": {}})
+            sp3 = os.path.join(d, "s3.json")
+            with open(sp3, "w", encoding="utf-8") as fh:
+                fh.write("garbage{")
+            rc, out = run(["--manifest", mp, "--state", sp3,
+                           "--readings", rp])
+            self.assertEqual((rc, out), (0, ""))
+            with open(sp3, encoding="utf-8") as fh:
+                saved = json.load(fh)
+            self.assertEqual(
+                sorted(saved["seen"]),
+                ["tcp/0.0.0.0/8080", "udp/127.0.0.1/5353"])
+            lm = os.path.join(d, "lm.json")
+            with open(lm, "w", encoding="utf-8") as fh:
+                fh.write("[1, 2]")
+            sp4 = os.path.join(d, "s4.json")
+            with open(sp4, "w", encoding="utf-8") as fh:
+                json.dump({"learned": True,
+                           "seen": {"tcp/0.0.0.0/8080":
+                                    {"proto": "tcp",
+                                     "addr": "0.0.0.0",
+                                     "port": 8080}}}, fh)
+            rc, out = run(["--manifest", lm, "--state", sp4,
+                           "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertIn('"sensor": "port_watch"', out)
+
 if __name__ == "__main__":
 
     unittest.main()
