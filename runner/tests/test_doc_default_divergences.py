@@ -42325,6 +42325,388 @@ class TestBackupFreshnessCleanersAndMainModesFifteenShapes(unittest.TestCase):
                     self.assertEqual(rc, 2)
                     self.assertIsNone(state)
 
+class TestTripwireLiveAndLocalMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: tripwire's main()
+    in LIVE mode (no --readings: the real tree
+    walk through main), its remaining readings /
+    manifest / state JSON-shape handling at the
+    file level, and its --local-dir delivery
+    modes (no secret, empty secret, genuine
+    signed drop, custom --secret-env / --key-id,
+    and a closed --local-port) varied for the
+    first time (step-8 Target 5 / family (b) --
+    tripwire's earlier classes cover decide(),
+    the cleaners, read_live() called directly and
+    main() in --readings mode; main()'s live
+    pass, its local delivery and the file-level
+    JSON shapes below were never varied, the
+    same gap the backup-freshness cleaners/main
+    hunt closed in the tick before this one).
+
+    (a) Doc claims: the module header states
+        read_live() is the only function that
+        touches the tree and decide() is pure,
+        the first pass learns and files nothing,
+        and after that a pass files each
+        difference once with the new baseline
+        absorbed in full. On local delivery:
+        "--local-dir <runner base dir> signs
+        each payload with this sense's key
+        (read from the environment variable
+        named by --secret-env) and drops it
+        into the runner's local inbox, or
+        pushes it to the runner's loopback
+        listener when --local-port is given.
+        Same envelope, same signature -- only
+        the transport differs. Without
+        --local-dir it prints one alert
+        payload per line". _deliver_local()'s
+        docstring: it "returns how many alerts
+        were delivered, or None when local
+        delivery is not set up (the reason is
+        printed)". main()'s state handling
+        mirrors the other senses: a state file
+        that cannot be read or parsed is a
+        fresh baseline, and (per the code path
+        shared with the readings-mode class) a
+        failed delivery or an unwritable state
+        file answers rc 2 with the state left
+        unwritten so the next pass retries.
+
+    (b) How this was probed: on 2026-10-24
+        main() was run end to end against temp
+        trees and temp runner base dirs: a live
+        learn pass, a live diff pass (one file
+        changed in place, one added, one
+        removed), a live pass whose root does
+        not exist, live passes whose state
+        file holds broken JSON and each
+        non-object JSON shape (list, string,
+        null, number, true), readings files
+        holding a JSON string / null / true
+        (the non-object shapes the earlier
+        class did not file), manifest files
+        holding a JSON string / null / number
+        / true in readings mode, a state path
+        inside a nonexistent directory, and
+        --local-dir runs with the secret env
+        var unset, set-but-empty, set to a
+        genuine secret (the dropped envelope
+        read back from local-inbox and parsed),
+        named by a custom --secret-env with a
+        --key-id, and pointed at a closed
+        --local-port, checking the state file's
+        bytes before and after each run.
+
+    (c) Behavior actually observed: NO
+        divergence. A live first pass answers
+        rc 0, prints nothing and writes a
+        learned state holding every tree file's
+        SHA-384 entry; the next live pass files
+        file_vanished, file_changed and
+        file_appeared in sorted path order (the
+        changed file keeps its size; only its
+        digest moves), answers rc 0 and absorbs
+        the new tree as the baseline. A missing
+        root learns an empty baseline at rc 0.
+        A broken state file, and state files
+        holding a list, a string, null, a
+        number or true, all read as a fresh
+        unlearned baseline: the pass learns
+        silently and rewrites the state as a
+        learned object. A readings file holding
+        a JSON string, null or true answers
+        rc 2 with the not-a-JSON-object message
+        (the list and numeric-scalar cases were
+        already covered); a manifest file
+        holding a JSON string, null, a number
+        or true reads as the defaults at rc 0
+        (the list case was already covered). A
+        state path inside a nonexistent
+        directory prints its alerts, then
+        answers rc 2 when the write fails.
+        --local-dir with the secret env var
+        unset or set-but-empty answers rc 2
+        with the no-signing-secret message and
+        leaves the state file byte-identical --
+        whether an alert was pending or the
+        pass would only have learned, because
+        the secret check runs before any
+        delivery is attempted. With a genuine
+        secret the alert is signed and dropped
+        as <base>/local-inbox/<job_id>.json: the
+        envelope parses as JSON carrying v,
+        type, kind "sensor_alert", the sensor,
+        severity, title, signal, detail,
+        issued_at and a "sig" field; rc is 0
+        and the state IS written. A custom
+        --secret-env name is honored (the
+        default variable stays unset) and a
+        --key-id lands in the dropped payload
+        verbatim. A closed --local-port makes
+        the one delivery fail per-alert: rc 2,
+        the not-delivered message names the
+        count, and the state file is left
+        byte-identical so the difference is
+        reported again next pass.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the readings above
+        keep matching the module header and
+        _deliver_local()'s docstring. If a shape
+        above ever stops behaving as documented,
+        this test is the failing record of that
+        change.
+    """
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "tripwire", "tripwire.py")
+        spec = importlib.util.spec_from_file_location(
+            "tripwire_live_local_main", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _run(self, mod, argv, env=None):
+        import contextlib
+        import io
+        import os
+        import unittest.mock
+        clean = {k: v for k, v in os.environ.items()
+                 if k not in ("HOMING_PIGEON_SENSOR_SECRET",
+                              "TW_HUNT_SECRET")}
+        if env:
+            clean.update(env)
+        out, err = io.StringIO(), io.StringIO()
+        with unittest.mock.patch.dict(os.environ, clean, clear=True):
+            with contextlib.redirect_stdout(out), \
+                    contextlib.redirect_stderr(err):
+                rc = mod.main(argv)
+        return rc, out.getvalue(), err.getvalue()
+
+    def _write(self, path, obj):
+        import json
+        with open(path, "w", encoding="utf-8") as fh:
+            if isinstance(obj, str):
+                fh.write(obj)
+            else:
+                json.dump(obj, fh)
+
+    def _setup(self, td):
+        import os
+        manifest = os.path.join(td, "ext.json")
+        state = os.path.join(td, "state.json")
+        readings = os.path.join(td, "readings.json")
+        entry = {"sha384": "a" * 96, "size": 10}
+        self._write(manifest, {"name": "tripwire", "tunables": {}})
+        self._write(readings, {"files": {"a.txt": entry}})
+        return manifest, state, readings
+
+    def test_main_live_mode_learns_then_diffs(self):
+        import hashlib
+        import json
+        import os
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as td:
+            tree = os.path.join(td, "tree")
+            os.makedirs(tree)
+            for name, text in [("a.txt", "alpha"), ("b.txt", "beta!")]:
+                self._write(os.path.join(tree, name), text)
+            manifest = os.path.join(td, "ext.json")
+            state = os.path.join(td, "state.json")
+            self._write(manifest, {"name": "tripwire",
+                                   "tunables": {"root": tree}})
+            argv = ["--manifest", manifest, "--state", state]
+            rc, out, _ = self._run(mod, argv)
+            self.assertEqual((rc, out), (0, ""))
+            with open(state, encoding="utf-8") as fh:
+                saved = json.load(fh)
+            self.assertTrue(saved["learned"])
+            self.assertEqual(sorted(saved["files"]), ["a.txt", "b.txt"])
+            self.assertEqual(
+                saved["files"]["a.txt"]["sha384"],
+                hashlib.sha384(b"alpha").hexdigest())
+            self.assertEqual(saved["files"]["a.txt"]["size"], 5)
+            self._write(os.path.join(tree, "b.txt"), "BETA!")
+            self._write(os.path.join(tree, "c.txt"), "new")
+            os.remove(os.path.join(tree, "a.txt"))
+            rc, out, _ = self._run(mod, argv)
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                [json.loads(line)["signal"]
+                 for line in out.splitlines()],
+                ["file_vanished", "file_changed", "file_appeared"])
+            with open(state, encoding="utf-8") as fh:
+                self.assertEqual(sorted(json.load(fh)["files"]),
+                                 ["b.txt", "c.txt"])
+
+    def test_main_live_mode_missing_root_and_state_shapes(self):
+        import json
+        import os
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as td:
+            manifest = os.path.join(td, "ext.json")
+            state = os.path.join(td, "state.json")
+            self._write(manifest, {"name": "tripwire", "tunables": {
+                "root": os.path.join(td, "no-tree")}})
+            rc, out, _ = self._run(
+                mod, ["--manifest", manifest, "--state", state])
+            self.assertEqual((rc, out), (0, ""))
+            with open(state, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh),
+                                 {"files": {}, "learned": True})
+            tree = os.path.join(td, "tree")
+            os.makedirs(tree)
+            self._write(os.path.join(tree, "a.txt"), "alpha")
+            self._write(manifest, {"name": "tripwire",
+                                   "tunables": {"root": tree}})
+            for raw in ["{broken", "[1, 2]", '"x"', "null", "42",
+                        "true"]:
+                with self.subTest(state=raw):
+                    self._write(state, raw)
+                    rc, out, _ = self._run(
+                        mod, ["--manifest", manifest,
+                              "--state", state])
+                    self.assertEqual((rc, out), (0, ""))
+                    with open(state, encoding="utf-8") as fh:
+                        saved = json.load(fh)
+                    self.assertTrue(saved["learned"])
+                    self.assertEqual(sorted(saved["files"]), ["a.txt"])
+
+    def test_main_readings_and_manifest_nonobject_shapes(self):
+        import os
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as td:
+            manifest, state, readings = self._setup(td)
+            for raw in ['"hello"', "null", "true"]:
+                with self.subTest(readings=raw):
+                    self._write(readings, raw)
+                    rc, _, err = self._run(mod, [
+                        "--manifest", manifest, "--state", state,
+                        "--readings", readings])
+                    self.assertEqual(rc, 2)
+                    self.assertIn("is not a JSON object", err)
+            entry = {"sha384": "a" * 96, "size": 10}
+            self._write(readings, {"files": {"a.txt": entry}})
+            shaped = os.path.join(td, "mshape.json")
+            for raw in ['"hello"', "null", "42", "true"]:
+                with self.subTest(manifest=raw):
+                    self._write(shaped, raw)
+                    self._write(state, "{broken")
+                    rc, out, _ = self._run(mod, [
+                        "--manifest", shaped, "--state", state,
+                        "--readings", readings])
+                    self.assertEqual((rc, out), (0, ""))
+
+    def test_main_state_in_nonexistent_directory(self):
+        import os
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as td:
+            manifest, _, readings = self._setup(td)
+            self._write(manifest, {"name": "tripwire", "tunables": {
+                "learn_first_pass": False}})
+            missing = os.path.join(td, "nope", "state.json")
+            rc, out, err = self._run(mod, [
+                "--manifest", manifest, "--state", missing,
+                "--readings", readings])
+            self.assertEqual(rc, 2)
+            self.assertIn("file_appeared", out)
+            self.assertIn("cannot write state", err)
+
+    def test_main_local_dir_without_secret_never_writes_state(self):
+        import json
+        import os
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as td:
+            manifest, state, readings = self._setup(td)
+            base = os.path.join(td, "runnerbase")
+            self._write(state, {"learned": True, "files": {}})
+            before = open(state, encoding="utf-8").read()
+            argv = ["--manifest", manifest, "--state", state,
+                    "--readings", readings, "--local-dir", base]
+            for env in [None, {"HOMING_PIGEON_SENSOR_SECRET": ""}]:
+                with self.subTest(env=env):
+                    rc, _, err = self._run(mod, argv, env=env)
+                    self.assertEqual(rc, 2)
+                    self.assertIn("no signing secret", err)
+                    self.assertEqual(
+                        open(state, encoding="utf-8").read(), before)
+            # Even a learn pass (no alerts at all) is rc 2:
+            # the secret check runs before delivery is attempted.
+            self._write(state, "{broken")
+            rc, _, err = self._run(mod, argv)
+            self.assertEqual(rc, 2)
+            self.assertIn("no signing secret", err)
+            self.assertEqual(open(state, encoding="utf-8").read(),
+                             "{broken")
+            self.assertFalse(os.path.exists(
+                os.path.join(base, "local-inbox")))
+
+    def test_main_local_dir_signed_drop_and_custom_env(self):
+        import json
+        import os
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as td:
+            manifest, state, readings = self._setup(td)
+            base = os.path.join(td, "runnerbase")
+            self._write(state, {"learned": True, "files": {}})
+            rc, _, err = self._run(mod, [
+                "--manifest", manifest, "--state", state,
+                "--readings", readings, "--local-dir", base],
+                env={"HOMING_PIGEON_SENSOR_SECRET": "hunt-secret"})
+            self.assertEqual(rc, 0)
+            self.assertIn("filed file_appeared", err)
+            inbox = os.path.join(base, "local-inbox")
+            dropped = os.listdir(inbox)
+            self.assertEqual(len(dropped), 1)
+            with open(os.path.join(inbox, dropped[0]),
+                      encoding="utf-8") as fh:
+                payload = json.load(fh)
+            self.assertEqual(payload["kind"], "sensor_alert")
+            self.assertEqual(payload["signal"], "file_appeared")
+            self.assertEqual(payload["sensor"], "tripwire")
+            self.assertIn("sig", payload)
+            with open(state, encoding="utf-8") as fh:
+                self.assertEqual(sorted(json.load(fh)["files"]),
+                                 ["a.txt"])
+            base2 = os.path.join(td, "runnerbase2")
+            self._write(state, {"learned": True, "files": {}})
+            rc, _, _ = self._run(mod, [
+                "--manifest", manifest, "--state", state,
+                "--readings", readings, "--local-dir", base2,
+                "--secret-env", "TW_HUNT_SECRET",
+                "--key-id", "tripwire-1"],
+                env={"TW_HUNT_SECRET": "custom-secret"})
+            self.assertEqual(rc, 0)
+            dropped2 = os.listdir(os.path.join(base2, "local-inbox"))
+            self.assertEqual(len(dropped2), 1)
+            with open(os.path.join(base2, "local-inbox", dropped2[0]),
+                      encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh)["key_id"], "tripwire-1")
+
+    def test_main_local_port_closed_fails_and_keeps_state(self):
+        import os
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as td:
+            manifest, state, readings = self._setup(td)
+            base = os.path.join(td, "runnerbase")
+            self._write(state, {"learned": True, "files": {}})
+            before = open(state, encoding="utf-8").read()
+            rc, _, err = self._run(mod, [
+                "--manifest", manifest, "--state", state,
+                "--readings", readings, "--local-dir", base,
+                "--local-port", "1"],
+                env={"HOMING_PIGEON_SENSOR_SECRET": "hunt-secret"})
+            self.assertEqual(rc, 2)
+            self.assertIn("1 of 1 alert(s) not delivered", err)
+            self.assertEqual(open(state, encoding="utf-8").read(),
+                             before)
+
 if __name__ == "__main__":
 
     unittest.main()
