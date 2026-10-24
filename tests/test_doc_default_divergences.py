@@ -9334,6 +9334,172 @@ class TestIssuedAtWindowEdgesPerProtocol(unittest.TestCase):
 
 
 
+class TestLiveReloadBadValueReadsAsDefault(unittest.TestCase):
+    """Divergence: a bad value written live keeps the
+    last-good value instead of reading as the
+    documented default.
+
+    (a) Claim: Decision 1, point 4 (owner decision,
+        adopted 2026-10-23), stated identically in
+        three places. docs/design/present-but-invalid-config.md
+        (line 130): "Live reload. A bad value written
+        while running reads as the default and is
+        named in the log, no hidden last-good state.
+        The refuse class cannot refuse mid-run: a bad
+        port written live keeps the current binding,
+        logs an error, and takes effect only at the
+        next start." docs/campaign-playbook.md
+        (line 132): "Live reload: a bad value written
+        while running reads as the default and is
+        named in the log". docs/QUESTIONS.md
+        (line 137): "Live reload: a bad value reads
+        as the default and is logged, no hidden
+        last-good state". The five hot integer keys
+        and their documented defaults (registry rows
+        in tests/defaults_registry.py, all policy
+        default): poll_interval_sec 20,
+        default_timeout_sec 300, max_output_bytes
+        100000, max_job_age_sec 3600; workers reads
+        as 1 when unset (runner/runner.py
+        _worker_count, "default 1"). All five are
+        Decision 1 point 2 keys -- intervals,
+        timeouts, budgets, limits -- none is in the
+        refuse class, so the mid-run port exception
+        does not apply to them.
+
+    (b) How it was hunted: Claude's plan, second-run
+        axis (b) -- live-reload keys given a bad
+        value then a good one while running. On
+        2026-10-23 this tick probed
+        runner.runner.reload_hot_config -- the
+        actual live-reload reader the poll loop
+        calls -- against a temporary config file
+        whose mtime was advanced between writes.
+        The running config started at non-default
+        values (poll_interval_sec 7, workers 3,
+        default_timeout_sec 99, max_output_bytes
+        12345, max_job_age_sec 777,
+        owner_instructions "original"), so a read
+        as the default is distinguishable from
+        keeping the last-good value. A bad write
+        (a non-numeric string, null, zero, a
+        negative, a list, and a non-string
+        owner_instructions) was reloaded, then a
+        good write was reloaded, then single-key
+        shape probes (true, a numeric string, a
+        float, inf, NaN, a huge integer) were run
+        against poll_interval_sec.
+
+    (c) Behavior actually observed: DIVERGENCE on
+        the bad write, conformance on recovery.
+        The bad write changed nothing: every hot
+        key kept its last-good value (7, 3, 99,
+        12345, 777) instead of reading as its
+        documented default (20, 1, 300, 100000,
+        3600), and owner_instructions kept
+        "original". reload_hot_config's _valid_hot
+        rejects an unusable value and the loop
+        simply continues, leaving cfg untouched --
+        exactly the hidden last-good state point 4
+        forbids; the reader was never moved to the
+        adopted rule. The naming half of the claim
+        holds: each rejected key was logged by name
+        at WARN ("config reload: ignoring invalid
+        <key>=<value>"). The good write after the
+        bad one was applied in full (11, 2, 55,
+        22222, 888, "updated" all landed and were
+        reported changed), so recovery from a bad
+        live write works; only the bad value's own
+        semantics diverge. Single-key shapes against
+        poll_interval_sec from a running value of
+        11: inf and NaN were likewise rejected
+        keeping 11 rather than reading as 20; true
+        was accepted as 1, a numeric string "42" as
+        42, 2.9 truncated to 2, and 10**30 accepted
+        unbounded -- the boolean acceptance is the
+        known boolean-as-number family and is
+        recorded here as narrative only, not as
+        this class's failing assertion. Observed
+        on 2026-10-23 against current main.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    DEFAULTS = {"poll_interval_sec": 20, "workers": 1,
+                "default_timeout_sec": 300,
+                "max_output_bytes": 100000,
+                "max_job_age_sec": 3600}
+    START = {"poll_interval_sec": 7, "workers": 3,
+             "default_timeout_sec": 99,
+             "max_output_bytes": 12345,
+             "max_job_age_sec": 777}
+    BAD = {"poll_interval_sec": "bogus", "workers": None,
+           "default_timeout_sec": 0,
+           "max_output_bytes": -5,
+           "max_job_age_sec": ["x"]}
+    GOOD = {"poll_interval_sec": 11, "workers": 2,
+            "default_timeout_sec": 55,
+            "max_output_bytes": 22222,
+            "max_job_age_sec": 888}
+
+    def _reload(self, cfg, writes):
+        import os
+        from unittest import mock
+        from runner import runner as R
+        with tempfile.TemporaryDirectory() as base:
+            path = os.path.join(base, "config.json")
+            state = {"mtime": 0}
+            tick = [1000000]
+            logged = []
+            def _write(data):
+                with open(path, "w", encoding="utf-8") as fh:
+                    json.dump(data, fh)
+                tick[0] += 10
+                os.utime(path, (tick[0], tick[0]))
+            with mock.patch.object(
+                    R, "log",
+                    lambda msg, level="INFO":
+                        logged.append((level, msg))):
+                for data in writes:
+                    _write(data)
+                    R.reload_hot_config(cfg, path, state)
+            return logged
+
+    def test_bad_live_values_read_as_documented_defaults(self):
+        cfg = dict(self.START)
+        self._reload(cfg, [dict(self.BAD)])
+        for key, want in self.DEFAULTS.items():
+            with self.subTest(key=key):
+                self.assertEqual(cfg[key], want)
+
+    def test_each_bad_shape_reads_as_default(self):
+        shapes = ["bogus", None, 0, -5, ["x"], {"x": 1},
+                  float("inf"), float("-inf"), float("nan")]
+        for shape in shapes:
+            with self.subTest(shape=repr(shape)):
+                cfg = dict(self.START)
+                self._reload(
+                    cfg, [{"poll_interval_sec": shape}])
+                self.assertEqual(cfg["poll_interval_sec"], 20)
+
+    def test_bad_live_value_is_named_in_the_log(self):
+        cfg = dict(self.START)
+        logged = self._reload(cfg, [dict(self.BAD)])
+        warned = " ".join(msg for _lvl, msg in logged)
+        for key in self.BAD:
+            with self.subTest(key=key):
+                self.assertIn(key, warned)
+
+    def test_good_value_after_bad_is_applied(self):
+        cfg = dict(self.START)
+        self._reload(cfg, [dict(self.BAD), dict(self.GOOD)])
+        for key, want in self.GOOD.items():
+            with self.subTest(key=key):
+                self.assertEqual(cfg[key], want)
+
+
 if __name__ == "__main__":
 
     unittest.main()
