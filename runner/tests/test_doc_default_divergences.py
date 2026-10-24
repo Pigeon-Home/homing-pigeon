@@ -14625,6 +14625,365 @@ class TestZeroNegativeJobFuzzTunablesReadLiterallyInsteadOfDefault(unittest.Test
                 mod, {}, filed_age=604800.25),
             ["variant_divergence"])
 
+class TestTransportEnvelopeParityFromFixtures(unittest.TestCase):
+    """Second-run hunt coverage: transport parity is
+    by fixtures only -- the same envelope handling
+    asserted per binding, never live email.
+
+    (a) Doc claims: docs/TRANSPORTS.md (lines
+        130-135): "A transport carries the envelope
+        exactly as it carried the cleartext body -- it
+        is an opaque blob either way -- so encryption
+        is identical on email, NATS, and file, and no
+        transport code knows it exists."
+        runner/transports.py (module docstring): "A
+        job envelope is a subject line, a blank line,
+        then the signed body"; "The HMAC signature on
+        the body is checked by the runner's core for
+        every job on every transport, after the pipe
+        delivers". docs/TRANSPORTS.md file section
+        (lines 244-256): a file job is "first line the
+        subject line, blank line, then the signed body
+        -- exactly what send_job.py new --to-file
+        writes", and a malformed envelope is refused
+        with a .refused.txt note, "never silently
+        dropped"; the NATS section (lines 192-195)
+        states jobs arrive "as the usual envelope:
+        subject line, blank line, signed body".
+
+    (b) How it was hunted: Claude's plan, second-run
+        axis (c) -- transport parity by FIXTURES only
+        (never live email). On 2026-10-24 this tick
+        built fixture envelopes in the test itself --
+        a cleartext HMAC-signed job body, the same job
+        per-job-encrypted (hp_enc), a tampered body, a
+        CRLF envelope, a body carrying internal blank
+        lines, a malformed text with no blank line, a
+        subject carrying no job_id, a multipart RFC822
+        message holding the signed body, and an RFC822
+        message with a folded Subject header -- and
+        carried each fixture through every binding's
+        own intake calls: the file binding's real
+        FilePipe.scan_jobs on a watched folder, the
+        NATS binding's parse_envelope + deliver_job
+        steps from NatsPipe.run, the DTLS binding's
+        parse_envelope + job_id gate + deliver_job
+        steps from DtlsPipe._on_job, and the email
+        binding's _subject_body extraction +
+        deliver_job (fixtures constructed as RFC822
+        bytes; no mailbox, no live mail). What the
+        core then sees was read back with the core's
+        own transports.fetch_channel_messages, and the
+        body's fate was judged with
+        runner.verify.verify_body.
+
+    (c) Behavior actually observed: NO divergence in
+        the documented core parity. For the cleartext,
+        encrypted, tampered, CRLF and blank-line-body
+        fixtures, every binding delivers the identical
+        (subject, body) pair to the core -- the body
+        exactly as signed, plus deliver_job's one
+        documented normalization (a trailing newline
+        is added when the body lacked one) -- and the
+        core's verdict is identical on every binding:
+        the cleartext fixture verifies to its job, the
+        encrypted fixture verifies as an hp_enc
+        envelope on every binding (no transport code
+        needed to know), and the tampered fixture
+        fails with "signature mismatch" on every
+        binding. The job_id regex is the same pattern
+        in the core and in the file, NATS and DTLS
+        extensions, and extracts the same id from
+        every subject shape probed. The malformed
+        fixture is delivered by NO binding: the file
+        binding refuses it with a .refused.txt note,
+        the NATS and DTLS bindings drop it at
+        parse_envelope -- never executed anywhere.
+        A multipart mail whose first non-attachment
+        text/plain part holds the signed body recovers
+        that body exactly and it verifies. Two
+        binding-specific intakes are pinned below as
+        observed, not divergences: the DTLS binding
+        drops an envelope whose subject carries no
+        job_id (it keys result routing to the session
+        by that id), while the file, NATS and email
+        bindings deliver such an envelope and the core
+        verifies the job from its body; and a folded
+        email Subject reaches the core with the fold
+        as an embedded newline in the subject string
+        -- the job_id is still extracted and the body
+        still verifies, but that subject string is not
+        byte-identical to the single-line subject the
+        other bindings deliver. The two envelope
+        readers also keep their documented domains:
+        the core reader returns None for non-string
+        input, the channel reader returns None for
+        None and "" -- every binding decodes its pipe
+        to text before parsing, so no binding hands
+        it bytes. Observed on 2026-10-24 against
+        current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as every binding keeps
+        carrying the same envelope to the same core
+        verdict. If a fixture above ever stops
+        behaving as the docs state on any binding,
+        this test is the failing record of that
+        change.
+    """
+
+    SECRET = "campaign-parity-fixture-secret"
+    JOB_ID_RE = None
+
+    def _job(self, jid):
+        return {"v": 1, "type": "job", "job_id": jid,
+                "issued_at": "2026-10-24T00:00:00Z",
+                "kind": "exec", "interpreter": ["sh"],
+                "script": "echo parity\n", "env": {}}
+
+    def _bodies(self):
+        from runner import jobcrypto
+        from runner.verify import sign_payload
+        clear = sign_payload(self._job("parity-1"), self.SECRET)
+        enc = jobcrypto.encrypt_body(
+            sign_payload(self._job("parity-2"), self.SECRET),
+            self.SECRET, job_id="parity-2", key_id="",
+            sign=sign_payload)
+        tampered = clear.replace("parity-1", "paritx-1", 1)
+        return clear, enc, tampered
+
+    def _channel(self, base, name):
+        import os
+        chan = os.path.join(base, "transport-extensions", name)
+        os.makedirs(os.path.join(chan, "inbox"), exist_ok=True)
+        os.makedirs(os.path.join(chan, "outbox"), exist_ok=True)
+        return chan
+
+    def _core(self, base, name):
+        from runner import transports as T
+        msgs = T.fetch_channel_messages(
+            base, name, log=lambda m, level="INFO": None)
+        return [(m.subject, m.body) for m in msgs]
+
+    def _via_file(self, base, text):
+        import importlib
+        import os
+        file_main = importlib.import_module(
+            "runner.transport_extensions.file.__main__")
+        chan = self._channel(base, "file")
+        pipe = file_main.FilePipe(
+            {"base_dir": base, "inbox_dir": "watched/in",
+             "outbox_dir": "watched/out"}, chan)
+        with open(os.path.join(pipe.inbox, "job1.txt"), "w",
+                  encoding="utf-8") as fh:
+            fh.write(text)
+        pipe.scan_jobs()
+        refused = os.path.exists(
+            os.path.join(pipe.done, "job1.txt.refused.txt"))
+        return self._core(base, "file"), refused
+
+    def _via_nats(self, base, text):
+        # The exact intake steps of NatsPipe.run: decode,
+        # parse the envelope, deliver under the subject's
+        # job_id (or the broker subject when it has none).
+        import re
+        from runner.transport_extensions import channel as ch
+        chan = self._channel(base, "nats")
+        parsed = ch.parse_envelope(text)
+        if parsed is None:
+            return [], False
+        subject, body = parsed
+        m = re.search(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)",
+                      subject, re.I)
+        ch.deliver_job(chan, m.group(1) if m else "broker-subject",
+                       subject, body)
+        return self._core(base, "nats"), False
+
+    def _via_dtls(self, base, text):
+        # The exact intake steps of DtlsPipe._on_job: parse,
+        # require a job_id in the subject, deliver under it.
+        import re
+        from runner.transport_extensions import channel as ch
+        chan = self._channel(base, "dtls")
+        parsed = ch.parse_envelope(text)
+        if parsed is None:
+            return [], True
+        subject, body = parsed
+        m = re.search(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)",
+                      subject, re.I)
+        if not m:
+            return [], True
+        ch.deliver_job(chan, m.group(1), subject, body)
+        return self._core(base, "dtls"), False
+
+    def _via_email(self, base, raw):
+        import importlib
+        from runner.transport_extensions import channel as ch
+        email_main = importlib.import_module(
+            "runner.transport_extensions.email.__main__")
+        chan = self._channel(base, "email")
+        subject, body = email_main._subject_body(raw)
+        ch.deliver_job(chan, "mail-1", subject, body)
+        return self._core(base, "email"), False
+
+    def _all_channel_bindings(self, text):
+        import os
+        out = {}
+        for name, fn in (("file", self._via_file),
+                         ("nats", self._via_nats),
+                         ("dtls", self._via_dtls)):
+            with tempfile.TemporaryDirectory() as base:
+                out[name] = fn(os.path.join(base, "b"), text)[0]
+        return out
+
+    def _verdict(self, body):
+        from runner import jobcrypto
+        from runner.verify import verify_body
+        try:
+            payload = verify_body(body.strip(), self.SECRET)
+        except Exception as exc:
+            return ("fail", str(exc))
+        return ("ok", jobcrypto.is_envelope(payload),
+                payload.get("job_id"))
+
+    def test_signed_cleartext_fixture_verifies_on_every_binding(self):
+        from runner.transport_extensions import channel as ch
+        clear, _enc, _t = self._bodies()
+        subject = "[HOMING-PIGEON] job parity-1"
+        text = ch.envelope(subject, clear)
+        seen = self._all_channel_bindings(text)
+        with tempfile.TemporaryDirectory() as base:
+            import os
+            raw = (f"Subject: {subject}\r\n"
+                   "Content-Type: text/plain; charset=utf-8\r\n"
+                   f"\r\n{clear}").encode("utf-8")
+            seen["email"] = self._via_email(
+                os.path.join(base, "b"), raw)[0]
+        for binding, msgs in seen.items():
+            with self.subTest(binding=binding):
+                self.assertEqual(msgs, [(subject, clear + "\n")])
+                self.assertEqual(self._verdict(msgs[0][1]),
+                                 ("ok", False, "parity-1"))
+
+    def test_encrypted_fixture_is_opaque_on_every_binding(self):
+        from runner.transport_extensions import channel as ch
+        _clear, enc, _t = self._bodies()
+        subject = "[HOMING-PIGEON] job parity-2"
+        text = ch.envelope(subject, enc)
+        seen = self._all_channel_bindings(text)
+        with tempfile.TemporaryDirectory() as base:
+            import os
+            raw = (f"Subject: {subject}\r\n\r\n{enc}").encode("utf-8")
+            seen["email"] = self._via_email(
+                os.path.join(base, "b"), raw)[0]
+        for binding, msgs in seen.items():
+            with self.subTest(binding=binding):
+                self.assertEqual(msgs, [(subject, enc + "\n")])
+                self.assertEqual(self._verdict(msgs[0][1]),
+                                 ("ok", True, None))
+
+    def test_tampered_fixture_fails_identically_on_every_binding(self):
+        from runner.transport_extensions import channel as ch
+        _clear, _enc, tampered = self._bodies()
+        subject = "[HOMING-PIGEON] job parity-1"
+        text = ch.envelope(subject, tampered)
+        seen = self._all_channel_bindings(text)
+        with tempfile.TemporaryDirectory() as base:
+            import os
+            raw = (f"Subject: {subject}\r\n\r\n{tampered}").encode(
+                "utf-8")
+            seen["email"] = self._via_email(
+                os.path.join(base, "b"), raw)[0]
+        for binding, msgs in seen.items():
+            with self.subTest(binding=binding):
+                self.assertEqual(msgs, [(subject, tampered + "\n")])
+                verdict = self._verdict(msgs[0][1])
+                self.assertEqual(verdict[0], "fail")
+                self.assertIn("signature mismatch", verdict[1])
+
+    def test_crlf_and_blank_line_fixtures_parse_identically(self):
+        clear, _enc, _t = self._bodies()
+        crlf = ("[HOMING-PIGEON] job parity-1\r\n\r\n"
+                + clear + "\r\n")
+        seen = self._all_channel_bindings(crlf)
+        with tempfile.TemporaryDirectory() as base:
+            import os
+            raw = ("Subject: [HOMING-PIGEON] job parity-1\r\n"
+                   f"\r\n{clear}\r\n").encode("utf-8")
+            seen["email"] = self._via_email(
+                os.path.join(base, "b"), raw)[0]
+        want = [("[HOMING-PIGEON] job parity-1", clear + "\n")]
+        for binding, msgs in seen.items():
+            with self.subTest(binding=binding, fixture="crlf"):
+                self.assertEqual(msgs, want)
+        blank = "[HOMING-PIGEON] job x\n\nline1\n\nline2\n"
+        seen = self._all_channel_bindings(blank)
+        for binding, msgs in seen.items():
+            with self.subTest(binding=binding, fixture="blank"):
+                self.assertEqual(
+                    msgs, [("[HOMING-PIGEON] job x",
+                            "line1\n\nline2\n")])
+
+    def test_malformed_fixture_is_delivered_by_no_binding(self):
+        clear, _enc, _t = self._bodies()
+        bad = "[HOMING-PIGEON] job parity-1\n" + clear
+        with tempfile.TemporaryDirectory() as base:
+            import os
+            msgs, refused = self._via_file(os.path.join(base, "f"), bad)
+            self.assertEqual(msgs, [])
+            self.assertTrue(refused)
+            msgs, _d = self._via_nats(os.path.join(base, "n"), bad)
+            self.assertEqual(msgs, [])
+            msgs, dropped = self._via_dtls(os.path.join(base, "d"), bad)
+            self.assertEqual(msgs, [])
+            self.assertTrue(dropped)
+
+    def test_email_multipart_fixture_recovers_the_signed_body(self):
+        clear, _enc, _t = self._bodies()
+        raw = ("Subject: [HOMING-PIGEON] job parity-1\r\n"
+               "MIME-Version: 1.0\r\n"
+               "Content-Type: multipart/mixed; boundary=BB\r\n\r\n"
+               "--BB\r\nContent-Type: text/plain\r\n\r\n"
+               + clear + "\r\n--BB--\r\n").encode("utf-8")
+        with tempfile.TemporaryDirectory() as base:
+            import os
+            msgs, _d = self._via_email(os.path.join(base, "b"), raw)
+        self.assertEqual(
+            msgs, [("[HOMING-PIGEON] job parity-1", clear + "\n")])
+        self.assertEqual(self._verdict(msgs[0][1]),
+                         ("ok", False, "parity-1"))
+
+    def test_dtls_requires_a_job_id_in_the_subject_others_do_not(self):
+        from runner.transport_extensions import channel as ch
+        clear, _enc, _t = self._bodies()
+        text = ch.envelope("jobs", clear)
+        seen = self._all_channel_bindings(text)
+        self.assertEqual(seen["dtls"], [])
+        for binding in ("file", "nats"):
+            with self.subTest(binding=binding):
+                self.assertEqual(seen[binding], [("jobs", clear + "\n")])
+                self.assertEqual(
+                    self._verdict(seen[binding][0][1]),
+                    ("ok", False, "parity-1"))
+        with tempfile.TemporaryDirectory() as base:
+            import os
+            raw = f"Subject: jobs\r\n\r\n{clear}".encode("utf-8")
+            msgs, _d = self._via_email(os.path.join(base, "b"), raw)
+        self.assertEqual(msgs, [("jobs", clear + "\n")])
+
+    def test_folded_email_subject_still_delivers_a_verifiable_body(self):
+        clear, _enc, _t = self._bodies()
+        raw = ("Subject: [HOMING-PIGEON] job\r\n parity-1\r\n"
+               f"\r\n{clear}").encode("utf-8")
+        with tempfile.TemporaryDirectory() as base:
+            import os
+            msgs, _d = self._via_email(os.path.join(base, "b"), raw)
+        self.assertEqual(len(msgs), 1)
+        subject, body = msgs[0]
+        self.assertEqual(subject, "[HOMING-PIGEON] job\n parity-1")
+        self.assertEqual(self._verdict(body), ("ok", False, "parity-1"))
+
+
 if __name__ == "__main__":
 
     unittest.main()
