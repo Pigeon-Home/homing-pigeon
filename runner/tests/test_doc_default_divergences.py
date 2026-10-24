@@ -18544,6 +18544,216 @@ class TestZeroNegativeJobWatcherRepeatFailuresClampToOneInsteadOfDefault(unittes
             self._signals({"repeat_failures": 1}, count=1),
             ["job_failing_repeatedly"])
 
+class TestZeroNegativeJobWatcherClusterTunablesReadLiterallyInsteadOfDefault(unittest.TestCase):
+    """Divergence: the job-watcher failure-cluster
+    tunables read zero, negative, and sub-1 values
+    literally instead of as their documented
+    defaults, so failure_cluster either files on a
+    SINGLE failed job (cluster_min_jobs 0, -5, or
+    0.5, clamped to an effective minimum of 1) or
+    never files at all (cluster_window_sec 0, -5,
+    or 0.5, a window that holds no failure).
+
+    (a) Doc claim (extensions/job-watcher/README.md,
+        line 21): "`failure_cluster` | At least
+        `cluster_min_jobs` distinct jobs (default 3)
+        failed inside `cluster_window_sec` (default
+        15 minutes): look at the box, not the jobs".
+        The module header states the same
+        (job_watcher.py lines 50-53: "at least
+        cluster_min_jobs (default 3)" inside
+        "cluster_window_sec (default 15 minutes)"),
+        and the manifest ships both (extension.json:
+        "cluster_min_jobs": 3,
+        "cluster_window_sec": 900). Policy default
+        under Decision 1 -- a present-but-unusable
+        value reads as its documented default.
+        A distinct-job count below 1 and a window
+        of no (or negative) time are unusable:
+        job_watcher's own decide() resets a
+        non-positive failure_window_sec to its
+        documented default in the same pass
+        (job_watcher.py lines 416-420), and the
+        sibling failed-login-watch reader honors
+        its count only when it is >= 1.
+
+    (b) How the bug was found: step-8 Targets 5-6
+        -- the extension tunables were covered only
+        for the shapes their named classes
+        exercised, and these two tunables have no
+        registry row and no named class at all.
+        On 2026-10-24 this tick probed decide() --
+        the pure decision function -- with the
+        table hunt's fifteen shapes (omitted, null,
+        empty string, true, false, zero, negative,
+        the explicit default, numeric string,
+        non-numeric string, huge-int (10**400),
+        inf, -inf, NaN, wrong containers (list and
+        dict)), plus a sub-1 fractional and genuine
+        values, for each key separately. For
+        cluster_min_jobs the scenarios were one,
+        two, three, and five DISTINCT jobs failing
+        inside the default window. For
+        cluster_window_sec the scenarios were
+        three distinct jobs failing 100/500/800
+        seconds ago (all inside the documented
+        900) and 100/500/1000 seconds ago (the
+        third outside it). The observable is
+        whether the failure_cluster alert files.
+
+    (c) Behavior actually observed: for each key,
+        thirteen shapes read as the documented
+        default -- omitted, null, the empty string,
+        true, false, the explicit default, a
+        numeric string, a non-numeric string, a
+        huge int, inf, -inf, NaN, and the wrong
+        containers. Zero, -5, and 0.5 do NOT:
+        cluster_min_jobs is computed as
+        int(_tunable(tunables, "cluster_min_jobs",
+        3)) (job_watcher.py line 426) with no
+        lower-bound gate, and the filing check is
+        len(cluster_keys) >= max(1, cluster_min)
+        (line 578), so every value below 1 becomes
+        an effective minimum of 1 and the alert
+        files on the first distinct failure.
+        cluster_window_sec is read as
+        _tunable(tunables, "cluster_window_sec",
+        900.0) (line 427) with no reset at all --
+        unlike failure_window_sec directly above
+        it -- so 0, -5, and 0.5 are used literally
+        as the window and no recorded failure is
+        inside it, so the alert never files.
+        Genuine values are honored: a minimum of 2
+        files at two distinct jobs, 5 is silent at
+        three and files at five, 2.5 truncates to
+        2; a window of 60 files for failures 10/20/
+        30 seconds old and not for 10/20/100, and a
+        window of 2000 files for 100/500/1000.
+        Observed on 2026-10-24 against current
+        main. This is the campaign's known
+        zero/negative root-cause family (see
+        TestZeroNegativeJobWatcherRepeatFailuresClampToOneInsteadOfDefault).
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _cluster(self, tunables, ages):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "job-watcher",
+            "job_watcher.py")
+        spec = importlib.util.spec_from_file_location(
+            "job_watcher_cluster_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        now = 1000000.0
+        manifest = {"name": "job_watcher",
+                    "tunables": dict(tunables)}
+        records = [{"job_id": f"j{i}", "key": f"k{i}",
+                    "kind": "exec", "label": f"probe{i}",
+                    "saved_at": now - age,
+                    "exit_code": 1, "duration_sec": None,
+                    "error": "boom"}
+                   for i, age in enumerate(ages)]
+        readings = {"now": now, "records": records}
+        alerts, _state = mod.decide(readings, manifest, {})
+        return [a["signal"] for a in alerts
+                if a["signal"] == "failure_cluster"]
+
+    def test_cluster_min_fifteen_shapes_read_as_default_3(self):
+        shapes = [("omitted", None), ("null", None),
+                  ("empty-string", ""), ("true", True),
+                  ("false", False), ("zero", 0),
+                  ("negative", -5),
+                  ("explicit-default", 3),
+                  ("numeric-string", "3"),
+                  ("non-numeric-string", "bogus"),
+                  ("huge-int", 10 ** 400),
+                  ("inf", float("inf")),
+                  ("-inf", float("-inf")),
+                  ("nan", float("nan")),
+                  ("list", ["x"]), ("dict", {"x": 1}),
+                  ("sub-1-fractional", 0.5)]
+        for name, value in shapes:
+            tunables = {} if name == "omitted" else {
+                "cluster_min_jobs": value}
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    self._cluster(tunables, [10, 20]), [])
+                self.assertEqual(
+                    self._cluster(tunables, [10, 20, 30]),
+                    ["failure_cluster"])
+
+    def test_cluster_window_fifteen_shapes_read_as_default_900(self):
+        shapes = [("omitted", None), ("null", None),
+                  ("empty-string", ""), ("true", True),
+                  ("false", False), ("zero", 0),
+                  ("negative", -5),
+                  ("explicit-default", 900),
+                  ("numeric-string", "900"),
+                  ("non-numeric-string", "bogus"),
+                  ("huge-int", 10 ** 400),
+                  ("inf", float("inf")),
+                  ("-inf", float("-inf")),
+                  ("nan", float("nan")),
+                  ("list", ["x"]), ("dict", {"x": 1}),
+                  ("sub-1-fractional", 0.5)]
+        for name, value in shapes:
+            tunables = {} if name == "omitted" else {
+                "cluster_window_sec": value}
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    self._cluster(tunables,
+                                  [100, 500, 800]),
+                    ["failure_cluster"])
+                self.assertEqual(
+                    self._cluster(tunables,
+                                  [100, 500, 1000]), [])
+
+    def test_genuine_cluster_values_are_honored(self):
+        # Controls: genuine minima, windows, and the
+        # truncating fractional already behave today
+        # and must keep doing so after the
+        # zero/negative cases are fixed.
+        self.assertEqual(
+            self._cluster({"cluster_min_jobs": 2},
+                          [10]), [])
+        self.assertEqual(
+            self._cluster({"cluster_min_jobs": 2},
+                          [10, 20]), ["failure_cluster"])
+        self.assertEqual(
+            self._cluster({"cluster_min_jobs": 5},
+                          [10, 20, 30]), [])
+        self.assertEqual(
+            self._cluster({"cluster_min_jobs": 5},
+                          [10, 20, 30, 40, 50]),
+            ["failure_cluster"])
+        self.assertEqual(
+            self._cluster({"cluster_min_jobs": 2.5},
+                          [10]), [])
+        self.assertEqual(
+            self._cluster({"cluster_min_jobs": 2.5},
+                          [10, 20]), ["failure_cluster"])
+        self.assertEqual(
+            self._cluster({"cluster_min_jobs": 1},
+                          [10]), ["failure_cluster"])
+        self.assertEqual(
+            self._cluster({"cluster_window_sec": 60},
+                          [10, 20, 30]),
+            ["failure_cluster"])
+        self.assertEqual(
+            self._cluster({"cluster_window_sec": 60},
+                          [10, 20, 100]), [])
+        self.assertEqual(
+            self._cluster({"cluster_window_sec": 2000},
+                          [100, 500, 1000]),
+            ["failure_cluster"])
+
 if __name__ == "__main__":
 
     unittest.main()
