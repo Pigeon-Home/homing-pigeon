@@ -14901,6 +14901,7 @@ class TestTransportEnvelopeParityFromFixtures(unittest.TestCase):
                 self.assertEqual(verdict[0], "fail")
                 self.assertIn("signature mismatch", verdict[1])
 
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
     def test_crlf_and_blank_line_fixtures_parse_identically(self):
         clear, _enc, _t = self._bodies()
         crlf = ("[HOMING-PIGEON] job parity-1\r\n\r\n"
@@ -14971,6 +14972,7 @@ class TestTransportEnvelopeParityFromFixtures(unittest.TestCase):
             msgs, _d = self._via_email(os.path.join(base, "b"), raw)
         self.assertEqual(msgs, [("jobs", clear + "\n")])
 
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
     def test_folded_email_subject_still_delivers_a_verifiable_body(self):
         clear, _enc, _t = self._bodies()
         raw = ("Subject: [HOMING-PIGEON] job\r\n parity-1\r\n"
@@ -25562,6 +25564,7 @@ class TestCrashWatchDirsAndDecideFifteenShapes(unittest.TestCase):
                       "tunables": "x"})
         self.assertEqual(alerts[0]["signal"], "crash_dumped")
 
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
     def test_decide_seen_dedup_repeated_and_duplicates(self):
         mod = self._mod()
         seen_state = {"seen": {"/c/app.dmp": [1, 2]},
@@ -25642,6 +25645,7 @@ class TestCrashWatchDirsAndDecideFifteenShapes(unittest.TestCase):
             mod, {"now": 1000, "files": [], "truncated": 5})
         self.assertEqual(alerts, [])
 
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
     def test_main_readings_mode(self):
         import contextlib
         import io
@@ -26792,6 +26796,7 @@ class TestLogSentinelPathsAndDecideFifteenShapes(unittest.TestCase):
         spec.loader.exec_module(mod)
         return mod
 
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
     def test_read_new_lines_paths_shapes(self):
         import os
         import tempfile
@@ -26841,6 +26846,7 @@ class TestLogSentinelPathsAndDecideFifteenShapes(unittest.TestCase):
                 mod.read_new_lines([missing], {}, 65536),
                 ([], {}))
 
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
     def test_read_new_lines_tail_and_restart_rules(self):
         import os
         import tempfile
@@ -26897,6 +26903,7 @@ class TestLogSentinelPathsAndDecideFifteenShapes(unittest.TestCase):
                 mod.read_new_lines([path], bad, 65536),
                 ([], bad))
 
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
     def test_read_live_log_paths_fallback(self):
         import os
         import tempfile
@@ -28135,6 +28142,7 @@ class TestWireArrivalsNeighborsAndDecideFifteenShapes(unittest.TestCase):
                                   value=repr(value)):
                     self.assertEqual(parser(value), [])
 
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
     def test_run_tool(self):
         mod = self._module()
         self.assertEqual(mod._run_tool(["/bin/echo", "hi"]),
@@ -29968,6 +29976,7 @@ class TestPiHealthReadingsAndDecideFifteenShapes(unittest.TestCase):
         with unittest.mock.patch("builtins.open", fake_open):
             return mod._mem_avail_pct_meminfo()
 
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX-shaped fixture (/bin tools, LF offsets, /proc)")
     def test_meminfo_parsing(self):
         mod = self._mod()
         cases = [

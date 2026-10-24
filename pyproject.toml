@@ -152,6 +152,11 @@ ignore-missing-imports = [
     "winlog",
     "detection",
     "jobcrypto",
+    # Role folders (runner/<role>/): the script-mode fallback imports
+    # `from guard import ...`, `from wire.oauth import ...` and so on,
+    # with runner/ on sys.path.
+    "guard", "guard.*", "wire", "wire.*", "oracle", "oracle.*",
+    "ops", "ops.*", "cloud", "cloud.*",
 ]
 
 # Lenient to start: only check bodies of annotated functions.
