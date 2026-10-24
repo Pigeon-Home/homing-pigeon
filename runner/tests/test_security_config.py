@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
-"""M0 tests: mode plumbing, config validation, audit writer."""
+"""M0 tests: mode plumbing, config validation, audit writer.
+
+UID (phase 2.3): no job executes in this file. sec_decide and
+the mode plumbing run in the runner process BEFORE execution,
+deciding whether a guard feature is off, auditing, or
+enforcing; they neither change nor test a uid. Any job a
+feature later admits runs as the SAME uid as the runner
+unless the separate job_user feature is configured (its own
+corpus). Recorded as a design fact, not a failure. The
+off/audit/enforce cases in SecDecideTest are each other's
+negative controls (phase 2.2), and SecDecideNegativeControl
+below asserts all three modes for one identical check inside
+a single test, so a decision that came out the same with the
+protection off and enforcing would fail there directly.
+"""
 import json
 import os
 import stat
@@ -180,6 +194,39 @@ class AuditWriterTest(unittest.TestCase):
                 open(os.path.join(d, S.COUNTS_FILE)))
             self.assertEqual(counts["audience"]["evaluated"], 2)
             self.assertEqual(counts["confinement"]["evaluated"], 1)
+
+
+class SecDecideNegativeControl(unittest.TestCase):
+    """Phase 2.2 paired control: ONE identical failing check
+    decided under all three modes inside a single test -- off
+    and audit must allow it, enforce must deny it. A sec_decide
+    change that denied (or allowed) in every mode would fail
+    here even if the separate per-mode tests were edited to
+    match. UID: no job runs; the decision is the runner's own,
+    pre-execution (see the module note)."""
+
+    def test_same_check_allows_off_and_audit_denies_enforce(self):
+        ctx = {"key_id": "k", "job_id": "j"}
+        with tempfile.TemporaryDirectory() as d:
+            off_cfg = {"security": {"modes": {"policy_env": "off"}}}
+            self.assertTrue(S.sec_decide(
+                off_cfg, d, "policy_env", "bad_env", dict(ctx)))
+            self.assertFalse(os.path.exists(
+                os.path.join(d, S.AUDIT_FILE)))
+        with tempfile.TemporaryDirectory() as d:
+            audit_cfg = {"security": {"modes": {"policy_env": "audit"}}}
+            self.assertTrue(S.sec_decide(
+                audit_cfg, d, "policy_env", "bad_env", dict(ctx)))
+            entry = json.loads(
+                open(os.path.join(d, S.AUDIT_FILE)).readline())
+            self.assertEqual(entry["decision"], "would_deny")
+        with tempfile.TemporaryDirectory() as d:
+            enf_cfg = {"security": {"modes": {"policy_env": "enforce"}}}
+            self.assertFalse(S.sec_decide(
+                enf_cfg, d, "policy_env", "bad_env", dict(ctx)))
+            entry = json.loads(
+                open(os.path.join(d, S.AUDIT_FILE)).readline())
+            self.assertEqual(entry["decision"], "denied")
 
 
 class StartupHookTest(unittest.TestCase):

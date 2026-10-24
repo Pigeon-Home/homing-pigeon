@@ -4,6 +4,19 @@
 Three-mode tests (off/audit/enforce) per feature, plus the pinned
 key claim from PROTOCOL.md: a pinned script smuggling BASH_ENV is
 denied in enforce mode.
+
+UID (phase 2.3): these protections decide BEFORE execution, in
+the runner process, on the signed job's declared env / files /
+args. No uid changes hands: a job that passes runs as the SAME
+uid as the runner (or as the job_user where that separate
+feature is configured -- not in this file), and a job denied in
+enforce never runs at all. Same-uid on both sides is the design
+fact here; the boundary under test is the key's policy, not a
+uid. The per-feature off/audit/enforce triples are each other's
+negative controls (phase 2.2), and Phase2NegativeControls at
+the end of this file asserts the off/enforce pair for all
+three features inside single tests, so a protection that
+passed both ways would fail there directly.
 """
 import hashlib
 import json
@@ -558,6 +571,78 @@ class PolicyParseTest(unittest.TestCase):
             "allowed_files": ["a.txt"],
             "args_pattern": r"[a-z]+",
         }}})
+
+
+class Phase2NegativeControls(unittest.TestCase):
+    """Phase 2.2 paired controls: for each policy feature, ONE
+    violating job is run twice, differing only in that
+    feature's mode -- off must execute it, enforce must deny
+    it. If either assertion ever matched the other side, the
+    per-feature mode tests above would be passing both ways
+    and proving nothing. UID: same-uid on both sides (see the
+    module note); only the named protection changes."""
+
+    def test_env_violation_off_executes_enforce_denies(self):
+        payload = _payload("p2-env", kind="exec", script="echo hi",
+                           env={"EVIL_VAR": "x"}, key_id="k2")
+        off, off_audit, _ = run_job(policy_cfg(
+            denied_env=["EVIL_VAR"],
+            sec_modes=modes_for(policy_env="off", policy_files="off",
+                                policy_args="off")), payload,
+            secret=EXTRA)
+        self.assertTrue(off)
+        self.assertEqual(off_audit, [])
+        on, on_audit, _ = run_job(policy_cfg(
+            denied_env=["EVIL_VAR"],
+            sec_modes=modes_for(policy_env="enforce",
+                                policy_files="off",
+                                policy_args="off")), payload,
+            secret=EXTRA)
+        self.assertFalse(on)
+        self.assertEqual(on_audit[0]["decision"], "denied")
+
+    def test_args_violation_off_executes_enforce_denies(self):
+        payload = _payload("p2-args", kind="exec", script="echo",
+                           args=["BAD"], key_id="k2")
+        off, off_audit, _ = run_job(policy_cfg(
+            args_pattern=r"[a-z]+",
+            sec_modes=modes_for(policy_env="off", policy_files="off",
+                                policy_args="off")), payload,
+            secret=EXTRA)
+        self.assertTrue(off)
+        self.assertEqual(off_audit, [])
+        on, on_audit, _ = run_job(policy_cfg(
+            args_pattern=r"[a-z]+",
+            sec_modes=modes_for(policy_env="off", policy_files="off",
+                                policy_args="enforce")), payload,
+            secret=EXTRA)
+        self.assertFalse(on)
+        self.assertEqual(on_audit[0]["decision"], "denied")
+
+    def test_files_violation_off_executes_enforce_denies(self):
+        payload = _payload(
+            "p2-files", kind="exec", script="echo hi",
+            files=[{"name": "evil.txt",
+                    "url": "https://example.invalid/x"}],
+            key_id="k2")
+        with mock.patch.object(RR, "download") as dl:
+            dl.side_effect = lambda url, dest: open(dest, "w").write("x")
+            off, off_audit, _ = run_job(policy_cfg(
+                allowed_files=["good.txt"],
+                sec_modes=modes_for(policy_env="off",
+                                    policy_files="off",
+                                    policy_args="off")), payload,
+                secret=EXTRA)
+        self.assertTrue(off)
+        self.assertEqual(off_audit, [])
+        on, on_audit, _ = run_job(policy_cfg(
+            allowed_files=["good.txt"],
+            sec_modes=modes_for(policy_env="off",
+                                policy_files="enforce",
+                                policy_args="off")), payload,
+            secret=EXTRA)
+        self.assertFalse(on)
+        self.assertEqual(on_audit[0]["decision"], "denied")
 
 
 if __name__ == "__main__":
