@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.12.63 - 2026-10-24
+
+- **More hunt conversions.** Muse's tripwire, resource-sentinel, job-fuzz and
+  job-watcher hunts land as regression tests; the type gate covers the
+  role folders' script-mode imports; training-watch and log-sentinel
+  read a corrupt saved inode as a restart.
+
 ## 3.12.62 - 2026-10-24
 
 - **Docs regrouped, README and FAQ sharpened.** `docs/` is grouped by reader
