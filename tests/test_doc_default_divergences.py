@@ -8864,5 +8864,187 @@ class TestMaxQueryBudgetDefaultsTo8(unittest.TestCase):
                 "query_budget": 2.9}}), 2)
 
 
+
+class TestDriNumericRowsRefuseUnusableShapes(unittest.TestCase):
+    """Second-run hunt coverage: the six dri.* numeric
+    rows themselves, varied together with the fifteen
+    shapes through their actual reader for the first
+    time as one family.
+
+    (a) Claim: docs/dri-playbook.md, "Config sketch"
+        (lines 129-142), is the only doc statement of
+        these defaults -- sketch-grade provenance, as
+        Target 4 of the step-8 list records:
+        "sensor_fused_score": {"threshold": 6.0,
+        "window_sec": 600}, "key_probe":
+        {"threshold": 5, "window_sec": 3600},
+        "cooldown_sec": 3600, "digest_window_sec":
+        300. Registry rows for all six keys: core,
+        policy refuse (Decision 1: a present-but-
+        unusable value in a refuse-class row must
+        make the runner refuse, not read as the
+        default), reader runner/dri.py:parse_dri,
+        doc_status verified by that sketch only.
+        The rows' named classes
+        (TestBooleanDriValuesAreConfigErrors and
+        TestBooleanDriWindowSecIsConfigError)
+        covered only the boolean shapes; the table
+        hunt refuse-probes each row generically.
+        This class pins the reader's own returned
+        values and error contract per row.
+
+    (b) How it was hunted: step 8 Target 4 -- the
+        six dri.* numeric rows, after max_query_budget
+        was completed by the previous tick. On
+        2026-10-23 this tick probed
+        runner.dri.parse_dri with the table hunt's
+        fifteen shapes placed at each key's own
+        path (the trigger dicts present, the probed
+        leaf varied), plus genuine values per row.
+
+    (c) Behavior actually observed: NO divergence.
+        For every row, omitted reads as the sketch
+        default (cooldown_sec 3600, digest_window_sec
+        300, sensor_fused_score.threshold 6.0,
+        sensor_fused_score.window_sec 600,
+        key_probe.threshold 5,
+        key_probe.window_sec 3600); the explicit
+        default and a numeric string of it parse to
+        the same value. Every other unusable shape
+        refuses with RuntimeError: null, the empty
+        string, true, false, a non-numeric string, a
+        several-hundred-digit integer, inf, -inf,
+        NaN, and a list. The usable middle shapes
+        differ per row exactly as the table hunt's
+        REFUSE_PROBES record: zero parses for all
+        six rows; a negative number parses for the
+        four trigger rows (thresholds and windows
+        carry no sign check in parse_dri) but
+        refuses for cooldown_sec and
+        digest_window_sec, whose reader adds a
+        "finite number >= 0" check. Genuine values
+        are honored: floats pass through as floats
+        (cooldown 7.5, sensor threshold 2.9),
+        numeric strings parse ("42" gives 42), and
+        key_probe.threshold is the one integer row:
+        int() truncates it (7.5 gives 7, 2.9
+        gives 2) while its window_sec stays a
+        float.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the reader keeps
+        the sketch defaults and the refuse contract.
+        If a shape above ever stops reading as
+        stated, this test is the failing record of
+        that change. The sketch-grade provenance in
+        (a) is recorded here; no production code or
+        doc was changed by this hunt.
+    """
+
+    _OMITTED = object()
+
+    # path in the config, path in parse_dri's result,
+    # sketch default, negative parses (True) or refuses
+    _ROWS = [
+        (("cooldown_sec",), ("cooldown_sec",), 3600, False),
+        (("digest_window_sec",), ("digest_window_sec",), 300, False),
+        (("triggers", "sensor_fused_score", "threshold"),
+         ("triggers", "sensor_fused_score", "threshold"), 6.0, True),
+        (("triggers", "sensor_fused_score", "window_sec"),
+         ("triggers", "sensor_fused_score", "window_sec"), 600, True),
+        (("triggers", "key_probe", "threshold"),
+         ("triggers", "key_probe", "threshold"), 5, True),
+        (("triggers", "key_probe", "window_sec"),
+         ("triggers", "key_probe", "window_sec"), 3600, True),
+    ]
+
+    def _cfg(self, path, value):
+        cfg = {}
+        node = cfg.setdefault("dri", {})
+        for part in path[:-1]:
+            node = node.setdefault(part, {})
+        if value is not self._OMITTED:
+            node[path[-1]] = value
+        return cfg
+
+    def _got(self, parsed, out_path):
+        cur = parsed
+        for part in out_path:
+            cur = cur[part]
+        return cur
+
+    def _probe(self, path, value):
+        from runner import dri
+        return dri.parse_dri(self._cfg(path, value))
+
+    def test_fifteen_shapes_per_row(self):
+        refuse_shapes = [
+            ("null", None), ("empty-string", ""),
+            ("true", True), ("false", False),
+            ("non-numeric-string", "bogus"),
+            ("huge-int", 10 ** 400),
+            ("inf", float("inf")),
+            ("neg-inf", float("-inf")),
+            ("nan", float("nan")),
+            ("wrong-container", ["x"]),
+        ]
+        for path, out_path, default, neg_ok in self._ROWS:
+            key = ".".join(path)
+            with self.subTest(key=key, shape="omitted"):
+                self.assertEqual(
+                    self._got(self._probe(path, self._OMITTED),
+                              out_path),
+                    default)
+            with self.subTest(key=key, shape="default-explicit"):
+                self.assertEqual(
+                    self._got(self._probe(path, default), out_path),
+                    default)
+            with self.subTest(key=key, shape="numeric-string"):
+                self.assertEqual(
+                    self._got(self._probe(path, str(default)),
+                              out_path),
+                    default)
+            with self.subTest(key=key, shape="zero"):
+                self.assertEqual(
+                    self._got(self._probe(path, 0), out_path), 0)
+            with self.subTest(key=key, shape="negative"):
+                if neg_ok:
+                    self.assertEqual(
+                        self._got(self._probe(path, -5), out_path),
+                        -5)
+                else:
+                    with self.assertRaises(RuntimeError):
+                        self._probe(path, -5)
+            for name, value in refuse_shapes:
+                with self.subTest(key=key, shape=name):
+                    with self.assertRaises(RuntimeError):
+                        self._probe(path, value)
+
+    def test_genuine_values_are_honored(self):
+        for path, out_path, _default, _neg in self._ROWS:
+            key = ".".join(path)
+            with self.subTest(key=key):
+                self.assertEqual(
+                    self._got(self._probe(path, 123), out_path),
+                    123)
+                self.assertEqual(
+                    self._got(self._probe(path, "42"), out_path),
+                    42)
+        # Floats pass through the float rows; the one
+        # integer row (key_probe.threshold) truncates.
+        kp = ("triggers", "key_probe", "threshold")
+        self.assertEqual(
+            self._got(self._probe(kp, 7.5), kp), 7)
+        self.assertEqual(
+            self._got(self._probe(kp, 2.9), kp), 2)
+        self.assertEqual(
+            self._got(self._probe(("cooldown_sec",), 7.5),
+                      ("cooldown_sec",)), 7.5)
+        sfs = ("triggers", "sensor_fused_score", "threshold")
+        self.assertEqual(
+            self._got(self._probe(sfs, 2.9), sfs), 2.9)
+
+
+
 if __name__ == "__main__":
     unittest.main()
