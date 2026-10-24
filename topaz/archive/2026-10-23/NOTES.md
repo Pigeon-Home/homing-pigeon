@@ -7,8 +7,8 @@
 | `topaz/candidates.py` | 39 long strings from the five flag321 files. No string printed. No reply printed. |
 | `topaz/candidates-slow.txt` | 12 of those strings. Cutoff 90 seconds. |
 | `topaz/batches.py` | Three sittings: `fast`, `each`, `rest`. |
-| `run.cmd` | `fast`, or the sitting named on the command line. |
-| `interesting.example/OVERVIEW.py` | Held cases of 1000 characters or fewer. Shortest first. 1801 cases. |
+| `topaz/run.cmd` | `fast`, or the sitting named on the command line. |
+| `topaz/interesting.example/OVERVIEW.py` | Held cases of 1000 characters or fewer. Shortest first. 1801 cases. |
 
 `ok` — process exit 0. On a string pass, the model stops. The reply is not read.
 
