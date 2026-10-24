@@ -36,6 +36,8 @@ REGISTERED = {
     "git not installed": "test_make_snapshot builds throwaway repos; git is "
                          "on every CI runner, so this runs everywhere CI does",
     "POSIX quoting is the live shell here": "run on ubuntu and macOS",
+    "POSIX-shaped fixture (/bin tools, LF offsets, /proc)":
+        "test_doc_default_divergences hunt fixtures; run on POSIX",
     "Unix mode bits": "run on ubuntu and macOS",
     "ACL home differs on Windows": "run on POSIX; Windows path tested separately",
     "AV path finding differs on Windows": "run on POSIX",

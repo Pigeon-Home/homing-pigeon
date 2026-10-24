@@ -34137,6 +34137,1125 @@ class TestLatencyPostProbesStateAndMainFifteenShapes(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn('"latency_spike"', out)
 
+class TestTrainingWatchReadingsStateAndMainFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the training-watch
+    readings fields, checkpoint stabilization,
+    GPU thresholds, loss / crash / stall rules,
+    _clean_state(), the live readers (log tail,
+    checkpoint scan, GPU parse, status command),
+    read_live() and main() in --samples mode
+    varied with the fifteen shapes for the first
+    time (step-8 Target 5 / family (b) --
+    training-watch's only earlier classes cover
+    its numeric tunables at the _tunable reader;
+    decide()'s field handling, _clean_state(),
+    _read_new_log_lines(), _scan_checkpoints(),
+    _read_gpu(), _run_alive(), read_live() and
+    main() had no class before this one).
+
+    (a) Doc claims: the module docstring states
+    read_live() is the only function that touches
+    the machine, decide() is pure (readings plus
+    manifest plus last pass's state, out come
+    alerts and the new state; the current time
+    arrives as readings["now"]), a checkpoint
+    files on the first later pass that finds
+    size and mtime unchanged and a changed one
+    goes back to unfiled, crash episodes key on
+    the marker plus the cumulative line number
+    divided by crash_window_lines (default 100),
+    the quiet-log stall never fires on a log
+    that never started or on the first pass that
+    sees lines and neither stall variant fires
+    when the run is reported over, the loss
+    variant needs at least loss_points parsed
+    losses and its detail always carries
+    source "parsed_from_log", gpu_overheating
+    fires at gpu_temp_high_c (default 85) and
+    gpu_memory_pressure at gpu_mem_high_pct
+    (default 95) of the card's total, and a
+    samples file carries "now", "gpu",
+    "run_alive", "log_lines" and "checkpoints".
+    The README states the loss regex reads
+    "loss: 0.431", "loss=0.431" and
+    "train_loss: 1.2e-3" shapes and nothing
+    cleverer, and that the checkpoint scan is
+    shallow (the run directory and its immediate
+    subdirectories, basenames matched against
+    checkpoint_globs, default
+    "checkpoint-*,*.pt,*.safetensors").
+
+    (b) How this was probed: on 2026-10-24
+    decide(), _clean_state(), _line_parts()
+    (through decide), _read_new_log_lines(),
+    _scan_checkpoints(), _read_gpu()
+    (shutil.which / subprocess.run faked, no
+    GPU), _run_alive(), read_live() (GPU reader
+    patched to None) and main() were probed
+    with the table hunt's fifteen shapes
+    (omitted-equivalent empty list, null, empty
+    string, true, false, zero, negative,
+    numeric string, non-numeric string,
+    huge-int (10**400), inf, -inf, NaN, list,
+    dict) at every field: the readings object,
+    the manifest, its tunables and name, now,
+    run_alive, the checkpoints container, each
+    checkpoint entry and its name / size /
+    mtime fields, the gpu object and its
+    temp_c / mem_used_mb / mem_total_mb /
+    util_pct fields, the log_lines container,
+    each entry and its ts / line fields, every
+    state field and sub-entry, the reader
+    state's path entries and offset field, and
+    the read_live tunables log_path / run_dir /
+    checkpoint_globs / status_cmd / tail_bytes;
+    plus the stabilization sequence (record,
+    file, quiet, change, re-file, vanish),
+    GPU threshold edges (84.9 / 85 C; 94 / 95 /
+    94.99-rounds-to-95.0 percent) and the
+    fingerprint dedup sequence, loss windows
+    at the tolerance edge, the crash window
+    boundary at line 100, the stall edge at
+    exactly stall_after_sec, and main() in
+    --samples mode against temp manifests,
+    samples and state files, including
+    missing, malformed, list-shaped and
+    unwritable files. The reader inode field
+    is covered here only for the shapes int()
+    converts; the unconvertible inode shapes
+    are the divergence recorded in
+    TestTrainingWatchReaderInodeCrashesInsteadOfNeverRaising
+    below.
+
+    (c) Behavior actually observed: NO
+    divergence in this class. decide() reads
+    every non-dict readings shape as empty
+    readings (fresh state out, nothing filed),
+    every non-dict manifest or non-dict
+    tunables shape as the defaults with sensor
+    "training_watch", and any non-empty string
+    manifest name verbatim as the sensor.
+    Every unusable now shape reads as 0.0, and
+    run_alive is honored only as a genuine
+    bool: only False suppresses both stall
+    variants (the string "false" included
+    among the shapes that do not). Checkpoints:
+    every non-list container and every
+    non-dict / nameless / non-finite-size /
+    non-finite-mtime entry is skipped, zero
+    and negative sizes and mtimes are kept
+    verbatim, duplicate names keep the last
+    entry, a vanished checkpoint drops out of
+    the state, and max_checkpoints prunes to
+    the newest by mtime (every unusable shape
+    reads as the default 200). GPU: every
+    non-dict gpu and every unusable field
+    shape votes nothing, util_pct is ignored,
+    temperature fires at exactly 85, memory
+    fires on the rounded percentage (9499 of
+    10000 rounds to 95.0 and fires) and never
+    on a zero or negative total, and the
+    fingerprint dedup files once per distinct
+    detail, goes quiet while the condition
+    holds, clears when it cools, and files
+    again on reheat. Log lines: every non-list
+    container reads as no lines, every entry
+    shape still counts as one line (a bare
+    string is the line's text, a dict's
+    non-string line reads as "" and its
+    unusable ts as now, genuine zero /
+    negative ts values are honored), and
+    lines_total accumulates. The loss regex
+    accepts exactly the documented shapes
+    (case-insensitive "loss:" / "loss=" /
+    "train_loss:" / "loss :"; "loss: .5",
+    "loss: -1", "val_loss:" and a bare
+    "loss 0.5" yield nothing); the flat
+    variant fires when the window's minimum
+    is within loss_flat_tol of its first
+    value, is edge-triggered, and re-arms
+    when a loss improves past the tolerance.
+    Crash markers are case-sensitive
+    substrings ("nccl error" and "NCCL warn"
+    file nothing; one line carrying two
+    markers files both), dedupe inside one
+    line window, and file again in the next
+    window. The quiet-log stall fires at
+    exactly stall_after_sec of silence, once
+    per silent episode. _clean_state() reads
+    every non-dict state as the fresh state,
+    cleans checkpoint entries field-wise
+    (filed coerced with bool()), keeps only
+    string-to-string gpu_active entries,
+    filters losses to genuine finite numbers
+    capped at the last 1000, filters
+    crash_fired to strings capped at the last
+    64, keeps a negative lines_total
+    literally, and reads unusable
+    log_newest_ts as None. The log reader
+    starts a first sight tail_bytes from the
+    end, resumes at a genuine offset, restarts
+    on an inode change or a shrink, keeps a
+    missing file's recorded entry, and reads
+    every unusable tail_bytes / reader-state /
+    entry / offset shape as a first sight (a
+    negative offset with a genuine inode seeks
+    before the file, yields nothing, and keeps
+    the recorded entry verbatim).
+    The checkpoint scan is shallow (a
+    grandchild directory is not scanned),
+    follows no symlinks, and matches
+    basenames against the glob list.
+    _read_gpu() parses the first well-formed
+    four-field line and reads no exe, a
+    raising call, or unparsable output as
+    None. _run_alive() reads an empty or
+    missing command as None, exit 0 as True
+    and any nonzero exit (a missing command
+    included) as False. read_live() reads
+    every non-string log_path / run_dir /
+    status_cmd shape as the empty default,
+    every non-string checkpoint_globs shape
+    as the default glob list (a genuine
+    string is split literally, so "" scans
+    nothing and "bogus" matches nothing), and
+    every tail_bytes shape as the default for
+    a small log. main() in --samples mode
+    answers rc 0 with the alerts printed one
+    payload per line (gpu_overheating on the
+    first pass, checkpoint_arrived on the
+    second), rc 2 for a missing or malformed
+    manifest or samples file, rc 0 with the
+    sensor fallback for a list manifest, rc 0
+    and a fresh state for scalar samples and
+    for malformed or list state files, and
+    rc 2 with the alerts still printed for an
+    unwritable state path. Observed on
+    2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+    divergence: it stays green as long as the
+    readings above keep holding. If a shape
+    ever stops behaving as described, this
+    test is the failing record of that change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+
+    _FRESH = {"checkpoints": {}, "gpu_active": {},
+              "log_seen": False, "log_newest_ts": None,
+              "losses": [], "loss_flat": False,
+              "stall_time_fired": "", "crash_fired": [],
+              "lines_total": 0}
+
+    _MANIFEST = {"name": "training_watch", "tunables": {}}
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "training-watch",
+            "training_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "training_watch_readings_state_main_fifteen_shapes",
+            path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_readings_and_manifest_shapes(self):
+        mod = self._module()
+        fire = {"now": 1000.0,
+                "gpu": {"temp_c": 90, "mem_used_mb": 10,
+                        "mem_total_mb": 100}}
+        for _name, shape in self._SHAPES:
+            alerts, state = mod.decide(shape, self._MANIFEST, None)
+            self.assertEqual(alerts, [])
+            self.assertEqual(state, self._FRESH)
+            alerts, _state = mod.decide(fire, shape, None)
+            self.assertEqual(
+                [a["sensor"] for a in alerts], ["training_watch"])
+            alerts, _state = mod.decide(
+                fire, {"name": "training_watch",
+                       "tunables": shape}, None)
+            self.assertEqual(
+                [a["signal"] for a in alerts], ["gpu_overheating"])
+
+    def test_sensor_name_shapes(self):
+        mod = self._module()
+        fire = {"now": 1, "gpu": {"temp_c": 90}}
+        for _name, shape in self._SHAPES:
+            alerts, _state = mod.decide(
+                fire, {"name": shape, "tunables": {}}, None)
+            expected = shape if isinstance(shape, str) and shape \
+                else "training_watch"
+            self.assertEqual(alerts[0]["sensor"], expected)
+
+    def test_now_and_run_alive_shapes(self):
+        mod = self._module()
+        st = dict(self._FRESH)
+        st["log_newest_ts"] = 100.0
+        st["log_seen"] = True
+        for _name, shape in self._SHAPES:
+            alerts, _state = mod.decide({"now": shape},
+                                        self._MANIFEST, dict(st))
+            self.assertEqual(alerts, [])
+        flat = {"now": 100, "log_lines": [
+            {"ts": 1, "line": "loss: 1.0"}] * 5}
+        for _name, shape in self._SHAPES:
+            alerts, _state = mod.decide(
+                dict(flat, run_alive=shape), self._MANIFEST, None)
+            if shape is False:
+                self.assertEqual(alerts, [])
+            else:
+                self.assertEqual([a["signal"] for a in alerts],
+                                 ["training_stalled"])
+
+    def test_checkpoint_container_and_entry_shapes(self):
+        mod = self._module()
+        for _name, shape in self._SHAPES:
+            alerts, state = mod.decide(
+                {"now": 1, "checkpoints": shape},
+                self._MANIFEST, None)
+            self.assertEqual(alerts, [])
+            self.assertEqual(state["checkpoints"], {})
+            _alerts, state = mod.decide(
+                {"now": 1, "checkpoints": [shape]},
+                self._MANIFEST, None)
+            self.assertEqual(state["checkpoints"], {})
+
+    def test_checkpoint_field_shapes(self):
+        mod = self._module()
+        base = {"name": "c1", "size": 10, "mtime": 5.0}
+        for _name, shape in self._SHAPES:
+            for field in ("name", "size", "mtime"):
+                entry = dict(base)
+                entry[field] = shape
+                _alerts, state = mod.decide(
+                    {"now": 1, "checkpoints": [entry]},
+                    self._MANIFEST, None)
+                kept = state["checkpoints"]
+                if field == "name":
+                    ok = isinstance(shape, str) and bool(shape)
+                else:
+                    ok = type(shape) is int and shape in (0, -5)
+                if ok:
+                    key = shape if field == "name" else "c1"
+                    self.assertEqual(list(kept), [key])
+                else:
+                    self.assertEqual(kept, {})
+        _a, state = mod.decide(
+            {"now": 1, "checkpoints": [
+                {"name": "c1", "size": 0, "mtime": -5.0}]},
+            self._MANIFEST, None)
+        self.assertEqual(state["checkpoints"], {
+            "c1": {"size": 0, "mtime": -5.0, "filed": False}})
+
+    def test_checkpoint_stabilization_sequence(self):
+        mod = self._module()
+        readings = {"now": 1, "checkpoints": [
+            {"name": "c1", "size": 10, "mtime": 5.0}]}
+        alerts, state = mod.decide(readings, self._MANIFEST, None)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["checkpoints"], {
+            "c1": {"size": 10, "mtime": 5.0, "filed": False}})
+        alerts, state = mod.decide(readings, self._MANIFEST, state)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["checkpoint_arrived"])
+        self.assertEqual(alerts[0]["severity"], "info")
+        self.assertEqual(alerts[0]["detail"], {
+            "name": "c1", "size_bytes": 10, "mtime": 5.0})
+        self.assertTrue(state["checkpoints"]["c1"]["filed"])
+        alerts, state = mod.decide(readings, self._MANIFEST, state)
+        self.assertEqual(alerts, [])
+        changed = {"now": 2, "checkpoints": [
+            {"name": "c1", "size": 11, "mtime": 5.0}]}
+        alerts, state = mod.decide(changed, self._MANIFEST, state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["checkpoints"], {
+            "c1": {"size": 11, "mtime": 5.0, "filed": False}})
+        alerts, state = mod.decide(changed, self._MANIFEST, state)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["checkpoint_arrived"])
+        alerts, state = mod.decide({"now": 3, "checkpoints": []},
+                                   self._MANIFEST, state)
+        self.assertEqual(state["checkpoints"], {})
+        _a, state = mod.decide(
+            {"now": 1, "checkpoints": [
+                {"name": "c", "size": 1, "mtime": 1.0},
+                {"name": "c", "size": 2, "mtime": 2.0}]},
+            self._MANIFEST, None)
+        self.assertEqual(state["checkpoints"], {
+            "c": {"size": 2, "mtime": 2.0, "filed": False}})
+        three = {"now": 1, "checkpoints": [
+            {"name": n, "size": 1, "mtime": float(i)}
+            for i, n in enumerate(["a", "b", "c"])]}
+        man2 = {"name": "training_watch",
+                "tunables": {"max_checkpoints": 2}}
+        _a, state = mod.decide(three, man2, None)
+        self.assertEqual(sorted(state["checkpoints"]), ["b", "c"])
+        for _name, shape in self._SHAPES:
+            _a, state = mod.decide(
+                three, {"name": "training_watch",
+                        "tunables": {"max_checkpoints": shape}},
+                None)
+            self.assertEqual(len(state["checkpoints"]), 3)
+
+    def test_gpu_shapes_and_threshold_edges(self):
+        mod = self._module()
+        base = {"temp_c": 10, "mem_used_mb": 10,
+                "mem_total_mb": 100, "util_pct": 1}
+        for _name, shape in self._SHAPES:
+            alerts, _state = mod.decide({"now": 1, "gpu": shape},
+                                        self._MANIFEST, None)
+            self.assertEqual(alerts, [])
+            for field in base:
+                gpu = dict(base)
+                gpu[field] = shape
+                alerts, _state = mod.decide(
+                    {"now": 1, "gpu": gpu}, self._MANIFEST, None)
+                self.assertEqual(alerts, [])
+        for temp, fires in ((84, False), (84.9, False),
+                            (85, True), (85.0, True), (86, True)):
+            alerts, _s = mod.decide(
+                {"now": 1, "gpu": {"temp_c": temp}},
+                self._MANIFEST, None)
+            self.assertEqual(
+                [a["signal"] for a in alerts],
+                ["gpu_overheating"] if fires else [])
+        for used, total, fires in (
+                (94, 100, False), (949, 1000, False),
+                (95, 100, True), (950, 1000, True),
+                (9499, 10000, True), (0, 0, False),
+                (10, -5, False), (100, 100, True)):
+            alerts, _s = mod.decide(
+                {"now": 1, "gpu": {"mem_used_mb": used,
+                                   "mem_total_mb": total}},
+                self._MANIFEST, None)
+            self.assertEqual(
+                [a["signal"] for a in alerts],
+                ["gpu_memory_pressure"] if fires else [])
+        alerts, _s = mod.decide(
+            {"now": 1, "gpu": {"mem_used_mb": 9499,
+                               "mem_total_mb": 10000}},
+            self._MANIFEST, None)
+        self.assertEqual(alerts[0]["detail"]["mem_used_pct"], 95.0)
+        alerts, _s = mod.decide(
+            {"now": 1, "gpu": {"temp_c": 10, "util_pct": 9999}},
+            self._MANIFEST, None)
+        self.assertEqual(alerts, [])
+
+    def test_gpu_fingerprint_dedup(self):
+        mod = self._module()
+        hot = {"now": 1, "gpu": {"temp_c": 90}}
+        alerts, state = mod.decide(hot, self._MANIFEST, None)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["gpu_overheating"])
+        alerts, state = mod.decide(hot, self._MANIFEST, state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(list(state["gpu_active"]),
+                         ["gpu_overheating"])
+        alerts, state = mod.decide(
+            {"now": 2, "gpu": {"temp_c": 91}}, self._MANIFEST, state)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["gpu_overheating"])
+        alerts, state = mod.decide(
+            {"now": 3, "gpu": {"temp_c": 10}}, self._MANIFEST, state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["gpu_active"], {})
+        alerts, state = mod.decide(hot, self._MANIFEST, state)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["gpu_overheating"])
+
+    def test_log_line_container_entry_and_field_shapes(self):
+        mod = self._module()
+        for _name, shape in self._SHAPES:
+            _a, state = mod.decide({"now": 7, "log_lines": shape},
+                                   self._MANIFEST, None)
+            if isinstance(shape, list) and shape:
+                self.assertEqual(state["lines_total"], 1)
+                self.assertEqual(state["log_newest_ts"], 7.0)
+            else:
+                self.assertEqual(state["lines_total"], 0)
+                self.assertIsNone(state["log_newest_ts"])
+            _a, state = mod.decide({"now": 7, "log_lines": [shape]},
+                                   self._MANIFEST, None)
+            self.assertEqual(state["lines_total"], 1)
+            self.assertEqual(state["log_newest_ts"], 7.0)
+        for _name, shape in self._SHAPES:
+            alerts, _s = mod.decide(
+                {"now": 7, "log_lines": [{"ts": 7, "line": shape}]},
+                self._MANIFEST, None)
+            self.assertEqual(alerts, [])
+            _a, state = mod.decide(
+                {"now": 7, "log_lines": [{"ts": shape,
+                                          "line": "hello"}]},
+                self._MANIFEST, None)
+            expected = float(shape) if type(shape) is int \
+                and shape in (0, -5) else 7.0
+            self.assertEqual(state["log_newest_ts"], expected)
+        alerts, state = mod.decide(
+            {"now": 7, "log_lines": ["Traceback here"]},
+            self._MANIFEST, None)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["run_crashed"])
+        self.assertEqual(state["log_seen"], True)
+
+    def test_loss_parsing_and_flat_rules(self):
+        mod = self._module()
+
+        def losses_of(text):
+            _a, state = mod.decide(
+                {"now": 1, "log_lines": [{"ts": 1, "line": text}]},
+                self._MANIFEST, None)
+            return state["losses"]
+
+        self.assertEqual(losses_of("loss: 0.431"), [0.431])
+        self.assertEqual(losses_of("loss=0.431"), [0.431])
+        self.assertEqual(losses_of("train_loss: 1.2e-3"), [0.0012])
+        self.assertEqual(losses_of("Loss: 2"), [2.0])
+        self.assertEqual(losses_of("loss : 0.25"), [0.25])
+        self.assertEqual(losses_of("loss: 1."), [1.0])
+        for text in ("loss: .5", "loss: -1", "val_loss: 0.5",
+                     "loss: abc", "step loss 0.5"):
+            self.assertEqual(losses_of(text), [], text)
+
+        def run(vals, state=None):
+            lines = [{"ts": float(i + 1), "line": f"loss: {v}"}
+                     for i, v in enumerate(vals)]
+            return mod.decide({"now": 100, "log_lines": lines},
+                              self._MANIFEST, state)
+
+        alerts, state = run([1.0, 1.0, 1.0, 1.0, 1.0])
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["training_stalled"])
+        self.assertEqual(alerts[0]["detail"]["evidence"], "loss_flat")
+        self.assertEqual(alerts[0]["detail"]["source"],
+                         "parsed_from_log")
+        self.assertTrue(state["loss_flat"])
+        alerts, state = run([1.0], state)
+        self.assertEqual(alerts, [])
+        self.assertTrue(state["loss_flat"])
+        alerts, state = run([0.5], state)
+        self.assertEqual(alerts, [])
+        self.assertFalse(state["loss_flat"])
+        alerts, _s = run([1.0, 0.9, 0.8, 0.7, 0.6])
+        self.assertEqual(alerts, [])
+        alerts, _s = run([0.5, 0.6, 0.7, 0.8, 0.9])
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["training_stalled"])
+        alerts, _s = run([1.0, 0.995, 1.0, 1.0, 1.0])
+        self.assertEqual(len(alerts), 1)
+        alerts, _s = run([1.0, 0.989, 1.0, 1.0, 1.0])
+        self.assertEqual(alerts, [])
+        alerts, state = run([1.0, 1.0, 1.0, 1.0])
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["losses"], [1.0, 1.0, 1.0, 1.0])
+
+    def test_crash_markers_and_window_dedupe(self):
+        mod = self._module()
+
+        def markers(text):
+            alerts, _s = mod.decide(
+                {"now": 1, "log_lines": [{"ts": 1, "line": text}]},
+                self._MANIFEST, None)
+            return [a["detail"]["marker"] for a in alerts]
+
+        self.assertEqual(markers("Traceback (most recent call last):"),
+                         ["Traceback"])
+        self.assertEqual(markers("CUDA out of memory"),
+                         ["CUDA out of memory"])
+        self.assertEqual(markers("NCCL error occurred"),
+                         ["NCCL error"])
+        self.assertEqual(markers("nccl error"), [])
+        self.assertEqual(markers("NCCL warn"), [])
+        self.assertEqual(markers("RuntimeError: boom"),
+                         ["RuntimeError"])
+        self.assertEqual(markers("runtimeerror"), [])
+        self.assertEqual(markers("some Traceback and RuntimeError"),
+                         ["Traceback", "RuntimeError"])
+        lines = [{"ts": 1, "line": "Traceback"}] * 3
+        alerts, state = mod.decide({"now": 1, "log_lines": lines},
+                                   self._MANIFEST, None)
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["severity"], "high")
+        self.assertEqual(alerts[0]["detail"]["evidence"],
+                         "log_marker")
+        self.assertEqual(state["crash_fired"], ["Traceback:0"])
+        self.assertEqual(state["lines_total"], 3)
+        filler = [{"ts": 2, "line": "x"}] * 100 + \
+            [{"ts": 2, "line": "Traceback"}]
+        alerts, state = mod.decide({"now": 2, "log_lines": filler},
+                                   self._MANIFEST, state)
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(state["crash_fired"],
+                         ["Traceback:0", "Traceback:1"])
+        self.assertEqual(state["lines_total"], 104)
+
+    def test_stall_no_log_growth_rules(self):
+        mod = self._module()
+        st = dict(self._FRESH)
+        st["log_newest_ts"] = 100.0
+        st["log_seen"] = True
+        for now, fires in ((1899, False), (1900, True),
+                           (1901, True), (5000, True)):
+            alerts, _s = mod.decide({"now": now},
+                                    self._MANIFEST, dict(st))
+            self.assertEqual(
+                [a["signal"] for a in alerts],
+                ["training_stalled"] if fires else [])
+        alerts, state = mod.decide({"now": 5000},
+                                   self._MANIFEST, dict(st))
+        self.assertEqual(alerts[0]["detail"]["evidence"],
+                         "no_log_growth")
+        self.assertEqual(alerts[0]["detail"]["silent_sec"], 4900)
+        self.assertEqual(state["stall_time_fired"], "100.0")
+        alerts, _s = mod.decide({"now": 6000},
+                                self._MANIFEST, state)
+        self.assertEqual(alerts, [])
+        alerts, _s = mod.decide({"now": 99999},
+                                self._MANIFEST, None)
+        self.assertEqual(alerts, [])
+        alerts, _s = mod.decide(
+            {"now": 99999,
+             "log_lines": [{"ts": 1, "line": "hi"}]},
+            self._MANIFEST, None)
+        self.assertEqual(alerts, [])
+        alerts, _s = mod.decide(
+            {"now": 5000, "run_alive": False},
+            self._MANIFEST, dict(st))
+        self.assertEqual(alerts, [])
+        alerts, _s = mod.decide(
+            {"now": 5000, "run_alive": "false"},
+            self._MANIFEST, dict(st))
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["training_stalled"])
+
+    def test_clean_state_shapes(self):
+        mod = self._module()
+        for _name, shape in self._SHAPES:
+            self.assertEqual(mod._clean_state(shape), self._FRESH)
+            cleaned = mod._clean_state(
+                dict(self._FRESH, checkpoints=shape))
+            self.assertEqual(cleaned["checkpoints"], {})
+            cleaned = mod._clean_state(
+                dict(self._FRESH, gpu_active=shape))
+            self.assertEqual(cleaned["gpu_active"], {})
+            cleaned = mod._clean_state(
+                dict(self._FRESH, log_seen=shape))
+            self.assertEqual(cleaned["log_seen"], bool(shape))
+            cleaned = mod._clean_state(
+                dict(self._FRESH, loss_flat=shape))
+            self.assertEqual(cleaned["loss_flat"], bool(shape))
+            cleaned = mod._clean_state(
+                dict(self._FRESH, log_newest_ts=shape))
+            expected = float(shape) if type(shape) is int \
+                and shape in (0, -5) else None
+            self.assertEqual(cleaned["log_newest_ts"], expected)
+            cleaned = mod._clean_state(
+                dict(self._FRESH, losses=shape))
+            self.assertEqual(cleaned["losses"], [])
+            cleaned = mod._clean_state(
+                dict(self._FRESH, stall_time_fired=shape))
+            expected = shape if isinstance(shape, str) else ""
+            self.assertEqual(cleaned["stall_time_fired"], expected)
+            cleaned = mod._clean_state(
+                dict(self._FRESH, crash_fired=shape))
+            expected = shape if isinstance(shape, list) else []
+            self.assertEqual(cleaned["crash_fired"], expected)
+            cleaned = mod._clean_state(
+                dict(self._FRESH, lines_total=shape))
+            expected = int(shape) if type(shape) is int \
+                and shape in (0, -5) else 0
+            self.assertEqual(cleaned["lines_total"], expected)
+        for _name, shape in self._SHAPES:
+            cleaned = mod._clean_state({"checkpoints": {"c": shape}})
+            self.assertEqual(cleaned["checkpoints"], {})
+            cleaned = mod._clean_state({"checkpoints": {"c": {
+                "size": 10, "mtime": 5.0, "filed": shape}}})
+            self.assertEqual(cleaned["checkpoints"], {"c": {
+                "size": 10, "mtime": 5.0, "filed": bool(shape)}})
+            for field in ("size", "mtime"):
+                entry = {"size": 10, "mtime": 5.0, "filed": True}
+                entry[field] = shape
+                cleaned = mod._clean_state(
+                    {"checkpoints": {"c": entry}})
+                if type(shape) is int and shape in (0, -5):
+                    self.assertIn("c", cleaned["checkpoints"])
+                else:
+                    self.assertEqual(cleaned["checkpoints"], {})
+        cleaned = mod._clean_state(
+            {"gpu_active": {"a": "x", "b": 1, 2: "y"}})
+        self.assertEqual(cleaned["gpu_active"], {"a": "x"})
+        cleaned = mod._clean_state(
+            {"losses": [1, "x", True, float("inf"), 10 ** 400,
+                        2.5, None]})
+        self.assertEqual(cleaned["losses"], [1.0, 2.5])
+        cleaned = mod._clean_state(
+            {"losses": list(range(1500))})
+        self.assertEqual(len(cleaned["losses"]), 1000)
+        self.assertEqual(cleaned["losses"][-1], 1499.0)
+        cleaned = mod._clean_state(
+            {"crash_fired": [f"x{i}" for i in range(100)]})
+        self.assertEqual(len(cleaned["crash_fired"]), 64)
+        self.assertEqual(cleaned["crash_fired"][0], "x36")
+        cleaned = mod._clean_state({"lines_total": 7.9})
+        self.assertEqual(cleaned["lines_total"], 7)
+
+    def test_log_reader_shapes(self):
+        import os
+        import tempfile
+        mod = self._module()
+        tmp = tempfile.mkdtemp(prefix="hp-training-reader-")
+        path = os.path.join(tmp, "train.log")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("line1\nline2\nline3\nline4\n")
+        info = os.stat(path)
+        lines, ts, reader = mod._read_new_log_lines(path, {}, 65536)
+        self.assertEqual(lines, ["line1", "line2", "line3", "line4"])
+        self.assertEqual(ts, float(info.st_mtime))
+        self.assertEqual(reader, {path: {"inode": int(info.st_ino),
+                                         "offset": 24}})
+        lines, _ts, reader = mod._read_new_log_lines(
+            path, reader, 65536)
+        self.assertEqual(lines, [])
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write("line5\n")
+        lines, _ts, reader = mod._read_new_log_lines(
+            path, reader, 65536)
+        self.assertEqual(lines, ["line5"])
+        self.assertEqual(reader[path]["offset"], 30)
+        lines, _ts, _r = mod._read_new_log_lines(path, {}, 6)
+        self.assertEqual(lines, ["line5"])
+        missing = os.path.join(tmp, "nope.log")
+        self.assertEqual(mod._read_new_log_lines(missing, {}, 65536),
+                         ([], None, {}))
+        prev = {missing: {"inode": 1, "offset": 5}}
+        self.assertEqual(
+            mod._read_new_log_lines(missing, prev, 65536),
+            ([], None, prev))
+        shrunk = {path: {"inode": int(info.st_ino), "offset": 9999}}
+        lines, _ts, _r = mod._read_new_log_lines(path, shrunk, 65536)
+        self.assertEqual(lines, ["line1", "line2", "line3",
+                                 "line4", "line5"])
+        for _name, shape in self._SHAPES:
+            lines, _ts, _r = mod._read_new_log_lines(
+                path, {}, shape)
+            self.assertEqual(len(lines), 5)
+            lines, _ts, _r = mod._read_new_log_lines(
+                path, shape, 65536)
+            self.assertEqual(len(lines), 5)
+            lines, _ts, _r = mod._read_new_log_lines(
+                path, {path: shape}, 65536)
+            self.assertEqual(len(lines), 5)
+            lines, _ts, reader = mod._read_new_log_lines(
+                path, {path: {"inode": int(info.st_ino),
+                              "offset": shape}}, 65536)
+            if type(shape) is int and shape < 0:
+                # A negative offset seeks before the file:
+                # the read fails, yields nothing, and the
+                # recorded entry is kept verbatim.
+                self.assertEqual(lines, [])
+                self.assertEqual(reader, {path: {
+                    "inode": int(info.st_ino), "offset": shape}})
+            else:
+                self.assertEqual(len(lines), 5)
+        # Inode shapes int() converts (!= the real inode)
+        # restart at the beginning; the unconvertible
+        # shapes are the divergence class below.
+        for bad_inode in ("120", 1.5, True, 999999, 0, -1,
+                          10 ** 400):
+            lines, _ts, reader = mod._read_new_log_lines(
+                path, {path: {"inode": bad_inode, "offset": 0}},
+                65536)
+            self.assertEqual(len(lines), 5)
+            self.assertEqual(reader[path]["inode"],
+                             int(info.st_ino))
+        lines, _ts, _r = mod._read_new_log_lines(
+            path, {path: {"inode": int(info.st_ino), "offset": 6}},
+            65536)
+        self.assertEqual(lines, ["line2", "line3", "line4",
+                                 "line5"])
+
+    def test_scan_gpu_and_alive_helpers(self):
+        import os
+        import tempfile
+        from unittest import mock
+        mod = self._module()
+        tmp = tempfile.mkdtemp(prefix="hp-training-scan-")
+        run = os.path.join(tmp, "run")
+        os.makedirs(os.path.join(run, "sub", "deep"))
+        for rel, content in (
+                ("checkpoint-1", "aa"), ("model.pt", "bbb"),
+                ("other.txt", "x"),
+                (os.path.join("sub", "checkpoint-2"), "c"),
+                (os.path.join("sub", "deep", "checkpoint-3"), "d")):
+            with open(os.path.join(run, rel), "w",
+                      encoding="utf-8") as fh:
+                fh.write(content)
+        os.symlink(os.path.join(run, "model.pt"),
+                   os.path.join(run, "link.pt"))
+        found = mod._scan_checkpoints(
+            run, ["checkpoint-*", "*.pt", "*.safetensors"])
+        self.assertEqual(
+            [(f["name"], f["size"]) for f in found],
+            [("checkpoint-1", 2), ("model.pt", 3),
+             (os.path.join("sub", "checkpoint-2"), 1)])
+        self.assertTrue(all(isinstance(f["mtime"], float)
+                            for f in found))
+        self.assertEqual(mod._scan_checkpoints(run, []), [])
+        self.assertEqual(
+            [f["name"] for f in mod._scan_checkpoints(
+                run, ["*.txt"])], ["other.txt"])
+        self.assertEqual(mod._scan_checkpoints(
+            os.path.join(tmp, "nope"), ["*"]), [])
+        self.assertEqual(mod._scan_checkpoints("", ["*"]), [])
+        self.assertEqual(mod._scan_checkpoints(None, ["*"]), [])
+        with mock.patch.object(mod.shutil, "which",
+                               return_value=None):
+            self.assertIsNone(mod._read_gpu())
+        with mock.patch.object(mod.shutil, "which",
+                               return_value="/fake/nvidia-smi"):
+            for out_text, expected in (
+                    ("85, 23000, 24576, 98\n",
+                     {"temp_c": 85.0, "mem_used_mb": 23000.0,
+                      "mem_total_mb": 24576.0, "util_pct": 98.0}),
+                    ("bad,line\n", None), ("1,2,3\n", None),
+                    ("", None),
+                    ("90, 100, 200, 50\n91, 1, 2, 3\n",
+                     {"temp_c": 90.0, "mem_used_mb": 100.0,
+                      "mem_total_mb": 200.0, "util_pct": 50.0})):
+                fake = type("O", (), {"stdout": out_text})()
+                with mock.patch.object(
+                        mod.subprocess, "run", return_value=fake):
+                    self.assertEqual(mod._read_gpu(), expected)
+
+            def boom(*_a, **_k):
+                raise OSError("nope")
+
+            with mock.patch.object(mod.subprocess, "run",
+                                   side_effect=boom):
+                self.assertIsNone(mod._read_gpu())
+        self.assertIsNone(mod._run_alive(""))
+        self.assertIsNone(mod._run_alive(None))
+
+    def test_run_alive_genuine_commands(self):
+        import os
+        if os.name != "posix":
+            self.skipTest("POSIX only")
+        mod = self._module()
+        self.assertIs(mod._run_alive("exit 0"), True)
+        self.assertIs(mod._run_alive("exit 3"), False)
+        self.assertIs(mod._run_alive("bogus-command-xyz-123"),
+                      False)
+
+    def test_read_live_shapes(self):
+        import os
+        import tempfile
+        mod = self._module()
+        mod._read_gpu = lambda: None
+        tmp = tempfile.mkdtemp(prefix="hp-training-live-")
+        logp = os.path.join(tmp, "train.log")
+        with open(logp, "w", encoding="utf-8") as fh:
+            fh.write("line1\nline2\nline3\nline4\n")
+        run = os.path.join(tmp, "run")
+        os.makedirs(run)
+        for name in ("checkpoint-1", "model.pt", "other.txt"):
+            with open(os.path.join(run, name), "w",
+                      encoding="utf-8") as fh:
+                fh.write("x")
+        empty = {"gpu": None, "log_lines": [], "run_alive": None,
+                 "checkpoints": [], "_reader": {}}
+        for _name, shape in self._SHAPES:
+            got = mod.read_live(shape)
+            self.assertEqual(
+                {k: got[k] for k in empty}, empty)
+            got = mod.read_live(
+                {"name": "training_watch", "tunables": shape})
+            self.assertEqual(
+                {k: got[k] for k in empty}, empty)
+        base = {"log_path": logp, "run_dir": run}
+        for _name, shape in self._SHAPES:
+            tun = dict(base)
+            tun["log_path"] = shape
+            self.assertEqual(mod.read_live(
+                {"name": "training_watch", "tunables": tun}
+            )["log_lines"], [])
+            tun = dict(base)
+            tun["run_dir"] = shape
+            self.assertEqual(mod.read_live(
+                {"name": "training_watch", "tunables": tun}
+            )["checkpoints"], [])
+            tun = dict(base)
+            tun["checkpoint_globs"] = shape
+            got = mod.read_live(
+                {"name": "training_watch", "tunables": tun})
+            expected = 0 if isinstance(shape, str) else 2
+            self.assertEqual(len(got["checkpoints"]), expected)
+            tun = dict(base)
+            tun["status_cmd"] = shape
+            alive = mod.read_live(
+                {"name": "training_watch", "tunables": tun}
+            )["run_alive"]
+            if isinstance(shape, str) and shape:
+                self.assertIs(alive, False)
+            else:
+                self.assertIsNone(alive)
+            tun = dict(base)
+            tun["tail_bytes"] = shape
+            self.assertEqual(len(mod.read_live(
+                {"name": "training_watch", "tunables": tun}
+            )["log_lines"]), 4)
+        got = mod.read_live({"name": "training_watch",
+                             "tunables": dict(base)})
+        self.assertEqual([e["line"] for e in got["log_lines"]],
+                         ["line1", "line2", "line3", "line4"])
+        self.assertTrue(all(
+            e["ts"] == got["log_lines"][0]["ts"]
+            for e in got["log_lines"]))
+        self.assertEqual(len(got["checkpoints"]), 2)
+        got2 = mod.read_live({"name": "training_watch",
+                              "tunables": dict(base)},
+                             got["_reader"])
+        self.assertEqual(got2["log_lines"], [])
+
+    def _main_run(self, mod, argv):
+        import contextlib
+        import io
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), \
+                contextlib.redirect_stderr(err):
+            rc = mod.main(argv)
+        return rc, out.getvalue(), err.getvalue()
+
+    def test_main_samples_mode(self):
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        tmp = tempfile.mkdtemp(prefix="hp-training-main-")
+
+        def write(name, content):
+            path = os.path.join(tmp, name)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(content if isinstance(content, str)
+                         else json.dumps(content))
+            return path
+
+        manifest = write("man.json",
+                         {"name": "training_watch", "tunables": {}})
+        samples = write("samples.json", {
+            "now": 1000.0, "gpu": {"temp_c": 90},
+            "log_lines": [],
+            "checkpoints": [{"name": "c1", "size": 10,
+                             "mtime": 5.0}]})
+        state = os.path.join(tmp, "state.json")
+        rc, out, _err = self._main_run(
+            mod, ["--manifest", manifest, "--samples", samples,
+                  "--state", state])
+        self.assertEqual(rc, 0)
+        lines = [json.loads(ln) for ln in out.splitlines() if ln]
+        self.assertEqual([ln["signal"] for ln in lines],
+                         ["gpu_overheating"])
+        with open(state, encoding="utf-8") as fh:
+            saved = json.load(fh)
+        self.assertEqual(saved["checkpoints"], {
+            "c1": {"filed": False, "mtime": 5.0, "size": 10}})
+        rc, out, _err = self._main_run(
+            mod, ["--manifest", manifest, "--samples", samples,
+                  "--state", state])
+        self.assertEqual(rc, 0)
+        lines = [json.loads(ln) for ln in out.splitlines() if ln]
+        self.assertEqual([ln["signal"] for ln in lines],
+                         ["checkpoint_arrived"])
+        self.assertEqual(self._main_run(
+            mod, ["--manifest", os.path.join(tmp, "nope.json"),
+                  "--samples", samples, "--state", state])[0], 2)
+        badman = write("badman.json", "{not json")
+        self.assertEqual(self._main_run(
+            mod, ["--manifest", badman, "--samples", samples,
+                  "--state", state])[0], 2)
+        listman = write("listman.json", "[1]")
+        rc, out, _err = self._main_run(
+            mod, ["--manifest", listman, "--samples", samples,
+                  "--state", os.path.join(tmp, "s2.json")])
+        self.assertEqual(rc, 0)
+        self.assertIn('"gpu_overheating"', out)
+        self.assertEqual(self._main_run(
+            mod, ["--manifest", manifest, "--samples",
+                  os.path.join(tmp, "nope2.json"),
+                  "--state", state])[0], 2)
+        bads = write("bads.json", "{nope")
+        self.assertEqual(self._main_run(
+            mod, ["--manifest", manifest, "--samples", bads,
+                  "--state", state])[0], 2)
+        for content in ("42", '"hi"', "[1, 2]", "null", "{}"):
+            sp = write("sx.json", content)
+            stp = os.path.join(tmp, "stx.json")
+            rc, out, _err = self._main_run(
+                mod, ["--manifest", manifest, "--samples", sp,
+                      "--state", stp])
+            self.assertEqual((rc, out), (0, ""), content)
+            with open(stp, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh), self._FRESH)
+        badstate = write("badstate.json", "{broken")
+        rc, out, _err = self._main_run(
+            mod, ["--manifest", manifest, "--samples", samples,
+                  "--state", badstate])
+        self.assertEqual(rc, 0)
+        self.assertIn('"gpu_overheating"', out)
+        liststate = write("liststate.json", "[1]")
+        rc, out, _err = self._main_run(
+            mod, ["--manifest", manifest, "--samples", samples,
+                  "--state", liststate])
+        self.assertEqual(rc, 0)
+        self.assertIn('"gpu_overheating"', out)
+        unwritable = os.path.join(tmp, "no-such-dir", "state.json")
+        rc, out, _err = self._main_run(
+            mod, ["--manifest", manifest, "--samples", samples,
+                  "--state", unwritable])
+        self.assertEqual(rc, 2)
+        self.assertIn('"gpu_overheating"', out)
+        rc, _out, _err = self._main_run(
+            mod, ["--manifest", manifest, "--samples", samples,
+                  "--state", os.path.join(tmp, "s3.json"),
+                  "--log", "x.log", "--run-dir", "runs",
+                  "--status-cmd", "exit 0"])
+        self.assertEqual(rc, 0)
+
+
+class TestTrainingWatchReaderInodeCrashesInsteadOfNeverRaising(
+        unittest.TestCase):
+    """Divergence: training-watch's log reader
+    crashes on a persisted reader entry whose
+    inode is not int()-convertible, instead of
+    never raising.
+
+    (a) Doc claim: _read_new_log_lines()'s
+    docstring (runner/extensions/training-watch/
+    training_watch.py) states the reader rules
+    are Log Sentinel's -- "a new inode or a
+    shrunken file restarts at the beginning of
+    the tail; a missing file keeps its recorded
+    offset and yields nothing" -- and ends
+    "Never raises." The module docstring adds
+    that sources are "all optional and
+    capability-based -- a source that yields
+    nothing has no vote and is never an error",
+    and read_live()'s docstring promises a
+    snapshot with "never an exception" for a
+    machine with none of the sources. The
+    reader state is persisted: main() stores
+    read_live()'s "_reader" in the state file
+    and hands it back on the next pass, so the
+    inode value arrives from a JSON file on
+    disk, not from the code.
+
+    (b) How it was found: on 2026-10-24 the
+    second-run hunt varied _read_new_log_lines()
+    and read_live() with the fifteen shapes at
+    the persisted reader entry's inode field,
+    with a genuine offset (0), against an
+    existing log file -- the exact state a
+    hand-edited or corrupted
+    .training-watch-state.json can carry (all
+    of these values round-trip through JSON:
+    strings, lists and objects natively, and
+    NaN / Infinity through the state file's
+    Python json reader).
+
+    (c) Behavior actually observed: an inode
+    of "bogus" or "12x" raises ValueError from
+    int(prev.get("inode") or -1) (line 265),
+    NaN raises ValueError and +/-inf raise
+    OverflowError from the same conversion,
+    and a list or dict inode raises TypeError.
+    The exception propagates out of
+    read_live() and out of main() in live
+    mode: one corrupt reader entry takes the
+    whole sense down on every pass until the
+    state file is deleted by hand. Shapes
+    int() does convert (a numeric string, a
+    float, a bool, a wrong integer) read as an
+    inode change and restart, as documented.
+    The identical unguarded conversion also
+    exists in log-sentinel's reader; this
+    class records the training-watch instance
+    this hunt probed.
+
+    (d) Do not make this test pass by editing
+    the test. It passes only when the bug
+    described above is fixed in the code.
+    """
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "training-watch",
+            "training_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "training_watch_reader_inode_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    _BAD_INODES = ("bogus", "12x", ["x"], {"x": 1},
+                   float("inf"), float("-inf"), float("nan"))
+
+    def test_reader_inode_unconvertible_shapes(self):
+        import os
+        import tempfile
+        mod = self._module()
+        tmp = tempfile.mkdtemp(prefix="hp-training-inode-")
+        path = os.path.join(tmp, "train.log")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("line1\nline2\n")
+        info = os.stat(path)
+        for bad in self._BAD_INODES:
+            with self.subTest(inode=repr(bad)):
+                lines, _ts, reader = mod._read_new_log_lines(
+                    path, {path: {"inode": bad, "offset": 0}},
+                    65536)
+                self.assertEqual(lines, ["line1", "line2"])
+                self.assertEqual(reader, {path: {
+                    "inode": int(info.st_ino),
+                    "offset": int(info.st_size)}})
+
+    def test_read_live_with_corrupt_persisted_reader_state(self):
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        mod._read_gpu = lambda: None
+        tmp = tempfile.mkdtemp(prefix="hp-training-inode-live-")
+        path = os.path.join(tmp, "train.log")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("line1\n")
+        for bad in ("bogus", ["x"], {"x": 1}):
+            with self.subTest(inode=repr(bad)):
+                persisted = json.loads(json.dumps(
+                    {path: {"inode": bad, "offset": 0}}))
+                got = mod.read_live(
+                    {"name": "training_watch",
+                     "tunables": {"log_path": path}}, persisted)
+                self.assertEqual(
+                    [e["line"] for e in got["log_lines"]],
+                    ["line1"])
+
 if __name__ == "__main__":
 
     unittest.main()
