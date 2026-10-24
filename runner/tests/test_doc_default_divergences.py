@@ -13873,6 +13873,344 @@ class TestSoftflowdFeedTunablesFifteenShapes(unittest.TestCase):
                 self.assertEqual(counter(mod, {key: 2.0}), [1, 1, 0])
 
 
+class TestZeekFeedTunablesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the zeek-feed
+    tunables themselves varied with the fifteen
+    shapes at decide() level for the first time
+    (step-8 Target 5 -- the extension-tunable
+    table; these rows' registry-named class
+    TestNonFiniteZeekFeedTunablesDefaultInsteadOfCrashOrBoundlessWindow
+    covered only the non-finite shapes, plus omitted /
+    explicit / NaN controls).
+
+    (a) Doc claim (extensions/zeek-feed/README.md,
+        Tunables table): "window_sec | 600" (line 46),
+        "new_peer_threshold | 10" (line 47),
+        "query_length_threshold | 50" (line 48),
+        "seen_peers_cap | 10000" (line 50); the
+        Signals table states the same defaults
+        (lines 37-38) and the extension's
+        extension.json tunables ship the same
+        (600 / 10 / 50 / 10000). Registry rows
+        "window_sec (zeek-feed)",
+        "new_peer_threshold (zeek-feed)",
+        "query_length_threshold (zeek-feed)" and
+        "seen_peers_cap (zeek-feed)": policy default
+        under Decision 1 -- a present-but-unusable
+        value reads as its documented default.
+
+    (b) How it was hunted: step-8 Target 5 lists the
+        51 extension tunables as covered only for the
+        shapes their named classes exercised. This
+        tick took the zeek-feed rows (the next feed
+        rows after the softflowd-feed rows hunted in
+        the preceding tick): their reader is
+        extensions/zeek-feed/zeek_feed.py decide()
+        (threshold = int(v) if _is_number(v) and
+        v >= 1 else 10; window_out = v if
+        _is_number(v) and v > 0 else 600, read as
+        float; length_threshold = int(v) if
+        _is_number(v) and v >= 1 else 50; cap =
+        int(v) if _is_number(v) and v >= 1 else
+        10000, where _is_number accepts only genuine
+        finite numbers, never a bool, and a huge int
+        that overflows float() is not a number), and
+        probed it through decide() itself with the
+        fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false,
+        zero, negative, the documented default
+        written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong containers (list and
+        dict) -- plus genuine int / fractional
+        values. The observables are: for
+        new_peer_threshold, ten distinct external
+        conn responders inside the window filing
+        zeek_new_external_peers once under the
+        default (with detail threshold 10); for
+        window_sec, the same ten spaced 10,000s
+        apart filing nothing under the default; for
+        query_length_threshold, one 72-character
+        DNS query (three labels, qtype A, so only
+        length can trigger) filing zeek_dns_anomaly
+        under the default; and for seen_peers_cap,
+        two three-pass sequences threading the
+        returned state with new_peer_threshold set
+        genuinely to 1 -- an a-b-a conn sequence
+        and an a-b-a DNS-filed sequence (an
+        effective cap of 2 or more remembers a, so
+        its repeat files nothing; an effective cap
+        of 1 evicts a when b arrives, so its repeat
+        files again).
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default for all four tunables. Zero and
+        negative also read as the defaults because
+        decide() requires v >= 1 (threshold, length
+        threshold and cap) or v > 0 (window) before
+        honoring a value. Numeric strings are not
+        parsed ("45" reads as the default; the
+        _is_number isinstance gate). Genuine values
+        are honored exactly: new_peer_threshold 3
+        files on three peers where two file nothing,
+        and 2.9 truncates through int() to 2;
+        window_sec 100 suppresses three peers spaced
+        150s apart where 600 files them, and the
+        float reader honors the fraction (600.5
+        includes a peer exactly 600.5s earlier where
+        600 excludes it); query_length_threshold 100
+        and 73 suppress the 72-character query where
+        72 files it, and 72.9 truncates through
+        int() to 72 and files it; each cap sequence
+        at 1 files the a-b-a repeat, at 2 does not,
+        and the fractional 1.5 truncates through
+        int() to 1 where 2.0 reads as 2. Noted: the
+        +inf crash / boundless window recorded by
+        the rows' named class
+        TestNonFiniteZeekFeedTunablesDefaultInsteadOfCrashOrBoundlessWindow
+        no longer occurs on current main -- that
+        class passes now, because _is_number now
+        excludes non-finite values. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented defaults and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "zeek-feed",
+            "zeek_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "zeek_feed_tunables_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _conn(self, n, start=1000.0, spacing=10.0):
+        return [{"ts": start + i * spacing, "kind": "conn",
+                 "resp_h": f"8.8.{i // 250}.{i % 250 + 1}",
+                 "orig_h": "192.168.1.5"}
+                for i in range(n)]
+
+    def _dns(self, query):
+        return [{"ts": 1000.0, "kind": "dns", "query": query,
+                 "qtype_name": "A", "resp_h": "8.8.8.8",
+                 "orig_h": "192.168.1.5"}]
+
+    def _signals(self, mod, tunables, events, now=2000.0,
+                 state=None):
+        alerts, new_state = mod.decide(
+            {"now": now, "events": events},
+            {"name": "zeek_feed", "tunables": dict(tunables)},
+            {} if state is None else state)
+        return alerts, new_state
+
+    def _peer_counts(self, mod, tunables):
+        state = {}
+        counts = []
+        for ip in ("8.8.8.8", "8.8.4.4", "8.8.8.8"):
+            alerts, state = self._signals(
+                mod, {**tunables, "new_peer_threshold": 1},
+                [{"ts": 1000.0, "kind": "conn", "resp_h": ip,
+                  "orig_h": "192.168.1.5"}], state=state)
+            counts.append(
+                [a["signal"] for a in alerts].count(
+                    "zeek_new_external_peers"))
+        return counts
+
+    def _filed_counts(self, mod, tunables):
+        state = {}
+        counts = []
+        for query in ("a" * 60 + ".example.com",
+                      "b" * 60 + ".example.com",
+                      "a" * 60 + ".example.com"):
+            alerts, state = self._signals(
+                mod, tunables, self._dns(query), state=state)
+            counts.append(
+                [a["signal"] for a in alerts].count(
+                    "zeek_dns_anomaly"))
+        return counts
+
+    _UNUSABLE = [None, "", True, False, 0, -5, "45", "bogus",
+                 10 ** 400, float("inf"), float("-inf"),
+                 float("nan"), ["x"], {"x": 1}]
+
+    def test_fifteen_shapes_threshold_read_as_default(self):
+        mod = self._mod()
+        events = self._conn(10)
+        with self.subTest(shape="omitted"):
+            alerts, _ = self._signals(mod, {}, events)
+            self.assertEqual(
+                [a["signal"] for a in alerts],
+                ["zeek_new_external_peers"])
+            self.assertEqual(alerts[0]["detail"]["threshold"], 10)
+        for value in self._UNUSABLE:
+            with self.subTest(value=repr(value)):
+                alerts, _ = self._signals(
+                    mod, {"new_peer_threshold": value}, events)
+                self.assertEqual(
+                    [a["signal"] for a in alerts],
+                    ["zeek_new_external_peers"])
+                self.assertEqual(
+                    alerts[0]["detail"]["threshold"], 10)
+        with self.subTest(shape="explicit-default"):
+            alerts, _ = self._signals(
+                mod, {"new_peer_threshold": 10}, events)
+            self.assertEqual(
+                [a["signal"] for a in alerts],
+                ["zeek_new_external_peers"])
+
+    def test_fifteen_shapes_window_read_as_default(self):
+        mod = self._mod()
+        wide = self._conn(10, spacing=10000.0)
+        with self.subTest(shape="omitted"):
+            self.assertEqual(
+                self._signals(mod, {}, wide, now=100000.0)[0], [])
+        for value in self._UNUSABLE:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._signals(mod, {"window_sec": value},
+                                  wide, now=100000.0)[0],
+                    [])
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._signals(mod, {"window_sec": 600},
+                              wide, now=100000.0)[0],
+                [])
+
+    def test_fifteen_shapes_query_length_read_as_default(self):
+        mod = self._mod()
+        events = self._dns("a" * 60 + ".example.com")
+        with self.subTest(shape="omitted"):
+            self.assertEqual(
+                [a["signal"] for a in
+                 self._signals(mod, {}, events)[0]],
+                ["zeek_dns_anomaly"])
+        for value in self._UNUSABLE:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    [a["signal"] for a in self._signals(
+                        mod, {"query_length_threshold": value},
+                        events)[0]],
+                    ["zeek_dns_anomaly"])
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                [a["signal"] for a in self._signals(
+                    mod, {"query_length_threshold": 50},
+                    events)[0]],
+                ["zeek_dns_anomaly"])
+
+    def test_fifteen_shapes_cap_read_as_default(self):
+        mod = self._mod()
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._peer_counts(mod, {}), [1, 1, 0])
+            self.assertEqual(self._filed_counts(mod, {}), [1, 1, 0])
+        for value in self._UNUSABLE:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._peer_counts(
+                        mod, {"seen_peers_cap": value}),
+                    [1, 1, 0])
+                self.assertEqual(
+                    self._filed_counts(
+                        mod, {"seen_peers_cap": value}),
+                    [1, 1, 0])
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._peer_counts(mod, {"seen_peers_cap": 10000}),
+                [1, 1, 0])
+            self.assertEqual(
+                self._filed_counts(mod, {"seen_peers_cap": 10000}),
+                [1, 1, 0])
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        # new_peer_threshold: 3 files on three peers where
+        # two file nothing; 2.9 truncates through int() to 2.
+        self.assertEqual(
+            [a["signal"] for a in self._signals(
+                mod, {"new_peer_threshold": 3}, self._conn(3))[0]],
+            ["zeek_new_external_peers"])
+        self.assertEqual(
+            self._signals(
+                mod, {"new_peer_threshold": 3}, self._conn(2))[0],
+            [])
+        self.assertEqual(
+            [a["signal"] for a in self._signals(
+                mod, {"new_peer_threshold": 2.9}, self._conn(2))[0]],
+            ["zeek_new_external_peers"])
+        # window_sec: 100 suppresses peers spaced 150s apart
+        # where 600 files them; the float reader honors the
+        # fraction (600.5 includes a peer 600.5s earlier).
+        spaced = self._conn(3, spacing=150.0)
+        self.assertEqual(
+            self._signals(mod, {"window_sec": 100,
+                                "new_peer_threshold": 3},
+                          spaced)[0],
+            [])
+        self.assertEqual(
+            [a["signal"] for a in self._signals(
+                mod, {"window_sec": 600,
+                      "new_peer_threshold": 3}, spaced)[0]],
+            ["zeek_new_external_peers"])
+        pair = [{"ts": 1000.0, "kind": "conn",
+                 "resp_h": "8.8.8.8", "orig_h": "192.168.1.5"},
+                {"ts": 1600.5, "kind": "conn",
+                 "resp_h": "8.8.4.4", "orig_h": "192.168.1.5"}]
+        self.assertEqual(
+            [a["signal"] for a in self._signals(
+                mod, {"window_sec": 600.5,
+                      "new_peer_threshold": 2}, pair)[0]],
+            ["zeek_new_external_peers"])
+        self.assertEqual(
+            self._signals(mod, {"window_sec": 600,
+                                "new_peer_threshold": 2},
+                          pair)[0],
+            [])
+        # query_length_threshold: 100 and 73 suppress the
+        # 72-character query where 72 files it; 72.9
+        # truncates through int() to 72 and files it.
+        dns = self._dns("a" * 60 + ".example.com")
+        self.assertEqual(
+            self._signals(
+                mod, {"query_length_threshold": 100}, dns)[0], [])
+        self.assertEqual(
+            self._signals(
+                mod, {"query_length_threshold": 73}, dns)[0], [])
+        self.assertEqual(
+            [a["signal"] for a in self._signals(
+                mod, {"query_length_threshold": 72}, dns)[0]],
+            ["zeek_dns_anomaly"])
+        self.assertEqual(
+            [a["signal"] for a in self._signals(
+                mod, {"query_length_threshold": 72.9}, dns)[0]],
+            ["zeek_dns_anomaly"])
+        # Caps: 1 evicts on the second entry, 2 remembers;
+        # 1.5 truncates through int() to 1, 2.0 reads as 2.
+        for counter in (self._peer_counts, self._filed_counts):
+            with self.subTest(counter=counter.__name__):
+                self.assertEqual(
+                    counter(mod, {"seen_peers_cap": 1}), [1, 1, 1])
+                self.assertEqual(
+                    counter(mod, {"seen_peers_cap": 2}), [1, 1, 0])
+                self.assertEqual(
+                    counter(mod, {"seen_peers_cap": 1.5}), [1, 1, 1])
+                self.assertEqual(
+                    counter(mod, {"seen_peers_cap": 2.0}), [1, 1, 0])
+
+
+
 
 
 if __name__ == "__main__":
