@@ -388,45 +388,24 @@ The runner is fully inspectable, so audit what it would do before it does it, an
 
 ## Security notes
 
-- Honest threat model: [docs/threat-model.md](docs/threat-model.md) —
-  the long form of the warning at the top of this file. Its
+- Honest threat model: [docs/threat-model.md](docs/threat-model.md). Its
   companion [docs/security-gaps.md](docs/security-gaps.md) covers
   what the defaults don't protect you from, and the order to turn
   things on.
 - Industry map: [docs/industry-map.md](docs/industry-map.md) — five years
   of commercial detection (2021–2026) read honestly against this project,
   sorted by local footprint cost.
-- The mailbox app password sits in **plaintext** in config.json
-  (your explicit choice: throwaway account, fresh box). Anyone
-  holding it gets mailbox access. The HMAC shared secret is a
-  separate value — anyone holding *it* can sign jobs. Don't use
-  this setup with an account you care about.
-- Every job is HMAC-SHA-384 signed; over email the signature is
-  the only gate (a credentialed transport adds its own — see
-  *Why email?*, above). Timestamp window and replay protection
-  (seen-set) are enforced before anything runs; the sender
-  address is logged but never trusted.
-- Jobs are also **encrypted by default**: `send_job.py` wraps the
+- Jobs are also encrypted by default: `send_job.py` wraps the
   signed body in an AES-256-GCM envelope keyed from the
-  shared secret, so the mailbox provider — and anyone else who
-  can read the transport — sees ciphertext, not your script or
-  its output. Results mirror the job: encrypted job, encrypted
-  result. `--cleartext` on the sender, and `--allow-cleartext`
-  on the runner, are the only way to send or accept the plain
+  shared secret.
+- Options, e.g. "--cleartext" allow you to accept the plain
   HMAC-signed body. The shared secret is still required. The
   runner refuses a cleartext job without that flag. One honest
   limit, stated wherever this is described: there is **no
-  forward secrecy** — the key derives from the static shared
-  secret, so a compromised secret exposes every recorded
-  encrypted job and result, past and future.
-- Delivery is at-least-once: if a result email fails to send, the job
-  stays unseen and will be re-executed next cycle. Make jobs idempotent
-  or check the seen behavior accordingly.
+  forward secrecy** unless it is provided by the transport layer.
+- Delivery is at-least-once, jobs are idempotent.
 - Size caps: `max_job_bytes` (default 4 MiB) bounds the raw mail before
-  the signature is even checked; `max_script_bytes` (default 1 MiB)
-  bounds the script after verification. Either rejects through the
-  normal reject path; `0` means unlimited. A negative or non-integer
-  value is a startup config error.
+  the signature is even checked.
 - Optional hardening controls (off by default, except the size caps
   above, which are always on): see [SECURITY.md](SECURITY.md).
 
