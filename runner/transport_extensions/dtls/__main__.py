@@ -166,7 +166,7 @@ class DtlsPipe:
     def __init__(self, cfg, channel_dir):
         self.cfg = cfg
         self.channel = channel_dir
-        # docs/configuring-oracle.md: dtls_greeting default family
+        # docs/oracle/configuring-oracle.md: dtls_greeting default family
         # (a value that is not a tier reads as the default), and
         # transport_dtls.port default 20220, bind default 0.0.0.0
         # when the key is absent. The port and the bind address are

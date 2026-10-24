@@ -228,7 +228,7 @@ def gate_alert(sensor_cfg: dict, alert: dict, recent: list,
         sev = "info"
     if SEVERITY_SCORES[sev] < SEVERITY_SCORES[floor]:
         return f"below severity_floor {floor}"
-    # docs/senses.md: cooldown_sec default 0 (no dedup). A boolean
+    # docs/extend/senses.md: cooldown_sec default 0 (no dedup). A boolean
     # is not a window: true once dropped every repeat within a second.
     cooldown = float(_finite_number(profile.get("cooldown_sec"), 0, lo=0))
     if cooldown > 0:
@@ -242,7 +242,7 @@ def gate_alert(sensor_cfg: dict, alert: dict, recent: list,
                 break
             if prev.get("title") == alert.get("title"):
                 return f"cooldown: same title within {cooldown:g}s"
-    # docs/senses.md: max_per_hour default 0 (unlimited). A boolean is
+    # docs/extend/senses.md: max_per_hour default 0 (unlimited). A boolean is
     # not a cap: true once allowed one alert an hour. A number that
     # is negative or non-finite stays the loud refusal it was.
     raw_cap = profile.get("max_per_hour")
@@ -411,7 +411,7 @@ def load_alerts(base_dir: str, sensor=None, severity_floor=None,
             if not same:
                 continue
         if severity_floor is not None:
-            # docs/senses.md, "Alert format": a missing severity is
+            # docs/extend/senses.md, "Alert format": a missing severity is
             # info. An alert stored with no severity (or null) is read
             # back as info, so the default floor "info (keep all)"
             # keeps it instead of dropping it below the floor.
@@ -445,7 +445,7 @@ def load_alerts(base_dir: str, sensor=None, severity_floor=None,
 def alert_score(alert: dict, weight: float) -> float:
     """How much the Oracle weighs this alert: source weight x severity.
 
-    docs/senses.md: weight default 1.0. A weight that is negative,
+    docs/extend/senses.md: weight default 1.0. A weight that is negative,
     infinite, NaN, a boolean, a non-number, or an integer too large
     for a float is not a weight and scores as 1.0 (a huge integer
     once raised OverflowError out of here).

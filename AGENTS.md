@@ -46,7 +46,7 @@ Those values live on the runner host. They do not travel through the SI chat.
      `.md`.
    - `docs/CHANGELOG.md`, `docs/reports/**`, `docs/archive/**` — historical
      records; banners mark them, content is not re-audited.
-7. **Questions go in `docs/QUESTIONS.md`, not through the owner.** A
+7. **Questions go in `docs/use/questions.md`, not through the owner.** A
    question from one agent to another, or to the owner — a policy to
    decide, a test whose assertion should move, a doc line that
    contradicts the code — is written there as a numbered entry with
@@ -64,7 +64,7 @@ new paths against this layout; the old ones are gone, with no shims.
 | Folder | What |
 |--------|------|
 | `runner/` | The runner and the Oracle. `runner/runner.py` is the agent; its modules are in four role folders: `runner/oracle/` (the Oracle), `runner/wire/` (transports, signing, the board), `runner/guard/` (security, sandbox, config readers) and `runner/ops/` (install, setup, extensions, diagnostics). `runner/cloud/` is the cloud-side helpers (`send_job.py`, `send_dtls.py`). `runner/extensions/` is the shipped extensions, one folder each, `runner/tools/` the build and CI scripts, and `runner/tests/` the suite; all three are kept out of the wheel and the image. `runner/tests/airgap/` (once `topaz/`) and `runner/tests/archive/` sit beside the suite, outside discovery |
-| `docs/` | Everything else to read. `docs/hardening/` is the opt-in OS hardening templates, `docs/CHANGELOG.md` the release record |
+| `docs/` | Everything else to read, grouped by reader: `use/` (running it), `oracle/` (the Oracle), `extend/` (extensions, senses, transports), `security/` (threat model, safeguards, opt-in OS `hardening/` templates), `project/` (layout, testing, fuzzing, roadmap), `design/`, `ietf/`, plus `CHANGELOG.md` and `CONTRIBUTING.md`. File names are lowercase-kebab; the only uppercase names are the root conventions (README, INSTALL, SECURITY, PROTOCOL, AGENTS) |
 | `assets/` | Images |
 | `.github/` | CI: `workflows/`, `docker/` (the published image and the CI test image), `requirements-ci.txt` (the CI pins) |
 

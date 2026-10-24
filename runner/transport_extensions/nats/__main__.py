@@ -110,7 +110,7 @@ class NatsClient:
         self.log = log or _silent_log
         parsed = urlparse(url or "nats://127.0.0.1:%d" % DEFAULT_PORT)
         self.host = parsed.hostname or "127.0.0.1"
-        # docs/configuring-oracle.md: default port 4222 when the URL
+        # docs/oracle/configuring-oracle.md: default port 4222 when the URL
         # names none; a port present but not usable is a config
         # error (url_port), so no client ever talks to a substituted
         # broker address.

@@ -826,7 +826,7 @@ class ExtensionProcessTest(unittest.TestCase):
         self.assertIn("will not start", proc.stderr)
 
     def test_a_bad_greeting_tier_reads_as_the_default(self):
-        # docs/configuring-oracle.md: dtls_greeting default family.
+        # docs/oracle/configuring-oracle.md: dtls_greeting default family.
         # An unrecognised tier used to refuse to start (exit 2), which
         # left the one listening transport permanently dead under the
         # supervisor; it now starts on the default tier and says so

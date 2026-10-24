@@ -381,7 +381,7 @@ class Board:
             return self._reoffer_expired_unlocked(task_timeout)
 
     def _reoffer_expired_unlocked(self, task_timeout=86400):
-        # docs/configuring-oracle.md: task_timeout default 86400. A
+        # docs/oracle/configuring-oracle.md: task_timeout default 86400. A
         # value present as null, a non-number, a boolean, or a
         # negative number is not a lease length; null once wedged
         # every claimed task forever (the comparison raised, and the

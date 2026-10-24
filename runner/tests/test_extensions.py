@@ -673,8 +673,8 @@ class ExampleExtensionTest(unittest.TestCase):
 
 class DocsTest(unittest.TestCase):
     def test_extensions_doc_exists_and_states_the_contract(self):
-        path = os.path.join(REPO, "docs", "extensions.md")
-        self.assertTrue(os.path.exists(path), "docs/extensions.md missing")
+        path = os.path.join(REPO, "docs", "extend", "extensions.md")
+        self.assertTrue(os.path.exists(path), "docs/extend/extensions.md missing")
         with open(path, encoding="utf-8") as fh:
             text = fh.read()
         for anchor in ("extension.json", "api_version",

@@ -14,7 +14,7 @@ manager, which is why the `log_paths` tunable defaults to
 the manager's own path, `/var/ossec/logs/alerts/alerts.json`.
 
 **If this file never appears, you have an agent without a
-manager; see docs/senses.md.** That absence is the normal
+manager; see docs/extend/senses.md.** That absence is the normal
 standalone-agent case, and the feed treats it exactly that
 way: a missing file is a quiet no-op on every pass, forever
 — never an error, never a state complaint, nothing filed.
@@ -92,7 +92,7 @@ delivery follow the standard senses flow. The full extension
 walkthrough — manifest fields, the versioning contract,
 sensor binding, and how to turn this example into your own
 package — is in
-[docs/extensions.md](../../../docs/extensions.md).
+[docs/extend/extensions.md](../../../docs/extend/extensions.md).
 
 Footprint: the Wazuh agent itself measured ~26 MB settled
 in the collector comparison, but it is not a standalone

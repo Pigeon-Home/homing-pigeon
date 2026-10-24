@@ -3,7 +3,7 @@
 Per-extension behavior lives in runner/tests/test_<name>.py (decide()
 fixtures, state discipline, and the end-to-ends). This module
 pins the slate AS a slate -- the thing a reader of
-docs/extensions.md is promised. The slate is the seventeen
+docs/extend/extensions.md is promised. The slate is the seventeen
 career-and-watchers examples plus the eight IDS collector
 feed adapters (falco-feed through wazuh-feed), which follow
 the same producer pattern over a collector's output artifact:
@@ -40,7 +40,7 @@ from runner.ops import extensions as E  # noqa: E402
 EXAMPLES_DIR = os.path.join(REPO, "runner", "extensions")
 
 # folder, producer file, sensor name, declared signals in
-# manifest order. This table is the catalog; docs/extensions.md
+# manifest order. This table is the catalog; docs/extend/extensions.md
 # tells the same story in prose.
 CATALOG = [
     ("crash-watch", "crash_watch.py", "crash_watch",

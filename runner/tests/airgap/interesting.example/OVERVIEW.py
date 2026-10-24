@@ -2946,7 +2946,7 @@ def test_unknown_fields_are_refused_by_name(self):
 def test_the_example_config_documents_the_key(self):
         cfg = json.loads(self.read("runner", "config.example.json"))
         self.assertEqual(cfg["extension_sources"], "auto")
-        self.assertIn("docs/extensions.md", cfg["_extension_sources"])
+        self.assertIn("docs/extend/extensions.md", cfg["_extension_sources"])
         self.assertIn("unpinned", cfg["_extension_sources"])
 
 # runner/tests/test_properties.py FragmentProperties.test_fragment_no_match_no_hit lines 252-256
@@ -3795,7 +3795,7 @@ def test_paths_consistent(self):
 
 # runner/tests/test_doc_default_divergences.py TestBooleanGrepMaxMatchesDefaultsTo10.test_explicit_zero_max_matches_returns_no_lines lines 3290-3295
 def test_explicit_zero_max_matches_returns_no_lines(self):
-        # Control: docs/fuzzing.md documents an explicit
+        # Control: docs/project/fuzzing.md documents an explicit
         # numeric zero as returning no lines; the fix
         # must not flatten a genuine zero to the default.
         self.assertEqual(
@@ -4935,7 +4935,7 @@ def test_docs_exist_and_are_marked_design_only(self):
             self.assertTrue(os.path.exists(path), name)
             with open(path, encoding="utf-8") as fh:
                 text = fh.read()
-            self.assertIn("Not built. See docs/FUTURE.md.", text, name)
+            self.assertIn("Not built. See docs/project/future.md.", text, name)
 
 # runner/tests/test_oracle_learning.py LedgerTests.test_torn_last_line_is_skipped lines 213-219
 def test_torn_last_line_is_skipped(self):
@@ -6652,8 +6652,8 @@ def test_unusable_listeners_are_ignored(self):
 
 # runner/tests/test_extensions.py DocsTest.test_extensions_doc_exists_and_states_the_contract lines 675-682
 def test_extensions_doc_exists_and_states_the_contract(self):
-        path = os.path.join(REPO, "docs", "extensions.md")
-        self.assertTrue(os.path.exists(path), "docs/extensions.md missing")
+        path = os.path.join(REPO, "docs", "extend", "extensions.md")
+        self.assertTrue(os.path.exists(path), "docs/extend/extensions.md missing")
         with open(path, encoding="utf-8") as fh:
             text = fh.read()
         for anchor in ("extension.json", "api_version",
@@ -8256,7 +8256,7 @@ def test_no_send_executes_without_email(self):
 
 # runner/tests/test_extension_sources.py DocsTest.test_the_extensions_doc_states_the_rule lines 1620-1628
 def test_the_extensions_doc_states_the_rule(self):
-        doc = " ".join(self.read("docs", "extensions.md").split())
+        doc = " ".join(self.read("docs", "extend", "extensions.md").split())
         self.assertIn("## Sources", doc)
         for phrase in ("sources.json", "extension_sources",
                        "--fetch-sources", "--inspect sources",
@@ -8954,7 +8954,7 @@ def test_episode_files_once_per_rule_and_agent(self):
 
 # runner/tests/test_build_config.py PipelineLiftsTest.test_verification_doc_carries_the_chain lines 558-567
 def test_verification_doc_carries_the_chain(self):
-        with open(os.path.join(_root(), "docs", "verification.md"),
+        with open(os.path.join(_root(), "docs", "security", "verification.md"),
                   encoding="utf-8") as fh:
             doc = fh.read()
         for needle in ("gh attestation verify",

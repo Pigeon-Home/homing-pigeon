@@ -340,7 +340,7 @@ and that board does not need Python either.
    one-home install edit `config.json` by hand), and a matching
    `key_policies` entry limits what that key may do. The signer then
    passes `--key-id grok-4` to `send_job.py`. Rotation and the policy
-   details: `docs/secret-rotation.md`, PROTOCOL.md section 14.
+   details: `docs/use/secret-rotation.md`, PROTOCOL.md section 14.
 
 **From source** (needs Python 3.9+):
 
@@ -419,7 +419,7 @@ the simulation used.
 ---
 
 Whichever path you pick, **verify** with the clock check from
-[docs/RUNBOOK.md](docs/RUNBOOK.md) Job 7. If the runner replies with the time,
+[docs/use/runbook.md](docs/use/runbook.md) Job 7. If the runner replies with the time,
 you're live.
 
 > **Note:** the runner re-reads `config.json` every poll cycle and

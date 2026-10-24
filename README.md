@@ -105,7 +105,7 @@ its own required gate beside the signature, which makes it the
 more secure option even though it is not the default. (A
 sensor on the same box also delivers its signed alerts directly,
 by local inbox or loopback socket -- alerts, not jobs.) Anything
-else is in [docs/FUTURE.md](docs/FUTURE.md).
+else is in [docs/project/future.md](docs/project/future.md).
 
 **Runbooks, not prompts.** The SI doesn't chat about the task — it ships
 a runbook: deterministic steps, each with a check that proves the step
@@ -194,14 +194,10 @@ for an opinion, the prediction rides its result too. The owner's
 ceiling: a job may ask for less, never more. Design:
 `docs/design/oracle-opinion-design.md`.
 
-**Fixes mismatched jobs, never silently.** CI proves it on Alpine
-(BusyBox `sh`, no bash) on x86_64 and on arm64: a job naming
-`bash` whose script fits `sh` is repaired and runs, a
-PowerShell-shaped job is left alone, and a bash-only script (an
-array, process substitution, a substring expansion) is left alone
-too. Every repair is stated in the result. The arm64 leg is the
-Pi Light proof; the Pi Light archive does not carry a second copy
-of the test.
+**Fixes mismatched jobs, never silently.** A job that asks for `bash`
+but only needs `sh` is repaired and runs on a minimal system like
+Alpine (BusyBox, no bash); a job that really needs bash or PowerShell
+is left alone. Every repair is stated in the result.
 [![minimal-userland](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/minimal-userland.yml/badge.svg)](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/minimal-userland.yml)
 
 ### Operating modes
@@ -230,7 +226,7 @@ the config-file defaults; a fresh install sits one notch tighter
 — on non-Pi hardware the installer applies the `password-only`
 profile (judge `advisory`, view `attested`) unless `--no-profile`
 is passed; a Raspberry Pi gets the `pi-light` profile instead.
-See docs/RUNBOOK.md Job 7.
+See docs/use/runbook.md Job 7.
 
 **eyes open** (recommended) — same trust, but now you watch.
 Runner: executes, attaches the policy verdict to each result,
@@ -293,7 +289,7 @@ still run, but briefs and answers are assembled from the box's own
 records (the job index, retained jobs, notable lines, the log tail),
 and the `ask` op stays off. The mode reads live from `config.json`;
 flipping it is the upgrade path when a box gains a model worth
-running. See `docs/configuring-oracle.md`.
+running. See `docs/oracle/configuring-oracle.md`.
 
 **The Oracle learns from its own calls.** Before a job runs, its
 opinion — *this will probably succeed here; this will faceplant,
@@ -318,7 +314,7 @@ members of a `"v": 1` message. They are not a separate message version.
 
 ## Proven platforms
 
-Every push or nightly, one portable proof runs on native runners, distributions, other architectures, maker boards, BSD virtual machines and administrator fat-fingers, and a leg fails unless every test ran and passed. The full table and the board notes are in [docs/PLATFORMS.md](docs/PLATFORMS.md).
+Every push or nightly, one portable proof runs on native runners, distributions, other architectures, maker boards, BSD virtual machines and administrator fat-fingers, and a leg fails unless every test ran and passed. The full table and the board notes are in [docs/use/platforms.md](docs/use/platforms.md).
 
 [![platform-matrix](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/platform-matrix.yml/badge.svg)](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/platform-matrix.yml)
 
@@ -345,7 +341,7 @@ senses, and files alerts the Oracle fuses with job activity.
 The example is a lab-results sense: it watches a folder where
 experiment runs drop result files and files signals like
 `experiment_finished` and `metric_threshold_crossed` when a run
-lands. Full walkthrough: [docs/extensions.md](docs/extensions.md).
+lands. Full walkthrough: [docs/extend/extensions.md](docs/extend/extensions.md).
 
 Every extension, sense or transport, also brings its own code for
 the Oracle. On a box where a local model runs the Oracle, the
@@ -361,11 +357,11 @@ has no model to read the material and makes no request for it
 unless its owner turns the fetch on. The Oracle gets what is
 pinned by default, and a written disclosure rule lets the owner
 (or the author) withhold any of it
-([docs/extensions.md](docs/extensions.md), "Sources").
+([docs/extend/extensions.md](docs/extend/extensions.md), "Sources").
 
 ## Layout
 
-`PROTOCOL.md` is the wire protocol, `runner/` the code, `runner/extensions/` the shipped extensions, `docs/` the long shelf and `.github/` the CI. The file-by-file map is in [docs/LAYOUT.md](docs/LAYOUT.md).
+`PROTOCOL.md` is the wire protocol, `runner/` the code, `runner/extensions/` the shipped extensions, `docs/` the long shelf and `.github/` the CI. The file-by-file map is in [docs/project/layout.md](docs/project/layout.md).
 
 ## Setup
 
@@ -376,21 +372,21 @@ secret, first job.
 
 ## How scripts run
 
-A job carries a `script` and an optional `interpreter`; the default is PowerShell on Windows and `sh` elsewhere, and a `ping` first tells you which one a box has. Details are in [docs/SCRIPTS.md](docs/SCRIPTS.md).
+A job carries a `script` and an optional `interpreter`; the default is PowerShell on Windows and `sh` elsewhere, and a `ping` first tells you which one a box has. Details are in [docs/use/scripts.md](docs/use/scripts.md).
 
 ## Sending a job (any SI)
 
-Anything that can email the runner's mailbox and sign the body can drive it: your SI, a cron script, whatever, using `runner/cloud/send_job.py` and the `shared_secret` from your `config.json`. Commands and verification are in [docs/SENDING.md](docs/SENDING.md).
+Anything that can email the runner's mailbox and sign the body can drive it: your SI, a cron script, whatever, using `runner/cloud/send_job.py` and the `shared_secret` from your `config.json`. Commands and verification are in [docs/use/sending.md](docs/use/sending.md).
 
 ## Testing
 
-The runner is fully inspectable, so audit what it would do before it does it, and run the suite with `python -m unittest discover -s runner/tests -t .`. The flags and the suite notes are in [docs/TESTING.md](docs/TESTING.md).
+The runner is fully inspectable, so audit what it would do before it does it, and run the suite with `python -m unittest discover -s runner/tests -t .`. The flags and the suite notes are in [docs/project/testing.md](docs/project/testing.md).
 
 ## Security notes
 
-- Threat model: [docs/threat-model.md](docs/threat-model.md) and it's
-  companion [docs/security-gaps.md](docs/security-gaps.md).
-- Industry map: [docs/industry-map.md](docs/industry-map.md) — five years
+- Threat model: [docs/security/threat-model.md](docs/security/threat-model.md) and it's
+  companion [docs/security/security-gaps.md](docs/security/security-gaps.md).
+- Industry map: [docs/project/industry-map.md](docs/project/industry-map.md) — five years
   of commercial detection (2021–2026) read honestly against this project,
   sorted by local footprint cost.
 - Jobs are also encrypted by default: `send_job.py` wraps the
@@ -409,7 +405,7 @@ The runner is fully inspectable, so audit what it would do before it does it, an
 
 ## Not built
 
-The list is [docs/FUTURE.md](docs/FUTURE.md).
+The list is [docs/project/future.md](docs/project/future.md).
 
 ## Status
 
@@ -426,7 +422,7 @@ interval, workers, timeouts, output limits, and max job age (a
 `security` mode change still needs a restart). A Thunderbird-style
 OAuth sign-in is shipped for the mailbox. PowerShell jobs stage
 as `script.ps1`. Release files carry Sigstore build provenance
-(`docs/verification.md`).
+(`docs/security/verification.md`).
 
 ## Contributing
 

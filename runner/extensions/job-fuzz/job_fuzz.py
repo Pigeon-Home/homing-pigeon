@@ -165,7 +165,7 @@ named by --secret-env) and drops it into the runner's
 local inbox, or pushes it to the runner's loopback
 listener when --local-port is given. Same envelope, same
 signature -- only the transport differs
-(docs/extensions.md, "Local delivery"). Without
+(docs/extend/extensions.md, "Local delivery"). Without
 --local-dir it prints one alert payload per line.
 
 --samples FILE reads a readings dict from a JSON file

@@ -6,6 +6,11 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## Unreleased
 
+- **`docs/` is grouped by reader and named in lowercase-kebab.** Guides
+  moved into `use/`, `oracle/`, `extend/`, `security/` (with
+  `hardening/`) and `project/`; `RUNBOOK.md` is `use/runbook.md`, and so
+  on. Uppercase file names stay only for the root conventions. The
+  layout guard flags the old paths.
 - **`runner/` holds `runner.py` and folders.** The 35 modules that sat
   beside it are in four role folders: `runner/oracle/` (opinion,
   learning, review, remediation, detection, senses, resources, dri,

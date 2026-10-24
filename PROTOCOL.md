@@ -32,7 +32,7 @@ The draft's bindings are email, a watched folder, NATS, and DTLS.
 No binding is mandatory. A conforming runner offers at least one.
 The reference default is email only: `transports` absent means
 `["email"]`. The other bindings are in the draft (Sections 5.1,
-5.2, and 19) and in docs/TRANSPORTS.md. This section is the email binding.
+5.2, and 19) and in docs/extend/transports.md. This section is the email binding.
 
 - One dedicated mailbox. Both directions use it:
   The cloud SI sends jobs *to* it; the runner reads them and sends results back
@@ -407,7 +407,7 @@ secret, in which case the runner refuses to start and names it
   target host. VM snapshots give instant rollback, and the guest
   boundary contains everything a signed job can reach.
 - IMAP/SMTP over TLS (993/587). File downloads over HTTPS only.
-  Work that is not built is listed in docs/FUTURE.md. Result policies
+  Work that is not built is listed in docs/project/future.md. Result policies
   are specified below.
 
 ## 8. Cryptography
@@ -599,7 +599,7 @@ the `ask` op (section 10.1).
 *A semantic verdict — a model-backed reading such as "this script
 deletes files outside its workspace" or "this matches its
 description" — would run alongside the deterministic checks. It is
-not shipped; it is listed in docs/FUTURE.md. (The optional model-backed
+not shipped; it is listed in docs/project/future.md. (The optional model-backed
 note in the `oracle_opinion` result member is advisory and is not the
 verdict.)*
 
@@ -690,7 +690,7 @@ last N lines), `ask` (natural-language question answered by local
 inference — see below), and `senses` (the alerts the Oracle's senses
 filed around this job, ranked by weight × severity; parameters
 `sensor`, `severity_floor`, `since`, `until`, `limit` — specified in
-docs/senses.md, "Reading signals"). Answers obey the job's effective
+docs/extend/senses.md, "Reading signals"). Answers obey the job's effective
 view exactly as section 9 requires — under `attested`, `grep`/`tail`
 are rejected; under `redacted`, returned lines are scrubbed first.
 
@@ -861,7 +861,7 @@ look* — which, for most debugging sessions, is the expensive part.
   first use -- the same stance section 10.1 takes toward what the
   local model reads. The rule, the
   declaration format, and the owner's settings are in
-  [docs/extensions.md](docs/extensions.md), "Sources".
+  [docs/extend/extensions.md](docs/extend/extensions.md), "Sources".
 
 ## 13. Task dispatch: the Oracle as work queue
 
@@ -957,7 +957,7 @@ the task straight to `done`; nothing is flagged. With
 `pending_review` (section 13.6) and stays there until the owner
 approves it. The Oracle does not route results to reviewing workers;
 a `review` capability tag is an ordinary tag a task may require, and
-automatic routing of results to such workers is listed in docs/FUTURE.md,
+automatic routing of results to such workers is listed in docs/project/future.md,
 not shipped.
 
 ### 13.5 Liveness and delivery
@@ -1172,8 +1172,8 @@ the four marked open on 2026-10-21 were closed the same day.
 - README.md: Oracle section rewritten from "proposal" to real;
   dispatcher described in plain language; multi-secret setup.
   *Shipped.*
-- INSTALL.md / docs/RUNBOOK.md: `additional_secrets` config walkthrough
-  (INSTALL.md step 6, docs/RUNBOOK.md Job 6, `docs/secret-rotation.md`);
+- INSTALL.md / docs/use/runbook.md: `additional_secrets` config walkthrough
+  (INSTALL.md step 6, docs/use/runbook.md Job 6, `docs/use/secret-rotation.md`);
   worker enrollment and task board usage (AGENTS.md, "Working the
   task board"). *Shipped.*
 - AGENTS.md: how a worker SI pulls tasks, claims capabilities,
@@ -1181,7 +1181,7 @@ the four marked open on 2026-10-21 were closed the same day.
 - SECURITY.md: multi-secret threat notes (key ID is a label, not a
   secret; rotation procedure); dispatcher trust model (review as the
   correctness anchor). *Shipped ("Multiple secrets").*
-- docs/SAFEGUARDS.md: operational guidance for running a board (timeouts,
+- docs/security/safeguards.md: operational guidance for running a board (timeouts,
   allowlists, when to tighten from least-restrictive defaults).
   *Shipped (§6a).*
 - PROTOCOL.md: this file. The Oracle sections are implemented.

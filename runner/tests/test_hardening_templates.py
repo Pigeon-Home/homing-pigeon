@@ -10,7 +10,7 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-HARDENING = os.path.join(REPO, "docs", "hardening")
+HARDENING = os.path.join(REPO, "docs", "security", "hardening")
 PREFIX = "/tmp/fakeprefix"
 
 # Absolute paths a template may reference outside the rendered

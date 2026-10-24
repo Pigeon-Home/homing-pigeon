@@ -10,7 +10,7 @@ channel, updates state. Safe to call every poll cycle; all state
 persists in dri-state.json so restarts do not re-page.
 
 Channels: telegram (implemented, Bot API over HTTPS). Signal and
-WhatsApp are documented in docs/dri-playbook.md, not implemented.
+WhatsApp are documented in docs/oracle/dri-playbook.md, not implemented.
 No SMS, by owner decision.
 
 This module imports senses (pure); the runner imports this module.

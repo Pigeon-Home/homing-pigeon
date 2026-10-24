@@ -1,6 +1,6 @@
 # Asymmetric signing — design (M9)
 
-*Not built. See docs/FUTURE.md. This document records the shape of a
+*Not built. See docs/project/future.md. This document records the shape of a
 migration from HMAC shared secrets to Ed25519 signatures, so
 the work can be picked up without re-deriving the tradeoffs.*
 

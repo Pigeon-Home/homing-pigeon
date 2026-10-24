@@ -35,7 +35,7 @@ RETIRED = {
     "examples": "runner/extensions/",
     "extensions": "runner/extensions/",
     "cloud": "runner/cloud/",
-    "hardening": "docs/hardening/",
+    "hardening": "docs/security/hardening/",
     "docker": ".github/docker/",
     "Dockerfile": ".github/docker/Dockerfile",
     ".dockerignore": ".github/docker/Dockerfile.dockerignore",
@@ -71,7 +71,7 @@ STALE = [
     (re.compile(r'["\']\.github["\'],\s*["\']tools["\']'),
      '"runner", "tools"'),
     (re.compile(_EDGE + r"hardening/(systemd|apparmor|selinux|README|windows)"),
-     "docs/hardening/"),
+     "docs/security/hardening/"),
     (re.compile(_EDGE + r"docker/(entrypoint|minimal-userland)"),
      ".github/docker/"),
     # pip's -c/-r and a path string; prose may name the file
@@ -82,8 +82,8 @@ STALE = [
      '"runner", "tools"'),
     (re.compile(r'(?<!"runner", )(?:(?<=, )|(?<=join\())["\']cloud["\']'
                 r'(?=\s*[,)])'), '"runner", "cloud"'),
-    (re.compile(r'(?<!"docs", )(?<=, )["\']hardening["\'](?=\s*[,)])'),
-     '"docs", "hardening"'),
+    (re.compile(r'(?<!"docs", )(?<!"security", )(?<=, )["\']hardening["\'](?=\s*[,)])'),
+     '"docs", "security", "hardening"'),
     # the suite: a file path, a module id, a discovery start, a join
     (re.compile(_EDGE + r"tests/(test_\w+\.py|defaults_registry|conftest"
                 r"|security_parity|archive/|airgap/)"), "runner/tests/"),
@@ -133,9 +133,25 @@ class RootLayoutTest(unittest.TestCase):
                     "%s is back at the root; it lives at %s now "
                     "(AGENTS.md, 'Where things live')" % (name, now))
 
+    def test_doc_names_are_lowercase_kebab(self):
+        """Case-only renames break on macOS/Windows checkouts; one rule
+        for docs: lowercase-kebab, except the root conventions and
+        historical records."""
+        import subprocess
+        out = subprocess.run(["git", "ls-files", "docs"], cwd=REPO,
+                             capture_output=True, text=True).stdout.split()
+        skip = ("docs/archive/", "docs/reports/", "docs/ietf/",
+                "docs/design/idea321/", "docs/security/hardening/",
+                "docs/specimens/")
+        bad = [f for f in out if f.endswith(".md")
+               and not f.startswith(skip)
+               and os.path.basename(f) not in ("CHANGELOG.md", "CONTRIBUTING.md")
+               and os.path.basename(f) != os.path.basename(f).lower()]
+        self.assertEqual(bad, [])
+
     def test_the_moved_homes_exist(self):
         for rel in ("runner/extensions", "runner/cloud/send_job.py",
-                    "runner/tools", "docs/hardening",
+                    "runner/tools", "docs/security/hardening",
                     ".github/docker/Dockerfile",
                     ".github/requirements-ci.txt",
                     "runner/extensions/.gitattributes",

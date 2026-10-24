@@ -1,6 +1,6 @@
 """Loud warning when this machine looks like a personal computer.
 
-The decisions, and why, are in docs/personal-documents-warning.md.
+The decisions, and why, are in docs/security/personal-documents-warning.md.
 This module never opens a document, never keeps a name it saw, and
 never sends anything. A hit prints one fixed banner and returns.
 """

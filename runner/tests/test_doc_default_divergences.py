@@ -24,7 +24,7 @@ class TestMissingSeverityDefaultsToInfoOnReadBack(unittest.TestCase):
     """Divergence: a stored alert with no severity is dropped by an
     info severity floor, instead of being read as severity info.
 
-    (a) Doc claim (docs/senses.md, "Alert format", line 293):
+    (a) Doc claim (docs/extend/senses.md, "Alert format", line 293):
         "`severity`: critical/high/medium/low/info. Missing defaults
         to info."
         The same section's profile defaults give `severity_floor` a
@@ -83,7 +83,7 @@ class TestUnrecognisedViewDefaultsToFull(unittest.TestCase):
         `summary`, `attested`. Default: `full` (backward
         compatible)."
         The same default is stated for the owner's ceiling in
-        docs/configuring-oracle.md ("`max_result_view` -- the
+        docs/oracle/configuring-oracle.md ("`max_result_view` -- the
         narrowest view the runner will ever return (`full`,
         `redacted`, `summary`, or `attested`)") and in the
         runner's --help ("--max-result-view MODE ... (default:
@@ -148,7 +148,7 @@ class TestNullTaskTimeoutDefaultsTo86400(unittest.TestCase):
     non-numeric string) wedges claimed board tasks forever, instead
     of falling back to the documented 86400-second default.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 41):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 41):
         "`task_timeout` -- seconds before a claimed task is
         returned to open. Default 86400."
         The same default is stated in PROTOCOL.md section 13.5
@@ -255,7 +255,7 @@ class TestBogusInferenceTimeoutDefaultsTo180(unittest.TestCase):
         "`max_answer_chars` (default 2000), `timeout_sec`
         (default 180)."
         The same default is stated in
-        docs/configuring-oracle.md (line 43): "`timeout_sec`
+        docs/oracle/configuring-oracle.md (line 43): "`timeout_sec`
         (default 180, per-question model timeout; a cold model
         on a laptop often needs more than 60, and the default
         model thinks before answering, so long questions can
@@ -350,7 +350,7 @@ class TestNullDefaultTimeoutSecDefaultsTo300(unittest.TestCase):
         The runner's --help states the same default for the
         config key that supplies it ("--timeout SECONDS --
         default per-job timeout in seconds (default: 300)"),
-        and docs/configuring-oracle.md (flag-to-key map,
+        and docs/oracle/configuring-oracle.md (flag-to-key map,
         line 83) maps that flag to the config key:
         "`--timeout SECONDS` | `default_timeout_sec`".
 
@@ -415,7 +415,7 @@ class TestNullDtlsPortBindDefaults(unittest.TestCase):
     DTLS transport extension instead of falling back to the
     documented defaults (port 20220, bind 0.0.0.0).
 
-    (a) Doc claim (docs/configuring-oracle.md, line 64):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 64):
         "`transport_dtls` -- the DTLS session binding ...
         handed to the DTLS extension: `port` (default 20220)
         and `bind` (default `0.0.0.0`)."
@@ -467,8 +467,8 @@ class TestNullDtlsPortBindDefaults(unittest.TestCase):
         present but not usable is now a startup config error that
         names the key, never a substituted address; the documented
         default applies only when the key is absent. The assertions
-        below changed with the doc lines (docs/configuring-oracle.md,
-        docs/TRANSPORTS.md, the extension docstring), not before.
+        below changed with the doc lines (docs/oracle/configuring-oracle.md,
+        docs/extend/transports.md, the extension docstring), not before.
         (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
     """
 
@@ -524,7 +524,7 @@ class TestNullDtlsGreetingDefaultsToFamily(unittest.TestCase):
     greeting verbatim -- instead of falling back to the
     documented default tier, family.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 65):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 65):
         "`dtls_greeting` -- the DTLS session greeting's
         disclosure tier: `none`, `family` (default: OS family
         only), `standard` (plus OS release and Python version),
@@ -671,7 +671,7 @@ class TestZeroOrNegativePlanBudgetDefaults(unittest.TestCase):
     multi-step plan, instead of falling back to the documented
     defaults (8 steps, 600 seconds).
 
-    (a) Doc claim (docs/configuring-oracle.md, line 68):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 68):
         "`max_plan_steps` / `max_plan_timeout_sec` -- caps the
         detection layer (`runner/oracle/detection.py`) applies to a
         multi-step plan: at most this many steps (default 8)
@@ -751,7 +751,7 @@ class TestNullDefaultTimeoutSecPassesKeyPolicy(unittest.TestCase):
         The runner's --help states the same default for the
         config key that supplies it ("--timeout SECONDS --
         default per-job timeout in seconds (default: 300)"),
-        and docs/configuring-oracle.md (flag-to-key map,
+        and docs/oracle/configuring-oracle.md (flag-to-key map,
         line 83) maps that flag to the config key:
         "`--timeout SECONDS` | `default_timeout_sec`".
 
@@ -819,7 +819,7 @@ class TestInfinitePromoteAfterDefaultsTo2(unittest.TestCase):
     OverflowError out of the learning reader, instead of
     falling back to the documented default of 2.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 53):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 53):
         "`oracle_learning_promote_after` -- how many verified
         corroborating outcomes a model candidate needs before
         it is treated as corroborated and may select among
@@ -893,11 +893,11 @@ class TestHugeSensorWeightDefaultsToOne(unittest.TestCase):
     out of alert_score, instead of falling back to the
     documented default weight of 1.0.
 
-    (a) Doc claim (docs/senses.md, line 254):
+    (a) Doc claim (docs/extend/senses.md, line 254):
         "`weight` (number >= 0, default 1.0): the Oracle's
         weighting for this source."
         The scoring path states the same arithmetic
-        (docs/senses.md, line 325): alerts are ranked by
+        (docs/extend/senses.md, line 325): alerts are ranked by
         "score = weight x severity", and alert_score's own
         fallback for an unparseable weight is the default
         1.0 (runner/oracle/senses.py, lines 407-410).
@@ -963,7 +963,7 @@ class TestHugeResourcesValueIsConfigError(unittest.TestCase):
     instead of the startup config error every other
     malformed resources value gets.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 72):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 72):
         "`resources` -- the built-in resource monitor
         (`runner/oracle/resources.py`) ... `enabled` (default
         true), `threshold` (default 0.95; the CPU, memory,
@@ -1069,7 +1069,7 @@ class TestAskModelKeepAliveDefaultsTo30mOnOllama(unittest.TestCase):
     keep_alive is unset) -- and any explicit keep_alive --
     is lost on the plain ask path.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 70):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 70):
         "`keep_alive` (passed to the model server so it
         keeps the model loaded between questions; unset by
         default, except that an endpoint on `:11434` gets
@@ -1133,9 +1133,9 @@ class TestBooleanReviewScanBytesDefaultsTo65536(unittest.TestCase):
     makes the job reviewer scan a single byte of the script
     instead of the documented 65536-byte default.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 67):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 67):
         "`review_scan_bytes` -- how many bytes of the script
-        the job reviewer (`docs/job-review.md`) scans for
+        the job reviewer (`docs/oracle/job-review.md`) scans for
         file-name references. Default 65536."
 
     (b) How the bug was found: the campaign's doc-default hunt
@@ -1181,7 +1181,7 @@ class TestBooleanRetentionDaysDefaultsTo7(unittest.TestCase):
     as 1 day (true) or as indefinite retention (false) instead
     of the documented 7-day default.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 33):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 33):
         "`output_retention_days` -- how long retained outputs
         are kept for later queries. Default 7. Zero (or
         negative) keeps them indefinitely: nothing is pruned
@@ -1242,7 +1242,7 @@ class TestBooleanV2AnswerDeadlineDefaultsTo0(unittest.TestCase):
     reads as a 1-second wait instead of the documented
     default of 0 (one look, no wait).
 
-    (a) Doc claim (docs/configuring-oracle.md, line 45):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 45):
         "`v2_answer_deadline_sec` is how long to look
         (0 to 30, default 0 -- one look, no wait)."
 
@@ -1370,7 +1370,7 @@ class TestBooleanWakeCooldownDefaultsTo900(unittest.TestCase):
     reads as 1 second (true) or 0 seconds (false) instead
     of the documented 900-second default.
 
-    (a) Doc claim (docs/extensions.md, line 276, config
+    (a) Doc claim (docs/extend/extensions.md, line 276, config
         table): "`local_wake_cooldown_sec` | `900` |
         Minimum seconds between Oracle briefings for the
         same sensor + signal."
@@ -1448,7 +1448,7 @@ class TestBooleanMaxOutputBytesDefaultsTo100000(unittest.TestCase):
         flag that supplies the key ("--max-output-bytes
         BYTES -- truncate stdout/stderr beyond this many
         bytes (default: 100000)"), and
-        docs/configuring-oracle.md (flag-to-key map,
+        docs/oracle/configuring-oracle.md (flag-to-key map,
         line 84) maps that flag to the config key:
         "`--max-output-bytes BYTES` | `max_output_bytes`".
 
@@ -1519,7 +1519,7 @@ class TestBooleanPlanBudgetDefaults(unittest.TestCase):
     (false) instead of the documented defaults (8 steps,
     600 seconds).
 
-    (a) Doc claim (docs/configuring-oracle.md, line 68):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 68):
         "`max_plan_steps` / `max_plan_timeout_sec` -- caps
         the detection layer (`runner/oracle/detection.py`) applies
         to a multi-step plan: at most this many steps
@@ -1602,7 +1602,7 @@ class TestBooleanResourcesValuesAreConfigErrors(unittest.TestCase):
     startup config error every other malformed resources
     value gets.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 72):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 72):
         "`resources` -- the built-in resource monitor
         (`runner/oracle/resources.py`) ... `enabled` (default
         true), `threshold` (default 0.95; the CPU, memory,
@@ -1687,7 +1687,7 @@ class TestBooleanPromoteAfterDefaultsTo2(unittest.TestCase):
     boolean true reads as 1 corroboration instead of the
     documented default of 2.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 53):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 53):
         "`oracle_learning_promote_after` -- how many verified
         corroborating outcomes a model candidate needs before
         it is treated as corroborated and may select among
@@ -1743,7 +1743,7 @@ class TestBooleanSensorCooldownDefaultsToZero(unittest.TestCase):
     documented default of 0 (no dedup), so a repeat alert is
     dropped.
 
-    (a) Doc claim (docs/senses.md, lines 260-261):
+    (a) Doc claim (docs/extend/senses.md, lines 260-261):
         "`cooldown_sec`: drop repeats of the same sensor+title
         within this window. Default 0 (no dedup)."
 
@@ -1801,7 +1801,7 @@ class TestBooleanSensorMaxPerHourDefaultsToZero(unittest.TestCase):
     documented default of 0 (unlimited), so a second alert in
     the hour is dropped.
 
-    (a) Doc claim (docs/senses.md, lines 262-263):
+    (a) Doc claim (docs/extend/senses.md, lines 262-263):
         "`max_per_hour`: sliding-window cap per sense; over-cap
         alerts are dropped. Default 0 (unlimited)."
 
@@ -1863,7 +1863,7 @@ class TestBooleanDriValuesAreConfigErrors(unittest.TestCase):
     or 0 instead of the startup config error every other
     malformed DRI number gets.
 
-    (a) Doc claim (docs/dri-playbook.md, "Config sketch",
+    (a) Doc claim (docs/oracle/dri-playbook.md, "Config sketch",
         lines 127-142): the documented configuration is
         "sensor_fused_score": {"threshold": 6.0,
         "window_sec": 600}, "key_probe": {"threshold": 5,
@@ -2043,7 +2043,7 @@ class TestBooleanAgentWallClockDefaultsTo300(unittest.TestCase):
     boolean true becomes a 1-second wall clock for the Oracle
     agent loop, instead of the documented 300-second default.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 70):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 70):
         "`agent_wall_clock_sec` (default 300; the
         whole-conversation wall clock for the `--oracle` agent
         loop, on top of the per-call `timeout_sec`)".
@@ -2152,10 +2152,10 @@ class TestBooleanTaskTimeoutDefaultsTo86400(unittest.TestCase):
     false) strips a board claim after at most one second, instead
     of falling back to the documented 86400-second default.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 41):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 41):
         "`task_timeout` -- seconds before a claimed task is
         returned to open. Default 86400."
-        The same default is stated in docs/SAFEGUARDS.md
+        The same default is stated in docs/security/safeguards.md
         line 132 ("`task_timeout` (default 86400): a claim lapses
         after this many [seconds]") and in PROTOCOL.md
         section 13.6 ("A claim lapses after `task_timeout`
@@ -2245,7 +2245,7 @@ class TestBooleanPollIntervalDefaultsTo20(unittest.TestCase):
     becomes a 1-second poll instead of the documented
     20-second default.
 
-    (a) Doc claim (docs/FAQs.md, line 9):
+    (a) Doc claim (docs/use/faq.md, line 9):
         "The deterministic code around the model does the
         watching on the runner's poll cycle -- every 20 seconds
         by default (`poll_interval_sec`)."
@@ -2347,7 +2347,7 @@ class TestBooleanDtlsPortDefaultsTo20220(unittest.TestCase):
     as port 1 (true) or port 0 (false) instead of the
     documented default 20220.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 64):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 64):
         "`transport_dtls` -- the DTLS session binding ...
         handed to the DTLS extension: `port` (default 20220)
         and `bind` (default `0.0.0.0`)."
@@ -2395,8 +2395,8 @@ class TestBooleanDtlsPortDefaultsTo20220(unittest.TestCase):
         present but not usable is now a startup config error that
         names the key, never a substituted address; the documented
         default applies only when the key is absent. The assertions
-        below changed with the doc lines (docs/configuring-oracle.md,
-        docs/TRANSPORTS.md, the extension docstring), not before.
+        below changed with the doc lines (docs/oracle/configuring-oracle.md,
+        docs/extend/transports.md, the extension docstring), not before.
         (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
     """
 
@@ -2496,7 +2496,7 @@ class TestBooleanDriWindowSecIsConfigError(unittest.TestCase):
     instead of the startup config error every other malformed
     DRI trigger number gets.
 
-    (a) Doc claim (docs/dri-playbook.md, "Config sketch",
+    (a) Doc claim (docs/oracle/dri-playbook.md, "Config sketch",
         lines 133-136): the documented configuration is
         "sensor_fused_score": {"threshold": 6.0,
         "window_sec": 600} and "key_probe": {"threshold": 5,
@@ -2603,9 +2603,9 @@ class TestHugeEmailPollIntervalDefaultsTo20(unittest.TestCase):
     20-second default; an infinite value likewise becomes
     an infinite poll interval instead of the default.
 
-    (a) Doc claim (docs/FAQs.md, line 9): the runner's poll
+    (a) Doc claim (docs/use/faq.md, line 9): the runner's poll
         cycle runs "every 20 seconds by default
-        (`poll_interval_sec`)". docs/configuring-oracle.md
+        (`poll_interval_sec`)". docs/oracle/configuring-oracle.md
         (flag-to-key map, line 82) maps `--poll-interval
         SECONDS` to the same key. The core hands this key
         to every transport extension as its cadence
@@ -2702,7 +2702,7 @@ class TestBadNatsPortDefaultsTo4222(unittest.TestCase):
     reconnect loop, instead of falling back to the
     documented default port 4222.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 62):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 62):
         "`transport_nats` -- core NATS, handed to the NATS
         extension: `url` (default `nats://127.0.0.1:4222`),
         `subject` (default `homing-pigeon.jobs`),
@@ -2756,8 +2756,8 @@ class TestBadNatsPortDefaultsTo4222(unittest.TestCase):
         present but not usable is now a startup config error that
         names the key, never a substituted address; the documented
         default applies only when the key is absent. The assertions
-        below changed with the doc lines (docs/configuring-oracle.md,
-        docs/TRANSPORTS.md, the extension docstring), not before.
+        below changed with the doc lines (docs/oracle/configuring-oracle.md,
+        docs/extend/transports.md, the extension docstring), not before.
         (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
     """
 
@@ -2814,7 +2814,7 @@ class TestBooleanDefaultTimeoutDefaultsTo300(unittest.TestCase):
 
     (a) Doc claim (PROTOCOL.md, section 3.1, line 136):
         "`timeout_sec`: default 300, maximum 3600."
-        docs/configuring-oracle.md (flag-to-key map,
+        docs/oracle/configuring-oracle.md (flag-to-key map,
         line 83) maps the flag that carries that default
         to this config key: "`--timeout SECONDS` |
         `default_timeout_sec`".
@@ -2892,9 +2892,9 @@ class TestBadDtlsPortDefaultsTo20220(unittest.TestCase):
     startup instead of reading as the documented default
     port 20220.
 
-    (a) Doc claims: docs/configuring-oracle.md line 64 --
+    (a) Doc claims: docs/oracle/configuring-oracle.md line 64 --
         "`transport_dtls` ... `port` (default 20220) and
-        `bind` (default `0.0.0.0`)"; docs/TRANSPORTS.md
+        `bind` (default `0.0.0.0`)"; docs/extend/transports.md
         lines 273-274 -- "(`transport_dtls.port`, default
         20220; `transport_dtls.bind`, default `0.0.0.0`)";
         the extension's own module docstring in
@@ -2939,8 +2939,8 @@ class TestBadDtlsPortDefaultsTo20220(unittest.TestCase):
         present but not usable is now a startup config error that
         names the key, never a substituted address; the documented
         default applies only when the key is absent. The assertions
-        below changed with the doc lines (docs/configuring-oracle.md,
-        docs/TRANSPORTS.md, the extension docstring), not before.
+        below changed with the doc lines (docs/oracle/configuring-oracle.md,
+        docs/extend/transports.md, the extension docstring), not before.
         (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
     """
 
@@ -3270,7 +3270,7 @@ class TestBooleanGrepMaxMatchesDefaultsTo10(unittest.TestCase):
         query in its section 10 example with
         "max_matches": 10, and line 655 defines the op as
         "grep (regex over retained stdout+stderr, up to
-        `max_matches` lines)". docs/fuzzing.md (lines
+        `max_matches` lines)". docs/project/fuzzing.md (lines
         129-131) states the two ends of the contract: "A
         `max_matches` of zero returns no lines" -- an
         explicit numeric zero -- and "A later grep with
@@ -3305,7 +3305,7 @@ class TestBooleanGrepMaxMatchesDefaultsTo10(unittest.TestCase):
         int, so int(True) is 1 and int(False) is 0 --
         true silently caps the answer at a single line
         and false silently returns no lines at all, the
-        behavior docs/fuzzing.md reserves for an
+        behavior docs/project/fuzzing.md reserves for an
         explicit numeric zero. This is the campaign's
         known boolean-as-number family -- numeric
         getters accepting a Python boolean as 1/0
@@ -3350,7 +3350,7 @@ class TestBooleanGrepMaxMatchesDefaultsTo10(unittest.TestCase):
             self._grep_count({"max_matches": "bogus"}), 10)
 
     def test_explicit_zero_max_matches_returns_no_lines(self):
-        # Control: docs/fuzzing.md documents an explicit
+        # Control: docs/project/fuzzing.md documents an explicit
         # numeric zero as returning no lines; the fix
         # must not flatten a genuine zero to the default.
         self.assertEqual(
@@ -3372,7 +3372,7 @@ class TestBooleanTailLinesDefaultsTo20(unittest.TestCase):
         answer_queries, lines 3030-3034), and it treats
         an explicit numeric zero as a distinct value --
         the tail expression returns no lines only when
-        n is zero, paralleling docs/fuzzing.md
+        n is zero, paralleling docs/project/fuzzing.md
         (lines 129-131), which reserves "returns no
         lines" for an explicit numeric zero in the
         sibling grep op and describes a default limit
@@ -3462,7 +3462,7 @@ class TestBooleanSensesLimitDefaultsTo20(unittest.TestCase):
     (false) instead of the default limit of 20 that an
     omitted or unparseable value gets.
 
-    (a) Doc claim: docs/senses.md (line 322, "Reading
+    (a) Doc claim: docs/extend/senses.md (line 322, "Reading
         signals: the senses query op") shows the senses
         query with "limit": 20, the value the reader
         itself uses as its default: runner/runner.py,
@@ -3566,7 +3566,7 @@ class TestBooleanAskMaxCharsDefaultsTo2000(unittest.TestCase):
 
     (a) Doc claim: PROTOCOL.md (line 678) gives the
         inference config "`max_answer_chars` (default
-        2000)", and docs/configuring-oracle.md (line 43)
+        2000)", and docs/oracle/configuring-oracle.md (line 43)
         repeats "`max_answer_chars` (default 2000 --
         answers are truncated past this)". PROTOCOL.md
         (line 697) shows the ask query carrying
@@ -3684,7 +3684,7 @@ class TestBooleanPlanStepTimeoutCountsAs60(unittest.TestCase):
     60 seconds an omitted or unparseable step
     timeout counts as.
 
-    (a) Doc claim: docs/configuring-oracle.md
+    (a) Doc claim: docs/oracle/configuring-oracle.md
         (line 68) gives the detection layer's plan
         caps: "`max_plan_steps` /
         `max_plan_timeout_sec` -- caps the detection
@@ -3804,7 +3804,7 @@ class TestNegativeOrNonFiniteSensorWeightDefaultsToOne(unittest.TestCase):
     scorer, instead of falling back to the documented
     default weight of 1.0.
 
-    (a) Doc claim (docs/senses.md, line 254):
+    (a) Doc claim (docs/extend/senses.md, line 254):
         "`weight` (number >= 0, default 1.0): the Oracle's
         weighting for this source. Turn a noisy sensor
         down, a trusted one up, or to 0 to mute it without
@@ -3935,7 +3935,7 @@ class TestNonFinitePiHealthTunableDefaults(unittest.TestCase):
     silently disables its alert instead of falling back to the
     documented default threshold.
 
-    (a) Doc claim (docs/extensions.md, pi-health table):
+    (a) Doc claim (docs/extend/extensions.md, pi-health table):
         "`board_overheating` | CPU/SoC temperature reaches
         `temp_high_c` (default 80)"; "`disk_pressure` | The
         `disk_mount` mount reaches `disk_high_pct` (default
@@ -4035,7 +4035,7 @@ class TestNonFiniteAirwavesGoneAfterScansDefaultsTo3(unittest.TestCase):
     uncaught OverflowError / ValueError instead of falling
     back to the documented default of 3 scans.
 
-    (a) Doc claim (docs/extensions.md, airwaves table):
+    (a) Doc claim (docs/extend/extensions.md, airwaves table):
         "`access_point_gone` | A long-known AP is missing
         across `gone_after_scans` consecutive scans
         (default 3)". The extension's own manifest repeats
@@ -4151,7 +4151,7 @@ class TestNonFiniteSkyWatcherApproachRadiusDefaultsTo5000(unittest.TestCase):
     (inf / -inf / NaN) makes the corridor boundless or empty
     instead of falling back to the documented 5000 km default.
 
-    (a) Doc claim (docs/extensions.md, sky-watcher signal
+    (a) Doc claim (docs/extend/extensions.md, sky-watcher signal
         table, line 530): "`station_approaching` | The station
         enters the approach corridor (`approach_radius_km`,
         default 5000 km) around the observer -- every pass,
@@ -4260,7 +4260,7 @@ class TestNonFiniteSkyWatcherDarkThresholdDefaultsToMinus6(unittest.TestCase):
     "dark" or no sky ever "dark" instead of falling back to
     the documented -6 degree default.
 
-    (a) Doc claim (docs/extensions.md, "The example: Sky
+    (a) Doc claim (docs/extend/extensions.md, "The example: Sky
         Watcher", line 542): "the observer's sky being dark
         is a small solar calculation (the NOAA approximation)
         against the `dark_sun_elevation_deg` threshold, -6°
@@ -4393,7 +4393,7 @@ class TestInfiniteCertSentinelDaysDefaults(unittest.TestCase):
     (a) Doc claim (runner/extensions/cert-sentinel/
         cert_sentinel.py header, lines 13-16, repeated in
         the extension README lines 29-30, its extension.json
-        tunables, and the docs/extensions.md table at line
+        tunables, and the docs/extend/extensions.md table at line
         594): "cert_expiring  a certificate's remaining life
         fell to the warn_days tunable (default 30) or
         below"; "cert_critical  a certificate's remaining
@@ -4727,7 +4727,7 @@ class TestNonFiniteSkyWatcherLeadAndBrightDefaults(unittest.TestCase):
     update outright) instead of falling back to the
     documented defaults of 600, 10, and 65.
 
-    (a) Doc claim (docs/extensions.md, sky-watcher signal
+    (a) Doc claim (docs/extend/extensions.md, sky-watcher signal
         table, lines 531-532): "`visible_pass_starting` | A
         sunlit pass over a dark sky begins within
         `visible_lead_sec` (default 600), culminating above
@@ -5965,7 +5965,7 @@ class TestNonFiniteLabResultsTunablesDefaultInsteadOfCrashOrSilence(unittest.Tes
         own fallback literals state them
         (lab_results.py lines 95 and 97-98: band
         falls back to 0.25, min_history to 3), and
-        docs/extensions.md states the same contract
+        docs/extend/extensions.md states the same contract
         (lines 93-94 ship the example tunables
         "anomaly_band": 0.25, "anomaly_min_history":
         3; line 399: "`result_anomaly` | A finished
@@ -7489,7 +7489,7 @@ class TestPlanStepTimeoutSecDefaultsTo60(unittest.TestCase):
         step whose timeout_sec is omitted,
         unparseable, or a boolean counts as 60
         seconds." The prose doc for the same
-        function (docs/configuring-oracle.md,
+        function (docs/oracle/configuring-oracle.md,
         line 80) states only the totals it sums
         toward: "`max_plan_steps` /
         `max_plan_timeout_sec` -- caps the
@@ -7749,7 +7749,7 @@ class TestGrepMaxMatchesDefaultsTo10(unittest.TestCase):
         example shows the grep query with
         "max_matches": 10, and (line 688) defining the op
         as "grep (regex over retained stdout+stderr, up
-        to `max_matches` lines)"; and docs/fuzzing.md
+        to `max_matches` lines)"; and docs/project/fuzzing.md
         (lines 129-131): "A `max_matches` of zero returns
         no lines" and a default limit applies when the
         caller supplies no usable number. The reader's
@@ -7784,7 +7784,7 @@ class TestGrepMaxMatchesDefaultsTo10(unittest.TestCase):
         non-numeric string, a several-hundred-digit
         integer, inf, -inf, NaN, and a list -- returned
         exactly 10 matches. Zero is usable (lo 0) and
-        returned 0, as docs/fuzzing.md documents. A
+        returned 0, as docs/project/fuzzing.md documents. A
         negative number is below lo, so it is unusable
         under the confval contract and returned the
         default 10 rather than clamping. The explicit
@@ -7872,7 +7872,7 @@ class TestTailLinesDefaultsTo20(unittest.TestCase):
         runner/tests/defaults_registry.py. The nearest statements
         are PROTOCOL.md (lines 688-689), defining the op
         as "`tail` (`lines`: last N lines)" over the
-        retained output, and docs/fuzzing.md
+        retained output, and docs/project/fuzzing.md
         (lines 129-131), which reserves "returns no
         lines" for an explicit numeric zero in the sibling
         grep op and describes a default limit applying
@@ -8006,7 +8006,7 @@ class TestSensesLimitDefaultsTo20(unittest.TestCase):
         doc_status unverified -- no prose document states
         this default; it is in KNOWN_UNDOCUMENTED in
         runner/tests/defaults_registry.py. The nearest statement
-        is docs/senses.md (line 322, "Reading signals:
+        is docs/extend/senses.md (line 322, "Reading signals:
         the senses query op"), which shows the senses
         query with "limit": 20, the reader's own default.
         The reader (runner/runner.py, answer_queries,
@@ -8016,7 +8016,7 @@ class TestSensesLimitDefaultsTo20(unittest.TestCase):
         usable value, not an unusable one. The sibling
         query ops honor a usable zero as zero: the grep
         branch's own comment states its limit is
-        "clamped to [0, 100]" and docs/fuzzing.md
+        "clamped to [0, 100]" and docs/project/fuzzing.md
         (lines 129-131) records that a max_matches of
         zero returns no lines, and the tail branch reads
         its lines as "text.splitlines()[-n:] if n else
@@ -8172,7 +8172,7 @@ class TestAskMaxCharsDefaultsTo2000(unittest.TestCase):
         to max_answer_chars. The fallback target is
         documented: PROTOCOL.md (line 711) gives the
         inference config "`max_answer_chars` (default
-        2000)", docs/configuring-oracle.md (line 54)
+        2000)", docs/oracle/configuring-oracle.md (line 54)
         repeats "`max_answer_chars` (default 2000 --
         answers are truncated past this)", and
         PROTOCOL.md (line 730) shows the ask query
@@ -8558,7 +8558,7 @@ class TestLabResultsAnomalyBandDefaultsTo025(unittest.TestCase):
         runner/tests/defaults_registry.py. The statements
         are the manifest, which ships the same value
         (extension.json: "anomaly_band": 0.25), the
-        contract in docs/extensions.md (line 399:
+        contract in docs/extend/extensions.md (line 399:
         "`result_anomaly` | A finished run's
         `metric` value sits farther than
         `anomaly_band` (relative) from the mean of
@@ -8871,7 +8871,7 @@ class TestDriNumericRowsRefuseUnusableShapes(unittest.TestCase):
     shapes through their actual reader for the first
     time as one family.
 
-    (a) Claim: docs/dri-playbook.md, "Config sketch"
+    (a) Claim: docs/oracle/dri-playbook.md, "Config sketch"
         (lines 129-142), is the only doc statement of
         these defaults -- sketch-grade provenance, as
         Target 4 of the step-8 list records:
@@ -9164,7 +9164,7 @@ class TestIssuedAtWindowEdgesPerProtocol(unittest.TestCase):
         timezone, and is within `max_job_age_sec`
         (default 3600) of the runner's clock
         (replay / stale protection)." And
-        docs/fuzzing.md, lines 62-64: "A job
+        docs/project/fuzzing.md, lines 62-64: "A job
         stamped two hours ago, or an hour ahead,
         does not run. The window is
         `max_job_age_sec`, with five minutes of
@@ -9348,10 +9348,10 @@ class TestLiveReloadBadValueReadsAsDefault(unittest.TestCase):
         The refuse class cannot refuse mid-run: a bad
         port written live keeps the current binding,
         logs an error, and takes effect only at the
-        next start." docs/campaign-playbook.md
+        next start." docs/project/campaign-playbook.md
         (line 132): "Live reload: a bad value written
         while running reads as the default and is
-        named in the log". docs/QUESTIONS.md
+        named in the log". docs/use/questions.md
         (line 137): "Live reload: a bad value reads
         as the default and is logged, no hidden
         last-good state". The five hot integer keys
@@ -9641,7 +9641,7 @@ class TestNestedObjectsWithEverySubKeyNull(unittest.TestCase):
     they never crash with a raw error and never
     silently enable anything.
 
-    (a) Claims: docs/configuring-oracle.md (line
+    (a) Claims: docs/oracle/configuring-oracle.md (line
         84): the `resources` block carries `enabled`
         (default true), `threshold` (default 0.95,
         must be in (0, 1]) and `cooldown_sec`
@@ -9652,7 +9652,7 @@ class TestNestedObjectsWithEverySubKeyNull(unittest.TestCase):
         20000, and (line 134) "A malformed security
         block stops startup with an error naming
         the key and the bad value. It never silently
-        falls back to `off`." docs/dri-playbook.md
+        falls back to `off`." docs/oracle/dri-playbook.md
         (lines 129-145, the config sketch and the
         defaults beneath it): `dri.enabled` defaults
         false, `channel` is "telegram", the trigger
@@ -9816,7 +9816,7 @@ class TestListKeysWrongElementEmptyAndScalarListShapes(unittest.TestCase):
         `timeout_sec` defaults to 300; if `interpreter`
         is absent, the runner's `default_interpreter`
         config applies, else the platform default.
-        docs/TRANSPORTS.md (line 6): the `transports`
+        docs/extend/transports.md (line 6): the `transports`
         config key defaults to `["email"]`.
 
     (b) How it was hunted: Claude's plan, second-run
@@ -10143,7 +10143,7 @@ class TestMaxResultViewCeilingShapesReadAsFull(unittest.TestCase):
         runner's ceiling -- a job can never widen
         disclosure beyond what the machine's owner
         allows." The same key and set are stated in
-        docs/configuring-oracle.md (line 41):
+        docs/oracle/configuring-oracle.md (line 41):
         "`max_result_view` -- the narrowest view the
         runner will ever return (`full`, `redacted`,
         `summary`, or `attested`). A job can request
@@ -10811,7 +10811,7 @@ class TestAirwavesGoneAfterScansFifteenShapes(unittest.TestCase):
     registry row.
 
     (a) Doc claims (runner/extensions/airwaves/README.md
-        line 17 and docs/extensions.md, airwaves
+        line 17 and docs/extend/extensions.md, airwaves
         table): "`access_point_gone` | A known AP
         stays absent for `gone_after_scans`
         (default 3) successful scans". Registry row
@@ -12706,7 +12706,7 @@ class TestLabResultsAnomalyMinHistoryFifteenShapes(unittest.TestCase):
         all; with fewer, nothing is called an
         anomaly." The manifest ships the same default
         (extension.json: "anomaly_min_history": 3),
-        docs/extensions.md states the same contract
+        docs/extend/extensions.md states the same contract
         (line 399: result_anomaly requires "at least
         `anomaly_min_history` of them"), and the
         registry row records the key with policy
@@ -14630,7 +14630,7 @@ class TestTransportEnvelopeParityFromFixtures(unittest.TestCase):
     by fixtures only -- the same envelope handling
     asserted per binding, never live email.
 
-    (a) Doc claims: docs/TRANSPORTS.md (lines
+    (a) Doc claims: docs/extend/transports.md (lines
         130-135): "A transport carries the envelope
         exactly as it carried the cleartext body -- it
         is an opaque blob either way -- so encryption
@@ -14641,7 +14641,7 @@ class TestTransportEnvelopeParityFromFixtures(unittest.TestCase):
         then the signed body"; "The HMAC signature on
         the body is checked by the runner's core for
         every job on every transport, after the pipe
-        delivers". docs/TRANSPORTS.md file section
+        delivers". docs/extend/transports.md file section
         (lines 244-256): a file job is "first line the
         subject line, blank line, then the signed body
         -- exactly what send_job.py new --to-file
@@ -14995,7 +14995,7 @@ class TestSensesGateProfileTunablesFifteenShapes(unittest.TestCase):
     only the boolean shapes, so these rows are probed
     here across all fifteen shapes).
 
-    (a) Doc claims (docs/senses.md, lines 260-263):
+    (a) Doc claims (docs/extend/senses.md, lines 260-263):
         "`cooldown_sec`: drop repeats of the same
         sensor+title within this window. Default 0
         (no dedup)." and "`max_per_hour`:
@@ -15066,7 +15066,7 @@ class TestSensesGateProfileTunablesFifteenShapes(unittest.TestCase):
         for negative / non-finite max_per_hour, keep
         refusing loudly) and genuine values keep
         being honored. If a shape above ever stops
-        behaving as docs/senses.md states, this test
+        behaving as docs/extend/senses.md states, this test
         is the failing record of that change.
     """
 
@@ -15301,7 +15301,7 @@ class TestInferenceKeepAliveFifteenShapes(unittest.TestCase):
     runner.runner._apply_keep_alive, the one place both
     ask paths build the payload member).
 
-    (a) Doc claim (docs/configuring-oracle.md, line 82):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 82):
         "`keep_alive` (passed to the model server so it
         keeps the model loaded between questions; unset
         by default, except that an endpoint on `:11434`
@@ -15356,7 +15356,7 @@ class TestInferenceKeepAliveFifteenShapes(unittest.TestCase):
         falsy explicit values keep suppressing the
         member, and genuine values keep being honored
         exactly. If a shape above ever stops behaving
-        as docs/configuring-oracle.md states, this test
+        as docs/oracle/configuring-oracle.md states, this test
         is the failing record of that change.
     """
 
@@ -15437,7 +15437,7 @@ class TestInferenceConfigMaxAnswerCharsFifteenShapes(unittest.TestCase):
 
     (a) Doc claim (PROTOCOL.md, line 711):
         "`max_answer_chars` (default 2000), `timeout_sec`
-        (default 180)." docs/configuring-oracle.md
+        (default 180)." docs/oracle/configuring-oracle.md
         (line 54) repeats "`max_answer_chars` (default
         2000 -- answers are truncated past this)".
         Registry row "max_answer_chars (inference block)"
@@ -15689,7 +15689,7 @@ class TestLoadAlertsUnhashableSeverityFloorDropsAllInsteadOfInfo(unittest.TestCa
     list or a dict drops EVERY stored alert, instead of
     reading as the documented default floor, info (keep all).
 
-    (a) Doc claim (docs/senses.md, lines 258-259):
+    (a) Doc claim (docs/extend/senses.md, lines 258-259):
         "`severity_floor`: drop alerts below this severity
         at ingest. One of critical/high/medium/low/info.
         Default info (keep all)."
@@ -15831,7 +15831,7 @@ class TestSensorWeightFifteenShapesAtAlertScore(unittest.TestCase):
     so the remaining shapes are probed here across
     the full table).
 
-    (a) Doc claim (docs/senses.md, line 254):
+    (a) Doc claim (docs/extend/senses.md, line 254):
         "`weight` (number >= 0, default 1.0): the
         Oracle's weighting for this source. Turn a
         noisy sensor down, a trusted one up, or to 0
@@ -15892,7 +15892,7 @@ class TestSensorWeightFifteenShapesAtAlertScore(unittest.TestCase):
         unusable shapes keep reading as the
         documented default and genuine values keep
         being honored. If a shape above ever stops
-        behaving as docs/senses.md states, this test
+        behaving as docs/extend/senses.md states, this test
         is the failing record of that change.
     """
 
@@ -15951,7 +15951,7 @@ class TestRetentionDaysFifteenShapesAtRetentionReader(unittest.TestCase):
     only the boolean shapes plus a handful of
     neighbours).
 
-    (a) Doc claim (docs/configuring-oracle.md,
+    (a) Doc claim (docs/oracle/configuring-oracle.md,
         line 44): "`output_retention_days` -- how
         long retained outputs are kept for later
         queries. Default 7. Zero (or negative)
@@ -16026,7 +16026,7 @@ class TestRetentionDaysFifteenShapesAtRetentionReader(unittest.TestCase):
         values keep being honored within the
         stated bounds. If a shape above ever
         stops behaving as
-        docs/configuring-oracle.md states, this
+        docs/oracle/configuring-oracle.md states, this
         test is the failing record of that change.
     """
 
@@ -16428,7 +16428,7 @@ class TestTaskTimeoutFifteenShapesAtBoardReader(unittest.TestCase):
     core rows covered only for the shapes their class
     exercised).
 
-    (a) Doc claim (docs/configuring-oracle.md, line
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line
         52): "`task_timeout` -- seconds before a
         claimed task is returned to open. Default
         86400." PROTOCOL.md section 13.6 states the
@@ -16715,7 +16715,7 @@ class TestDefaultTimeoutSecFifteenShapesAtReader(unittest.TestCase):
         136): "`timeout_sec`: default 300, maximum
         3600." The runner's --help states the same
         default for the config key that supplies it,
-        and docs/configuring-oracle.md maps that flag
+        and docs/oracle/configuring-oracle.md maps that flag
         to `default_timeout_sec`. Registry row
         "default_timeout_sec" (default 300, reader
         runner/runner.py:_default_timeout_sec,
@@ -17116,7 +17116,7 @@ class TestLocalWakeCooldownSecFifteenShapesAtReader(unittest.TestCase):
     confval, and this class pins the full fifteen
     shapes against the moved reader.
 
-    (a) Doc claim (docs/extensions.md, line 360,
+    (a) Doc claim (docs/extend/extensions.md, line 360,
         config table): "`local_wake_cooldown_sec` |
         `900` | Minimum seconds between Oracle
         briefings for the same sensor + signal."
@@ -17163,7 +17163,7 @@ class TestLocalWakeCooldownSecFifteenShapesAtReader(unittest.TestCase):
         unusable shapes keep reading as the
         documented default and genuine values keep
         being honored. If a shape above ever stops
-        behaving as docs/extensions.md states, this
+        behaving as docs/extend/extensions.md states, this
         test is the failing record of that change.
     """
 
@@ -17228,7 +17228,7 @@ class TestInferenceTimeoutSecFifteenShapesAtReader(unittest.TestCase):
         "`max_answer_chars` (default 2000),
         `timeout_sec` (default 180)." The same
         default is stated in
-        docs/configuring-oracle.md (line 54):
+        docs/oracle/configuring-oracle.md (line 54):
         "`timeout_sec` (default 180, per-question
         model timeout; a cold model on a laptop
         often needs more than 60, and the default
@@ -17335,7 +17335,7 @@ class TestPromoteAfterFifteenShapesAtReader(unittest.TestCase):
     (TestInfinitePromoteAfterDefaultsTo2) probed only
     infinity and negative infinity.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 64):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 64):
         "`oracle_learning_promote_after` -- how many
         verified corroborating outcomes a model candidate
         needs before it is treated as corroborated ...
@@ -17376,7 +17376,7 @@ class TestPromoteAfterFifteenShapesAtReader(unittest.TestCase):
         it stays green as long as unusable shapes keep
         reading as the documented default and genuine
         values keep being honored. If a shape above ever
-        stops behaving as docs/configuring-oracle.md
+        stops behaving as docs/oracle/configuring-oracle.md
         states, this test is the failing record of that
         change.
     """
@@ -17429,9 +17429,9 @@ class TestReviewScanBytesFifteenShapesAtReader(unittest.TestCase):
     (TestBooleanReviewScanBytesDefaultsTo65536) probed only
     the boolean shape.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 79):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 79):
         "`review_scan_bytes` -- how many bytes of the
-        script the job reviewer (docs/job-review.md) scans
+        script the job reviewer (docs/oracle/job-review.md) scans
         for file-name references. Default 65536."
         Registry row "review_scan_bytes" (kind integer,
         default 65536, reader
@@ -17471,7 +17471,7 @@ class TestReviewScanBytesFifteenShapesAtReader(unittest.TestCase):
         it stays green as long as unusable shapes keep
         reading as the documented default and genuine
         values keep being honored. If a shape above ever
-        stops behaving as docs/configuring-oracle.md
+        stops behaving as docs/oracle/configuring-oracle.md
         states, this test is the failing record of that
         change.
     """
@@ -17525,7 +17525,7 @@ class TestPlanBudgetFifteenShapesAtReader(unittest.TestCase):
     (TestZeroOrNegativePlanBudgetDefaults) probed only
     the zero/negative shapes.
 
-    (a) Doc claim (docs/configuring-oracle.md, line 80):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 80):
         "`max_plan_steps` / `max_plan_timeout_sec` --
         caps the detection layer (runner/oracle/detection.py)
         applies to a multi-step plan: at most this many
@@ -17579,7 +17579,7 @@ class TestPlanBudgetFifteenShapesAtReader(unittest.TestCase):
         reading as the documented defaults and genuine
         values keep being honored. If a shape above
         ever stops behaving as
-        docs/configuring-oracle.md states, this test
+        docs/oracle/configuring-oracle.md states, this test
         is the failing record of that change.
     """
 
@@ -17723,7 +17723,7 @@ class TestV2AnswerDeadlineSecFifteenShapesAtReader(unittest.TestCase):
     inf, NaN, zero, negative, genuine and numeric-string
     controls).
 
-    (a) Doc claim (docs/configuring-oracle.md, line 56):
+    (a) Doc claim (docs/oracle/configuring-oracle.md, line 56):
         "`v2_answer_deadline_sec` is how long to look
         (0 to 30, default 0 -- one look, no wait)."
         Registry row "v2_answer_deadline_sec" (kind
@@ -17783,7 +17783,7 @@ class TestV2AnswerDeadlineSecFifteenShapesAtReader(unittest.TestCase):
         values keep being honored inside the
         documented 0-to-30 range. If a shape above
         ever stops behaving as
-        docs/configuring-oracle.md states, this test
+        docs/oracle/configuring-oracle.md states, this test
         is the failing record of that change.
     """
 
@@ -17850,7 +17850,7 @@ class TestGrepMaxMatchesFifteenShapesAtReader(unittest.TestCase):
         the grep query example with "max_matches": 10,
         and line 655 defining the op as "grep (regex
         over retained stdout+stderr, up to
-        `max_matches` lines)", and docs/fuzzing.md
+        `max_matches` lines)", and docs/project/fuzzing.md
         (lines 129-131), which reserves "returns no
         lines" for an explicit numeric zero and
         describes a default limit applying when the
@@ -17886,7 +17886,7 @@ class TestGrepMaxMatchesFifteenShapesAtReader(unittest.TestCase):
         the reader now routes through confval.integer,
         which never counts a boolean as a number. Zero
         is usable (lo 0) and returns no lines, exactly
-        as docs/fuzzing.md documents. Genuine values
+        as docs/project/fuzzing.md documents. Genuine values
         are honored exactly (1, 2, 5, 50, 99, 100 and
         the numeric strings "2" and "50"), the
         reader's ceiling holds (101, 250 and 1000 all
@@ -17984,7 +17984,7 @@ class TestAgentWallClockSecFifteenShapesAtReader(unittest.TestCase):
     (a) Doc claim: registry row "agent_wall_clock_sec":
         core, integer, default 300, policy default under
         Decision 1, lo 1, doc_status verified --
-        docs/configuring-oracle.md (line 82 in the
+        docs/oracle/configuring-oracle.md (line 82 in the
         registry; the named class quotes line 70):
         "`agent_wall_clock_sec` (default 300; the
         whole-conversation wall clock for the `--oracle`
@@ -18154,7 +18154,7 @@ class TestPollIntervalSecFifteenShapesAtEmailReader(unittest.TestCase):
     (a) Doc claim: registry row "poll_interval_sec":
         core, number, default 20, policy default under
         Decision 1, lo 0, doc_status verified --
-        docs/FAQs.md line 9: "The deterministic code
+        docs/use/faq.md line 9: "The deterministic code
         around the model does the watching on the
         runner's poll cycle -- every 20 seconds by
         default (`poll_interval_sec`)." The reader's
@@ -18291,7 +18291,7 @@ class TestDtlsGreetingFifteenShapesAtGreetingTier(unittest.TestCase):
     (a) Doc claim: registry row "dtls_greeting": core,
         enum, default family, policy default under
         Decision 1, doc_status verified --
-        docs/configuring-oracle.md line 77:
+        docs/oracle/configuring-oracle.md line 77:
         "`dtls_greeting` -- the DTLS session greeting's
         disclosure tier: `none`, `family` (default: OS
         family only), `standard` (plus OS release and

@@ -54,7 +54,7 @@ which agent *drove the runner*. Possible runtime surfaces:
 1. **Protocol header**: an optional `X-Agent-Stamp` field on requests the SI
    sends, which the runner logs verbatim and never acts on.
 2. **Structured log field**: `agent_stamp` on every job record, so job
-   review (`docs/job-review.md`) can filter by agent.
+   review (`docs/oracle/job-review.md`) can filter by agent.
 3. **Snapshot manifest**: release snapshots list the stamps present in the
    tree, so the Oracle can map unfamiliar code back to an agent.
 

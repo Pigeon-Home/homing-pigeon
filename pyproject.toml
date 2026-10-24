@@ -42,7 +42,7 @@ exclude = ["runner.tests", "runner.tests.*"]
 [tool.setuptools.package-data]
 runner = ["config.example.json"]
 # The shipped transports are found by their manifests, and they bring
-# their sources by their declarations (docs/extensions.md, "Sources"):
+# their sources by their declarations (docs/extend/extensions.md, "Sources"):
 # a wheel without these files has no transport at all.
 "runner.transport_extensions.dtls" = ["extension.json", "sources.json"]
 "runner.transport_extensions.email" = ["extension.json", "sources.json"]
@@ -69,7 +69,7 @@ pytest_add_cli_args = [
 pytest_add_cli_args_test_selection = ["runner/tests/"]
 mutate_only_covered_lines = true
 also_copy = [
-    # docs/ includes docs/hardening/. runner/cloud/ and
+    # docs/ includes docs/security/hardening/. runner/cloud/ and
     # runner/extensions/ (the shipped extensions, which
     # runner/tests/test_extensions.py loads from the tree) come with
     # source_paths.

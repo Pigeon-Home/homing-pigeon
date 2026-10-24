@@ -54,7 +54,7 @@ this sense's key (read from the environment variable named by
 --secret-env) and drops it into the runner's local inbox, or
 pushes it to the runner's loopback listener when --local-port
 is given. Same envelope, same signature -- only the transport
-differs (docs/extensions.md, "Local delivery").
+differs (docs/extend/extensions.md, "Local delivery").
 
 --readings FILE reads a readings dict from a JSON file instead
 of the machine: the way to try the sense (and test it) against

@@ -4,7 +4,7 @@
 # pyproject.toml on a commit whose build is already green, then start
 # the same pipeline a tag push would -- build.yml on the tag (the
 # GitHub Release, PyPI, SourceForge, GitLab) and docker.yml for the
-# image. The point-and-click path in docs/RUNBOOK.md Job 4 is
+# image. The point-and-click path in docs/use/runbook.md Job 4 is
 # unchanged; this is the same release, started by `gh workflow run`.
 #
 # A tag pushed with the repository's own token does not fire the

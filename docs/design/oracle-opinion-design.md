@@ -8,7 +8,7 @@ prediction and
 repair behavior under `oracle_opinion_predict` /
 `oracle_opinion_repair` / `oracle_opinion_model`). DRU's
 proposal (2026-10-15), elaborated 2026-10-18; recorded in
-docs/FUTURE.md under "Before a job runs". This document remains the
+docs/project/future.md under "Before a job runs". This document remains the
 design record the build started from.
 
 ## Why repair is the default

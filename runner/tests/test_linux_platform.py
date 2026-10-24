@@ -1928,7 +1928,7 @@ class InstallModeFuzzTest(unittest.TestCase):
 
 
 _HARDENING = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "docs", "hardening")
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "docs", "security", "hardening")
 _POLICY_TOKENS = ("@PYTHON@", "@RUNNER_DIR@", "@BASE_DIR@", "@CONFIG@", "@USER@")
 
 

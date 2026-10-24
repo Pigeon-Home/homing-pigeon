@@ -233,9 +233,9 @@ _INDEX = [
     ("CI tool pins", ".github/requirements-ci.txt"),
     ("CI and build tools", "runner/tools/"),
     ("Coverage and mutation reports", "docs/reports/"),
-    ("Everything not built yet", "docs/FUTURE.md"),
+    ("Everything not built yet", "docs/project/future.md"),
     ("The shipped extensions", "runner/extensions/"),
-    ("OS hardening templates", "docs/hardening/"),
+    ("OS hardening templates", "docs/security/hardening/"),
     ("Container images", ".github/docker/"),
 ]
 

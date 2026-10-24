@@ -211,7 +211,7 @@ empty file. File secrets pass the same entropy gate.
   the runner never falls back to the default secret for them. An
   attacker cannot make a message verify under a key it did not name.
 - **Rotation is per key**: add the new ID, hand it out, retire the
-  old one (`docs/secret-rotation.md`). Secrets are read at startup;
+  old one (`docs/use/secret-rotation.md`). Secrets are read at startup;
   rotation takes a restart.
 - **The dispatcher's trust model** (section 13): a result from a
   worker is bound to that worker's key by the signature, and the
@@ -220,6 +220,6 @@ empty file. File secrets pass the same entropy gate.
   is the correctness anchor.
 
 See the hardening report (`docs/archive/HARDENING_REPORT.md`) for per-milestone
-status, and the threat model (`docs/threat-model.md`) for the
+status, and the threat model (`docs/security/threat-model.md`) for the
 overall posture: the Oracle reviews while the operating system
 contains.

@@ -117,7 +117,7 @@ delivery follow the standard senses flow. The full extension
 walkthrough — manifest fields, the versioning contract,
 sensor binding, and how to turn this example into your own
 package — is in
-[docs/extensions.md](../../../docs/extensions.md).
+[docs/extend/extensions.md](../../../docs/extend/extensions.md).
 
 Footprint: softflowd itself measured ~7 MB RSS at ~0% CPU
 in the collector comparison — the lightest always-on

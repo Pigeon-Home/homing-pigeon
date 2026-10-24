@@ -19,7 +19,7 @@ alert names one of the signals declared in extension.json:
 The watcher is deliberately boring machinery: it diffs the folder
 against a small state file, prints one alert payload per line, and
 exits. Signing and mailing the payloads is the standard senses
-flow (docs/senses.md); this script is the part a researcher
+flow (docs/extend/senses.md); this script is the part a researcher
 rewrites, so it stays small enough to read in one sitting.
 
 Run on the same machine as the runner, it can also deliver
@@ -28,7 +28,7 @@ this sense's key (read from the environment variable named by
 --secret-env) and drops it into the runner's local inbox, or
 pushes it to the runner's loopback listener when --local-port
 is given. Same envelope, same signature -- only the transport
-differs (docs/extensions.md, "Local delivery").
+differs (docs/extend/extensions.md, "Local delivery").
 
 Result files are diffed by content. A file still being written, or
 one whose run has not finished, files nothing and is retried on

@@ -798,7 +798,7 @@ class DefaultRepairTests(unittest.TestCase):
 class PredictDisciplineTests(unittest.TestCase):
     """Claims audit round 2, B46: predictions ride only on an
     advise-or-repair EFFECTIVE latitude -- the job's request
-    clamped to the owner's ceiling (docs/configuring-oracle.md:
+    clamped to the owner's ceiling (docs/oracle/configuring-oracle.md:
     "only when the job requests advise or repair within the
     ceiling"). The leak: plan_before keyed want_attach off the
     raw request, so with the ceiling at diagnose a job asking

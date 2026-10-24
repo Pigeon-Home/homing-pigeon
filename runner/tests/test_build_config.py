@@ -600,7 +600,7 @@ class PipelineLiftsTest(unittest.TestCase):
 
     # Lift 1: the verification chain is documented, with commands.
     def test_verification_doc_carries_the_chain(self):
-        with open(os.path.join(_root(), "docs", "verification.md"),
+        with open(os.path.join(_root(), "docs", "security", "verification.md"),
                   encoding="utf-8") as fh:
             doc = fh.read()
         for needle in ("gh attestation verify",
@@ -714,18 +714,18 @@ class PipelineLessonsTest(unittest.TestCase):
 
     def test_readme_lists_every_matrix_leg(self):
         # Claims track proof: every leg name in the matrix appears in
-        # docs/PLATFORMS.md's Proven platforms table, and nothing in that
+        # docs/use/platforms.md's Proven platforms table, and nothing in that
         # table is a leg the matrix does not run.
         legs = _matrix_leg_names("platform-matrix.yml")
         self.assertGreaterEqual(len(legs), 40, legs)
         self.assertEqual(len(legs), len(set(legs)), "duplicate leg names")
-        with open(os.path.join(_root(), "docs", "PLATFORMS.md"),
+        with open(os.path.join(_root(), "docs", "use", "platforms.md"),
                   encoding="utf-8") as fh:
             table = fh.read()
         self.assertIn("# Proven platforms", table)
         for leg in legs:
             self.assertIn("`%s`" % leg, table,
-                          "docs/PLATFORMS.md lacks leg %s" % leg)
+                          "docs/use/platforms.md lacks leg %s" % leg)
         listed = set(re.findall(r"`([A-Za-z0-9._-]+)`", table))
         extra = {x for x in listed if ("-x86_64" in x or "-arm64" in x
                                         or "-qemu" in x or x.startswith(

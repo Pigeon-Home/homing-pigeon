@@ -96,7 +96,7 @@ new key does not inherit a policy by accident.
   tier so a sender can see a box running on defaults it did not
   ask for.
 
-The rule for a new key, one sentence for `docs/configuring-oracle.md`
+The rule for a new key, one sentence for `docs/oracle/configuring-oracle.md`
 and PROTOCOL.md: *a setting that is present but not usable reads as
 its documented default and is named in the startup warning, unless
 the setting is a port, a bind address, a key policy, a paging
@@ -136,11 +136,11 @@ rule. The rule is what a wrong value changes.
 Date: 2026-10-23
 
 Applied in: the readers and the docs moved together on 2026-10-24,
-docs first in the same commit (`docs/configuring-oracle.md`,
-`docs/TRANSPORTS.md`, PROTOCOL.md section 5, the DTLS extension's
+docs first in the same commit (`docs/oracle/configuring-oracle.md`,
+`docs/extend/transports.md`, PROTOCOL.md section 5, the DTLS extension's
 docstring), then `listen_port` and `bind_address` in the DTLS
 extension and `url_port` in the NATS extension, then the four
 campaign classes that had asserted the default for those keys. Still
 open from the decision: the startup line naming the keys read as
 defaults, and the same list in the `full`-tier platform card
-(`docs/QUESTIONS.md`, Q1).
+(`docs/use/questions.md`, Q1).

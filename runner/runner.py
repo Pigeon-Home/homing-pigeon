@@ -1173,7 +1173,7 @@ def _ask_model_once(cfg, question, output_text, max_chars, patterns=None, opener
         method="POST",
     )
     open_fn = opener or _default_inference_open
-    # PROTOCOL.md and docs/configuring-oracle.md: timeout_sec default
+    # PROTOCOL.md and docs/oracle/configuring-oracle.md: timeout_sec default
     # 180. Anything that is not a positive finite number gets that,
     # not a second fallback of 60 that the docs never named.
     timeout = _inference_timeout(cfg)
@@ -1827,7 +1827,7 @@ def _apply_keep_alive(cfg, payload):
     Ollama unloads after a few idle minutes, and the next question
     then pays a multi-minute cold start. Explicit config wins; the
     Ollama default port gets a keep-alive without any config
-    (docs/configuring-oracle.md, `keep_alive`). One place for both
+    (docs/oracle/configuring-oracle.md, `keep_alive`). One place for both
     ask paths: the plain ask used to build its payload without this
     and cold-started on the main query-answer path.
     """
@@ -2121,7 +2121,7 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
     if cap < 0:
         cap = 0
     timeout = _inference_timeout(cfg)
-    # docs/configuring-oracle.md: agent_wall_clock_sec default 300. A
+    # docs/oracle/configuring-oracle.md: agent_wall_clock_sec default 300. A
     # boolean is not a wall clock (true once gave the agent loop one
     # second).
     wall_clock = _confval.integer(cfg.get("agent_wall_clock_sec"),
@@ -10651,7 +10651,7 @@ def main() -> int:
     g.add_argument("--diagnose", action="store_true",
                    help="run the diagnostic harness against this "
                         "config and exit (see "
-                        "docs/local-si-test.md)")
+                        "docs/use/local-si-test.md)")
     g.add_argument("--diagnose-timeout", type=int, default=None,
                    metavar="SECONDS",
                    help="with --diagnose: seconds to wait for "

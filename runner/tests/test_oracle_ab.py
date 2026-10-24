@@ -1,6 +1,6 @@
 """The Oracle A/B: one sensor scenario, both Oracle configurations.
 
-docs/extensions.md (the Pi Health section) says the same
+docs/extend/extensions.md (the Pi Health section) says the same
 extension on a Pi Light install and on a laptop install gives
 "a clean A/B across the two architectures" -- the difference is
 the platform's sensors and the Oracle configuration, not the

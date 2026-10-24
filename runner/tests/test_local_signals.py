@@ -1,6 +1,6 @@
 """Local signal delivery: same-box senses and extensions.
 
-Pins the local path end to end (docs/extensions.md, "Local
+Pins the local path end to end (docs/extend/extensions.md, "Local
 delivery"): two front-ends -- the local-inbox file drop and the
 loopback socket push -- carry the identical signed envelope into
 the one ingest core the mail path uses. Same signature checks,
