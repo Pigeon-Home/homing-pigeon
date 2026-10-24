@@ -38382,6 +38382,362 @@ class TestAideFeedSecondNewReportSwallowedOnFirstSight(unittest.TestCase):
             self.assertEqual(mod.read_report_file([p1], reader),
                              (None, reader))
 
+class TestSuricataFeedParseTsStateAndMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: suricata-feed's
+    _parse_ts() timestamp normalization, _clean_state()
+    direct shapes, and main() in --readings and
+    --log-file modes varied with the fifteen shapes
+    for the first time (step-8 Target 5 / family
+    (b) -- suricata-feed's earlier classes cover its
+    episode_cooldown_sec tunable, its log_paths /
+    read_new_events() / parse_event() basics and
+    decide()'s event/state cleaning, plus a main()
+    live-mode log-paths fallback; the timestamp
+    parser's offset/fraction normalization, the
+    state cleaner called directly, and main()'s two
+    fixture modes and file-error paths were never
+    varied).
+
+    (a) Doc claims: the module docstring states
+        _parse_ts()'s contract indirectly through
+        parse_event(): eve.json timestamps are
+        ISO-8601, and _parse_ts()'s own docstring
+        says "eve.json writes microsecond fractions
+        and offsets in the "+0000" form; "Z" and
+        colon offsets are normalized too" and "A
+        timestamp with no offset is read as local
+        time". The docstring also states the state
+        dict carries a "_reader" sub-dict which the
+        decision code "preserves opaquely and
+        ignores", and that two fixture modes feed
+        decide() without touching a live log:
+        "--readings FILE reads a readings dict
+        ({"now", "events"}) from JSON, and
+        --log-file FILE parses a whole fixture log
+        from offset 0, ignoring the reader offsets".
+        The README's tailing description matches:
+        a missing file is a quiet no-op, never an
+        error at the reader level.
+
+    (b) How this was probed: on 2026-10-24
+        _parse_ts() was probed with the fifteen
+        shapes plus genuine timestamp variants (Z,
+        colon offset, +0000 / -0530 compact offsets,
+        fractions of 1 and 9 digits, surrounding
+        whitespace, date-only, naive, and invalid
+        calendar values); _clean_state() was called
+        directly with the fifteen shapes at the
+        state object, its episodes map, each entry
+        and its filed_at / last_seen fields, and
+        its _reader field; main() was run against
+        temp manifests, readings files, log files
+        and state files in --readings and --log-file
+        modes, including missing, malformed,
+        list-shaped and unwritable files, a broken
+        pre-existing state, and a repeat pass.
+
+    (c) Behavior actually observed: NO divergence.
+        _parse_ts() reads every non-string, blank
+        or unparseable shape as None (numbers, bools,
+        lists and dicts included); "Z", "+00:00" and
+        "+0000" forms of the same instant all read
+        as the same epoch float, a "-0530" compact
+        offset shifts by exactly that offset, a
+        fraction longer than six digits is truncated
+        (not rounded) to microseconds, a short
+        fraction reads at face value, and surrounding
+        whitespace is stripped; a date-only or naive
+        timestamp still parses (as local time, so
+        its epoch is timezone-dependent and is not
+        pinned here). _clean_state() reads any
+        non-dict state as a fresh {"episodes": {}},
+        a non-dict episodes value as empty, drops
+        entries whose key is not a string, whose
+        entry is not a dict, or whose filed_at /
+        last_seen is not a finite non-bool number
+        (bool and inf included), coerces kept values
+        to float, drops unknown top-level keys, and
+        preserves a dict _reader verbatim while
+        dropping a non-dict one. main() in --readings
+        mode files a genuine alert once and writes
+        the episode state (rc 0), a repeat pass with
+        the same state files nothing, list-shaped
+        readings read as an empty pass (rc 0, state
+        written as fresh), a malformed pre-existing
+        state file reads as fresh and is overwritten,
+        and a missing or malformed readings file is
+        rc 2; a missing or malformed manifest is
+        rc 2 in every mode. --log-file mode parses
+        the whole file from offset 0, filing the
+        alert and the anomaly and skipping garbage
+        lines and traffic event types, and a missing
+        log file is rc 2. An unwritable state path
+        (a path inside a nonexistent directory, or
+        the state path itself a directory) is rc 2
+        with the alerts still printed first.
+        Observed on 2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as the
+        readings above keep holding. If a shape
+        ever stops behaving as described, this
+        test is the failing record of that change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -1), ("numeric-string", "5"),
+               ("junk-string", "x"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("neg-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", [1]), ("dict", {"a": 1})]
+
+    _ALERT_LINE = (
+        '{"timestamp": "2026-10-24T00:00:01Z", '
+        '"event_type": "alert", "src_ip": "1.1.1.1", '
+        '"src_port": 1111, "dest_ip": "2.2.2.2", '
+        '"dest_port": 80, "proto": "TCP", "alert": '
+        '{"signature": "MS", "signature_id": 42, '
+        '"category": "C", "severity": 1}}')
+    _ANOM_LINE = (
+        '{"timestamp": "2026-10-24T00:00:02Z", '
+        '"event_type": "anomaly", "src_ip": "3.3.3.3", '
+        '"dest_ip": "4.4.4.4", "anomaly": '
+        '{"type": "decode", "event": "bad_ip", '
+        '"layer": "ipv4"}}')
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "suricata-feed",
+            "suricata_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "suricata_feed_hunt", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_parse_ts_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertIsNone(mod._parse_ts(value))
+        for bad in ("  ", "not-a-date",
+                    "2026-13-45T99:99:99Z"):
+            self.assertIsNone(mod._parse_ts(bad))
+        zulu = mod._parse_ts("2026-10-24T00:00:01Z")
+        self.assertEqual(zulu, 1792800001.0)
+        self.assertEqual(
+            mod._parse_ts("2026-10-24T00:00:01+00:00"),
+            zulu)
+        self.assertEqual(
+            mod._parse_ts("2026-10-24T00:00:01+0000"),
+            zulu)
+        self.assertEqual(
+            mod._parse_ts(" 2026-10-24T00:00:01Z "), zulu)
+        self.assertEqual(
+            mod._parse_ts("2026-10-24T00:00:01-0530"),
+            1792819801.0)
+        self.assertEqual(
+            mod._parse_ts(
+                "2026-10-24T00:00:01.123456789Z"),
+            1792800001.123456)
+        self.assertEqual(
+            mod._parse_ts("2026-10-24T00:00:01.5Z"),
+            1792800001.5)
+        for naive in ("2026-10-24",
+                      "2026-10-24T00:00:01"):
+            value = mod._parse_ts(naive)
+            self.assertIsInstance(value, float)
+
+    def test_clean_state_shapes(self):
+        mod = self._module()
+        fresh = {"episodes": {}}
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                if isinstance(value, dict):
+                    continue
+                self.assertEqual(mod._clean_state(value),
+                                 fresh)
+        self.assertEqual(mod._clean_state({}), fresh)
+        self.assertEqual(
+            mod._clean_state({"episodes": None}), fresh)
+        self.assertEqual(
+            mod._clean_state({"episodes": []}), fresh)
+        self.assertEqual(
+            mod._clean_state({"episodes": {
+                "k": {"filed_at": 1, "last_seen": 2}}}),
+            {"episodes": {"k": {"filed_at": 1.0,
+                                "last_seen": 2.0}}})
+        for bad_entry in (
+                {"filed_at": True, "last_seen": 2},
+                {"filed_at": float("inf"),
+                 "last_seen": 2},
+                {"filed_at": 1, "last_seen": "x"},
+                "nope", None, 42):
+            self.assertEqual(
+                mod._clean_state(
+                    {"episodes": {"k": bad_entry}}), fresh)
+        self.assertEqual(
+            mod._clean_state({"episodes": {
+                1: {"filed_at": 1, "last_seen": 2}}}),
+            fresh)
+        self.assertEqual(
+            mod._clean_state({"_reader": {"a": 1}}),
+            {"episodes": {}, "_reader": {"a": 1}})
+        self.assertEqual(
+            mod._clean_state({"_reader": [1]}), fresh)
+        self.assertEqual(
+            mod._clean_state({"episodes": {},
+                              "_reader": {"a": 1},
+                              "extra": 9}),
+            {"episodes": {}, "_reader": {"a": 1}})
+
+    def _run_main(self, mod, argv):
+        import contextlib
+        import io
+        buf = io.StringIO()
+        err = io.StringIO()
+        with contextlib.redirect_stdout(buf), \
+                contextlib.redirect_stderr(err):
+            rc = mod.main(argv)
+        return rc, buf.getvalue(), err.getvalue()
+
+    def _manifest(self, d):
+        import json
+        import os
+        mp = os.path.join(d, "m.json")
+        with open(mp, "w", encoding="utf-8") as fh:
+            json.dump({"name": "suricata_feed",
+                       "tunables": {}}, fh)
+        return mp
+
+    def test_main_readings_mode(self):
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        event = mod.parse_event(self._ALERT_LINE)
+        self.assertIsNotNone(event)
+        with tempfile.TemporaryDirectory() as d:
+            mp = self._manifest(d)
+            rp = os.path.join(d, "r.json")
+            with open(rp, "w", encoding="utf-8") as fh:
+                json.dump({"now": 1000.0,
+                           "events": [event]}, fh)
+            sp = os.path.join(d, "s.json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.count("suricata_alert"), 1)
+            with open(sp, encoding="utf-8") as fh:
+                state = json.load(fh)
+            self.assertIn("alert|42|1.1.1.1|2.2.2.2",
+                          state["episodes"])
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings", rp])
+            self.assertEqual((rc, out), (0, ""))
+            lp = os.path.join(d, "list.json")
+            with open(lp, "w", encoding="utf-8") as fh:
+                json.dump([1], fh)
+            sp2 = os.path.join(d, "s2.json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp2,
+                      "--readings", lp])
+            self.assertEqual((rc, out), (0, ""))
+            with open(sp2, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh),
+                                 {"episodes": {}})
+            sp3 = os.path.join(d, "s3.json")
+            with open(sp3, "w", encoding="utf-8") as fh:
+                fh.write("{broken")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp3,
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.count("suricata_alert"), 1)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s4.json"),
+                      "--readings",
+                      os.path.join(d, "missing.json")])
+            self.assertEqual(rc, 2)
+            bp = os.path.join(d, "bad.json")
+            with open(bp, "w", encoding="utf-8") as fh:
+                fh.write("nope{")
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s5.json"),
+                      "--readings", bp])
+            self.assertEqual(rc, 2)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest",
+                      os.path.join(d, "missing.json"),
+                      "--state", os.path.join(d, "s6.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", bp, "--state",
+                      os.path.join(d, "s7.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+
+    def test_main_log_file_mode(self):
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            mp = self._manifest(d)
+            logp = os.path.join(d, "eve.json")
+            with open(logp, "w", encoding="utf-8") as fh:
+                fh.write(self._ALERT_LINE + "\n")
+                fh.write("garbage\n")
+                fh.write(self._ANOM_LINE + "\n")
+                fh.write('{"event_type": "http"}\n')
+            sp = os.path.join(d, "s.json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--log-file", logp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.count("suricata_alert"), 1)
+            self.assertEqual(
+                out.count("suricata_anomaly"), 1)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s2.json"),
+                      "--log-file",
+                      os.path.join(d, "missing.log")])
+            self.assertEqual(rc, 2)
+
+    def test_main_unwritable_state(self):
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        event = mod.parse_event(self._ALERT_LINE)
+        with tempfile.TemporaryDirectory() as d:
+            mp = self._manifest(d)
+            rp = os.path.join(d, "r.json")
+            with open(rp, "w", encoding="utf-8") as fh:
+                json.dump({"now": 1000.0,
+                           "events": [event]}, fh)
+            for sp in (os.path.join(d, "nodir", "s.json"),
+                       d):
+                rc, out, _ = self._run_main(
+                    mod, ["--manifest", mp, "--state", sp,
+                          "--readings", rp])
+                self.assertEqual(rc, 2)
+                self.assertEqual(
+                    out.count("suricata_alert"), 1)
+
 if __name__ == "__main__":
 
     unittest.main()
