@@ -18754,6 +18754,315 @@ class TestZeroNegativeJobWatcherClusterTunablesReadLiterallyInsteadOfDefault(uni
                           [100, 500, 1000]),
             ["failure_cluster"])
 
+class TestZeroNegativeJobWatcherFlakyAndDurationTunablesReadLiterallyInsteadOfDefault(unittest.TestCase):
+    """Divergence: the job-watcher flakiness and
+    duration tunables read zero, negative, and sub-1
+    values literally instead of as their documented
+    defaults, so job_flaky either judges a window it
+    was never configured to judge (flaky_runs 0, -5,
+    or 0.5 judge ALL recorded runs instead of the
+    last 6) or files on a single alternation
+    (flaky_min_transitions 0, -5, or 0.5, clamped to
+    an effective minimum of 1), and
+    job_duration_anomaly either judges a run against
+    a single earlier run (duration_min_baseline 0,
+    -5, or 0.5, clamped to an effective baseline of
+    1) or files for a run barely past its own median
+    (duration_z 0, -5, or 0.5 used literally as the
+    z threshold).
+
+    (a) Doc claims (extensions/job-watcher/README.md):
+        line 19: "`job_flaky` | The job's last
+        `flaky_runs` runs (default 6) alternate
+        success/failure at least
+        `flaky_min_transitions` times (default 3),
+        with both outcomes present"; lines 38-39: "a
+        job needs `duration_min_baseline` earlier
+        durations (default 5) before any anomaly can
+        be filed against it"; line 100:
+        "`duration_z` (default 3.5) is the robust
+        z-score a run's duration must exceed against
+        the job's own history before
+        `job_duration_anomaly` files". The module
+        header states the same (job_watcher.py lines
+        39-47), and the manifest ships all four
+        (extension.json: "flaky_runs": 6,
+        "flaky_min_transitions": 3,
+        "duration_min_baseline": 5, "duration_z":
+        3.5). Policy default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default. A run-window of no runs,
+        an alternation count below 1, a baseline of
+        no earlier runs, and a z threshold of zero or
+        less are unusable: job_watcher's own decide()
+        resets a non-positive failure_window_sec to
+        its documented default in the same pass
+        (job_watcher.py lines 416-420) and resets a
+        max_history_runs below 1 to 60 (lines
+        403-405).
+
+    (b) How the bug was found: step-8 Targets 5-6
+        -- the extension tunables were covered only
+        for the shapes their named classes
+        exercised, and these four tunables have no
+        registry row and no named class at all. On
+        2026-10-24 this tick probed decide() -- the
+        pure decision function -- with the table
+        hunt's fifteen shapes (omitted, null, empty
+        string, true, false, zero, negative, the
+        explicit default, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong containers (list and
+        dict)), plus a sub-1 fractional and genuine
+        values, for each key separately. The
+        flaky_runs scenario was ten runs of one job
+        alternating pass/fail over the first four
+        then passing (four alternations overall,
+        none in the last six). The
+        flaky_min_transitions scenario was six runs
+        with exactly one alternation. The
+        duration_min_baseline scenario was one
+        earlier 10s run followed by a 100s run. The
+        duration_z scenario was five earlier runs
+        (8, 10, 12, 10, 9 seconds; median 10, MAD 1)
+        followed by an 11s run (robust z 0.67). The
+        observable is whether the signal files.
+
+    (c) Behavior actually observed: for each key,
+        thirteen shapes read as the documented
+        default -- omitted, null, the empty string,
+        true, false, the explicit default, a numeric
+        string, a non-numeric string, a huge int,
+        inf, -inf, NaN, and the wrong containers.
+        Zero, -5, and 0.5 do NOT. flaky_runs is
+        computed as int(_tunable(tunables,
+        "flaky_runs", 6)) (job_watcher.py line 421)
+        with no lower-bound gate, and the judged
+        window is runs[-flaky_runs:] only when
+        flaky_runs > 0, else ALL runs (line 516), so
+        every value below 1 judges the job's whole
+        history and the ten-run scenario files.
+        flaky_min_transitions (lines 422-423) feeds
+        transitions >= max(1, flaky_transitions)
+        (line 521), so every value below 1 becomes
+        an effective minimum of 1 and the
+        one-alternation scenario files.
+        duration_min_baseline (line 424) feeds
+        score_duration's len(history) <
+        max(1, min_baseline) gate (line 189), so
+        every value below 1 becomes an effective
+        baseline of 1 and the single-history scenario
+        files (zero-spread rule: 100s against a 10s
+        median). duration_z is read as
+        _tunable(tunables, "duration_z", 3.5) (line
+        425) with no floor at all and compared as
+        z >= z_limit (line 201), so 0, -5, and 0.5
+        are used literally and the z-0.67 run files.
+        Genuine values are honored: a flaky window of
+        4 judges only the last four (silent in the
+        ten-run scenario) while 10 files, and 4.5
+        truncates to 4; a transitions minimum of 1
+        files on one alternation, 2 is silent on one
+        and files on two, 2.5 truncates to 2, and 3
+        files on three; a baseline of 2 files with
+        two earlier runs while 5 stays silent, 1
+        files with one, and 2.5 truncates to 2; a z
+        limit of 0.5 files for the 11s run, 10 is
+        silent for it and files for a 30s run, and
+        3.5 files for a 20s run (z 6.7). Observed on
+        2026-10-24 against current main. This is the
+        campaign's known zero/negative root-cause
+        family (see
+        TestZeroNegativeJobWatcherRepeatFailuresClampToOneInsteadOfDefault
+        and
+        TestZeroNegativeJobWatcherClusterTunablesReadLiterallyInsteadOfDefault).
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    _NOW = 1000000.0
+
+    def _signals(self, tunables, records):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "job-watcher",
+            "job_watcher.py")
+        spec = importlib.util.spec_from_file_location(
+            "job_watcher_flaky_duration_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        manifest = {"name": "job_watcher",
+                    "tunables": dict(tunables)}
+        readings = {"now": self._NOW, "records": records}
+        alerts, _state = mod.decide(readings, manifest, {})
+        return [a["signal"] for a in alerts]
+
+    def _records(self, exits_durations):
+        return [{"job_id": f"k1-{i}", "key": "k1",
+                 "kind": "exec", "label": "probek1",
+                 "saved_at": self._NOW - 1000 + i * 10,
+                 "exit_code": e,
+                 "duration_sec": d,
+                 "error": "boom" if e else ""}
+                for i, (e, d) in enumerate(exits_durations)]
+
+    def _flaky_runs_records(self):
+        # P F P F P P P P P P: four alternations in
+        # all ten runs, none in the last six; two
+        # failures, so no other signal can file.
+        return self._records(
+            [(e, None) for e in
+             (0, 1, 0, 1, 0, 0, 0, 0, 0, 0)])
+
+    def _trans_records(self, pattern):
+        return self._records([(e, None) for e in pattern])
+
+    def _baseline_records(self, n_history):
+        recs = [(0, 10.0)] * n_history + [(0, 100.0)]
+        return self._records(recs)
+
+    def _z_records(self, value):
+        recs = [(0, d) for d in (8.0, 10.0, 12.0, 10.0, 9.0)]
+        recs.append((0, value))
+        return self._records(recs)
+
+    _SHAPES_TAIL = [
+        ("empty-string", ""), ("true", True),
+        ("false", False), ("zero", 0),
+        ("negative", -5),
+        ("non-numeric-string", "bogus"),
+        ("huge-int", 10 ** 400),
+        ("inf", float("inf")),
+        ("-inf", float("-inf")),
+        ("nan", float("nan")),
+        ("list", ["x"]), ("dict", {"x": 1}),
+        ("sub-1-fractional", 0.5)]
+
+    def _all_shapes(self, default, numeric_string):
+        return ([("omitted", None), ("null", None)]
+                + self._SHAPES_TAIL[:2]
+                + self._SHAPES_TAIL[2:4]
+                + [("explicit-default", default),
+                   ("numeric-string", numeric_string)]
+                + self._SHAPES_TAIL[4:])
+
+    def test_flaky_runs_fifteen_shapes_read_as_default_6(self):
+        shapes = self._all_shapes(6, "6")
+        for name, value in shapes:
+            tunables = {} if name == "omitted" else {
+                "flaky_runs": value}
+            with self.subTest(shape=name):
+                self.assertNotIn(
+                    "job_flaky",
+                    self._signals(
+                        tunables, self._flaky_runs_records()))
+
+    def test_flaky_min_transitions_fifteen_shapes_read_as_default_3(self):
+        shapes = self._all_shapes(3, "3")
+        records = self._trans_records((0, 0, 0, 1, 1, 1))
+        for name, value in shapes:
+            tunables = {} if name == "omitted" else {
+                "flaky_min_transitions": value}
+            with self.subTest(shape=name):
+                self.assertNotIn(
+                    "job_flaky",
+                    self._signals(tunables, records))
+
+    def test_duration_min_baseline_fifteen_shapes_read_as_default_5(self):
+        shapes = self._all_shapes(5, "5")
+        records = self._baseline_records(1)
+        for name, value in shapes:
+            tunables = {} if name == "omitted" else {
+                "duration_min_baseline": value}
+            with self.subTest(shape=name):
+                self.assertNotIn(
+                    "job_duration_anomaly",
+                    self._signals(tunables, records))
+
+    def test_duration_z_fifteen_shapes_read_as_default_3_5(self):
+        shapes = self._all_shapes(3.5, "3.5")
+        records = self._z_records(11.0)
+        for name, value in shapes:
+            tunables = {} if name == "omitted" else {
+                "duration_z": value}
+            with self.subTest(shape=name):
+                self.assertNotIn(
+                    "job_duration_anomaly",
+                    self._signals(tunables, records))
+
+    def test_genuine_flaky_and_duration_values_are_honored(self):
+        # Controls: genuine windows, minima, baselines,
+        # z limits, and the truncating fractionals
+        # already behave today and must keep doing so
+        # after the zero/negative cases are fixed.
+        self.assertNotIn(
+            "job_flaky",
+            self._signals({"flaky_runs": 4},
+                          self._flaky_runs_records()))
+        self.assertIn(
+            "job_flaky",
+            self._signals({"flaky_runs": 10},
+                          self._flaky_runs_records()))
+        self.assertNotIn(
+            "job_flaky",
+            self._signals({"flaky_runs": 4.5},
+                          self._flaky_runs_records()))
+        one = self._trans_records((0, 0, 0, 1, 1, 1))
+        two = self._trans_records((0, 0, 1, 1, 0, 0))
+        three = self._trans_records((0, 1, 0, 1, 0, 0))
+        self.assertIn(
+            "job_flaky",
+            self._signals({"flaky_min_transitions": 1}, one))
+        self.assertNotIn(
+            "job_flaky",
+            self._signals({"flaky_min_transitions": 2}, one))
+        self.assertIn(
+            "job_flaky",
+            self._signals({"flaky_min_transitions": 2}, two))
+        self.assertIn(
+            "job_flaky",
+            self._signals({"flaky_min_transitions": 2.5}, two))
+        self.assertIn(
+            "job_flaky",
+            self._signals({"flaky_min_transitions": 3}, three))
+        self.assertIn(
+            "job_duration_anomaly",
+            self._signals({"duration_min_baseline": 2},
+                          self._baseline_records(2)))
+        self.assertNotIn(
+            "job_duration_anomaly",
+            self._signals({"duration_min_baseline": 5},
+                          self._baseline_records(2)))
+        self.assertIn(
+            "job_duration_anomaly",
+            self._signals({"duration_min_baseline": 1},
+                          self._baseline_records(1)))
+        self.assertIn(
+            "job_duration_anomaly",
+            self._signals({"duration_min_baseline": 2.5},
+                          self._baseline_records(2)))
+        self.assertIn(
+            "job_duration_anomaly",
+            self._signals({"duration_z": 0.5},
+                          self._z_records(11.0)))
+        self.assertNotIn(
+            "job_duration_anomaly",
+            self._signals({"duration_z": 10},
+                          self._z_records(11.0)))
+        self.assertIn(
+            "job_duration_anomaly",
+            self._signals({"duration_z": 10},
+                          self._z_records(30.0)))
+        self.assertIn(
+            "job_duration_anomaly",
+            self._signals({"duration_z": 3.5},
+                          self._z_records(20.0)))
+
 if __name__ == "__main__":
 
     unittest.main()
