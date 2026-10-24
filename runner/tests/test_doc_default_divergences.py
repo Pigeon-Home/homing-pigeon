@@ -16699,6 +16699,145 @@ class TestMaxOutputBytesFifteenShapesAtExecuteJob(unittest.TestCase):
         self.assertTrue(result.get("stdout_truncated"))
 
 
+class TestDefaultTimeoutSecFifteenShapesAtReader(unittest.TestCase):
+    """Second-run hunt coverage: default_timeout_sec
+    itself varied with the fifteen shapes at its
+    reader level for the first time (step-8 Target 6
+    -- core rows covered only for the shapes their
+    classes exercised; the table hunt probes this row
+    through confval.integer generically, and the
+    row's registry-named class
+    TestNullDefaultTimeoutSecDefaultsTo300 varies
+    only null and a non-numeric string through
+    execute_job, plus a boolean class elsewhere).
+
+    (a) Doc claim (PROTOCOL.md, section 3.1, line
+        136): "`timeout_sec`: default 300, maximum
+        3600." The runner's --help states the same
+        default for the config key that supplies it,
+        and docs/configuring-oracle.md maps that flag
+        to `default_timeout_sec`. Registry row
+        "default_timeout_sec" (default 300, reader
+        runner/runner.py:_default_timeout_sec,
+        policy default under Decision 1, lo=1,
+        hi=None). The reader's own docstring states:
+        "A key present as null, a non-numeric string,
+        a boolean, or a value under 1 is not a
+        timeout and must not reject every
+        timeout-less job."
+
+    (b) How it was hunted: step-8 artifact Target 6
+        names the core rows covered only for the
+        shapes their classes exercised. This tick
+        took _default_timeout_sec in
+        runner/runner.py (through
+        confval.integer(cfg.get(
+        "default_timeout_sec"), 300, lo=1)) and
+        probed the key with the fifteen shapes from
+        the table hunt -- omitted, null, empty
+        string, true, false, zero, negative, the
+        explicit default, numeric string,
+        non-numeric string, huge-int (10**400),
+        inf, -inf, NaN, wrong containers (list and
+        dict) -- plus genuine values, fractional
+        values, a sub-1 fractional, non-dict
+        configs, and execute_job integration for
+        the shapes that originally rejected jobs.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape reads as the
+        documented default 300 -- omitted, null,
+        empty string, true, false, zero, negative,
+        non-numeric string, huge-int, inf, -inf,
+        NaN, list and dict all return 300, and a
+        non-dict config returns 300 too. Zero and
+        negative are defaults here, not literal
+        timeouts: the reader's bound is lo=1.
+        Genuine values are honored exactly: 10
+        reads as 10, 3600 as 3600, the numeric
+        string "42" as 42, fractional 2.5 truncates
+        via int() to 2 and "2.5" likewise, a sub-1
+        fractional (0.5) reads as the default, and
+        9999 is honored at the reader (registry
+        hi=None; execute_job separately clamps the
+        effective job timeout to 3600). At
+        execute_job level a timeout-less job is
+        NOT rejected for any of null, bogus, true
+        or huge-int config values -- it runs to
+        exit 0. The null/bogus rejection recorded
+        by the row's named class in the first run
+        no longer occurs on current main (the
+        reader routes through confval.integer).
+        Observed on 2026-10-24 against current
+        main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        unusable shapes keep reading as the
+        documented default and genuine values keep
+        being honored. If a shape above ever stops
+        behaving as PROTOCOL.md states, this test
+        is the failing record of that change.
+    """
+
+    def _read(self, cfg):
+        from runner.runner import _default_timeout_sec
+        return _default_timeout_sec(cfg)
+
+    def _run_job(self, cfg_extra):
+        from runner.runner import execute_job
+        with tempfile.TemporaryDirectory() as base:
+            cfg = {"base_dir": base}
+            cfg.update(cfg_extra)
+            job = {"v": 1, "type": "job",
+                   "job_id": "docdef-deftimeout-fifteen",
+                   "issued_at": "2026-10-24T00:00:00Z",
+                   "kind": "exec",
+                   "interpreter": ["python3"],
+                   "script": "print('hi-probe')"}
+            return execute_job(cfg, job, base)
+
+    def test_fifteen_shapes_read_as_default(self):
+        cases = [("omitted", {})]
+        unusable = [None, "", True, False, 0, -5,
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        cases += [(repr(v), {"default_timeout_sec": v})
+                  for v in unusable]
+        cases.append(("explicit-default",
+                      {"default_timeout_sec": 300}))
+        for name, cfg in cases:
+            with self.subTest(shape=name):
+                self.assertEqual(self._read(cfg), 300)
+        for bad_cfg in (None, [], "nope", 42):
+            with self.subTest(cfg=repr(bad_cfg)):
+                self.assertEqual(self._read(bad_cfg), 300)
+
+    def test_genuine_values_are_honored(self):
+        for value, want in ((10, 10), (3600, 3600),
+                            (9999, 9999), ("42", 42),
+                            (2.5, 2), ("2.5", 2)):
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._read({"default_timeout_sec": value}),
+                    want)
+        # A sub-1 fractional is under the lo=1 bound
+        # and reads as the default, not as a timeout.
+        self.assertEqual(
+            self._read({"default_timeout_sec": 0.5}), 300)
+
+    def test_execute_job_not_rejected_by_unusable_shapes(self):
+        for value in (None, "bogus", True, 10 ** 400):
+            with self.subTest(value=repr(value)):
+                result = self._run_job(
+                    {"default_timeout_sec": value})
+                self.assertEqual(result.get("exit_code"), 0)
+                self.assertIn("hi-probe",
+                              result.get("stdout", ""))
+
+
+
 if __name__ == "__main__":
 
     unittest.main()
