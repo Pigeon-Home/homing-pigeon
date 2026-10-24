@@ -18,8 +18,16 @@ facts a reader may need to cite. Git history carries the rest.
   runners. The 2026-10-23 stall, one test looping forever and both
   suites sitting past 80 minutes with nothing in the log, is the
   reason.
+- **The campaign report.** `docs/reports/v3.12.58/doc-default-divergences.md`
+  indexes the 72 divergence classes (shape, doc source, reader,
+  tests, fix commit), generated from the test docstrings, with the
+  three shapes, the six bugs and what the release cost that the
+  hunt did not predict.
 
 ## 3.12.58 - 2026-10-23
+
+Report: `docs/reports/v3.12.58/doc-default-divergences.md` (the 72
+classes indexed, added after the tag).
 
 - **The code now delivers every default the docs promise.** The VM
   campaign's documented-default divergences
