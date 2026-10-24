@@ -13621,6 +13621,259 @@ class TestOsqueryFeedFiledCapFifteenShapes(unittest.TestCase):
             ["osquery_added", "osquery_added"])
 
 
+class TestSoftflowdFeedTunablesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the softflowd-feed
+    tunables themselves varied with the fifteen
+    shapes at decide() level for the first time
+    (step-8 Target 5 -- the extension-tunable
+    table; these rows' registry-named class
+    TestNonFiniteSoftflowdTunablesDefaultInsteadOfCrashOrSilence
+    covered only the non-finite shapes, plus omitted /
+    explicit / NaN controls).
+
+    (a) Doc claim (extensions/softflowd-feed/README.md,
+        tunable table): "high_volume_bytes | 50000000"
+        (line 57), "long_lived_sec | 3600" (line 58),
+        "max_known_peers | 1024" (line 60),
+        "max_filed_flows | 1024" (line 61); the same
+        defaults are in the extension's extension.json
+        tunables (50000000 / 3600 / 1024 / 1024).
+        Registry rows "high_volume_bytes
+        (softflowd-feed)", "long_lived_sec
+        (softflowd-feed)", "max_known_peers
+        (softflowd-feed)" and "max_filed_flows
+        (softflowd-feed)": policy default under
+        Decision 1 -- a present-but-unusable value
+        reads as its documented default.
+
+    (b) How it was hunted: step-8 Target 5 lists the
+        51 extension tunables as covered only for the
+        shapes their named classes exercised. This
+        tick took the softflowd-feed rows (the next
+        feed rows after the falco-feed, suricata-feed,
+        wazuh-feed and osquery-feed rows hunted in the
+        preceding ticks): their reader is
+        extensions/softflowd-feed/softflowd_feed.py
+        decide() (high_volume = int(v) if
+        _is_number(v) and v > 0 else 50000000;
+        long_lived = float(v) if _is_number(v) and
+        v > 0 else 3600.0; max_peers / max_filed =
+        int(v) if _is_number(v) and v >= 1 else 1024,
+        where _is_number accepts only genuine finite
+        numbers, never a bool, and a huge int that
+        overflows float() is not a number), and probed
+        it through decide() itself with the fifteen
+        shapes from the table hunt -- omitted, null,
+        empty string, true, false, zero, negative,
+        the documented default written explicitly,
+        numeric string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, wrong containers
+        (list and dict) -- plus genuine int /
+        fractional values. The observables are: for
+        high_volume_bytes, a 60,000,000-byte flow
+        (duration 0) filing flow_high_volume under
+        the default; for long_lived_sec, a 100-byte
+        flow lasting 7200s filing flow_long_lived
+        under the default; and for each cap, a
+        three-pass a-b-a sequence threading the
+        returned state (an effective cap of 2 or
+        more remembers a, so its repeat files
+        nothing; an effective cap of 1 evicts a
+        when b arrives, so its repeat files again).
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default for all four tunables. Zero and
+        negative also read as the defaults because
+        decide() requires v > 0 (thresholds) or
+        v >= 1 (caps) before honoring a value.
+        Numeric strings are not parsed ("45" reads
+        as the default; the _is_number isinstance
+        gate). Genuine values are honored exactly:
+        high_volume_bytes 61000000 suppresses the
+        60,000,000-byte flow where 60000000 files it,
+        and 60000000.9 truncates through int() to
+        60000000 and files it; long_lived_sec 7201
+        and 7200.5 suppress the 7200s flow where
+        7200 files it (the float reader honors the
+        fraction, no truncation); each cap at 1
+        files the a-b-a repeat, at 2 does not, and
+        the fractional 1.5 truncates through int()
+        to 1 where 2.0 reads as 2. Noted: the +inf
+        crash / suppression recorded by the rows'
+        named class
+        TestNonFiniteSoftflowdTunablesDefaultInsteadOfCrashOrSilence
+        no longer occurs on current main -- that
+        class passes now, because _is_number now
+        excludes non-finite values. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented defaults and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "softflowd-feed",
+            "softflowd_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "softflowd_feed_tunables_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _flow(self, dst="8.8.8.8", bytes_=100, first=1000,
+              last=1000):
+        return {"src": "192.168.1.20", "dst": dst,
+                "src_port": 12345, "dst_port": 443,
+                "proto": 6, "packets": 10,
+                "bytes": bytes_, "first": first, "last": last}
+
+    def _signals(self, mod, tunables, flows, state=None):
+        alerts, new_state = mod.decide(
+            {"now": 9000, "flows": flows},
+            {"name": "softflowd_feed", "tunables": dict(tunables)},
+            {} if state is None else state)
+        return [a["signal"] for a in alerts], new_state
+
+    def _peer_counts(self, mod, tunables):
+        state = {}
+        counts = []
+        for dst in ("8.8.8.8", "8.8.4.4", "8.8.8.8"):
+            signals, state = self._signals(
+                mod, tunables,
+                [self._flow(dst=dst, bytes_=100)], state)
+            counts.append(signals.count("flow_new_external_peer"))
+        return counts
+
+    def _filed_counts(self, mod, tunables):
+        state = {}
+        counts = []
+        for dst in ("8.8.8.8", "8.8.4.4", "8.8.8.8"):
+            signals, state = self._signals(
+                mod, tunables,
+                [self._flow(dst=dst, bytes_=60_000_000)], state)
+            counts.append(signals.count("flow_high_volume"))
+        return counts
+
+    _UNUSABLE = [None, "", True, False, 0, -5, "45", "bogus",
+                 10 ** 400, float("inf"), float("-inf"),
+                 float("nan"), ["x"], {"x": 1}]
+
+    def test_fifteen_shapes_high_volume_read_as_default(self):
+        mod = self._mod()
+        both = ["flow_new_external_peer", "flow_high_volume"]
+        flow = self._flow(bytes_=60_000_000)
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._signals(mod, {}, [flow])[0], both)
+        for value in self._UNUSABLE:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._signals(mod, {"high_volume_bytes": value},
+                                  [flow])[0],
+                    both)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._signals(mod, {"high_volume_bytes": 50000000},
+                              [flow])[0],
+                both)
+
+    def test_fifteen_shapes_long_lived_read_as_default(self):
+        mod = self._mod()
+        both = ["flow_new_external_peer", "flow_long_lived"]
+        flow = self._flow(bytes_=100, first=1000, last=8200)
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._signals(mod, {}, [flow])[0], both)
+        for value in self._UNUSABLE:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._signals(mod, {"long_lived_sec": value},
+                                  [flow])[0],
+                    both)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._signals(mod, {"long_lived_sec": 3600},
+                              [flow])[0],
+                both)
+
+    def test_fifteen_shapes_max_known_peers_read_as_default(self):
+        mod = self._mod()
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._peer_counts(mod, {}), [1, 1, 0])
+        for value in self._UNUSABLE:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._peer_counts(mod, {"max_known_peers": value}),
+                    [1, 1, 0])
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._peer_counts(mod, {"max_known_peers": 1024}),
+                [1, 1, 0])
+
+    def test_fifteen_shapes_max_filed_flows_read_as_default(self):
+        mod = self._mod()
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._filed_counts(mod, {}), [1, 1, 0])
+        for value in self._UNUSABLE:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._filed_counts(mod, {"max_filed_flows": value}),
+                    [1, 1, 0])
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._filed_counts(mod, {"max_filed_flows": 1024}),
+                [1, 1, 0])
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        # high_volume_bytes: a genuine larger threshold
+        # suppresses the 60,000,000-byte flow; the exact
+        # threshold files it; a fraction truncates via int().
+        self.assertEqual(
+            self._signals(mod, {"high_volume_bytes": 61_000_000},
+                          [self._flow(bytes_=60_000_000)])[0],
+            ["flow_new_external_peer"])
+        self.assertEqual(
+            self._signals(mod, {"high_volume_bytes": 60_000_000},
+                          [self._flow(bytes_=60_000_000)])[0],
+            ["flow_new_external_peer", "flow_high_volume"])
+        self.assertEqual(
+            self._signals(mod, {"high_volume_bytes": 60000000.9},
+                          [self._flow(bytes_=60_000_000)])[0],
+            ["flow_new_external_peer", "flow_high_volume"])
+        # long_lived_sec: the float reader honors fractions.
+        flow = self._flow(bytes_=100, first=1000, last=8200)
+        self.assertEqual(
+            self._signals(mod, {"long_lived_sec": 7201}, [flow])[0],
+            ["flow_new_external_peer"])
+        self.assertEqual(
+            self._signals(mod, {"long_lived_sec": 7200.5}, [flow])[0],
+            ["flow_new_external_peer"])
+        self.assertEqual(
+            self._signals(mod, {"long_lived_sec": 7200}, [flow])[0],
+            ["flow_new_external_peer", "flow_long_lived"])
+        # Caps: 1 evicts on the second peer/flow, 2 remembers;
+        # 1.5 truncates through int() to 1, 2.0 reads as 2.
+        for key, counter in (
+                ("max_known_peers", self._peer_counts),
+                ("max_filed_flows", self._filed_counts)):
+            with self.subTest(key=key):
+                self.assertEqual(counter(mod, {key: 1}), [1, 1, 1])
+                self.assertEqual(counter(mod, {key: 2}), [1, 1, 0])
+                self.assertEqual(counter(mod, {key: 1.5}), [1, 1, 1])
+                self.assertEqual(counter(mod, {key: 2.0}), [1, 1, 0])
+
+
+
 
 if __name__ == "__main__":
 
