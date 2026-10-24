@@ -7860,6 +7860,140 @@ class TestGrepMaxMatchesDefaultsTo10(unittest.TestCase):
                     self._grep_count({"max_matches": value}), want)
 
 
+class TestTailLinesDefaultsTo20(unittest.TestCase):
+    """Second-run hunt coverage: lines (tail query) itself,
+    varied with the fifteen shapes through its actual
+    reader for the first time.
+
+    (a) Claim: registry row "lines (tail query)": core,
+        integer, default 20, policy default, lo 0,
+        doc_status unverified -- no prose document states
+        this default; it is in KNOWN_UNDOCUMENTED in
+        tests/defaults_registry.py. The nearest statements
+        are PROTOCOL.md (lines 688-689), defining the op
+        as "`tail` (`lines`: last N lines)" over the
+        retained output, and docs/fuzzing.md
+        (lines 129-131), which reserves "returns no
+        lines" for an explicit numeric zero in the sibling
+        grep op and describes a default limit applying
+        when the caller supplies no usable number. The
+        reader itself (runner/runner.py, answer_queries,
+        tail branch) reads
+        min(_confval.integer(q.get("lines"), 20, lo=0), 200)
+        and returns no lines only when that read is zero.
+        The row's named class
+        (TestBooleanTailLinesDefaultsTo20) covered only
+        the booleans plus bogus and zero controls, and the
+        table hunt probes this row through confval
+        generically; the answer_queries reader itself --
+        including its extra 200 ceiling, which confval
+        alone does not apply -- had never been walked
+        through all fifteen shapes.
+
+    (b) How it was hunted: step 8 Target 3 -- the fourth
+        row with no documented default in any current
+        doc, after timeout_sec,
+        extension_poll_interval_sec, and max_matches.
+        On 2026-10-23 this tick called
+        runner.runner.answer_queries -- the actual
+        reader -- with one tail query over retained
+        output holding 250 lines, with the table hunt's
+        fifteen shapes, plus genuine values, the 200
+        ceiling, and float shapes, and verified that a
+        small tail returns the LAST lines in order.
+
+    (c) Behavior actually observed: NO divergence in
+        the reader. Every unusable shape -- omitted,
+        null, the empty string, true, false, a
+        non-numeric string, a several-hundred-digit
+        integer, inf, -inf, NaN, and a list -- returned
+        exactly 20 lines. Zero is usable (lo 0) and
+        returned 0. A negative number is below lo, so it
+        is unusable under the confval contract and
+        returned the default 20 rather than clamping.
+        The explicit default 20 and the numeric string
+        "20" returned 20. Genuine values are honored
+        exactly (1, 2, 5, 50, 100, 199, 200) and the
+        reader's ceiling holds (201, 250, and 1000 all
+        returned 200). Floats truncate toward zero
+        through confval.integer (2.9 -> 2, "2.9" -> 2,
+        0.5 -> 0). Two behavior changes from the boolean
+        class's 2026-10-23 record are noted: booleans
+        then read as 1/0 through int(); through confval
+        they now read as the default 20, and a huge
+        integer then clamped to the 200 ceiling; through
+        confval it is unusable and now reads as the
+        default 20, which is the registry policy.
+
+    (d) This is a coverage record, not a divergence: it
+        stays green as long as the reader keeps the
+        registry default and ceiling. If a shape above
+        ever stops reading as stated, this test is the
+        failing record of that change. The missing
+        prose documentation in (a) is recorded here and
+        in the registry; no production code or doc was
+        changed by this hunt.
+    """
+
+    _RES = {"stdout": "\n".join(
+        "line %d" % i for i in range(250)) + "\n",
+            "stderr": "", "exit_code": 0}
+
+    def _tail_count(self, extra, omit=False):
+        from runner.runner import answer_queries
+        q = {"op": "tail"}
+        if not omit:
+            q.update(extra)
+        answers, _spent = answer_queries(
+            [q], self._RES, None, 8, cfg=None, view="full")
+        return len(answers[0].get("lines", []))
+
+    def test_fifteen_shapes(self):
+        shapes = [
+            ("omitted", {}, True, 20),
+            ("null", {"lines": None}, False, 20),
+            ("empty-string", {"lines": ""}, False, 20),
+            ("true", {"lines": True}, False, 20),
+            ("false", {"lines": False}, False, 20),
+            ("zero", {"lines": 0}, False, 0),
+            ("negative", {"lines": -5}, False, 20),
+            ("default-explicit", {"lines": 20}, False, 20),
+            ("numeric-string", {"lines": "20"}, False, 20),
+            ("non-numeric-string", {"lines": "bogus"}, False, 20),
+            ("huge-int", {"lines": 10 ** 400}, False, 20),
+            ("inf", {"lines": float("inf")}, False, 20),
+            ("neg-inf", {"lines": float("-inf")}, False, 20),
+            ("nan", {"lines": float("nan")}, False, 20),
+            ("wrong-container", {"lines": ["x"]}, False, 20),
+        ]
+        for name, extra, omit, want in shapes:
+            with self.subTest(shape=name):
+                self.assertEqual(self._tail_count(extra, omit=omit), want)
+
+    def test_genuine_values_and_ceiling_are_honored(self):
+        for value, want in ((1, 1), (2, 2), (5, 5), (50, 50),
+                            (100, 100), (199, 199), (200, 200),
+                            (201, 200), (250, 200), (1000, 200),
+                            ("2", 2), ("50", 50)):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    self._tail_count({"lines": value}), want)
+
+    def test_floats_truncate_toward_zero(self):
+        for value, want in ((2.9, 2), (2.0, 2), ("2.9", 2), (0.5, 0)):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    self._tail_count({"lines": value}), want)
+
+    def test_tail_returns_the_last_lines_in_order(self):
+        from runner.runner import answer_queries
+        answers, _spent = answer_queries(
+            [{"op": "tail", "lines": 3}], self._RES, None, 8,
+            cfg=None, view="full")
+        self.assertEqual(answers[0].get("lines"),
+                         ["line 247", "line 248", "line 249"])
+
+
 
 if __name__ == "__main__":
     unittest.main()
