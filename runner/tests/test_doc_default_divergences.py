@@ -17515,6 +17515,202 @@ class TestReviewScanBytesFifteenShapesAtReader(unittest.TestCase):
         self.assertEqual(
             _review_scan_bytes({"review_scan_bytes": 0.5}), 65536)
 
+class TestPlanBudgetFifteenShapesAtReader(unittest.TestCase):
+    """Second-run hunt coverage: max_plan_steps and
+    max_plan_timeout_sec themselves varied with the
+    fifteen shapes at their single reader
+    (runner/detection.py: check_plan_budget, through
+    confval.integer lo=1 for both keys) for the first
+    time at reader level. The rows' registry-named class
+    (TestZeroOrNegativePlanBudgetDefaults) probed only
+    the zero/negative shapes.
+
+    (a) Doc claim (docs/configuring-oracle.md, line 80):
+        "`max_plan_steps` / `max_plan_timeout_sec` --
+        caps the detection layer (runner/detection.py)
+        applies to a multi-step plan: at most this many
+        steps (default 8) and this much total timeout
+        in seconds (default 600)."
+        Registry rows "max_plan_steps" (kind integer,
+        default 8) and "max_plan_timeout_sec" (kind
+        integer, default 600), both reader
+        runner/detection.py:check_plan_budget, policy
+        default under Decision 1, lo=1, hi=None.
+
+    (b) How it was hunted: step-8 Target 6 (core rows
+        covered only for the shapes their classes
+        exercised). This tick probed check_plan_budget
+        with the fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false, zero,
+        negative, the explicit default, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong containers (list and dict) --
+        plus genuine values, a sub-1 fractional, and
+        non-dict configs. Each key was observed through
+        the budget it enforces: a 9-step plan against
+        max_plan_steps, and a single 700-second step
+        against max_plan_timeout_sec.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape reads as the documented
+        default for both keys -- a 9-step plan is
+        rejected at "(max 8)" and a 700-second step at
+        "exceeds 600s" for omitted, null, empty string,
+        true, false, zero, negative, non-numeric string,
+        huge-int, inf, -inf, NaN, list and dict alike,
+        and a non-dict config (None, a list, a string,
+        or an int) likewise reads as 8 and 600. Zero
+        and negative are defaults here, not literal
+        budgets: the readers' bound is lo=1. Genuine
+        values are honored exactly: max_plan_steps 3
+        rejects a 4-step plan at "(max 3)", 10 allows
+        a 9-step plan, the numeric string "3" reads
+        as 3, fractional 2.5 truncates via int() to 2
+        and "2.5" likewise; max_plan_timeout_sec 300
+        allows a 250-second step, 100 rejects it at
+        "exceeds 100s", "300" reads as 300, and 9999
+        allows a 700-second step (registry hi=None).
+        A sub-1 fractional (0.5) reads as the default
+        for both keys, since it truncates below lo=1.
+        Observed on 2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes keep
+        reading as the documented defaults and genuine
+        values keep being honored. If a shape above
+        ever stops behaving as
+        docs/configuring-oracle.md states, this test
+        is the failing record of that change.
+    """
+
+    @staticmethod
+    def _plan(n, timeout=1):
+        return [{"timeout_sec": timeout} for _ in range(n)]
+
+    def test_max_plan_steps_fifteen_shapes_read_as_default(self):
+        from runner.detection import check_plan_budget
+        unusable = [None, "", True, False, 0, -5,
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        cases = [("omitted", {"max_plan_timeout_sec": 100000})]
+        cases += [(repr(v), {"max_plan_steps": v,
+                             "max_plan_timeout_sec": 100000})
+                  for v in unusable]
+        cases.append(("explicit-default",
+                      {"max_plan_steps": 8,
+                       "max_plan_timeout_sec": 100000}))
+        for name, cfg in cases:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    check_plan_budget(self._plan(9), cfg),
+                    (False, "plan has 9 steps (max 8)"))
+
+    def test_max_plan_timeout_fifteen_shapes_read_as_default(self):
+        from runner.detection import check_plan_budget
+        unusable = [None, "", True, False, 0, -5,
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        cases = [("omitted", {"max_plan_steps": 100})]
+        cases += [(repr(v), {"max_plan_timeout_sec": v,
+                             "max_plan_steps": 100})
+                  for v in unusable]
+        cases.append(("explicit-default",
+                      {"max_plan_timeout_sec": 600,
+                       "max_plan_steps": 100}))
+        for name, cfg in cases:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    check_plan_budget(self._plan(1, 700), cfg),
+                    (False, "plan timeout 700s exceeds 600s"))
+
+    def test_non_dict_config_reads_as_defaults(self):
+        from runner.detection import check_plan_budget
+        for cfg in (None, ["x"], "bogus", 42):
+            with self.subTest(cfg=repr(cfg)):
+                self.assertEqual(
+                    check_plan_budget(self._plan(9), cfg),
+                    (False, "plan has 9 steps (max 8)"))
+                self.assertEqual(
+                    check_plan_budget(self._plan(1, 700), cfg),
+                    (False, "plan timeout 700s exceeds 600s"))
+                self.assertEqual(
+                    check_plan_budget(self._plan(8), cfg),
+                    (True, ""))
+                self.assertEqual(
+                    check_plan_budget(self._plan(1, 600), cfg),
+                    (True, ""))
+
+    def test_genuine_step_values_are_honored(self):
+        from runner.detection import check_plan_budget
+        self.assertEqual(
+            check_plan_budget(self._plan(4),
+                              {"max_plan_steps": 3,
+                               "max_plan_timeout_sec": 100000}),
+            (False, "plan has 4 steps (max 3)"))
+        self.assertEqual(
+            check_plan_budget(self._plan(4),
+                              {"max_plan_steps": "3",
+                               "max_plan_timeout_sec": 100000}),
+            (False, "plan has 4 steps (max 3)"))
+        self.assertEqual(
+            check_plan_budget(self._plan(4),
+                              {"max_plan_steps": 2.5,
+                               "max_plan_timeout_sec": 100000}),
+            (False, "plan has 4 steps (max 2)"))
+        self.assertEqual(
+            check_plan_budget(self._plan(9),
+                              {"max_plan_steps": 10,
+                               "max_plan_timeout_sec": 100000}),
+            (True, ""))
+        self.assertEqual(
+            check_plan_budget(self._plan(9),
+                              {"max_plan_steps": 9999,
+                               "max_plan_timeout_sec": 100000}),
+            (True, ""))
+
+    def test_genuine_timeout_values_are_honored(self):
+        from runner.detection import check_plan_budget
+        self.assertEqual(
+            check_plan_budget(self._plan(1, 250),
+                              {"max_plan_timeout_sec": 300,
+                               "max_plan_steps": 100}),
+            (True, ""))
+        self.assertEqual(
+            check_plan_budget(self._plan(1, 250),
+                              {"max_plan_timeout_sec": "300",
+                               "max_plan_steps": 100}),
+            (True, ""))
+        self.assertEqual(
+            check_plan_budget(self._plan(1, 250),
+                              {"max_plan_timeout_sec": 100,
+                               "max_plan_steps": 100}),
+            (False, "plan timeout 250s exceeds 100s"))
+        self.assertEqual(
+            check_plan_budget(self._plan(1, 250),
+                              {"max_plan_timeout_sec": 2.5,
+                               "max_plan_steps": 100}),
+            (False, "plan timeout 250s exceeds 2s"))
+        self.assertEqual(
+            check_plan_budget(self._plan(1, 700),
+                              {"max_plan_timeout_sec": 9999,
+                               "max_plan_steps": 100}),
+            (True, ""))
+
+    def test_sub_one_fraction_reads_as_default(self):
+        from runner.detection import check_plan_budget
+        self.assertEqual(
+            check_plan_budget(self._plan(9),
+                              {"max_plan_steps": 0.5,
+                               "max_plan_timeout_sec": 100000}),
+            (False, "plan has 9 steps (max 8)"))
+        self.assertEqual(
+            check_plan_budget(self._plan(1, 700),
+                              {"max_plan_timeout_sec": 0.5,
+                               "max_plan_steps": 100}),
+            (False, "plan timeout 700s exceeds 600s"))
+
 if __name__ == "__main__":
 
     unittest.main()
