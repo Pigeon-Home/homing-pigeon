@@ -38738,6 +38738,414 @@ class TestSuricataFeedParseTsStateAndMainModesFifteenShapes(unittest.TestCase):
                 self.assertEqual(
                     out.count("suricata_alert"), 1)
 
+class TestFalcoFeedParseTsDigestStateAndMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: falco-feed's
+    _parse_ts() timestamp normalization,
+    _fields_digest() stability, _clean_state()
+    called directly, and main() in --readings and
+    --log-file modes varied with the fifteen shapes
+    for the first time (step-8 Target 5 / family
+    (b) -- falco-feed's earlier classes cover its
+    episode_cooldown_sec tunable, its log_paths /
+    read_new_events() / parse_event() basics and
+    decide()'s event/state cleaning, plus a main()
+    live-mode log-paths fallback; the timestamp
+    parser's offset/fraction normalization, the
+    fields digest, the state cleaner called
+    directly, and main()'s two fixture modes and
+    file-error paths were never varied).
+
+    (a) Doc claims: _parse_ts()'s docstring says
+        "Falco writes nanosecond fractions and
+        offsets in either form ("-07:00", "+0000",
+        "Z"); all are normalized before
+        fromisoformat sees them" and "A timestamp
+        with no offset is read as local time".
+        _fields_digest()'s docstring says "JSON
+        with sorted keys makes the digest a
+        function of the fields' content, not of
+        the order Falco happened to serialize
+        them in". The module docstring states the
+        state dict carries a "_reader" sub-dict
+        which the decision code "preserves
+        opaquely and ignores", and that two
+        fixture modes feed decide() without
+        touching a live log: "--readings FILE
+        reads a readings dict ({"now", "events"})
+        from JSON, and --log-file FILE parses a
+        whole fixture log from offset 0, ignoring
+        the reader offsets".
+
+    (b) How this was probed: on 2026-10-24
+        _parse_ts() was probed with the fifteen
+        shapes plus genuine timestamp variants
+        (Z / lowercase z, colon offset, +0000 /
+        -0530 / +0530 forms, fractions of 1 and
+        9 digits, surrounding whitespace,
+        date-only, naive, and invalid calendar
+        values); _fields_digest() was probed
+        with reordered, empty and non-ASCII
+        field dicts; _clean_state() was called
+        directly with the fifteen shapes at the
+        state object, its episodes map, each
+        entry and its filed_at / last_seen
+        fields, and its _reader field; main()
+        was run against temp manifests, readings
+        files, log files and state files in
+        --readings and --log-file modes,
+        including missing, malformed,
+        list-shaped and unwritable files, a
+        broken pre-existing state, and a repeat
+        pass.
+
+    (c) Behavior actually observed: NO divergence.
+        _parse_ts() reads every non-string, blank
+        or unparseable shape as None (numbers,
+        bools, lists and dicts included); "Z",
+        lowercase "z", "+00:00" and "+0000" forms
+        of the same instant all read as the same
+        epoch float, a "-0530" compact offset
+        shifts by exactly that offset (and a
+        "+0530" wall time reads as the same
+        instant as the Z form), a fraction longer
+        than six digits is truncated (not
+        rounded) to microseconds, a short
+        fraction reads at face value, and
+        surrounding whitespace is stripped; a
+        date-only or naive timestamp still parses
+        (as local time, so its epoch is
+        timezone-dependent and is not pinned
+        here). _fields_digest() is invariant
+        under key reordering, differs for
+        different content, and handles non-ASCII
+        values. _clean_state() reads any non-dict
+        state as a fresh {"episodes": {}}, a
+        non-dict episodes value as empty, drops
+        entries whose key is not a string, whose
+        entry is not a dict, or whose filed_at /
+        last_seen is not a finite non-bool number
+        (bool and inf included), keeps zero and
+        negative numbers literally as floats,
+        drops unknown top-level keys, and
+        preserves a dict _reader verbatim while
+        dropping a non-dict one. main() in
+        --readings mode files a genuine alert
+        once and writes the episode state (rc 0),
+        a repeat pass with the same state files
+        nothing, list-shaped readings read as an
+        empty pass (rc 0, state written as
+        fresh), a malformed pre-existing state
+        file reads as fresh and is overwritten,
+        a list-shaped manifest still files (the
+        sensor name falls back), and a missing
+        or malformed readings file is rc 2; a
+        missing or malformed manifest is rc 2 in
+        every mode. --log-file mode parses the
+        whole file from offset 0, filing the
+        critical line and skipping garbage lines
+        and parsed-only priorities, and a missing
+        log file is rc 2. An unwritable state
+        path (a path inside a nonexistent
+        directory, or the state path itself a
+        directory) is rc 2 with the alerts still
+        printed first.
+        Observed on 2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as the
+        readings above keep holding. If a shape
+        ever stops behaving as described, this
+        test is the failing record of that change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -1), ("numeric-string", "5"),
+               ("junk-string", "x"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("neg-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", [1]), ("dict", {"a": 1})]
+
+    _LINE = ('{"time": "2026-10-24T00:00:01Z", '
+             '"rule": "R1", "priority": "Error", '
+             '"output": "o1", "output_fields": {}, '
+             '"hostname": "h1"}')
+    _INFO_LINE = ('{"time": "2026-10-24T00:00:02Z", '
+                  '"rule": "R2", "priority": '
+                  '"Informational", "output_fields": {}}')
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "falco-feed",
+            "falco_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "falco_feed_parse_ts_main_hunt", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_parse_ts_shapes_and_variants(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertIsNone(mod._parse_ts(value))
+        for bad in ("  ", "not-a-date",
+                    "2026-13-01T00:00:00Z"):
+            self.assertIsNone(mod._parse_ts(bad))
+        zulu = mod._parse_ts("2026-10-24T00:00:01Z")
+        self.assertEqual(zulu, 1792800001.0)
+        for form in ("2026-10-24T00:00:01z",
+                     "2026-10-24T00:00:01+00:00",
+                     "2026-10-24T00:00:01+0000",
+                     "2026-10-24T05:30:01+0530",
+                     " 2026-10-24T00:00:01Z "):
+            with self.subTest(form=form):
+                self.assertEqual(mod._parse_ts(form), zulu)
+        self.assertEqual(
+            mod._parse_ts("2026-10-24T00:00:01-0530"),
+            1792819801.0)
+        self.assertEqual(
+            mod._parse_ts(
+                "2026-10-24T00:00:01.123456789Z"),
+            1792800001.123456)
+        self.assertEqual(
+            mod._parse_ts("2026-10-24T00:00:01.5Z"),
+            1792800001.5)
+        for naive in ("2026-10-24",
+                      "2026-10-24T00:00:01"):
+            value = mod._parse_ts(naive)
+            self.assertIsInstance(value, float)
+
+    def test_fields_digest_is_order_invariant(self):
+        mod = self._module()
+        self.assertEqual(
+            mod._fields_digest({"b": 2, "a": 1}),
+            mod._fields_digest({"a": 1, "b": 2}))
+        self.assertNotEqual(
+            mod._fields_digest({"a": 1}),
+            mod._fields_digest({"a": 2}))
+        self.assertEqual(
+            mod._fields_digest({}),
+            "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe"
+            "77e8310c060f61caaff8a")
+        self.assertEqual(
+            mod._fields_digest({"x": "é"}),
+            mod._fields_digest({"x": "é"}))
+        self.assertNotEqual(
+            mod._fields_digest({"x": "é"}),
+            mod._fields_digest({"x": "e"}))
+
+    def test_clean_state_shapes(self):
+        mod = self._module()
+        fresh = {"episodes": {}}
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(mod._clean_state(value),
+                                 fresh)
+        self.assertEqual(mod._clean_state({}), fresh)
+        for bad_eps in (None, [], "x", 42, True):
+            self.assertEqual(
+                mod._clean_state({"episodes": bad_eps}),
+                fresh)
+        self.assertEqual(
+            mod._clean_state({"episodes": {
+                "k": {"filed_at": 1, "last_seen": 2}}}),
+            {"episodes": {"k": {"filed_at": 1.0,
+                                "last_seen": 2.0}}})
+        self.assertEqual(
+            mod._clean_state({"episodes": {
+                "k": {"filed_at": 0, "last_seen": -1}}}),
+            {"episodes": {"k": {"filed_at": 0.0,
+                                "last_seen": -1.0}}})
+        for name, value in self._SHAPES:
+            if isinstance(value, (int, float)) \
+                    and not isinstance(value, bool) \
+                    and name in ("zero", "negative"):
+                continue
+            with self.subTest(filed=name):
+                self.assertEqual(
+                    mod._clean_state({"episodes": {
+                        "k": {"filed_at": value,
+                              "last_seen": 100}}}),
+                    fresh)
+            with self.subTest(seen=name):
+                self.assertEqual(
+                    mod._clean_state({"episodes": {
+                        "k": {"filed_at": 100,
+                              "last_seen": value}}}),
+                    fresh)
+        self.assertEqual(
+            mod._clean_state({"episodes": {
+                1: {"filed_at": 1, "last_seen": 2}}}),
+            fresh)
+        self.assertEqual(
+            mod._clean_state({"episodes": {"k": "nope"}}),
+            fresh)
+        for name, value in self._SHAPES:
+            with self.subTest(reader=name):
+                out = mod._clean_state(
+                    {"episodes": {}, "_reader": value})
+                if isinstance(value, dict):
+                    self.assertEqual(
+                        out, {"episodes": {},
+                              "_reader": value})
+                else:
+                    self.assertEqual(out, fresh)
+        self.assertEqual(
+            mod._clean_state({"episodes": {},
+                              "_reader": {"a": 1},
+                              "extra": 9}),
+            {"episodes": {}, "_reader": {"a": 1}})
+
+    def _run_main(self, mod, argv):
+        import contextlib
+        import io
+        buf = io.StringIO()
+        err = io.StringIO()
+        with contextlib.redirect_stdout(buf), \
+                contextlib.redirect_stderr(err):
+            rc = mod.main(argv)
+        return rc, buf.getvalue(), err.getvalue()
+
+    def _manifest(self, d):
+        import json
+        import os
+        mp = os.path.join(d, "m.json")
+        with open(mp, "w", encoding="utf-8") as fh:
+            json.dump({"name": "falco_feed",
+                       "tunables": {
+                           "episode_cooldown_sec": 3600}},
+                      fh)
+        return mp
+
+    def _readings(self, d, mod):
+        import json
+        import os
+        event = mod.parse_event(self._LINE)
+        self.assertIsNotNone(event)
+        rp = os.path.join(d, "r.json")
+        with open(rp, "w", encoding="utf-8") as fh:
+            json.dump({"now": event["ts"],
+                       "events": [event]}, fh)
+        return rp
+
+    def test_main_readings_mode(self):
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            mp = self._manifest(d)
+            rp = self._readings(d, mod)
+            sp = os.path.join(d, "s.json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.count("falco_critical"), 1)
+            with open(sp, encoding="utf-8") as fh:
+                state = json.load(fh)
+            self.assertEqual(len(state["episodes"]), 1)
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings", rp])
+            self.assertEqual((rc, out), (0, ""))
+            lp = os.path.join(d, "list.json")
+            with open(lp, "w", encoding="utf-8") as fh:
+                json.dump([1], fh)
+            sp2 = os.path.join(d, "s2.json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp2,
+                      "--readings", lp])
+            self.assertEqual((rc, out), (0, ""))
+            with open(sp2, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh),
+                                 {"episodes": {}})
+            sp3 = os.path.join(d, "s3.json")
+            with open(sp3, "w", encoding="utf-8") as fh:
+                fh.write("{broken")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp3,
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.count("falco_critical"), 1)
+            lm = os.path.join(d, "listm.json")
+            with open(lm, "w", encoding="utf-8") as fh:
+                json.dump([1], fh)
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", lm, "--state",
+                      os.path.join(d, "s4.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.count("falco_critical"), 1)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s5.json"),
+                      "--readings",
+                      os.path.join(d, "missing.json")])
+            self.assertEqual(rc, 2)
+            bp = os.path.join(d, "bad.json")
+            with open(bp, "w", encoding="utf-8") as fh:
+                fh.write("nope{")
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s6.json"),
+                      "--readings", bp])
+            self.assertEqual(rc, 2)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest",
+                      os.path.join(d, "missing.json"),
+                      "--state", os.path.join(d, "s7.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", bp, "--state",
+                      os.path.join(d, "s8.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "nodir", "s.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            self.assertEqual(out.count("falco_critical"), 1)
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", d,
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            self.assertEqual(out.count("falco_critical"), 1)
+
+    def test_main_log_file_mode(self):
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            mp = self._manifest(d)
+            logp = os.path.join(d, "falco.json")
+            with open(logp, "w", encoding="utf-8") as fh:
+                fh.write(self._LINE + "\n")
+                fh.write("garbage\n")
+                fh.write(self._INFO_LINE + "\n")
+            sp = os.path.join(d, "s.json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--log-file", logp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.count("falco_critical"), 1)
+            self.assertNotIn("falco_warning", out)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--log-file",
+                      os.path.join(d, "missing.log")])
+            self.assertEqual(rc, 2)
+
 if __name__ == "__main__":
 
     unittest.main()
