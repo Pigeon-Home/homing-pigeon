@@ -367,8 +367,39 @@ class NonStringKeyFuzzTest(unittest.TestCase):
                 "security": {"modes": {"audience": ["enforce"]}},
             })
 
-    def test_a_list_greeting_tier_refuses_to_start(self):
-        from runner.transport_extensions.dtls.__main__ import main
+    def test_a_list_greeting_tier_reads_as_the_default(self):
+        # A list where the tier string belongs is not a TypeError
+        # and, since 3.12.58, not a refusal either: the documented
+        # default tier (family) is what any value that is not a
+        # tier reads as, and the extension starts
+        # (tests/test_doc_default_divergences.py,
+        # TestNullDtlsGreetingDefaultsToFamily). Until then this
+        # test asserted main() returned 2 here; with main() now
+        # going on to listen, that in-process call bound udp
+        # 0.0.0.0:20220 and looped forever, and the CI suites
+        # (where hypothesis is installed and this module runs)
+        # stalled past 80 minutes on 2026-10-23. The listener is
+        # replaced below so main() can be seen to get past the
+        # tier check and into its loop without a socket.
+        # (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
+        import importlib
+        dtls_ext = importlib.import_module(
+            "runner.transport_extensions.dtls.__main__")
+        self.assertEqual(
+            dtls_ext.greeting_tier({"dtls_greeting": ["family"]}),
+            "family")
+
+        class _Started(BaseException):
+            """Raised by the stand-in listener's first pass."""
+
+        class _Pipe:
+            def __init__(self, cfg, channel_dir):
+                self.bind = "127.0.0.1"
+                self.port = 0
+
+            def run_once(self):
+                raise _Started()
+
         root = tempfile.mkdtemp(prefix="hp-tier-fuzz-")
         cfg_path = os.path.join(root, "runtime.json")
         with open(cfg_path, "w", encoding="utf-8") as f:
@@ -377,14 +408,25 @@ class NonStringKeyFuzzTest(unittest.TestCase):
                 "dtls_greeting": ["family"],
                 "channel_dir": root,
             }, f)
+        logs = []
         os.environ["HOMING_PIGEON_TRANSPORT_CHANNEL"] = root
         os.environ["HOMING_PIGEON_TRANSPORT_CONFIG"] = cfg_path
         try:
-            code = main(["dtls"])
+            with mock.patch.object(dtls_ext, "DtlsPipe", _Pipe), \
+                    mock.patch.object(
+                        dtls_ext.ch, "log",
+                        lambda msg, level="INFO": logs.append(
+                            (level, msg))):
+                with self.assertRaises(_Started):
+                    dtls_ext.main(["dtls"])
         finally:
             os.environ.pop("HOMING_PIGEON_TRANSPORT_CHANNEL", None)
             os.environ.pop("HOMING_PIGEON_TRANSPORT_CONFIG", None)
-        self.assertEqual(code, 2)
+        warned = [msg for level, msg in logs if level == "WARN"]
+        self.assertTrue(
+            any("default tier family" in msg for msg in warned), logs)
+        self.assertTrue(
+            any("greeting tier family" in msg for _l, msg in logs), logs)
 
     def test_a_poisoned_baseline_does_not_raise(self):
         baseline = {"kinds": {"exec": "many", "ping": [1]}}

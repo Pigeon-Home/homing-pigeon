@@ -28,10 +28,18 @@ facts a reader may need to cite. Git history carries the rest.
   what is usable, and the documented default is what anything else
   gets. `senses.py`, the transport channel and all 28 example
   extensions carry the same rule locally so they stay import-free.
-- **Two tests moved with the behavior.** The DTLS extension starts on
+- **Three tests moved with the behavior.** The DTLS extension starts on
   the default tier for a bad `dtls_greeting` and says so, instead of
   exiting 2; the campaign modules' four skip reasons are registered.
-  The frozen builds carry `runner.confval` as a hidden import.
+  The frozen builds carry `runner.confval` as a hidden import. The
+  third was the one that stalled CI: a test in
+  `tests/test_oracle_intake_fuzz.py` called the DTLS extension's
+  `main()` in-process with a list for the tier and expected exit 2;
+  with `main()` now going on to listen, that call bound udp 20220 and
+  looped forever, and both CI suites sat past 80 minutes with no
+  output. It now checks that `main()` reaches its loop on the default
+  tier, with the listener stood in for. The module runs only where
+  hypothesis is installed, which is why the local suite never saw it.
 
 <!-- Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c -->
 
