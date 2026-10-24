@@ -100,14 +100,21 @@ class _LineTracer:
         # root is the imported package's own directory, so treating
         # a case variant of it as the same directory is the intent.
         self.root_key = os.path.normcase(root).lower()
+        # The suite and the operator-side cloud scripts live under
+        # runner/ but are not the surfaces being measured. A script
+        # imported lazily mid-campaign would also fire its import-time
+        # lines once per process, so two campaigns would disagree.
+        self.skip_keys = tuple(
+            os.path.normcase(root + sub + os.sep).lower()
+            for sub in ("tests", "cloud"))
         self.hits = set()
         self._rel = {}
 
     def __call__(self, frame, event, arg):
         if event == "call":
-            if os.path.normcase(
-                    frame.f_code.co_filename).lower().startswith(
-                        self.root_key):
+            name = os.path.normcase(frame.f_code.co_filename).lower()
+            if name.startswith(self.root_key) and not name.startswith(
+                    self.skip_keys):
                 return self
             return None
         if event == "line":
