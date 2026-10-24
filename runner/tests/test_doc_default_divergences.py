@@ -24074,6 +24074,469 @@ class TestSoftflowdFeedDecodeAndDecideFifteenShapes(unittest.TestCase):
                     capture_output=True, text=True)
                 self.assertEqual(proc.returncode, 2)
 
+class TestBackupFreshnessPathsAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the backup-freshness
+    string tunables watch_dir (default "./backups")
+    and glob (default "*"), read_live()'s directory
+    scan, and decide()'s arrival / staleness-tier
+    handling varied with the fifteen shapes for the
+    first time (step-8 Target 5 / family (b) --
+    backup-freshness's only earlier class covers
+    its numeric stale_after_sec at decide() level;
+    its string tunables, its live reader and its
+    tier state machine were never varied, the same
+    gap the feed hunts closed in the ticks before
+    this one).
+
+    (a) Doc claims: the manifest ships the
+        tunables above plus poll_interval_sec 3600
+        and stale_after_sec 90000
+        (extensions/backup-freshness/extension.json).
+        The README states watch_dir is "the
+        directory backups land in, default
+        ./backups", glob is "which files count,
+        default *", "The newest regular file
+        matching the glob, by modification time, is
+        the backup whose freshness matters", and
+        "a missing directory reads as no data,
+        never an error". It files backup_arrived
+        (info) for "a backup artifact with a newer
+        mtime than any seen before", backup_stale
+        (medium) when "the newest backup's age
+        passes stale_after_sec" and
+        backup_critical (high) at twice it; "Each
+        staleness tier files once", "A jump straight
+        past the critical line files
+        backup_critical only", "A fresh arrival
+        files backup_arrived and resets the tier",
+        "while an artifact exists its age is
+        now - mtime, and if the directory goes
+        empty the clock keeps running on the last
+        backup ever seen", and "If no backup has
+        ever been seen at all the sense stays
+        quiet". watch_dir and glob are not numeric
+        registry rows (backup-freshness's only row
+        is stale_after_sec), so Decision 1's
+        default-on-unusable policy for numeric
+        readers does not name a shape rule for
+        them; this class pins the observed readings
+        instead of asserting one.
+
+    (b) How this was probed: on 2026-10-24
+        read_live() was probed with the fifteen
+        shapes (omitted, null, empty string, true,
+        false, zero, negative, numeric string,
+        non-numeric string, huge-int (10**400),
+        inf, -inf, NaN, list, dict) for each string
+        tunable -- the watch_dir shapes against a
+        temp cwd whose ./backups held a known file,
+        so the documented default is observable --
+        plus genuine, trailing-slash, relative,
+        dot-dot (through an existing intermediate),
+        symlinked and file-as-directory watch_dirs,
+        genuine / non-matching / whitespace glob
+        patterns, a subdirectory whose name matches
+        the glob, and non-dict manifest / tunables
+        shapes. decide() was probed with readings,
+        newest, now, manifest, sensor-name and
+        state shapes, at the exact stale and
+        critical boundaries and in every tier.
+        main() was run in --readings mode against
+        temp manifests (genuine, missing and
+        malformed manifest, missing readings, and
+        a malformed pre-existing state file).
+        poll_interval_sec is not read by decide()
+        or read_live() at all; decide() consults
+        only stale_after_sec and manifest["name"].
+
+    (c) Behavior actually observed: NO divergence
+        recorded. read_live() reads every
+        non-string or empty watch_dir as the
+        documented "./backups" and every non-string
+        or empty glob as "*", honors a genuine
+        directory (trailing slash, relative and
+        symlinked forms included; a dot-dot path
+        resolves only when its intermediate exists)
+        and a genuine pattern, picks the newest
+        regular file by mtime among matches (a
+        directory whose name matches is ignored),
+        and reads a missing directory, a file as
+        the directory, a whitespace-only directory
+        or pattern, a non-matching pattern, and a
+        non-dict manifest or tunables value as
+        newest None, never an error. decide()
+        reads a non-dict readings value as empty;
+        a newest entry is cleaned to a non-empty
+        string name plus a usable-number mtime
+        (bool / string / missing shapes drop the
+        entry whole) with a usable-number size
+        carried through and any other size dropped.
+        The first or strictly-newer artifact files
+        backup_arrived once, resets the tier to ok
+        and skips staleness on that pass even when
+        the artifact is already old; the same or an
+        older mtime is no arrival and does not move
+        the recorded last-seen values. Staleness is
+        strictly greater-than: age exactly
+        stale_after_sec files nothing, age exactly
+        twice it files backup_stale from ok, age
+        past twice files backup_critical only from
+        any non-critical tier, a stale tier does
+        not refile stale, a critical tier refiles
+        nothing, and a negative age clamps to 0.
+        An empty directory keeps the clock running
+        on the last backup ever seen; nothing ever
+        seen stays quiet. An unusable now (string,
+        bool, huge-int, non-finite) reads as 0.0,
+        so no staleness files. State is cleaned
+        field-wise: a non-string name reads as
+        None, a non-usable mtime (bool included)
+        reads as None while a genuine tier is kept
+        verbatim, and an unknown tier reads as ok.
+        A non-string or empty sensor name falls
+        back to "backup_freshness"; a non-dict
+        manifest or tunables value reads as the
+        defaults. main() in --readings mode files
+        the arrival, writes the cleaned state and
+        answers rc 0, reads a malformed state file
+        as fresh, and answers rc 2 for a missing or
+        malformed manifest or a missing readings
+        file.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the readings above
+        keep matching the README. If a shape above
+        ever stops behaving as documented, this test
+        is the failing record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "backup-freshness",
+            "backup_freshness.py")
+        spec = importlib.util.spec_from_file_location(
+            "backup_freshness_paths_decide", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _write(self, directory, name, mtime, content="x"):
+        import os
+        path = os.path.join(directory, name)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(content)
+        os.utime(path, (mtime, mtime))
+        return path
+
+    def _decide(self, mod, readings, tunables=None, state=None,
+                name="backup_freshness"):
+        manifest = {"name": name,
+                    "tunables": {} if tunables is None else tunables}
+        alerts, new_state = mod.decide(readings, manifest, state)
+        return ([(a["sensor"], a["signal"], a["severity"], a["detail"])
+                 for a in alerts], new_state)
+
+    _SEEN = {"last_seen_name": "b.tar", "last_seen_mtime": 1000.0,
+             "tier": "ok"}
+
+    def test_watch_dir_shapes_read_as_default(self):
+        import os
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            backups = os.path.join(td, "backups")
+            os.mkdir(backups)
+            self._write(backups, "z.tar", 3000, "zz")
+            old_cwd = os.getcwd()
+            try:
+                os.chdir(td)
+                expected = {"name": "z.tar", "mtime": 3000.0, "size": 2}
+                shapes = [{}, {"watch_dir": None}, {"watch_dir": ""},
+                          {"watch_dir": True}, {"watch_dir": False},
+                          {"watch_dir": 0}, {"watch_dir": -5},
+                          {"watch_dir": "45"}, {"watch_dir": 10 ** 400},
+                          {"watch_dir": float("inf")},
+                          {"watch_dir": float("-inf")},
+                          {"watch_dir": float("nan")},
+                          {"watch_dir": ["x"]}, {"watch_dir": {"x": 1}}]
+                # "45" is a genuine string naming a missing relative
+                # directory, not the fallback; it is excluded from the
+                # default assertion below and pinned separately.
+                for tun in shapes:
+                    if tun.get("watch_dir") == "45":
+                        continue
+                    with self.subTest(tun=repr(tun)):
+                        self.assertEqual(
+                            mod.read_live({"tunables": tun})["newest"],
+                            expected)
+                self.assertIsNone(
+                    mod.read_live({"tunables": {"watch_dir": "45"}})["newest"])
+            finally:
+                os.chdir(old_cwd)
+
+    def test_glob_shapes_read_as_star(self):
+        import os
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            self._write(td, "a.tar", 1000)
+            self._write(td, "b.log", 2000)
+            expected = {"name": "b.log", "mtime": 2000.0, "size": 1}
+            for value in [None, "", True, False, 0, -5, 123, 10 ** 400,
+                          float("inf"), float("nan"), ["*.tar"],
+                          {"x": 1}]:
+                with self.subTest(value=repr(value)):
+                    self.assertEqual(
+                        mod.read_live({"tunables": {
+                            "watch_dir": td, "glob": value}})["newest"],
+                        expected)
+
+    def test_read_live_genuine_missing_and_patterns(self):
+        import os
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            self._write(td, "a.tar", 1000, "hello")
+            self._write(td, "c.tar", 1500, "yy")
+            self._write(td, "b.log", 2000)
+            os.mkdir(os.path.join(td, "d.tar"))
+            newest = mod.read_live({"tunables": {
+                "watch_dir": td, "glob": "*.tar"}})["newest"]
+            self.assertEqual(newest, {"name": "c.tar", "mtime": 1500.0,
+                                      "size": 2})
+            for pattern, name in [("*", "b.log"), ("a.*", "a.tar"),
+                                  ("?.tar", "c.tar"), ("a.tar", "a.tar")]:
+                with self.subTest(pattern=pattern):
+                    self.assertEqual(
+                        mod.read_live({"tunables": {
+                            "watch_dir": td, "glob": pattern}})
+                        ["newest"]["name"], name)
+            for tun in [{"watch_dir": os.path.join(td, "nope")},
+                        {"watch_dir": os.path.join(td, "a.tar")},
+                        {"watch_dir": " "},
+                        {"watch_dir": td, "glob": "*.zip"},
+                        {"watch_dir": td, "glob": " "}]:
+                with self.subTest(tun=repr(tun)):
+                    self.assertIsNone(mod.read_live({"tunables": tun})
+                                      ["newest"])
+            self.assertIsNone(mod.read_live("nope")["newest"])
+            self.assertIsNone(mod.read_live({"tunables": "x"})["newest"])
+            # Trailing slash, relative and symlinked directory forms.
+            self.assertEqual(
+                mod.read_live({"tunables": {"watch_dir": td + "/"}})
+                ["newest"]["name"], "b.log")
+            link = os.path.join(td, "link")
+            try:
+                os.symlink(td, link)
+            except OSError:
+                link = None
+            if link is not None:
+                self.assertEqual(
+                    mod.read_live({"tunables": {
+                        "watch_dir": link, "glob": "*.tar"}})
+                    ["newest"]["name"], "c.tar")
+            sub = os.path.join(td, "sub")
+            os.mkdir(sub)
+            dotdot = os.path.join(td, "sub", "..")
+            self.assertEqual(
+                mod.read_live({"tunables": {
+                    "watch_dir": dotdot, "glob": "*.tar"}})
+                ["newest"]["name"], "c.tar")
+
+    def test_decide_arrival_and_skip_staleness(self):
+        mod = self._mod()
+        alerts, state = self._decide(
+            mod, {"now": 2000, "newest": {"name": "a.tar", "mtime": 900,
+                                          "size": 12}})
+        self.assertEqual(alerts, [("backup_freshness", "backup_arrived",
+                                   "info", {"name": "a.tar",
+                                            "mtime": 900.0, "size": 12})])
+        self.assertEqual(state, {"last_seen_name": "a.tar",
+                                 "last_seen_mtime": 900.0, "tier": "ok"})
+        # A first-ever artifact that is already ancient still files
+        # only the arrival on its pass.
+        alerts, _ = self._decide(
+            mod, {"now": 1000000, "newest": {"name": "a.tar", "mtime": 0}})
+        self.assertEqual([a[1] for a in alerts], ["backup_arrived"])
+        # Same or older mtime is no arrival and moves nothing.
+        for mtime in [1000, 500]:
+            with self.subTest(mtime=mtime):
+                alerts, state = self._decide(
+                    mod, {"now": 2000, "newest": {"name": "other.tar",
+                                                  "mtime": mtime}},
+                    state=dict(self._SEEN))
+                self.assertEqual(alerts, [])
+                self.assertEqual(state, self._SEEN)
+
+    def test_decide_staleness_tiers_and_exact_bounds(self):
+        mod = self._mod()
+        readings = lambda now: {"now": now, "newest": {
+            "name": "b.tar", "mtime": 1000}}
+        # Exactly stale_after: nothing. Exactly twice: stale from ok.
+        alerts, _ = self._decide(mod, readings(1000 + 90000),
+                                 state=dict(self._SEEN))
+        self.assertEqual(alerts, [])
+        alerts, state = self._decide(mod, readings(1000 + 180000),
+                                     state=dict(self._SEEN))
+        self.assertEqual([a[1] for a in alerts], ["backup_stale"])
+        self.assertEqual(state["tier"], "stale")
+        # Past twice from ok: critical only.
+        alerts, state = self._decide(mod, readings(1000 + 200000),
+                                     state=dict(self._SEEN))
+        self.assertEqual(alerts, [("backup_freshness", "backup_critical",
+                                   "high", {"age_sec": 200000.0,
+                                            "threshold_sec": 90000.0,
+                                            "last_seen_name": "b.tar"})])
+        self.assertEqual(state["tier"], "critical")
+        # A stale tier does not refile stale, but files critical past
+        # twice; a critical tier refiles nothing.
+        stale_state = dict(self._SEEN, tier="stale")
+        alerts, _ = self._decide(mod, readings(1000 + 100000),
+                                 state=dict(stale_state))
+        self.assertEqual(alerts, [])
+        alerts, _ = self._decide(mod, readings(1000 + 180001),
+                                 state=dict(stale_state))
+        self.assertEqual([a[1] for a in alerts], ["backup_critical"])
+        alerts, _ = self._decide(
+            mod, readings(1000 + 300000),
+            state=dict(self._SEEN, tier="critical"))
+        self.assertEqual(alerts, [])
+        # Negative age clamps to zero.
+        alerts, _ = self._decide(mod, readings(500),
+                                 state=dict(self._SEEN))
+        self.assertEqual(alerts, [])
+
+    def test_decide_empty_dir_clock_and_never_seen(self):
+        mod = self._mod()
+        alerts, state = self._decide(
+            mod, {"now": 1000 + 100000, "newest": None},
+            state=dict(self._SEEN))
+        self.assertEqual([a[1] for a in alerts], ["backup_stale"])
+        self.assertEqual(alerts[0][3]["last_seen_name"], "b.tar")
+        alerts, state = self._decide(mod, {"now": 999999, "newest": None})
+        self.assertEqual(alerts, [])
+        self.assertEqual(state, {"last_seen_name": None,
+                                 "last_seen_mtime": None, "tier": "ok"})
+
+    def test_decide_newest_cleaning_shapes(self):
+        mod = self._mod()
+        for value in [None, "x", 123, [], {}, {"name": "", "mtime": 1000},
+                      {"name": "a", "mtime": "1000"},
+                      {"name": "a", "mtime": True},
+                      {"name": "a", "mtime": 10 ** 400},
+                      {"name": 123, "mtime": 1000}]:
+            with self.subTest(value=repr(value)):
+                alerts, state = self._decide(
+                    mod, {"now": 2000, "newest": value})
+                self.assertEqual(alerts, [])
+                self.assertEqual(state["last_seen_mtime"], None)
+        alerts, _ = self._decide(
+            mod, {"now": 2000, "newest": {"name": "a", "mtime": 1000,
+                                          "size": "big"}})
+        self.assertEqual(alerts[0][3], {"name": "a", "mtime": 1000.0})
+        alerts, _ = self._decide(
+            mod, {"now": 2000, "newest": {"name": "a", "mtime": 1000.5,
+                                          "size": 42}})
+        self.assertEqual(alerts[0][3], {"name": "a", "mtime": 1000.5,
+                                        "size": 42})
+
+    def test_decide_state_cleaning_and_now_shapes(self):
+        mod = self._mod()
+        for bad_now in ["999999", True, False, 10 ** 400, float("inf"),
+                        float("nan"), None, ["x"]]:
+            with self.subTest(now=repr(bad_now)):
+                alerts, _ = self._decide(
+                    mod, {"now": bad_now, "newest": None},
+                    state=dict(self._SEEN))
+                self.assertEqual(alerts, [])
+        for raw in [None, "x", [], {},
+                    {"last_seen_name": 123, "last_seen_mtime": "1000",
+                     "tier": "bogus"}]:
+            with self.subTest(state=repr(raw)):
+                alerts, state = self._decide(
+                    mod, {"now": 1000 + 100000, "newest": None}, state=raw)
+                self.assertEqual(alerts, [])
+                self.assertEqual(state, {"last_seen_name": None,
+                                         "last_seen_mtime": None,
+                                         "tier": "ok"})
+        # A bool mtime cleans to None while name and tier are kept.
+        alerts, state = self._decide(
+            mod, {"now": 1000 + 100000, "newest": None},
+            state={"last_seen_name": "b", "last_seen_mtime": True,
+                   "tier": "stale"})
+        self.assertEqual(alerts, [])
+        self.assertEqual(state, {"last_seen_name": "b",
+                                 "last_seen_mtime": None, "tier": "stale"})
+
+    def test_decide_sensor_and_manifest_shapes(self):
+        mod = self._mod()
+        for name, expected in [("", "backup_freshness"),
+                               (123, "backup_freshness"),
+                               (None, "backup_freshness"),
+                               ("custom", "custom")]:
+            with self.subTest(name=repr(name)):
+                alerts, _ = self._decide(
+                    mod, {"now": 2000, "newest": {"name": "a",
+                                                  "mtime": 1000}},
+                    name=name)
+                self.assertEqual(alerts[0][0], expected)
+        alerts, _ = mod.decide({"now": 2000, "newest": {"name": "a",
+                                                        "mtime": 1000}},
+                               "nope", None)
+        self.assertEqual(alerts[0]["sensor"], "backup_freshness")
+        alerts, _ = mod.decide(
+            {"now": 101000, "newest": {"name": "b", "mtime": 1000}},
+            {"name": "x", "tunables": "nope"}, dict(self._SEEN))
+        self.assertEqual(alerts[0]["detail"]["threshold_sec"], 90000.0)
+        alerts, _ = self._decide(mod, "nope")
+        self.assertEqual(alerts, [])
+
+    def test_main_readings_mode_and_errors(self):
+        import io
+        import os
+        from contextlib import redirect_stdout
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            manifest = os.path.join(td, "ext.json")
+            readings = os.path.join(td, "r.json")
+            state = os.path.join(td, "s.json")
+            with open(manifest, "w", encoding="utf-8") as fh:
+                json.dump({"name": "backup_freshness",
+                           "tunables": {"stale_after_sec": 10}}, fh)
+            with open(readings, "w", encoding="utf-8") as fh:
+                json.dump({"now": 2000, "newest": {"name": "a.tar",
+                                                   "mtime": 1000,
+                                                   "size": 5}}, fh)
+            out = io.StringIO()
+            with redirect_stdout(out):
+                rc = mod.main(["--manifest", manifest,
+                               "--readings", readings, "--state", state])
+            self.assertEqual(rc, 0)
+            self.assertIn("backup_arrived", out.getvalue())
+            with open(state, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh),
+                                 {"last_seen_name": "a.tar",
+                                  "last_seen_mtime": 1000.0, "tier": "ok"})
+            self.assertEqual(mod.main(
+                ["--manifest", os.path.join(td, "nope"),
+                 "--readings", readings, "--state", state]), 2)
+            self.assertEqual(mod.main(
+                ["--manifest", manifest,
+                 "--readings", os.path.join(td, "nope"),
+                 "--state", state]), 2)
+            with open(state, "w", encoding="utf-8") as fh:
+                fh.write("{not json")
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(mod.main(
+                    ["--manifest", manifest, "--readings", readings,
+                     "--state", state]), 0)
+            with open(manifest, "w", encoding="utf-8") as fh:
+                fh.write("{bad")
+            self.assertEqual(mod.main(
+                ["--manifest", manifest, "--readings", readings,
+                 "--state", state]), 2)
+
 if __name__ == "__main__":
 
     unittest.main()
