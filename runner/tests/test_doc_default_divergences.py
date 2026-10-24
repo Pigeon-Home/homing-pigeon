@@ -16838,6 +16838,269 @@ class TestDefaultTimeoutSecFifteenShapesAtReader(unittest.TestCase):
 
 
 
+class TestMaxJobAgeSecFifteenShapesAtIssuedAtOk(unittest.TestCase):
+    """Second-run hunt coverage: max_job_age_sec itself
+    varied with the fifteen shapes at the reader the
+    verification list names (runner/runner.py:
+    _issued_at_ok, through confval.integer lo=1) for
+    the first time at reader level. The row's
+    registry-named classes
+    (TestZeroOrNegativeMaxJobAgeDefaultsTo3600,
+    TestBooleanMaxJobAgeDefaultsTo3600) varied only
+    the zero/negative and boolean shapes against this
+    reader in the first run, when it still read the
+    key with a raw int(); the reader has since moved
+    to confval, and this class pins the full fifteen
+    shapes against the moved reader.
+
+    (a) Doc claim (PROTOCOL.md, section 5, line
+        346): "`issued_at` parses, carries a timezone,
+        and is within `max_job_age_sec` (default 3600)
+        of the runner's clock (replay / stale
+        protection)." Registry row "max_job_age_sec"
+        (default 3600, reader
+        runner/runner.py:_issued_at_ok, policy
+        default under Decision 1, lo=1, hi=None).
+
+    (b) How it was hunted: step-8 Target 6 (core rows
+        covered only for the shapes their classes
+        exercised). This tick probed _issued_at_ok
+        with the fifteen shapes from the table hunt
+        -- omitted, null, empty string, true, false,
+        zero, negative, the explicit default, numeric
+        string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, wrong containers
+        (list and dict) -- pinned from both sides of
+        the window (an issued_at 60 seconds old is
+        accepted exactly when the window reaches it;
+        one 3700 seconds old is rejected exactly when
+        the window is the documented 3600), plus
+        genuine values.
+
+    (c) Behavior actually observed: NO divergence at
+        this reader: every unusable shape reads as
+        the documented default 3600 -- a 60-second-old
+        timestamp is accepted and a 3700-second-old
+        one is rejected for omitted, null, empty
+        string, true, false, zero, negative,
+        non-numeric string, huge-int, inf, -inf, NaN,
+        list and dict alike. Genuine values are
+        honored exactly: 10 and the numeric string
+        "42" set their own windows (5 seconds old
+        accepted, 60 rejected), 42.9 truncates to 42,
+        and 2.5 truncates to 2 (5 seconds old already
+        outside it). The zero/negative and boolean
+        rejections recorded against this reader in
+        the first run no longer occur here. Observed
+        on 2026-10-24 against current main. The same
+        key is still read literally at a second site
+        -- see the divergence class that follows this
+        one.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        unusable shapes keep reading as the
+        documented default and genuine values keep
+        being honored. If a shape above ever stops
+        behaving as PROTOCOL.md states, this test
+        is the failing record of that change.
+    """
+
+    def _ok(self, age_sec, cfg):
+        from datetime import datetime, timedelta, timezone
+        from runner.runner import _issued_at_ok
+        issued = (datetime.now(timezone.utc)
+                  - timedelta(seconds=age_sec)).strftime(
+                      "%Y-%m-%dT%H:%M:%SZ")
+        return _issued_at_ok(issued, cfg)[0]
+
+    def test_fifteen_shapes_read_as_default(self):
+        unusable = [None, "", True, False, 0, -5,
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        cases = [("omitted", {})]
+        cases += [(repr(v), {"max_job_age_sec": v})
+                  for v in unusable]
+        cases.append(("explicit-default",
+                      {"max_job_age_sec": 3600}))
+        for name, cfg in cases:
+            with self.subTest(shape=name):
+                self.assertTrue(self._ok(60, cfg))
+                self.assertFalse(self._ok(3700, cfg))
+
+    def test_genuine_values_are_honored(self):
+        for value in (10, "42", 42.9):
+            with self.subTest(value=repr(value)):
+                self.assertTrue(
+                    self._ok(5, {"max_job_age_sec": value}))
+                self.assertFalse(
+                    self._ok(60, {"max_job_age_sec": value}))
+        # 2.5 truncates toward zero to a 2-second
+        # window: even 5 seconds old is outside it.
+        self.assertFalse(
+            self._ok(5, {"max_job_age_sec": 2.5}))
+
+
+class TestMaxJobAgeSecLiteralAtLocalIngestInsteadOfDefault(
+        unittest.TestCase):
+    """Divergence: at the local-signals freshness
+    check, a max_job_age_sec present as 0, a negative
+    value, a boolean, or a huge integer is used
+    literally instead of reading as the documented
+    3600 default -- a sensor alert issued a minute
+    ago is rejected as stale for 0 / -5 / true /
+    false, and a stale alert over an hour old is
+    accepted when the value is a huge integer.
+
+    (a) Doc claim (PROTOCOL.md, section 5, line
+        346): "`issued_at` parses, carries a timezone,
+        and is within `max_job_age_sec` (default 3600)
+        of the runner's clock (replay / stale
+        protection)." Registry row "max_job_age_sec"
+        (default 3600, policy default under Decision
+        1: a present-but-unusable value reads as its
+        documented default). The reader the
+        verification list names, _issued_at_ok in the
+        same file, already honors this through
+        confval.integer with lo=1, and its own comment
+        states why: "Zero, a negative number, a
+        boolean, or a non-number would reject every
+        job as stale; none is a window."
+
+    (b) How the bug was found: the second run's
+        fifteen-shapes hunt on max_job_age_sec
+        (2026-10-24 tick) probed every reader of the
+        key in runner/runner.py. _issued_at_ok reads
+        all fifteen shapes as the default (pinned by
+        TestMaxJobAgeSecFifteenShapesAtIssuedAtOk
+        above), but _ingest_local_envelope_inner
+        still computes
+        int(cfg.get("max_job_age_sec", 3600)) with a
+        fallback only for TypeError / ValueError /
+        OverflowError. A signed lab-results sensor
+        alert (the test_local_signals harness shape)
+        issued 60 seconds ago was delivered through
+        _ingest_local_envelope with the key varied;
+        a 3700-second-old alert tested the huge-int
+        shape from the stale side.
+
+    (c) Behavior actually observed: omitted, null,
+        "bogus", inf, NaN and a list all store the
+        60-second-old alert (the fallback or the
+        default covers them), and a genuine 42 is
+        honored (30 seconds old stored, 60 rejected).
+        But 0, -5, true and false each reject the
+        60-second-old alert as "issued_at outside
+        allowed window" -- int() yields 0, -5, 1 and 0
+        respectively, used literally -- and 10**400
+        stores a 3700-second-old alert that the
+        documented 3600 window rejects, because int()
+        keeps the huge value as an effectively
+        unbounded window. The identical unguarded
+        expression is duplicated at handle_mail's
+        freshness check in the same file (not
+        exercised here). This is the known
+        boolean-as-number / zero-negative-literal /
+        huge-int families, at the one reader of this
+        key that was not moved to confval. Observed
+        on 2026-10-24 against current main.
+
+    (d) Do not make this test pass by editing the
+        test. It passes only when the bug described
+        above is fixed in the code.
+    """
+
+    _LAB_SECRET = ("lab-secret-campaign-0123456789"
+                   "abcdef0123456789abcdef0123456789")
+    _DEF_SECRET = ("default-secret-campaign-0123456789"
+                   "abcdef0123456789abcdef0123")
+    _IDS_SECRET = ("ids-secret-campaign-0123456789"
+                   "abcdef0123456789abcdef0123456789")
+
+    def _ingest(self, extra_cfg, age_sec):
+        import os
+        import shutil
+        from datetime import datetime, timedelta, timezone
+        from runner import extensions as E
+        from runner import runner as R
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        base = os.path.join(tmp, "base")
+        os.makedirs(base)
+        ext_root = os.path.join(tmp, "exts")
+        os.makedirs(ext_root)
+        repo = os.path.dirname(os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__))))
+        shutil.copytree(
+            os.path.join(repo, "extensions", "lab-results"),
+            os.path.join(ext_root, "lab-results"))
+        cfg = {
+            "shared_secret": self._DEF_SECRET,
+            "additional_secrets": {
+                "lab-key": self._LAB_SECRET,
+                "ids-key": self._IDS_SECRET},
+            "key_policies": {
+                "lab-key": {"allowed_kinds": ["sensor_alert"]},
+                "ids-key": {"allowed_kinds": ["sensor_alert"]}},
+            "sensors": {
+                "lab_results": {"enabled": True,
+                                "key_id": "lab-key",
+                                "weight": 1.0, "profile": {}},
+                "host_ids": {"enabled": True,
+                             "key_id": "ids-key",
+                             "weight": 1.0, "profile": {}}},
+            "extensions_dir": ext_root,
+        }
+        cfg.update(extra_cfg)
+        R._LOCAL_WAKE_LAST.clear()
+        self.addCleanup(R._LOCAL_WAKE_LAST.clear)
+        payload = E.build_sensor_alert(
+            "lab_results", "info", "max-age hunt alert",
+            key_id="lab-key", signal="experiment_finished")
+        payload["issued_at"] = (
+            datetime.now(timezone.utc)
+            - timedelta(seconds=age_sec)).strftime(
+                "%Y-%m-%dT%H:%M:%SZ")
+        text = E.sign_envelope(payload, self._LAB_SECRET)
+        return R._ingest_local_envelope(cfg, base, text, "file")
+
+    def test_controls_read_as_documented_default(self):
+        for value in (None, "bogus", float("inf"),
+                      float("nan"), ["x"]):
+            with self.subTest(value=repr(value)):
+                self.assertIsNotNone(self._ingest(
+                    {"max_job_age_sec": value}, 60))
+        self.assertIsNotNone(self._ingest({}, 60))
+        self.assertIsNone(self._ingest({}, 3700))
+
+    def test_genuine_window_is_honored(self):
+        self.assertIsNotNone(
+            self._ingest({"max_job_age_sec": 42}, 30))
+        self.assertIsNone(
+            self._ingest({"max_job_age_sec": 42}, 60))
+
+    def test_zero_reads_as_default(self):
+        self.assertIsNotNone(
+            self._ingest({"max_job_age_sec": 0}, 60))
+
+    def test_negative_reads_as_default(self):
+        self.assertIsNotNone(
+            self._ingest({"max_job_age_sec": -5}, 60))
+
+    def test_true_reads_as_default(self):
+        self.assertIsNotNone(
+            self._ingest({"max_job_age_sec": True}, 60))
+
+    def test_false_reads_as_default(self):
+        self.assertIsNotNone(
+            self._ingest({"max_job_age_sec": False}, 60))
+
+    def test_huge_int_reads_as_default(self):
+        self.assertIsNone(
+            self._ingest({"max_job_age_sec": 10 ** 400}, 3700))
+
+
 if __name__ == "__main__":
 
     unittest.main()
