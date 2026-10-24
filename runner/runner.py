@@ -6884,6 +6884,12 @@ def save_seen(path: str, seen: dict):
 
 HOT_KEYS = ("poll_interval_sec", "workers", "default_timeout_sec",
             "max_output_bytes", "max_job_age_sec")
+# The documented default each hot key reads as when a live write is
+# not usable (Decision 1, live reload: the default, named in the log,
+# no hidden last-good state). workers is 1 unset (_worker_count).
+HOT_DEFAULTS = {"poll_interval_sec": 20, "workers": 1,
+                "default_timeout_sec": 300, "max_output_bytes": 100000,
+                "max_job_age_sec": 3600}
 # Strings and objects the Oracle reads live. Not integers, so they do not
 # go through _valid_hot. Credentials stay out of this list.
 LIVE_KEYS = ("owner_instructions", "inference", "oracle_mode", "verbose",
@@ -6932,9 +6938,9 @@ def reload_hot_config(cfg: dict, path: str, state: dict,
             continue
         val = _valid_hot(key, fresh[key])
         if val is None:
-            log(f"config reload: ignoring invalid {key}={fresh[key]!r}",
-                "WARN")
-            continue
+            val = HOT_DEFAULTS[key]
+            log(f"config reload: invalid {key}={fresh[key]!r} reads as "
+                f"the default {val}", "WARN")
         if val != cfg.get(key):
             cfg[key] = val
             changed.append(key)

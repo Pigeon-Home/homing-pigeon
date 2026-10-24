@@ -107,6 +107,9 @@ class HotReloadPinTest(unittest.TestCase):
         self.assertEqual(state["mtime"], 0)
 
     def test_zero_is_not_a_legal_hot_value(self):
+        # Decision 1, live reload: a bad value written while running
+        # reads as the documented default (workers 1, poll 20), named
+        # in the log. No hidden last-good state.
         from runner.runner import reload_hot_config
 
         with tempfile.TemporaryDirectory() as directory:
@@ -115,11 +118,11 @@ class HotReloadPinTest(unittest.TestCase):
                 json.dump({"workers": 0, "poll_interval_sec": "nope"}, fh)
             cfg = {"workers": 2, "poll_interval_sec": 20}
             changed = reload_hot_config(cfg, path, {"mtime": 0})
-        self.assertEqual(changed, [])
-        self.assertEqual(cfg["workers"], 2)
+        self.assertEqual(changed, ["workers"])
+        self.assertEqual(cfg["workers"], 1)
         self.assertEqual(cfg["poll_interval_sec"], 20)
 
-    def test_infinity_is_ignored_and_the_other_key_still_loads(self):
+    def test_infinity_reads_as_the_default_and_the_other_key_loads(self):
         from runner.runner import reload_hot_config
 
         with tempfile.TemporaryDirectory() as directory:
@@ -134,10 +137,12 @@ class HotReloadPinTest(unittest.TestCase):
                    "default_timeout_sec": 30}
             state = {"mtime": 0}
             changed = reload_hot_config(cfg, path, state)
-        self.assertEqual(cfg["workers"], 2)
+        # Infinity and NaN are not usable: each reads as its documented
+        # default (Decision 1, live reload), and the good key still loads.
+        self.assertEqual(cfg["workers"], 1)
         self.assertEqual(cfg["poll_interval_sec"], 20)
         self.assertEqual(cfg["default_timeout_sec"], 15)
-        self.assertEqual(changed, ["default_timeout_sec"])
+        self.assertEqual(changed, ["workers", "default_timeout_sec"])
         self.assertNotEqual(state["mtime"], 0)
 
 
