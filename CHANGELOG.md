@@ -40,6 +40,11 @@ facts a reader may need to cite. Git history carries the rest.
   output. It now checks that `main()` reaches its loop on the default
   tier, with the listener stood in for. The module runs only where
   hypothesis is installed, which is why the local suite never saw it.
+- **Typecheck green again.** `runner/platformcard.py` (from the
+  unreleased queue below) declared `build_card` as returning a dict
+  and returned `None` at tier `none`; the annotation now says so, and
+  the card is typed as a plain dict so the `full` tier's `path_tools`
+  map assigns. Annotations only, no behavior change.
 
 <!-- Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c -->
 

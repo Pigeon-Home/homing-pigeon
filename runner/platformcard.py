@@ -73,7 +73,7 @@ def tier_of(cfg, key, default=DEFAULT_TIER):
 
 
 def build_card(tier, cfg=None, protocol_versions=None,
-               runner_version=None) -> dict:
+               runner_version=None) -> "dict | None":
     """The card for a tier, or None at `none`.
 
     `cfg` supplies `default_interpreter` when the owner set one;
@@ -90,7 +90,7 @@ def build_card(tier, cfg=None, protocol_versions=None,
         interp = platform_interpreter()
     versions = [v for v in (protocol_versions or [1])
                 if isinstance(v, int) and not isinstance(v, bool)]
-    card = {
+    card: dict = {
         "disclosure": tier,
         "os_family": os_family(),
         "default_interpreter": list(interp),
