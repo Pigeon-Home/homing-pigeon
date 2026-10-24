@@ -109,6 +109,10 @@ REGISTERED = {
         "stale wording: jobcrypto shipped and these three run everywhere "
         "(the guard is a leftover from before it landed)",
     "setup module not importable": "guards an import; never expected to fire",
+    "the documented default path exists on this box":
+        "guards the falco-feed main() fallback probe, which needs "
+        "Falco's default log absent; runs on every CI runner, none "
+        "of which runs a live Falco file output",
     # ---- opt-in proof modules: run by their own workflow legs ------
     "runs in the .github/docker/minimal-userland image":
         "run by .github/workflows/minimal-userland.yml, which fails on any skip",

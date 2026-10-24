@@ -20268,6 +20268,439 @@ class TestSysmonFeedPathsAndDecideFifteenShapes(unittest.TestCase):
         for value in (123, None, ""):
             self.assertIsNone(mod._encoded_match(value))
 
+class TestFalcoFeedPathsAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the falco-feed
+    log_paths tunable and event handling (default
+    ["/var/log/falco/falco.json"], poll_interval_sec
+    60) varied with the fifteen shapes for the
+    first time (step-8 Target 5 / family (b) --
+    falco-feed's only earlier classes cover the
+    numeric episode_cooldown_sec; its path list
+    was never varied, the same gap aide-feed and
+    sysmon-feed closed in the ticks before this
+    one).
+
+    (a) Doc claims: the manifest ships both
+        (extensions/falco-feed/extension.json:
+        "log_paths": ["/var/log/falco/falco.json"],
+        "poll_interval_sec": 60). The README states
+        "point Falco's `file_output` at the
+        `log_paths` tunable (default
+        `/var/log/falco/falco.json`)" (line 8), its
+        tunables table gives log_paths
+        ["/var/log/falco/falco.json"] and
+        poll_interval_sec 60 (lines 71-72), and it
+        describes the tailing: "The log file is
+        tailed incrementally, not re-read: the
+        state carries reader offsets per path
+        ({"inode", "offset"}), a missing file
+        yields no events and keeps its offset, and
+        an inode change or a file that shrank
+        (rotation, truncation) restarts that file
+        from 0" (lines 25-28), with the module
+        docstring saying the same of
+        read_new_events(). log_paths is not a
+        numeric registry row (falco-feed's only
+        row in tests/defaults_registry.py is
+        episode_cooldown_sec), so Decision 1's
+        default-on-unusable policy for numeric
+        readers does not name a shape rule for it;
+        this class pins the observed readings
+        instead of asserting one.
+
+    (b) How this was probed: on 2026-10-24 the
+        reader (read_new_events(), the function
+        main() hands the log_paths value to after
+        its own fallback) was probed with the
+        table hunt's fifteen shapes
+        (omitted-equivalent empty list, null, empty
+        string, true, false, zero, negative,
+        numeric string, non-numeric string,
+        huge-int (10**400), inf, -inf, NaN, list,
+        dict), plus genuine, mixed, tuple and
+        missing-path lists against a real temp log
+        file, and with reader-state shapes
+        directly. parse_event() was probed with
+        the fifteen shapes, malformed lines, and
+        every priority shape. decide() was probed
+        with tunables, readings, event and state
+        shapes. main() was run against temp
+        manifests carrying the log_paths shapes.
+        poll_interval_sec is not read by
+        falco_feed.py's decide() at all; decide()
+        never consults manifest tunables except
+        episode_cooldown_sec (only manifest["name"]
+        for the sensor name).
+
+    (c) Behavior actually observed: NO divergence
+        recorded. read_new_events() reads every
+        non-list/non-tuple shape and an empty list
+        as no paths, cleans genuine lists
+        element-wise (non-string/empty skipped,
+        missing files yield nothing), accepts
+        tuples, reads a duplicated path twice, and
+        returns events in timestamp order; a saved
+        offset resumes incrementally (an appended
+        line yields only that line), a file that
+        shrank restarts from 0, a missing file
+        keeps a valid saved entry and drops an
+        invalid one, and a non-dict reader state
+        or a non-int inode/offset (bool included)
+        or a negative offset restarts the file
+        from 0. main() substitutes the documented
+        default path for a non-list or empty
+        log_paths (on this box that path is absent,
+        so those shapes file nothing, rc 0), while
+        a genuine or mixed list tails the named
+        file. parse_event() reads non-string input
+        and malformed lines as None, maps
+        Emergency/Alert/Critical/Error to
+        falco_critical, Warning/Notice to
+        falco_warning, parses Informational/Debug
+        with signal None, and answers None for any
+        other priority (lowercase included), a
+        missing or unparseable time, or an empty
+        or non-string rule; non-dict output_fields
+        read as {} and non-string output/hostname
+        as "", and nanosecond fractions and +0000
+        offsets parse. decide() skips a non-list
+        events value and non-dict entries, drops
+        an unknown priority and a non-number ts
+        (string, bool, NaN), consumes parsed-only
+        priorities without filing, recomputes a
+        missing fields_digest from output_fields
+        (so the episode still dedups), reads
+        non-string output/hostname as "" and
+        non-dict output_fields as {}, falls back
+        to the sensor name "falco_feed" for a
+        non-dict manifest or a non-string/empty
+        name, and cleans state by dropping episode
+        entries whose key is not a string or whose
+        filed_at/last_seen are not numbers, while
+        preserving a dict _reader verbatim.
+        Observed on 2026-10-24 against current
+        main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as the
+        readings above keep holding. If a shape
+        ever stops behaving as described, this
+        test is the failing record of that change.
+    """
+
+    _LINE1 = ('{"time": "2026-10-24T00:00:01Z", '
+              '"rule": "R1", "priority": "Warning", '
+              '"output": "o1", "output_fields": '
+              '{"proc.name": "sh"}, "hostname": "h1"}\n')
+    _LINE2 = ('{"time": "2026-10-24T00:00:02Z", '
+              '"rule": "R2", "priority": "Error", '
+              '"output": "o2", "output_fields": {}, '
+              '"hostname": "h2"}\n')
+    _EVENT = {"ts": 1000.0, "rule": "R",
+              "priority": "Warning",
+              "output_fields": {"a": 1},
+              "fields_digest": "abc", "output": "x",
+              "hostname": "h"}
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "falco-feed",
+            "falco_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "falco_feed_paths_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_read_new_events_paths_shapes(self):
+        import os
+        import tempfile
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    mod.read_new_events(value, {}), ([], {}))
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "f.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._LINE2 + self._LINE1)
+            for value in ([path], (path,)):
+                events, reader = mod.read_new_events(value, {})
+                self.assertEqual(
+                    [e["rule"] for e in events], ["R1", "R2"])
+                self.assertEqual(
+                    reader[path]["offset"],
+                    os.path.getsize(path))
+            events, _ = mod.read_new_events(
+                [path, 123, "", None], {})
+            self.assertEqual(len(events), 2)
+            events, _ = mod.read_new_events([path, path], {})
+            self.assertEqual(len(events), 4)
+            _, reader = mod.read_new_events([path], {})
+            self.assertEqual(
+                mod.read_new_events([path], reader),
+                ([], reader))
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(self._LINE1)
+            events, reader2 = mod.read_new_events([path], reader)
+            self.assertEqual([e["rule"] for e in events], ["R1"])
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._LINE1)
+            events, _ = mod.read_new_events([path], reader2)
+            self.assertEqual([e["rule"] for e in events], ["R1"])
+            missing = os.path.join(d, "nope.json")
+            st = os.stat(path)
+            self.assertEqual(
+                mod.read_new_events(
+                    [missing],
+                    {missing: {"inode": st.st_ino, "offset": 5}}),
+                ([], {missing: {"inode": st.st_ino,
+                                "offset": 5}}))
+            self.assertEqual(
+                mod.read_new_events(
+                    [missing],
+                    {missing: {"inode": "x", "offset": 5}}),
+                ([], {}))
+            self.assertEqual(
+                mod.read_new_events([missing], {}), ([], {}))
+
+    def test_read_new_events_reader_state_shapes(self):
+        import os
+        import tempfile
+        mod = self._module()
+        for bad_state in (None, "bogus", [], 42):
+            with self.subTest(state=repr(bad_state)):
+                self.assertEqual(
+                    mod.read_new_events([], bad_state), ([], {}))
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "f.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._LINE1)
+            for bad in ({path: {"inode": "bad",
+                                "offset": "bad"}},
+                        {path: {"inode": True, "offset": 0}},
+                        {path: {"inode": 1, "offset": -1}},
+                        {path: "notdict"},
+                        {path: {"inode": 999999, "offset": 0}}):
+                events, _ = mod.read_new_events([path], bad)
+                self.assertEqual(len(events), 1)
+
+    def test_parse_event_shapes(self):
+        import json
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertIsNone(mod.parse_event(value))
+        self.assertIsNone(mod.parse_event(42))
+        self.assertIsNone(mod.parse_event("not json"))
+        self.assertIsNone(mod.parse_event("[1, 2]"))
+        self.assertIsNone(mod.parse_event("42"))
+        for priority, signal in (
+                ("Emergency", "falco_critical"),
+                ("Alert", "falco_critical"),
+                ("Critical", "falco_critical"),
+                ("Error", "falco_critical"),
+                ("Warning", "falco_warning"),
+                ("Notice", "falco_warning"),
+                ("Informational", None),
+                ("Debug", None)):
+            with self.subTest(priority=priority):
+                ev = mod.parse_event(json.dumps(
+                    {"time": "2026-10-24T00:00:01Z",
+                     "rule": "R", "priority": priority}))
+                self.assertIsNotNone(ev)
+                self.assertEqual(ev["signal"], signal)
+        for bad in ({"rule": "R", "priority": "Warning"},
+                    {"time": "bogus", "rule": "R",
+                     "priority": "Warning"},
+                    {"time": "2026-10-24T00:00:01Z",
+                     "rule": "", "priority": "Warning"},
+                    {"time": "2026-10-24T00:00:01Z",
+                     "rule": 5, "priority": "Warning"},
+                    {"time": "2026-10-24T00:00:01Z",
+                     "rule": "R", "priority": "Bogus"},
+                    {"time": "2026-10-24T00:00:01Z",
+                     "rule": "R", "priority": "warning"},
+                    {"time": "2026-10-24T00:00:01Z",
+                     "rule": "R", "priority": None}):
+            self.assertIsNone(mod.parse_event(json.dumps(bad)))
+        ev = mod.parse_event(json.dumps(
+            {"time": "2026-10-24T00:00:01.123456789+0000",
+             "rule": "R", "priority": "Warning",
+             "output": 5, "output_fields": "nope",
+             "hostname": 7}))
+        self.assertAlmostEqual(ev["ts"], 1792800001.123456,
+                               places=5)
+        self.assertEqual(ev["output"], "")
+        self.assertEqual(ev["output_fields"], {})
+        self.assertEqual(ev["hostname"], "")
+
+    def test_decide_ignores_path_and_poll_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                alerts, _ = mod.decide(
+                    {"now": 1000.0,
+                     "events": [dict(self._EVENT)]},
+                    {"name": "falco_feed",
+                     "tunables": {"log_paths": value,
+                                  "poll_interval_sec": value}},
+                    {})
+                self.assertEqual(len(alerts), 1)
+                self.assertEqual(alerts[0]["signal"],
+                                 "falco_warning")
+                self.assertEqual(alerts[0]["severity"],
+                                 "medium")
+        for man in (None, "x", [], {},
+                    {"name": 123}, {"name": ""},
+                    {"tunables": "nope"}):
+            alerts, _ = mod.decide(
+                {"now": 1000.0, "events": [dict(self._EVENT)]},
+                man, {})
+            self.assertEqual(len(alerts), 1)
+            self.assertEqual(alerts[0]["sensor"], "falco_feed")
+
+    def test_decide_event_and_state_cleaning(self):
+        mod = self._module()
+        man = {"name": "falco_feed"}
+        for readings in (None, "x", [], {}, {"events": None},
+                         {"events": "notalist"},
+                         {"events": {"a": 1}}):
+            self.assertEqual(mod.decide(readings, man, {}),
+                             ([], {"episodes": {}}))
+        self.assertEqual(
+            mod.decide({"events": ["notadict", None, 42]},
+                       man, {})[0], [])
+        self.assertEqual(
+            mod.decide(
+                {"events": [dict(self._EVENT,
+                                 priority="Informational"),
+                            dict(self._EVENT, priority="Debug",
+                                 rule="R2")]}, man, {})[0], [])
+        self.assertEqual(
+            mod.decide({"events": [dict(self._EVENT,
+                                        priority="Bogus")]},
+                       man, {})[0], [])
+        alerts, _ = mod.decide(
+            {"events": [dict(self._EVENT, priority="Error")]},
+            man, {})
+        self.assertEqual(
+            [(a["signal"], a["severity"]) for a in alerts],
+            [("falco_critical", "high")])
+        for bad_ts in ("1000", True, float("nan")):
+            self.assertEqual(
+                mod.decide({"events": [dict(self._EVENT,
+                                            ts=bad_ts)]},
+                           man, {})[0], [])
+        no_digest = dict(self._EVENT)
+        del no_digest["fields_digest"]
+        first, state = mod.decide({"events": [no_digest]},
+                                  man, {})
+        self.assertEqual(len(first), 1)
+        self.assertEqual(
+            mod.decide({"events": [dict(no_digest)]},
+                       man, state)[0], [])
+        alerts, _ = mod.decide(
+            {"events": [dict(self._EVENT, output=5,
+                             hostname=7,
+                             output_fields="nope")]}, man, {})
+        self.assertEqual(alerts[0]["detail"]["output"], "")
+        self.assertEqual(alerts[0]["detail"]["hostname"], "")
+        self.assertEqual(alerts[0]["detail"]["output_fields"],
+                         {})
+        alerts, new_state = mod.decide(
+            {"now": 1000.0, "events": [dict(self._EVENT)]},
+            man,
+            {"episodes": {123: {"filed_at": 1,
+                                "last_seen": 1},
+                          "k": {"filed_at": "x",
+                                "last_seen": 1},
+                          "ok": {"filed_at": 900.0,
+                                 "last_seen": 900.0}},
+             "_reader": "notdict"})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            new_state["episodes"]["ok"],
+            {"filed_at": 900.0, "last_seen": 900.0})
+        self.assertNotIn("_reader", new_state)
+        _, new_state = mod.decide(
+            {"events": []}, man,
+            {"episodes": {}, "_reader": {"/x": {"inode": 1}}})
+        self.assertEqual(new_state["_reader"],
+                         {"/x": {"inode": 1}})
+        alerts, state = mod.decide(
+            {"now": 1000.0, "events": [dict(self._EVENT)]},
+            man,
+            {"episodes": {"R|abc": {"filed_at": 900.0,
+                                    "last_seen": 900.0}}})
+        self.assertEqual(alerts, [])
+        self.assertEqual(
+            state["episodes"]["R|abc"]["last_seen"], 1000.0)
+
+    def test_main_log_paths_fallback(self):
+        import contextlib
+        import io
+        import json
+        import os
+        import tempfile
+        if os.path.exists("/var/log/falco/falco.json"):
+            self.skipTest("the documented default path "
+                          "exists on this box")
+        mod = self._module()
+        line = ('{"time": "2026-10-24T00:00:01Z", '
+                '"rule": "MR", "priority": "Warning", '
+                '"output": "o", "output_fields": {}, '
+                '"hostname": "h"}\n')
+        with tempfile.TemporaryDirectory() as d:
+            logp = os.path.join(d, "falco.json")
+            with open(logp, "w", encoding="utf-8") as fh:
+                fh.write(line)
+
+            def run(tunables, tag):
+                mp = os.path.join(d, "m-" + tag + ".json")
+                sp = os.path.join(d, "s-" + tag + ".json")
+                with open(mp, "w", encoding="utf-8") as fh:
+                    json.dump({"name": "falco_feed",
+                               "tunables": tunables}, fh)
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    rc = mod.main(["--manifest", mp,
+                                   "--state", sp])
+                return rc, buf.getvalue().count(
+                    "falco_warning"), os.path.exists(sp)
+
+            self.assertEqual(run({"log_paths": [logp]},
+                                 "genuine"), (0, 1, True))
+            self.assertEqual(
+                run({"log_paths": [logp, 123, ""]}, "mixed"),
+                (0, 1, True))
+            for tag, tunables in (
+                    ("omitted", {}),
+                    ("null", {"log_paths": None}),
+                    ("empty", {"log_paths": []}),
+                    ("string", {"log_paths": "bogus"}),
+                    ("zero", {"log_paths": 0}),
+                    ("junklist", {"log_paths": [123]}),
+                    ("missingpath",
+                     {"log_paths": ["/nonexistent/x.json"]})):
+                with self.subTest(shape=tag):
+                    self.assertEqual(run(tunables, tag),
+                                     (0, 0, True))
+
 if __name__ == "__main__":
 
     unittest.main()
