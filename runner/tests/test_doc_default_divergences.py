@@ -18138,6 +18138,145 @@ class TestAgentWallClockSecFifteenShapesAtReader(unittest.TestCase):
         self.assertTrue(self._out_of_time(
             {"agent_wall_clock_sec": 0.5}, 400))
 
+class TestPollIntervalSecFifteenShapesAtEmailReader(unittest.TestCase):
+    """Second-run hunt coverage: poll_interval_sec
+    itself varied with the fifteen shapes through its
+    actual reader (runner/transport_extensions/email/
+    __main__.py EmailPipe.run:
+    max(1.0, float(_confval.number(cfg.get(
+    "poll_interval_sec"), 20.0, lo=0)))) for the first
+    time at reader level. The row's registry-named
+    classes probed only the booleans
+    (TestBooleanPollIntervalDefaultsTo20) and the
+    huge-int / infinite shapes
+    (TestHugeEmailPollIntervalDefaultsTo20).
+
+    (a) Doc claim: registry row "poll_interval_sec":
+        core, number, default 20, policy default under
+        Decision 1, lo 0, doc_status verified --
+        docs/FAQs.md line 9: "The deterministic code
+        around the model does the watching on the
+        runner's poll cycle -- every 20 seconds by
+        default (`poll_interval_sec`)." The reader's
+        own comment states the same contract:
+        "poll_interval_sec default 20. A usable number
+        is floored at 1s; a boolean, a huge integer
+        (once a raw OverflowError out of this loop),
+        infinity or NaN is not an interval and polls
+        at the documented default."
+
+    (b) How it was hunted: step-8 Target 6 (core rows
+        covered only for the shapes their class
+        exercised). This tick probed EmailPipe.run --
+        the same direct-call surface the named classes
+        and the repo's own transport tests use, with
+        pass_once stubbed out and channel.nap replaced
+        by a recorder that breaks the loop, so the
+        interval each config actually used is observed
+        directly -- with the fifteen shapes from the
+        table hunt (omitted, null, empty string, true,
+        false, zero, negative, the explicit default,
+        numeric string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, wrong containers
+        (list and dict)), plus genuine values and
+        fractional shapes.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape reads as the documented
+        default 20.0 -- omitted, null, empty string,
+        true, false, negative, non-numeric string,
+        huge-int, inf, -inf, NaN, list and dict alike.
+        The boolean-as-number reading the named class
+        recorded on 2026-10-23 (true as a 1-second
+        poll) no longer occurs on current main: the
+        reader now routes through confval.number,
+        which never counts a boolean as a number.
+        Zero is usable under lo=0 and so does not
+        read as the default; it is floored by the
+        reader's max(1.0, ...) to 1.0, as are sub-1
+        fractionals (0.5 -> 1.0). Genuine values are
+        honored exactly (1, 5, 42 and the fractional
+        2.5; the numeric strings "5" and "20" behave
+        as 5 and 20), and there is no reader ceiling
+        (1000 polls at 1000.0). Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes keep
+        reading as the documented default, zero and
+        sub-1 usable values keep flooring to 1.0, and
+        genuine values keep being honored with no
+        ceiling. If a shape above ever stops behaving
+        as stated, this test is the failing record of
+        that change. No production code or doc was
+        changed by this hunt.
+    """
+
+    def _run_interval(self, extra, omit=False):
+        import importlib
+        from unittest import mock
+
+        mod = importlib.import_module(
+            "runner.transport_extensions.email.__main__")
+        cfg = {"mailbox_user": "a@b.c"}
+        if not omit:
+            cfg.update(extra)
+        pipe = mod.EmailPipe(cfg, "/tmp/hp-no-such-channel")
+        seen = []
+
+        class _Done(Exception):
+            pass
+
+        def nap(sec):
+            seen.append(sec)
+            raise _Done()
+
+        with mock.patch.object(pipe, "pass_once",
+                               return_value=None), \
+             mock.patch.object(mod.ch, "nap", side_effect=nap):
+            try:
+                pipe.run()
+            except _Done:
+                pass
+        return seen
+
+    def test_fifteen_shapes_read_as_default(self):
+        unusable = [None, "", True, False, -5,
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        cases = [("omitted", {}, True)]
+        cases += [(repr(v),
+                   {"poll_interval_sec": v}, False)
+                  for v in unusable]
+        cases.append(("explicit-default",
+                      {"poll_interval_sec": 20}, False))
+        cases.append(("numeric-string",
+                      {"poll_interval_sec": "20"}, False))
+        for name, extra, omit in cases:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    self._run_interval(extra, omit=omit),
+                    [20.0])
+
+    def test_zero_and_sub_one_floor_to_one(self):
+        for value in [0, 0.0, 0.5]:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._run_interval(
+                        {"poll_interval_sec": value}),
+                    [1.0])
+
+    def test_genuine_values_honored_no_ceiling(self):
+        for value, want in [(1, 1.0), (5, 5.0), (42, 42.0),
+                            (1000, 1000.0), ("5", 5.0),
+                            (2.5, 2.5)]:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._run_interval(
+                        {"poll_interval_sec": value}),
+                    [want])
+
 if __name__ == "__main__":
 
     unittest.main()
