@@ -4,6 +4,30 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## Unreleased
+
+- **Addressing values refuse instead of defaulting (Decision 1).**
+  `docs/design/present-but-invalid-config.md` is decided: a setting
+  present but not usable reads as its documented default, unless it
+  is a port, a bind address, a key policy, a paging threshold, a
+  security mode or a secret, which refuse to start and name the key.
+  The two readers that read as the default moved: `transport_dtls.port`
+  and `transport_dtls.bind` (a port that is not a whole number 0 to
+  65535, or a bind that is not an address string, is a config error
+  and the DTLS extension exits 2 naming it; port 0 and an empty bind
+  keep their meanings) and the NATS URL's port (`url_port`; a port
+  present but not 1 to 65535 is a config error at startup, where
+  before it fell to 4222 or killed the reconnect loop). The sentence
+  is in PROTOCOL.md section 5 and `docs/configuring-oracle.md`; the
+  four campaign classes that asserted the default for those keys
+  changed with the docs. The defaults registry's rows point at the
+  moved readers and their doc lines, and its coverage guard reads
+  paths the same on Windows.
+- **`docs/QUESTIONS.md`.** Questions between the agents and the
+  owner go there as numbered, dated entries with their answer and
+  the applying commit, instead of through the owner by hand
+  (AGENTS.md rule 7). Four entries open the file.
+
 ## 3.12.59 - 2026-10-24
 
 - **The suites run under a wall clock that names the test.**

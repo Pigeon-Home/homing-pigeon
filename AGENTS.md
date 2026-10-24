@@ -46,6 +46,14 @@ Those values live on the runner host. They do not travel through the SI chat.
      `.md`.
    - `CHANGELOG.md`, `docs/reports/**`, `docs/archive/**` — historical
      records; banners mark them, content is not re-audited.
+7. **Questions go in `docs/QUESTIONS.md`, not through the owner.** A
+   question from one agent to another, or to the owner — a policy to
+   decide, a test whose assertion should move, a doc line that
+   contradicts the code — is written there as a numbered entry with
+   its context and options, and answered there with the deciding
+   commit. The owner reads and answers in the file. The CHANGELOG is
+   a release record and carries none of this. Nothing personal about
+   anyone goes in that file or anywhere else in the repository.
 
 
 ## Sending a job
