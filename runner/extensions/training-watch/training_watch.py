@@ -161,6 +161,19 @@ _MAX_CRASH_EPISODES = 64
 _DEFAULT_GLOBS = "checkpoint-*,*.pt,*.safetensors"
 
 
+def _prev_inode(prev):
+    """The persisted inode as an int, or -1 when unusable.
+
+    The reader state comes back from a JSON file on disk, so a
+    hand-edited or corrupt entry reads as "no known inode" (a
+    restart at the tail) rather than raising.
+    """
+    try:
+        return int(prev.get("inode") or -1)
+    except (TypeError, ValueError, OverflowError):
+        return -1
+
+
 def _is_number(value):
     """A finite int or float, never a bool.
 
@@ -262,7 +275,7 @@ def _read_new_log_lines(path, reader_state, tail_bytes):
     offset = prev.get("offset") if prev else None
     if prev is None or not _is_number(offset):
         start = max(0, size - tail_bytes)
-    elif int(prev.get("inode") or -1) != inode or size < offset:
+    elif _prev_inode(prev) != inode or size < offset:
         start = 0  # rotated (new inode) or truncated: restart
     else:
         start = int(offset)
