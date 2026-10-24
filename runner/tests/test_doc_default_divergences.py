@@ -27834,6 +27834,842 @@ class TestPortWatchListenersAndDecideFifteenShapes(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertIn('"sensor": "port_watch"', out)
 
+class TestWireArrivalsNeighborsAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the wire-arrivals
+    neighbor parsers (_parse_proc_net_arp(),
+    _parse_ip_neigh(), _parse_arp_a()), _clean_state(),
+    _run_tool(), read_live()'s source fallback, and
+    decide()'s neighbor / state / manifest handling
+    varied with the fifteen shapes for the first
+    time (step-8 Target 5 / family (b) -- the
+    extension's only earlier class,
+    TestWireArrivalsLearnAndIfacesFifteenShapes,
+    covers ONLY the learn_first_pass / ifaces
+    tunables inside decide() and _keep(); the
+    parsers, the state cleaning, the absorption /
+    mac_moved decision surface and the readings
+    mode were never varied).
+
+    (a) Doc claims: the module header states the
+        sources are capability-based -- "Linux:
+        /proc/net/arp (the header line and entries
+        with an all-zero MAC are skipped)";
+        "Fallback, when that file is absent:
+        `ip neigh show`, or `arp -a` when `ip` is
+        not installed -- whichever tool the machine
+        offers, run guarded with a short timeout";
+        and "Other platforms without those files or
+        tools report an empty table" (extensions/
+        wire-arrivals/wire_arrivals.py, module
+        header). It also states "MACs are normalized
+        to lowercase throughout"; that read_live()
+        "is the only function that touches the
+        platform; it returns one readings dict"; that
+        decide() is pure, "readings plus manifest
+        plus last pass's state, out come alerts and
+        the new state"; that "State absorbs every
+        reading: a new IP under a MAC already known
+        is recorded silently (no signal exists for
+        it), and the table matching state files
+        nothing at all"; and that "When one entry
+        triggers mac_moved, that entry files ONLY
+        mac_moved, not also new_neighbor for the new
+        MAC -- the stronger tell wins -- but the new
+        MAC is still absorbed into state". The
+        README repeats the two signals and their
+        severities -- new_neighbor (medium) for "A
+        MAC address not in state" and mac_moved
+        (high) for "An IP address in state now
+        answers from a different MAC address"
+        (runner/extensions/wire-arrivals/README.md, signal
+        table) -- and defines the readings file
+        fed to --readings as carrying "now" (epoch
+        seconds) and "neighbors", a list of records
+        {"ip", "mac", "iface"}. The neighbor list,
+        the parser texts and the state shape are
+        not numeric registry rows, so Decision 1's
+        default-on-unusable policy for numeric
+        readers does not name a shape rule for them;
+        this class pins the observed readings
+        instead of asserting one.
+
+    (b) How this was probed: on 2026-10-24 each
+        parser was fed genuine tables mixing kept
+        and skipped rows (header, all-zero MAC,
+        non-hex and single-digit-group MACs,
+        malformed / short rows, rows with no
+        lladdr / no dev / no interface), duplicate
+        rows and uppercase MACs, plus the table
+        hunt's fifteen shapes (omitted-equivalent
+        empty list, null, empty string, true, false,
+        zero, negative, numeric string, non-numeric
+        string, huge-int (10**400), inf, -inf, NaN,
+        list, dict) where a text argument applies;
+        _clean_state() was probed with the fifteen
+        shapes for learned / macs / ips separately,
+        plus genuine, mixed, case-colliding and
+        mis-typed entries; decide() was probed with
+        neighbors / entry / readings / manifest /
+        state / now shapes, duplicate and
+        conflicting records, known-MAC absorption,
+        vanish-and-return sequences and a moved
+        MAC returning under a new IP; read_live()
+        was checked structurally against this box's
+        real /proc and its fallback chain was probed
+        with the platform seams (open, shutil.which,
+        _run_tool) mocked; and main() was run in
+        --readings mode against temp manifests,
+        readings and state files.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. All three parsers lowercase MACs,
+        skip the all-zero MAC and any MAC failing
+        the six-pair hex shape (non-hex and
+        single-digit groups included), and preserve
+        row order and duplicates: _parse_proc_net_
+        arp() also skips the "IP" header and rows
+        with fewer than six fields (iface is field
+        six, extra fields ignored); _parse_ip_neigh()
+        requires "dev" and "lladdr" (a FAILED row or
+        a row with no dev files nothing, an IPv6
+        row parses); _parse_arp_a() requires the
+        parenthesised IP and an "at" MAC, answers
+        iface "" when no "on <iface>" follows, and
+        skips "(incomplete)". The parsers' text is
+        read through (text or ""), so None / "" /
+        False / 0 and any non-matching string answer
+        []; truthy non-string shapes are outside the
+        callers' contract (file content and tool
+        stdout are always str) and are not pinned.
+        _run_tool() answers the stdout text (""
+        for a failing exit) and None only when the
+        tool cannot be run at all. _clean_state()
+        reads a non-dict state as fresh, learned
+        through bool() (only None / "" / 0 / False /
+        [] / {} read as not learned), a non-dict
+        macs / ips as {}, mac keys and ips values
+        lowercased with a case collision overwriting
+        the earlier entry, each mac's ips sorted,
+        de-duplicated and cleaned of non-string /
+        empty elements, non-dict mac records and
+        non-string ips values read as empty -- and
+        no MAC-format validation anywhere in state
+        cleaning (a "bogus" mac key or value, and
+        even an empty-string mac key in macs, are
+        kept verbatim apart from lowercasing).
+        decide() likewise validates an entry only
+        as non-empty ip / mac strings: a bogus MAC,
+        the all-zero MAC and a non-IP ip string all
+        file new_neighbor and are absorbed verbatim
+        (lowercased) -- the parsers are the
+        validating layer, and no doc claim names a
+        validation rule for decide() itself; a
+        non-string iface reads as "", extra entry
+        keys are stripped, and every non-list
+        neighbors shape (a tuple included) reads as
+        no neighbors. Records are processed in
+        string-sorted (ip, mac) order (so
+        192.168.1.10 files before 192.168.1.2): an
+        exact duplicate files once, one new MAC
+        under two IPs files once for the first IP
+        and absorbs the second silently, one IP
+        under two MACs in a single pass files
+        new_neighbor then mac_moved, a new IP under
+        a known MAC files nothing, a table matching
+        state files nothing, and state is cumulative
+        -- a vanished neighbor stays in state and
+        its return files nothing. mac_moved files
+        alone (high, detail carrying old_mac /
+        new_mac), the old MAC's entry stays in macs
+        with an empty ips list, so that MAC returning
+        under a new IP afterwards is still known and
+        files nothing. readings["now"] never affects
+        any shape; a non-dict readings reads as {},
+        a non-dict manifest or a non-string / empty
+        name falls back to sensor "wire_arrivals",
+        and a non-dict tunables reads as {}.
+        read_live() returns {"now", "neighbors"}
+        from /proc when it opens, and only when the
+        open fails does it fall back: to `ip neigh`
+        when ip is offered, then to `arp -a` only
+        when ip is not offered or its run fails
+        outright (an ip run answering "" -- a
+        failing exit included -- ends the chain
+        with an empty table), and [] when no tool
+        is offered; the iface filter applies to
+        whichever source answered. main() in
+        --readings mode learns quietly on the first
+        pass (rc 0, state written), files the
+        genuinely new / moved neighbors on later
+        passes, answers rc 2 for a missing /
+        malformed manifest, a missing / malformed
+        readings file or an unwritable state path,
+        reads a malformed state file as fresh, and
+        reads a non-dict (list) readings file as
+        empty (rc 0) and a non-dict (list) manifest
+        as the defaults (rc 0, fallback sensor).
+        Observed on 2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as the
+        readings above keep holding. If a shape
+        ever stops behaving as described, this
+        test is the failing record of that change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+    _MAN = {"name": "wire_arrivals", "tunables": {}}
+    _LEARNED = {"learned": True, "macs": {}, "ips": {}}
+    _EMPTY_STATE = {"learned": True, "macs": {}, "ips": {}}
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "wire-arrivals", "wire_arrivals.py")
+        spec = importlib.util.spec_from_file_location(
+            "wire_arrivals_neighbors_decide_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_parse_proc_net_arp(self):
+        mod = self._module()
+        text = (
+            "IP address       HW type     Flags       "
+            "HW address            Mask     Device\n"
+            "192.168.1.1      0x1         0x2         "
+            "AA:BB:CC:DD:EE:FF     *        eth0\n"
+            "192.168.1.2      0x1         0x0         "
+            "00:00:00:00:00:00     *        eth0\n"
+            "192.168.1.3      0x1         0x2         "
+            "aa:bb:cc:dd:ee:00     *        wlan0\n"
+            "short row\n"
+            "192.168.1.4      0x1         0x2         "
+            "ZZ:ZZ:ZZ:ZZ:ZZ:ZZ     *        eth0\n"
+            "192.168.1.5      0x1         0x2         "
+            "a:b:c:d:e:f           *        eth0\n"
+            "192.168.1.1      0x1         0x2         "
+            "aa:bb:cc:dd:ee:ff     *        eth0\n"
+            "10.0.0.9         0x1         0x2         "
+            "11:22:33:44:55:66     *        eth1 extra\n")
+        self.assertEqual(
+            mod._parse_proc_net_arp(text),
+            [{"ip": "192.168.1.1", "mac": "aa:bb:cc:dd:ee:ff",
+              "iface": "eth0"},
+             {"ip": "192.168.1.3", "mac": "aa:bb:cc:dd:ee:00",
+              "iface": "wlan0"},
+             {"ip": "192.168.1.1", "mac": "aa:bb:cc:dd:ee:ff",
+              "iface": "eth0"},
+             {"ip": "10.0.0.9", "mac": "11:22:33:44:55:66",
+              "iface": "eth1"}])
+
+    def test_parse_ip_neigh(self):
+        mod = self._module()
+        text = (
+            "192.168.1.1 dev eth0 lladdr AA:BB:CC:DD:EE:FF "
+            "REACHABLE\n"
+            "192.168.1.2 dev eth0 lladdr 00:00:00:00:00:00 "
+            "INCOMPLETE\n"
+            "192.168.1.3 dev eth0 FAILED\n"
+            "fe80::1 dev eth0 lladdr 11:22:33:44:55:66 "
+            "router REACHABLE\n"
+            "192.168.1.4 lladdr aa:bb:cc:dd:ee:ff REACHABLE\n"
+            "192.168.1.5 dev wlan0 lladdr aa:bb:cc:dd:ee:00 "
+            "STALE extra\n"
+            "garbage line\n"
+            "192.168.1.6 dev eth0 lladdr a:b:c:d:e:f "
+            "REACHABLE\n")
+        self.assertEqual(
+            mod._parse_ip_neigh(text),
+            [{"ip": "192.168.1.1", "mac": "aa:bb:cc:dd:ee:ff",
+              "iface": "eth0"},
+             {"ip": "fe80::1", "mac": "11:22:33:44:55:66",
+              "iface": "eth0"},
+             {"ip": "192.168.1.5", "mac": "aa:bb:cc:dd:ee:00",
+              "iface": "wlan0"}])
+
+    def test_parse_arp_a(self):
+        mod = self._module()
+        text = (
+            "host (192.168.1.1) at AA:BB:CC:DD:EE:FF "
+            "[ether] on eth0\n"
+            "? (192.168.1.2) at aa:bb:cc:dd:ee:00 on en0 "
+            "ifscope [ethernet]\n"
+            "? (192.168.1.3) at (incomplete) on en0 "
+            "ifscope [ethernet]\n"
+            "? (192.168.1.4) at 00:00:00:00:00:00 on eth0\n"
+            "? (192.168.1.5) at aa:bb:cc:dd:ee:ff\n"
+            "no parens at aa:bb:cc:dd:ee:ff on eth0\n"
+            "gateway.lan (10.0.0.1) at 11:22:33:44:55:66 "
+            "[ether] on wlan0\n")
+        self.assertEqual(
+            mod._parse_arp_a(text),
+            [{"ip": "192.168.1.1", "mac": "aa:bb:cc:dd:ee:ff",
+              "iface": "eth0"},
+             {"ip": "192.168.1.2", "mac": "aa:bb:cc:dd:ee:00",
+              "iface": "en0"},
+             {"ip": "192.168.1.5", "mac": "aa:bb:cc:dd:ee:ff",
+              "iface": ""},
+             {"ip": "10.0.0.1", "mac": "11:22:33:44:55:66",
+              "iface": "wlan0"}])
+
+    def test_parsers_falsy_and_string_shapes(self):
+        mod = self._module()
+        parsers = [mod._parse_proc_net_arp,
+                   mod._parse_ip_neigh, mod._parse_arp_a]
+        for parser in parsers:
+            for value in (None, "", False, 0, "120", "bogus"):
+                with self.subTest(parser=parser.__name__,
+                                  value=repr(value)):
+                    self.assertEqual(parser(value), [])
+
+    def test_run_tool(self):
+        mod = self._module()
+        self.assertEqual(mod._run_tool(["/bin/echo", "hi"]),
+                         "hi\n")
+        self.assertIsNone(
+            mod._run_tool(["/nonexistent/tool-xyz"]))
+        self.assertEqual(mod._run_tool(["/bin/false"]), "")
+
+    def test_clean_state_shapes(self):
+        mod = self._module()
+        self.assertEqual(
+            mod._clean_state(
+                {"learned": True,
+                 "macs": {"AA:BB:CC:DD:EE:FF":
+                          {"ips": ["192.168.1.1",
+                                   "192.168.1.1", "", 123,
+                                   None, "10.0.0.1"]}},
+                 "ips": {"192.168.1.1": "AA:BB:CC:DD:EE:FF"}}),
+            {"learned": True,
+             "macs": {"aa:bb:cc:dd:ee:ff":
+                      {"ips": ["10.0.0.1", "192.168.1.1"]}},
+             "ips": {"192.168.1.1": "aa:bb:cc:dd:ee:ff"}})
+        learned_table = [
+            (None, False), ("", False), (True, True),
+            (False, False), (0, False), (-5, True),
+            ("120", True), ("bogus", True),
+            (10 ** 400, True), (float("inf"), True),
+            (float("-inf"), True), (float("nan"), True),
+            ([], False), (["x"], True), ({}, False),
+            ({"x": 1}, True)]
+        for value, expected in learned_table:
+            with self.subTest(learned=repr(value)):
+                self.assertEqual(
+                    mod._clean_state(
+                        {"learned": value, "macs": {},
+                         "ips": {}})["learned"], expected)
+        for name, value in self._SHAPES:
+            with self.subTest(macs=name):
+                got = mod._clean_state(
+                    {"learned": True, "macs": value, "ips": {}})
+                if name == "dict":
+                    self.assertEqual(
+                        got["macs"], {"x": {"ips": []}})
+                else:
+                    self.assertEqual(got["macs"], {})
+            with self.subTest(ips=name):
+                self.assertEqual(
+                    mod._clean_state(
+                        {"learned": True, "macs": {},
+                         "ips": value})["ips"], {})
+        for bad in (None, "x", [], 42):
+            self.assertEqual(
+                mod._clean_state(bad),
+                {"learned": False, "macs": {}, "ips": {}})
+        self.assertEqual(
+            mod._clean_state(
+                {"learned": 1,
+                 "macs": {"AA:AA:AA:AA:AA:AA":
+                          {"ips": ["1.1.1.1"]},
+                          "aa:aa:aa:aa:aa:aa":
+                          {"ips": ["2.2.2.2"]}},
+                 "ips": {}}),
+            {"learned": True,
+             "macs": {"aa:aa:aa:aa:aa:aa":
+                      {"ips": ["2.2.2.2"]}}, "ips": {}})
+        self.assertEqual(
+            mod._clean_state(
+                {"learned": True,
+                 "macs": {"aa:bb:cc:dd:ee:ff": "junk",
+                          "11:22:33:44:55:66":
+                          {"ips": "nope"},
+                          "22:22:22:22:22:22":
+                          {"ips": ["10.0.0.1"]},
+                          123: {"ips": ["1.1.1.1"]},
+                          "": {"ips": ["9.9.9.9"]}},
+                 "ips": {"": "aa:bb:cc:dd:ee:ff",
+                         "10.0.0.1": 123, "10.0.0.2": "",
+                         "10.0.0.3": "BOGUS-MAC",
+                         "10.0.0.4": "AA:BB:CC:DD:EE:FF"}}),
+            {"learned": True,
+             "macs": {"aa:bb:cc:dd:ee:ff": {"ips": []},
+                      "11:22:33:44:55:66": {"ips": []},
+                      "22:22:22:22:22:22":
+                      {"ips": ["10.0.0.1"]},
+                      "": {"ips": ["9.9.9.9"]}},
+             "ips": {"10.0.0.3": "bogus-mac",
+                     "10.0.0.4": "aa:bb:cc:dd:ee:ff"}})
+        self.assertEqual(
+            mod._clean_state(
+                {"learned": True,
+                 "macs": {"bogus": {"ips": ["1.1.1.1"]}},
+                 "ips": {}})["macs"],
+            {"bogus": {"ips": ["1.1.1.1"]}})
+
+    def test_decide_neighbors_and_entry_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(neighbors=name):
+                self.assertEqual(
+                    mod.decide({"now": 1.0, "neighbors": value},
+                               self._MAN, dict(self._LEARNED)),
+                    ([], self._EMPTY_STATE))
+        self.assertEqual(
+            mod.decide(
+                {"neighbors": ({"ip": "1.2.3.4",
+                                "mac": "aa:bb:cc:dd:ee:ff",
+                                "iface": "eth0"},)},
+                self._MAN, dict(self._LEARNED)),
+            ([], self._EMPTY_STATE))
+        self.assertEqual(
+            mod.decide({"now": 1.0}, self._MAN,
+                       dict(self._LEARNED)),
+            ([], self._EMPTY_STATE))
+        dropped = [None, "x", 123, [], {},
+                   {"ip": "1.2.3.4"},
+                   {"mac": "aa:bb:cc:dd:ee:ff"},
+                   {"ip": "", "mac": "aa:bb:cc:dd:ee:ff"},
+                   {"ip": "1.2.3.4", "mac": ""},
+                   {"ip": 123, "mac": "aa:bb:cc:dd:ee:ff"},
+                   {"ip": "1.2.3.4", "mac": 123}]
+        for entry in dropped:
+            with self.subTest(entry=repr(entry)):
+                self.assertEqual(
+                    mod.decide({"neighbors": [entry]},
+                               self._MAN, dict(self._LEARNED)),
+                    ([], self._EMPTY_STATE))
+        for mac_in, mac_out in (
+                ("BOGUS", "bogus"),
+                ("00:00:00:00:00:00", "00:00:00:00:00:00"),
+                ("AA:BB:CC:DD:EE:FF", "aa:bb:cc:dd:ee:ff")):
+            with self.subTest(mac=mac_in):
+                alerts, state = mod.decide(
+                    {"neighbors": [{"ip": "1.2.3.4",
+                                    "mac": mac_in}]},
+                    self._MAN, dict(self._LEARNED))
+                self.assertEqual(
+                    [(a["signal"], a["severity"],
+                      a["detail"]["mac"]) for a in alerts],
+                    [("new_neighbor", "medium", mac_out)])
+                self.assertEqual(
+                    state["macs"], {mac_out: {"ips": ["1.2.3.4"]}})
+        alerts, _ = mod.decide(
+            {"neighbors": [{"ip": "not-an-ip",
+                            "mac": "aa:bb:cc:dd:ee:ff",
+                            "iface": 123}]},
+            self._MAN, dict(self._LEARNED))
+        self.assertEqual(
+            alerts[0]["detail"],
+            {"ip": "not-an-ip", "mac": "aa:bb:cc:dd:ee:ff",
+             "iface": ""})
+        alerts, state = mod.decide(
+            {"neighbors": [{"ip": "1.2.3.4",
+                            "mac": "aa:bb:cc:dd:ee:ff",
+                            "iface": "eth0", "extra": 1}]},
+            self._MAN, dict(self._LEARNED))
+        self.assertEqual(
+            alerts[0]["title"],
+            "new neighbor 1.2.3.4 at aa:bb:cc:dd:ee:ff")
+        self.assertEqual(
+            state, {"learned": True,
+                    "macs": {"aa:bb:cc:dd:ee:ff":
+                             {"ips": ["1.2.3.4"]}},
+                    "ips": {"1.2.3.4": "aa:bb:cc:dd:ee:ff"}})
+
+    def test_decide_absorption_ordering_and_dedup(self):
+        mod = self._module()
+        known = {"learned": True,
+                 "macs": {"aa:bb:cc:dd:ee:ff":
+                          {"ips": ["192.168.1.1"]}},
+                 "ips": {"192.168.1.1": "aa:bb:cc:dd:ee:ff"}}
+        alerts, state = mod.decide(
+            {"neighbors": [{"ip": "192.168.1.99",
+                            "mac": "aa:bb:cc:dd:ee:ff",
+                            "iface": "eth0"}]},
+            self._MAN, known)
+        self.assertEqual(alerts, [])
+        self.assertEqual(
+            state["macs"]["aa:bb:cc:dd:ee:ff"]["ips"],
+            ["192.168.1.1", "192.168.1.99"])
+        self.assertEqual(
+            mod.decide(
+                {"neighbors": [{"ip": "192.168.1.1",
+                                "mac": "aa:bb:cc:dd:ee:ff",
+                                "iface": "eth0"}]},
+                self._MAN, known),
+            ([], known))
+        alerts, state = mod.decide(
+            {"neighbors": [
+                {"ip": "192.168.1.2",
+                 "mac": "22:22:22:22:22:22", "iface": "e"},
+                {"ip": "192.168.1.10",
+                 "mac": "11:11:11:11:11:11", "iface": "e"}]},
+            self._MAN, dict(self._LEARNED))
+        self.assertEqual(
+            [a["title"] for a in alerts],
+            ["new neighbor 192.168.1.10 at "
+             "11:11:11:11:11:11",
+             "new neighbor 192.168.1.2 at "
+             "22:22:22:22:22:22"])
+        one = {"ip": "10.0.0.1", "mac": "aa:aa:aa:aa:aa:aa",
+               "iface": "eth0"}
+        alerts, state = mod.decide(
+            {"neighbors": [one, one, dict(one)]}, self._MAN,
+            dict(self._LEARNED))
+        self.assertEqual(len(alerts), 1)
+        alerts, state = mod.decide(
+            {"neighbors": [
+                {"ip": "10.0.0.2", "mac": "bb:bb:bb:bb:bb:bb",
+                 "iface": "eth0"},
+                {"ip": "10.0.0.1", "mac": "bb:bb:bb:bb:bb:bb",
+                 "iface": "eth0"}]},
+            self._MAN, dict(self._LEARNED))
+        self.assertEqual(
+            [a["title"] for a in alerts],
+            ["new neighbor 10.0.0.1 at bb:bb:bb:bb:bb:bb"])
+        self.assertEqual(
+            state["macs"],
+            {"bb:bb:bb:bb:bb:bb":
+             {"ips": ["10.0.0.1", "10.0.0.2"]}})
+        _, state = mod.decide({"neighbors": [one]}, self._MAN,
+                              dict(self._LEARNED))
+        alerts, state = mod.decide({"neighbors": []},
+                                   self._MAN, state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(
+            state["ips"], {"10.0.0.1": "aa:aa:aa:aa:aa:aa"})
+        self.assertEqual(
+            mod.decide({"neighbors": [one]}, self._MAN, state),
+            ([], state))
+
+    def test_decide_mac_moved_and_aftermath(self):
+        mod = self._module()
+        known = {"learned": True,
+                 "macs": {"aa:bb:cc:dd:ee:ff":
+                          {"ips": ["192.168.1.1"]}},
+                 "ips": {"192.168.1.1": "aa:bb:cc:dd:ee:ff"}}
+        alerts, state = mod.decide(
+            {"neighbors": [{"ip": "192.168.1.1",
+                            "mac": "11:22:33:44:55:66",
+                            "iface": "wlan0"}]},
+            self._MAN, known)
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            alerts[0],
+            {"sensor": "wire_arrivals", "signal": "mac_moved",
+             "severity": "high",
+             "title": "192.168.1.1 now answers from "
+                      "11:22:33:44:55:66 "
+                      "(was aa:bb:cc:dd:ee:ff)",
+             "detail": {"ip": "192.168.1.1",
+                        "old_mac": "aa:bb:cc:dd:ee:ff",
+                        "new_mac": "11:22:33:44:55:66",
+                        "iface": "wlan0"}})
+        self.assertEqual(
+            state,
+            {"learned": True,
+             "macs": {"aa:bb:cc:dd:ee:ff": {"ips": []},
+                      "11:22:33:44:55:66":
+                      {"ips": ["192.168.1.1"]}},
+             "ips": {"192.168.1.1": "11:22:33:44:55:66"}})
+        alerts, state = mod.decide(
+            {"neighbors": [{"ip": "192.168.1.77",
+                            "mac": "aa:bb:cc:dd:ee:ff",
+                            "iface": "eth0"}]},
+            self._MAN, state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(
+            state["macs"]["aa:bb:cc:dd:ee:ff"]["ips"],
+            ["192.168.1.77"])
+        alerts, state = mod.decide(
+            {"neighbors": [
+                {"ip": "10.0.0.1", "mac": "bb:bb:bb:bb:bb:bb",
+                 "iface": "eth0"},
+                {"ip": "10.0.0.1", "mac": "aa:aa:aa:aa:aa:aa",
+                 "iface": "eth0"}]},
+            self._MAN, dict(self._LEARNED))
+        self.assertEqual(
+            [(a["signal"], a["severity"]) for a in alerts],
+            [("new_neighbor", "medium"),
+             ("mac_moved", "high")])
+        self.assertEqual(
+            state["ips"], {"10.0.0.1": "bb:bb:bb:bb:bb:bb"})
+        self.assertEqual(
+            state["macs"]["aa:aa:aa:aa:aa:aa"], {"ips": []})
+
+    def test_decide_readings_manifest_state_shapes(self):
+        mod = self._module()
+        for bad in (None, "x", [], 42, {}):
+            self.assertEqual(
+                mod.decide(bad, self._MAN, {}),
+                ([], self._EMPTY_STATE))
+        for bad in (None, "x", [], 42):
+            self.assertEqual(
+                mod.decide({"neighbors": []}, self._MAN, bad),
+                ([], self._EMPTY_STATE))
+        for name, value in self._SHAPES:
+            with self.subTest(now=name):
+                self.assertEqual(
+                    mod.decide({"now": value, "neighbors": []},
+                               self._MAN, dict(self._LEARNED)),
+                    ([], self._EMPTY_STATE))
+        neigh = [{"ip": "10.0.0.1", "mac": "aa:aa:aa:aa:aa:aa",
+                  "iface": "eth0"}]
+        for bad_man in (None, "x", [], {},
+                        {"name": 123}, {"name": ""},
+                        {"tunables": None},
+                        {"tunables": "nope"}):
+            alerts, _ = mod.decide(
+                {"neighbors": neigh}, bad_man,
+                dict(self._LEARNED))
+            self.assertEqual(alerts[0]["sensor"],
+                             "wire_arrivals")
+        alerts, _ = mod.decide(
+            {"neighbors": neigh},
+            {"name": "custom", "tunables": "nope"},
+            dict(self._LEARNED))
+        self.assertEqual(alerts[0]["sensor"], "custom")
+
+    def test_read_live_structure_and_fallback(self):
+        from unittest import mock
+        mod = self._module()
+        readings = mod.read_live(None)
+        self.assertEqual(sorted(readings), ["neighbors", "now"])
+        self.assertIsInstance(readings["now"], float)
+        for entry in readings["neighbors"]:
+            self.assertEqual(sorted(entry),
+                             ["iface", "ip", "mac"])
+            self.assertTrue(mod._MAC_RE.match(entry["mac"]))
+            self.assertNotEqual(entry["mac"],
+                                "00:00:00:00:00:00")
+        proc_text = (
+            "IP address HW type Flags HW address Mask "
+            "Device\n192.168.1.1 0x1 0x2 "
+            "aa:bb:cc:dd:ee:ff * eth0\n")
+
+        def run_live(open_ctx, which_map, tool):
+            with open_ctx:
+                with mock.patch.object(
+                        mod.shutil, "which",
+                        side_effect=lambda x: which_map.get(x)):
+                    with mock.patch.object(
+                            mod, "_run_tool",
+                            side_effect=tool):
+                        return mod.read_live({})
+
+        def no_tool(argv):
+            raise AssertionError("tool must not run")
+
+        got = run_live(
+            mock.patch("builtins.open",
+                       mock.mock_open(read_data=proc_text)),
+            {}, no_tool)
+        self.assertEqual(
+            got["neighbors"],
+            [{"ip": "192.168.1.1", "mac": "aa:bb:cc:dd:ee:ff",
+              "iface": "eth0"}])
+        got = run_live(
+            mock.patch("builtins.open",
+                       side_effect=OSError("absent")),
+            {"ip": "/usr/bin/ip"},
+            lambda argv: "192.168.1.9 dev eth0 lladdr "
+                         "11:22:33:44:55:66 REACHABLE\n")
+        self.assertEqual(
+            got["neighbors"],
+            [{"ip": "192.168.1.9", "mac": "11:22:33:44:55:66",
+              "iface": "eth0"}])
+
+        def ip_fails(argv):
+            if "neigh" in argv:
+                return None
+            return ("host (10.9.9.9) at 22:33:44:55:66:77 "
+                    "[ether] on eth1\n")
+
+        got = run_live(
+            mock.patch("builtins.open",
+                       side_effect=OSError("absent")),
+            {"ip": "/usr/bin/ip", "arp": "/usr/sbin/arp"},
+            ip_fails)
+        self.assertEqual(
+            got["neighbors"],
+            [{"ip": "10.9.9.9", "mac": "22:33:44:55:66:77",
+              "iface": "eth1"}])
+        got = run_live(
+            mock.patch("builtins.open",
+                       side_effect=OSError("absent")),
+            {"arp": "/usr/sbin/arp"}, ip_fails)
+        self.assertEqual(
+            got["neighbors"],
+            [{"ip": "10.9.9.9", "mac": "22:33:44:55:66:77",
+              "iface": "eth1"}])
+
+        def ip_empty(argv):
+            if "neigh" in argv:
+                return ""
+            raise AssertionError("arp must not run")
+
+        got = run_live(
+            mock.patch("builtins.open",
+                       side_effect=OSError("absent")),
+            {"ip": "/usr/bin/ip", "arp": "/usr/sbin/arp"},
+            ip_empty)
+        self.assertEqual(got["neighbors"], [])
+        got = run_live(
+            mock.patch("builtins.open",
+                       side_effect=OSError("absent")),
+            {}, no_tool)
+        self.assertEqual(got["neighbors"], [])
+        with mock.patch(
+                "builtins.open",
+                mock.mock_open(read_data=proc_text)):
+            filtered = mod.read_live(
+                {"tunables": {"ifaces": ["wlan9"]}})
+        self.assertEqual(filtered["neighbors"], [])
+
+    def test_main_readings_modes(self):
+        import contextlib
+        import io
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            mp = os.path.join(d, "m.json")
+            sp = os.path.join(d, "s.json")
+            rp = os.path.join(d, "r.json")
+            with open(mp, "w", encoding="utf-8") as fh:
+                json.dump({"name": "wire_arrivals",
+                           "tunables": {}}, fh)
+            with open(rp, "w", encoding="utf-8") as fh:
+                json.dump(
+                    {"now": 1.0,
+                     "neighbors": [{"ip": "192.168.1.1",
+                                    "mac": "aa:bb:cc:dd:ee:ff",
+                                    "iface": "eth0"}]}, fh)
+
+            def run(argv):
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf), \
+                        contextlib.redirect_stderr(
+                                io.StringIO()):
+                    rc = mod.main(argv)
+                return rc, buf.getvalue()
+
+            rc, out = run(["--manifest", mp, "--state", sp,
+                           "--readings", rp])
+            self.assertEqual((rc, out), (0, ""))
+            with open(sp, encoding="utf-8") as fh:
+                self.assertEqual(
+                    json.load(fh),
+                    {"learned": True,
+                     "macs": {"aa:bb:cc:dd:ee:ff":
+                              {"ips": ["192.168.1.1"]}},
+                     "ips": {"192.168.1.1":
+                             "aa:bb:cc:dd:ee:ff"}})
+            with open(rp, "w", encoding="utf-8") as fh:
+                json.dump(
+                    {"now": 2.0,
+                     "neighbors": [
+                         {"ip": "192.168.1.1",
+                          "mac": "aa:bb:cc:dd:ee:ff",
+                          "iface": "eth0"},
+                         {"ip": "192.168.1.2",
+                          "mac": "11:22:33:44:55:66",
+                          "iface": "eth0"}]}, fh)
+            rc, out = run(["--manifest", mp, "--state", sp,
+                           "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertIn('"signal": "new_neighbor"', out)
+            self.assertEqual(out.count("\n"), 1)
+            with open(rp, "w", encoding="utf-8") as fh:
+                json.dump(
+                    {"now": 3.0,
+                     "neighbors": [{"ip": "192.168.1.1",
+                                    "mac": "99:88:77:66:55:44",
+                                    "iface": "eth0"}]}, fh)
+            rc, out = run(["--manifest", mp, "--state", sp,
+                           "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertIn('"signal": "mac_moved"', out)
+            bad = os.path.join(d, "bad.json")
+            with open(bad, "w", encoding="utf-8") as fh:
+                fh.write("{not json")
+            nd = os.path.join(d, "nd.json")
+            with open(nd, "w", encoding="utf-8") as fh:
+                fh.write("[1, 2]")
+            for argv in (
+                    ["--manifest", os.path.join(d, "nope.json"),
+                     "--state", sp, "--readings", rp],
+                    ["--manifest", bad, "--state", sp,
+                     "--readings", rp],
+                    ["--manifest", mp, "--state", sp,
+                     "--readings",
+                     os.path.join(d, "nope.json")],
+                    ["--manifest", mp, "--state", sp,
+                     "--readings", bad],
+                    ["--manifest", mp, "--state",
+                     os.path.join(d, "nodir", "s.json"),
+                     "--readings", rp]):
+                with self.subTest(argv=argv[1]):
+                    self.assertEqual(run(argv)[0], 2)
+            sp2 = os.path.join(d, "s2.json")
+            rc, out = run(["--manifest", mp, "--state", sp2,
+                           "--readings", nd])
+            self.assertEqual((rc, out), (0, ""))
+            with open(sp2, encoding="utf-8") as fh:
+                self.assertEqual(
+                    json.load(fh),
+                    {"learned": True, "macs": {}, "ips": {}})
+            sp3 = os.path.join(d, "s3.json")
+            with open(sp3, "w", encoding="utf-8") as fh:
+                fh.write("garbage{")
+            rc, out = run(["--manifest", mp, "--state", sp3,
+                           "--readings", rp])
+            self.assertEqual((rc, out), (0, ""))
+            with open(sp3, encoding="utf-8") as fh:
+                saved = json.load(fh)
+            self.assertEqual(
+                saved["ips"],
+                {"192.168.1.1": "99:88:77:66:55:44"})
+            lm = os.path.join(d, "lm.json")
+            with open(lm, "w", encoding="utf-8") as fh:
+                fh.write("[1, 2]")
+            sp4 = os.path.join(d, "s4.json")
+            with open(sp4, "w", encoding="utf-8") as fh:
+                json.dump({"learned": True,
+                           "macs": {"aa:bb:cc:dd:ee:ff":
+                                    {"ips": ["192.168.1.1"]}},
+                           "ips": {"192.168.1.1":
+                                   "aa:bb:cc:dd:ee:ff"}}, fh)
+            rc, out = run(["--manifest", lm, "--state", sp4,
+                           "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertIn('"sensor": "wire_arrivals"', out)
+            self.assertIn('"signal": "mac_moved"', out)
+
 if __name__ == "__main__":
 
     unittest.main()
