@@ -11317,6 +11317,140 @@ class TestTripwireIntTunableFifteenShapes(unittest.TestCase):
         self.assertEqual(
             len(decide({"max_alerts_per_pass": 0})), 0)
 
+
+class TestBackupFreshnessStaleAfterSecFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the backup-freshness
+    decide-inline reader (step-8 Target 5,
+    extension-tunable table probe) -- the fifteen
+    shapes at decide() level for the family's one
+    registry row.
+
+    (a) Doc claim (extensions/backup-freshness/README.md:
+        "stale_after_sec (how old is too old, default
+        90000 -- just over a day)"; backup_stale fires
+        when the newest backup's age passes
+        stale_after_sec and backup_critical at twice
+        it). Registry row "stale_after_sec
+        (backup-freshness)" (default 90000): policy
+        default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: step-8 artifact Target 5
+        says the 51 extension tunables have no
+        reader-level table probe; their readers are
+        local helper families. This tick took the
+        backup-freshness family, whose reader is
+        inline in extensions/backup-freshness/
+        backup_freshness.py:decide (float(value) if
+        _is_number(value) and value > 0 else 90000.0),
+        and probed it through decide() itself with
+        the fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false,
+        zero, negative, the documented default
+        written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong container -- plus genuine
+        int / fractional values. The observable is
+        the filed signal and its threshold_sec at a
+        fixed age: state already knows b.tar at
+        mtime 1000, the same artifact is still the
+        newest (no arrival), and now is mtime + age.
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default 90000: at age 100000 exactly one
+        backup_stale files with threshold_sec
+        90000.0, and at age 50000 nothing files.
+        Zero and negative also read as the default
+        because this reader requires value > 0.
+        Numeric strings are not parsed ("45" reads
+        as the default; the _is_number isinstance
+        gate). Genuine values are honored exactly:
+        10 files backup_stale at age 11 and
+        backup_critical at age 21, both with
+        threshold_sec 10.0, and the fractional
+        3600.5 files backup_stale at age 3601 with
+        threshold_sec 3600.5. Observed on 2026-10-24
+        against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented default and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "backup-freshness",
+            "backup_freshness.py")
+        spec = importlib.util.spec_from_file_location(
+            "backup_freshness_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _probe(self, mod, tunables, age):
+        state = {"last_seen_name": "b.tar",
+                 "last_seen_mtime": 1000.0, "tier": "ok"}
+        readings = {"now": 1000.0 + age,
+                    "newest": {"name": "b.tar",
+                               "mtime": 1000.0}}
+        alerts, _new_state = mod.decide(
+            readings,
+            {"name": "backup-freshness",
+             "tunables": tunables}, state)
+        return [(a["signal"], a["detail"].get("threshold_sec"))
+                for a in alerts]
+
+    def test_fifteen_shapes_read_as_the_default(self):
+        mod = self._mod()
+        with self.subTest(shape="omitted"):
+            self.assertEqual(
+                self._probe(mod, {}, 100000),
+                [("backup_stale", 90000.0)])
+            self.assertEqual(self._probe(mod, {}, 50000), [])
+        unusable = [None, "", True, False, 0, -5,
+                    "45", "bogus", 10 ** 400,
+                    float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._probe(
+                        mod, {"stale_after_sec": value}, 100000),
+                    [("backup_stale", 90000.0)])
+                self.assertEqual(
+                    self._probe(
+                        mod, {"stale_after_sec": value}, 50000),
+                    [])
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._probe(mod, {"stale_after_sec": 90000},
+                            100000),
+                [("backup_stale", 90000.0)])
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        self.assertEqual(
+            self._probe(mod, {"stale_after_sec": 10}, 5), [])
+        self.assertEqual(
+            self._probe(mod, {"stale_after_sec": 10}, 11),
+            [("backup_stale", 10.0)])
+        self.assertEqual(
+            self._probe(mod, {"stale_after_sec": 10}, 21),
+            [("backup_critical", 10.0)])
+        self.assertEqual(
+            self._probe(mod, {"stale_after_sec": 3600.5}, 3601),
+            [("backup_stale", 3600.5)])
+
 if __name__ == "__main__":
 
     unittest.main()
