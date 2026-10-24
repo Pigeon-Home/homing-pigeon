@@ -11714,6 +11714,246 @@ class TestFailedLoginWatchWindowSecFifteenShapes(unittest.TestCase):
             [("login_failure_burst", 3600.5, 5)])
 
 
+class TestLatencyPostTunablesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the latency-post
+    spike_ms and spike_factor rows themselves varied
+    with the fifteen shapes at reader level for the
+    first time (step-8 Target 5 -- the 51 extension
+    tunables have no reader-level table probe; these
+    rows' named classes covered only the non-finite
+    shapes and the huge-int shape).
+
+    (a) Doc claim (extensions/latency-post/README.md,
+        line 30): "latency_spike | A probe's latency
+        rises above both the `spike_ms` tunable
+        (default 250) and `spike_factor` (default 3)
+        times the median of the target's last
+        samples, with at least 3 prior samples". The
+        manifest ships the same defaults
+        (extension.json: "spike_ms": 250,
+        "spike_factor": 3). Registry rows "spike_ms
+        (latency-post)" (integer, default 250) and
+        "spike_factor (latency-post)" (number,
+        default 3): policy default under Decision 1
+        -- a present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: step-8 artifact Target 5
+        lists the extension tunables as the largest
+        single block of new coverage available (51
+        rows x the fifteen shapes). This tick took
+        the latency-post family: its readers are
+        inline in extensions/latency-post/
+        latency_post.py decide() (float(value) if
+        _is_number(value) else 250.0 / 3.0), and
+        probed them through decide() itself with the
+        fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false,
+        zero, negative, the documented default
+        written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong container -- plus genuine
+        int / fractional values. Each spike_ms shape
+        ran in two scenarios: prior samples
+        [100, 100, 100] with a 1000 ms probe (the
+        documented defaults file latency_spike:
+        threshold max(250, 3 * 100) = 300) and prior
+        samples [10, 10, 10] with a 100 ms probe
+        (the defaults stay silent: max(250, 30) =
+        250; only a wrongly lowered floor files).
+        Each spike_factor shape ran against prior
+        samples [100, 100, 100] with a 1000 ms probe
+        (defaults file) and a 260 ms probe (defaults
+        stay silent: 260 < 300; only a wrongly
+        lowered factor, dropping the threshold to
+        the 250 floor, files).
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default for both keys (omitted, null, empty
+        string, true, false, numeric string,
+        non-numeric string, huge-int, inf, -inf, NaN,
+        list, dict): the 1000 ms probe files and the
+        discriminating probe stays silent, exactly
+        as the explicit defaults 250 / 3 do. Numeric
+        strings are not parsed ("45" and "20" read
+        as the defaults; the _is_number isinstance
+        gate). The non-finite and huge-int shapes
+        now read as the default through that finite
+        check -- the silence and crash recorded by
+        the rows' named classes
+        (TestNonFiniteLatencyPostTunablesDefaultInsteadOfSilence,
+        TestHugeIntLatencyPostTunablesCrashInsteadOfDefault)
+        no longer occur on current main. Zero and
+        negative are usable numbers for these
+        readers (no > 0 gate, and the registry rows
+        carry no floor), so they are honored
+        literally: spike_ms 0 and -5 file the
+        [10, 10, 10] / 100 ms scenario (the floor
+        falls away and the factor term 30 governs),
+        and spike_factor 0 and -5 file the 260 ms
+        probe (the threshold falls to the 250
+        floor). Genuine values are honored exactly:
+        spike_ms 2000 suppresses the 1000 ms probe,
+        spike_ms 50 files the 100 ms probe against
+        max(50, 30), spike_ms 250.5 stays silent
+        there, spike_factor 20 suppresses the
+        1000 ms probe, and spike_factor 0.5 files
+        the 260 ms probe against max(250, 50).
+        Observed on 2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented defaults and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "latency-post",
+            "latency_post.py")
+        spec = importlib.util.spec_from_file_location(
+            "latency_post_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _signals(self, mod, tunables, samples, latency):
+        state = {"targets": {"gw": {
+            "down": False, "spike_active": False,
+            "samples": list(samples)}}}
+        manifest = {"name": "latency_post",
+                    "tunables": dict(tunables)}
+        readings = {"now": 1000.0, "probes": [
+            {"target": "gw", "ok": True,
+             "latency_ms": latency}]}
+        alerts, _state = mod.decide(readings, manifest, state)
+        return [a["signal"] for a in alerts]
+
+    def test_fifteen_shapes_read_as_the_default(self):
+        mod = self._mod()
+        unusable = [None, "", True, False, "45", "bogus",
+                    10 ** 400, float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for key, explicit in (("spike_ms", 250),
+                              ("spike_factor", 3)):
+            with self.subTest(key=key, shape="omitted"):
+                if key == "spike_ms":
+                    self.assertEqual(
+                        self._signals(mod, {}, [100, 100, 100], 1000),
+                        ["latency_spike"])
+                    self.assertEqual(
+                        self._signals(mod, {}, [10, 10, 10], 100),
+                        [])
+                else:
+                    self.assertEqual(
+                        self._signals(mod, {}, [100, 100, 100], 1000),
+                        ["latency_spike"])
+                    self.assertEqual(
+                        self._signals(mod, {}, [100, 100, 100], 260),
+                        [])
+            for value in unusable:
+                with self.subTest(key=key, value=repr(value)):
+                    if key == "spike_ms":
+                        self.assertEqual(
+                            self._signals(
+                                mod, {key: value},
+                                [100, 100, 100], 1000),
+                            ["latency_spike"])
+                        self.assertEqual(
+                            self._signals(
+                                mod, {key: value},
+                                [10, 10, 10], 100),
+                            [])
+                    else:
+                        self.assertEqual(
+                            self._signals(
+                                mod, {key: value},
+                                [100, 100, 100], 1000),
+                            ["latency_spike"])
+                        self.assertEqual(
+                            self._signals(
+                                mod, {key: value},
+                                [100, 100, 100], 260),
+                            [])
+            with self.subTest(key=key, shape="explicit-default"):
+                if key == "spike_ms":
+                    self.assertEqual(
+                        self._signals(
+                            mod, {key: explicit},
+                            [100, 100, 100], 1000),
+                        ["latency_spike"])
+                    self.assertEqual(
+                        self._signals(
+                            mod, {key: explicit},
+                            [10, 10, 10], 100),
+                        [])
+                else:
+                    self.assertEqual(
+                        self._signals(
+                            mod, {key: explicit},
+                            [100, 100, 100], 1000),
+                        ["latency_spike"])
+                    self.assertEqual(
+                        self._signals(
+                            mod, {key: explicit},
+                            [100, 100, 100], 260),
+                        [])
+
+    def test_zero_and_negative_are_honored_literally(self):
+        mod = self._mod()
+        for value in (0, -5):
+            with self.subTest(key="spike_ms", value=value):
+                self.assertEqual(
+                    self._signals(
+                        mod, {"spike_ms": value},
+                        [10, 10, 10], 100),
+                    ["latency_spike"])
+            with self.subTest(key="spike_factor", value=value):
+                self.assertEqual(
+                    self._signals(
+                        mod, {"spike_factor": value},
+                        [100, 100, 100], 260),
+                    ["latency_spike"])
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        self.assertEqual(
+            self._signals(mod, {"spike_ms": 2000},
+                          [100, 100, 100], 1000),
+            [])
+        self.assertEqual(
+            self._signals(mod, {"spike_ms": 50},
+                          [10, 10, 10], 100),
+            ["latency_spike"])
+        self.assertEqual(
+            self._signals(mod, {"spike_ms": 250.5},
+                          [10, 10, 10], 100),
+            [])
+        self.assertEqual(
+            self._signals(mod, {"spike_factor": 20},
+                          [100, 100, 100], 1000),
+            [])
+        self.assertEqual(
+            self._signals(mod, {"spike_factor": 0.5},
+                          [100, 100, 100], 260),
+            ["latency_spike"])
+        # A numeric string is not a number to this
+        # reader: "20" reads as the default 3, so the
+        # 1000 ms probe still files.
+        self.assertEqual(
+            self._signals(mod, {"spike_factor": "20"},
+                          [100, 100, 100], 1000),
+            ["latency_spike"])
+
+
 if __name__ == "__main__":
 
     unittest.main()
