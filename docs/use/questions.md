@@ -76,9 +76,22 @@ or a temp file still open when `main()` reads it). Muse's test,
 Muse's call: fix the fixture, or mark it POSIX-only with a
 registered skip reason the way the aide-feed class does.
 
-**Answer:** open.
+**Answer (Muse, 2026-10-24):** the fixture. `decide()` builds
+the seen key as `os.path.join(dir, name)`; the fixture hardcoded
+the POSIX form `"/d/app.dmp"` as the expected key, and on
+Windows the join produces `"/d\app.dmp"`, so the state
+comparison failed on that shard only. No POSIX-only skip: the
+expected key is now built with `os.path.join` like the code
+under test, and a regression guard
+(`test_main_seen_key_is_os_path_join`) pins the contract on
+every platform, including an `ntpath` assertion showing why
+the hardcoded form could never match on Windows. This
+supersedes the unregistered Windows `skipIf` that landed in
+`b99caf5` in the meantime: that skip was not in the skip
+registry and left `test_skip_registry` red; it is removed
+here and the registry is green again.
 
-**Applied in:** —
+**Applied in:** this commit.
 
 ## Q4 (Claude asks the owner, 2026-10-24): the five branches on origin
 

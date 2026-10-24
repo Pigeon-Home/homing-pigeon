@@ -42952,10 +42952,15 @@ class TestCrashWatchCleanStateAndMainModesFifteenShapes(unittest.TestCase):
     _FILE1 = {"name": "app.dmp", "dir": "/d", "size": 10,
               "mtime": 100, "binary": "app"}
     _ARR = {"now": 1000, "files": [_FILE1], "truncated": 0}
-    _SEEN = {"seen": {"/d/app.dmp": [10, 100]},
+    # The seen key is decide()'s os.path.join(dir, name); on
+    # Windows that joins with backslashes, so the expected key
+    # is built the same way instead of hardcoding the POSIX
+    # form (Q6: this fixture was the Windows-only failure).
+    import os as _cw_os
+    _SEEN = {"seen": {_cw_os.path.join("/d", "app.dmp"): [10, 100]},
              "events": [["app", 1000.0]]}
+    del _cw_os
 
-    @unittest.skipIf(__import__("os").name == "nt", "POSIX path fixture (/d/app.dmp)")
     def test_main_manifest_and_readings_shapes(self):
         mod = self._mod()
         for manifest in [[1, 2], 42, "hi", None]:
@@ -42980,6 +42985,31 @@ class TestCrashWatchCleanStateAndMainModesFifteenShapes(unittest.TestCase):
             rc, out, state = self._main(mod, td, self._GEN, "{bad")
             self.assertEqual(rc, 2)
             self.assertIsNone(state)
+
+    def test_main_seen_key_is_os_path_join(self):
+        # Regression guard for Q6: the seen key decide() writes
+        # is os.path.join(dir, name) on the host platform, never
+        # a hardcoded POSIX string. ntpath shows why the old
+        # fixture failed on Windows only.
+        import ntpath
+        import os
+        self.assertEqual(ntpath.join("/d", "app.dmp"),
+                         "/d\\app.dmp")
+        self.assertNotEqual(ntpath.join("/d", "app.dmp"),
+                            "/d/app.dmp")
+        mod = self._mod()
+        watch = os.path.join("some", "dir")
+        readings = {"now": 1000,
+                    "files": [{"name": "x.dmp", "dir": watch,
+                               "size": 3, "mtime": 7,
+                               "binary": "x"}],
+                    "truncated": 0}
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(mod, td, self._GEN,
+                                        readings)
+        self.assertEqual(rc, 0)
+        self.assertEqual(list(state["seen"].keys()),
+                         [os.path.join(watch, "x.dmp")])
 
     def test_main_live_local_and_unwritable_modes(self):
         import os
