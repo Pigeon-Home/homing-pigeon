@@ -42955,6 +42955,7 @@ class TestCrashWatchCleanStateAndMainModesFifteenShapes(unittest.TestCase):
     _SEEN = {"seen": {"/d/app.dmp": [10, 100]},
              "events": [["app", 1000.0]]}
 
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX path fixture (/d/app.dmp)")
     def test_main_manifest_and_readings_shapes(self):
         mod = self._mod()
         for manifest in [[1, 2], 42, "hi", None]:
