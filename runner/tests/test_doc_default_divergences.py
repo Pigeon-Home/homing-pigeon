@@ -20001,6 +20001,273 @@ class TestAideFeedPathsAndReportFifteenShapes(unittest.TestCase):
         self.assertEqual(mod.parse_report(None), empty)
         self.assertEqual(mod.parse_report(123), empty)
 
+class TestSysmonFeedPathsAndDecideFifteenShapes(unittest.TestCase):
+    """Coverage: the sysmon-feed tunables and event
+    handling (log_paths, default
+    ["/var/log/syslog", "/var/log/messages"], and
+    poll_interval_sec, default 60) under the fifteen
+    shapes.
+
+    (a) Doc claims: the manifest ships both
+        (extensions/sysmon-feed/extension.json:
+        "log_paths": ["/var/log/syslog",
+        "/var/log/messages"],
+        "poll_interval_sec": 60). The README states
+        "The files named by the `log_paths` tunable
+        are tailed incrementally: the state carries
+        reader entries per path ({\\"inode\\",
+        \\"offset\\", \\"partial\\"}), a missing file
+        yields no events and keeps its entry, and an
+        inode change or a file that shrank restarts
+        that file from 0" and "An episode is
+        `(signal, image, parent_image, rule-matched
+        detail)` -- the image for the temp rule, the
+        command line for the encoded rule -- and an
+        episode files once" (extensions/sysmon-feed/
+        README.md), with the tunables table giving
+        log_paths ["/var/log/syslog",
+        "/var/log/messages"] and poll_interval_sec
+        60. Neither key is a numeric registry row
+        (sysmon-feed has no row in
+        tests/defaults_registry.py), so Decision 1's
+        default-on-unusable policy for numeric
+        readers does not name a shape rule for them;
+        this class pins the observed readings
+        instead of asserting one.
+
+    (b) How this was probed: step-8 Target 5 /
+        family (b) -- sysmon-feed had no test in
+        this file at all before this tick. On
+        2026-10-24 the reader (read_new_events(),
+        the reader main() hands the log_paths value
+        to) was probed with the table hunt's fifteen
+        shapes (omitted-equivalent empty list, null,
+        empty string, true, false, zero, negative,
+        numeric string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, list, dict), plus
+        genuine, mixed, tuple and missing-path lists
+        against a real temp log file, and with
+        reader-state shapes directly. decide() was
+        probed with tunables, readings, event and
+        state shapes, and parse_event() with
+        non-string input. poll_interval_sec is not
+        read by sysmon_feed.py's decide() at all;
+        decide() never consults manifest tunables
+        (only manifest["name"] for the sensor name)
+        -- a bogus tunables dict changes nothing --
+        and the log_paths fallback itself (a value
+        that is not a non-empty list reads as the
+        documented default list) lives inline in
+        main(), so the reader-level probe below is
+        the deepest testable surface for it, exactly
+        as in the aide-feed class.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. read_new_events() reads every
+        non-list/non-tuple shape and an empty list
+        as no paths ([], {}), cleans genuine lists
+        element-wise (non-string/empty skipped,
+        missing files yield nothing and keep no
+        entry), accepts tuples, and reads a path
+        listed twice twice (each pass looks the
+        saved reader state up afresh, so a duplicate
+        path re-reads from the same offset). A
+        non-dict reader state, and a per-path entry
+        whose inode/offset are not genuine ints
+        (bool included) or whose partial is not a
+        string, restart that file from 0 with no
+        carried partial. decide() files the temp
+        and encoded signals regardless of every
+        tunables shape; its event cleaning skips a
+        non-list events value, non-dict entries,
+        an event_id that is not None and != 1 (the
+        string "1" is skipped, while 1.0 and True
+        compare equal to 1 and are kept), and
+        entries with neither image nor command
+        line, and reads non-string image / command
+        / parent / user fields as "". The temp
+        matcher is case-insensitive for the POSIX
+        prefixes (/tmp/, /dev/shm/, /var/tmp/),
+        the Windows per-user Temp folder and the
+        %TEMP% marker, and does not fire for
+        /tmpfoo/ or C:\\\\Windows\\\\Temp. The
+        encoded matcher honors -enc /
+        -encodedcommand case-insensitively (not
+        -encoding) and otherwise the first
+        base64-alphabet token of at least 100
+        characters. parse_event() reads every
+        non-string shape as None. State cleaning
+        keeps only string filed keys and a dict
+        _reader verbatim. Observed on 2026-10-24
+        against current main.
+    """
+
+    _LINE = ("Oct 19 host sysmon: <Event><System>"
+             "<EventID>1</EventID></System><EventData>"
+             '<Data Name="Image">/tmp/x</Data>'
+             '<Data Name="CommandLine">x</Data>'
+             "</EventData></Event>\n")
+    _EVENT = {"event_id": 1, "image": "/tmp/x",
+              "command_line": "ls",
+              "parent_image": "/bin/bash", "user": "alice"}
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "sysmon-feed", "sysmon_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "sysmon_feed_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_read_new_events_paths_shapes(self):
+        import os
+        import tempfile
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    mod.read_new_events(value, {}), ([], {}))
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "s.log")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._LINE)
+            for value in ([path], (path,)):
+                events, reader = mod.read_new_events(value, {})
+                self.assertEqual(
+                    [e["image"] for e in events], ["/tmp/x"])
+                self.assertEqual(reader[path]["partial"], "")
+            events, _ = mod.read_new_events(
+                [path, 123, "", None], {})
+            self.assertEqual(len(events), 1)
+            events, _ = mod.read_new_events([path, path], {})
+            self.assertEqual(len(events), 2)
+            self.assertEqual(
+                mod.read_new_events(["missing.log"], {}),
+                ([], {}))
+            for bad_state in (None, "bogus", [],
+                              {path: {"inode": "bad",
+                                      "offset": "bad",
+                                      "partial": 123}},
+                              {path: {"inode": True,
+                                      "offset": 0,
+                                      "partial": ""}}):
+                events, _ = mod.read_new_events([path], bad_state)
+                self.assertEqual(len(events), 1)
+
+    def test_decide_ignores_tunables_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                alerts, _ = mod.decide(
+                    {"now": 1.0, "events": [dict(self._EVENT)]},
+                    {"name": "sysmon_feed",
+                     "tunables": {"poll_interval_sec": value,
+                                  "log_paths": value}}, {})
+                self.assertEqual(len(alerts), 1)
+                self.assertEqual(alerts[0]["signal"],
+                                 "sysmon_process_from_temp")
+                self.assertEqual(alerts[0]["severity"], "medium")
+
+    def test_parse_event_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertIsNone(mod.parse_event(value))
+        self.assertIsNone(mod.parse_event(42))
+        ev = mod.parse_event(
+            "Event ID: 1\nImage: /tmp/x\n")
+        self.assertEqual(ev["image"], "/tmp/x")
+
+    def test_decide_event_cleaning_and_dedup(self):
+        mod = self._module()
+        man = {"name": "sysmon_feed"}
+        for readings in (None, "x", [], {"events": None}, {}):
+            self.assertEqual(mod.decide(readings, man, {}),
+                             ([], {"filed": {}}))
+        self.assertEqual(
+            mod.decide({"events": "notalist"}, man, {})[0], [])
+        skipped = [{"event_id": "1", "image": "/tmp/x",
+                    "command_line": "ls"},
+                   {"event_id": 3, "image": "/tmp/x",
+                    "command_line": "ls"},
+                   {"event_id": 1},
+                   "notadict", None]
+        self.assertEqual(
+            mod.decide({"events": skipped}, man, {})[0], [])
+        for eid in (None, 1.0, True):
+            alerts, _ = mod.decide(
+                {"events": [{"event_id": eid, "image": "/tmp/x",
+                             "command_line": "ls"}]}, man, {})
+            self.assertEqual(len(alerts), 1)
+        alerts, _ = mod.decide(
+            {"events": [{"event_id": 1, "image": 123,
+                         "command_line": "powershell -enc AAA",
+                         "parent_image": 123, "user": 123}]},
+            man, {})
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["sysmon_encoded_command"])
+        self.assertEqual(alerts[0]["detail"]["image"], "")
+        self.assertEqual(alerts[0]["detail"]["parent_image"], "")
+        alerts, state = mod.decide(
+            {"events": [dict(self._EVENT)]}, man, {})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            mod.decide({"events": [dict(self._EVENT)]},
+                       man, state)[0], [])
+        for bad_state in (None, "x", [], {"filed": "notdict"},
+                          {"filed": {}, "_reader": "notdict"}):
+            alerts, new_state = mod.decide(
+                {"events": [dict(self._EVENT)]}, man, bad_state)
+            self.assertEqual(len(alerts), 1)
+            self.assertNotIn("_reader", new_state)
+        _, new_state = mod.decide(
+            {"events": []}, man,
+            {"filed": {123: True, "ok": True},
+             "_reader": {"/x": {}}})
+        self.assertEqual(new_state["filed"], {"ok": True})
+        self.assertEqual(new_state["_reader"], {"/x": {}})
+
+    def test_temp_and_encoded_matchers(self):
+        mod = self._module()
+        for image, marker in (
+                ("/tmp/x", "/tmp/"), ("/TMP/X", "/tmp/"),
+                ("/dev/shm/x", "/dev/shm/"),
+                ("/var/tmp/x", "/var/tmp/"),
+                (r"C:\Users\bob\AppData\Local\Temp\x.exe",
+                 "c:/users/bob/appdata/local/temp/"),
+                (r"C:\staging\%TEMP%\x.exe", "%TEMP%")):
+            with self.subTest(image=image):
+                self.assertEqual(mod._temp_match(image), marker)
+        for image in ("/tmpfoo/x", r"C:\Windows\Temp\x.exe",
+                      123, None, ""):
+            self.assertIsNone(mod._temp_match(image))
+        self.assertEqual(
+            mod._encoded_match("powershell -enc AAA"), "-enc")
+        self.assertEqual(
+            mod._encoded_match("powershell -EncodedCommand AAA"),
+            "-encodedcommand")
+        self.assertIsNone(mod._encoded_match("x -encoding AAA"))
+        self.assertEqual(
+            mod._encoded_match("run " + "A" * 100), "A" * 100)
+        self.assertIsNone(mod._encoded_match("run " + "A" * 99))
+        for value in (123, None, ""):
+            self.assertIsNone(mod._encoded_match(value))
+
 if __name__ == "__main__":
 
     unittest.main()
