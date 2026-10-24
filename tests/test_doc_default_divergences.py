@@ -9795,6 +9795,154 @@ class TestNestedObjectsWithEverySubKeyNull(unittest.TestCase):
         self.assertEqual(got, want)
 
 
+class TestListKeysWrongElementEmptyAndScalarListShapes(unittest.TestCase):
+    """Coverage: list keys given the wrong element type,
+    an empty list, a scalar where a list is documented,
+    and a list where a scalar is documented -- they are
+    refused cleanly or read as documented, never crash
+    with a raw error.
+
+    (a) Claims: PROTOCOL.md section 3.1 (lines 85-89,
+        137-147): a job's `interpreter` is an optional
+        list whose first element is the executable, e.g.
+        `["bash"]`; `files` is a list of objects with
+        string `name` and `url`; `args` is a list of
+        strings in the example; `script` is a string;
+        `timeout_sec` defaults to 300; if `interpreter`
+        is absent, the runner's `default_interpreter`
+        config applies, else the platform default.
+        docs/TRANSPORTS.md (line 6): the `transports`
+        config key defaults to `["email"]`.
+
+    (b) How it was hunted: Claude's plan, second-run
+        axis (b) -- list keys with wrong element type,
+        empty, or a list where a scalar is documented.
+        On 2026-10-24 this tick probed
+        runner.runner.execute_job with interpreter /
+        files / args empty, as scalars, and with wrong
+        element types (int, None, bool, nested list);
+        scalar-documented keys (script, kind,
+        timeout_sec, env, job_id) given lists; the
+        config `default_interpreter` in the same shapes
+        (job interpreter absent); and
+        runner.transports.enabled_transports with the
+        same shape family.
+
+    (c) Behavior actually observed: NO divergence.
+        Job interpreter empty, as a string, or with any
+        non-string element refuses with JobRejected
+        ("interpreter must be a non-empty list of
+        strings"). Files as a string refuses; an empty
+        files list runs; a non-object element or a
+        non-string name refuses. Args as a string
+        refuses; an empty args list runs; non-string
+        args elements are coerced to text (123 ->
+        "123", a nested list -> its repr), as the
+        runner's args handling documents in code.
+        Scalar keys given a list refuse cleanly:
+        script, kind, timeout_sec ([300]), env, and
+        job_id all JobRejected, with one falsy
+        exception -- timeout_sec [] reads as absent
+        and runs under the documented 300 default
+        (the `or` default chain). A config
+        default_interpreter as a string or with a
+        non-string element refuses likewise, while an
+        empty config list falls back to the platform
+        default (config absence semantics; the
+        present-but-empty refusal is a job-field rule).
+        Transports: absent reads ["email"], empty
+        list/string refuses with ValueError, a scalar
+        int or a dict refuses, numeric/None elements
+        are coerced to their text names ("123",
+        "None"), and a nested list element refuses as
+        an invalid transport name. No shape escaped as
+        a TypeError or other raw crash.
+        Observed on 2026-10-24 against current main.
+    """
+
+    def _job(self, **over):
+        job = {"v": 1, "type": "job",
+               "job_id": "list-hunt-shape",
+               "issued_at": "2026-10-23T00:00:00Z",
+               "kind": "exec", "interpreter": ["sh"],
+               "script": "echo hi\n"}
+        job.update(over)
+        return job
+
+    def _rejects(self, job, cfg=None):
+        import tempfile
+        from runner import runner as R
+        with tempfile.TemporaryDirectory() as base:
+            full = {"base_dir": base}
+            if cfg:
+                full.update(cfg)
+            with self.assertRaises(R.JobRejected):
+                R.execute_job(full, job, base)
+
+    def _runs(self, job, cfg=None):
+        import tempfile
+        from runner import runner as R
+        with tempfile.TemporaryDirectory() as base:
+            full = {"base_dir": base}
+            if cfg:
+                full.update(cfg)
+            result = R.execute_job(full, job, base)
+            self.assertEqual(result["exit_code"], 0)
+            self.assertIn("hi", result["stdout"])
+
+    def test_interpreter_empty_scalar_and_wrong_elements_refuse(self):
+        for bad in ([], "sh", [123], [None], ["sh", 123]):
+            with self.subTest(interpreter=bad):
+                self._rejects(self._job(interpreter=bad))
+
+    def test_files_scalar_empty_and_wrong_elements(self):
+        self._rejects(self._job(files="input.csv"))
+        self._rejects(self._job(files=[123]))
+        self._rejects(self._job(
+            files=[{"name": 123, "url": "https://x.invalid/f"}]))
+        self._rejects(self._job(files=[{"name": "a.txt"}]))
+        self._runs(self._job(files=[]))
+
+    def test_args_scalar_refuses_empty_runs_wrong_elements_coerce(self):
+        self._rejects(self._job(args="--flag"))
+        self._runs(self._job(args=[]))
+        self._runs(self._job(args=[123, None, True]))
+        self._runs(self._job(args=[["nested"]]))
+
+    def test_scalar_keys_given_a_list_refuse(self):
+        self._rejects(self._job(script=["echo hi\n"]))
+        self._rejects(self._job(script=[]))
+        self._rejects(self._job(kind=["exec"]))
+        self._rejects(self._job(timeout_sec=[300]))
+        self._rejects(self._job(env=["A=1"]))
+        self._rejects(self._job(job_id=["x"]))
+
+    def test_timeout_sec_empty_list_reads_as_absent_default(self):
+        self._runs(self._job(timeout_sec=[]))
+
+    def test_config_default_interpreter_shapes(self):
+        job = self._job()
+        del job["interpreter"]
+        self._rejects(job, cfg={"default_interpreter": "sh"})
+        self._rejects(job, cfg={"default_interpreter": [123]})
+        # Empty config list falls back to the platform default.
+        self._runs(job, cfg={"default_interpreter": []})
+        self._runs(job, cfg={"default_interpreter": ["sh"]})
+
+    def test_transports_list_shapes(self):
+        from runner import transports as T
+        self.assertEqual(T.enabled_transports({}), ["email"])
+        self.assertEqual(
+            T.enabled_transports({"transports": ["file"]}), ["file"])
+        self.assertEqual(
+            T.enabled_transports({"transports": [123, None]}),
+            ["123", "None"])
+        for bad in ([], "", 123, {"a": 1}, [["file"]], ["../bad"], [""]):
+            with self.subTest(transports=bad):
+                with self.assertRaises(ValueError):
+                    T.enabled_transports({"transports": bad})
+
+
 if __name__ == "__main__":
 
     unittest.main()
