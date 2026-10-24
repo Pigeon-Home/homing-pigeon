@@ -22356,6 +22356,1019 @@ class TestOsqueryFeedPathsAndDecideFifteenShapes(unittest.TestCase):
                     self.assertEqual(run(tunables, tag),
                                      (0, 0, True))
 
+class TestZeekFeedPathsAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the zeek-feed
+    log_paths tunable and parse / decide event
+    handling (default
+    ["/opt/zeek/logs/current/conn.log",
+    "/opt/zeek/logs/current/dns.log"],
+    poll_interval_sec 60) varied with the fifteen
+    shapes for the first time (step-8 Target 5 /
+    family (b) -- zeek-feed's only earlier classes
+    cover the numeric tunables window_sec,
+    new_peer_threshold, query_length_threshold
+    and seen_peers_cap; its path list and its
+    header-driven parser were never varied, the
+    same gap aide-feed, sysmon-feed, falco-feed,
+    suricata-feed, wazuh-feed and osquery-feed
+    closed in the ticks before this one).
+
+    (a) Doc claims: the manifest ships both
+        (extensions/zeek-feed/extension.json:
+        "log_paths":
+        ["/opt/zeek/logs/current/conn.log",
+        "/opt/zeek/logs/current/dns.log"],
+        "poll_interval_sec": 60). The README's
+        tunables table gives the same log_paths
+        pair and poll_interval_sec 60, and the
+        module docstring describes the tailing:
+        the state dict carries a "_reader"
+        sub-dict, {path: {"inode", "offset",
+        "fields"}}, which main() owns, decide()
+        preserves opaquely and ignores, and
+        read_new_events() threads through a pass;
+        read_new_events() "tails from those
+        offsets (a missing file yields no events
+        and keeps its offset; an inode change or
+        a file that shrank restarts it from 0,
+        headers included), and parse_event()
+        turns one line into one event". The
+        docstring and README both state the
+        parser is header-driven ("#fields" header
+        lines name the columns in force, and
+        headers can reappear mid-file when Zeek
+        rotates or restarts), that lines starting
+        with "{" are Zeek's JSON output parsed
+        with the same field names, that other "#"
+        lines carry no event and are ignored, and
+        that anything that does not parse answers
+        None, quietly. "External" is the stdlib
+        ipaddress module's word: a responder that
+        parses as private, loopback, link-local
+        or multicast is not external, and neither
+        is one on the allowlist tunable (exact
+        addresses or CIDR networks). The Signals
+        table states zeek_new_external_peers
+        files when at least new_peer_threshold
+        DISTINCT external responders were first
+        seen inside the trailing window_sec, that
+        filing consumes the accumulation (a
+        refile always means new peers), and that
+        zeek_dns_anomaly files once per (query,
+        responder) episode for a query at least
+        query_length_threshold characters long,
+        with six or more labels, or with a TXT /
+        NULL / KEY / ANY qtype. State remembers
+        the peers already seen, bounded by
+        seen_peers_cap, oldest evicted first, and
+        a peer evicted and seen again counts as
+        first-seen again. decide() is pure:
+        current time arrives as readings["now"]
+        and it never reads a clock. log_paths is
+        not a numeric registry row (zeek-feed's
+        rows in tests/defaults_registry.py are
+        the four numeric tunables), so Decision
+        1's default-on-unusable policy for
+        numeric readers does not name a shape
+        rule for it; this class pins the observed
+        readings instead of asserting one.
+
+    (b) How this was probed: on 2026-10-24 the
+        reader (read_new_events(), the function
+        main() hands the log_paths value to after
+        its own fallback) was probed with the
+        table hunt's fifteen shapes
+        (omitted-equivalent empty list, null,
+        empty string, true, false, zero,
+        negative, numeric string, non-numeric
+        string, huge-int (10**400), inf, -inf,
+        NaN, list, dict), plus genuine, mixed,
+        tuple, duplicated and missing-path lists
+        against real temp Zeek conn.log / dns.log
+        files and the committed fixtures, and
+        with reader-state shapes directly (saved
+        offset resume, shrink / inode restart,
+        non-dict state, non-int inode / offset
+        with bool included, negative offset, a
+        missing file's saved entry kept or
+        dropped, saved field lists carried and
+        filtered). parse_event() was probed with
+        the fifteen shapes, header / comment
+        lines, malformed and JSON lines, missing
+        fields and timestamp forms. decide() was
+        probed with tunables, readings, event and
+        state shapes, responder classifications
+        and allowlist shapes. main() was run
+        against temp manifests carrying the
+        log_paths shapes, and in --log-file
+        fixture mode. poll_interval_sec is not
+        read by zeek_feed.py's decide() at all;
+        decide() consults only the four numeric
+        tunables and the allowlist, plus
+        manifest["name"] for the sensor name.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. read_new_events() reads every
+        non-list/non-tuple shape and an empty
+        list as no paths, cleans genuine lists
+        element-wise (non-string/empty entries
+        skipped, missing files yield nothing),
+        accepts tuples, reads a duplicated path
+        twice, and returns conn and dns events
+        merged in timestamp order; a saved offset
+        resumes incrementally (an appended
+        header-less row parses against the saved
+        field list), a file that shrank or whose
+        inode changed restarts from 0, a missing
+        file keeps a valid saved entry verbatim
+        (fields included) and drops an invalid
+        one, a non-dict reader state or a non-int
+        inode/offset (bool included) or a
+        negative offset restarts the file from 0,
+        and a continuing file's saved field list
+        is carried with non-string entries
+        filtered out. main() substitutes the
+        documented default paths for a non-list
+        or empty log_paths (on this box those
+        paths are absent, so those shapes file
+        nothing, rc 0), while a genuine or mixed
+        list tails the named file and --log-file
+        parses a whole fixture from offset 0 (a
+        missing fixture answers rc 2).
+        parse_event() reads non-string input,
+        empty lines, malformed lines and
+        non-"#" comment shapes as None, answers
+        {"kind": "_fields", "fields": [...]} for
+        a "#fields" line (tab- or space-split, a
+        bare "#fields" answering None), ignores
+        the other "#" header lines, parses JSON
+        lines with no field list in force (a
+        non-string field value cleans to "", so
+        a numeric id.resp_p answers ""), reads a
+        numeric-string ts as a float and a
+        bool / non-numeric / non-finite ts as
+        None, and parses a TSV data line only
+        against a non-empty list/tuple field list
+        with an exact column count, cleaning "-"
+        and "(empty)" values to "". A row with a
+        query or qtype_name field is a dns event,
+        a row with id.resp_h and no DNS fields is
+        a conn event, and any other row answers
+        None. decide() skips a non-list events
+        value and non-dict entries, drops an
+        event whose ts is not a finite number
+        (bool, string, non-finite and huge-int
+        included) or whose kind is not conn/dns,
+        cleans a non-string resp_h / query /
+        qtype_name to "", counts only external
+        responders (private, loopback, link-local,
+        multicast and unparsable responders never
+        count; allowlist entries match exactly or
+        by CIDR, bad entries are skipped, and a
+        non-list allowlist is ignored), files
+        zeek_new_external_peers once when the
+        distinct first-seen peers inside the
+        window reach the threshold and consumes
+        the accumulation, processes events in
+        timestamp order, keeps a pending peer
+        only while it is inside the window
+        ending at readings["now"] (a missing or
+        unusable now falls back to the last
+        event's ts, then to 0.0), files a DNS
+        anomaly for a query of at least the
+        length threshold (length checked first),
+        then a TXT / NULL / KEY / ANY qtype
+        (case-insensitive), then six or more
+        labels (empty label parts dropped, one
+        trailing dot stripped), files it once
+        per (query, responder) pair, falls back
+        to the sensor name "zeek_feed" for a
+        non-dict manifest or a non-string/empty
+        name, and cleans state by dropping
+        non-string/empty seen peers, new-peer
+        entries without a string peer and a
+        finite-number ts, and filed pairs
+        without string query/resp_h (empty
+        strings are kept), while preserving a
+        dict _reader verbatim; a seen peer
+        refreshes its place under the cap, so
+        eviction takes the stalest peer first,
+        and a filed pair evicted by the cap
+        files again when it recurs. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as the
+        readings above keep holding. If a shape
+        ever stops behaving as described, this
+        test is the failing record of that change.
+    """
+
+    _CONN_HDR = ("#fields\tts\tuid\tid.orig_h\t"
+                 "id.orig_p\tid.resp_h\tid.resp_p\t"
+                 "proto\tservice\n")
+    _CONN_ROW = ("1000.0\tu1\t192.168.1.5\t1234\t"
+                 "8.8.8.8\t443\ttcp\tssl\n")
+    _CONN_ROW2 = ("2000.0\tu2\t192.168.1.5\t1235\t"
+                  "8.8.4.4\t443\ttcp\tssl\n")
+    _DNS_HDR = ("#fields\tts\tuid\tid.orig_h\t"
+                "id.orig_p\tid.resp_h\tid.resp_p\t"
+                "proto\ttrans_id\tquery\tqtype_name\n")
+    _DNS_ROW = ("1500.0\td1\t192.168.1.5\t53111\t"
+                "8.8.8.8\t53\tudp\t1\texample.com\tA\n")
+    _CONN_FIELDS = ["ts", "uid", "id.orig_h",
+                    "id.orig_p", "id.resp_h",
+                    "id.resp_p", "proto", "service"]
+    _DNS_FIELDS = ["ts", "uid", "id.orig_h",
+                   "id.orig_p", "id.resp_h",
+                   "id.resp_p", "proto", "trans_id",
+                   "query", "qtype_name"]
+    _EVENT_CONN = {"ts": 1000.0, "kind": "conn",
+                   "resp_h": "8.8.8.8",
+                   "orig_h": "192.168.1.5",
+                   "resp_p": "443", "proto": "tcp",
+                   "service": "ssl"}
+    _EVENT_CONN2 = {"ts": 2000.0, "kind": "conn",
+                    "resp_h": "8.8.4.4",
+                    "orig_h": "192.168.1.5",
+                    "resp_p": "443", "proto": "tcp",
+                    "service": "ssl"}
+    _EVENT_DNS = {"ts": 1500.0, "kind": "dns",
+                  "query": "example.com",
+                  "qtype_name": "A",
+                  "resp_h": "8.8.8.8",
+                  "orig_h": "192.168.1.5"}
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "zeek-feed", "zeek_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "zeek_feed_paths_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _conn(self, ts, resp_h):
+        return {"ts": ts, "kind": "conn",
+                "resp_h": resp_h,
+                "orig_h": "192.168.1.5"}
+
+    def _dns(self, ts, query, qtype_name="A",
+             resp_h="8.8.8.8"):
+        return {"ts": ts, "kind": "dns",
+                "query": query,
+                "qtype_name": qtype_name,
+                "resp_h": resp_h,
+                "orig_h": "192.168.1.5"}
+
+    def _write_logs(self, d):
+        import os
+        conn = os.path.join(d, "conn.log")
+        with open(conn, "w", encoding="utf-8") as fh:
+            fh.write(self._CONN_HDR + self._CONN_ROW
+                     + self._CONN_ROW2)
+        dns = os.path.join(d, "dns.log")
+        with open(dns, "w", encoding="utf-8") as fh:
+            fh.write("#separator \\x09\n"
+                     "#types\ttime\tstring\n"
+                     + self._DNS_HDR + self._DNS_ROW)
+        return conn, dns
+
+    def test_read_new_events_paths_shapes(self):
+        import os
+        import tempfile
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    mod.read_new_events(value, {}), ([], {}))
+        with tempfile.TemporaryDirectory() as d:
+            conn, dns = self._write_logs(d)
+            events, reader = mod.read_new_events([conn], {})
+            self.assertEqual(
+                events, [self._EVENT_CONN, self._EVENT_CONN2])
+            self.assertEqual(reader[conn]["fields"],
+                             self._CONN_FIELDS)
+            self.assertEqual(reader[conn]["offset"],
+                             os.path.getsize(conn))
+            events, reader = mod.read_new_events([dns], {})
+            self.assertEqual(events, [self._EVENT_DNS])
+            self.assertEqual(reader[dns]["fields"],
+                             self._DNS_FIELDS)
+            events, _ = mod.read_new_events([conn, dns], {})
+            self.assertEqual(
+                [(e["kind"], e["ts"]) for e in events],
+                [("conn", 1000.0), ("dns", 1500.0),
+                 ("conn", 2000.0)])
+            events, _ = mod.read_new_events((conn,), {})
+            self.assertEqual(
+                events, [self._EVENT_CONN, self._EVENT_CONN2])
+            events, _ = mod.read_new_events(
+                [conn, 123, "", None], {})
+            self.assertEqual(
+                events, [self._EVENT_CONN, self._EVENT_CONN2])
+            events, _ = mod.read_new_events([conn, conn], {})
+            self.assertEqual(len(events), 4)
+            missing = os.path.join(d, "nope.log")
+            self.assertEqual(
+                mod.read_new_events([missing], {}), ([], {}))
+
+    def test_read_new_events_resume_and_rotation(self):
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            conn, _ = self._write_logs(d)
+            _, reader = mod.read_new_events([conn], {})
+            self.assertEqual(
+                mod.read_new_events([conn], reader),
+                ([], reader))
+            with open(conn, "a", encoding="utf-8") as fh:
+                fh.write("3000.0\tu3\t192.168.1.5\t1236\t"
+                         "1.1.1.1\t443\ttcp\tssl\n")
+            events, reader2 = mod.read_new_events([conn], reader)
+            self.assertEqual(
+                [(e["kind"], e["ts"], e["resp_h"])
+                 for e in events],
+                [("conn", 3000.0, "1.1.1.1")])
+            with open(conn, "w", encoding="utf-8") as fh:
+                fh.write(self._CONN_HDR + self._CONN_ROW)
+            events, _ = mod.read_new_events([conn], reader2)
+            self.assertEqual(events, [self._EVENT_CONN])
+            st = os.stat(conn)
+            bad_inode = {conn: {"inode": st.st_ino + 999999,
+                                "offset": 10,
+                                "fields": ["ts"]}}
+            events, _ = mod.read_new_events([conn], bad_inode)
+            self.assertEqual(events, [self._EVENT_CONN])
+            missing = os.path.join(d, "nope.log")
+            saved = {missing: {"inode": 123, "offset": 7,
+                               "fields": ["ts"]}}
+            self.assertEqual(
+                mod.read_new_events([missing], saved),
+                ([], saved))
+            self.assertEqual(
+                mod.read_new_events(
+                    [missing],
+                    {missing: {"inode": "x", "offset": 5}}),
+                ([], {}))
+
+    def test_read_new_events_reader_state_shapes(self):
+        import os
+        import tempfile
+        mod = self._module()
+        for bad_state in (None, "bogus", [], 42):
+            with self.subTest(state=repr(bad_state)):
+                self.assertEqual(
+                    mod.read_new_events([], bad_state),
+                    ([], {}))
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "conn.log")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._CONN_HDR + self._CONN_ROW)
+            events, _ = mod.read_new_events([path], None)
+            self.assertEqual(events, [self._EVENT_CONN])
+            st = os.stat(path)
+            for bad in ({path: {"inode": "bad",
+                                "offset": "bad"}},
+                        {path: {"inode": True, "offset": 0}},
+                        {path: {"inode": st.st_ino,
+                                "offset": True}},
+                        {path: {"inode": 1, "offset": -1}},
+                        {path: "notdict"},
+                        {path: {"inode": 999999,
+                                "offset": 0}}):
+                events, _ = mod.read_new_events([path], bad)
+                self.assertEqual(events, [self._EVENT_CONN])
+            crafted = {path: {"inode": st.st_ino,
+                              "offset": st.st_size,
+                              "fields": ["ts", 123, "uid",
+                                         None]}}
+            events, reader = mod.read_new_events([path], crafted)
+            self.assertEqual(events, [])
+            self.assertEqual(reader[path]["fields"],
+                             ["ts", "uid"])
+
+    def test_read_new_events_fixtures(self):
+        import os
+        mod = self._module()
+        fixtures = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "zeek-feed", "fixtures")
+        conn = os.path.join(fixtures, "conn.log")
+        events, reader = mod.read_new_events([conn], {})
+        self.assertEqual(
+            [(e["kind"], e["resp_h"]) for e in events],
+            [("conn", "fd8b:4f84:7d32:99::1"),
+             ("conn", "fd8b:4f84:7d32:99::1")])
+        self.assertEqual(
+            reader[conn]["fields"][:8], self._CONN_FIELDS)
+        self.assertEqual(len(reader[conn]["fields"]), 22)
+        dns = os.path.join(fixtures, "dns.log")
+        events, reader = mod.read_new_events([dns], {})
+        self.assertEqual(
+            [(e["kind"], e["query"]) for e in events],
+            [("dns", "example.com"),
+             ("dns", "a-very-long-subdomain-label-"
+                     "for-tunneling.example.net"),
+             ("dns", "notes.example.org"),
+             ("dns", "one.two.three.four.five."
+                     "example.com")])
+        self.assertEqual(len(reader[dns]["fields"]), 24)
+        alerts, _ = mod.decide(
+            {"now": events[-1]["ts"], "events": events},
+            {"name": "zeek_feed"}, {})
+        self.assertEqual(
+            [(a["detail"]["reason"], a["detail"]["query"])
+             for a in alerts],
+            [("long_query",
+              "a-very-long-subdomain-label-"
+              "for-tunneling.example.net"),
+             ("suspicious_qtype", "notes.example.org"),
+             ("many_labels",
+              "one.two.three.four.five.example.com")])
+        jsonlog = os.path.join(fixtures, "zeek-json.log")
+        events, reader = mod.read_new_events([jsonlog], {})
+        self.assertEqual(
+            [(e["kind"], e["ts"]) for e in events],
+            [("conn", 1792382530.5), ("dns", 1792382535.5)])
+        self.assertEqual(events[0]["resp_h"],
+                         "93.184.216.34")
+        self.assertEqual(reader[jsonlog]["fields"], [])
+
+    def test_parse_event_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertIsNone(mod.parse_event(value))
+        self.assertIsNone(mod.parse_event(42))
+        self.assertIsNone(mod.parse_event(""))
+        self.assertIsNone(mod.parse_event("   \n"))
+        self.assertIsNone(mod.parse_event("not a log line"))
+        self.assertIsNone(mod.parse_event("[1, 2]"))
+        self.assertIsNone(mod.parse_event("{not json"))
+        self.assertEqual(
+            mod.parse_event("#fields\tts\tuid\tid.resp_h"),
+            {"kind": "_fields",
+             "fields": ["ts", "uid", "id.resp_h"]})
+        self.assertEqual(
+            mod.parse_event("#fields ts uid id.resp_h"),
+            {"kind": "_fields",
+             "fields": ["ts", "uid", "id.resp_h"]})
+        self.assertIsNone(mod.parse_event("#fields"))
+        self.assertIsNone(mod.parse_event("#fields\t"))
+        for header in ("#separator \\x09",
+                       "#types\ttime\tstring",
+                       "#open\t2026-01-01-00-00-00",
+                       "#path\tconn", "#close\tx"):
+            with self.subTest(header=header):
+                self.assertIsNone(mod.parse_event(header))
+
+    def test_parse_event_tsv_and_json_rows(self):
+        mod = self._module()
+        row = self._CONN_ROW.rstrip("\n")
+        self.assertIsNone(mod.parse_event(row))
+        self.assertIsNone(mod.parse_event(row, None))
+        self.assertIsNone(mod.parse_event(row, []))
+        self.assertIsNone(mod.parse_event(row, "ts"))
+        self.assertEqual(
+            mod.parse_event(row, self._CONN_FIELDS),
+            self._EVENT_CONN)
+        self.assertEqual(
+            mod.parse_event(row, tuple(self._CONN_FIELDS)),
+            self._EVENT_CONN)
+        self.assertIsNone(mod.parse_event(
+            "1000.0\tu1\t192.168.1.5", self._CONN_FIELDS))
+        self.assertIsNone(mod.parse_event(
+            row + "\textra", self._CONN_FIELDS))
+        self.assertIsNone(mod.parse_event(
+            "bogus\tu1\t192.168.1.5\t1234\t8.8.8.8\t443\t"
+            "tcp\tssl", self._CONN_FIELDS))
+        dash = mod.parse_event(
+            "1000.0\tu1\t192.168.1.5\t1234\t8.8.8.8\t443\t"
+            "tcp\t-", self._CONN_FIELDS)
+        self.assertEqual(dash["service"], "")
+        self.assertEqual(
+            mod.parse_event(self._DNS_ROW.rstrip("\n"),
+                            self._DNS_FIELDS),
+            self._EVENT_DNS)
+        emptyq = mod.parse_event(
+            "1000.0\td1\t192.168.1.5\t53111\t8.8.8.8\t53\t"
+            "udp\t1\t-\tA", self._DNS_FIELDS)
+        self.assertEqual(emptyq["kind"], "dns")
+        self.assertEqual(emptyq["query"], "")
+        reorder = ("#fields\tid.resp_h\tts\tid.orig_h\t"
+                   "id.resp_p\tproto\tservice\tuid\t"
+                   "id.orig_p")
+        fields = mod.parse_event(reorder)["fields"]
+        self.assertEqual(
+            mod.parse_event(
+                "9.9.9.9\t5000.0\t192.168.1.5\t443\ttcp\t"
+                "ssl\tu9\t1111", fields),
+            {"ts": 5000.0, "kind": "conn",
+             "resp_h": "9.9.9.9",
+             "orig_h": "192.168.1.5", "resp_p": "443",
+             "proto": "tcp", "service": "ssl"})
+        self.assertEqual(
+            mod.parse_event(
+                '{"ts": 1000, "id.orig_h": "192.168.1.5", '
+                '"id.resp_h": "8.8.8.8", "id.resp_p": 443, '
+                '"proto": "tcp", "service": "ssl"}'),
+            {"ts": 1000.0, "kind": "conn",
+             "resp_h": "8.8.8.8",
+             "orig_h": "192.168.1.5", "resp_p": "",
+             "proto": "tcp", "service": "ssl"})
+        self.assertEqual(
+            mod.parse_event(
+                '{"ts": 1000, "id.orig_h": "192.168.1.5", '
+                '"id.resp_h": "8.8.8.8", '
+                '"query": "example.com", '
+                '"qtype_name": "TXT"}'),
+            {"ts": 1000.0, "kind": "dns",
+             "query": "example.com",
+             "qtype_name": "TXT", "resp_h": "8.8.8.8",
+             "orig_h": "192.168.1.5"})
+        ev = mod.parse_event(
+            '{"ts": "1000.5", "id.resp_h": "8.8.8.8"}')
+        self.assertEqual(ev["ts"], 1000.5)
+        self.assertEqual(ev["orig_h"], "")
+        for bad in ('{"id.resp_h": "8.8.8.8"}',
+                    '{"ts": "bogus", '
+                    '"id.resp_h": "8.8.8.8"}',
+                    '{"ts": true, '
+                    '"id.resp_h": "8.8.8.8"}',
+                    '{"ts": Infinity, '
+                    '"id.resp_h": "8.8.8.8"}',
+                    '{"ts": 1000, "foo": "bar"}'):
+            with self.subTest(line=bad):
+                self.assertIsNone(mod.parse_event(bad))
+        ev = mod.parse_event(
+            '{"ts": 1000, "id.resp_h": "-", '
+            '"id.orig_h": "(empty)"}')
+        self.assertEqual(ev["resp_h"], "")
+        self.assertEqual(ev["orig_h"], "")
+        ev = mod.parse_event(
+            '{"ts": 1000, "id.resp_h": 12345}')
+        self.assertEqual(ev["resp_h"], "")
+
+    def test_decide_ignores_path_and_poll_shapes(self):
+        mod = self._module()
+        events = [self._dns(1000.0,
+                            "a" * 60 + ".example.com")]
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                alerts, _ = mod.decide(
+                    {"now": 1000.0, "events": events},
+                    {"name": "zeek_feed",
+                     "tunables": {"log_paths": value,
+                                  "poll_interval_sec": value}},
+                    {})
+                self.assertEqual(len(alerts), 1)
+                self.assertEqual(alerts[0]["signal"],
+                                 "zeek_dns_anomaly")
+                self.assertEqual(alerts[0]["severity"],
+                                 "medium")
+        for man in (None, "x", [], {},
+                    {"name": 123}, {"name": ""},
+                    {"tunables": "nope"}):
+            alerts, _ = mod.decide(
+                {"now": 1000.0, "events": events}, man, {})
+            self.assertEqual(len(alerts), 1)
+            self.assertEqual(alerts[0]["sensor"], "zeek_feed")
+
+    def test_decide_external_classification(self):
+        mod = self._module()
+        man = {"name": "zeek_feed",
+               "tunables": {"new_peer_threshold": 1}}
+
+        def signals(resp_h, tunables=None):
+            m = {"name": "zeek_feed",
+                 "tunables": {"new_peer_threshold": 1}}
+            if tunables:
+                m["tunables"].update(tunables)
+            alerts, _ = mod.decide(
+                {"now": 1000.0,
+                 "events": [self._conn(1000.0, resp_h)]},
+                m, {})
+            return [a["signal"] for a in alerts]
+
+        for resp_h in ("8.8.8.8", "93.184.216.34",
+                       "2001:4860:4860::8888"):
+            with self.subTest(resp_h=resp_h):
+                self.assertEqual(
+                    signals(resp_h),
+                    ["zeek_new_external_peers"])
+        for resp_h in ("192.168.1.1", "10.0.0.5",
+                       "172.16.0.5", "127.0.0.1", "::1",
+                       "fe80::1", "169.254.1.1",
+                       "224.0.0.1", "ff02::1",
+                       "not-an-ip", "", "-"):
+            with self.subTest(resp_h=resp_h):
+                self.assertEqual(signals(resp_h), [])
+        self.assertEqual(
+            signals("8.8.8.8",
+                    {"allowlist": ["8.8.8.8"]}), [])
+        self.assertEqual(
+            signals("8.8.8.8",
+                    {"allowlist": ["8.8.0.0/16"]}), [])
+        self.assertEqual(
+            signals("8.8.8.8",
+                    {"allowlist": ["bogus", "8.8.8.8"]}),
+            [])
+        self.assertEqual(
+            signals("8.8.8.8",
+                    {"allowlist": [123, None]}),
+            ["zeek_new_external_peers"])
+        self.assertEqual(
+            signals("8.8.8.8", {"allowlist": "8.8.8.8"}),
+            ["zeek_new_external_peers"])
+        self.assertEqual(
+            signals("8.8.8.8", {"allowlist": None}),
+            ["zeek_new_external_peers"])
+        self.assertEqual(
+            signals("8.8.8.8",
+                    {"allowlist": ["2001:db8::/32"]}),
+            ["zeek_new_external_peers"])
+
+    def test_decide_new_peer_episodes(self):
+        mod = self._module()
+        man = {"name": "zeek_feed",
+               "tunables": {"new_peer_threshold": 3,
+                            "window_sec": 600}}
+        evs = [self._conn(1000.0, "8.8.8.8"),
+               self._conn(1010.0, "8.8.4.4"),
+               self._conn(1020.0, "1.1.1.1")]
+        alerts, state = mod.decide(
+            {"now": 2000.0, "events": evs}, man, {})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            alerts[0],
+            {"sensor": "zeek_feed",
+             "signal": "zeek_new_external_peers",
+             "severity": "medium",
+             "title": "3 new external peers first "
+                      "seen within 600s",
+             "detail": {"count": 3,
+                        "peers": ["1.1.1.1", "8.8.4.4",
+                                  "8.8.8.8"],
+                        "threshold": 3,
+                        "window_sec": 600}})
+        self.assertEqual(state["new_peers"], [])
+        self.assertEqual(
+            state["seen_peers"],
+            ["8.8.8.8", "8.8.4.4", "1.1.1.1"])
+        alerts, _ = mod.decide(
+            {"now": 2000.0,
+             "events": [self._conn(1030.0, "9.9.9.9")]},
+            man, state)
+        self.assertEqual(alerts, [])
+        spaced = [self._conn(1000.0, "8.8.8.8"),
+                  self._conn(2000.0, "8.8.4.4"),
+                  self._conn(3000.0, "1.1.1.1")]
+        self.assertEqual(
+            mod.decide({"now": 3000.0, "events": spaced},
+                       man, {})[0], [])
+        self.assertEqual(
+            mod.decide(
+                {"now": 2000.0,
+                 "events": [self._conn(1000.0, "8.8.8.8"),
+                            self._conn(1001.0, "8.8.8.8")]},
+                {"name": "zeek_feed",
+                 "tunables": {"new_peer_threshold": 2}},
+                {})[0], [])
+        self.assertEqual(
+            mod.decide(
+                {"now": 2000.0,
+                 "events": [self._conn(1000.0, "8.8.8.8")]},
+                {"name": "zeek_feed",
+                 "tunables": {"new_peer_threshold": 1}},
+                {"seen_peers": ["8.8.8.8"]})[0], [])
+        alerts, _ = mod.decide(
+            {"now": 2000.0, "events": list(reversed(evs))},
+            man, {})
+        self.assertEqual(len(alerts), 1)
+        _, state = mod.decide(
+            {"now": 1200.0,
+             "events": [self._conn(1000, "8.8.8.8")]},
+            {"name": "zeek_feed",
+             "tunables": {"new_peer_threshold": 2}}, {})
+        self.assertEqual(
+            state["new_peers"],
+            [{"peer": "8.8.8.8", "ts": 1000.0}])
+        _, state = mod.decide(
+            {"now": 100000.0,
+             "events": [self._conn(1000.0, "8.8.8.8")]},
+            {"name": "zeek_feed",
+             "tunables": {"new_peer_threshold": 2}}, {})
+        self.assertEqual(state["new_peers"], [])
+        for bad_now in (None, "bogus", True):
+            with self.subTest(now=repr(bad_now)):
+                _, state = mod.decide(
+                    {"now": bad_now,
+                     "events": [self._conn(1000.0,
+                                           "8.8.8.8")]},
+                    {"name": "zeek_feed",
+                     "tunables": {"new_peer_threshold": 2}},
+                    {})
+                self.assertEqual(
+                    state["new_peers"],
+                    [{"peer": "8.8.8.8", "ts": 1000.0}])
+
+    def test_decide_dns_anomaly_rules(self):
+        mod = self._module()
+        man = {"name": "zeek_feed"}
+
+        def reasons(query, qtype_name="A",
+                    resp_h="8.8.8.8"):
+            alerts, _ = mod.decide(
+                {"now": 1000.0,
+                 "events": [self._dns(1000.0, query,
+                                      qtype_name,
+                                      resp_h)]},
+                man, {})
+            return alerts
+
+        self.assertEqual(reasons("a" * 49), [])
+        alerts = reasons("a" * 50)
+        self.assertEqual(
+            [a["detail"]["reason"] for a in alerts],
+            ["long_query"])
+        self.assertEqual(alerts[0]["signal"],
+                         "zeek_dns_anomaly")
+        self.assertEqual(alerts[0]["severity"], "medium")
+        alerts = reasons("a" * 60 + ".example.com", "TXT")
+        self.assertEqual(alerts[0]["detail"]["reason"],
+                         "long_query")
+        self.assertEqual(reasons("a.b.c.example.com"), [])
+        for query in ("a.b.c.d.example.com",
+                      "a.b.c.d.e.example.com.",
+                      "a..b..c..d..e.com"):
+            with self.subTest(query=query):
+                self.assertEqual(
+                    [a["detail"]["reason"]
+                     for a in reasons(query)],
+                    ["many_labels"])
+        for qtype in ("TXT", "NULL", "KEY", "ANY",
+                      "txt", "Txt"):
+            with self.subTest(qtype=qtype):
+                self.assertEqual(
+                    [a["detail"]["reason"] for a in
+                     reasons("example.com", qtype)],
+                    ["suspicious_qtype"])
+        alerts = reasons("a.b.c.d.example.com", "TXT")
+        self.assertEqual(alerts[0]["detail"]["reason"],
+                         "suspicious_qtype")
+        for qtype in ("A", "AAAA", ""):
+            with self.subTest(qtype=qtype):
+                self.assertEqual(
+                    reasons("example.com", qtype), [])
+        ev = {"ts": 1000.0, "kind": "dns",
+              "query": "example.com", "qtype_name": 16,
+              "resp_h": "8.8.8.8"}
+        self.assertEqual(
+            mod.decide({"now": 1000.0, "events": [ev]},
+                       man, {})[0], [])
+        self.assertEqual(reasons(""), [])
+        alerts = reasons("example.com", "TXT", resp_h="")
+        self.assertEqual(
+            alerts[0]["title"],
+            "DNS anomaly (suspicious_qtype): "
+            "example.com via ?")
+        self.assertEqual(alerts[0]["detail"]["resp_h"], "")
+        pair = [self._dns(1000.0, "example.com", "TXT"),
+                self._dns(1001.0, "example.com", "TXT")]
+        alerts, state = mod.decide(
+            {"now": 1001.0, "events": pair}, man, {})
+        self.assertEqual(len(alerts), 1)
+        alerts, _ = mod.decide(
+            {"now": 2000.0,
+             "events": [self._dns(2000.0, "example.com",
+                                  "TXT")]},
+            man, state)
+        self.assertEqual(alerts, [])
+        two = [self._dns(1000.0, "example.com", "TXT",
+                         "8.8.8.8"),
+               self._dns(1001.0, "example.com", "TXT",
+                         "8.8.4.4")]
+        alerts, _ = mod.decide(
+            {"now": 1001.0, "events": two}, man, {})
+        self.assertEqual(len(alerts), 2)
+
+    def test_decide_event_and_state_cleaning(self):
+        mod = self._module()
+        man = {"name": "zeek_feed"}
+        fresh = {"seen_peers": [], "new_peers": [],
+                 "dns_filed": []}
+        for readings in (None, "x", [], {},
+                         {"events": None},
+                         {"events": "notalist"},
+                         {"events": {"a": 1}}):
+            self.assertEqual(
+                mod.decide(readings, man, {}),
+                ([], fresh))
+        self.assertEqual(
+            mod.decide({"events": ["notadict", None, 42]},
+                       man, {})[0], [])
+        man1 = {"name": "zeek_feed",
+                "tunables": {"new_peer_threshold": 1}}
+        for bad in ({"ts": "1000", "kind": "conn",
+                     "resp_h": "8.8.8.8"},
+                    {"ts": True, "kind": "conn",
+                     "resp_h": "8.8.8.8"},
+                    {"ts": None, "kind": "conn",
+                     "resp_h": "8.8.8.8"},
+                    {"ts": float("inf"), "kind": "conn",
+                     "resp_h": "8.8.8.8"},
+                    {"ts": float("nan"), "kind": "conn",
+                     "resp_h": "8.8.8.8"},
+                    {"ts": 10 ** 400, "kind": "conn",
+                     "resp_h": "8.8.8.8"},
+                    {"ts": 1000.0, "kind": "bogus",
+                     "resp_h": "8.8.8.8"},
+                    {"ts": 1000.0, "kind": None,
+                     "resp_h": "8.8.8.8"},
+                    {"ts": 1000.0, "resp_h": "8.8.8.8"},
+                    {"ts": 1000.0, "kind": "_fields",
+                     "resp_h": "8.8.8.8"},
+                    {"ts": 1000.0, "kind": "conn"},
+                    {"ts": 1000.0, "kind": "conn",
+                     "resp_h": 123},
+                    {"ts": 1000.0, "kind": "dns",
+                     "query": 123, "qtype_name": "TXT",
+                     "resp_h": "8.8.8.8"}):
+            with self.subTest(event=str(bad)[:50]):
+                self.assertEqual(
+                    mod.decide({"now": 1000.0,
+                                "events": [bad]},
+                               man1, {})[0], [])
+        for bad_state in (None, "x", [], 42,
+                          {"seen_peers": "nope"}):
+            alerts, _ = mod.decide(
+                {"now": 1000.0,
+                 "events": [self._conn(1000.0, "8.8.8.8")]},
+                man1, bad_state)
+            self.assertEqual(len(alerts), 1)
+        _, new_state = mod.decide(
+            {"now": 10.0, "events": []}, man,
+            {"seen_peers": [123, "8.8.8.8", "", None],
+             "new_peers": [{"peer": "1.1.1.1", "ts": 5},
+                           {"peer": "", "ts": 5},
+                           {"peer": "2.2.2.2",
+                            "ts": "x"},
+                           "junk",
+                           {"peer": "3.3.3.3",
+                            "ts": True},
+                           {"peer": "4.4.4.4",
+                            "ts": 10 ** 400}],
+             "dns_filed": [{"query": "q", "resp_h": "r"},
+                           {"query": 1, "resp_h": "r"},
+                           "junk",
+                           {"query": "q2"},
+                           {"query": "",
+                            "resp_h": ""}],
+             "_reader": {"/x": {"inode": 1}}})
+        self.assertEqual(
+            new_state,
+            {"seen_peers": ["8.8.8.8"],
+             "new_peers": [{"peer": "1.1.1.1",
+                            "ts": 5.0}],
+             "dns_filed": [{"query": "q", "resp_h": "r"},
+                           {"query": "",
+                            "resp_h": ""}],
+             "_reader": {"/x": {"inode": 1}}})
+        _, new_state = mod.decide(
+            {"events": []}, man,
+            {"seen_peers": [], "_reader": "notdict"})
+        self.assertEqual(new_state, fresh)
+        man_cap = {"name": "zeek_feed",
+                   "tunables": {"new_peer_threshold": 99,
+                                "seen_peers_cap": 2}}
+        _, state = mod.decide(
+            {"now": 1000.0,
+             "events": [self._conn(1000.0, "8.8.8.8")]},
+            man_cap,
+            {"seen_peers": ["8.8.8.8", "8.8.4.4"]})
+        self.assertEqual(state["seen_peers"],
+                         ["8.8.4.4", "8.8.8.8"])
+        _, state = mod.decide(
+            {"now": 1001.0,
+             "events": [self._conn(1001.0, "1.1.1.1")]},
+            man_cap, state)
+        self.assertEqual(state["seen_peers"],
+                         ["8.8.8.8", "1.1.1.1"])
+        man_dcap = {"name": "zeek_feed",
+                    "tunables": {"seen_peers_cap": 1}}
+        _, state = mod.decide(
+            {"now": 1000.0,
+             "events": [self._dns(1000.0, "example.com",
+                                  "TXT")]},
+            man_dcap, {})
+        _, state = mod.decide(
+            {"now": 1001.0,
+             "events": [self._dns(1001.0, "other.com",
+                                  "TXT")]},
+            man_dcap, state)
+        self.assertEqual(
+            state["dns_filed"],
+            [{"query": "other.com",
+              "resp_h": "8.8.8.8"}])
+        alerts, _ = mod.decide(
+            {"now": 1002.0,
+             "events": [self._dns(1002.0, "example.com",
+                                  "TXT")]},
+            man_dcap, state)
+        self.assertEqual(len(alerts), 1)
+
+    def test_main_log_paths_fallback(self):
+        import contextlib
+        import io
+        import json
+        import os
+        import tempfile
+        if os.path.exists(
+                "/opt/zeek/logs/current/conn.log") or \
+                os.path.exists(
+                    "/opt/zeek/logs/current/dns.log"):
+            self.skipTest("the documented default path "
+                          "exists on this box")
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            logp = os.path.join(d, "conn.log")
+            with open(logp, "w", encoding="utf-8") as fh:
+                fh.write(self._CONN_HDR)
+                for i in range(10):
+                    fh.write(
+                        f"{1000.0 + i}\tu{i}\t"
+                        f"192.168.1.5\t1\t8.8.{i}.1\t443\t"
+                        f"tcp\tssl\n")
+
+            def run(tunables, tag, extra=()):
+                mp = os.path.join(d, "m-" + tag + ".json")
+                sp = os.path.join(d, "s-" + tag + ".json")
+                with open(mp, "w", encoding="utf-8") as fh:
+                    json.dump({"name": "zeek_feed",
+                               "tunables": tunables}, fh)
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    rc = mod.main(["--manifest", mp,
+                                   "--state", sp]
+                                  + list(extra))
+                return rc, buf.getvalue().count(
+                    "zeek_new_external_peers"), \
+                    os.path.exists(sp)
+
+            self.assertEqual(run({"log_paths": [logp]},
+                                 "genuine"), (0, 1, True))
+            self.assertEqual(
+                run({"log_paths": [logp, 123, ""]}, "mixed"),
+                (0, 1, True))
+            sp = os.path.join(d, "s-genuine.json")
+            with open(sp, encoding="utf-8") as fh:
+                saved = json.load(fh)
+            self.assertIn(logp, saved["_reader"])
+            self.assertEqual(
+                saved["_reader"][logp]["fields"],
+                self._CONN_FIELDS)
+            for tag, tunables in (
+                    ("omitted", {}),
+                    ("null", {"log_paths": None}),
+                    ("empty", {"log_paths": []}),
+                    ("string", {"log_paths": "bogus"}),
+                    ("zero", {"log_paths": 0}),
+                    ("junklist", {"log_paths": [123]}),
+                    ("missingpath",
+                     {"log_paths": ["/nonexistent/x.log"]})):
+                with self.subTest(shape=tag):
+                    self.assertEqual(run(tunables, tag),
+                                     (0, 0, True))
+            self.assertEqual(
+                run({}, "fixture",
+                    extra=("--log-file", logp)),
+                (0, 1, True))
+            mp = os.path.join(d, "m-fixture.json")
+            sp2 = os.path.join(d, "s-fix2.json")
+            with contextlib.redirect_stderr(io.StringIO()):
+                rc = mod.main(["--manifest", mp,
+                               "--state", sp2,
+                               "--log-file",
+                               "/nonexistent/x.log"])
+            self.assertEqual(rc, 2)
+
 if __name__ == "__main__":
 
     unittest.main()
