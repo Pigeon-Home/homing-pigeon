@@ -19,7 +19,7 @@ on:
       - "runner/tests/test_credential_canary.py"
       - "runner/tests/test_campaign_phase1.py"
       - "runner/tests/test_confinement.py"
-      - "runner/sandbox.py"
+      - "runner/guard/sandbox.py"
       - ".github/workflows/env-axes.yml"
   workflow_dispatch:
 
