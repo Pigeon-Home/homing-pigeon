@@ -11954,6 +11954,192 @@ class TestLatencyPostTunablesFifteenShapes(unittest.TestCase):
             ["latency_spike"])
 
 
+class TestResourceSentinelThresholdTunablesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the resource-sentinel
+    _tunable reader family (step-8 Target 5,
+    extension-tunable table probe) -- the fifteen
+    shapes at reader level for its five threshold
+    rows, plus decide()-level spot checks.
+
+    (a) Doc claims (extensions/resource-sentinel/
+        README.md signal table, repeated in the
+        extension header and extension.json tunables):
+        cpu_saturation_sustained fires at or over the
+        cpu_high_pct tunable (default 95);
+        disk_fill_velocity at or faster than
+        disk_fill_gb_per_hour (default 10);
+        process_storm grows by at least
+        process_growth (default 200);
+        memory_exhaustion_trend falls to or under
+        mem_floor_pct (default 15), dropping at least
+        mem_drop_points (default 25). Policy default
+        under Decision 1 -- a present-but-unusable
+        value reads as its documented default.
+
+    (b) How it was hunted: step-8 artifact Target 5
+        says the 51 extension tunables have no
+        reader-level table probe; their readers are
+        local helper families, one adapter per
+        family. The rows' named class covered only
+        the sample-count keys (min_samples /
+        max_samples) for non-finite shapes. This tick
+        took the resource-sentinel _tunable family
+        and probed extensions/resource-sentinel/
+        resource_sentinel.py:_tunable directly with
+        the fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false,
+        zero, negative, the documented default
+        written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong container -- for all five
+        threshold keys, plus a genuine numeric
+        string ("45"), genuine int / float /
+        fractional values, and decide()-level spot
+        checks (a 50%-busy CPU window that files
+        exactly when the effective cpu_high_pct
+        reaches across 50).
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default for all five keys: omitted, null,
+        empty string, true, false (booleans never
+        count as numbers), non-numeric string,
+        huge-int, inf, -inf, NaN, list and dict all
+        return 95.0 / 10.0 / 200.0 / 15.0 / 25.0.
+        Numeric strings are NOT parsed by this
+        reader (the isinstance-gate family): the
+        default written as a string and a genuine
+        "45" both read as the default. Zero and
+        negative values are honored literally at
+        reader level (0.0 and -5.0 for every key;
+        the documented rows carry no floor), so a
+        cpu_high_pct of 0 files cpu_saturation_
+        sustained for a 50%-busy window. Genuine
+        numbers are honored exactly, including
+        fractional values (45 -> 45.0, 10.5 ->
+        10.5), and the explicit defaults return the
+        defaults. At decide() level the 50%-busy
+        window files nothing under the default,
+        inf or NaN, files under cpu_high_pct 40
+        and 0, and files nothing under 60 or under
+        the numeric string "10" (which reads as
+        the default 95, not as 10). Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented defaults and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "resource-sentinel",
+            "resource_sentinel.py")
+        spec = importlib.util.spec_from_file_location(
+            "resource_sentinel_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    ROWS = [("cpu_high_pct", 95.0),
+            ("disk_fill_gb_per_hour", 10.0),
+            ("process_growth", 200.0),
+            ("mem_floor_pct", 15.0),
+            ("mem_drop_points", 25.0)]
+
+    def test_fifteen_shapes_for_all_five_rows(self):
+        mod = self._mod()
+        unusable = [None, "", True, False, "bogus",
+                    10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        for key, default in self.ROWS:
+            self.assertEqual(
+                mod._tunable({}, key, default), default)
+            for value in unusable:
+                with self.subTest(key=key, value=repr(value)):
+                    self.assertEqual(
+                        mod._tunable({key: value}, key, default),
+                        default)
+            with self.subTest(key=key, shape="zero"):
+                self.assertEqual(
+                    mod._tunable({key: 0}, key, default), 0.0)
+            with self.subTest(key=key, shape="negative"):
+                self.assertEqual(
+                    mod._tunable({key: -5}, key, default), -5.0)
+            with self.subTest(key=key, shape="explicit-default"):
+                self.assertEqual(
+                    mod._tunable({key: int(default)}, key, default),
+                    default)
+
+    def test_numeric_strings_read_as_default_not_parsed(self):
+        mod = self._mod()
+        for key, default in self.ROWS:
+            for value in (str(int(default)), "45"):
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(
+                        mod._tunable({key: value}, key, default),
+                        default)
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        for key, default in self.ROWS:
+            for value, want in ((45, 45.0), (10.5, 10.5),
+                                (7.5, 7.5), (1, 1.0)):
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(
+                        mod._tunable({key: value}, key, default),
+                        want)
+
+    def test_decide_level_spot_checks(self):
+        mod = self._mod()
+
+        def signals(tunables):
+            state = {"samples": [
+                [1000.0, 10000, 5000, 10 ** 12, 100, 50.0],
+                [1200.0, 11000, 5500, 10 ** 12, 100, 50.0],
+                [1400.0, 12000, 6000, 10 ** 12, 100, 50.0]],
+                "fired": {}}
+            readings = {"now": 1600.0, "cpu_total": 13000,
+                        "cpu_idle": 6500,
+                        "disk_free_bytes": 10 ** 12,
+                        "processes": 100, "mem_avail_pct": 50.0}
+            alerts, _state = mod.decide(
+                readings,
+                {"name": "resource_sentinel",
+                 "tunables": tunables}, state)
+            return [a["signal"] for a in alerts]
+
+        # 50% busy across the window: under the
+        # documented default 95 nothing files, and
+        # inf / NaN read as that same default.
+        self.assertEqual(signals({}), [])
+        self.assertEqual(
+            signals({"cpu_high_pct": float("inf")}), [])
+        self.assertEqual(
+            signals({"cpu_high_pct": float("nan")}), [])
+        self.assertEqual(signals({"cpu_high_pct": 60}), [])
+        # Genuine values at or under 50 are honored.
+        self.assertEqual(
+            signals({"cpu_high_pct": 40}),
+            ["cpu_saturation_sustained"])
+        self.assertEqual(
+            signals({"cpu_high_pct": 0}),
+            ["cpu_saturation_sustained"])
+        # A numeric string is not a number to this
+        # reader: "10" reads as the default 95, so
+        # the 50%-busy window still files nothing.
+        self.assertEqual(signals({"cpu_high_pct": "10"}), [])
+
+
 if __name__ == "__main__":
 
     unittest.main()
