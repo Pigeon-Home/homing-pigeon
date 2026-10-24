@@ -13324,6 +13324,166 @@ class TestSuricataFeedCooldownFifteenShapes(unittest.TestCase):
 
 
 
+class TestWazuhFeedQuietFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the wazuh-feed
+    episode_quiet_sec row itself varied with the
+    fifteen shapes at decide() level for the first
+    time (step-8 Target 5 -- the extension-tunable
+    table; this row's registry-named class
+    TestInfiniteWazuhQuietDefaultsTo3600 covered
+    only the +inf shape, plus omitted / explicit /
+    NaN controls).
+
+    (a) Doc claim (extensions/wazuh-feed/README.md,
+        tunable table, line 69): "episode_quiet_sec
+        | 3600 | How long a (rule, agent) pair must
+        stay quiet before its next alert files as a
+        new episode"; the same default is in the
+        extension's extension.json tunables (3600)
+        and in wazuh_feed.py's decide() docstring:
+        an episode re-arms once episode_quiet_sec
+        has passed with no further alert for that
+        pair. Registry row
+        "episode_quiet_sec (wazuh-feed)" (default
+        3600): policy default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: step-8 Target 5 lists the
+        51 extension tunables as covered only for the
+        shapes their named classes exercised. This
+        tick took the wazuh-feed row (the sibling of
+        the falco-feed and suricata-feed rows hunted
+        in the preceding ticks): its reader is
+        extensions/wazuh-feed/wazuh_feed.py decide()
+        (quiet_sec = float(quiet) if _is_number(quiet)
+        and quiet > 0 else 3600.0, where _is_number
+        accepts only genuine finite numbers, never a
+        bool, and a huge int that overflows float()
+        is not a number), and probed it through
+        decide() itself with the fifteen shapes from
+        the table hunt -- omitted, null, empty string,
+        true, false, zero, negative, the documented
+        default written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong containers (list and dict)
+        -- plus genuine int / fractional values. The
+        observable is the filed wazuh_alert count
+        for one alert episode (rule_id 5710, agent
+        web-1, level 7) firing twice: at t=1000 and
+        t=8200 (7200s apart, twice the documented
+        quiet period) an effective quiet period of
+        3600 files twice, and at t=1000 and t=2000
+        it files once.
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default 3600 (twice at 7200s spacing, once
+        at 1000s spacing). Zero and negative also
+        read as the default because decide()
+        requires value > 0 before honoring the
+        quiet period. Numeric strings are not parsed
+        ("45" reads as the default; the _is_number
+        isinstance gate). Genuine values are honored
+        exactly: 10000 files once at 7200s spacing,
+        10 files twice at 15s spacing and once at
+        5s spacing, and the fractional 3600.5 holds
+        a second sighting 3600.25s later where a
+        quiet period of 3600 files it. Noted: the +inf
+        suppression recorded by the row's named
+        class TestInfiniteWazuhQuietDefaultsTo3600
+        no longer occurs on current main -- that
+        class passes now, because _is_number now
+        excludes non-finite values. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented default and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "wazuh-feed",
+            "wazuh_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "wazuh_feed_quiet_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _signals(self, mod, tunables, stamps=(1000.0, 8200.0)):
+        events = [{
+            "ts": ts, "level": 7, "rule_id": "5710",
+            "description": "Test alert", "groups": [],
+            "agent_name": "web-1", "agent_id": "001"}
+            for ts in stamps]
+        alerts, _state = mod.decide(
+            {"now": stamps[-1], "events": events},
+            {"name": "wazuh_feed", "tunables": dict(tunables)},
+            {})
+        return [a["signal"] for a in alerts]
+
+    def test_fifteen_shapes_read_as_the_default(self):
+        mod = self._mod()
+        twice = ["wazuh_alert", "wazuh_alert"]
+        once = ["wazuh_alert"]
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._signals(mod, {}), twice)
+            self.assertEqual(
+                self._signals(mod, {}, (1000.0, 2000.0)), once)
+        unusable = [None, "", True, False, 0, -5,
+                    "45", "bogus", 10 ** 400,
+                    float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._signals(
+                        mod, {"episode_quiet_sec": value}),
+                    twice)
+                self.assertEqual(
+                    self._signals(
+                        mod, {"episode_quiet_sec": value},
+                        (1000.0, 2000.0)),
+                    once)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._signals(mod, {"episode_quiet_sec": 3600}),
+                twice)
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        self.assertEqual(
+            self._signals(mod, {"episode_quiet_sec": 10000}),
+            ["wazuh_alert"])
+        self.assertEqual(
+            self._signals(mod, {"episode_quiet_sec": 10},
+                          (1000.0, 1015.0)),
+            ["wazuh_alert", "wazuh_alert"])
+        self.assertEqual(
+            self._signals(mod, {"episode_quiet_sec": 10},
+                          (1000.0, 1005.0)),
+            ["wazuh_alert"])
+        self.assertEqual(
+            self._signals(mod, {"episode_quiet_sec": 3600.5},
+                          (1000.0, 4600.25)),
+            ["wazuh_alert"])
+        self.assertEqual(
+            self._signals(mod, {"episode_quiet_sec": 3600},
+                          (1000.0, 4600.25)),
+            ["wazuh_alert", "wazuh_alert"])
+
+
+
 if __name__ == "__main__":
 
     unittest.main()
