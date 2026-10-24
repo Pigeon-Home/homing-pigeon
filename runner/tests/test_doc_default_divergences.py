@@ -43046,6 +43046,329 @@ class TestCrashWatchCleanStateAndMainModesFifteenShapes(unittest.TestCase):
                     self.assertEqual(rc, 2)
                     self.assertIsNone(state)
 
+class TestCertSentinelCleanStateAndMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: cert-sentinel
+    _clean_state() called directly and main()'s
+    remaining manifest / readings / state modes
+    plus its live mode and local-delivery gate
+    varied with the fifteen shapes for the first
+    time (step-8 Target 5 / family (b) --
+    cert-sentinel's earlier classes covered its
+    _tunable_days reader, its cert_files /
+    tls_targets list tunables, read_live()'s file
+    and TLS sources, decide()'s record / state /
+    manifest handling and main() only in genuine /
+    missing / malformed --readings mode; the
+    cleaner was never called directly, and main()'s
+    list / scalar manifest and readings shapes, its
+    live (no --readings) mode, its unwritable
+    state path and its --local-dir delivery gate
+    were never run at all, the same gap the feed
+    hunts closed for their clean / main modes in
+    the ticks before this one).
+
+    (a) Doc claims: the module docstring states
+        read_live() is "the only function that
+        touches the machine", decide() is pure
+        ("readings plus manifest plus last pass's
+        state, out come alerts and the new
+        state"), a first-sight certificate files
+        its band alert but no cert_changed, local
+        delivery signs each payload with this
+        sense's key read from the environment
+        variable named by --secret-env, and
+        _is_number() is documented so a non-finite
+        or huge value reads as "not a number" so
+        the documented default applies. main()'s
+        own comment states a failed delivery
+        leaves the state unwritten, so the next
+        pass reports the certificates again.
+
+    (b) How this was probed: on 2026-10-24
+        _clean_state() was called directly with
+        the fifteen shapes (omitted-equivalent
+        via a missing key, null, empty string,
+        true, false, zero, negative, numeric
+        string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, list, dict)
+        and with mixed genuine / junk seen
+        entries; main() was run against isolated
+        temp dirs for list / scalar / string /
+        null manifests, list / scalar / string /
+        empty / null / malformed readings, a
+        junk-carrying pre-state, a directory as
+        the state path, live mode (empty tunables
+        and a stubbed certificate decoder over a
+        listed cert file), and --local-dir with
+        the secret env var unset (no delivery
+        attempted).
+
+    (c) Behavior actually observed: NO divergence
+        recorded. _clean_state() reads every
+        non-dict shape as fresh {seen {}}, and a
+        non-dict seen value also reads as fresh.
+        Cleaning is entry-wise: an entry is kept
+        only for a string source (an empty-string
+        source is kept verbatim, a non-string
+        source is dropped) whose record is a
+        dict with a band in (ok, warn, critical)
+        -- a cased or unknown band drops the
+        entry whole -- and a usable-number
+        not_after (converted to float; a bool,
+        string, huge-int, inf or NaN drops the
+        entry); non-string serial / issuer /
+        subject fields clean to "" and unknown
+        keys are dropped. main() in --readings
+        mode: a list, scalar, string or null
+        manifest still files the certificate
+        under the fallback sensor name
+        "cert_sentinel" and writes state (rc 0);
+        a list, scalar, string, empty or null
+        readings value reads as an empty pass
+        (rc 0, fresh state written, nothing
+        printed); a malformed readings file is
+        rc 2 with no state file written; a
+        junk-carrying pre-state files on its
+        cleaned values and the written state
+        drops the junk key; a directory as the
+        state path is rc 2 with the alert still
+        printed first; live mode (no --readings)
+        with empty tunables is an empty pass
+        (rc 0, fresh state), and with a listed
+        cert file whose decoder returns a
+        genuine certificate the live pass
+        records that certificate in state
+        (rc 0, band ok for a far-future expiry);
+        and --local-dir with no secret in the
+        env var is rc 2 with the state file NOT
+        written, whether or not the pass
+        produced an alert -- the delivery gate
+        is checked before any alert is
+        delivered, so the next pass will report
+        the certificates again, as main()'s
+        comment states.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the readings above
+        keep matching the docs. If a shape above
+        ever stops behaving as documented, this test
+        is the failing record of that change.
+    """
+
+    _NOW = 1700000000.0
+    _DAY = 86400.0
+    _FRESH = {"seen": {}}
+    _SHAPES = [None, "", True, False, 0, -5, "45", "x", 10 ** 400,
+               float("inf"), float("-inf"), float("nan"), ["x"],
+               {"x": 1}, 2.5]
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "cert-sentinel",
+            "cert_sentinel.py")
+        spec = importlib.util.spec_from_file_location(
+            "cert_sentinel_clean_main", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _cert(self, days, source="/c/site.pem"):
+        return {"source": source, "subject": "CN=x", "issuer": "CN=CA",
+                "serial": "0A",
+                "not_after": self._NOW + days * self._DAY}
+
+    def test_clean_state_direct_shapes(self):
+        mod = self._mod()
+        for value in self._SHAPES:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(mod._clean_state(value), self._FRESH)
+        for raw in [{"seen": "x"}, {"seen": [1]}, {"other": 1}, {}]:
+            with self.subTest(raw=repr(raw)):
+                self.assertEqual(mod._clean_state(raw), self._FRESH)
+        # A genuine entry is kept, not_after converted to float,
+        # unknown keys dropped.
+        self.assertEqual(
+            mod._clean_state({"seen": {"/a": {
+                "band": "warn", "not_after": 1000, "serial": "S",
+                "issuer": "I", "subject": "J", "extra": 9}}}),
+            {"seen": {"/a": {"serial": "S", "issuer": "I",
+                             "subject": "J", "not_after": 1000.0,
+                             "band": "warn"}}})
+        # Non-string identity fields clean to "".
+        self.assertEqual(
+            mod._clean_state({"seen": {"/a": {
+                "band": "ok", "not_after": 5, "serial": 123,
+                "issuer": None, "subject": ["x"]}}}),
+            {"seen": {"/a": {"serial": "", "issuer": "",
+                             "subject": "", "not_after": 5.0,
+                             "band": "ok"}}})
+        # An empty-string source key is kept verbatim.
+        self.assertEqual(
+            mod._clean_state({"seen": {"": {
+                "band": "ok", "not_after": 5}}}),
+            {"seen": {"": {"serial": "", "issuer": "", "subject": "",
+                           "not_after": 5.0, "band": "ok"}}})
+        # Anything else about an entry drops it whole.
+        for rec in [{"band": "WARN", "not_after": 1000},
+                    {"band": "warn", "not_after": True},
+                    {"band": "warn", "not_after": "1000"},
+                    {"band": "warn", "not_after": 10 ** 400},
+                    {"band": "warn", "not_after": float("inf")},
+                    {"band": "warn", "not_after": float("nan")},
+                    {"band": "warn"},
+                    "junk", None, [1]]:
+            with self.subTest(rec=repr(rec)[:40]):
+                self.assertEqual(
+                    mod._clean_state({"seen": {"/a": rec}}),
+                    self._FRESH)
+        self.assertEqual(
+            mod._clean_state({"seen": {123: {
+                "band": "warn", "not_after": 1000}}}),
+            self._FRESH)
+
+    _LIVE = object()
+
+    def _main(self, mod, td, manifest_obj, readings_obj=_LIVE,
+              extra=(), pre_state=None):
+        import io
+        import os
+        from contextlib import redirect_stderr, redirect_stdout
+        man = os.path.join(td, "ext.json")
+        rd = os.path.join(td, "r.json")
+        st = os.path.join(td, "s.json")
+        with open(man, "w", encoding="utf-8") as fh:
+            json.dump(manifest_obj, fh)
+        args = ["--manifest", man, "--state", st]
+        if readings_obj is not self._LIVE:
+            with open(rd, "w", encoding="utf-8") as fh:
+                if isinstance(readings_obj, str) \
+                        and readings_obj == "{bad":
+                    fh.write(readings_obj)
+                else:
+                    json.dump(readings_obj, fh)
+            args += ["--readings", rd]
+        if pre_state is not None:
+            with open(st, "w", encoding="utf-8") as fh:
+                json.dump(pre_state, fh)
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(io.StringIO()):
+            rc = mod.main(args + list(extra))
+        state = None
+        if os.path.isfile(st):
+            with open(st, encoding="utf-8") as fh:
+                state = json.load(fh)
+        return rc, out.getvalue(), state
+
+    def test_main_manifest_and_readings_shapes(self):
+        mod = self._mod()
+        gen = {"name": "cert_sentinel", "tunables": {}}
+        warn = {"now": self._NOW, "certs": [self._cert(20)]}
+        seen = {"seen": {"/c/site.pem": {
+            "serial": "0A", "issuer": "CN=CA", "subject": "CN=x",
+            "not_after": self._NOW + 20 * self._DAY, "band": "warn"}}}
+        for manifest in [[1, 2], 42, "hi", None]:
+            with self.subTest(manifest=repr(manifest)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(mod, td, manifest, warn)
+                self.assertEqual(rc, 0)
+                self.assertIn("cert_expiring", out)
+                self.assertIn('"cert_sentinel"', out)
+                self.assertEqual(state, seen)
+        for readings in [[1], 42, "hi", {}, None]:
+            with self.subTest(readings=repr(readings)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(mod, td, gen, readings)
+                self.assertEqual(rc, 0)
+                self.assertEqual(out, "")
+                self.assertEqual(state, self._FRESH)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(mod, td, gen, "{bad")
+            self.assertEqual(rc, 2)
+            self.assertIsNone(state)
+
+    def test_main_live_local_and_unwritable_modes(self):
+        import os
+        import unittest.mock
+        mod = self._mod()
+        gen = {"name": "cert_sentinel", "tunables": {}}
+        warn = {"now": self._NOW, "certs": [self._cert(20)]}
+        # A junk-carrying pre-state is cleaned on the way in and
+        # the written state drops the junk key.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, gen, {"now": self._NOW, "certs": []},
+                pre_state={"seen": {"/a": {
+                    "band": "warn", "not_after": self._NOW,
+                    "serial": "S", "issuer": "I", "subject": "J"}},
+                    "junk": 1})
+            self.assertEqual(rc, 0)
+            self.assertEqual(out, "")
+            self.assertEqual(state, {"seen": {"/a": {
+                "serial": "S", "issuer": "I", "subject": "J",
+                "not_after": self._NOW, "band": "warn"}}})
+        # An unwritable (directory) state path is rc 2 with the
+        # alert still printed first.
+        with tempfile.TemporaryDirectory() as td:
+            man = os.path.join(td, "ext.json")
+            rd = os.path.join(td, "r.json")
+            with open(man, "w", encoding="utf-8") as fh:
+                json.dump(gen, fh)
+            with open(rd, "w", encoding="utf-8") as fh:
+                json.dump(warn, fh)
+            import io
+            from contextlib import redirect_stderr, redirect_stdout
+            out = io.StringIO()
+            with redirect_stdout(out), redirect_stderr(io.StringIO()):
+                rc = mod.main(["--manifest", man, "--readings", rd,
+                               "--state", td])
+            self.assertEqual(rc, 2)
+            self.assertIn("cert_expiring", out.getvalue())
+        # Live mode, empty tunables: an empty pass, rc 0.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(mod, td, gen)
+            self.assertEqual(rc, 0)
+            self.assertEqual(out, "")
+            self.assertEqual(state, self._FRESH)
+        # Live mode over a listed cert file (decoder stubbed, the
+        # shape the dedicated cert-sentinel tests use): the live
+        # pass records the certificate in state, band ok for a
+        # far-future expiry.
+        decoded = {
+            "subject": ((("CN", "example.com"),),),
+            "issuer": ((("CN", "Example CA"),),),
+            "serialNumber": "0A1B",
+            "notAfter": "Jan 15 00:00:00 2027 GMT",
+        }
+        live_manifest = {"name": "cert_sentinel", "tunables": {
+            "cert_files": ["/a.pem"], "tls_targets": []}}
+        with tempfile.TemporaryDirectory() as td:
+            with unittest.mock.patch.object(
+                    mod.ssl._ssl, "_test_decode_cert",
+                    return_value=dict(decoded)):
+                rc, out, state = self._main(mod, td, live_manifest)
+            self.assertEqual(rc, 0)
+            self.assertEqual(out, "")
+            self.assertEqual(state["seen"]["/a.pem"]["band"], "ok")
+            self.assertEqual(state["seen"]["/a.pem"]["serial"], "0A1B")
+        # --local-dir with no secret in the env var: rc 2 and
+        # the state file is NOT written, with or without alerts.
+        for readings in [warn, {"now": self._NOW, "certs": []}]:
+            with self.subTest(readings=repr(readings)[:40]):
+                with tempfile.TemporaryDirectory() as td:
+                    with unittest.mock.patch.dict(
+                            os.environ, {}, clear=False):
+                        os.environ.pop(
+                            "HOMING_PIGEON_SENSOR_SECRET", None)
+                        rc, out, state = self._main(
+                            mod, td, gen, readings,
+                            extra=["--local-dir", td])
+                    self.assertEqual(rc, 2)
+                    self.assertIsNone(state)
+
 if __name__ == "__main__":
 
     unittest.main()
