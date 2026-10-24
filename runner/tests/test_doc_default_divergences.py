@@ -16089,6 +16089,171 @@ class TestRetentionDaysFifteenShapesAtRetentionReader(unittest.TestCase):
                 self.assertEqual(self._days(cfg), 7)
 
 
+
+class TestQueryBudgetWrapperFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: query_budget and
+    max_query_budget themselves varied with the
+    fifteen shapes at the query_budget() wrapper
+    level for the first time (step-8 Target 6 --
+    core rows covered only for the shapes their
+    classes exercised; the table hunt probes these
+    rows through confval.integer generically, not
+    through query_budget, whose own wrapper -- the
+    smaller-of rule, the max(0, ...) clamp, and the
+    non-dict cfg / job / result_policy guards --
+    had never itself been walked, and the rows'
+    registry-named class
+    TestBooleanQueryBudgetDefaultsTo8 varies only
+    the boolean shapes plus a handful of
+    neighbours).
+
+    (a) Doc claim (PROTOCOL.md, lines 529-533):
+        "`query_budget`: maximum queries answerable
+        for this job (default 8). The runner owner's
+        config caps it with `max_query_budget`
+        (default 8); the effective budget is the
+        smaller of the job's value and the cap, so
+        config can never raise a job above what the
+        job asked for, though a cap above 8 lets a
+        job ask for more." Registry rows
+        "query_budget" and "max_query_budget" (both
+        default 8, reader
+        runner/runner.py:query_budget, policy
+        default under Decision 1).
+
+    (b) How it was hunted: step-8 artifact Target 6
+        names the core rows covered only for the
+        shapes their classes exercised. This tick
+        took query_budget in runner/runner.py (the
+        single reader every query answer takes the
+        budget from, through confval.integer(raw, 8)
+        on each side) and probed EACH key
+        independently with the fifteen shapes from
+        the table hunt -- omitted, null, empty
+        string, true, false, zero, negative, the
+        explicit default, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong containers (list and dict)
+        -- plus genuine values, fractional values,
+        the smaller-of matrix, a cap above 8 with a
+        job above 8, and non-dict cfg / job /
+        result_policy inputs. The observable is the
+        effective integer budget the wrapper
+        returns.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape on either side reads
+        as the documented default 8 -- omitted,
+        null, empty string, true, false, non-numeric
+        string, huge-int, inf, -inf, NaN, list and
+        dict -- and non-dict cfg, job and
+        result_policy inputs also read as 8. The
+        boolean shapes that the rows' named class
+        recorded as a divergence in the first run
+        now read as the default on current main
+        (both readers route through confval.integer,
+        which never counts a boolean as a number).
+        Zero is NOT a default here: it comes
+        through as 0 on either side (a job that may
+        answer no queries), and a negative on
+        either side is clamped to 0 by the
+        wrapper's max(0, ...) rather than reading
+        as 8. Genuine values follow the smaller-of
+        rule exactly: job 5 / cap default reads 5,
+        job default / cap 3 reads 3, job 5 / cap 3
+        reads 3, job 5 / cap 10 reads 5, and a cap
+        above 8 does let a job ask for more (job
+        100 / cap 100 reads 100, job 12 / cap 100
+        reads 12), exactly as the doc's last clause
+        states. Numeric strings parse on both sides
+        ("5" reads 5; "12" / "100" reads 12) and
+        fractional values truncate via int() (2.5
+        reads 2, "2.5" reads 2). Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        unusable shapes keep reading as the
+        documented default 8 on both sides, zero
+        and the smaller-of rule keep being honored,
+        and a cap above 8 keeps letting a job ask
+        for more. If a shape above ever stops
+        behaving as PROTOCOL.md states, this test
+        is the failing record of that change.
+    """
+
+    def _job(self, value):
+        from runner.runner import query_budget
+        return query_budget(
+            {}, {"result_policy": {"query_budget": value}})
+
+    def _cap(self, value):
+        from runner.runner import query_budget
+        return query_budget({"max_query_budget": value}, {})
+
+    def test_query_budget_job_side_fifteen_shapes(self):
+        with self.subTest(shape="omitted"):
+            from runner.runner import query_budget
+            self.assertEqual(query_budget({}, {}), 8)
+        unusable = [None, "", True, False, "bogus",
+                    10 ** 400, float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(self._job(value), 8)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(self._job(8), 8)
+
+    def test_query_budget_cap_side_fifteen_shapes(self):
+        unusable = [None, "", True, False, "bogus",
+                    10 ** 400, float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(self._cap(value), 8)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(self._cap(8), 8)
+
+    def test_query_budget_zero_and_negative(self):
+        self.assertEqual(self._job(0), 0)
+        self.assertEqual(self._cap(0), 0)
+        # Negative is clamped to 0 by max(0, ...),
+        # not read as the default 8.
+        self.assertEqual(self._job(-5), 0)
+        self.assertEqual(self._cap(-5), 0)
+
+    def test_query_budget_smaller_of_and_genuine(self):
+        from runner.runner import query_budget
+        self.assertEqual(self._job(3), 3)
+        self.assertEqual(self._job("5"), 5)
+        self.assertEqual(self._job(2.5), 2)
+        self.assertEqual(self._job("2.5"), 2)
+        self.assertEqual(
+            query_budget({"max_query_budget": 3},
+                         {"result_policy":
+                          {"query_budget": 5}}), 3)
+        self.assertEqual(
+            query_budget({"max_query_budget": 10},
+                         {"result_policy":
+                          {"query_budget": 5}}), 5)
+        # A cap above 8 lets a job ask for more.
+        self.assertEqual(
+            query_budget({"max_query_budget": 100},
+                         {"result_policy":
+                          {"query_budget": 100}}), 100)
+        self.assertEqual(
+            query_budget({"max_query_budget": "100"},
+                         {"result_policy":
+                          {"query_budget": "12"}}), 12)
+
+    def test_query_budget_non_dict_inputs_read_as_default(self):
+        from runner.runner import query_budget
+        self.assertEqual(query_budget(None, None), 8)
+        self.assertEqual(query_budget([], []), 8)
+        self.assertEqual(
+            query_budget("x", {"result_policy": "y"}), 8)
+
+
 if __name__ == "__main__":
 
     unittest.main()
