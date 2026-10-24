@@ -19231,6 +19231,154 @@ class TestJobWatcherHistoryAndPassCapsFifteenShapes(unittest.TestCase):
             self._pass_read(mod, {"max_records_per_pass": 3.9}),
             (3, 7))
 
+class TestPortWatchBooleanTunablesFifteenShapes(unittest.TestCase):
+    """Coverage: the port-watch boolean tunables
+    (learn_first_pass, default true, and high_only,
+    default false) under the fifteen shapes.
+
+    (a) Doc claims: the manifest ships both
+        (extensions/port-watch/extension.json:
+        "learn_first_pass": true, "high_only": false).
+        The README states the first pass learns quietly
+        "with the `learn_first_pass` tunable on, the
+        default" (extensions/port-watch/README.md
+        lines 5-7), and that a new listener is absorbed
+        "even when the `high_only` tunable suppressed
+        its medium alert" (lines 30-32). The module
+        docstring repeats the learn default
+        (port_watch.py lines 33-36). Neither key is a
+        numeric registry row, so Decision 1's
+        default-on-unusable policy for numeric readers
+        does not name a shape rule for them; this class
+        pins the observed boolean reading instead of
+        asserting one.
+
+    (b) How this was probed: step-8 Target 5 / family
+        (b) -- port-watch had no test in this file at
+        all before this tick. On 2026-10-24 both
+        readers in decide() were probed with the table
+        hunt's fifteen shapes (omitted, null, empty
+        string, true, false, zero, negative, numeric
+        string, non-numeric string, huge-int (10**400),
+        inf, -inf, NaN, list, dict), plus empty
+        containers, 1 and 0.5. The learn_first_pass
+        observable is the first-pass alert count for
+        one ordinary listener (tcp 192.168.1.5:8080)
+        from a fresh state: learning quietly files 0.
+        The high_only observable is the alert count
+        for the same listener against a learned empty
+        baseline: unsuppressed files one new_listener.
+
+    (c) Behavior actually observed: NO divergence
+        recorded; the reading is plain truthiness with
+        one default. learn_first_pass: omitted and
+        null read as the documented default True
+        (decide() maps None to True explicitly); every
+        falsy shape ("", False, 0, [], {}) reads as
+        False and files on the first pass; every truthy
+        shape (True, -5, "120", "bogus", huge-int, inf,
+        -inf, NaN, ["x"], {"x": 1}, 1, 0.5) reads as
+        True and learns quietly. high_only: omitted,
+        null and every falsy shape read as the
+        documented default False (one medium alert,
+        listener absorbed); every truthy shape reads
+        as True (medium alert suppressed, listener
+        still absorbed). An exposed listener (wildcard
+        address) files its high alert under every
+        high_only shape. Observed on 2026-10-24
+        against current main.
+    """
+
+    _LISTENER = {"proto": "tcp", "addr": "192.168.1.5",
+                 "port": 8080}
+    _EXPOSED = {"proto": "tcp", "addr": "0.0.0.0",
+                "port": 22}
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "port-watch", "port_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "port_watch_boolean_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _first_pass_alerts(self, mod, tunables):
+        alerts, state = mod.decide(
+            {"now": 1.0, "listeners": [dict(self._LISTENER)]},
+            {"name": "port_watch", "tunables": dict(tunables)},
+            {})
+        self.assertTrue(state["learned"])
+        return alerts
+
+    def _new_listener_alerts(self, mod, tunables, listener=None):
+        alerts, state = mod.decide(
+            {"now": 1.0,
+             "listeners": [dict(listener or self._LISTENER)]},
+            {"name": "port_watch", "tunables": dict(tunables)},
+            {"learned": True, "seen": {}})
+        self.assertEqual(len(state["seen"]), 1)
+        return alerts
+
+    _FALSY = [("empty-string", ""), ("false", False),
+              ("zero", 0), ("empty-list", []),
+              ("empty-dict", {})]
+    _TRUTHY = [("true", True), ("negative", -5),
+               ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1}),
+               ("one", 1), ("fractional", 0.5)]
+
+    def test_learn_first_pass_shapes(self):
+        mod = self._module()
+        for tunables in ({}, {"learn_first_pass": None}):
+            self.assertEqual(
+                self._first_pass_alerts(mod, tunables), [])
+        for name, value in self._FALSY:
+            with self.subTest(shape=name):
+                alerts = self._first_pass_alerts(
+                    mod, {"learn_first_pass": value})
+                self.assertEqual(len(alerts), 1)
+                self.assertEqual(
+                    alerts[0]["signal"], "new_listener")
+        for name, value in self._TRUTHY:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    self._first_pass_alerts(
+                        mod, {"learn_first_pass": value}), [])
+
+    def test_high_only_shapes(self):
+        mod = self._module()
+        for tunables in ({}, {"high_only": None}):
+            alerts = self._new_listener_alerts(mod, tunables)
+            self.assertEqual(len(alerts), 1)
+            self.assertEqual(alerts[0]["signal"], "new_listener")
+        for name, value in self._FALSY:
+            with self.subTest(shape=name):
+                alerts = self._new_listener_alerts(
+                    mod, {"high_only": value})
+                self.assertEqual(len(alerts), 1)
+        for name, value in self._TRUTHY:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    self._new_listener_alerts(
+                        mod, {"high_only": value}), [])
+        for name, value in self._TRUTHY[:3]:
+            with self.subTest(shape="exposed-" + name):
+                alerts = self._new_listener_alerts(
+                    mod, {"high_only": value}, self._EXPOSED)
+                self.assertEqual(len(alerts), 1)
+                self.assertEqual(
+                    alerts[0]["signal"], "exposed_listener")
+
 if __name__ == "__main__":
 
     unittest.main()
