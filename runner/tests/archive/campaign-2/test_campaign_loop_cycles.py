@@ -26835,5 +26835,245 @@ class CampaignLoopCycleTests(unittest.TestCase):
     def test_cycle_12523_hostinfo(self):
         self._run_cycle(12523, 'hostinfo', 0)
 
+    def test_cycle_12524_workdir(self):
+        self._run_cycle(12524, 'workdir', 0)
+
+    def test_cycle_12525_flagread(self):
+        self._run_cycle(12525, 'flagread', 0)
+
+    def test_cycle_12526_sysstat(self):
+        self._run_cycle(12526, 'sysstat', 0)
+
+    def test_cycle_12527_exit3(self):
+        self._run_cycle(12527, 'exit3', 3)
+
+    def test_cycle_12528_shadow(self):
+        self._run_cycle(12528, 'shadow', 0)
+
+    def test_cycle_12529_clock(self):
+        self._run_cycle(12529, 'clock', 0)
+
+    def test_cycle_12530_envmark(self):
+        self._run_cycle(12530, 'envmark', 0)
+
+    def test_cycle_12531_hostinfo(self):
+        self._run_cycle(12531, 'hostinfo', 0)
+
+    def test_cycle_12532_workdir(self):
+        self._run_cycle(12532, 'workdir', 0)
+
+    def test_cycle_12533_flagread(self):
+        self._run_cycle(12533, 'flagread', 0)
+
+    def test_cycle_12534_sysstat(self):
+        self._run_cycle(12534, 'sysstat', 0)
+
+    def test_cycle_12535_exit3(self):
+        self._run_cycle(12535, 'exit3', 3)
+
+    def test_cycle_12536_shadow(self):
+        self._run_cycle(12536, 'shadow', 0)
+
+    def test_cycle_12537_clock(self):
+        self._run_cycle(12537, 'clock', 0)
+
+    def test_cycle_12538_envmark(self):
+        self._run_cycle(12538, 'envmark', 0)
+
+    def test_cycle_12539_hostinfo(self):
+        self._run_cycle(12539, 'hostinfo', 0)
+
+    def test_cycle_12540_workdir(self):
+        self._run_cycle(12540, 'workdir', 0)
+
+    def test_cycle_12541_flagread(self):
+        self._run_cycle(12541, 'flagread', 0)
+
+    def test_cycle_12542_sysstat(self):
+        self._run_cycle(12542, 'sysstat', 0)
+
+    def test_cycle_12543_exit3(self):
+        self._run_cycle(12543, 'exit3', 3)
+
+    def test_cycle_12544_shadow(self):
+        self._run_cycle(12544, 'shadow', 0)
+
+    def test_cycle_12545_clock(self):
+        self._run_cycle(12545, 'clock', 0)
+
+    def test_cycle_12546_envmark(self):
+        self._run_cycle(12546, 'envmark', 0)
+
+    def test_cycle_12547_hostinfo(self):
+        self._run_cycle(12547, 'hostinfo', 0)
+
+    def test_cycle_12548_workdir(self):
+        self._run_cycle(12548, 'workdir', 0)
+
+    def test_cycle_12549_flagread(self):
+        self._run_cycle(12549, 'flagread', 0)
+
+    def test_cycle_12550_sysstat(self):
+        self._run_cycle(12550, 'sysstat', 0)
+
+    def test_cycle_12551_exit3(self):
+        self._run_cycle(12551, 'exit3', 3)
+
+    def test_cycle_12552_shadow(self):
+        self._run_cycle(12552, 'shadow', 0)
+
+    def test_cycle_12553_clock(self):
+        self._run_cycle(12553, 'clock', 0)
+
+    def test_cycle_12554_envmark(self):
+        self._run_cycle(12554, 'envmark', 0)
+
+    def test_cycle_12555_hostinfo(self):
+        self._run_cycle(12555, 'hostinfo', 0)
+
+    def test_cycle_12556_workdir(self):
+        self._run_cycle(12556, 'workdir', 0)
+
+    def test_cycle_12557_flagread(self):
+        self._run_cycle(12557, 'flagread', 0)
+
+    def test_cycle_12558_sysstat(self):
+        self._run_cycle(12558, 'sysstat', 0)
+
+    def test_cycle_12559_exit3(self):
+        self._run_cycle(12559, 'exit3', 3)
+
+    def test_cycle_12560_shadow(self):
+        self._run_cycle(12560, 'shadow', 0)
+
+    def test_cycle_12561_clock(self):
+        self._run_cycle(12561, 'clock', 0)
+
+    def test_cycle_12562_envmark(self):
+        self._run_cycle(12562, 'envmark', 0)
+
+    def test_cycle_12563_hostinfo(self):
+        self._run_cycle(12563, 'hostinfo', 0)
+
+    def test_cycle_12564_workdir(self):
+        self._run_cycle(12564, 'workdir', 0)
+
+    def test_cycle_12565_flagread(self):
+        self._run_cycle(12565, 'flagread', 0)
+
+    def test_cycle_12566_sysstat(self):
+        self._run_cycle(12566, 'sysstat', 0)
+
+    def test_cycle_12567_exit3(self):
+        self._run_cycle(12567, 'exit3', 3)
+
+    def test_cycle_12568_shadow(self):
+        self._run_cycle(12568, 'shadow', 0)
+
+    def test_cycle_12569_clock(self):
+        self._run_cycle(12569, 'clock', 0)
+
+    def test_cycle_12570_envmark(self):
+        self._run_cycle(12570, 'envmark', 0)
+
+    def test_cycle_12571_hostinfo(self):
+        self._run_cycle(12571, 'hostinfo', 0)
+
+    def test_cycle_12572_workdir(self):
+        self._run_cycle(12572, 'workdir', 0)
+
+    def test_cycle_12573_flagread(self):
+        self._run_cycle(12573, 'flagread', 0)
+
+    def test_cycle_12574_sysstat(self):
+        self._run_cycle(12574, 'sysstat', 0)
+
+    def test_cycle_12575_exit3(self):
+        self._run_cycle(12575, 'exit3', 3)
+
+    def test_cycle_12576_shadow(self):
+        self._run_cycle(12576, 'shadow', 0)
+
+    def test_cycle_12577_clock(self):
+        self._run_cycle(12577, 'clock', 0)
+
+    def test_cycle_12578_envmark(self):
+        self._run_cycle(12578, 'envmark', 0)
+
+    def test_cycle_12579_hostinfo(self):
+        self._run_cycle(12579, 'hostinfo', 0)
+
+    def test_cycle_12580_workdir(self):
+        self._run_cycle(12580, 'workdir', 0)
+
+    def test_cycle_12581_flagread(self):
+        self._run_cycle(12581, 'flagread', 0)
+
+    def test_cycle_12582_sysstat(self):
+        self._run_cycle(12582, 'sysstat', 0)
+
+    def test_cycle_12583_exit3(self):
+        self._run_cycle(12583, 'exit3', 3)
+
+    def test_cycle_12584_shadow(self):
+        self._run_cycle(12584, 'shadow', 0)
+
+    def test_cycle_12585_clock(self):
+        self._run_cycle(12585, 'clock', 0)
+
+    def test_cycle_12586_envmark(self):
+        self._run_cycle(12586, 'envmark', 0)
+
+    def test_cycle_12587_hostinfo(self):
+        self._run_cycle(12587, 'hostinfo', 0)
+
+    def test_cycle_12588_workdir(self):
+        self._run_cycle(12588, 'workdir', 0)
+
+    def test_cycle_12589_flagread(self):
+        self._run_cycle(12589, 'flagread', 0)
+
+    def test_cycle_12590_sysstat(self):
+        self._run_cycle(12590, 'sysstat', 0)
+
+    def test_cycle_12591_exit3(self):
+        self._run_cycle(12591, 'exit3', 3)
+
+    def test_cycle_12592_shadow(self):
+        self._run_cycle(12592, 'shadow', 0)
+
+    def test_cycle_12593_clock(self):
+        self._run_cycle(12593, 'clock', 0)
+
+    def test_cycle_12594_envmark(self):
+        self._run_cycle(12594, 'envmark', 0)
+
+    def test_cycle_12595_hostinfo(self):
+        self._run_cycle(12595, 'hostinfo', 0)
+
+    def test_cycle_12596_workdir(self):
+        self._run_cycle(12596, 'workdir', 0)
+
+    def test_cycle_12597_flagread(self):
+        self._run_cycle(12597, 'flagread', 0)
+
+    def test_cycle_12598_sysstat(self):
+        self._run_cycle(12598, 'sysstat', 0)
+
+    def test_cycle_12599_exit3(self):
+        self._run_cycle(12599, 'exit3', 3)
+
+    def test_cycle_12600_shadow(self):
+        self._run_cycle(12600, 'shadow', 0)
+
+    def test_cycle_12601_clock(self):
+        self._run_cycle(12601, 'clock', 0)
+
+    def test_cycle_12602_envmark(self):
+        self._run_cycle(12602, 'envmark', 0)
+
+    def test_cycle_12603_hostinfo(self):
+        self._run_cycle(12603, 'hostinfo', 0)
+
 if __name__ == "__main__":
     unittest.main()

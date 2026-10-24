@@ -42707,6 +42707,345 @@ class TestTripwireLiveAndLocalMainModesFifteenShapes(unittest.TestCase):
             self.assertEqual(open(state, encoding="utf-8").read(),
                              before)
 
+class TestCrashWatchCleanStateAndMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: crash-watch
+    _clean_state() called directly, read_live()'s
+    vanishing-file handling, and main()'s remaining
+    manifest / readings / state modes plus its live
+    mode and local-delivery gate varied with the
+    fifteen shapes for the first time (step-8
+    Target 5 / family (b) -- crash-watch's earlier
+    classes covered its repeat_window_sec reader,
+    its watch_dirs / max_files_per_pass readers,
+    read_live()'s scan and decide()'s handling
+    including state cleaning reached through
+    decide(), and main() only in genuine /
+    missing / malformed --readings mode; the
+    cleaner was never called directly, a file
+    vanishing between listing and stat was never
+    exercised, and main()'s list / scalar manifest
+    and readings shapes, its live (no --readings)
+    mode, its unwritable state path and its
+    --local-dir delivery gate were never run at
+    all, the same gap the feed hunts closed for
+    their clean / main modes in the ticks before
+    this one).
+
+    (a) Doc claims: the module docstring states
+        read_live() is "the only function that
+        touches the machine", decide() is pure
+        ("readings plus manifest plus last pass's
+        state, out come alerts and the new
+        state"), a pass scans at most
+        max_files_per_pass files with the rest
+        counted in readings["truncated"], and
+        local delivery signs each payload with
+        this sense's key read from the
+        environment variable named by
+        --secret-env. main()'s own comment
+        states a failed delivery leaves the
+        state unwritten, so the next pass
+        reports the dumps again. _is_number()
+        is documented so a non-finite or huge
+        value reads as "not a number" so the
+        documented default applies.
+
+    (b) How this was probed: on 2026-10-24
+        _clean_state() was called directly with
+        the fifteen shapes (omitted-equivalent
+        via a missing key, null, empty string,
+        true, false, zero, negative, numeric
+        string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, list, dict)
+        and with mixed genuine / junk seen and
+        events fields; read_live() was run over
+        a mocked listdir naming a file whose
+        stat raises OSError (vanished mid-scan)
+        and over a mocked listdir that raises
+        OSError itself; main() was run against
+        isolated temp dirs for list / scalar /
+        string / null manifests, list / scalar /
+        string / empty / null / malformed
+        readings, a junk-carrying pre-state, a
+        directory as the state path, live mode
+        with the manifest's watch_dirs on a real
+        directory, and --local-dir with the
+        secret env var unset (no delivery
+        attempted).
+
+    (c) Behavior actually observed: NO divergence
+        recorded. _clean_state() reads every
+        non-dict shape as fresh {seen {},
+        events []}, and a non-dict seen value
+        or a non-list events value (a top-level
+        tuple included) also reads as fresh for
+        that field. Cleaning is field-wise: a
+        seen entry is kept only for a string
+        path whose mark is a two-element list
+        or tuple of usable numbers, the mark's
+        values are carried verbatim (ints stay
+        ints, a tuple mark comes back as a
+        list), and marks carrying a bool, a
+        string, inf or a huge-int are dropped
+        with their path; an event is kept only
+        as a two-element list or tuple with a
+        non-empty string binary and a usable
+        timestamp (a tuple entry comes back as
+        a list), and unknown state keys are
+        dropped. A file that vanishes between
+        listing and stat is skipped quietly for
+        the next candidate, and a listdir
+        OSError answers an empty file list with
+        truncated 0 and a float now, never an
+        exception. main() in --readings mode: a
+        list, scalar, string or null manifest
+        still files the dump under the fallback
+        sensor name "crash_watch" and writes
+        state (rc 0); a list, scalar, string,
+        empty or null readings value reads as
+        an empty pass (rc 0, fresh state
+        written, nothing printed); a malformed
+        readings file is rc 2 with no state
+        file written; a junk-carrying pre-state
+        files on its cleaned values and the
+        written state drops the junk key; a
+        directory as the state path is rc 2
+        with the alert still printed first;
+        live mode (no --readings) scans the
+        manifest's watch_dirs, files the dump
+        and writes state (rc 0); and
+        --local-dir with no secret in the env
+        var is rc 2 with the state file NOT
+        written, whether or not the pass
+        produced an alert -- the delivery gate
+        is checked before any alert is
+        delivered, so the next pass will report
+        the dumps again, as main()'s comment
+        states.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the readings above
+        keep matching the docs. If a shape above
+        ever stops behaving as documented, this test
+        is the failing record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "crash-watch",
+            "crash_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "crash_watch_clean_main", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    _FRESH = {"seen": {}, "events": []}
+    _SHAPES = [None, "", True, False, 0, -5, "45", "x", 10 ** 400,
+               float("inf"), float("-inf"), float("nan"), ["x"],
+               {"x": 1}, 2.5]
+
+    def test_clean_state_direct_shapes(self):
+        mod = self._mod()
+        for value in self._SHAPES:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(mod._clean_state(value), self._FRESH)
+        # A non-dict seen value or a non-list events value
+        # (a top-level tuple included) reads as fresh for
+        # that field.
+        self.assertEqual(mod._clean_state({"seen": [1, 2],
+                                           "events": {}}), self._FRESH)
+        self.assertEqual(mod._clean_state({"events": (["a", 1],)}),
+                         self._FRESH)
+
+    def test_clean_state_mixed_genuine_and_junk(self):
+        mod = self._mod()
+        raw = {"seen": {"/a/app.dmp": [10, 1000], "/b/x": (5, 6),
+                        42: [1, 2], "/c/bad": [1],
+                        "/d/bad2": [1, "x"], "/e/bad3": "12",
+                        "/f/inf": [float("inf"), 1],
+                        "/g/huge": [10 ** 400, 1],
+                        "/h/bool": [True, 1],
+                        "/i/tuple3": [1, 2, 3]},
+               "events": [["app", 100], ["", 100], ["app2", "x"],
+                          ["app3", True], ["app4", 10 ** 400],
+                          ["app5", float("nan")], "junk",
+                          ["app6", 200, 300], ("tuplebin", 300)],
+               "extra": 1, "_reader": {"o": 1}}
+        # Kept marks and events carry their values verbatim
+        # (ints stay ints); tuple marks / entries come back
+        # as lists; every junk entry and unknown key drops.
+        self.assertEqual(
+            mod._clean_state(raw),
+            {"seen": {"/a/app.dmp": [10, 1000], "/b/x": [5, 6]},
+             "events": [["app", 100], ["tuplebin", 300]]})
+
+    def test_read_live_vanishing_file_and_listdir_failure(self):
+        import os
+        from unittest import mock
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            p = os.path.join(td, "real.dmp")
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write("zz")
+            real_stat = os.stat
+
+            def flaky_stat(pth, *a, **k):
+                if str(pth).endswith("ghost.dmp"):
+                    raise OSError("gone")
+                return real_stat(pth, *a, **k)
+
+            with mock.patch("os.listdir",
+                            return_value=["ghost.dmp", "real.dmp"]), \
+                    mock.patch("os.stat", side_effect=flaky_stat):
+                readings = mod.read_live(
+                    {"tunables": {"watch_dirs": [td]}})
+            self.assertEqual(
+                [(f["name"], f["size"]) for f in readings["files"]],
+                [("real.dmp", 2)])
+            self.assertEqual(readings["truncated"], 0)
+            # A listdir failure is no data, never an error.
+            with mock.patch("os.listdir", side_effect=OSError("boom")):
+                readings = mod.read_live(
+                    {"tunables": {"watch_dirs": [td]}})
+            self.assertEqual(readings["files"], [])
+            self.assertEqual(readings["truncated"], 0)
+            self.assertIsInstance(readings["now"], float)
+
+    _LIVE = object()
+
+    def _main(self, mod, td, manifest_obj, readings_obj=_LIVE, extra=(),
+              pre_state=None):
+        import io
+        import os
+        from contextlib import redirect_stderr, redirect_stdout
+        man = os.path.join(td, "ext.json")
+        rd = os.path.join(td, "r.json")
+        st = os.path.join(td, "s.json")
+        with open(man, "w", encoding="utf-8") as fh:
+            json.dump(manifest_obj, fh)
+        args = ["--manifest", man, "--state", st]
+        if readings_obj is not self._LIVE:
+            with open(rd, "w", encoding="utf-8") as fh:
+                if isinstance(readings_obj, str) and readings_obj == "{bad":
+                    fh.write(readings_obj)
+                else:
+                    json.dump(readings_obj, fh)
+            args += ["--readings", rd]
+        if pre_state is not None:
+            with open(st, "w", encoding="utf-8") as fh:
+                json.dump(pre_state, fh)
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(io.StringIO()):
+            rc = mod.main(args + list(extra))
+        state = None
+        if os.path.exists(st):
+            with open(st, encoding="utf-8") as fh:
+                state = json.load(fh)
+        return rc, out.getvalue(), state
+
+    _GEN = {"name": "crash_watch", "tunables": {"watch_dirs": ["./crashes"]}}
+    _FILE1 = {"name": "app.dmp", "dir": "/d", "size": 10,
+              "mtime": 100, "binary": "app"}
+    _ARR = {"now": 1000, "files": [_FILE1], "truncated": 0}
+    _SEEN = {"seen": {"/d/app.dmp": [10, 100]},
+             "events": [["app", 1000.0]]}
+
+    def test_main_manifest_and_readings_shapes(self):
+        mod = self._mod()
+        for manifest in [[1, 2], 42, "hi", None]:
+            with self.subTest(manifest=repr(manifest)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(mod, td, manifest,
+                                                self._ARR)
+                self.assertEqual(rc, 0)
+                self.assertIn("crash_dumped", out)
+                self.assertIn('"crash_watch"', out)
+                self.assertEqual(state, self._SEEN)
+        for readings in [[1], 42, "hi", {}, None]:
+            with self.subTest(readings=repr(readings)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(mod, td, self._GEN,
+                                                readings)
+                self.assertEqual(rc, 0)
+                self.assertEqual(out, "")
+                self.assertEqual(state, self._FRESH)
+        # A malformed readings file is rc 2 and writes no state.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(mod, td, self._GEN, "{bad")
+            self.assertEqual(rc, 2)
+            self.assertIsNone(state)
+
+    def test_main_live_local_and_unwritable_modes(self):
+        import os
+        mod = self._mod()
+        # A junk-carrying pre-state files on its cleaned values
+        # and the written state drops the junk key; the prior
+        # event inside the window survives pruning verbatim.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._GEN,
+                {"now": 2000, "files": [], "truncated": 0},
+                pre_state={"seen": {"/d/app.dmp": [10, 100]},
+                           "events": [["app", 900]], "junk": 1})
+            self.assertEqual(rc, 0)
+            self.assertEqual(out, "")
+            self.assertEqual(state, {"seen": {"/d/app.dmp": [10, 100]},
+                                     "events": [["app", 900]]})
+        # An unwritable (directory) state path is rc 2 with the
+        # alert still printed first.
+        with tempfile.TemporaryDirectory() as td:
+            man = os.path.join(td, "ext.json")
+            rd = os.path.join(td, "r.json")
+            with open(man, "w", encoding="utf-8") as fh:
+                json.dump(self._GEN, fh)
+            with open(rd, "w", encoding="utf-8") as fh:
+                json.dump(self._ARR, fh)
+            import io
+            from contextlib import redirect_stderr, redirect_stdout
+            out = io.StringIO()
+            with redirect_stdout(out), redirect_stderr(io.StringIO()):
+                rc = mod.main(["--manifest", man, "--readings", rd,
+                               "--state", td])
+            self.assertEqual(rc, 2)
+            self.assertIn("crash_dumped", out.getvalue())
+        # Live mode: no --readings, the manifest's watch_dirs
+        # are scanned, the dump files and state is written.
+        with tempfile.TemporaryDirectory() as td:
+            cdir = os.path.join(td, "crashes")
+            os.mkdir(cdir)
+            p = os.path.join(cdir, "z.dmp")
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write("zz")
+            live = {"name": "crash_watch",
+                    "tunables": {"watch_dirs": [cdir]}}
+            rc, out, state = self._main(mod, td, live)
+            self.assertEqual(rc, 0)
+            self.assertIn("crash_dumped", out)
+            self.assertEqual(list(state["seen"].keys()),
+                             [os.path.join(cdir, "z.dmp")])
+            self.assertEqual(state["seen"][os.path.join(cdir, "z.dmp")][0],
+                             2)
+        # --local-dir with no secret in the env var: rc 2 and
+        # the state file is NOT written, with or without alerts.
+        from unittest import mock
+        for readings in [self._ARR, {"now": 1, "files": [],
+                                     "truncated": 0}]:
+            with self.subTest(readings=repr(readings)):
+                with tempfile.TemporaryDirectory() as td:
+                    with mock.patch.dict(os.environ, {}, clear=False):
+                        os.environ.pop(
+                            "HOMING_PIGEON_SENSOR_SECRET", None)
+                        rc, out, state = self._main(
+                            mod, td, self._GEN, readings,
+                            extra=["--local-dir", td])
+                    self.assertEqual(rc, 2)
+                    self.assertIsNone(state)
+
 if __name__ == "__main__":
 
     unittest.main()
