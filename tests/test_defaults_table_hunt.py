@@ -19,7 +19,8 @@ asserted:
 - probe "refuse": the value is placed at the key's path in a
   config and handed to the refusing reader itself
   (resources.parse_resources, dri.parse_dri, mailbox._port,
-  verify.build_key_policies). A present-but-unusable value must
+  verify.build_key_policies, the DTLS pipe, NATS url_port).
+  A present-but-unusable value must
   raise the reader's RuntimeError config error; an omitted key
   must parse. Which middle shapes are usable is a property of
   the reader family (a confval gate parses numeric strings, the
@@ -30,13 +31,16 @@ asserted:
   tests/test_doc_default_divergences.py; the hunt asserts the
   class exists. The 226 hand-written tests stay untouched as
   the record.
-- probe "policy-conflict": Decision 1 puts the key in the
-  refuse class, but the shipped reader still reads it as the
-  default. Those rows are NOT probed as defaults and NOT
-  skipped: they are recorded below as failing-by-design
-  divergence tests (PolicyConflictDivergenceTests), in the
-  campaign's four-part format. They pass only when the readers
-  move -- docs first, per the decision's adoption cost.
+- probe "policy-conflict": retired (Q3, 2026-10-24). Decision 1
+  put three keys in the refuse class while their shipped
+  readers still read them as the default; while that lasted,
+  those rows were NOT probed as defaults and NOT skipped: they
+  were recorded below as failing-by-design divergence tests
+  (PolicyConflictDivergenceTests), in the campaign's four-part
+  format. The readers moved in 54dafe7, the class passes as
+  written, and the three rows now probe "refuse" like every
+  other refuse row. The class stays below as the record of
+  the move, superseded as the rows' coverage.
 
 The registry guards (doc drift, confval coverage, shape) are
 imported from tests.defaults_registry so default discovery runs
@@ -184,6 +188,57 @@ def _mailbox_port(key, value):
     return _mailbox._port(cfg, key, 993 if key == "imap_port" else 587)
 
 
+def _dtls_pipe(key, value):
+    """Construct the DTLS pipe with the value at cfg[key].
+
+    The base config binds port 0 (kernel-assigned) on loopback;
+    the probed key replaces its entry, and _OMITTED removes it,
+    which is the reader's documented absent case (port reads
+    20220, bind reads 0.0.0.0). bind_address accepts any
+    string, so an address string that cannot be bound fails at
+    the socket with OSError instead of the reader's
+    RuntimeError; it is still a startup refusal -- no address
+    is ever substituted -- so the probe normalizes it to the
+    table's error type, here rather than in the reader.
+    """
+    import importlib
+    import tempfile
+    dtls_ext = importlib.import_module(
+        "runner.transport_extensions.dtls.__main__")
+    cfg = {"shared_secret": "campaign-test-secret-0123456789",
+           "bind": "127.0.0.1", "port": 0}
+    if value is _OMITTED:
+        cfg.pop(key, None)
+    else:
+        cfg[key] = value
+    tmp = tempfile.mkdtemp(prefix="hp-table-hunt-dtls-")
+    try:
+        pipe = dtls_ext.DtlsPipe(cfg, os.path.join(tmp, "channel"))
+    except OSError as e:
+        raise RuntimeError(str(e)) from e
+    pipe.sock.close()
+    return pipe
+
+
+def _nats_url_port(value):
+    """url_port with the value written as the URL's port.
+
+    A value that cannot be written into a URL at all (the
+    wrong-container shape) makes urlparse itself raise
+    ValueError before url_port's own check runs; the value is
+    refused either way, so the probe normalizes that too.
+    """
+    import importlib
+    nats_ext = importlib.import_module(
+        "runner.transport_extensions.nats.__main__")
+    if value is _OMITTED:
+        return nats_ext.url_port("nats://127.0.0.1")
+    try:
+        return nats_ext.url_port("nats://127.0.0.1:%s" % (value,))
+    except ValueError as e:
+        raise RuntimeError(str(e)) from e
+
+
 REFUSE_PROBES = {
     # key -> (call(value), shapes that parse without error)
     "resources.enabled": (
@@ -233,6 +288,22 @@ REFUSE_PROBES = {
         # strings: a numeric string refuses here, unlike the
         # resources gate (confval.number) above.
         {"omitted", "default-explicit"}),
+    "transport_dtls.port": (
+        lambda v: _dtls_pipe("port", v),
+        # listen_port: 0 is usable (kernel-assigned) and a
+        # numeric string is read; bounds are 0..65535.
+        {"omitted", "zero", "default-explicit", "numeric-string"}),
+    "transport_dtls.bind": (
+        lambda v: _dtls_pipe("bind", v),
+        # bind_address: any string is read, and the empty
+        # string is every interface; a non-string refuses.
+        {"omitted", "empty-string", "default-explicit",
+         "numeric-string"}),
+    "transport_nats.url (port component)": (
+        _nats_url_port,
+        # url_port: the port must be a whole number 1..65535 --
+        # unlike the DTLS port, zero refuses here.
+        {"omitted", "default-explicit", "numeric-string"}),
 }
 
 
@@ -279,16 +350,25 @@ class HandwrittenCoverageTests(unittest.TestCase):
 class RegistryAccountingTests(unittest.TestCase):
     def test_every_row_is_probed_somewhere(self):
         probes = {r["probe"] for r in ROWS}
-        self.assertEqual({"confval", "refuse", "policy-conflict",
-                          "handwritten"}, probes)
+        # "policy-conflict" retired in Q3 (2026-10-24): its last
+        # three rows moved to "refuse" when their readers moved
+        # in 54dafe7, so no row carries it any more.
+        self.assertEqual({"confval", "refuse", "handwritten"}, probes)
         self.assertEqual(len(ROWS), sum(
             1 for r in ROWS if r["probe"] in probes))
 
 
 class PolicyConflictDivergenceTests(unittest.TestCase):
-    """Divergence: Decision 1 puts the DTLS port, the DTLS bind
-    address, and the NATS URL port in the refuse class, but the
-    shipped readers still read an unusable value as the default.
+    """The record of the policy-conflict move, kept as written.
+
+    SUPERSEDED as the three rows' coverage (Q3, 2026-10-24): the
+    readers moved in 54dafe7, these tests pass as written, and
+    the registry rows for transport_dtls.port,
+    transport_dtls.bind, and transport_nats.url now probe
+    "refuse" in RefuseProbeTests, where the fifteen shapes run
+    against the refusing readers. This class stays as the
+    four-part record of what the divergence was; its assertions
+    now pin the refusing behavior they demanded.
 
     (a) The claim (Decision 1, Andrew via Claude, 2026-10-23,
         stamped by Muse; the normative sentence for PROTOCOL.md
@@ -310,18 +390,19 @@ class PolicyConflictDivergenceTests(unittest.TestCase):
         falling back to the documented default (20220, 0.0.0.0,
         4222) instead of refusing.
 
-    (c) Behavior actually observed: DtlsPipe constructs and
-        binds with port "2O220" read as 20220 and with a
-        non-string bind read as 0.0.0.0; NatsClient resolves
-        "nats://127.0.0.1:2O220" and "...:99999" to port 4222.
-        No error is raised by any of the three.
+    (c) Behavior observed at step 5, before the readers moved:
+        DtlsPipe constructed and bound with port "2O220" read
+        as 20220 and with a non-string bind read as 0.0.0.0;
+        NatsClient resolved "nats://127.0.0.1:2O220" and
+        "...:99999" to port 4222. No error was raised by any of
+        the three. Since 54dafe7 each raises the RuntimeError
+        config error these tests assert.
 
-    (d) Do not make this test pass by editing the test. It
-        passes only when the bug described above is fixed in
-        the code. Per the decision's adoption cost, the two doc
-        lines change FIRST and these tests change with the docs,
-        not before; the production reader moves belong to the
-        adopting release lane, not to this campaign pass.
+    (d) The note this class carried while the divergence
+        stood: do not make this test pass by editing the test;
+        it passes only when the bug described above is fixed
+        in the code. It was fixed in the code (54dafe7), docs
+        first, per the decision's adoption cost.
     """
 
     def _dtls_pipe(self, cfg):

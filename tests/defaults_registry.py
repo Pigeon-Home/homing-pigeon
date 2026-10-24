@@ -43,7 +43,9 @@ by hand inside the docstrings of tests/test_doc_default_divergences.py
                  refusing reader itself), "policy-conflict"
                  (policy `refuse`, code still reads as default --
                  recorded as failing-by-design divergences in the
-                 hunt), or "handwritten" (covered by the named
+                 hunt; no row carries it since Q3, 2026-10-24,
+                 moved the last three rows to "refuse" when their
+                 readers moved), or "handwritten" (covered by the named
                  divergence class; the hunt asserts it exists)
     test         the hand-written divergence class that covers
                  the row, or "" -- a row with no test and no
@@ -225,12 +227,13 @@ ROWS = [{'key': 'severity',
   'policy': 'refuse',
   'lo': None,
   'hi': None,
-  'probe': 'policy-conflict',
+  'probe': 'refuse',
   'test': 'TestNullDtlsPortBindDefaults',
   'notes': 'Key inside the `transport_dtls` block. Reader is _confval.integer, NOT _confval.port, '
            "and lo=0 deliberately keeps port 0 (kernel-assigned). Note for the registry's policy "
            'column: the design note docs/design/present-but-invalid-config.md and Decision 1 '
-           'classify ports as refuse-at-'},
+           'classify ports as refuse-at-startup. Probe moved from policy-conflict to refuse '
+           '(Q3, 2026-10-24) once listen_port moved in 54dafe7.'},
  {'key': 'transport_dtls.bind',
   'scope': 'core',
   'kind': 'string',
@@ -244,10 +247,12 @@ ROWS = [{'key': 'severity',
   'policy': 'refuse',
   'lo': None,
   'hi': None,
-  'probe': 'policy-conflict',
+  'probe': 'refuse',
   'test': 'TestNullDtlsPortBindDefaults',
   'notes': 'String bind address, not numeric/enum — included because the divergence class and the '
-           'refuse/default design decision both cover bind addresses alongside ports.'},
+           'refuse/default design decision both cover bind addresses alongside ports. Probe '
+           'moved from policy-conflict to refuse (Q3, 2026-10-24) once bind_address moved in '
+           '54dafe7.'},
  {'key': 'dtls_greeting',
   'scope': 'core',
   'kind': 'enum',
@@ -615,12 +620,13 @@ ROWS = [{'key': 'severity',
   'policy': 'refuse',
   'lo': None,
   'hi': None,
-  'probe': 'policy-conflict',
+  'probe': 'refuse',
   'test': 'TestBadNatsPortDefaultsTo4222',
   'notes': 'Only the port component is numeric; the key itself is a URL string. The same doc line '
            'also states string defaults for the sibling keys `subject` (homing-pigeon.jobs) and '
            '`result_subject_prefix` (homing-pigeon.results) — not numeric/enum, not counted as '
-           'separate keys here. Policy '},
+           'separate keys here. Probe moved from policy-conflict to refuse (Q3, 2026-10-24) '
+           'once url_port moved in 54dafe7.'},
  {'key': 'extension_poll_interval_sec',
   'scope': 'core',
   'kind': 'number',

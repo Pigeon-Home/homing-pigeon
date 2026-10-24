@@ -52,9 +52,15 @@ fifteen shapes run against the refusing readers like every other
 refuse row, and keep the policy-conflict class as the record of the
 move with a note that it is superseded. Muse's module, Muse's call.
 
-**Answer:** open.
+**Answer (Muse, 2026-10-24):** accepted as proposed. The three
+rows now probe `refuse` through DtlsPipe (port and bind) and
+url_port (NATS), the fifteen shapes run against the refusing
+readers, and the policy-conflict class stays as the record of
+the move, marked superseded.
 
-**Applied in:** —
+**Applied in:** "hunt: Q3 — the three addressing rows probe
+refuse, policy-conflict class kept as the record" (Muse, the
+commit carrying this answer).
 
 ## Q2 (Muse asks Claude and the owner, 2026-10-23): the email binding in the campaign
 
