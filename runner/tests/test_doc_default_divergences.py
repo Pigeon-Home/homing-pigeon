@@ -16254,6 +16254,173 @@ class TestQueryBudgetWrapperFifteenShapes(unittest.TestCase):
             query_budget("x", {"result_policy": "y"}), 8)
 
 
+class TestServiceWatchFlapCountFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the service-watch
+    flap_count row itself varied with the fifteen
+    shapes at decide() level, through the filed
+    alert's own detail (step-8 Target 5, extension-
+    tunable table; the sibling of the Target 2
+    flap_window_sec hunt).
+
+    (a) Doc claim (extensions/service-watch/README.md,
+        line 18): the example configuration ships
+        "\"flap_window_sec\": 600, \"flap_count\": 4",
+        and the signal table states service_flapping
+        fires when a service's transitions inside
+        flap_window_sec reach flap_count. The manifest
+        ships the same default (extension.json:
+        "flap_count": 4). Registry row
+        "flap_count (service-watch)" (default 4):
+        policy default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: the row's named
+        hand-written class
+        (TestInfiniteServiceWatchFlapCountDefaultsTo4)
+        covered only the non-finite shapes, and the
+        second run's Target 2 hunt varied the sibling
+        flap_window_sec only, so this key's full shape
+        table had never been walked. This tick took
+        that row: its reader is inline in extensions/
+        service-watch/service_watch.py:decide
+        (int(value) if _is_number(value) and
+        value >= 1 else 4), and probed it through
+        decide() itself with the fifteen shapes from
+        the table hunt -- omitted, null, empty string,
+        true, false, zero, negative, the documented
+        default written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong containers (list and dict) --
+        plus genuine int / fractional values. The
+        observable is the filed flapping alert's own
+        detail: transitions of one service 60s apart
+        (flap_window_sec at its documented default
+        600 throughout) file exactly one
+        service_flapping whose detail carries the
+        effective transition count at firing.
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default 4: six transitions file the alert at
+        the fourth (detail transitions 4, window_sec
+        600.0) and three transitions file nothing.
+        Zero and negative also read as the default
+        because this reader requires value >= 1.
+        Numeric strings are not parsed ("2" reads as
+        the default 4; the _is_number isinstance
+        gate). Genuine values are honored exactly:
+        1 files at the first transition, 2 at the
+        second, 6 needs six (five file nothing), and
+        fractional values truncate via int() (2.9
+        files at the second transition, 4.9 at the
+        fourth). Observed on 2026-10-24 against
+        current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented default and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "service-watch",
+            "service_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "service_watch_flap_count_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _probe(self, mod, tunables, n_trans=6):
+        manifest = {"name": "service_watch",
+                    "tunables": {
+                        "services": [{"name": "sshd",
+                                      "match": "exact"}],
+                        **tunables}}
+        state = {"learned": True,
+                 "services": {"sshd": {
+                     "up": True, "transitions": [],
+                     "down_filed": False,
+                     "flap_fired": False}}}
+        proc = {"name": "sshd", "pid": 1,
+                "cmdline": "/usr/sbin/sshd"}
+        up = True
+        found = []
+        for i in range(n_trans):
+            up = not up
+            readings = {"now": 1000.0 + i * 60,
+                        "processes": [proc] if up else []}
+            alerts, state = mod.decide(readings, manifest, state)
+            found.extend(
+                (a["signal"], a["detail"].get("window_sec"),
+                 a["detail"].get("transitions"))
+                for a in alerts
+                if a["signal"] == "service_flapping")
+        return found
+
+    def test_fifteen_shapes_read_as_the_default(self):
+        mod = self._mod()
+        flap = [("service_flapping", 600.0, 4)]
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._probe(mod, {}), flap)
+            self.assertEqual(self._probe(mod, {}, n_trans=3), [])
+        unusable = [None, "", True, False, 0, -5,
+                    "3", "bogus", 10 ** 400,
+                    float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._probe(mod, {"flap_count": value}),
+                    flap)
+                self.assertEqual(
+                    self._probe(mod, {"flap_count": value},
+                                n_trans=3),
+                    [])
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._probe(mod, {"flap_count": 4}), flap)
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        self.assertEqual(
+            self._probe(mod, {"flap_count": 1}, n_trans=1),
+            [("service_flapping", 600.0, 1)])
+        self.assertEqual(
+            self._probe(mod, {"flap_count": 2}, n_trans=2),
+            [("service_flapping", 600.0, 2)])
+        self.assertEqual(
+            self._probe(mod, {"flap_count": 6}, n_trans=5), [])
+        self.assertEqual(
+            self._probe(mod, {"flap_count": 6}, n_trans=6),
+            [("service_flapping", 600.0, 6)])
+        # The string "2" reads as the default 4, where a
+        # genuine 2 files at the second transition.
+        self.assertEqual(
+            self._probe(mod, {"flap_count": "2"}, n_trans=2), [])
+        self.assertEqual(
+            self._probe(mod, {"flap_count": "2"}, n_trans=4),
+            [("service_flapping", 600.0, 4)])
+        # Fractional values truncate via int().
+        self.assertEqual(
+            self._probe(mod, {"flap_count": 2.9}, n_trans=2),
+            [("service_flapping", 600.0, 2)])
+        self.assertEqual(
+            self._probe(mod, {"flap_count": 4.9}, n_trans=4),
+            [("service_flapping", 600.0, 4)])
+
+
+
+
 if __name__ == "__main__":
 
     unittest.main()
