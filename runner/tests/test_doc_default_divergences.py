@@ -17829,6 +17829,148 @@ class TestV2AnswerDeadlineSecFifteenShapesAtReader(unittest.TestCase):
             with self.subTest(cfg=repr(cfg)):
                 self.assertEqual(self._deadline(cfg), 0)
 
+class TestGrepMaxMatchesFifteenShapesAtReader(unittest.TestCase):
+    """Second-run hunt coverage: max_matches (grep query)
+    itself varied with the fifteen shapes through its
+    actual reader (runner/runner.py answer_queries, grep
+    branch: _confval.integer(q.get("max_matches"), 10,
+    lo=0) then min(limit, 100)) for the first time at
+    reader level. The row's registry-named class
+    (TestBooleanGrepMaxMatchesDefaultsTo10) probed the
+    boolean shapes plus a subset (omitted, null, bogus,
+    genuine 2, zero, huge-int).
+
+    (a) Doc claim: registry row "max_matches (grep
+        query)": core, integer, default 10, policy
+        default under Decision 1, lo 0, doc_status
+        unverified -- no prose document states this
+        default; it is in KNOWN_UNDOCUMENTED in
+        runner/tests/defaults_registry.py. The nearest
+        statements are PROTOCOL.md (line 486), showing
+        the grep query example with "max_matches": 10,
+        and line 655 defining the op as "grep (regex
+        over retained stdout+stderr, up to
+        `max_matches` lines)", and docs/fuzzing.md
+        (lines 129-131), which reserves "returns no
+        lines" for an explicit numeric zero and
+        describes a default limit applying when the
+        caller supplies no usable number. The reader's
+        own comment states the same contract: "Default
+        10 for an omitted, unparseable, or boolean
+        max_matches; a usable number is clamped to
+        [0, 100]."
+
+    (b) How it was hunted: step-8 Target 3 (rows with
+        no documented default in any current doc) /
+        Target 6 (core rows covered only for the
+        shapes their class exercised). This tick probed
+        answer_queries with one grep query over
+        retained output holding 250 matching lines,
+        with the fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false, zero,
+        negative, the explicit default, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong containers (list and dict) --
+        plus genuine values, the reader's 100 ceiling,
+        and fractional shapes, asserting the exact
+        match count each time.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape reads as the documented
+        default 10 -- omitted, null, empty string,
+        true, false, negative, non-numeric string,
+        huge-int, inf, -inf, NaN, list and dict alike.
+        The boolean-as-number reading the named class
+        recorded on 2026-10-23 (true as a 1-line cap,
+        false as 0) no longer occurs on current main:
+        the reader now routes through confval.integer,
+        which never counts a boolean as a number. Zero
+        is usable (lo 0) and returns no lines, exactly
+        as docs/fuzzing.md documents. Genuine values
+        are honored exactly (1, 2, 5, 50, 99, 100 and
+        the numeric strings "2" and "50"), the
+        reader's ceiling holds (101, 250 and 1000 all
+        return 100, where the named class's huge-int
+        once clamped to the ceiling -- through confval
+        a huge-int is now unusable and reads as the
+        default 10 instead), and fractionals truncate
+        via int() (2.9 -> 2, "2.9" -> 2, 0.5 -> 0),
+        while a negative fractional (-0.5) reads as
+        the default. Matches are the first matching
+        lines in order. Observed on 2026-10-24 against
+        current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes keep
+        reading as the documented default and genuine
+        values keep being honored inside the
+        documented [0, 100] clamp. If a shape above
+        ever stops behaving as stated, this test is
+        the failing record of that change. The missing
+        prose documentation in (a) is recorded here
+        and in the registry; no production code or doc
+        was changed by this hunt.
+    """
+
+    _RES = {"stdout": "\n".join(
+        "ERROR line %d" % i for i in range(250)) + "\n",
+            "stderr": "", "exit_code": 0}
+
+    def _grep(self, extra, omit=False):
+        from runner.runner import answer_queries
+        q = {"op": "grep", "pattern": "ERROR"}
+        if not omit:
+            q.update(extra)
+        answers, _spent = answer_queries(
+            [q], self._RES, None, 8, cfg=None, view="full")
+        return answers[0].get("matches", [])
+
+    def test_fifteen_shapes_read_as_default(self):
+        unusable = [None, "", True, False, -5,
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        cases = [("omitted", {}, True)]
+        cases += [(repr(v), {"max_matches": v}, False)
+                  for v in unusable]
+        cases.append(("explicit-default",
+                      {"max_matches": 10}, False))
+        cases.append(("numeric-string",
+                      {"max_matches": "10"}, False))
+        for name, extra, omit in cases:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    len(self._grep(extra, omit=omit)), 10)
+
+    def test_zero_returns_no_lines(self):
+        self.assertEqual(
+            self._grep({"max_matches": 0}), [])
+
+    def test_genuine_values_and_ceiling_honored(self):
+        for value, expected in [(1, 1), (2, 2), (5, 5),
+                                (50, 50), (99, 99),
+                                (100, 100), (101, 100),
+                                (250, 100), (1000, 100),
+                                ("2", 2), ("50", 50)]:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    len(self._grep({"max_matches": value})),
+                    expected)
+
+    def test_fractionals_truncate(self):
+        for value, expected in [(2.9, 2), ("2.9", 2),
+                                (0.5, 0), (-0.5, 10)]:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    len(self._grep({"max_matches": value})),
+                    expected)
+
+    def test_matches_are_first_lines_in_order(self):
+        self.assertEqual(
+            self._grep({"max_matches": 3}),
+            ["ERROR line 0", "ERROR line 1",
+             "ERROR line 2"])
+
 if __name__ == "__main__":
 
     unittest.main()
