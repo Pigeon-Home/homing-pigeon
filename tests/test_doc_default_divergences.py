@@ -7995,5 +7995,167 @@ class TestTailLinesDefaultsTo20(unittest.TestCase):
 
 
 
+
+class TestSensesLimitDefaultsTo20(unittest.TestCase):
+    """Divergence: a senses query's limit of zero returns
+    every stored alert instead of no alerts, because the
+    store reader slices with out[-0:].
+
+    (a) Claim: registry row "limit (senses query)":
+        core, integer, default 20, policy default, lo 0,
+        doc_status unverified -- no prose document states
+        this default; it is in KNOWN_UNDOCUMENTED in
+        tests/defaults_registry.py. The nearest statement
+        is docs/senses.md (line 322, "Reading signals:
+        the senses query op"), which shows the senses
+        query with "limit": 20, the reader's own default.
+        The reader (runner/runner.py, answer_queries,
+        senses branch) reads
+        limit=_confval.integer(q.get("limit"), 20, lo=0):
+        under the confval contract lo 0 makes zero a
+        usable value, not an unusable one. The sibling
+        query ops honor a usable zero as zero: the grep
+        branch's own comment states its limit is
+        "clamped to [0, 100]" and docs/fuzzing.md
+        (lines 129-131) records that a max_matches of
+        zero returns no lines, and the tail branch reads
+        its lines as "text.splitlines()[-n:] if n else
+        []" -- an explicit zero guard. The store reader
+        itself (runner/senses.py, load_alerts) treats
+        limit None -- and only None -- as no cap: "if
+        limit is not None: ... out = out[-n:]", so a
+        zero limit is a real cap of zero alerts. The
+        row's named class
+        (TestBooleanSensesLimitDefaultsTo20) covered
+        only the booleans plus bogus and explicit-2
+        controls; it noted the same out[-0:] slice as
+        the mechanism by which False once returned
+        every alert, but no test ever asserted an
+        explicit zero limit through either reader.
+
+    (b) How it was hunted: step 8 Target 3 -- the
+        fifth row with no documented default in any
+        current doc, after timeout_sec,
+        extension_poll_interval_sec, max_matches, and
+        lines. On 2026-10-23 this tick called
+        runner.runner.answer_queries -- the actual
+        reader -- with one senses query over a store
+        holding 30 alerts, with the table hunt's
+        fifteen shapes, plus genuine values, a
+        no-ceiling check, and float shapes, and also
+        called runner.senses.load_alerts directly
+        with limit 0.
+
+    (c) Behavior actually observed: NO divergence for
+        the default itself. Every unusable shape --
+        omitted, null, the empty string, true, false,
+        a non-numeric string, a several-hundred-digit
+        integer, inf, -inf, NaN, and a list -- returned
+        exactly 20 alerts; a negative number is below
+        lo and also returned 20. The explicit default
+        20 and the numeric string "20" returned 20.
+        Genuine values are honored exactly (1, 2, 5,
+        25) and there is no reader ceiling (100 and
+        1000 returned all 30 stored alerts). Floats
+        truncate toward zero through confval.integer
+        (2.9 -> 2, "2.9" -> 2). But a usable zero does
+        not return zero alerts: limit 0 returned all
+        30 stored alerts, and 0.5 -- truncating to the
+        usable zero -- also returned all 30. The cause
+        is in the store reader: load_alerts computes
+        n = int(limit) and then out = out[-n:]; in
+        Python -0 is 0, so out[-0:] is out[0:], the
+        whole list. The confval migration fixed the
+        boolean shapes at the query reader (true and
+        false now read as the default 20) but left
+        this slice unguarded, so an explicit zero --
+        the one value a caller uses to ask for no
+        alerts -- silently reads as an unlimited read.
+        load_alerts(base, limit=0) likewise returned
+        all 30 records directly. Observed on
+        2026-10-23: answer_queries with limit 0 and
+        with limit 0.5 each returned 30 alerts against
+        30 stored, where the registry contract (lo 0,
+        zero usable) and both sibling ops require 0.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    _RES = {"stdout": "", "stderr": "", "exit_code": 0}
+
+    def _write_store(self, base, count=30):
+        import os
+        with open(os.path.join(base, "senses.jsonl"),
+                  "w", encoding="utf-8") as fh:
+            for i in range(count):
+                fh.write(json.dumps({
+                    "sensor": "host_ids",
+                    "severity": "info",
+                    "title": "alert %d" % i,
+                    "detail": {},
+                    "observed_at": "2026-10-23T00:00:00Z",
+                    "received_at": "2026-10-23T00:00:00Z",
+                }) + "\n")
+
+    def _senses_count(self, extra, omit=False):
+        import os
+        from runner.runner import answer_queries
+        with tempfile.TemporaryDirectory() as base:
+            self._write_store(base)
+            q = {"op": "senses"}
+            if not omit:
+                q.update(extra)
+            answers, _spent = answer_queries(
+                [q], self._RES, None, 8, cfg={}, view="full",
+                base_dir=base)
+            return len(answers[0].get("alerts", []))
+
+    def test_fifteen_shapes(self):
+        shapes = [
+            ("omitted", {}, True, 20),
+            ("null", {"limit": None}, False, 20),
+            ("empty-string", {"limit": ""}, False, 20),
+            ("true", {"limit": True}, False, 20),
+            ("false", {"limit": False}, False, 20),
+            ("zero", {"limit": 0}, False, 0),
+            ("negative", {"limit": -5}, False, 20),
+            ("default-explicit", {"limit": 20}, False, 20),
+            ("numeric-string", {"limit": "20"}, False, 20),
+            ("non-numeric-string", {"limit": "bogus"}, False, 20),
+            ("huge-int", {"limit": 10 ** 400}, False, 20),
+            ("inf", {"limit": float("inf")}, False, 20),
+            ("neg-inf", {"limit": float("-inf")}, False, 20),
+            ("nan", {"limit": float("nan")}, False, 20),
+            ("wrong-container", {"limit": ["x"]}, False, 20),
+        ]
+        for name, extra, omit, want in shapes:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    self._senses_count(extra, omit=omit), want)
+
+    def test_genuine_values_are_honored_with_no_ceiling(self):
+        for value, want in ((1, 1), (2, 2), (5, 5), (25, 25),
+                            (30, 30), (31, 30), (100, 30),
+                            (1000, 30), ("2", 2), ("50", 30)):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    self._senses_count({"limit": value}), want)
+
+    def test_floats_truncate_toward_zero(self):
+        for value, want in ((2.9, 2), (2.0, 2), ("2.9", 2),
+                            (0.5, 0)):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    self._senses_count({"limit": value}), want)
+
+    def test_load_alerts_zero_limit_returns_no_alerts(self):
+        from runner import senses as S
+        with tempfile.TemporaryDirectory() as base:
+            self._write_store(base)
+            self.assertEqual(S.load_alerts(base, limit=0), [])
+
+
 if __name__ == "__main__":
     unittest.main()
