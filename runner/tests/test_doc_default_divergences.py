@@ -14984,6 +14984,181 @@ class TestTransportEnvelopeParityFromFixtures(unittest.TestCase):
         self.assertEqual(self._verdict(body), ("ok", False, "parity-1"))
 
 
+
+class TestSensesGateProfileTunablesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the senses gate profile
+    tunables themselves varied with the fifteen shapes
+    at gate_alert() level (step-8 Target 6 -- the
+    senses.py readers; the rows' registry-named classes
+    TestBooleanSensorCooldownDefaultsToZero and
+    TestBooleanSensorMaxPerHourDefaultsToZero vary
+    only the boolean shapes, so these rows are probed
+    here across all fifteen shapes).
+
+    (a) Doc claims (docs/senses.md, lines 260-263):
+        "`cooldown_sec`: drop repeats of the same
+        sensor+title within this window. Default 0
+        (no dedup)." and "`max_per_hour`:
+        sliding-window cap per sense; over-cap alerts
+        are dropped. Default 0 (unlimited)."
+        Registry rows
+        "sensors.<sense>.profile.cooldown_sec"
+        (default 0) and
+        "sensors.<sense>.profile.max_per_hour"
+        (default 0): policy default under Decision 1
+        -- a present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: step-8 artifact Target 6
+        names the senses.py readers among the core
+        rows covered only for the shapes their classes
+        exercised. This tick took gate_alert in
+        runner/senses.py (cooldown_sec through
+        _finite_number(profile.get("cooldown_sec"),
+        0, lo=0); max_per_hour through gate_alert's
+        own float() reader) and probed both keys with
+        the fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false,
+        zero, negative, numeric string, non-numeric
+        string, huge-int (10**400), inf, -inf, NaN,
+        wrong containers (list and dict) -- plus
+        genuine int / fractional values. The
+        observable is gate_alert's own verdict for a
+        same-title alert received 10 seconds ago (for
+        cooldown) and for one / two alerts received
+        within the last hour (for max_per_hour), at a
+        fixed now.
+
+    (c) Behavior actually observed: NO divergence
+        for cooldown_sec: every unusable shape reads
+        as the documented default 0 (the repeat is
+        kept); genuine 600 drops the repeat, a
+        genuine window of 5 keeps it (10s-old repeat
+        is outside), and the fractional 3600.5 is
+        honored exactly (the drop reason carries
+        3600.5s). For max_per_hour: omitted, null,
+        empty, true, false, zero, non-numeric string,
+        huge-int, list and dict all read as the
+        documented default 0 (unlimited; the alert is
+        kept); a genuine cap of 1 drops with one
+        recent alert, 2 keeps, and 1.5 drops only
+        with two recent alerts. Two deliberate
+        differences from the isinstance-gate readers
+        are pinned as observed, not divergences:
+        numeric strings ARE parsed by both readers
+        ("600" drops the repeat as a 600s cooldown;
+        "1" caps at one per hour), matching
+        _finite_number's documented string conversion;
+        and a negative or non-finite max_per_hour
+        (-5, inf, -inf, NaN) does not read as the
+        default -- gate_alert returns the loud refusal
+        "over max_per_hour (unreadable cap)" for
+        every alert, which matches parse_sensors
+        raising a config error for exactly those
+        shapes at config time, so the gate-level
+        refusal is the same refuse posture, not a
+        silent default. Observed on 2026-10-24
+        against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented defaults (or,
+        for negative / non-finite max_per_hour, keep
+        refusing loudly) and genuine values keep
+        being honored. If a shape above ever stops
+        behaving as docs/senses.md states, this test
+        is the failing record of that change.
+    """
+
+    _NOW = 1700000000.0
+
+    def _iso(self, ts):
+        import datetime
+        return datetime.datetime.fromtimestamp(
+            ts, datetime.timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ")
+
+    def _gate(self, profile, recent):
+        from runner.senses import gate_alert
+        alert = {"title": "T", "severity": "info"}
+        return gate_alert({"profile": profile}, alert,
+                          recent, now=self._NOW)
+
+    def _recent(self, ages=(10,)):
+        return [{"title": "T",
+                 "received_at": self._iso(self._NOW - age)}
+                for age in ages]
+
+    def test_cooldown_fifteen_shapes_read_as_default(self):
+        kept = None
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._gate({}, self._recent()), kept)
+        unusable = [None, "", True, False, 0, -5, "bogus",
+                    10 ** 400, float("inf"), float("-inf"),
+                    float("nan"), [600], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._gate({"cooldown_sec": value},
+                               self._recent()), kept)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._gate({"cooldown_sec": 0}, self._recent()), kept)
+
+    def test_cooldown_genuine_and_numeric_string_honored(self):
+        drop = self._gate({"cooldown_sec": 600}, self._recent())
+        self.assertIsNotNone(drop)
+        self.assertTrue(drop.startswith("cooldown:"))
+        self.assertEqual(
+            self._gate({"cooldown_sec": "600"}, self._recent()), drop)
+        self.assertEqual(
+            self._gate({"cooldown_sec": 5}, self._recent()), None)
+        self.assertEqual(
+            self._gate({"cooldown_sec": "5"}, self._recent()), None)
+        frac = self._gate({"cooldown_sec": 3600.5}, self._recent())
+        self.assertIsNotNone(frac)
+        self.assertIn("3600.5", frac)
+
+    def test_max_per_hour_fifteen_shapes_read_as_default(self):
+        kept = None
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._gate({}, self._recent()), kept)
+        unusable = [None, "", True, False, 0, "bogus",
+                    10 ** 400, [1], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._gate({"max_per_hour": value},
+                               self._recent()), kept)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._gate({"max_per_hour": 0}, self._recent()), kept)
+
+    def test_max_per_hour_genuine_and_numeric_string_honored(self):
+        self.assertEqual(
+            self._gate({"max_per_hour": 1}, self._recent()),
+            "over max_per_hour 1")
+        self.assertEqual(
+            self._gate({"max_per_hour": "1"}, self._recent()),
+            "over max_per_hour 1")
+        self.assertEqual(
+            self._gate({"max_per_hour": 2}, self._recent()), None)
+        self.assertEqual(
+            self._gate({"max_per_hour": 1.5}, self._recent()), None)
+        self.assertEqual(
+            self._gate({"max_per_hour": 1.5},
+                       self._recent((10, 20))),
+            "over max_per_hour 1.5")
+
+    def test_max_per_hour_negative_or_nonfinite_refuses_loudly(self):
+        for value in (-5, float("inf"), float("-inf"), float("nan")):
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._gate({"max_per_hour": value},
+                               self._recent()),
+                    "over max_per_hour (unreadable cap)")
+
+
 if __name__ == "__main__":
 
     unittest.main()
