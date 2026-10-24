@@ -29485,6 +29485,1205 @@ class TestAirwavesParsersAndDecideFifteenShapes(unittest.TestCase):
             with open(fresh, encoding="utf-8") as fh:
                 self.assertFalse(json.load(fh)["learned"])
 
+class TestPiHealthReadingsAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the pi-health
+    disk_mount string tunable, the live-read parsers
+    / helpers (_read_temp_c zone selection and
+    parsing, _read_throttled vcgencmd parsing,
+    _mem_avail_pct_meminfo / _sysconf / _windows
+    and the _read_mem_avail_pct chain,
+    _read_disk_pct, read_board), decide()'s signal
+    firing / dedup / state cleaning / sensor-name
+    fallback, and main() in --readings mode, varied
+    with the fifteen shapes for the first time
+    (step-8 Target 5 / family (b) -- the extension's
+    only earlier classes cover ONLY the numeric
+    _tunable reader for temp_high_c / disk_high_pct
+    / mem_avail_low_pct; disk_mount, the parsers,
+    decide() and --readings mode were never varied).
+
+    (a) Doc claims: the module header declares the
+        four signals with severities (board_
+        overheating high at temp_high_c default 80,
+        undervoltage_detected high from the
+        throttled bitmask "now or earlier this
+        boot", disk_pressure medium at disk_high_pct
+        default 90 on "the disk_mount tunable
+        (default "/")", memory_pressure medium at
+        mem_avail_low_pct default 10)
+        (runner/extensions/pi-health/pi_health.py,
+        module header; README.md signal table and
+        extension.json repeat them). It also states
+        "A signal fires once when its condition
+        appears (or its reading changes), not on
+        every pass", that sources are "all optional
+        and capability-based -- a source the machine
+        does not expose reports None, which never
+        yields a signal and is never an error", that
+        temperature prefers the zone whose type
+        names the SoC or CPU package ("cpu-thermal",
+        "x86_pkg_temp"), "then any cpu/soc/pkg-
+        flavoured type, then the first readable
+        zone", that memory is MemAvailable over
+        MemTotal from /proc/meminfo on Linux, then
+        Windows, then os.sysconf pages, and that
+        "--readings FILE reads a readings dict from
+        a JSON file instead of the machine".
+        disk_mount is a string registry row: policy
+        default under Decision 1 -- a present-but-
+        unusable value reads as its documented
+        default "/". The readings fields, parser
+        texts and state shapes are not numeric
+        registry rows, so this class pins the
+        observed readings for them instead of
+        asserting a shape rule, except where the
+        header names one.
+
+    (b) How this was probed: on 2026-10-24 the
+        fifteen shapes (null, bool, string, numeric
+        string, float, zero, negative, huge int
+        10**400, inf, -inf, NaN, empty string / list
+        / dict, list, dict) were fed to main() as
+        the disk_mount tunable with read_board()
+        stubbed to capture the mount it is handed;
+        to _read_disk_pct() through a stubbed
+        shutil.disk_usage seam and against real
+        mounts; to _read_temp_c() through stubbed
+        glob / open seams serving fake thermal
+        zones (preference, flavour and first-zone
+        orders, bad / float / empty temp texts,
+        missing type files); to _read_throttled()
+        through stubbed which / subprocess seams
+        (genuine, zero, uppercase-hex, embedded,
+        empty and malformed outputs, runner errors);
+        to the memory readers through stubbed
+        /proc/meminfo texts, a stubbed os.sysconf
+        seam and the fallback chain; to read_board()
+        with every sub-reader stubbed; to decide()
+        as readings / manifest / state shapes
+        (every field's shapes, each throttled mask
+        bit alone, non-string disk mounts, dedup /
+        move / clear sequences, state cleaning,
+        sensor fallback); and to main() in
+        --readings mode against temp manifests,
+        readings and state files. The unusable
+        shapes on which the live readers RAISE
+        instead of reporting None are NOT pinned
+        here: they are recorded as a divergence in
+        TestPiHealthLiveReadersCrashInsteadOfNone
+        OnUnusableShapes below.
+
+    (c) Behavior actually observed: disk_mount
+        reads as "/" for every non-string or empty
+        shape (null, bools, numbers, numeric shapes
+        that are not strings -- huge int, inf, -inf,
+        NaN -- list, dict, and for a missing or
+        non-dict tunables table), and every
+        non-empty string is honored verbatim as the
+        mount ("/data", "relative", "..", " " and
+        even the numeric string "90").
+        _read_disk_pct() rounds to one decimal
+        (1/3 -> 33.3), honors used over total
+        (150.0), reads a total of 0 or negative and
+        an OSError from disk_usage as None, and on
+        real paths answers a float in range for
+        "/", "." and a plain file, None for a
+        nonexistent path and for "". _read_temp_c()
+        applies the preference list in list order
+        (cpu-thermal beats an earlier acpitz zone
+        and a later x86_pkg_temp zone; x86_pkg_temp
+        beats soc_thermal), then the first cpu/soc/
+        pkg-flavoured type in sysfs order
+        (case-insensitively, so "CPU-Thermal" is
+        found by flavour), then the first readable
+        zone; zones whose temp text is not an int
+        (float text, empty, unreadable) are skipped
+        even when their type is preferred, a
+        missing type file is fine, negative
+        millidegrees parse (-5000 -> -5.0), and no
+        zones or a glob OSError reads as None.
+        _read_throttled() calls [exe, "get_
+        throttled"], parses the first throttled=0x
+        hex group anywhere in stdout (uppercase
+        hex included, 0x50005 -> 327685, 0x0 -> 0),
+        and reads as None when vcgencmd is absent,
+        when stdout is empty / None / has no hex
+        group / has a bare decimal, and when the
+        run raises OSError or a subprocess error
+        (a timeout included). _mem_avail_pct_
+        meminfo() reads MemAvailable over MemTotal
+        rounded to one decimal in either file
+        order, the FIRST occurrence of a duplicated
+        key, 0.0 for a genuine zero available,
+        150.0 when available exceeds total, and
+        None for a missing key, a zero total, a
+        non-numeric value or an unreadable file
+        (no space after the colon does not match).
+        _mem_avail_pct_sysconf() does the same
+        arithmetic over page counts (a negative
+        available reads literally as -25.0) and
+        reads every unusable page shape (bool,
+        string, inf, huge int, negative or zero
+        total, a missing sysconf name, a sysconf
+        error) as None; _mem_avail_pct_windows()
+        is None off Windows, and _read_mem_avail_
+        pct() takes meminfo first, then Windows,
+        then sysconf. read_board() keys disk_pct
+        by the mount exactly as given (a non-string
+        mount stays a non-string key) and drops
+        the entry entirely when the disk read is
+        None. decide() treats every unusable
+        reading shape as no evidence for all four
+        signals (bools, strings -- numeric strings
+        are NOT parsed -- huge int, inf, -inf, NaN,
+        list and dict file nothing); genuine
+        readings fire exactly at the documented
+        boundaries (temp 80, disk 90, mem 10);
+        throttled fires only for a genuine int
+        (never a bool or a float) whose bits meet
+        the undervoltage / throttle masks -- bits
+        0x1, 0x4, 0x8, 0x10000, 0x40000 and 0x80000
+        each fire alone, bits 0x2 and 0x20000 alone
+        do not, 0 and a huge int do not, and a
+        negative int such as -1 fires with all
+        four detail flags true and the detail
+        string "0x-1"; disk mounts are stringified
+        in the detail and the state key (5 -> "5",
+        None -> "None", (1, 2) -> "(1, 2)"), and
+        alerts file in sorted state-key order
+        (board_overheating, disk_pressure:<mount>,
+        memory_pressure, undervoltage_detected).
+        A firing signal dedups on its fingerprint:
+        the same reading files once, a moved
+        reading files again, a cleared condition
+        drops the state key and the next occurrence
+        files fresh, and a second disk mount added
+        alongside a deduped one files only its own
+        alert. _clean_state() keeps only str:str
+        active entries, reads every malformed
+        state shape as the fresh {"active": {}}
+        and decide() drops state keys that are not
+        firing (and every other top-level key).
+        The sensor name falls back to "pi_health"
+        for a non-dict manifest or a non-string /
+        empty name (a whitespace name and a custom
+        name are honored verbatim), and malformed
+        tunables tables read as the defaults.
+        main() in --readings mode files the alerts
+        one JSON payload per line and writes the
+        fingerprint state (rc 0), files nothing on
+        an identical second pass, re-files only the
+        moved reading, reads a missing, malformed
+        or non-dict state file as fresh, reads a
+        non-dict readings file as no readings (rc
+        0, fresh state written), reads a list
+        manifest as the defaults, answers rc 2 for
+        a missing / malformed manifest or readings
+        file and for an unwritable state path.
+        Observed on 2026-10-24 against current
+        main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        disk_mount, the parsers, decide() and the
+        --readings mode keep behaving as the module
+        header and README state. If a shape above
+        ever stops behaving as documented, this
+        test is the failing record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "pi-health",
+            "pi_health.py")
+        spec = importlib.util.spec_from_file_location(
+            "pi_health_readings_decide_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _run_main(mod, argv):
+        import contextlib
+        import io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), \
+                contextlib.redirect_stderr(io.StringIO()):
+            rc = mod.main(argv)
+        return rc, out.getvalue()
+
+    # -- disk_mount, through main with read_board stubbed --------------
+
+    def test_disk_mount_tunable_fifteen_shapes(self):
+        import os
+        mod = self._mod()
+        seen = []
+
+        def fake_read_board(mount="/"):
+            seen.append(mount)
+            return {"temp_c": None, "throttled": None,
+                    "disk_pct": {}, "mem_avail_pct": None}
+
+        orig = mod.read_board
+        mod.read_board = fake_read_board
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                man = os.path.join(td, "extension.json")
+                st = os.path.join(td, "state.json")
+
+                def run(tunables_marker):
+                    if tunables_marker != "absent":
+                        manifest = {"name": "pi_health",
+                                    "tunables":
+                                        tunables_marker}
+                    else:
+                        manifest = {"name": "pi_health"}
+                    with open(man, "w", encoding="utf-8") as fh:
+                        json.dump(manifest, fh)
+                    seen.clear()
+                    rc, _out = self._run_main(
+                        mod, ["--manifest", man, "--state", st])
+                    self.assertEqual(rc, 0)
+                    return seen[-1]
+
+                unusable = [None, True, False, "", 0, -5, 85,
+                            85.5, 10 ** 400, float("inf"),
+                            float("-inf"), float("nan"),
+                            [], ["x"], {}, {"x": 1}]
+                for value in unusable:
+                    with self.subTest(value=repr(value)):
+                        self.assertEqual(
+                            run({"disk_mount": value}), "/")
+                for value in ("/", "/data", "relative", "..",
+                              " ", "90"):
+                    with self.subTest(value=value):
+                        self.assertEqual(
+                            run({"disk_mount": value}), value)
+                self.assertEqual(run("absent"), "/")
+                for tunables in (None, ["x"], "x"):
+                    with self.subTest(tunables=repr(tunables)):
+                        self.assertEqual(run(tunables), "/")
+        finally:
+            mod.read_board = orig
+
+    # -- _read_disk_pct --------------------------------------------------
+
+    def test_read_disk_pct_fake_usage_and_real_mounts(self):
+        import os
+        import types
+        mod = self._mod()
+        usage = types.SimpleNamespace(
+            total=100, used=95, free=5)
+
+        def run(value_usage):
+            orig = mod.shutil
+            if isinstance(value_usage, Exception):
+                def disk_usage(_mount):
+                    raise value_usage
+            else:
+                def disk_usage(_mount):
+                    return value_usage
+            mod.shutil = types.SimpleNamespace(
+                disk_usage=disk_usage)
+            try:
+                return mod._read_disk_pct("/whatever")
+            finally:
+                mod.shutil = orig
+
+        self.assertEqual(run(usage), 95.0)
+        for total, used, want in ((3, 1, 33.3), (200, 199, 99.5),
+                                  (100, 150, 150.0),
+                                  (100, 0, 0.0)):
+            with self.subTest(total=total, used=used):
+                self.assertEqual(run(types.SimpleNamespace(
+                    total=total, used=used, free=0)), want)
+        for total in (0, -100):
+            with self.subTest(total=total):
+                self.assertIsNone(run(types.SimpleNamespace(
+                    total=total, used=0, free=0)))
+        self.assertIsNone(run(OSError("no")))
+        # The real seam: a float in range for real paths,
+        # None for paths that cannot be measured.
+        real = mod._read_disk_pct("/")
+        self.assertIsInstance(real, float)
+        self.assertTrue(0.0 <= real <= 100.0)
+        self.assertIsInstance(mod._read_disk_pct("."), float)
+        self.assertIsInstance(
+            mod._read_disk_pct(os.path.abspath(__file__)),
+            float)
+        self.assertIsNone(
+            mod._read_disk_pct("/definitely/not/here-xyz"))
+        self.assertIsNone(mod._read_disk_pct(""))
+
+    # -- _read_temp_c ----------------------------------------------------
+
+    @staticmethod
+    def _thermal(mod, files, paths, glob_raises=False):
+        import io
+        import types
+        import unittest.mock
+
+        def fake_open(p, *args, **kwargs):
+            if p in files:
+                return io.StringIO(files[p])
+            raise OSError("no such file: %s" % p)
+
+        def fake_glob(_pat):
+            if glob_raises:
+                raise OSError("glob failed")
+            return list(paths)
+
+        orig = mod.glob
+        mod.glob = types.SimpleNamespace(glob=fake_glob)
+        try:
+            with unittest.mock.patch("builtins.open", fake_open):
+                return mod._read_temp_c()
+        finally:
+            mod.glob = orig
+
+    @staticmethod
+    def _zones(specs):
+        files = {}
+        paths = []
+        for i, (temp, ztype) in enumerate(specs):
+            base = "/sys/class/thermal/thermal_zone%d" % i
+            files[base + "/temp"] = temp
+            if ztype is not None:
+                files[base + "/type"] = ztype
+            paths.append(base + "/temp")
+        return files, paths
+
+    def test_read_temp_c_zone_selection_and_parsing(self):
+        mod = self._mod()
+        files, paths = self._zones(
+            [("40000", "acpitz"), ("85000", "cpu-thermal"),
+             ("60000", "x86_pkg_temp")])
+        self.assertEqual(self._thermal(mod, files, paths), 85.0)
+        # The preference list is applied in list order,
+        # not sysfs order.
+        files, paths = self._zones(
+            [("40000", "acpitz"), ("60000", "x86_pkg_temp"),
+             ("70000", "soc_thermal")])
+        self.assertEqual(self._thermal(mod, files, paths), 60.0)
+        # Flavour fallback: the first cpu/soc/pkg type.
+        files, paths = self._zones(
+            [("41000", "acpitz"), ("62000", "myCPUthing"),
+             ("63000", "pkgzone")])
+        self.assertEqual(self._thermal(mod, files, paths), 62.0)
+        # Flavour matching is case-insensitive even though
+        # the exact preference match is not.
+        files, paths = self._zones(
+            [("40000", "acpitz"), ("88000", "CPU-Thermal")])
+        self.assertEqual(self._thermal(mod, files, paths), 88.0)
+        # Otherwise the first readable zone.
+        files, paths = self._zones(
+            [("41000", "acpitz"), ("43000", "wifi")])
+        self.assertEqual(self._thermal(mod, files, paths), 41.0)
+        # No zones, and a glob failure, both read as None.
+        self.assertIsNone(self._thermal(mod, {}, []))
+        self.assertIsNone(
+            self._thermal(mod, {}, [], glob_raises=True))
+        # A zone whose temp text is not an int is skipped,
+        # even when its type is the preferred one; a
+        # missing type file is fine.
+        files, paths = self._zones(
+            [("bogus", "cpu-thermal"), ("55000", None)])
+        self.assertEqual(self._thermal(mod, files, paths), 55.0)
+        for bad in ("85000.5", ""):
+            with self.subTest(temp_text=repr(bad)):
+                files, paths = self._zones([(bad, "cpu-thermal")])
+                self.assertIsNone(self._thermal(mod, files, paths))
+        files, paths = self._zones([("  -5000 \n", "cpu-thermal")])
+        self.assertEqual(self._thermal(mod, files, paths), -5.0)
+
+    # -- _read_throttled ---------------------------------------------------
+
+    @staticmethod
+    def _throttled(mod, which, stdout=None, raises=None):
+        import subprocess
+        import types
+        captured = []
+
+        def run(argv, **kwargs):
+            captured.append(argv)
+            if raises is not None:
+                raise raises
+            return types.SimpleNamespace(stdout=stdout)
+
+        orig_shutil, orig_sub = mod.shutil, mod.subprocess
+        mod.shutil = types.SimpleNamespace(
+            which=lambda _name: which)
+        mod.subprocess = types.SimpleNamespace(
+            run=run, SubprocessError=subprocess.SubprocessError)
+        try:
+            return mod._read_throttled(), captured
+        finally:
+            mod.shutil, mod.subprocess = orig_shutil, orig_sub
+
+    def test_read_throttled_output_parsing(self):
+        import subprocess
+        mod = self._mod()
+        self.assertEqual(self._throttled(mod, None), (None, []))
+        value, argv = self._throttled(
+            mod, "/usr/bin/vcgencmd", "throttled=0x50005\n")
+        self.assertEqual(value, 327685)
+        self.assertEqual(argv, [["/usr/bin/vcgencmd",
+                                 "get_throttled"]])
+        for stdout, want in (("throttled=0x0\n", 0),
+                             ("throttled=0xABCDEF\n", 0xABCDEF),
+                             ("noise throttled=0x10 trailing", 16)):
+            with self.subTest(stdout=stdout):
+                self.assertEqual(
+                    self._throttled(mod, "/x", stdout)[0], want)
+        for stdout in ("throttled=0x\n", "", None,
+                       "throttled=50005", "no report here"):
+            with self.subTest(stdout=repr(stdout)):
+                self.assertIsNone(
+                    self._throttled(mod, "/x", stdout)[0])
+        for raises in (OSError("no"),
+                       subprocess.SubprocessError("boom"),
+                       subprocess.TimeoutExpired("vcgencmd", 5)):
+            with self.subTest(raises=repr(raises)):
+                self.assertIsNone(self._throttled(
+                    mod, "/x", raises=raises)[0])
+
+    # -- memory readers ----------------------------------------------------
+
+    @staticmethod
+    def _meminfo(mod, text, raises=False):
+        import io
+        import unittest.mock
+
+        def fake_open(p, *args, **kwargs):
+            if p == "/proc/meminfo":
+                if raises:
+                    raise OSError("unreadable")
+                return io.StringIO(text)
+            raise OSError("unexpected path: %s" % p)
+
+        with unittest.mock.patch("builtins.open", fake_open):
+            return mod._mem_avail_pct_meminfo()
+
+    def test_meminfo_parsing(self):
+        mod = self._mod()
+        cases = [
+            ("MemTotal:       100000 kB\n"
+             "MemAvailable:    25000 kB\n", 25.0),
+            ("MemAvailable:    25000 kB\n"
+             "MemTotal:       100000 kB\n", 25.0),
+            ("Other: 1\nMemTotal:        8000 kB\nMemFree: 1\n"
+             "MemAvailable: 2000 kB\nSwapTotal: 9\n", 25.0),
+            ("MemTotal:       300000 kB\n"
+             "MemAvailable:    100000 kB\n", 33.3),
+            ("MemTotal:       100000 kB\n"
+             "MemAvailable:    0 kB\n", 0.0),
+            ("MemTotal:       100000 kB\n"
+             "MemAvailable:    150000 kB\n", 150.0),
+            # A duplicated key: the first occurrence wins.
+            ("MemTotal:       100000 kB\n"
+             "MemTotal:       200000 kB\n"
+             "MemAvailable:    50000 kB\n", 50.0),
+        ]
+        for text, want in cases:
+            with self.subTest(text=text[:30]):
+                self.assertEqual(self._meminfo(mod, text), want)
+        for text in ("MemTotal:       100000 kB\n",
+                     "MemAvailable:    25000 kB\n",
+                     "MemTotal:              0 kB\n"
+                     "MemAvailable:    0 kB\n",
+                     "MemTotal: notanumber\n"
+                     "MemAvailable:    25000 kB\n",
+                     "MemTotal:100000 kB\n"
+                     "MemAvailable:25000 kB\n"):
+            with self.subTest(text=text[:30]):
+                self.assertIsNone(self._meminfo(mod, text))
+        self.assertIsNone(self._meminfo(mod, "", raises=True))
+        real = mod._mem_avail_pct_meminfo()
+        self.assertIsInstance(real, float)
+        self.assertTrue(0.0 <= real <= 100.0)
+
+    def test_sysconf_windows_and_mem_chain(self):
+        import os
+        import types
+        mod = self._mod()
+
+        def run_sysconf(names, vals, raises=None):
+            def sysconf(name):
+                if raises is not None:
+                    raise raises
+                return vals[name]
+            orig = mod.os
+            mod.os = types.SimpleNamespace(
+                sysconf_names=names, sysconf=sysconf,
+                name="posix")
+            try:
+                return mod._mem_avail_pct_sysconf()
+            finally:
+                mod.os = orig
+
+        names = {"SC_PHYS_PAGES": 1, "SC_AVPHYS_PAGES": 2}
+        good = [
+            ({"SC_PHYS_PAGES": 100, "SC_AVPHYS_PAGES": 25}, 25.0),
+            ({"SC_PHYS_PAGES": 3, "SC_AVPHYS_PAGES": 1}, 33.3),
+            ({"SC_PHYS_PAGES": 100, "SC_AVPHYS_PAGES": 0}, 0.0),
+            ({"SC_PHYS_PAGES": 100, "SC_AVPHYS_PAGES": -25},
+             -25.0),
+        ]
+        for vals, want in good:
+            with self.subTest(vals=vals):
+                self.assertEqual(run_sysconf(names, vals), want)
+        unusable = [
+            {"SC_PHYS_PAGES": 0, "SC_AVPHYS_PAGES": 0},
+            {"SC_PHYS_PAGES": -100, "SC_AVPHYS_PAGES": 25},
+            {"SC_PHYS_PAGES": True, "SC_AVPHYS_PAGES": 25},
+            {"SC_PHYS_PAGES": "100", "SC_AVPHYS_PAGES": 25},
+            {"SC_PHYS_PAGES": 100,
+             "SC_AVPHYS_PAGES": float("inf")},
+            {"SC_PHYS_PAGES": 10 ** 400, "SC_AVPHYS_PAGES": 1},
+            {"SC_PHYS_PAGES": 100, "SC_AVPHYS_PAGES": None},
+            {"SC_PHYS_PAGES": 100, "SC_AVPHYS_PAGES": ["x"]},
+        ]
+        for vals in unusable:
+            with self.subTest(vals=repr(vals)[:40]):
+                self.assertIsNone(run_sysconf(names, vals))
+        self.assertIsNone(
+            run_sysconf({"SC_PHYS_PAGES": 1}, {}))
+        self.assertIsNone(run_sysconf(
+            names, {}, raises=ValueError("no")))
+        self.assertIsNone(run_sysconf(
+            names, {}, raises=OSError("no")))
+        if os.name != "nt":
+            self.assertIsNone(mod._mem_avail_pct_windows())
+        # The chain: meminfo first, then Windows, then
+        # sysconf.
+        origs = (mod._mem_avail_pct_meminfo,
+                 mod._mem_avail_pct_windows,
+                 mod._mem_avail_pct_sysconf)
+        try:
+            mod._mem_avail_pct_meminfo = lambda: 42.0
+            mod._mem_avail_pct_windows = lambda: 7.0
+            mod._mem_avail_pct_sysconf = lambda: 3.0
+            self.assertEqual(mod._read_mem_avail_pct(), 42.0)
+            mod._mem_avail_pct_meminfo = lambda: None
+            self.assertEqual(mod._read_mem_avail_pct(), 7.0)
+            mod._mem_avail_pct_windows = lambda: None
+            self.assertEqual(mod._read_mem_avail_pct(), 3.0)
+            mod._mem_avail_pct_sysconf = lambda: None
+            self.assertIsNone(mod._read_mem_avail_pct())
+        finally:
+            (mod._mem_avail_pct_meminfo,
+             mod._mem_avail_pct_windows,
+             mod._mem_avail_pct_sysconf) = origs
+
+    # -- read_board --------------------------------------------------------
+
+    def test_read_board_snapshot_shapes(self):
+        mod = self._mod()
+        origs = (mod._read_temp_c, mod._read_throttled,
+                 mod._read_disk_pct, mod._read_mem_avail_pct)
+        try:
+            mod._read_temp_c = lambda: 55.0
+            mod._read_throttled = lambda: 5
+            mod._read_disk_pct = lambda _m: 95.0
+            mod._read_mem_avail_pct = lambda: 50.0
+            self.assertEqual(mod.read_board(), {
+                "temp_c": 55.0, "throttled": 5,
+                "disk_pct": {"/": 95.0}, "mem_avail_pct": 50.0})
+            self.assertEqual(
+                mod.read_board("/data")["disk_pct"],
+                {"/data": 95.0})
+            # A disk read of None drops the entry entirely.
+            mod._read_disk_pct = lambda _m: None
+            self.assertEqual(mod.read_board("/data")["disk_pct"],
+                             {})
+            mod._read_temp_c = lambda: None
+            mod._read_throttled = lambda: None
+            mod._read_mem_avail_pct = lambda: None
+            self.assertEqual(mod.read_board(), {
+                "temp_c": None, "throttled": None,
+                "disk_pct": {}, "mem_avail_pct": None})
+            # The mount is used as the key exactly as given.
+            mod._read_disk_pct = lambda _m: 12.5
+            self.assertEqual(
+                mod.read_board(123)["disk_pct"], {123: 12.5})
+        finally:
+            (mod._read_temp_c, mod._read_throttled,
+             mod._read_disk_pct, mod._read_mem_avail_pct) = origs
+
+    # -- decide: reading shapes ---------------------------------------------
+
+    def test_decide_temp_and_mem_reading_shapes(self):
+        mod = self._mod()
+        unusable = [None, True, False, "", "85", "bogus", " ",
+                    10 ** 400, float("inf"), float("-inf"),
+                    float("nan"), [], ["x"], {}, {"x": 1}]
+        for value in unusable:
+            with self.subTest(field="temp_c", value=repr(value)):
+                self.assertEqual(
+                    mod.decide({"temp_c": value}, {}, {}),
+                    ([], {"active": {}}))
+            with self.subTest(field="mem", value=repr(value)):
+                self.assertEqual(
+                    mod.decide({"mem_avail_pct": value}, {}, {}),
+                    ([], {"active": {}}))
+        for value in (0, -5, 79.9):
+            with self.subTest(field="temp_c", value=value):
+                self.assertEqual(
+                    mod.decide({"temp_c": value}, {}, {})[0], [])
+        for value in (85, 10.1, 100):
+            with self.subTest(field="mem", value=value):
+                self.assertEqual(
+                    mod.decide({"mem_avail_pct": value}, {},
+                               {})[0], [])
+        alerts, state = mod.decide({"temp_c": 80}, {}, {})
+        self.assertEqual(
+            [(a["signal"], a["severity"], a["detail"])
+             for a in alerts],
+            [("board_overheating", "high",
+              {"temp_c": 80, "threshold_c": 80.0})])
+        self.assertEqual(alerts[0]["title"],
+                         "SoC temperature 80C reached the "
+                         "80C limit")
+        self.assertEqual(state, {"active": {"board_overheating":
+            '{"temp_c": 80, "threshold_c": 80.0}'}})
+        for value in (10, 10.0, 0, -5):
+            with self.subTest(field="mem", value=value):
+                alerts, _state = mod.decide(
+                    {"mem_avail_pct": value}, {}, {})
+                self.assertEqual(
+                    [(a["signal"], a["severity"]) for a in alerts],
+                    [("memory_pressure", "medium")])
+                self.assertEqual(
+                    alerts[0]["detail"],
+                    {"mem_avail_pct": value,
+                     "threshold_pct": 10.0})
+
+    def test_decide_disk_and_throttled_reading_shapes(self):
+        mod = self._mod()
+        unusable = [None, True, False, "", "95", "bogus",
+                    10 ** 400, float("inf"), float("-inf"),
+                    float("nan"), [], ["x"], {}, {"x": 1}]
+        for value in unusable:
+            with self.subTest(field="disk_pct", value=repr(value)):
+                self.assertEqual(
+                    mod.decide({"disk_pct": {"/": value}}, {},
+                               {})[0], [])
+        for value in (None, "x", 95, [("/", 95)], True):
+            with self.subTest(field="disk_container",
+                              value=repr(value)):
+                self.assertEqual(
+                    mod.decide({"disk_pct": value}, {}, {}),
+                    ([], {"active": {}}))
+        self.assertEqual(
+            mod.decide({"disk_pct": {"/": 89.9}}, {}, {})[0], [])
+        alerts, _state = mod.decide({"disk_pct": {"/": 90}},
+                                    {}, {})
+        self.assertEqual(
+            [(a["signal"], a["severity"], a["detail"],
+              a["title"]) for a in alerts],
+            [("disk_pressure", "medium",
+              {"mount": "/", "used_pct": 90,
+               "threshold_pct": 90.0},
+              "disk / is 90% full (limit 90%)")])
+        # throttled: only a genuine int can fire.
+        for value in (None, True, False, "", "1", "bogus", 1.0,
+                      85.5, float("inf"), float("-inf"),
+                      float("nan"), [], {}, 0, 10 ** 400):
+            with self.subTest(field="throttled",
+                              value=repr(value)):
+                self.assertEqual(
+                    mod.decide({"throttled": value}, {}, {})[0],
+                    [])
+        # Each documented mask bit fires alone; the two
+        # frequency-capped bits are not in either mask.
+        for bits in (0x1, 0x4, 0x8, 0x10000, 0x40000, 0x80000):
+            with self.subTest(field="throttled", bits=hex(bits)):
+                alerts, _state = mod.decide(
+                    {"throttled": bits}, {}, {})
+                self.assertEqual(
+                    [a["signal"] for a in alerts],
+                    ["undervoltage_detected"])
+                self.assertEqual(alerts[0]["severity"], "high")
+        for bits in (0x2, 0x20000):
+            with self.subTest(field="throttled", bits=hex(bits)):
+                self.assertEqual(
+                    mod.decide({"throttled": bits}, {}, {})[0],
+                    [])
+        alerts, _state = mod.decide({"throttled": 0x50005},
+                                    {}, {})
+        self.assertEqual(alerts[0]["detail"], {
+            "throttled": "0x50005", "undervoltage_now": True,
+            "undervoltage_since_boot": True,
+            "throttled_now": True,
+            "throttled_since_boot": True})
+        self.assertEqual(
+            alerts[0]["title"],
+            "board reports undervoltage/throttling "
+            "(throttled=0x50005)")
+        alerts, _state = mod.decide({"throttled": 0x1}, {}, {})
+        self.assertEqual(alerts[0]["detail"], {
+            "throttled": "0x1", "undervoltage_now": True,
+            "undervoltage_since_boot": False,
+            "throttled_now": False,
+            "throttled_since_boot": False})
+        alerts, _state = mod.decide({"throttled": -1}, {}, {})
+        self.assertEqual(alerts[0]["detail"], {
+            "throttled": "0x-1", "undervoltage_now": True,
+            "undervoltage_since_boot": True,
+            "throttled_now": True,
+            "throttled_since_boot": True})
+
+    def test_decide_disk_mount_keys_and_alert_ordering(self):
+        mod = self._mod()
+        alerts, state = mod.decide(
+            {"disk_pct": {"/": 95, "/data": 99, 5: 100,
+                          None: 100}}, {}, {})
+        self.assertEqual(
+            [a["detail"]["mount"] for a in alerts],
+            ["/", "/data", "5", "None"])
+        self.assertEqual(sorted(state["active"]), [
+            "disk_pressure:/", "disk_pressure:/data",
+            "disk_pressure:5", "disk_pressure:None"])
+        alerts, state = mod.decide(
+            {"disk_pct": {(1, 2): 95, "": 96}}, {}, {})
+        self.assertEqual(
+            [a["detail"]["mount"] for a in alerts],
+            ["", "(1, 2)"])
+        # All four signals together file in sorted
+        # state-key order.
+        alerts, _state = mod.decide(
+            {"temp_c": 85, "throttled": 1,
+             "disk_pct": {"/": 95}, "mem_avail_pct": 5},
+            {}, {})
+        self.assertEqual(
+            [(a["signal"], a["severity"], a["sensor"])
+             for a in alerts],
+            [("board_overheating", "high", "pi_health"),
+             ("disk_pressure", "medium", "pi_health"),
+             ("memory_pressure", "medium", "pi_health"),
+             ("undervoltage_detected", "high", "pi_health")])
+
+    def test_decide_dedup_move_clear(self):
+        mod = self._mod()
+        readings = {"temp_c": 85}
+        alerts, state = mod.decide(readings, {}, {})
+        self.assertEqual(len(alerts), 1)
+        alerts, state2 = mod.decide(readings, {}, state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state2, state)
+        alerts, state = mod.decide({"temp_c": 86}, {}, state2)
+        self.assertEqual(
+            [a["detail"]["temp_c"] for a in alerts], [86])
+        alerts, state = mod.decide({"temp_c": 10}, {}, state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state, {"active": {}})
+        alerts, _state = mod.decide(readings, {}, state)
+        self.assertEqual(len(alerts), 1)
+        # Disk dedup is per mount: a second mount files
+        # alone while the first stays deduped.
+        _a, state = mod.decide({"disk_pct": {"/": 95}}, {}, {})
+        alerts, state = mod.decide(
+            {"disk_pct": {"/": 95, "/d": 99}}, {}, state)
+        self.assertEqual(
+            [a["detail"]["mount"] for a in alerts], ["/d"])
+        self.assertEqual(sorted(state["active"]),
+                         ["disk_pressure:/", "disk_pressure:/d"])
+        # A state entry for a signal that is not firing
+        # is dropped from the new state.
+        alerts, state = mod.decide(
+            {"temp_c": 85}, {},
+            {"active": {"stale_signal": "fp",
+                        "board_overheating":
+                            '{"temp_c": 85, '
+                            '"threshold_c": 80.0}'}})
+        self.assertEqual(alerts, [])
+        self.assertEqual(state, {"active": {"board_overheating":
+            '{"temp_c": 85, "threshold_c": 80.0}'}})
+
+    def test_decide_state_cleaning_and_sensor_fallback(self):
+        mod = self._mod()
+        self.assertEqual(mod._fresh_state(), {"active": {}})
+        for bad in (None, "x", [], 123, True, {},
+                    {"active": None}, {"active": "x"},
+                    {"active": []}, {"active": {}, "extra": 1},
+                    {"foo": "bar"}):
+            with self.subTest(state=repr(bad)):
+                self.assertEqual(mod._clean_state(bad),
+                                 {"active": {}})
+        self.assertEqual(
+            mod._clean_state({"active": {
+                "a": "f", "b": 1, 1: "f", "c": None, "d": {}}}),
+            {"active": {"a": "f"}})
+        # A malformed previous state never suppresses a
+        # firing signal.
+        for bad in (None, "x", {"active": "x"}):
+            with self.subTest(state=repr(bad)):
+                alerts, _state = mod.decide(
+                    {"temp_c": 85}, {}, bad)
+                self.assertEqual(
+                    [a["signal"] for a in alerts],
+                    ["board_overheating"])
+        # Readings that are not a dict are no readings.
+        for bad in (None, "x", [], 123, True):
+            with self.subTest(readings=repr(bad)):
+                self.assertEqual(
+                    mod.decide(bad, {},
+                               {"active": {"old": "fp"}}),
+                    ([], {"active": {}}))
+        # Sensor fallback and defaults under malformed
+        # manifests / tunables tables.
+        for manifest, want in ((None, "pi_health"),
+                               ("x", "pi_health"),
+                               ([], "pi_health"),
+                               ({}, "pi_health"),
+                               ({"name": None}, "pi_health"),
+                               ({"name": ""}, "pi_health"),
+                               ({"name": True}, "pi_health"),
+                               ({"name": 123}, "pi_health"),
+                               ({"name": []}, "pi_health"),
+                               ({"name": {}}, "pi_health"),
+                               ({"name": " "}, " "),
+                               ({"name": "custom"}, "custom"),
+                               ({"tunables": None}, "pi_health"),
+                               ({"tunables": ["x"]}, "pi_health")):
+            with self.subTest(manifest=repr(manifest)):
+                alerts, _state = mod.decide(
+                    {"temp_c": 85}, manifest, {})
+                self.assertEqual(alerts[0]["sensor"], want)
+                self.assertEqual(alerts[0]["signal"],
+                                 "board_overheating")
+
+    # -- main in --readings mode ------------------------------------------
+
+    def test_main_readings_mode(self):
+        import os
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            man = os.path.join(td, "extension.json")
+            rd = os.path.join(td, "readings.json")
+            st = os.path.join(td, "state.json")
+
+            def write(path, obj=None, raw=None):
+                with open(path, "w", encoding="utf-8") as fh:
+                    fh.write(raw if raw is not None
+                             else json.dumps(obj))
+
+            write(man, {"name": "pi_health", "tunables": {}})
+            write(rd, {"temp_c": 84.1, "throttled": 327685,
+                       "disk_pct": {"/": 95},
+                       "mem_avail_pct": 5})
+            rc, out = self._run_main(
+                mod, ["--manifest", man, "--readings", rd,
+                      "--state", st])
+            self.assertEqual(rc, 0)
+            filed = [json.loads(line) for line in
+                     out.splitlines() if line.strip()]
+            self.assertEqual(
+                [a["signal"] for a in filed],
+                ["board_overheating", "disk_pressure",
+                 "memory_pressure", "undervoltage_detected"])
+            self.assertTrue(all(
+                a["sensor"] == "pi_health" for a in filed))
+            with open(st, encoding="utf-8") as fh:
+                saved = json.load(fh)
+            self.assertEqual(sorted(saved["active"]), [
+                "board_overheating", "disk_pressure:/",
+                "memory_pressure", "undervoltage_detected"])
+            self.assertEqual(
+                saved["active"]["board_overheating"],
+                '{"temp_c": 84.1, "threshold_c": 80.0}')
+            # An identical second pass files nothing.
+            rc, out = self._run_main(
+                mod, ["--manifest", man, "--readings", rd,
+                      "--state", st])
+            self.assertEqual((rc, out), (0, ""))
+            # A moved reading re-files alone.
+            write(rd, {"temp_c": 85, "throttled": 327685,
+                       "disk_pct": {"/": 95},
+                       "mem_avail_pct": 5})
+            rc, out = self._run_main(
+                mod, ["--manifest", man, "--readings", rd,
+                      "--state", st])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                [json.loads(line)["signal"] for line in
+                 out.splitlines() if line.strip()],
+                ["board_overheating"])
+            # Cleared readings empty the state.
+            write(rd, {"temp_c": 20, "throttled": 0,
+                       "disk_pct": {"/": 10},
+                       "mem_avail_pct": 90})
+            rc, out = self._run_main(
+                mod, ["--manifest", man, "--readings", rd,
+                      "--state", st])
+            self.assertEqual((rc, out), (0, ""))
+            with open(st, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh), {"active": {}})
+            # The shipped extension.json works as the
+            # default manifest.
+            write(rd, {"temp_c": 99})
+            rc, out = self._run_main(
+                mod, ["--readings", rd,
+                      "--state", os.path.join(td, "def.json")])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                json.loads(out.splitlines()[0])["sensor"],
+                "pi_health")
+
+    def test_main_readings_state_edges_and_rc2(self):
+        import os
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            man = os.path.join(td, "extension.json")
+            rd = os.path.join(td, "readings.json")
+            st = os.path.join(td, "state.json")
+
+            def write(path, obj=None, raw=None):
+                with open(path, "w", encoding="utf-8") as fh:
+                    fh.write(raw if raw is not None
+                             else json.dumps(obj))
+
+            def run(manifest=man, readings=rd, state=st):
+                return self._run_main(
+                    mod, ["--manifest", manifest,
+                          "--readings", readings,
+                          "--state", state])
+
+            write(man, {"name": "pi_health", "tunables": {}})
+            write(rd, {"temp_c": 84.1})
+            # Missing, malformed and non-dict state files
+            # all read as fresh: the alert files again.
+            for raw in ("{not json", '["x"]', "123", '"x"',
+                        "null", '{"active": "x"}'):
+                with self.subTest(state=raw):
+                    write(st, raw=raw)
+                    rc, out = run()
+                    self.assertEqual(rc, 0)
+                    self.assertEqual(
+                        [json.loads(line)["signal"] for line
+                         in out.splitlines() if line.strip()],
+                        ["board_overheating"])
+            os.unlink(st)
+            rc, out = run()
+            self.assertEqual(rc, 0)
+            self.assertNotEqual(out, "")
+            # A non-dict readings file is no readings:
+            # rc 0, nothing filed, fresh state written.
+            for obj in (["x"], "x", 123, None, True):
+                with self.subTest(readings=repr(obj)):
+                    write(rd, obj)
+                    fresh = os.path.join(td, "fresh.json")
+                    if os.path.exists(fresh):
+                        os.unlink(fresh)
+                    rc, out = run(state=fresh)
+                    self.assertEqual((rc, out), (0, ""))
+                    with open(fresh, encoding="utf-8") as fh:
+                        self.assertEqual(json.load(fh),
+                                         {"active": {}})
+            write(rd, {"temp_c": 85})
+            # A list manifest reads as the defaults with
+            # the fallback sensor name.
+            write(man, ["x"])
+            rc, out = run(state=os.path.join(td, "lm.json"))
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                json.loads(out.splitlines()[0])["sensor"],
+                "pi_health")
+            write(man, {"name": "pi_health"})
+            # rc 2: missing / malformed manifest or
+            # readings, and an unwritable state path.
+            self.assertEqual(
+                run(manifest=os.path.join(td, "no.json"))[0],
+                2)
+            write(man, raw="{bad")
+            self.assertEqual(run()[0], 2)
+            write(man, {"name": "pi_health"})
+            self.assertEqual(
+                run(readings=os.path.join(td, "no.json"))[0],
+                2)
+            write(rd, raw="{bad")
+            self.assertEqual(run()[0], 2)
+            write(rd, {"temp_c": 85})
+            self.assertEqual(run(state=td)[0], 2)
+
+
+class TestPiHealthLiveReadersCrashInsteadOfNoneOnUnusableShapes(
+        unittest.TestCase):
+    """Divergence: pi-health's live readers raise
+    TypeError / OverflowError on unusable shapes
+    instead of reporting None, so one bad shape
+    crashes the whole pass instead of that one
+    source having nothing to say.
+
+    (a) Doc claims (runner/extensions/pi-health/
+        pi_health.py, module header): "Sources, all
+        optional and capability-based -- a source
+        the machine does not expose reports None,
+        which never yields a signal and is never an
+        error". The disk reader's own docstring
+        repeats the promise for its input:
+        "_read_disk_pct: Percent of `mount` in use,
+        or None when unmeasurable." read_board()'s
+        docstring likewise states every value in the
+        snapshot "may be None (source not exposed by
+        this machine)".
+
+    (b) How the bug was found: the campaign's
+        second-run hunt (2026-10-24 tick) varied the
+        pi-health live readers with the fifteen
+        shapes from the table hunt: _read_disk_pct()
+        called directly with each shape as the
+        mount, _read_temp_c() served a thermal zone
+        whose temp file holds a huge-int digit
+        string (10**400 written out), and
+        _mem_avail_pct_meminfo() served a
+        /proc/meminfo whose MemTotal / MemAvailable
+        values are huge-int digit strings --
+        read_board() was also called with unusable
+        mounts (main() sanitizes the disk_mount
+        tunable to a string before read_board, so
+        the disk crash is at the reader / read_board
+        surface the unit tests exercise, while the
+        thermal and meminfo crashes are reachable
+        from file contents alone on the live path).
+
+    (c) Behavior actually observed: _read_disk_pct
+        catches only OSError from shutil.disk_usage,
+        so a mount of None, a float (85.5, inf,
+        -inf, NaN), a list or a dict raises TypeError
+        ("path should be string, bytes, os.PathLike
+        or integer") and a huge-int mount raises
+        OverflowError ("fd is greater than
+        maximum"), instead of the documented None;
+        read_board(None) and read_board(["/"]) raise
+        the same way. _read_temp_c catches OSError /
+        ValueError around int(temp_text) / 1000.0,
+        but a huge digit string parses as an int and
+        the division raises OverflowError ("int too
+        large to convert to float"). _mem_avail_pct_
+        meminfo catches only OSError around the file
+        read, so huge digit strings parse as ints
+        and round(100.0 * avail / total) raises the
+        same OverflowError. Every other unusable
+        shape already reads as None as documented
+        (the control test below): a nonexistent or
+        empty disk path, no thermal zones, a meminfo
+        with a missing key, an absent vcgencmd.
+        This is the campaign's known wrong-type /
+        huge-int root-cause family in a new place --
+        this extension's live readers, not its
+        (already covered) numeric tunables.
+        Observed on 2026-10-24 against current main.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "pi-health",
+            "pi_health.py")
+        spec = importlib.util.spec_from_file_location(
+            "pi_health_live_read_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_disk_pct_unusable_mount_shapes_read_as_none(self):
+        mod = self._mod()
+        for mount in (None, 85.5, float("inf"), float("-inf"),
+                      float("nan"), ["x"], {"x": 1}, 10 ** 400):
+            with self.subTest(mount=repr(mount)):
+                self.assertIsNone(mod._read_disk_pct(mount))
+
+    def test_read_board_survives_unusable_mount(self):
+        mod = self._mod()
+        for mount in (None, ["/"], {"x": 1}):
+            with self.subTest(mount=repr(mount)):
+                self.assertEqual(
+                    mod.read_board(mount)["disk_pct"], {})
+
+    def test_temp_huge_digit_string_reads_as_none(self):
+        import io
+        import types
+        import unittest.mock
+        mod = self._mod()
+        base = "/sys/class/thermal/thermal_zone0"
+        files = {base + "/temp": "9" * 400,
+                 base + "/type": "cpu-thermal"}
+
+        def fake_open(p, *args, **kwargs):
+            if p in files:
+                return io.StringIO(files[p])
+            raise OSError("no such file: %s" % p)
+
+        orig = mod.glob
+        mod.glob = types.SimpleNamespace(
+            glob=lambda _pat: [base + "/temp"])
+        try:
+            with unittest.mock.patch("builtins.open", fake_open):
+                self.assertIsNone(mod._read_temp_c())
+        finally:
+            mod.glob = orig
+
+    def test_meminfo_huge_digit_strings_read_as_none(self):
+        import io
+        import unittest.mock
+        mod = self._mod()
+        text = ("MemTotal: " + "9" * 400 + " kB\n"
+                "MemAvailable: " + "5" * 400 + " kB\n")
+
+        def fake_open(p, *args, **kwargs):
+            if p == "/proc/meminfo":
+                return io.StringIO(text)
+            raise OSError("unexpected path: %s" % p)
+
+        with unittest.mock.patch("builtins.open", fake_open):
+            self.assertIsNone(mod._mem_avail_pct_meminfo())
+
+    def test_other_unusable_shapes_already_read_as_none(self):
+        # Controls: the unusable shapes that already
+        # behave as documented today and must keep
+        # doing so after the crashing cases are fixed.
+        import io
+        import types
+        import unittest.mock
+        mod = self._mod()
+        self.assertIsNone(
+            mod._read_disk_pct("/definitely/not/here-xyz"))
+        self.assertIsNone(mod._read_disk_pct(""))
+        orig = mod.glob
+        mod.glob = types.SimpleNamespace(glob=lambda _pat: [])
+        try:
+            self.assertIsNone(mod._read_temp_c())
+        finally:
+            mod.glob = orig
+
+        def fake_open(p, *args, **kwargs):
+            if p == "/proc/meminfo":
+                return io.StringIO(
+                    "MemTotal:       100000 kB\n")
+            raise OSError("unexpected path: %s" % p)
+
+        with unittest.mock.patch("builtins.open", fake_open):
+            self.assertIsNone(mod._mem_avail_pct_meminfo())
+        orig = mod.shutil
+        mod.shutil = types.SimpleNamespace(
+            which=lambda _name: None)
+        try:
+            self.assertIsNone(mod._read_throttled())
+        finally:
+            mod.shutil = orig
+
 if __name__ == "__main__":
 
     unittest.main()
