@@ -46338,6 +46338,499 @@ class TestWireArrivalsMainModesFifteenShapes(unittest.TestCase):
             self.assertIn("1 of 1 alert(s) not delivered", err)
             self.assertEqual(after, before)
 
+class TestPiHealthMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: pi-health
+    main()'s manifest / readings / state modes,
+    its live mode (including the disk_mount
+    tunable's fifteen shapes at the read_board()
+    call) and its --local-dir delivery modes
+    varied for the first time (step-8 Target 5 /
+    family (b) -- pi-health's earlier classes
+    covered its tunables, _clean_state(), decide()
+    and the live readers called directly; main()'s
+    scalar / string / null / bool / float manifests
+    and readings files, its junk-carrying and
+    broken pre-state files, a directory as the
+    state path, its live mode through main() and
+    its --local-dir delivery gate were never run
+    through main() at all, the same gap the clean /
+    main hunts closed for the other watchers in
+    the ticks before this one, wire-arrivals most
+    recently).
+
+    (a) Doc claims: the README states a signal
+        files once when its condition appears, and
+        again when the reading moves; the state
+        lives in the state file; every source is
+        optional and a source that exposes nothing
+        never yields a signal and is never an
+        error; disk comes from the disk_mount
+        mount (default "/"); and the run example
+        shows --local-dir delivering signed alerts
+        into a runner base dir with the secret
+        held in HOMING_PIGEON_SENSOR_SECRET.
+        _deliver_local()'s docstring states it
+        returns how many alerts were delivered, or
+        None when local delivery is not set up
+        (the reason is printed), and main()'s own
+        comment states a failed delivery leaves
+        the state unwritten, so the next pass
+        reports these conditions again.
+
+    (b) How this was probed: on 2026-10-24 main()
+        was run against isolated temp dirs for
+        list / number / string / null / bool /
+        float manifests, number / string / null /
+        bool / float / list / empty readings files
+        and non-number field readings, malformed
+        readings / manifest files with a pre-state
+        present, a junk-carrying pre-state (a
+        matching fingerprint, a non-string
+        fingerprint value, a non-string key and an
+        extra top-level key) and a wrong-fingerprint
+        and a non-dict-active pre-state, broken-
+        JSON / list / string / null / number / bool
+        state files, a directory as the state path
+        (hot and quiet passes), live mode with
+        read_board() stubbed while disk_mount was
+        varied through number / empty-string /
+        null / list / float / bool / a custom path /
+        absent / a non-dict tunables field, a
+        multi-signal readings file filed and then
+        re-filed against its own written state,
+        and --local-dir with the secret env var
+        unset and empty (hot and quiet passes, the
+        alert case's state file compared byte-for-
+        byte), with a genuine secret, with a custom
+        --secret-env and --key-id, and with a
+        closed --local-port.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. Every non-dict manifest reads
+        the documented defaults (80 / 90 / 10,
+        sensor pi_health) and files the hot
+        reading's board_overheating at high exactly
+        like the genuine manifest. Every non-dict
+        readings file, an empty readings dict and
+        readings whose fields are the wrong type
+        (including throttled the bool True) are a
+        no-signal pass -- rc 0, nothing filed, and
+        an empty active state written (decide()
+        reads non-dict readings as {}). A malformed
+        readings or manifest file is rc 2 with a
+        pre-state file left untouched. The junk
+        pre-state's exact fingerprint suppresses
+        the hot signal while _clean_state() drops
+        its non-string keys and values and the
+        extra top-level key (the written state is
+        exactly the firing fingerprint alone); a
+        wrong fingerprint refiles, and a non-dict
+        active field reads as fresh. Broken-JSON,
+        list, string, null, number and bool state
+        files read as a fresh state and file.
+        A directory as the state path is rc 2: a
+        hot pass prints its payload first, then
+        the state write fails; a quiet pass prints
+        nothing and still answers rc 2. Live mode
+        with read_board() stubbed behaves exactly
+        like --readings mode, and disk_mount reads
+        as "/" for every unusable shape and for a
+        non-dict tunables field, while a genuine
+        path reaches read_board() verbatim. A
+        multi-signal readings file files all five
+        signals in sorted state-key order
+        (overheating, both disk mounts, memory,
+        undervoltage with throttled decoded as
+        0x50005), and the identical readings
+        against the written state file nothing.
+        --local-dir with no secret in the env var
+        (unset or empty) is rc 2 with the
+        no-signing-secret message and the state
+        file left byte-identical when an alert was
+        pending, and no state file created on a
+        quiet pass -- the secret gate fires even
+        with zero alerts, before any state is
+        written. With a genuine secret the hot
+        alert is signed and dropped into
+        <base>/local-inbox (kind sensor_alert,
+        this sense's name, board_overheating at
+        high, a sig field), rc is 0 and the state
+        IS written; a custom --secret-env name and
+        --key-id are honored verbatim; a genuine
+        secret on a quiet pass is rc 0 with the
+        state written and nothing dropped. A
+        closed --local-port makes the delivery
+        fail per-alert: rc 2, the not-delivered
+        message names the count, and the state
+        file is left byte-identical so the
+        condition is reported again next pass.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the readings above
+        keep matching the docs. If a shape above
+        ever stops behaving as documented, this test
+        is the failing record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "pi-health",
+            "pi_health.py")
+        spec = importlib.util.spec_from_file_location(
+            "pi_health_main_modes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _gen(self):
+        return {"name": "pi_health", "tunables": {
+            "temp_high_c": 80, "disk_high_pct": 90,
+            "mem_avail_low_pct": 10, "disk_mount": "/"}}
+
+    def _hot(self):
+        return {"temp_c": 84.1, "throttled": None,
+                "disk_pct": {"/": 72.0},
+                "mem_avail_pct": 41.5}
+
+    def _fp_hot(self):
+        return json.dumps(
+            {"temp_c": 84.1, "threshold_c": 80.0},
+            sort_keys=True)
+
+    def _hot_state(self):
+        return {"active": {
+            "board_overheating": self._fp_hot()}}
+
+    _READINGS = object()
+
+    def _main(self, mod, td, manifest_obj,
+              readings_obj=_READINGS, extra=(),
+              pre_state=None, pre_raw=None,
+              manifest_raw=None, readings_raw=None,
+              state_is_dir=False, live=None, env=None,
+              base=None):
+        import io
+        import os
+        from contextlib import redirect_stderr, redirect_stdout
+        from unittest import mock
+        man = os.path.join(td, "m.json")
+        rd = os.path.join(td, "r.json")
+        st = td if state_is_dir else os.path.join(td, "s.json")
+        with open(man, "w", encoding="utf-8") as fh:
+            if manifest_raw is not None:
+                fh.write(manifest_raw)
+            else:
+                json.dump(manifest_obj, fh)
+        args = ["--manifest", man, "--state", st]
+        if live is None:
+            with open(rd, "w", encoding="utf-8") as fh:
+                if readings_raw is not None:
+                    fh.write(readings_raw)
+                else:
+                    json.dump(
+                        self._hot()
+                        if readings_obj is self._READINGS
+                        else readings_obj, fh)
+            args += ["--readings", rd]
+        before = None
+        if not state_is_dir:
+            if pre_raw is not None:
+                with open(st, "w", encoding="utf-8") as fh:
+                    fh.write(pre_raw)
+            elif pre_state is not None:
+                with open(st, "w", encoding="utf-8") as fh:
+                    json.dump(pre_state, fh)
+            if os.path.isfile(st):
+                with open(st, encoding="utf-8") as fh:
+                    before = fh.read()
+        clean = {k: v for k, v in os.environ.items()
+                 if k not in ("HOMING_PIGEON_SENSOR_SECRET",
+                              "PI_HUNT_SECRET")}
+        if env:
+            clean.update(env)
+        patches = [mock.patch.dict(os.environ, clean, clear=True)]
+        calls = []
+        if live is not None:
+            def fake_read_board(mount="/"):
+                calls.append(mount)
+                return live
+            patches.append(mock.patch.object(
+                mod, "read_board", side_effect=fake_read_board))
+        for patch in patches:
+            patch.start()
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with redirect_stdout(out), redirect_stderr(err):
+                rc = mod.main(args + [
+                    (base if a == "@BASE@" else a)
+                    for a in extra])
+        finally:
+            for patch in patches:
+                patch.stop()
+        state = None
+        after = None
+        if not state_is_dir and os.path.isfile(st):
+            with open(st, encoding="utf-8") as fh:
+                after = fh.read()
+            state = json.loads(after)
+        inbox = []
+        if base is not None:
+            ib = os.path.join(base, "local-inbox")
+            if os.path.isdir(ib):
+                for name in sorted(os.listdir(ib)):
+                    with open(os.path.join(ib, name),
+                              encoding="utf-8") as fh:
+                        inbox.append(json.load(fh))
+        return rc, out.getvalue(), err.getvalue(), state, \
+            before, after, inbox, calls
+
+    def test_main_manifest_shapes(self):
+        mod = self._mod()
+        for raw in ["[1, 2]", "42", '"hi"', "null",
+                    "true", "2.5"]:
+            with self.subTest(manifest=raw):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, err, state, *_ = self._main(
+                        mod, td, None, manifest_raw=raw)
+                self.assertEqual(rc, 0)
+                self.assertIn('"board_overheating"', out)
+                self.assertIn('"high"', out)
+                self.assertEqual(state, self._hot_state())
+
+    def test_main_readings_shapes_and_bad_files(self):
+        mod = self._mod()
+        empty = {"active": {}}
+        for raw in ["42", '"hi"', "null", "true", "2.5",
+                    "[1, 2]", "{}", '{"temp_c": "x"}',
+                    '{"disk_pct": "x"}',
+                    '{"throttled": true}']:
+            with self.subTest(readings=raw):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, err, state, *_ = self._main(
+                        mod, td, self._gen(),
+                        readings_raw=raw)
+                self.assertEqual((rc, out), (0, ""))
+                self.assertEqual(state, empty)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, before, after, *_ = \
+                self._main(mod, td, self._gen(),
+                           readings_raw="{bad",
+                           pre_state=self._hot_state())
+            self.assertEqual(rc, 2)
+            self.assertIn("cannot read readings", err)
+            self.assertEqual(after, before)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, before, after, *_ = \
+                self._main(mod, td, None,
+                           manifest_raw="{bad",
+                           pre_state={"active": {}})
+            self.assertEqual(rc, 2)
+            self.assertIn("cannot read manifest", err)
+            self.assertEqual(after, before)
+        # A multi-signal readings file files all five
+        # signals; the identical readings against the
+        # written state file nothing.
+        multi = {"temp_c": 90, "throttled": 327685,
+                 "disk_pct": {"/": 95.0, "/data": 99},
+                 "mem_avail_pct": 5}
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._gen(), readings_obj=multi)
+            self.assertEqual(rc, 0)
+            for signal in ["board_overheating",
+                           "disk_pressure",
+                           "memory_pressure",
+                           "undervoltage_detected"]:
+                self.assertIn(f'"{signal}"', out)
+            self.assertEqual(out.count("disk_pressure"), 2)
+            self.assertIn('"0x50005"', out)
+            self.assertEqual(sorted(state["active"]), [
+                "board_overheating", "disk_pressure:/",
+                "disk_pressure:/data", "memory_pressure",
+                "undervoltage_detected"])
+            rc, out, err, state2, *_ = self._main(
+                mod, td, self._gen(), readings_obj=multi,
+                pre_state=state)
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state2, state)
+
+    def test_main_junk_and_broken_prestate(self):
+        mod = self._mod()
+        junk = {"active": {
+            "board_overheating": self._fp_hot(),
+            "disk_pressure:/": 5, 7: "x",
+            "memory_pressure": "fp"}, "extra": 1}
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._gen(), pre_state=junk)
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, self._hot_state())
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._gen(),
+                pre_state={"active": {
+                    "board_overheating": "wrong"}})
+            self.assertEqual(rc, 0)
+            self.assertIn('"board_overheating"', out)
+            self.assertEqual(state, self._hot_state())
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._gen(),
+                pre_state={"active": "notdict"})
+            self.assertEqual(rc, 0)
+            self.assertIn('"board_overheating"', out)
+            self.assertEqual(state, self._hot_state())
+        for raw in ["{bad", "[1, 2]", '"hi"', "null",
+                    "42", "true"]:
+            with self.subTest(state_file=raw):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, err, state, *_ = self._main(
+                        mod, td, self._gen(), pre_raw=raw)
+                self.assertEqual(rc, 0)
+                self.assertIn('"board_overheating"', out)
+                self.assertEqual(state, self._hot_state())
+
+    def test_main_directory_state_live_and_mount_shapes(self):
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._gen(), state_is_dir=True)
+            self.assertEqual(rc, 2)
+            self.assertIn('"board_overheating"', out)
+            self.assertIn("cannot write state", err)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, *_ = self._main(
+                mod, td, self._gen(), readings_obj={},
+                state_is_dir=True)
+            self.assertEqual((rc, out), (2, ""))
+            self.assertIn("cannot write state", err)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, err, state, before, after, inbox, \
+                calls = self._main(
+                    mod, td, self._gen(), live=self._hot())
+            self.assertEqual(rc, 0)
+            self.assertIn('"board_overheating"', out)
+            self.assertEqual(state, self._hot_state())
+            self.assertEqual(calls, ["/"])
+        for mount, expected in [
+                (123, "/"), ("", "/"), (None, "/"),
+                ([], "/"), (2.5, "/"), (True, "/"),
+                ("/data", "/data")]:
+            with self.subTest(mount=mount):
+                man = {"name": "pi_health",
+                       "tunables": {"disk_mount": mount}}
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, err, state, before, after, \
+                        inbox, calls = self._main(
+                            mod, td, man, live=self._hot())
+                self.assertEqual(rc, 0)
+                self.assertEqual(calls, [expected])
+        for man in [{"name": "pi_health"},
+                    {"name": "pi_health", "tunables": "x"}]:
+            with self.subTest(manifest=man):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, err, state, before, after, \
+                        inbox, calls = self._main(
+                            mod, td, man, live=self._hot())
+                self.assertEqual(rc, 0)
+                self.assertEqual(calls, ["/"])
+                self.assertEqual(state, self._hot_state())
+
+    def test_main_local_dir_no_secret_gate(self):
+        import os
+        mod = self._mod()
+        for env in [None, {"HOMING_PIGEON_SENSOR_SECRET": ""}]:
+            with self.subTest(env=env):
+                with tempfile.TemporaryDirectory() as td:
+                    base = os.path.join(td, "base")
+                    rc, out, err, state, before, after, \
+                        inbox, calls = self._main(
+                            mod, td, self._gen(),
+                            extra=["--local-dir", "@BASE@"],
+                            pre_state={"active": {}},
+                            env=env, base=base)
+                    self.assertEqual(rc, 2)
+                    self.assertIn("no signing secret", err)
+                    self.assertEqual(after, before)
+                    self.assertEqual(inbox, [])
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox, \
+                calls = self._main(
+                    mod, td, self._gen(), readings_obj={},
+                    extra=["--local-dir", "@BASE@"],
+                    env=None, base=base)
+            self.assertEqual(rc, 2)
+            self.assertIn("no signing secret", err)
+            self.assertIsNone(state)
+            self.assertIsNone(after)
+
+    def test_main_local_dir_signed_drop_and_closed_port(self):
+        mod = self._mod()
+        import os
+        secret = {"HOMING_PIGEON_SENSOR_SECRET":
+                  "pi-hunt-secret"}
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox, \
+                calls = self._main(
+                    mod, td, self._gen(),
+                    extra=["--local-dir", "@BASE@"],
+                    env=secret, base=base)
+            self.assertEqual(rc, 0)
+            self.assertIn("filed board_overheating", err)
+            self.assertEqual(len(inbox), 1)
+            self.assertEqual(inbox[0]["kind"], "sensor_alert")
+            self.assertEqual(inbox[0]["signal"],
+                             "board_overheating")
+            self.assertEqual(inbox[0]["sensor"], "pi_health")
+            self.assertEqual(inbox[0]["severity"], "high")
+            self.assertIn("sig", inbox[0])
+            self.assertEqual(state, self._hot_state())
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox, \
+                calls = self._main(
+                    mod, td, self._gen(),
+                    extra=["--local-dir", "@BASE@",
+                           "--secret-env", "PI_HUNT_SECRET",
+                           "--key-id", "pi-key-1"],
+                    env={"PI_HUNT_SECRET": "other-secret"},
+                    base=base)
+            self.assertEqual(rc, 0)
+            self.assertEqual(len(inbox), 1)
+            self.assertEqual(inbox[0].get("key_id"),
+                             "pi-key-1")
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox, \
+                calls = self._main(
+                    mod, td, self._gen(), readings_obj={},
+                    extra=["--local-dir", "@BASE@"],
+                    env=secret, base=base)
+            self.assertEqual((rc, err), (0, ""))
+            self.assertEqual(state, {"active": {}})
+            self.assertEqual(inbox, [])
+        with tempfile.TemporaryDirectory() as td:
+            base = os.path.join(td, "base")
+            rc, out, err, state, before, after, inbox, \
+                calls = self._main(
+                    mod, td, self._gen(),
+                    extra=["--local-dir", "@BASE@",
+                           "--local-port", "9"],
+                    pre_state={"active": {}},
+                    env=secret, base=base)
+            self.assertEqual(rc, 2)
+            self.assertIn("delivery failed for "
+                          "board_overheating", err)
+            self.assertIn("1 of 1 alert(s) not delivered",
+                          err)
+            self.assertEqual(after, before)
+
 if __name__ == "__main__":
 
     unittest.main()
