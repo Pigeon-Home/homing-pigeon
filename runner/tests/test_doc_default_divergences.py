@@ -14405,6 +14405,226 @@ class TestReleaseDropMaxHashMbFifteenShapes(unittest.TestCase):
 
 
 
+
+
+class TestZeroNegativeJobFuzzTunablesReadLiterallyInsteadOfDefault(unittest.TestCase):
+    """Divergence: a zero or negative job-fuzz
+    float tunable (corpus_max_age_days = 0 or -5,
+    filed_cooldown_sec = 0 or -5) is read literally
+    instead of falling back to the documented
+    defaults (30 days, 604800 seconds), so the
+    corpus age bound is silently disabled and an
+    already-filed finding refiles immediately.
+
+    (a) Doc claim (extensions/job-fuzz/README.md,
+        line 61): "Corpus bounds are both
+        operator-tunable: `corpus_max_jobs`
+        (default 200) and `corpus_max_age_days`
+        (default 30)"; and (line 113):
+        "`filed_cooldown_sec` (default 604800,
+        a week) is how long a finding that was
+        already filed stays quiet before the same
+        finding may file again". The same defaults
+        are in the module docstring in job_fuzz.py
+        (line 58: "(corpus_max_age_days, default
+        30)"; line 97: "may file again after
+        filed_cooldown_sec (default a week)") and
+        in extension.json tunables
+        (corpus_max_age_days 30,
+        filed_cooldown_sec 604800). Registry rows
+        "corpus_max_age_days (job-fuzz)" and
+        "filed_cooldown_sec (job-fuzz)": policy
+        default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How the bug was found: step 8 Target 5 --
+        the 51 extension tunables were covered
+        only for the shapes their named classes
+        exercised; these two rows' named class
+        (TestHugeIntJobFuzzFloatTunablesCrashInsteadOfDefault)
+        varied only the huge-int shape (plus the
+        non-finite controls). On 2026-10-24 this
+        tick probed decide() -- the pure decision
+        function -- with the table hunt's fifteen
+        shapes for each key. For
+        corpus_max_age_days the scenario is one
+        seed saved 40 days before the pass's
+        "now" (evicted exactly when the effective
+        age bound is under 40 days, as 30 is).
+        For filed_cooldown_sec the scenario is one
+        diverging outcome whose finding filed 100
+        seconds before "now", with its coverage
+        combination already known (suppressed
+        exactly when the effective cooldown
+        reaches across 100 seconds, as 604800
+        does).
+
+    (c) Behavior actually observed: thirteen
+        shapes read as the documented defaults for
+        both keys -- omitted, null, the empty
+        string, true, false, the explicit defaults
+        (30 / 604800), a numeric string, a
+        non-numeric string, a several-hundred-digit
+        integer, inf, -inf, NaN, and the wrong
+        containers (list and dict): the 40-day-old
+        seed is evicted and the recently filed
+        finding stays quiet. Zero and a negative
+        number do not: decide() computes
+        age_cap = _tunable(tunables,
+        "corpus_max_age_days", 30.0) * 86400.0 and
+        cooldown = _tunable(tunables,
+        "filed_cooldown_sec", 604800.0)
+        (job_fuzz.py lines 1121-1123), and
+        _tunable (lines 233-235) returns
+        float(value) whenever _is_number(value)
+        holds, with no requirement that the value
+        be positive -- the same decide() resets
+        its integer caps to their defaults when
+        they fall below 1 (corpus_cap,
+        distilled_cap, max_alerts), and sibling
+        readers require a positive value before
+        honoring a duration (falco-feed and
+        suricata-feed cooldowns, the job-watcher
+        failure window after its own fix for this
+        same shape). With age_cap <= 0 the
+        eviction guard `if age_cap > 0` never
+        runs, so a zero or negative
+        corpus_max_age_days disables the age bound
+        entirely; with cooldown <= 0 the test
+        now - last <= cooldown is never true, so a
+        zero or negative filed_cooldown_sec lets
+        every finding refile on the next pass.
+        Observed on 2026-10-24 against current
+        main: corpus_max_age_days 0 and -5
+        retained the 40-day-old seed where the
+        omitted tunable evicted it, and
+        filed_cooldown_sec 0 and -5 filed
+        variant_divergence for a finding filed
+        100 seconds earlier where the omitted
+        tunable filed nothing.
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    NOW = 1000 + 40 * 86400
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "job-fuzz",
+            "job_fuzz.py")
+        spec = importlib.util.spec_from_file_location(
+            "job_fuzz_zero_negative_hunt", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _corpus(self, mod, tunables):
+        seeds = [{"job_id": "old-job", "saved_at": 1000,
+                  "exit_code": 0}]
+        _alerts, state = mod.decide(
+            {"now": self.NOW, "seeds": seeds,
+             "outcomes": []},
+            {"name": "job_fuzz", "tunables": dict(tunables)},
+            {})
+        return sorted(state["corpus"])
+
+    def _cooldown_signals(self, mod, tunables, filed_age=100.0):
+        now = 2000000.0
+        key = "dv|j1|m1|nonzero"
+        state = {"filed": {key: now - filed_age},
+                 "novelty": ["m1|ran|nonzero"]}
+        readings = {"now": now, "idle": True, "seeds": [],
+                    "outcomes": [{
+                        "job_id": "j1", "mutator": "m1",
+                        "stage": "ran", "exit_code": 1,
+                        "orig_exit_code": 0}]}
+        alerts, _state = mod.decide(
+            readings,
+            {"name": "job_fuzz", "tunables": dict(tunables)},
+            state)
+        return [a["signal"] for a in alerts]
+
+    _SHAPES = [
+        ("omitted", None), ("null", None),
+        ("empty-string", ""), ("true", True),
+        ("false", False), ("zero", 0),
+        ("negative", -5),
+        ("numeric-string", "45"), ("non-numeric-string", "bogus"),
+        ("huge-int", 10 ** 400), ("inf", float("inf")),
+        ("neg-inf", float("-inf")), ("nan", float("nan")),
+        ("wrong-container-list", ["x"]),
+        ("wrong-container-dict", {"x": 1}),
+    ]
+
+    def test_fifteen_shapes_age_reads_as_default_30(self):
+        mod = self._mod()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                tunables = {} if name == "omitted" else {
+                    "corpus_max_age_days": value}
+                self.assertEqual(
+                    self._corpus(mod, tunables), [])
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._corpus(
+                    mod, {"corpus_max_age_days": 30}), [])
+
+    def test_fifteen_shapes_cooldown_reads_as_default_604800(self):
+        mod = self._mod()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                tunables = {} if name == "omitted" else {
+                    "filed_cooldown_sec": value}
+                self.assertEqual(
+                    self._cooldown_signals(mod, tunables), [])
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._cooldown_signals(
+                    mod, {"filed_cooldown_sec": 604800}), [])
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        # A genuine larger age bound retains the
+        # 40-day-old seed; a bound under 40 evicts it.
+        self.assertEqual(
+            self._corpus(mod, {"corpus_max_age_days": 60}),
+            ["old-job"])
+        self.assertEqual(
+            self._corpus(mod, {"corpus_max_age_days": 45.5}),
+            ["old-job"])
+        self.assertEqual(
+            self._corpus(mod, {"corpus_max_age_days": 30.5}), [])
+        # A genuine short cooldown lets a finding
+        # filed 100 seconds ago refile, and still
+        # suppresses one filed 5 seconds ago.
+        self.assertEqual(
+            self._cooldown_signals(
+                mod, {"filed_cooldown_sec": 10}),
+            ["variant_divergence"])
+        self.assertEqual(
+            self._cooldown_signals(
+                mod, {"filed_cooldown_sec": 10}, filed_age=5.0),
+            [])
+        # The fractional boundary: 604800.5 reaches
+        # across a filing 604800.25 seconds old
+        # where the documented default does not.
+        self.assertEqual(
+            self._cooldown_signals(
+                mod, {"filed_cooldown_sec": 604800.5},
+                filed_age=604800.25),
+            [])
+        self.assertEqual(
+            self._cooldown_signals(
+                mod, {}, filed_age=604800.25),
+            ["variant_divergence"])
+
 if __name__ == "__main__":
 
     unittest.main()
