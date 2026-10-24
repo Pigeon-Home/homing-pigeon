@@ -15527,6 +15527,162 @@ class TestInferenceConfigMaxAnswerCharsFifteenShapes(unittest.TestCase):
 
 
 
+class TestFailedLoginWatchBurstCountFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the failed-login-watch
+    burst_count row itself varied with the fifteen
+    shapes at decide() level (step-8 Target 5,
+    extension-tunable table). Its sibling window_sec
+    was walked the same way in
+    TestFailedLoginWatchWindowSecFifteenShapes; this
+    key's own full shape table had never been walked
+    (its named class, TestInfiniteFailedLoginBurst
+    CountDefaultsTo5, exercised only the non-finite
+    family plus genuine controls).
+
+    (a) Doc claim (extensions/failed-login-watch/
+        README.md, line 37): "One source accumulates
+        at least the `burst_count` tunable (default 5)
+        failures inside the trailing `window_sec`
+        (default 600)". The manifest ships the same
+        default (extension.json: "burst_count": 5).
+        Registry row "burst_count (failed-login-
+        watch)" (default 5): policy default under
+        Decision 1 -- a present-but-unusable value
+        reads as its documented default.
+
+    (b) How it was hunted: the reader is inline in
+        extensions/failed-login-watch/
+        failed_login_watch.py decide():
+        burst_count = int(burst_count) if
+        _is_number(burst_count) and burst_count >= 1
+        else 5, where _is_number accepts only a
+        finite int or float, never a bool, and an
+        int too large for a float is not a number
+        either. This tick probed decide() itself
+        with the fifteen shapes from the table hunt
+        -- omitted, null, empty string, true, false,
+        zero, negative, the documented default
+        written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, list, dict -- each against five
+        failures from one source 60s apart inside
+        the default window, plus genuine values at
+        their own boundaries. The observable is the
+        filed burst itself: its signal, the count in
+        its detail, and the effective window_sec.
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default 5: five failures file exactly one
+        login_failure_burst with count 5 and
+        window_sec 600. Zero and negative read as
+        the default because this reader requires
+        burst_count >= 1; numeric strings are not
+        parsed ("5" reads as the default; the
+        _is_number isinstance gate); the huge-int
+        reads as the default because _is_number
+        rejects an int too large for a float; and
+        +inf no longer crashes decide() -- the
+        OverflowError recorded by the row's named
+        non-finite class no longer occurs on current
+        main, because _is_number now excludes
+        non-finite values. Genuine values are
+        honored exactly: 1 files at the first
+        failure, 2 files at the second and stays
+        silent with a single failure's worth of
+        events below it (3 with only two events
+        files nothing), 6 files at the sixth and
+        stays silent at five, and fractional values
+        truncate via int() (5.9 files at five, 2.9
+        files at two). Observed on 2026-10-24
+        against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented default and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "failed-login-watch",
+            "failed_login_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "failed_login_watch_burst_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _probe(self, mod, tunables, n_events=5, spacing=60):
+        events = [{"ts": 1000.0 + i * spacing,
+                   "kind": "fail", "source": "192.0.2.10",
+                   "user": "root"} for i in range(n_events)]
+        readings = {"now": 1000.0 + (n_events - 1) * spacing,
+                    "events": events}
+        alerts, _new_state = mod.decide(
+            readings,
+            {"name": "failed_login_watch",
+             "tunables": tunables}, {})
+        return [(a["signal"], a["detail"].get("count"),
+                 a["detail"].get("window_sec")) for a in alerts]
+
+    def test_fifteen_shapes_read_as_the_default(self):
+        mod = self._mod()
+        burst = [("login_failure_burst", 5, 600)]
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._probe(mod, {}), burst)
+        unusable = [None, "", True, False, 0, -5,
+                    "5", "bogus", 10 ** 400,
+                    float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._probe(mod, {"burst_count": value}),
+                    burst)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._probe(mod, {"burst_count": 5}), burst)
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        # Genuine 1 and 2 file at their own counts.
+        self.assertEqual(
+            self._probe(mod, {"burst_count": 1}),
+            [("login_failure_burst", 1, 600)])
+        self.assertEqual(
+            self._probe(mod, {"burst_count": 2}),
+            [("login_failure_burst", 2, 600)])
+        self.assertEqual(
+            self._probe(mod, {"burst_count": 2}, n_events=2),
+            [("login_failure_burst", 2, 600)])
+        # A genuine 3 stays silent with only two events,
+        # and a genuine 6 needs all six.
+        self.assertEqual(
+            self._probe(mod, {"burst_count": 3}, n_events=2),
+            [])
+        self.assertEqual(
+            self._probe(mod, {"burst_count": 6}, n_events=6),
+            [("login_failure_burst", 6, 600)])
+        self.assertEqual(
+            self._probe(mod, {"burst_count": 6}, n_events=5),
+            [])
+        # Fractional values truncate via int().
+        self.assertEqual(
+            self._probe(mod, {"burst_count": 5.9}),
+            [("login_failure_burst", 5, 600)])
+        self.assertEqual(
+            self._probe(mod, {"burst_count": 2.9}, n_events=2),
+            [("login_failure_burst", 2, 600)])
+
+
 
 if __name__ == "__main__":
 
