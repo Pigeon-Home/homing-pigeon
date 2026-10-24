@@ -42,6 +42,7 @@ REGISTERED = {
     "chmod behavior differs on Windows": "run on POSIX",
     "console behavior differs on Windows": "run on POSIX",
     "execute_job fixtures are POSIX shell": "run on POSIX",
+    "exec jobs are POSIX sh scripts": "run on POSIX",
     "loop cycles are POSIX sh scripts":
         "test_campaign_loop_cycles; run on ubuntu and macOS",
     "loop variants are POSIX sh scripts":
