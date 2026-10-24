@@ -35863,6 +35863,689 @@ class TestTripwireFilesStateAndMainFifteenShapes(unittest.TestCase):
             self.assertEqual(rc, 2)
             self.assertIn("file_appeared", out)
 
+class TestResourceSentinelReadingsStateAndMainFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: resource-sentinel's
+    sample / state cleaning, decide() rate-and-trend
+    surface, read_live() counter snapshot and main()
+    in --readings mode varied with the fifteen
+    shapes for the first time (step-8 Target 5 /
+    family (b) -- resource-sentinel's earlier
+    classes cover its tunables at the _tunable
+    reader, its sample-count readers and the
+    non-finite crash family; the sample rows,
+    _clean_state(), the four signals' gates,
+    fingerprint dedup, read_live() and main() had
+    no fifteen-shapes class before this one).
+
+    (a) Doc claims: the module docstring states
+    read_live() is the only function that touches
+    the machine, decide() is pure (readings plus
+    manifest plus last pass's state, out come
+    alerts and the new state), current time
+    arrives as readings["now"], a source the
+    machine does not expose reports None which
+    never yields a signal and is never an error,
+    and a signal fires when its condition first
+    holds, again when its headline metric moves
+    to a coarser bucket, stays quiet while the
+    condition holds steady, and files fresh when
+    it clears and returns. The README states the
+    four signals and their defaults
+    (cpu_saturation_sustained at cpu_high_pct 95,
+    disk_fill_velocity at disk_fill_gb_per_hour
+    10, process_storm at process_growth 200,
+    memory_exhaustion_trend at or under
+    mem_floor_pct 15 after a drop of at least
+    mem_drop_points 25 with at most one small
+    rise), and that a signal needs at least
+    min_samples samples spanning min_span_sec
+    inside window_sec before it can fire at all.
+    extension.json ships window_sec 1800,
+    min_span_sec 600, min_samples 4, max_samples
+    240 and disk_mount "/".
+
+    (b) How this was probed: on 2026-10-24
+    _clean_sample(), _clean_state(), decide(),
+    read_live() and main() were probed with the
+    table hunt's fifteen shapes (omitted-
+    equivalent empty list, null, empty string,
+    true, false, zero, negative, numeric string,
+    non-numeric string, huge-int (10**400), inf,
+    -inf, NaN, list, dict) at every field: each
+    sample row position and row length / type,
+    the state object and its samples and fired
+    fields, the readings object, its now field
+    and each of its five counters, the manifest,
+    its tunables and name, every tunable
+    (including genuine 0, 1, 2, 2.9, 10, 899,
+    900 and 901), the four signals' individual
+    gates (zero CPU delta, a disk gain, non-None
+    count / memory tallies below min_samples,
+    one versus two memory rises), fingerprint
+    dedup and clearing, window pruning and
+    max_samples truncation, read_live()'s
+    disk_mount tunable against the real machine,
+    and main() in --readings mode against temp
+    manifests, readings and state files,
+    including missing, malformed, list-shaped
+    and unwritable files.
+
+    (c) Behavior actually observed: NO
+    divergence in this class. _clean_sample()
+    accepts only a list or tuple of exactly six
+    entries whose first entry is a usable finite
+    number (zero and a negative kept as floats;
+    every other shape drops the whole row); the
+    other five positions read every unusable
+    shape as None and keep a usable number as a
+    float. _clean_state() reads every non-dict
+    state as fresh, cleans the samples list row
+    by row (every non-list samples shape reads
+    as no samples), and keeps only the fired
+    entries whose key and value are both
+    strings. decide() reads every non-dict
+    readings shape and every unusable now as no
+    new sample: the cleaned samples are kept
+    unpruned, nothing fires, and the returned
+    fired map is empty (a previously firing
+    signal's fingerprint is forgotten). A
+    usable now that is not newer than the last
+    sample (equal or older) appends nothing yet
+    still judges the existing window, so all
+    four signals can fire from state alone.
+    An appended sample converts each counter
+    through the same usable-number rule
+    (strings are not parsed; zero and a
+    negative are kept literally). With four
+    samples spanning 900s (CPU busy 100%, disk
+    losing 10 GiB per 300s, process count
+    100 -> 400, memory 40 -> 10) all four
+    signals fire in sorted order with the
+    documented severities (high, high, medium,
+    medium), details and fingerprints
+    cpu:100, disk:120, mem:10, procs:300; a
+    second pass whose CPU and disk buckets are
+    unchanged files only the signals whose
+    bucket moved (memory and process), and a
+    pass where no condition holds returns an
+    empty fired map. The gates are per-signal:
+    a zero CPU total delta files no CPU signal,
+    a disk gain files no disk signal, the
+    process signal needs at least min_samples
+    non-None counts, the memory signal needs
+    at least min_samples non-None memory
+    values, at most one rise over 0.5 points
+    (one rise fires, two block), the last
+    memory value at or under the floor, and a
+    drop measured from the first non-None
+    memory value. The tunables read through
+    _tunable: every unusable shape reads as
+    the documented default for every key;
+    window_sec at or under zero also reads as
+    1800, a genuine small window (2, 2.9, 10)
+    prunes the window to the newest sample so
+    nothing fires; min_span_sec is literal
+    (901 blocks a 900s span, 900 passes, zero
+    and a negative pass); min_samples is
+    int-truncated and clamped to at least 2
+    (0, -5, 1, 2 and 2.9 all let a two-sample
+    window fire, 3 blocks it, an unusable
+    shape reads as the default 4 and blocks
+    it); max_samples is int-truncated, raised
+    to min_samples when lower, and truncates
+    the sample list to the newest entries
+    even on a pass with no usable now;
+    mem_floor_pct is literal (genuine 0, -5,
+    2 and 2.9 all stop the memory signal for
+    a last value of 10 while the other three
+    signals still fire), and the threshold
+    tunables (cpu_high_pct,
+    disk_fill_gb_per_hour, process_growth,
+    mem_drop_points) read zero and a negative
+    literally, which the 100% / 120 GB/h /
+    300-growth / 30-point window still meets.
+    The manifest and tunables containers read
+    every non-dict shape as the defaults with
+    sensor "resource_sentinel"; the name reads
+    any non-empty string verbatim ("120"
+    included) and falls back to
+    "resource_sentinel" for every other shape.
+    read_live() returns exactly the six keys
+    with a float now for every manifest and
+    disk_mount shape; disk_mount reads every
+    non-string or empty shape as "/" (free
+    bytes reported), a genuine "/" reports
+    free bytes, and a non-empty string that
+    is not a real mount ("120", "bogus")
+    reports None, never an error. main()
+    returns 2 for a missing or malformed
+    manifest and for a missing or malformed
+    readings file, 0 for a list manifest, a
+    list or scalar readings file (decide()
+    reads it as no readings) and a malformed
+    or list state file (read as fresh), 0
+    with the four alerts printed as sorted-
+    key JSON lines and the fingerprint state
+    written for the firing pass, and 2 for an
+    unwritable state path. Observed on
+    2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+    divergence: it stays green as long as the
+    readings above keep holding. If a shape
+    ever stops behaving as described, this
+    test is the failing record of that change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+    _UNUSABLE = {"empty-list", "null", "empty-string",
+                 "true", "false", "numeric-string",
+                 "non-numeric-string", "huge-int", "inf",
+                 "-inf", "nan", "list", "dict"}
+    _SIGNALS = ["cpu_saturation_sustained",
+                "disk_fill_velocity",
+                "memory_exhaustion_trend",
+                "process_storm"]
+    _GIB = 1024.0 ** 3
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "resource-sentinel",
+            "resource_sentinel.py")
+        spec = importlib.util.spec_from_file_location(
+            "resource_sentinel_readings_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _manifest(self, **tunables):
+        return {"name": "resource_sentinel",
+                "tunables": dict(tunables)}
+
+    def _base(self):
+        gib = self._GIB
+        return [[1000.0 + i * 300, 1000 + i * 1000, 500,
+                 100 * gib - i * 10 * gib, 100 + i * 100,
+                 40 - i * 10] for i in range(4)]
+
+    def _state(self, samples=None, fired=None):
+        return {"samples": self._base() if samples is None
+                else samples, "fired": {} if fired is None
+                else fired}
+
+    def test_clean_sample_fifteen_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(kind="first", shape=name):
+                got = mod._clean_sample(
+                    [value, 1, 2, 3, 4, 5])
+                if name in ("zero", "negative"):
+                    self.assertEqual(
+                        got, [float(value), 1.0, 2.0, 3.0,
+                              4.0, 5.0])
+                else:
+                    self.assertIsNone(got)
+            with self.subTest(kind="other", shape=name):
+                got = mod._clean_sample(
+                    [1000.0, value, 2, 3, 4, 5])
+                expected = float(value) if name in (
+                    "zero", "negative") else None
+                self.assertEqual(
+                    got, [1000.0, expected, 2.0, 3.0, 4.0, 5.0])
+        self.assertIsNone(mod._clean_sample([1, 2, 3]))
+        self.assertIsNone(mod._clean_sample([1, 2, 3, 4, 5, 6, 7]))
+        self.assertIsNone(mod._clean_sample("123456"))
+        self.assertIsNone(mod._clean_sample({"a": 1}))
+        self.assertEqual(
+            mod._clean_sample((1000, 1, 2, 3, 4, 5)),
+            [1000.0, 1.0, 2.0, 3.0, 4.0, 5.0])
+
+    def test_clean_state_fifteen_shapes(self):
+        mod = self._module()
+        fresh = {"samples": [], "fired": {}}
+        for name, value in self._SHAPES:
+            with self.subTest(kind="state", shape=name):
+                self.assertEqual(mod._clean_state(value), fresh)
+            with self.subTest(kind="samples", shape=name):
+                self.assertEqual(mod._clean_state(
+                    {"samples": value, "fired": {}}), fresh)
+            with self.subTest(kind="fired", shape=name):
+                self.assertEqual(mod._clean_state(
+                    {"samples": [], "fired": value}), fresh)
+        self.assertEqual(mod._clean_state({
+            "samples": [], "fired": {"a": "x", "b": 1, 1: "x",
+                                     "c": None, "d": "y"}}),
+            {"samples": [], "fired": {"a": "x", "d": "y"}})
+        self.assertEqual(mod._clean_state({
+            "samples": [[1000, 1, 2, 3, 4, 5], "junk",
+                        [1000, 1, 2], None],
+            "fired": {}}),
+            {"samples": [[1000.0, 1.0, 2.0, 3.0, 4.0, 5.0]],
+             "fired": {}})
+
+    def test_decide_baseline_and_dedup(self):
+        mod = self._module()
+        readings = {"now": 1900.0, "cpu_total": 5000,
+                    "cpu_idle": 500,
+                    "disk_free_bytes": 70 * self._GIB,
+                    "processes": 400, "mem_avail_pct": 0.0}
+        alerts, state = mod.decide(
+            readings, self._manifest(), self._state())
+        self.assertEqual([a["signal"] for a in alerts],
+                         self._SIGNALS)
+        self.assertEqual(
+            [(a["sensor"], a["severity"]) for a in alerts],
+            [("resource_sentinel", "high"),
+             ("resource_sentinel", "high"),
+             ("resource_sentinel", "medium"),
+             ("resource_sentinel", "medium")])
+        self.assertEqual(alerts[0]["detail"], {
+            "cpu_busy_pct": 100.0, "threshold_pct": 95.0,
+            "window_sec": 900})
+        self.assertEqual(alerts[0]["title"],
+                         "CPU held at 100% busy for 900s "
+                         "(limit 95%)")
+        self.assertEqual(alerts[1]["detail"], {
+            "gb_per_hour": 120.0, "threshold_gb_per_hour": 10.0,
+            "free_gb_now": 70.0, "window_sec": 900})
+        self.assertEqual(alerts[2]["detail"], {
+            "mem_avail_pct": 10.0, "floor_pct": 15.0,
+            "drop_points": 30.0, "window_sec": 900})
+        self.assertEqual(alerts[3]["detail"], {
+            "growth": 300, "threshold": 200,
+            "processes_now": 400, "window_sec": 900})
+        self.assertEqual(state["fired"], {
+            "cpu_saturation_sustained": "cpu:100",
+            "disk_fill_velocity": "disk:120",
+            "memory_exhaustion_trend": "mem:10",
+            "process_storm": "procs:300"})
+        self.assertEqual(len(state["samples"]), 4)
+        alerts2, state2 = mod.decide(
+            {"now": 2200.0, "cpu_total": 6000, "cpu_idle": 500,
+             "disk_free_bytes": 60 * self._GIB, "processes": 500,
+             "mem_avail_pct": 0.0}, self._manifest(), state)
+        self.assertEqual([a["signal"] for a in alerts2],
+                         ["memory_exhaustion_trend",
+                          "process_storm"])
+        self.assertEqual(state2["fired"], {
+            "cpu_saturation_sustained": "cpu:100",
+            "disk_fill_velocity": "disk:120",
+            "memory_exhaustion_trend": "mem:0",
+            "process_storm": "procs:400"})
+        self.assertEqual(len(state2["samples"]), 5)
+
+    def test_decide_no_new_sample_shapes(self):
+        mod = self._module()
+        fired = {"cpu_saturation_sustained": "cpu:100"}
+        for name, value in self._SHAPES:
+            with self.subTest(kind="readings", shape=name):
+                alerts, state = mod.decide(
+                    value, self._manifest(),
+                    self._state(fired=dict(fired)))
+                self.assertEqual(alerts, [])
+                self.assertEqual(len(state["samples"]), 4)
+                self.assertEqual(state["fired"], {})
+            with self.subTest(kind="now", shape=name):
+                alerts, state = mod.decide(
+                    {"now": value, "cpu_total": 9999},
+                    self._manifest(),
+                    self._state(fired=dict(fired)))
+                if name in ("zero", "negative"):
+                    # A usable now older than the last
+                    # sample appends nothing but still
+                    # judges the existing window.
+                    # (the CPU fingerprint already in the
+                    # state dedups that one alert)
+                    self.assertEqual(
+                        [a["signal"] for a in alerts],
+                        self._SIGNALS[1:])
+                    self.assertEqual(state["fired"], {
+                        "cpu_saturation_sustained": "cpu:100",
+                        "disk_fill_velocity": "disk:120",
+                        "memory_exhaustion_trend": "mem:10",
+                        "process_storm": "procs:300"})
+                else:
+                    self.assertEqual(alerts, [])
+                    self.assertEqual(state["fired"], {})
+                self.assertEqual(len(state["samples"]), 4)
+        alerts, state = mod.decide(
+            {"now": 500.0, "cpu_total": 1, "cpu_idle": 1,
+             "disk_free_bytes": 1, "processes": 1,
+             "mem_avail_pct": 99}, self._manifest(), self._state())
+        self.assertEqual([a["signal"] for a in alerts],
+                         self._SIGNALS)
+        self.assertEqual(len(state["samples"]), 4)
+
+    def test_decide_appended_counter_shapes(self):
+        mod = self._module()
+        fields = ["cpu_total", "cpu_idle", "disk_free_bytes",
+                  "processes", "mem_avail_pct"]
+        for field in fields:
+            for name, value in self._SHAPES:
+                with self.subTest(field=field, shape=name):
+                    readings = {"now": 2000.0, "cpu_total": 10000,
+                                "cpu_idle": 100,
+                                "disk_free_bytes": 0,
+                                "processes": 500,
+                                "mem_avail_pct": 10.0}
+                    readings[field] = value
+                    _, state = mod.decide(
+                        readings, self._manifest(),
+                        {"samples": [], "fired": {}})
+                    sample = state["samples"][0]
+                    self.assertEqual(sample[0], 2000.0)
+                    got = sample[fields.index(field) + 1]
+                    if name in ("zero", "negative"):
+                        self.assertEqual(got, float(value))
+                    else:
+                        self.assertIsNone(got)
+
+    def test_decide_manifest_and_name_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(kind="manifest", shape=name):
+                alerts, state = mod.decide(
+                    {"now": 2000.0}, value,
+                    {"samples": [], "fired": {}})
+                self.assertEqual(alerts, [])
+                self.assertEqual(len(state["samples"]), 1)
+            with self.subTest(kind="tunables", shape=name):
+                alerts, _ = mod.decide(
+                    {"now": 1900.0},
+                    {"name": "resource_sentinel",
+                     "tunables": value}, self._state())
+                self.assertEqual([a["signal"] for a in alerts],
+                                 self._SIGNALS)
+            with self.subTest(kind="name", shape=name):
+                alerts, _ = mod.decide(
+                    {"now": 1900.0},
+                    {"name": value, "tunables": {}},
+                    self._state())
+                expected = value if name in (
+                    "numeric-string", "non-numeric-string") \
+                    else "resource_sentinel"
+                self.assertEqual(
+                    {a["sensor"] for a in alerts}, {expected})
+
+    def test_decide_window_span_and_sample_gates(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(kind="window", shape=name):
+                alerts, state = mod.decide(
+                    {"now": 1900.0},
+                    self._manifest(window_sec=value),
+                    self._state())
+                self.assertEqual([a["signal"] for a in alerts],
+                                 self._SIGNALS)
+                self.assertEqual(len(state["samples"]), 4)
+        for value in (2, 2.9, 10):
+            with self.subTest(kind="window-genuine", value=value):
+                alerts, state = mod.decide(
+                    {"now": 2200.0, "cpu_total": 6000,
+                     "cpu_idle": 500, "processes": 500,
+                     "disk_free_bytes": 60 * self._GIB,
+                     "mem_avail_pct": 0.0},
+                    self._manifest(window_sec=value),
+                    self._state())
+                self.assertEqual(alerts, [])
+                self.assertEqual(len(state["samples"]), 1)
+        for value, fires in [(901, False), (900, True),
+                             (899, True), (0, True), (-5, True)]:
+            with self.subTest(kind="min-span", value=value):
+                alerts, _ = mod.decide(
+                    {"now": 1900.0},
+                    self._manifest(min_span_sec=value),
+                    self._state())
+                self.assertEqual(
+                    [a["signal"] for a in alerts],
+                    self._SIGNALS if fires else [])
+        two = [[1000.0, 1000, 500, 100 * self._GIB, 100, 40],
+               [1900.0, 4000, 500, 70 * self._GIB, 400, 10]]
+        for value, fires in [(0, True), (-5, True), (1, True),
+                             (2, True), (2.9, True), (3, False),
+                             ("bogus", False), (None, False)]:
+            with self.subTest(kind="min-samples", value=value):
+                alerts, _ = mod.decide(
+                    {"now": 1900.0},
+                    self._manifest(min_samples=value),
+                    {"samples": [list(r) for r in two],
+                     "fired": {}})
+                self.assertEqual(
+                    [a["signal"] for a in alerts],
+                    self._SIGNALS if fires else [])
+        _, state = mod.decide(
+            {"now": None},
+            self._manifest(min_samples=2, max_samples=3),
+            {"samples": [[1000.0 + i * 300, 1, 2, 3, 4, 5]
+                         for i in range(5)], "fired": {}})
+        self.assertEqual([s[0] for s in state["samples"]],
+                         [1600.0, 1900.0, 2200.0])
+        alerts, state = mod.decide(
+            {"now": 1900.0}, self._manifest(max_samples=2),
+            self._state())
+        self.assertEqual([a["signal"] for a in alerts],
+                         self._SIGNALS)
+        self.assertEqual(len(state["samples"]), 4)
+
+    def test_decide_signal_specific_gates(self):
+        mod = self._module()
+        gib = self._GIB
+        same_cpu = [[1000.0, 1000, 500, 100 * gib, 100, 40],
+                    [1900.0, 1000, 500, 100 * gib, 100, 40]]
+        alerts, _ = mod.decide(
+            {"now": 1900.0}, self._manifest(),
+            {"samples": same_cpu, "fired": {}})
+        self.assertEqual(alerts, [])
+        gain = [[1000.0, 1000, 500, 100 * gib, 100, 40],
+                [1900.0, 2000, 500, 110 * gib, 100, 40]]
+        alerts, _ = mod.decide(
+            {"now": 1900.0}, self._manifest(min_samples=2),
+            {"samples": gain, "fired": {}})
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["cpu_saturation_sustained"])
+        few_counts = [[1000.0 + i * 300, 1000 + i * 1000, 500,
+                       100 * gib, None, 40 - i * 10]
+                      for i in range(4)]
+        few_counts[-1][4] = 500
+        alerts, _ = mod.decide(
+            {"now": 1900.0}, self._manifest(),
+            {"samples": few_counts, "fired": {}})
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["cpu_saturation_sustained",
+                          "memory_exhaustion_trend"])
+        few_mems = [[1000.0, 1000, 500, 100 * gib, 100, None],
+                    [1300.0, 2000, 500, 100 * gib, 100, 50],
+                    [1600.0, 3000, 500, 100 * gib, 100, 30],
+                    [1900.0, 4000, 500, 100 * gib, 100, 10]]
+        alerts, _ = mod.decide(
+            {"now": 1900.0}, self._manifest(),
+            {"samples": few_mems, "fired": {}})
+        self.assertNotIn("memory_exhaustion_trend",
+                         [a["signal"] for a in alerts])
+        for rises, fires in [(0, True), (1, True), (2, False)]:
+            with self.subTest(kind="mem-rises", rises=rises):
+                samples = [[1000.0 + i * 300, 1000, 500,
+                            100 * gib, 100, 40 - i * 10]
+                           for i in range(4)]
+                if rises >= 1:
+                    samples[1][5] = samples[0][5] + 1
+                if rises >= 2:
+                    samples[2][5] = samples[1][5] + 1
+                alerts, _ = mod.decide(
+                    {"now": 1900.0, "cpu_total": 2000,
+                     "cpu_idle": 500, "disk_free_bytes": 100 * gib,
+                     "processes": 100, "mem_avail_pct": 0.0},
+                    self._manifest(),
+                    {"samples": samples, "fired": {}})
+                self.assertEqual(
+                    "memory_exhaustion_trend" in
+                    [a["signal"] for a in alerts], fires)
+        for value in (0, -5, 2, 2.9):
+            with self.subTest(kind="mem-floor", value=value):
+                alerts, _ = mod.decide(
+                    {"now": 1900.0},
+                    self._manifest(mem_floor_pct=value),
+                    self._state())
+                self.assertEqual([a["signal"] for a in alerts],
+                                 ["cpu_saturation_sustained",
+                                  "disk_fill_velocity",
+                                  "process_storm"])
+        for key in ("cpu_high_pct", "disk_fill_gb_per_hour",
+                    "process_growth", "mem_drop_points"):
+            for value in (0, -5):
+                with self.subTest(kind="threshold", key=key,
+                                  value=value):
+                    alerts, _ = mod.decide(
+                        {"now": 1900.0},
+                        self._manifest(**{key: value}),
+                        self._state())
+                    self.assertEqual(
+                        [a["signal"] for a in alerts],
+                        self._SIGNALS)
+        cleared = [[1000.0, 1000, 500, 100 * gib, 100, 90],
+                   [1900.0, 2000, 1500, 100 * gib, 100, 90]]
+        alerts, state = mod.decide(
+            {"now": 1900.0}, self._manifest(min_samples=2),
+            {"samples": cleared,
+             "fired": {"cpu_saturation_sustained": "cpu:100"}})
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["fired"], {})
+
+    def test_read_live_mount_shapes(self):
+        import os
+        if os.name != "posix":
+            self.skipTest("POSIX only")
+        mod = self._module()
+        keys = {"now", "cpu_total", "cpu_idle",
+                "disk_free_bytes", "processes", "mem_avail_pct"}
+        for name, value in self._SHAPES:
+            with self.subTest(kind="mount", shape=name):
+                got = mod.read_live(
+                    {"tunables": {"disk_mount": value}})
+                self.assertEqual(set(got), keys)
+                self.assertIsInstance(got["now"], float)
+                if name in ("numeric-string",
+                            "non-numeric-string"):
+                    self.assertIsNone(got["disk_free_bytes"])
+                else:
+                    self.assertIsNotNone(got["disk_free_bytes"])
+            with self.subTest(kind="manifest", shape=name):
+                got = mod.read_live(value)
+                self.assertEqual(set(got), keys)
+                self.assertIsInstance(got["now"], float)
+        got = mod.read_live({"tunables": {"disk_mount": "/"}})
+        self.assertIsNotNone(got["disk_free_bytes"])
+        got = mod.read_live(
+            {"tunables": {"disk_mount": "/nonexistent-xyz"}})
+        self.assertIsNone(got["disk_free_bytes"])
+
+    def test_main_readings_mode(self):
+        import contextlib
+        import io
+        import json as _json
+        import os
+        import tempfile
+        mod = self._module()
+
+        def run(manifest, readings, state):
+            with tempfile.TemporaryDirectory() as td:
+                mp = os.path.join(td, "m.json")
+                rp = os.path.join(td, "r.json")
+                sp = os.path.join(td, "s.json")
+                if manifest != "MISSING":
+                    with open(mp, "w", encoding="utf-8") as fh:
+                        fh.write(manifest if isinstance(
+                            manifest, str) else _json.dumps(manifest))
+                if readings != "MISSING":
+                    with open(rp, "w", encoding="utf-8") as fh:
+                        fh.write(readings if isinstance(
+                            readings, str) else _json.dumps(readings))
+                if state is not None:
+                    with open(sp, "w", encoding="utf-8") as fh:
+                        fh.write(state if isinstance(
+                            state, str) else _json.dumps(state))
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out), \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    rc = mod.main(["--manifest", mp,
+                                   "--readings", rp,
+                                   "--state", sp])
+                written = None
+                if os.path.exists(sp):
+                    try:
+                        with open(sp, encoding="utf-8") as fh:
+                            written = _json.load(fh)
+                    except ValueError:
+                        written = "unparsable"
+                return rc, out.getvalue(), written
+
+        manifest = self._manifest()
+        readings = {"now": 2000.0, "cpu_total": 10000,
+                    "cpu_idle": 100, "disk_free_bytes": 0,
+                    "processes": 500, "mem_avail_pct": 10.0}
+        self.assertEqual(run("MISSING", readings, None)[0], 2)
+        self.assertEqual(run("{bad", readings, None)[0], 2)
+        self.assertEqual(run(manifest, "MISSING", None)[0], 2)
+        self.assertEqual(run(manifest, "{bad", None)[0], 2)
+        rc, out, written = run([], readings, None)
+        self.assertEqual(rc, 0)
+        self.assertEqual(written, {"fired": {}, "samples": [
+            [2000.0, 10000.0, 100.0, 0.0, 500.0, 10.0]]})
+        for bad_readings in ([], 5):
+            with self.subTest(kind="readings-shape",
+                              value=bad_readings):
+                rc, out, written = run(manifest, bad_readings, None)
+                self.assertEqual(rc, 0)
+                self.assertEqual(out, "")
+                self.assertEqual(written,
+                                 {"fired": {}, "samples": []})
+        for bad_state in ("{bad", []):
+            with self.subTest(kind="state-shape", value=bad_state):
+                rc, _, written = run(manifest, readings, bad_state)
+                self.assertEqual(rc, 0)
+                self.assertEqual(len(written["samples"]), 1)
+        rc, out, written = run(
+            manifest, {"now": 1900.0}, self._state())
+        self.assertEqual(rc, 0)
+        lines = out.strip().splitlines()
+        self.assertEqual(len(lines), 4)
+        self.assertEqual(
+            [_json.loads(line)["signal"] for line in lines],
+            self._SIGNALS)
+        self.assertEqual(written["fired"], {
+            "cpu_saturation_sustained": "cpu:100",
+            "disk_fill_velocity": "disk:120",
+            "memory_exhaustion_trend": "mem:10",
+            "process_storm": "procs:300"})
+        with tempfile.TemporaryDirectory() as td:
+            mp = os.path.join(td, "m.json")
+            rp = os.path.join(td, "r.json")
+            with open(mp, "w", encoding="utf-8") as fh:
+                _json.dump(manifest, fh)
+            with open(rp, "w", encoding="utf-8") as fh:
+                _json.dump(readings, fh)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                rc = mod.main(["--manifest", mp, "--readings", rp,
+                               "--state", os.path.join(
+                                   td, "nope", "s.json")])
+            self.assertEqual(rc, 2)
+            self.assertEqual(out.getvalue(), "")
+
 if __name__ == "__main__":
 
     unittest.main()
