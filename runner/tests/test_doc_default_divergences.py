@@ -12282,6 +12282,202 @@ class TestServiceWatchFlapWindowSecFifteenShapes(unittest.TestCase):
             [("service_flapping", 3600.5, 4)])
 
 
+class TestTrainingWatchTunablesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the training-watch
+    _tunable reader family (step-8 Target 5,
+    extension-tunable table probe) -- the fifteen
+    shapes at reader level for all six registry rows.
+
+    (a) Doc claims (extensions/training-watch/
+        README.md): "GPU temperature reaches
+        `gpu_temp_high_c` (default 85)" (line 21);
+        "GPU memory reaches `gpu_mem_high_pct` of
+        the card's total (default 95)" (line 22);
+        loss_points default 5 (line 56);
+        crash_window_lines default 100 (line 68);
+        "loss_history (default 200)" and
+        "max_checkpoints (default 200)" (line 137).
+        The manifest ships the same defaults
+        (extension.json tunables). Registry rows
+        gpu_temp_high_c 85, gpu_mem_high_pct 95,
+        loss_points 5, loss_history 200,
+        crash_window_lines 100 and max_checkpoints
+        200 (training-watch): policy default under
+        Decision 1 -- a present-but-unusable value
+        reads as its documented default.
+
+    (b) How it was hunted: step-8 artifact Target 5
+        says the 51 extension tunables have no
+        reader-level table probe; their readers are
+        local helper families, one adapter per
+        family. This tick took the training-watch
+        _tunable family and probed
+        extensions/training-watch/
+        training_watch.py:_tunable directly with
+        the fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false,
+        zero, negative, the documented default
+        written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong containers (list and
+        dict) -- for all six keys, plus genuine
+        values and decide()-level spot checks (a
+        hot GPU at 90C / 96% memory, a cool GPU at
+        50C / 50%, and empty readings under every
+        integer-tunable shape).
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the
+        documented default for all six keys:
+        omitted, null, empty string, true, false
+        (booleans never count as numbers), numeric
+        and non-numeric strings (this reader does
+        not parse strings), huge-int, inf, -inf,
+        NaN, list and dict all return the default,
+        because _is_number now excludes booleans,
+        non-finite floats and ints too large for a
+        float. Zero and negative values are honored
+        literally at reader level (0.0 / -5.0 for
+        every key; the _tunable reader carries no
+        floor), so at decide() level a cool 50C GPU
+        files gpu_overheating under
+        gpu_temp_high_c 0 or -5. Genuine numbers
+        are honored exactly, including fractional
+        values (45, 10.5, 2.9). At decide() level
+        the integer tunables carry their own
+        guards (loss_points below 2 reads as 5,
+        crash_window_lines and max_checkpoints
+        below 1 read as their defaults, and
+        loss_history below loss_points is raised
+        to loss_points), and no integer shape --
+        zero, negative, non-finite, huge-int,
+        string or container -- crashes decide() on
+        empty readings. The non-finite shapes the
+        earlier class
+        TestNonFiniteTrainingWatchTunablesDefault
+        InsteadOfSilenceOrCrash recorded as a
+        divergence now read as the defaults too
+        (that class passes on current main).
+        Observed on 2026-10-24 against current
+        main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented defaults and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "training-watch",
+            "training_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "training_watch_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    ROWS = [("gpu_temp_high_c", 85.0),
+            ("gpu_mem_high_pct", 95.0),
+            ("loss_points", 5),
+            ("loss_history", 200),
+            ("crash_window_lines", 100),
+            ("max_checkpoints", 200)]
+
+    def test_fifteen_shapes_for_all_six_rows(self):
+        mod = self._mod()
+        unusable = [None, "", True, False, "45", "bogus",
+                    10 ** 400, float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for key, default in self.ROWS:
+            self.assertEqual(
+                mod._tunable({}, key, default), default)
+            for value in unusable:
+                with self.subTest(key=key, value=repr(value)):
+                    self.assertEqual(
+                        mod._tunable({key: value}, key, default),
+                        default)
+            with self.subTest(key=key, shape="explicit-default"):
+                self.assertEqual(
+                    mod._tunable({key: default}, key, default),
+                    default)
+
+    def test_zero_and_negative_are_honored_at_reader_level(self):
+        mod = self._mod()
+        for key, default in self.ROWS:
+            for value, want in ((0, 0.0), (-5, -5.0)):
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(
+                        mod._tunable({key: value}, key, default),
+                        want)
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        for key, default in self.ROWS:
+            for value, want in ((45, 45.0), (10.5, 10.5),
+                                (2.9, 2.9), (1, 1.0)):
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(
+                        mod._tunable({key: value}, key, default),
+                        want)
+
+    def _signals(self, mod, tunables, gpu=None):
+        readings = {"now": 1792375113.0,
+                    "checkpoints": [], "log_lines": [],
+                    "run_alive": True}
+        if gpu is not None:
+            readings["gpu"] = gpu
+        manifest = {"name": "training_watch",
+                    "tunables": dict(tunables)}
+        alerts, _state = mod.decide(readings, manifest, {})
+        return [a["signal"] for a in alerts]
+
+    def test_decide_level_spot_checks(self):
+        mod = self._mod()
+        hot = {"temp_c": 90.0, "mem_used_mb": 960,
+               "mem_total_mb": 1000}
+        cool = {"temp_c": 50.0, "mem_used_mb": 500,
+                "mem_total_mb": 1000}
+        both = ["gpu_memory_pressure", "gpu_overheating"]
+        self.assertEqual(self._signals(mod, {}, hot), both)
+        self.assertEqual(self._signals(mod, {}, cool), [])
+        self.assertEqual(
+            self._signals(mod, {"gpu_temp_high_c": 95}, hot),
+            ["gpu_memory_pressure"])
+        self.assertEqual(
+            self._signals(
+                mod, {"gpu_temp_high_c": float("inf")}, hot),
+            both)
+        self.assertEqual(
+            self._signals(
+                mod, {"gpu_mem_high_pct": float("nan")}, hot),
+            both)
+        self.assertEqual(
+            self._signals(mod, {"gpu_temp_high_c": "95"}, hot),
+            both)
+        self.assertEqual(
+            self._signals(mod, {"gpu_temp_high_c": 0}, cool),
+            ["gpu_overheating"])
+        self.assertEqual(
+            self._signals(mod, {"gpu_temp_high_c": -5}, cool),
+            ["gpu_overheating"])
+        for key in ("loss_points", "loss_history",
+                    "crash_window_lines", "max_checkpoints"):
+            for value in (0, -5, 1, float("inf"),
+                          float("nan"), 10 ** 400, "45", ["x"]):
+                with self.subTest(key=key, value=repr(value)):
+                    self.assertEqual(
+                        self._signals(mod, {key: value}), [])
+
+
+
 if __name__ == "__main__":
 
     unittest.main()
