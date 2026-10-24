@@ -10125,6 +10125,138 @@ class TestWorkspaceRootSymlinkCountsWorkspaceFilesAsOutside(unittest.TestCase):
 
 
 
+class TestMaxResultViewCeilingShapesReadAsFull(unittest.TestCase):
+    """Second-run hunt coverage: the owner's ceiling
+    key max_result_view itself, varied for the first
+    time -- an unusable ceiling reads as the
+    documented default full.
+
+    (a) Doc claims (PROTOCOL.md, section 9, lines
+        537-541): "config.json gains `max_result_view`
+        (default `full`). The effective view is the
+        *narrower* of the job's request and the
+        runner's ceiling -- a job can never widen
+        disclosure beyond what the machine's owner
+        allows." The same key and set are stated in
+        docs/configuring-oracle.md (line 41):
+        "`max_result_view` -- the narrowest view the
+        runner will ever return (`full`, `redacted`,
+        `summary`, or `attested`). A job can request
+        a narrower view; it can never request a
+        wider one." Registry row "max_result_view":
+        enum, default full, policy default (Decision
+        1: a present-but-unusable value reads as its
+        documented default). PROTOCOL.md section 12
+        restates the property as non-escalation:
+        neither the job's result_policy nor any
+        query can widen disclosure past the owner's
+        max_result_view.
+
+    (b) How it was hunted: step-8 artifact Target 6
+        (core rows covered only for the shapes their
+        class exercised) names apply_result_policy's
+        view ranking as second-run core work. The
+        named class for this row,
+        TestUnrecognisedViewDefaultsToFull, varies
+        the JOB's view with no ceiling configured;
+        the ceiling key itself had never been
+        varied. On 2026-10-24 this tick probed
+        runner.runner.apply_result_policy with the
+        ceiling set to: omitted, None, the empty
+        string, unrecognised strings ("sideways",
+        "bogus"), case variants ("FULL", "Redacted"),
+        whitespace-padded forms (" full", "full "),
+        and non-strings (123, 0, True, a list, a
+        dict) -- each against a job requesting
+        full -- plus every valid ceiling against
+        every valid job view (the full 4x4 matrix),
+        and unusable ceilings against narrower job
+        views (redacted, summary, attested).
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable ceiling reads as the
+        documented default full: a job requesting
+        full returns view "full" with stdout and
+        stderr carried and retain False (a
+        non-string ceiling is coerced to "full" by
+        the reader; an unrecognised string ranks
+        with full, so the ceiling string itself
+        never survives as the effective view). The
+        4x4 matrix is exactly the documented
+        narrower-of rule: the effective view is
+        the narrower of the job's request and a
+        valid ceiling in every cell. An unusable
+        ceiling does not block a narrower job
+        view either: with the ceiling "sideways"
+        or "FULL", jobs requesting redacted,
+        summary or attested still return that
+        narrower view. Observed on 2026-10-24
+        against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the ceiling keeps
+        the documented default and the narrower-of
+        rule. If a shape above ever stops behaving
+        as PROTOCOL.md states, this test is the
+        failing record of that change.
+    """
+
+    def _apply(self, cfg, job_view):
+        from runner.runner import apply_result_policy
+        job = {"result_policy": {"view": job_view}}
+        exec_result = {"stdout": "hello-out",
+                       "stderr": "hello-err",
+                       "exit_code": 0,
+                       "stdout_truncated": False,
+                       "stderr_truncated": False}
+        return apply_result_policy(cfg, job, exec_result,
+                                   {}, False)
+
+    def test_unusable_ceiling_reads_as_documented_full(self):
+        bad = [None, "", "sideways", "bogus", "FULL",
+               "Redacted", " full", "full ", 123, 0,
+               True, ["redacted"], {"x": 1}]
+        for ceiling in bad:
+            with self.subTest(ceiling=repr(ceiling)):
+                result, retain = self._apply(
+                    {"max_result_view": ceiling}, "full")
+                self.assertEqual(result.get("view"), "full")
+                self.assertEqual(
+                    result.get("stdout"), "hello-out")
+                self.assertEqual(
+                    result.get("stderr"), "hello-err")
+                self.assertFalse(retain)
+        result, retain = self._apply({}, "full")
+        self.assertEqual(result.get("view"), "full")
+        self.assertFalse(retain)
+
+    def test_valid_ceilings_take_the_narrower_view(self):
+        order = ["attested", "summary", "redacted", "full"]
+        for ceiling in order:
+            for job_view in order:
+                want = order[min(order.index(ceiling),
+                                 order.index(job_view))]
+                with self.subTest(ceiling=ceiling,
+                                  job_view=job_view):
+                    result, retain = self._apply(
+                        {"max_result_view": ceiling}, job_view)
+                    self.assertEqual(
+                        result.get("view"), want)
+                    self.assertEqual(retain, want != "full")
+
+    def test_unusable_ceiling_keeps_narrower_job_views(self):
+        for ceiling in ("sideways", "FULL"):
+            for job_view in ("redacted", "summary",
+                             "attested"):
+                with self.subTest(ceiling=ceiling,
+                                  job_view=job_view):
+                    result, retain = self._apply(
+                        {"max_result_view": ceiling}, job_view)
+                    self.assertEqual(
+                        result.get("view"), job_view)
+                    self.assertTrue(retain)
+
+
 if __name__ == "__main__":
 
     unittest.main()
