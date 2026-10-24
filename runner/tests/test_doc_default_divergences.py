@@ -39726,6 +39726,516 @@ class TestZeekFeedParseTsCleanStateAndMainModesFifteenShapes(unittest.TestCase):
                       os.path.join(d, "missing.log")])
             self.assertEqual(rc, 2)
 
+class TestWazuhFeedParseTsCleanStateAndMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: wazuh-feed's
+    _parse_timestamp() timestamp reading,
+    parse_event() edge shapes beyond its basics,
+    _clean_state() called directly, and main() in
+    --readings and live modes varied with the
+    fifteen shapes for the first time (step-8
+    Target 5 / family (b) -- wazuh-feed's earlier
+    classes cover its episode_quiet_sec tunable,
+    its log_paths / read_new_events() tailing,
+    parse_event() basics and decide()'s event /
+    state cleaning; the timestamp reader called
+    directly, the state cleaner called directly,
+    and main()'s fixture mode and file-error
+    paths were never varied).
+
+    (a) Doc claims: the module docstring states
+        the manager writes ISO 8601 timestamps,
+        usually with a colon-less offset, that
+        parse_event() "answers None for anything
+        that is not that shape", that a missing
+        alerts file "is a quiet no-op, forever:
+        it yields no events, keeps its offset,
+        and is never an error", that the state
+        dict carries a "_reader" sub-dict which
+        main() owns and the decision code
+        preserves opaquely and ignores, and that
+        one fixture mode feeds decide() without
+        touching a live file: "--readings FILE
+        reads a readings dict ({"now", "events"})
+        from JSON". _parse_timestamp()'s own
+        docstring says a "Z" suffix and a colon
+        offset are accepted too, a timestamp with
+        no offset is read as UTC, and "a plain
+        number is already an epoch".
+        _is_number()'s docstring says infinity,
+        NaN and an integer too large for a float
+        are each "not a number" so the documented
+        default applies.
+
+    (b) How this was probed: on 2026-10-24
+        _parse_timestamp() was probed with the
+        fifteen shapes plus ISO variants
+        (colon-less, colon and Z offsets, no
+        offset, a space separator, surrounding
+        whitespace, a date-only string, an
+        invalid month, and numeric / non-finite
+        strings); parse_event() was probed with
+        the fifteen shapes at the line and with
+        genuine and edge JSON lines (int rule id,
+        digit-string and float levels, a bool id
+        or level, an empty id, a missing rule /
+        id / level, a non-dict rule, a junk
+        timestamp, non-string agent fields and a
+        mixed-type groups list); _clean_state()
+        was called directly with the fifteen
+        shapes at the state object, with mixed
+        episode entries, and with each shape at
+        its _reader field; main() was run against
+        temp manifests, readings files and state
+        files in --readings and live modes,
+        including missing, malformed, list-shaped
+        and unwritable files, a broken
+        pre-existing state, a repeat pass, and
+        live passes over a genuine alerts file
+        and over non-list / empty log_paths.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. _parse_timestamp() reads a
+        finite non-bool number as an epoch float
+        (zero and negatives included) and every
+        other fifteen shape as None -- numeric
+        strings included: "1000" and "1000.5"
+        answer None, unlike a plain number. The
+        ISO forms "+0000", "+00:00", "Z", no
+        offset and a space separator all read as
+        the same UTC epoch, surrounding
+        whitespace is stripped, a date-only
+        string reads as that midnight UTC, and
+        an invalid month, "inf" and junk strings
+        answer None. parse_event() answers None
+        for every non-string fifteen shape, for
+        non-JSON and non-dict JSON, for a
+        non-dict rule, and for a missing, empty
+        or bool rule id or a missing, bool,
+        negative-string or non-finite level; an
+        int rule id stringifies, a digit-string
+        level (whitespace stripped) parses, a
+        float level truncates through int()
+        (5.9 files as level 5), a junk or missing
+        timestamp yields an event whose ts is
+        None (the alert is still an alert),
+        non-string description / agent fields
+        clean to "", and a groups list keeps
+        only its string entries while a non-list
+        groups reads as []. _clean_state() reads
+        any non-dict state as a fresh
+        {"episodes": {}}, keeps an episode only
+        when its key is a string and its
+        last_seen a finite non-bool number (kept
+        as a float; filed_at kept as a float
+        when usable, else None; signal kept only
+        when a string, else ""), drops unknown
+        top-level keys, and preserves a dict
+        _reader verbatim while dropping a
+        non-dict one. main() in --readings mode
+        files a genuine high alert once (a repeat
+        pass with the saved state files nothing),
+        list-shaped or empty readings read as an
+        empty pass (rc 0, fresh state written), a
+        malformed pre-existing state reads as
+        fresh, a pre-existing _reader survives a
+        --readings pass verbatim, a list-shaped
+        manifest still files (sensor name and
+        tunables fall back), and a missing or
+        malformed readings file is rc 2; a
+        missing or malformed manifest is rc 2 in
+        every mode. Live mode over a missing
+        alerts file is a quiet rc 0 pass that
+        writes a state with an empty _reader;
+        over a genuine alerts file it files the
+        level-12 line, skips garbage and the
+        level-3 line, advances the saved offset
+        so a repeat pass files nothing, and a
+        non-list, empty or non-string-entry
+        log_paths falls back to the documented
+        default path (absent on this box, so
+        those passes file nothing, rc 0). An
+        unwritable state path (a path inside a
+        nonexistent directory, or the state path
+        itself a directory) is rc 2 with the
+        alerts still printed first. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        the readings above keep holding. If a
+        shape ever stops behaving as described,
+        this test is the failing record of that
+        change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -1), ("numeric-string", "5"),
+               ("junk-string", "x"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("neg-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", [1]), ("dict", {"a": 1})]
+
+    _MANIFEST = {"name": "wazuh_feed",
+                 "tunables": {
+                     "episode_quiet_sec": 3600,
+                     "log_paths": ["/nonexistent/alerts.json"],
+                     "poll_interval_sec": 60}}
+
+    _EVENT = {"ts": 1000.0, "level": 12,
+              "rule_id": "5710", "description": "d",
+              "groups": ["g"], "agent_name": "a1",
+              "agent_id": "001"}
+
+    _EPOCH = 1792324800.0  # 2026-10-18T12:00:00Z
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "wazuh-feed",
+            "wazuh_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "wazuh_feed_parse_ts_main_hunt", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_parse_timestamp_shapes_and_variants(self):
+        mod = self._module()
+        expected = {"zero": 0.0, "negative": -1.0}
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                if name in expected:
+                    self.assertEqual(
+                        mod._parse_timestamp(value),
+                        expected[name])
+                else:
+                    self.assertIsNone(
+                        mod._parse_timestamp(value))
+        for text in ("2026-10-18T12:00:00.000+0000",
+                     "2026-10-18T12:00:00Z",
+                     "2026-10-18T12:00:00+00:00",
+                     "2026-10-18T12:00:00",
+                     "2026-10-18 12:00:00+0000",
+                     " 2026-10-18T12:00:00Z "):
+            with self.subTest(text=text):
+                self.assertEqual(
+                    mod._parse_timestamp(text),
+                    self._EPOCH)
+        self.assertEqual(
+            mod._parse_timestamp("2026-10-18"),
+            1792281600.0)
+        for bad in ("2026-13-01T00:00:00Z", "1000",
+                    "1000.5", "inf", " "):
+            with self.subTest(bad=bad):
+                self.assertIsNone(
+                    mod._parse_timestamp(bad))
+        self.assertEqual(mod._parse_timestamp(5), 5.0)
+        self.assertEqual(mod._parse_timestamp(5.5), 5.5)
+
+    def test_parse_event_edge_shapes(self):
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertIsNone(mod.parse_event(value))
+        self.assertEqual(
+            mod.parse_event(
+                '{"timestamp": '
+                '"2026-10-18T12:00:00.000+0000", '
+                '"rule": {"id": "5710", "level": 5, '
+                '"description": "d", '
+                '"groups": ["g", 5, "h"]}, '
+                '"agent": {"id": "001", "name": "a1"}}'),
+            {"ts": self._EPOCH, "level": 5,
+             "rule_id": "5710", "description": "d",
+             "groups": ["g", "h"], "agent_name": "a1",
+             "agent_id": "001"})
+        self.assertEqual(
+            mod.parse_event(
+                '{"timestamp": 1000, '
+                '"rule": {"id": 5710, "level": "7"}, '
+                '"agent": {"name": 5, "id": 9}}'),
+            {"ts": 1000.0, "level": 7,
+             "rule_id": "5710", "description": "",
+             "groups": [], "agent_name": "",
+             "agent_id": ""})
+        self.assertEqual(
+            mod.parse_event(
+                '{"rule": {"id": "1", "level": 5.9}}'),
+            {"ts": None, "level": 5, "rule_id": "1",
+             "description": "", "groups": [],
+             "agent_name": "", "agent_id": ""})
+        self.assertEqual(
+            mod.parse_event(
+                '{"rule": {"id": "1", '
+                '"level": " 7 "}}')["level"],
+            7)
+        self.assertEqual(
+            mod.parse_event(
+                '{"timestamp": "junk", '
+                '"rule": {"id": "1", "level": 12}, '
+                '"agent": {"name": "a"}}'),
+            {"ts": None, "level": 12, "rule_id": "1",
+             "description": "", "groups": [],
+             "agent_name": "a", "agent_id": ""})
+        for line in ('{"rule": {"id": "", "level": 5}}',
+                     '{"rule": {"id": true, "level": 5}}',
+                     '{"rule": {"id": "1", "level": true}}',
+                     '{"rule": {"id": "1", "level": "-3"}}',
+                     '{"rule": {"level": 5}}',
+                     '{"rule": {"id": "1"}}',
+                     '{"rule": "x"}', "[1, 2]", '"x"',
+                     "not json", ""):
+            with self.subTest(line=line):
+                self.assertIsNone(mod.parse_event(line))
+
+    def test_clean_state_shapes(self):
+        mod = self._module()
+        fresh = {"episodes": {}}
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    mod._clean_state(value), fresh)
+        self.assertEqual(mod._clean_state({}), fresh)
+        self.assertEqual(
+            mod._clean_state({"episodes": "x"}), fresh)
+        self.assertEqual(
+            mod._clean_state({
+                "episodes": {
+                    "k1": {"last_seen": 5,
+                           "filed_at": 3, "signal": "s"},
+                    "k2": {"last_seen": "5"},
+                    "k3": {"last_seen": True},
+                    "k4": "junk",
+                    "k5": {"last_seen": float("inf")},
+                    "k6": {"last_seen": 10 ** 400},
+                    "k7": {"last_seen": -2,
+                           "filed_at": "x",
+                           "signal": 5},
+                    "k8": {"last_seen": 0,
+                           "filed_at": float("nan")}},
+                "extra": 1,
+                "_reader": {"p": {"inode": 1}}}),
+            {"episodes": {
+                "k1": {"last_seen": 5.0,
+                       "filed_at": 3.0, "signal": "s"},
+                "k7": {"last_seen": -2.0,
+                       "filed_at": None, "signal": ""},
+                "k8": {"last_seen": 0.0,
+                       "filed_at": None, "signal": ""}},
+             "_reader": {"p": {"inode": 1}}})
+        for name, value in self._SHAPES:
+            with self.subTest(reader=name):
+                out = mod._clean_state(
+                    {"episodes": {}, "_reader": value})
+                if isinstance(value, dict):
+                    self.assertEqual(out["_reader"], value)
+                else:
+                    self.assertEqual(out, fresh)
+
+    def _run_main(self, mod, argv):
+        import contextlib
+        import io
+        buf = io.StringIO()
+        err = io.StringIO()
+        with contextlib.redirect_stdout(buf), \
+                contextlib.redirect_stderr(err):
+            rc = mod.main(argv)
+        return rc, buf.getvalue(), err.getvalue()
+
+    def _write(self, d, name, obj=None, raw=None):
+        import json
+        import os
+        p = os.path.join(d, name)
+        with open(p, "w", encoding="utf-8") as fh:
+            if raw is not None:
+                fh.write(raw)
+            else:
+                json.dump(obj, fh)
+        return p
+
+    def test_main_readings_mode(self):
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            mp = self._write(d, "m.json", self._MANIFEST)
+            rp = self._write(
+                d, "r.json",
+                {"now": 1002.0, "events": [self._EVENT]})
+            sp = os.path.join(d, "s.json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                out.count("wazuh_alert_high"), 1)
+            with open(sp, encoding="utf-8") as fh:
+                self.assertEqual(
+                    json.load(fh),
+                    {"episodes": {"5710|a1": {
+                        "filed_at": 1000.0,
+                        "last_seen": 1000.0,
+                        "signal": "wazuh_alert_high"}}})
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp,
+                      "--readings", rp])
+            self.assertEqual((rc, out), (0, ""))
+            lp = self._write(d, "list.json", [1, 2])
+            sp2 = os.path.join(d, "s2.json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp2,
+                      "--readings", lp])
+            self.assertEqual((rc, out), (0, ""))
+            with open(sp2, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh),
+                                 {"episodes": {}})
+            sp3 = os.path.join(d, "s3.json")
+            with open(sp3, "w",
+                      encoding="utf-8") as fh:
+                fh.write("{broken")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp3,
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                out.count("wazuh_alert_high"), 1)
+            sp4 = self._write(
+                d, "s4.json",
+                {"episodes": {},
+                 "_reader": {"p": {"inode": 7,
+                                   "offset": 3}}})
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp4,
+                      "--readings",
+                      self._write(d, "e.json",
+                                  {"now": 5,
+                                   "events": []})])
+            self.assertEqual(rc, 0)
+            with open(sp4, encoding="utf-8") as fh:
+                self.assertEqual(
+                    json.load(fh)["_reader"],
+                    {"p": {"inode": 7, "offset": 3}})
+            lm = self._write(d, "listm.json", [1, 2])
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", lm, "--state",
+                      os.path.join(d, "s5.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                out.count("wazuh_alert_high"), 1)
+            self.assertIn('"sensor": "wazuh_feed"', out)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s6.json"),
+                      "--readings",
+                      os.path.join(d, "missing.json")])
+            self.assertEqual(rc, 2)
+            bp = self._write(d, "bad.json", raw="nope{")
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "s7.json"),
+                      "--readings", bp])
+            self.assertEqual(rc, 2)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest",
+                      os.path.join(d, "missing.json"),
+                      "--state",
+                      os.path.join(d, "s8.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            rc, _, _ = self._run_main(
+                mod, ["--manifest", bp, "--state",
+                      os.path.join(d, "s10.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state",
+                      os.path.join(d, "nodir",
+                                   "s.json"),
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            self.assertEqual(
+                out.count("wazuh_alert_high"), 1)
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", d,
+                      "--readings", rp])
+            self.assertEqual(rc, 2)
+            self.assertEqual(
+                out.count("wazuh_alert_high"), 1)
+
+    def test_main_live_mode(self):
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            mp = self._write(d, "m.json", self._MANIFEST)
+            sp = os.path.join(d, "sl.json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp, "--state", sp])
+            self.assertEqual((rc, out), (0, ""))
+            with open(sp, encoding="utf-8") as fh:
+                self.assertEqual(
+                    json.load(fh),
+                    {"_reader": {}, "episodes": {}})
+            alerts = os.path.join(d, "alerts.json")
+            with open(alerts, "w",
+                      encoding="utf-8") as fh:
+                fh.write(
+                    '{"timestamp": '
+                    '"2026-10-18T12:00:00.000+0000", '
+                    '"rule": {"id": "5710", '
+                    '"level": 12, '
+                    '"description": "hi", '
+                    '"groups": []}, '
+                    '"agent": {"id": "001", '
+                    '"name": "a1"}}\n')
+                fh.write("garbage\n")
+                fh.write(
+                    '{"timestamp": '
+                    '"2026-10-18T12:01:00.000+0000", '
+                    '"rule": {"id": "5710", '
+                    '"level": 3}, '
+                    '"agent": {"name": "a1"}}\n')
+            man2 = {"name": "wazuh_feed",
+                    "tunables": {
+                        "episode_quiet_sec": 3600,
+                        "log_paths": [alerts]}}
+            mp2 = self._write(d, "m2.json", man2)
+            spl = os.path.join(d, "sl2.json")
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp2, "--state", spl])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                out.count("wazuh_alert_high"), 1)
+            with open(spl, encoding="utf-8") as fh:
+                state = json.load(fh)
+            self.assertEqual(
+                state["_reader"][alerts]["offset"],
+                os.path.getsize(alerts))
+            rc, out, _ = self._run_main(
+                mod, ["--manifest", mp2, "--state", spl])
+            self.assertEqual((rc, out), (0, ""))
+            for val in ([], "x", None, 5, [1]):
+                with self.subTest(log_paths=val):
+                    man3 = {"name": "wazuh_feed",
+                            "tunables": {
+                                "log_paths": val}}
+                    mp3 = self._write(d, "m3.json", man3)
+                    rc, out, _ = self._run_main(
+                        mod, ["--manifest", mp3,
+                              "--state",
+                              os.path.join(d, "sl3.json")])
+                    self.assertEqual((rc, out), (0, ""))
+
 if __name__ == "__main__":
 
     unittest.main()
