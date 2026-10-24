@@ -328,12 +328,12 @@ class EnforceNegativeControl(unittest.TestCase):
     the only difference is whether the sandbox is in force."""
 
     _SCRIPT = (
-        "import os\\n"
-        "print('home-seen:', os.path.exists('/home'))\\n"
-        "try:\\n"
-        "    print('host-read:', open(%r).read().strip())\\n"
-        "except Exception:\\n"
-        "    print('host-read: failed')\\n"
+        "import os\n"
+        "print('home-seen:', os.path.exists('/home'))\n"
+        "try:\n"
+        "    print('host-read:', open(%r).read().strip())\n"
+        "except Exception:\n"
+        "    print('host-read: failed')\n"
     )
 
     def test_escape_succeeds_with_confinement_off(self):
