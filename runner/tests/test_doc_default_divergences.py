@@ -15424,6 +15424,109 @@ class TestInferenceKeepAliveFifteenShapes(unittest.TestCase):
             self.assertTrue(payload["keep_alive"] != payload["keep_alive"])
 
 
+class TestInferenceConfigMaxAnswerCharsFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the inference block's own
+    max_answer_chars itself varied with the fifteen shapes
+    at reader level (step-8 Target 6 -- inference_config's
+    max_answer_chars; the row's registry-named class
+    TestBooleanAskMaxCharsDefaultsTo2000 exercises the ask
+    query's max_chars in answer_queries, a different read
+    site, so the inference_config reader in
+    runner/runner.py (line 951) is probed here across all
+    fifteen shapes for the first time).
+
+    (a) Doc claim (PROTOCOL.md, line 711):
+        "`max_answer_chars` (default 2000), `timeout_sec`
+        (default 180)." docs/configuring-oracle.md
+        (line 54) repeats "`max_answer_chars` (default
+        2000 -- answers are truncated past this)".
+        Registry row "max_answer_chars (inference block)"
+        (kind integer, default 2000, policy default under
+        Decision 1, doc_status verified).
+
+    (b) How it was hunted: step-8 artifact Target 6
+        names "inference_config's max_answer_chars" among
+        the core readers covered only for the shapes
+        their classes exercised. This tick took
+        inference_config in runner/runner.py and probed
+        it with the fifteen shapes from the table hunt
+        -- omitted, null, empty string, true, false,
+        zero, negative, numeric string, non-numeric
+        string, huge-int (10**400), inf, -inf, NaN,
+        wrong containers (list and dict) -- over a valid
+        loopback endpoint and model, plus genuine and
+        fractional values, recording the returned
+        config's max_answer_chars (or None when the
+        reader disables inference entirely).
+
+    (c) Behavior actually observed: NO divergence from
+        the documented default in any shape that reads a
+        value at all: omitted, null, empty string, false
+        and zero all read as the documented 2000 (the
+        reader's "or 2000" fallback); a genuine 500 is
+        honored exactly; a numeric string is parsed
+        ("500" reads as 500); fractional values truncate
+        through int() (2000.5 reads as 2000, 750.9 as
+        750); and a huge-int is honored literally.
+        Pinned as observed, not a divergence: the
+        remaining unusable shapes -- true, a negative
+        value, a non-numeric string, inf, -inf, NaN, a
+        list and a dict -- do not read as any invented
+        number; inference_config disables inference
+        entirely (returns None), the same posture the
+        earlier TestBogusInferenceTimeoutDefaultsTo180
+        record notes for this reader ("disables
+        inference rather than inventing another
+        budget"): a boolean true is refused by the
+        reader's explicit guard, unparseable and
+        non-finite values fail its int() read, and a
+        negative cap fails its range check. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the falsy shapes keep
+        reading as the documented 2000, genuine values
+        keep being honored exactly, and the unusable
+        shapes above keep disabling inference instead
+        of inventing a cap. If a shape above ever stops
+        behaving as PROTOCOL.md states, this test is
+        the failing record of that change.
+    """
+
+    _BASE = {"endpoint": "http://127.0.0.1:11434/v1",
+             "model": "m"}
+
+    def _cap(self, extra):
+        from runner.runner import inference_config
+        inf = dict(self._BASE)
+        inf.update(extra)
+        out = inference_config({"inference": inf})
+        return None if out is None else out["max_answer_chars"]
+
+    def test_falsy_shapes_read_as_documented_2000(self):
+        self.assertEqual(self._cap({}), 2000)
+        for value in (None, "", False, 0):
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._cap({"max_answer_chars": value}), 2000)
+
+    def test_genuine_values_honored_exactly(self):
+        self.assertEqual(self._cap({"max_answer_chars": 500}), 500)
+        self.assertEqual(self._cap({"max_answer_chars": "500"}), 500)
+        self.assertEqual(
+            self._cap({"max_answer_chars": 10 ** 400}), 10 ** 400)
+        self.assertEqual(self._cap({"max_answer_chars": 2000.5}), 2000)
+        self.assertEqual(self._cap({"max_answer_chars": 750.9}), 750)
+
+    def test_unusable_shapes_disable_inference_not_invent_a_cap(self):
+        values = [True, -5, "bogus", float("inf"), float("-inf"),
+                  float("nan"), [500], {"x": 1}]
+        for value in values:
+            with self.subTest(value=repr(value)):
+                self.assertIsNone(self._cap({"max_answer_chars": value}))
+
+
+
 
 if __name__ == "__main__":
 
