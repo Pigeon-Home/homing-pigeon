@@ -135,9 +135,12 @@ rule. The rule is what a wrong value changes.
 
 Date: 2026-10-23
 
-Applied in: ____________ (the commit that changes the two readers
-and the two doc lines — docs change first, the two campaign test
-classes asserting the default for those ports change with the docs,
-not before; per the plan execution, the production reader moves are
-recorded as failing-by-design divergence probes in step 5, not made
-in that pass)
+Applied in: the readers and the docs moved together on 2026-10-24,
+docs first in the same commit (`docs/configuring-oracle.md`,
+`docs/TRANSPORTS.md`, PROTOCOL.md section 5, the DTLS extension's
+docstring), then `listen_port` and `bind_address` in the DTLS
+extension and `url_port` in the NATS extension, then the four
+campaign classes that had asserted the default for those keys. Still
+open from the decision: the startup line naming the keys read as
+defaults, and the same list in the `full`-tier platform card
+(`docs/QUESTIONS.md`, Q1).

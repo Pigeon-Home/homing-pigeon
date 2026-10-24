@@ -364,6 +364,14 @@ move happens only when the core would have marked the mail seen. A
 retryable failure leaves the envelope in the inbox. A rejection is
 still consumed, so poison is not retried.
 
+The limits this section names come from `config.json`, and each has a
+documented default that applies when its key is absent. A setting
+that is present but not usable reads as its documented default and
+is named in the startup warning, unless the setting is a port, a bind
+address, a key policy, a paging threshold, a security mode or a
+secret, in which case the runner refuses to start and names it
+(`docs/design/present-but-invalid-config.md`).
+
 ## 6. Execution semantics
 
 - Working directory: `<base_dir>/work/<job_id>/`, created fresh per job.

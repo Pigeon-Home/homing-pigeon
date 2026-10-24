@@ -460,6 +460,16 @@ class TestNullDtlsPortBindDefaults(unittest.TestCase):
     (d) Do not make this test pass by editing the test. It
         passes only when the bug described above is fixed in
         the code.
+
+    (e) Policy moved, 2026-10-24 (Decision 1,
+        docs/design/present-but-invalid-config.md, docs first):
+        this key is an addressing value, the refuse class. A value
+        present but not usable is now a startup config error that
+        names the key, never a substituted address; the documented
+        default applies only when the key is absent. The assertions
+        below changed with the doc lines (docs/configuring-oracle.md,
+        docs/TRANSPORTS.md, the extension docstring), not before.
+        (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
     """
 
     _SECRET = "docdef-dtls-probe-0123456789abcdef0123456789abcdef"
@@ -478,16 +488,32 @@ class TestNullDtlsPortBindDefaults(unittest.TestCase):
         self.addCleanup(pipe.sock.close)
         return pipe
 
-    def test_null_port_defaults_to_20220(self):
-        pipe = self._pipe({"port": None})
-        self.assertEqual(pipe.port, 20220)
+    def test_null_port_is_a_config_error(self):
+        with self.assertRaises(RuntimeError) as cm:
+            self._pipe({"port": None})
+        self.assertIn("transport_dtls.port", str(cm.exception))
 
-    def test_bogus_port_defaults_to_20220(self):
-        pipe = self._pipe({"port": "bogus"})
-        self.assertEqual(pipe.port, 20220)
+    def test_bogus_port_is_a_config_error(self):
+        with self.assertRaises(RuntimeError) as cm:
+            self._pipe({"port": "bogus"})
+        self.assertIn("transport_dtls.port", str(cm.exception))
 
-    def test_null_bind_defaults_to_all_interfaces(self):
-        pipe = self._pipe({"bind": None})
+    def test_null_bind_is_a_config_error(self):
+        with self.assertRaises(RuntimeError) as cm:
+            self._pipe({"bind": None})
+        self.assertIn("transport_dtls.bind", str(cm.exception))
+
+    def test_omitted_bind_is_all_interfaces(self):
+        # Control: absent still means the documented default.
+        import importlib
+        import os
+        dtls_ext = importlib.import_module(
+            "runner.transport_extensions.dtls.__main__")
+        with tempfile.TemporaryDirectory() as tmp:
+            pipe = dtls_ext.DtlsPipe(
+                {"shared_secret": self._SECRET, "port": 0},
+                os.path.join(tmp, "channel"))
+        self.addCleanup(pipe.sock.close)
         self.assertEqual(pipe.bind, "0.0.0.0")
 
 
@@ -2362,6 +2388,16 @@ class TestBooleanDtlsPortDefaultsTo20220(unittest.TestCase):
     (d) Do not make this test pass by editing the test. It
         passes only when the bug described above is fixed in
         the code.
+
+    (e) Policy moved, 2026-10-24 (Decision 1,
+        docs/design/present-but-invalid-config.md, docs first):
+        this key is an addressing value, the refuse class. A value
+        present but not usable is now a startup config error that
+        names the key, never a substituted address; the documented
+        default applies only when the key is absent. The assertions
+        below changed with the doc lines (docs/configuring-oracle.md,
+        docs/TRANSPORTS.md, the extension docstring), not before.
+        (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
     """
 
     def _pipe(self, extra):
@@ -2379,13 +2415,15 @@ class TestBooleanDtlsPortDefaultsTo20220(unittest.TestCase):
         self.addCleanup(pipe.sock.close)
         return pipe
 
-    def test_true_port_defaults_to_20220(self):
-        pipe = self._pipe({"port": True})
-        self.assertEqual(pipe.port, 20220)
+    def test_true_port_is_a_config_error(self):
+        with self.assertRaises(RuntimeError) as cm:
+            self._pipe({"port": True})
+        self.assertIn("transport_dtls.port", str(cm.exception))
 
-    def test_false_port_defaults_to_20220(self):
-        pipe = self._pipe({"port": False})
-        self.assertEqual(pipe.port, 20220)
+    def test_false_port_is_a_config_error(self):
+        with self.assertRaises(RuntimeError) as cm:
+            self._pipe({"port": False})
+        self.assertIn("transport_dtls.port", str(cm.exception))
 
 
 class TestBooleanMaxJobAgeDefaultsTo3600(unittest.TestCase):
@@ -2711,6 +2749,16 @@ class TestBadNatsPortDefaultsTo4222(unittest.TestCase):
     (d) Do not make this test pass by editing the test. It
         passes only when the bug described above is fixed
         in the code.
+
+    (e) Policy moved, 2026-10-24 (Decision 1,
+        docs/design/present-but-invalid-config.md, docs first):
+        this key is an addressing value, the refuse class. A value
+        present but not usable is now a startup config error that
+        names the key, never a substituted address; the documented
+        default applies only when the key is absent. The assertions
+        below changed with the doc lines (docs/configuring-oracle.md,
+        docs/TRANSPORTS.md, the extension docstring), not before.
+        (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
     """
 
     class _Stop(Exception):
@@ -2722,13 +2770,15 @@ class TestBadNatsPortDefaultsTo4222(unittest.TestCase):
             "runner.transport_extensions.nats.__main__")
         return nm.NatsClient(url)
 
-    def test_out_of_range_port_defaults_to_4222(self):
-        client = self._client("nats://127.0.0.1:99999")
-        self.assertEqual(client.port, 4222)
+    def test_out_of_range_port_is_a_config_error(self):
+        with self.assertRaises(RuntimeError) as cm:
+            self._client("nats://127.0.0.1:99999")
+        self.assertIn("transport_nats.url", str(cm.exception))
 
-    def test_non_numeric_port_defaults_to_4222(self):
-        client = self._client("nats://127.0.0.1:abc")
-        self.assertEqual(client.port, 4222)
+    def test_non_numeric_port_is_a_config_error(self):
+        with self.assertRaises(RuntimeError) as cm:
+            self._client("nats://127.0.0.1:abc")
+        self.assertIn("transport_nats.url", str(cm.exception))
 
     def test_explicit_and_missing_ports_are_honored(self):
         # Controls: a valid port is used as given, and a
@@ -2741,25 +2791,20 @@ class TestBadNatsPortDefaultsTo4222(unittest.TestCase):
         self.assertEqual(
             self._client("nats://127.0.0.1").port, 4222)
 
-    def test_bad_port_stays_in_reconnect_loop(self):
+    def test_bad_port_refuses_to_start(self):
+        # The pipe checks the broker address once, at construction,
+        # where main() turns the error into exit 2; the reconnect
+        # loop never meets an unusable URL.
         import importlib
         nm = importlib.import_module(
             "runner.transport_extensions.nats.__main__")
-        from runner.transport_extensions import channel as ch
-        pipe = nm.NatsPipe(
-            {"url": "nats://127.0.0.1:99999",
-             "allow_unauthenticated": True},
-            "/tmp/docdef-no-channel", log=lambda *a, **k: None)
-        orig_nap = ch.nap
-
-        def _nap(_seconds):
-            raise self._Stop()
-        ch.nap = _nap
-        try:
-            with self.assertRaises(self._Stop):
-                pipe.run()
-        finally:
-            ch.nap = orig_nap
+        with self.assertRaises(nm.TransportError) as cm:
+            nm.NatsPipe(
+                {"url": "nats://127.0.0.1:99999",
+                 "allow_unauthenticated": True},
+                "/tmp/docdef-no-channel", log=lambda *a, **k: None)
+        self.assertIn("refuses to start", str(cm.exception))
+        self.assertIn("transport_nats.url", str(cm.exception))
 
 
 class TestBooleanDefaultTimeoutDefaultsTo300(unittest.TestCase):
@@ -2887,6 +2932,16 @@ class TestBadDtlsPortDefaultsTo20220(unittest.TestCase):
     (d) Do not make this test pass by editing the test.
         It passes only when the bug described above is
         fixed in the code.
+
+    (e) Policy moved, 2026-10-24 (Decision 1,
+        docs/design/present-but-invalid-config.md, docs first):
+        this key is an addressing value, the refuse class. A value
+        present but not usable is now a startup config error that
+        names the key, never a substituted address; the documented
+        default applies only when the key is absent. The assertions
+        below changed with the doc lines (docs/configuring-oracle.md,
+        docs/TRANSPORTS.md, the extension docstring), not before.
+        (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
     """
 
     def _pipe(self, extra, omit_port=False):
@@ -2905,21 +2960,28 @@ class TestBadDtlsPortDefaultsTo20220(unittest.TestCase):
         self.addCleanup(pipe.sock.close)
         return pipe
 
-    def test_bogus_port_defaults_to_20220(self):
-        pipe = self._pipe({"port": "bogus"})
-        self.assertEqual(pipe.port, 20220)
+    def _refused(self, extra):
+        with self.assertRaises(RuntimeError) as cm:
+            self._pipe(extra)
+        self.assertIn("transport_dtls.port", str(cm.exception))
 
-    def test_out_of_range_port_defaults_to_20220(self):
-        pipe = self._pipe({"port": 99999})
-        self.assertEqual(pipe.port, 20220)
+    def test_bogus_port_is_a_config_error(self):
+        self._refused({"port": "bogus"})
 
-    def test_none_port_defaults_to_20220(self):
-        pipe = self._pipe({"port": None})
-        self.assertEqual(pipe.port, 20220)
+    def test_out_of_range_port_is_a_config_error(self):
+        self._refused({"port": 99999})
 
-    def test_huge_port_defaults_to_20220(self):
-        pipe = self._pipe({"port": 10**400})
-        self.assertEqual(pipe.port, 20220)
+    def test_none_port_is_a_config_error(self):
+        self._refused({"port": None})
+
+    def test_huge_port_is_a_config_error(self):
+        self._refused({"port": 10**400})
+
+    def test_numeric_string_port_is_read(self):
+        # Control: "0" is a usable port written as a string, the
+        # hand-written shape config files carry.
+        pipe = self._pipe({"port": "0"})
+        self.assertEqual(pipe.port, 0)
 
     def test_omitted_port_is_20220(self):
         # Control: with the key omitted the documented

@@ -3,10 +3,17 @@ binding (a binding of protocol version 1).
 
 Config (handed over by the runner):
     transport_dtls block:
-        port    UDP port to listen on (default 20220)
+        port    UDP port to listen on (default 20220; 0 asks
+                the kernel for a free port)
         bind    local address to bind (default "0.0.0.0" --
                 this transport LISTENS, unlike the others;
                 it is off unless enabled in `transports`)
+        Either one present but not usable (a port that is not
+        a whole number 0..65535, a bind that is not an address
+        string) is a startup config error: the extension
+        refuses to start and names the key. An address is
+        never substituted (docs/design/present-but-invalid-
+        config.md, the refuse class).
     dtls_greeting (top-level runner key, handed over for this
     extension): the greeting disclosure tier --
         none / family (default) / standard / full
@@ -117,25 +124,61 @@ def greeting_tier(cfg):
     return _confval.choice(raw, GREETING_TIERS, "family")
 
 
+def _shown(value):
+    """A value for an error message: its repr, cut to one line."""
+    text = repr(value)
+    return text if len(text) <= 40 else text[:37] + "..."
+
+
+def listen_port(cfg):
+    """transport_dtls.port: default 20220 when absent; a config error
+    when present but not a whole number 0..65535 (a numeric string
+    is read, a boolean, null, inf or an out-of-range value is not)."""
+    if not isinstance(cfg, dict) or "port" not in cfg:
+        return DEFAULT_PORT
+    raw = cfg["port"]
+    port = _confval.integer(raw, None, lo=0, hi=65535)
+    if port is None or (not isinstance(raw, str)
+                        and port != raw):
+        raise RuntimeError(
+            "config error: transport_dtls.port must be a whole number "
+            "0..65535, not %s" % _shown(raw))
+    return port
+
+
+def bind_address(cfg):
+    """transport_dtls.bind: default 0.0.0.0 when absent; a config
+    error when present but not an address string. The empty
+    string is every interface."""
+    if not isinstance(cfg, dict) or "bind" not in cfg:
+        return "0.0.0.0"
+    raw = cfg["bind"]
+    if not isinstance(raw, str):
+        raise RuntimeError(
+            "config error: transport_dtls.bind must be an address "
+            "string, not %s" % _shown(raw))
+    return raw.strip() or "0.0.0.0"
+
+
 class DtlsPipe:
     """One UDP listener, one DtlsServerCore, one channel."""
 
     def __init__(self, cfg, channel_dir):
         self.cfg = cfg
         self.channel = channel_dir
-        # docs/configuring-oracle.md: dtls_greeting default family,
-        # transport_dtls.port default 20220, bind default 0.0.0.0. A
-        # value present as null, a non-tier string, a non-numeric or
-        # out-of-range port, or a boolean port is not a setting and
-        # reads as the default (null once killed the extension at
-        # startup, and a bogus tier went into the greeting verbatim).
-        # Port 0 is kept: it asks the kernel for a free port.
+        # docs/configuring-oracle.md: dtls_greeting default family
+        # (a value that is not a tier reads as the default), and
+        # transport_dtls.port default 20220, bind default 0.0.0.0
+        # when the key is absent. The port and the bind address are
+        # addressing values, the refuse class of
+        # docs/design/present-but-invalid-config.md: present but not
+        # usable is a config error that names the key, never a
+        # substituted address ("2O220" must not listen on 20220).
+        # Port 0 is usable: it asks the kernel for a free port. An
+        # empty bind is every interface, as the socket API reads it.
         self.tier = greeting_tier(cfg)
-        self.port = _confval.integer(cfg.get("port"), DEFAULT_PORT,
-                                     lo=0, hi=65535)
-        bind = cfg.get("bind")
-        self.bind = bind.strip() if isinstance(bind, str) and bind.strip() \
-            else "0.0.0.0"
+        self.port = listen_port(cfg)
+        self.bind = bind_address(cfg)
         lookup = dtlsproto.make_secret_lookup(
             cfg.get("shared_secret"), cfg.get("additional_secrets"))
         self.core = dtlsproto.DtlsServerCore(
@@ -268,6 +311,12 @@ def main(argv=None):
         return 2
     try:
         pipe = DtlsPipe(cfg, channel_dir)
+    except RuntimeError as e:
+        # The refuse class: a port or bind present but not usable.
+        # Named, and the extension does not start (the supervisor
+        # sees exit 2, the operator sees the key).
+        ch.log(f"dtls transport: refusing to start -- {e}", "ERROR")
+        return 2
     except (OSError, TypeError, ValueError) as e:
         ch.log(f"dtls transport: cannot listen: {e!r}", "ERROR")
         return 2

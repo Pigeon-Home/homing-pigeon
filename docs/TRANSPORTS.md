@@ -271,7 +271,10 @@ implemented as a bounded pure-Python profile
 - **Off unless enabled, and it listens.** Add `"dtls"` to
   `transports` and the extension binds a UDP port
   (`transport_dtls.port`, default 20220;
-  `transport_dtls.bind`, default `0.0.0.0`). This is the one
+  `transport_dtls.bind`, default `0.0.0.0`; either one present
+  but not usable is a startup config error, the extension
+  refuses to start and names it, because a substituted
+  address is not the one the operator configured). This is the one
   shipped transport that opens an inbound port — the
   deliberate exception to the contract's outbound-only rule
   above, taken by the owner's explicit choice.

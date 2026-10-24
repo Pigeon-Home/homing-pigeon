@@ -62,6 +62,39 @@ _RESULT_ID_RE = re.compile(
     re.I)
 
 
+DEFAULT_PORT = 4222
+
+
+def url_port(url):
+    """The port of a NATS URL: 4222 when the URL names none, the port
+    when it is a whole number 1..65535, and a config error otherwise.
+
+    The broker address is the refuse class of
+    docs/design/present-but-invalid-config.md: a port typed as
+    "2O220" or 99999 must not quietly become 4222, because the
+    extension would then talk to a broker the operator never named.
+    urlparse's .port raises on both shapes; that ValueError once
+    escaped the reconnect loop and killed the extension before its
+    first connect, and after that read as the default. Now it is
+    named and refused at startup.
+    """
+    parsed = urlparse(url or "nats://127.0.0.1:%d" % DEFAULT_PORT)
+    netloc = parsed.netloc.rsplit("@", 1)[-1]
+    host_part = netloc.rsplit("]", 1)[-1] if "]" in netloc else netloc
+    if ":" not in host_part:
+        return DEFAULT_PORT
+    text = host_part.rsplit(":", 1)[1]
+    try:
+        port = parsed.port
+    except ValueError:
+        port = None
+    if port is None or not 1 <= port <= 65535:
+        raise RuntimeError(
+            "config error: transport_nats.url port must be a whole "
+            "number 1..65535, not %r" % (text[:40],))
+    return port
+
+
 class NatsClient:
     """A minimal core-NATS client, hand-rolled on stdlib sockets.
 
@@ -75,18 +108,13 @@ class NatsClient:
     def __init__(self, url, log=None, timeout=10.0,
                  user=None, password=None, token=None):
         self.log = log or _silent_log
-        parsed = urlparse(url or "nats://127.0.0.1:4222")
+        parsed = urlparse(url or "nats://127.0.0.1:%d" % DEFAULT_PORT)
         self.host = parsed.hostname or "127.0.0.1"
-        # docs/configuring-oracle.md: default port 4222. urlparse's
-        # .port raises on a port it rejects (out of range, not a
-        # number); unguarded, that ValueError once escaped the
-        # reconnect loop (which catches TransportError only) and
-        # killed the extension before its first connect.
-        try:
-            port = parsed.port
-        except ValueError:
-            port = None
-        self.port = port or 4222
+        # docs/configuring-oracle.md: default port 4222 when the URL
+        # names none; a port present but not usable is a config
+        # error (url_port), so no client ever talks to a substituted
+        # broker address.
+        self.port = url_port(url)
         self._connect_opts = {"verbose": False, "pedantic": False,
                               "name": "homing-pigeon",
                               "lang": "python-stdlib", "version": "1"}
@@ -253,6 +281,14 @@ class NatsPipe:
         self._user = cfg.get("user") or None
         self._password = cfg.get("password") or None
         self._token = cfg.get("token") or None
+        # The broker address is checked once, here, where main()
+        # turns a config error into "refusing to start" and exit 2;
+        # the reconnect loop never meets an unusable URL.
+        try:
+            url_port(self.url)
+        except RuntimeError as e:
+            raise TransportError(
+                "nats transport refuses to start: %s" % e) from None
         parsed = urlparse(self.url)
         has_creds = bool(self._token or self._user
                          or parsed.username or parsed.password)
