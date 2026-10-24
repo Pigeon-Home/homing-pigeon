@@ -9630,6 +9630,171 @@ class TestFilesNameStaysInsideWorkdir(unittest.TestCase):
                 os.path.exists(os.path.join(base, "escape.txt")))
 
 
+class TestNestedObjectsWithEverySubKeyNull(unittest.TestCase):
+    """Coverage: nested config objects whose every
+    sub-key is null refuse or read as documented --
+    they never crash with a raw error and never
+    silently enable anything.
+
+    (a) Claims: docs/configuring-oracle.md (line
+        84): the `resources` block carries `enabled`
+        (default true), `threshold` (default 0.95,
+        must be in (0, 1]) and `cooldown_sec`
+        (default 900), and "A malformed block is a
+        startup config error." SECURITY.md (lines
+        107-139): every security control defaults
+        to `off`, `audit_max_lines` defaults to
+        20000, and (line 134) "A malformed security
+        block stops startup with an error naming
+        the key and the bad value. It never silently
+        falls back to `off`." docs/dri-playbook.md
+        (lines 129-145, the config sketch and the
+        defaults beneath it): `dri.enabled` defaults
+        false, `channel` is "telegram", the trigger
+        thresholds/windows are 6.0/600
+        (sensor_fused_score) and 5/3600 (key_probe),
+        `cooldown_sec` 3600, `digest_window_sec`
+        300. Decision 1 (2026-10-23): security modes
+        and paging thresholds are in the refuse
+        class -- a present-but-unusable value in
+        them makes the runner refuse to start and
+        name the setting; the registry rows for
+        resources.* and dri.* all carry policy
+        `refuse` with these readers.
+
+    (b) How it was hunted: Claude's plan, second-run
+        axis (b) -- nested objects with every
+        sub-key null. On 2026-10-24 this tick probed
+        the three startup validators the runner
+        itself uses -- runner.resources
+        .parse_resources, runner.security
+        .validate_security_config (with the
+        defensive readers sec_mode and
+        audit_max_lines beside it), and runner.dri
+        .parse_dri -- with each block present and
+        every sub-key set to JSON null, with each
+        single sub-key null in turn for resources,
+        with the whole block null, and with the
+        dri `triggers` object and each trigger
+        object carrying nulls at both depths.
+
+    (c) Behavior actually observed: NO divergence.
+        resources with every sub-key null is a
+        startup config error (RuntimeError naming
+        resources.enabled); each single null refuses
+        likewise, naming its own key (threshold and
+        cooldown_sec included). A null or empty
+        resources block reads as the documented
+        defaults (enabled true, threshold 0.95,
+        cooldown_sec 900). security with every mode
+        null and audit_max_lines null stops startup
+        naming security.modes.<feature>; a null
+        modes object and a lone null audit_max_lines
+        each refuse by name; a null or empty
+        security block is accepted (all controls
+        off, as documented). The defensive readers
+        keep their own documented contract on the
+        all-null block: sec_mode reads off and
+        audit_max_lines reads 20000, so a bad value
+        can never silently enable enforcement.
+        dri with every top-level sub-key null is a
+        startup config error naming dri.enabled;
+        a trigger object whose threshold and
+        window_sec are both null refuses naming the
+        trigger; trigger entries that are themselves
+        null are read as absent (no trigger
+        configured), and a null or empty dri block
+        parses to the documented defaults (enabled
+        false, channel telegram, cooldown_sec 3600,
+        digest_window_sec 300, no triggers).
+        Observed on 2026-10-24 against current main.
+    """
+
+    def test_resources_every_sub_key_null_refuses(self):
+        from runner import resources as RES
+        with self.assertRaises(RuntimeError):
+            RES.parse_resources({"resources": {
+                "enabled": None, "threshold": None,
+                "cooldown_sec": None}})
+
+    def test_resources_each_single_null_refuses(self):
+        from runner import resources as RES
+        for key in ("enabled", "threshold", "cooldown_sec"):
+            with self.subTest(key=key):
+                with self.assertRaises(RuntimeError):
+                    RES.parse_resources({"resources": {key: None}})
+
+    def test_resources_null_or_empty_block_reads_defaults(self):
+        from runner import resources as RES
+        want = {"enabled": True, "threshold": 0.95,
+                "cooldown_sec": 900.0}
+        self.assertEqual(RES.parse_resources({"resources": None}), want)
+        self.assertEqual(RES.parse_resources({"resources": {}}), want)
+        self.assertEqual(RES.parse_resources({}), want)
+
+    def test_security_every_sub_key_null_refuses(self):
+        from runner import security as SEC
+        modes = {name: None for name in SEC.FEATURES}
+        with self.assertRaises(RuntimeError):
+            SEC.validate_security_config({"security": {
+                "modes": modes, "audit_max_lines": None}})
+        with self.assertRaises(RuntimeError):
+            SEC.validate_security_config(
+                {"security": {"modes": None}})
+        with self.assertRaises(RuntimeError):
+            SEC.validate_security_config(
+                {"security": {"audit_max_lines": None}})
+
+    def test_security_null_or_empty_block_is_accepted(self):
+        from runner import security as SEC
+        SEC.validate_security_config({"security": None})
+        SEC.validate_security_config({"security": {}})
+        SEC.validate_security_config({})
+
+    def test_security_defensive_readers_on_all_null_block(self):
+        from runner import security as SEC
+        cfg = {"security": {
+            "modes": {name: None for name in SEC.FEATURES},
+            "audit_max_lines": None}}
+        for name in SEC.FEATURES:
+            with self.subTest(feature=name):
+                self.assertEqual(SEC.sec_mode(cfg, name), "off")
+        self.assertEqual(SEC.audit_max_lines(cfg), 20000)
+
+    def test_dri_every_sub_key_null_refuses(self):
+        from runner import dri as DRI
+        with self.assertRaises(RuntimeError):
+            DRI.parse_dri({"dri": {
+                "enabled": None, "channel": None,
+                "telegram_bot_token": None,
+                "telegram_chat_id": None, "triggers": None,
+                "cooldown_sec": None,
+                "digest_window_sec": None}})
+
+    def test_dri_trigger_object_sub_keys_null_refuses(self):
+        from runner import dri as DRI
+        for trig in ("sensor_fused_score", "key_probe"):
+            with self.subTest(trigger=trig):
+                with self.assertRaises(RuntimeError):
+                    DRI.parse_dri({"dri": {"triggers": {
+                        trig: {"threshold": None,
+                               "window_sec": None}}}})
+
+    def test_dri_null_triggers_and_null_block_read_defaults(self):
+        from runner import dri as DRI
+        want = {"enabled": False, "channel": "telegram",
+                "telegram_bot_token": "", "telegram_chat_id": "",
+                "triggers": {}, "cooldown_sec": 3600.0,
+                "digest_window_sec": 300.0}
+        self.assertEqual(DRI.parse_dri({"dri": None}), want)
+        self.assertEqual(DRI.parse_dri({"dri": {}}), want)
+        got = DRI.parse_dri({"dri": {"triggers": {
+            "sensor_fused_score": None, "key_probe": None,
+            "confinement_violation": None, "judge_block": None,
+            "resource_pressure": None, "remediation": None}}})
+        self.assertEqual(got, want)
+
+
 if __name__ == "__main__":
 
     unittest.main()
