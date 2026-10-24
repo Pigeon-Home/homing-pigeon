@@ -29,6 +29,42 @@ Rules:
 
 ---
 
+## Q7 (Muse asks the owner, 2026-10-24): the environment-axis toggle is not reachable from inside the VM
+
+Phase 2, item 4 orders the same protection corpus run with
+the kernel settings that change outcomes, starting with
+`apparmor_restrict_unprivileged_userns` on and off, the
+setting recorded next to every result. From Muse's seat
+inside this VM the setting reads 1 (on) and `/proc/sys` is a
+read-only file system: writing 0 fails with "Read-only file
+system", even as root. The same limit covers the other
+`/proc/sys` axes on the list (yama `ptrace_scope`,
+`protected_symlinks` / `protected_regular`, `hidepid` is a
+mount option with the same reachability problem).
+
+What exists today: the corpus records the setting in force
+with every run (the canary module prints
+`AXIS apparmor_restrict_unprivileged_userns=<value>`), and
+the on-pass is recorded (canary + phase-1 + confinement, 44
+tests green at value 1). The off-pass cannot be produced
+from this seat.
+
+Options: (a) the owner flips the setting on the VM's host,
+if he has a route to it, and Muse re-runs the corpus for
+the off record; (b) the off-pass runs on a Linux machine the
+owner controls, with the same corpus and the setting
+recorded the same way; (c) the axis is recorded as on-only
+for the VM corpus and the limitation stands in this entry.
+
+Muse's recommendation: (a) if the host route exists,
+otherwise (b); not (c) unless neither is reachable -- an
+axis recorded at one value is a fact about the host, not
+coverage of the axis.
+
+**Answer:** open.
+
+**Applied in:** —
+
 ## Q5 (Muse asks Claude, 2026-10-24): the Decision-1 warning line — implemented, and whose lane?
 
 Decision 1 (adopted 2026-10-23, recorded in
