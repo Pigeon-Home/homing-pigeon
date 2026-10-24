@@ -9154,6 +9154,186 @@ class TestJobIdLengthAndCharsetPerProtocol(unittest.TestCase):
                 self._rejected(bad)
 
 
+class TestIssuedAtWindowEdgesPerProtocol(unittest.TestCase):
+    """Second-run hunt coverage: issued_at at the
+    window edges, with positive and negative UTC
+    offsets and fractional seconds.
+
+    (a) Doc claims (PROTOCOL.md, section 5, lines
+        345-347): "`issued_at` parses, carries a
+        timezone, and is within `max_job_age_sec`
+        (default 3600) of the runner's clock
+        (replay / stale protection)." And
+        docs/fuzzing.md, lines 62-64: "A job
+        stamped two hours ago, or an hour ahead,
+        does not run. The window is
+        `max_job_age_sec`, with five minutes of
+        slack into the future."
+
+    (b) How it was hunted: Claude's plan, second-run
+        axis (b) -- issued_at at the window edges
+        with positive/negative offsets and
+        fractional seconds. On 2026-10-23 this tick
+        probed runner.runner._issued_at_ok -- the
+        freshness check the section 5 list names --
+        with the runner clock frozen at
+        2026-10-23T12:00:00Z (the module's datetime
+        patched with a fixed-now subclass, restored
+        afterwards), so every edge below is exact,
+        not racy: ages of 3599, 3600 and 3601
+        seconds against the default window; future
+        ages of 299, 300, 301 and 3600 seconds
+        against the five-minute slack; fractional
+        ages 3599.5, 3600.5, 299.5 and 300.5; the
+        two-hours-ago and one-hour-ahead stamps
+        the fuzzing doc names; the same instant
+        written with +05:30 and -05:00 offsets and
+        an out-of-window instant written with
+        +14:00; a 60-second configured window at
+        its own exact edge and one past it, with
+        the future slack unchanged; and the
+        shape forms -- a space separator, a
+        colon-less +0000 offset, a date alone, a
+        timestamp with no timezone, a lowercase z,
+        None, and a non-date string.
+
+    (c) Behavior actually observed: NO divergence.
+        Both edges are inclusive and exact: age
+        3600 is accepted and 3601 rejected; future
+        age 300 is accepted and 301 rejected;
+        fractional seconds resolve on the correct
+        side of both edges (3599.5 and 299.5 in,
+        3600.5 and 300.5 out). Offsets are judged
+        by the instant they name, not the wall
+        string: the noon-UTC instant written
+        +05:30 or -05:00 is accepted, and the
+        3601-second-old instant written +14:00 is
+        rejected. Two hours ago and one hour ahead
+        are rejected, as the fuzzing doc states.
+        A configured 60-second window keeps its
+        own exact edge (60 in, 61 out) and the
+        five-minute future slack does not shrink
+        with it. A timestamp with no timezone is
+        rejected as "issued_at missing timezone"
+        and an unparseable one as "unparseable
+        issued_at", as section 5 requires; the
+        space-separated and colon-less-offset
+        forms parse and are accepted.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the freshness
+        check keeps the documented window. If a
+        shape above ever stops behaving as the
+        docs state, this test is the failing
+        record of that change.
+    """
+
+    NOW = None
+
+    def setUp(self):
+        from datetime import datetime, timezone
+        from unittest import mock
+        from runner import runner as R
+        fixed = datetime(2026, 10, 23, 12, 0, 0,
+                         tzinfo=timezone.utc)
+        self.NOW = fixed
+
+        class _Frozen(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return fixed if tz is None \
+                    else fixed.astimezone(tz)
+
+        patcher = mock.patch.object(R, "datetime", _Frozen)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _ok(self, value, cfg=None):
+        from runner.runner import _issued_at_ok
+        ok, _reason = _issued_at_ok(value, cfg or {})
+        return ok
+
+    def _z(self, dt):
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def _frac(self, dt):
+        return dt.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
+
+    def test_past_window_edge_is_inclusive_and_exact(self):
+        from datetime import timedelta
+        now = self.NOW
+        self.assertTrue(self._ok(self._z(now)))
+        self.assertTrue(
+            self._ok(self._z(now - timedelta(seconds=3599))))
+        self.assertTrue(
+            self._ok(self._z(now - timedelta(seconds=3600))))
+        self.assertFalse(
+            self._ok(self._z(now - timedelta(seconds=3601))))
+        self.assertFalse(
+            self._ok(self._z(now - timedelta(seconds=7200))))
+
+    def test_future_slack_edge_is_inclusive_and_exact(self):
+        from datetime import timedelta
+        now = self.NOW
+        self.assertTrue(
+            self._ok(self._z(now + timedelta(seconds=299))))
+        self.assertTrue(
+            self._ok(self._z(now + timedelta(seconds=300))))
+        self.assertFalse(
+            self._ok(self._z(now + timedelta(seconds=301))))
+        self.assertFalse(
+            self._ok(self._z(now + timedelta(seconds=3600))))
+
+    def test_fractional_seconds_resolve_on_the_correct_side(self):
+        from datetime import timedelta
+        now = self.NOW
+        self.assertTrue(self._ok(
+            self._frac(now - timedelta(seconds=3599.5))))
+        self.assertFalse(self._ok(
+            self._frac(now - timedelta(seconds=3600.5))))
+        self.assertTrue(self._ok(
+            self._frac(now + timedelta(seconds=299.5))))
+        self.assertFalse(self._ok(
+            self._frac(now + timedelta(seconds=300.5))))
+
+    def test_offsets_are_judged_by_instant_not_wall_string(self):
+        from datetime import timedelta, timezone
+        now = self.NOW
+        plus = now.astimezone(
+            timezone(timedelta(hours=5, minutes=30)))
+        self.assertTrue(self._ok(plus.isoformat()))
+        minus = now.astimezone(timezone(timedelta(hours=-5)))
+        self.assertTrue(self._ok(minus.isoformat()))
+        old = (now - timedelta(seconds=3601)).astimezone(
+            timezone(timedelta(hours=14)))
+        self.assertFalse(self._ok(old.isoformat()))
+
+    def test_configured_window_keeps_its_edge_and_the_slack(self):
+        from datetime import timedelta
+        now = self.NOW
+        cfg = {"max_job_age_sec": 60}
+        self.assertTrue(
+            self._ok(self._z(now - timedelta(seconds=60)), cfg))
+        self.assertFalse(
+            self._ok(self._z(now - timedelta(seconds=61)), cfg))
+        self.assertTrue(
+            self._ok(self._z(now + timedelta(seconds=300)), cfg))
+
+    def test_shape_forms_parse_or_reject_as_documented(self):
+        now = self.NOW
+        self.assertTrue(
+            self._ok(now.strftime("%Y-%m-%d %H:%M:%S+00:00")))
+        self.assertTrue(
+            self._ok(now.strftime("%Y-%m-%dT%H:%M:%S+0000")))
+        self.assertFalse(self._ok("2026-10-23"))
+        self.assertFalse(self._ok("2026-10-23T12:00:00"))
+        self.assertFalse(
+            self._ok(now.strftime("%Y-%m-%dT%H:%M:%Sz")))
+        self.assertFalse(self._ok(None))
+        self.assertFalse(self._ok("not-a-date"))
+
+
+
 if __name__ == "__main__":
 
     unittest.main()
