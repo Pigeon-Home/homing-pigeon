@@ -28670,6 +28670,821 @@ class TestWireArrivalsNeighborsAndDecideFifteenShapes(unittest.TestCase):
             self.assertIn('"sensor": "wire_arrivals"', out)
             self.assertIn('"signal": "mac_moved"', out)
 
+class TestAirwavesParsersAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the airwaves scan
+    parsers (parse_nmcli(), parse_iw_scan(),
+    parse_iw_link()), security_rank(), the
+    link_drop_db / learn_first_pass / iface tunables,
+    read_live()'s source fallback, and decide()'s
+    neighborhood / disappearance / link handling
+    varied with the fifteen shapes for the first
+    time (step-8 Target 5 / family (b) -- the
+    extension's only earlier classes cover ONLY
+    the gone_after_scans reader; the parsers, the
+    other tunables, the state / scan cleaning, the
+    evaluation-before-absorption decision surface
+    and the readings mode were never varied).
+
+    (a) Doc claims: the module header states the
+        signals and their triggers -- new_access_
+        point for "a BSSID never seen before,
+        broadcasting an SSID the neighborhood has
+        not known", evil_twin_suspect for "a known
+        SSID from a NEW BSSID, or a known AP now
+        advertising WEAKER security than its
+        baseline", access_point_gone for "a known
+        AP stayed absent for gone_after_scans
+        successful scans", and link_degraded for
+        a roam "or its signal fell by link_drop_db
+        or more from its reference"
+        (runner/extensions/airwaves/airwaves.py,
+        module header); the README repeats them
+        with severities medium / high / info /
+        medium (runner/extensions/airwaves/
+        README.md, signal table). It also states
+        "The first pass learns the neighborhood
+        quietly (learn_first_pass, default true)",
+        "A pass with no scan data (scan_ok false)
+        files nothing and changes nothing -- no
+        data is not an absence, so missed-scan
+        counters do not advance", and "Every
+        successful scan is evaluated before it is
+        absorbed, so a security downgrade fires
+        before the baseline learns to expect it".
+        Scan sources are "in order, all guarded":
+        nmcli cached results (signal percentage
+        converted "as signal_pct / 2 - 100"; in
+        -t mode nmcli escapes ":" as "\\:" and the
+        parser "splits on unescaped colons only"),
+        then a cached iw scan dump; "the box's own
+        link is read via iw whichever scan source
+        supplied the neighborhood"; a box with no
+        source is "a quiet no-op pass (scan_ok
+        False), never an error". security_rank():
+        "open / -- / '' is 0, WEP is 1, WPA / PSK
+        is 2, WPA2 is 3, WPA3 / SAE is 4 --
+        case-insensitive substring matching,
+        strongest match wins". The parser texts,
+        the scan / state shapes and the link are
+        not numeric registry rows, so Decision 1's
+        default-on-unusable policy does not name a
+        shape rule for them; this class pins the
+        observed readings instead of asserting one,
+        except for link_drop_db (default 10), which
+        IS a tunable and is asserted at its reader.
+
+    (b) How this was probed: on 2026-10-24 each
+        parser was fed genuine texts mixing kept
+        and skipped rows (escaped nmcli lines, a
+        "--" SSID, bad channel / percentage fields,
+        short lines; iw blocks inferring WPA3 /
+        WPA2 / WPA / WEP / open; link texts with
+        and without a Connected line), plus the
+        table hunt's fifteen shapes (null, empty
+        string, true, false, zero, negative,
+        numeric string, non-numeric string,
+        huge-int (10**400), inf, -inf, NaN, list,
+        dict) where an argument applies;
+        _link_drop_db() and _learn_first_pass()
+        were probed directly and through malformed
+        manifests; _discover_iface() and
+        read_live() were probed with the _run()
+        platform seam mocked for every source
+        combination; decide() was probed with
+        learn / no-learn passes, new / twin /
+        downgrade / hidden-SSID scans, a three-pass
+        disappearance sequence, roam / drop /
+        rise / reseeding link sequences, malformed
+        state / scan / readings / manifest shapes
+        and multi-alert ordering; and main() was
+        run in --readings mode against temp
+        manifests, readings and state files.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. security_rank() answers 0 for
+        every non-string shape and ranks genuine
+        strings exactly as documented (substring,
+        case-insensitive, strongest wins, WEP
+        checked after the WPA family). parse_nmcli()
+        answers [] for non-string input, splits on
+        unescaped colons only (an escaped colon
+        inside an SSID survives), uppercases the
+        BSSID, maps a "--" SSID to "", reads a bad
+        channel / percentage as None, converts a
+        genuine percentage as pct/2-100 (100 -> -50,
+        0 -> -100, 51 -> -74.5), and skips lines
+        with fewer than five fields. parse_iw_scan()
+        answers [] for non-string input or text
+        with no "BSS " block, and per block infers
+        WPA3 from RSN+SAE, WPA2 from RSN, WPA from
+        a WPA block, WEP from Privacy alone, and
+        "--" (open) otherwise, with the DS /
+        primary channel and the dBm signal parsed
+        (integral signals as ints). parse_iw_link()
+        answers None without a Connected line.
+        _link_drop_db() reads every unusable shape,
+        zero and negative included, as the default
+        10.0, and honors genuine values verbatim
+        (2.5 and the sub-1 0.5 included, as floats);
+        _learn_first_pass() is a strict bool reader
+        (only a genuine bool is honored, else True).
+        _discover_iface() honors a genuine iface
+        stripped, else takes the first Interface
+        line of `iw dev`, else "". read_live()
+        uses nmcli when it answers, falls back to
+        an iw dump only when nmcli does not and
+        the dump contains "BSS ", reads the link
+        via iw whichever source supplied the scan,
+        and with no source answers scan_ok False
+        with an empty scan and no link, never an
+        error. decide() files nothing and returns
+        the cleaned state unchanged for a non-dict
+        readings or a falsy scan_ok (misses do NOT
+        advance); the learn pass absorbs quietly
+        (a pre-learning link in state is kept when
+        the learn scan carries no link), while
+        learn_first_pass False resets any
+        unlearned state and evaluates the first
+        scan (its APs file as new, its old link is
+        dropped). After learning, alerts file in
+        scan-sorted order, then disappearances,
+        then the link: a new BSSID with an unknown
+        or empty SSID files new_access_point
+        (medium), a new BSSID with a known SSID
+        files evil_twin_suspect (high, expected =
+        the SSID's known BSSIDs), a known BSSID at
+        a weaker rank files evil_twin_suspect
+        (high) BEFORE the baseline absorbs the
+        weaker security, and an equal or stronger
+        rank files nothing. A missing AP's misses
+        advance by one per successful scan and it
+        files access_point_gone (info) exactly at
+        gone_after_scans, leaving state and its
+        SSID entry. The link files link_degraded
+        (medium) on a roam, and on a drop of
+        exactly link_drop_db or more from the
+        reference (a 9 dB drop at the default 10
+        is quiet; a genuine link_drop_db of 5
+        files at 6); a rise raises the reference,
+        a None reference is seeded from the first
+        genuine signal, a None signal or an absent
+        link changes nothing, and a first link
+        seeds quietly. State cleaning is strict:
+        a non-dict state is fresh, learned counts
+        only as a genuine bool, AP / SSID entries
+        clean field-wise (non-string ssid /
+        security to "", rank / misses through
+        int() on usable numbers only with negative
+        misses to 0, SSID bssids sorted, de-
+        duplicated and uppercased, a non-list
+        bssids as []), and a cleaned link prefers
+        a usable signal_ref, falls back to
+        signal_dbm, and drops a link with no
+        usable BSSID. Scan cleaning dedups by
+        uppercased BSSID (first wins) and reads
+        string channel / signal shapes as None
+        (numeric strings are NOT parsed) with
+        fractional channels truncating. The sensor
+        name falls back to "airwaves" for a
+        non-dict manifest or a non-string / empty
+        name. main() in --readings mode learns and
+        writes state (rc 0), files the second
+        pass's new AP on stdout, reads a malformed
+        state file as fresh and a list manifest as
+        the defaults, and answers rc 2 for a
+        missing / malformed manifest or readings
+        file or an unwritable state path.
+        Observed on 2026-10-24 against current
+        main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as the
+        parsers, tunables and decide() keep
+        behaving as the module header and README
+        state. If a shape above ever stops
+        behaving as documented, this test is the
+        failing record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.dirname(os.path.abspath(__file__)))),
+            "runner", "extensions", "airwaves", "airwaves.py")
+        spec = importlib.util.spec_from_file_location(
+            "airwaves_parsers_decide_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _ap(bssid, ssid="Home", security="WPA2", channel=6,
+            signal_dbm=-55):
+        return {"bssid": bssid, "ssid": ssid, "channel": channel,
+                "signal_dbm": signal_dbm, "security": security}
+
+    @staticmethod
+    def _readings(scan, link=None):
+        return {"now": 1000.0, "scan_ok": True, "scan": scan,
+                "link": link}
+
+    @staticmethod
+    def _learned(misses=0):
+        return {"learned": True,
+                "aps": {"AA:BB:CC:DD:EE:01": {
+                    "ssid": "Home", "security": "WPA2",
+                    "rank": 3, "misses": misses}},
+                "ssids": {"Home": {
+                    "bssids": ["AA:BB:CC:DD:EE:01"], "rank": 3}},
+                "link": None}
+
+    # -- security_rank ------------------------------------------------
+
+    def test_security_rank_shapes_and_genuine(self):
+        mod = self._mod()
+        for value in (None, 5, ["WPA2"], {"x": 1}, True):
+            with self.subTest(value=repr(value)):
+                self.assertEqual(mod.security_rank(value), 0)
+        for text, want in (("", 0), ("--", 0), ("open", 0),
+                           ("OPEN", 0), ("bogus", 0), ("WEP", 1),
+                           ("WPA", 2), ("PSK", 2), ("WPA2", 3),
+                           (" wpa2 ", 3), ("WPA1 WPA2", 3),
+                           ("WPA3", 4), ("SAE", 4),
+                           ("WPA2 WPA3", 4), ("WPA3 WEP", 4)):
+            with self.subTest(text=text):
+                self.assertEqual(mod.security_rank(text), want)
+
+    # -- tunables ------------------------------------------------------
+
+    def test_link_drop_db_fifteen_shapes(self):
+        mod = self._mod()
+
+        def read(value):
+            return mod._link_drop_db(
+                {"tunables": {"link_drop_db": value}})
+
+        unusable = [None, "", True, False, 0, -5, "10", "bogus",
+                    10 ** 400, float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(read(value), 10.0)
+        for value, want in ((10, 10.0), (2.5, 2.5), (0.5, 0.5)):
+            with self.subTest(value=value):
+                self.assertEqual(read(value), want)
+        for manifest in ({"tunables": None}, {"tunables": ["x"]},
+                         None, "x", {}):
+            with self.subTest(manifest=repr(manifest)):
+                self.assertEqual(mod._link_drop_db(manifest), 10.0)
+
+    def test_learn_first_pass_strict_bool(self):
+        mod = self._mod()
+        for value in (None, "", 0, 1, "false", [], {}):
+            with self.subTest(value=repr(value)):
+                self.assertTrue(mod._learn_first_pass(
+                    {"tunables": {"learn_first_pass": value}}))
+        self.assertTrue(mod._learn_first_pass(
+            {"tunables": {"learn_first_pass": True}}))
+        self.assertFalse(mod._learn_first_pass(
+            {"tunables": {"learn_first_pass": False}}))
+
+    # -- parsers --------------------------------------------------------
+
+    def test_parse_nmcli_shapes(self):
+        mod = self._mod()
+        for text in (None, 123, ""):
+            with self.subTest(text=repr(text)):
+                self.assertEqual(mod.parse_nmcli(text), [])
+        text = (
+            "AA\\:BB\\:CC\\:DD\\:EE\\:01:Home\\:Net:6:100:WPA2\n"
+            "AA\\:BB\\:CC\\:DD\\:EE\\:02:--:1:0:--\n"
+            "short\n"
+            "AA\\:BB\\:CC\\:DD\\:EE\\:03:Cafe:bad:bad:WEP\n"
+            "AA\\:BB\\:CC\\:DD\\:EE\\:04:OpenNet:11:51:\n")
+        self.assertEqual(mod.parse_nmcli(text), [
+            {"bssid": "AA:BB:CC:DD:EE:01", "ssid": "Home:Net",
+             "channel": 6, "signal_dbm": -50, "security": "WPA2"},
+            {"bssid": "AA:BB:CC:DD:EE:02", "ssid": "",
+             "channel": 1, "signal_dbm": -100, "security": "--"},
+            {"bssid": "AA:BB:CC:DD:EE:03", "ssid": "Cafe",
+             "channel": None, "signal_dbm": None,
+             "security": "WEP"},
+            {"bssid": "AA:BB:CC:DD:EE:04", "ssid": "OpenNet",
+             "channel": 11, "signal_dbm": -74.5, "security": ""}])
+
+    def test_parse_iw_scan_shapes(self):
+        mod = self._mod()
+        for text in (None, 123, "", "no blocks here"):
+            with self.subTest(text=repr(text)):
+                self.assertEqual(mod.parse_iw_scan(text), [])
+        text = (
+            "BSS aa:bb:cc:dd:ee:01(on wlan0)\n"
+            "\tSSID: HomeNet\n"
+            "\tDS Parameter set: channel 6\n"
+            "\tsignal: -55.00 dBm\n"
+            "\tRSN:\t * Version: 1\n"
+            "BSS AA:BB:CC:DD:EE:02(on wlan0)\n"
+            "\tSSID: Cafe\n"
+            "\tprimary channel: 11\n"
+            "\tsignal: -70.5 dBm\n"
+            "\tcapability: ESS Privacy (0x0011)\n"
+            "BSS AA:BB:CC:DD:EE:03(on wlan0)\n"
+            "\tSSID: Old\n"
+            "\tsignal: -80 dBm\n"
+            "\tWPA:\t * Version: 1\n"
+            "BSS AA:BB:CC:DD:EE:04(on wlan0)\n"
+            "\tSSID: NewNet\n"
+            "\tsignal: -40 dBm\n"
+            "\tRSN:\t * Version: 1\n"
+            "\t * Authentication suites: SAE\n"
+            "BSS AA:BB:CC:DD:EE:05(on wlan0)\n"
+            "\tSSID: OpenNet\n")
+        self.assertEqual(mod.parse_iw_scan(text), [
+            {"bssid": "AA:BB:CC:DD:EE:01", "ssid": "HomeNet",
+             "channel": 6, "signal_dbm": -55, "security": "WPA2"},
+            {"bssid": "AA:BB:CC:DD:EE:02", "ssid": "Cafe",
+             "channel": 11, "signal_dbm": -70.5, "security": "WEP"},
+            {"bssid": "AA:BB:CC:DD:EE:03", "ssid": "Old",
+             "channel": None, "signal_dbm": -80, "security": "WPA"},
+            {"bssid": "AA:BB:CC:DD:EE:04", "ssid": "NewNet",
+             "channel": None, "signal_dbm": -40,
+             "security": "WPA3"},
+            {"bssid": "AA:BB:CC:DD:EE:05", "ssid": "OpenNet",
+             "channel": None, "signal_dbm": None,
+             "security": "--"}])
+
+    def test_parse_iw_link_shapes(self):
+        mod = self._mod()
+        for text in (None, 123, "", "Not connected."):
+            with self.subTest(text=repr(text)):
+                self.assertIsNone(mod.parse_iw_link(text))
+        self.assertEqual(
+            mod.parse_iw_link(
+                "Connected to aa:bb:cc:dd:ee:01 (on wlan0)\n"
+                "\tSSID: HomeNet\n\tsignal: -55.00 dBm"),
+            {"bssid": "AA:BB:CC:DD:EE:01", "ssid": "HomeNet",
+             "signal_dbm": -55})
+        self.assertEqual(
+            mod.parse_iw_link(
+                "Connected to AA:BB:CC:DD:EE:09\n"
+                "\tsignal: -70.5 dBm"),
+            {"bssid": "AA:BB:CC:DD:EE:09", "ssid": "",
+             "signal_dbm": -70.5})
+
+    # -- live reads through the mocked platform seam -------------------
+
+    def test_discover_iface_and_read_live_fallback(self):
+        mod = self._mod()
+        self.assertEqual(
+            mod._discover_iface({"tunables": {"iface": " wlan1 "}}),
+            "wlan1")
+        nmcli = ("AA\\:BB\\:CC\\:DD\\:EE\\:01:Home:6:100:WPA2\n")
+        dump = ("BSS AA:BB:CC:DD:EE:02(on wlan0)\n"
+                "\tSSID: Cafe\n\tsignal: -70 dBm\n")
+        link = ("Connected to AA:BB:CC:DD:EE:01 (on wlan0)\n"
+                "\tSSID: Home\n\tsignal: -55 dBm\n")
+        nmcli_argv = ("nmcli", "-t", "-f",
+                      "BSSID,SSID,CHAN,SIGNAL,SECURITY",
+                      "device", "wifi", "list")
+
+        def fake(table):
+            return lambda argv, timeout=10: table.get(tuple(argv))
+
+        orig = mod._run
+        try:
+            mod._run = fake({("iw", "dev"): "Interface wlan0\n"})
+            self.assertEqual(mod._discover_iface({"tunables": {}}),
+                             "wlan0")
+            mod._run = fake({})
+            self.assertEqual(mod._discover_iface({"tunables": {}}), "")
+            # nmcli answers: the iw dump is never needed, the
+            # link is still read via iw.
+            mod._run = fake({nmcli_argv: nmcli,
+                             ("iw", "dev"): "Interface wlan0\n",
+                             ("iw", "dev", "wlan0", "link"): link})
+            readings = mod.read_live({"tunables": {}})
+            self.assertTrue(readings["scan_ok"])
+            self.assertEqual(readings["scan"], [
+                {"bssid": "AA:BB:CC:DD:EE:01", "ssid": "Home",
+                 "channel": 6, "signal_dbm": -50,
+                 "security": "WPA2"}])
+            self.assertEqual(readings["link"], {
+                "bssid": "AA:BB:CC:DD:EE:01", "ssid": "Home",
+                "signal_dbm": -55})
+            # nmcli silent: fall back to the iw dump.
+            mod._run = fake({
+                ("iw", "dev"): "Interface wlan0\n",
+                ("iw", "dev", "wlan0", "scan", "dump"): dump,
+                ("iw", "dev", "wlan0", "link"): link})
+            readings = mod.read_live({"tunables": {}})
+            self.assertTrue(readings["scan_ok"])
+            self.assertEqual(readings["scan"][0]["bssid"],
+                             "AA:BB:CC:DD:EE:02")
+            # A dump with no BSS block is not a scan.
+            mod._run = fake({
+                ("iw", "dev"): "Interface wlan0\n",
+                ("iw", "dev", "wlan0", "scan", "dump"): "empty",
+                ("iw", "dev", "wlan0", "link"): link})
+            readings = mod.read_live({"tunables": {}})
+            self.assertFalse(readings["scan_ok"])
+            self.assertEqual(readings["scan"], [])
+            self.assertIsNotNone(readings["link"])
+            # No source at all: a quiet no-op pass.
+            mod._run = fake({})
+            readings = mod.read_live({"tunables": {"iface": "wlan9"}})
+            self.assertFalse(readings["scan_ok"])
+            self.assertEqual(readings["scan"], [])
+            self.assertIsNone(readings["link"])
+            self.assertIsInstance(readings["now"], float)
+        finally:
+            mod._run = orig
+        self.assertIsNone(
+            mod._run(["definitely-not-a-real-binary-xyz"]))
+
+    # -- decide ----------------------------------------------------------
+
+    def test_decide_scan_ok_false_changes_nothing(self):
+        import copy
+        mod = self._mod()
+        state = self._learned(misses=2)
+        for readings in (None, "x", {}, {"scan_ok": False,
+                                         "scan": [self._ap(
+                                             "AA:BB:CC:DD:EE:02")]},
+                         {"scan_ok": 0, "scan": []}):
+            with self.subTest(readings=repr(readings)[:30]):
+                alerts, new_state = mod.decide(
+                    readings, {}, copy.deepcopy(state))
+                self.assertEqual(alerts, [])
+                self.assertEqual(new_state["aps"]
+                                 ["AA:BB:CC:DD:EE:01"]["misses"], 2)
+
+    def test_decide_learn_pass_and_no_learn(self):
+        mod = self._mod()
+        link = {"bssid": "aa:bb:cc:dd:ee:01", "ssid": "Home",
+                "signal_dbm": -55}
+        alerts, state = mod.decide(
+            self._readings([self._ap("aa:bb:cc:dd:ee:01")], link),
+            {}, {})
+        self.assertEqual(alerts, [])
+        self.assertTrue(state["learned"])
+        self.assertEqual(state["link"], {
+            "bssid": "AA:BB:CC:DD:EE:01", "signal_ref": -55.0})
+        # A link seen before learning still seeds the ref.
+        prior = {"learned": False, "aps": {}, "ssids": {},
+                 "link": {"bssid": "AA:BB:CC:DD:EE:09",
+                          "signal_ref": -70.0}}
+        alerts, state = mod.decide(
+            self._readings([]), {}, prior)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["link"], {
+            "bssid": "AA:BB:CC:DD:EE:09", "signal_ref": -70.0})
+        # learn_first_pass False: unlearned state is reset and
+        # the first scan is evaluated.
+        unlearned = self._learned()
+        unlearned["learned"] = False
+        unlearned["link"] = {"bssid": "AA:BB:CC:DD:EE:09",
+                             "signal_ref": -70.0}
+        alerts, state = mod.decide(
+            self._readings([self._ap("AA:BB:CC:DD:EE:01")]),
+            {"tunables": {"learn_first_pass": False}},
+            unlearned)
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["new_access_point"])
+        self.assertIsNone(state["link"])
+
+    def test_decide_new_twin_and_downgrade(self):
+        import copy
+        mod = self._mod()
+        # A new BSSID with an unknown SSID.
+        alerts, _ = mod.decide(
+            self._readings([self._ap("AA:BB:CC:DD:EE:01"),
+                            self._ap("AA:BB:CC:DD:EE:02", "Cafe",
+                                     channel=11)]),
+            {}, self._learned())
+        self.assertEqual(
+            [(a["signal"], a["severity"]) for a in alerts],
+            [("new_access_point", "medium")])
+        self.assertEqual(alerts[0]["detail"], {
+            "bssid": "AA:BB:CC:DD:EE:02", "ssid": "Cafe",
+            "channel": 11, "security": "WPA2"})
+        # Multiple new APs file in BSSID-sorted order.
+        alerts, _ = mod.decide(
+            self._readings([self._ap("AA:BB:CC:DD:EE:03", "B"),
+                            self._ap("AA:BB:CC:DD:EE:02", "A")]),
+            {}, self._learned())
+        self.assertEqual(
+            [a["detail"]["bssid"] for a in alerts],
+            ["AA:BB:CC:DD:EE:02", "AA:BB:CC:DD:EE:03"])
+        # A known SSID from a new BSSID is an evil twin.
+        alerts, _ = mod.decide(
+            self._readings([self._ap("AA:BB:CC:DD:EE:09", "Home")]),
+            {}, self._learned())
+        self.assertEqual(
+            [(a["signal"], a["severity"]) for a in alerts],
+            [("evil_twin_suspect", "high")])
+        self.assertEqual(alerts[0]["detail"]["expected"],
+                         ["AA:BB:CC:DD:EE:01"])
+        # A hidden SSID from a new BSSID is just new.
+        alerts, _ = mod.decide(
+            self._readings([self._ap("AA:BB:CC:DD:EE:07", "")]),
+            {}, self._learned())
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["new_access_point"])
+        # A downgrade files before the baseline absorbs it.
+        alerts, state = mod.decide(
+            self._readings([self._ap("AA:BB:CC:DD:EE:01", "Home",
+                                     "WEP")]),
+            {}, self._learned())
+        self.assertEqual(
+            [(a["signal"], a["detail"]["expected_rank"],
+              a["detail"]["observed_rank"]) for a in alerts],
+            [("evil_twin_suspect", 3, 1)])
+        self.assertEqual(state["aps"]["AA:BB:CC:DD:EE:01"]
+                         ["rank"], 1)
+        # Equal or stronger files nothing (and raises the rank).
+        for security, rank in (("WPA2", 3), ("WPA3", 4)):
+            with self.subTest(security=security):
+                alerts, state = mod.decide(
+                    self._readings([self._ap(
+                        "AA:BB:CC:DD:EE:01", "Home", security)]),
+                    {}, self._learned())
+                self.assertEqual(alerts, [])
+                self.assertEqual(state["aps"]["AA:BB:CC:DD:EE:01"]
+                                 ["rank"], rank)
+
+    def test_decide_gone_sequence(self):
+        mod = self._mod()
+        state = self._learned()
+        for want_misses in (1, 2):
+            alerts, state = mod.decide(
+                self._readings([]), {}, state)
+            self.assertEqual(alerts, [])
+            self.assertEqual(state["aps"]["AA:BB:CC:DD:EE:01"]
+                             ["misses"], want_misses)
+        alerts, state = mod.decide(self._readings([]), {}, state)
+        self.assertEqual(
+            [(a["signal"], a["severity"],
+              a["detail"]["scans_missed"]) for a in alerts],
+            [("access_point_gone", "info", 3)])
+        self.assertEqual(state["aps"], {})
+        self.assertEqual(state["ssids"], {})
+
+    def test_decide_link_roam_drop_and_ref(self):
+        import copy
+        mod = self._mod()
+
+        def with_link(link, tunables=None):
+            state = self._learned()
+            state["link"] = {"bssid": "AA:BB:CC:DD:EE:01",
+                             "signal_ref": -55.0}
+            return mod.decide(
+                self._readings([self._ap("AA:BB:CC:DD:EE:01")],
+                               link),
+                {"tunables": tunables or {}}, state)
+
+        # Roam.
+        alerts, state = with_link(
+            {"bssid": "AA:BB:CC:DD:EE:02", "ssid": "Home",
+             "signal_dbm": -60})
+        self.assertEqual(
+            [(a["signal"], a["severity"]) for a in alerts],
+            [("link_degraded", "medium")])
+        self.assertEqual(state["link"], {
+            "bssid": "AA:BB:CC:DD:EE:02", "signal_ref": -60.0})
+        # A 5 dB drop is quiet; exactly 10 files; a rise
+        # raises the reference.
+        alerts, state = with_link(
+            {"bssid": "AA:BB:CC:DD:EE:01", "ssid": "Home",
+             "signal_dbm": -60})
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["link"]["signal_ref"], -55.0)
+        alerts, state = with_link(
+            {"bssid": "AA:BB:CC:DD:EE:01", "ssid": "Home",
+             "signal_dbm": -65})
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["link_degraded"])
+        self.assertEqual(state["link"]["signal_ref"], -65.0)
+        alerts, state = with_link(
+            {"bssid": "AA:BB:CC:DD:EE:01", "ssid": "Home",
+             "signal_dbm": -50})
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["link"]["signal_ref"], -50.0)
+        # A genuine link_drop_db of 5 files at a 6 dB drop.
+        alerts, _ = with_link(
+            {"bssid": "AA:BB:CC:DD:EE:01", "ssid": "Home",
+             "signal_dbm": -61}, {"link_drop_db": 5})
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["link_degraded"])
+        # A None reference is seeded; a None signal and an
+        # absent link change nothing.
+        state = self._learned()
+        state["link"] = {"bssid": "AA:BB:CC:DD:EE:01",
+                         "signal_ref": None}
+        alerts, state = mod.decide(
+            self._readings([self._ap("AA:BB:CC:DD:EE:01")],
+                           {"bssid": "AA:BB:CC:DD:EE:01",
+                            "ssid": "Home", "signal_dbm": -58}),
+            {}, state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["link"]["signal_ref"], -58.0)
+        alerts, state = with_link(
+            {"bssid": "AA:BB:CC:DD:EE:01", "ssid": "Home",
+             "signal_dbm": None})
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["link"]["signal_ref"], -55.0)
+        alerts, state = with_link(None)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["link"]["signal_ref"], -55.0)
+        # A first link seeds quietly.
+        alerts, state = mod.decide(
+            self._readings([self._ap("AA:BB:CC:DD:EE:01")],
+                           {"bssid": "AA:BB:CC:DD:EE:01",
+                            "ssid": "Home", "signal_dbm": -55}),
+            {}, self._learned())
+        self.assertEqual(alerts, [])
+        self.assertEqual(state["link"], {
+            "bssid": "AA:BB:CC:DD:EE:01", "signal_ref": -55.0})
+
+    def test_decide_state_scan_cleaning_and_sensor(self):
+        mod = self._mod()
+        self.assertEqual(mod._clean_state(None),
+                         {"learned": False, "aps": {},
+                          "ssids": {}, "link": None})
+        cleaned = mod._clean_state({
+            "learned": "yes",
+            "aps": {"aa:bb:cc:dd:ee:01": {
+                        "ssid": 5, "security": None,
+                        "rank": "3", "misses": -2},
+                    "": {"ssid": "X"},
+                    "BB:BB:CC:DD:EE:02": "notdict",
+                    "CC:CC:CC:DD:EE:03": {
+                        "ssid": "Cafe", "security": "WPA2",
+                        "rank": 3.9, "misses": 2.9}},
+            "ssids": {"": {"bssids": []},
+                      "Home": {"bssids": ["aa:bb:cc:dd:ee:01",
+                                          "AA:BB:CC:DD:EE:01",
+                                          5, ""],
+                               "rank": "x"},
+                      "Cafe": {"bssids": "notlist", "rank": 2.5}},
+            "link": {"bssid": "aa:bb:cc:dd:ee:09",
+                     "signal_dbm": -70, "signal_ref": "bogus"}})
+        self.assertEqual(cleaned, {
+            "learned": False,
+            "aps": {"AA:BB:CC:DD:EE:01": {
+                        "ssid": "", "security": "", "rank": 0,
+                        "misses": 0},
+                    "CC:CC:CC:DD:EE:03": {
+                        "ssid": "Cafe", "security": "WPA2",
+                        "rank": 3, "misses": 2}},
+            "ssids": {"Home": {"bssids": ["AA:BB:CC:DD:EE:01"],
+                               "rank": 0},
+                      "Cafe": {"bssids": [], "rank": 2}},
+            "link": {"bssid": "AA:BB:CC:DD:EE:09",
+                     "signal_ref": -70.0}})
+        # A usable signal_ref wins; an unusable one falls
+        # back to signal_dbm; no usable BSSID drops the link.
+        self.assertEqual(mod._clean_state({"link": {
+            "bssid": "AA:BB:CC:DD:EE:09", "signal_ref": -60,
+            "signal_dbm": -70}})["link"]["signal_ref"], -60.0)
+        self.assertEqual(mod._clean_state({"link": {
+            "bssid": "AA:BB:CC:DD:EE:09",
+            "signal_ref": float("inf"),
+            "signal_dbm": -70}})["link"]["signal_ref"], -70.0)
+        self.assertIsNone(mod._clean_state({"link": {
+            "bssid": "", "signal_dbm": -70}})["link"])
+        # Scan cleaning: dedup by uppercased BSSID (first
+        # wins), string channel / signal read as None.
+        scan = mod._clean_scan({"scan": [
+            {"bssid": "aa:bb:cc:dd:ee:01", "ssid": 5,
+             "channel": "6", "signal_dbm": "-55",
+             "security": None},
+            {"bssid": "AA:BB:CC:DD:EE:01", "ssid": "Dup",
+             "channel": 6, "signal_dbm": -50, "security": "WPA2"},
+            {"bssid": "", "ssid": "X"}, {"ssid": "nobssid"},
+            "notdict",
+            {"bssid": "AA:BB:CC:DD:EE:02", "ssid": "Cafe",
+             "channel": 11.9, "signal_dbm": -70.5,
+             "security": "WPA3"}]})
+        self.assertEqual(scan, [
+            {"bssid": "AA:BB:CC:DD:EE:01", "ssid": "",
+             "channel": None, "signal_dbm": None, "security": ""},
+            {"bssid": "AA:BB:CC:DD:EE:02", "ssid": "Cafe",
+             "channel": 11, "signal_dbm": -70.5,
+             "security": "WPA3"}])
+        self.assertEqual(mod._clean_scan({"scan": "x"}), [])
+        self.assertEqual(mod._clean_scan(None), [])
+        # Sensor fallback.
+        for manifest, want in ((None, "airwaves"),
+                               ("x", "airwaves"),
+                               ({}, "airwaves"),
+                               ({"name": ""}, "airwaves"),
+                               ({"name": 5}, "airwaves"),
+                               ({"name": "custom"}, "custom")):
+            with self.subTest(manifest=repr(manifest)):
+                alerts, _ = mod.decide(
+                    self._readings([self._ap("AA:BB:CC:DD:EE:99",
+                                             "New")]),
+                    manifest, self._learned())
+                self.assertEqual(alerts[0]["sensor"], want)
+
+    # -- main in --readings mode -----------------------------------------
+
+    def test_main_readings_mode(self):
+        import contextlib
+        import io
+        import json
+        import os
+        import tempfile
+        mod = self._mod()
+
+        def run(argv):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                rc = mod.main(argv)
+            return rc, out.getvalue()
+
+        with tempfile.TemporaryDirectory() as td:
+            man = os.path.join(td, "extension.json")
+            rd = os.path.join(td, "readings.json")
+            st = os.path.join(td, "state.json")
+            with open(man, "w", encoding="utf-8") as fh:
+                json.dump({"name": "airwaves", "tunables": {}}, fh)
+            scan = [self._ap("AA:BB:CC:DD:EE:01")]
+            with open(rd, "w", encoding="utf-8") as fh:
+                json.dump(self._readings(scan), fh)
+            rc, out = run(["--manifest", man, "--readings", rd,
+                           "--state", st])
+            self.assertEqual((rc, out), (0, ""))
+            with open(st, encoding="utf-8") as fh:
+                self.assertTrue(json.load(fh)["learned"])
+            # The second pass files the new AP on stdout.
+            scan.append(self._ap("AA:BB:CC:DD:EE:02", "Cafe",
+                                 channel=11, signal_dbm=-70))
+            with open(rd, "w", encoding="utf-8") as fh:
+                json.dump(self._readings(scan), fh)
+            rc, out = run(["--manifest", man, "--readings", rd,
+                           "--state", st])
+            self.assertEqual(rc, 0)
+            filed = [json.loads(line) for line in
+                     out.splitlines() if line.strip()]
+            self.assertEqual([a["signal"] for a in filed],
+                             ["new_access_point"])
+            # A malformed state file reads as fresh (the
+            # pass learns quietly again).
+            with open(st, "w", encoding="utf-8") as fh:
+                fh.write("{not json")
+            rc, out = run(["--manifest", man, "--readings", rd,
+                           "--state", st])
+            self.assertEqual((rc, out), (0, ""))
+            # A list manifest reads as the defaults.
+            with open(man, "w", encoding="utf-8") as fh:
+                json.dump(["x"], fh)
+            rc, _ = run(["--manifest", man, "--readings", rd,
+                         "--state", st])
+            self.assertEqual(rc, 0)
+            with open(man, "w", encoding="utf-8") as fh:
+                json.dump({"name": "airwaves"}, fh)
+            # Missing / malformed manifest or readings: rc 2.
+            self.assertEqual(run(
+                ["--manifest", os.path.join(td, "no.json"),
+                 "--readings", rd, "--state", st])[0], 2)
+            with open(man, "w", encoding="utf-8") as fh:
+                fh.write("{bad")
+            self.assertEqual(run(
+                ["--manifest", man, "--readings", rd,
+                 "--state", st])[0], 2)
+            with open(man, "w", encoding="utf-8") as fh:
+                json.dump({"name": "airwaves"}, fh)
+            self.assertEqual(run(
+                ["--manifest", man,
+                 "--readings", os.path.join(td, "no.json"),
+                 "--state", st])[0], 2)
+            with open(rd, "w", encoding="utf-8") as fh:
+                fh.write("{bad")
+            self.assertEqual(run(
+                ["--manifest", man, "--readings", rd,
+                 "--state", st])[0], 2)
+            # An unwritable state path: rc 2.
+            with open(rd, "w", encoding="utf-8") as fh:
+                json.dump({"now": 1, "scan_ok": False,
+                           "scan": [], "link": None}, fh)
+            self.assertEqual(run(
+                ["--manifest", man, "--readings", rd,
+                 "--state", td])[0], 2)
+            # A non-dict readings file with a fresh state:
+            # rc 0, the fresh state is written back.
+            with open(rd, "w", encoding="utf-8") as fh:
+                json.dump(["x"], fh)
+            fresh = os.path.join(td, "fresh-state.json")
+            rc, out = run(["--manifest", man, "--readings", rd,
+                           "--state", fresh])
+            self.assertEqual((rc, out), (0, ""))
+            with open(fresh, encoding="utf-8") as fh:
+                self.assertFalse(json.load(fh)["learned"])
+
 if __name__ == "__main__":
 
     unittest.main()
