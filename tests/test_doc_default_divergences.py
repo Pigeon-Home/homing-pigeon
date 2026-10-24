@@ -10257,6 +10257,164 @@ class TestMaxResultViewCeilingShapesReadAsFull(unittest.TestCase):
                     self.assertTrue(retain)
 
 
+class TestCertSentinelTunableDaysFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the cert-sentinel
+    _tunable_days reader family (step-8 Target 5,
+    extension-tunable table probe) -- the fifteen
+    shapes at reader level for both day rows.
+
+    (a) Doc claims (extensions/cert-sentinel/README.md
+        lines 29-30, repeated in the extension header
+        lines 13-16 and its extension.json tunables):
+        "cert_expiring -- a certificate's remaining
+        life falls to the warn_days tunable (default
+        30) or below"; "cert_critical -- a
+        certificate's remaining life falls to the
+        critical_days tunable (default 7) or below,
+        or it has already expired". Registry rows
+        "warn_days (cert-sentinel)" (default 30) and
+        "critical_days (cert-sentinel)" (default 7):
+        policy default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: step-8 artifact Target 5
+        says the 51 extension tunables have no
+        reader-level table probe; their readers are
+        local helper families, one adapter per
+        family. This tick took the _tunable_days
+        family (cert-sentinel is its only user) and
+        probed extensions/cert-sentinel/
+        cert_sentinel.py:_tunable_days directly with
+        the fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false,
+        zero, negative, the documented default
+        written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong container -- for both keys,
+        plus a genuine numeric string ("45"), genuine
+        int / float / fractional values, and
+        decide()-level spot checks (a 365-day and a
+        20-day certificate).
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the documented
+        default for both keys: omitted, null, empty
+        string, true, false (booleans never count as
+        numbers), negative, non-numeric string,
+        huge-int, inf, -inf, NaN, list and dict all
+        return 30.0 / 7.0. Numeric strings are NOT
+        parsed by this reader (the isinstance-gate
+        family, like the DRI reader): "30" and a
+        genuine "45" both read as the default, so a
+        decide() pass with warn_days "45" files
+        nothing for a 40-day certificate. Zero is
+        honored literally (0.0 for both keys; the
+        registry rows carry no floor), so warn_days
+        0 files nothing for a 20-day certificate.
+        Genuine numbers are honored exactly,
+        including fractional days (45 -> 45.0,
+        10.5 -> 10.5, 7.5 -> 7.5), and the explicit
+        defaults return the defaults. The +inf shape
+        that the earlier class
+        TestInfiniteCertSentinelDaysDefaults recorded
+        as a divergence now reads as the default too
+        (that class passes on current main). Observed
+        on 2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented defaults and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "extensions", "cert-sentinel",
+            "cert_sentinel.py")
+        spec = importlib.util.spec_from_file_location(
+            "cert_sentinel_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _read(self, mod, key, value, default):
+        return mod._tunable_days({key: value}, key, default)
+
+    def test_fifteen_shapes_for_both_day_rows(self):
+        mod = self._mod()
+        rows = [("warn_days", 30.0), ("critical_days", 7.0)]
+        unusable = [None, "", True, False, -5, "bogus",
+                    10 ** 400, float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for key, default in rows:
+            self.assertEqual(
+                mod._tunable_days({}, key, default), default)
+            for value in unusable:
+                with self.subTest(key=key, value=repr(value)):
+                    self.assertEqual(
+                        self._read(mod, key, value, default),
+                        default)
+            with self.subTest(key=key, shape="zero"):
+                self.assertEqual(
+                    self._read(mod, key, 0, default), 0.0)
+            with self.subTest(key=key, shape="explicit-default"):
+                self.assertEqual(
+                    self._read(mod, key, int(default), default),
+                    default)
+
+    def test_numeric_strings_read_as_default_not_parsed(self):
+        mod = self._mod()
+        for key, default in (("warn_days", 30.0),
+                             ("critical_days", 7.0)):
+            for value in (str(int(default)), "45"):
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(
+                        self._read(mod, key, value, default),
+                        default)
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        for key, default in (("warn_days", 30.0),
+                             ("critical_days", 7.0)):
+            for value, want in ((45, 45.0), (10.5, 10.5),
+                                (7.5, 7.5), (1, 1.0)):
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(
+                        self._read(mod, key, value, default),
+                        want)
+
+    def test_decide_level_spot_checks(self):
+        mod = self._mod()
+        now = 1_800_000_000.0
+
+        def signals(tunables, days_left):
+            readings = {"now": now, "certs": [{
+                "source": "example.com",
+                "subject": "CN=example.com",
+                "issuer": "CN=CA", "serial": "01",
+                "not_after": now + days_left * 86400.0}]}
+            alerts, _state = mod.decide(
+                readings, {"tunables": tunables}, {})
+            return [a["signal"] for a in alerts]
+
+        self.assertEqual(signals({}, 365), [])
+        self.assertEqual(signals({}, 20), ["cert_expiring"])
+        self.assertEqual(signals({"warn_days": 400}, 365),
+                         ["cert_expiring"])
+        self.assertEqual(
+            signals({"warn_days": float("inf")}, 365), [])
+        self.assertEqual(signals({"warn_days": 0}, 20), [])
+        self.assertEqual(signals({"warn_days": "45"}, 40), [])
+
+
 if __name__ == "__main__":
 
     unittest.main()
