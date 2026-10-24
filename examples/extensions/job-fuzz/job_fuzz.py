@@ -199,9 +199,22 @@ _CLASSES = ("refused", "error", "timeout", "exit0", "nonzero")
 # --- small tolerant helpers (the sibling shape) --------------------
 
 def _is_number(value):
-    return isinstance(value, (int, float)) \
-        and not isinstance(value, bool) and value == value \
-        and value not in (float("inf"), float("-inf"))
+    """A finite int or float, never a bool.
+
+    Infinity and NaN are floats, and an integer too large for a float
+    is an int, but none of them is a usable tunable: a 10**400
+    corpus_max_age_days reached float() in _tunable and crashed
+    decide() with OverflowError where inf already read as the
+    documented default. Each reads as "not a number" so the default
+    applies (the shape every other example extension carries).
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        f = float(value)
+    except (OverflowError, ValueError):
+        return False
+    return f == f and f not in (float("inf"), float("-inf"))
 
 
 def _num(value):
