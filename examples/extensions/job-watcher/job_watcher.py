@@ -413,6 +413,11 @@ def decide(readings, manifest, state):
     now = float(now) if _is_number(now) else 0.0
     repeat_failures = int(_tunable(tunables, "repeat_failures", 3))
     failure_window = _tunable(tunables, "failure_window_sec", 86400.0)
+    if failure_window <= 0:
+        # A window of no time holds no failure, so the signal could
+        # never file. It reads as the documented default, a day, like
+        # the sibling watchers' window readers.
+        failure_window = 86400.0
     flaky_runs = int(_tunable(tunables, "flaky_runs", 6))
     flaky_transitions = int(_tunable(tunables,
                                      "flaky_min_transitions", 3))

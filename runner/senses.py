@@ -434,9 +434,9 @@ def load_alerts(base_dir: str, sensor=None, severity_floor=None,
             n = int(limit)
         except (TypeError, ValueError, OverflowError):
             n = 50
-        if n < 0:
-            n = 0
-        out = out[-n:]
+        # A zero cap is a real cap of zero records. out[-0:] is the
+        # whole list in Python, so zero is answered explicitly.
+        out = out[-n:] if n > 0 else []
     return out
 
 
