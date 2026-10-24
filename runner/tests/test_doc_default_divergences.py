@@ -24537,6 +24537,619 @@ class TestBackupFreshnessPathsAndDecideFifteenShapes(unittest.TestCase):
                 ["--manifest", manifest, "--readings", readings,
                  "--state", state]), 2)
 
+class TestCertSentinelSourcesAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the cert-sentinel
+    list tunables cert_files (default []) and
+    tls_targets (default []), read_live()'s file
+    and TLS source handling, the decoded-record
+    helpers, and decide()'s record / state /
+    manifest handling varied with the fifteen
+    shapes for the first time (step-8 Target 5 /
+    family (b) -- cert-sentinel's earlier classes
+    cover only its numeric _tunable_days reader;
+    its list tunables, its live readers and its
+    change / duplicate handling were never varied,
+    the same gap the feed hunts closed in the
+    ticks before this one). The one crash found
+    is recorded separately in
+    TestNonFiniteTlsTargetPortCrashesInsteadOfNoRecord
+    below and is deliberately excluded here.
+
+    (a) Doc claims: the manifest ships cert_files
+        [] and tls_targets [] plus warn_days 30,
+        critical_days 7 and poll_interval_sec
+        86400 (extensions/cert-sentinel/
+        extension.json). The module header states
+        the sources are "all optional and
+        capability-based -- a source that cannot
+        be read yields no record, which is never
+        an error": cert files are "parsed with
+        the standard library's certificate
+        decoder; a missing or unparseable file is
+        skipped silently", and for TLS targets
+        "No network, an unreachable host, or a
+        failed handshake all simply yield no
+        record". read_live()'s docstring repeats:
+        "A source that cannot be read contributes
+        no record, never an exception." decide()
+        is the band discipline from the README:
+        cert_expiring (medium) on entering warn,
+        cert_critical (high) on entering critical
+        or already expired, cert_changed (info)
+        when a known source presents a different
+        serial, issuer or subject, quiet while a
+        band holds, a first sight files its band
+        but no cert_changed, and a changed
+        certificate's band is re-evaluated fresh.
+
+    (b) How this was probed: on 2026-10-24
+        read_live() was probed with the fifteen
+        shapes (omitted, null, empty string, true,
+        false, zero, negative, numeric string,
+        non-numeric string, huge-int (10**400),
+        inf, -inf, NaN, list, dict) for each list
+        tunable -- cert_files against a stubbed
+        ssl._ssl._test_decode_cert (the shape the
+        dedicated test_cert_sentinel.py uses, so
+        no real files or network are touched) and
+        tls_targets against a stubbed
+        socket.create_connection that always
+        fails, so the calls that reach the
+        network layer are observable -- plus
+        element cleaning, duplicated paths, and
+        decoder returns / failures of every
+        shape. _flatten_name() and
+        _record_from_decoded() were probed
+        directly. decide() was probed with
+        readings, certs, record-field, now,
+        manifest, sensor-name and state shapes,
+        duplicated sources in one pass, sources
+        out of order, and a previous state whose
+        identity fields clean to empty strings.
+        main() was run in --readings mode against
+        temp manifests (genuine, missing and
+        malformed manifest, missing readings,
+        and a malformed pre-existing state file).
+        poll_interval_sec is read by neither
+        decide() nor read_live().
+
+    (c) Behavior actually observed: NO divergence
+        in this class (the TLS-port crash is the
+        separate class below). read_live() reads
+        every non-list cert_files / tls_targets
+        shape -- a bare string path and a tuple
+        included, unlike the log feeds which
+        accept tuples -- as no sources, cleans a
+        genuine cert_files list element-wise
+        (non-string / empty entries skipped), reads
+        a duplicated path twice, and reads a
+        decoder that raises OSError / ValueError
+        or returns a non-dict, a dict without a
+        usable notAfter, or an unparseable
+        notAfter as no record; a genuine decoded
+        record flattens tuple-of-RDN names to
+        "K=V, ..." (a flat tuple of pairs, a
+        3-tuple pair, or a non-container yields
+        ""), stringifies an integer serial,
+        and reads a missing / None serial as "".
+        tls_targets skips non-dict entries, a
+        non-string / empty host, and a port that
+        int() cannot parse (non-numeric string,
+        None, list, dict, NaN); a missing port
+        defaults to 443, a numeric string parses,
+        a float port truncates, and a bool port
+        reads as 1 -- each of those reaches the
+        connection layer and a failed connection
+        is no record. decide() reads a non-dict
+        readings value as empty, a non-list certs
+        value (a tuple included) as no certs, an
+        unusable now as 0.0 (so every cert reads
+        as ok), drops a record whole for a
+        non-string / empty source or a non-usable
+        not_after (bool, string, huge-int, NaN
+        included), cleans a kept record's
+        subject / issuer / serial to "" when
+        non-string, processes records sorted by
+        source, and files a duplicated source's
+        second occurrence against the first's
+        in-pass state (same identity and band
+        quiet; a different serial files
+        cert_changed plus a fresh band alert; a
+        later tighter expiry files its band).
+        State is cleaned entry-wise: an unknown
+        band or a non-usable not_after drops the
+        entry whole (so the cert files as first
+        sight), a non-dict seen value or non-dict
+        state reads as fresh, an integer source
+        key is dropped while an empty-string
+        source key is kept verbatim, and
+        non-string serial / issuer / subject
+        fields clean to "" -- which then differs
+        from a genuine identity, so a cert whose
+        stored serial cleaned to "" files
+        cert_changed on its next pass. An expired
+        certificate's detail carries days_left
+        rounded to 2 places (negative) and its
+        title says "has expired". A non-string
+        or empty sensor name falls back to
+        "cert_sentinel"; a non-dict manifest or
+        tunables value reads as the defaults.
+        main() in --readings mode files, writes
+        the state and answers rc 0, reads a
+        malformed state file as fresh, and
+        answers rc 2 for a missing / malformed
+        manifest or a missing readings file.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the readings above
+        keep matching the README and the module
+        header. If a shape above ever stops
+        behaving as documented, this test is the
+        failing record of that change.
+    """
+
+    _NOW = 1700000000.0
+    _DAY = 86400.0
+    _DECODED = {
+        "subject": ((("CN", "example.com"),), (("O", "Example Org"),)),
+        "issuer": ((("CN", "Example CA"),),),
+        "serialNumber": "0A1B",
+        "notAfter": "Jan 15 00:00:00 2027 GMT",
+    }
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "cert-sentinel",
+            "cert_sentinel.py")
+        spec = importlib.util.spec_from_file_location(
+            "cert_sentinel_paths_decide", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _cert(self, days, source="/c/site.pem", serial="0A",
+              subject="CN=x", issuer="CN=CA"):
+        return {"source": source, "subject": subject, "issuer": issuer,
+                "serial": serial,
+                "not_after": self._NOW + days * self._DAY}
+
+    def _decide(self, mod, readings, tunables=None, state=None,
+                name="cert_sentinel"):
+        manifest = {"name": name,
+                    "tunables": {} if tunables is None else tunables}
+        return mod.decide(readings, manifest,
+                          {} if state is None else state)
+
+    def test_cert_files_shapes_are_no_sources(self):
+        import unittest.mock
+        mod = self._mod()
+        shapes = [None, "", True, False, 0, -5, "/c/site.pem", "45",
+                  10 ** 400, float("inf"), float("-inf"), float("nan"),
+                  {"x": 1}, ("/c/site.pem",), []]
+        for value in shapes:
+            with self.subTest(value=repr(value)):
+                with unittest.mock.patch.object(
+                        mod.ssl._ssl, "_test_decode_cert",
+                        return_value=dict(self._DECODED)) as decode:
+                    readings = mod.read_live({"tunables": {
+                        "cert_files": value, "tls_targets": []}})
+                self.assertEqual(decode.call_count, 0)
+                self.assertEqual(readings["certs"], [])
+                self.assertIsInstance(readings["now"], float)
+        with unittest.mock.patch.object(
+                mod.ssl._ssl, "_test_decode_cert",
+                return_value=dict(self._DECODED)) as decode:
+            mod.read_live({"tunables": {"tls_targets": []}})
+        self.assertEqual(decode.call_count, 0)
+
+    def test_cert_files_elements_cleaned_and_duplicates_read(self):
+        import unittest.mock
+        mod = self._mod()
+        with unittest.mock.patch.object(
+                mod.ssl._ssl, "_test_decode_cert",
+                return_value=dict(self._DECODED)) as decode:
+            readings = mod.read_live({"tunables": {
+                "cert_files": ["/a.pem", "", 123, None, True, ["x"],
+                               "/b.pem"],
+                "tls_targets": []}})
+        self.assertEqual(decode.call_count, 2)
+        self.assertEqual([c["source"] for c in readings["certs"]],
+                         ["/a.pem", "/b.pem"])
+        rec = readings["certs"][0]
+        self.assertEqual(rec["subject"], "CN=example.com, O=Example Org")
+        self.assertEqual(rec["issuer"], "CN=Example CA")
+        self.assertEqual(rec["serial"], "0A1B")
+        self.assertEqual(
+            rec["not_after"],
+            mod.ssl.cert_time_to_seconds("Jan 15 00:00:00 2027 GMT"))
+        with unittest.mock.patch.object(
+                mod.ssl._ssl, "_test_decode_cert",
+                return_value=dict(self._DECODED)) as decode:
+            readings = mod.read_live({"tunables": {
+                "cert_files": ["/a.pem", "/a.pem"], "tls_targets": []}})
+        self.assertEqual(decode.call_count, 2)
+        self.assertEqual(len(readings["certs"]), 2)
+
+    def test_decoder_failures_and_bad_returns_are_no_record(self):
+        import unittest.mock
+        mod = self._mod()
+        cases = [(None, None), ("x", None), ({}, None),
+                 (dict(self._DECODED, notAfter="bogus"), None),
+                 (dict(self._DECODED, notAfter=""), None),
+                 (None, OSError("no such file")),
+                 (None, ValueError("bad pem"))]
+        for ret, err in cases:
+            with self.subTest(ret=repr(ret)[:40], err=repr(err)):
+                with unittest.mock.patch.object(
+                        mod.ssl._ssl, "_test_decode_cert",
+                        return_value=ret, side_effect=err):
+                    readings = mod.read_live({"tunables": {
+                        "cert_files": ["/a.pem"], "tls_targets": []}})
+                self.assertEqual(readings["certs"], [])
+
+    def test_flatten_and_record_from_decoded_shapes(self):
+        mod = self._mod()
+        flatten_cases = [
+            (None, ""), ("x", ""), (123, ""), ([], ""),
+            (((("CN", "a"),),), "CN=a"),
+            (((("CN", "a"),), (("O", "b"),)), "CN=a, O=b"),
+            ((("CN", "a"), ("O", "b")), ""),
+            ([[["CN", "a"]]], "CN=a"),
+            ([(("CN", "a", "extra"),)], ""),
+            ([("notpair",)], ""),
+            (((("CN", "a"),), (("O",),)), "CN=a"),
+        ]
+        for value, want in flatten_cases:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(mod._flatten_name(value), want)
+        when = "Jan 15 00:00:00 2027 GMT"
+        stamp = mod.ssl.cert_time_to_seconds(when)
+        for decoded in [None, "x", {}, {"notAfter": ""},
+                        {"notAfter": 123}, {"notAfter": "bogus"}]:
+            with self.subTest(decoded=repr(decoded)):
+                self.assertIsNone(mod._record_from_decoded("src", decoded))
+        self.assertEqual(
+            mod._record_from_decoded("src", {"notAfter": when}),
+            {"source": "src", "subject": "", "issuer": "",
+             "serial": "", "not_after": float(stamp)})
+        rec = mod._record_from_decoded("src", {
+            "notAfter": when, "serialNumber": 123,
+            "subject": ((("CN", "a"),),), "issuer": None})
+        self.assertEqual(rec["serial"], "123")
+        self.assertEqual(rec["subject"], "CN=a")
+        self.assertEqual(rec["issuer"], "")
+        rec = mod._record_from_decoded(
+            "src", {"notAfter": when, "serialNumber": None})
+        self.assertEqual(rec["serial"], "")
+
+    def test_tls_target_shapes_and_port_parsing(self):
+        import unittest.mock
+        mod = self._mod()
+        for value in [None, "", True, 0, "h", 123, {"host": "h"},
+                      float("nan"), [], ["x", 123, None]]:
+            with self.subTest(value=repr(value)):
+                with unittest.mock.patch.object(
+                        mod.socket, "create_connection",
+                        side_effect=OSError("no")) as conn:
+                    readings = mod.read_live({"tunables": {
+                        "cert_files": [], "tls_targets": value}})
+                self.assertEqual(conn.call_count, 0)
+                self.assertEqual(readings["certs"], [])
+        targets = [{"host": 123, "port": 443}, {"host": "", "port": 443},
+                   {"host": "h", "port": "bogus"},
+                   {"host": "h", "port": None},
+                   {"host": "h", "port": float("nan")},
+                   {"host": "h", "port": [443]},
+                   {"host": "h"}, {"host": "h", "port": "443"},
+                   {"host": "h", "port": 443.9}, {"host": "h", "port": True}]
+        with unittest.mock.patch.object(
+                mod.socket, "create_connection",
+                side_effect=OSError("no")) as conn:
+            readings = mod.read_live({"tunables": {
+                "cert_files": [], "tls_targets": targets}})
+        self.assertEqual(readings["certs"], [])
+        self.assertEqual(
+            [call.args[0] for call in conn.call_args_list],
+            [("h", 443), ("h", 443), ("h", 443), ("h", 1)])
+
+    def test_read_live_manifest_shapes(self):
+        import unittest.mock
+        mod = self._mod()
+        for manifest in [None, "x", [], {}, {"tunables": "x"},
+                         {"tunables": None}, {"tunables": [1]}]:
+            with self.subTest(manifest=repr(manifest)):
+                with unittest.mock.patch.object(
+                        mod.ssl._ssl, "_test_decode_cert",
+                        return_value=dict(self._DECODED)) as decode:
+                    readings = mod.read_live(manifest)
+                self.assertEqual(decode.call_count, 0)
+                self.assertEqual(readings["certs"], [])
+                self.assertIsInstance(readings["now"], float)
+
+    def test_decide_readings_certs_and_now_shapes(self):
+        mod = self._mod()
+        for readings in [None, "x", [], 123, {}]:
+            with self.subTest(readings=repr(readings)):
+                alerts, state = self._decide(mod, readings)
+                self.assertEqual(alerts, [])
+                self.assertEqual(state, {"seen": {}})
+        for certs in [None, "x", {}, 123, (self._cert(20),)]:
+            with self.subTest(certs=repr(certs)[:40]):
+                alerts, state = self._decide(
+                    mod, {"now": self._NOW, "certs": certs})
+                self.assertEqual(alerts, [])
+                self.assertEqual(state, {"seen": {}})
+        for bad_now in ["bogus", True, False, 10 ** 400, float("inf"),
+                        float("-inf"), float("nan"), None, ["x"]]:
+            with self.subTest(now=repr(bad_now)):
+                alerts, state = self._decide(
+                    mod, {"now": bad_now, "certs": [self._cert(20)]})
+                self.assertEqual(alerts, [])
+                self.assertEqual(
+                    state["seen"]["/c/site.pem"]["band"], "ok")
+
+    def test_decide_record_field_shapes(self):
+        mod = self._mod()
+        dropped = [
+            {"source": "", "not_after": self._NOW},
+            {"source": 123, "not_after": self._NOW},
+            {"source": "/a", "not_after": "soon"},
+            {"source": "/a", "not_after": True},
+            {"source": "/a", "not_after": 10 ** 400},
+            {"source": "/a", "not_after": float("inf")},
+            {"source": "/a", "not_after": float("nan")},
+            {"source": "/a"},
+            "junk", None, [],
+        ]
+        for rec in dropped:
+            with self.subTest(rec=repr(rec)[:50]):
+                alerts, state = self._decide(
+                    mod, {"now": self._NOW, "certs": [rec]})
+                self.assertEqual(alerts, [])
+                self.assertEqual(state, {"seen": {}})
+        alerts, state = self._decide(mod, {"now": self._NOW, "certs": [{
+            "source": "/a", "not_after": self._NOW + 20 * self._DAY,
+            "subject": 123, "issuer": None, "serial": ["x"]}]})
+        self.assertEqual([a["signal"] for a in alerts], ["cert_expiring"])
+        self.assertEqual(state["seen"]["/a"], {
+            "serial": "", "issuer": "", "subject": "",
+            "not_after": self._NOW + 20 * self._DAY, "band": "warn"})
+        self.assertEqual(alerts[0]["detail"]["serial"], "")
+
+    def test_decide_sort_duplicates_and_expired_detail(self):
+        mod = self._mod()
+        alerts, _ = self._decide(mod, {"now": self._NOW, "certs": [
+            self._cert(20, source="/z.pem"), self._cert(5, source="/a.pem")]})
+        self.assertEqual(
+            [(a["detail"]["source"], a["signal"]) for a in alerts],
+            [("/a.pem", "cert_critical"), ("/z.pem", "cert_expiring")])
+        alerts, state = self._decide(mod, {"now": self._NOW, "certs": [
+            self._cert(20), self._cert(20)]})
+        self.assertEqual([a["signal"] for a in alerts], ["cert_expiring"])
+        alerts, state = self._decide(mod, {"now": self._NOW, "certs": [
+            self._cert(20, serial="A"), self._cert(20, serial="B")]})
+        self.assertEqual([a["signal"] for a in alerts],
+                         ["cert_expiring", "cert_changed", "cert_expiring"])
+        self.assertEqual(alerts[1]["detail"]["previous_serial"], "A")
+        self.assertEqual(state["seen"]["/c/site.pem"]["serial"], "B")
+        alerts, _ = self._decide(mod, {"now": self._NOW, "certs": [
+            self._cert(90), self._cert(5)]})
+        self.assertEqual([a["signal"] for a in alerts], ["cert_critical"])
+        alerts, _ = self._decide(
+            mod, {"now": self._NOW, "certs": [self._cert(-1.234)]})
+        self.assertEqual(alerts[0]["signal"], "cert_critical")
+        self.assertIn("has expired", alerts[0]["title"])
+        self.assertEqual(alerts[0]["detail"]["days_left"], -1.23)
+        alerts, _ = self._decide(
+            mod, {"now": self._NOW, "certs": [self._cert(20.567)]})
+        self.assertEqual(alerts[0]["detail"]["days_left"], 20.57)
+        self.assertEqual(alerts[0]["detail"]["warn_days"], 30.0)
+
+    def test_decide_state_cleaning_shapes(self):
+        mod = self._mod()
+        readings = {"now": self._NOW, "certs": [self._cert(20, source="/a")]}
+        dropped_states = [
+            {"seen": {"/a": {"band": "loud", "not_after": self._NOW,
+                             "serial": "S", "issuer": "I",
+                             "subject": "J"}}},
+            {"seen": {"/a": {"band": "warn", "not_after": True,
+                             "serial": "S"}}},
+            {"seen": {"/a": {"band": "warn", "not_after": "soon"}}},
+            {"seen": {123: {"band": "warn", "not_after": self._NOW}}},
+            {"seen": "x"}, {"seen": [1]}, "junk", None, [],
+        ]
+        for raw in dropped_states:
+            with self.subTest(state=repr(raw)[:60]):
+                alerts, state = mod.decide(
+                    readings, {"name": "cert_sentinel", "tunables": {}}, raw)
+                self.assertEqual([a["signal"] for a in alerts],
+                                 ["cert_expiring"])
+                self.assertEqual(sorted(state["seen"]), ["/a"])
+        # An empty-string source key is kept verbatim by the cleaner.
+        kept = {"seen": {"": {"band": "warn", "not_after": self._NOW,
+                              "serial": "S", "issuer": "I", "subject": "J"}}}
+        alerts, state = mod.decide(
+            {"now": self._NOW, "certs": []},
+            {"name": "cert_sentinel", "tunables": {}}, kept)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state, kept)
+        # Non-string identity fields clean to "", which then differs
+        # from a genuine identity and files cert_changed.
+        alerts, _ = mod.decide(
+            {"now": self._NOW, "certs": [self._cert(90, source="/a")]},
+            {"name": "cert_sentinel", "tunables": {}},
+            {"seen": {"/a": {"band": "ok",
+                             "not_after": self._NOW + 90 * self._DAY,
+                             "serial": 123, "issuer": "CN=CA",
+                             "subject": "CN=x"}}})
+        self.assertEqual([a["signal"] for a in alerts], ["cert_changed"])
+        self.assertEqual(alerts[0]["detail"]["previous_serial"], "")
+
+    def test_decide_sensor_and_manifest_shapes(self):
+        mod = self._mod()
+        readings = {"now": self._NOW, "certs": [self._cert(20)]}
+        for manifest, sensor in [
+                ({}, "cert_sentinel"), ({"name": ""}, "cert_sentinel"),
+                ({"name": 123}, "cert_sentinel"),
+                ({"name": "my_sensor"}, "my_sensor"),
+                ("junk", "cert_sentinel"),
+                ({"name": "cert_sentinel", "tunables": "x"},
+                 "cert_sentinel"),
+                ({"name": "cert_sentinel", "tunables": [1]},
+                 "cert_sentinel")]:
+            with self.subTest(manifest=repr(manifest)[:50]):
+                alerts, _ = mod.decide(readings, manifest, {})
+                self.assertEqual(
+                    [(a["sensor"], a["signal"]) for a in alerts],
+                    [(sensor, "cert_expiring")])
+
+    def test_main_readings_mode_and_errors(self):
+        import io
+        import os
+        from contextlib import redirect_stdout
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            manifest = os.path.join(td, "ext.json")
+            readings = os.path.join(td, "r.json")
+            state = os.path.join(td, "s.json")
+            with open(manifest, "w", encoding="utf-8") as fh:
+                json.dump({"name": "cert_sentinel", "tunables": {}}, fh)
+            with open(readings, "w", encoding="utf-8") as fh:
+                json.dump({"now": self._NOW,
+                           "certs": [self._cert(20)]}, fh)
+            out = io.StringIO()
+            with redirect_stdout(out):
+                rc = mod.main(["--manifest", manifest,
+                               "--readings", readings, "--state", state])
+            self.assertEqual(rc, 0)
+            self.assertIn("cert_expiring", out.getvalue())
+            with open(state, encoding="utf-8") as fh:
+                saved = json.load(fh)
+            self.assertEqual(saved["seen"]["/c/site.pem"]["band"], "warn")
+            self.assertEqual(mod.main(
+                ["--manifest", os.path.join(td, "nope"),
+                 "--readings", readings, "--state", state]), 2)
+            self.assertEqual(mod.main(
+                ["--manifest", manifest,
+                 "--readings", os.path.join(td, "nope"),
+                 "--state", state]), 2)
+            with open(state, "w", encoding="utf-8") as fh:
+                fh.write("{not json")
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(mod.main(
+                    ["--manifest", manifest, "--readings", readings,
+                     "--state", state]), 0)
+            with open(manifest, "w", encoding="utf-8") as fh:
+                fh.write("{bad")
+            self.assertEqual(mod.main(
+                ["--manifest", manifest, "--readings", readings,
+                 "--state", state]), 2)
+
+
+class TestNonFiniteTlsTargetPortCrashesInsteadOfNoRecord(unittest.TestCase):
+    """Divergence: a tls_targets entry whose port is
+    +inf or -inf crashes cert-sentinel's read_live()
+    with OverflowError instead of yielding no record
+    for that source.
+
+    (a) Doc claims (extensions/cert-sentinel/
+        cert_sentinel.py module header): the sources
+        are "all optional and capability-based -- a
+        source that cannot be read yields no record,
+        which is never an error", and for TLS targets
+        "No network, an unreachable host, or a failed
+        handshake all simply yield no record".
+        read_live()'s docstring repeats the promise:
+        "A source that cannot be read contributes no
+        record, never an exception."
+
+    (b) How the bug was found: the campaign's
+        second-run source hunt (2026-10-24 tick)
+        varied cert-sentinel's tls_targets list with
+        the fifteen shapes, including target dicts
+        whose port carried each non-finite float,
+        probing _read_tls_target() directly and
+        read_live() with the connection layer
+        stubbed to fail.
+
+    (c) Behavior actually observed: a port of NaN,
+        a non-numeric string, None, a list or a dict
+        all yield no record, as documented -- int()
+        raises ValueError / TypeError for them and
+        _read_tls_target catches those two. But
+        int(float("inf")) and int(float("-inf"))
+        raise OverflowError, which the
+        `except (TypeError, ValueError)` around
+        `port = int(port)` does not catch, so the
+        error propagates out of _read_tls_target
+        and out of read_live() itself: the whole
+        pass crashes and no certificate from any
+        source is read, instead of that one target
+        yielding no record. Observed on 2026-10-24:
+        _read_tls_target("example.invalid",
+        float("inf")) raised "OverflowError: cannot
+        convert float infinity to integer", and
+        read_live() with tls_targets
+        [{"host": "example.invalid", "port":
+        float("inf")}] raised the same. This is the
+        campaign's known non-finite root-cause
+        family in a new reader (a list element's
+        field, not a scalar tunable).
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "cert-sentinel",
+            "cert_sentinel.py")
+        spec = importlib.util.spec_from_file_location(
+            "cert_sentinel_tls_port_divergence", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_nonfinite_port_yields_no_record(self):
+        mod = self._mod()
+        for port in (float("inf"), float("-inf")):
+            with self.subTest(port=port):
+                self.assertIsNone(
+                    mod._read_tls_target("example.invalid", port))
+
+    def test_read_live_survives_nonfinite_port_target(self):
+        import unittest.mock
+        mod = self._mod()
+        for port in (float("inf"), float("-inf")):
+            with self.subTest(port=port):
+                with unittest.mock.patch.object(
+                        mod.socket, "create_connection",
+                        side_effect=OSError("no")):
+                    readings = mod.read_live({"tunables": {
+                        "cert_files": [],
+                        "tls_targets": [{"host": "example.invalid",
+                                         "port": port}]}})
+                self.assertEqual(readings["certs"], [])
+
+    def test_other_unusable_ports_already_yield_no_record(self):
+        # Controls: the ports that already behave as
+        # documented today and must keep doing so
+        # after the non-finite case is fixed.
+        mod = self._mod()
+        for port in (float("nan"), "bogus", None, [443], {"p": 443}):
+            with self.subTest(port=repr(port)):
+                self.assertIsNone(
+                    mod._read_tls_target("example.invalid", port))
+
 if __name__ == "__main__":
 
     unittest.main()
