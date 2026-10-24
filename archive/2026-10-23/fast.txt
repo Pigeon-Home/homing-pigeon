@@ -1,0 +1,90 @@
+# fast. 146 ok. 79 held. cutoff 120s: tests/test_install_edges.py tests/test_posture.py.
+# held files are listed at the end of this log.
+batch fast  files 225
+budget 60m
+file cutoff 120s
+
+ok 146
+held 79
+timeout 2
+timeout-files tests/test_install_edges.py tests/test_posture.py
+held-files
+tests/test_aide_feed.py
+tests/test_airwaves.py
+tests/test_backup_freshness.py
+tests/test_build_config.py
+tests/test_cert_sentinel.py
+tests/test_cli_options.py
+tests/test_concurrency.py
+tests/test_crash_watch.py
+tests/test_design_docs.py
+tests/test_dozen_extensions.py
+tests/test_dtls_fuzz.py
+tests/test_extension_sources.py
+tests/test_extensions.py
+tests/test_failed_login_watch.py
+tests/test_falco_feed.py
+tests/test_hardening_templates.py
+tests/test_ids_feeds_e2e.py
+tests/test_install_edges.py
+tests/test_install_wipe.py
+tests/test_latency_post.py
+tests/test_linux_audit.py
+tests/test_linux_baseline.py
+tests/test_linux_board.py
+tests/test_linux_canary.py
+tests/test_linux_config.py
+tests/test_linux_dri.py
+tests/test_linux_harness.py
+tests/test_linux_logseen.py
+tests/test_linux_oauth.py
+tests/test_linux_posture.py
+tests/test_linux_private_io.py
+tests/test_linux_process.py
+tests/test_linux_query.py
+tests/test_linux_receipt.py
+tests/test_linux_resources.py
+tests/test_linux_retained.py
+tests/test_linux_seen.py
+tests/test_linux_senses.py
+tests/test_linux_setup.py
+tests/test_linux_unit.py
+tests/test_linux_unit_posture.py
+tests/test_local_signals.py
+tests/test_log_sentinel.py
+tests/test_make_snapshot.py
+tests/test_oracle.py
+tests/test_oracle_ab.py
+tests/test_oracle_chat.py
+tests/test_oracle_learning.py
+tests/test_oracle_opinion.py
+tests/test_oracle_page_script.py
+tests/test_oracle_page_stamps.py
+tests/test_osquery_feed.py
+tests/test_parallel_runner.py
+tests/test_personal_docs.py
+tests/test_pi_light.py
+tests/test_port_watch.py
+tests/test_posture.py
+tests/test_properties.py
+tests/test_protocol_and_edges.py
+tests/test_release_drop.py
+tests/test_review.py
+tests/test_runner_face.py
+tests/test_runner_oracle_tools.py
+tests/test_seeded_mutation_workflow.py
+tests/test_service_watch.py
+tests/test_skip_guard.py
+tests/test_sky_watcher.py
+tests/test_softflowd_feed.py
+tests/test_suricata_feed.py
+tests/test_sysmon_feed.py
+tests/test_training_watch.py
+tests/test_tripwire.py
+tests/test_upstream_pins.py
+tests/test_usb_arrivals.py
+tests/test_watchers.py
+tests/test_wazuh_feed.py
+tests/test_windows_surface.py
+tests/test_wire_arrivals.py
+tests/test_zeek_feed.py

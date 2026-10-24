@@ -1,0 +1,31 @@
+# rest. 9 ok. 0 held.
+batch rest  files 9
+file cutoff 120s
+start tests/test_confinement.py  tests 23
+ok tests/test_confinement.py  1s
+left 8
+start tests/test_minimal_userland.py  tests 6
+ok tests/test_minimal_userland.py  0s
+left 7
+start tests/test_platform_proof.py  tests 7
+ok tests/test_platform_proof.py  1s
+left 6
+start tests/test_runbook_constraints.py  tests 15
+ok tests/test_runbook_constraints.py  1s
+left 5
+start tests/test_flag321.py  tests 20
+ok tests/test_flag321.py  1s
+left 4
+start tests/test_flag321_indirect.py  tests 12
+ok tests/test_flag321_indirect.py  0s
+left 3
+start tests/test_flag321_long_scripts.py  tests 7
+ok tests/test_flag321_long_scripts.py  1s
+left 2
+start tests/test_flag321_obfuscated.py  tests 8
+ok tests/test_flag321_obfuscated.py  0s
+left 1
+start tests/test_flag321_scenarios.py  tests 1
+ok tests/test_flag321_scenarios.py  0s
+left 0
+left 0

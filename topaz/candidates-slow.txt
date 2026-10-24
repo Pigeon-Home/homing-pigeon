@@ -1,0 +1,13 @@
+# 12 flag321 strings. cutoff 90s. model qwen2.5:3b.
+test_flag321.py#1
+test_flag321.py#2
+test_flag321.py#4
+test_flag321_indirect.py#1
+test_flag321_indirect.py#3
+test_flag321_indirect.py#5
+test_flag321_indirect.py#7
+test_flag321_long_scripts.py#1
+test_flag321_obfuscated.py#1
+test_flag321_obfuscated.py#3
+test_flag321_scenarios.py#1
+test_flag321_scenarios.py#4

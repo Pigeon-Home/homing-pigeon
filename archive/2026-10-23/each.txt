@@ -1,0 +1,53 @@
+# each. 11 ok. 4 held. campaign file 0s where sh is absent.
+batch each  files 15
+file cutoff 3600s
+start tests/test_campaign_loop_cycles.py  tests 3516
+ok tests/test_campaign_loop_cycles.py  0s
+left 14
+start tests/test_doc_default_divergences.py  tests 226
+problem fail tests/test_doc_default_divergences.py  9s
+left 13
+start tests/test_graceful_failure.py  tests 192
+ok tests/test_graceful_failure.py  11s
+left 12
+start tests/test_notable_access.py  tests 167
+ok tests/test_notable_access.py  25s
+left 11
+start tests/test_negative_concurrency.py  tests 126
+ok tests/test_negative_concurrency.py  36s
+left 10
+start tests/test_linux_platform.py  tests 111
+problem fail tests/test_linux_platform.py  0s
+left 9
+start tests/test_extension_poison.py  tests 94
+ok tests/test_extension_poison.py  25s
+left 8
+start tests/test_oracle_intake_fuzz.py  tests 87
+problem fail tests/test_oracle_intake_fuzz.py  0s
+left 7
+start tests/test_job_fuzz.py  tests 55
+problem fail tests/test_job_fuzz.py  0s
+left 6
+start tests/test_dtls.py  tests 54
+ok tests/test_dtls.py  12s
+left 5
+start tests/test_concurrency_poison.py  tests 42
+ok tests/test_concurrency_poison.py  14s
+left 4
+start tests/test_transport_log_relay_fuzz.py  tests 29
+ok tests/test_transport_log_relay_fuzz.py  1s
+left 3
+start tests/test_fuzz_guided.py  tests 28
+ok tests/test_fuzz_guided.py  4s
+left 2
+start tests/test_campaign_loop_variants.py  tests 9
+ok tests/test_campaign_loop_variants.py  0s
+left 1
+start tests/test_fuzz_parsers.py  tests 7
+ok tests/test_fuzz_parsers.py  7s
+left 0
+held 4
+tests/test_doc_default_divergences.py
+tests/test_linux_platform.py
+tests/test_oracle_intake_fuzz.py
+tests/test_job_fuzz.py

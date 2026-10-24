@@ -1,0 +1,5 @@
+Author airgap. Start analysis of LLM tools.
+suite.txt lists tests/. 253 files, 9178 tests.
+NOTES.md names the tools and the records.
+fast.txt, each.txt, rest.txt, flag321.txt, denylist-exact.txt hold the records.
+interesting.example/OVERVIEW.py holds the short held cases.
