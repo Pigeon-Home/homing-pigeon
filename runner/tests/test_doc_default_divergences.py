@@ -33560,6 +33560,583 @@ class TestSkyWatcherBrightPassFiresWhenVisibleMinAboveMaxElevation(
             seen.extend(a["signal"] for a in alerts)
         self.assertEqual(seen, ["station_approaching"])
 
+
+class TestLatencyPostProbesStateAndMainFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the latency-post
+    readings parser, state cleaning, read_live()
+    target / gateway readers, decide() pass state
+    machine and main() in --readings mode varied
+    with the fifteen shapes for the first time
+    (step-8 Target 5 / family (b) -- latency-post's
+    only earlier classes cover its spike_ms /
+    spike_factor tunables at the decide() reader
+    and read_live()'s probe_timeout_sec /
+    gateway_port / targets readers were never
+    themselves varied; _clean_state(), the probe
+    entry fields, the down / spike state machine
+    and main() had no class before this one).
+
+    (a) Doc claims: the module docstring states
+    read_live() is the only function that touches
+    the machine, decide() is pure (readings plus
+    manifest plus last pass's state, out come
+    alerts and the new state; the current time
+    arrives as readings["now"] and decide() never
+    reads a clock), a down target files once and
+    stays quiet until a probe succeeds (recovery
+    clears the flag silently -- there is no
+    recovery signal), and a spike files once with
+    an in-band reading clearing the spike flag
+    quietly. The README states the gateway is
+    probed for reachability on gateway_port
+    (default 53), a configured target is probed
+    for its service, target_down is high severity,
+    latency_spike (medium) fires when a probe's
+    latency rises above both spike_ms (default
+    250) and spike_factor (default 3) times the
+    median of the target's last samples with at
+    least 3 prior samples, every successful
+    latency joins the target's sample history
+    capped at the last 20, probe_timeout_sec
+    (default 2) is the per-probe connect timeout,
+    and --readings replays a readings file (one
+    JSON object with "probes") with the alerts
+    printed one payload per line and state kept
+    next to the script.
+
+    (b) How this was probed: on 2026-10-24
+    decide(), _clean_state(), read_live() and
+    main() were probed with the table hunt's
+    fifteen shapes (omitted-equivalent empty,
+    null, empty string, true, false, zero,
+    negative, numeric string, non-numeric string,
+    huge-int (10**400), inf, -inf, NaN, list,
+    dict) at every field: the readings object,
+    the manifest, its tunables and name, the
+    probes container, each probe entry, and the
+    target / ok / latency_ms / error fields;
+    state objects, their targets map, each state
+    entry and its samples; the down -> quiet ->
+    recovery -> down sequence; isolated spike
+    threshold edges (priors [100, 100, 100]:
+    250 / 299 / 300 / 301 / 1000 ms; priors
+    [10, 20, 60]: 250 vs 251 ms); spike_active
+    preset; fewer than 3 priors; the 20-sample
+    cap through both _clean_state() and
+    decide(); read_live() with _probe() and
+    _read_default_gateway() monkeypatched (no
+    network) across include_gateway,
+    gateway_port, probe_timeout_sec and targets
+    shapes plus sixteen target-entry shapes; and
+    main() in --readings mode against temp
+    manifests, readings and state files,
+    including missing, malformed, list-shaped
+    and unwritable files.
+
+    (c) Behavior actually observed: NO divergence
+    in this class. decide() reads every non-dict
+    readings shape as no probes (cleaned incoming
+    state returned, nothing filed), every
+    non-dict manifest or non-dict tunables shape
+    as the defaults with sensor "latency_post",
+    and any non-empty string manifest name
+    verbatim as the sensor (a numeric string
+    included). Every non-list probes shape reads
+    as no probes, and every non-dict probe entry
+    is skipped. A probe is honored only with a
+    non-empty string target and a genuine bool
+    ok (1, 0 and "true" are all skipped, leaving
+    no state entry); a down probe files
+    target_down (high) once with detail carrying
+    the error only when it is a non-empty string,
+    stays quiet while down, clears the down flag
+    silently on the next ok probe, and files
+    again on the next failure. An ok probe with
+    an unusable latency (every non-number shape,
+    bool, huge-int, inf, -inf, NaN, strings)
+    still clears down, joins no sample, and
+    leaves spike_active untouched. A usable
+    latency joins the samples verbatim -- zero
+    and negative latencies included -- with the
+    history capped at the last 20 in both
+    _clean_state() and decide(). The spike test
+    is strict: with priors [100, 100, 100] the
+    threshold is max(250, 3 * 100) = 300, so 300
+    files nothing and 301 files latency_spike
+    (medium, detail latency_ms / median_ms);
+    with priors [10, 20, 60] the floor rules
+    (250 files nothing, 251 files). A spiking
+    probe while spike_active files nothing and
+    keeps the flag; an in-band probe clears it
+    quietly so the next spike files fresh; with
+    fewer than 3 priors even a 100000 ms probe
+    files nothing. _clean_state() reads every
+    non-dict state shape and every non-dict
+    targets shape as the fresh state, drops
+    non-string keys and non-dict entries, keeps
+    only _is_number samples (strings, bools,
+    inf and huge-ints are dropped; negatives
+    kept) capped at the last 20, and coerces
+    down / spike_active with bool() -- a
+    non-empty string reads as True. read_live()
+    (patched probe / gateway): only the literal
+    False include_gateway disables the gateway
+    probe (0, "" and "false" all still probe);
+    gateway_port honors only genuine ints in
+    1..65535 (65535 yes; 0, 65536, every
+    fifteen-shape and float values read as the
+    53 default -- note the target-entry reader
+    differs: a float port 443.9 is int()-
+    truncated to 443); probe_timeout_sec honors
+    only positive numbers (5 and 0.5 yes; zero,
+    negative and every unusable shape read as
+    2.0); every non-list targets shape probes
+    nothing, and a target entry is probed only
+    with a non-empty string host and a genuine
+    number port in range (string / bool / 0 /
+    65536 / huge-int ports and missing fields
+    are skipped silently); with no default
+    gateway the readings carry no gateway probe
+    and "now" is a float. main() in --readings
+    mode prints the README's example target_down
+    payload as one sorted JSON line and writes
+    the state (rc 0); a replay against the
+    written state files nothing new; a spike
+    seeded through a state file prints the
+    latency_spike payload; missing or malformed
+    manifest and missing or malformed readings
+    all answer rc 2; a scalar, string, list or
+    null readings file answers rc 0 with nothing
+    filed and the fresh state written (decide()
+    reads a non-dict readings as no probes); a
+    list manifest answers rc 0 with the sensor
+    fallback; a malformed or list state file
+    reads as fresh; an unwritable state path
+    answers rc 2 with the alerts still printed.
+    Observed on 2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+    divergence: it stays green as long as the
+    readings above keep holding. If a shape
+    ever stops behaving as described, this
+    test is the failing record of that change.
+    """
+
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "latency-post",
+            "latency_post.py")
+        spec = importlib.util.spec_from_file_location(
+            "latency_post_probes_state_main_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    _MANIFEST = {"name": "latency_post", "tunables": {}}
+
+    def _state(self, samples=(100, 100, 100), down=False,
+               spike=False, target="t:1"):
+        return {"targets": {target: {
+            "samples": list(samples), "down": down,
+            "spike_active": spike}}}
+
+    def _probe(self, **kw):
+        base = {"target": "t:1", "ok": True, "latency_ms": 10,
+                "error": None}
+        base.update(kw)
+        return base
+
+    def test_readings_and_manifest_shapes(self):
+        mod = self._module()
+        down = {"probes": [self._probe(ok=False, error="timeout")]}
+        for _name, shape in self._SHAPES:
+            alerts, state = mod.decide(shape, self._MANIFEST, None)
+            self.assertEqual(alerts, [])
+            self.assertEqual(state, {"targets": {}})
+            alerts, _state = mod.decide(down, shape, None)
+            self.assertEqual([a["signal"] for a in alerts],
+                             ["target_down"])
+            self.assertEqual(alerts[0]["sensor"], "latency_post")
+            self.assertEqual(alerts[0]["severity"], "high")
+            alerts, _state = mod.decide(
+                {"probes": [self._probe(latency_ms=1000)]},
+                {"name": "lp", "tunables": shape}, self._state())
+            self.assertEqual([a["signal"] for a in alerts],
+                             ["latency_spike"])
+
+    def test_sensor_name_shapes(self):
+        mod = self._module()
+        down = {"probes": [self._probe(ok=False, error="x")]}
+        for _name, shape in self._SHAPES:
+            alerts, _state = mod.decide(
+                down, {"name": shape, "tunables": {}}, None)
+            expected = shape if isinstance(shape, str) and shape \
+                else "latency_post"
+            self.assertEqual(alerts[0]["sensor"], expected)
+
+    def test_probes_container_and_entry_shapes(self):
+        mod = self._module()
+        for _name, shape in self._SHAPES:
+            alerts, state = mod.decide(
+                {"probes": shape}, self._MANIFEST, None)
+            self.assertEqual(alerts, [])
+            self.assertEqual(state, {"targets": {}})
+            alerts, state = mod.decide(
+                {"probes": [shape]}, self._MANIFEST, None)
+            self.assertEqual(alerts, [])
+            self.assertEqual(state, {"targets": {}})
+
+    def test_target_and_ok_shapes(self):
+        mod = self._module()
+        for _name, shape in self._SHAPES:
+            alerts, state = mod.decide(
+                {"probes": [self._probe(target=shape, ok=False)]},
+                self._MANIFEST, None)
+            if isinstance(shape, str) and shape:
+                self.assertEqual([a["signal"] for a in alerts],
+                                 ["target_down"])
+                self.assertEqual(list(state["targets"]), [shape])
+            else:
+                self.assertEqual(alerts, [])
+                self.assertEqual(state, {"targets": {}})
+            alerts, state = mod.decide(
+                {"probes": [self._probe(ok=shape)]},
+                self._MANIFEST, None)
+            if shape is True:
+                self.assertEqual(state["targets"]["t:1"]["samples"],
+                                 [10.0])
+            elif shape is False:
+                self.assertEqual([a["signal"] for a in alerts],
+                                 ["target_down"])
+                self.assertTrue(state["targets"]["t:1"]["down"])
+            else:
+                self.assertEqual(alerts, [])
+                self.assertEqual(state, {"targets": {}})
+
+    def test_latency_and_error_shapes(self):
+        mod = self._module()
+        for _name, shape in self._SHAPES:
+            alerts, state = mod.decide(
+                {"probes": [self._probe(latency_ms=shape)]},
+                self._MANIFEST, self._state())
+            entry = state["targets"]["t:1"]
+            if isinstance(shape, (int, float)) \
+                    and not isinstance(shape, bool) \
+                    and shape == shape \
+                    and shape not in (float("inf"), float("-inf")) \
+                    and shape != 10 ** 400:
+                self.assertEqual(entry["samples"],
+                                 [100.0, 100.0, 100.0, float(shape)])
+            else:
+                self.assertEqual(entry["samples"],
+                                 [100.0, 100.0, 100.0])
+            self.assertEqual(alerts, [])
+            alerts, _state = mod.decide(
+                {"probes": [self._probe(ok=False, error=shape)]},
+                self._MANIFEST, None)
+            detail = alerts[0]["detail"]
+            if isinstance(shape, str) and shape:
+                self.assertEqual(detail["error"], shape)
+            else:
+                self.assertNotIn("error", detail)
+
+    def test_down_quiet_recovery_sequence(self):
+        mod = self._module()
+        state, seen = None, []
+        for ok in [False, False, True, False, True, True]:
+            alerts, state = mod.decide(
+                {"probes": [self._probe(
+                    ok=ok, latency_ms=10 if ok else None,
+                    error="timeout" if not ok else None)]},
+                self._MANIFEST, state)
+            seen.extend(a["signal"] for a in alerts)
+        self.assertEqual(seen, ["target_down", "target_down"])
+        self.assertFalse(state["targets"]["t:1"]["down"])
+        self.assertEqual(state["targets"]["t:1"]["samples"],
+                         [10.0, 10.0, 10.0])
+
+    def test_unusable_latency_clears_down_keeps_spike_flag(self):
+        mod = self._module()
+        alerts, state = mod.decide(
+            {"probes": [self._probe(latency_ms="bogus")]},
+            self._MANIFEST,
+            self._state(samples=(), down=True, spike=True))
+        self.assertEqual(alerts, [])
+        entry = state["targets"]["t:1"]
+        self.assertFalse(entry["down"])
+        self.assertTrue(entry["spike_active"])
+        self.assertEqual(entry["samples"], [])
+
+    def test_spike_threshold_edges(self):
+        mod = self._module()
+        for latency, files in [(250, False), (299, False),
+                               (300, False), (301, True),
+                               (1000, True)]:
+            alerts, state = mod.decide(
+                {"probes": [self._probe(latency_ms=latency)]},
+                self._MANIFEST, self._state())
+            self.assertEqual(bool(alerts), files, latency)
+            self.assertEqual(
+                state["targets"]["t:1"]["spike_active"], files)
+            if files:
+                self.assertEqual(alerts[0]["severity"], "medium")
+                self.assertEqual(alerts[0]["detail"]["median_ms"],
+                                 100.0)
+        for latency, files in [(250, False), (251, True)]:
+            alerts, _state = mod.decide(
+                {"probes": [self._probe(latency_ms=latency)]},
+                self._MANIFEST, self._state(samples=(10, 20, 60)))
+            self.assertEqual(bool(alerts), files, latency)
+
+    def test_spike_files_once_and_in_band_clears(self):
+        mod = self._module()
+        state = self._state()
+        seen = []
+        for latency in [1000, 1000, 100, 1000]:
+            alerts, state = mod.decide(
+                {"probes": [self._probe(latency_ms=latency)]},
+                self._MANIFEST, state)
+            seen.extend(a["signal"] for a in alerts)
+        self.assertEqual(seen, ["latency_spike", "latency_spike"])
+        for priors in [[], [100], [100, 100]]:
+            alerts, _state = mod.decide(
+                {"probes": [self._probe(latency_ms=100000)]},
+                self._MANIFEST, self._state(samples=priors))
+            self.assertEqual(alerts, [])
+
+    def test_samples_cap_in_decide_and_clean_state(self):
+        mod = self._module()
+        _alerts, state = mod.decide(
+            {"probes": [self._probe(latency_ms=999)]},
+            self._MANIFEST,
+            self._state(samples=list(range(20))))
+        samples = state["targets"]["t:1"]["samples"]
+        self.assertEqual(len(samples), 20)
+        self.assertEqual(samples[-1], 999.0)
+        clean = mod._clean_state({"targets": {"t:1": {
+            "samples": list(range(30))}}})
+        self.assertEqual(clean["targets"]["t:1"]["samples"],
+                         [float(v) for v in range(10, 30)])
+
+    def test_clean_state_shapes(self):
+        mod = self._module()
+        for _name, shape in self._SHAPES:
+            self.assertEqual(mod._clean_state(shape),
+                             {"targets": {}})
+            self.assertEqual(
+                mod._clean_state({"targets": shape}),
+                {"targets": {}})
+            clean = mod._clean_state({"targets": {"t:1": shape}})
+            if isinstance(shape, dict):
+                self.assertIn("t:1", clean["targets"])
+            else:
+                self.assertEqual(clean, {"targets": {}})
+        clean = mod._clean_state({"targets": {
+            5: {"samples": [1]},
+            "t:1": {"samples": [1, "2", True, None,
+                                 float("inf"), 10 ** 400, 2.5, -3],
+                    "down": "bogus", "spike_active": 0}}})
+        self.assertEqual(list(clean["targets"]), ["t:1"])
+        entry = clean["targets"]["t:1"]
+        self.assertEqual(entry["samples"], [1.0, 2.5, -3.0])
+        self.assertIs(entry["down"], True)
+        self.assertIs(entry["spike_active"], False)
+
+    def _patched_live(self, mod):
+        calls = []
+        mod._read_default_gateway = lambda: "192.168.1.1"
+
+        def fake_probe(host, port, timeout, is_gateway=False):
+            calls.append((host, port, timeout, is_gateway))
+            return {"target": f"{host}:{port}", "ok": True,
+                    "latency_ms": 1.0, "error": None}
+        mod._probe = fake_probe
+        return calls
+
+    def test_read_live_gateway_and_timeout_shapes(self):
+        mod = self._module()
+        calls = self._patched_live(mod)
+        for _name, shape in self._SHAPES:
+            calls.clear()
+            readings = mod.read_live(
+                {"tunables": {"include_gateway": shape,
+                               "targets": []}})
+            if shape is False:
+                self.assertEqual(readings["probes"], [])
+            else:
+                self.assertEqual(
+                    calls, [("192.168.1.1", 53, 2.0, True)])
+            calls.clear()
+            mod.read_live({"tunables": {"gateway_port": shape,
+                                         "targets": []}})
+            self.assertEqual(
+                calls, [("192.168.1.1", 53, 2.0, True)])
+            calls.clear()
+            mod.read_live({"tunables": {
+                "probe_timeout_sec": shape, "targets": []}})
+            self.assertEqual(
+                calls, [("192.168.1.1", 53, 2.0, True)])
+        for port, expected in [(53, 53), (65535, 65535),
+                               (65536, 53), (0, 53)]:
+            calls.clear()
+            mod.read_live({"tunables": {"gateway_port": port,
+                                         "targets": []}})
+            self.assertEqual(calls[0][1], expected)
+        for timeout, expected in [(5, 5.0), (0.5, 0.5)]:
+            calls.clear()
+            mod.read_live({"tunables": {
+                "probe_timeout_sec": timeout, "targets": []}})
+            self.assertEqual(calls[0][2], expected)
+        mod._read_default_gateway = lambda: None
+        calls.clear()
+        readings = mod.read_live({"tunables": {"targets": []}})
+        self.assertEqual(readings["probes"], [])
+        self.assertIsInstance(readings["now"], float)
+
+    def test_read_live_target_entry_shapes(self):
+        mod = self._module()
+        calls = self._patched_live(mod)
+        for _name, shape in self._SHAPES:
+            calls.clear()
+            readings = mod.read_live({"tunables": {
+                "include_gateway": False, "targets": shape}})
+            self.assertEqual(readings["probes"], [])
+            self.assertEqual(calls, [])
+        entries = [
+            ({"host": "h1", "port": 443}, [("h1", 443, 2.0, False)]),
+            ({"host": "h1"}, []),
+            ({"port": 443}, []),
+            ({"host": "", "port": 443}, []),
+            ({"host": 123, "port": 443}, []),
+            ({"host": "h1", "port": "443"}, []),
+            ({"host": "h1", "port": True}, []),
+            ({"host": "h1", "port": 0}, []),
+            ({"host": "h1", "port": 65536}, []),
+            ({"host": "h1", "port": 65535},
+             [("h1", 65535, 2.0, False)]),
+            ({"host": "h1", "port": 443.9},
+             [("h1", 443, 2.0, False)]),
+            ({"host": "h1", "port": 10 ** 400}, []),
+            ("x", []), (None, []), ([], []),
+        ]
+        for entry, expected in entries:
+            calls.clear()
+            mod.read_live({"tunables": {
+                "include_gateway": False, "targets": [entry]}})
+            self.assertEqual(calls, expected, entry)
+
+    def _main_run(self, mod, argv):
+        import contextlib
+        import io
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), \
+                contextlib.redirect_stderr(err):
+            rc = mod.main(argv)
+        return rc, out.getvalue(), err.getvalue()
+
+    def test_main_readings_mode(self):
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        tmp = tempfile.mkdtemp(prefix="hp-latency-main-")
+
+        def write(name, content):
+            path = os.path.join(tmp, name)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(content if isinstance(content, str)
+                         else json.dumps(content))
+            return path
+
+        manifest = write("man.json",
+                         {"name": "latency_post", "tunables": {}})
+        readings = write("r.json", {"now": 1.0, "probes": [{
+            "target": "192.0.2.10:443", "ok": False,
+            "error": "timeout"}]})
+        state = os.path.join(tmp, "state.json")
+        rc, out, _err = self._main_run(
+            mod, ["--manifest", manifest, "--readings", readings,
+                  "--state", state])
+        self.assertEqual(rc, 0)
+        lines = [json.loads(ln) for ln in out.splitlines() if ln]
+        self.assertEqual(lines, [{
+            "detail": {"error": "timeout",
+                       "target": "192.0.2.10:443"},
+            "sensor": "latency_post", "severity": "high",
+            "signal": "target_down",
+            "title": "target 192.0.2.10:443 stopped answering"}])
+        rc, out, _err = self._main_run(
+            mod, ["--manifest", manifest, "--readings", readings,
+                  "--state", state])
+        self.assertEqual((rc, out), (0, ""))
+        self.assertEqual(self._main_run(
+            mod, ["--manifest", os.path.join(tmp, "nope.json"),
+                  "--readings", readings, "--state", state])[0], 2)
+        badman = write("badman.json", "{not json")
+        self.assertEqual(self._main_run(
+            mod, ["--manifest", badman, "--readings", readings,
+                  "--state", state])[0], 2)
+        self.assertEqual(self._main_run(
+            mod, ["--manifest", manifest, "--readings",
+                  os.path.join(tmp, "nope2.json"),
+                  "--state", state])[0], 2)
+        badread = write("badread.json", "{nope")
+        self.assertEqual(self._main_run(
+            mod, ["--manifest", manifest, "--readings", badread,
+                  "--state", state])[0], 2)
+        for content in ["42", '"hi"', "[1, 2]", "null"]:
+            rp = write("rx.json", content)
+            sp = os.path.join(tmp, "sx.json")
+            rc, out, _err = self._main_run(
+                mod, ["--manifest", manifest, "--readings", rp,
+                      "--state", sp])
+            self.assertEqual((rc, out), (0, ""), content)
+            with open(sp, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh), {"targets": {}})
+        listman = write("listman.json", "[1]")
+        rc, out, _err = self._main_run(
+            mod, ["--manifest", listman, "--readings", readings,
+                  "--state", os.path.join(tmp, "s2.json")])
+        self.assertEqual(rc, 0)
+        self.assertIn('"target_down"', out)
+        badstate = write("badstate.json", "{broken")
+        rc, out, _err = self._main_run(
+            mod, ["--manifest", manifest, "--readings", readings,
+                  "--state", badstate])
+        self.assertEqual(rc, 0)
+        self.assertIn('"target_down"', out)
+        unwritable = os.path.join(tmp, "no-such-dir", "state.json")
+        rc, out, _err = self._main_run(
+            mod, ["--manifest", manifest, "--readings", readings,
+                  "--state", unwritable])
+        self.assertEqual(rc, 2)
+        self.assertIn('"target_down"', out)
+        spike_readings = write("rspike.json", {"probes": [{
+            "target": "t:9", "ok": True, "latency_ms": 1000}]})
+        seed = write("seed.json", {"targets": {"t:9": {
+            "samples": [100, 100, 100], "down": False,
+            "spike_active": False}}})
+        rc, out, _err = self._main_run(
+            mod, ["--manifest", manifest,
+                  "--readings", spike_readings, "--state", seed])
+        self.assertEqual(rc, 0)
+        self.assertIn('"latency_spike"', out)
+
 if __name__ == "__main__":
 
     unittest.main()
