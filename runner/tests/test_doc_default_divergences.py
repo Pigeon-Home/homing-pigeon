@@ -14211,6 +14211,198 @@ class TestZeekFeedTunablesFifteenShapes(unittest.TestCase):
 
 
 
+class TestReleaseDropMaxHashMbFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the release-drop
+    max_hash_mb tunable itself varied with the
+    fifteen shapes at reader and read_live() level
+    for the first time (step-8 Target 5 -- the
+    extension-tunable table; this row's
+    registry-named class
+    TestInfiniteReleaseDropMaxHashDefaultsTo512
+    covered only float("inf"), plus omitted /
+    explicit / boolean / bogus-string / zero /
+    negative / -inf / NaN controls at the helper
+    level).
+
+    (a) Doc claim (extensions/release-drop/
+        README.md, line 21): "A file larger than
+        `max_hash_mb` (default 512) is skipped
+        entirely for the pass". The module docstring
+        states the same (release_drop.py): "A file
+        larger than the max_hash_mb tunable
+        (default 512 MB) is SKIPPED entirely for
+        the pass", the manifest ships the same
+        default (extension.json tunables
+        max_hash_mb 512), and the code's own
+        fallback literal states it (512 * 1024 *
+        1024). Registry row "max_hash_mb
+        (release-drop)": policy default under
+        Decision 1 -- a present-but-unusable value
+        reads as its documented default.
+
+    (b) How it was hunted: step-8 Target 5 lists
+        the 51 extension tunables as covered only
+        for the shapes their named classes
+        exercised. This tick took the release-drop
+        row (one of the rows listed as remaining
+        after the preceding tick): its reader is
+        extensions/release-drop/release_drop.py
+        _max_hash_bytes() (mb if _is_number(mb) and
+        mb > 0, read through int(mb * 1024 * 1024),
+        else 512 * 1024 * 1024, where _is_number
+        accepts only genuine finite numbers, never
+        a bool, and a huge int that overflows
+        float() is not a number), and probed it
+        directly and through read_live() over a
+        temp drop folder holding one five-byte
+        file, with the fifteen shapes from the
+        table hunt -- omitted, null, empty string,
+        true, false, zero, negative, the documented
+        default written explicitly, numeric string,
+        non-numeric string, huge-int (10**400), inf,
+        -inf, NaN, wrong containers (list and
+        dict) -- plus genuine int / fractional
+        values. The observables are the byte cap
+        _max_hash_bytes() returns and, at
+        read_live() level, whether the small file
+        is listed with skipped_oversize 0 or
+        skipped as oversize.
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the
+        documented default 512 * 1024 * 1024. Zero
+        and negative also read as the default
+        because the reader requires mb > 0 before
+        honoring a value. Numeric strings are not
+        parsed ("1" reads as the default; the
+        _is_number isinstance gate). Genuine values
+        are honored exactly: 1 returns 1 MiB, 2
+        returns 2 MiB, and the fractional reader
+        truncates through int() (1.5 returns
+        1572864 bytes, 0.5 returns 524288 bytes);
+        at read_live() level a genuine cap of
+        0.000001 MB (int() to a single byte) skips
+        the five-byte file as oversize where the
+        default lists it. Noted: the +inf crash
+        recorded by the row's named class
+        TestInfiniteReleaseDropMaxHashDefaultsTo512
+        no longer occurs on current main -- that
+        class passes now, because _is_number now
+        excludes non-finite values. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented default and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "release-drop",
+            "release_drop.py")
+        spec = importlib.util.spec_from_file_location(
+            "release_drop_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _read_live(self, mod, tunables):
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            with open(os.path.join(td, "a.txt"),
+                      "wb") as fh:
+                fh.write(b"hello")
+            full = {"watch_dir": td}
+            full.update(tunables)
+            manifest = {"name": "release_drop",
+                        "tunables": full}
+            return mod.read_live(manifest)
+
+    _UNUSABLE = [None, "", True, False, 0, -5, "1", "bogus",
+                 10 ** 400, float("inf"), float("-inf"),
+                 float("nan"), ["x"], {"x": 1}]
+
+    def test_fifteen_shapes_read_as_default(self):
+        mod = self._mod()
+        default = 512 * 1024 * 1024
+        with self.subTest(shape="omitted"):
+            self.assertEqual(mod._max_hash_bytes({}), default)
+        for value in self._UNUSABLE:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    mod._max_hash_bytes(
+                        {"max_hash_mb": value}),
+                    default)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                mod._max_hash_bytes({"max_hash_mb": 512}),
+                default)
+
+    def test_fifteen_shapes_read_live_lists_small_file(self):
+        mod = self._mod()
+        with self.subTest(shape="omitted"):
+            readings = self._read_live(mod, {})
+            self.assertEqual(readings["skipped_oversize"], 0)
+            self.assertEqual(
+                [f["name"] for f in readings["files"]],
+                ["a.txt"])
+        for value in self._UNUSABLE:
+            with self.subTest(value=repr(value)):
+                readings = self._read_live(
+                    mod, {"max_hash_mb": value})
+                self.assertEqual(
+                    readings["skipped_oversize"], 0)
+                self.assertEqual(
+                    [f["name"] for f in readings["files"]],
+                    ["a.txt"])
+        with self.subTest(shape="explicit-default"):
+            readings = self._read_live(
+                mod, {"max_hash_mb": 512})
+            self.assertEqual(readings["skipped_oversize"], 0)
+            self.assertEqual(
+                [f["name"] for f in readings["files"]],
+                ["a.txt"])
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        self.assertEqual(
+            mod._max_hash_bytes({"max_hash_mb": 1}),
+            1 * 1024 * 1024)
+        self.assertEqual(
+            mod._max_hash_bytes({"max_hash_mb": 2}),
+            2 * 1024 * 1024)
+        self.assertEqual(
+            mod._max_hash_bytes({"max_hash_mb": 1.5}),
+            1572864)
+        self.assertEqual(
+            mod._max_hash_bytes({"max_hash_mb": 0.5}),
+            524288)
+        # A genuine cap of a single byte skips the
+        # five-byte file at read_live() level, where
+        # a 1 MB cap lists it.
+        readings = self._read_live(
+            mod, {"max_hash_mb": 0.000001})
+        self.assertEqual(readings["skipped_oversize"], 1)
+        self.assertEqual(readings["files"], [])
+        readings = self._read_live(mod, {"max_hash_mb": 1})
+        self.assertEqual(readings["skipped_oversize"], 0)
+        self.assertEqual(
+            [f["name"] for f in readings["files"]],
+            ["a.txt"])
+
+
+
+
+
 
 
 if __name__ == "__main__":
