@@ -44394,6 +44394,374 @@ class TestLogSentinelCleanStateAndMainModesFifteenShapes(unittest.TestCase):
                     self.assertEqual(rc, 2)
                     self.assertIsNone(state)
 
+class TestServiceWatchMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: service-watch
+    main()'s remaining manifest / readings /
+    state modes, its live mode and its
+    --local-dir delivery gate varied with the
+    fifteen shapes for the first time (step-8
+    Target 5 / family (b) -- service-watch's
+    earlier classes covered its flap tunables,
+    its services reader, _clean_state() called
+    directly, _is_up(), decide() (learn, down,
+    recovered, flap sequences) and main() in
+    --readings mode for a genuine manifest and
+    readings, missing / malformed files, an
+    unwritable state path, a broken-JSON state
+    file, a LIST manifest and a LIST readings
+    file; main()'s scalar / string / null /
+    bool manifests, its scalar / string / null
+    / bool readings files, its junk-carrying
+    pre-state, a directory as the state path,
+    its live mode and its --local-dir delivery
+    gate were never run at all, the same gap
+    the clean / main hunts closed for the
+    other watchers in the ticks before this
+    one).
+
+    (a) Doc claims: the module docstring states
+        decide() is the pure shape ("readings
+        plus manifest plus last pass's state,
+        out come alerts and the new state"),
+        the first pass "can be a learn pass
+        (the learn_first_pass tunable, on by
+        default): it records which services are
+        up and which are down and files
+        nothing", a service_down (high) files
+        when "a service that was up is now
+        absent", local delivery signs each
+        payload with this sense's key read from
+        the environment variable named by
+        --secret-env, and main()'s own comment
+        states a failed delivery leaves the
+        state unwritten so the next pass reports
+        the changes again. _is_number() is
+        documented so a non-finite or huge
+        value reads as "not a number" so the
+        documented default applies.
+
+    (b) How this was probed: on 2026-10-24
+        main() was run against isolated temp
+        dirs for scalar / string / null / bool
+        / float manifests and a list manifest,
+        scalar / string / null / bool / float /
+        list / empty-dict / partial readings
+        files and malformed readings and
+        manifest files, a junk-carrying
+        pre-state (junk transitions, non-bool
+        flags, a non-dict service entry, an
+        int-keyed entry and unknown keys, all
+        through the JSON file), a directory as
+        the state path, live mode with
+        read_live() stubbed, and --local-dir
+        with the secret env var unset (no
+        delivery attempted).
+
+    (c) Behavior actually observed: NO divergence
+        recorded. A non-dict manifest (list,
+        scalar, string, null, bool or float)
+        configures NO services: from a seeded
+        up state with the service absent from
+        the readings, main() files nothing
+        (rc 0) and writes the seeded state back
+        cleaned and unchanged, because decide()
+        only touches services named in the
+        manifest. A non-dict readings file
+        (scalar, string, null, bool, float or
+        list) and an empty readings dict read
+        as an empty pass at now 0.0: from the
+        seeded up state the service files
+        service_down (high, fallback sensor
+        name "service_watch"), the transition
+        is recorded at 0.0 and down_filed is
+        set (rc 0); a now-only or
+        empty-processes dict files the same
+        down at its own now, and a
+        processes-only dict carrying the
+        service files nothing and leaves the
+        seeded state unchanged. A malformed
+        readings or manifest file is rc 2 with
+        a pre-state file left untouched. A
+        junk-carrying pre-state files on its
+        cleaned values through main(): the
+        genuine 900 transition survives as
+        900.0 while the string / bool /
+        huge-int / inf transitions drop, the
+        non-bool down_filed / flap_fired flags
+        read as False, unknown per-service and
+        top-level keys drop, the non-dict
+        service entry drops, and the int-keyed
+        entry survives under its JSON string
+        form "123" (JSON object keys are
+        strings on read-back); the down pass
+        appends its 1010.0 transition after
+        the kept 900.0. A directory as the
+        state path is rc 2 with nothing
+        printed -- the fresh state learn pass
+        files nothing, then the state write
+        fails. Live mode with read_live()
+        stubbed behaves exactly like
+        --readings mode (a stubbed down
+        snapshot files service_down from the
+        seeded state; a stubbed up snapshot
+        on a fresh state learns quietly). And
+        --local-dir with no secret in the env
+        var is rc 2 with the state file left
+        exactly as it was when the pass
+        produced an alert, and no state file
+        created when there was none, whether
+        or not the pass produced an alert --
+        the delivery gate is checked before
+        any state is written, as main()'s
+        comment states.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the readings above
+        keep matching the docs. If a shape above
+        ever stops behaving as documented, this test
+        is the failing record of that change.
+    """
+
+    _UP = [{"name": "svc", "pid": 1, "cmdline": "svc"}]
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "service-watch",
+            "service_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "service_watch_main_modes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _gen(self):
+        return {"name": "service_watch", "tunables": {
+            "services": [{"name": "svc", "match": "exact"}],
+            "learn_first_pass": True}}
+
+    def _seed(self):
+        return {"learned": True, "services": {"svc": {
+            "up": True, "transitions": [],
+            "down_filed": False, "flap_fired": False}}}
+
+    _READINGS = object()
+
+    def _main(self, mod, td, manifest_obj, readings_obj=_READINGS,
+              extra=(), pre_state=None, state_is_dir=False,
+              live=None, no_secret=False):
+        import io
+        import os
+        from contextlib import redirect_stderr, redirect_stdout
+        from unittest import mock
+        man = os.path.join(td, "m.json")
+        rd = os.path.join(td, "r.json")
+        st = td if state_is_dir else os.path.join(td, "s.json")
+        with open(man, "w", encoding="utf-8") as fh:
+            if isinstance(manifest_obj, str) \
+                    and manifest_obj == "{bad":
+                fh.write(manifest_obj)
+            else:
+                json.dump(manifest_obj, fh)
+        args = ["--manifest", man, "--state", st]
+        if live is None:
+            with open(rd, "w", encoding="utf-8") as fh:
+                if isinstance(readings_obj, str) \
+                        and readings_obj == "{bad":
+                    fh.write(readings_obj)
+                else:
+                    json.dump(readings_obj, fh)
+            args += ["--readings", rd]
+        if pre_state is not None and not state_is_dir:
+            with open(st, "w", encoding="utf-8") as fh:
+                json.dump(pre_state, fh)
+        out = io.StringIO()
+        patches = []
+        if live is not None:
+            patches.append(mock.patch.object(
+                mod, "read_live", return_value=live))
+        if no_secret:
+            env = dict(os.environ)
+            env.pop("HOMING_PIGEON_SENSOR_SECRET", None)
+            patches.append(mock.patch.dict(
+                os.environ, env, clear=True))
+        for patch in patches:
+            patch.start()
+        try:
+            with redirect_stdout(out), \
+                    redirect_stderr(io.StringIO()):
+                rc = mod.main(args + list(extra))
+        finally:
+            for patch in patches:
+                patch.stop()
+        state = None
+        if not state_is_dir and os.path.isfile(st):
+            with open(st, encoding="utf-8") as fh:
+                state = json.load(fh)
+        return rc, out.getvalue(), state
+
+    def test_main_manifest_shapes(self):
+        mod = self._mod()
+        down = {"now": 1010.0, "processes": []}
+        # A non-dict manifest configures no services:
+        # nothing files and the seeded state is
+        # written back unchanged.
+        for manifest in [[1, 2], 42, "hi", None, True, 2.5]:
+            with self.subTest(manifest=repr(manifest)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, manifest, down,
+                        pre_state=self._seed())
+                self.assertEqual((rc, out), (0, ""))
+                self.assertEqual(state, self._seed())
+
+    def test_main_readings_shapes(self):
+        mod = self._mod()
+        down_at_0 = {"learned": True, "services": {"svc": {
+            "up": False, "transitions": [0.0],
+            "down_filed": True, "flap_fired": False}}}
+        for value in [42, "hi", None, True, [1, 2], 2.5, {}]:
+            with self.subTest(readings=repr(value)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, self._gen(), value,
+                        pre_state=self._seed())
+                self.assertEqual(rc, 0)
+                self.assertIn("service_down", out)
+                self.assertIn('"service_watch"', out)
+                self.assertEqual(state, down_at_0)
+        for value, ts in [({"now": 1000.0}, 1000.0),
+                          ({"now": 1000.0, "processes": []},
+                           1000.0)]:
+            with self.subTest(readings=repr(value)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, self._gen(), value,
+                        pre_state=self._seed())
+                self.assertEqual(rc, 0)
+                self.assertIn("service_down", out)
+                self.assertEqual(
+                    state["services"]["svc"]["transitions"],
+                    [ts])
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(), {"processes": self._UP},
+                pre_state=self._seed())
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, self._seed())
+        # Malformed readings / manifest files are
+        # rc 2 with a pre-state left untouched.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(), "{bad",
+                pre_state=self._seed())
+            self.assertEqual((rc, out), (2, ""))
+            self.assertEqual(state, self._seed())
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, "{bad",
+                {"now": 1010.0, "processes": []},
+                pre_state=self._seed())
+            self.assertEqual((rc, out), (2, ""))
+            self.assertEqual(state, self._seed())
+
+    def test_main_junk_prestate_and_directory_state(self):
+        mod = self._mod()
+        junk = {"learned": True, "services": {
+                    "svc": {"up": True,
+                            "transitions": [900, "x", True,
+                                            10 ** 400,
+                                            float("inf")],
+                            "down_filed": "yes",
+                            "flap_fired": 1, "extra": 9},
+                    "ghost": "notdict",
+                    123: {"up": True}},
+                "extra_top": 5}
+        kept_123 = {"up": True, "transitions": [],
+                    "down_filed": False, "flap_fired": False}
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(),
+                {"now": 1010.0, "processes": []},
+                pre_state=junk)
+            self.assertEqual(rc, 0)
+            self.assertIn("service_down", out)
+            self.assertEqual(state, {"learned": True,
+                "services": {
+                    "svc": {"up": False,
+                            "transitions": [900.0, 1010.0],
+                            "down_filed": True,
+                            "flap_fired": False},
+                    "123": kept_123}})
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(),
+                {"now": 1010.0, "processes": self._UP},
+                pre_state=junk)
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, {"learned": True,
+                "services": {
+                    "svc": {"up": True,
+                            "transitions": [900.0],
+                            "down_filed": False,
+                            "flap_fired": False},
+                    "123": kept_123}})
+        # A directory as the state path is rc 2 with
+        # nothing printed: the fresh learn pass
+        # files nothing, then the write fails.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(),
+                {"now": 1010.0, "processes": []},
+                state_is_dir=True)
+            self.assertEqual((rc, out), (2, ""))
+            self.assertIsNone(state)
+
+    def test_main_live_mode_and_local_gate(self):
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(), pre_state=self._seed(),
+                live={"now": 2000.0, "processes": []})
+            self.assertEqual(rc, 0)
+            self.assertIn("service_down", out)
+            self.assertEqual(
+                state["services"]["svc"]["transitions"],
+                [2000.0])
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(),
+                live={"now": 2000.0, "processes": self._UP})
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, {"learned": True,
+                "services": {"svc": {
+                    "up": True, "transitions": [],
+                    "down_filed": False,
+                    "flap_fired": False}}})
+        # --local-dir with no secret in the env var
+        # is rc 2: the seeded state is left exactly
+        # as it was when an alert was produced,
+        # and no state file is created when there
+        # was none and no alert was produced.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(),
+                {"now": 1010.0, "processes": []},
+                extra=["--local-dir", td],
+                pre_state=self._seed(), no_secret=True)
+            self.assertEqual((rc, out), (2, ""))
+            self.assertEqual(state, self._seed())
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, self._gen(),
+                {"now": 1000.0, "processes": self._UP},
+                extra=["--local-dir", td], no_secret=True)
+            self.assertEqual((rc, out), (2, ""))
+            self.assertIsNone(state)
+
 if __name__ == "__main__":
 
     unittest.main()
