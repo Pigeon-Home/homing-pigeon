@@ -19756,6 +19756,251 @@ class TestWireArrivalsLearnAndIfacesFifteenShapes(unittest.TestCase):
         self.assertTrue(mod._keep("", ["eth0"]))
         self.assertTrue(mod._keep(None, ["eth0"]))
 
+class TestAideFeedPathsAndReportFifteenShapes(unittest.TestCase):
+    """Coverage: the aide-feed tunables and report
+    handling (report_paths, default
+    ["/var/log/aide/aide.log"], and poll_interval_sec,
+    default 3600) under the fifteen shapes.
+
+    (a) Doc claims: the manifest ships both
+        (extensions/aide-feed/extension.json:
+        "report_paths": ["/var/log/aide/aide.log"],
+        "poll_interval_sec": 3600). The README states
+        "The producer polls the `report_paths`
+        tunable; a report is NEW when the file's
+        (inode, size, mtime) fingerprint differs from
+        the reader state, and only a new report is
+        read and parsed" and "No new report means the
+        readings carry nothing and nothing files; the
+        same report twice files once -- the reader
+        fingerprint is the first gate, and the
+        fingerprint decide() records in its state is
+        the second. A report with zero differences
+        files nothing" (extensions/aide-feed/README.md),
+        with the tunables table giving report_paths
+        ["/var/log/aide/aide.log"] and
+        poll_interval_sec 3600. Neither key is a
+        numeric registry row, so Decision 1's
+        default-on-unusable policy for numeric readers
+        does not name a shape rule for them; this
+        class pins the observed readings instead of
+        asserting one.
+
+    (b) How this was probed: step-8 Target 5 /
+        family (b) -- aide-feed had no test in this
+        file at all before this tick. On 2026-10-24
+        the paths reader (read_report_file(), the
+        reader main() hands the report_paths value
+        to) was probed with the table hunt's fifteen
+        shapes (omitted-equivalent empty list, null,
+        empty string, true, false, zero, negative,
+        numeric string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, list, dict), plus
+        genuine, mixed, tuple and missing-path lists
+        against a real temp report file. decide()
+        was probed with report and fingerprint shapes
+        directly, and parse_report() with non-string
+        input. poll_interval_sec is not read by
+        aide_feed.py at all (no reader in the module);
+        decide() never consults manifest tunables --
+        a bogus tunables dict changes nothing -- and
+        the report_paths fallback itself (a value
+        that is not a non-empty list reads as the
+        documented default list) lives inline in
+        main(), so the reader-level probe below is
+        the deepest testable surface for the key.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. read_report_file(): every
+        non-list/non-tuple shape -- and an empty
+        list -- reads as no paths: (None, {}), no
+        report and no state. A genuine list is
+        cleaned element-wise: non-string and empty
+        elements are skipped, missing files yield
+        nothing and keep no state entry, and a tuple
+        is accepted like a list. A new file's text is
+        returned once with its (inode, size, mtime)
+        fingerprint recorded; the same file handed
+        back with that reader state returns None
+        (the first gate). decide(): a missing or
+        None report, and a report with no entries in
+        any class, file nothing. The report is
+        cleaned class-wise: a non-dict report reads
+        as empty, a non-list class reads as empty,
+        and list entries are cleaned of non-string
+        and empty elements; an alert's detail count
+        is the full cleaned count while its paths
+        are truncated to the first 20. Alerts file
+        in the order changed (medium), removed
+        (medium), added (info). The fingerprint is
+        honored as a string verbatim or rendered
+        "inode:size:mtime" from a dict; every other
+        shape reads as None, which disables the
+        second gate (the report files and the state
+        stays None, so it would file again next
+        pass), while a genuine fingerprint files
+        once and the same fingerprint again files
+        nothing. parse_report(): non-string input
+        answers the empty report. Observed on
+        2026-10-24 against current main.
+    """
+
+    _REPORT_TEXT = (
+        "AIDE found differences between database and "
+        "filesystem!!\nChanged entries:\n"
+        "f+++++++++++++++++: /etc/passwd\n")
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "aide-feed", "aide_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "aide_feed_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    _NON_PATHS = [("null", None), ("empty-string", ""),
+                  ("true", True), ("false", False),
+                  ("zero", 0), ("negative", -5),
+                  ("numeric-string", "120"),
+                  ("non-numeric-string", "bogus"),
+                  ("huge-int", 10 ** 400),
+                  ("inf", float("inf")),
+                  ("-inf", float("-inf")),
+                  ("nan", float("nan")),
+                  ("dict", {"x": 1}), ("empty-dict", {}),
+                  ("list-shape", ["x"])]
+
+    def test_report_paths_shapes(self):
+        mod = self._module()
+        self.assertEqual(mod.read_report_file([], {}), (None, {}))
+        for name, value in self._NON_PATHS:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    mod.read_report_file(value, {}), (None, {}))
+        self.assertEqual(
+            mod.read_report_file(["/nonexistent/aide.log"], {}),
+            (None, {}))
+        self.assertEqual(
+            mod.read_report_file("not-a-list-state", {}), (None, {}))
+
+    def test_report_paths_genuine_and_fingerprint_gate(self):
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "aide.log")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self._REPORT_TEXT)
+            text, reader = mod.read_report_file([path], {})
+            self.assertEqual(text, self._REPORT_TEXT)
+            self.assertEqual(set(reader), {path})
+            self.assertEqual(
+                set(reader[path]), {"inode", "size", "mtime"})
+            # The first gate: the same file is not new again.
+            self.assertEqual(
+                mod.read_report_file([path], reader), (None, reader))
+            # Mixed lists are cleaned element-wise.
+            text2, _ = mod.read_report_file(
+                [123, "", None, path], {})
+            self.assertEqual(text2, self._REPORT_TEXT)
+            # A tuple is accepted like a list.
+            text3, _ = mod.read_report_file((path,), {})
+            self.assertEqual(text3, self._REPORT_TEXT)
+
+    def test_decide_report_shapes(self):
+        mod = self._module()
+        manifest = {"name": "aide_feed"}
+        self.assertEqual(mod.decide({"now": 1.0}, manifest, {}),
+                         ([], {"last_fingerprint": None}))
+        self.assertEqual(
+            mod.decide({"now": 1.0, "report": None}, manifest, {}),
+            ([], {"last_fingerprint": None}))
+        empty = {"added": [], "removed": [], "changed": []}
+        self.assertEqual(
+            mod.decide({"now": 1.0, "report": empty}, manifest, {})[0],
+            [])
+        for bad in ("bogus", 123, ["x"]):
+            with self.subTest(shape=repr(bad)):
+                self.assertEqual(
+                    mod.decide({"now": 1.0, "report": bad},
+                               manifest, {})[0], [])
+        alerts, _ = mod.decide(
+            {"now": 1.0,
+             "report": {"added": "notalist",
+                        "removed": [123, "", "/r", None],
+                        "changed": []}},
+            manifest, {})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["signal"], "aide_removed")
+        self.assertEqual(alerts[0]["detail"]["count"], 1)
+        self.assertEqual(alerts[0]["detail"]["paths"], ["/r"])
+        alerts, _ = mod.decide(
+            {"now": 1.0,
+             "report": {"added": ["/a"] * 25, "removed": [],
+                        "changed": []}},
+            manifest, {})
+        self.assertEqual(alerts[0]["detail"]["count"], 25)
+        self.assertEqual(len(alerts[0]["detail"]["paths"]), 20)
+        # Order and severities: changed, removed, added.
+        alerts, _ = mod.decide(
+            {"now": 1.0,
+             "report": {"added": ["/a"], "removed": ["/r"],
+                        "changed": ["/c"]}},
+            manifest, {})
+        self.assertEqual(
+            [(a["signal"], a["severity"]) for a in alerts],
+            [("aide_changed", "medium"),
+             ("aide_removed", "medium"),
+             ("aide_added", "info")])
+        # decide() never consults manifest tunables.
+        alerts2, _ = mod.decide(
+            {"now": 1.0,
+             "report": {"added": ["/a"], "removed": [],
+                        "changed": ["/c"]}},
+            {"name": "aide_feed",
+             "tunables": {"report_paths": "bogus",
+                          "poll_interval_sec": "bogus"}}, {})
+        self.assertEqual(len(alerts2), 2)
+
+    def test_decide_fingerprint_shapes_and_dedup(self):
+        mod = self._module()
+        manifest = {"name": "aide_feed"}
+        report = {"added": ["/a"], "removed": [], "changed": ["/c"]}
+        alerts, state = mod.decide(
+            {"now": 1.0, "report": dict(report),
+             "fingerprint": "fp1"}, manifest, {})
+        self.assertEqual(len(alerts), 2)
+        self.assertEqual(state["last_fingerprint"], "fp1")
+        # The second gate: the same fingerprint files nothing.
+        alerts2, _ = mod.decide(
+            {"now": 2.0, "report": dict(report),
+             "fingerprint": "fp1"}, manifest, state)
+        self.assertEqual(alerts2, [])
+        # A dict fingerprint renders as inode:size:mtime.
+        _, state3 = mod.decide(
+            {"now": 1.0, "report": dict(report),
+             "fingerprint": {"inode": 1, "size": 2, "mtime": 3.0}},
+            manifest, {})
+        self.assertEqual(state3["last_fingerprint"], "1:2:3.0")
+        # Every other shape reads as None: files, no dedup state.
+        for bad in (None, 123, ["x"], True):
+            with self.subTest(shape=repr(bad)):
+                alerts4, state4 = mod.decide(
+                    {"now": 1.0, "report": dict(report),
+                     "fingerprint": bad}, manifest, {})
+                self.assertEqual(len(alerts4), 2)
+                self.assertIsNone(state4["last_fingerprint"])
+        # parse_report(): non-string input is the empty report.
+        empty = {"added": [], "removed": [], "changed": [],
+                 "differences": False}
+        self.assertEqual(mod.parse_report(None), empty)
+        self.assertEqual(mod.parse_report(123), empty)
+
 if __name__ == "__main__":
 
     unittest.main()
