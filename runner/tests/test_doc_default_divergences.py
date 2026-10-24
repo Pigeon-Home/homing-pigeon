@@ -16559,6 +16559,146 @@ class TestTaskTimeoutFifteenShapesAtBoardReader(unittest.TestCase):
 
 
 
+
+class TestMaxOutputBytesFifteenShapesAtExecuteJob(unittest.TestCase):
+    """Second-run hunt coverage: max_output_bytes
+    itself varied with the fifteen shapes at the
+    execute_job reader level for the first time
+    (step-8 Target 6 -- core rows covered only for
+    the shapes their classes exercised; the table
+    hunt probes this row through confval.integer
+    generically, and the row's registry-named class
+    TestBooleanMaxOutputBytesDefaultsTo100000
+    varies only the boolean shapes plus a handful
+    of neighbours through the same reader).
+
+    (a) Doc claim (PROTOCOL.md, section 3, lines
+        205-206): "`stdout`/`stderr` are truncated
+        at a configurable byte limit (default
+        100_000); the `*_truncated` flags say so."
+        Registry row "max_output_bytes" (default
+        100000, reader runner/runner.py:execute_job,
+        policy default under Decision 1, lo=1).
+        The reader's own comment states the same:
+        "Documented default 100000; a boolean or a
+        value under 1 is not a byte cap."
+
+    (b) How it was hunted: step-8 artifact Target 6
+        names the core rows covered only for the
+        shapes their classes exercised. This tick
+        took execute_job in runner/runner.py (the
+        single reader of this key, through
+        confval.integer(cfg.get("max_output_bytes"),
+        100000, lo=1)) and probed the key with the
+        fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false,
+        zero, negative, the explicit default,
+        numeric string, non-numeric string,
+        huge-int (10**400), inf, -inf, NaN, wrong
+        containers (list and dict) -- plus genuine
+        caps, fractional caps, a sub-1 fractional,
+        and a long output that only a genuine cap
+        cuts. The observable is the returned
+        stdout and its stdout_truncated flag for a
+        script printing a known line.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape reads as the
+        documented default 100000 -- omitted, null,
+        empty string, true, false, zero, negative,
+        non-numeric string, huge-int, inf, -inf,
+        NaN, list and dict all return the full
+        output untruncated. Zero and negative are
+        defaults here, not literal caps: the
+        reader's bound is lo=1. Genuine values are
+        honored exactly: a cap of 5 returns the
+        first 5 bytes with the flag set, 8 returns
+        8, the numeric string "5" reads as 5 and
+        "2.5" as 2, fractional 5.9 truncates via
+        int() to 5, a sub-1 fractional (0.5) reads
+        as the default, and a 200-byte output is
+        kept whole at the default and cut to 50
+        under a genuine cap of 50. The boolean
+        divergence recorded by the row's named
+        class in the first run no longer occurs on
+        current main (the reader routes through
+        confval.integer, which never counts a
+        boolean as a number). Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        unusable shapes keep reading as the
+        documented default and genuine caps keep
+        being honored. If a shape above ever stops
+        behaving as PROTOCOL.md states, this test
+        is the failing record of that change.
+    """
+
+    def _run(self, cfg_extra, script=None):
+        from runner.runner import execute_job
+        with tempfile.TemporaryDirectory() as base:
+            cfg = {"base_dir": base}
+            cfg.update(cfg_extra)
+            job = {"v": 1, "type": "job",
+                   "job_id": "docdef-maxout-fifteen",
+                   "issued_at": "2026-10-24T00:00:00Z",
+                   "kind": "exec",
+                   "interpreter": ["python3"],
+                   "script": script or
+                   "print('hello-probe-output')"}
+            return execute_job(cfg, job, base)
+
+    def test_fifteen_shapes_read_as_default(self):
+        cases = [("omitted", {})]
+        unusable = [None, "", True, False, 0, -5,
+                    "bogus", 10 ** 400, float("inf"),
+                    float("-inf"), float("nan"),
+                    ["x"], {"x": 1}]
+        cases += [(repr(v), {"max_output_bytes": v})
+                  for v in unusable]
+        cases.append(("explicit-default",
+                      {"max_output_bytes": 100000}))
+        for name, cfg in cases:
+            with self.subTest(shape=name):
+                result = self._run(cfg)
+                self.assertEqual(
+                    result.get("exit_code"), 0)
+                self.assertIn("hello-probe-output",
+                              result.get("stdout", ""))
+                self.assertFalse(
+                    result.get("stdout_truncated"))
+
+    def test_genuine_caps_are_honored(self):
+        for value, want in ((5, "hello"), (8, "hello-pr"),
+                            ("5", "hello"),
+                            ("2.5", "he"), (5.9, "hello")):
+            with self.subTest(value=repr(value)):
+                result = self._run(
+                    {"max_output_bytes": value})
+                self.assertEqual(
+                    result.get("stdout"), want)
+                self.assertTrue(
+                    result.get("stdout_truncated"))
+        # A sub-1 fractional is under the lo=1 bound
+        # and reads as the default, not as a cap.
+        result = self._run({"max_output_bytes": 0.5})
+        self.assertIn("hello-probe-output",
+                      result.get("stdout", ""))
+        self.assertFalse(result.get("stdout_truncated"))
+
+    def test_long_output_cut_only_by_a_genuine_cap(self):
+        script = "print('x' * 200)"
+        result = self._run({}, script=script)
+        self.assertEqual(
+            len(result.get("stdout", "").strip()), 200)
+        self.assertFalse(result.get("stdout_truncated"))
+        result = self._run({"max_output_bytes": 50},
+                           script=script)
+        self.assertEqual(result.get("stdout"), "x" * 50)
+        self.assertTrue(result.get("stdout_truncated"))
+
+
 if __name__ == "__main__":
 
     unittest.main()
