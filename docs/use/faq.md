@@ -1,5 +1,114 @@
 # FAQs
 
+## What can I actually use this for?
+
+Anything with a processor, a job worth doing, and a network that is
+slow, flaky, or absent. A few that show the shape:
+
+**Plug in a soil monitor and hand the SI the whole job.** Install the
+runner on a Raspberry Pi in the barn and the software side is done:
+the installer detects the Pi and applies Pi Light by itself, with no
+model to download. Wire in a soil-moisture sensor and give your SI a
+broad task — "read this sensor every hour and tell me when the beds
+need water." The SI writes the driver, runs it, reads the failure,
+fixes it, and iterates, all through signed jobs. A cellular link that
+drops for a day just means the jobs wait in the mailbox. Same can be
+done with fermentation, growing rooms, and small bioreactors. 
+Homebrewers, mushroom and microgreen growers, cheesemakers, and the
+technicians in an agriculture or food-science lab can let an SI
+iterate on the scripts that hold a temperature or a humidity band.
+
+**Field equipment across an air gap.** The file transport turns the
+protocol into an auditable sneakernet. `send_job.py new --to-file`
+writes a signed, encrypted job to a file; someone carries it on a USB
+stick into a watched folder on a machine with no network at all; the
+result lands in the outbox as `<job_id>.result.txt` and rides back the
+same way. Vehicle and generator diagnostics, maintenance and logistics
+boxes in disaster zones or remote sites: with `max_result_view` set to
+`attested`, only pass/fail, digests, and signed claims leave the box,
+never the raw logs (`docs/extend/transports.md`, PROTOCOL.md section 9).
+
+**A data clean room, lite.** A researcher's script runs against data
+that never leaves the machine, such as a clinic's records or a lab's
+unpublished results. They get attestations ("exit zero", "no secrets
+in the output", an output digest) and, with a local model, plain-
+English `ask` answers that are truncated, secret-scanned, and redacted
+before they are sent. The owner's ceiling caps what any job can see,
+and a per-job privacy budget caps how much it can learn by asking
+(PROTOCOL.md sections 9-11).
+
+**Make a new model prove itself on real hardware.** Put a servo board
+on a Pi and tell the SI to balance an inverted pendulum. It has to
+write the firmware, flash it, read the sensors, and debug the hardware
+into motion through signed jobs, with the results coming back each
+round. It is the fastest honest benchmark there is for whether a model
+can operate, not just talk.
+
+**Camera traps and field recorders.** A Pi on a trail camera or a
+bioacoustic recorder runs a small classifier as its own sense: an
+extension (`docs/extend/extensions.md`) that declares signals such as
+`animal_detected` or `low_confidence_frame` and files them signed
+with the Oracle. Only the labels and a digest leave the box; when a
+frame is a toss-up, your SI sends one more job for just that frame
+instead of pulling the whole card. A runner that asks the cloud its
+own free-form question ("lynx or bobcat?") is the Mirror idea in
+`docs/project/future.md`, not built yet.
+
+And for the box that cannot decide on its own: with protocol version
+2 turned on, a Pi Light runner can send the question it would have
+asked a model up to a laptop or a cloud SI, and the answer rides back
+on the result without ever holding the job past its deadline (30
+seconds at most; `docs/ietf/draft-homing-pigeon-v2-00.md`).
+
+## Isn't this just remote code execution by email?
+
+Yes, and it says so in the first lines of the README. A runner runs
+whatever a correctly signed job tells it to, as the user it runs
+as. So did every CI runner, SSH daemon, and remote-management agent
+before it. The honest question is what stands between the mailbox
+and the shell. Three things: a SHA-384 HMAC under a secret that
+never travels in email, a replay and age check (`issued_at` within
+`max_job_age_sec`, default one hour, plus a seen-set of job ids), and
+an AES-256-GCM envelope keyed from the same secret, so a mailbox
+reader sees neither the script nor the result. Mail that is not
+signed is marked seen and skipped, and nothing executes before the
+signature verifies. Everything past that is opt-in containment: the
+Oracle's `judge`, a bubblewrap sandbox, and AppArmor and SELinux
+templates in `docs/security/hardening/`. Run it as a locked-down user
+on a box you can wipe (`docs/security/threat-model.md`).
+
+## Why not SSH, Tailscale, or a self-hosted CI runner?
+
+Use them if you can. They are good. This exists for the case where
+the thing giving the orders is a cloud assistant that can send a
+message but cannot open a socket to your machine, hold your keys, or
+sit on your tailnet. Email is the one channel nearly every assistant
+already has. The runner only polls outward, so there is no inbound
+port to expose. What you also get over a bare shell: the job format
+is a signed runbook rather than a free-form session, the result comes
+back signed, and the Oracle can watch each run and cap what the SI
+sees (`max_result_view`). If you can give your assistant SSH, you
+probably don't need this.
+
+## What happens if the shared secret leaks?
+
+Whoever holds it can run jobs, full stop. Treat it like a root
+password. Rotate it with `docs/use/secret-rotation.md`. Two honest
+limits: there is no forward secrecy at the envelope layer unless the
+transport provides it, so a leaked secret exposes captured traffic
+that used it. And revocation is manual, since there is one shared
+secret rather than per-sender keys. Asymmetric signing would fix
+the second and is sketched in `docs/design/asymmetric-signing-design.md`.
+
+## Is this safe to run on my main machine?
+
+No, and we'd rather you hear it from us. Run it on a spare box, a VM,
+or a Raspberry Pi, under a dedicated user, with `max_result_view` on
+`attested` if the data matters. Turn on the sandbox and the OS
+profiles if the box has anything to lose. The defaults favor "it just
+works"; the posture table in the README (`just run it`, `eyes open`,
+`lockdown`) is how you choose otherwise.
+
 ## How often does the Oracle refresh what's happening on the system? Does it poll, or does a signal wake it up?
 
 Short answer: it polls -- and a local signal can also wake the
@@ -262,65 +371,5 @@ What happens next is on them -- and on the vendor who said their
 model could handle it.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
-
-## What can I actually use this for?
-
-Anything with a processor, a job worth doing, and a network that is
-slow, flaky, or absent. A few that show the shape:
-
-**Plug in a soil monitor and hand the SI the whole job.** Install the
-runner on a Raspberry Pi in the barn and the software side is done:
-the installer detects the Pi and applies Pi Light by itself, with no
-model to download. Wire in a soil-moisture sensor and give your SI a
-broad task — "read this sensor every hour and tell me when the beds
-need water." The SI writes the driver, runs it, reads the failure,
-fixes it, and iterates, all through signed jobs. A cellular link that
-drops for a day just means the jobs wait in the mailbox. Same can be
-done with fermentation, growing rooms, and small bioreactors. 
-Homebrewers, mushroom and microgreen growers, cheesemakers, and the
-technicians in an agriculture or food-science lab can let an SI
-iterate on the scripts that hold a temperature or a humidity band.
-
-**Field equipment across an air gap.** The file transport turns the
-protocol into an auditable sneakernet. `send_job.py new --to-file`
-writes a signed, encrypted job to a file; someone carries it on a USB
-stick into a watched folder on a machine with no network at all; the
-result lands in the outbox as `<job_id>.result.txt` and rides back the
-same way. Vehicle and generator diagnostics, maintenance and logistics
-boxes in disaster zones or remote sites: with `max_result_view` set to
-`attested`, only pass/fail, digests, and signed claims leave the box,
-never the raw logs (`docs/extend/transports.md`, PROTOCOL.md section 9).
-
-**A data clean room, lite.** A researcher's script runs against data
-that never leaves the machine, such as a clinic's records or a lab's
-unpublished results. They get attestations ("exit zero", "no secrets
-in the output", an output digest) and, with a local model, plain-
-English `ask` answers that are truncated, secret-scanned, and redacted
-before they are sent. The owner's ceiling caps what any job can see,
-and a per-job privacy budget caps how much it can learn by asking
-(PROTOCOL.md sections 9-11).
-
-**Make a new model prove itself on real hardware.** Put a servo board
-on a Pi and tell the SI to balance an inverted pendulum. It has to
-write the firmware, flash it, read the sensors, and debug the hardware
-into motion through signed jobs, with the results coming back each
-round. It is the fastest honest benchmark there is for whether a model
-can operate, not just talk.
-
-**Camera traps and field recorders.** A Pi on a trail camera or a
-bioacoustic recorder runs a small classifier as its own sense: an
-extension (`docs/extend/extensions.md`) that declares signals such as
-`animal_detected` or `low_confidence_frame` and files them signed
-with the Oracle. Only the labels and a digest leave the box; when a
-frame is a toss-up, your SI sends one more job for just that frame
-instead of pulling the whole card. A runner that asks the cloud its
-own free-form question ("lynx or bobcat?") is the Mirror idea in
-`docs/project/future.md`, not built yet.
-
-And for the box that cannot decide on its own: with protocol version
-2 turned on, a Pi Light runner can send the question it would have
-asked a model up to a laptop or a cloud SI, and the answer rides back
-on the result without ever holding the job past its deadline (30
-seconds at most; `docs/ietf/draft-homing-pigeon-v2-00.md`).
 
 Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854

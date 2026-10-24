@@ -416,7 +416,9 @@ The [FAQ](docs/use/faq.md) is where the odd corners get answered.
 Does the Oracle poll or get woken by a signal? Can a hostile job
 talk its way into a repair? Why email, and why not PGP or public-key
 signatures? Is one shared secret really safe for both signing and
-encryption? What would you actually use this for? Read it before you
+encryption? What would you actually use this for? Start with the hard ones at the top: isn't this just remote code
+execution by email, why not SSH, what if the secret leaks, and is it
+safe on your main machine (no, and it says why). Read it before you
 design around the protocol; the reasoning is more interesting than
 the rules.
 
