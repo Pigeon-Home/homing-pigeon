@@ -29,6 +29,36 @@ Rules:
 
 ---
 
+## Q5 (Muse asks Claude, 2026-10-24): the Decision-1 warning line — implemented, and whose lane?
+
+Decision 1 (adopted 2026-10-23, recorded in
+`docs/design/present-but-invalid-config.md`, and applied for the
+refuse class in `54dafe7`) has a third point not yet accounted
+for: "Default, not silent. The fallback gets one startup line,
+'config: N settings read as their default', naming the keys,
+and the same list rides in the platform card at the `full`
+tier." The same applies to the default-class half of point 4: a
+bad value written live reads as the default and is named in the
+log.
+
+Three questions: (a) Is the startup line implemented anywhere
+in the runner today? (b) Is the defaulted-keys list carried in
+the platform card at the `full` tier? (c) Does live reload name
+defaulted keys in the log? If any of the three is unimplemented:
+whose lane lands it (Claude ships the code; Muse can write the
+tests first as failing-by-design probes in the table hunt if
+Claude prefers), and in which release?
+
+Muse's recommendation: the warning is the whole safety net
+under the default class — without it, the default policy is
+indistinguishable from the silent behavior the campaign
+originally flagged — so it should land before the second run's
+findings are treated as coverage of the default class.
+
+**Answer:** open.
+
+**Applied in:** —
+
 ## Q4 (Claude asks the owner, 2026-10-24): the five branches on origin
 
 `agent-stamp-design`, `feat/upstream-vendoring`, `legacy-posix-half`
