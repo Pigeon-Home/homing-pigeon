@@ -44030,6 +44030,370 @@ class TestFailedLoginWatchCleanStateAndMainModesFifteenShapes(unittest.TestCase)
                     self.assertEqual(rc, 2)
                     self.assertEqual(state, pre)
 
+class TestLogSentinelCleanStateAndMainModesFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: log-sentinel
+    _clean_state() called directly and main()'s
+    remaining manifest / readings / state modes,
+    its --log-file content shapes and its
+    --local-dir delivery gate varied with the
+    fifteen shapes for the first time (step-8
+    Target 5 / family (b) -- log-sentinel's
+    earlier classes covered its _int_tunable
+    reader, the non-finite crash family, and
+    its log_paths / groups / patterns list
+    readers, read_new_lines(), classify() and
+    decide() (including state cleaning through
+    decide(), a list manifest, genuine and
+    garbled-string pre-states, genuine
+    --log-file and live modes, and a list
+    readings file); the state cleaner was never
+    called directly, and main()'s scalar /
+    string / null / bool manifests, its scalar /
+    string / null / bool readings files, its
+    junk-carrying pre-state, a directory as
+    the state path, garbage / empty --log-file
+    content and its --local-dir delivery gate
+    were never run at all, the same gap the
+    clean / main hunts closed for the other
+    watchers in the ticks before this one).
+
+    (a) Doc claims: the module docstring states
+        decide() is the pure shape ("readings plus
+        manifest plus last pass's state, out come
+        alerts and the new state"), the state
+        carries a "_reader" sub-dict which
+        _clean_state "preserves opaquely" and
+        decide() ignores, local delivery signs
+        each payload with this sense's key read
+        from the environment variable named by
+        --secret-env, and _is_number() is
+        documented so a non-finite or huge value
+        reads as "not a number" so the documented
+        default applies. main()'s own comment
+        states a failed delivery leaves the state
+        unwritten (the _reader offsets included),
+        so the next pass reports the lines again;
+        and main() itself rejects a readings file
+        that "is not a JSON object" with rc 2.
+
+    (b) How this was probed: on 2026-10-24
+        _clean_state() was called directly with
+        the fifteen shapes (omitted-equivalent
+        via a missing key, null, empty string,
+        true, false, zero, negative, numeric
+        string, non-numeric string, huge-int
+        (10**400), inf, -inf, NaN, list, dict)
+        and with mixed genuine / junk last_fired
+        entries and every _reader shape; main()
+        was run against isolated temp dirs for
+        list / scalar / string / null / bool
+        manifests, scalar / string / null / bool
+        and malformed readings files, empty
+        readings dicts, a junk-carrying
+        pre-state, a directory as the state
+        path, --log-file with garbage and empty
+        content, and --local-dir with the secret
+        env var unset (no delivery attempted).
+
+    (c) Behavior actually observed: NO divergence
+        recorded. _clean_state() reads every
+        non-dict shape and every non-dict
+        last_fired value as fresh
+        {"last_fired": {}}. Cleaning is
+        entry-wise: a last_fired entry is kept
+        only under a string key with a genuine
+        _is_number() value (bool, string, huge,
+        inf and NaN drop; genuine ints, floats
+        and negatives are kept as floats), a
+        dict last_fired value {"x": 1} cleans
+        to {"x": 1.0}, unknown top-level keys
+        drop, and a dict _reader is preserved
+        VERBATIM (junk inode / offset values
+        ride along untouched) while every
+        non-dict _reader shape drops. main() in
+        --readings mode: a list, scalar, string,
+        null or bool manifest still files the
+        OOM hit under the fallback sensor name
+        "log_sentinel" and writes the fired
+        state (rc 0); a scalar, string, null or
+        bool readings file is rc 2 with no new
+        state written (a pre-state file is left
+        byte-for-byte as the cleaned reading of
+        it was never reached -- the file keeps
+        its prior contents, and with no
+        pre-state no file is created), as is a
+        malformed readings file; an empty
+        readings dict, a now-only dict and an
+        empty-lines dict read as an empty pass
+        (rc 0, nothing printed, fresh state
+        written), and a lines-only dict files
+        at now 0.0; a junk-carrying pre-state
+        files on its cleaned values (the kept
+        500.0 firing suppresses the genuine
+        OOM hit inside the default cooldown,
+        the kept -5.0 entry survives, the junk
+        entries drop, the _reader dict is
+        preserved verbatim, and a later pass
+        past the cooldown refiles and advances
+        the kept timestamp); a directory as the
+        state path is rc 2 with the alert still
+        printed first; --log-file with garbage
+        or empty content files nothing (rc 0,
+        fresh state); and --local-dir with no
+        secret in the env var is rc 2 with the
+        state file left exactly as it was (and
+        no state file created when there was
+        none), whether or not the pass produced
+        an alert -- the delivery gate is checked
+        before any alert is delivered, as
+        main()'s comment states.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the readings above
+        keep matching the docs. If a shape above
+        ever stops behaving as documented, this test
+        is the failing record of that change.
+    """
+
+    _FRESH = {"last_fired": {}}
+    _SHAPES = [None, "", True, False, 0, -5, "45", "x", 10 ** 400,
+               float("inf"), float("-inf"), float("nan"), ["x"],
+               {"x": 1}, 2.5]
+    _OOM = "Out of memory: Killed process 9"
+    _FILED = {"last_fired": {"kernel_distress:oom": 1000.0}}
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "runner", "extensions", "log-sentinel",
+            "log_sentinel.py")
+        spec = importlib.util.spec_from_file_location(
+            "log_sentinel_clean_main", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_clean_state_direct_shapes(self):
+        mod = self._mod()
+        for value in self._SHAPES:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(mod._clean_state(value), self._FRESH)
+                want = self._FRESH
+                if isinstance(value, dict):
+                    want = {"last_fired": {"x": 1.0}}
+                self.assertEqual(
+                    mod._clean_state({"last_fired": value}), want)
+        self.assertEqual(mod._clean_state({}), self._FRESH)
+        # Mixed last_fired: only genuine-number values
+        # survive, as floats; bool / string / huge /
+        # non-finite / null drop.
+        mixed = {"last_fired": {
+            "good": 1000, "good2": 900.5, "neg": -5,
+            "bool": True, "str": "950", "huge": 10 ** 400,
+            "inf": float("inf"), "nan": float("nan"),
+            "none": None}}
+        self.assertEqual(mod._clean_state(mixed), {"last_fired": {
+            "good": 1000.0, "good2": 900.5, "neg": -5.0}})
+        # Unknown top-level keys drop.
+        self.assertEqual(
+            mod._clean_state({"last_fired": {}, "extra": 9}),
+            self._FRESH)
+        # _reader: only a dict survives, preserved verbatim.
+        for value in self._SHAPES:
+            with self.subTest(reader=repr(value)):
+                want = self._FRESH
+                if isinstance(value, dict):
+                    want = {"last_fired": {}, "_reader": value}
+                self.assertEqual(
+                    mod._clean_state(
+                        {"last_fired": {}, "_reader": value}),
+                    want)
+        junk_reader = {"/var/log/kern.log": {"inode": "junk",
+                                             "offset": -1}, "x": 123}
+        self.assertEqual(
+            mod._clean_state({"last_fired": {},
+                              "_reader": junk_reader}),
+            {"last_fired": {}, "_reader": junk_reader})
+
+    _READINGS = object()
+
+    def _main(self, mod, td, manifest_obj, readings_obj=_READINGS,
+              extra=(), pre_state=None, state_is_dir=False,
+              log_content=None):
+        import io
+        import os
+        from contextlib import redirect_stderr, redirect_stdout
+        man = os.path.join(td, "m.json")
+        rd = os.path.join(td, "r.json")
+        lf = os.path.join(td, "fixture.log")
+        st = td if state_is_dir else os.path.join(td, "s.json")
+        with open(man, "w", encoding="utf-8") as fh:
+            json.dump(manifest_obj, fh)
+        args = ["--manifest", man, "--state", st]
+        if log_content is not None:
+            with open(lf, "w", encoding="utf-8") as fh:
+                fh.write(log_content)
+            args += ["--log-file", lf]
+        elif readings_obj is not self._READINGS:
+            with open(rd, "w", encoding="utf-8") as fh:
+                if isinstance(readings_obj, str) \
+                        and readings_obj == "{bad":
+                    fh.write(readings_obj)
+                else:
+                    json.dump(readings_obj, fh)
+            args += ["--readings", rd]
+        if pre_state is not None and not state_is_dir:
+            with open(st, "w", encoding="utf-8") as fh:
+                json.dump(pre_state, fh)
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(io.StringIO()):
+            rc = mod.main(args + list(extra))
+        state = None
+        if not state_is_dir and os.path.isfile(st):
+            with open(st, encoding="utf-8") as fh:
+                state = json.load(fh)
+        return rc, out.getvalue(), state
+
+    def test_main_manifest_and_readings_shapes(self):
+        mod = self._mod()
+        gen = {"name": "log_sentinel", "tunables": {}}
+        readings = {"now": 1000.0, "lines": [self._OOM]}
+        pre = {"last_fired": {}}
+        for manifest in [[1, 2], 42, "hi", None, True]:
+            with self.subTest(manifest=repr(manifest)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, manifest, readings, pre_state=pre)
+                self.assertEqual(rc, 0)
+                self.assertIn("kernel_distress", out)
+                self.assertIn('"log_sentinel"', out)
+                self.assertEqual(state, self._FILED)
+        # Non-dict readings files are rc 2: a pre-state
+        # file is left untouched, and no file is created
+        # when there was no pre-state.
+        for value in [42, "hi", None, True]:
+            with self.subTest(readings=repr(value)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, gen, value, pre_state=pre)
+                    self.assertEqual((rc, out), (2, ""))
+                    self.assertEqual(state, pre)
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(mod, td, gen, value)
+                    self.assertEqual((rc, out), (2, ""))
+                    self.assertIsNone(state)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(mod, td, gen, "{bad")
+            self.assertEqual((rc, out), (2, ""))
+            self.assertIsNone(state)
+        # Empty readings dicts are an empty pass; a
+        # lines-only dict files at now 0.0.
+        for value in [{}, {"now": 1000.0},
+                      {"now": 1000.0, "lines": []}]:
+            with self.subTest(readings=repr(value)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, gen, value, pre_state=pre)
+                self.assertEqual((rc, out), (0, ""))
+                self.assertEqual(state, pre)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, gen, {"lines": [self._OOM]}, pre_state=pre)
+            self.assertEqual(rc, 0)
+            self.assertIn("kernel_distress", out)
+            self.assertEqual(
+                state, {"last_fired": {"kernel_distress:oom": 0.0}})
+
+    def test_main_junk_prestate_and_directory_state(self):
+        mod = self._mod()
+        gen = {"name": "log_sentinel", "tunables": {}}
+        readings = {"now": 1000.0, "lines": [self._OOM]}
+        junk = {"last_fired": {
+                    "kernel_distress:oom": 500, "bad": "x",
+                    "bool": True, "huge": 10 ** 400, "neg": -5.0},
+                "_reader": {"/tmp/x": {"inode": 1, "offset": 2}},
+                "extra": 9}
+        cleaned = {"last_fired": {"kernel_distress:oom": 500.0,
+                                  "neg": -5.0},
+                   "_reader": {"/tmp/x": {"inode": 1, "offset": 2}}}
+        # The kept 500.0 firing suppresses the OOM hit
+        # inside the default 3600s cooldown.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, gen, readings, pre_state=junk)
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, cleaned)
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, gen, {"now": 1000.0, "lines": []},
+                pre_state=junk)
+            self.assertEqual((rc, out), (0, ""))
+            self.assertEqual(state, cleaned)
+        # Past the cooldown the hit refiles and the kept
+        # timestamp advances.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, gen, {"now": 10000.0, "lines": [self._OOM]},
+                pre_state=junk)
+            self.assertEqual(rc, 0)
+            self.assertIn("kernel_distress", out)
+            self.assertEqual(state, {
+                "last_fired": {"kernel_distress:oom": 10000.0,
+                               "neg": -5.0},
+                "_reader": {"/tmp/x": {"inode": 1, "offset": 2}}})
+        # A directory as the state path is rc 2 with the
+        # alert still printed first.
+        with tempfile.TemporaryDirectory() as td:
+            rc, out, state = self._main(
+                mod, td, gen, readings, state_is_dir=True)
+            self.assertEqual(rc, 2)
+            self.assertIn("kernel_distress", out)
+
+    def test_main_logfile_and_local_modes(self):
+        import os
+        import unittest.mock
+        mod = self._mod()
+        gen = {"name": "log_sentinel", "tunables": {}}
+        readings = {"now": 1000.0, "lines": [self._OOM]}
+        pre = {"last_fired": {}}
+        # --log-file: garbage and empty content file
+        # nothing and write fresh state.
+        for content in ["not a log\nhello\n", ""]:
+            with self.subTest(content=repr(content)):
+                with tempfile.TemporaryDirectory() as td:
+                    rc, out, state = self._main(
+                        mod, td, gen, log_content=content)
+                    self.assertEqual((rc, out), (0, ""))
+                    self.assertEqual(state, pre)
+        # --local-dir with no secret in the env var: rc 2
+        # and the state file is left exactly as it was
+        # (or not created), with or without alerts.
+        for value in [readings, {"now": 1000.0, "lines": []}]:
+            with self.subTest(readings=repr(value)[:40]):
+                with tempfile.TemporaryDirectory() as td:
+                    with unittest.mock.patch.dict(
+                            os.environ, {}, clear=False):
+                        os.environ.pop(
+                            "HOMING_PIGEON_SENSOR_SECRET", None)
+                        rc, out, state = self._main(
+                            mod, td, gen, value,
+                            extra=["--local-dir", td], pre_state=pre)
+                    self.assertEqual(rc, 2)
+                    self.assertEqual(state, pre)
+                with tempfile.TemporaryDirectory() as td:
+                    with unittest.mock.patch.dict(
+                            os.environ, {}, clear=False):
+                        os.environ.pop(
+                            "HOMING_PIGEON_SENSOR_SECRET", None)
+                        rc, out, state = self._main(
+                            mod, td, gen, value,
+                            extra=["--local-dir", td])
+                    self.assertEqual(rc, 2)
+                    self.assertIsNone(state)
+
 if __name__ == "__main__":
 
     unittest.main()
