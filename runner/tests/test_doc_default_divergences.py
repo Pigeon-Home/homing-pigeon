@@ -15818,6 +15818,122 @@ class TestLoadAlertsUnhashableSeverityFloorDropsAllInsteadOfInfo(unittest.TestCa
             self.assertEqual(titles, ["i", "l", "h"])
 
 
+class TestSensorWeightFifteenShapesAtAlertScore(unittest.TestCase):
+    """Second-run hunt coverage: the sensor weight
+    itself varied with the fifteen shapes at
+    alert_score() level for the first time (step-8
+    Target 6 -- the senses.py readers; the row's
+    registry-named class
+    TestHugeSensorWeightDefaultsToOne varies only
+    the huge-int shape, and
+    TestNegativeOrNonFiniteSensorWeightDefaultsToOne
+    varies only the negative / non-finite family,
+    so the remaining shapes are probed here across
+    the full table).
+
+    (a) Doc claim (docs/senses.md, line 254):
+        "`weight` (number >= 0, default 1.0): the
+        Oracle's weighting for this source. Turn a
+        noisy sensor down, a trusted one up, or to 0
+        to mute it without disabling ingest"; and
+        (line 325): alerts are ranked by "score =
+        weight x severity". Registry row
+        "sensors.<sense>.weight" (default 1.0,
+        reader runner/senses.py:alert_score):
+        policy default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: step-8 artifact Target 6
+        names the senses.py readers among the core
+        rows covered only for the shapes their
+        classes exercised. This tick took
+        alert_score in runner/senses.py (weight
+        through _finite_number(weight, 1.0, lo=0),
+        the stored-record path that
+        runner/dri.py's fused-score reader feeds
+        with rec.get("weight", 1.0)) and probed the
+        weight with the fifteen shapes from the
+        table hunt -- omitted (the .get default
+        itself), null, empty string, true, false,
+        zero, negative, numeric string, non-numeric
+        string, huge-int (10**400), inf, -inf, NaN,
+        wrong containers (list and dict) -- plus
+        the explicit default and genuine values.
+        The observable is the score of a "high"
+        alert (severity score 3.0), so the
+        documented default weight scores exactly
+        3.0.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape reads as the
+        documented default 1.0 (score 3.0) --
+        null, empty string, true, false, negative,
+        non-numeric string, huge-int, inf, -inf,
+        NaN, list and dict -- and the omitted
+        weight scores the same through the
+        caller's .get("weight", 1.0) default. Two
+        shapes are pinned as observed, not
+        divergences: false reads as the default,
+        NOT as the mute -- a boolean is never a
+        number in _finite_number, so only a
+        genuine numeric 0 mutes (score 0.0); and a
+        numeric string IS parsed ("2" scores 6.0),
+        matching _finite_number's documented
+        string conversion and the gate-profile
+        readers' behavior. Genuine values are
+        honored exactly: 2 scores 6.0, 0.5 scores
+        1.5, and 0.5 on an "info" alert (severity
+        score 0.5) scores 0.25. Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as
+        unusable shapes keep reading as the
+        documented default and genuine values keep
+        being honored. If a shape above ever stops
+        behaving as docs/senses.md states, this test
+        is the failing record of that change.
+    """
+
+    def _score(self, weight, severity="high"):
+        from runner.senses import alert_score
+        return alert_score({"severity": severity}, weight)
+
+    def _stored_score(self, record):
+        # The stored-record path exactly as
+        # runner/dri.py feeds it.
+        from runner.senses import alert_score
+        return alert_score(record, record.get("weight", 1.0))
+
+    def test_weight_fifteen_shapes_read_as_default(self):
+        with self.subTest(shape="omitted"):
+            self.assertEqual(
+                self._stored_score({"severity": "high"}), 3.0)
+        unusable = [None, "", True, False, -5, "bogus",
+                    10 ** 400, float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(self._score(value), 3.0)
+                self.assertEqual(
+                    self._stored_score(
+                        {"severity": "high", "weight": value}),
+                    3.0)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(self._score(1.0), 3.0)
+
+    def test_weight_genuine_and_numeric_string_honored(self):
+        # A genuine numeric 0 is the documented
+        # mute -- unlike false, which reads as the
+        # default in the test above.
+        self.assertEqual(self._score(0), 0.0)
+        self.assertEqual(self._score(2), 6.0)
+        self.assertEqual(self._score(0.5), 1.5)
+        self.assertEqual(self._score("2"), 6.0)
+        self.assertEqual(self._score(0.5, "info"), 0.25)
+
+
 
 if __name__ == "__main__":
 
