@@ -15159,6 +15159,138 @@ class TestSensesGateProfileTunablesFifteenShapes(unittest.TestCase):
                     "over max_per_hour (unreadable cap)")
 
 
+class TestChannelPollIntervalFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: channel.poll_interval itself
+    varied with the fifteen shapes at reader level (step-8
+    Target 6 -- channel.poll_interval; the row's
+    registry-named classes TestBooleanExtensionPollInterval
+    DefaultsTo2 and TestHugeExtensionPollIntervalDefaultsTo2
+    vary only the boolean and huge-int shapes, so this row
+    is probed here across all fifteen shapes).
+
+    (a) Doc claims: runner/transport_extensions/channel.py's
+        poll_interval docstring states "Seconds between
+        passes: extension_poll_interval_sec, default 2"
+        and "A usable number is clamped to [0.2, 60]. A
+        boolean ..., a huge integer ..., infinity, NaN, or
+        a non-number is not an interval and reads as the
+        default." The repo's own
+        runner/tests/test_transport_shells.py,
+        test_poll_interval_clamps_and_rejects_garbage,
+        pins omitted -> 2.0, 0 -> 0.2, 1000 -> 60.0 and
+        "nope" -> 2.0. Registry row
+        "extension_poll_interval_sec" (default 2, policy
+        default under Decision 1; doc_status unverified in
+        prose docs -- the reader docstring and the shells
+        test are the documented contract): a
+        present-but-unusable value reads as its default.
+
+    (b) How it was hunted: step-8 artifact Target 6 names
+        channel.poll_interval among the core rows covered
+        only for the shapes their classes exercised, and
+        Target 3 lists extension_poll_interval_sec among
+        the rows with no documented default in prose docs.
+        This tick took poll_interval in
+        runner/transport_extensions/channel.py and probed
+        it with the fifteen shapes from the table hunt --
+        omitted, null, empty string, true, false, zero,
+        negative, numeric string, non-numeric string,
+        huge-int (10**400), inf, -inf, NaN, wrong
+        containers (list and dict) -- plus genuine int /
+        fractional values, a caller-supplied default, and
+        a non-dict config.
+
+    (c) Behavior actually observed: NO divergence:
+        every unusable shape (null, empty, true, false,
+        non-numeric string, huge-int, inf, -inf, NaN,
+        list, dict, and a non-dict config) reads as the
+        documented default 2.0, and omitted reads as 2.0
+        (or as the caller-supplied default when one is
+        given). Pinned as observed, not divergences:
+        numeric strings ARE parsed by this reader ("5"
+        -> 5.0, "2.5" -> 2.5, "0.1" -> 0.2 after the
+        floor), matching the reader's float() conversion;
+        and zero / negative values do not read as the
+        default -- they are usable numbers and clamp to
+        the documented 0.2 floor, just as values above
+        the ceiling clamp to 60.0 (1000 -> 60.0).
+        Genuine values are honored exactly (10 -> 10.0,
+        45.5 -> 45.5). Observed on 2026-10-24 against
+        current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes keep
+        reading as the documented default, usable values
+        keep clamping to [0.2, 60], and genuine values
+        keep being honored. If a shape above ever stops
+        behaving as the reader's docstring states, this
+        test is the failing record of that change.
+    """
+
+    def _interval(self, cfg, **kw):
+        from runner.transport_extensions import channel as ch
+        return ch.poll_interval(cfg, **kw)
+
+    def test_fifteen_shapes_read_as_default(self):
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._interval({}), 2.0)
+        unusable = [None, "", True, False, "bogus",
+                    10 ** 400, float("inf"), float("-inf"),
+                    float("nan"), [5], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._interval(
+                        {"extension_poll_interval_sec": value}),
+                    2.0)
+        with self.subTest(shape="non-dict-config"):
+            self.assertEqual(self._interval(None), 2.0)
+            self.assertEqual(self._interval("nope"), 2.0)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._interval({"extension_poll_interval_sec": 2}),
+                2.0)
+
+    def test_zero_negative_and_high_values_clamp(self):
+        for value in (0, -5, 0.1):
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._interval(
+                        {"extension_poll_interval_sec": value}),
+                    0.2)
+        self.assertEqual(
+            self._interval({"extension_poll_interval_sec": 1000}),
+            60.0)
+        self.assertEqual(
+            self._interval({"extension_poll_interval_sec": 60}),
+            60.0)
+
+    def test_genuine_and_numeric_string_values_honored(self):
+        self.assertEqual(
+            self._interval({"extension_poll_interval_sec": 10}), 10.0)
+        self.assertEqual(
+            self._interval({"extension_poll_interval_sec": 45.5}), 45.5)
+        self.assertEqual(
+            self._interval({"extension_poll_interval_sec": "5"}), 5.0)
+        self.assertEqual(
+            self._interval({"extension_poll_interval_sec": "2.5"}), 2.5)
+        self.assertEqual(
+            self._interval({"extension_poll_interval_sec": "0.1"}), 0.2)
+        self.assertEqual(
+            self._interval({"extension_poll_interval_sec": "1000"}), 60.0)
+
+    def test_caller_supplied_default_is_used_for_unusable(self):
+        self.assertEqual(self._interval({}, default=7.0), 7.0)
+        self.assertEqual(
+            self._interval(
+                {"extension_poll_interval_sec": "nope"}, default=7.0),
+            7.0)
+        self.assertEqual(
+            self._interval(
+                {"extension_poll_interval_sec": 10}, default=7.0),
+            10.0)
+
+
 if __name__ == "__main__":
 
     unittest.main()
