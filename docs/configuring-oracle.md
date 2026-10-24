@@ -30,10 +30,13 @@ Everything the dashboard configures must be expressible in `config.json`, and ev
 A key that is absent reads as its documented default. A key that is
 present but not usable (`null`, a boolean, a string that is not a
 number, a value out of range, `inf`) reads as the default too,
-except where a key's own entry says it is a config error. Whether
-that split stays, and whether the runner names the keys it read as
-defaults at startup, is an open decision recorded in
-`docs/design/present-but-invalid-config.md`.
+except where a key's own entry says it is a config error. The decision, made 2026-10-23 and recorded in
+`docs/design/present-but-invalid-config.md`, is: *a setting that
+is present but not usable reads as its documented default and is
+named in the startup warning, unless the setting is a port, a
+bind address, a key policy, a paging threshold, a security mode
+or a secret, in which case the runner refuses to start and
+names it.*
 
 - `max_result_view` — the narrowest view the runner will ever return (`full`, `redacted`, `summary`, or `attested`). A job can request a narrower view; it can never request a wider one.
 - `max_query_budget` — the most queries that may be answered for any single job. The job's own `query_budget` can only lower this number.

@@ -5,11 +5,11 @@
 Status: decision record, written 2026-10-24 from the first VM
 campaign's documented-default hunt (the report
 `doc-default-divergences.md` under `docs/reports/`, in the release
-that closed the campaign). The decision
-line at the end is the owner's and is blank until he fills it; the
-rest is the two policies the code already carries, what each costs,
-and a recommendation. Nothing here changes what the runner does
-until the decision is made and the rule below is applied.
+that closed the campaign). The decision at the end is the owner's, made 2026-10-23 and
+recorded there in full; the rest is the two policies the code
+already carries, what each costs, and the recommendation the
+decision adopted. Nothing here changes what the runner does
+until the rule below is applied in code.
 
 ## The question
 
@@ -86,8 +86,8 @@ new key does not inherit a policy by accident.
   box, what it will execute, or what it protects: ports and bind
   addresses, key policies, the resource and DRI thresholds that
   page a human, secrets and their floors, security modes. These are
-  the readers that already refuse, plus the DTLS and NATS ports,
-  which today read as the default.
+  the readers that already refuse, plus the DTLS port and bind
+  and the NATS URL's port, which today read as the default.
 - **Default and say so (A)** for everything else: intervals,
   timeouts, budgets, limits, cooldowns, retention, disclosure
   tiers, extension tunables. The warning becomes visible: one line
@@ -100,20 +100,44 @@ The rule for a new key, one sentence for `docs/configuring-oracle.md`
 and PROTOCOL.md: *a setting that is present but not usable reads as
 its documented default and is named in the startup warning, unless
 the setting is a port, a bind address, a key policy, a paging
-threshold or a secret, in which case the runner refuses to start
+threshold, a security mode or a secret, in which case the runner
+refuses to start
 and names it.*
 
-Under this rule the current code is right for every key but two:
-`transport_dtls.port` and the NATS URL's port would move from A to
-B, which is two readers, two doc lines and two campaign test classes
-that change with the doc first.
+Under this rule the current code is right for every key but
+three reads: `transport_dtls.port`, the DTLS bind, and the NATS
+URL's port would move from A to B, which is two readers, two doc
+lines and two campaign test classes that change with the docs
+first.
 
 ## Decision
 
-Decision (owner): ____________________________________________
+Decision (owner): Adopted as relayed 2026-10-23. Neither side is the
+rule. The rule is what a wrong value changes.
 
-Date: ____________
+1. Refuse to start when a wrong value changes who can reach the box,
+   what it will execute, or what it protects: ports and bind
+   addresses, key policies, the resource and DRI thresholds that page
+   a human, secrets and their floors, security modes. That is the
+   four readers that already refuse, plus the DTLS port and bind and
+   the NATS URL's port, which today read as the default.
+2. Read as the documented default for everything else: intervals,
+   timeouts, budgets, limits, cooldowns, retention, disclosure tiers,
+   extension tunables.
+3. Default, not silent. The fallback gets one startup line,
+   "config: N settings read as their default", naming the keys, and
+   the same list rides in the platform card at the `full` tier.
+4. Live reload. A bad value written while running reads as the
+   default and is named in the log, no hidden last-good state. The
+   refuse class cannot refuse mid-run: a bad port written live keeps
+   the current binding, logs an error, and takes effect only at the
+   next start.
+
+Date: 2026-10-23
 
 Applied in: ____________ (the commit that changes the two readers
-and the two doc lines, or that records "A everywhere" and removes
-the four refusals' special status from this note)
+and the two doc lines — docs change first, the two campaign test
+classes asserting the default for those ports change with the docs,
+not before; per the plan execution, the production reader moves are
+recorded as failing-by-design divergence probes in step 5, not made
+in that pass)
