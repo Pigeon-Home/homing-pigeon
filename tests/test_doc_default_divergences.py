@@ -5290,6 +5290,141 @@ class TestFailedLoginWindowSecDefaultsTo600(unittest.TestCase):
 
 
 
+class TestServiceWatchFlapWindowSecDefaultsTo600(unittest.TestCase):
+    """Second-run hunt coverage: service-watch
+    flap_window_sec itself, varied for the first time.
+
+    (a) Doc claim (examples/extensions/service-watch/
+        README.md, line 18): the example configuration
+        ships "\"flap_window_sec\": 600,
+        \"flap_count\": 4", and line 28 states
+        service_flapping fires when a service's
+        transitions inside flap_window_sec reach
+        flap_count. The manifest ships the same
+        default (extension.json: "flap_count": 4,
+        "flap_window_sec": 600). Registry row
+        "flap_window_sec (service-watch)": integer,
+        default 600, policy default.
+
+    (b) How it was hunted: step 8 Target 2 -- the
+        row's named class
+        (TestInfiniteServiceWatchFlapCountDefaultsTo4)
+        varies flap_count only, so flap_window_sec had
+        never itself been varied. On 2026-10-23 this
+        tick probed decide() -- the pure decision
+        function -- with the table hunt's fifteen
+        shapes for flap_window_sec, each in two
+        scenarios: four transitions 700 seconds apart
+        (flapping only if the window is wrongly read
+        as far larger than 600) and four transitions
+        100 seconds apart (flapping exactly when the
+        effective window reaches across 300 seconds,
+        as 600 does), with flap_count at its
+        documented default 4 throughout.
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape -- omitted, null, the
+        empty string, true, false, zero, a negative
+        number, a numeric string, a non-numeric
+        string, a several-hundred-digit integer,
+        inf, -inf, NaN, and a list -- read as the
+        documented default 600 (no flapping at
+        700-second spacing, flapping at 100-second
+        spacing), and the explicit default 600 did
+        the same. This reader's _is_number accepts
+        only genuine finite numbers and the reader
+        requires a value > 0, so a numeric string
+        reads as the default here. Genuine values
+        are honored: flap_window_sec 60 and 1 file
+        no flapping at 100-second spacing, and
+        10000 files flapping at 700-second spacing.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as the reader keeps
+        the documented default. If a shape above ever
+        stops reading as 600, this test is the
+        failing record of that change.
+    """
+
+    def _signals(self, tunables, times):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))),
+            "examples", "extensions", "service-watch",
+            "service_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "service_watch_flap_window_hunt", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        manifest = {"name": "service_watch",
+                    "tunables": {
+                        "services": [{"name": "sshd",
+                                      "match": "exact"}],
+                        **tunables}}
+        state = {"learned": True,
+                 "services": {"sshd": {
+                     "up": True, "transitions": [],
+                     "down_filed": False,
+                     "flap_fired": False}}}
+        signals = []
+        proc = {"name": "sshd", "pid": 1,
+                "cmdline": "/usr/sbin/sshd"}
+        up = True
+        for now in times:
+            up = not up
+            readings = {"now": float(now),
+                        "processes": [proc] if up else []}
+            alerts, state = mod.decide(readings, manifest, state)
+            signals.extend(a["signal"] for a in alerts)
+        return signals
+
+    SPACED = [1000, 1700, 2400, 3100]
+    CLOSE = [1000, 1100, 1200, 1300]
+
+    def test_fifteen_shapes_read_as_default_600(self):
+        shapes = [
+            ("omitted", None), ("null", None),
+            ("empty-string", ""), ("true", True),
+            ("false", False), ("zero", 0),
+            ("negative", -5), ("default-explicit", 600),
+            ("numeric-string", "600"),
+            ("non-numeric-string", "bogus"),
+            ("huge-int", 10 ** 400), ("inf", float("inf")),
+            ("neg-inf", float("-inf")), ("nan", float("nan")),
+            ("wrong-container", ["x"]),
+        ]
+        for name, value in shapes:
+            with self.subTest(shape=name):
+                tunables = {} if name == "omitted" else {
+                    "flap_window_sec": value}
+                self.assertNotIn(
+                    "service_flapping",
+                    self._signals(tunables, self.SPACED))
+                self.assertIn(
+                    "service_flapping",
+                    self._signals(tunables, self.CLOSE))
+
+    def test_genuine_flap_window_values_are_honored(self):
+        self.assertNotIn(
+            "service_flapping",
+            self._signals({"flap_window_sec": 60}, self.CLOSE))
+        self.assertNotIn(
+            "service_flapping",
+            self._signals({"flap_window_sec": 1}, self.CLOSE))
+        self.assertIn(
+            "service_flapping",
+            self._signals({"flap_window_sec": 10000}, self.SPACED))
+        # A numeric string is not a number to this
+        # reader: "10000" reads as the default 600,
+        # so the spaced scenario files no flapping.
+        self.assertNotIn(
+            "service_flapping",
+            self._signals({"flap_window_sec": "10000"}, self.SPACED))
+
+
+
 class TestInfiniteServiceWatchFlapCountDefaultsTo4(unittest.TestCase):
     """Divergence: an infinite service-watch
     flap_count (+inf) crashes decide() with
