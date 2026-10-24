@@ -12857,6 +12857,155 @@ class TestLabResultsAnomalyMinHistoryFifteenShapes(unittest.TestCase):
             self._BOTH)
 
 
+class TestJobWatcherFailureWindowSecFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the job-watcher
+    failure_window_sec row itself varied with the
+    fifteen shapes at decide() level, through the
+    filed alert's own detail (step-8 Target 2 --
+    the row's registry-named class
+    TestInfiniteJobWatcherRepeatFailuresDefaultsTo3
+    varies the sibling repeat_failures only, so
+    this row is probed here through its effective
+    window).
+
+    (a) Doc claim (extensions/job-watcher/README.md,
+        line 18): job_failing_repeatedly files when
+        the same job failed at least repeat_failures
+        times (default 3) inside failure_window_sec
+        (default a day); the module header states
+        the same (job_watcher.py lines 35-37), and
+        the manifest ships the numeric default
+        (extension.json: "failure_window_sec":
+        86400). Registry row "failure_window_sec
+        (job-watcher)" (default 86400): policy
+        default under Decision 1 -- a
+        present-but-unusable value reads as its
+        documented default.
+
+    (b) How it was hunted: step-8 artifact Target 2
+        lists failure_window_sec (job-watcher)
+        among the rows whose named class varies a
+        sibling key, not this one. This tick took
+        that row: its reader is
+        extensions/job-watcher/job_watcher.py
+        decide() (_tunable(tunables,
+        "failure_window_sec", 86400.0), with a
+        value <= 0 reset to 86400.0), and probed it
+        through decide() itself with the fifteen
+        shapes from the table hunt -- omitted, null,
+        empty string, true, false, zero, negative,
+        the documented default written explicitly,
+        numeric string, non-numeric string,
+        huge-int (10**400), inf, -inf, NaN, wrong
+        containers (list and dict) -- plus genuine
+        int / fractional values. The observable is
+        the filed job_failing_repeatedly alert's
+        own detail: three failures of one job 60s
+        apart file exactly one alert whose detail
+        carries the effective window_sec (as int)
+        and failures 3 (repeat_failures at its
+        documented default 3 throughout).
+
+    (c) Behavior actually observed: NO divergence.
+        Every unusable shape reads as the
+        documented default 86400: the alert files
+        with window_sec 86400 and failures 3. Zero
+        and negative also read as the default
+        because decide() requires value > 0 before
+        honoring the window. Numeric strings are
+        not parsed ("45" reads as the default; the
+        _is_number isinstance gate). Genuine values
+        are honored exactly: 10 files the alert at
+        2s spacing with window_sec 10 and files
+        nothing at 60s spacing, and the fractional
+        3600.5 admits a failure 3600.25s old where
+        a window of 3600 does not (its filed detail
+        carries window_sec 3600, the int of the
+        effective window). Noted: the zero/negative
+        divergence recorded by the earlier class
+        TestJobWatcherFailureWindowSecDefaultsTo86400
+        no longer occurs on current main -- that
+        class passes now, because the <= 0 reset
+        is present in decide(). Observed on
+        2026-10-24 against current main.
+
+    (d) This is a coverage record, not a divergence:
+        it stays green as long as unusable shapes
+        keep reading as the documented default and
+        genuine values keep being honored. If a
+        shape above ever stops behaving as the
+        README states, this test is the failing
+        record of that change.
+    """
+
+    def _mod(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "job-watcher",
+            "job_watcher.py")
+        spec = importlib.util.spec_from_file_location(
+            "job_watcher_window_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _probe(self, mod, tunables, offsets=(0, 60, 120)):
+        now = 1000000.0
+        records = [{"job_id": f"j{i}", "key": "k1",
+                    "kind": "exec", "label": "probe",
+                    "saved_at": now - off, "exit_code": 1,
+                    "duration_sec": None, "error": "boom"}
+                   for i, off in enumerate(offsets)]
+        readings = {"now": now, "records": records}
+        manifest = {"name": "job_watcher",
+                    "tunables": dict(tunables)}
+        alerts, _state = mod.decide(readings, manifest, {})
+        return [(a["signal"], a["detail"].get("window_sec"),
+                 a["detail"].get("failures"))
+                for a in alerts
+                if a["signal"] == "job_failing_repeatedly"]
+
+    def test_fifteen_shapes_read_as_the_default(self):
+        mod = self._mod()
+        filed = [("job_failing_repeatedly", 86400, 3)]
+        with self.subTest(shape="omitted"):
+            self.assertEqual(self._probe(mod, {}), filed)
+        unusable = [None, "", True, False, 0, -5,
+                    "45", "bogus", 10 ** 400,
+                    float("inf"), float("-inf"),
+                    float("nan"), ["x"], {"x": 1}]
+        for value in unusable:
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    self._probe(
+                        mod, {"failure_window_sec": value}),
+                    filed)
+        with self.subTest(shape="explicit-default"):
+            self.assertEqual(
+                self._probe(mod, {"failure_window_sec": 86400}),
+                filed)
+
+    def test_genuine_values_are_honored(self):
+        mod = self._mod()
+        self.assertEqual(
+            self._probe(mod, {"failure_window_sec": 10},
+                        offsets=(0, 2, 4)),
+            [("job_failing_repeatedly", 10, 3)])
+        self.assertEqual(
+            self._probe(mod, {"failure_window_sec": 10}), [])
+        self.assertEqual(
+            self._probe(mod, {"failure_window_sec": 3600.5},
+                        offsets=(0, 10, 3600.25)),
+            [("job_failing_repeatedly", 3600, 3)])
+        self.assertEqual(
+            self._probe(mod, {"failure_window_sec": 3600},
+                        offsets=(0, 10, 3600.25)),
+            [])
+
+
 
 
 if __name__ == "__main__":
