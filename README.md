@@ -202,10 +202,17 @@ is left alone. Every repair is stated in the result.
 
 ### Operating modes
 
-Five knobs set the posture. They are independent — these are three
-coherent postures, not the only combinations. The postures are
-choices about trust: how much you watch, and how much the box may
-refuse, is yours to pick per machine.
+Three parties appear below, always under the same names. **The SI** is
+the cloud AI that sends jobs. **The owner** is you, the person who
+installed this on the box and edits its `config.json`. **The Oracle**
+is the part of the agent on the box that works for the owner: it
+watches jobs, and pages the owner. The **runner** is the part that
+executes what the SI sends.
+
+Five owner-set knobs decide the posture. They are independent; these
+are three coherent postures, not the only combinations. Each is a
+choice about trust: how closely the Oracle watches, and how much the
+box may refuse, is the owner's to pick per machine.
 
 ```
   knob                  just run it  eyes open    lockdown
@@ -217,29 +224,26 @@ refuse, is yours to pick per machine.
   max_result_view       full         attested     attested
 ```
 
-**just run it** (the defaults) — you trust the signer, so the box
-just works. Runner: executes any signed job, answers queries with
-full output. Oracle: reviews every job anyway (its notes ride in
-the result) and logs resource pressure. Quiet by choice: nothing
-pages, and the judge never blocks a job at the door. These are
-the config-file defaults; a fresh install sits one notch tighter
-— on non-Pi hardware the installer applies the `password-only`
-profile (judge `advisory`, view `attested`) unless `--no-profile`
-is passed; a Raspberry Pi gets the `pi-light` profile instead.
-See docs/use/runbook.md Job 7.
+**just run it** (the config-file defaults): the owner trusts the
+signer, so the box just works. The runner executes any signed job and
+shows the SI full output. The Oracle still reviews every job (its
+notes ride in the result) and logs resource pressure, but it never
+pages the owner and never blocks a job. A fresh install sits one
+notch tighter: on non-Pi hardware the installer applies the
+`password-only` profile (judge `advisory`, view `attested`) unless
+`--no-profile` is passed, and a Raspberry Pi gets `pi-light`. See
+docs/use/runbook.md Job 7.
 
-**eyes open** (recommended) — same trust, but now you watch.
-Runner: executes, attaches the policy verdict to each result,
-answers queries with attestations only. Oracle: reviews, fuses
-sensor alerts, and pages you when a trigger trips. This posture
-is about seeing; the acting, when any happens, belongs to the
-remediation reflexes below — they answer to their own switch,
-not to this table.
+**eyes open** (recommended): same trust, but the Oracle watches on the
+owner's behalf. The runner executes and attaches the policy verdict to
+each result, and the SI gets attestations only. The Oracle reviews,
+fuses sensor alerts, and pages the owner when a trigger trips. This
+posture is about seeing; any acting belongs to the remediation
+reflexes below, which have their own switch.
 
-**lockdown** — the box refuses what the policy rejects. Runner:
-refuses anything the policy rejects; the SI gets attestations.
-Oracle: same as eyes-open, and every refusal is page-worthy.
-Nothing moves unless the policy allows it.
+**lockdown**: the box refuses what the policy rejects. The runner
+refuses those jobs, the SI gets attestations, and the Oracle pages the
+owner on every refusal. Nothing runs unless the policy allows it.
 
 Two more dials stand outside the table. **Remediation**
 (`remediation_mode`, default `deterministic`) watches each job
@@ -247,9 +251,9 @@ while it runs: on a closed list of tripwires — confinement
 escape, a process storm past the ceiling, an undeclared
 credential-store reference in something the job produced — it
 kills the job's process tree, quarantines its outputs (moved,
-never deleted; you release them), refers suspect files to the
+never deleted; the owner releases them), refers suspect files to the
 box's own antivirus for the antivirus's verdict, and files the
-whole story with the DRI, which pages you when paging is on.
+whole story with the DRI, which pages the owner when paging is on.
 That happens in every posture above. `oracle` mode additionally
 lets the local model order a kill for a lesser divergence;
 `off` watches and records only, and the page is all that
