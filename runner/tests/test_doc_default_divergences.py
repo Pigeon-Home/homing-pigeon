@@ -11041,8 +11041,7 @@ class TestLogSentinelIntTunableFifteenShapes(unittest.TestCase):
         import importlib.util
         import os
         path = os.path.join(
-            os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__))),
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
             "extensions", "log-sentinel", "log_sentinel.py")
         spec = importlib.util.spec_from_file_location(
             "log_sentinel_fifteen_shapes", path)
