@@ -18379,6 +18379,171 @@ class TestDtlsGreetingFifteenShapesAtGreetingTier(unittest.TestCase):
             with self.subTest(cfg=repr(cfg)):
                 self.assertEqual(self._tier(cfg), "family")
 
+class TestZeroNegativeJobWatcherRepeatFailuresClampToOneInsteadOfDefault(unittest.TestCase):
+    """Divergence: a job-watcher repeat_failures that
+    is zero, negative, or a sub-1 fractional (0, -5,
+    0.5) is clamped to an effective threshold of 1
+    instead of reading as the documented default 3,
+    so job_failing_repeatedly files on the FIRST
+    failure of a job.
+
+    (a) Doc claim (extensions/job-watcher/README.md,
+        line 18): "`job_failing_repeatedly` | The
+        same job -- same `kind` and script -- failed
+        at least `repeat_failures` times (default 3)
+        inside `failure_window_sec` (default a
+        day)". The module header states the same
+        (job_watcher.py lines 35-36:
+        "repeat_failures times (default 3)"), and
+        the manifest ships it (extension.json:
+        "repeat_failures": 3). Registry row
+        "repeat_failures (job-watcher)": integer,
+        default 3, policy default under Decision 1
+        -- a present-but-unusable value reads as
+        its documented default. A failure count
+        threshold below 1 is unusable: the sibling
+        failed-login-watch reader gates exactly
+        this (burst_count is honored only when
+        _is_number and >= 1, else its default 5),
+        and job_watcher's own decide() resets a
+        non-positive failure_window_sec to its
+        documented default in the same pass.
+
+    (b) How the bug was found: step-8 Targets 5-6
+        -- the extension tunables and the
+        handwritten core rows were covered only
+        for the shapes their named classes
+        exercised; this row's registry-named class
+        (TestInfiniteJobWatcherRepeatFailuresDefaultsTo3)
+        varied only the non-finite shapes. On
+        2026-10-24 this tick probed decide() -- the
+        pure decision function -- with the table
+        hunt's fifteen shapes (omitted, null, empty
+        string, true, false, zero, negative, the
+        explicit default, numeric string,
+        non-numeric string, huge-int (10**400),
+        inf, -inf, NaN, wrong containers (list and
+        dict)), plus a sub-1 fractional and genuine
+        values, in three scenarios: one, two,
+        three, and five failures of one job inside
+        the failure window (failure_window_sec at
+        its documented default throughout). The
+        observable is whether the
+        job_failing_repeatedly alert files, and at
+        how many failures.
+
+    (c) Behavior actually observed: thirteen
+        shapes read as the documented default 3 --
+        omitted, null, the empty string, true,
+        false, the explicit default 3, a numeric
+        string, a non-numeric string, a huge int,
+        inf, -inf, NaN, and the wrong containers:
+        the alert is silent at two failures and
+        files at three. (The non-finite crash the
+        named class recorded no longer occurs --
+        _is_number now excludes non-finite values,
+        so those shapes reach the default.) Zero,
+        -5, and 0.5 do NOT read as the default:
+        decide() computes repeat_failures as
+        int(_tunable(tunables, "repeat_failures",
+        3)) (job_watcher.py line 414) with no
+        lower-bound gate, and the filing check is
+        len(recent_failures) >= max(1,
+        repeat_failures) (line 493), so every
+        value below 1 becomes an effective
+        threshold of 1 and the alert files on the
+        first failure. Genuine values are honored:
+        2 files at the second failure, 5 is silent
+        at three and files at five, and the
+        fractional 2.5 truncates to 2, matching
+        the sibling readers' int conversion.
+        Observed on 2026-10-24 against current
+        main. This is the campaign's known
+        zero/negative root-cause family (see
+        TestZeroNegativeJobFuzzTunablesReadLiterallyInsteadOfDefault).
+
+    (d) Do not make this test pass by editing the test.
+        It passes only when the bug described above is
+        fixed in the code.
+    """
+
+    def _signals(self, tunables, count=3):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "job-watcher",
+            "job_watcher.py")
+        spec = importlib.util.spec_from_file_location(
+            "job_watcher_repeat_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        now = 1000000.0
+        manifest = {"name": "job_watcher",
+                    "tunables": dict(tunables)}
+        records = [{"job_id": f"j{i}", "key": "k1",
+                    "kind": "exec", "label": "probe",
+                    "saved_at": now - i * 10,
+                    "exit_code": 1, "duration_sec": None,
+                    "error": "boom"} for i in range(count)]
+        readings = {"now": now, "records": records}
+        alerts, _state = mod.decide(readings, manifest, {})
+        return [a["signal"] for a in alerts
+                if a["signal"] == "job_failing_repeatedly"]
+
+    def test_fifteen_shapes_read_as_default_3(self):
+        shapes = [("omitted", None), ("null", None),
+                  ("empty-string", ""), ("true", True),
+                  ("false", False), ("zero", 0),
+                  ("negative", -5),
+                  ("explicit-default", 3),
+                  ("numeric-string", "3"),
+                  ("non-numeric-string", "bogus"),
+                  ("huge-int", 10 ** 400),
+                  ("inf", float("inf")),
+                  ("-inf", float("-inf")),
+                  ("nan", float("nan")),
+                  ("list", ["x"]), ("dict", {"x": 1}),
+                  ("sub-1-fractional", 0.5)]
+        for name, value in shapes:
+            tunables = {} if name == "omitted" else {
+                "repeat_failures": value}
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    self._signals(tunables, count=2), [])
+                self.assertEqual(
+                    self._signals(tunables, count=3),
+                    ["job_failing_repeatedly"])
+
+    def test_genuine_values_are_honored(self):
+        # Controls: genuine thresholds and the
+        # truncating fractional already behave today
+        # and must keep doing so after the
+        # zero/negative case is fixed.
+        self.assertEqual(
+            self._signals({"repeat_failures": 2}, count=1),
+            [])
+        self.assertEqual(
+            self._signals({"repeat_failures": 2}, count=2),
+            ["job_failing_repeatedly"])
+        self.assertEqual(
+            self._signals({"repeat_failures": 5}, count=3),
+            [])
+        self.assertEqual(
+            self._signals({"repeat_failures": 5}, count=5),
+            ["job_failing_repeatedly"])
+        self.assertEqual(
+            self._signals({"repeat_failures": 2.5},
+                          count=1), [])
+        self.assertEqual(
+            self._signals({"repeat_failures": 2.5},
+                          count=2),
+            ["job_failing_repeatedly"])
+        self.assertEqual(
+            self._signals({"repeat_failures": 1}, count=1),
+            ["job_failing_repeatedly"])
+
 if __name__ == "__main__":
 
     unittest.main()
