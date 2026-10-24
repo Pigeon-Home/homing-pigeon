@@ -358,6 +358,8 @@ def _time_to_visible_sec(sample, psi, psi_min, visible_min_deg):
     culmination is under the minimum) or has already left.
     """
     alt = sample["alt_km"]
+    if visible_min_deg > 90.0:
+        return None  # no station reaches above the zenith
     psi_vis = psi_for_elevation_deg(visible_min_deg, alt)
     if psi <= psi_vis:
         return 0.0
