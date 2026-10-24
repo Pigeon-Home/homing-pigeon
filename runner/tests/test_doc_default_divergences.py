@@ -26618,6 +26618,633 @@ class TestFailedLoginWatchPathsAndDecideFifteenShapes(unittest.TestCase):
                         log_path,
                         saved.get("_reader", {}))
 
+class TestLogSentinelPathsAndDecideFifteenShapes(unittest.TestCase):
+    """Second-run hunt coverage: the log-sentinel list
+    tunables log_paths / groups / patterns, the
+    read_new_lines() tailing reader, classify() and
+    decide() handling varied with the fifteen shapes
+    for the first time (step-8 Target 5 / family (b)
+    -- log-sentinel's only earlier classes cover its
+    numeric _int_tunable reader and the non-finite
+    crash family; its list readers and the tailing
+    plumbing were never varied).
+
+    (a) Doc claims: the manifest ships
+        (extensions/log-sentinel/extension.json)
+        "log_paths": ["/var/log/kern.log",
+        "/var/log/syslog"], "groups": ["oom",
+        "panic", "fs", "segfault", "bug"],
+        "patterns": [], "cooldown_sec": 3600,
+        "max_alerts_per_pass": 10,
+        "tail_bytes": 65536, "poll_interval_sec": 60.
+        The README states the watcher files
+        kernel_distress for a line matching one of
+        the enabled built-in groups (all high
+        severity) and log_pattern_hit for a
+        configured pattern, "medium unless the
+        entry declares high"; that each group (or
+        pattern) is a single cooldown subject whose
+        further matches inside cooldown_sec are
+        "suppressed without refreshing the
+        timestamp"; that identical hits are deduped
+        within a pass and at most
+        max_alerts_per_pass alerts file per pass,
+        with "hits past the cap dropped without
+        being marked fired, so they can still file
+        on a later pass"; and that the reader works
+        like tail -f in passes: a file seen for the
+        first time "starts at its end minus
+        tail_bytes", afterwards each pass reads
+        from the recorded offset, "never more than
+        tail_bytes per file", and "an inode change
+        or a shrink (log rotation, truncation)
+        restarts that file from the beginning",
+        with a missing file on other platforms
+        reading "as no lines and files nothing
+        (never an error)". The module header adds
+        that a missing or unreadable file "yields
+        no lines and never raises". log_paths /
+        groups / patterns are not numeric registry
+        rows, so Decision 1's default-on-unusable
+        policy for numeric readers does not name a
+        shape rule for them; this class pins the
+        observed readings instead of asserting one.
+
+    (b) How this was probed: on 2026-10-24
+        read_new_lines() was probed with the table
+        hunt's fifteen shapes (omitted-equivalent
+        empty list, null, empty string, true, false,
+        zero, negative, numeric string, non-numeric
+        string, huge-int (10**400), inf, -inf, NaN,
+        list, dict) plus tuple and bare-string path
+        values, genuine / duplicated / mixed lists,
+        and reader-state shapes against real temp
+        log files, with tail_bytes shapes and
+        fractional values. classify() was probed
+        with the fifteen shapes for groups and for
+        patterns, malformed pattern entries, every
+        built-in group's line, and lines shapes.
+        decide() was probed with cooldown /
+        max_alerts shapes, state shapes, readings
+        and now shapes, pass-cap and cooldown
+        sequences. read_live() and main() were run
+        against temp manifests carrying the
+        log_paths shapes, in --readings, --log-file
+        and live modes.
+
+    (c) Behavior actually observed: NO divergence
+        recorded. read_new_lines() reads every
+        non-list paths shape (a tuple and a bare
+        string included) and an empty list as no
+        paths, cleans a genuine list element-wise
+        (non-string/empty skipped), reads a
+        duplicated path twice, starts a first-sight
+        file at size - tail_bytes, reads only
+        appended bytes on the next pass, restarts
+        from 0 on a shrink or an inode change or an
+        offset past EOF, keeps a missing file's
+        valid recorded entry and drops an invalid
+        one, treats a non-dict reader state as
+        empty and a bool/string offset as a first
+        sight, and preserves a negative offset's
+        entry verbatim while yielding no lines for
+        it (the seek fails and the file reads as
+        unreadable, never an exception); every
+        unusable tail_bytes shape reads as the
+        65536 default and a fractional value
+        truncates. read_live() substitutes the
+        documented default paths for a non-list or
+        empty log_paths (absent on this box, so
+        those shapes file nothing) and tails a
+        genuine list. classify() yields at most one
+        built-in event per line -- the first
+        enabled group in the groups list's own
+        order -- plus one event per matching
+        configured pattern, case-insensitively;
+        a non-list groups value reads as the
+        defaults, an empty or unknown-only list
+        enables no groups, pattern entries clean
+        element-wise (non-dict, missing/empty
+        name or regex, and uncompilable regexes
+        skipped) with severity high only for the
+        exact string "high". decide() dedups
+        within a pass, suppresses inside the
+        cooldown without refreshing it and refiles
+        at exactly the boundary, drops cap overflow
+        unmarked so later passes file it, reads
+        zero cooldown / zero max_alerts as genuine
+        zeros, cleans state field-wise (int
+        last_fired values become floats, non-string
+        keys and non-number/bool/non-finite values
+        drop, a dict _reader is preserved verbatim
+        and a non-dict one dropped), reads an
+        unusable now as 0.0 (a negative now is
+        honored), and falls back to the sensor
+        name "log_sentinel"; titles carry the
+        stripped line trimmed to 120 chars while
+        detail carries the full line. main() in
+        --readings mode files and writes state
+        (rc 0, a repeat pass inside the cooldown
+        quiet), reads a malformed state as fresh,
+        answers rc 2 for a missing/malformed
+        manifest, a missing/malformed/non-object
+        readings file, or a missing log file,
+        reads a non-dict (list) manifest as the
+        defaults (rc 0), files from --log-file,
+        and in live mode saves the _reader offsets
+        so a second pass over an unchanged log is
+        quiet. Observed on 2026-10-24 against
+        current main.
+
+    (d) This is a coverage record, not a
+        divergence: it stays green as long as the
+        readings above keep holding. If a shape
+        ever stops behaving as described, this
+        test is the failing record of that change.
+    """
+
+    _OOM = "Out of memory: Killed process 123"
+    _PANIC = "Kernel panic - not syncing: fatal"
+    _SHAPES = [("empty-list", []), ("null", None),
+               ("empty-string", ""), ("true", True),
+               ("false", False), ("zero", 0),
+               ("negative", -5), ("numeric-string", "120"),
+               ("non-numeric-string", "bogus"),
+               ("huge-int", 10 ** 400),
+               ("inf", float("inf")),
+               ("-inf", float("-inf")),
+               ("nan", float("nan")),
+               ("list", ["x"]), ("dict", {"x": 1})]
+
+    def _module(self):
+        import importlib.util
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)))),
+            "extensions", "log-sentinel", "log_sentinel.py")
+        spec = importlib.util.spec_from_file_location(
+            "log_sentinel_paths_fifteen_shapes", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_read_new_lines_paths_shapes(self):
+        import os
+        import tempfile
+        mod = self._module()
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    mod.read_new_lines(value, {}, 65536),
+                    ([], {}))
+        self.assertEqual(
+            mod.read_new_lines(("/nonexistent/x",), {}, 65536),
+            ([], {}))
+        self.assertEqual(
+            mod.read_new_lines("/nonexistent/x", {}, 65536),
+            ([], {}))
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "kern.log")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("line1\nline2\nline3\n")
+            lines, reader = mod.read_new_lines([path], {}, 65536)
+            self.assertEqual(lines, ["line1", "line2", "line3"])
+            self.assertEqual(reader[path]["offset"], 18)
+            self.assertEqual(
+                mod.read_new_lines([path], reader, 65536),
+                ([], reader))
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write("line4\n")
+            lines, reader = mod.read_new_lines([path], reader, 65536)
+            self.assertEqual(lines, ["line4"])
+            lines, _ = mod.read_new_lines([path, path], {}, 65536)
+            self.assertEqual(len(lines), 8)
+            lines, _ = mod.read_new_lines(
+                [path, 123, "", None], {}, 65536)
+            self.assertEqual(len(lines), 4)
+            missing = os.path.join(d, "nope.log")
+            self.assertEqual(
+                mod.read_new_lines(
+                    [missing],
+                    {missing: {"inode": 7, "offset": 42}},
+                    65536),
+                ([], {missing: {"inode": 7, "offset": 42}}))
+            self.assertEqual(
+                mod.read_new_lines(
+                    [missing], {missing: "junk"}, 65536),
+                ([], {}))
+            self.assertEqual(
+                mod.read_new_lines([missing], {}, 65536),
+                ([], {}))
+
+    def test_read_new_lines_tail_and_restart_rules(self):
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "kern.log")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("0123456789ABCDEFGHIJ")
+            lines, _ = mod.read_new_lines([path], {}, 5)
+            self.assertEqual(lines, ["FGHIJ"])
+            lines, _ = mod.read_new_lines([path], {}, 10.9)
+            self.assertEqual(lines, ["ABCDEFGHIJ"])
+            for name, tb in self._SHAPES:
+                with self.subTest(tail=name):
+                    lines, _ = mod.read_new_lines([path], {}, tb)
+                    self.assertEqual(
+                        lines, ["0123456789ABCDEFGHIJ"])
+            _, reader = mod.read_new_lines([path], {}, 65536)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("new\n")
+            lines, reader = mod.read_new_lines(
+                [path], reader, 65536)
+            self.assertEqual(lines, ["new"])
+            other = os.path.join(d, "rotated.log")
+            with open(other, "w", encoding="utf-8") as fh:
+                fh.write("rotated line\n")
+            os.replace(other, path)
+            lines, reader = mod.read_new_lines(
+                [path], reader, 65536)
+            self.assertEqual(lines, ["rotated line"])
+            info = os.stat(path)
+            lines, _ = mod.read_new_lines(
+                [path],
+                {path: {"inode": info.st_ino, "offset": 10 ** 6}},
+                65536)
+            self.assertEqual(lines, ["rotated line"])
+            lines, _ = mod.read_new_lines(
+                [path],
+                {path: {"inode": 999999999, "offset": 5}},
+                65536)
+            self.assertEqual(lines, ["rotated line"])
+            for bad_state in (None, "bogus", [], 42):
+                with self.subTest(state=repr(bad_state)):
+                    lines, _ = mod.read_new_lines(
+                        [path], bad_state, 65536)
+                    self.assertEqual(lines, ["rotated line"])
+            lines, _ = mod.read_new_lines(
+                [path],
+                {path: {"inode": info.st_ino, "offset": True}},
+                5)
+            self.assertEqual(lines, ["line"])
+            bad = {path: {"inode": info.st_ino, "offset": -5}}
+            self.assertEqual(
+                mod.read_new_lines([path], bad, 65536),
+                ([], bad))
+
+    def test_read_live_log_paths_fallback(self):
+        import os
+        import tempfile
+        mod = self._module()
+        if os.path.exists("/var/log/kern.log") \
+                or os.path.exists("/var/log/syslog"):
+            self.skipTest("the documented default path "
+                          "exists on this box")
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                readings = mod.read_live(
+                    {"name": "log_sentinel",
+                     "tunables": {"log_paths": value}})
+                self.assertEqual(readings["lines"], [])
+                self.assertEqual(readings["_reader"], {})
+        readings = mod.read_live(None)
+        self.assertEqual(readings["lines"], [])
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "k.log")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("kernel panic - not syncing\n")
+            readings = mod.read_live(
+                {"tunables": {"log_paths": [path]}})
+            self.assertEqual(
+                readings["lines"],
+                ["kernel panic - not syncing"])
+            self.assertEqual(
+                readings["_reader"][path]["offset"], 27)
+            readings = mod.read_live(
+                {"tunables": {"log_paths": [path],
+                              "tail_bytes": 10}})
+            self.assertEqual(readings["lines"], ["t syncing"])
+
+    def test_classify_builtin_groups(self):
+        mod = self._module()
+        man = {"name": "log_sentinel", "tunables": {}}
+        for line, group in (
+                ("Out of memory: Killed process 1", "oom"),
+                ("oom-kill: process 1 killed", "oom"),
+                ("Kernel panic - not syncing", "panic"),
+                ("kernel BUG at file.c:1", "bug"),
+                ("BUG: unable to handle", "bug"),
+                ("segfault at 0 ip 1 error 2", "segfault"),
+                ("EXT4-fs error on device", "fs")):
+            with self.subTest(group=group):
+                events = mod.classify([line], man)
+                self.assertEqual(len(events), 1)
+                self.assertEqual(events[0]["group"], group)
+                self.assertEqual(events[0]["severity"], "high")
+                self.assertEqual(events[0]["subject"], group)
+        both = "Out of memory and kernel panic - not syncing"
+        self.assertEqual(
+            mod.classify([both], man)[0]["group"], "oom")
+        self.assertEqual(
+            mod.classify(
+                [both],
+                {"tunables": {"groups": ["panic", "oom"]}}
+            )[0]["group"], "panic")
+        self.assertEqual(
+            mod.classify([self._PANIC],
+                         {"tunables": {"groups": ["oom"]}}), [])
+        self.assertEqual(
+            mod.classify([self._OOM],
+                         {"tunables": {"groups": []}}), [])
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                events = mod.classify(
+                    [self._OOM], {"tunables": {"groups": value}})
+                if name in ("list", "empty-list"):
+                    self.assertEqual(events, [])
+                else:
+                    self.assertEqual(
+                        [e["group"] for e in events], ["oom"])
+        events = mod.classify(
+            [self._OOM],
+            {"tunables": {"groups": ["nope", 7, "oom"]}})
+        self.assertEqual([e["group"] for e in events], ["oom"])
+        self.assertEqual(mod.classify("notalist", man), [])
+        events = mod.classify([123, None, self._OOM], man)
+        self.assertEqual(len(events), 1)
+        self.assertEqual(
+            mod.classify(["OUT OF MEMORY"], man)[0]["group"],
+            "oom")
+
+    def test_classify_patterns(self):
+        mod = self._module()
+        pats = [{"name": "auth",
+                 "regex": "authentication failure",
+                 "severity": "high"},
+                {"name": "disk", "regex": "disk error"}]
+        man = {"tunables": {"patterns": pats}}
+        events = mod.classify(
+            ["authentication failure and disk error"], man)
+        self.assertEqual(
+            [(e["pattern"], e["severity"]) for e in events],
+            [("auth", "high"), ("disk", "medium")])
+        events = mod.classify(
+            ["Out of memory: authentication failure"],
+            {"tunables": {"patterns": [pats[0]]}})
+        self.assertEqual(
+            [(e.get("group"), e.get("pattern")) for e in events],
+            [("oom", None), (None, "auth")])
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                self.assertEqual(
+                    mod.classify(["authentication failure"],
+                                 {"tunables": {"patterns": value}}),
+                    [])
+        bad = [{"name": "x"}, {"regex": "y"},
+               {"name": "", "regex": "y"},
+               {"name": "n", "regex": ""},
+               {"name": "bad", "regex": "([unclosed"},
+               {"name": 5, "regex": "y"}, "notdict",
+               {"name": "ok", "regex": "auth",
+                "severity": "HIGH"},
+               {"name": "ok2", "regex": "fail",
+                "severity": "high"}]
+        events = mod.classify(
+            ["auth fail"], {"tunables": {"patterns": bad}})
+        self.assertEqual(
+            [(e["pattern"], e["severity"]) for e in events],
+            [("ok", "medium"), ("ok2", "high")])
+
+    def test_decide_cooldown_and_dedup(self):
+        mod = self._module()
+        man = {"name": "log_sentinel", "tunables": {}}
+        alerts, state = mod.decide(
+            {"now": 1000.0, "lines": [self._OOM]}, man, {})
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["signal"], "kernel_distress")
+        self.assertEqual(alerts[0]["severity"], "high")
+        self.assertEqual(
+            state, {"last_fired": {"kernel_distress:oom": 1000.0}})
+        alerts, _ = mod.decide(
+            {"now": 1000.0, "lines": [self._OOM, self._OOM]},
+            man, {})
+        self.assertEqual(len(alerts), 1)
+        alerts, state2 = mod.decide(
+            {"now": 2000.0, "lines": [self._OOM]}, man, state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(state2, state)
+        alerts, _ = mod.decide(
+            {"now": 4599.0, "lines": [self._OOM]}, man, state)
+        self.assertEqual(alerts, [])
+        alerts, state3 = mod.decide(
+            {"now": 4600.0, "lines": [self._OOM]}, man, state2)
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(
+            state3["last_fired"]["kernel_distress:oom"], 4600.0)
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                alerts, _ = mod.decide(
+                    {"now": 1000.0, "lines": [self._OOM]},
+                    {"tunables": {"cooldown_sec": value}},
+                    {"last_fired": {"kernel_distress:oom": 1000.0}})
+                if name == "zero":
+                    self.assertEqual(len(alerts), 1)
+                else:
+                    self.assertEqual(alerts, [])
+
+    def test_decide_cap_drops_unmarked(self):
+        mod = self._module()
+        pats = [{"name": f"p{i}", "regex": f"hit{i}"}
+                for i in range(5)]
+        man = {"tunables": {"patterns": pats,
+                            "max_alerts_per_pass": 2}}
+        lines = [f"hit{i}" for i in range(5)]
+        alerts, state = mod.decide(
+            {"now": 1000.0, "lines": lines}, man, {})
+        self.assertEqual(
+            [a["detail"]["pattern"] for a in alerts],
+            ["p0", "p1"])
+        alerts, state = mod.decide(
+            {"now": 1000.0, "lines": lines}, man, state)
+        self.assertEqual(
+            [a["detail"]["pattern"] for a in alerts],
+            ["p2", "p3"])
+        alerts, state = mod.decide(
+            {"now": 1000.0, "lines": lines}, man, state)
+        self.assertEqual(
+            [a["detail"]["pattern"] for a in alerts], ["p4"])
+        for name, value in self._SHAPES:
+            with self.subTest(shape=name):
+                alerts, st = mod.decide(
+                    {"now": 1000.0,
+                     "lines": [self._OOM, self._PANIC]},
+                    {"tunables": {"max_alerts_per_pass": value}},
+                    {})
+                if name == "zero":
+                    self.assertEqual(alerts, [])
+                    self.assertEqual(st, {"last_fired": {}})
+                else:
+                    self.assertEqual(len(alerts), 2)
+
+    def test_decide_state_now_and_sensor_shapes(self):
+        mod = self._module()
+        man = {"name": "log_sentinel", "tunables": {}}
+        for bad_state in (None, "x", [], 42,
+                          {"last_fired": "nope"}):
+            with self.subTest(state=repr(bad_state)):
+                self.assertEqual(
+                    mod.decide({"lines": []}, man, bad_state),
+                    ([], {"last_fired": {}}))
+        _, state = mod.decide(
+            {"lines": []}, man,
+            {"last_fired": {"kernel_distress:oom": 500,
+                            7: 1.0, "k2": "x", "k3": True,
+                            "k4": float("inf"), "k5": 10 ** 400}})
+        self.assertEqual(
+            state, {"last_fired": {"kernel_distress:oom": 500.0}})
+        _, state = mod.decide(
+            {"lines": []}, man, {"_reader": {"/x": {"inode": 1}}})
+        self.assertEqual(state["_reader"], {"/x": {"inode": 1}})
+        _, state = mod.decide(
+            {"lines": []}, man, {"_reader": "nope"})
+        self.assertNotIn("_reader", state)
+        for name, value in self._SHAPES:
+            with self.subTest(now=name):
+                alerts, st = mod.decide(
+                    {"now": value, "lines": [self._OOM]}, man, {})
+                want = -5.0 if name == "negative" else 0.0
+                self.assertEqual(len(alerts), 1)
+                self.assertEqual(
+                    st["last_fired"]["kernel_distress:oom"], want)
+        for bad_readings in (None, "x", [], {},
+                             {"lines": self._OOM}):
+            self.assertEqual(
+                mod.decide(bad_readings, man, {}),
+                ([], {"last_fired": {}}))
+        for bad_man in (None, "x", [], {},
+                        {"name": 123}, {"name": ""}):
+            alerts, _ = mod.decide(
+                {"now": 1.0, "lines": [self._OOM]}, bad_man, {})
+            self.assertEqual(alerts[0]["sensor"], "log_sentinel")
+        alerts, _ = mod.decide(
+            {"now": 1.0, "lines": [self._OOM]},
+            {"name": "ls2", "tunables": "nope"}, {})
+        self.assertEqual(alerts[0]["sensor"], "ls2")
+        long_line = "Out of memory " + "x" * 200
+        alerts, _ = mod.decide(
+            {"now": 1.0, "lines": [long_line]}, man, {})
+        self.assertEqual(len(alerts[0]["title"]), 143)
+        self.assertEqual(
+            len(alerts[0]["detail"]["line"]), 214)
+        alerts, _ = mod.decide(
+            {"now": 1.0,
+             "lines": ["   Out of memory: Killed process   "]},
+            man, {})
+        self.assertEqual(
+            alerts[0]["title"],
+            "kernel distress (oom): Out of memory: "
+            "Killed process")
+
+    def test_main_modes(self):
+        import contextlib
+        import io
+        import json
+        import os
+        import tempfile
+        mod = self._module()
+        with tempfile.TemporaryDirectory() as d:
+            logp = os.path.join(d, "fixture.log")
+            with open(logp, "w", encoding="utf-8") as fh:
+                fh.write("Out of memory: Killed process 9\n"
+                         "Kernel panic - not syncing\n")
+            mp = os.path.join(d, "m.json")
+            sp = os.path.join(d, "s.json")
+            with open(mp, "w", encoding="utf-8") as fh:
+                json.dump({"name": "log_sentinel",
+                           "tunables": {}}, fh)
+            rp = os.path.join(d, "r.json")
+            with open(rp, "w", encoding="utf-8") as fh:
+                json.dump({"now": 1000.0,
+                           "lines": ["Out of memory: "
+                                     "Killed process 9"]}, fh)
+
+            def run(argv):
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    rc = mod.main(argv)
+                return rc, buf.getvalue()
+
+            rc, out = run(["--manifest", mp, "--state", sp,
+                           "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.count("kernel_distress"), 1)
+            with open(sp, encoding="utf-8") as fh:
+                self.assertEqual(
+                    json.load(fh),
+                    {"last_fired": {"kernel_distress:oom": 1000.0}})
+            rc, out = run(["--manifest", mp, "--state", sp,
+                           "--readings", rp])
+            self.assertEqual((rc, out), (0, ""))
+            sp2 = os.path.join(d, "s2.json")
+            rc, out = run(["--manifest", mp, "--state", sp2,
+                           "--log-file", logp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.count("kernel_distress"), 2)
+            bad = os.path.join(d, "bad.json")
+            with open(bad, "w", encoding="utf-8") as fh:
+                fh.write("{not json")
+            nd = os.path.join(d, "nd.json")
+            with open(nd, "w", encoding="utf-8") as fh:
+                fh.write("[1, 2]")
+            for argv in (
+                    ["--manifest", os.path.join(d, "nope.json"),
+                     "--state", sp, "--readings", rp],
+                    ["--manifest", bad, "--state", sp,
+                     "--readings", rp],
+                    ["--manifest", mp, "--state", sp,
+                     "--readings", os.path.join(d, "nope.json")],
+                    ["--manifest", mp, "--state", sp,
+                     "--readings", bad],
+                    ["--manifest", mp, "--state", sp,
+                     "--readings", nd],
+                    ["--manifest", mp, "--state", sp,
+                     "--log-file", os.path.join(d, "nope.log")]):
+                with self.subTest(argv=argv[1]):
+                    self.assertEqual(run(argv)[0], 2)
+            sp3 = os.path.join(d, "s3.json")
+            with open(sp3, "w", encoding="utf-8") as fh:
+                fh.write("garbage{")
+            rc, out = run(["--manifest", mp, "--state", sp3,
+                           "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.count("kernel_distress"), 1)
+            lm = os.path.join(d, "lm.json")
+            with open(lm, "w", encoding="utf-8") as fh:
+                fh.write("[1, 2]")
+            sp5 = os.path.join(d, "s5.json")
+            rc, out = run(["--manifest", lm, "--state", sp5,
+                           "--readings", rp])
+            self.assertEqual(rc, 0)
+            self.assertIn('"sensor": "log_sentinel"', out)
+            mp2 = os.path.join(d, "m2.json")
+            sp4 = os.path.join(d, "s4.json")
+            with open(mp2, "w", encoding="utf-8") as fh:
+                json.dump({"name": "log_sentinel",
+                           "tunables": {"log_paths": [logp],
+                                        "cooldown_sec": 0}}, fh)
+            rc, out = run(["--manifest", mp2, "--state", sp4])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.count("kernel_distress"), 2)
+            with open(sp4, encoding="utf-8") as fh:
+                saved = json.load(fh)
+            self.assertEqual(
+                saved["_reader"][logp]["offset"],
+                os.path.getsize(logp))
+            rc, out = run(["--manifest", mp2, "--state", sp4])
+            self.assertEqual((rc, out), (0, ""))
+
 if __name__ == "__main__":
 
     unittest.main()
