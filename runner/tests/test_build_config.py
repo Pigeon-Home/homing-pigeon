@@ -404,7 +404,8 @@ class PipelineLiftsTest(unittest.TestCase):
     WORKFLOWS = ("build.yml", "docker.yml", "security.yml",
                  "minimal-userland.yml", "platform-matrix.yml",
                  "env-axes.yml", "coverage.yml", "switch-proofs.yml",
-                 "freebsd.yml", "python-range.yml", "upgrade-proof.yml")
+                 "freebsd.yml", "python-range.yml", "upgrade-proof.yml", "soak.yml",
+                 "hardware.yml")
 
     def _wf(self, name):
         with open(os.path.join(_root(), ".github", "workflows", name),
@@ -685,7 +686,7 @@ class PipelineLessonsTest(unittest.TestCase):
 
     ALL = ("build.yml", "docker.yml", "security.yml",
            "minimal-userland.yml", "platform-matrix.yml",
-           "mutation-seeded.yml", "python-range.yml", "upgrade-proof.yml")
+           "mutation-seeded.yml", "python-range.yml", "upgrade-proof.yml", "soak.yml")
 
     def test_unittest_output_piped_to_tee_captures_stderr(self):
         # unittest writes its report to stderr. 8dc7ac7 piped
@@ -853,7 +854,7 @@ class PipelineLessonsTest(unittest.TestCase):
         # Wherever a workflow tees a test run into a file, the file is
         # read by the guard, not by ad-hoc greps.
         for name in ("minimal-userland.yml", "platform-matrix.yml", "build.yml",
-                     "python-range.yml"):
+                     "python-range.yml", "hardware.yml"):
             wf = _workflow_text(name)
             if "| tee" in wf:
                 self.assertIn("runner/tools/skip_guard.py", wf, name)

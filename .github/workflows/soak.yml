@@ -1,0 +1,45 @@
+# Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab
+name: soak
+
+# Two hours of the real poll loop (runner/tools/soak.py): signed jobs
+# with real child processes, bad signatures, junk and replays, every
+# cycle measured. It fails when memory, file descriptors or threads
+# grow, a job's process is left unreaped, a fresh job goes without a
+# result, or runner.log outgrows its rotation cap. Nothing else runs
+# the runner long enough to see a slow leak. Nightly and on demand:
+# too long for every push. The samples are the artifact, so a slow
+# rise below the limit is visible before it becomes a failure.
+on:
+  schedule:
+    - cron: "41 9 * * *"
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "how long to soak"
+        default: "120"
+
+permissions: {}
+
+concurrency:
+  group: soak-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  soak:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+      - name: soak the poll loop
+        env:
+          MINUTES: ${{ github.event.inputs.minutes || '120' }}
+        run: python runner/tools/soak.py --minutes "$MINUTES" --json soak-samples.json
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: soak-samples
+          path: soak-samples.json

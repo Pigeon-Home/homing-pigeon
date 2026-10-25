@@ -131,6 +131,7 @@ REGISTERED = {
     "sys.monitoring needs 3.12+": "run on the 3.12 CI interpreter",
     "threading.gettrace needs 3.10+": "run on the 3.12 CI interpreter",
     "the Linux and macOS source install; Windows installs from the release binaries": "the Windows install is the binary one, proven by build.yml's windows smoke; run on every POSIX leg",
+    "exec jobs run sh; the soak's own leg is Linux": "the soak drives sh exec jobs; soak.yml and every POSIX leg run it",
     "make_sbom runs on the build Python (tomllib, 3.11+)": "a release tool, never on a runner box; run on the 3.12 CI interpreter",
     "sys.stdlib_module_names is 3.10+; static check": "a static read of the source, so one Python proves it; run on the 3.12 CI interpreter",
     # ---- tools that must be present: forbidden to skip where installed
