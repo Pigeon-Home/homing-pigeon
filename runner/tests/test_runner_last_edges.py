@@ -1099,8 +1099,11 @@ class RunnerResidualLegsTest(unittest.TestCase):
     def test_job_user_face_setgroups_delegates(self):
         # _JobUserFace.setgroups: the real face
         # passes the call to the OS unchanged.
+        # create=True: Windows has no os.setgroups
+        # to patch over, and the face is never
+        # asked there.
         face = rr._JobUserFace()
-        with mock.patch.object(os, "setgroups") as sg:
+        with mock.patch.object(os, "setgroups", create=True) as sg:
             face.setgroups([1000, 1001])
         sg.assert_called_once_with([1000, 1001])
 
@@ -1234,28 +1237,50 @@ class RunnerResidualLegsTest(unittest.TestCase):
     def test_kill_tree_takes_the_extra_pids(self):
         # kill_tree's extra-pids leg: a detached
         # process the monitor sampled still
-        # dies, though it escaped the group.
-        sleeper = subprocess.Popen(["sleep", "30"])
-        try:
-            proc = mock.Mock()
-            proc.pid = 99999999
-            rr.kill_tree(proc, extra_pids=[sleeper.pid])
-            self.assertEqual(
-                sleeper.wait(timeout=5), -signal.SIGKILL)
-        finally:
-            if sleeper.poll() is None:
-                sleeper.kill()
+        # dies, though it escaped the group. The
+        # leg is POSIX by design (taskkill /T is
+        # the whole tree on Windows), so it is
+        # exercised under a POSIX identity with
+        # the kills recorded, on every platform.
+        sigkill = getattr(signal, "SIGKILL", 9)
+        killed = []
+        proc = mock.Mock()
+        proc.pid = 99999999
+        with mock.patch.object(rr.os, "name", "posix"), \
+                mock.patch.object(rr.os, "killpg", create=True,
+                                  side_effect=OSError("no group")), \
+                mock.patch.object(rr.os, "kill", create=True,
+                                  side_effect=lambda pid, sig:
+                                  killed.append((pid, sig))), \
+                mock.patch.object(rr.signal, "SIGKILL", sigkill,
+                                  create=True):
+            rr.kill_tree(proc, extra_pids=[4242, proc.pid, 0])
+        proc.kill.assert_called_once()
+        # The sampled pid dies; the job's own pid and a zero are
+        # not re-killed.
+        self.assertEqual(killed, [(4242, sigkill)])
 
     def test_kill_tree_swallows_a_failed_kill(self):
         # kill_tree's inner swallows: the
         # fallback kill raising, and an extra
         # pid that cannot be killed, are both
-        # best effort -- neither escapes.
+        # best effort -- neither escapes. Under
+        # a POSIX identity so the group kill is
+        # the one that fails first on every
+        # platform.
         proc = mock.Mock()
         proc.pid = 99999999
         proc.kill.side_effect = RuntimeError("gone")
-        rr.kill_tree(proc, extra_pids=[2 ** 22 + 12345,
-                                       "not-a-pid"])
+        with mock.patch.object(rr.os, "name", "posix"), \
+                mock.patch.object(rr.os, "killpg", create=True,
+                                  side_effect=OSError("no group")), \
+                mock.patch.object(rr.os, "kill", create=True,
+                                  side_effect=OSError("cannot")), \
+                mock.patch.object(rr.signal, "SIGKILL",
+                                  getattr(signal, "SIGKILL", 9),
+                                  create=True):
+            rr.kill_tree(proc, extra_pids=[2 ** 22 + 12345,
+                                           "not-a-pid"])
         proc.kill.assert_called_once()
 
     def test_disk_claim_guards(self):
