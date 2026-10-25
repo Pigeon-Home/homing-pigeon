@@ -384,7 +384,16 @@ when done, the proving commit or run. Newest first.
   (port-watch, log-sentinel, failed-login-watch,
   cert-sentinel, backup-freshness; 18 lines each, never run
   on either platform, coverage run 40180268696) — taken
-  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  done: coverage run 40186441596 (main at 63e0c80) shows
+  no never-executed lines for these five functions on
+  either platform, and the nineteen-sense roster is clean
+  in the same run; that run's Windows suite is OK, which
+  also confirms the four fd-leak error fixes in the same
+  commit. Nine non-roster `_deliver_local` copies remain
+  (airwaves, crash-watch, falco-feed, osquery-feed,
+  pi-health, service-watch, tripwire, usb-arrivals,
+  wire-arrivals; 5 to 9 lines each) as residual field.
 - A — `runner/guard/security.py::validate_security_config` (18
   lines never run on Windows, 7 on Linux, coverage run
   40180268696) — taken 2026-10-25,
