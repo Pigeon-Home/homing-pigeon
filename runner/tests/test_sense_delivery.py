@@ -32,6 +32,7 @@ import types
 import unittest
 from contextlib import redirect_stderr
 from io import StringIO
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
@@ -212,6 +213,46 @@ class SenseDelivery(unittest.TestCase):
                 [alert], _args(local_dir=base, local_port=1))
         self.assertEqual(n, 0)
         self.assertIn("delivery failed", err.getvalue())
+
+
+class UnimportableRepoTest(unittest.TestCase):
+    """The same refusal as OutsideTheCloneTest, in-process
+    for every sense on the roster: coverage run
+    40183585961 still showed the refusal lines unrun in
+    all eighteen copies, because the subprocess proof
+    measures its lines in a child whose coverage data
+    never reaches the map. Here the runner's producer
+    module is made unimportable through the module
+    table (and the package attribute the from-import
+    consults first), and each copy must answer None and
+    print the refusal naming itself.
+    """
+
+    def test_every_sense_refuses_when_the_repo_cannot_import(self):
+        import runner.ops as ops_pkg
+        had_attr = hasattr(ops_pkg, "extensions")
+        saved = getattr(ops_pkg, "extensions", None)
+        if had_attr:
+            delattr(ops_pkg, "extensions")
+        try:
+            with mock.patch.dict(
+                    sys.modules,
+                    {"runner.ops.extensions": None}):
+                for dirname, filename in EXTENSIONS:
+                    with self.subTest(sense=dirname):
+                        mod = _load(dirname, filename)
+                        err = StringIO()
+                        with redirect_stderr(err):
+                            got = mod._deliver_local(
+                                [], _args())
+                        self.assertIsNone(got)
+                        self.assertIn(
+                            "local delivery needs the "
+                            "homing-pigeon repo importable",
+                            err.getvalue())
+        finally:
+            if had_attr:
+                ops_pkg.extensions = saved
 
 
 class OutsideTheCloneTest(unittest.TestCase):
