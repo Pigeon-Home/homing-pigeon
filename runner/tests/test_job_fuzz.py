@@ -290,6 +290,115 @@ class CorpusTest(unittest.TestCase):
         self.assertIsInstance(state["corpus"], dict)
 
 
+class DecideGuardBranchesTest(unittest.TestCase):
+    """Queue A: the guard branches of decide() that the
+    shape hunts never produced (coverage run 40183585961:
+    12 lines on both platforms) -- a readings value that
+    is not an object, a manifest with no usable name,
+    tunables at or below zero, junk inside the seeds and
+    outcomes lists, an unrecognized stage, and the filed
+    log's own cap. The discipline under test is the
+    module's own: unusable input reads as the documented
+    default or is skipped, never fatal, and the books
+    stay bounded.
+    """
+
+    def test_non_dict_readings_read_as_an_empty_pass(self):
+        for readings in (None, "junk", [1, 2]):
+            with self.subTest(readings=readings):
+                alerts, state = JF.decide(readings, _manifest(), {})
+                self.assertEqual(alerts, [])
+                self.assertEqual(state["campaigns"], 0)
+
+    def test_a_nameless_manifest_files_as_job_fuzz(self):
+        outcome = _outcome(stage="error", reason="boom")
+        for manifest in ({}, {"name": ""}, {"name": 7}, "junk"):
+            with self.subTest(manifest=manifest):
+                alerts, _state = JF.decide(
+                    _readings(outcomes=[outcome]), manifest, {})
+                self.assertTrue(alerts)
+                self.assertTrue(all(
+                    a["sensor"] == "job_fuzz" for a in alerts))
+                self.assertIn("variant_hard_failure",
+                              [a["signal"] for a in alerts])
+        named = _manifest()
+        alerts, _state = JF.decide(
+            _readings(outcomes=[outcome]), named, {})
+        self.assertTrue(all(
+            a["sensor"] == named["name"] for a in alerts))
+
+    def test_unusable_caps_read_as_the_defaults(self):
+        # max_alerts_per_pass at zero must read as the
+        # default 20, not as "file nothing": 25 hard
+        # outcomes in distinct buckets make 25 hard
+        # candidates plus 25 novelty candidates (one per
+        # outcome -- a same-pass duplicate key is only
+        # suppressed when its first filing actually
+        # lands, and the cap falls first) -- 20 filed,
+        # 30 dropped and counted.
+        m = _manifest()
+        m["tunables"]["corpus_max_jobs"] = 0
+        m["tunables"]["distilled_max_jobs"] = -1
+        m["tunables"]["max_alerts_per_pass"] = 0
+        # Distinct buckets need distinct reason shapes:
+        # _normalize_reason flattens digit runs, so the
+        # reasons differ in letters, not numbers.
+        words = ["alpha", "bravo", "charlie", "delta", "echo",
+                 "foxtrot", "golf", "hotel", "india", "juliet",
+                 "kilo", "lima", "mike", "november", "oscar",
+                 "papa", "quebec", "romeo", "sierra", "tango",
+                 "uniform", "victor", "whiskey", "xray", "yankee"]
+        outcomes = [
+            _outcome(job_id="j-" + w, stage="error",
+                     reason="boom " + w)
+            for w in words]
+        alerts, state = JF.decide(
+            _readings(outcomes=outcomes), m, {})
+        self.assertEqual(len(alerts), 20)
+        self.assertTrue(all(
+            a["signal"] == "variant_hard_failure" for a in alerts))
+        self.assertEqual(state["dropped_total"], 30)
+
+    def test_junk_seeds_are_skipped_and_good_ones_land(self):
+        seeds = ["junk",
+                 {"job_id": 5, "saved_at": T0},
+                 {"job_id": "x", "saved_at": "soon"},
+                 _seed("job-a")]
+        _a, state = JF.decide(_readings(seeds=seeds),
+                              _manifest(), {})
+        self.assertEqual(sorted(state["corpus"]), ["job-a"])
+
+    def test_junk_outcomes_are_skipped_and_a_bogus_stage_is_an_error(self):
+        outcomes = ["junk",
+                    {"job_id": "", "mutator": "truncate"},
+                    {"job_id": "j", "mutator": ""},
+                    _outcome(job_id="j2", stage="bogus")]
+        alerts, state = JF.decide(
+            _readings(outcomes=outcomes), _manifest(), {})
+        self.assertEqual(sorted(state["energy"]), ["j2"])
+        hard = [a for a in alerts
+                if a["signal"] == "variant_hard_failure"]
+        self.assertEqual(len(hard), 1)
+        self.assertEqual(hard[0]["detail"]["stage"], "error")
+
+    def test_the_filed_log_trims_to_its_cap_on_a_new_filing(self):
+        # _clean_state already trims the log it is handed;
+        # decide's own trim is for a log that grows past
+        # the cap during the pass: a full log plus one new
+        # divergence filing evicts the oldest entry.
+        filed = {"dv|old-%d|m|c" % i: float(i)
+                 for i in range(JF._FILER_CAP)}
+        outcome = _outcome(job_id="new-job", exit_code=0,
+                           orig_exit_code=3)
+        _a, state = JF.decide(
+            _readings(outcomes=[outcome]), _manifest(),
+            {"filed": filed})
+        self.assertEqual(len(state["filed"]), JF._FILER_CAP)
+        self.assertNotIn("dv|old-0|m|c", state["filed"])
+        self.assertTrue(any(
+            k.startswith("dv|new-job|") for k in state["filed"]))
+
+
 FAKE_RUNNER = """\
 import json, sys
 v = json.load(open(sys.argv[-1]))

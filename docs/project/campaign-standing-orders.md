@@ -155,6 +155,10 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A — `runner/extensions/job-fuzz/job_fuzz.py::decide` (12
+  lines never run on either platform, coverage run
+  40183585961) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90
 - rules refreshed 2026-10-25 03:25 PDT
 - rules refreshed 2026-10-25 03:00 PDT
 - A — `runner/extensions/pi-health/pi_health.py::`
@@ -196,13 +200,19 @@ when done, the proving commit or run. Newest first.
 - A — `runner/extensions/latency-post/latency_post.py::`
   `_read_default_gateway` (17 lines never run on either
   platform, coverage run 40180268696) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage run
+  40183585961 (main at f10a114) shows no never-executed
+  lines for this function on either platform.
 - A — `runner/cloud/send_job.py::cmd_verify` (17 lines never
   run on either platform, coverage run 40180268696) — taken
-  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  done: coverage run 40183585961 shows no never-executed
+  lines for this function on either platform.
 - A — `runner/ops/extsources.py::_small_parts` (17 lines never
   run on either platform, coverage run 40180268696) — taken
-  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  done: coverage run 40183585961 shows no never-executed
+  lines for this function on either platform.
 - A — `_deliver_local` in five more sense extensions
   (port-watch, log-sentinel, failed-login-watch,
   cert-sentinel, backup-freshness; 18 lines each, never run
@@ -218,13 +228,17 @@ when done, the proving commit or run. Newest first.
   58316a92-3c4a-41cb-8a16-8c0c5a871e90
 - A — `runner/extensions/aide-feed/aide_feed.py::main` (20 lines
   never run on Windows, 7 on Linux, coverage run 40180268696) —
-  taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  done: coverage run 40183585961 shows no never-executed
+  lines for this function on either platform.
 - A — `runner/ops/install.py::install_files` (20 lines never run
   on Windows, coverage run 40180268696) — taken 2026-10-25,
   58316a92-3c4a-41cb-8a16-8c0c5a871e90
 - A — `runner/extensions/job-fuzz/job_fuzz.py::main` (23 lines
   never run on either platform, coverage run 40180268696) —
-  taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  done: coverage run 40183585961 shows no never-executed
+  lines for this function on either platform.
 - A — `runner/extensions/service-watch/service_watch.py::read_live`
   (30 lines never run on either platform, coverage run
   40180268696) — taken 2026-10-25,
