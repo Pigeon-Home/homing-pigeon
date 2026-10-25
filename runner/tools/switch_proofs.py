@@ -16,7 +16,11 @@ runs those tests on the leg it is given and judges each control.
                 or removed without the roster following
     SKIPPED     a listed test skipped on a leg that meets the entry's
                 needs: the proof did not run where it should have
-    unproven    the entry lists no tests yet (queue S or R work)
+    unproven    the entry lists no tests yet (queue S or R work), or
+                every test it lists is a probe still under
+                expectedFailure (the owner's Q29 rule for an unproven
+                draft): an expected failure is not a proof and is
+                never counted as a pass
     not here    the leg does not meet the entry's needs; not judged
 
 The exit code is 1 on FAILED, MISSING or SKIPPED -- a regression or a
@@ -83,7 +87,9 @@ class _Result(unittest.TestResult):
 
     def addExpectedFailure(self, test, err):
         super().addExpectedFailure(test, err)
-        self.outcome.setdefault(self._id(test), "passed")
+        # A probe under expectedFailure is a draft, not a proof: it
+        # must never read as passed (Q37, 2026-10-25).
+        self.outcome[self._id(test)] = "expected failure: " + _first_line(err)
 
     def addUnexpectedSuccess(self, test):
         super().addUnexpectedSuccess(test)
@@ -164,9 +170,17 @@ def run_roster(roster, have, loader=None, stream=None):
                      if out.startswith(("failed", "error")))
         skipped = sorted(tid for tid, out in mine.items()
                          if out.startswith("skipped"))
+        drafts = sorted(tid for tid, out in mine.items()
+                        if out.startswith("expected failure"))
+        passed = len(mine) - len(skipped) - len(drafts)
         if bad:
             verdicts.append((entry, "FAILED", "; ".join(
                 "%s: %s" % (t, mine[t]) for t in bad[:3])))
+        elif drafts and passed == 0:
+            # Every test that ran is a draft under expectedFailure:
+            # the promise has a probe, not yet a proof.
+            verdicts.append((entry, "unproven", "; ".join(
+                "%s: %s" % (t, mine[t]) for t in drafts[:3])))
         elif len(skipped) == len(mine) or not mine:
             # Every test the entry lists skipped (or none ran at all):
             # nothing on this leg proved the promise.
@@ -174,9 +188,11 @@ def run_roster(roster, have, loader=None, stream=None):
                 "%s: %s" % (t, mine[t]) for t in skipped[:3])
                 or "no test of the entry ran"))
         else:
-            note = "%d tests passed" % (len(mine) - len(skipped))
+            note = "%d tests passed" % passed
             if skipped:
                 note += ", %d skipped" % len(skipped)
+            if drafts:
+                note += ", %d expected failure(s) not counted" % len(drafts)
             verdicts.append((entry, "proven", note))
     return verdicts, result
 
@@ -209,9 +225,10 @@ def render(verdicts, have, title):
             entry["id"], verdict, entry.get("promise", "").replace("|", "/"),
             detail.replace("|", "/")))
     lines += ["", "Verdicts: proven = every listed test ran and passed; "
-              "unproven = the roster lists no test yet (campaign queue S/R); "
-              "FAILED, MISSING and SKIPPED fail the run. The roster is "
-              "`runner/tests/switch_roster.py`."]
+              "unproven = the roster lists no test yet (campaign queue S/R) "
+              "or only drafts under expectedFailure, which never count as "
+              "passes; FAILED, MISSING and SKIPPED fail the run. The roster "
+              "is `runner/tests/switch_roster.py`."]
     return "\n".join(lines) + "\n"
 
 

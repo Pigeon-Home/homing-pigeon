@@ -50,7 +50,21 @@ def _fakes():
         def test_skips(self):
             pass
 
-    return types.SimpleNamespace(Pass=Pass, Fail=Fail, Skip=Skip, Mixed=Mixed)
+    class Draft(unittest.TestCase):
+        @unittest.expectedFailure
+        def test_not_yet(self):
+            self.fail("an unproven probe")
+
+    class DraftBeside(unittest.TestCase):
+        def test_runs(self):
+            pass
+
+        @unittest.expectedFailure
+        def test_not_yet(self):
+            self.fail("an unproven probe")
+
+    return types.SimpleNamespace(Pass=Pass, Fail=Fail, Skip=Skip, Mixed=Mixed,
+                                 Draft=Draft, DraftBeside=DraftBeside)
 
 
 fakes = _fakes()
@@ -100,6 +114,9 @@ class VerdictTest(unittest.TestCase):
         {"id": "empty", "promise": "p", "tests": [], "needs": []},
         {"id": "elsewhere", "promise": "p", "tests": [_HERE + "Pass"],
          "needs": ["root"]},
+        {"id": "draft", "promise": "p", "tests": [_HERE + "Draft"], "needs": []},
+        {"id": "draft_beside", "promise": "p", "tests": [_HERE + "DraftBeside"],
+         "needs": []},
     ]
 
     def _run(self, have):
@@ -118,6 +135,14 @@ class VerdictTest(unittest.TestCase):
         self.assertIn("1 skipped", got["partly"][1])
         self.assertEqual(got["empty"][0], "unproven")
         self.assertEqual(got["elsewhere"], ("not here", "needs root"))
+        # A probe under expectedFailure is a draft, never a pass (Q37):
+        # alone it leaves the control unproven, beside a real proof it
+        # is named and not counted.
+        self.assertEqual(got["draft"][0], "unproven")
+        self.assertIn("expected failure: an unproven probe", got["draft"][1])
+        self.assertEqual(got["draft_beside"][0], "proven")
+        self.assertIn("1 tests passed, 1 expected failure(s) not counted",
+                      got["draft_beside"][1])
 
     def test_the_leg_that_has_root_judges_it(self):
         got = self._run(["linux", "root"])
@@ -128,7 +153,7 @@ class VerdictTest(unittest.TestCase):
         text = sp.render(verdicts, {"linux"}, "unit")
         self.assertIn("# Switch proofs: unit", text)
         self.assertIn("| `bad` | FAILED |", text)
-        self.assertIn("6 controls judged here: 2 proven, 1 unproven, 1 failed, "
+        self.assertIn("8 controls judged here: 3 proven, 2 unproven, 1 failed, "
                       "1 missing, 1 skipped; 1 not applicable", text)
         bad = [v for _e, v, _d in verdicts if v in ("FAILED", "MISSING", "SKIPPED")]
         self.assertEqual(len(bad), 3)

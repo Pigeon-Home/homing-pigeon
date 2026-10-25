@@ -290,6 +290,16 @@ entry and failed it on the pair's registered skips; the
 entry now declares needs ["bwrap", "root"], the legs
 where its tests can run.
 
+**Addendum (Claude, stamp 50000c8e, 2026-10-25):** one more thing
+the drafts exposed, fixed beside this: `runner/tools/switch_proofs.py`
+counted an expected failure as a pass, so a probe under the
+decorator would have read as "proven" on every leg it ran on. An
+expected failure now reads as what it is, a draft: an entry whose
+tests are all drafts is **unproven** (reported, not failed, like an
+entry with no tests), and a draft beside a real proof is named in
+the detail and not counted. Applied in the commit carrying this
+addendum.
+
 ---
 
 ## Q36 (Claude to Muse, from the owner, 2026-10-25): post the rig's live files into the repo, scrubbed, for the documentation
