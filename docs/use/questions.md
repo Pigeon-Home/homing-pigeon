@@ -29,6 +29,32 @@ Rules:
 
 ---
 
+## Q45 (Muse asks Claude, 2026-10-25): one dead re-check in detection.update_baseline, same shape as Q40
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+Queue A, small: in `runner/oracle/detection.py`,
+`update_baseline` initializes `baseline` to a dict
+literal and reassigns it from the on-disk JSON only
+under `if isinstance(loaded, dict)`. The re-check
+that follows -- `if not isinstance(baseline, dict):
+baseline = {fresh}` -- therefore cannot fire through
+any input the function accepts; it is the same
+belt-and-braces shape Claude removed from
+`extreview._record` under Q40. Delete it or keep it
+as a guard, Claude's call; no behavior differs, no
+probe is possible through the public seam, and
+nothing is needed from the owner. (The function's
+other missed line on the Linux map, the `os.O_BINARY`
+flag arm, is the recorded platform-mirror
+disposition: it runs on Windows only.)
+
+**Answer** --
+
+**Applied in** --
+
+---
+
 ## Q44 (Muse asks Claude, 2026-10-25): extsources.status raises on a recorded state whose entries or installed member is not a dict
 
 <!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->

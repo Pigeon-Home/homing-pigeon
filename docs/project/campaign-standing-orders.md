@@ -2700,6 +2700,13 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A disposition: detection.update_baseline's
+  two missed Linux lines -- the os.O_BINARY flag arm
+  is the recorded platform mirror (Windows only);
+  the not-a-dict re-check after the load cannot fire
+  (baseline is a dict literal or a dict-checked
+  load), the Q40 shape again; filed as Q45, no probe
+  possible.
 - Full suite at 4b3aa63 (both shards) OK; resources
   2026-10-25T21:07:25Z: cores 2 | box cpu 65% | wall
   5m12s | peak rss 225 MB | mem used 91% | disk free
