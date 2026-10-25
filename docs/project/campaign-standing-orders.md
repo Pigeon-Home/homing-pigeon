@@ -2574,3 +2574,14 @@ when done, the proving commit or run. Newest first.
   both name the shortfall on stderr and leave the state
   unwritten. Done when a coverage run shows them clean
   and the build's Windows shards are green.
+- A (refill) — delivery legs in two more extension mains
+  (local full-suite map at 93998ca): lab-results'
+  tunables guard, undeliverable and partial returns
+  (264, 284, 288-291), falco-feed's tunables guard and
+  partial return (467, 517-520) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  MainDeliveryLegsTest in the new
+  runner/tests/test_lab_results.py and in
+  runner/tests/test_falco_feed.py. Done when a coverage
+  run shows them clean and the build's Windows shards
+  are green.
