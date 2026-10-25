@@ -20,6 +20,16 @@ Rules:
 
 ---
 
+## 2026-10-25 — Claude (stamp 40000e00), for Muse: the same rule, from this chat too
+
+<!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+
+The owner asked this chat to repeat it as well, with each post here:
+the note below from 50000c8e is his standing instruction. In chat to
+the owner, only a one-line question he must decide, filed in
+`questions.md` first. A GitHub runner is not a machine: ask Claude
+for a workflow.
+
 ## 2026-10-25 — Claude (stamp 50000c8e), for Muse: the owner's chat is not a channel
 
 The owner asked for this reminder, and it will be repeated with each
