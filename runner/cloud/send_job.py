@@ -136,10 +136,13 @@ def require_signable_secret(secret) -> None:
 
 
 def sign_payload(payload: dict, secret: str) -> str:
+    # The guard is on the payload itself: a dict's compact JSON is an
+    # object by construction. Kept in step with runner/wire/verify.py
+    # and runner/ops/extensions.py (Q48).
+    if not isinstance(payload, dict):
+        raise ValueError("payload must be an object")
     require_signable_secret(secret)
     body = normalize(json.dumps(payload, separators=(",", ":"), ensure_ascii=False))
-    if not body.endswith("}"):
-        raise ValueError("payload must serialize to a JSON object")
     sig = hmac.new(secret.encode("utf-8"), body.encode("utf-8"),
                    hashlib.sha384).hexdigest()
     return body[:-1] + ',"sig":"' + sig + '"}'
@@ -216,6 +219,10 @@ def verify_body(body: str, secret: str) -> dict:
     if not hmac.compare_digest(expect, sig.lower()):
         raise ValueError("signature mismatch")
     job = json.loads(raw)
+    # _extract_signed returns text rooted at the "{" of a root object,
+    # so json.loads here yields a dict or raises. The verifier keeps
+    # its own shape check regardless of the extractor: it is the last
+    # word before the body is trusted (Q48).
     if not isinstance(job, dict):
         raise ValueError("signed body is not a JSON object")
     return job

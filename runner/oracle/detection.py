@@ -156,8 +156,6 @@ def update_baseline(base_dir: str, job: Dict[str, Any],
                 baseline = loaded
         except (OSError, ValueError):
             baseline = {"kinds": {}, "output_sizes": [], "updated": 0}
-    if not isinstance(baseline, dict):
-        baseline = {"kinds": {}, "output_sizes": [], "updated": 0}
     kind = "unknown"
     if isinstance(job, dict):
         raw_kind = job.get("kind")

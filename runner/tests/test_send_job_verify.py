@@ -159,8 +159,9 @@ class SendJobGuardLegsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,
                                     "a shared secret is required"):
             send_job.require_signable_secret("")
+        # Q48: the guard is on the payload itself, up front.
         with self.assertRaisesRegex(ValueError,
-                                    "serialize to a JSON object"):
+                                    "payload must be an object"):
             send_job.sign_payload([1, 2], SECRET)
 
     def test_extract_signed_refusals(self):

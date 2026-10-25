@@ -65,6 +65,9 @@ def sign_payload(payload: dict, secret: str) -> str:
         raise ValueError("payload must be an object")
     body = _normalize(json.dumps(_json_safe(payload), separators=(",", ":"),
                                  ensure_ascii=False, allow_nan=False))
+    # The one signer with a transformation between the payload and
+    # the body (_json_safe) keeps a check on the body's shape; the
+    # other two sign the dict's own JSON and guard the dict (Q48).
     if not body.endswith("}"):
         raise ValueError("payload must serialize to a JSON object")
     sig = hmac.new(secret.encode("utf-8"), body.encode("utf-8"),
@@ -194,6 +197,10 @@ def verify_body(body: str, secret: str) -> dict:
             raise ValueError("signature mismatch")
         raw = cleaned
     job = json.loads(raw)
+    # _extract_signed returns text rooted at the "{" of a root object,
+    # so json.loads here yields a dict or raises. The verifier keeps
+    # its own shape check regardless of the extractor: it is the last
+    # word before the body is trusted (Q48).
     if not isinstance(job, dict):
         raise ValueError("signed body is not a JSON object")
     return job

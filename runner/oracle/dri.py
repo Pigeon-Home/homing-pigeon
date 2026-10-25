@@ -320,6 +320,11 @@ def evaluate_page_triggers(dcfg, base_dir, since_ts, now=None):
             by_sensor.setdefault(sensor, []).append(rec)
         for sensor, recs in by_sensor.items():
             total = 0.0
+            # alert_score never raises on a stored alert (every weight
+            # shape is normalized there, severity defaulted), so these
+            # two arms are belt-and-braces: the page path is where a
+            # raise would cost the most, and the guards come back to
+            # life on their own if that contract ever loosens (Q46).
             for rec in recs:
                 try:
                     total += _senses.alert_score(rec, rec.get("weight", 1.0))

@@ -2340,8 +2340,6 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
         budget = 8
     if budget < 0:
         budget = 0
-    if not isinstance(exec_result, dict):
-        exec_result = {}
     text = _output_blob(exec_result)
     inf = inference_config(cfg) if cfg else None
     # A non-list (or non-iterable) from a poisoned job/extension must

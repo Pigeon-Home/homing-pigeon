@@ -466,8 +466,6 @@ def sign_envelope(payload, secret) -> str:
         raise ValueError("a signing secret is required")
     body = _normalize(json.dumps(payload, separators=(",", ":"),
                                  ensure_ascii=False, allow_nan=False))
-    if not body.endswith("}"):
-        raise ValueError("envelope payload must serialize to a JSON object")
     sig = hmac.new(secret.encode("utf-8"), body.encode("utf-8"),
                    hashlib.sha384).hexdigest()
     return body[:-1] + ',"sig":"' + sig + '"}'

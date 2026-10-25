@@ -65,9 +65,32 @@ Claude's call. No behavior differs today, no probe
 is possible for either dead arm, and nothing is
 needed from the owner.
 
-**Answer** --
+**Answer (Claude, stamp 50000c8e, carrying the desk's lane, stamp
+10000c2a, 2026-10-25):** aligned, and one kept.
 
-**Applied in** --
+1. The guard on the payload itself is canonical: a dict's compact
+   JSON is an object by construction, and "payload must be an
+   object" names the mistake where it was made. So
+   `extensions.sign_envelope` loses its dead serialize check,
+   `send_job.sign_payload` gains the up-front `isinstance` guard
+   and loses the serialize check (the list payload is still
+   refused, now with the guard's message; the test that pinned the
+   old message reads the new one), and the two sign the dict's own
+   JSON. The third signer, `runner/wire/verify.py:sign_payload`,
+   has a transformation between the payload and the body
+   (`_json_safe`), so it keeps the guard *and* a check on the body
+   it actually signs, with a comment saying that is why; the
+   existing edge test that forces `_json_safe` to a list pins it.
+   The rule the pair now states: check the shape where it is made,
+   and once more only where something stands between the shape
+   and the bytes.
+2. `verify_body`'s dict check stays, in both copies, with a comment:
+   `_extract_signed` makes it unreachable today, and a verifier
+   keeps its own last word on the body's shape regardless of the
+   extractor it happens to sit behind. That is the one place in
+   this family where belt-and-braces is the point.
+
+**Applied in:** the commit carrying this answer.
 
 ---
 
@@ -88,9 +111,12 @@ belt-and-braces shape as Q40 (deleted) and Q45
 behavior differs, no probe is possible, and nothing
 is needed from the owner.
 
-**Answer** --
+**Answer (Claude, stamp 50000c8e, carrying the desk's lane, stamp
+10000c2a, 2026-10-25):** deleted; the first check, with its comment,
+is the one that does the work. Same shape and same answer as Q40
+and Q45.
 
-**Applied in** --
+**Applied in:** the commit carrying this answer.
 
 ---
 
@@ -123,9 +149,17 @@ Claude's call. No probe is possible without mocking
 the callee, no behavior differs, and nothing is
 needed from the owner.
 
-**Answer** --
+**Answer (Claude, stamp 50000c8e, carrying the desk's lane, stamp
+10000c2a, 2026-10-25):** kept, with your reasoning written at the
+spot: a comment on the two arms names `alert_score`'s never-raises
+contract as the reason they are belt-and-braces, and says why they
+stay -- the page is where a raise would cost the most, and the
+guards come back to life on their own if the callee's contract ever
+loosens. The difference from Q40/Q45/Q47: those re-checked a value
+the same function had just made; these guard a call into another
+module whose contract can change without this file noticing.
 
-**Applied in** --
+**Applied in:** the commit carrying this answer.
 
 ---
 
@@ -149,9 +183,14 @@ other missed line on the Linux map, the `os.O_BINARY`
 flag arm, is the recorded platform-mirror
 disposition: it runs on Windows only.)
 
-**Answer** --
+**Answer (Claude, stamp 50000c8e, carrying the desk's lane, stamp
+10000c2a, 2026-10-25):** deleted, the Q40 shape and the Q40 answer:
+`baseline` is a dict literal or the loaded dict, so the re-check
+could never fire, and a guard for a case that cannot exist lies
+about the function. The `O_BINARY` arm is the Windows mirror and
+stays.
 
-**Applied in** --
+**Applied in:** the commit carrying this answer.
 
 ---
 
