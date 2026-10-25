@@ -17,6 +17,28 @@ facts a reader may need to cite. Git history carries the rest.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
+## 3.12.68 - 2026-10-25
+
+- **A quoted preamble no longer rejects a valid signed job.** A
+  connector note with an odd number of `"` before the body inverted
+  the signed-object search's string tracking, and a job whose body
+  carried a `{` inside a string was rejected as a signature mismatch
+  (Q32, found by the preamble property under Hypothesis). The search
+  now takes the newest `{` whose text up to the marker parses as a
+  JSON object, which a brace inside a string never does; the HMAC
+  still decides.
+- **The suite lints itself for Windows.** `runner/tests/test_windows_portability.py`
+  names, on Linux and on the campaign rig before a push, the fixture
+  shapes that pass on POSIX and fail on Windows (a patch of an os
+  attribute Windows lacks without `create=True`, an `os.stat` call
+  counter standing in for a path probe, a fake `os.close` that never
+  releases the descriptor, `chmod 000` as an unreadable file). Four
+  cuts of 3.12.67 were lost to those shapes in one hour.
+- The campaign's standing orders gain the release window, the
+  expected-failure rule for probes, and the no-model rule; the roster
+  gains `ORACLE.alphabet`, `ORACLE.tools.alphabet`, R5, R6 and the
+  Oracle-versus-cage entry.
+
 ## 3.12.67 - 2026-10-25
 
 - **Two audit writers no longer lose an entry on Windows.** The first
@@ -36,14 +58,6 @@ facts a reader may need to cite. Git history carries the rest.
   Windows.** `is_withheld` compares both sides as given, made
   absolute the same way, instead of a drive-qualified real path
   against a bare one.
-- **A quoted preamble no longer rejects a valid signed job.** A
-  connector note with an odd number of `"` before the body inverted
-  the signed-object search's string tracking, and a job whose body
-  carried a `{` inside a string was rejected as a signature mismatch
-  (Q32, found by the preamble property under Hypothesis). The search
-  now takes the newest `{` whose text up to the marker parses as a
-  JSON object, which a brace inside a string never does; the HMAC
-  still decides.
 - airwaves: a signal line too long for `int()` degrades that reading
   to None instead of ending the sense's cycle, in all three parsers
   (Q28).

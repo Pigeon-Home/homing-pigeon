@@ -108,7 +108,7 @@ without their decorators (removed by this fix, per the rule), the
 five passing shapes still pass, and the preamble property no longer
 finds the counterexample.
 
-**Applied in** -- the release that carries this answer (3.12.67 if its build is still open, else the next patch).
+**Applied in** -- `2b561bc`; released in 3.12.68 (3.12.67 was tagged at `382eb3a`, before the fix).
 
 ---
 
