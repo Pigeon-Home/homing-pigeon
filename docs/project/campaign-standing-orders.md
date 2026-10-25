@@ -156,6 +156,9 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 03:00 PDT
+- A — `runner/cloud/send_job.py::cmd_verify` (17 lines never
+  run on either platform, coverage run 40180268696) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
 - A — `runner/ops/extsources.py::_small_parts` (17 lines never
   run on either platform, coverage run 40180268696) — taken
   2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
