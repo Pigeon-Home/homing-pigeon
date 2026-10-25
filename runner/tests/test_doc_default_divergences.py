@@ -47218,6 +47218,49 @@ class TestLogSettingsInvalidReadAsDefaults(unittest.TestCase):
                 self.assertFalse(R._cfg_flag(bad))
 
 
+class TestLocalSignalsInvalidReadAsDocumented(unittest.TestCase):
+    """Queue D refill: `local_signals` and
+    `local_signal_port` gain registry rows. The
+    extensions doc's table states the defaults
+    (switch true, port 39271). The switch reads
+    only a recognized false as off. The port is
+    the deliberate exception to the port rule:
+    its reader's contract is that a value which
+    is not a usable port number reads as OFF --
+    a typo silences the loopback listener instead
+    of binding a surprise port -- while True
+    reads as the documented default."""
+
+    def test_switch_shapes(self):
+        from runner import runner as R
+        self.assertTrue(R._local_signals_enabled({}))
+        self.assertTrue(R._local_signals_enabled(None))
+        for off in (False, 0, "false", "off", "no", "0"):
+            with self.subTest(off=off):
+                self.assertFalse(R._local_signals_enabled(
+                    {"local_signals": off}))
+        for bad in ("bogus", 3, [], None):
+            with self.subTest(bad=bad):
+                self.assertTrue(R._local_signals_enabled(
+                    {"local_signals": bad}))
+
+    def test_port_shapes(self):
+        from runner import runner as R
+        self.assertEqual(R._local_signal_port({}), 39271)
+        self.assertEqual(R._local_signal_port(None), 39271)
+        self.assertEqual(R._local_signal_port(
+            {"local_signal_port": True}), 39271)
+        self.assertEqual(R._local_signal_port(
+            {"local_signal_port": "39271"}), 39271)
+        self.assertEqual(R._local_signal_port(
+            {"local_signal_port": 65535}), 65535)
+        for off in (0, False, None, "abc", 65536, 70000,
+                    -1, [], float("inf")):
+            with self.subTest(off=off):
+                self.assertEqual(R._local_signal_port(
+                    {"local_signal_port": off}), 0)
+
+
 class TestOracleModeInvalidReadsAsLlm(unittest.TestCase):
     """Queue D refill: `oracle_mode` gains a
     registry row. The doc states `llm` is the

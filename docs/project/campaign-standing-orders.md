@@ -2700,6 +2700,14 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue D refill taken: the local-signals pair
+  gains rows -- local_signals (true) and
+  local_signal_port (39271; the port is the
+  deliberate fail-closed exception, an unusable
+  value reading as listener-off rather than the
+  default or a refusal, recorded in the row's
+  notes). Registry count 123 -> 125 (72 -> 74
+  core).
 - Queue D refill taken: extension_review gains a
   refuse-class row -- the doc and the reader
   agree it is a security mode ("anything else is

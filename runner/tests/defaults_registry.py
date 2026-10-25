@@ -2190,7 +2190,49 @@ ROWS = [{'key': 'severity',
            'mode_of names the problem and the startup '
            'validator turns it into a config error '
            '(exit 2). True reads as enforce and False '
-           'as off, as the review\'s own doc states.'}]
+           'as off, as the review\'s own doc states.'},
+ {'key': 'local_signals',
+  'scope': 'core',
+  'kind': 'boolean',
+  'default': True,
+  'doc_file': 'docs/extend/extensions.md',
+  'doc_line': 359,
+  'doc_token': 'true',
+  'doc_status': 'verified',
+  'reader': 'runner/runner.py:_local_signals_enabled',
+  'reader_sites': ['runner/runner.py:_local_signals_enabled'],
+  'policy': 'default',
+  'lo': None,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestLocalSignalsInvalidReadAsDocumented',
+  'notes': 'Queue D refill (2026-10-25): the local '
+           'front-ends master switch; only a recognized '
+           'false reads as off.'},
+ {'key': 'local_signal_port',
+  'scope': 'core',
+  'kind': 'integer',
+  'default': 39271,
+  'doc_file': 'docs/extend/extensions.md',
+  'doc_line': 360,
+  'doc_token': '39271',
+  'doc_status': 'verified',
+  'reader': 'runner/runner.py:_local_signal_port',
+  'reader_sites': ['runner/runner.py:_local_signal_port'],
+  'policy': 'default',
+  'lo': 0,
+  'hi': 65535,
+  'probe': 'handwritten',
+  'test': 'TestLocalSignalsInvalidReadAsDocumented',
+  'notes': 'Queue D refill (2026-10-25): the loopback '
+           'listener port, the deliberate exception to '
+           'the port rule -- a value that is not a '
+           'usable port reads as 0 (listener off), so '
+           'a typo silences the listener instead of '
+           'binding a surprise port; True reads as the '
+           'default. The policy word records that '
+           'startup does not refuse; the invalid '
+           'outcome is off, not the default.'}]
 
 
 # The generic confval helpers: their defaults are caller-supplied,
@@ -2245,9 +2287,10 @@ class RegistryShapeTests(unittest.TestCase):
         # job_encryption), then +6 more (the remediation
         # family: mode plus its five numeric settings),
         # then +5 more (the log-bounds family), then
-        # extension_review (a refuse-class row).
-        self.assertEqual(123, len(ROWS))
-        self.assertEqual(72, sum(1 for r in ROWS if r["scope"] == "core"))
+        # extension_review (a refuse-class row), then
+        # the local-signals pair.
+        self.assertEqual(125, len(ROWS))
+        self.assertEqual(74, sum(1 for r in ROWS if r["scope"] == "core"))
         self.assertEqual(51, sum(1 for r in ROWS if r["scope"] == "extension"))
 
 
