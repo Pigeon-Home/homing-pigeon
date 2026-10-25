@@ -1556,5 +1556,24 @@ class MutatorRefusalLegsTest(unittest.TestCase):
                          ["run", "C:\\a b\\tool", "x"])
 
 
+class OversizedLineMutatorTest(unittest.TestCase):
+    """Queue A refill: the oversized_line mutator's body
+    (local full-suite map at 93998ca: lines 365-367) --
+    registered in MUTATORS but never applied by a test.
+    The variant keeps the seed's lines and appends one
+    64KiB echo line."""
+
+    def test_oversized_line_appends_the_long_line(self):
+        seed = {"job_id": "seed-1", "kind": "exec",
+                "script": "echo one\necho two"}
+        variant = JF.build_variant(seed, "oversized_line", 7)
+        lines = variant["script"].split("\n")
+        self.assertEqual(lines[:2], ["echo one", "echo two"])
+        self.assertEqual(len(lines), 3)
+        self.assertTrue(lines[2].startswith("echo "))
+        self.assertEqual(len(lines[2]), len("echo ") + 65536)
+        self.assertEqual(variant["mutator"], "oversized_line")
+
+
 if __name__ == "__main__":
     unittest.main()

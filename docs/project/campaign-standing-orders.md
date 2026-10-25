@@ -2527,3 +2527,14 @@ when done, the proving commit or run. Newest first.
   functions are clean under the module's tests locally.
   Done when a coverage run shows them clean and the
   build's Windows shards are green.
+- A (refill) — serial and mutator legs:
+  `usb_arrivals.py::_read_serial_devices` empty/repeated
+  name pass-over and unresolvable target (146, 151-152),
+  and `job_fuzz.py::_mut_oversized_line` applied through
+  build_variant (365-367; registered in MUTATORS but never
+  applied by a test) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  SerialDevicesLegTest (test_usb_arrivals.py) and
+  OversizedLineMutatorTest (test_job_fuzz.py). Done when a
+  coverage run shows them clean and the build's Windows
+  shards are green.

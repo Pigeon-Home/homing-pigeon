@@ -287,5 +287,38 @@ class TwinDevicesLegTest(unittest.TestCase):
         self.assertEqual(devices[0]["id"], "046d:c52b")
 
 
+class SerialDevicesLegTest(unittest.TestCase):
+    """Queue A refill: _read_serial_devices' seen/empty
+    pass-over and its unresolvable-target leg (local
+    full-suite map at 93998ca: lines 146, 151-152). An
+    empty or repeated by-id name is passed over; a name
+    whose target cannot be resolved still files its
+    entry, with no tty claimed as covered."""
+
+    def test_unresolvable_and_repeated_names(self):
+        import os
+        from unittest import mock as _mock
+
+        def listdir(path):
+            if path == "/dev/serial/by-id":
+                return ["", "devA", "devA", "devB"]
+            if path == "/sys/class/tty":
+                return ["ttyUSB0", "ttyS0"]
+            raise OSError("no such directory")
+
+        def realpath(path):
+            if path.endswith("devA"):
+                raise OSError(" dangling link")
+            return "/dev/ttyUSB0"
+
+        with _mock.patch.object(os, "listdir", listdir), \
+                _mock.patch.object(os.path, "realpath", realpath):
+            devices = UA._read_serial_devices()
+        self.assertEqual([d["id"] for d in devices],
+                         ["devA", "devB", "ttyS0"])
+        self.assertTrue(
+            all(d["kind"] == "serial" for d in devices))
+
+
 if __name__ == "__main__":
     unittest.main()
