@@ -21,6 +21,13 @@ instances with two different states: that is the usual reason the
 Oracle chat says it has no job output while the service is clearly
 handling jobs.
 
+## What the learning ledger looks like
+
+A live `oracle-learning.jsonl` from the campaign rig (prediction
+and reconciliation shapes) is quoted in
+`docs/use/live-examples.md`. The full file is in
+`docs/reports/live-2026-10-25/oracle-learning.jsonl`.
+
 ## Parity rule
 
 Everything the dashboard configures must be expressible in `config.json`, and everything in `config.json` must be configurable from the dashboard. No GUI-only settings, ever. The config file remains the source of truth.

@@ -60,6 +60,13 @@ asked a model up to a laptop or a cloud SI, and the answer rides back
 on the result without ever holding the job past its deadline (30
 seconds at most; `docs/ietf/draft-homing-pigeon-v2-00.md`).
 
+## What does a live run look like?
+
+Real log lines, encrypted envelopes, posture output, and Oracle
+learning records from a running system are in
+`docs/use/live-examples.md`. The full scrubbed capture is in
+`docs/reports/live-2026-10-25/`.
+
 ## Isn't this just remote code execution by email?
 
 Yes, and it says so in the first lines of the README. A runner runs
