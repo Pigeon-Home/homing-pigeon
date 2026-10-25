@@ -79,24 +79,6 @@ _ZERO_MAC = "00:00:00:00:00:00"
 _MAC_RE = re.compile(r"\A[0-9a-f]{2}(:[0-9a-f]{2}){5}\Z")
 
 
-def _is_number(value):
-    """A finite int or float, never a bool.
-
-    Infinity and NaN are floats, and an integer too large for a float
-    is an int, but none of them is a usable tunable: inf once made a
-    threshold that never trips (or always trips), and int(inf) is an
-    OverflowError. Each reads as "not a number" so the documented
-    default applies.
-    """
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return False
-    try:
-        f = float(value)
-    except (OverflowError, ValueError):
-        return False
-    return f == f and f not in (float("inf"), float("-inf"))
-
-
 # --- the live reads: the only platform-touching code -----------------
 
 def _iface_filter(manifest):

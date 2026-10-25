@@ -4,8 +4,33 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## Unreleased
+## 3.12.66 - 2026-10-25
 
+- **The mutation signal, un-blinded.** A collection failure in the
+  mutants tree (two archived probe files with one basename) ended
+  mutmut's coverage pass before a test ran; mutmut ignores that
+  pass's exit code, so only import-time lines counted as covered and
+  three mutants were generated where 443 had been, all green (Q22).
+  mutmut's pytest runs now ignore the two folders beside the suite,
+  as `unittest discover` does, and `runner/tools/mutation_floor.py`
+  fails a mutation job whose run generated fewer than 100 mutants or
+  reached fewer than 6 functions, with the tally in the log.
+- **Switch proofs, continuous.** `runner/tests/switch_roster.py` lists
+  every security control, what SECURITY.md promises when it is on,
+  and the tests that prove it; `.github/workflows/switch-proofs.yml`
+  runs the roster on every push on three legs (Linux with bwrap, root
+  with a second user, Windows) and names each control proven,
+  unproven, or failed. A proof that disappears fails the run (Q24).
+- **The campaign rig reports what it used.** `runner/tools/rig_resources.py`
+  wraps a run and prints one measured `resources` line (box CPU share,
+  cores kept busy, peak memory, disk, exit code, verdict against the
+  90% target) for the campaign ledger.
+- **Release builds cannot be dropped from the queue.** A `release:`
+  commit gets its own build concurrency group, so a push every minute
+  from the campaign no longer supersedes the one build cut-release
+  must read.
+- Three sense extensions (aide-feed, usb-arrivals, wire-arrivals) drop
+  an `_is_number` helper nothing called (Q23).
 - **The coverage map, kept current.** `.github/workflows/coverage.yml`
   runs the full suite under coverage.py on Linux and Windows on every
   push to main, child processes included, and

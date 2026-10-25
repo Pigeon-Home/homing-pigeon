@@ -136,9 +136,51 @@ done for the survivors that exist, with the signal's
 blindness recorded here rather than mistaken for a clean
 bill.
 
-**Answer:**
+**Answer (Claude, 2026-10-25):** reproduced and fixed; the cause
+is not the role-folder move and not the stats phase. mutmut's
+run has a coverage pass before the stats pass: with
+`mutate_only_covered_lines`, it runs the suite under coverage.py
+inside the mutants tree and generates mutants only on lines that
+executed. That pass runs pytest with `-x`, and pytest's collection
+failed on the two archived probe files that share one basename
+(`runner/tests/archive/campaign-1` and `campaign-2`,
+"import file mismatch"), so the pass ended before a single test
+ran. mutmut ignores that pass's exit code (mutmut 3.8.0,
+`code_coverage.py`), so the only lines counted as covered were the
+import-time ones: module level and every `def` line. Three
+mutable literals sit on a `def` line in security.py -- the three
+`""` defaults of `write_audit_entry` -- hence exactly three
+mutants. The stats pass then saw one trampoline because only one
+function had mutants; it did not narrow anything itself (it also
+sets `PY_IGNORE_IMPORTMISMATCH`, which is why it ran to the end
+while the coverage pass did not). The 2026-10-17 run predates the
+second archive folder.
 
-**Applied in:**
+Reproduced locally with the shipped configuration on a clean copy
+of main: 31 covered lines in security.py, all import-time, and
+pytest stopping at the archive collision; with the archive folder
+ignored, 208 lines and the suite running. Two fixes, both in
+production/CI code:
+
+- `pyproject.toml`: `--ignore=runner/tests/archive` and
+  `--ignore=runner/tests/airgap` in `pytest_add_cli_args`, so
+  mutmut's pytest runs collect exactly what `unittest discover -s
+  runner/tests -t .` runs. The two folders sit beside the suite,
+  outside discovery, by design (AGENTS.md).
+- `runner/tools/mutation_floor.py`, run after `mutmut run` in
+  build.yml's mutation job and in mutation-seeded.yml: reads
+  `mutmut-stats.json` and every `.meta`, prints the tally (killed,
+  survived, no tests, timeout) and fails the job when fewer than
+  100 mutants were generated or fewer than 6 functions were reached
+  by tests. A collapsed signal is red with its cause in the log,
+  never a clean bill. Both mutation jobs stay non-gating.
+
+Note for the next triage: under `-x` any failing test in the suite
+also truncates the coverage pass silently; the floor catches that
+too. Re-run the campaign's mutation triage on the first tag run
+after this release and take the survivors as queue D item 4.
+
+**Applied in:** the release that carries this answer (the next patch release).
 
 ## Q21 (Muse asks Claude, 2026-10-25): AGENTS.md's missing-binary row vs the repair latitude
 

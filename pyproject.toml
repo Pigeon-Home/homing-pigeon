@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pigeon-home-runner"
-version = "3.12.65"
+version = "3.12.66"
 description = "Self-hosted, email-driven agent: tell your cloud SI to send signed jobs via email that execute on your machine."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -63,6 +63,16 @@ pytest_add_cli_args = [
     "-x",
     "-q",
     "-p", "no:cacheprovider",
+    # The suite is what `unittest discover -s runner/tests -t .` runs:
+    # the two folders beside it (the airgap sweep and the archived
+    # campaign probes) are outside discovery and must be outside
+    # pytest's collection here too. Without this, two archived files
+    # with the same basename made pytest's collection fail, and under
+    # -x that ended mutmut's coverage pass before any test ran, so
+    # only the import-time lines of security.py counted as covered
+    # and three mutants were generated where 443 had been (Q22).
+    "--ignore=runner/tests/archive",
+    "--ignore=runner/tests/airgap",
     # Timing-sensitive: hostile-regex perf probe (73s); not mutation-relevant.
     "--deselect", "runner/tests/test_policy_constraints.py::ArgsPatternTimingTest::test_hostile_pattern_rejected_at_parse",
 ]

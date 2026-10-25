@@ -34,9 +34,15 @@ permissions: {}
 # finished, no commit could go green, and cut-release (which needs
 # a green commit) could never run. A finished build of a slightly
 # older commit is worth more than a cancelled build of the newest.
+# A release commit (its message starts with "release:") is the one
+# commit whose own build must finish, because cut-release tags that
+# exact commit and reads its check runs: it gets a group of its own,
+# so the queue's one-pending-run rule can never drop it when the
+# campaign pushes a test every minute (2026-10-25). The expression
+# is false on tag dispatches, where head_commit is absent.
 # (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
 concurrency:
-  group: build-${{ github.ref }}
+  group: build-${{ github.ref }}-${{ startsWith(github.event.head_commit.message, 'release:') && github.sha || 'rolling' }}
   cancel-in-progress: false
 
 jobs:
@@ -161,6 +167,13 @@ jobs:
           python-version: "3.12"
       - run: pip install -c .github/requirements-ci.txt mutmut pytest hypothesis
       - run: mutmut run --max-children 4
+      # mutmut also exits 0 when it measured almost nothing: on
+      # 2026-10-25 a collection failure inside the mutants tree ended
+      # its coverage pass before any test ran, three mutants were
+      # generated where 443 had been, and the run was green (Q22).
+      # The floor turns that into a red signal with the tally in the log.
+      - name: the signal did not collapse
+        run: python runner/tools/mutation_floor.py --annotate
     # NOTE: mutmut exits 0 even with surviving mutants; it only fails on
     # infra errors (broken baseline, collection failure). Survivors are
     # reported in the log for triage -- this job is a signal, not a block.

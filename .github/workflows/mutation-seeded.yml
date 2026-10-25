@@ -58,6 +58,10 @@ jobs:
           PYTHONHASHSEED: ${{ steps.seed.outputs.seed }}
           HP_MUTATION_SEED: ${{ steps.seed.outputs.seed }}
         run: mutmut run --max-children 4
+      # As in build.yml: a run that measured almost nothing is red, with
+      # the tally in the log (runner/tools/mutation_floor.py, Q22).
+      - name: the signal did not collapse
+        run: python runner/tools/mutation_floor.py --annotate
     # NOTE: as in build.yml, mutmut exits 0 even with surviving
     # mutants; it only fails on infra errors. Survivors are reported
     # in the log for triage -- this job is a signal, not a block.

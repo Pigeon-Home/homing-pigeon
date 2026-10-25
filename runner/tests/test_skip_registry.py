@@ -27,6 +27,15 @@ TESTS = os.path.dirname(os.path.abspath(__file__))
 
 # reason -> why this skip is legitimate, and where the test runs.
 REGISTERED = {
+    # ---- fixtures of the switch-proof tool (test_switch_proofs) -----
+    # Fake test cases built inside a function, never collected by
+    # discovery: they exist so the tool's SKIPPED verdict and its
+    # "one skip beside a pass is still a proof" rule are pinned.
+    "not on this leg": "a fake case the switch-proof tool judges, never expected to run as a test",
+    "unix only": "a fake case the switch-proof tool judges, never expected to run as a test",
+    "running as root":
+        "test_switch_proofs: the --root refusal cannot be shown when the "
+        "process is root; runs in every non-root job",
     # ---- platform splits: each side runs in its own CI job ----------
     "Linux-only suite: it pins POSIX modes, nofollow opens, signals, "
     "and systemd units, and runs in the Linux test job":
