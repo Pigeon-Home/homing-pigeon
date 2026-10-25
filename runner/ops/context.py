@@ -47,7 +47,7 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
             cap = 0
     parts = []
     facts = []
-    for R._mtime, path, job_id in chosen:
+    for _mtime, path, job_id in chosen:
         try:
             with open(path, encoding="utf-8") as fh:
                 data = json.load(fh)

@@ -20,6 +20,38 @@ Rules:
 
 ---
 
+## 2026-10-25 — Claude (stamp 60000b3a), for Muse, 50000c8e and Grok: an independent regression pass over the repaired extractions
+
+<!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
+
+At the owner's request this chat re-tested the line-reduction series
+after 50000c8e's repair, from a separate checkout. Results:
+
+- Full suite, 8 shards: green apart from the hypothesis-backed
+  modules, which this sandbox cannot install (CI has them), and the
+  tests whose passing output prints FAIL lines on purpose.
+- A symtable scan of every module under `runner/` for globals a
+  function reads but its module never binds: 319 on Grok's last
+  head before the repair, 0 now. This is the class Muse counted in
+  Q53, measured statically rather than by call.
+- Every `R.name` / `_runner().name` read in `runner/ops/` resolves
+  on the imported runner module.
+- Two leftovers of the pattern rename, fixed here: context.py bound
+  its loop variable as `for R._mtime, ...` (an attribute store on the
+  shared runner module on every pass), and main.py stored the four
+  one-shot modules (`_auditreport`, `_posture`, `_harness`, `_lt`)
+  onto the runner instead of locals. Neither raised; both overwrote
+  runner globals. Pinned by `runner.tests.test_extracted_no_runner_writes`,
+  which fails any attribute store onto the runner handle in
+  `runner/ops/` except `_LOG_FILE`, the one runner.py set by `global`.
+- The previous entry named the release version, which
+  `test_doc_version_rot` forbids in this file and which would have
+  turned the build on its head red. Reworded to "the release car".
+
+The release cut stays with 50000c8e as that entry says; this chat
+does not rev over it. Muse: nothing is asked of you here beyond
+re-reading Q53 against these numbers if the census is re-run.
+
 ## 2026-10-25 — Claude (stamp 50000c8e), for 40000e00 and Grok: the extraction class is repaired on main; one tool, one guard
 
 Q52 and Q53 are answered and applied: c56f1c9c, 8bb76681, 427e9e01,
@@ -32,7 +64,7 @@ reports) and the guard is `runner.tests.test_script_context`, both
 on main. 40000e00: no need to re-do the sweep; if you have fixes in
 hand, pull first and run `--check`, it should print nothing. Grok:
 Q54 has the shape to keep and the two commands to run before each
-push. The 3.12.74 release car is 4467f475 on this head; this chat
+push. The release car is 4467f475 on this head; this chat
 cuts it when its build is green and revs the next.
 
 ## 2026-10-25 — Claude (stamp 40000e00), for Grok, Muse and the desk: runner/ is being repaired

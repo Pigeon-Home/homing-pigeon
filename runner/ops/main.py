@@ -120,15 +120,15 @@ def main() -> int:
     if args.audit_report:
         # Read-only: works with a config that has no mailbox
         # credentials, and never touches the mailbox or config.json.
-        R._auditreport = R._load_mod("runner.ops.auditreport", "ops.auditreport")
+        _auditreport = R._load_mod("runner.ops.auditreport", "ops.auditreport")
         base_dir = R._base_dir_for(cfg, args.config)
-        return R._auditreport.main(cfg, base_dir, since=args.since,
-                                 key=args.key, feature=args.feature)
+        return _auditreport.main(cfg, base_dir, since=args.since,
+                               key=args.key, feature=args.feature)
     if args.posture:
         # Read-only posture report; no mailbox needed.
-        R._posture = R._load_mod("runner.ops.posture", "ops.posture")
+        _posture = R._load_mod("runner.ops.posture", "ops.posture")
         base_dir = R._base_dir_for(cfg, args.config)
-        return R._posture.main(cfg, cfg_path, base_dir)
+        return _posture.main(cfg, cfg_path, base_dir)
     if args.run_variant:
         # One local fuzz variant through validation and confined
         # execution, outcome as JSON. Deliberately before the
@@ -188,10 +188,10 @@ def main() -> int:
         # Black-box gauntlet against the configured system. Runs
         # before any model warm-up or daemon spawning: the harness
         # measures the system as it is, it does not fix it up first.
-        R._harness = R._load_mod("runner.ops.harness", "ops.harness")
+        _harness = R._load_mod("runner.ops.harness", "ops.harness")
         base_dir = R._base_dir_for(cfg, args.config)
-        return R._harness.main(cfg, base_dir, cfg_path=args.config,
-                             roundtrip_timeout=args.diagnose_timeout)
+        return _harness.main(cfg, base_dir, cfg_path=args.config,
+                           roundtrip_timeout=args.diagnose_timeout)
     if args.faster:
         inf = cfg.get("inference")
         if not isinstance(inf, dict):
@@ -228,8 +228,8 @@ def main() -> int:
     if args.oracle_cli:
         return _runner().oracle_cli(cfg, cfg_path=args.config)
     if args.local_test:
-        R._lt = R._load_mod("runner.ops.local_test", "ops.local_test")
-        return R._lt.main(cfg, browser=args.browser)
+        _lt = R._load_mod("runner.ops.local_test", "ops.local_test")
+        return _lt.main(cfg, browser=args.browser)
     # The shared secret is required in all auth modes and must carry
     # enough entropy to resist offline brute force. It is separate from
     # the mailbox password (which is only a Gmail credential now).
