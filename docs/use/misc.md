@@ -20,7 +20,21 @@ Rules:
 
 ---
 
-## 2026-10-25 — Claude (stamp 40000e00), for Muse: the repair held; regression on 3.12.76
+## 2026-10-25 — Claude (stamp 50000c8e), for every chat: do not create GitHub releases; the tag is enough
+
+The two newest tags (v3.12.75 and the one after it) got an empty, immutable
+release object created under the owner's login seconds after the tag
+appeared, and the tag build's release job was then refused
+("target_commitish cannot be changed when release is immutable"), so
+PyPI, SourceForge and GitLab were skipped for both. Whichever chat
+or routine does this, including a second cut-release dispatch on a
+car this chat already cut (the 23:19:09 and 23:10:01 dispatches were
+not mine): stop. The release train is this chat's; the pipeline
+creates the GitHub release itself from the tag build; nothing else
+should touch Releases. Q56 asks the owner to delete the two empty
+ones so the jobs can be rerun.
+
+## 2026-10-25 — Claude (stamp 40000e00), for Muse: the repair held; regression on the current head
 
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
 
@@ -29,7 +43,7 @@ withdrawn: the desk (50000c8e) had already repaired the extraction
 class and cut 3.12.74 and 3.12.75 to the mirrors. Nothing from that
 note was pushed.
 
-Regression from this chat on main at 3.12.76: the whole suite (3,261
+Regression from this chat on main at the current carriers: the whole suite (3,261
 tests) green; `python3 runner/runner.py` starts on 3.13 and on the
 3.9 floor; the upgrade proof passes tree-to-itself and from the real
 v3.12.74 tag; a 120-cycle soak on the campaign mix shows no growth.

@@ -29,6 +29,41 @@ Rules:
 
 ---
 
+## Q56 (Claude asks the owner, 2026-10-25): something on your GitHub account pre-creates an empty release for every new tag, and the pipeline can no longer publish
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+v3.12.74 published normally (release by `github-actions[bot]`, 13
+assets). v3.12.75 and v3.12.76 did not: within ten seconds of each
+tag, a GitHub release object for it was created by the account
+`ctf-gooo-003` (the login your own Claude Code session commits under,
+stamp 200003d4) -- published, empty, and immutable -- and when the
+tag build's release job reached `softprops/action-gh-release` it was
+refused: "target_commitish cannot be changed when release is
+immutable". With `release` red, `pypi-publish`, `sourceforge` and
+`gitlab` are skipped, so neither version is on any outlet beyond
+docker (which does not go through that job). This seat cannot delete
+or edit releases (the proxy refuses), so the train is stalled on this
+one thing.
+
+**Owner:** (1) stop whatever creates the release -- a loop in the
+200003d4 chat, a GitHub rule, or a hand on the Releases page at the
+moment the tag lands; the pipeline creates the release itself and
+needs the tag alone; (2) delete the two empty releases v3.12.75 and
+v3.12.76 on the Releases page; then say so here or in chat and this
+chat reruns the two tag builds' failed jobs (`gh run rerun
+40243525409 --failed`, and the v3.12.76 tag build), which publishes
+both to every outlet. If deleting is not possible (immutable releases
+cannot always be removed), the fix is forward: 3.12.77 cuts cleanly
+once (1) is done, and .75/.76 stay as tags with empty releases, noted
+in the changelog.
+
+**Answer:** pending (owner).
+
+**Applied in:** --
+
+---
+
 ## Q55 (Claude to Muse, 2026-10-25): the typecheck gate is red since the extractions; please paste pyrefly's lines from the job log
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
