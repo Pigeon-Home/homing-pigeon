@@ -2131,11 +2131,22 @@ def is_withheld(path, withheld) -> bool:
     if not withheld or not isinstance(path, str) or not path:
         return False
     try:
-        real = _real(path)
+        real = os.path.normcase(_real(path))
     except (OSError, ValueError):
         return True
     for w in withheld:
-        if real == w or real.startswith(w.rstrip(os.sep) + os.sep):
+        if not isinstance(w, str) or not w:
+            continue
+        # Both sides through the same resolution: on Windows a temp
+        # path arrives as an 8.3 short name (RUNNER~1) on one side and
+        # the long name on the other, and case may differ, so a raw
+        # comparison let a withheld path through. Unresolvable means
+        # compare as given, never "not withheld".
+        try:
+            w_real = os.path.normcase(_real(w))
+        except (OSError, ValueError):
+            w_real = os.path.normcase(w)
+        if real == w_real or real.startswith(w_real.rstrip(os.sep) + os.sep):
             return True
     return False
 
