@@ -741,5 +741,44 @@ class TransportAndEnvelopeTest(unittest.TestCase):
             E.drop_local_signal("", payload, "secret")
 
 
+class UpstreamAndSignalLegsTest(unittest.TestCase):
+    """Queue A refill: _parse_upstream's non-object
+    block (coverage run 40189711740: line 215) and
+    send_local_signal's shutdown swallow
+    (522-523). An upstream block that is not an
+    object is a manifest error in the owner's
+    face; a write-side shutdown the peer refuses
+    does not undo a signal already sent.
+    """
+
+    def test_an_upstream_block_that_is_not_an_object(self):
+        with self.assertRaisesRegex(ValueError,
+                                    "must be an object"):
+            E._parse_upstream("github:o/r", "ext")
+
+    def test_signal_shutdown_refusal_is_swallowed(self):
+        sent = []
+
+        class Conn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def sendall(self, data):
+                sent.append(data)
+
+            def shutdown(self, how):
+                raise OSError("peer gone")
+
+        with mock.patch.object(
+                E.socket, "create_connection",
+                lambda addr, timeout=None: Conn()):
+            self.assertIsNone(E.send_local_signal(
+                {"kind": "alert"}, "s" * 40, port=1))
+        self.assertEqual(len(sent), 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

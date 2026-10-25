@@ -16,6 +16,7 @@ import tempfile
 import threading
 import time
 import types
+from unittest import mock
 import unittest
 from datetime import datetime, timezone
 from email.message import EmailMessage
@@ -947,6 +948,39 @@ class PublishAnswerRaceTest(unittest.TestCase):
                 self.assertFalse(v2._publish_answer(path, tmp))
             with open(path, encoding="utf-8") as fh:
                 self.assertEqual(fh.read(), "{")
+
+
+class RememberOtherLegsTest(unittest.TestCase):
+    """Queue A refill: _remember_other's blank
+    answer (coverage run 40189711740: lines
+    399-400) and store_answer's temp-cleanup
+    swallow (387-388). A second answer with no
+    text is not kept beside the first -- there
+    is nothing to show -- and a temp file that
+    cannot be removed does not fail the store.
+    """
+
+    def test_a_blank_second_answer_is_not_kept(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "q1.json")
+            v2._remember_other(path, {"answer": "   "})
+            self.assertFalse(
+                os.path.exists(path + ".more.jsonl"))
+            v2._remember_other(path, {"answer": "late one"})
+            self.assertTrue(
+                os.path.exists(path + ".more.jsonl"))
+
+    def test_store_answer_survives_an_unremovable_temp(self):
+        q = {"v": 2, "type": "question", "job_id": "j1",
+             "msg_id": "q.j1", "issued_at": _now(),
+             "deadline_sec": 0, "question": "Would it?",
+             "local_default": "proceed"}
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(
+                    os, "unlink",
+                    side_effect=OSError("stuck")):
+            self.assertTrue(
+                v2.store_answer(d, v2.answer_for(q, "first")))
 
 
 class Version2EdgesTest(unittest.TestCase):

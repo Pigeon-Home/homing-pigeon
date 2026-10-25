@@ -294,6 +294,24 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — protocol_v2 and extensions legs
+  (coverage run 40189711740): _remember_other's
+  blank answer, store_answer's temp-cleanup
+  swallow, _parse_upstream's non-object block,
+  send_local_signal's shutdown swallow — taken
+  2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  RememberOtherLegsTest in
+  runner/tests/test_protocol_v2_messages.py
+  and UpstreamAndSignalLegsTest in
+  runner/tests/test_extensions.py. Recorded
+  without takes: should_ask's non-dict guard
+  (173-174) cannot fire -- enabled() on the
+  line above already requires a dict -- and
+  sign_envelope's brace check (441) cannot
+  fire -- a serialized object always closes
+  with the brace. Done when a coverage run
+  shows the taken legs clean.
 - A (refill) — wire guards (coverage run
   40189711740): jobcrypto's non-string secret,
   hkdf zero salt, is_envelope non-object and
