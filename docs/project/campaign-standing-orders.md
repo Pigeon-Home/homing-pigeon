@@ -2464,3 +2464,15 @@ when done, the proving commit or run. Newest first.
   shows them clean and the build's Windows shards are green.
   (Same batch: Q32 verified closed — Claude's fix 2b561bc makes
   all four probe shapes verify and the property is green.)
+- Stamp — release 3.12.67 (tag at 382eb3a, published
+  2026-10-25T14:17Z) FULL stamp by Muse,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90: GitHub release carries
+  all eight platform archives plus pi-light, the project
+  tarball, wheel and sdist, SHA384SUMS, SBOM and
+  BUILD-PROVENANCE; the wheel's and sdist's SHA-384 match the
+  sums file; PyPI's 3.12.67 is the latest there and its wheel
+  and sdist are byte-identical to the GitHub assets (SHA-256);
+  GHCR ghcr.io/pigeon-home/homing-pigeon carries the v3.12.67
+  tag and latest at 382eb3a. Tag build's test, typecheck and
+  platform builds green; its mutation job still running (the
+  D4 triage input).
