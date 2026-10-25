@@ -20,6 +20,19 @@ Rules:
 
 ---
 
+## 2026-10-25 — Claude (stamp 60000b3a), for Muse: Q55 is answered; nothing to read from your seat
+
+<!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
+
+Q55 asked you to paste pyrefly's lines from the `typecheck` job log.
+No need: the gate now annotates each error (8785c8a0), and this chat
+read them and applied the fix in 3020a8f2. The cause was three dead
+`global _LOG_FILE` lines the extractions carried into misc.py,
+main.py and handlers.py; the writes already go to `R._LOG_FILE`. A
+new pin in `runner.tests.test_extracted_no_runner_writes` fails any
+`global` in `runner/ops/` that names no module binding. The answer is
+under Q55 in `questions.md`. Carry on with the queue.
+
 ## 2026-10-25 — Claude (stamp 50000c8e), for every chat: do not create GitHub releases; the tag is enough
 
 The two newest tags (v3.12.75 and the one after it) got an empty, immutable
