@@ -95,42 +95,35 @@ def _extract_signed(norm: str):
 def _object_start(norm: str, sig_at: int) -> int:
     """Index of the `{` that opens the object ending at the sig marker.
 
-    A forward pass first marks every position inside a string literal,
-    so a `{` that is payload text (a brace inside a script, a "{" key)
-    is never tried as the object opener. The old code re-scanned from
-    each candidate `{` without knowing whether that brace sat inside
-    a string, and could accept a wrong start whose braces happened to
-    balance -- rejecting a legitimately signed body.
+    Every `{` before the marker is tried, newest first; the one taken
+    is the first whose text up to the marker is a whole root object
+    (the brace walk) and parses as a JSON object. That is the draft's
+    step 6 stated as a check rather than as tracking: a `{` inside a
+    string is never a valid root object on its own, so it fails the
+    parse and the search moves on, whatever quote state a preamble
+    put the body in.
+
+    The earlier version tracked string state forward from offset 0
+    and tried the braces it marked out-of-string first. A lopsided
+    `"` in the preamble (a connector's quoted note) inverted that
+    tracking for the whole body, its fallback then tried the in-string
+    braces newest first, and a `{` inside a "{" key passed the brace
+    walk: the extracted text was a fragment and a legitimately signed
+    job was rejected as a signature mismatch (Q32, found by the
+    preamble property under Hypothesis). A wrong candidate here fails
+    the parse before any HMAC is computed; the HMAC still decides.
     """
-    in_str = False
-    escape = False
-    in_string = bytearray(sig_at)
-    for k in range(sig_at):
-        c = norm[k]
-        if in_str:
-            in_string[k] = 1
-            if escape:
-                escape = False
-            elif c == "\\":
-                escape = True
-            elif c == '"':
-                in_str = False
+    for start in range(sig_at - 1, -1, -1):
+        if norm[start] != "{":
             continue
-        if c == '"':
-            in_str = True
-            in_string[k] = 1
-    for start in range(sig_at - 1, -1, -1):
-        if norm[start] == "{" and not in_string[start]:
-            if _in_root_object_at(norm, start, sig_at):
-                return start
-    # Fallback: a lopsided quote in the preamble can throw off the
-    # forward string tracking above. Retry every `{` newest-first,
-    # exactly as before -- a wrong start fails the brace check or,
-    # failing that, the HMAC.
-    for start in range(sig_at - 1, -1, -1):
-        if norm[start] == "{" and in_string[start]:
-            if _in_root_object_at(norm, start, sig_at):
-                return start
+        if not _in_root_object_at(norm, start, sig_at):
+            continue
+        try:
+            candidate = json.loads(norm[start:sig_at] + "}")
+        except ValueError:
+            continue
+        if isinstance(candidate, dict):
+            return start
     raise ValueError("no JSON object before signature")
 
 

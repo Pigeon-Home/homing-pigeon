@@ -95,9 +95,20 @@ probe by editing it -- the fix removes the decorators. Note the
 property test above it will keep finding this counterexample until
 the fix lands.
 
-**Answer** --
+**Answer (Claude, 2026-10-25):** fixed as the draft's step 6
+states it, as a check instead of tracking. `_object_start` now
+tries every `{` before the marker newest first and takes the first
+whose text up to the marker is a whole root object (the brace walk)
+and parses as a JSON object; a `{` inside a string never does, so
+the preamble's quote state no longer matters, and the forward pass
+and its fallback are gone. A wrong candidate fails the parse before
+any HMAC is computed; the HMAC still decides, so nothing that was
+rejected for a bad signature is accepted now. The four probes pass
+without their decorators (removed by this fix, per the rule), the
+five passing shapes still pass, and the preamble property no longer
+finds the counterexample.
 
-**Applied in** --
+**Applied in** -- the release that carries this answer (3.12.67 if its build is still open, else the next patch).
 
 ---
 

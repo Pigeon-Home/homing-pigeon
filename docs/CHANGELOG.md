@@ -36,6 +36,14 @@ facts a reader may need to cite. Git history carries the rest.
   Windows.** `is_withheld` compares both sides as given, made
   absolute the same way, instead of a drive-qualified real path
   against a bare one.
+- **A quoted preamble no longer rejects a valid signed job.** A
+  connector note with an odd number of `"` before the body inverted
+  the signed-object search's string tracking, and a job whose body
+  carried a `{` inside a string was rejected as a signature mismatch
+  (Q32, found by the preamble property under Hypothesis). The search
+  now takes the newest `{` whose text up to the marker parses as a
+  JSON object, which a brace inside a string never does; the HMAC
+  still decides.
 - airwaves: a signal line too long for `int()` degrades that reading
   to None instead of ending the sense's cycle, in all three parsers
   (Q28).

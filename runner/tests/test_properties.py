@@ -100,9 +100,10 @@ class PreambleBraceInStringTest(unittest.TestCase):
     # carries a `{` inside a string is rejected as a signature
     # mismatch -- against draft Section 7 ("The receiver ignores
     # preamble and trailer"; the opener is "not a `{` inside a
-    # string"). The failing shapes are expectedFailure until the
-    # fix lands in Claude's lane; the fix removes the decorators.
-    # Do not edit these tests to match the bug.
+    # string"). The failing shapes sat under expectedFailure until
+    # the fix landed (_object_start takes the newest `{` whose text
+    # up to the marker parses as a JSON object; a brace inside a
+    # string never does); the fix removed the decorators.
     SECRET = "preamble-probe-secret"
 
     def _roundtrip(self, payload, preamble):
@@ -111,22 +112,18 @@ class PreambleBraceInStringTest(unittest.TestCase):
         self.assertEqual(verify_body(text, self.SECRET), payload)
 
     # Q32 failing shapes
-    @unittest.expectedFailure
     def test_hypothesis_counterexample_one_quote(self):
         self._roundtrip({'{': None, '"': []}, '"')
 
     # Q32 failing shapes
-    @unittest.expectedFailure
     def test_hypothesis_counterexample_three_quotes(self):
         self._roundtrip({'{': None, '"': []}, '"""')
 
     # Q32 failing shapes
-    @unittest.expectedFailure
     def test_hypothesis_counterexample_text_quote(self):
         self._roundtrip({'{': None, '"': []}, 'say "hi')
 
     # Q32 failing shapes
-    @unittest.expectedFailure
     def test_regression_payload_behind_one_quote(self):
         self._roundtrip({"{": '"', "script": "if ($x) { $y }"}, '"')
 
