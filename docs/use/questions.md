@@ -316,6 +316,13 @@ M1, M3, M4 and M7 have no modes to switch (always on, or read-only),
 which is why their entries are single; that is the control's shape,
 not a gap.
 
+Progress, 2026-10-25 06:28 PDT. Another finished green.
+40197576435 (5256a97) finished all three legs success.
+The green verdict stands. The roster commit 92ed801
+(R5/R6/ORACLE.no_widening.cage) was cancelled; those
+controls have not yet had a finished three-leg run.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40197576435
+
 **Applied in:** this commit.
 
 ---
