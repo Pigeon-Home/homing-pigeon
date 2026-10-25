@@ -210,21 +210,21 @@ when done, the proving commit or run. Newest first.
   58316a92-3c4a-41cb-8a16-8c0c5a871e90
 - A — `runner/cloud/send_dtls.py::main` (11 lines never
   run on either platform, coverage run 40183585961) —
-  taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage run 40185441322 (main at 232f617) shows no never-executed lines for this function on either platform.
 - A — `runner/runner.py::_v2_ingest` (11 lines never run
   on either platform, coverage run 40183585961) — taken
-  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage run 40185441322 (main at 232f617) shows no never-executed lines for this function on either platform.
 - A — `runner/wire/oauth.py::store_refresh_token` (12
   lines never run on Windows, 9 on Linux, coverage run
   40183585961) — taken 2026-10-25,
   58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the O_NOFOLLOW
   flag line is platform-inapplicable on Windows and the
   O_BINARY line on Linux (each behind its hasattr guard),
-  covered on the other platform.
+  covered on the other platform. — done: coverage run 40185441322 shows no never-executed lines on Windows; the Linux residue is the O_BINARY line recorded above.
 - A — `runner/extensions/job-fuzz/job_fuzz.py::decide` (12
   lines never run on either platform, coverage run
   40183585961) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage run 40185441322 (main at 232f617) shows no never-executed lines for this function on either platform.
 - rules refreshed 2026-10-25 03:25 PDT
 - rules refreshed 2026-10-25 03:00 PDT
 - A — `runner/extensions/pi-health/pi_health.py::`
@@ -238,13 +238,13 @@ when done, the proving commit or run. Newest first.
   platform-inapplicable on Windows (the POSIX branch sits
   behind the function's os.name guard and its driving test
   is POSIX by construction), covered on Linux; the one
-  Linux residual, the root row, is taken with it.
+  Linux residual, the root row, is taken with it. — done: coverage run 40185441322 shows no never-executed lines on Linux.
 - A — `runner/runner.py::handle_mail` (13 lines never run on
   either platform, coverage run 40180268696) — taken
-  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage run 40185441322 (main at 232f617) shows no never-executed lines for this function on either platform.
 - A — `runner/oracle/dri.py::_save_state` (14 lines never run
   on Windows, 9 on Linux, coverage run 40180268696) — taken
-  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage run 40185441322 leaves only each platform's foreign flag line (O_NOFOLLOW on Windows, O_BINARY on Linux).
 - A — `runner/oracle/detection.py::update_baseline` (14 lines
   never run on Windows, 8 on Linux, coverage run
   40180268696) — taken 2026-10-25,
@@ -300,11 +300,11 @@ when done, the proving commit or run. Newest first.
 - A — `runner/guard/security.py::validate_security_config` (18
   lines never run on Windows, 7 on Linux, coverage run
   40180268696) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage run 40185441322 shows no never-executed lines on Linux; the Windows residue is the POSIX pwd block behind its os.name gate, platform-inapplicable there.
 - A — `runner/extensions/latency-post/latency_post.py::_probe`
   (19 lines never run on either platform, coverage run
   40180268696) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage run 40185441322 (main at 232f617) shows no never-executed lines for this function on either platform.
 - A — `runner/extensions/aide-feed/aide_feed.py::main` (20 lines
   never run on Windows, 7 on Linux, coverage run 40180268696) —
   taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
@@ -312,7 +312,7 @@ when done, the proving commit or run. Newest first.
   lines for this function on either platform.
 - A — `runner/ops/install.py::install_files` (20 lines never run
   on Windows, coverage run 40180268696) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage run 40185441322 shows no never-executed lines on Linux; the Windows residue is the POSIX binary chmod behind its os.name guard, platform-inapplicable there.
 - A — `runner/extensions/job-fuzz/job_fuzz.py::main` (23 lines
   never run on either platform, coverage run 40180268696) —
   taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
@@ -321,7 +321,7 @@ when done, the proving commit or run. Newest first.
 - A — `runner/extensions/service-watch/service_watch.py::read_live`
   (30 lines never run on either platform, coverage run
   40180268696) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage run 40185441322 (main at 232f617) shows no never-executed lines for this function on either platform.
 - A — `runner/ops/install.py::_install_collector_linux` (31 lines
   never run on Windows, coverage run 40180268696) — taken
   2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
