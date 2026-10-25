@@ -234,68 +234,6 @@ class LinuxPackageEnvTest(unittest.TestCase):
             self.assertEqual(inst._osquery_binary(),
                              "/opt/osquery/bin/osqueryd")
 
-    def test_falco_apt_env_routes_json_when_a_unit_exists(self):
-        pkg = _Pkg()
-        with mock.patch.object(inst, "_apt_repo") as repo, \
-                mock.patch.object(inst, "_apt_install"), \
-                mock.patch.object(inst, "_write_text", pkg.write_text), \
-                mock.patch.object(inst, "run", pkg.run), \
-                mock.patch.object(inst.os, "makedirs", pkg.makedirs), \
-                mock.patch("glob.glob",
-                           return_value=[
-                               "/lib/systemd/system/falco.service"]):
-            line = inst._install_falco_linux()
-        self.assertIn("vendor apt repo", line)
-        self.assertIn(inst.FALCO_ALERTS_LOG, line)
-        self.assertIn("download.falco.org/packages/deb stable main",
-                      repo.call_args[0][1])
-        drop = os.path.join(
-            "/etc/systemd/system/falco.service.d",
-            "10-homing-pigeon.conf")
-        text = pkg.files[drop][0]
-        self.assertIn("ExecStart=\n", text)
-        self.assertIn("json_output=true", text)
-        self.assertIn("file_output.enabled=true", text)
-        self.assertIn("file_output.filename=" + inst.FALCO_ALERTS_LOG, text)
-        self.assertIn("stdout_output.enabled=false", text)
-
-    def test_a_falco_drop_in_dir_is_not_the_unit(self):
-        pkg = _Pkg()
-        with mock.patch.object(inst, "_apt_repo"), \
-                mock.patch.object(inst, "_apt_install"), \
-                mock.patch.object(inst, "_write_text", pkg.write_text), \
-                mock.patch.object(inst, "run", pkg.run), \
-                mock.patch.object(inst.os, "makedirs", pkg.makedirs), \
-                mock.patch("glob.glob", return_value=[
-                    "/lib/systemd/system/falco.service.d"]):
-            line = inst._install_falco_linux()
-        self.assertNotIn("JSON alerts routed", line)
-        self.assertEqual(pkg.files, {})
-
-    def test_falco_falls_back_to_the_vendor_deb(self):
-        pkg = _Pkg()
-
-        def run(cmd, **_kw):
-            pkg.cmds.append(list(cmd))
-            if cmd[:2] == ["dpkg", "-i"] and pkg.cmds.count(list(cmd)) == 1:
-                raise RuntimeError("deps")
-
-        with mock.patch.object(
-                inst, "_apt_repo", side_effect=RuntimeError("cdn")), \
-                mock.patch.object(
-                    inst, "_newest_from_listing",
-                    return_value="https://example.test/"
-                    "falco-0.1.0-x86_64.deb"), \
-                mock.patch.object(inst, "_download", return_value=b"deb"), \
-                mock.patch.object(inst, "run", run), \
-                mock.patch.object(inst.os, "makedirs"), \
-                mock.patch("glob.glob", return_value=[]):
-            line = inst._install_falco_linux()
-        self.assertIn("vendor .deb", line)
-        self.assertIn(["apt-get", "install", "-f", "-y"], pkg.cmds)
-        self.assertEqual(
-            sum(1 for c in pkg.cmds if c[:2] == ["dpkg", "-i"]), 2)
-
     def test_the_apt_collectors_each_get_their_package(self):
         pkg = _Pkg()
         seen = {}
@@ -371,6 +309,90 @@ class LinuxPackageEnvTest(unittest.TestCase):
         self.assertIn(
             "unknown",
             inst._install_collector_linux("not-a-collector", _args()))
+
+
+class FalcoPackageEnvTest(unittest.TestCase):
+    """The Falco installer, on every platform.
+
+    These three tests used to sit in LinuxPackageEnvTest,
+    whose class gate skips Windows wholesale -- so the
+    coverage map (run 40180268696) showed
+    `_install_falco_linux` as the suite's largest gap on
+    Windows: 32 lines that never ran there, not because the
+    code is Windows-reachable in production but because
+    nothing exercised it. Every OS contact the function
+    makes goes through the install module's own helpers
+    (apt, downloads, the command runner, the filesystem),
+    and the tests fake exactly that seam, so they run
+    anywhere. The assertions are the documented behavior:
+    the vendor apt repo is the first channel, a systemd
+    unit gets the JSON-routing drop-in naming the alerts
+    log, a unit's `.d` directory is not the unit, and an
+    unreachable repo falls back to the vendor .deb with an
+    `apt-get install -f` repair between dpkg attempts.
+    """
+
+    def test_falco_apt_env_routes_json_when_a_unit_exists(self):
+        pkg = _Pkg()
+        with mock.patch.object(inst, "_apt_repo") as repo, \
+                mock.patch.object(inst, "_apt_install"), \
+                mock.patch.object(inst, "_write_text", pkg.write_text), \
+                mock.patch.object(inst, "run", pkg.run), \
+                mock.patch.object(inst.os, "makedirs", pkg.makedirs), \
+                mock.patch("glob.glob",
+                           return_value=[
+                               "/lib/systemd/system/falco.service"]):
+            line = inst._install_falco_linux()
+        self.assertIn("vendor apt repo", line)
+        self.assertIn(inst.FALCO_ALERTS_LOG, line)
+        self.assertIn("download.falco.org/packages/deb stable main",
+                      repo.call_args[0][1])
+        drop = os.path.join(
+            "/etc/systemd/system/falco.service.d",
+            "10-homing-pigeon.conf")
+        text = pkg.files[drop][0]
+        self.assertIn("ExecStart=\n", text)
+        self.assertIn("json_output=true", text)
+        self.assertIn("file_output.enabled=true", text)
+        self.assertIn("file_output.filename=" + inst.FALCO_ALERTS_LOG, text)
+        self.assertIn("stdout_output.enabled=false", text)
+
+    def test_a_falco_drop_in_dir_is_not_the_unit(self):
+        pkg = _Pkg()
+        with mock.patch.object(inst, "_apt_repo"), \
+                mock.patch.object(inst, "_apt_install"), \
+                mock.patch.object(inst, "_write_text", pkg.write_text), \
+                mock.patch.object(inst, "run", pkg.run), \
+                mock.patch.object(inst.os, "makedirs", pkg.makedirs), \
+                mock.patch("glob.glob", return_value=[
+                    "/lib/systemd/system/falco.service.d"]):
+            line = inst._install_falco_linux()
+        self.assertNotIn("JSON alerts routed", line)
+        self.assertEqual(pkg.files, {})
+
+    def test_falco_falls_back_to_the_vendor_deb(self):
+        pkg = _Pkg()
+
+        def run(cmd, **_kw):
+            pkg.cmds.append(list(cmd))
+            if cmd[:2] == ["dpkg", "-i"] and pkg.cmds.count(list(cmd)) == 1:
+                raise RuntimeError("deps")
+
+        with mock.patch.object(
+                inst, "_apt_repo", side_effect=RuntimeError("cdn")), \
+                mock.patch.object(
+                    inst, "_newest_from_listing",
+                    return_value="https://example.test/"
+                    "falco-0.1.0-x86_64.deb"), \
+                mock.patch.object(inst, "_download", return_value=b"deb"), \
+                mock.patch.object(inst, "run", run), \
+                mock.patch.object(inst.os, "makedirs"), \
+                mock.patch("glob.glob", return_value=[]):
+            line = inst._install_falco_linux()
+        self.assertIn("vendor .deb", line)
+        self.assertIn(["apt-get", "install", "-f", "-y"], pkg.cmds)
+        self.assertEqual(
+            sum(1 for c in pkg.cmds if c[:2] == ["dpkg", "-i"]), 2)
 
 
 class DarwinPackageEnvTest(unittest.TestCase):
