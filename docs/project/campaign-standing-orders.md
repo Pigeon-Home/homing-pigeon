@@ -156,6 +156,19 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 03:54 PDT
+- A (refill) — `_deliver_local` in the nine senses the
+  Q14 roster never included (airwaves, crash-watch,
+  falco-feed, service-watch at 9 lines; osquery-feed
+  at 8; pi-health, tripwire, usb-arrivals,
+  wire-arrivals at 5; coverage run 40186441596) —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — all nine are
+  live senses using the roster harness's exact args;
+  they were simply never on the list. The roster in
+  runner/tests/test_sense_delivery.py now names all
+  twenty-eight senses, and under that module alone
+  every copy's _deliver_local is fully run locally.
+  Done when a coverage run shows the nine clean.
 - D — the mutation workflow's surviving mutants as
   missing assertions — taken and done 2026-10-25,
   58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the seeded

@@ -7,7 +7,7 @@ runner -- sign it, then drop it in the local inbox or push it
 to the local signal socket -- never ran in any of the
 extensions the coverage map names. The copies are one shape by
 design (the Lab Results shape), so this is one parameterized
-test over all nineteen, per docs/extend/senses.md:
+test over all twenty-eight, per docs/extend/senses.md:
 
   - the alert the runner files is the alert the extension
     decided (same sensor, title, signal), and its signature
@@ -44,23 +44,32 @@ from runner.runner import (  # noqa: E402
 
 EXTENSIONS = [
     ("aide-feed", "aide_feed.py"),
+    ("airwaves", "airwaves.py"),
     ("backup-freshness", "backup_freshness.py"),
     ("cert-sentinel", "cert_sentinel.py"),
+    ("crash-watch", "crash_watch.py"),
     ("failed-login-watch", "failed_login_watch.py"),
+    ("falco-feed", "falco_feed.py"),
     ("job-fuzz", "job_fuzz.py"),
     ("job-watcher", "job_watcher.py"),
     ("lab-results", "lab_results.py"),
     ("latency-post", "latency_post.py"),
     ("log-sentinel", "log_sentinel.py"),
+    ("osquery-feed", "osquery_feed.py"),
+    ("pi-health", "pi_health.py"),
     ("port-watch", "port_watch.py"),
     ("release-drop", "release_drop.py"),
     ("resource-sentinel", "resource_sentinel.py"),
+    ("service-watch", "service_watch.py"),
     ("sky-watcher", "sky_watcher.py"),
     ("softflowd-feed", "softflowd_feed.py"),
     ("suricata-feed", "suricata_feed.py"),
     ("sysmon-feed", "sysmon_feed.py"),
     ("training-watch", "training_watch.py"),
+    ("tripwire", "tripwire.py"),
+    ("usb-arrivals", "usb_arrivals.py"),
     ("wazuh-feed", "wazuh_feed.py"),
+    ("wire-arrivals", "wire_arrivals.py"),
     ("zeek-feed", "zeek_feed.py"),
 ]
 
@@ -220,7 +229,7 @@ class UnimportableRepoTest(unittest.TestCase):
     """The same refusal as OutsideTheCloneTest, in-process
     for every sense on the roster: coverage run
     40183585961 still showed the refusal lines unrun in
-    all nineteen copies, because the subprocess proof
+    all nineteen copies then on it, because the subprocess proof
     measures its lines in a child whose coverage data
     never reaches the map. Here the runner's producer
     module is made unimportable through the module
