@@ -204,6 +204,29 @@ class WaitForLegsTest(unittest.TestCase):
                 None, client, predicate, deadline=0.0))
 
 
+class BuildBodyKeyIdTest(unittest.TestCase):
+    """Queue A refill: _build_body's key_id member
+    (coverage run 40189711740: line 90). Naming a
+    key signs the job under that key id: the
+    member rides inside the signed payload, so
+    the runner selects the same key to verify.
+    """
+
+    def test_a_named_key_rides_in_the_payload(self):
+        args = mock.Mock()
+        args.job_id = "j-key"
+        args.kind = "ping"
+        args.key_id = "K2"
+        args.script_file = None
+        args.timeout = 30
+        args.cleartext = True
+        args.secret = SECRET
+        job_id, envelope = send_dtls._build_body(args)
+        self.assertEqual(job_id, "j-key")
+        self.assertIn('"key_id":"K2"',
+                      envelope.decode("utf-8"))
+
+
 class PlainResultAndTicketTest(unittest.TestCase):
     """Queue A refill: _plain_result's envelope and
     decryption legs and _load_ticket's whole body

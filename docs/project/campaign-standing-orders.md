@@ -294,6 +294,24 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — send_job and send_dtls guards
+  (coverage run 40189711740): the secret pattern
+  and presence refusals, sign_payload's
+  non-object refusal, _extract_signed's
+  malformed tail, _object_start's missing
+  object, repair_line's non-object, the board
+  commands' reply_to member, and _build_body's
+  key_id member — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  SendJobGuardLegsTest in
+  runner/tests/test_send_job_verify.py and
+  BuildBodyKeyIdTest in
+  runner/tests/test_send_dtls_main.py. The
+  same map's send_dtls main and _pump lines
+  are covered locally by the full in-process
+  suite (measurement artifact family). Done
+  when a coverage run shows the taken legs
+  clean.
 - A (refill) — protocol_v2 and extensions legs
   (coverage run 40189711740): _remember_other's
   blank answer, store_answer's temp-cleanup

@@ -138,5 +138,65 @@ class VerifyTest(unittest.TestCase):
         self.assertIn("repair: refused", err)
 
 
+class SendJobGuardLegsTest(unittest.TestCase):
+    """Queue A refill: send_job's guard legs
+    (coverage run 40189711740: _secret_pattern_reason
+    106, require_signable_secret 126, sign_payload
+    142, _extract_signed 162, _object_start 181,
+    repair_line 300, cmd_task_submit 362,
+    cmd_task_request 374). A secret that is not a
+    string, no secret at all, a payload that is
+    not an object, and a signature tail that is
+    not hex are all refused before any signing;
+    a non-object result states no repair; and a
+    board message carries its reply_to when one
+    is named.
+    """
+
+    def test_secret_guards(self):
+        self.assertEqual(send_job._secret_pattern_reason(123),
+                         "secret must be a string")
+        with self.assertRaisesRegex(ValueError,
+                                    "a shared secret is required"):
+            send_job.require_signable_secret("")
+        with self.assertRaisesRegex(ValueError,
+                                    "serialize to a JSON object"):
+            send_job.sign_payload([1, 2], SECRET)
+
+    def test_extract_signed_refusals(self):
+        bad_tail = '{"a":1,"sig":"' + "z" * 96 + '"}'
+        with self.assertRaisesRegex(ValueError,
+                                    "malformed signature tail"):
+            send_job._extract_signed(bad_tail)
+        no_object = 'x,"sig":"' + "a" * 96 + '"}'
+        with self.assertRaisesRegex(ValueError,
+                                    "no JSON object"):
+            send_job._extract_signed(no_object)
+
+    def test_repair_line_non_object(self):
+        self.assertIsNone(send_job.repair_line("nope"))
+        self.assertIsNone(send_job.repair_line(None))
+
+    def test_board_commands_carry_reply_to(self):
+        import types
+        args = types.SimpleNamespace(
+            task_id="t1", priority=3, reply_to="me@x.test",
+            secret=SECRET, cleartext=True)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            rc = send_job.cmd_task_submit(args)
+        self.assertEqual(rc, 0)
+        self.assertIn('"reply_to":"me@x.test"', out.getvalue())
+        args2 = types.SimpleNamespace(
+            worker_id="w1", capability=["exec"],
+            reply_to="me@x.test", secret=SECRET,
+            cleartext=True)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            rc = send_job.cmd_task_request(args2)
+        self.assertEqual(rc, 0)
+        self.assertIn('"reply_to":"me@x.test"', out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
