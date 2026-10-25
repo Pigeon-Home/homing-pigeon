@@ -422,6 +422,13 @@ The green verdict stands. Newest run 40200341761
 Windows open). The draft branch is still unmerged.
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40200214631
 
+Progress, 2026-10-25 07:04 PDT. Another finished green.
+40200341761 (382eb3a) finished all three legs success.
+The green verdict stands. Newest run 40200422023
+(93998ca) is in progress on all three. The draft
+branch is still unmerged.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40200341761
+
 **Applied in:** this commit.
 
 ---
