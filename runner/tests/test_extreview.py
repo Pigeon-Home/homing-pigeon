@@ -612,6 +612,136 @@ class RunnerGateTest(unittest.TestCase):
         self.assertIn('"review", "sources"]', parser_src)
 
 
+class FaultLegsTest(unittest.TestCase):
+    """Queue A (coverage map, extreview's reading legs): the
+    fault lines of _walk's callers, fingerprint and
+    _read_code. Each fault is injected at the OS call the
+    module makes, and the assertion is the documented
+    behavior: an unreviewed/high finding naming the cause,
+    a None fingerprint, or the (-1, -1) sentinel -- never a
+    raise out of the review."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-extreview-")
+        X.forget()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        X.forget()
+
+    def test_a_folder_that_cannot_be_walked_is_unreviewed(self):
+        folder = _drop(self.tmp, "probe", SENSE,
+                       {"probe.py": "x = 1\n"})
+        with mock.patch.object(os, "walk",
+                               side_effect=OSError("gone")):
+            r = X.review_folder(_clean(SENSE), folder)
+        self.assertEqual(_codes(r, "high"), ["unreviewed"])
+        self.assertIn("folder cannot be walked",
+                      r["findings"][0]["detail"])
+
+    def test_a_truncated_walk_is_unreviewed(self):
+        folder = _drop(self.tmp, "probe", SENSE,
+                       {"probe.py": "x = 1\n"})
+        with mock.patch.object(X, "MAX_FILES", 1):
+            r = X.review_folder(_clean(SENSE), folder)
+        self.assertIn("unreviewed", _codes(r, "high"))
+        self.assertTrue(any("more than" in f["detail"]
+                            for f in r["findings"]))
+
+    def test_fingerprint_is_none_when_the_walk_fails(self):
+        folder = _drop(self.tmp, "probe", SENSE,
+                       {"probe.py": "x = 1\n"})
+        with mock.patch.object(os, "walk",
+                               side_effect=OSError("gone")):
+            self.assertIsNone(X.fingerprint(folder))
+
+    def test_fingerprint_marks_a_vanished_entry_with_sentinels(self):
+        folder = _drop(self.tmp, "probe", SENSE,
+                       {"probe.py": "x = 1\n"})
+        real_lstat = os.lstat
+
+        def flaky(path, *a, **kw):
+            if str(path).endswith("probe.py"):
+                raise OSError("vanished")
+            return real_lstat(path, *a, **kw)
+
+        with mock.patch.object(os, "lstat", flaky):
+            sig, truncated = X.fingerprint(folder)
+        entries = {rel: rest for rel, *rest in sig}
+        self.assertEqual(entries["probe.py"][-2:], [-1, -1])
+        self.assertFalse(truncated)
+
+    def test_a_file_that_cannot_be_stated_is_unreviewed(self):
+        folder = _drop(self.tmp, "probe", SENSE,
+                       {"probe.py": "x = 1\n"})
+        real_getsize = os.path.getsize
+
+        def flaky(path, *a, **kw):
+            if str(path).endswith("probe.py"):
+                raise OSError("no stat")
+            return real_getsize(path, *a, **kw)
+
+        with mock.patch.object(os.path, "getsize", flaky):
+            r = X.review_folder(_clean(SENSE), folder)
+        hits = [f for f in r["findings"]
+                if f["code"] == "unreviewed"
+                and f.get("path") == "probe.py"]
+        self.assertEqual(len(hits), 1)
+        self.assertIn("cannot stat", hits[0]["detail"])
+
+    def test_a_nul_byte_in_code_is_a_parse_finding_not_a_crash(self):
+        # The promise: unparseable code is a syntax/high
+        # finding, never a crash out of the review. Which
+        # arm words it ("does not compile" here, "does not
+        # parse" where ast.parse raises ValueError instead
+        # of SyntaxError for the same bytes) is the Python
+        # version's business; Q42 records the split.
+        folder = _drop(self.tmp, "probe", SENSE)
+        with open(os.path.join(folder, "probe.py"), "wb") as fh:
+            fh.write(b"x = 1\x00\n")
+        r = X.review_folder(_clean(SENSE), folder)
+        hits = [f for f in r["findings"] if f["code"] == "syntax"
+                and f.get("path") == "probe.py"]
+        self.assertEqual(len(hits), 1)
+        self.assertTrue(hits[0]["detail"].startswith("does not "),
+                        hits[0]["detail"])
+
+    def test_a_symlinked_directory_is_named_and_not_walked(self):
+        if not hasattr(os, "symlink"):
+            self.skipTest("symlinks unavailable")
+        outside = _drop(self.tmp, "outside", SENSE,
+                        {"evil.py": "import subprocess\n"})
+        folder = _drop(self.tmp, "probe", SENSE,
+                       {"probe.py": "x = 1\n"})
+        try:
+            os.symlink(outside, os.path.join(folder, "linked"),
+                       target_is_directory=True)
+        except (OSError, NotImplementedError):
+            self.skipTest("cannot create a symlink here")
+        r = X.review_folder(_clean(SENSE), folder)
+        self.assertEqual(_codes(r, "high"), ["symlink"])
+        self.assertFalse(any("evil" in str(f)
+                             for f in r["findings"]))
+
+    def test_a_file_that_cannot_be_read_is_unreviewed(self):
+        folder = _drop(self.tmp, "probe", SENSE,
+                       {"probe.py": "x = 1\n"})
+        real_open = open
+
+        def flaky(path, mode="r", *a, **kw):
+            if str(path).endswith("probe.py") and "b" in mode:
+                raise PermissionError("no read")
+            return real_open(path, mode, *a, **kw)
+
+        with mock.patch("builtins.open", flaky):
+            r = X.review_folder(_clean(SENSE), folder)
+        hits = [f for f in r["findings"]
+                if f["code"] == "unreviewed"
+                and f.get("path") == "probe.py"]
+        self.assertEqual(len(hits), 1)
+        self.assertIn("cannot read", hits[0]["detail"])
+
+
 class RecordTest(unittest.TestCase):
     """The report file behind apply (queue A, from the CI
     coverage map: _record's no-path return and its write-

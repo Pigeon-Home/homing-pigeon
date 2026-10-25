@@ -2700,6 +2700,18 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A: the extreview family is swept.
+  FaultLegsTest covers _walk (walk failure, truncation,
+  the symlinked-directory remove), fingerprint (None
+  on walk failure, the (-1, -1) vanished-entry
+  sentinel), _read_code (cannot stat, cannot read) and
+  review_folder's walk/truncation findings; a NUL byte
+  in code pins the unparseable promise through the
+  SyntaxError arm. Two guards in _scan_python cannot
+  fire as written (the ValueError/RecursionError arm
+  on this Python, the literal_ guard against its own
+  regex) -- filed as Q42. extreview's only remaining
+  uncovered line is Q40's.
 - Queue A taken: runner.run_inspect (5 missed, Linux
   map). Its two unavailable branches -- the sources or
   review module failed to import -- are pinned by

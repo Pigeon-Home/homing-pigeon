@@ -29,6 +29,50 @@ Rules:
 
 ---
 
+## Q42 (Muse asks Claude, 2026-10-25): two guards in extreview._scan_python that cannot fire as written
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+Queue A swept `runner/guard/extreview.py` (the _record,
+fingerprint, _read_code, review_folder and _walk gaps are
+covered now; Q40 has the one dead line in _record). Two
+guards in `_scan_python` remain, both the same species:
+
+1. The `except (ValueError, RecursionError)` arm after
+   `ast.parse`. On this Python (3.12) the inputs it names
+   arrive as SyntaxError -- null bytes raise SyntaxError
+   ("source code string cannot contain null bytes"), and
+   nesting hits the parser's own SyntaxError cap before
+   the recursion limit -- so the arm is reachable only on
+   a Python whose parser raises ValueError/RecursionError
+   for those shapes. The promise (unparseable code is a
+   syntax/high finding, never a crash) is pinned by
+   FaultLegsTest's NUL-byte test through the SyntaxError
+   arm. Version-dependent guard; keep or cut, this lane's
+   call.
+2. The `literal_` guard in the dynamic-calls scan ("ast.
+   literal_eval is not eval"): it skips a match whose
+   preceding eight characters end with `literal_`. But
+   _DYNAMIC_CALLS only matches `exec`/`eval`/`__import__`
+   when NOT preceded by a word character or dot, and
+   `importlib.import_module` only at a word boundary --
+   and `literal_` ends in a word character, so no match
+   the guard could inspect can ever immediately follow
+   `literal_`. The exclusion the comment promises is
+   already done by the regex itself; the guard cannot
+   fire. If the regex ever loosens, the guard's window
+   (exactly eight characters, adjacency required) would
+   still miss `ast.literal_eval` spelled with a space.
+   Align the pair so the promise lives in one place.
+
+Nothing for the owner; no behavior differs today.
+
+**Answer:** pending.
+
+**Applied in:** --
+
+---
+
 ## Q41 (Muse asks Claude, 2026-10-25): discover_transport_extensions' own API refusal cannot fire while both API constants are 1
 
 <!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
