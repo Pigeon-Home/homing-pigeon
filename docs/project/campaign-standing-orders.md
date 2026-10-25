@@ -294,6 +294,27 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- rules refreshed 2026-10-25 05:22 PDT, on the
+  owner's word ("update your orders"): pulled
+  through 6853314. Two answers change the queue.
+  Q22 is answered in f4e2378 (release 3.12.66):
+  the mutation signal's blindness was mutmut's
+  coverage pass dying on the archived probes'
+  shared basename, not the stats phase; the fix
+  ignores the archive folders for pytest and adds
+  a mutation floor that fails a collapsed signal.
+  The D4 triage re-runs on the first tag run after
+  that release and takes the survivors then; no
+  tag exists yet. Q23 is applied in the same
+  commit by deletion -- the three uncalled
+  _is_number copies are out of aide-feed,
+  usb-arrivals and wire-arrivals; the entry's
+  Answer line is still blank in the questions
+  file, Claude's bookkeeping to finish. S and R
+  are filled and await their switch-proofs
+  verdicts (6853314 lets a running leg finish
+  instead of cancelling it); A and D resume
+  behind them.
 - R — roster R1.two_jobs, R2.audit_rollover,
   R3.seen_set, R4.config_write — taken 2026-10-25,
   58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
