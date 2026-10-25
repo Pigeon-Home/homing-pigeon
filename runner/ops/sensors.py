@@ -55,7 +55,12 @@ def _yara_hits(work, targets, cfg=None):
     return hits
 
 
-def recent_chat(base_dir, turns=R._CHAT_WINDOW_TURNS, max_chars=R._CHAT_WINDOW_CHARS):
+def recent_chat(base_dir, turns=None, max_chars=None):
+    from runner import runner as R
+    if turns is None:
+        turns = R._CHAT_WINDOW_TURNS
+    if max_chars is None:
+        max_chars = R._CHAT_WINDOW_CHARS
     """The last few Oracle turns, for a continuing investigation.
 
     A long chat is not sent whole. The model gets the last few ask
