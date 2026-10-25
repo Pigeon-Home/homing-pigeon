@@ -1,3 +1,26 @@
+import email
+import json
+import os
+import sys
+import threading
+import time
+import webbrowser
+
+
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 """Window, ask, v2, and disk helpers.
 
 Extracted from runner.py.
@@ -6,8 +29,7 @@ import email
 
 def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
     """Open the Oracle chat and wait. Does not poll the mailbox."""
-    from runner import runner as R
-
+    R = _runner()
     try:
         port = int(port)
     except (TypeError, ValueError):
@@ -18,13 +40,13 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
         return 2
     if not isinstance(cfg, dict):
         cfg = {}
-    base = _base_dir_for(cfg, cfg_path)
+    base = _runner()._base_dir_for(cfg, cfg_path)
     global _LOG_FILE
     R._LOG_FILE = os.path.join(base, "runner.log")
-    _refresh_log_settings(cfg, base)
-    _announce_oracle_log()
+    _runner()._refresh_log_settings(cfg, base)
+    _runner()._announce_oracle_log()
     try:
-        httpd = make_oracle_server(cfg, "127.0.0.1", port, base_dir=base)
+        httpd = _runner().make_oracle_server(cfg, "127.0.0.1", port, base_dir=base)
     except OSError as e:
         print(f"oracle chat could not listen: {e}", file=sys.stderr)
         return 1
@@ -33,13 +55,13 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
         return 2
     bound = httpd.socket.getsockname()[1]
     url = f"http://127.0.0.1:{bound}/"
-    print(f"homing-pigeon {__version__} --oracle")
+    print(f"homing-pigeon {_runner().__version__} --oracle")
     print(f"Oracle chat on {url}")
-    print(f"Chat log: {os.path.join(base, 'oracle-chat.jsonl')}")
+    print(f"Chat _runner().log: {os.path.join(base, 'oracle-chat.jsonl')}")
     if cfg_path:
         print(f"Config: {os.path.abspath(cfg_path)}")
-    inf = inference_config(cfg) or {}
-    if _oracle_mode(cfg) == "deterministic":
+    inf = _runner().inference_config(cfg) or {}
+    if _runner()._oracle_mode(cfg) == "deterministic":
         print("Oracle mode: deterministic (Pi Light) -- no local model; "
               "answers are this box's records, un-narrated")
     elif inf.get("model"):
@@ -50,12 +72,12 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
     print("The chat does not poll the mailbox; run the runner without "
           "--oracle (or the installed service) to handle email jobs.")
     try:
-        record_oracle_turn(base, cfg, "", {}, event="open")
+        _runner().record_oracle_turn(base, cfg, "", {}, event="open")
     except Exception as e:
         R.log(f"oracle open not recorded: {e}", "WARN")
     if inf.get("model"):
         warm_thread = threading.Thread(
-            target=_warm_oracle_model, args=(inf,), daemon=True)
+            target=_runner()._warm_oracle_model, args=(inf,), daemon=True)
         warm_thread.start()
     else:
         warm_thread = None
@@ -75,7 +97,7 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
             # --oracle diagnostics test). The daemon flag still caps
             # the wait if the endpoint hangs.
             warm_thread.join(timeout=5)
-        record_oracle_turn(base, cfg, "", {}, event="close")
+        _runner().record_oracle_turn(base, cfg, "", {}, event="close")
         httpd.server_close()
     return 0
 
@@ -83,20 +105,19 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
 def _ask_model_once(cfg, question, output_text, max_chars, patterns=None, opener=None, instructions=None):
     """POST a constrained question to a loopback OpenAI-compatible endpoint.
 
-    cfg is the dict from inference_config. The reply is truncated, redacted,
+    cfg is the dict from _runner().inference_config. The reply is truncated, redacted,
     and secret-scanned before it can be emailed. A hit returns
     {"rejected": "sanitization"} and the model text is dropped.
     """
-    from runner import runner as R
-
-    patterns = patterns if patterns is not None else BUILTIN_REDACT_PATTERNS
+    R = _runner()
+    patterns = patterns if patterns is not None else _runner().BUILTIN_REDACT_PATTERNS
     if not isinstance(cfg, dict):
         return {"op": "ask", "rejected": "inference_unconfigured"}
     endpoint = cfg.get("endpoint") or ""
     model = cfg.get("model") or ""
     if not isinstance(endpoint, str) or not isinstance(model, str):
         return {"op": "ask", "rejected": "inference_unconfigured"}
-    if not endpoint or not model or not _endpoint_is_loopback(endpoint):
+    if not endpoint or not model or not _runner()._endpoint_is_loopback(endpoint):
         return {"op": "ask", "rejected": "inference_unconfigured"}
     try:
         cap = int(max_chars)
@@ -110,23 +131,23 @@ def _ask_model_once(cfg, question, output_text, max_chars, patterns=None, opener
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": ASK_SYSTEM + (("\n\nOwner instructions for this box:\n" + _as_text(instructions).strip()) if instructions and _as_text(instructions).strip() else "")},
+            {"role": "system", "content": _runner().ASK_SYSTEM + (("\n\nOwner instructions for this box:\n" + _runner()._as_text(instructions).strip()) if instructions and _runner()._as_text(instructions).strip() else "")},
             {"role": "user", "content":
-             "Question:\n" + _as_text(question) + "\n\nOutput:\n" + _as_text(output_text)},
+             "Question:\n" + _runner()._as_text(question) + "\n\nOutput:\n" + _runner()._as_text(output_text)},
         ],
     }
-    _apply_keep_alive(cfg, payload)
-    req = Request(
+    _runner()._apply_keep_alive(cfg, payload)
+    req = _runner().Request(
         endpoint.rstrip("/") + "/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    open_fn = opener or _default_inference_open
+    open_fn = opener or _runner()._default_inference_open
     # PROTOCOL.md and docs/oracle/configuring-oracle.md: timeout_sec default
     # 180. Anything that is not a positive finite number gets that,
     # not a second fallback of 60 that the docs never named.
-    timeout = _inference_timeout(cfg)
+    timeout = _runner()._inference_timeout(cfg)
     R.log(f"ask: calling model {model}")
     started = time.monotonic()
     raw_text = None
@@ -138,21 +159,21 @@ def _ask_model_once(cfg, question, output_text, max_chars, patterns=None, opener
         reply = parsed["choices"][0]["message"]["content"]
     except Exception as e:
         err_body = None
-        if isinstance(e, HTTPError):
+        if isinstance(e, _runner().HTTPError):
             try:
                 err_body = e.read().decode("utf-8", "replace")
             except Exception:
                 err_body = None
-        _oracle_log_exchange(endpoint, model, payload, started,
+        _runner()._oracle_log_exchange(endpoint, model, payload, started,
                              error=str(e), error_body=err_body,
                              raw=raw_text)
         R.log(f"inference call failed: {e}", "WARN")
         return {"op": "ask", "rejected": "inference_error"}
-    _oracle_log_exchange(endpoint, model, payload, started,
+    _runner()._oracle_log_exchange(endpoint, model, payload, started,
                          response=reply, raw=raw_text)
     if not isinstance(reply, str):
         reply = str(reply)
-    return _sanitize_model_reply(reply, cap, output_text, patterns, model)
+    return _runner()._sanitize_model_reply(reply, cap, output_text, patterns, model)
 
 
 def _v2_ingest(cfg, imap, base_dir, seen, secrets, opts):
@@ -162,13 +183,14 @@ def _v2_ingest(cfg, imap, base_dir, seen, secrets, opts):
     top of the one that asked. ``seen`` is unused; the mail
     core's own mark is what records a message.
     """
-    from runner import runner as R
-
+    R = _runner()
     del seen
-    if _protocol_v2 is None:
+    if _runner()._protocol_v2 is None:
         return
-    if imap is not None and not isinstance(imap, _NullIMAP):
-        fetch = globals().get("fetch_job_mails")
+    if imap is not None and not isinstance(imap, _runner()._NullIMAP):
+        # The fetcher lives on the runner module (and is what the suite
+        # patches); this module's globals never held it.
+        fetch = getattr(R, "fetch_job_mails", None)
         if fetch is None:
             return
         try:
@@ -182,27 +204,27 @@ def _v2_ingest(cfg, imap, base_dir, seen, secrets, opts):
                 subject = str(msg["Subject"] or "")
             except Exception:
                 continue
-            if _protocol_v2.subject_kind(subject) is None:
+            if _runner()._protocol_v2.subject_kind(subject) is None:
                 continue
-            handle_v2_mail(cfg, imap, None, seq, raw, subject,
+            _runner().handle_v2_mail(cfg, imap, None, seq, raw, subject,
                            secrets, opts, base_dir)
         return
-    if _transports is None:
+    if _runner()._transports is None:
         return
     try:
-        names = _enabled_transports(cfg)
+        names = _runner()._enabled_transports(cfg)
     except Exception as e:
         R.log(f"version 2 ingest failed: {e}", "WARN")
         return
     for name in names:
         try:
-            messages = _transports.fetch_channel_messages(
-                base_dir, name, log=log)
+            messages = _runner()._transports.fetch_channel_messages(
+                base_dir, name, log=_runner().log)
         except Exception as e:
             R.log(f"version 2 ingest {name} failed: {e}", "WARN")
             continue
         for msg in messages:
-            if _protocol_v2.subject_kind(msg.subject) is None:
+            if _runner()._protocol_v2.subject_kind(msg.subject) is None:
                 continue
             safe = str(msg.subject).replace("\r", " ").replace("\n", " ")
             raw = ("Subject: " + safe + "\r\n"
@@ -210,9 +232,9 @@ def _v2_ingest(cfg, imap, base_dir, seen, secrets, opts):
                    'Content-Type: text/plain; charset="utf-8"\r\n'
                    "\r\n" + str(msg.body)).encode("utf-8")
             try:
-                box = _NullIMAP()
-                handle_v2_mail(
-                    cfg, box, _CaptureSMTP(), "transport",
+                box = _runner()._NullIMAP()
+                _runner().handle_v2_mail(
+                    cfg, box, _runner()._CaptureSMTP(), "transport",
                     raw, msg.subject, secrets, opts, base_dir)
             except Exception as e:
                 R.log(f"version 2 ingest message failed: {e}", "WARN")
@@ -234,12 +256,11 @@ def _disk_owns(base_dir, skey, seen):
     already has the key, or a live claim file, returns False and
     records the key in the in-memory cache when it is already done.
     """
-    from runner import runner as R
-
-    if not _valid_base(base_dir):
+    R = _runner()
+    if not _runner()._valid_base(base_dir):
         return True
     seen_path = os.path.join(base_dir, "seen.json")
-    folder, claim = _claim_path(base_dir, skey)
+    folder, claim = _runner()._claim_path(base_dir, skey)
     decision = {"ok": False}
 
     def mutate(disk):
@@ -268,7 +289,7 @@ def _disk_owns(base_dir, skey, seen):
                 if isinstance(seen, dict) and seen.get(skey):
                     decision["ok"] = False
                     return disk
-            elif _pid_alive(pid):
+            elif _runner()._pid_alive(pid):
                 decision["ok"] = False
                 return disk
             elif not pid and age < R._CLAIM_STALE_SEC:
@@ -291,7 +312,7 @@ def _disk_owns(base_dir, skey, seen):
         decision["ok"] = True
         return disk
 
-    _with_seen_file(seen_path, mutate)
+    _runner()._with_seen_file(seen_path, mutate)
     return decision["ok"]
 
 

@@ -287,7 +287,7 @@ class PolicyPathTest(unittest.TestCase):
         import ast
         path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-            "runner", "runner.py")
+            "runner", "ops", "mail.py")   # handle_mail's home since its extraction
         with open(path, encoding="utf-8") as fh:
             tree = ast.parse(fh.read())
         handle = next(

@@ -1,3 +1,30 @@
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+try:
+    from runner.guard import confval as _confval
+except ImportError:  # running from inside runner/ as __main__
+    from guard import confval as _confval  # type: ignore
+
+
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 """Agent and job execution.
 
 Extracted from runner.py.
@@ -18,19 +45,18 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
     real path, tool commands run with it as the working directory,
     and relative tool paths resolve against it.
     """
-    from runner import runner as R
-
-    patterns = patterns if patterns is not None else BUILTIN_REDACT_PATTERNS
+    R = _runner()
+    patterns = patterns if patterns is not None else _runner().BUILTIN_REDACT_PATTERNS
     if not isinstance(cfg, dict):
         return {"op": "ask", "rejected": "inference_unconfigured"}
     # One read of the disclosure rule per question: the file tools
     # refuse what it withholds for the whole exchange.
-    withheld = _withheld_for_tools(base_dir)
+    withheld = _runner()._withheld_for_tools(base_dir)
     endpoint = cfg.get("endpoint") or ""
     model = cfg.get("model") or ""
     if not isinstance(endpoint, str) or not isinstance(model, str):
         return {"op": "ask", "rejected": "inference_unconfigured"}
-    if not endpoint or not model or not _endpoint_is_loopback(endpoint):
+    if not endpoint or not model or not _runner()._endpoint_is_loopback(endpoint):
         return {"op": "ask", "rejected": "inference_unconfigured"}
     try:
         cap = int(max_chars)
@@ -41,16 +67,16 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             cap = 2000
     if cap < 0:
         cap = 0
-    timeout = _inference_timeout(cfg)
+    timeout = _runner()._inference_timeout(cfg)
     # docs/oracle/configuring-oracle.md: agent_wall_clock_sec default 300. A
     # boolean is not a wall clock (true once gave the agent loop one
     # second).
     wall_clock = _confval.integer(cfg.get("agent_wall_clock_sec"),
                                   R._ORACLE_AGENT_WALL_CLOCK_SEC, lo=1)
-    system = ASK_AGENT_SYSTEM + (
-        ("\n\nOwner instructions for this box:\n" + _as_text(instructions).strip())
-        if instructions and _as_text(instructions).strip() else "")
-    state = _tool_base_dir(base_dir)
+    system = _runner().ASK_AGENT_SYSTEM + (
+        ("\n\nOwner instructions for this box:\n" + _runner()._as_text(instructions).strip())
+        if instructions and _runner()._as_text(instructions).strip() else "")
+    state = _runner()._tool_base_dir(base_dir)
     if state:
         system += (
             "\n\nThis box's state directory: " + state +
@@ -58,14 +84,14 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             "\n- The runner log is: " + os.path.join(state, "runner.log") +
             "\nOpen a file there only when you need that specific file; "
             "relative paths resolve against the state directory.")
-    proto = _bundled_doc_path("PROTOCOL.md")
+    proto = _runner()._bundled_doc_path("PROTOCOL.md")
     if proto:
         system += (
             "\n\nThe Homing Pigeon protocol reference is at: " + proto +
             "\nRead it with your file tools when you need exact message "
             "shapes; it is the authoritative spec.")
-    prior = recent_chat(base_dir)
-    user = "Question:\n" + _as_text(question) + "\n\nOutput:\n" + _as_text(output_text)
+    prior = _runner().recent_chat(base_dir)
+    user = "Question:\n" + _runner()._as_text(question) + "\n\nOutput:\n" + _runner()._as_text(output_text)
     if prior:
         user = ("Recent chat, older turns dropped:\n" + prior
                 + "\n\n" + user)
@@ -73,14 +99,14 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
         {"role": "system", "content": system},
         {"role": "user", "content": user},
     ]
-    scan_text = _as_text(output_text)
-    _watch = _withheld_scan_text(base_dir)
+    scan_text = _runner()._as_text(output_text)
+    _watch = _runner()._withheld_scan_text(base_dir)
     if _watch:
         # Scan-only: the withheld outputs join the gate's reference
-        # text, never the messages above. See _withheld_scan_text.
+        # text, never the messages above. See _runner()._withheld_scan_text.
         scan_text += "\n" + _watch
     tool_rounds = 0
-    kind = _oracle_instruction_kind(question)
+    kind = _runner()._oracle_instruction_kind(question)
     reasked = False
     started = time.monotonic()
 
@@ -89,7 +115,7 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             progress["step"] = step
 
     for _round in range(R._ORACLE_AGENT_MAX_ROUNDS):
-        messages = _agent_trim(messages)
+        messages = _runner()._agent_trim(messages)
         if tool_rounds and time.monotonic() - started >= wall_clock:
             # Out of investigation time: one last call, tools off, and
             # the model answers from what it has already seen. Without
@@ -102,7 +128,7 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
                            "the question now, in plain text, from what "
                            "you have already seen. Do not call tools.)",
             })
-            msg = _inference_chat(cfg, messages, None, opener, timeout)
+            msg = _runner()._inference_chat(cfg, messages, None, opener, timeout)
             if not isinstance(msg, dict) or msg.get("role") == "error":
                 detail = msg.get("content") if isinstance(msg, dict) else ""
                 if not isinstance(detail, str) or not detail:
@@ -112,17 +138,17 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             reply = msg.get("content")
             if not isinstance(reply, str):
                 reply = "" if reply is None else str(reply)
-            return _agent_finish(cfg, messages, reply, cap, scan_text,
+            return _runner()._agent_finish(cfg, messages, reply, cap, scan_text,
                                  patterns, model, opener, timeout,
                                  tool_rounds)
         _progress(f"Thinking (step {tool_rounds + 1})")
-        msg = _inference_chat(cfg, messages, R._ORACLE_TOOLS, opener, timeout)
+        msg = _runner()._inference_chat(cfg, messages, R._ORACLE_TOOLS, opener, timeout)
         if not isinstance(msg, dict) or msg.get("role") == "error":
             detail = msg.get("content") if isinstance(msg, dict) else ""
             if not isinstance(detail, str) or not detail:
                 detail = "The local model did not answer."
             return {"op": "ask", "rejected": "inference_error", "detail": detail}
-        calls = _parse_tool_calls(msg)
+        calls = _runner()._parse_tool_calls(msg)
         if not calls and kind == "action" and not reasked \
                 and tool_rounds == 0:
             # Action dispatch: an instruction's first reply must
@@ -146,14 +172,14 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             })
             continue
         if not calls:
-            note = _unparsed_tool_note(msg.get("content"))
+            note = _runner()._unparsed_tool_note(msg.get("content"))
             if note:
                 R.log("oracle agent: reply looked like a tool call but did "
                     "not parse: " + note, "WARN")
             reply = msg.get("content")
             if not isinstance(reply, str):
                 reply = "" if reply is None else str(reply)
-            return _agent_finish(cfg, messages, reply, cap, scan_text,
+            return _runner()._agent_finish(cfg, messages, reply, cap, scan_text,
                                  patterns, model, opener, timeout,
                                  tool_rounds)
         tool_rounds += 1
@@ -168,7 +194,7 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
                 preview = "?"
             R.log(f"oracle tool: {name} {preview}")
             _progress(f"Running {name}")
-            result_text = _run_oracle_tool(name, fargs, base_dir,
+            result_text = _runner()._run_oracle_tool(name, fargs, base_dir,
                                            withheld=withheld)
             scan_text += "\n" + result_text
             executed.append((call_id, name, fargs, result_text))
@@ -192,7 +218,7 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
             assistant_msg["tool_calls"] = [
                 {"id": call_id, "type": "function",
                  "function": {"name": name,
-                              "arguments": _wire_tool_arguments(fargs)}}
+                              "arguments": _runner()._wire_tool_arguments(fargs)}}
                 for call_id, name, fargs, _ in executed
             ]
             messages.append(assistant_msg)
@@ -208,14 +234,14 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
 
 
 def execute_job(cfg, job: dict, base_dir: str) -> dict:
-    from runner import runner as R
+    R = _runner()
     if not isinstance(job, dict):
-        raise JobRejected("job must be an object")
+        raise _runner().JobRejected("job must be an object")
     if not isinstance(cfg, dict):
         cfg = {}
-    job_id = _safe_job_id(job.get("job_id", ""))
+    job_id = _runner()._safe_job_id(job.get("job_id", ""))
     if not isinstance(base_dir, str) or not base_dir or "\x00" in base_dir:
-        raise JobRejected("base_dir must be a path without a null byte")
+        raise _runner().JobRejected("base_dir must be a path without a null byte")
     work = os.path.join(base_dir, "work", job_id)
     try:
         # A retry must not see files left by a previous attempt.
@@ -225,68 +251,68 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     except (OSError, ValueError) as e:
         # e.g. Windows reserved names (CON, NUL, ...) or work path blocked
         # by a file, or a null in the path: poison, not transient.
-        raise JobRejected(f"cannot create work dir: {e}")
+        raise _runner().JobRejected(f"cannot create work dir: {e}")
     kind = job.get("kind")
 
     if kind == "ping":
         out = {"stdout": "pong", "stderr": "", "exit_code": 0,
                "timed_out": False, "stdout_truncated": False,
                "stderr_truncated": False, "duration_sec": 0.0}
-        card = pong_platform(cfg)
+        card = _runner().pong_platform(cfg)
         if card:
             out["platform"] = card
         return out
 
     if kind != "exec":
-        raise JobRejected(f"unknown kind: {kind}")
+        raise _runner().JobRejected(f"unknown kind: {kind}")
 
     # --- validate job shape. Anything malformed here is poison (it can
     # never succeed), so reject it instead of letting a TypeError/KeyError
     # escape as transient and retry forever.
     files = job.get("files") or []
     if not isinstance(files, list):
-        raise JobRejected("files must be a list")
+        raise _runner().JobRejected("files must be a list")
     for f in files:
         if not isinstance(f, dict) or not isinstance(f.get("name"), str) \
                 or not isinstance(f.get("url"), str):
-            raise JobRejected("each file needs string 'name' and 'url'")
+            raise _runner().JobRejected("each file needs string 'name' and 'url'")
         if "sha384" in f and not isinstance(f["sha384"], str):
-            raise JobRejected("file 'sha384' must be a string")
-        if os.name == "nt" and windows_reserved_name(f["name"]):
-            raise JobRejected(f"unsafe file name: {f['name']}")
+            raise _runner().JobRejected("file 'sha384' must be a string")
+        if os.name == "nt" and _runner().windows_reserved_name(f["name"]):
+            raise _runner().JobRejected(f"unsafe file name: {f['name']}")
     args = job.get("args") or []
     if not isinstance(args, list):
-        raise JobRejected("args must be a list")
+        raise _runner().JobRejected("args must be a list")
     env_in = job.get("env") or {}
     if not isinstance(env_in, dict):
-        raise JobRejected("env must be an object")
+        raise _runner().JobRejected("env must be an object")
     script = job.get("script")
     script_url = job.get("script_url")
     if script is not None and not isinstance(script, str):
-        raise JobRejected("script must be a string")
+        raise _runner().JobRejected("script must be a string")
     if script_url is not None and not isinstance(script_url, str):
-        raise JobRejected("script_url must be a string")
+        raise _runner().JobRejected("script_url must be a string")
     if job.get("script_sha384") is not None \
             and not isinstance(job["script_sha384"], str):
-        raise JobRejected("script_sha384 must be a string")
+        raise _runner().JobRejected("script_sha384 must be a string")
     try:
-        timeout = int(job.get("timeout_sec") or _default_timeout_sec(cfg))
+        timeout = int(job.get("timeout_sec") or _runner()._default_timeout_sec(cfg))
     except (TypeError, ValueError, OverflowError):
-        raise JobRejected("timeout_sec must be a number")
+        raise _runner().JobRejected("timeout_sec must be a number")
     timeout = min(max(timeout, 1), 3600)
 
     # --- stage input files
     for f in files:
-        dest = _staged_dest(work, f["name"])
+        dest = _runner()._staged_dest(work, f["name"])
         R.log(f"downloading {f['url']}")
         try:
-            download(f["url"], dest)
-        except JobRejected:
+            _runner().download(f["url"], dest)
+        except _runner().JobRejected:
             raise  # oversize is poison, not transient
         except Exception as e:
-            raise RuntimeError(f"download failed for {f['name']}: {e}")
-        if f.get("sha384") and sha384_of(dest).lower() != f["sha384"].lower():
-            raise JobRejected(f"SHA384 mismatch for {f['name']}")
+            raise RuntimeError(f"_runner().download failed for {f['name']}: {e}")
+        if f.get("sha384") and _runner().sha384_of(dest).lower() != f["sha384"].lower():
+            raise _runner().JobRejected(f"SHA384 mismatch for {f['name']}")
 
     # --- stage script
     # Interpreter is resolved first so the filename matches it.
@@ -298,39 +324,39 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     interpreter = job.get("interpreter")
     if interpreter is None:
         interpreter = cfg.get("default_interpreter") \
-            or platform_interpreter()
+            or _runner().platform_interpreter()
     if not isinstance(interpreter, list) or not interpreter or \
             not all(isinstance(x, str) for x in interpreter):
-        raise JobRejected("interpreter must be a non-empty list of strings")
+        raise _runner().JobRejected("interpreter must be a non-empty list of strings")
     if any("\x00" in x for x in interpreter):
-        raise JobRejected("interpreter must not contain a null byte")
-    script_path = os.path.join(work, script_filename(interpreter))
+        raise _runner().JobRejected("interpreter must not contain a null byte")
+    script_path = os.path.join(work, _runner().script_filename(interpreter))
     if script_url:
         R.log(f"downloading script {script_url}")
         try:
-            download(script_url, script_path)
-        except JobRejected:
+            _runner().download(script_url, script_path)
+        except _runner().JobRejected:
             raise  # oversize is poison, not transient
         except Exception as e:
-            raise RuntimeError(f"script download failed: {e}")
+            raise RuntimeError(f"script _runner().download failed: {e}")
         if job.get("script_sha384") and \
-                sha384_of(script_path).lower() != job["script_sha384"].lower():
-            raise JobRejected("script SHA384 mismatch")
+                _runner().sha384_of(script_path).lower() != job["script_sha384"].lower():
+            raise _runner().JobRejected("script SHA384 mismatch")
     elif script:
         # A number is truthy. write() raises TypeError and the job
         # retried forever. A script that is not a string can never run.
         if not isinstance(script, str):
-            raise JobRejected("script must be a string")
+            raise _runner().JobRejected("script must be a string")
         if job.get("script_sha384") and \
                 hashlib.sha384(script.encode("utf-8")).hexdigest() \
                 != job["script_sha384"].lower():
-            raise JobRejected("script SHA384 mismatch")
+            raise _runner().JobRejected("script SHA384 mismatch")
         with open(script_path, "w", encoding="utf-8") as fh:
             # The job has to be a file to run. This is not a password store.
             # codeql[py/clear-text-storage-sensitive-data]
             fh.write(script)
     else:
-        raise JobRejected("exec job requires script or script_url")
+        raise _runner().JobRejected("exec job requires script or script_url")
 
     timeout = min(max(timeout, 1), 3600)
     safe_args = []
@@ -338,25 +364,25 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         try:
             text = a if isinstance(a, str) else str(a)
         except Exception:
-            raise JobRejected("args must be text")
+            raise _runner().JobRejected("args must be text")
         if "\x00" in text:
-            raise JobRejected("args must not contain a null byte")
+            raise _runner().JobRejected("args must not contain a null byte")
         safe_args.append(text)
     args = safe_args
-    env = _scrub_env(os.environ.copy())
+    env = _runner()._scrub_env(os.environ.copy())
     for k, v in env_in.items():
         try:
             key = k if isinstance(k, str) else str(k)
             val = v if isinstance(v, str) else str(v)
         except Exception:
-            raise JobRejected("env names and values must be text")
+            raise _runner().JobRejected("env names and values must be text")
         # Popen raises ValueError on a null or an '=' in a name.
         # That is not transient. Reject it.
         if not key or "\x00" in key or "=" in key:
-            raise JobRejected(f"unsafe env name: {key!r}")
+            raise _runner().JobRejected(f"unsafe env name: {key!r}")
         env[key] = val
-    env = _scrub_env(env)  # job must not smuggle the runner's credentials back in
-    before_files = _work_files(work)
+    env = _runner()._scrub_env(env)  # job must not smuggle the runner's credentials back in
+    before_files = _runner()._work_files(work)
 
     # Documented default 100000; a boolean or a value under 1 is not
     # a byte cap (True once truncated every result to one byte).
@@ -365,12 +391,12 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     # Hardening M6: confinement wraps the argv in bwrap when the
     # feature is in enforce mode and bwrap is available. With the
     # feature off (default) this is exactly the old behavior.
-    c_argv, use_host_env, sandboxed = _confinement_argv(
+    c_argv, use_host_env, sandboxed = _runner()._confinement_argv(
         cfg, base_dir, job.get("job_id", ""), interpreter, script_path,
         work, args, env)
     # Hardening M8: drop to the job user when configured (POSIX,
     # root only). None when off or unavailable.
-    preexec = _job_user_preexec(cfg, base_dir, job.get("job_id", ""), work)
+    preexec = _runner()._job_user_preexec(cfg, base_dir, job.get("job_id", ""), work)
     try:
         proc = subprocess.Popen(
             c_argv,
@@ -386,16 +412,16 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     except (OSError, ValueError) as e:
         # Missing binary, a null in argv, or an unusable interpreter
         # fails the same way every cycle. Poison, not transient.
-        raise JobRejected(f"cannot start interpreter: {e}")
+        raise _runner().JobRejected(f"cannot start interpreter: {e}")
     # Remediation watches the run (docs/design/remediation-design.md).
     # A monitor that fails to start changes nothing: the job runs
     # exactly as it did before remediation existed.
     monitor = None
     rem_st = None
-    if _remediation is not None:
+    if _runner()._remediation is not None:
         try:
-            rem_st = _remediation.settings(cfg)
-            monitor = _start_job_monitor(
+            rem_st = _runner()._remediation.settings(cfg)
+            monitor = _runner()._start_job_monitor(
                 cfg, rem_st, job_id, proc, work, base_dir,
                 script_path, before_files)
         except Exception:
@@ -405,7 +431,7 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         timed_out = False
     except subprocess.TimeoutExpired:
         R.log(f"job {job['job_id']} timed out after {timeout}s; killing tree", "WARN")
-        kill_tree(proc)
+        _runner().kill_tree(proc)
         outs, errs = proc.communicate()
         timed_out = True
     finally:
@@ -418,30 +444,30 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
     stdout = outs.decode("utf-8", errors="replace") if isinstance(outs, (bytes, bytearray)) else ""
     stderr = errs.decode("utf-8", errors="replace") if isinstance(errs, (bytes, bytearray)) else ""
-    shown, _families = redact_text(stdout, _redact_patterns(cfg))
+    shown, _families = _runner().redact_text(stdout, _runner()._redact_patterns(cfg))
     R.log(f"job {job['job_id']} process finished exit={proc.returncode} "
-        f"stdout={_preview(shown)!r}")
+        f"stdout={_runner()._preview(shown)!r}")
     # The full output goes to runner.log before the bounded copies
     # below are cut for the result email.
-    _log_job_output(job_id, kind, stdout, stderr, cfg)
+    _runner()._log_job_output(job_id, kind, stdout, stderr, cfg)
     trunc_out, trunc_err = False, False
     if len(stdout) > max_out:
         stdout, trunc_out = stdout[:max_out], True
     if len(stderr) > max_out:
         stderr, trunc_err = stderr[:max_out], True
     try:
-        findings = _artifact_findings(work, before_files, cfg)
+        findings = _runner()._artifact_findings(work, before_files, cfg)
     except Exception:
         findings = []
     if findings:
         R.log(f"job {job['job_id']} artifact scan: " + "; ".join(findings),
             "WARN")
-        _file_artifact_hits(base_dir, job.get("job_id"), findings)
+        _runner()._file_artifact_hits(base_dir, job.get("job_id"), findings)
 
     rem_member = None
     if monitor is not None:
         try:
-            rem_member = _finish_remediation(
+            rem_member = _runner()._finish_remediation(
                 cfg, rem_st, monitor, job, job_id,
                 work, base_dir, script_path, proc=proc)
         except Exception as e:

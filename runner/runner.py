@@ -408,7 +408,13 @@ class _JobUserFace:
     def setuid(self, uid):
         os.setuid(uid)
 
-from runner.ops.remediation_ops import _job_user_preexec, _finish_remediation, _learning_model_candidate, _retained_job_summary  # noqa: E402
+_remediation_ops = _load_mod("runner.ops.remediation_ops", "ops.remediation_ops")
+if _remediation_ops is None:
+    raise ImportError("runner/ops/remediation_ops.py is missing")
+_job_user_preexec = _remediation_ops._job_user_preexec
+_finish_remediation = _remediation_ops._finish_remediation
+_learning_model_candidate = _remediation_ops._learning_model_candidate
+_retained_job_summary = _remediation_ops._retained_job_summary
 
 
 # ---------------------------------------------------------------- oracle (v3 §§9-12)
@@ -784,7 +790,13 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
     return _sanitize_model_reply(_FORMAT_FALLBACK_ANSWER, cap,
                                  output_text, pats, model or "")
 
-from runner.ops.misc import _ask_model_once, _v2_ingest, _disk_owns, oracle_window  # noqa: E402
+_misc = _load_mod("runner.ops.misc", "ops.misc")
+if _misc is None:
+    raise ImportError("runner/ops/misc.py is missing")
+_ask_model_once = _misc._ask_model_once
+_v2_ingest = _misc._v2_ingest
+_disk_owns = _misc._disk_owns
+oracle_window = _misc.oracle_window
 
 
 def _sanitize_model_reply(reply, cap, scan_text, patterns, model):
@@ -1338,7 +1350,11 @@ def _oracle_instruction_kind(text):
             return "action"
     return "question"
 
-from runner.ops.exec import ask_model_agent, execute_job  # noqa: E402
+_exec = _load_mod("runner.ops.exec", "ops.exec")
+if _exec is None:
+    raise ImportError("runner/ops/exec.py is missing")
+ask_model_agent = _exec.ask_model_agent
+execute_job = _exec.execute_job
 
 
 def _output_blob(exec_result):
@@ -1361,7 +1377,11 @@ def _raw_lines_allowed(view):
         return False
     return view in ("full", "redacted", "")
 
-from runner.ops.queries import answer_queries, handle_query_mail  # noqa: E402
+_queries = _load_mod("runner.ops.queries", "ops.queries")
+if _queries is None:
+    raise ImportError("runner/ops/queries.py is missing")
+answer_queries = _queries.answer_queries
+handle_query_mail = _queries.handle_query_mail
 
 
 _QUERY_TIMES = {}  # key_id -> list of timestamps
@@ -3689,7 +3709,10 @@ def _early_dispatch(cfg, imap, smtp, seq, raw, subject, secrets, opts,
         return None
     return job_id, skey
 
-from runner.ops.mail import handle_mail  # noqa: E402
+_mail = _load_mod("runner.ops.mail", "ops.mail")
+if _mail is None:
+    raise ImportError("runner/ops/mail.py is missing")
+handle_mail = _mail.handle_mail
 
 
 # ---------------------------------------------------------------- main
@@ -4800,8 +4823,13 @@ recent_chat = _sensors.recent_chat
 
 
 
-def _section_flag(cfg, section, key, default=True) -> bool:
-    """Read a boolean flag from cfg[section][key], defaulting to default."""
+def _cfg_section_flag(cfg, section, key, default=True) -> bool:
+    """Read a boolean flag from cfg[section][key], defaulting to default.
+
+    (Named apart from _cfg_flag(value), the one-argument opt-in reader
+    above: the two were briefly one name and the second definition
+    shadowed the first, so every oracle_log and verbose read raised.)
+    """
     sec = cfg.get(section) if isinstance(cfg, dict) else None
     if not isinstance(sec, dict):
         return default
@@ -4815,7 +4843,7 @@ def _section_flag(cfg, section, key, default=True) -> bool:
 
 def _oracle_watch_enabled(cfg) -> bool:
     """The Oracle's system watch defaults on."""
-    return _section_flag(cfg, "inference", "watch_system", True)
+    return _cfg_section_flag(cfg, "inference", "watch_system", True)
 
 _AUTH_LOG_PATHS = ("/var/log/auth.log", "/var/log/secure")
 _SYS_LOG_PATHS = ("/var/log/syslog", "/var/log/messages", "/var/log/system.log")
@@ -4896,7 +4924,13 @@ _parse_iptables_policy = _firewall._parse_iptables_policy
 
 
 
-from runner.ops.av import _run_text, _av_posture  # noqa: E402
+_av = _load_mod("runner.ops.av", "ops.av")
+if _av is None:
+    raise ImportError("runner/ops/av.py is missing")
+_run_text = _av._run_text
+_av_posture = _av._av_posture
+_parse_defender_query = _av._parse_defender_query
+_clam_sig_line = _av._clam_sig_line
 
 
 
@@ -4986,7 +5020,7 @@ _YARA_ATTACK = {
 
 def _artifact_scan_enabled(cfg) -> bool:
     """On unless inference.artifact_scan is explicitly false."""
-    return _section_flag(cfg, "inference", "artifact_scan", True)
+    return _cfg_section_flag(cfg, "inference", "artifact_scan", True)
 
 def _work_files(work):
     """path -> (size, mtime_ns) for regular files under work."""
@@ -5303,6 +5337,7 @@ _cli = _load_mod("runner.ops.cli", "ops.cli")
 # Every name the module defines is reachable here too: the suite
 # (and a host) reads and patches them on the runner module.
 build_parser = _cli.build_parser
+_transports_arg = _cli._transports_arg
 
 
 _ORACLE_REJECTS = {
@@ -5424,7 +5459,10 @@ def _warm_oracle_model(inf):
 
 
 
-from runner.ops.main import main  # noqa: E402
+_main = _load_mod("runner.ops.main", "ops.main")
+if _main is None:
+    raise ImportError("runner/ops/main.py is missing")
+main = _main.main
 
 
 def _run() -> "NoReturn":

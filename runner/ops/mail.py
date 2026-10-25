@@ -1,3 +1,30 @@
+from datetime import datetime, timezone, timedelta
+import email
+import hashlib
+import json
+import socket
+import sys
+import time
+try:
+    from runner.guard import confval as _confval
+except ImportError:  # running from inside runner/ as __main__
+    from guard import confval as _confval  # type: ignore
+
+
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 """Mail handling.
 
 Extracted from runner.py.
@@ -6,17 +33,17 @@ import email
 
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 seen: dict, secrets: dict, opts=None, key_policies=None):
-    from runner import runner as R
+    R = _runner()
     msg = email.message_from_bytes(raw)
     subject = str(msg["Subject"] or "")
     from_header = str(msg["From"] or "")
     def reject(why: str):
-        vlog(f"ingest: seq {seq}: rejected: {why}")
+        _runner().vlog(f"ingest: seq {seq}: rejected: {why}")
         R.log(f"rejecting seq {seq}: {why}", "WARN")
         # Dry-run is fully non-mutating: observe, change nothing.
-        _mark(imap, seq, opts)
+        _runner()._mark(imap, seq, opts)
 
-    dispatched = _early_dispatch(
+    dispatched = _runner()._early_dispatch(
         cfg, imap, smtp, seq, raw, subject, secrets, opts, base_dir, seen)
     if dispatched is None:
         return
@@ -25,7 +52,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # The HMAC signature is the sole authentication gate. Any sender
     # may submit jobs; only a valid signature authorizes execution.
     # The sender address is logged for audit but never trusted.
-    from_addr = parseaddr(from_header)[1].strip()
+    from_addr = _runner().parseaddr(from_header)[1].strip()
     R.log(f"seq {seq}: job {job_id} submitted by {from_addr or '(no sender)'} "
         f"subject={subject!r}")
 
@@ -39,17 +66,17 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         return
 
     try:
-        job, key_id, secret, job_was_encrypted = _verify_and_decrypt(msg, secrets, job_id)
-    except JobCryptoError as e:
+        job, key_id, secret, job_was_encrypted = _runner()._verify_and_decrypt(msg, secrets, job_id)
+    except _runner().JobCryptoError as e:
         reject(f"bad encrypted envelope: {e}")
-        _auth_reject_event(base_dir, "bad_encryption")
+        _runner()._auth_reject_event(base_dir, "bad_encryption")
         return
     except ValueError as e:
         reject(f"bad signature: {e}")
-        _auth_reject_event(base_dir, "bad_signature")
+        _runner()._auth_reject_event(base_dir, "bad_signature")
         return
     if not job_was_encrypted:
-        if _cleartext_jobs_allowed():
+        if _runner()._cleartext_jobs_allowed():
             # This process was started with
             # --allow-cleartext: the signature above still
             # gated admission (cleartext never means
@@ -74,7 +101,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                    "is not accepted by default; send the job "
                    "encrypted (hp_enc), or start the runner "
                    "with --allow-cleartext")
-            _append_security_event(base_dir, {
+            _runner()._append_security_event(base_dir, {
                 "type": "auth_rejection",
                 "at": datetime.now(timezone.utc).strftime(
                     "%Y-%m-%dT%H:%M:%SZ"),
@@ -84,9 +111,9 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
 
     # Hardening M5: audience binding. The expected runner_id comes from
     # the loaded config, never from the signed body.
-    if not audience_allows(cfg, base_dir, job, key_id, job_id):
+    if not _runner().audience_allows(cfg, base_dir, job, key_id, job_id):
         reject("security policy (audience): runner_id mismatch")
-        _auth_reject_event(base_dir, "security_policy", feature="audience")
+        _runner()._auth_reject_event(base_dir, "security_policy", feature="audience")
         return
     # Hardening M1b: bound the script after the signature is verified
     # (it lives inside the signed body). 0 means unlimited.
@@ -100,14 +127,14 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject(f"script exceeds max_script_bytes "
                f"({len(script.encode('utf-8'))} > {max_script_bytes})")
         return
-    if not _version_ok(job.get("v")) or job.get("type") != "job":
+    if not _runner()._version_ok(job.get("v")) or job.get("type") != "job":
         reject("unsupported version/type")
         return
     if job.get("job_id") != job_id:
         reject("job_id mismatch between subject and body")
         return
     try:
-        issued = _fromiso(job["issued_at"])
+        issued = _runner()._fromiso(job["issued_at"])
     except Exception:
         reject("unparseable issued_at")
         return
@@ -122,33 +149,33 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject(f"issued_at outside allowed window (age {age:.0f}s)")
         return
 
-    violation = check_key_policy(key_policies or {}, key_id, cfg, job)
+    violation = _runner().check_key_policy(key_policies or {}, key_id, cfg, job)
     if violation:
         reject(f"key policy: {violation}")
-        _auth_reject_event(base_dir, "key_policy")
+        _runner()._auth_reject_event(base_dir, "key_policy")
         return
 
     # Hardening M2: env/files/args constraints for keys with a policy
     # entry (D3). Each finding goes through sec_decide; enforce mode
     # denies through the existing reject path. When every feature is
     # off the check is skipped entirely, so off changes nothing.
-    if _security is not None:
+    if _runner()._security is not None:
         _pol = (key_policies or {}).get(key_id)
         _m2_features = ("policy_env", "policy_files", "policy_args")
-        if _pol and any(_security.sec_mode(cfg, f) != "off"
+        if _pol and any(_runner()._security.sec_mode(cfg, f) != "off"
                         for f in _m2_features):
             for _f in _m2_features:
-                if _security.sec_mode(cfg, _f) != "off":
-                    _security.bump_evaluated(base_dir, _f)
-            for _feature, _reason, _detail in check_policy_constraints(
+                if _runner()._security.sec_mode(cfg, _f) != "off":
+                    _runner()._security.bump_evaluated(base_dir, _f)
+            for _feature, _reason, _detail in _runner().check_policy_constraints(
                     _pol, key_id, cfg, job):
-                _decision = _security.sec_decide(
+                _decision = _runner()._security.sec_decide(
                     cfg, base_dir, _feature, _reason,
                     {"key_id": key_id, "job_id": job_id,
                      "detail": _detail})
                 if not _decision:
                     reject(f"security policy ({_feature}): {_reason}")
-                    _append_security_event(base_dir, {
+                    _runner()._append_security_event(base_dir, {
                         "type": "auth_rejection",
                         "at": datetime.now(timezone.utc).strftime(
                             "%Y-%m-%dT%H:%M:%SZ"),
@@ -158,7 +185,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     return
 
     if job.get("kind") == "sensor_alert":
-        _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
+        _runner()._ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
                              secrets, opts, base_dir, seen)
         return
 
@@ -167,9 +194,9 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # runs regardless, because the Oracle can be wrong. A review that
     # raises, or that cannot be signed as JSON, is dropped.
     review = None
-    if _review:
+    if _runner()._review:
         try:
-            review = _review.review_job(cfg, job)
+            review = _runner()._review.review_job(cfg, job)
         except Exception as e:
             R.log(f"review failed for {job_id}: {e}", "WARN")
             review = None
@@ -182,19 +209,19 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     else:
         review = None
 
-    vlog(f"ingest: job {job_id}: accepted "
+    _runner().vlog(f"ingest: job {job_id}: accepted "
          f"(key_id={key_id}, kind={job.get('kind')})")
     R.log(f"executing job {job_id} (kind={job.get('kind')})")
     if opts is not None and opts.dry_run:
         # Dry run: fully non-mutating. Verify everything, change nothing:
         # no execution, no result message, no seen updates.
-        desc = _describe_job(job)
+        desc = _runner()._describe_job(job)
         R.log(f"dry-run: would execute job {job_id}: {desc}")
         return
     no_send = opts is not None and opts.no_send
     # Result encryption mirrors this job's own form unless the
-    # owner set job_encryption explicitly (_job_encryption_setting).
-    _enc_setting = _job_encryption_setting(cfg)
+    # owner set job_encryption explicitly (_runner()._job_encryption_setting).
+    _enc_setting = _runner()._job_encryption_setting(cfg)
     encrypt_result = job_was_encrypted \
         if _enc_setting is None else _enc_setting
 
@@ -205,20 +232,20 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # claim is not dropped until the key is in seen.json.
     with R._MAIL_LOCK:
         if skey in seen or skey in R._IN_FLIGHT:
-            vlog(f"ingest: job {job_id}: skipped; another "
+            _runner().vlog(f"ingest: job {job_id}: skipped; another "
                  f"worker claimed it first")
-            mark_seen(imap, seq)
+            _runner().mark_seen(imap, seq)
             return
-        if not _disk_owns(base_dir, skey, seen):
+        if not _runner()._disk_owns(base_dir, skey, seen):
             # Already in the replay cache: this copy is done.
             # A live claim in another process is not done. Leave
             # the message unseen so a crash there can be stolen
             # on the next poll instead of dropped.
             if seen.get(skey):
-                vlog(f"ingest: job {job_id}: skipped; already seen")
-                mark_seen(imap, seq)
+                _runner().vlog(f"ingest: job {job_id}: skipped; already seen")
+                _runner().mark_seen(imap, seq)
             else:
-                vlog(f"ingest: job {job_id}: skipped; another "
+                _runner().vlog(f"ingest: job {job_id}: skipped; another "
                      f"process holds it")
             return
         R._IN_FLIGHT.add(skey)
@@ -228,19 +255,19 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 R.log(f"no-send: result message suppressed "
                     f"(subject={subject!r}, {len(body)} bytes)")
                 return
-            send_mail(smtp, cfg, subject, body, to=_valid_reply_to(job))
+            _runner().send_mail(smtp, cfg, subject, body, to=_runner()._valid_reply_to(job))
 
         # Executed before, result not yet acknowledged: resend the
         # bytes that were produced then and run nothing. The seen-set
         # commits below exactly as for a first delivery.
-        cached = load_sent_result(base_dir, skey, job)
+        cached = _runner().load_sent_result(base_dir, skey, job)
         if cached is not None:
             with R._MAIL_LOCK:
                 maybe_send(cached["subject"], cached["body"])
                 R.log(f"job {job_id}: result resent from the sent record "
                     f"(executed once, completed {cached.get('completed_at')})")
                 seen[skey] = True
-                mark_seen(imap, seq)
+                _runner().mark_seen(imap, seq)
             return
 
         op_plan = None
@@ -252,15 +279,15 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         learn_relevant = None
         learn_frozen = None
         try:
-            verdict, reasons = judge_job(cfg, job)
+            verdict, reasons = _runner().judge_job(cfg, job)
             _jmode = cfg.get("judge") or "off"
             if _jmode != "off":
-                vlog(f"judge: job {job_id}: mode={_jmode} "
+                _runner().vlog(f"judge: job {job_id}: mode={_jmode} "
                      f"verdict={verdict}"
                      + (f" ({'; '.join(reasons)})" if reasons
                         else ""))
             if cfg.get("judge") == "enforce" and reasons:
-                raise JobRejected("judge blocked: " + "; ".join(reasons))
+                raise _runner().JobRejected("judge blocked: " + "; ".join(reasons))
             # The Oracle's opinion (PROTOCOL 3.2; runner/oracle/opinion.py):
             # tier-1 deterministic checks, an optional repair, and a
             # member on the result. Advisory by construction -- the
@@ -268,66 +295,66 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # it can produce is the re-judgment of a repaired job,
             # and then the sender gets the original job's failure
             # result with the opinion explaining.
-            if _opinion is not None and job.get("kind") == "exec":
+            if _runner()._opinion is not None and job.get("kind") == "exec":
                 try:
-                    op_facts = _opinion_env_facts(cfg, job)
+                    op_facts = _runner()._opinion_env_facts(cfg, job)
                     learn_notes = []
-                    if _opinion.effective_mode(cfg, job) != "off":
+                    if _runner()._opinion.effective_mode(cfg, job) != "off":
                         learn_relevant, learn_notes = \
-                            _learning_context(cfg, base_dir, op_facts)
-                    op_plan = _opinion.plan_before(
+                            _runner()._learning_context(cfg, base_dir, op_facts)
+                    op_plan = _runner()._opinion.plan_before(
                         cfg, job, op_facts, lessons=learn_notes)
                 except Exception as e:
                     R.log(f"oracle opinion failed for {job_id}: {e}",
                         "WARN")
                     op_plan = None
                 if op_plan is not None:
-                    learn_frozen = _learning_freeze(
+                    learn_frozen = _runner()._learning_freeze(
                         cfg, base_dir, job_id, job, op_plan,
                         op_facts, learn_relevant)
             if op_plan is not None and op_plan.get("repair_action"):
                 repaired_job = dict(job)
-                repaired_job["interpreter"] = platform_interpreter()
+                repaired_job["interpreter"] = _runner().platform_interpreter()
                 # Rejudge (oracle_opinion_repair=rejudge, the
                 # default): the repaired job goes back through the
                 # dealing path exactly as a received job would.
-                r_verdict, r_reasons = judge_job(cfg, repaired_job)
-                r_violation = check_key_policy(
+                r_verdict, r_reasons = _runner().judge_job(cfg, repaired_job)
+                r_violation = _runner().check_key_policy(
                     key_policies or {}, key_id, cfg, repaired_job)
                 if r_violation or (cfg.get("judge") == "enforce"
                                    and r_reasons):
                     why = r_violation or (
                         "judge blocked: " + "; ".join(r_reasons))
-                    op_member = _opinion.repair_member(
+                    op_member = _runner()._opinion.repair_member(
                         op_plan, job, applied=False, refusal=why)
-                    raise JobRejected(
+                    raise _runner().JobRejected(
                         "repaired job refused on re-judgment: " + why)
                 run_job = repaired_job
                 op_repair_applied = True
-                op_member = _opinion.repair_member(
+                op_member = _runner()._opinion.repair_member(
                     op_plan, job, applied=True)
                 R.log(f"job {job_id}: oracle opinion repaired the "
                     f"interpreter to the platform default")
             elif op_plan is not None and op_plan.get("attach") is not None:
                 op_member = op_plan["attach"]
                 if not op_plan["findings"]:
-                    mnote = _opinion_model_note(cfg, job)
+                    mnote = _runner()._opinion_model_note(cfg, job)
                     if mnote:
-                        op_member = _opinion.with_model_note(
+                        op_member = _runner()._opinion.with_model_note(
                             op_member, mnote)
             v2_segments = []
-            if _protocol_v2 is not None and _protocol_v2.enabled(cfg):
+            if _runner()._protocol_v2 is not None and _runner()._protocol_v2.enabled(cfg):
                 try:
                     def v2_send(subject, body):
-                        return _v2_hand_off(
+                        return _runner()._v2_hand_off(
                             cfg, smtp, base_dir, subject, body,
-                            _valid_reply_to(job))
+                            _runner()._valid_reply_to(job))
 
                     def v2_pump():
-                        _v2_ingest(
+                        _runner()._v2_ingest(
                             cfg, imap, base_dir, seen, secrets, opts)
 
-                    v2_segments = _v2_before_execute(
+                    v2_segments = _runner()._v2_before_execute(
                         cfg, job, op_plan, secret, key_id,
                         encrypt_result, base_dir, v2_send, v2_pump)
                 except Exception as e:
@@ -339,31 +366,31 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             ws = cfg.get("workspace_root") or ""
             if not isinstance(ws, str):
                 ws = ""
-            before = snapshot_outside(ws, exclude=[base_dir]) if ws else {}
-            r = execute_job(cfg, run_job, base_dir)
-            after = snapshot_outside(ws, exclude=[base_dir]) if ws else {}
+            before = _runner().snapshot_outside(ws, exclude=[base_dir]) if ws else {}
+            r = _runner().execute_job(cfg, run_job, base_dir)
+            after = _runner().snapshot_outside(ws, exclude=[base_dir]) if ws else {}
             # Three states: None (unconfigured), True (confined),
             # False (violation detected). Never conflate the first and last.
-            confined = None if not ws else (not confinement_violated(before, after))
+            confined = None if not ws else (not _runner().confinement_violated(before, after))
             protected = cfg.get("protected_paths") or []
-            protected_changed = check_protected_paths(before, after, protected)
+            protected_changed = _runner().check_protected_paths(before, after, protected)
             result = {
-                "v": PROTOCOL_VERSION, "type": "result", "job_id": job_id,
+                "v": _runner().PROTOCOL_VERSION, "type": "result", "job_id": job_id,
                 "kind": job.get("kind"),
                 "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "exit_code": _as_int(r.get("exit_code"), -1),
+                "exit_code": _runner()._as_int(r.get("exit_code"), -1),
                 "timed_out": bool(r.get("timed_out")),
-                "stdout": _as_str(r.get("stdout")),
-                "stderr": _as_str(r.get("stderr")),
+                "stdout": _runner()._as_str(r.get("stdout")),
+                "stderr": _runner()._as_str(r.get("stderr")),
                 "stdout_truncated": bool(r.get("stdout_truncated")),
                 "stderr_truncated": bool(r.get("stderr_truncated")),
-                "duration_sec": _as_float(r.get("duration_sec"), 0.0),
+                "duration_sec": _runner()._as_float(r.get("duration_sec"), 0.0),
                 "runner": socket.gethostname(),
                 "review": review,
             }
             # Oracle view
-            patterns = _redact_patterns(cfg)
-            result, retain_view = apply_result_policy(cfg, job, result, patterns, confined=confined)
+            patterns = _runner()._redact_patterns(cfg)
+            result, retain_view = _runner().apply_result_policy(cfg, job, result, patterns, confined=confined)
             scan = r.get("artifact_scan")
             if isinstance(scan, list) and scan:
                 result["artifact_scan"] = [str(item)[:200] for item in scan[:20]]
@@ -378,25 +405,25 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # result when remediation acted on the job or its
             # outputs. A confinement escape the post-run snapshot
             # caught is handled here, as the escape tripwire at
-            # result time (see _remediation_confinement_followup).
+            # result time (see _runner()._remediation_confinement_followup).
             rem = r.get("remediation")
             if isinstance(rem, dict):
-                # execute_job saw the job it ran (post-repair, if
+                # _runner().execute_job saw the job it ran (post-repair, if
                 # any); the member's digest must name the job as
                 # RECEIVED. Correct it here, and in the quarantine
                 # marker, when a repair made them differ.
-                if _remediation is not None:
-                    want = _remediation.received_digest(job)
+                if _runner()._remediation is not None:
+                    want = _runner()._remediation.received_digest(job)
                     if rem.get("received_digest") != want:
                         rem = dict(rem)
                         rem["received_digest"] = want
-                        _remediation.fix_marker_digest(
+                        _runner()._remediation.fix_marker_digest(
                             base_dir, job_id, want)
                 result["remediation"] = rem
-            if _remediation is not None and (confined is False
+            if _runner()._remediation is not None and (confined is False
                                              or protected_changed):
                 try:
-                    esc = _remediation_confinement_followup(
+                    esc = _runner()._remediation_confinement_followup(
                         cfg, job, job_id, base_dir)
                     if esc is not None and "remediation" not in result:
                         result["remediation"] = esc
@@ -408,11 +435,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # rewrite); with no member formed, the diagnose
             # latitude speaks after a failure and stays silent
             # after a success.
-            job_failed = _as_int(r.get("exit_code"), -1) != 0 \
+            job_failed = _runner()._as_int(r.get("exit_code"), -1) != 0 \
                 or bool(r.get("timed_out"))
             if op_member is not None:
                 if job_failed and op_plan is not None:
-                    op_member = _opinion.extend_member_outcome(
+                    op_member = _runner()._opinion.extend_member_outcome(
                         op_member, op_plan["findings"])
                 result["oracle_opinion"] = op_member
             elif op_plan is not None and op_plan.get("active") \
@@ -420,18 +447,18 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 findings = op_plan["findings"]
                 if not op_plan.get("checks_run"):
                     try:
-                        op_diag_facts = _opinion_env_facts(cfg, job)
-                        findings = _opinion.tier1_findings(
+                        op_diag_facts = _runner()._opinion_env_facts(cfg, job)
+                        findings = _runner()._opinion.tier1_findings(
                             job, op_diag_facts)
                     except Exception:
                         findings = []
                 mnote = None
                 if not findings:
-                    mnote = _opinion_model_note(cfg, job)
-                result["oracle_opinion"] = _opinion.diagnosis_member(
+                    mnote = _runner()._opinion_model_note(cfg, job)
+                result["oracle_opinion"] = _runner()._opinion.diagnosis_member(
                     op_plan["mode"], findings, model_note=mnote)
             # Version 2 context rides the version 1 result.
-            # apply_result_policy rebuilds the dict, so the
+            # _runner().apply_result_policy rebuilds the dict, so the
             # segments are attached after it, as the opinion is.
             if v2_segments:
                 result["context"] = v2_segments
@@ -444,43 +471,43 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # failure cannot delay or block the result.
             if learn_frozen is not None or op_diag_facts is not None:
                 op_outcome = {
-                    "exit_code": _as_int(r.get("exit_code"), -1),
+                    "exit_code": _runner()._as_int(r.get("exit_code"), -1),
                     "timed_out": bool(r.get("timed_out")),
                     "rejected": False,
                     "repair_applied": op_repair_applied,
                     "repair_attempted": op_repair_applied,
                 }
-                recon = _learning_reconcile(
+                recon = _runner()._learning_reconcile(
                     cfg, base_dir, learn_frozen, job_id,
                     op_outcome, op_facts, op_diag_facts)
                 if recon is not None and (
                         job_failed
                         or recon.get("classification")
                         in ("incorrect", "partial")):
-                    _learning_model_candidate(
+                    _runner()._learning_model_candidate(
                         cfg, base_dir, job_id, job, op_outcome,
-                        _as_str(r.get("stdout")),
-                        _as_str(r.get("stderr")))
+                        _runner()._as_str(r.get("stdout")),
+                        _runner()._as_str(r.get("stderr")))
             # Optional low-overhead detection (rules, baseline, ATT&CK tags).
             # Canaries are handled separately by _canary_watch. Never raises.
-            if _detection is not None and isinstance(base_dir, str) and base_dir:
+            if _runner()._detection is not None and isinstance(base_dir, str) and base_dir:
                 try:
-                    hits = _detection.evaluate_rules(job, result)
+                    hits = _runner()._detection.evaluate_rules(job, result)
                     if hits:
                         # Tag each hit with its ATT&CK technique when present.
                         tagged = []
                         for h in hits:
                             tech = h.get("technique") if isinstance(h, dict) else None
-                            tagged.append(_detection.tag_alert(h, tech) if tech else h)
+                            tagged.append(_runner()._detection.tag_alert(h, tech) if tech else h)
                         result["detection_hits"] = tagged
-                    baseline = _detection.update_baseline(base_dir, job, result)
-                    anomaly = _detection.baseline_anomaly(baseline, job, result)
+                    baseline = _runner()._detection.update_baseline(base_dir, job, result)
+                    anomaly = _runner()._detection.baseline_anomaly(baseline, job, result)
                     if anomaly:
                         result["detection_anomaly"] = anomaly
                     # Optional multi-step plan budget check.
                     plan = job.get("plan") if isinstance(job, dict) else None
                     if isinstance(plan, list):
-                        allowed, reason = _detection.check_plan_budget(plan, cfg or {})
+                        allowed, reason = _runner()._detection.check_plan_budget(plan, cfg or {})
                         result["plan_budget_ok"] = allowed
                         if not allowed and reason:
                             result["plan_budget_reason"] = reason
@@ -492,30 +519,30 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 declared = []
             spent = 0
             digest = hashlib.sha384(
-                (_as_str(r.get("stdout")) + _as_str(r.get("stderr"))).encode("utf-8")).hexdigest()
+                (_runner()._as_str(r.get("stdout")) + _runner()._as_str(r.get("stderr"))).encode("utf-8")).hexdigest()
             if declared:
                 view = result.get("view") or "full"
-                answers, spent = answer_queries(
+                answers, spent = _runner().answer_queries(
                     declared,
-                    {"stdout": _as_str(r.get("stdout")), "stderr": _as_str(r.get("stderr")),
-                     "exit_code": _as_int(r.get("exit_code"), -1), "confined": confined,
+                    {"stdout": _runner()._as_str(r.get("stdout")), "stderr": _runner()._as_str(r.get("stderr")),
+                     "exit_code": _runner()._as_int(r.get("exit_code"), -1), "confined": confined,
                      "digest": digest},
-                    patterns, query_budget(cfg, job), cfg=cfg, view=view,
+                    patterns, _runner().query_budget(cfg, job), cfg=cfg, view=view,
                     base_dir=base_dir,
                 )
                 result["answers"] = answers
             if retain_view or declared:
-                save_retained(base_dir, job_id, {
+                _runner().save_retained(base_dir, job_id, {
                     "job_id": job_id,
                     "kind": job.get("kind"),
-                    "script": _as_str(job.get("script") or "")[:500],
-                    "stdout": _as_str(r.get("stdout")),
-                    "stderr": _as_str(r.get("stderr")),
-                    "exit_code": _as_int(r.get("exit_code"), -1),
+                    "script": _runner()._as_str(job.get("script") or "")[:500],
+                    "stdout": _runner()._as_str(r.get("stdout")),
+                    "stderr": _runner()._as_str(r.get("stderr")),
+                    "exit_code": _runner()._as_int(r.get("exit_code"), -1),
                     "timed_out": bool(r["timed_out"]),
-                    "duration_sec": _as_float(r.get("duration_sec"), 0.0),
+                    "duration_sec": _runner()._as_float(r.get("duration_sec"), 0.0),
                     "view": result.get("view") or "full",
-                    "budget": query_budget(cfg, job),
+                    "budget": _runner().query_budget(cfg, job),
                     "spent": spent,
                     "patterns": patterns,
                     "confined": confined,
@@ -526,30 +553,30 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     "remediation": result.get("remediation"),
                 })
             else:
-                note = _artifact_note(job_id, job, r)
+                note = _runner()._artifact_note(job_id, job, r)
                 if note:
-                    save_retained(base_dir, job_id, note)
+                    _runner().save_retained(base_dir, job_id, note)
             if protected_changed:
                 result.setdefault("confinement_detail", {})["protected_paths_changed"] = protected_changed
             if cfg.get("judge") in ("advisory", "enforce"):
                 result["judgment"] = {"verdict": verdict, "reasons": reasons}
             with R._MAIL_LOCK:
-                out_subject = f"{SUBJECT_RESULT}{job_id}"
-                out_body = _outgoing_result_body(
+                out_subject = f"{_runner().SUBJECT_RESULT}{job_id}"
+                out_body = _runner()._outgoing_result_body(
                     result, secret, encrypt_result, job_id, key_id)
                 # Recorded before the send: a redelivery resends
                 # these bytes instead of executing again.
-                save_sent_result(base_dir, skey, job, out_subject,
-                                 out_body, to=_valid_reply_to(job))
+                _runner().save_sent_result(base_dir, skey, job, out_subject,
+                                 out_body, to=_runner()._valid_reply_to(job))
                 maybe_send(out_subject, out_body)
                 R.log(f"job {job_id} done (exit={r['exit_code']})")
                 seen[skey] = True  # only after the result is safely sent (at-least-once)
-                mark_seen(imap, seq)
-        except JobRejected as e:
+                _runner().mark_seen(imap, seq)
+        except _runner().JobRejected as e:
             R.log(f"job {job_id} rejected: {e}", "WARN")
             try:
                 result = {
-                    "v": PROTOCOL_VERSION, "type": "result", "job_id": job_id,
+                    "v": _runner().PROTOCOL_VERSION, "type": "result", "job_id": job_id,
                     "kind": job.get("kind"),
                     "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                     "exit_code": -2, "timed_out": False,
@@ -565,16 +592,16 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 if op_member is not None:
                     result["oracle_opinion"] = op_member
                 elif op_plan is not None and op_plan.get("active") \
-                        and _opinion is not None:
+                        and _runner()._opinion is not None:
                     try:
-                        op_diag_facts = _opinion_env_facts(cfg, job)
-                        findings = _opinion.tier1_findings(
+                        op_diag_facts = _runner()._opinion_env_facts(cfg, job)
+                        findings = _runner()._opinion.tier1_findings(
                             job, op_diag_facts)
                         mnote = None
                         if not findings:
-                            mnote = _opinion_model_note(cfg, job)
+                            mnote = _runner()._opinion_model_note(cfg, job)
                         result["oracle_opinion"] = \
-                            _opinion.diagnosis_member(
+                            _runner()._opinion.diagnosis_member(
                                 op_plan["mode"], findings,
                                 model_note=mnote)
                     except Exception:
@@ -585,7 +612,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 # is sent. Best effort, as in the main path.
                 if learn_frozen is not None \
                         or op_diag_facts is not None:
-                    _learning_reconcile(
+                    _runner()._learning_reconcile(
                         cfg, base_dir, learn_frozen, job_id,
                         {"exit_code": -2, "timed_out": False,
                          "rejected": True,
@@ -594,12 +621,12 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                              op_plan and op_plan.get("repair_action"))},
                         op_facts, op_diag_facts)
                 with R._MAIL_LOCK:
-                    maybe_send(f"{SUBJECT_RESULT}{job_id}",
-                              _outgoing_result_body(
+                    maybe_send(f"{_runner().SUBJECT_RESULT}{job_id}",
+                              _runner()._outgoing_result_body(
                                   result, secret, encrypt_result,
                                   job_id, key_id))
                     seen[skey] = True
-                    mark_seen(imap, seq)
+                    _runner().mark_seen(imap, seq)
             except Exception as e2:
                 R.log(f"could not send rejection result: {e2}", "ERROR")
         except Exception as e:
@@ -609,4 +636,4 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         with R._MAIL_LOCK:
             R._IN_FLIGHT.discard(skey)
             if skey not in seen:
-                _disk_release(base_dir, skey)
+                _runner()._disk_release(base_dir, skey)

@@ -1,3 +1,29 @@
+import email
+import hashlib
+import os
+import re
+import sys
+import time
+try:
+    from runner.guard import confval as _confval
+except ImportError:  # running from inside runner/ as __main__
+    from guard import confval as _confval  # type: ignore
+
+
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 """Query handling.
 
 Extracted from runner.py.
@@ -6,73 +32,72 @@ import email
 
 def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_dir, seen=None):
     """Handle [HOMING-PIGEON] query <query_id>. Returns True if handled."""
-    from runner import runner as R
-
+    R = _runner()
     m = re.search(r"\[HOMING-PIGEON\].*?query\s+(\S+)", subject, re.I)
     if not m:
         return False
     query_id = m.group(1)
     # Hardening M5: the replay-cache key is namespaced by runner_id
     # when one is configured.
-    seen_key = _seen_key(cfg, "query:" + query_id)
+    seen_key = _runner()._seen_key(cfg, "query:" + query_id)
 
     def finish(reply, secret, encrypted=False, key_id=""):
         if reply is not None and secret and opts is not None and (opts.dry_run or getattr(opts, "no_send", False)):
             reply = None
         if reply is not None and secret:
-            send_mail(smtp, cfg, f"[HOMING-PIGEON] qresult {query_id}",
-                      _seal_reply(reply, secret, query_id, key_id,
+            _runner().send_mail(smtp, cfg, f"[HOMING-PIGEON] qresult {query_id}",
+                      _runner()._seal_reply(reply, secret, query_id, key_id,
                                   encrypted))
         if isinstance(seen, dict) and (opts is None or not opts.dry_run):
             with R._MAIL_LOCK:
                 seen[seen_key] = True
-        _mark(imap, seq, opts)
+        _runner()._mark(imap, seq, opts)
 
     if seen is not None and seen.get(seen_key):
-        _mark(imap, seq, opts)
+        _runner()._mark(imap, seq, opts)
         return True
 
     try:
-        body = get_text_body(email.message_from_bytes(raw))
-        payload, key_id, secret, encrypted = _admit_object(
+        body = _runner().get_text_body(email.message_from_bytes(raw))
+        payload, key_id, secret, encrypted = _runner()._admit_object(
             body, secrets, query_id)
-    except JobCryptoError as e:
+    except _runner().JobCryptoError as e:
         R.log(f"query bad envelope seq {seq}: {e}", "WARN")
-        _mark(imap, seq, opts)
+        _runner()._mark(imap, seq, opts)
         return True
     except Exception as e:
         R.log(f"query bad signature seq {seq}: {e}", "WARN")
-        _mark(imap, seq, opts)
+        _runner()._mark(imap, seq, opts)
         return True
-    if not encrypted and not _cleartext_jobs_allowed():
+    if not encrypted and not _runner()._cleartext_jobs_allowed():
         R.log(f"query {query_id}: cleartext refused", "WARN")
-        _auth_reject_event(base_dir, "cleartext_not_supported", feature="query")
-        _mark(imap, seq, opts)
+        _runner()._auth_reject_event(base_dir, "cleartext_not_supported", feature="query")
+        _runner()._mark(imap, seq, opts)
         return True
 
     # Hardening M5: audience binding. The expected runner_id comes from
     # the loaded config, never from the signed body. This covers the
     # ask op too: a spoofed audience cannot trick the model into
     # answering for the wrong identity.
-    if not audience_allows(cfg, base_dir, payload, key_id, query_id):
+    if not _runner().audience_allows(cfg, base_dir, payload, key_id, query_id):
         R.log(f"query rejected seq {seq}: runner_id mismatch", "WARN")
-        _mark(imap, seq, opts)
+        _runner()._mark(imap, seq, opts)
         if isinstance(seen, dict) and (opts is None or not opts.dry_run):
             with R._MAIL_LOCK:
                 seen[seen_key] = True
         return True
 
-    if not _version_ok(payload.get("v")) or payload.get("type") != "query":
+    if not _runner()._version_ok(payload.get("v")) or payload.get("type") != "query":
         R.log(f"query rejected (bad type) seq {seq}", "WARN")
         finish({
-            "v": PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
+            "v": _runner().PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
             "rejected": "unsupported", "answers": [],
         }, secret, encrypted, key_id)
         return True
-    ok_ts, why = _issued_at_ok(payload.get("issued_at"), cfg)
+    ok_ts, why = _runner()._issued_at_ok(payload.get("issued_at"), cfg)
     if not ok_ts:
         R.log(f"query rejected seq {seq}: {why}", "WARN")
-        _mark(imap, seq, opts)
+        _runner()._mark(imap, seq, opts)
         if isinstance(seen, dict) and (opts is None or not opts.dry_run):
             with R._MAIL_LOCK:
                 seen[seen_key] = True
@@ -80,10 +105,10 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     # "" is the default secret. Do not replace it with query_id or each
     # query gets its own bucket and the cap never trips. PROTOCOL section 11
     # is per sender.
-    if not check_rate_limit(key_id, cfg, os.path.join(base_dir, "query_times.json")):
+    if not _runner().check_rate_limit(key_id, cfg, os.path.join(base_dir, "query_times.json")):
         R.log(f"query rate limit exceeded seq {seq}", "WARN")
         finish({
-            "v": PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
+            "v": _runner().PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
             "rejected": "rate_limit", "answers": [],
         }, secret, encrypted, key_id)
         return True
@@ -91,12 +116,12 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     job_id = payload.get("job_id")
     reply = None
     with R._RETAINED_LOCK:
-        retained = load_retained(base_dir, job_id)
-        if retained is None or retained_expired(retained, cfg):
+        retained = _runner().load_retained(base_dir, job_id)
+        if retained is None or _runner().retained_expired(retained, cfg):
             reason = "expired" if retained is not None else "unknown_job"
             R.log(f"query rejected seq {seq}: {reason} {job_id!r}", "WARN")
             reply = {
-                "v": PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
+                "v": _runner().PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
                 "job_id": job_id, "rejected": reason, "answers": [],
                 "budget_remaining": 0,
             }
@@ -112,9 +137,9 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
                 already = int(retained.get("spent") or 0)
             except (TypeError, ValueError, OverflowError):
                 already = 0
-            patterns = retained.get("patterns") or _redact_patterns(cfg)
+            patterns = retained.get("patterns") or _runner()._redact_patterns(cfg)
             if not isinstance(patterns, dict):
-                patterns = _redact_patterns(cfg)
+                patterns = _runner()._redact_patterns(cfg)
             view = retained.get("view") or "full"
             queries = payload.get("queries") or []
             if not isinstance(queries, list):
@@ -127,7 +152,7 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
                 "digest": retained.get("digest"),
             }
             try:
-                answers, spent = answer_queries(
+                answers, spent = _runner().answer_queries(
                     queries, exec_result, patterns, budget,
                     cfg=cfg, view=view, already_spent=already, base_dir=base_dir,
                 )
@@ -137,18 +162,18 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
                 # stop the poll.
                 R.log(f"query failed: {e}", "WARN")
                 reply = {
-                    "v": PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
+                    "v": _runner().PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
                     "job_id": job_id, "rejected": "query_error", "answers": [],
                 }
             else:
                 retained["spent"] = spent
                 retained["saved_at"] = retained.get("saved_at") or time.time()
-                save_retained(base_dir, job_id, retained)
+                _runner().save_retained(base_dir, job_id, retained)
                 remaining = budget - spent
                 if remaining < 0:
                     remaining = 0
                 reply = {
-                    "v": PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
+                    "v": _runner().PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
                     "job_id": job_id, "answers": answers,
                     "budget_remaining": remaining,
                 }
@@ -159,8 +184,7 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
 def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full",
                    already_spent=0, base_dir=None):
     """Answer declared queries. Every query spends 1, answered or rejected."""
-    from runner import runner as R
-
+    R = _runner()
     answers = []
     # A non-dict result is bad data from an extension or a corrupt retain.
     # Do not let it abort the query or the mail cycle.
@@ -176,8 +200,8 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
         budget = 8
     if budget < 0:
         budget = 0
-    text = _output_blob(exec_result)
-    inf = inference_config(cfg) if cfg else None
+    text = _runner()._output_blob(exec_result)
+    inf = _runner().inference_config(cfg) if cfg else None
     # A non-list (or non-iterable) from a poisoned job/extension must
     # not raise. Treat it as no queries.
     if not isinstance(queries, list):
@@ -202,7 +226,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                 "patterns": patterns or {},
                 "text": text,
             }
-            atts = build_attestations([q], ctx)
+            atts = _runner().build_attestations([q], ctx)
             if not atts:
                 answers.append({"op": "attest", "rejected": "policy"})
             else:
@@ -212,7 +236,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                     item["value"] = atts[0]["ok"]
                 answers.append(item)
         elif op == "grep":
-            if not _raw_lines_allowed(view):
+            if not _runner()._raw_lines_allowed(view):
                 answers.append({"op": "grep", "rejected": "policy"})
             else:
                 pattern = q.get("pattern") if isinstance(q.get("pattern"), str) else ""
@@ -235,19 +259,19 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                             break
                         matches.append(line)
                 if view == "redacted":
-                    matches = [redact_text(line, patterns)[0] for line in matches]
+                    matches = [_runner().redact_text(line, patterns)[0] for line in matches]
                 answers.append({
                     "op": "grep", "pattern": pattern,
                     "matches": matches, "truncated": truncated,
                 })
         elif op == "tail":
-            if not _raw_lines_allowed(view):
+            if not _runner()._raw_lines_allowed(view):
                 answers.append({"op": "tail", "rejected": "policy"})
             else:
                 n = min(_confval.integer(q.get("lines"), 20, lo=0), 200)
                 lines = text.splitlines()[-n:] if n else []
                 if view == "redacted":
-                    lines = [redact_text(line, patterns)[0] for line in lines]
+                    lines = [_runner().redact_text(line, patterns)[0] for line in lines]
                 answers.append({"op": "tail", "lines": lines})
         elif op == "ask":
             if inf is None:
@@ -258,7 +282,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                 max_chars = _confval.integer(
                     q.get("max_chars"), inf["max_answer_chars"], lo=0)
                 try:
-                    answers.append(ask_model(
+                    answers.append(_runner().ask_model(
                         inf, q.get("question") or "", text, max_chars, patterns,
                         instructions=(cfg or {}).get("owner_instructions"),
                     ))
@@ -270,14 +294,14 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                     R.log(f"ask failed: {e}", "WARN")
                     answers.append({"op": "ask", "rejected": "inference_error"})
         elif op == "senses":
-            if _senses is None or base_dir is None:
+            if _runner()._senses is None or base_dir is None:
                 answers.append({"op": "senses", "rejected": "senses_unavailable"})
             else:
                 try:
-                    sensors = _senses.parse_sensors(cfg or {})
+                    sensors = _runner()._senses.parse_sensors(cfg or {})
                 except RuntimeError:
                     sensors = {}
-                recs = _senses.load_alerts(
+                recs = _runner()._senses.load_alerts(
                     base_dir,
                     sensor=q.get("sensor") if isinstance(q.get("sensor"), str) else None,
                     severity_floor=q.get("severity_floor") if isinstance(q.get("severity_floor"), str) else None,
@@ -309,21 +333,21 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                             float("inf"), float("-inf")):
                         weight = 1.0
                     title_raw = rec.get("title") if isinstance(rec.get("title"), str) else ""
-                    title, _ = redact_text(title_raw, patterns)
+                    title, _ = _runner().redact_text(title_raw, patterns)
                     detail = rec.get("detail") if rec.get("detail") is not None else {}
                     if isinstance(detail, dict):
                         clean_detail = {}
                         for k, v in detail.items():
                             if isinstance(v, str):
-                                v, _ = redact_text(v, patterns)
+                                v, _ = _runner().redact_text(v, patterns)
                             clean_detail[k] = v
                     elif isinstance(detail, str):
-                        clean_detail, _ = redact_text(detail, patterns)
+                        clean_detail, _ = _runner().redact_text(detail, patterns)
                     else:
                         clean_detail = ""
                     sig_desc = rec.get("signal_description")
                     if isinstance(sig_desc, str):
-                        sig_desc, _ = redact_text(sig_desc, patterns)
+                        sig_desc, _ = _runner().redact_text(sig_desc, patterns)
                     items.append({
                         "sensor": rec.get("sensor"),
                         "severity": rec.get("severity"),
@@ -338,7 +362,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                         "extension_version": rec.get("extension_version"),
                     })
                     try:
-                        items[-1]["score"] = _senses.alert_score(rec, weight)
+                        items[-1]["score"] = _runner()._senses.alert_score(rec, weight)
                     except Exception:
                         # A raising scorer is bad extension data. Keep the
                         # alert with a neutral score rather than abort.
@@ -349,7 +373,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                 # may send and what each one means, so the reader is
                 # never handed a signal nobody defined.
                 declared_signals = {}
-                ext_registry = _extension_registry(cfg, base_dir)
+                ext_registry = _runner()._extension_registry(cfg, base_dir)
                 wanted = set()
                 if isinstance(q.get("sensor"), str):
                     wanted.add(q["sensor"])
@@ -365,7 +389,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                             continue
                         desc = s.get("description")
                         if isinstance(desc, str):
-                            desc, _ = redact_text(desc, patterns)
+                            desc, _ = _runner().redact_text(desc, patterns)
                         sigs.append({"name": s.get("name"),
                                      "description": desc})
                     declared_signals[sname] = {

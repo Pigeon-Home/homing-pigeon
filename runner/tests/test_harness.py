@@ -406,7 +406,7 @@ class WiringTest(unittest.TestCase):
         with open(os.path.join(REPO, "runner", "ops", "cli.py"),
                   encoding="utf-8") as fh:
             parser_src = fh.read()
-        with open(os.path.join(REPO, "runner", "runner.py"),
+        with open(os.path.join(REPO, "runner", "ops", "main.py"),
                   encoding="utf-8") as fh:
             src = fh.read()
         self.assertIn('"--diagnose"', parser_src)

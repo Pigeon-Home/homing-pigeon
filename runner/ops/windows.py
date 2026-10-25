@@ -7,6 +7,22 @@ import subprocess
 import sys
 
 
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
+
+
 def _wevtutil_query(logname, xpath, count, timeout=15):
     """Run wevtutil and return stdout text.
 
@@ -17,7 +33,7 @@ def _wevtutil_query(logname, xpath, count, timeout=15):
     """
     try:
         flags = {}
-        if sys.platform == "win32":
+        if _runner().sys.platform == "win32":
             cnw = getattr(subprocess, "CREATE_NO_WINDOW", 0)
             if cnw:
                 flags["creationflags"] = cnw
@@ -51,7 +67,7 @@ def _reg_query(key):
     """
     try:
         flags = {}
-        if sys.platform == "win32":
+        if _runner().sys.platform == "win32":
             cnw = getattr(subprocess, "CREATE_NO_WINDOW", 0)
             if cnw:
                 flags["creationflags"] = cnw

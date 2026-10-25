@@ -240,8 +240,9 @@ class Tier1FindingsTests(unittest.TestCase):
         self.assertIn("['bash']", absent["detail"])
 
     def test_the_repair_log_is_one_sentence(self):
+        # The mail core lives in runner/ops/mail.py since its extraction.
         path = os.path.join(os.path.dirname(__file__), "..", "..",
-                            "runner", "runner.py")
+                            "runner", "ops", "mail.py")
         with open(path, encoding="utf-8") as fh:
             text = fh.read()
         needle_a = "oracle opinion repaired the "

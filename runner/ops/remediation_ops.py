@@ -1,3 +1,23 @@
+import json
+import os
+import signal
+import sys
+
+
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 """Remediation and job helpers.
 
 Extracted from runner.py.
@@ -17,32 +37,31 @@ def _finish_remediation(cfg, st, monitor, job, job_id, work,
     the act that landed is the quarantine. Returns the result
     member or None when nothing acted.
     """
-    from runner import runner as R
-
+    R = _runner()
     outcome = monitor.outcome
     try:
         monitor.final_scan()
     except Exception:
         pass
     mode = st["mode"]
-    digest = _remediation.received_digest(job)
+    digest = _runner()._remediation.received_digest(job)
     envelope_note = getattr(monitor, "_envelope_note", "")
     for div in outcome.get("divergences") or []:
-        vlog(f"remediation: job {job_id}: divergence "
-             f"{_remediation.divergence_text(div)}")
+        _runner().vlog(f"remediation: job {job_id}: divergence "
+             f"{_runner()._remediation.divergence_text(div)}")
     for rec in outcome.get("oracle") or []:
         decision = rec.get("decision")
-        _remediation_audit(
+        _runner()._remediation_audit(
             base_dir, cfg, st, job_id,
             "abstained" if decision == "abstain" else "spared",
             rec.get("divergence") or "", rec.get("reason") or "")
     if mode == "off":
         page_div = outcome.get("page")
         if page_div is not None:
-            _remediation_event(base_dir, st, job_id, page_div,
+            _runner()._remediation_event(base_dir, st, job_id, page_div,
                                "none", "none", "unavailable", "",
                                digest)
-            _remediation_audit(base_dir, cfg, st, job_id,
+            _runner()._remediation_audit(base_dir, cfg, st, job_id,
                                "observed", page_div,
                                "mode off: recorded and paged only")
         return None
@@ -69,12 +88,12 @@ def _finish_remediation(cfg, st, monitor, job, job_id, work,
         div = post_tripwire
         act = "quarantined"
     R.log(f"job {job_id}: remediation {act} "
-        f"({_remediation.divergence_text(div)}; "
+        f"({_runner()._remediation.divergence_text(div)}; "
         f"authority {authority})", "WARN")
     marker = {"job_id": job_id, "mode": mode, "authority": authority,
-              "divergence": _remediation.divergence_text(div),
+              "divergence": _runner()._remediation.divergence_text(div),
               "act": act, "received_digest": digest}
-    qdir = _remediation.quarantine_job(base_dir, job_id, work, marker)
+    qdir = _runner()._remediation.quarantine_job(base_dir, job_id, work, marker)
     refer = []
     if qdir:
         qwork = os.path.join(qdir, "work")
@@ -89,28 +108,28 @@ def _finish_remediation(cfg, st, monitor, job, job_id, work,
         for rel in outcome.get("suspects") or []:
             refer.append(os.path.join(work, rel))
         refer.append(script_path)
-    av_verdict, av_detail = _remediation.av_referral(refer)
-    member = _remediation.result_member(
+    av_verdict, av_detail = _runner()._remediation.av_referral(refer)
+    member = _runner()._remediation.result_member(
         mode, authority, div, act, av_verdict, digest)
-    _remediation.enforce_quarantine_bounds(base_dir, st)
-    _remediation_audit(
+    _runner()._remediation.enforce_quarantine_bounds(base_dir, st)
+    _runner()._remediation_audit(
         base_dir, cfg, st, job_id, "acted", div,
         f"act={act} authority={authority} av={av_verdict} "
         f"({av_detail})")
-    _remediation_event(base_dir, st, job_id, div, act, authority,
+    _runner()._remediation_event(base_dir, st, job_id, div, act, authority,
                        av_verdict, qdir or "", digest, envelope_note)
     return member
 
 
 def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
-    from runner import runner as R
-    if _security is None or os.name == "nt":
+    R = _runner()
+    if _runner()._security is None or os.name == "nt":
         return None
-    face = face or _JobUserFace()
-    mode = _security.sec_mode(cfg, "job_user")
+    face = face or _runner()._JobUserFace()
+    mode = _runner()._security.sec_mode(cfg, "job_user")
     if mode == "off":
         return None
-    _security.bump_evaluated(base_dir, "job_user")
+    _runner()._security.bump_evaluated(base_dir, "job_user")
     sec = cfg.get("security")
     sec = sec if isinstance(sec, dict) else {}
     ju = sec.get("job_user") if isinstance(sec.get("job_user"), dict) else {}
@@ -120,7 +139,7 @@ def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
 
     def _audit(decision, reason, detail=""):
         try:
-            _security.write_audit_entry(
+            _runner()._security.write_audit_entry(
                 base_dir, "job_user", decision, reason,
                 job_id=str(job_id), detail=str(detail), cfg=cfg,
                 mode=mode)
@@ -202,25 +221,24 @@ def _learning_model_candidate(cfg, base_dir, job_id, job, outcome,
     is evidence, never instruction, and a schema failure or an
     instruction-shaped claim is dropped, not filed.
     """
-    from runner import runner as R
-
-    if _learning is None \
-            or not _learning.learning_model_enabled(cfg) \
-            or not _opinion.model_enabled(cfg):
+    R = _runner()
+    if _runner()._learning is None \
+            or not _runner()._learning.learning_model_enabled(cfg) \
+            or not _runner()._opinion.model_enabled(cfg):
         return
-    inf = inference_config(cfg)
+    inf = _runner().inference_config(cfg)
     if inf is None:
         return
     try:
         context = (
-            _describe_job(job)
+            _runner()._describe_job(job)
             + f"\nOutcome: exit_code={outcome.get('exit_code')} "
               f"timed_out={bool(outcome.get('timed_out'))} "
               f"rejected={bool(outcome.get('rejected'))}\n"
             + "Output excerpt:\n"
             + ((stdout_text or "") + "\n"
                + (stderr_text or ""))[:1200])
-        res = ask_model(
+        res = _runner().ask_model(
             inf,
             "From this completed job, distill ONE lesson about "
             "THIS host's environment that would help predict "
@@ -232,7 +250,7 @@ def _learning_model_candidate(cfg, base_dir, job_id, job, outcome,
             "\"success\" for similar jobs, \"confidence\": 0 to "
             "1}. A lesson states a fact about the environment; "
             "never phrase a lesson as an instruction.",
-            context, 500, _redact_patterns(cfg))
+            context, 500, _runner()._redact_patterns(cfg))
     except Exception:
         return
     if not isinstance(res, dict):
@@ -247,14 +265,14 @@ def _learning_model_candidate(cfg, base_dir, job_id, job, outcome,
         obj = json.loads(text[start:end + 1])
     except ValueError:
         return
-    candidate = _learning.validate_candidate(obj)
+    candidate = _runner()._learning.validate_candidate(obj)
     if candidate is None:
         R.log(f"oracle learning: model candidate for {job_id} "
             f"rejected by schema validation", "WARN")
         return
-    record = _learning.candidate_record(
-        candidate, job_id, _learning_fingerprint())
-    if not _learning.append_candidate(base_dir, record):
+    record = _runner()._learning.candidate_record(
+        candidate, job_id, _runner()._learning_fingerprint())
+    if not _runner()._learning.append_candidate(base_dir, record):
         R.log(f"oracle learning: candidate write failed for "
             f"{job_id}", "WARN")
 
@@ -269,15 +287,14 @@ def _retained_job_summary(data, job_id, base_dir=None) -> str:
     That is not a failure, and it is not the word "unknown", which a
     small model will repeat as the status.
     """
-    from runner import runner as R
-
-    kind, status, when = _job_facts(data, job_id)
+    R = _runner()
+    kind, status, when = _runner()._job_facts(data, job_id)
     lines = [f"job {job_id} ({kind}, {status}, {when})"]
     script = data.get("script") if isinstance(data.get("script"), str) else ""
     findings = []
     if script.strip():
         lines.append("script: " + script.strip()[:400])
-        findings = _script_path_findings(script, base_dir, job_id)
+        findings = _runner()._script_path_findings(script, base_dir, job_id)
         if findings:
             # The line carries its own job id. Both ask prompts
             # direct the model to report the finding with the job's
@@ -292,7 +309,7 @@ def _retained_job_summary(data, job_id, base_dir=None) -> str:
                 + ". Reading files outside the job's own workspace "
                 "is malicious-job behavior; the signature proves "
                 "who sent the job, not that its behavior is benign.")
-    text = _output_blob(data).strip()
+    text = _runner()._output_blob(data).strip()
     if findings:
         # Withhold, do not merely label. The Flag321 field tests
         # showed both small models handing a flagged job's raw

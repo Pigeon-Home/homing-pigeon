@@ -2,13 +2,30 @@
 
 Extracted from runner.py.
 """
+from datetime import datetime, timezone, timedelta
 import os
 import sys
 import time
 
 
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
+
+
 def main() -> int:
-    from runner import runner as R
+    R = _runner()
     # --help is a document: the groups below are its chapters,
     # in reading order, and the epilog is its worked examples.
     # One deliberate scatter survives the grouping: --no-send
@@ -90,9 +107,9 @@ def main() -> int:
     try:
         R.build_key_policies(cfg)
         if "imap_port" in cfg:
-            _port(cfg, "imap_port", 993)
+            _runner()._port(cfg, "imap_port", 993)
         if "smtp_port" in cfg:
-            _port(cfg, "smtp_port", 587)
+            _runner()._port(cfg, "smtp_port", 587)
     except RuntimeError as e:
         print(e, file=sys.stderr)
         return 2
@@ -119,7 +136,7 @@ def main() -> int:
         # variant run needs config and the bucket, never a
         # mailbox, and it must work on a box whose mail is not
         # (yet) configured.
-        return run_variant(cfg, args)
+        return _runner().run_variant(cfg, args)
     if args.remediation_release:
         # The owner's release door: restore a quarantined job's
         # outputs as one deliberate, recorded act. The Oracle
@@ -200,16 +217,16 @@ def main() -> int:
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
-    # Log bounds (and the oracle.R.log switch) load before any daemon
-    # is spawned, so a spawned daemon can write into oracle.R.log.
+    # Log bounds (and the oracle.log switch) load before any daemon
+    # is spawned, so a spawned daemon can write into oracle.log.
     R._refresh_log_settings(cfg, R._base_dir_for(cfg, args.config))
     R.ensure_inference_ready(cfg)
     # First start has no previous model id, so this pulls once.
     R.update_llama_from_config(cfg)
     if args.oracle:
-        return oracle_window(cfg, args.oracle_port, cfg_path=args.config)
+        return _runner().oracle_window(cfg, args.oracle_port, cfg_path=args.config)
     if args.oracle_cli:
-        return oracle_cli(cfg, cfg_path=args.config)
+        return _runner().oracle_cli(cfg, cfg_path=args.config)
     if args.local_test:
         R._lt = R._load_mod("runner.ops.local_test", "ops.local_test")
         return R._lt.main(cfg, browser=args.browser)
@@ -225,13 +242,13 @@ def main() -> int:
     # CLI overrides were applied to cfg above, before the R.log
     # bounds loaded; `overridden` names the keys they set.
     # Verbosity resolves here: the flag beats config "verbose",
-    # which beats the base level. log_startup reads the level
+    # which beats the base level. _runner().log_startup reads the level
     # back off args.
     R._set_verbosity(R._resolve_verbosity(cfg, args.verbose))
     args.verbose_level = R._VERBOSE_LEVEL
     # Cleartext acceptance resolves here, from the flag alone:
     # no config key is consulted, so a config file cannot turn
-    # it on and a hot reload cannot change it. log_startup
+    # it on and a hot reload cannot change it. _runner().log_startup
     # announces it with a WARN line when it is on.
     R._set_allow_cleartext_jobs(
         bool(getattr(args, "allow_cleartext", False)))
@@ -240,13 +257,13 @@ def main() -> int:
     os.makedirs(os.path.join(base_dir, "work"), exist_ok=True)
 
     global _LOG_FILE
-    R._LOG_FILE = os.path.join(base_dir, "runner.R.log")
+    R._LOG_FILE = os.path.join(base_dir, "runner.log")
     R._announce_oracle_log()
 
     seen_path = os.path.join(base_dir, "seen.json")
     seen = R.load_seen(seen_path)
 
-    log_startup(cfg, args, base_dir)
+    _runner().log_startup(cfg, args, base_dir)
     R._report_extensions(cfg, base_dir)
     R._report_oracle_mode(cfg)
     # Local signal front-ends (inbox watcher + loopback listener).
@@ -329,7 +346,7 @@ def main() -> int:
                 # bring a model online: run the pass now, not later.
                 R._extension_sources_tick(cfg, base_dir, due_now=bool(changed))
             try:
-                poll_once(cfg, base_dir, seen, seen_path, opts=args)
+                _runner().poll_once(cfg, base_dir, seen, seen_path, opts=args)
                 if auth_failed:
                     auth_failed = False
                     # WARN, not INFO. The per-minute cap drops INFO once a
@@ -343,7 +360,7 @@ def main() -> int:
                 R.log(f"poll cycle failed: {e}", "ERROR")
                 if not auth_failed:
                     auth_failed = True
-                    report_event(
+                    _runner().report_event(
                         f"Homing Pigeon: Gmail sign-in failed ({e}). "
                         f"The runner cannot fetch or send mail until someone "
                         f"signs in again on this machine (run the app with "
@@ -368,7 +385,7 @@ def main() -> int:
     finally:
         # KeyboardInterrupt from the poll sleep (Ctrl+C, and the tests
         # that raise it) skips the statements after the loop. The
-        # supervisor holds extension.R.log open for the child's stdout.
+        # supervisor holds extension.log open for the child's stdout.
         # On Windows a still-open file cannot be deleted, so a test
         # TemporaryDirectory — and a real shutdown that removes state —
         # fails with WinError 32. atexit does not run inside a test.
