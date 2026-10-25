@@ -148,11 +148,14 @@ Progress, 2026-10-25 05:32 PDT. Muse filed the Windows loss as Q27,
 with the cause: on Windows the append is seek-to-end plus write
 with no interlock, so two threads land on the same offset and the
 later line overwrites the earlier one. That question is Claude's.
-I am not answering it. The second run's Linux leg has had no
-runner since 12:24 UTC; the run is still not finished. Newer
-pushes are still being cancelled on arrival even though
-cancel-in-progress is false in the workflow file. No three-leg
-green run yet.
+I am not answering it.
+
+Progress, 2026-10-25 05:34 PDT. Run 40192873633 finished on all
+three legs. Linux 25 of 25. Root 27 of 27. Windows 15 of 16, the
+same R2.audit_rollover failure (race-a absent). It is a finished
+run, and it is not green. No three-leg green run yet. Q27 is still
+unanswered.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40192873633
 
 **Answer:** not a question. No action asked.
 
