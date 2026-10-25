@@ -157,6 +157,21 @@ when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
 - A (refill) — `runner/ops/extsources.py::`
+  `_acquire_pass_lock` and `extract_archive` (5
+  lines each never run on either platform,
+  coverage run 40189608702) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  PassLockEdgesTest and ExtractMemberEdgesTest in
+  runner/tests/test_extension_sources.py: a lock
+  whose age cannot be read is retried then given
+  up on, not unlinked blind; an unusable root
+  answers None; a free root takes the lock.
+  Directory entries, zip and tar, are passed over
+  uncounted; a member with no readable stream is
+  counted skipped; more members than the cap is
+  refused outright. Done when a coverage run
+  shows both clean.
+- A (refill) — `runner/ops/extsources.py::`
   `Fetcher._read_capped` and `Fetcher.download`
   (5 lines each never run on either platform,
   coverage run 40189608702) — taken 2026-10-25,

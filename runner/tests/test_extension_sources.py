@@ -1902,6 +1902,133 @@ class ExtensionSourcesPassTest(_Base):
                 R._extension_sources_pass(self.cfg, self.base))
 
 
+class PassLockEdgesTest(unittest.TestCase):
+    """Queue A refill: _acquire_pass_lock's give-up
+    legs (coverage run 40189608702: 5 lines on both
+    platforms). The lock's contract: one pass at a
+    time per state root, and a lock that cannot be
+    taken is an answer (None -- another pass is
+    running, or the root is unusable), never a
+    raise. A lock file whose age cannot be read is
+    retried once, then given up on, not unlinked
+    blind.
+    """
+
+    def test_a_lock_that_cannot_be_statted_is_given_up_on(self):
+        with tempfile.TemporaryDirectory() as d:
+            lock = os.path.join(d, ".pass.lock")
+            with open(lock, "w", encoding="utf-8") as fh:
+                fh.write("{}")
+            real_mtime = os.path.getmtime
+
+            def flaky(path, *a, **kw):
+                if os.path.abspath(path) == os.path.abspath(lock):
+                    raise OSError("cannot stat")
+                return real_mtime(path, *a, **kw)
+
+            with mock.patch.object(os.path, "getmtime", flaky):
+                self.assertIsNone(X._acquire_pass_lock(d, 1000.0))
+            self.assertTrue(os.path.exists(lock))
+
+    def test_an_unusable_root_answers_none(self):
+        with tempfile.TemporaryDirectory() as d:
+            afile = os.path.join(d, "afile")
+            with open(afile, "w", encoding="utf-8") as fh:
+                fh.write("not a directory")
+            self.assertIsNone(X._acquire_pass_lock(afile, 1000.0))
+
+    def test_a_free_root_takes_the_lock(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = X._acquire_pass_lock(d, 1000.0)
+            self.assertEqual(path, os.path.join(d, ".pass.lock"))
+            with open(path, encoding="utf-8") as fh:
+                self.assertIn("pid", json.load(fh))
+
+
+class ExtractMemberEdgesTest(unittest.TestCase):
+    """Queue A refill: extract_archive's member legs
+    (coverage run 40189608702: 5 lines on both
+    platforms). The extractor's docstring fixes the
+    shape: only regular files and directories are
+    written -- a directory entry, zip or tar, is
+    passed over without being counted as a file or
+    a skip; a member the reader cannot materialize
+    is counted skipped; and an archive with more
+    members than the cap is refused outright.
+    """
+
+    def _zip(self, d, members):
+        path = os.path.join(d, "a.zip")
+        with zipfile.ZipFile(path, "w") as zf:
+            for name, data in members:
+                zf.writestr(name, data)
+        return path
+
+    def test_a_zip_directory_entry_is_not_a_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._zip(d, [("pkg/", ""),
+                                 ("pkg/a.txt", "hi")])
+            stats = X.extract_archive(
+                path, os.path.join(d, "out"), 1 << 20)
+            self.assertEqual(stats["files"], 1)
+            self.assertEqual(stats["skipped"], 0)
+
+    def test_a_tar_directory_member_is_not_a_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            buf = io.BytesIO()
+            with tarfile.open(fileobj=buf, mode="w:gz") as tf:
+                dinfo = tarfile.TarInfo("pkg")
+                dinfo.type = tarfile.DIRTYPE
+                tf.addfile(dinfo)
+                data = b"hi"
+                finfo = tarfile.TarInfo("pkg/a.txt")
+                finfo.size = len(data)
+                tf.addfile(finfo, io.BytesIO(data))
+            path = os.path.join(d, "a.tar.gz")
+            with open(path, "wb") as fh:
+                fh.write(buf.getvalue())
+            stats = X.extract_archive(
+                path, os.path.join(d, "out"), 1 << 20)
+            self.assertEqual(stats["files"], 1)
+            self.assertEqual(stats["skipped"], 0)
+
+    def test_more_members_than_the_cap_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._zip(d, [("a", "1"), ("b", "2"),
+                                 ("c", "3")])
+            with mock.patch.object(X, "MAX_ARCHIVE_MEMBERS", 2):
+                with self.assertRaisesRegex(
+                        X.SourceError, "more than 2 members"):
+                    X.extract_archive(
+                        path, os.path.join(d, "out"), 1 << 20)
+
+    def test_a_member_with_no_stream_is_counted_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            buf = io.BytesIO()
+            with tarfile.open(fileobj=buf, mode="w:gz") as tf:
+                for name in ("pkg/a.txt", "pkg/b.txt"):
+                    data = b"hi"
+                    info = tarfile.TarInfo(name)
+                    info.size = len(data)
+                    tf.addfile(info, io.BytesIO(data))
+            path = os.path.join(d, "a.tar.gz")
+            with open(path, "wb") as fh:
+                fh.write(buf.getvalue())
+            real_extract = tarfile.TarFile.extractfile
+
+            def flaky(self, member):
+                if member.name.endswith("b.txt"):
+                    return None
+                return real_extract(self, member)
+
+            with mock.patch.object(
+                    tarfile.TarFile, "extractfile", flaky):
+                stats = X.extract_archive(
+                    path, os.path.join(d, "out"), 1 << 20)
+            self.assertEqual(stats["files"], 1)
+            self.assertEqual(stats["skipped"], 1)
+
+
 class FetchArchiveFailuresTest(_Base):
     """Queue A refill: _fetch_archive's budget and
     re-raise legs (coverage run 40187685363: 6 lines
