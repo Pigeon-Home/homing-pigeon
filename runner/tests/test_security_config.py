@@ -342,6 +342,59 @@ class ValidateBlocksTest(unittest.TestCase):
         self.assertIn("RUNNER-BLOCKED", proc.stdout)
         self.assertIn("NOT-RAISED", proc.stdout)
 
+    def test_both_sandbox_imports_failing_passes_the_block(self):
+        # The same both-imports-dead case, in-process:
+        # coverage run 40183585961 still showed the
+        # double-failure lines unrun, because the
+        # subprocess pair above measures its lines in a
+        # child whose coverage data never reaches the map.
+        # The behavior was already proven there; this leg
+        # makes the map see it, and asserts the same
+        # contract -- a bad block is passed over, not
+        # refused, when no sandbox module exists to own
+        # the schema.
+        # The from-import consults the package attribute
+        # before the module table, and this process has
+        # long since loaded the real sandbox onto it --
+        # both must be cleared for the import to fail the
+        # way it does in a bare interpreter.
+        import runner.guard as guard_pkg
+        had_attr = hasattr(guard_pkg, "sandbox")
+        saved = getattr(guard_pkg, "sandbox", None)
+        if had_attr:
+            delattr(guard_pkg, "sandbox")
+        try:
+            with mock.patch.dict(sys.modules, {
+                    "runner.guard.sandbox": None,
+                    "guard": None,
+                    "guard.sandbox": None}):
+                S.validate_security_config(
+                    {"security": {"confinement":
+                                  {"work_mount": "relative/path"}}})
+        finally:
+            if had_attr:
+                guard_pkg.sandbox = saved
+
+    def test_a_missing_pwd_module_skips_the_existence_check(self):
+        # The job_user existence check is POSIX-only and
+        # tolerates a platform without pwd: the import
+        # failure reads as "no directory to check
+        # against", and a user that cannot be looked up
+        # is not refused on that ground. (Coverage run
+        # 40183585961: the ImportError leg unrun on Linux,
+        # where pwd always imports; scripted here through
+        # the module table.)
+        if os.name == "nt":
+            self.skipTest("POSIX only")
+        with self.assertRaises(RuntimeError):
+            S.validate_security_config(
+                {"security": {"job_user":
+                              {"user": "hp-no-such-user-zz9"}}})
+        with mock.patch.dict(sys.modules, {"pwd": None}):
+            S.validate_security_config(
+                {"security": {"job_user":
+                              {"user": "hp-no-such-user-zz9"}}})
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
