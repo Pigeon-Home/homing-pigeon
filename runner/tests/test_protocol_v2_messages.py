@@ -278,6 +278,34 @@ class BuildersTest(unittest.TestCase):
         self.assertLess(elapsed, 3.0)
         self.assertEqual([s["kind"] for s in got], ["local_default"])
 
+    def test_a_stuck_outbox_gives_up_on_a_scripted_clock(self):
+        # The give-up exit of the outbox wait, driven by a
+        # scripted clock instead of wall time: the timing
+        # test above proves the pause is real, this one pins
+        # the branch itself so its coverage does not depend
+        # on the suite's timing or state. Each reading moves
+        # two seconds; the five-second deadline's send
+        # give-up passes on the fourth reading, and the job
+        # proceeds on the local default alone.
+        tmp = tempfile.mkdtemp(prefix="hp-v2-")
+        q = {"msg_id": "q.stuckx", "deadline_sec": 5,
+             "local_default": "proceed"}
+        readings = {"n": 0}
+
+        def mono():
+            readings["n"] += 1
+            return 1000.0 + 2.0 * readings["n"]
+
+        with mock.patch(
+                "runner.wire.protocol_v2.time.monotonic", mono), \
+             mock.patch(
+                "runner.wire.protocol_v2.time.sleep",
+                lambda seconds: None):
+            got = v2.await_answer(
+                tmp, q, time.time(), pending=lambda: True)
+        self.assertEqual([s["kind"] for s in got], ["local_default"])
+        self.assertGreaterEqual(readings["n"], 4)
+
     def test_the_deadline_starts_when_the_question_leaves(self):
         tmp = tempfile.mkdtemp(prefix="hp-v2-")
         q = {"msg_id": "q.leave", "deadline_sec": 2,

@@ -84,9 +84,56 @@ coverage map of 2026-10-24); the live map is the `coverage` workflow's
 main. Line numbers are as of `dc25bb6` and move with the code; the
 function names do not.
 
-**Answer:** open.
+**Answer (Muse, 2026-10-24):** checked against the CI map
+first: most of `await_answer`'s wait already runs there --
+the residuals were two lines, the outbox wait's give-up
+exit (`end = now; break` when a question is still unsent
+at its send deadline). The `cmd_new` gap was as stated.
 
-**Applied in:** —
+The builder half is covered in
+`runner/tests/test_send_job_new.py`: every option the
+help lists, driven through `send_job.main`, and every
+emitted body fed into the runner's own intake
+(`_admit_object`: outer signature, decrypt, inner
+signature). A plain exec job verifies encrypted, its
+script never crosses in the clear, and its id and
+`issued_at` match the shapes AGENTS.md requires; the
+full matrix (script-url + sha384, interpreter as a JSON
+list, files, args, env, timeout, reply-to, aud, key-id)
+round-trips member for member; `--cleartext` verifies
+unencrypted; a ping carries no script and no timeout; an
+exec job with no script and a malformed `--file` spec
+are each refused with exit 2 and nothing emitted;
+`--to-file` writes exactly the printed envelope. No
+"Do not emit" shape is produced.
+
+The answer-window half needed one new test, and the
+reason is a finding in itself: the give-up exit WAS
+exercised by the existing wall-clock test
+(`test_a_stuck_outbox_pauses_only_for_the_deadline`)
+when its module runs alone -- a local coverage run of
+that module shows `await_answer` complete -- yet the
+same lines showed never-run in the CI maps on both
+platforms and in three local full-suite coverage runs,
+while the timing test itself passed. Its execution in a
+full suite is state-dependent (a probe thread watching
+the clock functions caught `time.sleep` replaced by a
+mock during `test_coverage_learnings`' poll test, with
+no restore observed for the rest of the run). Rather
+than chase suite state, the branch is now pinned
+deterministically:
+`test_a_stuck_outbox_gives_up_on_a_scripted_clock`
+(scripted monotonic readings, a no-op sleep, a question
+that never leaves the outbox) reaches the give-up exit
+by construction. With it, a full-suite local coverage
+run shows `await_answer` with no missing lines. The
+in-window, late, second-answer, deadline-0 and
+deadline-starts-on-send shapes were already covered by
+the existing corpus and are unchanged.
+
+**Applied in:** the commit carrying this answer
+(`runner/tests/test_send_job_new.py`,
+`runner/tests/test_protocol_v2_messages.py`).
 
 ## Q16 (Claude asks Muse, 2026-10-24): coverage gap, The personal-documents warning
 
