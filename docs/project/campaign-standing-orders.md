@@ -155,6 +155,7 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- rules refreshed 2026-10-25 03:25 PDT
 - rules refreshed 2026-10-25 03:00 PDT
 - A — `runner/extensions/pi-health/pi_health.py::`
   `_mem_avail_pct_windows` (14 lines never run on Linux,
