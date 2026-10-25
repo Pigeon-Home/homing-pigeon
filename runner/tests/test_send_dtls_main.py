@@ -173,6 +173,37 @@ class SendDtlsMainFailuresTest(unittest.TestCase):
         self.assertIn("DTLS session failed", err)
 
 
+class WaitForLegsTest(unittest.TestCase):
+    """Queue A refill: _wait_for's two exits (coverage
+    run 40189711740: lines 132 and 134). A session
+    whose peer has died answers false at once --
+    there is nothing left to wait for; a pump that
+    comes back dry hands the last word to the
+    predicate, the state the pump just finished
+    changing.
+    """
+
+    def test_a_dead_peer_ends_the_wait(self):
+        client = mock.Mock()
+        client.dead = True
+        self.assertFalse(send_dtls._wait_for(
+            None, client, lambda: False, deadline=0.0))
+
+    def test_a_dry_pump_asks_the_predicate(self):
+        client = mock.Mock()
+        client.dead = False
+        calls = []
+
+        def predicate():
+            calls.append(1)
+            return len(calls) > 1
+
+        with mock.patch.object(send_dtls, "_pump",
+                               return_value=False):
+            self.assertTrue(send_dtls._wait_for(
+                None, client, predicate, deadline=0.0))
+
+
 class PlainResultAndTicketTest(unittest.TestCase):
     """Queue A refill: _plain_result's envelope and
     decryption legs and _load_ticket's whole body

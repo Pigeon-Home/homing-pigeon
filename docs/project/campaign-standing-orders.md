@@ -294,6 +294,19 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/cloud/send_dtls.py`
+  `_wait_for`'s dead-peer and dry-pump exits
+  (coverage run 40189711740: lines 132, 134) —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  WaitForLegsTest in
+  runner/tests/test_send_dtls_main.py. The same
+  map's main lines 174-175 are a measurement
+  artifact: the full in-process suite covers
+  them locally (they are the --kind argument
+  declarations, executed by every main call);
+  no take. Done when a coverage run shows
+  _wait_for clean.
 - A (refill) — job-fuzz state caps and quiet legs
   (coverage run 40189711740): the energy, buckets
   and filed caps trimming to the most valuable,
