@@ -57,6 +57,39 @@ class _Api:
     def EqualSid(self, cand, known): return self.st["i"] == 5
     def LocalFree(self, ptr): return 0
 
+class WindowsAclBranchesTest(unittest.TestCase):
+    """Queue A refill: _windows_file_restricted's deep
+    branches (coverage run 40189711740: 6 lines missing
+    on Windows, none on Linux). The full drive already
+    exists inside PostureGapTest.test_gaps -- behind a
+    POSIX skip for its geteuid rows, which takes the ACL
+    leg down with it on the one platform the function
+    exists for. Split out here with no platform gate:
+    the advapi32 surface is the _Api fake on every
+    platform (real buffers, real ACE memory), so the
+    branches run identically in both CI legs. The three
+    modes walk them: the ACL-info failure degrades to
+    None; an empty ACL is restricted; six ACEs exercise
+    the GetAce failure, the null ACE, the non-allow
+    type, the no-read mask, and the well-known-SID hit
+    that answers False.
+    """
+
+    def test_the_acl_branches(self):
+        buf = ctypes.create_string_buffer(32)
+        st = {"i": -1}
+
+        def run(mode):
+            api = _Api(mode, buf, ctypes.addressof(buf), st)
+            with mock.patch.object(ctypes, "WinDLL",
+                                   lambda *a, **k: api,
+                                   create=True):
+                return P._windows_file_restricted("secret.txt")
+
+        self.assertEqual((run("fail"), run("empty"), run("aces")),
+                         (None, True, False))
+
+
 class PrivilegesRootRowTest(unittest.TestCase):
     """Queue A: the root row of _check_privileges -- the
     one line the gaps test never produced (it scripts

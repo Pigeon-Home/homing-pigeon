@@ -294,6 +294,21 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/ops/posture.py::`
+  `_windows_file_restricted` deep branches (6 lines
+  missing on Windows, none on Linux, coverage run
+  40189711740) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the full
+  drive already existed inside a POSIX-gated test
+  whose skip took the ACL leg down on the one
+  platform the function exists for;
+  WindowsAclBranchesTest in
+  runner/tests/test_posture_gaps.py runs the same
+  _Api fake with no platform gate: ACL-info failure
+  degrades to None, an empty ACL is restricted, six
+  ACEs walk the failure/null/type/mask branches to
+  the broad-read hit. Done when a coverage run
+  shows the six lines run on Windows too.
 - A (refill) — the tailing senses' `read_new_events`
   open-failure leg, one 4-line gap in each of seven
   senses (coverage run 40189711740, both
