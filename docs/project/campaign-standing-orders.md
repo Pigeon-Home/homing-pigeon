@@ -294,6 +294,23 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/extensions/softflowd-feed/`
+  `softflowd_feed.py::_flow_from_values` and
+  `_parse_ipfix_templates` (5 lines each never run,
+  coverage run 40189711740, the newest completed
+  run; the CI queue is backlogged a dozen deep, so
+  re-ranking works from that map) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  DecoderEdgesTest in
+  runner/tests/test_softflowd_feed.py: an address
+  falls back to its IPv6 field when no IPv4 field
+  is present; a flow with only its LAST switched
+  stamp anchors both ends on it; a template
+  truncated mid-field or mid enterprise number is
+  not recorded at all; a variable-length field
+  records its template tainted (a clean field is
+  the untainted control). Done when a coverage run
+  shows both clean.
 - rules refreshed 2026-10-25 05:22 PDT, on the
   owner's word ("update your orders"): pulled
   through 6853314. Two answers change the queue.

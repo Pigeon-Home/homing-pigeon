@@ -270,6 +270,75 @@ class _FakeSocket:
         pass
 
 
+class DecoderEdgesTest(unittest.TestCase):
+    """Queue A refill: the softflowd decoder's fallback and
+    truncation legs (_flow_from_values and
+    _parse_ipfix_templates; coverage run 40189711740:
+    5 lines each). The contracts, from the functions' own
+    docstrings: an address falls back to the IPv6 field
+    when no IPv4 field is present; a flow carrying only
+    its LAST switched stamp anchors both ends on it
+    rather than inventing a duration; a template record
+    truncated mid-field -- or mid enterprise number --
+    is not recorded at all; a variable-length field
+    records its template tainted, so its data records
+    are skipped and counted, never misdecoded.
+    """
+
+    def test_ipv6_addresses_when_no_ipv4_field(self):
+        values = {
+            27: ipaddress.IPv6Address("2001:db8::1").packed,
+            28: ipaddress.IPv6Address("2001:db8::2").packed,
+            7: (51111).to_bytes(2, "big"),
+            11: (443).to_bytes(2, "big"),
+            4: b"\x06",
+        }
+        flow = SF._flow_from_values(10, values, 1234.5)
+        self.assertEqual(flow["src"], "2001:db8::1")
+        self.assertEqual(flow["dst"], "2001:db8::2")
+        self.assertEqual(flow["src_port"], 51111)
+        self.assertEqual(flow["first"], 1234.5)
+        self.assertEqual(flow["last"], 1234.5)
+
+    def test_only_a_last_stamp_anchors_both_ends(self):
+        values = {8: _ip("10.0.0.5").to_bytes(4, "big"),
+                  12: _ip("8.8.8.8").to_bytes(4, "big"),
+                  21: (200_000).to_bytes(4, "big")}
+        flow = SF._flow_from_values(9, values, 999.0,
+                                    uptime_ms=250_000,
+                                    unix_secs=SECS)
+        self.assertEqual(flow["last"], SECS - 50.0)
+        self.assertEqual(flow["first"], SECS - 50.0)
+
+    def test_a_template_truncated_mid_field_is_not_recorded(self):
+        body = struct.pack("!HH", 256, 2) \
+            + struct.pack("!HH", 8, 4) + b"\x00\x02"
+        templates = {}
+        SF._parse_ipfix_templates(body, (10, 7), templates)
+        self.assertEqual(templates, {})
+
+    def test_a_truncated_enterprise_number_is_not_recorded(self):
+        body = struct.pack("!HH", 256, 1) \
+            + struct.pack("!HH", 8 | 0x8000, 4) + b"\x00\x00"
+        templates = {}
+        SF._parse_ipfix_templates(body, (10, 7), templates)
+        self.assertEqual(templates, {})
+
+    def test_a_variable_length_field_taints_the_template(self):
+        body = struct.pack("!HH", 256, 1) \
+            + struct.pack("!HH", 8, 0xFFFF)
+        templates = {}
+        SF._parse_ipfix_templates(body, (10, 7), templates)
+        rec = templates[(10, 7, 256)]
+        self.assertEqual(rec["fields"], [(8, 0xFFFF)])
+        self.assertTrue(rec["tainted"])
+        clean = {}
+        SF._parse_ipfix_templates(
+            struct.pack("!HH", 256, 1) + struct.pack("!HH", 8, 4),
+            (10, 7), clean)
+        self.assertFalse(clean[(10, 7, 256)]["tainted"])
+
+
 class CollectFlowsTest(unittest.TestCase):
     def test_collect_flows_decodes_what_the_socket_yields(self):
         fake = _FakeSocket([_v5_datagram()])
