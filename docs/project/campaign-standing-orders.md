@@ -295,6 +295,19 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - A (refill) —
+  `runner/transport_extensions/nats/__main__.py::`
+  `NatsClient.next_message` control lines and
+  `_read_exact` mid-message timeout (4 lines each
+  never run, coverage run 40189711740) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  NatsNextMessageLegsTest in
+  runner/tests/test_transports.py, over a scripted
+  socket: a PING is PONGed and skipped, PONG/+OK
+  are skipped, an -ERR raises naming the server's
+  text, and a payload that stops mid-message is a
+  timeout. Done when a coverage run shows both
+  clean.
+- A (refill) —
   `runner/extensions/softflowd-feed/softflowd_feed.py`
   `::collect_flows` window and close legs (3 lines
   never run, coverage run 40189711740) — taken

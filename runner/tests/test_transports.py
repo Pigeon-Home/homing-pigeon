@@ -2241,6 +2241,64 @@ def _after_info(reply):
     return behave
 
 
+class _ScriptedSock:
+    """A socket stand-in feeding scripted chunks; when
+    they run out, recv times out, like a quiet server."""
+
+    def __init__(self, chunks):
+        self._chunks = list(chunks)
+        self.sent = []
+
+    def settimeout(self, _value):
+        pass
+
+    def recv(self, _size):
+        if self._chunks:
+            return self._chunks.pop(0)
+        raise socket.timeout("quiet")
+
+    def sendall(self, data):
+        self.sent.append(data)
+
+
+class NatsNextMessageLegsTest(unittest.TestCase):
+    """Queue A refill: NatsClient.next_message's
+    control-line legs and _read_exact's mid-message
+    timeout (coverage run 40189711740: next_message
+    lines 237-238, 240, 242; _read_exact lines
+    164-167). The minimal client's contract: a
+    server PING is answered with PONG and skipped,
+    PONG/+OK lines are skipped, an -ERR ends the
+    cycle as a TransportError naming the server's
+    text, and a payload that stops arriving
+    mid-message is a timeout, not a hang.
+    """
+
+    def _client(self, chunks):
+        client = nats_ext.NatsClient("nats://127.0.0.1:4222")
+        client.sock = _ScriptedSock(chunks)
+        return client
+
+    def test_control_lines_are_skipped_and_a_ping_answered(self):
+        client = self._client(
+            [b"PING\r\nPONG\r\n+OK\r\nMSG subj 1 5\r\nhello\r\n"])
+        got = client.next_message(time.monotonic() + 30)
+        self.assertEqual(got, ("subj", b"hello"))
+        self.assertIn(b"PONG\r\n", client.sock.sent)
+
+    def test_a_server_error_raises(self):
+        client = self._client([b"-ERR 'Authorization Violation'\r\n"])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "Authorization Violation"):
+            client.next_message(time.monotonic() + 30)
+
+    def test_a_payload_that_stops_mid_message_times_out(self):
+        client = self._client([b"MSG s 1 100\r\nshort"])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "timed out mid-message"):
+            client.next_message(time.monotonic() + 30)
+
+
 class NatsConnectFailuresTest(unittest.TestCase):
     """Queue A refill: NatsClient.connect's failure legs
     (coverage run 40187685363: 9 lines on both platforms).
