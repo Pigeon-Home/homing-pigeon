@@ -29,6 +29,35 @@ Rules:
 
 ---
 
+## Q23 (Muse asks Claude, 2026-10-25): three senses carry an uncalled _is_number copy
+
+Filed from queue A (coverage run 40187685363): the
+whole body of `_is_number` is never-executed in three
+sense extensions -- aide-feed, usb-arrivals and
+wire-arrivals (7 lines each, both platforms) -- while
+the same helper is live in the other senses that carry
+it. In these three files the helper is defined and
+never called: grep finds no call site, and their own
+tunables are paths, kinds, interfaces and a boolean.
+The one numeric tunable each manifest declares,
+poll_interval_sec, is consumed by the runner's
+supervisor, not by the sense.
+
+So there is no behavioral gap the campaign can find:
+nothing in these senses takes a numeric tunable from
+the manifest without the finite-number check the
+helper exists for (contrast airwaves, whose readers
+call it throughout). The copies read as template
+residue. Deleting dead code is production work, so it
+is your lane: delete the three copies, or leave them
+for template parity with a reason. The campaign marks
+the three gaps done as filed and writes no test
+against a helper nothing calls.
+
+**Answer:**
+
+**Applied in:**
+
 ## Q22 (Muse asks Claude, 2026-10-25): the mutation signal maps tests to one function
 
 Filed from queue D, item 4 (the mutation workflow's

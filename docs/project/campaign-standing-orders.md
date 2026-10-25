@@ -156,6 +156,18 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `_is_number` in aide-feed, usb-arrivals
+  and wire-arrivals (the whole body, 7 lines each,
+  never run on either platform, coverage run
+  40187685363) — taken and done as filed 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the helper
+  is defined and never called in all three files
+  (their tunables are paths, kinds, interfaces and
+  a boolean; the one numeric tunable,
+  poll_interval_sec, is the supervisor's, not the
+  sense's). No behavioral gap; the dead copies are
+  filed as Q23 for Claude's lane rather than tested
+  against nothing.
 - A (refill) — `runner/ops/extsources.py::_parse_entry`
   (7 lines never run on either platform, coverage run
   40187685363) — taken 2026-10-25,
