@@ -267,6 +267,62 @@ class ReadLiveTest(unittest.TestCase):
         self.assertEqual(readings["truncated"], 0)
 
 
+class ReaderRaceTest(unittest.TestCase):
+    """Queue A refill: read_live's three OSError guards
+    (coverage run 40187685363: 6 lines on both
+    platforms). The reader's docstring promises total,
+    capability-based behavior: a root that cannot be
+    probed, a file that vanishes mid-pass, and a file
+    that cannot be hashed each yield empty or partial
+    readings, never an exception.
+    """
+
+    def _tree(self, root):
+        with open(os.path.join(root, "a.txt"), "wb") as fh:
+            fh.write(b"hello tripwire\n")
+        os.makedirs(os.path.join(root, "sub"))
+        with open(os.path.join(root, "sub", "b.txt"), "wb") as fh:
+            fh.write(b"second file")
+
+    def test_a_root_that_raises_on_probe_reads_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._tree(d)
+            with unittest.mock.patch.object(
+                    os.path, "isdir",
+                    side_effect=OSError("cannot probe")):
+                readings = TW.read_live(_manifest(root=d))
+        self.assertEqual(readings["files"], {})
+
+    def test_a_file_vanishing_before_lstat_is_skipped(self):
+        real_lstat = os.lstat
+
+        def flaky(path, *a, **kw):
+            if str(path).endswith("a.txt"):
+                raise OSError("vanished mid-pass")
+            return real_lstat(path, *a, **kw)
+
+        with tempfile.TemporaryDirectory() as d:
+            self._tree(d)
+            with unittest.mock.patch.object(os, "lstat", flaky):
+                readings = TW.read_live(_manifest(root=d))
+        self.assertEqual(sorted(readings["files"]), ["sub/b.txt"])
+
+    def test_an_unhashable_file_is_skipped(self):
+        real_hash = TW._hash_file
+
+        def flaky(path):
+            if str(path).endswith("a.txt"):
+                raise OSError("unreadable")
+            return real_hash(path)
+
+        with tempfile.TemporaryDirectory() as d:
+            self._tree(d)
+            with unittest.mock.patch.object(
+                    TW, "_hash_file", flaky):
+                readings = TW.read_live(_manifest(root=d))
+        self.assertEqual(sorted(readings["files"]), ["sub/b.txt"])
+
+
 class TripwireFixture(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
