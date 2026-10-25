@@ -396,5 +396,75 @@ class ValidateBlocksTest(unittest.TestCase):
                               {"user": "hp-no-such-user-zz9"}}})
 
 
+class BumpCountsFallbacksTest(unittest.TestCase):
+    """Queue A refill: _bump_counts' guard and cleanup
+    lines (coverage run 40187685363: the base_dir guard
+    unrun on Windows, the fd-cleanup finally unrun on
+    both). The counts file is best-effort bookkeeping
+    behind the audit report: a bad base_dir bumps
+    nothing, and a write that fails after the temp file
+    is opened must close the descriptor it opened --
+    a leaked fd per audit entry would exhaust the
+    runner's table -- while still swallowing the
+    failure, because counting must never sink a job.
+    The two flag lines in the residue are the platform
+    pair (O_NOFOLLOW inapplicable on Windows, O_BINARY
+    on Linux), each covered where it applies.
+    """
+
+    def test_a_non_string_base_dir_bumps_nothing(self):
+        self.assertIsNone(S._bump_counts(None, "audience",
+                                         "denied"))
+        self.assertIsNone(S._bump_counts("", "audience",
+                                         "denied"))
+        self.assertIsNone(S._bump_counts(42, "audience",
+                                         "denied"))
+
+    def test_an_fdopen_failure_closes_the_fd(self):
+        opened, closed = [], []
+        real_open, real_close = os.open, os.close
+
+        def tracking_open(path, flags, mode=0o777):
+            fd = real_open(path, flags, mode)
+            opened.append(fd)
+            return fd
+
+        def tracking_close(fd):
+            closed.append(fd)
+            return real_close(fd)
+
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(os, "open", tracking_open), \
+                    mock.patch.object(os, "close",
+                                      tracking_close), \
+                    mock.patch.object(
+                        os, "fdopen",
+                        side_effect=OSError("cannot wrap")):
+                got = S._bump_counts(d, "audience", "denied")
+            self.assertIsNone(got)
+            self.assertFalse(os.path.exists(
+                os.path.join(d, S.COUNTS_FILE)))
+        self.assertEqual(len(opened), 1)
+        self.assertEqual(closed, opened)
+
+    def test_a_close_failure_is_swallowed_too(self):
+        real_close = os.close
+
+        def raising_close(fd):
+            real_close(fd)
+            raise OSError("close says no")
+
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(os, "close",
+                                   raising_close), \
+                    mock.patch.object(
+                        os, "fdopen",
+                        side_effect=OSError("cannot wrap")):
+                got = S._bump_counts(d, "audience", "denied")
+            self.assertIsNone(got)
+            self.assertFalse(os.path.exists(
+                os.path.join(d, S.COUNTS_FILE)))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
