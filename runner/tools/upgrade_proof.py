@@ -5,8 +5,8 @@
     python3 runner/tools/upgrade_proof.py OLD_TREE NEW_TREE
 
 OLD_TREE and NEW_TREE are repository checkouts (the folder holding
-runner/). The proof runs in a throwaway HOME with a stand-in
-systemctl on PATH, so it needs no root, no systemd and no mailbox:
+runner/). The proof runs in a throwaway HOME with stand-in
+systemctl and launchctl on PATH, so it needs no root, no systemd and no mailbox:
 
 1. OLD_TREE's installer installs into HOME/.homing-pigeon with a
    fresh shared secret, as a first install does.
@@ -38,10 +38,13 @@ import subprocess
 import sys
 import tempfile
 
-_FAKE_SYSTEMCTL = """#!/bin/sh
-echo "systemctl $*" >> "$HP_SYSTEMCTL_LOG"
+# Stand-ins for the service managers: the proof is about files,
+# config and state, not about starting a service on this box.
+_FAKE_SERVICE_TOOL = """#!/bin/sh
+echo "$(basename "$0") $*" >> "$HP_SYSTEMCTL_LOG"
 exit 0
 """
+_SERVICE_TOOLS = ("systemctl", "launchctl")
 
 # What an owner sets by hand after the first install, and must
 # still find after an upgrade.
@@ -86,10 +89,11 @@ def prove(old_tree, new_tree, keep=None):
     shims = os.path.join(work, "bin")
     os.makedirs(home)
     os.makedirs(shims)
-    systemctl = os.path.join(shims, "systemctl")
-    with open(systemctl, "w", encoding="utf-8") as fh:
-        fh.write(_FAKE_SYSTEMCTL)
-    os.chmod(systemctl, 0o755)
+    for tool in _SERVICE_TOOLS:
+        shim = os.path.join(shims, tool)
+        with open(shim, "w", encoding="utf-8") as fh:
+            fh.write(_FAKE_SERVICE_TOOL)
+        os.chmod(shim, 0o755)
     log = os.path.join(work, "systemctl.log")
     env = dict(os.environ, HOME=home, HP_SYSTEMCTL_LOG=log,
                PATH=shims + os.pathsep + os.environ.get("PATH", ""))
@@ -159,19 +163,21 @@ def prove(old_tree, new_tree, keep=None):
             failures.append("posture on the upgraded install broke:\n%s"
                             % posture.stdout[-2000:])
 
-        unit = os.path.join(home, ".config", "systemd", "user",
-                            "homing-pigeon.service")
+        if sys.platform == "darwin":
+            unit = os.path.join(home, "Library", "LaunchAgents",
+                                "com.homing-pigeon.runner.plist")
+        else:
+            unit = os.path.join(home, ".config", "systemd", "user",
+                                "homing-pigeon.service")
         try:
             with open(unit, encoding="utf-8") as fh:
-                exec_start = [ln for ln in fh.read().splitlines()
-                              if ln.startswith("ExecStart=")]
+                text = fh.read()
         except OSError as e:
-            exec_start = []
-            failures.append("service unit missing: %s" % e)
-        if exec_start and (runner not in exec_start[0]
-                           or cfg_path not in exec_start[0]):
-            failures.append("service unit does not start the installed "
-                            "runner with its config: %s" % exec_start[0])
+            failures.append("service definition missing: %s" % e)
+        else:
+            if runner not in text or cfg_path not in text:
+                failures.append("service definition %s does not start the "
+                                "installed runner with its config" % unit)
         return failures
     finally:
         if keep is None:
