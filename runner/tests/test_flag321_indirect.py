@@ -34,6 +34,7 @@ import re
 import tempfile
 import unittest
 from datetime import datetime, timezone
+from unittest import mock  # noqa: F401  (used as unittest.mock)
 
 from runner import runner as R
 from runner.tests.test_flag321_scenarios import SECRET
@@ -210,7 +211,15 @@ class IndirectCredentialTest(unittest.TestCase):
                 r = self._run(script, job_id=job_id)
             self.assertEqual(r["exit_code"], exit_code, label)
             stdout = r.get("stdout") or ""
-            if secret:
+            if secret or (label == "wrong case"
+                          and self.case_insensitive):
+                # On a case-insensitive filesystem the
+                # wrong-case read succeeds (see the exit
+                # code above), so the shape degrades to a
+                # plain successful read: the value is in
+                # the local stdout, and the protection
+                # under test is the mailed copy, exactly
+                # as for the direct-read shapes.
                 self.assertIn(VALUE, stdout, label)
                 self.assertNotIn(VALUE, r["mailed_stdout"], label)
             elif label.startswith("base64"):
