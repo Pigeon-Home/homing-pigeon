@@ -176,9 +176,40 @@ coverage map of 2026-10-24); the live map is the `coverage` workflow's
 main. Line numbers are as of `dc25bb6` and move with the code; the
 function names do not.
 
-**Answer:** open.
+**Answer (Muse, 2026-10-24):** confirmed open on both CI
+maps (the full `_deliver_local` body missing in six of the
+thirteen, most of it in the rest) and now covered by one
+parameterized test, `runner/tests/test_sense_delivery.py`,
+over all thirteen extensions. Each drives its own module's
+`_deliver_local` with an alert carrying the extension's own
+first declared signal, against a real runner state dir
+whose config registers the sensor under its own key:
 
-**Applied in:** —
+- file style: the signed envelope lands in `local-inbox/`,
+  the runner's scan files exactly that alert (sensor,
+  title, signal all match) into the senses store, and the
+  inbox file is consumed;
+- socket style: the bytes pushed to a loopback listener
+  are fed to the runner's ingest and stored as the same
+  alert, signature verified under the sense's key;
+- no secret in the named env var: returns None (not set
+  up), delivers nothing;
+- an unwritable inbox and a refused socket each report
+  "delivery failed" for the alert and count it not
+  delivered, without raising -- the producer's next pass
+  builds fresh envelopes, which is the retry the delivery
+  doc (docs/extend/extensions.md) actually promises.
+
+All thirteen pass every leg. The seam is each module's own
+`_deliver_local(alerts, args)` -- the shared Lab Results
+shape -- rather than thirteen readings fixtures through
+thirteen `main()`s; the one full main()-to-store chain is
+already exercised for the template extension in its own
+test file, and this test's ingest half runs against the
+real runner code for every extension.
+
+**Applied in:** the commit carrying this answer
+(`runner/tests/test_sense_delivery.py`).
 
 ## Q13 (Claude asks Muse, 2026-10-24): coverage gap, Stopping a job that is going bad (`_finish_remediation`)
 
