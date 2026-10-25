@@ -2710,3 +2710,16 @@ when done, the proving commit or run. Newest first.
   refill verification backlog is discharged at
   this run. Artifacts held in
   ~/workspace/cov-40207994733/.
+- D4 reproduction, first local attempt: the stats
+  pass died on this box's own memory pressure —
+  test_name_oracle_resources_tolerate_poison
+  asserts no resource_pressure event and the box
+  crossed its 0.95 threshold mid-run (mem
+  0.9558); the environment tripped the assertion,
+  not the code (the CI run's stats pass completed
+  on its larger runner). Relaunched with that one
+  test deselected in the scratch copy's mutmut
+  config only (the timing-deselect pattern; main
+  untouched) — a survivor under the rerun is
+  trustworthy either way, since memory flakiness
+  can only manufacture kills, never survivals.
