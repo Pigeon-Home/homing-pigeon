@@ -2700,6 +2700,20 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A dispositions from the 40229324722 map,
+  verified against that head's tree (72c8645) before
+  taking: handle_board_mail's missed pair is the
+  dispatch's "unknown board kind" else --
+  unreachable by construction (the subject gate
+  admits exactly the four dispatched kinds) and
+  already pinned as such by BoardMailRejectionsTest;
+  run_variant's missed pair is its execution-error
+  arm, which test_run_variant's
+  test_an_execution_error_is_an_error_report covers
+  locally (verified under coverage on this rig) --
+  the CI map disagrees at that head, so this one
+  stays open until a fresh coverage map at a current
+  head either credits the arm or names it again.
 - Queue A disposition: dri.evaluate_page_triggers'
   two alert_score guards (the _one ranking arm was
   the map's 2 missed) cannot fire while
