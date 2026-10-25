@@ -1674,6 +1674,69 @@ class RunnerWiringTest(_Base):
 # The build's pin tool and the snapshot
 # ---------------------------------------------------------------------------
 
+class DeclarationRefusalsTest(unittest.TestCase):
+    """Queue A refill: _parse_entry's remaining refusal
+    lines (coverage run 40187685363: 7 on both
+    platforms). A sources declaration is the owner's
+    instruction for what code and material land on the
+    box, so its validation is exact: each malformed
+    shape below is refused with a ValueError naming the
+    field, through parse_declaration, the seam every
+    declaration enters by.
+    """
+
+    def _refused(self, entry, fragment):
+        decl = {"sources_version": 1, "sources": [entry]}
+        with self.assertRaises(ValueError) as cm:
+            X.parse_declaration(decl)
+        self.assertIn(fragment, str(cm.exception))
+
+    def _github(self, **over):
+        entry = {"id": "up", "role": "upstream",
+                 "github": "o/up", "ref": "latest",
+                 "archive": True, "files": ["LICENSE"]}
+        entry.update(over)
+        return entry
+
+    def test_an_entry_must_be_an_object(self):
+        self._refused("not-an-object", "must be an object")
+
+    def test_upstream_must_be_exactly_true(self):
+        self._refused(
+            {"id": "u1", "role": "upstream", "upstream": "yes"},
+            ".upstream must be true")
+
+    def test_a_github_archive_must_be_a_bool(self):
+        self._refused(self._github(archive="yes"),
+                      ".archive must be true or false")
+
+    def test_github_files_must_be_a_list(self):
+        self._refused(self._github(files="LICENSE"),
+                      ".files must be a list")
+
+    def test_github_files_listed_twice_are_refused(self):
+        self._refused(
+            self._github(files=["LICENSE", "LICENSE"]),
+            "twice")
+
+    def test_a_url_archive_must_be_a_bool(self):
+        self._refused(
+            {"id": "u2", "role": "spec", "url": RFC,
+             "archive": "yes"},
+            ".archive must be true or false")
+
+    def test_project_must_be_a_list(self):
+        self._refused(
+            {"id": "x", "role": "self", "project": "a.py"},
+            ".project must be a list")
+
+    def test_project_paths_listed_twice_are_refused(self):
+        self._refused(
+            {"id": "x", "role": "self",
+             "project": ["a.py", "a.py"]},
+            "twice")
+
+
 class ExtensionSourcesPassTest(_Base):
     """Queue A refill: the runner's provisioning pass
     itself (runner._extension_sources_pass; coverage run
