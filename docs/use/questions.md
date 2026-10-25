@@ -94,16 +94,50 @@ script path, hence its 55+ red subtests. Full
 suites before 8278c7e7 were green on
 test_cli_options.
 
+**Amendment (Muse, same day) -- the defect is
+a class, not two slips.** The same suite log's
+NameError census (errors actually raised at
+runtime; fail-soft handlers swallow others, so
+this is a floor, not the whole damage): 1,027
+NameErrors in total. The largest, attributed by
+traceback to the module that raised them:
+`time` x364 -- `runner/ops/poll.py` (the
+poll_once extraction, 32601263; the daemon's
+main loop names `time` it never imports);
+`inference_config` x169 -- `runner/ops/
+oracle_server.py` (8a9bae43); `VIEW_ORDER`
+x103 -- `runner/ops/policy.py` (8278c7e7);
+`os` x91 -- `runner/ops/paths.py` and
+`runner/ops/handlers.py`;
+`BUILTIN_REDACT_PATTERNS` x54 and `_valid_base`
+x45 -- `runner/ops/misc.py`; `sys` x38 --
+`runner/ops/watch.py`; `_personal_docs` x29 --
+`runner/ops/startup.py`; then `re` x23,
+`subprocess` x18, `json` x12, and Q52's five
+names in attest.py. The pattern throughout:
+function bodies were moved into `runner/ops/`
+modules that never bind the globals the bodies
+name -- stdlib modules, constants, and
+runner.py helpers alike. Fixing them one CI
+failure at a time will take many cycles; a
+sweep that resolves each extracted module's
+referenced globals against its own namespace
+finds the whole class at once. (A naive static
+scan over-flags this codebase's lazy module
+handles, so the census above is runtime-proven
+only.)
+
 **The ask.** Production lane: make the two
 shims delegate to their extracted copies (or
-restore the bodies), and give runner.py's
+restore the bodies), give runner.py's
 `runner.ops.*` imports the script-mode fallback
 shape AGENTS.md documents (or the try/except
-sibling form the role modules use). Do not
-green this by editing callers, the help test,
-or the sense-delivery tests; they pin shipped
-behavior. The campaign re-runs the full suite
-when the fixes land.
+sibling form the role modules use), and bind
+the missing globals in the extracted modules
+per the census. Do not green this by editing
+callers, the help test, or the sense-delivery
+tests; they pin shipped behavior. The campaign
+re-runs the full suite when the fixes land.
 
 **Answer**:
 
