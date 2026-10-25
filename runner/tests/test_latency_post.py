@@ -8,17 +8,21 @@ once against the median of its prior samples and re-files
 after an in-band reading clears it.
 
 No live network anywhere: decide() is driven with fixture
-readings dicts, exactly the shape read_live() returns.
+readings dicts, exactly the shape read_live() returns. The
+probe tests are the one exception, and they stay on
+loopback sockets.
 """
 import importlib.util
 import io
 import json
 import os
 import shutil
+import socket
 import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -232,6 +236,93 @@ class MainTest(unittest.TestCase):
             self.assertEqual(
                 LP.main(["--readings", os.path.join(d, "missing.json"),
                          "--state", state_path]), 2)
+
+
+class ProbeTest(unittest.TestCase):
+    """Queue A: `_probe` never ran anywhere (coverage run
+    40180268696: 19 lines on both platforms) -- every other
+    test fixtures the readings it returns. Its seam is one
+    timed TCP connect, and loopback produces three of its
+    four documented outcomes for real: a listening port
+    connects (ok, with a latency), a closed port refuses --
+    which for the gateway still proves reachability (ok,
+    with a latency) and for a configured target does not
+    (not ok, "refused", no sample). The fourth outcome, a
+    connect that never answers, cannot be produced on
+    loopback, so the socket seam is scripted for the
+    timeout and the generic socket error, including an
+    error with no message answering its type name.
+    """
+
+    def _closed_port(self):
+        sock = socket.socket()
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+        sock.close()
+        return port
+
+    def test_a_listening_port_connects_with_a_latency(self):
+        with socket.socket() as listener:
+            listener.bind(("127.0.0.1", 0))
+            listener.listen(1)
+            port = listener.getsockname()[1]
+            got = LP._probe("127.0.0.1", port, 2.0,
+                            is_gateway=False)
+        self.assertEqual(got["target"], "127.0.0.1:%d" % port)
+        self.assertTrue(got["ok"])
+        self.assertIsInstance(got["latency_ms"], float)
+        self.assertGreaterEqual(got["latency_ms"], 0.0)
+        self.assertIsNone(got["error"])
+
+    def test_a_refusal_is_a_failure_for_a_target(self):
+        got = LP._probe("127.0.0.1", self._closed_port(), 2.0,
+                        is_gateway=False)
+        self.assertFalse(got["ok"])
+        self.assertIsNone(got["latency_ms"])
+        self.assertEqual(got["error"], "refused")
+
+    def test_a_refusal_still_proves_the_gateway_answered(self):
+        got = LP._probe("127.0.0.1", self._closed_port(), 2.0,
+                        is_gateway=True)
+        self.assertTrue(got["ok"])
+        self.assertIsInstance(got["latency_ms"], float)
+        self.assertIsNone(got["error"])
+
+    def test_a_timeout_and_a_bare_socket_error(self):
+        with mock.patch.object(
+                LP.socket, "create_connection",
+                side_effect=socket.timeout("timed out")):
+            got = LP._probe("192.0.2.10", 443, 0.1,
+                            is_gateway=False)
+        self.assertFalse(got["ok"])
+        self.assertIsNone(got["latency_ms"])
+        self.assertEqual(got["error"], "timeout")
+        with mock.patch.object(
+                LP.socket, "create_connection",
+                side_effect=OSError("no route")):
+            got = LP._probe("192.0.2.10", 443, 0.1,
+                            is_gateway=False)
+        self.assertEqual(got["error"], "no route")
+        with mock.patch.object(
+                LP.socket, "create_connection",
+                side_effect=OSError()):
+            got = LP._probe("192.0.2.10", 443, 0.1,
+                            is_gateway=False)
+        self.assertEqual(got["error"], "OSError")
+
+    def test_a_close_that_fails_keeps_the_sample(self):
+        class Conn:
+            def close(self):
+                raise OSError("already gone")
+
+        with mock.patch.object(
+                LP.socket, "create_connection",
+                return_value=Conn()):
+            got = LP._probe("192.0.2.10", 443, 0.1,
+                            is_gateway=False)
+        self.assertTrue(got["ok"])
+        self.assertIsInstance(got["latency_ms"], float)
+        self.assertIsNone(got["error"])
 
 
 if __name__ == "__main__":
