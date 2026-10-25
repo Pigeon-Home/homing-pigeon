@@ -156,6 +156,22 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
+- A (refill) — `runner/runner.py::handle_board_mail`
+  (5 lines never run on either platform, coverage
+  run 40189608702) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  BoardMailRejectionsTest in
+  runner/tests/test_runner_tail.py: an envelope
+  sealed for another task id verifies but does not
+  open, and is rejected and recorded as an
+  encryption failure, with no ack. The remaining
+  two lines, the dispatch's "unknown board kind"
+  else, are unreachable by construction -- the
+  subject gate admits exactly the four kinds the
+  dispatch handles -- and the gate is pinned from
+  the outside (a kindless subject is not board
+  mail at all). Done when a coverage run shows
+  only those two lines left.
 - A (refill) — `runner/runner.py::`
   `_ingest_local_envelope_inner` (5 lines never run
   on either platform, coverage run 40189608702) —

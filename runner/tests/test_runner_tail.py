@@ -264,6 +264,79 @@ class BoardTailTest(unittest.TestCase):
             self.assertTrue(handled)
 
 
+class BoardMailRejectionsTest(unittest.TestCase):
+    """Queue A refill: handle_board_mail's crypto
+    rejection (coverage run 40189608702: 5 lines on
+    both platforms). The board intake's contract: a
+    message whose envelope cannot be opened -- as
+    against one whose signature merely fails -- is
+    rejected as an encryption failure and recorded
+    as one in the security events; it is taken
+    (marked seen), not acted on, and no ack goes
+    out. The dispatch's "unknown board kind" else is
+    unreachable by construction: the subject gate
+    admits exactly the four kinds the dispatch
+    handles, which the second test pins from the
+    outside.
+    """
+
+    def _drive(self, d, body_text, subject):
+        from runner.runner import Board, handle_board_mail
+        board = Board(os.path.join(d, "board.json"))
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg.set_content(body_text)
+        imap = FakeIMAP([])
+        smtp = FakeSMTP()
+        handled = handle_board_mail(
+            base_config(d), imap, smtp, "1", msg.as_bytes(),
+            subject, board, {"": SECRET}, None, d)
+        return handled, imap, smtp, board
+
+    def _events(self, d):
+        path = os.path.join(d, "security-events.jsonl")
+        if not os.path.exists(path):
+            return []
+        with open(path, encoding="utf-8") as fh:
+            return [json.loads(line) for line in fh if line.strip()]
+
+    def test_an_unopenable_envelope_is_an_encryption_rejection(self):
+        from runner.wire import jobcrypto
+        from runner.cloud.send_job import sign_payload
+        with tempfile.TemporaryDirectory() as d:
+            signed = sign_payload(
+                {"v": 1, "type": "task_approve"}, SECRET)
+            # Sealed for a different task id: the envelope
+            # verifies, the AEAD binding does not.
+            body = jobcrypto.encrypt_body(
+                signed, SECRET, job_id="someone-else",
+                key_id="", sign=sign_payload)
+            handled, imap, smtp, _board = self._drive(
+                d, body, "[HOMING-PIGEON] task_approve t1")
+            self.assertTrue(handled)
+            self.assertEqual(smtp.sent, [])
+            events = self._events(d)
+            self.assertTrue(any(
+                e.get("reason") == "bad_encryption"
+                and e.get("feature") == "board"
+                for e in events), events)
+
+    def test_a_subject_with_no_board_kind_is_not_board_mail(self):
+        from runner.wire import jobcrypto
+        from runner.cloud.send_job import sign_payload
+        with tempfile.TemporaryDirectory() as d:
+            signed = sign_payload(
+                {"v": 1, "type": "task_frobnicate"}, SECRET)
+            body = jobcrypto.encrypt_body(
+                signed, SECRET, job_id="t1", key_id="",
+                sign=sign_payload)
+            handled, imap, smtp, _board = self._drive(
+                d, body, "[HOMING-PIGEON] task_frobnicate t1")
+            self.assertFalse(handled)
+            self.assertEqual(smtp.sent, [])
+            self.assertEqual(self._events(d), [])
+
+
 class WatchTailTest(unittest.TestCase):
     def test_canary_unreadable_restored_and_a_snapshot_that_cannot_save(self):
         from runner import runner
