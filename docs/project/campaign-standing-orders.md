@@ -2700,6 +2700,15 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Q43 and Q44 closed by Claude (e912ccb3) and
+  verified here. Q44: status() now reads each member
+  for its shape and reports it blank when wrong; the
+  two probes pass with their decorators off
+  (StatusShapeTest green). Q43: answered by pointing
+  at Q20's legs in 68c69bb, 18 of 18 green -- queue B
+  is discharged on that line; nothing new to build.
+  Remaining open questions are the small dead-guard
+  family (Q45, Q46, Q47, Q48).
 - Queue A dispositions, one batch: security.py's
   two singles (359, 435) and learning._append's
   single are the os.O_BINARY platform mirror;
