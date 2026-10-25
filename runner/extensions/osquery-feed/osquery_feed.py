@@ -156,7 +156,7 @@ def parse_event(line):
         return None
     try:
         row = json.loads(text)
-    except ValueError:
+    except (ValueError, RecursionError):  # nesting deeper than the C stack
         return None
     if not isinstance(row, dict):
         return None

@@ -190,7 +190,7 @@ def parse_event(line, fields=None):
     if text.startswith("{"):
         try:
             row = json.loads(text)
-        except ValueError:
+        except (ValueError, RecursionError):  # nesting deeper than the C stack
             return None
         return _event_from_row(row)
     if text.startswith("#"):

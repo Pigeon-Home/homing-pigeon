@@ -83,6 +83,8 @@ import time
 from datetime import datetime, timezone
 
 _TZ_TAIL_RE = re.compile(r"([+-]\d{2})(\d{2})$")
+# Pad or trim to six digits: before 3.11 fromisoformat takes 3 or 6.
+_FRACTION_RE = re.compile(r"(:\d{2})\.(\d+)")
 
 
 def _is_number(value):
@@ -123,6 +125,9 @@ def _parse_timestamp(value):
         text = text[:-1] + "+00:00"
     else:
         text = _TZ_TAIL_RE.sub(r"\1:\2", text)
+    text = _FRACTION_RE.sub(
+        lambda m: m.group(1) + "." + (m.group(2) + "000000")[:6],
+        text, count=1)
     try:
         moment = datetime.fromisoformat(text)
     except ValueError:
@@ -148,7 +153,7 @@ def parse_event(line):
         return None
     try:
         record = json.loads(line)
-    except ValueError:
+    except (ValueError, RecursionError):  # nesting deeper than the C stack
         return None
     if not isinstance(record, dict):
         return None

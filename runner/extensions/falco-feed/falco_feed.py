@@ -90,7 +90,8 @@ _PRIORITY_SIGNALS = {
 }
 _PARSED_ONLY = ("Informational", "Debug")
 
-_FRACTION_RE = re.compile(r"(\.\d{6})\d+")
+# Pad or trim to six digits: before 3.11 fromisoformat takes 3 or 6.
+_FRACTION_RE = re.compile(r"(:\d{2})\.(\d+)")
 _OFFSET_TAIL_RE = re.compile(r"([+-])(\d{2})(\d{2})$")
 
 
@@ -126,7 +127,9 @@ def _parse_ts(value):
     text = value.strip()
     if text.endswith(("Z", "z")):
         text = text[:-1] + "+00:00"
-    text = _FRACTION_RE.sub(r"\1", text, count=1)
+    text = _FRACTION_RE.sub(
+        lambda m: m.group(1) + "." + (m.group(2) + "000000")[:6],
+        text, count=1)
     text = _OFFSET_TAIL_RE.sub(r"\1\2:\3", text)
     try:
         return datetime.fromisoformat(text).timestamp()
@@ -165,7 +168,7 @@ def parse_event(line):
         return None
     try:
         data = json.loads(line)
-    except ValueError:
+    except (ValueError, RecursionError):  # nesting deeper than the C stack
         return None
     if not isinstance(data, dict):
         return None
