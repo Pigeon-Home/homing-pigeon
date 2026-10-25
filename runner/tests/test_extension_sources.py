@@ -1663,6 +1663,21 @@ class DisclosureTest(_Base):
         self.assertFalse(X.is_withheld(os.path.join(self.ext, "feed.py"),
                                        held))
 
+    def test_an_unresolvable_withheld_entry_is_passed_over(self):
+        # Queue A: is_withheld's fallback arm -- a withheld
+        # entry that cannot be resolved (here one carrying
+        # a NUL, which realpath refuses) is compared as
+        # given, matches nothing, and is passed over: it
+        # neither raises, nor withholds everything, nor
+        # stops a later good entry from matching.
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "kept.py")
+            with open(path, "w") as f:
+                f.write("x")
+            self.assertFalse(X.is_withheld(path, ["bad\x00entry"]))
+            self.assertTrue(
+                X.is_withheld(path, ["bad\x00entry", path]))
+
     def test_the_owner_global_withhold_beats_the_author(self):
         decl = upstream_decl()
         decl["oracle"] = "provide"
