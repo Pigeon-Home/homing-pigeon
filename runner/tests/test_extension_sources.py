@@ -1314,6 +1314,154 @@ class ProvisionTest(_Base):
         self.assertEqual(rep["outcomes"][0]["status"], "refused")
 
 
+class SmallPartsProblemsTest(_Base):
+    """Queue A: the problem paths of _small_parts (coverage
+    run 40180268696: 17 lines on both platforms) -- a project
+    path this install does not have, a project path with
+    nothing copyable in it, a project entry with no usable
+    path at all, a pin that recorded no archive, and an
+    archive that already landed and must be kept rather
+    than fetched again. Each is a documented shape of the
+    record: problems are named in the entry's detail, a
+    partial fetch says partial, and an entry with nothing
+    is a failure, never a quiet success.
+    """
+
+    def _project_decl(self, paths):
+        return {"sources_version": 1, "sources": [
+            {"id": "code", "role": "self", "project": paths}]}
+
+    def test_a_missing_project_path_is_a_named_problem(self):
+        write_ext(self.ext, self._project_decl(
+            ["runner/wire/mailbox.py", "runner/wire/no-such.py"]))
+        self.run_pass(project_root=REPO)
+        code = self.state()["entries"]["code"]
+        self.assertEqual(code["status"], "partial")
+        self.assertEqual(sorted(code["project"]["items"]),
+                         ["runner/wire/mailbox.py"])
+        self.assertIn("runner/wire/no-such.py: not in this "
+                      "install's project snapshot or source tree",
+                      code["project"]["problems"][0])
+        self.assertIn("no-such.py", code["detail"])
+
+    def test_a_project_path_with_nothing_copyable(self):
+        proj = os.path.join(self.tmp, "projroot")
+        os.makedirs(os.path.join(proj, "emptydir"))
+        with open(os.path.join(proj, "real.txt"), "w") as fh:
+            fh.write("real\n")
+        write_ext(self.ext, self._project_decl(
+            ["real.txt", "emptydir"]))
+        self.run_pass(project_root=proj)
+        code = self.state()["entries"]["code"]
+        self.assertEqual(code["status"], "partial")
+        self.assertIn("emptydir: nothing copyable there",
+                      code["project"]["problems"])
+        self.assertEqual(sorted(code["project"]["items"]),
+                         ["real.txt"])
+
+    def test_an_interrupted_copy_cleans_up_and_propagates(self):
+        # The project phase guards its staging dir with a
+        # BaseException cleanup: an interruption mid-copy
+        # removes the staging dir and propagates, never
+        # leaving a half copy for the next pass to trip
+        # over. A real mid-copy crash is not reproducible
+        # in a suite, so the module's own copy helper is
+        # scripted to raise the interruption.
+        proj = os.path.join(self.tmp, "projroot")
+        os.makedirs(proj)
+        with open(os.path.join(proj, "real.txt"), "w") as fh:
+            fh.write("real\n")
+        write_ext(self.ext, self._project_decl(["real.txt"]))
+        with mock.patch.object(X, "_copy_files",
+                               side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                self.run_pass(project_root=proj)
+        tmp_parent = os.path.join(self.base, X.STATE_DIRNAME,
+                                  "sense", "feed", ".tmp")
+        leftovers = (os.listdir(tmp_parent)
+                     if os.path.isdir(tmp_parent) else [])
+        self.assertEqual(leftovers, [])
+
+    def test_no_usable_project_path_fails_the_entry(self):
+        write_ext(self.ext, self._project_decl(
+            ["gone/one.py", "gone/two.py"]))
+        self.run_pass(project_root=REPO)
+        code = self.state()["entries"]["code"]
+        self.assertEqual(code["status"], "failed")
+        self.assertIn("gone/one.py", code["detail"])
+        self.assertIn("gone/two.py", code["detail"])
+
+    def _lock_for(self, decl, routes):
+        fetcher = X.Fetcher(opener=FakeOpener(routes))
+        tmp = tempfile.mkdtemp()
+        try:
+            block = X.pin_declaration(fetcher, X.parse_declaration(decl),
+                                      tmp)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        return {"lock_version": 1, "extensions": {"sense/feed": block}}
+
+    def _lock_without_archive(self, decl):
+        lock = self._lock_for(decl, upstream_routes())
+        block = lock["extensions"]["sense/feed"]
+        self.assertIn("archive", block["entries"]["up"])
+        del block["entries"]["up"]["archive"]
+        with open(os.path.join(self.ext, X.LOCK_FILE), "w") as fh:
+            json.dump(lock, fh)
+
+    def test_a_pin_without_an_archive_still_files_its_files(self):
+        decl = upstream_decl()
+        write_ext(self.ext, decl)
+        self._lock_without_archive(decl)
+        self.run_pass()
+        up = self.state()["entries"]["up"]
+        self.assertEqual(up["status"], "fetched")
+        self.assertIn("archive: unavailable when this build "
+                      "was made", up["detail"])
+        self.assertEqual(sorted(up["files"]["items"]),
+                         ["LICENSE", "doc/schema.json"])
+        self.assertNotIn(ASSET, self.opener.urls())
+
+    def test_a_pin_without_an_archive_and_no_files_fails(self):
+        decl = upstream_decl()
+        write_ext(self.ext, decl)
+        self._lock_without_archive(decl)
+        routes = {u: v for u, v in upstream_routes().items()
+                  if u == ASSET}
+        self.run_pass(opener=FakeOpener(routes))
+        up = self.state()["entries"]["up"]
+        self.assertEqual(up["status"], "failed")
+        self.assertIn("archive: unavailable when this build "
+                      "was made", up["detail"])
+
+    def test_an_archive_that_landed_is_kept_on_the_retry(self):
+        decl = upstream_decl()
+        write_ext(self.ext, decl)
+        lock = self._lock_for(decl, upstream_routes())
+        with open(os.path.join(self.ext, X.LOCK_FILE), "w") as fh:
+            json.dump(lock, fh)
+        routes = dict(upstream_routes())
+        del routes[RAW + "LICENSE"]
+        self.run_pass(opener=FakeOpener(routes))
+        up = self.state()["entries"]["up"]
+        # A file the server says is not there is noted, not
+        # retried (its own test pins that); the entry counts
+        # as fetched, with the gap in its detail -- which is
+        # what lets a forced pass revisit it below.
+        self.assertEqual(up["status"], "fetched")
+        self.assertIn("LICENSE", up["detail"])
+        self.assertTrue(os.path.isdir(os.path.join(
+            self.entry_dir("up"), "source")))
+        second = FakeOpener(upstream_routes())
+        self.run_pass(opener=second, force=True, now=self.now + 10)
+        up = self.state()["entries"]["up"]
+        self.assertEqual(up["status"], "fetched")
+        self.assertEqual(sorted(up["files"]["items"]),
+                         ["LICENSE", "doc/schema.json"])
+        self.assertNotIn(ASSET, second.urls(),
+                         "the landed archive was fetched again")
+
+
 class DisclosureTest(_Base):
     def setUp(self):
         super().setUp()
