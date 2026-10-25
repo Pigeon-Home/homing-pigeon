@@ -46,7 +46,6 @@ def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
     if not isinstance(cfg, dict):
         cfg = {}
     base = R._base_dir_for(cfg, cfg_path)
-    global _LOG_FILE
     R._LOG_FILE = os.path.join(base, "runner.log")
     R._refresh_log_settings(cfg, base)
     R._announce_oracle_log()

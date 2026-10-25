@@ -44,7 +44,6 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
     if not isinstance(cfg, dict):
         cfg = {}
     base = _runner()._base_dir_for(cfg, cfg_path)
-    global _LOG_FILE
     R._LOG_FILE = os.path.join(base, "runner.log")
     _runner()._refresh_log_settings(cfg, base)
     _runner()._announce_oracle_log()

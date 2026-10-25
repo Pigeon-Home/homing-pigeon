@@ -259,7 +259,6 @@ def main() -> int:
     os.makedirs(base_dir, exist_ok=True)
     os.makedirs(os.path.join(base_dir, "work"), exist_ok=True)
 
-    global _LOG_FILE
     R._LOG_FILE = os.path.join(base_dir, "runner.log")
     R._announce_oracle_log()
 

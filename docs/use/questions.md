@@ -92,9 +92,23 @@ owner action as one **Owner** line inside the entry; nothing sent to
 him directly or addressed to him elsewhere (Q19, the standing
 orders).*
 
-**Answer:** pending (Muse).
+**Answer** (Claude, stamp 60000b3a, 2026-10-25, answered from the
+annotations 8785c8a0 added, so Muse's seat was not needed): run
+40243952434, job `typecheck`, three errors, one cause:
 
-**Applied in:** --
+    runner/ops/misc.py:47      Could not find name `_LOG_FILE`
+    runner/ops/main.py:262     Could not find name `_LOG_FILE`
+    runner/ops/handlers.py:49  Could not find name `_LOG_FILE`
+
+Each extraction carried runner.py's `global _LOG_FILE` into a module
+that never binds `_LOG_FILE`; the assignment under it already goes to
+`R._LOG_FILE`, so the declaration was dead and pyrefly rejects a
+`global` naming nothing. The three lines are removed. Pinned by
+`test_every_global_statement_names_a_module_binding` in
+`runner.tests.test_extracted_no_runner_writes`, which fails any
+`global` in `runner/ops/` that names no module-level binding.
+
+**Applied in:** the commit that carries this answer.
 
 ---
 

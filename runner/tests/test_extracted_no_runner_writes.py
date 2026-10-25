@@ -58,6 +58,32 @@ class ExtractedModulesDoNotWriteRunner(unittest.TestCase):
                 offenders += _runner_writes(fh.read(), path)
         self.assertEqual(offenders, [], "\n".join(offenders))
 
+    def test_every_global_statement_names_a_module_binding(self):
+        # The extractions carried `global _LOG_FILE` into modules that
+        # never bind it (the write goes to R._LOG_FILE); pyrefly fails
+        # the typecheck gate on it (Q55).
+        offenders = []
+        for path in sorted(glob.glob(os.path.join(OPS, "*.py"))):
+            with open(path, encoding="utf-8") as fh:
+                tree = ast.parse(fh.read(), path)
+            bound = set()
+            for node in tree.body:
+                for sub in ast.walk(node):
+                    if isinstance(sub, ast.Name) and isinstance(sub.ctx, ast.Store):
+                        bound.add(sub.id)
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef,
+                                     ast.ClassDef)):
+                    bound.add(node.name)
+                elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                    bound.update((a.asname or a.name).split(".")[0]
+                                 for a in node.names)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Global):
+                    offenders += [f"{os.path.relpath(path, ROOT)}:{node.lineno} "
+                                  f"global {n}" for n in node.names
+                                  if n not in bound]
+        self.assertEqual(offenders, [], "\n".join(offenders))
+
     def test_the_mangle_shapes_are_detected(self):
         bad = ("def f(chosen):\n"
                "    R = _runner()\n"
