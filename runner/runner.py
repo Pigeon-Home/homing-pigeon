@@ -4292,12 +4292,7 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
         return True
     if not encrypted and not _cleartext_jobs_allowed():
         log(f"query {query_id}: cleartext refused", "WARN")
-        _append_security_event(base_dir, {
-            "type": "auth_rejection",
-            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "reason": "cleartext_not_supported",
-            "feature": "query",
-        })
+        _auth_reject_event(base_dir, "cleartext_not_supported", feature="query")
         _mark(imap, seq, opts)
         return True
 
@@ -4422,40 +4417,21 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
             body, secrets, ident)
     except JobCryptoError as e:
         reject(f"bad envelope: {e}")
-        _append_security_event(base_dir, {
-            "type": "auth_rejection",
-            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "reason": "bad_encryption",
-            "feature": "board",
-        })
+        _auth_reject_event(base_dir, "bad_encryption", feature="board")
         return True
     except Exception as e:
         reject(f"bad signature: {e}")
-        _append_security_event(base_dir, {
-            "type": "auth_rejection",
-            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "reason": "bad_signature",
-        })
+        _auth_reject_event(base_dir, "bad_signature")
         return True
     if not encrypted and not _cleartext_jobs_allowed():
         reject("cleartext board message refused")
-        _append_security_event(base_dir, {
-            "type": "auth_rejection",
-            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "reason": "cleartext_not_supported",
-            "feature": "board",
-        })
+        _auth_reject_event(base_dir, "cleartext_not_supported", feature="board")
         return True
     # Hardening M5: audience binding for every board message type
     # (task_submit, task_request, task_result, task_approve).
     if not audience_allows(cfg, base_dir, payload, key_id, ident):
         reject("audience mismatch")
-        _append_security_event(base_dir, {
-            "type": "auth_rejection",
-            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "reason": "security_policy",
-            "feature": "audience",
-        })
+        _auth_reject_event(base_dir, "security_policy", feature="audience")
         return True
     if not _version_ok(payload.get("v")):
         reject("unsupported version")
@@ -5059,12 +5035,7 @@ def _ingest_local_envelope_inner(cfg, base_dir, text, source):
     except ValueError as e:
         log(f"local signal ({source}): rejected: bad signature: {e}",
             "WARN")
-        _append_security_event(base_dir, {
-            "type": "auth_rejection",
-            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "reason": "bad_signature",
-            "feature": "local_signals",
-        })
+        _auth_reject_event(base_dir, "bad_signature", feature="local_signals")
         return None
     job_id = job.get("job_id")
     if not isinstance(job_id, str) or not _SAFE_JOB_ID.match(job_id) \
@@ -5096,12 +5067,7 @@ def _ingest_local_envelope_inner(cfg, base_dir, text, source):
         return reject(f"issued_at outside allowed window (age {age:.0f}s)")
     violation = check_key_policy(key_policies, key_id, cfg, job)
     if violation:
-        _append_security_event(base_dir, {
-            "type": "auth_rejection",
-            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "reason": "key_policy",
-            "feature": "local_signals",
-        })
+        _auth_reject_event(base_dir, "key_policy", feature="local_signals")
         return reject(f"key policy: {violation}")
     status, why, record = _sensor_alert_core(
         cfg, job, key_id, base_dir, extra={"source": "local"})
@@ -6049,6 +6015,45 @@ def _v2_before_execute(cfg, job, op_plan, secret, key_id, encrypted,
     return segments
 
 
+
+
+def _auth_reject_event(base_dir, reason, **extra):
+    """Record one auth_rejection in security-events.jsonl."""
+    event = {
+        "type": "auth_rejection",
+        "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "reason": reason,
+    }
+    event.update(extra)
+    _append_security_event(base_dir, event)
+
+
+def _verify_and_decrypt(msg, secrets, job_id):
+    """Verify and decrypt a job mail.
+
+    Returns (job, key_id, secret, was_encrypted) or raises
+    ValueError / JobCryptoError. The caller rejects and records
+    the auth_rejection event.
+    """
+    job, key_id = verify_body_keyed(get_text_body(msg), secrets)
+    secret = secrets[key_id]
+    was_encrypted = False
+    if isinstance(job, dict) and isinstance(job.get("hp_enc"), dict):
+        if _jobcrypto is None or not _jobcrypto.is_envelope(job):
+            raise ValueError("malformed encryption envelope")
+        inner_text = _jobcrypto.decrypt_body(
+            job, secret, job_id=job_id, key_id=key_id)
+        job, inner_key_id = verify_body_keyed(inner_text, secrets)
+        if inner_key_id != key_id:
+            raise ValueError(
+                "encrypted envelope key_id does not match its body")
+        secret = secrets[key_id]
+        was_encrypted = True
+    if not isinstance(job, dict):
+        raise ValueError("job body must be a JSON object")
+    return job, key_id, secret, was_encrypted
+
+
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 seen: dict, secrets: dict, opts=None, key_policies=None):
     msg = email.message_from_bytes(raw)
@@ -6105,8 +6110,6 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         f"subject={subject!r}")
 
     # Hardening M1b: bound the raw mail before any signature work.
-    # 0 means unlimited. IMAP FETCH returns the whole RFC822 blob, so
-    # without this cap a single mail can exhaust memory.
     try:
         max_job_bytes = int(cfg.get("max_job_bytes", 4194304))
     except (TypeError, ValueError, OverflowError):
@@ -6115,48 +6118,15 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject(f"mail exceeds max_job_bytes ({len(raw)} > {max_job_bytes})")
         return
 
-    job_was_encrypted = False
     try:
-        job, key_id = verify_body_keyed(get_text_body(msg), secrets)
-        secret = secrets[key_id]
-        if isinstance(job, dict) \
-                and isinstance(job.get("hp_enc"), dict):
-            # Per-job encryption (runner/wire/jobcrypto.py): the
-            # signature just verified covers the envelope as
-            # transmitted, so decryption happens only after that
-            # gate. The recovered signed body then goes through
-            # the same verification a cleartext job faces -- its
-            # own signature check included.
-            if _jobcrypto is None or not _jobcrypto.is_envelope(job):
-                raise ValueError("malformed encryption envelope")
-            inner_text = _jobcrypto.decrypt_body(
-                job, secret, job_id=job_id, key_id=key_id)
-            job, inner_key_id = verify_body_keyed(inner_text, secrets)
-            if inner_key_id != key_id:
-                raise ValueError(
-                    "encrypted envelope key_id does not match its body")
-            secret = secrets[key_id]
-            job_was_encrypted = True
+        job, key_id, secret, job_was_encrypted = _verify_and_decrypt(msg, secrets, job_id)
     except JobCryptoError as e:
         reject(f"bad encrypted envelope: {e}")
-        _append_security_event(base_dir, {
-            "type": "auth_rejection",
-            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "reason": "bad_encryption",
-        })
+        _auth_reject_event(base_dir, "bad_encryption")
         return
     except ValueError as e:
         reject(f"bad signature: {e}")
-        _append_security_event(base_dir, {
-            "type": "auth_rejection",
-            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "reason": "bad_signature",
-        })
-        return
-    if not isinstance(job, dict):
-        # verify_body can return any JSON value if the signer hand-crafts
-        # one; job.get below would raise AttributeError -> transient retry.
-        reject("job body must be a JSON object")
+        _auth_reject_event(base_dir, "bad_signature")
         return
     if not job_was_encrypted:
         if _cleartext_jobs_allowed():
@@ -6196,12 +6166,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # the loaded config, never from the signed body.
     if not audience_allows(cfg, base_dir, job, key_id, job_id):
         reject("security policy (audience): runner_id mismatch")
-        _append_security_event(base_dir, {
-            "type": "auth_rejection",
-            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "reason": "security_policy",
-            "feature": "audience",
-        })
+        _auth_reject_event(base_dir, "security_policy", feature="audience")
         return
     # Hardening M1b: bound the script after the signature is verified
     # (it lives inside the signed body). 0 means unlimited.
@@ -6240,11 +6205,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     violation = check_key_policy(key_policies or {}, key_id, cfg, job)
     if violation:
         reject(f"key policy: {violation}")
-        _append_security_event(base_dir, {
-            "type": "auth_rejection",
-            "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "reason": "key_policy",
-        })
+        _auth_reject_event(base_dir, "key_policy")
         return
 
     # Hardening M2: env/files/args constraints for keys with a policy
