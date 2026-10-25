@@ -26,6 +26,15 @@ from runner.runner import execute_job  # noqa: E402
 
 BWRAP_HERE = SB.sandbox_available()
 
+# Q10: the enforce classes gate on the startup probe, not on
+# bwrap's presence. Where the restriction blocks namespace
+# setup, bwrap is on PATH and cannot start; a real runner
+# refuses to start there (Q9), so these tests skip with the
+# registered reason instead of failing on a path startup has
+# already closed.
+STARTUP_PROBLEM = SB.startup_problem()
+ENGAGES = STARTUP_PROBLEM is None
+
 
 def _job(jid, script):
     return {"v": 1, "type": "job", "job_id": jid,
@@ -277,8 +286,9 @@ class SandboxAuditNoteTest(unittest.TestCase):
                       rows[-1].get("detail", ""))
 
 
-@unittest.skipUnless(BWRAP_HERE and sys.platform.startswith("linux"),
-                     "bwrap not available on this machine")
+@unittest.skipUnless(ENGAGES,
+                     "sandbox cannot engage on this machine "
+                     "(startup probe)")
 class EnforceTest(unittest.TestCase):
     def test_enforce_runs_inside_bwrap(self):
         script = (
@@ -317,8 +327,9 @@ class EnforceTest(unittest.TestCase):
         self.assertEqual(r1["exit_code"], r2["exit_code"])
 
 
-@unittest.skipUnless(BWRAP_HERE and sys.platform.startswith("linux"),
-                     "needs bwrap on Linux")
+@unittest.skipUnless(ENGAGES,
+                     "sandbox cannot engage on this machine "
+                     "(startup probe)")
 class EnforceNegativeControl(unittest.TestCase):
     """Phase 2.2 negative control for EnforceTest: the same
     escape-shaped probes with confinement OFF (the default

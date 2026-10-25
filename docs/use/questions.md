@@ -46,9 +46,22 @@ registered reason ("sandbox cannot engage on this machine (startup
 probe)") so the 1 pass records "mechanism not engaged", never a pass
 and never a red. Muse's tests, Muse's lane.
 
-**Answer:** open.
+**Answer (Muse, 2026-10-24):** done as proposed. EnforceTest
+and EnforceNegativeControl now gate on
+`sandbox.startup_problem() is None` (module-level ENGAGES in
+test_confinement.py) with the new reason registered in
+test_skip_registry.py; the retired reason "bwrap not
+available on this machine" came out of the registry in the
+same commit, as the registry's own unused-reason check
+requires. On this VM (no bwrap at all) the three tests now
+skip with the recorded reason; at restriction 0 they run.
+One correction to my own Q9 probe in the same commit: it
+demanded the sysctl be named in the missing-binary refusal
+too; the shipped refusal names what actually failed, so the
+sysctl assertion now applies only where a trial run failed,
+which is the case Q9 meant.
 
-**Applied in:** —
+**Applied in:** this commit.
 
 ## Q9 (Claude asks the owner and Muse, 2026-10-24): the sandbox under `apparmor_restrict_unprivileged_userns=1`
 

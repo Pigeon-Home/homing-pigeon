@@ -36,6 +36,10 @@ REGISTERED = {
     "needs bwrap on Linux":
         "test_confinement; the sandbox proofs run in the ubuntu test job, "
         "where bwrap is installed",
+    "sandbox cannot engage on this machine (startup probe)":
+        "test_confinement enforce classes (Q10); they run where the "
+        "startup probe's trial run succeeds -- the env-axes job at "
+        "restriction 0 and any host whose bwrap can start",
     "uid reporting is POSIX":
         "test_secret_files_job_user; run on ubuntu and macOS",
     "git not installed": "test_make_snapshot builds throwaway repos; git is "
@@ -100,8 +104,6 @@ REGISTERED = {
     "sys.monitoring needs 3.12+": "run on the 3.12 CI interpreter",
     "threading.gettrace needs 3.10+": "run on the 3.12 CI interpreter",
     # ---- tools that must be present: forbidden to skip where installed
-    "bwrap not available on this machine":
-        "FORBIDDEN in the ubuntu test job (skip_guard --forbid); runs there",
     "node is not installed":
         "GitHub hosted runners ship node, so these run in CI",
     "z3 is not installed":

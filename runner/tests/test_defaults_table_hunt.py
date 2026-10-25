@@ -687,13 +687,20 @@ class SandboxStartupRefusalProbes(unittest.TestCase):
         os.chmod(path, 0o755)
         return td
 
-    def _assert_refusal(self, rc, text):
+    def _assert_refusal(self, rc, text, sysctl_cause=False):
         self.assertNotEqual(rc, 0)
         lowered = text.lower()
         self.assertTrue(
             any(name in lowered
                 for name in ("confinement", "sandbox", "bwrap")),
             "refusal does not name the mechanism: %r" % text[:300])
+        # The sysctl is named when it is the cause -- a trial
+        # run that failed -- not when the binary is simply
+        # absent (the shipped refusal in 48b38bb names what
+        # actually failed; an earlier draft of this probe
+        # demanded the sysctl in both cases and was wrong).
+        if not sysctl_cause:
+            return
         sysctl = "/proc/sys/kernel/apparmor_restrict_unprivileged_userns"
         try:
             with open(sysctl, encoding="ascii") as fh:
@@ -712,7 +719,7 @@ class SandboxStartupRefusalProbes(unittest.TestCase):
 
     def test_refuses_when_bwrap_cannot_start(self):
         rc, text = self._boot("enforce", self._fake_bwrap_dir(1))
-        self._assert_refusal(rc, text)
+        self._assert_refusal(rc, text, sysctl_cause=True)
 
     @unittest.skipUnless(sys.platform.startswith("linux"),
                          "needs bwrap on Linux")
