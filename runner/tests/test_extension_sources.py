@@ -2564,6 +2564,42 @@ class LocalFilesEdgesTest(unittest.TestCase):
                     X._tree_bytes(os.path.join(d, "nope")), 0)
 
 
+class ExtensionSourcesPolicyTest(unittest.TestCase):
+    """Queue A refill: _extension_sources_policy's own
+    legs (coverage run 40189711740: lines 4524,
+    4529-4531). With the sources module missing the
+    policy is None; a problem the pass has not
+    already recorded is recorded and announced once,
+    with what it means: nothing is fetched and every
+    source is withheld until it is fixed.
+    """
+
+    def test_no_module_no_policy(self):
+        with mock.patch.object(R, "_extsources", None):
+            self.assertIsNone(R._extension_sources_policy({}))
+
+    def test_a_new_problem_is_recorded_and_announced(self):
+        import types
+        fake = types.SimpleNamespace(
+            owner_policy=lambda cfg, mo: {"problem": "bad policy"})
+        lines = []
+        with mock.patch.object(R, "_extsources", fake), \
+                mock.patch.dict(R._EXTSOURCES_PASS,
+                                {"problem": None}), \
+                mock.patch.object(
+                    R, "log",
+                    lambda m, level="INFO": lines.append(m)):
+            policy = R._extension_sources_policy({})
+            again = R._extension_sources_policy({})
+            recorded = R._EXTSOURCES_PASS["problem"]
+        self.assertEqual(policy, {"problem": "bad policy"})
+        self.assertEqual(again, {"problem": "bad policy"})
+        self.assertEqual(len(lines), 1)
+        self.assertIn("bad policy", lines[0])
+        self.assertIn("nothing is fetched", lines[0])
+        self.assertEqual(recorded, "bad policy")
+
+
 class ReportExtensionSourcesTest(unittest.TestCase):
     """Queue A refill: _report_extension_sources' four
     outcomes (coverage run 40189711740: lines 4598,

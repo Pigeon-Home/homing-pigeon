@@ -294,6 +294,17 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/runner.py::`
+  `_extension_sources_policy` (4 lines never run,
+  coverage run 40189711740) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ExtensionSourcesPolicyTest in
+  runner/tests/test_extension_sources.py: with the
+  sources module missing the policy is None, and a
+  newly appearing problem is recorded and
+  announced exactly once with its consequence.
+  Done when a coverage run shows the function
+  clean.
 - A (refill) — `runner/wire/jobcrypto.py::`
   `decrypt_body` defect legs (3 lines never run,
   coverage run 40189711740) — taken 2026-10-25,
