@@ -599,10 +599,19 @@ def decide(readings, manifest, state):
     for _ts, text in lines:
         m = _LOSS_RE.search(text)
         if m:
+            # The scrape reads its captures through the module's own
+            # finite rule, as every other numeric intake does: the
+            # regex admits `1e999`, which float() makes inf, and an
+            # inf loss is not a loss (it wedged the pass: the alert
+            # it fired could not be signed under allow_nan=False, so
+            # the state was never written and the same tail was read
+            # again -- Q49).
             try:
-                losses.append(float(m.group(1)))
+                value = float(m.group(1))
             except ValueError:
-                pass
+                continue
+            if _is_number(value):
+                losses.append(value)
     losses = losses[-loss_history:]
 
     crash_fired = list(state["crash_fired"])

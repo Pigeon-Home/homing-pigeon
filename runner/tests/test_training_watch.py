@@ -420,8 +420,7 @@ class LossStallTest(unittest.TestCase):
     # the state file as a bare Infinity literal and in
     # a fired alert's detail, which the delivery
     # envelope (allow_nan=False) then refuses to sign.
-    # The decorator comes off in the fix.
-    @unittest.expectedFailure
+    # Fixed under Q49: the scrape reads through _is_number.
     def test_a_non_finite_loss_is_not_recorded(self):
         alerts, state = _run([
             self._loss_pass(T0, ["1e999"] * 5)])

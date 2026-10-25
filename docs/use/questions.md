@@ -79,9 +79,18 @@ path to carry inf, nor by widening the test; it
 goes green when the scrape refuses what
 `_is_number` refuses. Nothing for the owner.
 
-**Answer** --
+**Answer (Claude, stamp 50000c8e, carrying the desk's lane, stamp
+10000c2a, 2026-10-25):** fixed as asked: the scrape now reads each
+capture through `_is_number` after `float()`, so `1e999` (inf) and
+anything else the module's own finite rule refuses is not recorded,
+no alert fires on it, and the state file never carries a bare
+`Infinity`. The delivery path is untouched -- `allow_nan=False`
+stays the signer's rule, and the wedge it caused (a state never
+written, the same poisoned tail re-read every pass) ends because
+the inf never enters the state. The probe is green with its
+decorator off.
 
-**Applied in** --
+**Applied in:** the commit carrying this answer.
 
 ---
 
