@@ -67,6 +67,9 @@ jobs:
             done
             [ -n "$PY" ] || { echo "::error title=freebsd prepare::no python flavor with hypothesis installs: $(tail -n 6 pkg.log | tr '\n' ' ' | cut -c1-600)"; exit 1; }
             echo "$PY" > /tmp/hp-python
+            # The runner resolves the plain name python3; the flavor
+            # package installs only the versioned one.
+            [ -x /usr/local/bin/python3 ] || ln -s "/usr/local/bin/$PY" /usr/local/bin/python3
             "$PY" -c "import sys, hypothesis; print(sys.version.split()[0], 'hypothesis', hypothesis.__version__)"
             pw useradd runner -m -s /bin/sh || { echo "::error title=freebsd prepare::pw useradd runner failed"; exit 1; }
             pw useradd pigeon-test -m -s /bin/sh || { echo "::error title=freebsd prepare::pw useradd pigeon-test failed"; exit 1; }
@@ -76,19 +79,24 @@ jobs:
             cd "$GITHUB_WORKSPACE" || { echo "::error title=freebsd::no workspace at $GITHUB_WORKSPACE"; exit 1; }
             ls | head -20
             chown -R runner "$GITHUB_WORKSPACE" || { echo "::error title=freebsd::chown failed"; exit 1; }
-            echo "== the suite, as the runner user"
-            # The action's shell stops at the first failing command, so
-            # a red suite is caught in the || form, or nothing below
-            # it (the verdict, the annotations, the roster) would run.
-            rc=0
-            su -m runner -c "cd '$GITHUB_WORKSPACE' && $PY runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25" > suite-freebsd.log 2>&1 || rc=$?
-            tail -n 40 suite-freebsd.log
-            "$PY" runner/tools/skip_guard.py suite-freebsd.log --annotate || true
-            [ "$rc" -eq 0 ] || echo "::error title=freebsd suite::the suite exited $rc; the failing tests are annotated above and the log is in the artifact"
+            # The roster first: a step keeps ten error annotations, and
+            # the suite's exception lines would otherwise take them all
+            # before a failed control could name itself.
             echo "== the roster, as root with a second user"
             rrc=0
             "$PY" runner/tools/switch_proofs.py --have posix --root \
               --title FreeBSD-root --out switch-proofs-freebsd-root.md --annotate || rrc=$?
+            # The suite as an ordinary user with a login environment
+            # (su -m kept root's HOME and PATH, and the fake binaries
+            # the suite writes under TMPDIR must be executable, so it
+            # lives in the user's home, not a noexec /tmp).
+            echo "== the suite, as the runner user"
+            mkdir -p /home/runner/tmp && chown runner /home/runner/tmp
+            rc=0
+            su -l runner -c "export TMPDIR=/home/runner/tmp; cd '$GITHUB_WORKSPACE' && $PY runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25" > suite-freebsd.log 2>&1 || rc=$?
+            tail -n 40 suite-freebsd.log
+            "$PY" runner/tools/skip_guard.py suite-freebsd.log --annotate || true
+            [ "$rc" -eq 0 ] || echo "::error title=freebsd suite::the suite exited $rc; the failing tests are annotated above and the log is in the artifact"
             [ "$rc" -eq 0 ] && [ "$rrc" -eq 0 ]
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
