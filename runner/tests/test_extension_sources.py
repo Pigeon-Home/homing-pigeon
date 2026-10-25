@@ -34,7 +34,7 @@ import tempfile
 import time
 import unittest
 import zipfile
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 from urllib.error import HTTPError, URLError
 
@@ -1784,6 +1784,55 @@ class ExtensionSourcesPassTest(_Base):
         with mock.patch.object(R, "_extsources", None):
             self.assertIsNone(
                 R._extension_sources_pass(self.cfg, self.base))
+
+
+class FetchSourcesRefusalsTest(_Base):
+    """Queue A refill: run_fetch_sources' refusal exits
+    (coverage run 40187685363: 6 lines on both
+    platforms). The foreground command's contract (its
+    docstring): asking counts as wanting it, but three
+    states still refuse -- the sources module
+    unavailable (exit 1), the policy itself invalid
+    (exit 2, the problem printed), and another pass
+    already running (exit 1).
+    """
+
+    def setUp(self):
+        super().setUp()
+        write_ext(self.ext, upstream_decl())
+        self.args = mock.Mock(config=os.path.join(
+            self.base, "config.json"))
+
+    def _run(self, cfg):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            rc = R.run_fetch_sources(cfg, self.args)
+        return rc, out.getvalue(), err.getvalue()
+
+    def test_no_sources_module_is_exit_1(self):
+        with mock.patch.object(R, "_extsources", None):
+            rc, _out, err = self._run({"base_dir": self.base})
+        self.assertEqual(rc, 1)
+        self.assertIn("unavailable", err)
+
+    def test_an_invalid_policy_is_exit_2_and_named(self):
+        cfg = {"base_dir": self.base,
+               "extension_sources": {"oracle": "sometimes"}}
+        rc, _out, err = self._run(cfg)
+        self.assertEqual(rc, 2)
+        self.assertIn("extension_sources:", err)
+
+    def test_a_busy_pass_is_exit_1(self):
+        cfg = {"base_dir": self.base, "transports": ["file"],
+               "extension_sources": {"fetch": True,
+                                     "unpinned": True}}
+        busy = {"busy": True, "outcomes": [], "problems": [],
+                "used_bytes": 0, "budget_bytes": 0}
+        with mock.patch.object(X, "provision",
+                               return_value=busy):
+            rc, _out, err = self._run(cfg)
+        self.assertEqual(rc, 1)
+        self.assertIn("another pass is running", err)
 
 
 class PinToolTest(_Base):

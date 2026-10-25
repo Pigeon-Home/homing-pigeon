@@ -156,6 +156,16 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/runner.py::run_fetch_sources`
+  (6 lines never run on either platform, coverage
+  run 40187685363) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  FetchSourcesRefusalsTest in
+  runner/tests/test_extension_sources.py: the
+  sources module unavailable is exit 1; an invalid
+  policy is exit 2 with the problem printed; another
+  pass already running is exit 1. Done when a
+  coverage run shows the function clean.
 - A (refill) — `runner/cloud/send_dtls.py::`
   `_plain_result` and `_load_ticket` (6 lines each
   never run on either platform, coverage run
