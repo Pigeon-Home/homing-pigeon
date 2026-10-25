@@ -156,6 +156,19 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
+- A (refill) — `runner/runner.py::run_variant` (8
+  lines never run on either platform, coverage run
+  40189608702) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  RunVariantFallbacksTest in
+  runner/tests/test_run_variant.py: an unusable
+  timeout reads as the cap itself; a variant with
+  no job id runs under the default id; a work dir
+  that cannot be created is exit 2, named on
+  stderr; a failure in the execution path itself
+  is an "error" report, never a raise. The function
+  is fully run under that module locally. Done
+  when a coverage run shows it clean.
 - A (refill) — `runner/oracle/senses.py::`
   `_store_alert_report` (3 lines never run on
   Linux, 6 on Windows, coverage run 40187685363) —

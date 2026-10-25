@@ -19,7 +19,8 @@ import os
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -159,6 +160,110 @@ class RunVariantTest(unittest.TestCase):
         _rc, report = self._run(path)
         self.assertEqual(report["stage"], "ran")
         self.assertEqual(report["exit_code"], 7)
+
+
+class RunVariantFallbacksTest(unittest.TestCase):
+    """Queue A refill: run_variant's fallback legs
+    (coverage run 40189608702: 8 lines on both
+    platforms). The door's own docstring fixes the
+    shapes: the variant's timeout is capped whatever
+    the file asks for -- an unusable one reads as the
+    cap itself; a variant with no usable job id runs
+    under the default id; a work dir that cannot be
+    created is a usage error (exit 2, named on
+    stderr); and a failure in the execution path
+    itself is an "error" report, never a raise and
+    never a refusal.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-rv-")
+        self.cfg = {"base_dir": self.tmp,
+                    "default_timeout_sec": 30}
+
+    def _variant_file(self, variant, name="variant.json"):
+        path = os.path.join(self.tmp, name)
+        with open(path, "w", encoding="utf-8") as fh:
+            if isinstance(variant, str):
+                fh.write(variant)
+            else:
+                json.dump(variant, fh)
+        return path
+
+    def _run(self, path):
+        args = argparse.Namespace(
+            config=os.path.join(self.tmp, "config.json"),
+            run_variant=path)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            rc = R.run_variant(self.cfg, args)
+        report = None
+        for line in reversed(out.getvalue().splitlines()):
+            line = line.strip()
+            if line.startswith("{"):
+                try:
+                    report = json.loads(line)
+                    break
+                except ValueError:
+                    continue
+        return rc, report
+
+    def _capture_job(self, variant):
+        seen = {}
+
+        def fake_execute(cfg, job, work_base):
+            seen.update(job)
+            return {"exit_code": 0, "stdout": "x",
+                    "stderr": "", "timed_out": False,
+                    "duration_sec": 0.1}
+
+        path = self._variant_file(variant)
+        with mock.patch.object(R, "execute_job", fake_execute):
+            rc, report = self._run(path)
+        return rc, report, seen
+
+    def test_an_unusable_timeout_reads_as_the_cap(self):
+        rc, report, seen = self._capture_job(
+            {"job_id": "fuzz-t", "script": "echo x",
+             "timeout_sec": "not-a-number"})
+        self.assertEqual(rc, 0)
+        self.assertEqual(report["stage"], "ran")
+        self.assertEqual(seen["timeout_sec"],
+                         R._VARIANT_TIMEOUT_CAP_SEC)
+
+    def test_a_missing_job_id_gets_the_default(self):
+        _rc, report, seen = self._capture_job(
+            {"script": "echo x"})
+        self.assertEqual(report["stage"], "ran")
+        self.assertEqual(seen["job_id"], "fuzz-variant")
+
+    def test_an_uncreatable_work_dir_is_exit_2(self):
+        import argparse
+        blocker = os.path.join(self.tmp, "blocker")
+        with open(blocker, "w", encoding="utf-8") as fh:
+            fh.write("not a directory")
+        path = self._variant_file(
+            {"job_id": "fuzz-t", "script": "echo x"})
+        args = argparse.Namespace(
+            config=os.path.join(self.tmp, "config.json"),
+            run_variant=path)
+        err = io.StringIO()
+        with redirect_stderr(err):
+            rc = R.run_variant({"base_dir": blocker}, args)
+        self.assertEqual(rc, 2)
+        self.assertIn("cannot create", err.getvalue())
+
+    def test_an_execution_error_is_an_error_report(self):
+        path = self._variant_file(
+            {"job_id": "fuzz-t", "script": "echo x"})
+        with mock.patch.object(
+                R, "execute_job",
+                side_effect=RuntimeError("bucket broke")):
+            rc, report = self._run(path)
+        self.assertEqual(rc, 0)
+        self.assertEqual(report["stage"], "error")
+        self.assertIn("RuntimeError: bucket broke",
+                      report["reason"])
 
 
 if __name__ == "__main__":
