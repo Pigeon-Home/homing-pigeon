@@ -101,5 +101,81 @@ class TemplateTest(unittest.TestCase):
             self.assertNotIn(word, out)
 
 
+class TemplateParseTest(unittest.TestCase):
+    """Queue S, roster M7.templates: the parse half of the
+    promise. TemplateTest above pins that the templates exist,
+    render completely and keep their paths inside the rendered
+    prefix; this class pins that each rendered template PARSES
+    in its own grammar's shape and that the installer never
+    references them (the hardening README's own claim:
+    "The installer (runner/ops/install.py) never references
+    them"). The parsers are structural on purpose --
+    apparmor_parser and checkmodule are operator-machine
+    tools; a template that only parses under one
+    distribution's version of them still parses.
+    """
+
+    def test_the_systemd_unit_parses(self):
+        import configparser
+        import io
+        parser = configparser.ConfigParser(interpolation=None)
+        parser.optionxform = str
+        parser.read_file(io.StringIO(
+            _render("systemd/homing-pigeon.service")))
+        self.assertEqual(parser.sections(),
+                         ["Unit", "Service", "Install"])
+        # The ExecStart is the installer's argv shape:
+        # <python> <dir>/runner.py --config <path> (install.py,
+        # _runner_argv + install_linux), rendered.
+        argv = parser["Service"]["ExecStart"].split()
+        self.assertEqual(argv, [PREFIX + "/python3",
+                                PREFIX + "/runner/runner.py",
+                                "--config", PREFIX + "/config.json"])
+        self.assertEqual(parser["Service"]["RestartSec"], "10")
+        self.assertEqual(parser["Install"]["WantedBy"],
+                         "multi-user.target")
+        self.assertEqual(parser["Service"]["ReadWritePaths"],
+                         PREFIX + "/base")
+        self.assertEqual(parser["Service"]["ReadOnlyPaths"],
+                         PREFIX + "/config.json")
+        self.assertEqual(parser["Service"]["User"], "fakepigeon")
+
+    def test_the_apparmor_profile_parses(self):
+        rendered = _render("apparmor/homing-pigeon")
+        self.assertEqual(rendered.count("{"), rendered.count("}"))
+        body = [ln.strip() for ln in rendered.splitlines() if ln.strip()]
+        opener = "%s/python3 flags=(complain) {" % PREFIX
+        self.assertIn(opener, body)
+        # The grants the README describes: the runner's source
+        # read-only, the config read-only, the base read-write.
+        for rule in (PREFIX + "/runner/** r,",
+                     PREFIX + "/config.json r,",
+                     PREFIX + "/base/** rw,"):
+            self.assertIn(rule, body)
+        for ln in body:
+            if ln in (opener, "}"):
+                continue
+            self.assertTrue(ln.endswith(","),
+                            "rule not comma-terminated: %s" % ln)
+
+    def test_the_selinux_module_parses(self):
+        rendered = _render("selinux/homing_pigeon.te")
+        self.assertEqual(rendered.count("("), rendered.count(")"))
+        declared = set(re.findall(r"^type\s+(\w+);", rendered,
+                                  re.M))
+        self.assertIn("homing_pigeon_t", declared)
+        for stmt in rendered.split(";"):
+            if stmt.strip().startswith("allow "):
+                for typ in re.findall(r"\b(homing_pigeon_\w+)",
+                                      stmt):
+                    self.assertIn(typ, declared,
+                                  "allow names undeclared %s" % typ)
+
+    def test_the_installer_never_references_them(self):
+        with open(os.path.join(REPO, "runner", "ops", "install.py"),
+                  encoding="utf-8") as fh:
+            self.assertNotIn("hardening", fh.read())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

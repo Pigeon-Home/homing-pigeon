@@ -157,7 +157,8 @@ ROSTER = [
         "id": "M7.templates",
         "promise": "the AppArmor, SELinux and systemd templates parse, name "
                    "the install layout's paths, and nothing installs them.",
-        "tests": [],
+        "tests": ["runner.tests.test_hardening_templates.TemplateTest",
+                  "runner.tests.test_hardening_templates.TemplateParseTest"],
         "needs": [],
     },
     {

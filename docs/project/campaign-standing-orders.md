@@ -294,6 +294,24 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- S — roster M7.templates — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the
+  module already carried TemplateTest (existence,
+  complete rendering, path consistency, the
+  installer's unit mirrored, --help silent); the
+  missing half was the parse: TemplateParseTest in
+  runner/tests/test_hardening_templates.py renders
+  each template and parses it in its grammar's
+  shape (the unit through a real ini parser with
+  the ExecStart argv equal to the installer's; the
+  AppArmor block balanced with every rule
+  comma-terminated and the three grants exact; the
+  SELinux module's allows naming only declared
+  types), and pins the README's claim that
+  install.py never references the templates. The
+  roster entry lists both classes. Done when the
+  switch-proofs workflow is green with the entry
+  proven.
 - S — roster M6.wall.network, M6.wall.home,
   M6.wall.usr, M6.wall.work (the four sandbox walls
   as separate cases, each with its mode-off
