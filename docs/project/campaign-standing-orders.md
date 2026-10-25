@@ -155,6 +155,10 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A — `runner/extensions/training-watch/`
+  `training_watch.py::main` (10 lines never run on
+  Linux, coverage run 40183585961) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90
 - A — `runner/extensions/job-watcher/job_watcher.py::`
   `main` (10 lines never run on either platform,
   coverage run 40183585961) — taken 2026-10-25,
