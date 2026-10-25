@@ -141,6 +141,14 @@ directory, created `0600` on POSIX, bounded by `audit_max_lines`
 entries carry identifiers only — never secret values, script text,
 or file contents.
 
+### What a live posture looks like
+
+`python3 runner/runner.py --posture` on a system with every
+security mode off and no bwrap prints the card in
+`docs/use/live-examples.md`. The matching `--audit-report` is
+empty until the first enforce or audit decision is written.
+The full capture is in `docs/reports/live-2026-10-25/`.
+
 ### Features
 
 | Feature | Milestone | What it does |

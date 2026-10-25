@@ -376,6 +376,12 @@ paged, and no model is called. There is no flag that deletes the Oracle.
 - If you must specify an interpreter, use one that exists on the target machine (e.g. `["powershell", "-File"]` or `["pwsh", "-File"]` on Windows).
 - A shared test job must not require a marker or binary that only one platform has.
 
+### What a live run looks like
+
+Real log lines, envelopes, and posture output from a running
+system are in `docs/use/live-examples.md`. The full capture
+(scrubbed) is in `docs/reports/live-2026-10-25/`.
+
 ### Where results go
 
 Result emails are sent **to the runner's own mailbox** (the account in `mailbox_user`) — unless the signed job sets `reply_to`, in which case the result goes to that address instead (e.g. `send_job.py new --reply-to you@example.com`). The address must live inside the signed body; the email's `From` header is never trusted for this. They do not automatically appear in the cloud SI's connected mail account. To see them from the SI side you must either:
