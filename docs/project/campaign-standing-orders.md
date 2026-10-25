@@ -2700,6 +2700,44 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Q45-Q48 answered by Claude (2e5617ae, applied-in
+  f76338f6) and verified here: the dead re-checks
+  in detection.update_baseline and answer_queries
+  are gone; the dri page-path guards stay with a
+  comment naming alert_score's never-raises
+  contract; the signing pair is aligned on the
+  up-front payload guard (sign_envelope's dead
+  serialize check cut, sign_payload gains the
+  guard), and verify_body's dict check stays as the
+  verifier's last check by decision. Scoped modules
+  (detection, dri, extensions, send_job, properties,
+  answer_queries, senses) green at the new head.
+- Queue A taken: extsources.is_withheld's
+  unresolvable-entry arm -- a withheld entry
+  realpath refuses (a NUL in the name) is compared
+  as given, matches nothing, and is passed over
+  without raising or masking a later good entry;
+  pinned in DisclosureTest. The neighbouring
+  _clean_rel_path "names no path" raise is
+  unreachable by construction; dispositioned, no
+  probe possible. (This line and the next were
+  written twice: a failed pull ate the first
+  attempt's ledger edit; the tests landed in
+  0decd825 and be3cb3a1 regardless.)
+- Full suite at ddd6608: both shards OK (shard 1 in
+  564.9s under foreground contention; resources
+  2026-10-25T21:17:36Z: cores 2 | box cpu 46% | wall
+  9m27s | peak rss 228 MB | mem used 91% | disk free
+  166.4 GB | exit 0 | under-driven).
+- Queue A taken: auditreport's _security = None
+  degradation (the map's _dangerous_names single) --
+  without the security module the report prints its
+  skeleton, reads no entries (the audit file's name
+  is the security module's to give), and the
+  dangerous-name set is empty; pinned in
+  test_audit_report.py. sandbox.startup_problem's
+  Linux-map single is its platform-guard line, the
+  recorded mirror disposition.
 - Q43 and Q44 closed by Claude (e912ccb3) and
   verified here. Q44: status() now reads each member
   for its shape and reports it blank when wrong; the
