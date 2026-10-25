@@ -45,6 +45,54 @@ def _cfg(base):
     }
 
 
+class DeterministicAskTest(unittest.TestCase):
+    """Queue A refill: the /ask handler's deterministic
+    leg (coverage run 40189711740: line 10109 of
+    runner/runner.py). With no local model (the Pi
+    Light posture) an owner question is answered
+    from the box's own records, and no model call is
+    attempted.
+    """
+
+    def test_a_question_gets_the_records_answer(self):
+        with tempfile.TemporaryDirectory() as d:
+            kept = os.path.join(d, "retained")
+            os.makedirs(kept)
+            with open(os.path.join(kept, "job-1.json"), "w",
+                      encoding="utf-8") as fh:
+                json.dump({"job_id": "job-1", "kind": "exec",
+                           "stdout": "clock is noon\n"}, fh)
+            cfg = _cfg(d)
+            cfg["oracle_mode"] = "deterministic"
+            httpd = make_oracle_server(cfg, "127.0.0.1", 0)
+            port = httpd.socket.getsockname()[1]
+            thread = threading.Thread(target=httpd.serve_forever,
+                                      daemon=True)
+            thread.start()
+            self.addCleanup(httpd.shutdown)
+            self.addCleanup(httpd.server_close)
+            called = []
+            with mock.patch(
+                    "runner.runner.ask_model_agent",
+                    side_effect=lambda *a, **k: called.append(1)):
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/ask",
+                    data=json.dumps(
+                        {"question": "what happened?"}).encode(),
+                    headers={
+                        "Origin": f"http://127.0.0.1:{port}",
+                        "Content-Type": "application/json",
+                        "X-Oracle-Token": httpd.oracle_token,
+                    },
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    body = json.loads(resp.read().decode())
+            self.assertEqual(called, [])
+            self.assertIn("Deterministic Oracle", body["answer"])
+            self.assertIn("clock is noon", body["answer"])
+
+
 class OracleChatTest(unittest.TestCase):
     def test_refuses_a_non_loopback_bind(self):
         with self.assertRaises(ValueError):
