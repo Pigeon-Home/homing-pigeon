@@ -294,6 +294,31 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/wire/verify.py` fallback
+  legs, `runner/guard/sandbox.py::`
+  `_userns_restricted` read legs and
+  `runner/wire/mailbox.py::_xoauth2_raw` (2 lines
+  each never run, coverage run 40189711740) —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  VerifyFallbackLegsTest in
+  runner/tests/test_blackbox_findings.py (a
+  control-inserted body verifies against the
+  cleaned form; a body nested past the
+  interpreter's limit reports invalid JSON; the
+  audience check binds nothing when the security
+  layer is absent or the payload is not an
+  object), UsernsRestrictedLegsTest in
+  runner/tests/test_confinement.py (the sysctl
+  read, and its absence read as not restricted),
+  and XOAuth2RawTest in
+  runner/tests/test_email_pipe_coverage.py.
+  Residue: verify_body's and verify_body_keyed's
+  non-object guards (lines 191 and 703) are
+  unreachable by construction -- the extractor
+  only returns brace-balanced spans opening with
+  "{", which parse to an object or not at all.
+  Done when a coverage run shows the legs clean.
 - A (refill) —
   `runner/transport_extensions/dtls/__main__.py::`
   `DtlsPipe._pump_results` delivery legs and

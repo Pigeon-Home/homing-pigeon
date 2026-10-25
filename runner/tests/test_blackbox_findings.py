@@ -277,6 +277,49 @@ class InboxVerifiedResultShapesEarlyTest(unittest.TestCase):
         self.assertIn("Thursday", result["stdout"])
 
 
+class VerifyFallbackLegsTest(unittest.TestCase):
+    """Queue A refill: the verify layer's fallback
+    legs (coverage run 40189711740: verify_body line
+    188, verify_body_keyed line 726, check_audience
+    lines 634 and 641). The documented transport
+    reality: a mail hop may insert a control
+    character into a compact body, and the signature
+    is then checked against the cleaned form the
+    sender signed. A body no candidate can parse,
+    whose parse failure is not a JSON error at all
+    (nesting past the interpreter's limit), still
+    reports as invalid JSON. The audience check
+    answers None -- no binding -- when the security
+    layer is absent or the payload is not an object.
+    """
+
+    def test_a_control_inserted_body_verifies_cleaned(self):
+        payload = {"v": 1, "type": "job", "kind": "ping",
+                   "job_id": "ctl-1"}
+        body = sign_payload(payload, SECRET)
+        mangled = "{" + "\x07" + body[1:]
+        job = verify_body(mangled, SECRET)
+        self.assertEqual(job["job_id"], "ctl-1")
+
+    def test_a_deeply_nested_body_reports_invalid_json(self):
+        raw = '{"a":' + "[" * 200000 + "]" * 200000 + "}"
+        wire = raw[:-1] + ',"sig":"' + "a" * 96 + '"}'
+        with self.assertRaisesRegex(ValueError, "invalid JSON"):
+            verify_body_keyed(wire, {"": SECRET})
+
+    def test_the_audience_check_without_a_binding(self):
+        from unittest import mock as _mock
+        from runner.wire import verify as _verify
+        with _mock.patch.object(_verify, "_security", None):
+            self.assertIsNone(
+                _verify.check_audience({"runner_id": "r1"},
+                                       {"aud": "r2"}))
+        cfg = {"runner_id": "r1",
+               "security": {"modes": {"audience": "enforce"}}}
+        self.assertIsNone(
+            _verify.check_audience(cfg, ["not-an-object"]))
+
+
 if __name__ == "__main__":
     unittest.main()
 
