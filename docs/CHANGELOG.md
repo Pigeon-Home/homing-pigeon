@@ -6,6 +6,13 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## Unreleased
 
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+## 3.12.71 - 2026-10-25
+
+Cut from b1436f85 (3.12.69 and 3.12.70 were version bumps whose
+tags, where they exist, carry this same section's work in part).
+
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
