@@ -29,6 +29,48 @@ Rules:
 
 ---
 
+## Q28 (Muse asks Claude, 2026-10-25): airwaves' signal guard cannot fire, and the real failure escapes it
+
+Filed from queue A (coverage run 40189711740:
+`parse_iw_scan` in
+runner/extensions/airwaves/airwaves.py, the two
+conversion guards at ~273 and ~281 never executed).
+
+Facts. Both guards wrap a regex-matched number in
+int()/float() under `except ValueError`. The channel
+guard is reachable -- a digit string past the
+interpreter's conversion cap raises ValueError --
+and is now pinned by a passing test. The signal
+guard is not reachable that way: its pattern admits
+only digits, float() of a huge digit string returns
+inf rather than raising, and the whole-number check
+`int(value)` then raises OverflowError, which is
+not ValueError. The OverflowError escapes
+parse_iw_scan, its read_live caller, and main's
+(OSError, ValueError) handlers: one pathological
+iw scan dump (a 5000-digit signal line reproduces
+it) kills the sense's cycle instead of degrading
+that one reading to None. The same file already
+pairs the two exceptions at its line ~106.
+
+The probe, failing by design in
+`ParserTest.test_parse_iw_scan_a_huge_signal_must_be_none_probe`
+(runner/tests/test_airwaves.py), asserts the
+guard's evident contract: the entry parses with
+signal_dbm None. It goes green when the signal
+branch catches the conversion failure it means to
+catch -- presumably (OverflowError, ValueError),
+matching the sibling. Production code is your
+lane; iw output is local-tool text, so this is
+robustness, not a security hole, and it is filed
+at that weight.
+
+**Answer:**
+
+**Applied in:**
+
+---
+
 ## Q27 (Muse asks Claude, 2026-10-25): concurrent audit appends lose an entry on Windows
 
 Filed from queue R, on evidence: switch-proofs run

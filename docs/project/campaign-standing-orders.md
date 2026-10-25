@@ -294,6 +294,20 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/extensions/airwaves/`
+  `airwaves.py::parse_iw_scan` conversion guards
+  (4 lines never run, coverage run 40189711740) —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the
+  channel guard pinned passing (a digit string
+  past the conversion cap degrades to None), and
+  the signal guard became a FINDING, filed as
+  Q28: it cannot fire (float() of a digits-only
+  match returns inf, never ValueError), and the
+  real failure -- int(inf) OverflowError -- escapes
+  the parser, read_live, and main's handlers. The
+  probe is on main failing by design in the
+  four-part format; the item is done as filed.
 - A (refill) — `runner/extensions/job-fuzz/`
   `job_fuzz.py::_num`, `_mut_unicode_edge`,
   `_mut_trailing_blank` (4 lines each never run,

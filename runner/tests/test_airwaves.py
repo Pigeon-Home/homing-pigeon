@@ -183,6 +183,51 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(scan[1]["security"], "--")
         self.assertEqual(AW.parse_iw_scan("no dump here"), [])
 
+    def test_parse_iw_scan_an_unreadable_channel_is_none(self):
+        # Queue A refill: the channel conversion's guard
+        # (coverage run 40189711740: lines 273-274). A
+        # channel number too long to convert (past the
+        # interpreter's digit cap) degrades to None and
+        # the rest of the entry still parses.
+        text = ("BSS aa:bb:cc:dd:ee:01(on wlan0)\n"
+                "\tSSID: HomeNet\n"
+                "\tDS Parameter set: channel " + "9" * 5000 + "\n"
+                "\tsignal: -55.00 dBm\n")
+        scan = AW.parse_iw_scan(text)
+        self.assertEqual(len(scan), 1)
+        self.assertIsNone(scan[0]["channel"])
+        self.assertEqual(scan[0]["signal_dbm"], -55)
+
+    def test_parse_iw_scan_a_huge_signal_must_be_none_probe(self):
+        # FAILING BY DESIGN -- Q28 in docs/use/questions.md.
+        #
+        # (1) The claim, from parse_iw_scan's shape in
+        # runner/extensions/airwaves/airwaves.py: a signal
+        # value that cannot be converted degrades to None
+        # (the except ValueError arm at ~281), the same
+        # shape as the channel branch directly above it.
+        # (2) Where stated: that guard, and its sibling at
+        # the file's line ~106 catching (OverflowError,
+        # ValueError) together.
+        # (3) What the code does instead: the signal regex
+        # admits only digits, so float() cannot raise
+        # ValueError on a match -- a huge value converts
+        # to inf, and int(inf) in the whole-number check
+        # raises OverflowError, which escapes the guard,
+        # parse_iw_scan, read_live, and main's
+        # (OSError, ValueError) handlers: one pathological
+        # scan dump kills the sense's cycle.
+        # (4) DO NOT GREEN by editing this test. It goes
+        # green when the signal guard catches the
+        # conversion failure it means to catch (Claude's
+        # lane, Q28).
+        text = ("BSS aa:bb:cc:dd:ee:01(on wlan0)\n"
+                "\tSSID: HomeNet\n"
+                "\tsignal: " + "9" * 5000 + " dBm\n")
+        scan = AW.parse_iw_scan(text)
+        self.assertEqual(len(scan), 1)
+        self.assertIsNone(scan[0]["signal_dbm"])
+
 
 class DecideTest(unittest.TestCase):
     def setUp(self):
