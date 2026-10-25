@@ -2700,6 +2700,17 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: extreview._record (6 missed on both
+  maps at 72c8645, the largest non-dispositioned
+  function). RecordTest in test_extreview.py pins the
+  no-base-dir return, the unwritable-report path (the
+  verdicts still report in process, per the docstring),
+  the unchanged-verdicts no-rewrite rule, and the
+  non-dict-on-disk replacement; local coverage of
+  _record goes 6 missed to 1: the isinstance re-check
+  after load_report, provably unreachable (load_report
+  returns dict-or-None) -- filed as Q40, disposition
+  cannot-fire-by-contract.
 - S item ORACLE.alphabet taken and done (the
   roster's one empty entry): new
   runner/tests/test_oracle_alphabet.py drives the

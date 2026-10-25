@@ -612,5 +612,81 @@ class RunnerGateTest(unittest.TestCase):
         self.assertIn('"review", "sources"]', parser_src)
 
 
+class RecordTest(unittest.TestCase):
+    """The report file behind apply (queue A, from the CI
+    coverage map: _record's no-path return and its write-
+    failure cleanup were the largest uncovered function on
+    both platforms). The promises are the module's own:
+    the report is written only when the verdicts changed,
+    and last_report returns the verdicts "whether or not
+    the file could be written"."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-extreview-")
+        self.ext = os.path.join(self.tmp, "extensions")
+        X.forget()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        X.forget()
+
+    def _registry(self):
+        _drop(self.ext, "probe", SENSE, {"probe.py": "x = 1\n"})
+        registry, problems = E.load_extensions(
+            self.ext, kinds=("sense",))
+        self.assertEqual(problems, [])
+        return registry
+
+    def test_no_base_dir_records_nothing_and_says_none(self):
+        registry = self._registry()
+        for base in ("", None):
+            out, problems, full = X.apply(
+                {}, base, registry, kind="sense")
+            self.assertEqual(sorted(out), ["probe"])
+            self.assertEqual(problems, [])
+            self.assertIn("probe", full["extensions"])
+            self.assertIsNone(X.last_report(base, "sense"))
+            self.assertIsNone(X.load_report(base))
+
+    def test_an_unwritable_report_still_reports_in_process(self):
+        registry = self._registry()
+        base = os.path.join(self.tmp, "a-file-not-a-dir")
+        with open(base, "w", encoding="utf-8") as fh:
+            fh.write("occupied")
+        out, problems, full = X.apply({}, base, registry,
+                                      kind="sense")
+        self.assertEqual(sorted(out), ["probe"])
+        self.assertEqual(problems, [])
+        # The docstring's promise: the verdicts survive the
+        # failed write in process, and nothing lands on disk.
+        self.assertEqual(X.last_report(base, "sense"), full)
+        self.assertIsNone(X.load_report(base))
+        with open(base, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "occupied")
+
+    def test_a_non_dict_report_on_disk_is_replaced_not_merged(self):
+        registry = self._registry()
+        path = X.report_path(self.tmp)
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(["not", "a", "report"], fh)
+        X.apply({}, self.tmp, registry, kind="sense")
+        data = X.load_report(self.tmp)
+        self.assertIsInstance(data, dict)
+        self.assertEqual(sorted(data["senses"]), ["probe"])
+        self.assertEqual(data["mode"], "enforce")
+
+    def test_unchanged_verdicts_are_not_rewritten(self):
+        registry = self._registry()
+        X.apply({}, self.tmp, registry, kind="sense")
+        path = X.report_path(self.tmp)
+        with open(path, "rb") as fh:
+            before = fh.read()
+        mtime = os.stat(path).st_mtime_ns
+        X.apply({}, self.tmp, registry, kind="sense")
+        with open(path, "rb") as fh:
+            self.assertEqual(fh.read(), before)
+        self.assertEqual(os.stat(path).st_mtime_ns, mtime)
+
+
 if __name__ == "__main__":
     unittest.main()
