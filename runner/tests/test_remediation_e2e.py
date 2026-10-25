@@ -203,6 +203,64 @@ class RemediationEndToEnd(unittest.TestCase):
         self.assertEqual(len(observed), 1, self._audit())
 
 
+class StartJobMonitorFallbacksTest(unittest.TestCase):
+    """Queue A refill: _start_job_monitor's fallback
+    legs (coverage run 40189608702: 5 lines on both
+    platforms). The builder's docstring fixes the
+    shape -- "None on any failure" is the module-level
+    answer only: with the remediation module absent
+    there is no monitor; a script that cannot be read
+    and an opinion layer whose hints fail each degrade
+    to a monitor with no declared paths, never to no
+    monitor at all.
+    """
+
+    def _start(self, d, script_path, st=None):
+        if st is None:
+            st = _runner._remediation.settings(
+                {"remediation_mode": "off"})
+        proc = types.SimpleNamespace(pid=4242)
+        work = os.path.join(d, "work")
+        os.makedirs(work, exist_ok=True)
+        return _runner._start_job_monitor(
+            {}, st, "job-m", proc, work, d, script_path, {})
+
+    def test_no_remediation_module_no_monitor(self):
+        st = _runner._remediation.settings(
+            {"remediation_mode": "off"})
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(_runner, "_remediation",
+                                   None):
+                self.assertIsNone(self._start(
+                    d, os.path.join(d, "script.py"), st))
+
+    def test_an_unreadable_script_still_gets_a_monitor(self):
+        with tempfile.TemporaryDirectory() as d:
+            mon = self._start(d, os.path.join(d, "gone.py"))
+            try:
+                self.assertIsNotNone(mon)
+                self.assertEqual(mon._declared, set())
+            finally:
+                mon.stop()
+
+    def test_failing_hints_still_get_a_monitor(self):
+        with tempfile.TemporaryDirectory() as d:
+            script = os.path.join(d, "script.py")
+            with open(script, "w", encoding="utf-8") as fh:
+                fh.write("echo hi\n")
+            opinion = types.SimpleNamespace(
+                script_hints=mock.Mock(
+                    side_effect=RuntimeError("no hints")))
+            with mock.patch.object(_runner, "_opinion",
+                                   opinion):
+                mon = self._start(d, script)
+            try:
+                self.assertIsNotNone(mon)
+                self.assertEqual(mon._declared, set())
+            finally:
+                mon.stop()
+
+
 class ExecuteJobFallbacksTest(unittest.TestCase):
     """Queue A refill, runner.execute_job's fallback lines
     (coverage run 40187685363): the remediation watch is an

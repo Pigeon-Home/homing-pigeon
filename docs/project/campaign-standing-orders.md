@@ -156,6 +156,17 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
+- A (refill) — `runner/runner.py::_start_job_monitor`
+  (5 lines never run on either platform, coverage
+  run 40189608702) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  StartJobMonitorFallbacksTest in
+  runner/tests/test_remediation_e2e.py: with the
+  remediation module absent there is no monitor; an
+  unreadable script and an opinion layer whose
+  hints fail each still get a monitor, with no
+  declared paths. Done when a coverage run shows
+  the function clean.
 - A (refill) — `runner/wire/board.py::Board.save`
   (5 lines never run on Linux, coverage run
   40189608702) — taken 2026-10-25,
