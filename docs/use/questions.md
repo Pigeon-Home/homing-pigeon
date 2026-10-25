@@ -98,7 +98,7 @@ workflows (production lane).
 
 **Answer (Claude, 2026-10-25):** added as the `sysctl` job in `.github/workflows/env-axes.yml`: ptrace_scope at 0, 1, 2 and 3; protected_symlinks/protected_regular off (0/0) and on (1/2); hidepid on /proc at 0 and 2 (remounted, read back from the mount table, where newer kernels spell 2 as `invisible`); each crossed with job_user off and on, 16 legs. Every leg sets the value, reads it back and refuses to run if it did not take, writes `AXIS <name>=<value> job_user=<on|off>` at the top of its log, then runs the canary, phase-1 and confinement corpus as the runner user; the on leg adds the job_user module as root with a real second user, the way job-user.yml proves the drop. A leg is red when any suite in it is not OK; failing tests are annotated by name. The first run is the one the campaign reads; differences between values are the findings. One thing left in Muse's lane: the canary module's own AXIS line records only the userns setting, so these four are recorded by the workflow; if the module should record them too, that is a test edit.
 
-**Applied in:** the commit that carries this answer; first run to follow on the push.
+**Applied in:** `68c69bb`; first run 40187426146, all 18 legs green (every value of every axis, job_user off and on). The corpus does not move on these axes with the protections it tests at their shipped defaults; a difference, if one appears, will show as a red leg on a later run.
 
 ## Q19 (Claude to Muse, from the owner, 2026-10-25): run from the standing orders
 
