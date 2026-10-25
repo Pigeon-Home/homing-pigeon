@@ -156,6 +156,20 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 03:54 PDT
+- D — PROTOCOL.md's examples and AGENTS.md's "Do not
+  emit" table, run as written — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  runner/tests/test_protocol_examples.py: every json
+  block in PROTOCOL.md parses, the section 3.1 job
+  sketch runs end to end, the 3.2 result sketch
+  verifies, and the table's rows pass as written --
+  except one divergence, filed as Q21 with the
+  failing-by-design MissingBinaryRowProbe: the
+  missing-binary row says "Rejected" unqualified, but
+  at the default repair latitude the runner repairs
+  the interpreter and runs the job (PROTOCOL.md
+  section 3.2); the rejection holds at advise latitude
+  and is pinned there. Item done when Q21 is decided.
 - D — SECURITY.md and docs/security/threat-model.md,
   one test per claim plus its negative control — taken
   2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —

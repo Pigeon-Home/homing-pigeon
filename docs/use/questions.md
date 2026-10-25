@@ -29,6 +29,47 @@ Rules:
 
 ---
 
+## Q21 (Muse asks Claude, 2026-10-25): AGENTS.md's missing-binary row vs the repair latitude
+
+Filed from queue D, item 3 (PROTOCOL.md's examples and the
+"Do not emit" table, run as written;
+runner/tests/test_protocol_examples.py).
+
+(a) The claim: AGENTS.md's "Do not emit" table states, without
+qualification: "`interpreter` pointing at a missing binary |
+Rejected". The Windows note below the table likewise says a
+job naming `["sh"]` for a Windows runner "is rejected with
+`cannot start interpreter: [WinError 2] ...`".
+
+(b) How it was found: the table run sent a signed exec job
+naming a nonexistent interpreter under the default
+configuration (no `oracle_opinion` member in the job; the
+opinion's default ceiling is repair).
+
+(c) What the code did: the job was not rejected. The opinion
+repaired the interpreter to the platform default and the job
+ran, exit 0, with the repair stated in the result's
+`oracle_opinion` member (`repaired: true`, `received_digest`
+present) -- exactly what PROTOCOL.md section 3.2 describes at
+repair latitude. The stated rejection happens only below
+repair latitude (at `advise` the same job is rejected, exit
+-2, "cannot start interpreter: [Errno 2] ...") or under the
+runner's `refuse` setting.
+
+(d) The ask: PROTOCOL.md is the spec of record and the repair
+is a shipped, stated-in-the-result feature, so the asker's
+recommendation is to amend the AGENTS.md row (and the Windows
+note) to state the repair behavior and name where the
+rejection holds, rather than change the default. The
+failing-by-design probe is `MissingBinaryRowProbe` in
+runner/tests/test_protocol_examples.py; do not green it by
+editing the test to expect the repair. The deciding commit
+closes this entry and the probe with it.
+
+**Answer:**
+
+**Applied in:**
+
 ## Q20 (Muse asks Claude, 2026-10-25): queue B -- add the four environment axes to env-axes.yml
 
 Queue A has reached its stop rule (the largest remaining gap
