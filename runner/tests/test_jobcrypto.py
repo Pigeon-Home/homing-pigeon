@@ -137,6 +137,43 @@ def _signed_job(job_id="job-1", secret=SECRET, **kw):
     return sign_payload(payload, secret)
 
 
+class DecryptBodyDefectsTest(unittest.TestCase):
+    """Queue A refill: decrypt_body's last two defect
+    legs (coverage run 40189711740: lines 344,
+    349-350). The function's contract: any defect in
+    a verified envelope raises JobCryptoError -- a
+    ciphertext shorter than its own tag, and a
+    plaintext that decrypts (under the right key and
+    AAD) to bytes that are not UTF-8.
+    """
+
+    def test_a_ciphertext_shorter_than_its_tag(self):
+        import base64
+        wire = jobcrypto.encrypt_body(_signed_job(), SECRET,
+                                      "job-1", "", _sign)
+        payload, _kid = verify_body_keyed(wire, {"": SECRET})
+        enc = payload["hp_enc"]
+        ct = base64.b64decode(enc["ct"])
+        enc["ct"] = base64.b64encode(ct[:8]).decode("ascii")
+        with self.assertRaisesRegex(JobCryptoError,
+                                    "shorter than its tag"):
+            jobcrypto.decrypt_body(payload, SECRET, "job-1", "")
+
+    def test_a_non_utf8_plaintext(self):
+        import base64
+        nonce = bytes(range(12))
+        key = jobcrypto._job_key(SECRET, nonce)
+        ct = jobcrypto.aead_encrypt(
+            key, nonce, b"\xff\xfe not utf-8",
+            jobcrypto._aad("job-1", ""))
+        payload = {"hp_enc": {
+            "alg": jobcrypto.ALG,
+            "nonce": base64.b64encode(nonce).decode("ascii"),
+            "ct": base64.b64encode(ct).decode("ascii")}}
+        with self.assertRaisesRegex(JobCryptoError, "not UTF-8"):
+            jobcrypto.decrypt_body(payload, SECRET, "job-1", "")
+
+
 class EnvelopeTest(unittest.TestCase):
     def test_roundtrip_through_real_verification(self):
         body = _signed_job()

@@ -294,6 +294,16 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/wire/jobcrypto.py::`
+  `decrypt_body` defect legs (3 lines never run,
+  coverage run 40189711740) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  DecryptBodyDefectsTest in
+  runner/tests/test_jobcrypto.py: a ciphertext
+  truncated below its tag and a plaintext that
+  decrypts to non-UTF-8 bytes each raise
+  JobCryptoError naming the defect. Done when a
+  coverage run shows the function clean.
 - A (refill) — `runner/guard/defaulted.py::`
   `default_for` and `is_defaulted` enum legs
   (3 lines each never run, coverage run
