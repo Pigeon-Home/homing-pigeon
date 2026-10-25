@@ -2,6 +2,7 @@
 
 Extracted from runner.py.
 """
+import email
 
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 seen: dict, secrets: dict, opts=None, key_policies=None):

@@ -2,6 +2,7 @@
 
 Extracted from runner.py.
 """
+import email
 
 def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_dir, seen=None):
     """Handle [HOMING-PIGEON] query <query_id>. Returns True if handled."""

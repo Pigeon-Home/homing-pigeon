@@ -2,6 +2,7 @@
 
 Extracted from runner.py.
 """
+import email
 
 def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
     """Chat with the Oracle in the terminal. Does not poll the mailbox.

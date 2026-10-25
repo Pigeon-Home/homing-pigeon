@@ -4737,7 +4737,7 @@ from runner.ops.sensors import _canary_watch, _yara_hits, recent_chat  # noqa: E
 
 
 
-def _cfg_flag(cfg, section, key, default=True) -> bool:
+def _section_flag(cfg, section, key, default=True) -> bool:
     """Read a boolean flag from cfg[section][key], defaulting to default."""
     sec = cfg.get(section) if isinstance(cfg, dict) else None
     if not isinstance(sec, dict):
@@ -4752,7 +4752,7 @@ def _cfg_flag(cfg, section, key, default=True) -> bool:
 
 def _oracle_watch_enabled(cfg) -> bool:
     """The Oracle's system watch defaults on."""
-    return _cfg_flag(cfg, "inference", "watch_system", True)
+    return _section_flag(cfg, "inference", "watch_system", True)
 
 _AUTH_LOG_PATHS = ("/var/log/auth.log", "/var/log/secure")
 _SYS_LOG_PATHS = ("/var/log/syslog", "/var/log/messages", "/var/log/system.log")
@@ -4914,7 +4914,7 @@ _YARA_ATTACK = {
 
 def _artifact_scan_enabled(cfg) -> bool:
     """On unless inference.artifact_scan is explicitly false."""
-    return _cfg_flag(cfg, "inference", "artifact_scan", True)
+    return _section_flag(cfg, "inference", "artifact_scan", True)
 
 def _work_files(work):
     """path -> (size, mtime_ns) for regular files under work."""

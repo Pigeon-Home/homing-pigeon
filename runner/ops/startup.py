@@ -2,6 +2,7 @@
 
 Extracted from runner.py.
 """
+import email
 
 def log_startup(cfg, args, base_dir):
     """One block: what is configured, what is running, what it expects.

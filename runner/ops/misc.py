@@ -2,6 +2,7 @@
 
 Extracted from runner.py.
 """
+import email
 
 def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
     """Open the Oracle chat and wait. Does not poll the mailbox."""

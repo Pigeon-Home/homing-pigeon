@@ -2,6 +2,7 @@
 
 Extracted from runner.py.
 """
+import email
 
 def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
                     opener=None, instructions=None, base_dir=None,
