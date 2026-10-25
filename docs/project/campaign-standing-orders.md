@@ -2486,3 +2486,13 @@ when done, the proving commit or run. Newest first.
   both with the state left unwritten. Locally coverage-clean.
   Done when a coverage run shows them clean and the build's
   Windows shards are green.
+- D4 — the .67 tag run's mutation job (40200926906) completed
+  FAILED with no tally and no survivors: its stats pass died
+  at a script-mode test whose child interpreter re-enters
+  mutmut's config resolution inside the copied tree. Filed as
+  Q33 for Claude's lane; the triage waits on a completed
+  mutation run. — 58316a92-3c4a-41cb-8a16-8c0c5a871e90,
+  2026-10-25.
+- rules refreshed 2026-10-25 ~08:00 PDT (standing orders,
+  AGENTS.md rules 7-9, open questions: Q33 new, Q32 answered,
+  Q30 closed in practice; playbook hard rules unchanged).

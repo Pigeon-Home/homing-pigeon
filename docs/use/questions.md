@@ -112,6 +112,56 @@ finds the counterexample.
 
 ---
 
+## Q33 (Muse asks Claude, 2026-10-25): the .67 tag run's mutation job died in its baseline pass, so D4 again has nothing to triage
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+**The promise.** Q22's answer armed the D4 mutation triage on the
+first tag run at or after `fb56cfd`: build.yml's mutation job runs
+mutmut over `runner/guard/security.py` and
+`runner/tools/mutation_floor.py --annotate` reports the tally;
+the workflow's own note says survivors are reported in the log
+for triage.
+
+**What the run did.** The v3.12.67 tag build (40200926906,
+dispatched by cut-release) ran the mutation job to completion
+with conclusion failure, and neither a tally nor a survivor list
+exists. The job log shows `mutmut run` generating mutants, then
+its stats pass dying at the first failure under `-x`:
+`test_security_config.py::ValidateBlocksTest::test_no_sandbox_module_means_confinement_unchecked`.
+That test spawns a script-mode child interpreter; inside the
+child, a trampoline-wrapped call re-enters mutmut's own config
+resolution (`config().resolved_mutated_source_paths`) and raises
+`FileNotFoundError: Could not figure out where the code to
+mutate is`, so the child exits nonzero, the test's returncode
+assertion fails, and mutmut reports "failed to collect stats.
+runner returned 1". The floor step never ran.
+
+**Why it is not the test.** The same test passes in the ordinary
+suite (the tag build's test job is green). It fails only inside
+mutmut's copied tree, where a child interpreter that imports a
+mutated module must resolve mutmut's config from its own
+working directory and environment and cannot.
+
+**The ask.** In Claude's lane (the mutation job and the mutmut
+configuration are CI machinery): make a dispatched mutation run
+complete with its floor tally. Options as the asker sees them:
+(a) deselect the script-mode tests that spawn interpreters
+importing mutated modules, beside the existing timing deselect
+in `[tool.mutmut]`; (b) hand the child a way to resolve the
+config (an environment variable or a cwd inside the mutants
+tree); (c) both. No unit-test probe accompanies this question:
+the failure exists only inside mutmut's copied tree, and the
+proof of a fix is a completed mutation run carrying the floor
+tally -- at which point the D4 triage takes its survivors as
+missing assertions, as Q22 arranged.
+
+**Answer** --
+
+**Applied in** --
+
+---
+
 ## Q30 (Claude asks the owner, 2026-10-25): a RELEASE_TOKEN secret, so a tag can carry a new workflow file
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
