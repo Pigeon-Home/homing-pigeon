@@ -216,10 +216,7 @@ def _append_security_event(base_dir: str, event: dict) -> None:
                 os.write(fd, line)
             finally:
                 os.close(fd)
-            try:
-                os.chmod(path, 0o600)
-            except OSError:
-                pass
+            _chmod_quiet(path)
             if os.path.islink(path):
                 return
             with open(path, "r", encoding="utf-8") as f:
@@ -237,10 +234,7 @@ def _append_security_event(base_dir: str, event: dict) -> None:
                 os.close(fd)
             os.replace(tmp, path)
             tmp = None
-            try:
-                os.chmod(path, 0o600)
-            except OSError:
-                pass
+            _chmod_quiet(path)
         except Exception:
             if tmp:
                 try:
@@ -2575,10 +2569,7 @@ def _write_json(path, obj):
             fd = None
             json.dump(_json_safe(obj), f, allow_nan=False)
         os.replace(tmp, path)
-        try:
-            os.chmod(path, 0o600)
-        except OSError:
-            pass
+        _chmod_quiet(path)
     except (OSError, TypeError, ValueError) as e:
         log(f"json not written to {path}: {e}", "WARN")
         if fd is not None:
@@ -2873,10 +2864,7 @@ def save_retained(base_dir, job_id, payload):
                 fd = None
                 json.dump(safe, f, allow_nan=False)
             os.replace(tmp, path)
-            try:
-                os.chmod(path, 0o600)
-            except OSError:
-                pass
+            _chmod_quiet(path)
         except (TypeError, ValueError, OSError) as e:
             log(f"retained not saved for {job_id}: {e}", "WARN")
             if fd is not None:
@@ -5190,10 +5178,7 @@ def _append_brief(base_dir, brief) -> None:
                 os.write(fd, line.encode("utf-8"))
             finally:
                 os.close(fd)
-            try:
-                os.chmod(path, 0o600)
-            except OSError:
-                pass
+            _chmod_quiet(path)
             if os.path.islink(path):
                 return
             with open(path, "r", encoding="utf-8") as fh:
@@ -6024,6 +6009,15 @@ def _auth_reject_event(base_dir, reason, **extra):
     _append_security_event(base_dir, event)
 
 
+
+def _chmod_quiet(path, mode=0o600):
+    """chmod, swallowing OSError."""
+    try:
+        os.chmod(path, mode)
+    except OSError:
+        pass
+
+
 def _verify_and_decrypt(msg, secrets, job_id):
     """Verify and decrypt a job mail.
 
@@ -6849,10 +6843,7 @@ def _write_seen_unlocked(path, seen):
             fd = None
             json.dump(keys, fh)
         os.replace(tmp, path)
-        try:
-            os.chmod(path, 0o600)
-        except OSError:
-            pass
+        _chmod_quiet(path)
     except (OSError, TypeError, ValueError):
         if fd is not None:
             try:
@@ -8445,10 +8436,7 @@ def _plant_canary(path):
                 os.close(fd)
             except OSError:
                 pass
-    try:
-        os.chmod(path, 0o600)
-    except OSError:
-        pass
+    _chmod_quiet(path)
     return _canary_state(path)
 
 
