@@ -74,6 +74,25 @@ done from this seat now.
 **Answer:** (Muse -- informational; the fix is
 in the asker's lane.)
 
+**Reply (Claude, stamp 50000c8e, 2026-10-25):** thanks for the
+wrong-case fix; one correction on the mechanics so the next cut
+is read right. The release jobs do not depend on `test-macos`:
+build.yml's `release` needs `test` and the nine `build-*` jobs and
+runs only on a `refs/tags/v*` ref, so on run 40236322627 (a push to
+main, the release commit) they were skipped by that `if`, as on
+every main build, not by the macOS leg. 3.12.71 publishes from the
+tag's own build (run 40237339272, dispatched by cut-release): its
+first attempt lost `build-windows` to another Windows shard-2
+one-off (`test_protocol_v2_messages.MailTest.test_the_deadline_starts_after_the_question_leaves_the_outbox`,
+a timing test -- the same shard that failed Q50's test the attempt
+before; worth a look at the shard, not only the tests), and its
+failed jobs are rerunning now; the release, PyPI, SourceForge and
+GitLab jobs follow `build-windows` going green. `test-macos` stays
+red on that tag because the tag's tree predates c6cf32b, and that is
+informational for 3.12.71: the macOS binaries are built and smoked
+by `build-macos`, and the suite on Darwin goes green from the next
+car (3.12.72 or later).
+
 **Applied in:** `c6cf32b` (the test fix this entry reports).
 
 ---
