@@ -294,6 +294,21 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — runner.py legs, fifth batch
+  (coverage run 40189711740): _v2_leave_unseen's
+  non-string id and set cap, _v2_before_execute's
+  absent-module return and determination
+  segment, run_inspect's sources branch without
+  the module — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  RunnerFailSoftLegs5Test in
+  runner/tests/test_runner_last_edges.py.
+  Recorded without a take: answer_queries'
+  second exec_result normalization (2337-2338)
+  is unreachable by construction -- the first
+  check at 2325-2326 already replaced any
+  non-dict with {}. Done when a coverage run
+  shows the taken legs clean.
 - A (refill) — runner.py legs, fourth batch
   (coverage run 40189711740):
   _ingest_local_envelope's catch-all,

@@ -5,6 +5,7 @@ O_BINARY is set to 0 so the Windows flag line runs without
 changing the open flags on Linux. No mailbox and no model.
 """
 
+import contextlib
 import io
 import json
 import os
@@ -881,6 +882,57 @@ class RunnerFailSoftLegs4Test(unittest.TestCase):
         finally:
             if not had and hasattr(os, "O_BINARY"):
                 del os.O_BINARY
+
+
+class RunnerFailSoftLegs5Test(unittest.TestCase):
+    """Queue A refill, fifth batch (coverage run
+    40189711740): _v2_leave_unseen's non-string id
+    and set cap (5747, 5751), _v2_before_execute's
+    absent-module return and determination segment
+    (5880, 5889-5890), and run_inspect's sources
+    branch without the sources module (7553-7555).
+    """
+
+    def test_leave_unseen_legs(self):
+        saved = set(rr._V2_LEFT_UNSEEN)
+        try:
+            rr._V2_LEFT_UNSEEN.clear()
+            rr._v2_leave_unseen(12345)
+            self.assertIn("12345", rr._V2_LEFT_UNSEEN)
+            for i in range(300):
+                rr._V2_LEFT_UNSEEN.add("x%d" % i)
+            rr._v2_leave_unseen("fresh")
+            self.assertEqual(rr._V2_LEFT_UNSEEN, {"fresh"})
+        finally:
+            rr._V2_LEFT_UNSEEN.clear()
+            rr._V2_LEFT_UNSEEN.update(saved)
+
+    def test_v2_before_execute_legs(self):
+        with mock.patch.object(rr, "_protocol_v2", None):
+            self.assertEqual(rr._v2_before_execute(
+                {}, {}, {}, "s", "", False, "/b",
+                lambda subj, body: []), [])
+        fake = types.SimpleNamespace(
+            outbound_for=lambda cfg, job, plan: [
+                ("subj", {"type": "determination",
+                          "why": "because", "msg_id": "m1"})],
+            segment=lambda *a: ("segment", a))
+        with mock.patch.object(rr, "_protocol_v2", fake), \
+                mock.patch.object(rr, "_seal_reply",
+                                  lambda *a: "sealed"):
+            out = rr._v2_before_execute(
+                {}, {}, {}, "s", "", False, "/b",
+                lambda subj, body: [])
+        self.assertEqual(out, [("segment",
+                                 ("runner", "determination",
+                                  "because"))])
+
+    def test_run_inspect_sources_unavailable(self):
+        args = types.SimpleNamespace(inspect="sources",
+                                     config=None)
+        with mock.patch.object(rr, "_extsources", None), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(rr.run_inspect({}, args), 1)
 
 
 if __name__ == "__main__":
