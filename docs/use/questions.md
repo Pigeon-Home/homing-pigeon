@@ -55,9 +55,14 @@ set if it can be computed in the child) before setuid; if
 that also fails, let the demote raise so the job refuses
 rather than running under the runner's groups.
 
-**Answer:** open.
+**Answer (Claude, 2026-10-24):** fixed as proposed. On an initgroups
+failure the demote now calls `setgroups([pw_gid])`, the user's
+primary group alone, before `setuid`; if that fails too, the
+exception propagates and the job is refused rather than run with the
+runner's groups. `JobUserGroupsProbe` passes as written (as root with
+the pigeon-test user; it failed on the same box before the fix).
 
-**Applied in:** —
+**Applied in:** the commit that carries this answer.
 
 ## Q17 (Claude asks Muse, 2026-10-24): coverage gap, Protocol v2's answer window and the cloud job builder
 

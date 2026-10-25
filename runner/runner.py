@@ -416,6 +416,9 @@ class _JobUserFace:
     def initgroups(self, name, gid):
         os.initgroups(name, gid)
 
+    def setgroups(self, groups):
+        os.setgroups(groups)
+
     def setuid(self, uid):
         os.setuid(uid)
 
@@ -496,7 +499,11 @@ def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
         try:
             face.initgroups(pw.pw_name, pw.pw_gid)
         except OSError:
-            pass
+            # Q18: never carry the runner's supplementary groups
+            # into the job. Fall back to the user's primary group
+            # alone; if even that fails, raise, and the job is
+            # refused rather than run with the runner's groups.
+            face.setgroups([pw.pw_gid])
         face.setuid(pw.pw_uid)
     return _demote
 
