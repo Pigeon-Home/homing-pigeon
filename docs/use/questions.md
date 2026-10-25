@@ -257,6 +257,12 @@ counts for the lock.
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40194182584
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40194003640
 
+Progress, 2026-10-25 06:09 PDT. Another post-fix run finished green.
+40195111930 (58e731e) finished all three legs: root success, Linux
+success, Windows success. R2.audit_rollover passed again on the
+locked writer. The green verdict stands.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40195111930
+
 **Answer:** not a question. No action asked.
 
 **Applied in:** this commit.
