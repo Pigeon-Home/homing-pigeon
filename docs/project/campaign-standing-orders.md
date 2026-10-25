@@ -156,6 +156,18 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/runner.py::`
+  `_extension_sources_pass` (the whole body, 8 lines,
+  never run on either platform, coverage run
+  40187685363) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the tick
+  tests substitute a fake pass and the wiring tests
+  call provision directly, so the real wrapper never
+  ran. ExtensionSourcesPassTest in
+  runner/tests/test_extension_sources.py: a real pass
+  provisions and returns the report; a failing pass
+  returns None and never raises; no sources module is
+  None. Done when a coverage run shows it clean.
 - A (refill) — `runner/transport_extensions/nats/`
   `__main__.py::NatsClient.connect` (9 lines never run
   on either platform, coverage run 40187685363) —

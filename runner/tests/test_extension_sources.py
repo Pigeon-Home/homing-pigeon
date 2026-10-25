@@ -1674,6 +1674,55 @@ class RunnerWiringTest(_Base):
 # The build's pin tool and the snapshot
 # ---------------------------------------------------------------------------
 
+class ExtensionSourcesPassTest(_Base):
+    """Queue A refill: the runner's provisioning pass
+    itself (runner._extension_sources_pass; coverage run
+    40187685363: the whole body on both platforms). The
+    tick tests substitute a fake pass, and the wiring
+    tests call provision directly, so the real wrapper
+    never ran: its contract is the docstring's -- one
+    pass in the calling thread, the provision report
+    returned, and never a raise: any failure inside is
+    logged and comes back None, because a provisioning
+    failure must not sink the runner's main loop.
+    """
+
+    def setUp(self):
+        super().setUp()
+        write_ext(self.ext, upstream_decl())
+        self.cfg = {"base_dir": self.base,
+                    "transports": ["file"],
+                    "extension_sources": {"fetch": True,
+                                          "unpinned": True}}
+
+    def test_the_pass_provisions_and_returns_the_report(self):
+        report = R._extension_sources_pass(
+            self.cfg, self.base,
+            fetcher=X.Fetcher(opener=self.opener))
+        self.assertIsInstance(report, dict)
+        self.assertEqual(
+            self.state()["entries"]["up"]["status"], "fetched")
+
+    def test_a_failing_pass_is_none_never_an_exception(self):
+        logged = []
+        with mock.patch.object(
+                R._extsources, "provision",
+                side_effect=RuntimeError("provision boom")), \
+                mock.patch.object(
+                R, "log",
+                lambda m, level="INFO": logged.append((level, m))):
+            got = R._extension_sources_pass(self.cfg, self.base)
+        self.assertIsNone(got)
+        self.assertTrue(
+            any("pass failed" in m for _lvl, m in logged),
+            logged)
+
+    def test_no_sources_module_is_none(self):
+        with mock.patch.object(R, "_extsources", None):
+            self.assertIsNone(
+                R._extension_sources_pass(self.cfg, self.base))
+
+
 class PinToolTest(_Base):
     def test_pin_dirs_writes_a_lock_the_box_accepts(self):
         write_ext(self.ext, upstream_decl(files=["LICENSE", "gone.txt"]))
