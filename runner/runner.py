@@ -3014,25 +3014,26 @@ def _cfg_flag(value) -> bool:
         return value.strip().lower() in ("true", "yes", "on", "1")
     return False
 
-def _log_settings(cfg):
-    """(max_bytes, backups) for runner.log, from config or defaults."""
+
+def _log_bounds(cfg, max_key, max_default, max_cap, bak_key, bak_default):
+    """(max_bytes, backups) from config keys or defaults."""
     if not isinstance(cfg, dict):
         cfg = {}
     return (
-        _cfg_size(cfg.get("log_max_bytes"), _LOG_DEFAULT_MAX_BYTES, 2**40),
-        _cfg_size(cfg.get("log_backups"), _LOG_DEFAULT_BACKUPS, 10),
+        _cfg_size(cfg.get(max_key), max_default, max_cap),
+        _cfg_size(cfg.get(bak_key), bak_default, 10),
     )
 
+
+def _log_settings(cfg):
+    """(max_bytes, backups) for runner.log."""
+    return _log_bounds(cfg, "log_max_bytes", _LOG_DEFAULT_MAX_BYTES, 2**40,
+                       "log_backups", _LOG_DEFAULT_BACKUPS)
+
 def _oracle_log_settings(cfg):
-    """(max_bytes, backups) for oracle.log, from config or defaults."""
-    if not isinstance(cfg, dict):
-        cfg = {}
-    return (
-        _cfg_size(cfg.get("oracle_log_max_bytes"),
-                  _ORACLE_LOG_DEFAULT_MAX_BYTES, 2**42),
-        _cfg_size(cfg.get("oracle_log_backups"),
-                  _ORACLE_LOG_DEFAULT_BACKUPS, 10),
-    )
+    """(max_bytes, backups) for oracle.log."""
+    return _log_bounds(cfg, "oracle_log_max_bytes", _ORACLE_LOG_DEFAULT_MAX_BYTES, 2**42,
+                       "oracle_log_backups", _ORACLE_LOG_DEFAULT_BACKUPS)
 
 def _refresh_log_settings(cfg, base_dir):
     """Load the log bounds (and the oracle.log switch) from config.
