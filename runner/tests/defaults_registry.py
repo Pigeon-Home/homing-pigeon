@@ -1822,7 +1822,85 @@ ROWS = [{'key': 'severity',
   'notes': 'Queue D refill (2026-10-25): the Pi Light mode '
            'switch. The reader\'s contract is exact-match: '
            'anything but the string "deterministic" is the '
-           'default llm mode.'}]
+           'default llm mode.'},
+ {'key': 'protocol_v2',
+  'scope': 'core',
+  'kind': 'boolean',
+  'default': False,
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 63,
+  'doc_token': 'off',
+  'doc_status': 'verified',
+  'reader': 'runner/wire/protocol_v2.py:enabled',
+  'reader_sites': ['runner/wire/protocol_v2.py:enabled'],
+  'policy': 'default',
+  'lo': None,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestProtocolV2InvalidReadsAsOff',
+  'notes': 'Queue D refill (2026-10-25): the version 2 '
+           'message switch. The reader is strict -- only '
+           'the exact boolean True enables it -- so an '
+           'invalid value reads as the documented off and '
+           'can never turn the messages on.'},
+ {'key': 'oracle_opinion_model',
+  'scope': 'core',
+  'kind': 'boolean',
+  'default': False,
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 67,
+  'doc_token': 'false',
+  'doc_status': 'verified',
+  'reader': 'runner/oracle/opinion.py:model_enabled',
+  'reader_sites': ['runner/oracle/opinion.py:model_enabled'],
+  'policy': 'default',
+  'lo': None,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestOracleOpinionModelInvalidReadsAsOff',
+  'notes': 'Queue D refill (2026-10-25): the tier-2 '
+           'model-note opt-in. A boolish reader: True, 1, '
+           'and the true/yes/on/1 strings opt in; anything '
+           'else reads as the documented false.'},
+ {'key': 'oracle_learning',
+  'scope': 'core',
+  'kind': 'boolean',
+  'default': True,
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 69,
+  'doc_token': 'true',
+  'doc_status': 'verified',
+  'reader': 'runner/oracle/learning.py:learning_enabled',
+  'reader_sites': ['runner/oracle/learning.py:learning_enabled'],
+  'policy': 'default',
+  'lo': None,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestOracleLearningInvalidReadsAsOn',
+  'notes': 'Queue D refill (2026-10-25): the '
+           'self-learning loop switch, read through '
+           'learning.py\'s _boolish: a recognized false '
+           'turns it off; an unrecognized value reads as '
+           'the documented true.'},
+ {'key': 'oracle_learning_model',
+  'scope': 'core',
+  'kind': 'boolean',
+  'default': False,
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 70,
+  'doc_token': 'false',
+  'doc_status': 'verified',
+  'reader': 'runner/oracle/learning.py:learning_model_enabled',
+  'reader_sites': ['runner/oracle/learning.py:learning_model_enabled'],
+  'policy': 'default',
+  'lo': None,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestOracleLearningModelInvalidReadsAsOff',
+  'notes': 'Queue D refill (2026-10-25): the model '
+           'candidate channel\'s own opt-in, the mirror '
+           'of oracle_learning through the same _boolish '
+           'reader.'}]
 
 
 # The generic confval helpers: their defaults are caller-supplied,
@@ -1870,9 +1948,11 @@ class RegistryShapeTests(unittest.TestCase):
         # 49 core keys + 51 extension tunables, as extracted and
         # doc-verified at the commit that added this registry;
         # +4 core rows in the 2026-10-25 queue D refill
-        # (oracle_mode and the oracle_opinion_* enum family).
-        self.assertEqual(104, len(ROWS))
-        self.assertEqual(53, sum(1 for r in ROWS if r["scope"] == "core"))
+        # (oracle_mode and the oracle_opinion_* enum family),
+        # then +4 more the same day (protocol_v2 and the
+        # oracle_opinion_model / oracle_learning booleans).
+        self.assertEqual(108, len(ROWS))
+        self.assertEqual(57, sum(1 for r in ROWS if r["scope"] == "core"))
         self.assertEqual(51, sum(1 for r in ROWS if r["scope"] == "extension"))
 
 

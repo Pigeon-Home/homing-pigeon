@@ -46939,6 +46939,89 @@ class TestOracleOpinionRepairInvalidReadsAsRejudge(unittest.TestCase):
                         {"oracle_opinion_repair": good}), good)
 
 
+class TestProtocolV2InvalidReadsAsOff(unittest.TestCase):
+    """Queue D refill: `protocol_v2` gains a registry
+    row. The doc states the default is off; the
+    reader is strict -- only the exact boolean True
+    enables the version 2 messages, so a
+    present-but-invalid value can never turn them
+    on (Decision 1, default class)."""
+
+    def test_invalid_protocol_v2_reads_as_off(self):
+        from runner.wire import protocol_v2 as pv2
+        self.assertFalse(pv2.enabled({}))
+        self.assertFalse(pv2.enabled(None))
+        self.assertTrue(pv2.enabled({"protocol_v2": True}))
+        for bad in ("true", "yes", 1, 3, None, [True]):
+            with self.subTest(bad=bad):
+                self.assertFalse(
+                    pv2.enabled({"protocol_v2": bad}))
+
+
+class TestOracleOpinionModelInvalidReadsAsOff(unittest.TestCase):
+    """Queue D refill: `oracle_opinion_model` gains
+    a registry row. The doc states the default is
+    false -- the model tier stays dark unless the
+    owner opts in with a truthy value."""
+
+    def test_invalid_model_flag_reads_as_off(self):
+        from runner.oracle import opinion as op
+        self.assertFalse(op.model_enabled({}))
+        self.assertFalse(op.model_enabled(None))
+        self.assertTrue(op.model_enabled(
+            {"oracle_opinion_model": True}))
+        for truthy in (1, "true", "yes", "on", "1", " TRUE "):
+            with self.subTest(truthy=truthy):
+                self.assertTrue(op.model_enabled(
+                    {"oracle_opinion_model": truthy}))
+        for bad in ("yes-ish", "false", 0, 3, None, []):
+            with self.subTest(bad=bad):
+                self.assertFalse(op.model_enabled(
+                    {"oracle_opinion_model": bad}))
+
+
+class TestOracleLearningInvalidReadsAsOn(unittest.TestCase):
+    """Queue D refill: `oracle_learning` gains a
+    registry row. The doc states the default is
+    true; an unrecognized value reads as the
+    default, and only a recognized false turns
+    the loop off."""
+
+    def test_invalid_learning_reads_as_on(self):
+        from runner.oracle import learning as ln
+        self.assertTrue(ln.learning_enabled({}))
+        self.assertTrue(ln.learning_enabled(None))
+        for bad in ("banana", 3, [], {"x": 1}):
+            with self.subTest(bad=bad):
+                self.assertTrue(ln.learning_enabled(
+                    {"oracle_learning": bad}))
+        for off in (False, 0, "false", "no", "off", "0"):
+            with self.subTest(off=off):
+                self.assertFalse(ln.learning_enabled(
+                    {"oracle_learning": off}))
+
+
+class TestOracleLearningModelInvalidReadsAsOff(unittest.TestCase):
+    """Queue D refill: `oracle_learning_model`
+    gains a registry row. The doc states the
+    default is false; an unrecognized value reads
+    as the default, and only a recognized truthy
+    value opts in."""
+
+    def test_invalid_learning_model_reads_as_off(self):
+        from runner.oracle import learning as ln
+        self.assertFalse(ln.learning_model_enabled({}))
+        self.assertFalse(ln.learning_model_enabled(None))
+        for bad in ("banana", 3, [], {"x": 1}):
+            with self.subTest(bad=bad):
+                self.assertFalse(ln.learning_model_enabled(
+                    {"oracle_learning_model": bad}))
+        for on in (True, 1, "true", "yes", "on", "1"):
+            with self.subTest(on=on):
+                self.assertTrue(ln.learning_model_enabled(
+                    {"oracle_learning_model": on}))
+
+
 class TestOracleModeInvalidReadsAsLlm(unittest.TestCase):
     """Queue D refill: `oracle_mode` gains a
     registry row. The doc states `llm` is the

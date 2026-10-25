@@ -2700,6 +2700,19 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue D refill taken: four documented booleans
+  that had no registry rows gain them --
+  protocol_v2 (off; the reader is strict, only
+  the exact boolean True enables the version 2
+  messages, so an invalid value can never turn
+  them on), oracle_opinion_model (false),
+  oracle_learning (true), oracle_learning_model
+  (false) -- each doc-verified against
+  docs/oracle/configuring-oracle.md and pinned by
+  a named class in test_doc_default_divergences
+  .py; the registry count moves 104 -> 108
+  (53 -> 57 core). The D1 documented-key residue
+  named in this ledger is now empty.
 - Full suite at bf837a9f: both shards OK --
   shard 0: 3,311 tests, skipped=14, 206.8s;
   shard 1: 3,317 tests, skipped=22, 415.3s. The
