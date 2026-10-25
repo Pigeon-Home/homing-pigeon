@@ -2700,6 +2700,21 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A finding: training-watch's loss scrape
+  admits a non-finite loss ("loss: 1e999" parses to
+  inf) that the module's own _is_number rule
+  refuses everywhere else -- it persists as a bare
+  Infinity literal in the state file, fires a
+  loss_flat alert whose detail cannot be signed
+  (sign_envelope is allow_nan=False), and wedges
+  local delivery on retry. Filed as Q49 with an
+  expectedFailure probe. The map's other extension
+  singles are the uniform script-entry line
+  (sys.exit(main()); main() itself is covered
+  in-process for every extension) -- dispositioned
+  as a family; softflowd's outer decode except was
+  already dispositioned by DecodeDamageLegsTest
+  (the decoders' length guards sit in front of it).
 - Queue A taken: send_dtls._pump's failed-recv arm
   (the map's single) -- a recv that raises
   mid-handshake is shrugged off and the pump keeps

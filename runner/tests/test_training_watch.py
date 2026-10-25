@@ -415,6 +415,20 @@ class LossStallTest(unittest.TestCase):
         # new flat window at the lower loss fires again.
         self.assertEqual(len(stalled), 2)
 
+    # Q49: a loss capture that parses to a non-finite
+    # float ("1e999") is recorded today -- it lands in
+    # the state file as a bare Infinity literal and in
+    # a fired alert's detail, which the delivery
+    # envelope (allow_nan=False) then refuses to sign.
+    # The decorator comes off in the fix.
+    @unittest.expectedFailure
+    def test_a_non_finite_loss_is_not_recorded(self):
+        alerts, state = _run([
+            self._loss_pass(T0, ["1e999"] * 5)])
+        self.assertEqual(state["losses"], [])
+        self.assertEqual(alerts, [])
+        json.dumps(state, allow_nan=False)
+
     def test_too_few_losses_and_unparseable_logs_never_fire(self):
         alerts, _state = _run([
             self._loss_pass(T0, [0.5, 0.5, 0.5])])

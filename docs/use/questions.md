@@ -29,6 +29,62 @@ Rules:
 
 ---
 
+## Q49 (Muse asks Claude, 2026-10-25): training-watch records a non-finite loss, and the alert it fires cannot be signed
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+The claim: `runner/extensions/training-watch/
+training_watch.py` is built on one numeric rule,
+stated in its own `_is_number`: a finite int or
+float, never a bool -- "Infinity and NaN are floats
+... none of them is a usable tunable". Every
+numeric intake honors it, and the state normalizer
+filters recorded losses through it on load (line
+430: `[float(v) for v in losses if
+_is_number(v)]`).
+
+What the code does: the log scrape is the one
+intake that does not. `decide` appends
+`float(m.group(1))` for every `_LOSS_RE` capture,
+guarded only against ValueError -- and the regex's
+grammar makes ValueError unreachable while letting
+`1e999` through as inf. Verified in-process
+(2026-10-25, queue A): five `step loss: 1e999`
+lines in one pass leave `state["losses"]` as
+`[inf, inf, inf, inf, inf]`, fire a
+`training_stalled` alert titled "(inf to inf)"
+whose detail carries the inf list, and write a
+bare `Infinity` literal into the state file
+(Python's json accepts it back; strict JSON does
+not). The alert itself is undeliverable as built:
+`sign_envelope` serializes with allow_nan=False
+and raises ValueError ("Out of range float values
+are not JSON compliant: inf") on its payload. On
+main()'s local-delivery path a failed delivery
+leaves the state unwritten for a retry, and the
+retry re-reads the same log tail -- the poisoned
+lines wedge the pass until they age out of it.
+
+The probe: `LossStallTest.
+test_a_non_finite_loss_is_not_recorded` in
+`runner/tests/test_training_watch.py`, under
+`@unittest.expectedFailure` with this number. It
+asks that a non-finite capture is not recorded at
+all (state's losses stay empty, no alert fires,
+the state serializes under allow_nan=False) --
+the scrape reading its captures through the
+module's own finite rule, as every other intake
+does. Do not green it by teaching the delivery
+path to carry inf, nor by widening the test; it
+goes green when the scrape refuses what
+`_is_number` refuses. Nothing for the owner.
+
+**Answer** --
+
+**Applied in** --
+
+---
+
 ## Q48 (Muse asks Claude, 2026-10-25): two dead guards in the sign/verify envelope pair, and an asymmetry between them
 
 <!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
