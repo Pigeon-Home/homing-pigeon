@@ -217,6 +217,26 @@ ROSTER = [
         "needs": [],
     },
     {
+        "id": "ORACLE.alphabet",
+        "promise": "the model's whole output space, as fixtures and no "
+                   "model: for every mode x verdict x repaired, under every "
+                   "latitude and key policy mode, the security decision and "
+                   "the job outcome equal the no-model run, and a fuzzed "
+                   "model note (instructions, JSON, approvals, huge, empty) "
+                   "lands capped at 240 and labeled, changing nothing.",
+        "tests": [],
+        "needs": [],
+    },
+    {
+        "id": "ORACLE.tools.alphabet",
+        "promise": "every tool call the agent's model can emit is read-only "
+                   "or refused; none writes config, the audit log, the "
+                   "seen set or a job's workdir.",
+        "tests": ["runner.tests.test_oracle_tool_refusals",
+                  "runner.tests.test_runner_oracle_tools"],
+        "needs": [],
+    },
+    {
         "id": "ORACLE.no_widening",
         "promise": "an Oracle answer cannot widen a security decision made "
                    "above it: a denied job stays denied whatever the model "

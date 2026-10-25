@@ -56,16 +56,21 @@ waiting is not testing.
   and never wait on a CI run with the rig idle: take the next item
   and come back to the run when it finishes. Hypothesis budgets go up
   when the box is under-driven, not the sleep.
-- The rig runs no model while a campaign runs. The Oracle under
-  test is simulated (fixtures, a loopback fake), so a resident model
-  server (Ollama or any other) on the rig is spending the memory the
-  shards need: the first resource line read 97% memory used on a
-  2-core box. If one is resident, stop it for the campaign, or if
-  something on the rig needs it, load the smallest model that still
-  serves that need and say which in the ledger. The tool's second
-  line, `resources-top`, names the five largest processes; paste it
-  with the resource line so the owner can see what holds the memory
-  (owner's question, 2026-10-25).
+- The rig runs no model, at all. The Oracle under test needs none:
+  by design (runner/oracle/opinion.py) the model's only channel
+  into an opinion is a text note capped at 240 characters and
+  labeled "Model-formed note:", appended to a member the
+  deterministic tier already formed; the opinion is not a gate
+  and never blocks, holds or approves a job. So the model's whole
+  output space is a fixture: mode in {off, diagnose, advise,
+  repair}, verdict in {likely_success, likely_failure}, repaired
+  in {true, false}, and a note that must be inert whatever it
+  says. The Oracle agent's other channel is its tool calls, a
+  finite set with their refusals already pinned. Stop any resident
+  model server on the rig for the duration (the first resource
+  line read 97% memory used on a 2-core box) and paste the
+  `resources-top` line with each resource line so the owner sees
+  what holds the memory (owner's order, 2026-10-25).
 - Two `under-driven` hourly lines in a row is a finding about the
   loop: write in the ledger what the rig was waiting on, then fix
   that. `over` for an hour (the box swapping or the suite timing out)
@@ -216,11 +221,19 @@ root does the same (`job_user_needs_root`). Pin those as they are.
 8. M9 and M10 are design documents (asymmetric signing, the approval
    gate); nothing in the runner implements them. Nothing to enable;
    skip, and do not write tests against the design.
-9. The Oracle, simulated: the deterministic opinion and the judge
-   are driven with fixtures; a model is a fake loopback response,
-   never a live model. Prove that `refuse` and `advise` latitude
-   refuse what `repair` repairs (AGENTS.md's table), and that an
-   Oracle answer can never widen a security decision made above.
+9. The Oracle, exhaustively, with no model: the deterministic
+   opinion and the judge are driven with fixtures, and the model is
+   a loopback fake that returns a chosen element of the alphabet.
+   Prove, for every mode x verdict x repaired, under every latitude
+   and every key policy mode, that the security decision made above
+   the Oracle and the job's outcome are identical to the no-model
+   run, and that the note is inert: fuzz it with instructions,
+   JSON, approvals, refusals, huge and empty strings, and show it
+   lands capped and labeled and changes nothing (roster
+   `ORACLE.alphabet`). Prove that `refuse` and `advise` latitude
+   refuse what `repair` repairs (AGENTS.md's table), and that every
+   tool call the agent's model can emit is read-only or refused
+   (roster `ORACLE.tools.alphabet`).
 
 Done per item when each promise in the control's SECURITY.md
 section has a test that fails if the promise were false, plus its
