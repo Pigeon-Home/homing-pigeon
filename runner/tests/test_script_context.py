@@ -27,6 +27,45 @@ _PACKAGE_IMPORT = re.compile(r"^(?:from runner[.\s]|import runner[.\s])",
                              re.M)
 
 
+def _undefined_names(tree, builtins):
+    import ast
+    defined = set(dir(builtins)) | {"__file__", "__name__", "__doc__",
+                                    "__spec__", "__package__"}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            for a in node.names:
+                defined.add((a.asname or a.name).split(".")[0])
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef,
+                               ast.ClassDef)):
+            defined.add(node.name)
+            args = getattr(node, "args", None)
+            if args is not None:
+                for arg in args.args + args.kwonlyargs + args.posonlyargs:
+                    defined.add(arg.arg)
+                if args.vararg:
+                    defined.add(args.vararg.arg)
+                if args.kwarg:
+                    defined.add(args.kwarg.arg)
+        elif isinstance(node, ast.Lambda):
+            for arg in node.args.args + node.args.kwonlyargs:
+                defined.add(arg.arg)
+        elif isinstance(node, ast.Name) and isinstance(
+                node.ctx, (ast.Store, ast.Del)):
+            defined.add(node.id)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            defined.add(node.name)
+        elif isinstance(node, (ast.Global, ast.Nonlocal)):
+            defined.update(node.names)
+        elif isinstance(node, ast.MatchAs) and node.name:
+            defined.add(node.name)
+    out = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load) \
+                and node.id not in defined:
+            out.add((node.id, node.lineno))
+    return sorted(out)
+
+
 class ScriptContextTest(unittest.TestCase):
     def _version(self, cwd):
         env = dict(os.environ)
@@ -57,6 +96,29 @@ class ScriptContextTest(unittest.TestCase):
             "_load_mod(\"runner.<role>.<name>\", \"<role>.<name>\") and "
             "add --hidden-import runner.<role>.<name> to every build "
             "line in .github/workflows/build.yml")
+
+    def test_an_extracted_module_defines_every_name_it_uses(self):
+        # An extraction that leaves a runner global behind as a bare
+        # name (VIEW_ORDER, log, inference_config: all seen on
+        # 2026-10-25) is a NameError on the first call in production
+        # and nothing at import time. Every module under the role
+        # folders is read for names it never binds; the runner's
+        # live module is reached as `_runner().name`.
+        import ast
+        import builtins
+        bad = []
+        for role in ("ops", "wire", "guard", "oracle"):
+            folder = os.path.join(ROOT, "runner", role)
+            for name in sorted(os.listdir(folder)):
+                if not name.endswith(".py"):
+                    continue
+                path = os.path.join(folder, name)
+                with open(path, encoding="utf-8") as fh:
+                    tree = ast.parse(fh.read(), filename=path)
+                for hit in _undefined_names(tree, builtins):
+                    bad.append("%s/%s:%d %s" % (role, name, hit[1], hit[0]))
+        self.assertEqual(bad, [], "bare names no module binds:\n" +
+                         "\n".join(bad))
 
     def test_every_load_mod_module_has_its_hidden_import(self):
         # test_build_config pins this too; here so the extraction

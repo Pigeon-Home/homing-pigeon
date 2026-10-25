@@ -1,7 +1,20 @@
 """Small helpers extracted from runner.py.
 """
 import os
+import sys
 import json
+
+
+def _runner():
+    """The live runner module, looked up at call time (`runner.runner`
+    under the suite, `__main__` when runner.py runs as a script or
+    frozen, where `from runner import runner` cannot work)."""
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "handle_mail", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 
 
 def snapshot_outside(workspace_root, exclude=None):
@@ -21,13 +34,13 @@ def snapshot_outside(workspace_root, exclude=None):
     # "/" as a workspace makes the parent the filesystem root. Walking
     # it stalls the poll. Refuse.
     if parent in ("/", "") or os.path.abspath(parent) == os.path.abspath(workspace_root):
-        log("confinement snapshot refused: workspace parent is the filesystem root", "WARN")
+        _runner().log("confinement snapshot refused: workspace parent is the filesystem root", "WARN")
         return snap
     count = 0
     try:
         walker = os.walk(parent)
     except OSError as e:
-        log(f"confinement snapshot failed: {e}", "WARN")
+        _runner().log(f"confinement snapshot failed: {e}", "WARN")
         return snap
     try:
         for root, dirs, files in walker:
@@ -42,7 +55,7 @@ def snapshot_outside(workspace_root, exclude=None):
                 continue
             for name in files:
                 if count >= 50000:
-                    log("confinement snapshot hit 50000 files; result is partial",
+                    _runner().log("confinement snapshot hit 50000 files; result is partial",
                         "WARN")
                     return snap
                 path = os.path.join(root, name)
@@ -53,7 +66,7 @@ def snapshot_outside(workspace_root, exclude=None):
                 except Exception:
                     pass
     except OSError as e:
-        log(f"confinement snapshot failed: {e}", "WARN")
+        _runner().log(f"confinement snapshot failed: {e}", "WARN")
     return snap
 
 
@@ -95,7 +108,7 @@ def append_bounded_log(path, text, max_bytes=2_097_152, backups=1):
     try:
         if folder:
             os.makedirs(folder, exist_ok=True)
-        with _LOG_WRITE_LOCK:
+        with _runner()._LOG_WRITE_LOCK:
             try:
                 size = os.path.getsize(path)
             except OSError:
@@ -114,7 +127,7 @@ def append_bounded_log(path, text, max_bytes=2_097_152, backups=1):
                 except OSError:
                     pass
             flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
-            fd = _safe_open(path, flags, 0o600)
+            fd = _runner()._safe_open(path, flags, 0o600)
             try:
                 os.write(fd, raw)
             finally:

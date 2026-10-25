@@ -7,12 +7,32 @@ import json
 import os
 import re
 import socket
+import sys
 from datetime import datetime, timezone
 
 
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    Looked up rather than imported so the module that is actually
+    running, with its config and its loaded siblings, is the one
+    this code reaches.
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "handle_mail", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
+
+
 def apply_result_policy(cfg, job, exec_result, patterns, confined):
-    from runner import runner as R
     """Return (result_dict, retain_bool). Job can never widen past owner ceiling."""
+    R = _runner()
     if not isinstance(cfg, dict):
         cfg = {}
     if not isinstance(job, dict):
@@ -32,11 +52,11 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
     # a name that survives verbatim into the attested branch with the
     # output blanked -- the owner's ceiling below is what bounds a job,
     # so the default widens nothing the job could not ask for by name.
-    if not isinstance(requested, str) or requested not in VIEW_ORDER:
+    if not isinstance(requested, str) or requested not in R.VIEW_ORDER:
         requested = "full"
     if not isinstance(ceiling, str):
         ceiling = "full"
-    effective = requested if VIEW_ORDER.get(requested, 3) <= VIEW_ORDER.get(ceiling, 3) else ceiling
+    effective = requested if R.VIEW_ORDER.get(requested, 3) <= R.VIEW_ORDER.get(ceiling, 3) else ceiling
     stdout = exec_result.get("stdout")
     stderr = exec_result.get("stderr")
     full_out = R._as_text(stdout) + R._as_text(stderr)
@@ -44,7 +64,7 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
     # codeql[py/weak-sensitive-data-hashing]
     digest = hashlib.sha384(full_out.encode("utf-8")).hexdigest()
     base = {
-        "v": PROTOCOL_VERSION, "type": "result", "job_id": job.get("job_id"),
+        "v": R.PROTOCOL_VERSION, "type": "result", "job_id": job.get("job_id"),
         "kind": job.get("kind"), "exit_code": exec_result.get("exit_code"),
         "timed_out": exec_result.get("timed_out", False),
         "duration_sec": exec_result.get("duration_sec"),
@@ -96,7 +116,7 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
             "result_class": "ok" if ok_exit else "fail",
         })
     else:  # attested
-        base["attestations"] = build_attestations(
+        base["attestations"] = R.build_attestations(
             (policy.get("queries") or []),
             {"exit_code": exec_result.get("exit_code"), "digest": digest, "confined": confined, "patterns": patterns,
              "text": full_out},
@@ -107,7 +127,6 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
 
 
 def _sensor_alert_core(cfg, job, key_id, base_dir, dry=False, extra=None):
-    from runner import runner as R
     """Validate and file one sensor_alert job. The one ingest core.
 
     Every delivery path -- a mailed job (via _ingest_sensor_alert)
@@ -129,6 +148,7 @@ def _sensor_alert_core(cfg, job, key_id, base_dir, dry=False, extra=None):
     (the local path marks its records source="local"). Never
     raises: bad sensor or extension data answers, it does not abort.
     """
+    R = _runner()
     if R._senses is None:
         return ("rejected", "rejected: senses module unavailable", None)
     try:

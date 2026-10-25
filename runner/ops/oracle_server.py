@@ -4,10 +4,27 @@ Extracted from runner.py. Lazy-imports runner internals to avoid
 circular imports.
 """
 import json
+import sys
 import secrets
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "handle_mail", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 
 
 class _OracleServer(ThreadingHTTPServer):
@@ -18,8 +35,7 @@ class _OracleServer(ThreadingHTTPServer):
 
 def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
     """Loopback chat server. Refuses any other bind."""
-    from runner import runner as R
-
+    R = _runner()
     if host not in ("127.0.0.1", "::1", "localhost"):
         raise ValueError("oracle chat refuses a non-loopback bind")
     token = secrets.token_urlsafe(24)
@@ -98,7 +114,7 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
             if not R._oracle_host_ok(self):
                 self._send(403, "forbidden", "text/plain; charset=utf-8")
                 return
-            inf = inference_config(cfg) or {}
+            inf = _runner().inference_config(cfg) or {}
             if R._oracle_mode(cfg) == "deterministic":
                 page = R.oracle_page(
                     token, "deterministic (Pi Light), no local model",
@@ -139,7 +155,7 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
                 self._send(200, json.dumps({"detail": "Ask something first."}),
                            "application/json")
                 return
-            inf = inference_config(cfg)
+            inf = _runner().inference_config(cfg)
             progress["active"] = True
             progress["step"] = "Thinking"
             progress["started"] = time.time()
@@ -147,8 +163,8 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
                 ans = {"answer": R._deterministic_oracle_answer(cfg, base)}
             else:
                 try:
-                    ans = ask_model_agent(
-                        inf, question, oracle_context(base, watch=R._oracle_watch_enabled(cfg)),
+                    ans = _runner().ask_model_agent(
+                        inf, question, _runner().oracle_context(base, watch=R._oracle_watch_enabled(cfg)),
                         (inf or {}).get("max_answer_chars") or 2000,
                         R._redact_patterns(cfg),
                         instructions=cfg.get("owner_instructions"),
@@ -171,7 +187,7 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
                     detail = ans["detail"]
                 payload = {"rejected": why, "detail": detail}
             try:
-                record_oracle_turn(base, cfg, question, ans)
+                _runner().record_oracle_turn(base, cfg, question, ans)
             except Exception as e:
                 R.log(f"oracle chat log failed: {e}", "WARN")
             try:

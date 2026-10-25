@@ -435,7 +435,11 @@ def _redact_patterns(cfg):
             log(f"bad redact pattern {name}: skipped", "WARN")
     return pats
 
-from runner.ops.policy import apply_result_policy, _sensor_alert_core  # noqa: E402
+_policy = _load_mod("runner.ops.policy", "ops.policy")
+if _policy is None:
+    raise ImportError("runner/ops/policy.py is missing")
+apply_result_policy = _policy.apply_result_policy
+_sensor_alert_core = _policy._sensor_alert_core
 
 
 from runner.ops.attest import build_attestations, reload_hot_config  # noqa: E402
@@ -5325,7 +5329,10 @@ def _oracle_token_ok(got, token) -> bool:
         hashlib.sha256(got.encode("utf-8", "replace")).digest(),
         hashlib.sha256(token.encode("utf-8", "replace")).digest())
 
-from runner.ops.oracle_server import make_oracle_server  # noqa: E402
+_oracle_server = _load_mod("runner.ops.oracle_server", "ops.oracle_server")
+if _oracle_server is None:
+    raise ImportError("runner/ops/oracle_server.py is missing")
+make_oracle_server = _oracle_server.make_oracle_server
 
 
 def _warm_oracle_model(inf):
