@@ -34,6 +34,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import types
 import unittest
 import uuid
 from datetime import datetime, timezone
@@ -537,6 +538,58 @@ class CoreProfileTest(unittest.TestCase):
         again = client.tick(NOW + 2.0)
         self.assertTrue(again)
         self.assertEqual(len(again), len(first))
+
+
+class DtlsServerTickSweepTest(unittest.TestCase):
+    """Queue A refill: DtlsServerCore.tick's
+    by-address sweep (coverage run 40189711740:
+    dtlsproto.py lines 1622-1624). A dead
+    session with no connection ID is still
+    reaped: the address index is swept after
+    the session index, so a peer that comes
+    back starts clean.
+    """
+
+    def test_a_dead_session_leaves_the_address_index(self):
+        core = dtlsproto.DtlsServerCore()
+        fake = types.SimpleNamespace(
+            dead=True, peer_addr=("127.0.0.1", 9999),
+            tick=lambda now: [])
+        core.by_addr[fake.peer_addr] = fake
+        self.assertEqual(core.tick(1000.0), [])
+        self.assertEqual(core.by_addr, {})
+
+
+class DtlsPipeSmallLegsTest(unittest.TestCase):
+    """Queue A refill: the DTLS pipe's floor
+    check skip (dtls __main__ line 113) and
+    failed send (220-221). A candidate that is
+    not a string is not a PSK at all -- the
+    check passes over it -- and a datagram the
+    socket refuses is a warning, not a dead
+    pipe.
+    """
+
+    def test_a_non_string_candidate_is_not_a_psk(self):
+        cfg = {"shared_secret": SECRET,
+               "additional_secrets": {"k": 123}}
+        self.assertIsNone(dtls_ext._psk_floor_problem(cfg))
+        cfg["additional_secrets"] = {"k": "weak"}
+        self.assertIsNotNone(
+            dtls_ext._psk_floor_problem(cfg))
+
+    def test_a_refused_send_is_a_warning(self):
+        pipe = object.__new__(dtls_ext.DtlsPipe)
+        pipe.sock = mock.Mock()
+        pipe.sock.sendto.side_effect = OSError("no route")
+        logged = []
+        with mock.patch.object(
+                dtls_ext.ch, "log",
+                lambda m, level="INFO":
+                    logged.append((level, m))):
+            pipe._send(b"dg", ("127.0.0.1", 20220))
+        self.assertTrue(
+            any(level == "WARN" for level, _m in logged))
 
 
 if __name__ == "__main__":

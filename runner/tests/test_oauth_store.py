@@ -69,6 +69,42 @@ class StoreGuardsTest(unittest.TestCase):
                 self.assertEqual(fh.read(), "keep")
 
 
+class OAuthSmallLegsTest(unittest.TestCase):
+    """Queue A refill: the consent server's
+    error swallow (coverage run 40189711740:
+    oauth.py line 251) and store_refresh_token's
+    Windows flag line (328). A client that
+    disconnects mid-consent is not an error
+    worth a traceback -- the server says
+    nothing and keeps serving -- and the token
+    store opens its temp file under the same
+    flag set on every platform.
+    """
+
+    def test_handle_error_is_silent(self):
+        server = object.__new__(oauth._ConsentServer)
+        self.assertIsNone(
+            server.handle_error(None, ("127.0.0.1", 1)))
+
+    def test_store_writes_under_the_binary_flag(self):
+        import os
+        import tempfile
+        had = hasattr(os, "O_BINARY")
+        os.O_BINARY = 0
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                path = os.path.join(d, "config.json")
+                oauth.store_refresh_token(
+                    path, {"mailbox": "x@y.test"}, "tok-123")
+                with open(path) as fh:
+                    saved = json.load(fh)
+            self.assertEqual(
+                saved["oauth_refresh_token"], "tok-123")
+        finally:
+            if not had and hasattr(os, "O_BINARY"):
+                del os.O_BINARY
+
+
 class StoreWriteTest(unittest.TestCase):
     def test_the_store_round_trips_and_copies_the_config(self):
         with tempfile.TemporaryDirectory() as d:

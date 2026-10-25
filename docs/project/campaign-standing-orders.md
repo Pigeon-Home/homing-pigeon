@@ -294,6 +294,26 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — DTLS, OAuth and NATS small legs
+  (coverage run 40189711740): the server
+  core's by-address tick sweep, the pipe's
+  floor-check skip and refused send, the
+  consent server's silent error, the token
+  store's flag line, the NATS token-only URL,
+  closed-server read and ping, and the silent
+  default log — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  DtlsServerTickSweepTest and
+  DtlsPipeSmallLegsTest (test_dtls.py),
+  OAuthSmallLegsTest (test_oauth_store.py),
+  NatsSmallLegsTest (test_transports.py).
+  Recorded without a take: the email pipe's
+  _subject_body fallthrough (line 61) cannot
+  be produced through the stdlib parser on
+  this platform -- every parsed shape decodes
+  to bytes; the line guards other parser
+  behaviors. Done when a coverage run shows
+  the taken legs clean.
 - A (refill) — board, platform card, learning,
   review and registry small legs (coverage run
   40189711740): board.set_logger's pair and

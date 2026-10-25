@@ -2327,6 +2327,47 @@ class NatsNextMessageLegsTest(unittest.TestCase):
         self.assertIsNone(client.sock)
 
 
+class NatsSmallLegsTest(unittest.TestCase):
+    """Queue A refill: the NATS client's small
+    legs (coverage run 40189711740: __init__'s
+    token-only URL 133, _fill's closed server
+    152, ping 225, and the silent default log
+    55). A URL naming only a user authenticates
+    with it as the token; a server that closes
+    mid-read is a transport error, not an idle;
+    a ping is one PING line; and the default
+    log says nothing, by design.
+    """
+
+    def test_a_token_only_url(self):
+        client = nats_ext.NatsClient(
+            "nats://onlytoken@127.0.0.1:4222")
+        self.assertEqual(
+            client._connect_opts.get("auth_token"),
+            "onlytoken")
+        self.assertNotIn("user", client._connect_opts)
+
+    def test_a_closed_server_is_a_transport_error(self):
+        import time as _time
+        client = object.__new__(nats_ext.NatsClient)
+        client.sock = mock.Mock()
+        client.sock.recv.return_value = b""
+        client._buf = b""
+        with self.assertRaisesRegex(
+                nats_ext.TransportError, "server closed"):
+            client._fill(_time.monotonic() + 5)
+
+    def test_ping_is_one_line(self):
+        client = object.__new__(nats_ext.NatsClient)
+        sent = []
+        client._send = sent.append
+        client.ping()
+        self.assertEqual(sent, [b"PING\r\n"])
+
+    def test_the_default_log_is_silent(self):
+        self.assertIsNone(nats_ext._silent_log("anything"))
+
+
 class NatsConnectFailuresTest(unittest.TestCase):
     """Queue A refill: NatsClient.connect's failure legs
     (coverage run 40187685363: 9 lines on both platforms).
