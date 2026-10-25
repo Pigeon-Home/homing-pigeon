@@ -156,6 +156,17 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/transport_extensions/dtls/`
+  `__main__.py::main` (9 lines never run on either
+  platform, coverage run 40187685363) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  DtlsMainRefusalsTest in runner/tests/test_dtls.py:
+  no channel directory, an unusable port, and a bind
+  that cannot be listened on each refuse with exit 2
+  and a named reason (the real port validation and a
+  real bind failure drive two of them); a failed pass
+  is logged and the loop goes on. Done when a coverage
+  run shows the function clean.
 - A (refill) — `runner/extensions/job-fuzz/job_fuzz.py::`
   `_mut_quote_break` (9 lines never run on either
   platform, coverage run 40187685363) — taken

@@ -23,6 +23,7 @@ tests use real UDP on localhost with ephemeral ports.
 """
 
 import argparse
+from contextlib import redirect_stderr
 import hashlib
 import hmac
 import importlib
@@ -36,6 +37,8 @@ import time
 import unittest
 import uuid
 from datetime import datetime, timezone
+from io import StringIO
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -1621,3 +1624,83 @@ class ServerHelloCheckTest(unittest.TestCase):
         self.assertEqual(
             session._on_handshake_bytes(piece(0, b"\x00"), NOW, 3), [])
         session._on_handshake_bytes(piece(1, b"\x00"), NOW, 3)
+
+
+class DtlsMainRefusalsTest(unittest.TestCase):
+    """Queue A refill: the DTLS extension's main() startup
+    refusals and pass loop (coverage run 40187685363: 9
+    lines on both platforms). The extension's contract at
+    startup (its own module docstring, Decision 1's refuse
+    class): no channel directory, an unusable port, and a
+    bind that cannot be listened on each refuse with exit
+    2 and a named reason -- nothing substitutes an address.
+    And a pass that fails is logged, never fatal: the loop
+    goes on until something outside it stops the process.
+    """
+
+    def _cfg_file(self, d, cfg):
+        path = os.path.join(d, "runtime.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(cfg, fh)
+        return path
+
+    def _main(self, argv):
+        env = {k: v for k, v in os.environ.items()
+               if not k.startswith("HOMING_PIGEON_TRANSPORT_")}
+        err = StringIO()
+        with mock.patch.dict(os.environ, env, clear=True):
+            with redirect_stderr(err):
+                rc = dtls_ext.main(argv)
+        return rc, err.getvalue()
+
+    def test_no_channel_directory_refuses(self):
+        rc, err = self._main(["dtls"])
+        self.assertEqual(rc, 2)
+        self.assertIn("no channel directory given", err)
+
+    def test_an_unusable_port_refuses_and_names_the_key(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = self._cfg_file(d, {"shared_secret": SECRET,
+                                     "port": "2O220"})
+            rc, err = self._main(["dtls", d, cfg])
+        self.assertEqual(rc, 2)
+        self.assertIn("refusing to start", err)
+        self.assertIn("transport_dtls.port", err)
+
+    def test_a_bind_that_cannot_listen_refuses(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = self._cfg_file(
+                d, {"shared_secret": SECRET, "port": 0,
+                    "bind": "192.0.2.1"})
+            rc, err = self._main(["dtls", d, cfg])
+        self.assertEqual(rc, 2)
+        self.assertIn("cannot listen", err)
+
+    def test_a_failed_pass_is_logged_and_the_loop_goes_on(self):
+        calls = []
+
+        class StubPipe:
+            bind = "127.0.0.1"
+            port = 0
+
+            def __init__(self, cfg, channel):
+                pass
+
+            def run_once(self):
+                calls.append(1)
+                if len(calls) == 1:
+                    raise RuntimeError("pass boom")
+                raise KeyboardInterrupt
+
+        with tempfile.TemporaryDirectory() as d:
+            cfg = self._cfg_file(d, {"shared_secret": SECRET,
+                                     "port": 0})
+            err = StringIO()
+            with mock.patch.object(dtls_ext, "DtlsPipe",
+                                   StubPipe):
+                with redirect_stderr(err):
+                    with self.assertRaises(KeyboardInterrupt):
+                        dtls_ext.main(["dtls", d, cfg])
+        self.assertEqual(len(calls), 2)
+        self.assertIn("listening on udp", err.getvalue())
+        self.assertIn("pass failed", err.getvalue())
