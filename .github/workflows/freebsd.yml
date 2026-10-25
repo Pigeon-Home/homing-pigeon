@@ -71,21 +71,24 @@ jobs:
             pw useradd runner -m -s /bin/sh || { echo "::error title=freebsd prepare::pw useradd runner failed"; exit 1; }
             pw useradd pigeon-test -m -s /bin/sh || { echo "::error title=freebsd prepare::pw useradd pigeon-test failed"; exit 1; }
           run: |
-            PY="$(cat /tmp/hp-python)"
+            PY="$(cat /tmp/hp-python 2>/dev/null || echo python3.12)"
             echo "== workspace: $GITHUB_WORKSPACE, interpreter $PY"
             cd "$GITHUB_WORKSPACE" || { echo "::error title=freebsd::no workspace at $GITHUB_WORKSPACE"; exit 1; }
             ls | head -20
             chown -R runner "$GITHUB_WORKSPACE" || { echo "::error title=freebsd::chown failed"; exit 1; }
             echo "== the suite, as the runner user"
-            su -m runner -c "cd '$GITHUB_WORKSPACE' && $PY runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25" > suite-freebsd.log 2>&1
-            rc=$?
+            # The action's shell stops at the first failing command, so
+            # a red suite is caught in the || form, or nothing below
+            # it (the verdict, the annotations, the roster) would run.
+            rc=0
+            su -m runner -c "cd '$GITHUB_WORKSPACE' && $PY runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25" > suite-freebsd.log 2>&1 || rc=$?
             tail -n 40 suite-freebsd.log
             "$PY" runner/tools/skip_guard.py suite-freebsd.log --annotate || true
             [ "$rc" -eq 0 ] || echo "::error title=freebsd suite::the suite exited $rc; the failing tests are annotated above and the log is in the artifact"
             echo "== the roster, as root with a second user"
+            rrc=0
             "$PY" runner/tools/switch_proofs.py --have posix --root \
-              --title FreeBSD-root --out switch-proofs-freebsd-root.md --annotate
-            rrc=$?
+              --title FreeBSD-root --out switch-proofs-freebsd-root.md --annotate || rrc=$?
             [ "$rc" -eq 0 ] && [ "$rrc" -eq 0 ]
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
