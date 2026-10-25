@@ -156,6 +156,20 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/runner.py::_local_signal_server`
+  (8 lines never run on Windows, 2 on Linux, coverage
+  run 40187685363) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the one
+  existing drive of the refusal block skips on
+  Windows (a real occupied port does not fail the
+  second bind the same way there), so
+  LocalSignalServerRefusalTest in
+  runner/tests/test_runner_last_edges.py drives it
+  with a bind-failing socket fake, identically on
+  every platform: the refusal returns None, the
+  half-made socket is closed, and a failing close is
+  swallowed. Done when a coverage run shows the
+  function clean.
 - A (refill) — `runner/oracle/resources.py::`
   `_save_state` (8 lines never run on Windows, 7 on
   Linux, coverage run 40187685363) — taken 2026-10-25,

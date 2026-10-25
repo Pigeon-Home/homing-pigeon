@@ -421,5 +421,61 @@ class LocalSignalTest(unittest.TestCase):
             rr._start_local_signals({}, tempfile.mkdtemp())
 
 
+class _BindFailingSocket:
+    """A listener-shaped fake whose bind always fails: the
+    refusal path of _local_signal_server, driven the same
+    on every platform (a real occupied port does not fail
+    the second bind the same way on Windows)."""
+
+    def __init__(self, close_raises=False):
+        self.close_raises = close_raises
+        self.closed = False
+
+    def setsockopt(self, *a):
+        pass
+
+    def bind(self, addr):
+        raise OSError("address already in use")
+
+    def listen(self, n):
+        pass
+
+    def settimeout(self, t):
+        pass
+
+    def close(self):
+        self.closed = True
+        if self.close_raises:
+            raise OSError("close says no")
+
+
+class LocalSignalServerRefusalTest(unittest.TestCase):
+    """Queue A refill: _local_signal_server's refusal
+    block (coverage run 40187685363: the whole block
+    unrun on Windows -- the one existing drive skips
+    there -- and the close swallow unrun on both). The
+    contract is the docstring's: a bound, listening
+    socket, or None; never raises. A bind failure is
+    logged, the half-made socket is closed, and even a
+    close that fails changes nothing.
+    """
+
+    def _server_with(self, fake):
+        with mock.patch.object(rr.socket, "socket",
+                               lambda *a, **k: fake):
+            return rr._local_signal_server(
+                {"local_signal_port": 43117}, "/tmp")
+
+    def test_a_bind_failure_closes_the_socket_and_refuses(self):
+        fake = _BindFailingSocket()
+        self.assertIsNone(self._server_with(fake))
+        self.assertTrue(fake.closed)
+
+    def test_a_failing_close_is_swallowed(self):
+        fake = _BindFailingSocket(close_raises=True)
+        self.assertIsNone(self._server_with(fake))
+        self.assertTrue(fake.closed)
+
+
 if __name__ == "__main__":
     unittest.main()
