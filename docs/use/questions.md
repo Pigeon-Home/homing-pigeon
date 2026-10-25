@@ -357,6 +357,14 @@ The green verdict stands. The roster controls on 92ed801
 still have not had a finished three-leg run.
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40197758419
 
+Progress, 2026-10-25 06:41 PDT. Another finished green.
+40197990608 (237a9c5) finished all three legs success.
+The green verdict stands. The roster controls
+R5.policies_concurrent, R6.drop_concurrent and
+ORACLE.no_widening.cage are named in the roster but
+have not yet had a finished three-leg run.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40197990608
+
 **Applied in:** this commit.
 
 ---
