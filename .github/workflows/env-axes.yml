@@ -12,6 +12,17 @@ name: env-axes
 # the matrix asked for, so an "off" pass can never silently be
 # another "on" pass. The corpus prints the value itself (the canary
 # module's AXIS line), and the log is uploaded with the result.
+#
+# The sysctl job (Q20) does the same for the other axes the standing
+# orders name: yama ptrace_scope at 0..3, protected_symlinks and
+# protected_regular off and on, hidepid on /proc at 0 and 2, each
+# crossed with job_user off and on. The off leg runs the corpus as
+# the runner user; the on leg runs the corpus the same way and then
+# the job_user module as root with a real second user, so the axis
+# value's effect on the privilege drop is measured under the same
+# conditions as the drop's own proof (.github/workflows/job-user.yml).
+# The workflow writes the AXIS line for these (the canary module
+# records only the userns setting), after reading the value back.
 on:
   push:
     branches: [main]
@@ -92,3 +103,109 @@ jobs:
         with:
           name: env-axes-restrict-${{ matrix.restrict }}
           path: axis-${{ matrix.restrict }}.log
+
+  sysctl:
+    strategy:
+      fail-fast: false
+      matrix:
+        job_user: ["off", "on"]
+        axis:
+          - {name: ptrace_scope, set: "kernel.yama.ptrace_scope=0", read: "sysctl -n kernel.yama.ptrace_scope", want: "0", tag: "0"}
+          - {name: ptrace_scope, set: "kernel.yama.ptrace_scope=1", read: "sysctl -n kernel.yama.ptrace_scope", want: "1", tag: "1"}
+          - {name: ptrace_scope, set: "kernel.yama.ptrace_scope=2", read: "sysctl -n kernel.yama.ptrace_scope", want: "2", tag: "2"}
+          - {name: ptrace_scope, set: "kernel.yama.ptrace_scope=3", read: "sysctl -n kernel.yama.ptrace_scope", want: "3", tag: "3"}
+          - {name: protected_links, set: "fs.protected_symlinks=0 fs.protected_regular=0", read: "echo $(sysctl -n fs.protected_symlinks)/$(sysctl -n fs.protected_regular)", want: "0/0", tag: "off"}
+          - {name: protected_links, set: "fs.protected_symlinks=1 fs.protected_regular=2", read: "echo $(sysctl -n fs.protected_symlinks)/$(sysctl -n fs.protected_regular)", want: "1/2", tag: "on"}
+          - {name: hidepid, set: "hidepid=0", read: "hidepid", want: "0", tag: "0"}
+          - {name: hidepid, set: "hidepid=2", read: "hidepid", want: "2", tag: "2"}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      AXIS_NAME: ${{ matrix.axis.name }}
+      AXIS_SET: ${{ matrix.axis.set }}
+      AXIS_READ: ${{ matrix.axis.read }}
+      AXIS_WANT: ${{ matrix.axis.want }}
+      JOB_USER: ${{ matrix.job_user }}
+      LOG: axis-${{ matrix.axis.name }}-${{ matrix.axis.tag }}-jobuser-${{ matrix.job_user }}.log
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c .github/requirements-ci.txt hypothesis
+      - name: install bubblewrap
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --version
+      - name: set the axis and prove it took
+        run: |
+          set -euo pipefail
+          # hidepid is a /proc mount option, not a sysctl: remount, and
+          # read it back from the mount table. Newer kernels spell 2 as
+          # "invisible" and 1 as "noaccess".
+          read_hidepid() {
+            opts=$(findmnt -no OPTIONS /proc || true)
+            case ",$opts," in
+              *,hidepid=2,*|*,hidepid=invisible,*) echo 2 ;;
+              *,hidepid=1,*|*,hidepid=noaccess,*) echo 1 ;;
+              *) echo 0 ;;
+            esac
+          }
+          if [ "$AXIS_READ" = "hidepid" ]; then
+            sudo mount -o "remount,$AXIS_SET" /proc
+            got=$(read_hidepid)
+          else
+            for kv in $AXIS_SET; do sudo sysctl -w "$kv"; done
+            got=$(bash -c "$AXIS_READ")
+          fi
+          echo "AXIS-SET $AXIS_NAME=$got (wanted $AXIS_WANT) job_user=$JOB_USER"
+          if [ "$got" != "$AXIS_WANT" ]; then
+            echo "::error::$AXIS_NAME reads $got, wanted $AXIS_WANT; refusing to run the corpus"
+            exit 1
+          fi
+          echo "AXIS $AXIS_NAME=$got job_user=$JOB_USER" > "$LOG"
+      - name: create the second user (job_user on)
+        if: matrix.job_user == 'on'
+        run: |
+          set -euo pipefail
+          sudo useradd -m -s /bin/bash pigeon-test
+          id pigeon-test
+      - name: the corpus, with the setting recorded
+        run: |
+          set -o pipefail
+          python runner/tools/suite_wall_clock.py --minutes 20 -- \
+            runner.tests.test_credential_canary \
+            runner.tests.test_campaign_phase1 \
+            runner.tests.test_confinement -v 2>&1 | tee -a "$LOG"
+      - name: the job_user module as root (job_user on)
+        if: matrix.job_user == 'on'
+        run: |
+          set -o pipefail
+          PY="$(command -v python)"
+          sudo env "PATH=$PATH" "$PY" runner/tools/suite_wall_clock.py --minutes 20 -- \
+            runner.tests.test_secret_files_job_user -v 2>&1 | tee -a "$LOG"
+      - name: the recorded value matches the one set
+        if: always()
+        run: |
+          set -euo pipefail
+          grep -q "^AXIS $AXIS_NAME=$AXIS_WANT job_user=$JOB_USER" "$LOG" \
+            || { echo "::error::the log does not record $AXIS_NAME=$AXIS_WANT"; exit 1; }
+          runs=$(grep -cE '^OK' "$LOG" || true)
+          want_runs=1; [ "$JOB_USER" = "on" ] && want_runs=2
+          [ "$runs" -ge "$want_runs" ] || { echo "::error::a suite did not pass at $AXIS_NAME=$AXIS_WANT job_user=$JOB_USER"; fail=1; }
+          echo "::notice title=env-axes $AXIS_NAME=$AXIS_WANT job_user=$JOB_USER::$(grep -E '^(Ran |OK|FAILED)' "$LOG" | tr '\n' ' ')"
+          { grep -E '^(FAIL|ERROR): ' "$LOG" || true; } | while read -r line; do
+            echo "::warning title=env-axes $AXIS_NAME=$AXIS_WANT job_user=$JOB_USER::$line"
+          done
+          { grep -E '^(AssertionError|[A-Za-z]+Error): ' "$LOG" || true; } | head -10 | while read -r line; do
+            echo "::warning title=env-axes $AXIS_NAME=$AXIS_WANT job_user=$JOB_USER detail::${line:0:300}"
+          done
+          exit "${fail:-0}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: env-axes-${{ matrix.axis.name }}-${{ matrix.axis.tag }}-jobuser-${{ matrix.job_user }}
+          path: ${{ env.LOG }}

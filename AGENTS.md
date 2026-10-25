@@ -115,7 +115,7 @@ object. Prefer the body `send_job.py` prints.
 |-------|--------|
 | `issued_at` without `Z` or an offset | Rejected |
 | `interpreter` as a string (`"sh"`) | Rejected. Use `["sh"]` |
-| `interpreter` pointing at a missing binary | Rejected |
+| `interpreter` pointing at a missing binary | Repaired, then run, at the default opinion latitude (`repair`): the interpreter becomes the platform default when the script's shape fits it, and the result's `oracle_opinion` says so (`repaired: true`). Rejected (`cannot start interpreter`, exit -2) at `advise` latitude, under the runner's `refuse` setting, or when the shape does not fit. PROTOCOL.md 3.2. |
 | `job_id` of `../evil`, `.`, `..`, or anything outside `[A-Za-z0-9._-]{1,128}` | Rejected |
 | Uppercase hex signature | Accepted (hex is case-insensitive) |
 | Subject with extra words (`TEST`, `Re:`) | Accepted |
@@ -148,7 +148,7 @@ The connected send-as address is the primary account on it. Jobs the SI sends co
 ## Platform-safe job construction (real failure)
 
 **Do not emit `interpreter: ["sh"]` or `["bash"]` when the runner is Windows.**  
-The job is rejected with `cannot start interpreter: [WinError 2] The system cannot find the file specified`.
+At the default opinion latitude the runner repairs a `["sh"]` job whose script fits PowerShell to the platform default and runs it, stating the repair in the result; a script that does not fit (bash-only syntax), or a job sent below `repair` latitude, is rejected with `cannot start interpreter: [WinError 2] The system cannot find the file specified`. Either way the SI did not get what it asked for: name the right interpreter, or none.
 
 - Ping first. The result to a `ping` job carries a `platform` card (PROTOCOL.md 3.2) naming the runner's `os_family`, its `default_interpreter`, and the `protocol_versions` it opens, unless the owner set `pong_platform` to `none`. Read it, then build the real job.
 - Omit `--interpreter` / the `interpreter` field so the runner uses its platform default (PowerShell on Windows, `sh` elsewhere).

@@ -289,43 +289,35 @@ class DoNotEmitTableTest(_CycleRig):
         self.assertEqual(results[0]["exit_code"], -2)
 
 
-class MissingBinaryRowProbe(_CycleRig):
-    """FAILING BY DESIGN -- the Q21 finding (docs/use/questions.md).
+class MissingBinaryRowAsAmended(_CycleRig):
+    """The Q21 decision (docs/use/questions.md): AGENTS.md's
+    missing-binary row now states what PROTOCOL.md section 3.2
+    promises. At the default opinion latitude (repair) a job naming
+    an interpreter that does not exist is repaired to the platform
+    default and run, and the result's oracle_opinion says so; the
+    rejection the old row stated unqualified holds at advise
+    latitude (DoNotEmitTableTest pins it there) and under refuse.
 
-    (a) Claim: AGENTS.md, "Do not emit" table: "`interpreter`
-    pointing at a missing binary | Rejected". No qualification.
-    (b) Scenario: a signed exec job naming an interpreter that
-    does not exist on the runner, sent under the default
-    configuration (no oracle_opinion member in the job; the
-    opinion's default ceiling is repair).
-    (c) Observed: the job is NOT rejected. The opinion repairs
-    the interpreter to the platform default and the job runs,
-    exit 0, with the repair stated in the result's oracle_opinion
-    member (repaired: true, received_digest present) -- exactly
-    what PROTOCOL.md section 3.2 describes at repair latitude.
-    The rejection the table states happens only below repair
-    latitude (pinned in DoNotEmitTableTest) or under the
-    runner's refuse setting.
-    (d) Do not make this pass by editing the test to expect the
-    repair. Either the table row (and the Windows note under it)
-    is amended to state the repair behavior -- the asker's
-    recommendation in Q21, since PROTOCOL.md is the spec of
-    record and the repair is a shipped, stated-in-the-result
-    feature -- or the default changes. The decider's commit
-    closes Q21 and this probe with it.
+    This replaced MissingBinaryRowProbe, the failing-by-design probe
+    that found the row wrong; the decider amended the docs rather
+    than the default, so the pin follows the docs.
+    (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
     """
 
-    def test_the_table_row_as_written(self):
+    def test_the_amended_row(self):
         jid = str(uuid.uuid4())
         p = base_job(jid, kind="exec", script="echo PROBE",
                      interpreter=["/nonexistent/hp-no-such-binary"])
         _, smtp, _ = self.cycle([job_email(p)])
         results = self.results(smtp)
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["exit_code"], -2,
-                         "AGENTS.md says a missing-binary interpreter "
-                         "is rejected; the runner repaired and ran it")
-
+        r = results[0]
+        self.assertEqual(r["exit_code"], 0, r)
+        self.assertIn("PROBE", r.get("stdout", ""))
+        opinion = r.get("oracle_opinion") or {}
+        self.assertEqual(opinion.get("mode"), "repair", opinion)
+        self.assertTrue(opinion.get("repaired"), opinion)
+        self.assertIn("received_digest", opinion)
 
 if __name__ == "__main__":
     unittest.main()
