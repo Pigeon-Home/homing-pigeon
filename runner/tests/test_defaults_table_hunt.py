@@ -256,6 +256,18 @@ def _nats_url_port(value):
         raise RuntimeError(str(e)) from e
 
 
+def _review_probe(value):
+    """extension_review through the startup validator:
+    a problem string from _validate_size_caps is the
+    refusal (main prints it as a config error and
+    exits 2 before anything runs)."""
+    from runner import runner as _runner
+    cfg = {} if value is _OMITTED else {"extension_review": value}
+    problem = _runner._validate_size_caps(cfg)
+    if problem:
+        raise RuntimeError(problem)
+
+
 REFUSE_PROBES = {
     # key -> (call(value), shapes that parse without error)
     "resources.enabled": (
@@ -321,6 +333,15 @@ REFUSE_PROBES = {
         # url_port: the port must be a whole number 1..65535 --
         # unlike the DTLS port, zero refuses here.
         {"omitted", "default-explicit", "numeric-string"}),
+    "extension_review": (
+        _review_probe,
+        # mode_of: True reads as enforce and False as off,
+        # and a mode string parses (the default-explicit
+        # and numeric-string shapes are both "enforce");
+        # anything else is a startup config error
+        # (Decision 1: a security mode refuses).
+        {"omitted", "default-explicit", "true", "false",
+         "numeric-string"}),
 }
 
 

@@ -2167,7 +2167,30 @@ ROWS = [{'key': 'severity',
   'probe': 'handwritten',
   'test': 'TestLogSettingsInvalidReadAsDefaults',
   'notes': 'Queue D refill (2026-10-25): rotated '
-           'oracle.log files kept.'}]
+           'oracle.log files kept.'},
+ {'key': 'extension_review',
+  'scope': 'core',
+  'kind': 'enum',
+  'default': 'enforce',
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 77,
+  'doc_token': 'enforce',
+  'doc_status': 'verified',
+  'reader': 'runner/guard/extreview.py:mode_of',
+  'reader_sites': ['runner/guard/extreview.py:mode_of',
+                   'runner/runner.py:_validate_size_caps'],
+  'policy': 'refuse',
+  'lo': None,
+  'hi': None,
+  'probe': 'refuse',
+  'test': '',
+  'notes': 'Queue D refill (2026-10-25): the extension '
+           'review posture -- a security mode, so '
+           'Decision 1 puts it in the refuse class: '
+           'mode_of names the problem and the startup '
+           'validator turns it into a config error '
+           '(exit 2). True reads as enforce and False '
+           'as off, as the review\'s own doc states.'}]
 
 
 # The generic confval helpers: their defaults are caller-supplied,
@@ -2221,9 +2244,10 @@ class RegistryShapeTests(unittest.TestCase):
         # then +3 more (answer_only, mail_tls_required,
         # job_encryption), then +6 more (the remediation
         # family: mode plus its five numeric settings),
-        # then +5 more (the log-bounds family).
-        self.assertEqual(122, len(ROWS))
-        self.assertEqual(71, sum(1 for r in ROWS if r["scope"] == "core"))
+        # then +5 more (the log-bounds family), then
+        # extension_review (a refuse-class row).
+        self.assertEqual(123, len(ROWS))
+        self.assertEqual(72, sum(1 for r in ROWS if r["scope"] == "core"))
         self.assertEqual(51, sum(1 for r in ROWS if r["scope"] == "extension"))
 
 

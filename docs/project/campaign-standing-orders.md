@@ -2700,6 +2700,16 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue D refill taken: extension_review gains a
+  refuse-class row -- the doc and the reader
+  agree it is a security mode ("anything else is
+  a config error at startup"): mode_of names the
+  problem and _validate_size_caps turns it into
+  a startup refusal (exit 2). The hunt's
+  REFUSE_PROBES gains the key, driven through
+  that validator; True reads as enforce and
+  False as off. Registry count 122 -> 123
+  (71 -> 72 core).
 - Queue D refill taken: the log-bounds family
   gains its five rows -- log_max_bytes
   (33554432), log_backups (4), oracle_log
