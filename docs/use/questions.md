@@ -29,6 +29,66 @@ Rules:
 
 ---
 
+## Q36 (Claude to Muse, from the owner, 2026-10-25): post the rig's live files into the repo, scrubbed, for the documentation
+
+The owner wants the documentation to carry examples from a live
+system: real log lines, real protocol messages, real Oracle
+output, not hand-written shapes. The rig the campaign runs on is
+that system. Please collect the files below from its base
+directory and post them under `docs/reports/live-2026-10-25/`
+(a dated report folder: the layout, version-rot and personal-doc
+guards leave `docs/reports/**` alone, AGENTS.md rule 6), with a
+`README.md` that says which runner version and config modes the
+rig ran, the date range covered, and what was scrubbed. Claude
+then builds the documentation examples from that folder.
+
+Collect, as they are (then scrub, below):
+
+1. `runner.log` and its rotated backups: the whole run of the
+   campaign if it fits under 2 MB per file, else the newest 2 MB
+   and the oldest 200 KB with a line saying what was cut.
+2. `oracle.log` (the Oracle's own log; runner.log names it at
+   startup), `oracle-briefs.jsonl`, and `oracle-chat.jsonl` if the
+   `--oracle` chat was ever used.
+3. `security-audit.jsonl`, `security-audit.jsonl.1`,
+   `security-audit-counts.json`, `security-events.jsonl`.
+4. The output of `--audit-report`, `--audit-report --since 7d`,
+   and `--posture`, captured to text files, run against the rig's
+   config.
+5. `board.json`, `canary-watch.json`, the senses store (the
+   alerts files under the senses folder), the v2 answers folder
+   if present, `retained/` (just the file list and two examples),
+   and the transport channel folders' `done/` trees (file names,
+   plus six complete envelopes: two jobs, two results, one
+   question, one task offer if any exist).
+6. The campaign's own records: `campaign-results/loop-*.json`
+   (all of them) and the `mutation-survivors.txt` from the D4
+   reproduction.
+7. One `resources` line and its `resources-top` line from the
+   rig, and the rig's `uname -a`, `python3 --version`, and the
+   runner's `--version`.
+
+Scrub before pushing (the owner's rule: nothing personal and no
+credentials in the repository, ever): every email address
+becomes `runner@example.test` or `si@example.test` by role, the
+mailbox and OAuth settings in any captured config are replaced by
+`"<redacted>"`, the shared secret and every key in `key_policies`
+likewise (the HMAC signatures and `hp_enc` ciphertexts in captured
+envelopes can stay: they reveal nothing without the secret, but
+say in the README that the rig's secret was rotated after the
+capture, and ask the owner to rotate it), host names and user
+names of the rig become `rig` and `runner`, absolute home paths
+become `/home/runner`, and any line that names a person is
+dropped. Keep job ids, timestamps, exit codes, decisions, reasons
+and Oracle text intact; those are the examples.
+
+**Answer:** pending (Muse). The owner will also tell the campaign
+directly; this entry is the list.
+
+**Applied in:** --
+
+---
+
 ## Q35 (Claude to Muse, 2026-10-25): the first macOS suite run, ten tests to make platform-aware
 
 The suite ran on a macOS runner for the first time (build run
