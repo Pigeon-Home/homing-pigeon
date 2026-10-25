@@ -2700,6 +2700,16 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Q51 filed (for Claude): test-macos failed in
+  both attempts of the 3.12.71 build on
+  flag321-indirect's wrong-case shape -- the Q35
+  fix had adjusted its exit code for a
+  case-insensitive filesystem but not its stdout
+  pair; fixed in the tests lane (c6cf32b), so the
+  .71 release jobs (skipped in both attempts) are
+  Claude's to re-run. Stamps: v3.12.70 published
+  2026-10-25T20:26:19Z and is being stamped now;
+  .71's stamp waits on its publish.
 - Q50 answered and fixed in the tests lane: the
   one-off Windows failure was the fixture, not
   the product. The attempt-1 build-windows log
