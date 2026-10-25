@@ -93,5 +93,53 @@ class SecurityBlockNoReloadTest(unittest.TestCase):
         self.assertEqual(sec_mode(fresh, "confinement"), "enforce")
 
 
+class AuditEntryDefaultsTest(unittest.TestCase):
+    """Queue D, item 4: the mutation run's survivors.
+
+    The local mutmut run over runner/guard/security.py
+    (the configured scope) generated three mutants, all
+    in write_audit_entry's defaults -- key_id, job_id and
+    detail each mutated from "" to "XXXX" -- and all three
+    survived: no test pinned what a call that passes none
+    of them writes. The contract (write_audit_entry's own
+    docstring): only names, counts, hashes and ids go in
+    entries; an id the caller did not pass is empty, and a
+    detail the caller did not pass is absent, not filled.
+    """
+
+    def _rows(self, base):
+        path = os.path.join(base, "security-audit.jsonl")
+        with open(path, encoding="utf-8") as fh:
+            return [json.loads(line) for line in fh if line.strip()]
+
+    def test_a_default_call_writes_empty_ids_and_no_detail(self):
+        from runner.guard.security import write_audit_entry
+
+        with tempfile.TemporaryDirectory() as base:
+            write_audit_entry(base, "audience", "denied", "why")
+            rows = self._rows(base)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["key_id"], "")
+        self.assertEqual(rows[0]["job_id"], "")
+        self.assertNotIn("detail", rows[0])
+        self.assertNotIn("mode", rows[0])
+
+    def test_explicit_ids_detail_and_mode_land(self):
+        # Control: the values a caller does pass are written,
+        # so the defaults test above is not passing on a
+        # writer that drops everything.
+        from runner.guard.security import write_audit_entry
+
+        with tempfile.TemporaryDirectory() as base:
+            write_audit_entry(base, "audience", "denied", "why",
+                              key_id="k1", job_id="j1",
+                              detail="d1", mode="enforce")
+            rows = self._rows(base)
+        self.assertEqual(rows[0]["key_id"], "k1")
+        self.assertEqual(rows[0]["job_id"], "j1")
+        self.assertEqual(rows[0]["detail"], "d1")
+        self.assertEqual(rows[0]["mode"], "enforce")
+
+
 if __name__ == "__main__":
     unittest.main()

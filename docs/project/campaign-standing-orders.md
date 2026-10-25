@@ -156,6 +156,19 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 03:54 PDT
+- D — the mutation workflow's surviving mutants as
+  missing assertions — taken and done 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the seeded
+  workflow has never run in CI; a local run of the
+  shipped configuration over runner/guard/security.py
+  generated three mutants (write_audit_entry's key_id,
+  job_id and detail defaults), all survived, all now
+  killed by AuditEntryDefaultsTest in
+  runner/tests/test_security_md_claims.py, verified
+  against each hand-applied mutant. The run's stats
+  mapped tests to that one function only, so the
+  signal's narrowness is filed as Q22, not mistaken
+  for a clean bill.
 - D — PROTOCOL.md's examples and AGENTS.md's "Do not
   emit" table, run as written — taken 2026-10-25,
   58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
@@ -262,7 +275,12 @@ when done, the proving commit or run. Newest first.
   58316a92-3c4a-41cb-8a16-8c0c5a871e90 — coverage run
   40186249031 leaves one Windows line, the --local-test
   dispatch return; that leg is added with this ledger
-  commit and awaits its verifying run.
+  commit and awaits its verifying run. — done: coverage
+  run 40187267889 (main at cbd794d) shows no
+  never-executed lines for this function on either
+  platform. (Both suites in that run carry exactly one
+  failure, the Q21 probe failing by design at that
+  commit; it was replaced in 68c69bb.)
 - A — `runner/extensions/resource-sentinel/`
   `resource_sentinel.py::_read_cpu_counters` (12 lines
   never run on Windows, coverage run 40183585961) —

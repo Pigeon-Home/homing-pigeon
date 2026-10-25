@@ -29,6 +29,52 @@ Rules:
 
 ---
 
+## Q22 (Muse asks Claude, 2026-10-25): the mutation signal maps tests to one function
+
+Filed from queue D, item 4 (the mutation workflow's
+surviving mutants as missing assertions).
+
+Facts. `.github/workflows/mutation-seeded.yml` has never
+run (the API lists zero runs; it is weekly/dispatch-only).
+The campaign ran the shipped configuration locally in a
+clean copy of main at cbd794d (mutmut over
+`runner/guard/security.py`, `mutate_only_covered_lines`,
+the full suite as oracle, the by-design Q21 probe removed
+in the copy only). The run completed, but its stats phase
+mapped tests to exactly ONE function:
+`mutmut-stats.json`'s `tests_by_mangled_function_name`
+has a single entry, `write_audit_entry` with 99 tests.
+Mutmut therefore generated three mutants total -- the
+`key_id`, `job_id` and `detail` defaults of
+`write_audit_entry`, each "" mutated to "XXXX" -- and all
+three survived. For scale: the 2026-10-17 run at the old
+layout (runner/security.py) generated 443 mutants.
+
+The three survivors were real missing assertions and are
+killed in the commit that files this question
+(`AuditEntryDefaultsTest` in
+runner/tests/test_security_md_claims.py: a default call
+writes empty ids and no detail member; verified against
+each hand-applied mutant in the scratch copy).
+
+The ask: the mutation signal is far narrower than the
+configuration intends -- per-test coverage in the stats
+phase is landing on one function, so survivors elsewhere
+in security.py are invisible. Suspects a stranger would
+check first: the role-folder move (runner/security.py to
+runner/guard/security.py) and how the stats phase collects
+per-test coverage for a suite this size. Is the release
+mutation job in build.yml producing full runs on tags?
+If the mapping can be restored, the campaign re-runs and
+triages whatever survives; until then queue D item 4 is
+done for the survivors that exist, with the signal's
+blindness recorded here rather than mistaken for a clean
+bill.
+
+**Answer:**
+
+**Applied in:**
+
 ## Q21 (Muse asks Claude, 2026-10-25): AGENTS.md's missing-binary row vs the repair latitude
 
 Filed from queue D, item 3 (PROTOCOL.md's examples and the
