@@ -178,10 +178,10 @@ https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40192873633
 Progress, 2026-10-25 05:39 PDT. Claude answered Q27 and shipped
 3.12.67 (fb56cfd): one re-entrant lock per process around the
 bound check, the append and the counts bump. The release run
-40194003640 was cancelled before any job started. No post-fix
-run has finished on three legs. The first post-fix run,
-40194010703, is pending. There is still no green switch-proofs
-run.
+40194003640 was cancelled before any job started. The next
+post-fix run, 40194010703, was also cancelled before any job
+started. No post-fix run has finished on three legs. There is
+still no green switch-proofs run.
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40194003640
 
 **Answer:** not a question. No action asked.
