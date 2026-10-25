@@ -268,6 +268,15 @@ def _review_probe(value):
         raise RuntimeError(problem)
 
 
+def _cap_probe(key, value):
+    """A size cap through the same startup validator."""
+    from runner import runner as _runner
+    cfg = {} if value is _OMITTED else {key: value}
+    problem = _runner._validate_size_caps(cfg)
+    if problem:
+        raise RuntimeError(problem)
+
+
 REFUSE_PROBES = {
     # key -> (call(value), shapes that parse without error)
     "resources.enabled": (
@@ -342,6 +351,19 @@ REFUSE_PROBES = {
         # (Decision 1: a security mode refuses).
         {"omitted", "default-explicit", "true", "false",
          "numeric-string"}),
+    "max_job_bytes": (
+        lambda v: _cap_probe("max_job_bytes", v),
+        # The M1b validator: a non-negative int is the
+        # cap (0 = unlimited, and the validator sets no
+        # upper bound, so a huge int parses); None is
+        # the missing key. Bools, strings, negatives
+        # and non-ints refuse.
+        {"omitted", "null", "default-explicit", "zero",
+         "huge-int"}),
+    "max_script_bytes": (
+        lambda v: _cap_probe("max_script_bytes", v),
+        {"omitted", "null", "default-explicit", "zero",
+         "huge-int"}),
 }
 
 

@@ -2232,7 +2232,49 @@ ROWS = [{'key': 'severity',
            'binding a surprise port; True reads as the '
            'default. The policy word records that '
            'startup does not refuse; the invalid '
-           'outcome is off, not the default.'}]
+           'outcome is off, not the default.'},
+ {'key': 'max_job_bytes',
+  'scope': 'core',
+  'kind': 'integer',
+  'default': 4194304,
+  'doc_file': 'README.md',
+  'doc_line': 423,
+  'doc_token': '4 MiB',
+  'doc_status': 'verified',
+  'reader': 'runner/runner.py:_validate_size_caps',
+  'reader_sites': ['runner/runner.py:_validate_size_caps',
+                   'runner/runner.py:handle_mail'],
+  'policy': 'refuse',
+  'lo': 0,
+  'hi': None,
+  'probe': 'refuse',
+  'test': '',
+  'notes': 'Queue D refill (2026-10-25): the M1b size '
+           'cap on the raw mail, checked before any '
+           'signature work. The startup validator '
+           'refuses bools, strings, negatives and '
+           'non-ints; 0 means unlimited.'},
+ {'key': 'max_script_bytes',
+  'scope': 'core',
+  'kind': 'integer',
+  'default': 1048576,
+  'doc_file': None,
+  'doc_line': None,
+  'doc_token': None,
+  'doc_status': 'unverified',
+  'reader': 'runner/runner.py:_validate_size_caps',
+  'reader_sites': ['runner/runner.py:_validate_size_caps',
+                   'runner/runner.py:handle_mail'],
+  'policy': 'refuse',
+  'lo': 0,
+  'hi': None,
+  'probe': 'refuse',
+  'test': '',
+  'notes': 'Queue D refill (2026-10-25): the M1b cap '
+           'on the signed script. The key is named in '
+           'PROTOCOL.md and README.md but no document '
+           'states the 1 MiB default; the row rests on '
+           'the intake reader in handle_mail.'}]
 
 
 # The generic confval helpers: their defaults are caller-supplied,
@@ -2248,6 +2290,7 @@ COVERAGE_EXEMPT_SITES = frozenset({
 # key appearing) fails the drift guard until the row is updated.
 KNOWN_UNDOCUMENTED = frozenset({
     "timeout_sec (plan step)",
+    "max_script_bytes",
     "extension_poll_interval_sec",
     "max_matches (grep query)",
     "lines (tail query)",
@@ -2288,9 +2331,10 @@ class RegistryShapeTests(unittest.TestCase):
         # family: mode plus its five numeric settings),
         # then +5 more (the log-bounds family), then
         # extension_review (a refuse-class row), then
-        # the local-signals pair.
-        self.assertEqual(125, len(ROWS))
-        self.assertEqual(74, sum(1 for r in ROWS if r["scope"] == "core"))
+        # the local-signals pair, then the two M1b
+        # size caps (refuse class).
+        self.assertEqual(127, len(ROWS))
+        self.assertEqual(76, sum(1 for r in ROWS if r["scope"] == "core"))
         self.assertEqual(51, sum(1 for r in ROWS if r["scope"] == "extension"))
 
 

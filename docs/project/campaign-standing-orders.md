@@ -2700,6 +2700,16 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue D refill taken: the M1b size caps gain
+  refuse-class rows -- max_job_bytes (4194304,
+  README-verified) and max_script_bytes
+  (1048576; the key is documented but no doc
+  states the value, so the row is unverified and
+  joins KNOWN_UNDOCUMENTED) -- both probed
+  through _validate_size_caps, which refuses
+  bools, strings, negatives and non-ints while
+  0 (unlimited) and None (absent) parse.
+  Registry count 125 -> 127 (74 -> 76 core).
 - Queue D refill taken: the local-signals pair
   gains rows -- local_signals (true) and
   local_signal_port (39271; the port is the
