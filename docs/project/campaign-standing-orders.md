@@ -2700,6 +2700,18 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Q50 answered and fixed in the tests lane: the
+  one-off Windows failure was the fixture, not
+  the product. The attempt-1 build-windows log
+  (job 121298576389) shows 'mismatch' !=
+  'fetched' at the first pass; the test pins the
+  archive's digest from one tgz() build and
+  serves another, and the fixture's gzip header
+  carried the wall-clock second, so the digests
+  part whenever the builds straddle a second
+  (reproduced: builds differ first at byte 4,
+  the gzip mtime field). The fixture now pins
+  mtime 0 and a determinism test holds it.
 - Full suite at ca210601: both shards OK --
   shard 0: 3,318 tests, skipped=13, 290.4s;
   shard 1: 3,323 tests, skipped=23, 376.7s.

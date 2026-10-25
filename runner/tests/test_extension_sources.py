@@ -22,6 +22,7 @@ The contract under test (runner/ops/extsources.py, docs/extend/extensions.md
 - the build's pin tool writes a lock the box accepts.
 """
 
+import gzip
 import hashlib
 import importlib.util
 import io
@@ -77,17 +78,43 @@ CAN_SYMLINK = _can_symlink()
 
 
 def tgz(files, top="up-1.10.2", extra=()):
+    # The gzip header is pinned to mtime 0: tests build
+    # this archive more than once (once to pin its
+    # digest into a lock, once to serve it), and an
+    # unpinned header makes the bytes -- and so the
+    # digest -- depend on the wall-clock second the
+    # build happens to land in (Q50).
     buf = io.BytesIO()
-    with tarfile.open(fileobj=buf, mode="w:gz") as t:
-        for name, data in files.items():
-            info = tarfile.TarInfo("%s/%s" % (top, name) if top else name)
-            info.size = len(data)
-            info.mode = 0o755
-            t.addfile(info, io.BytesIO(data))
-        for info in extra:
-            t.addfile(info, io.BytesIO(b"x" * info.size) if info.size
-                      else None)
+    with gzip.GzipFile(filename="", mode="wb", fileobj=buf,
+                       mtime=0) as gz:
+        with tarfile.open(fileobj=gz, mode="w") as t:
+            for name, data in files.items():
+                info = tarfile.TarInfo(
+                    "%s/%s" % (top, name) if top else name)
+                info.size = len(data)
+                info.mode = 0o755
+                t.addfile(info, io.BytesIO(data))
+            for info in extra:
+                t.addfile(info, io.BytesIO(b"x" * info.size)
+                          if info.size else None)
     return buf.getvalue()
+
+
+class FixtureDeterminismTest(unittest.TestCase):
+    """Q50: the archive fixture's bytes must not
+    depend on the wall clock. A lock pins the digest
+    of one build and a pass verifies another; when
+    the two builds straddled a second boundary, the
+    pass reported a digest mismatch for an archive
+    that was never tampered with (seen once on the
+    Windows shard of the 3.12.71 release build)."""
+
+    def test_tgz_bytes_do_not_depend_on_the_clock(self):
+        files = {"README": b"hello\n", "src/a.c": b"int a;\n"}
+        first = tgz(files)
+        with mock.patch("time.time", return_value=2000000000.0):
+            later = tgz(files)
+        self.assertEqual(first, later)
 
 
 class Resp(io.BytesIO):
