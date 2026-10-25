@@ -79,9 +79,20 @@ members in `status`, or validating member shapes in
 `load_states`, are both in Claude's lane to choose.
 Nothing for the owner.
 
-**Answer** --
+**Answer (Claude, stamp 50000c8e, 2026-10-25):** fixed in `status`
+itself, which is where the promise is written: each member
+`load_states` does not check is read for the shape it should have
+and reported blank when it is not (`installed` not a dict → path
+None; `entries` not a dict → no entries; a state that is not a dict
+→ every field None), and the sort keys are stringified so a state
+tree with odd keys still orders. `run_inspect` stays unguarded, as
+you asked: the surface keeps its own word. Both probes pass with
+the decorators off. Validating member shapes in `load_states` was
+the other road and was not taken, because the fetch pass reads
+those states too and a state it cannot use is better repaired by
+the next pass than refused at load.
 
-**Applied in** --
+**Applied in:** the commit carrying this answer.
 
 ---
 
@@ -117,9 +128,26 @@ difference is filed back here as a finding. Nothing for
 the owner: a GitHub runner is not a machine under the
 stop rules.
 
-**Answer:** pending.
+**Answer (Claude, stamp 50000c8e, standing in for the desk,
+2026-10-25):** this is built and green; it is Q20's answer. The
+`sysctl` job of `.github/workflows/env-axes.yml` (68c69bb) runs the
+same corpus (canary, phase-1, confinement) once per value of each
+axis you list, exactly as listed: `kernel.yama.ptrace_scope` at 0, 1,
+2, 3; `fs.protected_symlinks`/`fs.protected_regular` off (0/0) and on
+(1/2); `hidepid` on /proc at 0 and 2 (a remount, read back from the
+mount table, where newer kernels spell 2 as `invisible`; a runner
+that cannot remount fails the leg with the reason, not a silent
+skip); each crossed with job_user off and on, the on leg adding the
+job_user module as root with a real second user. Every leg sets the
+value, reads it back, refuses to run if it did not take, and writes
+`AXIS <name>=<value> job_user=<on|off>` at the head of its log. The
+newest run (40221984110, on f002e62) is 18 of 18 legs green, as were
+the two before it: the corpus does not move on these axes at their
+shipped defaults or their hardened values. So queue B's item is done
+as filed; the ledger line it wants is Q20's. If the standing orders'
+queue still lists it, that is the line to tick, not a leg to build.
 
-**Applied in:** --
+**Applied in:** 68c69bb (Q20); no change here.
 
 ---
 

@@ -2161,24 +2161,42 @@ def is_withheld(path, withheld) -> bool:
 
 
 def status(base_dir) -> dict:
-    """Everything recorded, for --inspect sources. Never raises."""
+    """Everything recorded, for --inspect sources. Never raises.
+
+    load_states admits any state file that is a dict at state
+    version 1 and checks nothing about its members, so each member
+    is read here for the shape it should have and reported as absent
+    when it is not (Q44): a state file with a list where `installed`
+    or `entries` belongs is a report with those blank, not a
+    traceback where the operator's view should be.
+    """
     out = {"state_dir": state_root(base_dir), "extensions": []}
     try:
         states = load_states(base_dir)
     except Exception:
         return out
-    for (kind, name), st in sorted(states.items()):
+    for key, st in sorted(states.items(), key=lambda kv: str(kv[0])):
+        try:
+            kind, name = key
+        except (TypeError, ValueError):
+            kind, name = "?", str(key)
+        if not isinstance(st, dict):
+            st = {}
+        installed = st.get("installed")
+        entries = st.get("entries")
         out["extensions"].append({
             "kind": kind, "name": name, "version": st.get("version"),
             "active": st.get("active"), "fetch": st.get("fetch"),
             "disclosure": st.get("disclosure"),
             "declaration_problem": st.get("declaration_problem"),
-            "installed": (st.get("installed") or {}).get("path"),
-            "entries": {eid: {k: r.get(k) for k in (
+            "installed": installed.get("path")
+            if isinstance(installed, dict) else None,
+            "entries": {str(eid): {k: r.get(k) for k in (
                 "role", "status", "detail", "disclosure", "pinned_by",
                 "bytes", "next_retry")}
-                for eid, r in sorted((st.get("entries") or {}).items())
-                if isinstance(r, dict)},
+                for eid, r in sorted(entries.items(), key=lambda kv: str(kv[0]))
+                if isinstance(r, dict)}
+            if isinstance(entries, dict) else {},
         })
     return out
 

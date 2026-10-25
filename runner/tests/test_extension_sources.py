@@ -3103,16 +3103,14 @@ class StatusShapeTest(unittest.TestCase):
         self.assertEqual(ext["installed"], "/p")
         self.assertEqual(ext["entries"]["e1"]["role"], "code")
 
-    # Q44: status() raises AttributeError on these two
-    # shapes today; the decorator comes off in the fix.
-    @unittest.expectedFailure
+    # Q44: status() raised AttributeError on these two shapes;
+    # the members are now read for their shape and reported blank.
     def test_entries_recorded_as_a_list_do_not_raise(self):
         out = self._status_with_state({
             "state_version": 1, "entries": ["x"]})
         self.assertEqual(len(out["extensions"]), 1)
 
     # Q44: as above, for the installed member.
-    @unittest.expectedFailure
     def test_installed_recorded_as_a_list_does_not_raise(self):
         out = self._status_with_state({
             "state_version": 1, "installed": ["x"]})
