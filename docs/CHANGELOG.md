@@ -6,6 +6,30 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## Unreleased
 
+<!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+
+- **A source install starts.** The installer's file list predated
+  the role folders, so `python3 runner/ops/install.py` copied
+  `runner.py` without `guard/`, `oracle/` or most of `wire/`, and the
+  runner it left refused to import. It now copies the runtime the way
+  the wheel ships it. Upgrading over a broken install repairs it.
+- **One poison line no longer stops a feed sense.** A line nested
+  past the C stack made `json.loads` raise `RecursionError`, which
+  five feeds (Suricata, Zeek, osquery, Falco, Wazuh) did not catch;
+  the reader never moved past it, so the sense crashed on every pass.
+  It is now a malformed line like any other.
+- **The 3.9 floor reads timestamps like 3.12 does.** Before 3.11,
+  `fromisoformat` takes only 3- or 6-digit fractions and no `+0000`
+  offset. A job's `issued_at` in those forms was fresh on 3.12 and
+  unparseable on 3.9, and Falco, Suricata and Wazuh dropped events
+  with short fractions. Both now normalize first.
+- **New proofs.** `python-range` runs the whole suite on 3.9 and
+  3.14 on every push. `upgrade-proof` installs the last release,
+  seeds owner edits and state, upgrades to the commit and checks
+  nothing was lost. `soak` runs the poll loop for two hours nightly
+  and fails on growth. `hardware` runs the suite, the platform proof,
+  the upgrade proof and a soak on a self-hosted board. Property tests
+  cover all eight feed decoders.
 - **The extension review: code held to the manifest before load.**
   Nothing signs an extension's code, so the agent now reads each
   sense and transport folder against its manifest before anything
