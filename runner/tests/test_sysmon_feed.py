@@ -143,6 +143,22 @@ class ParseXmlTest(unittest.TestCase):
         self.assertIsNone(SM.parse_event(42))
 
 
+class ParseXmlBrokenInsideTest(unittest.TestCase):
+    """Queue A refill: _parse_xml_event's malformed
+    leg (coverage run 40189711740: lines 167-168).
+    A text carrying both Event markers but broken
+    XML between them answers None, like the texts
+    with no markers at all.
+    """
+
+    def test_broken_xml_between_the_markers(self):
+        self.assertIsNone(
+            SM._parse_xml_event("<Event><System></Event>"))
+        self.assertIsNone(
+            SM._parse_xml_event(
+                "<Event><Data a='1></Data></Event>"))
+
+
 class ParseTextTest(unittest.TestCase):
     def test_windows_text_block_parses_the_same_model(self):
         ev = SM.parse_event(_block(

@@ -294,6 +294,32 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — four more two-line legs (coverage
+  run 40189711740): `sysmon_feed._parse_xml_event`
+  broken-inside, `softflowd_feed`
+  `_parse_v9_templates` truncated fields,
+  `training_watch._run_alive` cannot-run, and the
+  NATS client's expired deadline, refused send and
+  refused close — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ParseXmlBrokenInsideTest
+  (runner/tests/test_sysmon_feed.py),
+  DecodeDamageLegsTest (test_softflowd_feed.py),
+  RunAliveLegsTest (test_training_watch.py), and
+  a case in NatsNextMessageLegsTest
+  (test_transports.py). Recorded without a take:
+  softflowd decode_datagram's except (401-402)
+  sits behind both decoders' length guards;
+  dri send_telegram's second dumps failure
+  (504-505) cannot fire once both fields are
+  text; dri's fused-score excepts and
+  training-watch's loss float except sit behind
+  helpers that are total by design
+  (alert_score sanitizes its weight; the loss
+  pattern only captures float-shaped text, and
+  float() of an over-range literal is inf, not an
+  error). Done when a coverage run shows the
+  taken legs clean.
 - A (refill) — `runner/guard/confval.py::_parse`
   type legs and `runner/wire/protocol_v2.py::`
   `_other_answers` unsafe-id leg (2 lines each

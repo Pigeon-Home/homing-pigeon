@@ -209,6 +209,25 @@ class GpuTest(unittest.TestCase):
         self.assertEqual(alerts, [])
 
 
+class RunAliveLegsTest(unittest.TestCase):
+    """Queue A refill: _run_alive's cannot-run leg
+    (coverage run 40189711740: lines 359-360). A
+    status command that cannot be run at all reads
+    as unknown (None), never as dead or alive.
+    """
+
+    def test_a_command_that_cannot_run_is_unknown(self):
+        from unittest import mock as _mock
+        with _mock.patch.object(
+                TW.subprocess, "run",
+                side_effect=OSError("no shell")):
+            self.assertIsNone(TW._run_alive("true"))
+        out = type("Out", (), {"returncode": 0})()
+        with _mock.patch.object(TW.subprocess, "run",
+                                return_value=out):
+            self.assertIs(TW._run_alive("true"), True)
+
+
 class GpuReadLegsTest(unittest.TestCase):
     """Queue A refill: _read_gpu's unparsable-line
     leg (coverage run 40189711740: lines 241-242).

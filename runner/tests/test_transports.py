@@ -2298,6 +2298,34 @@ class NatsNextMessageLegsTest(unittest.TestCase):
                                     "timed out mid-message"):
             client.next_message(time.monotonic() + 30)
 
+    def test_a_past_deadline_and_a_broken_socket(self):
+        # Queue A refill: _fill's expired-deadline leg,
+        # _send's failure leg and close's swallow
+        # (coverage run 40189711740: _fill line 143,
+        # _send lines 175-176, close lines 256-257).
+        # A deadline already gone reads as no message;
+        # a send the socket refuses is a TransportError;
+        # a close the socket refuses is swallowed and
+        # the socket is still dropped.
+        client = self._client([b"PING\r\n"])
+        self.assertIsNone(
+            client.next_message(time.monotonic() - 1))
+
+        class BrokenSock(_ScriptedSock):
+            def sendall(self, data):
+                raise OSError("refused")
+
+            def close(self):
+                raise OSError("stuck")
+
+        client = self._client([])
+        client.sock = BrokenSock([])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "send failed"):
+            client._send(b"PONG\r\n")
+        client.close()
+        self.assertIsNone(client.sock)
+
 
 class NatsConnectFailuresTest(unittest.TestCase):
     """Queue A refill: NatsClient.connect's failure legs

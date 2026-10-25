@@ -270,6 +270,36 @@ class _FakeSocket:
         pass
 
 
+class DecodeDamageLegsTest(unittest.TestCase):
+    """Queue A refill: _parse_v9_templates'
+    truncated-fields leg (coverage run
+    40189711740: lines 275-276), with the truncated
+    v5 shape pinned beside it. A datagram too
+    damaged to decode answers with no flows; a
+    template whose field list is cut short is not
+    recorded at all. (decode_datagram's own
+    except at 401-402 sits behind the decoders'
+    length guards and cannot be reached through
+    the datagram seam; the ledger records that
+    disposition.)
+    """
+
+    def test_a_truncated_v5_record_decodes_to_nothing(self):
+        flows, _t = SF.decode_datagram(
+            _v5_datagram()[:30], {}, now=1000.0)
+        self.assertEqual(flows, [])
+
+    def test_a_template_cut_short_in_its_fields(self):
+        body = struct.pack("!HH", 256, 3)
+        body += struct.pack("!HH", 8, 4)
+        flowset = struct.pack("!HH", 0, 4 + len(body)) + body
+        header = struct.pack("!HHIIII", 9, 1, 200_000, SECS, 0, 7)
+        flows, templates = SF.decode_datagram(
+            header + flowset, {}, now=1000.0)
+        self.assertEqual(flows, [])
+        self.assertEqual(templates, {})
+
+
 class CollectFlowsClockTest(unittest.TestCase):
     """Queue A refill: collect_flows' window-expiry
     and close-failure legs (coverage run
