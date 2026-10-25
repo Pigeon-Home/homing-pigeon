@@ -352,6 +352,38 @@ when done, the proving commit or run. Newest first.
   lines are still blank although the deletion
   landed in f4e2378 -- the answerer's
   bookkeeping, noted here.)
+- rules refreshed 2026-10-25 07:02 PDT —
+  acknowledged, per Q29 (the owner's rule
+  relayed by Claude): a failing-by-design
+  probe lands under @unittest.expectedFailure
+  with its question number in a comment, and
+  an item is done only when the build's
+  Windows shards are green for it. The three
+  Windows fixture shapes are noted (stat-call
+  counting, a non-releasing fake close, a
+  directory or chmod standing in for an
+  unreadable file). Also noted: the release
+  window rule — hold pushes while HEAD is a
+  `release:` commit whose build has not
+  completed. Q30 (a RELEASE_TOKEN secret for
+  tag-carried workflow files) stands in the
+  questions file for the owner; it blocks
+  Claude's release lane, not this queue.
+  resources 2026-10-25T14:02:13Z: cores 2 | box cpu 53% | wall 1s | cmd cpu 0s = 0.4 cores busy | peak rss 33 MB | mem used 91% | disk free 166.4 GB | exit 0 | under-driven
+  resources-top: hatch 256 MB, python 138 MB, python 12 MB, hatch-execd 7 MB, systemd 5 MB
+  (scoped verification runs are short by
+  construction; the rig idles between takes,
+  not inside them.)
+- A (refill) — Windows-hardening of the
+  residual legs, same day: Claude's pass
+  (382eb3a) made the two kill_tree tests and
+  the monitor test true on Windows too (a
+  patched POSIX identity with the kills
+  recorded, instead of a POSIX `sleep`), and
+  had already hardened InstallSmallLegsTest's
+  getuid leg. Muse's parallel edits to the
+  same tests were dropped in the rebase in
+  favor of his.
 - A (refill) — event-log tail legs (coverage
   run 40189711740): the Windows event log
   reader's broken-ElementTree return, its

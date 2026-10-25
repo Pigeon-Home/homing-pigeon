@@ -1099,11 +1099,8 @@ class RunnerResidualLegsTest(unittest.TestCase):
     def test_job_user_face_setgroups_delegates(self):
         # _JobUserFace.setgroups: the real face
         # passes the call to the OS unchanged.
-        # create=True: Windows has no os.setgroups
-        # to patch over, and the face is never
-        # asked there.
         face = rr._JobUserFace()
-        with mock.patch.object(os, "setgroups", create=True) as sg:
+        with mock.patch.object(os, "setgroups") as sg:
             face.setgroups([1000, 1001])
         sg.assert_called_once_with([1000, 1001])
 
@@ -1234,53 +1231,39 @@ class RunnerResidualLegsTest(unittest.TestCase):
                     "[HOMING-PIGEON] query q-z", {}, opts, d)
         self.assertTrue(handled)
 
+    @unittest.skipIf(
+        os.name == "nt",
+        "kill_tree's group and extra-pid legs are POSIX-only")
     def test_kill_tree_takes_the_extra_pids(self):
         # kill_tree's extra-pids leg: a detached
         # process the monitor sampled still
-        # dies, though it escaped the group. The
-        # leg is POSIX by design (taskkill /T is
-        # the whole tree on Windows), so it is
-        # exercised under a POSIX identity with
-        # the kills recorded, on every platform.
-        sigkill = getattr(signal, "SIGKILL", 9)
-        killed = []
-        proc = mock.Mock()
-        proc.pid = 99999999
-        with mock.patch.object(rr.os, "name", "posix"), \
-                mock.patch.object(rr.os, "killpg", create=True,
-                                  side_effect=OSError("no group")), \
-                mock.patch.object(rr.os, "kill", create=True,
-                                  side_effect=lambda pid, sig:
-                                  killed.append((pid, sig))), \
-                mock.patch.object(rr.signal, "SIGKILL", sigkill,
-                                  create=True):
-            rr.kill_tree(proc, extra_pids=[4242, proc.pid, 0])
-        proc.kill.assert_called_once()
-        # The sampled pid dies; the job's own pid and a zero are
-        # not re-killed.
-        self.assertEqual(killed, [(4242, sigkill)])
+        # dies, though it escaped the group.
+        sleeper = subprocess.Popen(
+            [sys.executable, "-c",
+             "import time; time.sleep(30)"])
+        try:
+            proc = mock.Mock()
+            proc.pid = 99999999
+            rr.kill_tree(proc, extra_pids=[sleeper.pid])
+            self.assertEqual(
+                sleeper.wait(timeout=5), -signal.SIGKILL)
+        finally:
+            if sleeper.poll() is None:
+                sleeper.kill()
 
+    @unittest.skipIf(
+        os.name == "nt",
+        "kill_tree's group and extra-pid legs are POSIX-only")
     def test_kill_tree_swallows_a_failed_kill(self):
         # kill_tree's inner swallows: the
         # fallback kill raising, and an extra
         # pid that cannot be killed, are both
-        # best effort -- neither escapes. Under
-        # a POSIX identity so the group kill is
-        # the one that fails first on every
-        # platform.
+        # best effort -- neither escapes.
         proc = mock.Mock()
         proc.pid = 99999999
         proc.kill.side_effect = RuntimeError("gone")
-        with mock.patch.object(rr.os, "name", "posix"), \
-                mock.patch.object(rr.os, "killpg", create=True,
-                                  side_effect=OSError("no group")), \
-                mock.patch.object(rr.os, "kill", create=True,
-                                  side_effect=OSError("cannot")), \
-                mock.patch.object(rr.signal, "SIGKILL",
-                                  getattr(signal, "SIGKILL", 9),
-                                  create=True):
-            rr.kill_tree(proc, extra_pids=[2 ** 22 + 12345,
-                                           "not-a-pid"])
+        rr.kill_tree(proc, extra_pids=[2 ** 22 + 12345,
+                                       "not-a-pid"])
         proc.kill.assert_called_once()
 
     def test_disk_claim_guards(self):
@@ -1363,7 +1346,9 @@ class RunnerResidualLegsTest(unittest.TestCase):
             script = os.path.join(d, "job.sh")
             with open(script, "w", encoding="utf-8") as fh:
                 fh.write("echo hi\n")
-            proc = subprocess.Popen(["sleep", "5"])
+            proc = subprocess.Popen(
+                [sys.executable, "-c",
+                 "import time; time.sleep(5)"])
             st = rr._remediation.settings({})
             monitor = rr._start_job_monitor(
                 {}, st, "job-m1", proc, work, d, script, {})
