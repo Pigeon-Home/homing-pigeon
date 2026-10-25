@@ -227,10 +227,7 @@ def _append_security_event(base_dir: str, event: dict) -> None:
             _chmod_quiet(path)
         except Exception:
             if tmp:
-                try:
-                    os.unlink(tmp)
-                except OSError:
-                    pass
+                _unlink_quiet(tmp)
 
 def _note_resource_event(base_dir, event):
     """Record a resource event. A bad shape is ignored, not fatal.
@@ -2053,10 +2050,7 @@ def _write_json(path, obj):
     tmp = f"{path}.tmp.{threading.get_ident()}"
     fd = None
     try:
-        try:
-            os.unlink(tmp)
-        except FileNotFoundError:
-            pass
+        _unlink_quiet(tmp)
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
         fd = _safe_open(tmp, flags, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -2067,14 +2061,8 @@ def _write_json(path, obj):
     except (OSError, TypeError, ValueError) as e:
         log(f"json not written to {path}: {e}", "WARN")
         if fd is not None:
-            try:
-                os.close(fd)
-            except OSError:
-                pass
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
+            _close_quiet(fd)
+        _unlink_quiet(tmp)
 
 def _query_limit(cfg):
     """Queries allowed per hour. 0 means unlimited.
@@ -2333,10 +2321,7 @@ def save_retained(base_dir, job_id, payload):
         tmp = path + ".tmp." + str(threading.get_ident())
         fd = None
         try:
-            try:
-                os.unlink(tmp)
-            except FileNotFoundError:
-                pass
+            _unlink_quiet(tmp)
             flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
             fd = _safe_open(tmp, flags, 0o600)
             safe = _json_safe(payload) if isinstance(payload, dict) else {}
@@ -2348,14 +2333,8 @@ def save_retained(base_dir, job_id, payload):
         except (TypeError, ValueError, OSError) as e:
             log(f"retained not saved for {job_id}: {e}", "WARN")
             if fd is not None:
-                try:
-                    os.close(fd)
-                except OSError:
-                    pass
-            try:
-                os.unlink(tmp)
-            except OSError:
-                pass
+                _close_quiet(fd)
+            _unlink_quiet(tmp)
 
 def load_retained(base_dir, job_id):
     """Load retained/<job_id>.json. Unsafe or missing ids return None."""
@@ -4576,10 +4555,7 @@ def _scan_local_inbox(cfg, base_dir) -> int:
             except Exception as e:
                 log(f"local signal (file): {name}: failed: {e}", "WARN")
             finally:
-                try:
-                    os.unlink(path)
-                except OSError:
-                    pass
+                _unlink_quiet(path)
             handled += 1
     if handled:
         vlog(f"local signals: {handled} envelope(s) filed "
@@ -5212,6 +5188,18 @@ def _auth_reject_event(base_dir, reason, **extra):
     }
     event.update(extra)
     _append_security_event(base_dir, event)
+
+
+def _close_quiet(fd):
+    """Close fd, swallowing OSError."""
+    if fd is not None:
+        _close_quiet(fd)
+
+
+def _unlink_quiet(path):
+    """Unlink path, swallowing OSError."""
+    _unlink_quiet(path)
+
 
 def _chmod_quiet(path, mode=0o600):
     """chmod, swallowing OSError."""
@@ -6011,10 +5999,7 @@ def _with_seen_file(path, mutator):
                         fcntl.flock(fd, fcntl.LOCK_UN)
                 except (OSError, ImportError):
                     pass
-                try:
-                    os.close(fd)
-                except OSError:
-                    pass
+                _close_quiet(fd)
 
 def _write_seen_unlocked(path, seen):
     keys = []
@@ -6038,14 +6023,8 @@ def _write_seen_unlocked(path, seen):
         _chmod_quiet(path)
     except (OSError, TypeError, ValueError):
         if fd is not None:
-            try:
-                os.close(fd)
-            except OSError:
-                pass
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
+            _close_quiet(fd)
+        _unlink_quiet(tmp)
 
 def _disk_owns(base_dir, skey, seen):
     """Claim skey on disk, or report that someone else holds it.
@@ -6132,10 +6111,7 @@ def _disk_release(base_dir, skey):
             return disk
         if pid != os.getpid():
             return disk
-        try:
-            os.unlink(claim)
-        except OSError:
-            pass
+        _unlink_quiet(claim)
         return disk
 
     _with_seen_file(seen_path, mutate)
@@ -6155,10 +6131,7 @@ def _release_saved_claims(seen_path, seen):
             continue
         key = lines[2] if len(lines) > 2 else ""
         if key and isinstance(seen, dict) and seen.get(key):
-            try:
-                os.unlink(path)
-            except OSError:
-                pass
+            _unlink_quiet(path)
 
 def load_seen(path: str) -> dict:
     """Replay cache. A symlink is not followed.
@@ -7277,10 +7250,7 @@ def _plant_canary(path):
         return None
     finally:
         if fd is not None:
-            try:
-                os.close(fd)
-            except OSError:
-                pass
+            _close_quiet(fd)
     _chmod_quiet(path)
     return _canary_state(path)
 
