@@ -1,0 +1,66 @@
+name: job-user
+
+# Q12 (docs/use/questions.md): the job_user privilege drop can
+# only be exercised where a real second user exists and the
+# suite runs as root. No ordinary CI job provides either, so
+# the enforce tests skip everywhere else -- this job creates
+# the user and runs the corpus under sudo, the env-axes
+# pattern. It also runs the credential canary module, whose
+# other-uid counterpart lives in the job_user tests.
+#
+# The corpus includes one failing-by-design probe (Q18): a
+# failed initgroups must not leave the runner's groups on the
+# job. This workflow is red on that probe until the fix lands;
+# that is the signal working, not a broken build.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "runner/tests/test_secret_files_job_user.py"
+      - "runner/tests/test_credential_canary.py"
+      - "runner/runner.py"
+      - "runner/guard/security.py"
+      - ".github/workflows/job-user.yml"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  job-user:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c .github/requirements-ci.txt hypothesis
+      - name: create the second user and prove it exists
+        run: |
+          set -euo pipefail
+          sudo useradd -m -s /bin/bash pigeon-test
+          id pigeon-test
+      - name: the corpus, as root, with the user present
+        run: |
+          set -o pipefail
+          PY="$(command -v python)"
+          sudo env "PATH=$PATH" "$PY" -m unittest \
+            runner.tests.test_secret_files_job_user \
+            runner.tests.test_credential_canary -v 2>&1 | tee job-user.log
+      - name: report
+        if: always()
+        run: |
+          grep -qE '^OK' job-user.log && verdict=OK || verdict=FAILED
+          echo "::notice title=job-user::$verdict -- $(grep -E '^Ran ' job-user.log | tr '\n' ' ')"
+          { grep -E '^(FAIL|ERROR): ' job-user.log || true; } | while read -r line; do
+            echo "::warning title=job-user::$line"
+          done
+          { grep -E '^(AssertionError|[A-Za-z]+Error): ' job-user.log || true; } | head -10 | while read -r line; do
+            echo "::warning title=job-user detail::${line:0:300}"
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: job-user
+          path: job-user.log

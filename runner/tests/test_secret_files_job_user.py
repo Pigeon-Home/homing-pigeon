@@ -23,11 +23,17 @@ try:
 except ImportError:  # Windows has no pwd
     pwd = None
 
+try:
+    import grp
+except ImportError:  # Windows has no grp
+    grp = None
+
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
 from runner.guard import security as S  # noqa: E402
-from runner.runner import build_secrets, execute_job  # noqa: E402
+from runner.runner import (  # noqa: E402
+    _JobUserFace, _job_user_preexec, build_secrets, execute_job)
 
 STRONG = secrets.token_hex(32)
 STRONG2 = secrets.token_hex(32)
@@ -206,6 +212,158 @@ class JobUserTest(unittest.TestCase):
         r2, _ = _run(_ju("enforce"), _job("m8-c2", script))
         self.assertEqual(r1["stdout"], r2["stdout"])
         self.assertEqual(r1["exit_code"], r2["exit_code"])
+
+    @unittest.skipUnless(IS_ROOT and HAS_TEST_USER,
+                         "needs root and the pigeon-test user")
+    def test_enforce_identity_complete(self):
+        # Q12: SECURITY.md promises the job runs AS the
+        # configured user. That is the whole identity: real and
+        # effective uid and gid, and the supplementary groups --
+        # the user's groups, not the runner's.
+        script = chr(10).join([
+            "import json, os",
+            "print(json.dumps({'ruid': os.getuid(),"
+            " 'euid': os.geteuid(), 'rgid': os.getgid(),"
+            " 'egid': os.getegid(),"
+            " 'groups': sorted(os.getgroups())}))",
+            "",
+        ])
+        result, _audit = _run(_ju("enforce"), _job("m8-ident", script))
+        self.assertEqual(result["exit_code"], 0, result["stderr"])
+        ident = json.loads(result["stdout"].strip())
+        pw = pwd.getpwnam("pigeon-test")
+        self.assertEqual(ident["ruid"], pw.pw_uid)
+        self.assertEqual(ident["euid"], pw.pw_uid)
+        self.assertEqual(ident["rgid"], pw.pw_gid)
+        self.assertEqual(ident["egid"], pw.pw_gid)
+        expected = {pw.pw_gid}
+        if grp is not None:
+            expected |= {g.gr_gid for g in grp.getgrall()
+                         if "pigeon-test" in g.gr_mem}
+        self.assertEqual(set(ident["groups"]), expected)
+
+    @unittest.skipUnless(IS_ROOT and HAS_TEST_USER,
+                         "needs root and the pigeon-test user")
+    def test_enforce_canary_unreadable_workdir_owned(self):
+        # Q12: the credential canary as the other uid. A secret
+        # planted in the runner's state dir (owner-only) must be
+        # unreadable to the job and the state dir unlistable
+        # (SECURITY.md: traverse-only parents), while the job's
+        # own workdir is fully usable and owned by the job user.
+        canary = "CANARY-Q12-" + secrets.token_hex(8)
+        base = tempfile.mkdtemp(prefix="hp-q12-")
+        cfg_path = os.path.join(base, "config.json")
+        with open(cfg_path, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps({"shared_secret": canary}))
+        os.chmod(cfg_path, 0o600)
+        script = chr(10).join([
+            "import os",
+            "base = %r" % base,
+            "try:",
+            "    open(os.path.join(base, 'config.json')).read()",
+            "    print('READ-OK')",
+            "except OSError:",
+            "    print('READ-DENIED')",
+            "try:",
+            "    os.listdir(base)",
+            "    print('LIST-OK')",
+            "except OSError:",
+            "    print('LIST-DENIED')",
+            "with open('mine.txt', 'w') as fh:",
+            "    fh.write('job-owned')",
+            "print('WRITE-OK')",
+            "",
+        ])
+        cfg = {"base_dir": base}
+        cfg.update(_ju("enforce"))
+        result = execute_job(cfg, _job("q12-canary", script), base)
+        self.assertEqual(result["exit_code"], 0, result["stderr"])
+        out = result["stdout"]
+        self.assertIn("READ-DENIED", out)
+        self.assertIn("LIST-DENIED", out)
+        self.assertIn("WRITE-OK", out)
+        self.assertNotIn(canary, json.dumps(result))
+        pw = pwd.getpwnam("pigeon-test")
+        written = None
+        for root, _dirs, files in os.walk(base):
+            if "mine.txt" in files:
+                written = os.path.join(root, "mine.txt")
+        self.assertIsNotNone(written)
+        self.assertEqual(os.stat(written).st_uid, pw.pw_uid)
+
+    @unittest.skipUnless(IS_ROOT and POSIX,
+                         "needs root and the pigeon-test user")
+    def test_enforce_user_gone_at_job_time_falls_back(self):
+        # Startup refuses a user that does not exist
+        # (test_bad_config_rejected); a user deleted after
+        # startup reaches the job-time path instead, which
+        # audits a fallback and runs as the current user --
+        # never silently as the missing user.
+        result, audit = _run(
+            _ju("enforce", user="pigeon-ghost-zzz"),
+            _job("m8-ghost", "import os; print('uid:', os.getuid())"))
+        self.assertEqual(result["exit_code"], 0, result["stderr"])
+        self.assertIn("uid: %d" % os.getuid(), result["stdout"])
+        self.assertEqual(audit[0]["decision"], "fallback")
+        self.assertEqual(audit[0]["reason"], "job_user_unavailable")
+
+
+class JobUserGroupsProbe(unittest.TestCase):
+    """FAILING BY DESIGN -- the Q18 finding (docs/use/questions.md).
+
+    (a) Claim: SECURITY.md, "Running jobs as another user
+    (M8)": with job_user enforce "each exec job runs as that
+    POSIX user", and Q12's assertion list: the job's
+    supplementary groups are the configured user's, not the
+    runner's.
+    (b) Scenario: the runner runs as root with supplementary
+    group 0; inside the demote, os.initgroups fails (the
+    failure _demote catches and swallows).
+    (c) Observed: the child runs with the right uid and gid
+    but keeps the runner's supplementary group 0 -- it is a
+    member of the root group while supposedly running as an
+    unprivileged user.
+    (d) Do not make this pass by editing the test to expect
+    the retained group. The fix is in _demote (Claude's lane):
+    a failed initgroups must not leave the runner's groups in
+    place -- clear them (setgroups to the user's set) or
+    refuse the drop.
+    """
+
+    @unittest.skipUnless(IS_ROOT and HAS_TEST_USER,
+                         "needs root and the pigeon-test user")
+    def test_groups_are_the_users_when_initgroups_fails(self):
+        import shutil
+        import subprocess
+
+        class BadGroups(_JobUserFace):
+            def initgroups(self, name, gid):
+                raise OSError("simulated initgroups failure")
+
+        os.setgroups([0])
+        base = tempfile.mkdtemp(prefix="hp-q18-")
+        work = os.path.join(base, "work")
+        os.mkdir(work)
+        cfg = {"security": {"modes": {"job_user": "enforce"},
+                            "job_user": {"user": "pigeon-test"}}}
+        fn = _job_user_preexec(cfg, base, "q18", work, face=BadGroups())
+        self.assertIsNotNone(fn)
+        try:
+            proc = subprocess.run(
+                [shutil.which("python3") or sys.executable, "-c",
+                 "import json, os; print(json.dumps("
+                 "{'uid': os.getuid(), 'groups': os.getgroups()}))"],
+                preexec_fn=fn, capture_output=True, text=True)
+        except (OSError, subprocess.SubprocessError):
+            # The drop refused: no job ran under the wrong
+            # groups. That satisfies the invariant too.
+            return
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        ident = json.loads(proc.stdout.strip())
+        pw = pwd.getpwnam("pigeon-test")
+        self.assertEqual(ident["uid"], pw.pw_uid)
+        self.assertNotIn(0, ident["groups"])
+        self.assertEqual(set(ident["groups"]), {pw.pw_gid})
 
 
 if __name__ == "__main__":
