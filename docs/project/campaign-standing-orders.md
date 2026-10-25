@@ -295,6 +295,22 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - A (refill) —
+  `runner/transport_extensions/dtls/__main__.py::`
+  `DtlsPipe._pump_results` delivery legs and
+  `runner/extensions/release-drop/release_drop.py`
+  `::read_live` mid-scan races (4 lines each never
+  run, coverage run 40189711740) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  DtlsPumpResultsLegsTest in
+  runner/tests/test_dtls.py (a gone session's
+  result is acked into done with the reason
+  logged; a body without a trailing newline gets
+  one on the wire) and MidScanVanishTest in
+  runner/tests/test_release_drop.py (a file gone
+  before its stat, or unreadable at its hash, is
+  passed over and the pass still answers). Done
+  when a coverage run shows both clean.
+- A (refill) —
   `runner/transport_extensions/nats/__main__.py::`
   `NatsClient.next_message` control lines and
   `_read_exact` mid-message timeout (4 lines each

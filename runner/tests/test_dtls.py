@@ -1761,6 +1761,56 @@ class DtlsOnJobDropsTest(unittest.TestCase):
                          ["probe-1.job.txt"])
 
 
+class DtlsPumpResultsLegsTest(unittest.TestCase):
+    """Queue A refill: DtlsPipe._pump_results' last
+    legs (coverage run 40189711740: lines 269,
+    275-281). Two of the pump's promises: a result
+    body that does not end in a newline gets one
+    before it goes on the wire, and a result whose
+    session is gone is not dropped on the floor --
+    it is acked into done with the reason logged,
+    because the sender re-asks on a fresh session
+    and the seen-set dedups.
+    """
+
+    def _pipe(self):
+        tmp = tempfile.mkdtemp(prefix="hp-dtls-pump-")
+        channel = os.path.join(tmp, "channel")
+        cfg = {"shared_secret": SECRET, "port": 0,
+               "bind": "127.0.0.1"}
+        return dtls_ext.DtlsPipe(cfg, channel), channel
+
+    def _result(self, channel, ident, body):
+        outbox = ch.dirs(channel)["outbox"]
+        os.makedirs(outbox, exist_ok=True)
+        with open(os.path.join(outbox, ident + ".result.txt"),
+                  "w") as fh:
+            fh.write(ch.envelope("[HOMING-PIGEON] result "
+                                 + ident, body))
+
+    def test_a_gone_session_acks_the_result_into_done(self):
+        pipe, channel = self._pipe()
+        self._result(channel, "job-gone", "the answer")
+        pipe._pump_results()
+        d = ch.dirs(channel)
+        self.assertEqual(os.listdir(d["outbox"]), ["done"])
+        self.assertEqual(os.listdir(d["outbox_done"]),
+                         ["job-gone.result.txt"])
+
+    def test_a_body_without_a_newline_gets_one(self):
+        pipe, channel = self._pipe()
+        self._result(channel, "job-live", "no trailing newline")
+        pipe.job_session["job-live"] = "s1"
+        sent_texts = []
+        pipe.core.send_app = lambda sid, data: (
+            sent_texts.append(data), [("127.0.0.1", b"dg")])[1]
+        pipe._send = lambda dg, addr: None
+        pipe._pump_results()
+        self.assertEqual(len(sent_texts), 1)
+        self.assertTrue(sent_texts[0].endswith(
+            b"no trailing newline\n"))
+
+
 class DtlsRunOnceLegsTest(unittest.TestCase):
     """Queue A refill: DtlsPipe.run_once's socket legs
     (coverage run 40189608702: 5 lines on both

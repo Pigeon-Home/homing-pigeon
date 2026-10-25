@@ -317,6 +317,63 @@ class HashingPathTest(unittest.TestCase):
                          "--state", state]), 2)
 
 
+class MidScanVanishTest(unittest.TestCase):
+    """Queue A refill: read_live's mid-scan races
+    (coverage run 40189711740: lines 150-151,
+    157-158). The scan's contract is that a file
+    which vanishes mid-pass is passed over and the
+    pass still answers for the files that stayed --
+    whether it goes between the listing and the
+    stat, or between the stat and the hash.
+    """
+
+    def _manifest_with(self, watch_dir):
+        manifest = _manifest()
+        manifest["tunables"] = dict(manifest["tunables"],
+                                    watch_dir=watch_dir)
+        return manifest
+
+    def test_a_file_gone_before_the_stat_is_passed_over(self):
+        from unittest import mock as _mock
+        with tempfile.TemporaryDirectory() as d:
+            for name in ("gone.bin", "stays.bin"):
+                with open(os.path.join(d, name), "wb") as fh:
+                    fh.write(b"bytes")
+            target = os.path.join(d, "gone.bin")
+            real_stat = os.stat
+            calls = {"n": 0}
+
+            def flaky(path, *a, **k):
+                if os.fspath(path) == target:
+                    calls["n"] += 1
+                    if calls["n"] > 1:
+                        raise OSError("vanished")
+                return real_stat(path, *a, **k)
+
+            with _mock.patch.object(os, "stat", flaky):
+                readings = RD.read_live(self._manifest_with(d))
+        self.assertEqual([f["name"] for f in readings["files"]],
+                         ["stays.bin"])
+
+    def test_a_file_unreadable_at_the_hash_is_passed_over(self):
+        from unittest import mock as _mock
+        with tempfile.TemporaryDirectory() as d:
+            for name in ("bad.bin", "good.bin"):
+                with open(os.path.join(d, name), "wb") as fh:
+                    fh.write(b"bytes")
+            real_hash = RD._sha384_file
+
+            def flaky(path):
+                if path.endswith("bad.bin"):
+                    raise OSError("unreadable")
+                return real_hash(path)
+
+            with _mock.patch.object(RD, "_sha384_file", flaky):
+                readings = RD.read_live(self._manifest_with(d))
+        self.assertEqual([f["name"] for f in readings["files"]],
+                         ["good.bin"])
+
+
 class MainDeliveryTest(unittest.TestCase):
     """Queue A refill: release-drop main's local-delivery
     legs (coverage run 40187685363: 6 lines on both
