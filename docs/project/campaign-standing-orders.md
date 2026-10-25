@@ -2700,6 +2700,13 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A dispositions: the Oracle chat handler's
+  unserializable-payload fallback and dri
+  send_telegram's second dumps guard are both dead
+  by construction -- every payload member is
+  str-checked or _page_text-coerced before the
+  dumps, so neither dumps can raise. The Q46
+  family ruling covers them; no probes possible.
 - Queue A taken: airwaves' two singles -- a scan
   row with a blank BSSID is skipped while its good
   neighbour parses, and a stored link without a
