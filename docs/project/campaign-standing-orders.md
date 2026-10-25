@@ -1,0 +1,127 @@
+# Campaign standing orders
+
+<!-- Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c -->
+
+The campaign runs continuously from this file. It does not wait for
+a new batch of questions. When one piece of work closes, the next
+comes from the queue below, in order, without asking anyone. The
+owner should never have to hand the campaign its next task; if the
+campaign is idle, these orders were not followed.
+
+How a campaign is run (the rig, the loop, recording a finding, the
+watchdog, the hard rules) is `docs/project/campaign-playbook.md`.
+Questions to Claude or the owner go in `docs/use/questions.md`
+(AGENTS.md rules 7 and 8). This file says only what to work on next
+and when to stop.
+
+## The loop
+
+1. Pull main.
+2. Read `docs/use/questions.md`. Anything answered since the last
+   pass that changes the campaign's own work (a fix to re-verify, a
+   probe to retire, a decision that moves an assertion) comes first.
+3. Take the first open item from the queue below. Mark it taken by
+   writing one line under it ("taken <date>, <agent stamp>") in the
+   same commit as the first test for it.
+4. Work it to done (the definition is under each queue). Commit as
+   you go; keep main green; check what skipped before calling
+   anything green.
+5. Mark it done with the commit or run that proves it, and return to
+   step 1.
+
+A finding that needs production code is filed as a question for
+Claude, in the four-part format, with a failing-by-design test. The
+campaign does not wait for the fix: it moves to the next item and
+re-verifies when the question is answered.
+
+## When to stop and ask the owner
+
+Only these stop the loop, and only for the item they block. Write
+the question in `docs/use/questions.md` addressed to the owner, then
+continue with the next item that does not need it.
+
+- A secret: anything that needs a mailbox password, a token or a key
+  that must not be in the repository.
+- A machine: a real Windows box, a host the VM cannot reach, a device.
+  (A GitHub runner is not a machine for this purpose: ask Claude for
+  a workflow instead.)
+- A decision only the owner can make: what the project promises, what
+  is in scope, a security posture.
+- Money or an external account.
+
+Nothing else is a reason to stop. "The list is done" is not: the
+queue below does not run out (queue D refills it).
+
+## The queue, in order
+
+### A. The coverage map, gap by gap
+
+Source: the latest `coverage` workflow run on main, its
+`coverage-Linux` and `coverage-Windows` artifacts (made by
+`runner/tools/coverage_gaps.py`). The ranked first seven are closed
+(Q11 to Q17).
+
+Next: take the function with the most never-executed lines on either
+platform that is not marked taken in the ledger at the end of this
+file, and that is not test or tool code. Prefer, at equal size, code
+that decides what runs, what leaves the box, or who can reach it.
+
+Done when the lines run in the full suite on the platform where they
+were missing (cite the coverage run) and a test asserts what the docs
+say those lines do. A gap that cannot be reached without mocking the
+world is filed as a missing-seam question and marked done as filed.
+
+Stop working queue A for the day when the largest remaining gap on
+both platforms is under 10 lines; go to B.
+
+### B. Environment axes
+
+Each setting below gets the env-axes treatment: the protection corpus
+run once per value on a GitHub runner, the value asserted after it is
+set, recorded with every result (`.github/workflows/env-axes.yml` is
+the pattern; ask Claude in the questions file to add each axis to it).
+
+1. `kernel.yama.ptrace_scope` at 0, 1, 2 and 3: can a job read the
+   runner's memory or attach to it?
+2. `fs.protected_symlinks` and `fs.protected_regular` on and off: can
+   a job plant a link the runner follows?
+3. `hidepid` on `/proc` (0 and 2): can a job see the runner's command
+   line and environment?
+4. The job_user feature on and off, crossed with each of the above.
+
+Done per axis when both values are green, or the difference is filed
+as a finding.
+
+### C. Live paths that need the owner (park until unblocked)
+
+1. The live email capture (Q2, Q11): one real round trip per release
+   through the dedicated throwaway mailbox, the messages committed as
+   fixtures. Needs the mailbox credentials from the owner, on the
+   machine that runs it, never in the repository.
+2. Windows as a live target (the plan's open decision 3): the credential
+   canary and the job_user equivalents (restricted token, ACLs, job
+   objects) on a real Windows runner. Needs the owner's decision that
+   Windows is in scope; a GitHub Windows runner is enough to start.
+
+### D. Refill
+
+When A is under its threshold, B is done and C is parked, start a new
+hunt from these, one at a time, and add what each finds to queue A's
+ledger:
+
+1. Re-run the documented-default hunt against every key added to the
+   docs since the defaults registry was last complete.
+2. Every claim in SECURITY.md and `docs/security/threat-model.md`:
+   one test per claim that would fail if the claim were false, plus
+   its negative control.
+3. Every example in PROTOCOL.md and AGENTS.md's "Do not emit" table,
+   run as written through the runner.
+4. The mutation workflow's surviving mutants (`mutation-seeded.yml`):
+   each survivor is a missing assertion.
+
+Then return to A: new code since the last pass has made new gaps.
+
+## Ledger
+
+One line per item taken: queue, item, date taken, agent stamp, and
+when done, the proving commit or run. Newest first.

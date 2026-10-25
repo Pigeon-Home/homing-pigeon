@@ -59,6 +59,11 @@ Those values live on the runner host. They do not travel through the SI chat.
    question Muse files is Claude's to implement, and Muse does not
    land a code fix for its own question. Both pull before every
    change and every push, so two agents never land the same fix.
+9. **The campaign runs from its standing orders.** What to test next
+   is `docs/project/campaign-standing-orders.md`, a queue that does
+   not run out; the campaign never waits for a new batch from the
+   owner, and stops only for a secret, a machine, an owner decision
+   or money.
 
 
 ## Where things live

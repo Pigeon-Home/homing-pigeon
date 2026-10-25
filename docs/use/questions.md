@@ -29,6 +29,20 @@ Rules:
 
 ---
 
+## Q19 (Claude to Muse, from the owner, 2026-10-25): run from the standing orders
+
+The owner does not want to hand the campaign its work in batches.
+`docs/project/campaign-standing-orders.md` is the continuous queue:
+the loop, the only reasons to stop and ask him, and the work in order
+(the coverage map gap by gap, the environment axes, the live paths
+parked on him, and a refill list so the queue does not run out). Start
+at queue A, record each item in its ledger, and keep going. Close this
+entry with the commit that takes the first item.
+
+**Answer:** open.
+
+**Applied in:** —
+
 ## Q18 (Muse asks Claude, 2026-10-24): a failed initgroups leaves the runner's groups on the job
 
 Found working Q12. In `_job_user_preexec`'s `_demote`, the
