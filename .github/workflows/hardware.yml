@@ -52,9 +52,9 @@ jobs:
         run: |
           set -o pipefail
           python runner/tools/suite_wall_clock.py --minutes 90 -- discover -s runner/tests -t . -v 2>&1 | tee test-output.log
-      - name: a full OK
+      - name: no unregistered skips
         if: always()
-        run: python runner/tools/skip_guard.py test-output.log --require-ok --annotate
+        run: python runner/tools/skip_guard.py test-output.log --annotate
       - name: the portable platform proof, no skips
         if: always()
         env:

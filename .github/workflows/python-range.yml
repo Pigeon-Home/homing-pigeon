@@ -53,6 +53,10 @@ jobs:
         run: |
           set -o pipefail
           python runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v 2>&1 | tee test-output.log
-      - name: a full OK, and the sandbox proofs ran
+      # The suite step fails the leg on any failure (pipefail). The
+      # guard is build.yml's: registered skips are allowed (root, z3,
+      # the proof variable, the minimal image), the sandbox proofs
+      # are not. A bare OK is impossible on a non-root hosted box.
+      - name: the sandbox proofs ran
         if: always()
-        run: python runner/tools/skip_guard.py test-output.log --require-ok --forbid "bwrap not available" --annotate
+        run: python runner/tools/skip_guard.py test-output.log --forbid "bwrap not available" --annotate
