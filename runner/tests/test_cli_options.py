@@ -1503,6 +1503,21 @@ class MainDispatchBranchesTest(_VerbosityGuard):
         self.assertEqual(code, 4)
         self.assertTrue(variant.called)
 
+    def test_local_test_dispatches_and_returns(self):
+        # The last dispatch line the coverage map still showed
+        # unrun on Windows (run 40186249031: runner.py's
+        # --local-test return).
+        module = mock.Mock()
+        module.main.return_value = 7
+        load = mock.Mock(return_value=module)
+        code, poll, _w, _o, _e = self._rig(
+            ["--local-test"],
+            extra_patches=[(runner, "_load_mod", load)])
+        self.assertEqual(code, 7)
+        self.assertTrue(module.main.called)
+        self.assertFalse(module.main.call_args[1]["browser"])
+        self.assertFalse(poll.called)
+
     def test_a_dead_supervisor_is_logged_and_the_poll_runs(self):
         code, poll, _w, _o, _e = self._rig(
             ["--once"],

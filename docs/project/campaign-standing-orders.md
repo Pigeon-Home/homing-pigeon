@@ -202,22 +202,39 @@ when done, the proving commit or run. Newest first.
 - A — `runner/extensions/training-watch/`
   `training_watch.py::main` (10 lines never run on
   Linux, coverage run 40183585961) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage
+  run 40186249031 (main at 867e5cf) shows no
+  never-executed lines for this function on either
+  platform. (That run's Windows suite also carried one
+  unrelated failure, test_extension_sources'
+  archive-retry expecting "fetched" and getting
+  "mismatch", seen once; watched for a repeat in the
+  next run before anything is filed.)
 - A — `runner/extensions/job-watcher/job_watcher.py::`
   `main` (10 lines never run on either platform,
   coverage run 40183585961) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage
+  run 40186249031 shows no never-executed lines for
+  this function on either platform.
 - A — `runner/extensions/job-fuzz/job_fuzz.py::`
   `_record_seed` (10 lines never run on either platform,
   coverage run 40183585961) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage
+  run 40186249031 shows no never-executed lines for
+  this function on either platform.
 - A — `runner/runner.py::main` (11 lines never run on
   Windows, coverage run 40183585961) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — coverage run
+  40186249031 leaves one Windows line, the --local-test
+  dispatch return; that leg is added with this ledger
+  commit and awaits its verifying run.
 - A — `runner/extensions/resource-sentinel/`
   `resource_sentinel.py::_read_cpu_counters` (12 lines
   never run on Windows, coverage run 40183585961) —
-  taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  done: coverage run 40186249031 shows no
+  never-executed lines for this function on either
+  platform.
 - A — `runner/runner.py::_pid_alive` (11 lines never run
   on Windows, 10 on Linux, coverage run 40183585961) —
   taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
@@ -225,7 +242,10 @@ when done, the proving commit or run. Newest first.
   (the ctypes branch on Linux, the kill tail on
   Windows), covered where it applies; the one line
   missing on both, the Windows branch's failure
-  fallback, is taken with it.
+  fallback, is taken with it. — done: coverage run
+  40186249031 (main at 867e5cf) shows no never-executed
+  lines on Linux; the Windows residue is the POSIX
+  kill tail, platform-inapplicable there.
 - A — `runner/runner.py::_append_security_event` (11
   lines never run on Windows, 3 on Linux, coverage run
   40183585961) — taken 2026-10-25,
