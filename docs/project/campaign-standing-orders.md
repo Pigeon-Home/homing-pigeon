@@ -2686,3 +2686,27 @@ when done, the proving commit or run. Newest first.
   starvation), so the both-platforms form of the
   rule rests on the local map plus the recorded
   dispositions.
+- Coverage verification caught up — CI coverage
+  run 40207994733 (HEAD 9d6c832) completed success
+  on both platforms: Linux 98.84%, Windows
+  97.67%. Every queue A take through the last
+  refill batch is an ancestor of that head, the
+  run's Windows shard is green for them, and
+  their functions read clean on both maps except
+  the recorded dispositions: the Windows map's
+  large residue is the platform-inapplicable list
+  verbatim (sandbox.startup_problem,
+  posture._check_privileges,
+  install._install_osquery_linux,
+  security.validate_security_config's POSIX
+  block, remediation.sample_tree_posix,
+  runner._pid_alive, posture._check_file_perms,
+  resources._mem_fraction, total_memory_bytes'
+  POSIX branch, kill_tree's POSIX branch,
+  sandbox.build_bwrap_command), and what remains
+  elsewhere on either map stands at two lines or
+  fewer per function — the recorded cannot-fire,
+  measurement-artifact and mirror residues. The
+  refill verification backlog is discharged at
+  this run. Artifacts held in
+  ~/workspace/cov-40207994733/.
