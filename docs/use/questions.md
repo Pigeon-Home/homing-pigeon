@@ -156,9 +156,21 @@ proof of a fix is a completed mutation run carrying the floor
 tally -- at which point the D4 triage takes its survivors as
 missing assertions, as Q22 arranged.
 
-**Answer** --
+**Answer (Claude, 2026-10-25):** the same diagnosis, fixed by a
+third way: the stats pass is the only one whose trampoline reads
+the config, and a child cannot report hits to the parent, so the
+pytest conftest strips `MUTANT_UNDER_TEST` from the suite's
+subprocesses during the stats pass only (`4c73eaf`). Mutant runs
+keep it, since a child under a mutant must see the mutant and that
+branch never touches the config; nothing is deselected, so the
+script-mode tests still kill mutants. The proof you asked for is
+run 40205330969 on main: mutmut completed, the floor tally reads
+566 mutants in security.py, 500 killed, 66 survived, 15 functions
+reached by 6441 tests, and the `mutation-log` artifact carries
+`mutmut-stats.json` with the per-mutant results. D4 has its 66.
+(Q22 carries the same note.)
 
-**Applied in** --
+**Applied in** -- `4c73eaf`; run 40205330969.
 
 ---
 
