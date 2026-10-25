@@ -66,6 +66,74 @@ def _conf(mode, **kw):
     return cfg
 
 
+@unittest.skipUnless(sys.platform.startswith("linux"),
+                     "the startup probe's Linux branch")
+class StartupProblemScriptsTest(unittest.TestCase):
+    """Queue A: the trial-run half of startup_problem --
+    the half behind the platform guard, so the Windows
+    map's gap there is the guard working, and the Linux
+    residuals were the start-failure reason and the
+    userns note (coverage run 40180268696). A scripted
+    bwrap on PATH produces each outcome deterministically:
+    absent, unstartable, failing (with and without the
+    AppArmor userns restriction in force), and clean.
+    The reasons are the startup refusal a runner prints,
+    so their wording is asserted, not just their shape.
+    """
+
+    def _problem(self, script, userns=None):
+        with tempfile.TemporaryDirectory() as d:
+            if script is not None:
+                path = os.path.join(d, "bwrap")
+                with open(path, "w", encoding="utf-8") as fh:
+                    fh.write(script)
+                os.chmod(path, 0o755)
+            env = {"PATH": d + os.pathsep + os.environ["PATH"]}
+            patches = [mock.patch.dict(os.environ, env)]
+            if userns is not None:
+                patches.append(mock.patch.object(
+                    SB, "_userns_restricted", return_value=userns))
+            for p in patches:
+                p.start()
+            try:
+                return SB.startup_problem(timeout=10)
+            finally:
+                for p in patches:
+                    p.stop()
+
+    def test_no_bwrap_on_path_is_named(self):
+        with tempfile.TemporaryDirectory() as empty:
+            with mock.patch.dict(os.environ, {"PATH": empty}):
+                self.assertEqual(
+                    SB.startup_problem(timeout=10),
+                    "bwrap is not installed (not found on PATH)")
+
+    def test_a_bwrap_that_cannot_start_is_named(self):
+        got = self._problem("#!/nonexistent/hp-interp\nexit 0\n")
+        self.assertTrue(got.startswith(
+            "bwrap could not be started: "), got)
+
+    def test_a_failing_bwrap_names_its_exit_and_output(self):
+        got = self._problem(
+            "#!/bin/sh\necho 'sandbox says no' >&2\nexit 3\n",
+            userns=False)
+        self.assertEqual(
+            got, "bwrap cannot start a sandbox "
+                 "(exit 3: sandbox says no)")
+
+    def test_the_userns_note_joins_a_failing_bwrap(self):
+        got = self._problem(
+            "#!/bin/sh\necho 'nope' >&2\nexit 1\n", userns=True)
+        self.assertIn("bwrap cannot start a sandbox (exit 1: nope)",
+                      got)
+        self.assertIn(
+            "kernel.apparmor_restrict_unprivileged_userns is 1",
+            got)
+
+    def test_a_clean_trial_run_is_no_problem(self):
+        self.assertIsNone(self._problem("#!/bin/sh\nexit 0\n"))
+
+
 class BuildCommandTest(unittest.TestCase):
     def test_structure(self):
         argv = SB.build_bwrap_command(

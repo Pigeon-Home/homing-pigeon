@@ -44,6 +44,10 @@ REGISTERED = {
         "test_confinement enforce classes (Q10); they run where the "
         "startup probe's trial run succeeds -- the env-axes job at "
         "restriction 0 and any host whose bwrap can start",
+    "the startup probe's Linux branch":
+        "test_confinement startup-problem scripts; run in the "
+        "Linux test job -- the probe answers at its platform "
+        "guard on every other platform",
     "uid reporting is POSIX":
         "test_secret_files_job_user; run on ubuntu and macOS",
     "git not installed": "test_make_snapshot builds throwaway repos; git is "
