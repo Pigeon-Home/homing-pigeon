@@ -189,6 +189,50 @@ class ReaderTest(unittest.TestCase):
         self.assertEqual(reader, {})
 
 
+class ReaderRaceTest(unittest.TestCase):
+    """Queue A refill: read_report_file's remaining legs
+    (coverage run 40187685363: the open-failure carry on
+    both platforms; the non-dict state and the
+    second-new-report carry on Windows). The reader's
+    contract (its docstring): the returned state
+    advances only the report that was read, so an
+    unread new report stays new for the next pass; a
+    file that cannot be read keeps its previous
+    fingerprint entry.
+    """
+
+    def _write(self, d, name, text=REPORT):
+        path = os.path.join(d, name)
+        with open(path, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(text)
+        return path
+
+    def test_a_non_dict_reader_state_reads_fresh(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._write(d, "aide.log")
+            text, reader = AF.read_report_file([path], None)
+            self.assertEqual(text, REPORT)
+            self.assertIn(path, reader)
+
+    def test_a_report_that_stats_but_wont_open_keeps_prev(self):
+        with tempfile.TemporaryDirectory() as d:
+            prev = {d: {"inode": 1, "size": 2, "mtime": 3.0}}
+            text, reader = AF.read_report_file([d], prev)
+            self.assertIsNone(text)
+            self.assertEqual(reader[d], prev[d])
+
+    def test_a_second_new_report_keeps_its_prev_fingerprint(self):
+        with tempfile.TemporaryDirectory() as d:
+            a = self._write(d, "a.log", "first report\n")
+            b = self._write(d, "b.log", "second report\n")
+            stale = {"inode": 1, "size": 2, "mtime": 3.0}
+            prev = {a: dict(stale), b: dict(stale)}
+            text, reader = AF.read_report_file([a, b], prev)
+            self.assertEqual(text, "first report\n")
+            self.assertEqual(reader[b], stale)
+            self.assertNotEqual(reader[a], stale)
+
+
 class DecideTest(unittest.TestCase):
     def decide(self, readings, state=None):
         return AF.decide(readings, _manifest(),
