@@ -2452,3 +2452,15 @@ when done, the proving commit or run. Newest first.
   answers 0. Locally coverage-clean on main's lines. Done when a
   coverage run shows main clean and the build's Windows shards
   are green for it.
+- A (refill) — `runner/transport_extensions/dtls/__main__.py::main`
+  refusal legs (4 lines never run on the local full-suite map at
+  93998ca: the no-shared-secret return, the greeting-tier warning,
+  the PSK-floor entry) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — DtlsMainRefusalLegsTest
+  in runner/tests/test_transport_shells.py: no secret answers 2,
+  a weak PSK answers 2, a pipe that cannot listen answers 2, and
+  a bogus greeting tier warns and proceeds at family. Locally
+  coverage-clean on the four lines. Done when a coverage run
+  shows them clean and the build's Windows shards are green.
+  (Same batch: Q32 verified closed — Claude's fix 2b561bc makes
+  all four probe shapes verify and the property is green.)

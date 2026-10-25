@@ -518,5 +518,69 @@ class NatsMainLegsTest(unittest.TestCase):
             ran, [({"transport_nats": {}}, "/chan"), "ran"])
 
 
+class DtlsMainRefusalLegsTest(unittest.TestCase):
+    # Queue A refill: dtls/__main__.py::main's refusal legs -- no
+    # shared secret handed over, a PSK under the entropy floor,
+    # and the bad-greeting-tier warning that proceeds at the
+    # default tier.
+    STRONG = "9f2e7ab41c08d3f5a6b94e0271c8d5f03a6b94e0271c8d5f0"
+
+    def _main_with(self, cfg, pipe=None):
+        from runner.transport_extensions.dtls import __main__ as dtls
+        patches = [mock.patch.object(
+            ch, "load_runtime_config", return_value=("/chan", cfg))]
+        if pipe is not None:
+            patches.append(mock.patch.object(dtls, "DtlsPipe", pipe))
+        for p in patches:
+            p.start()
+        try:
+            return dtls.main(["dtls-transport"])
+        finally:
+            for p in patches:
+                p.stop()
+
+    def test_main_refuses_without_a_shared_secret(self):
+        self.assertEqual(self._main_with({}), 2)
+
+    def test_main_refuses_a_psk_under_the_floor(self):
+        self.assertEqual(
+            self._main_with({"shared_secret": "abc"}), 2)
+
+    def test_main_refuses_when_the_pipe_cannot_listen(self):
+        from runner.transport_extensions.dtls import __main__ as dtls
+
+        def refuse(_cfg, _channel_dir):
+            raise RuntimeError("udp 20220 is already bound")
+
+        self.assertEqual(
+            self._main_with({"shared_secret": self.STRONG}, refuse), 2)
+
+    def test_a_bad_greeting_tier_warns_and_proceeds(self):
+        from runner.transport_extensions.dtls import __main__ as dtls
+        logged = []
+
+        class FakePipe:
+            bind = "127.0.0.1"
+            port = 20220
+
+            def __init__(self, cfg, channel_dir):
+                pass
+
+            def run_once(self):
+                raise SystemExit("one pass is enough")
+
+        with mock.patch.object(
+                ch, "log",
+                lambda msg, level="INFO": logged.append((level, msg))):
+            with self.assertRaises(SystemExit):
+                self._main_with(
+                    {"shared_secret": self.STRONG,
+                     "dtls_greeting": "bogus"}, FakePipe)
+        warns = [m for level, m in logged if level == "WARN"]
+        self.assertTrue(
+            any("dtls_greeting" in m and "family" in m for m in warns),
+            logged)
+
+
 if __name__ == "__main__":
     unittest.main()
