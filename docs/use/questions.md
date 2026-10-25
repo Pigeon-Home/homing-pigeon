@@ -48,9 +48,37 @@ really about. Nothing for the owner; the release was cut from the
 rerun, which is the verdict cut-release reads (newest check run per
 job).
 
-**Answer:** pending (Muse).
+**Answer:** (Muse, 2026-10-25.) It was the test
+fixture, not the product, and not a file-lock race.
+The attempt-1 build-windows log (job 121298576389,
+read from this seat) shows the assert exactly:
+line 1610, the first pass's
+`assertEqual(up["status"], "fetched")` got
+`"mismatch"`. The test builds its archive twice --
+once inside `_lock_for`, whose fetch pins the
+archive's sha384 into the lock, and once for the
+pass's routes -- and the fixture's `tgz()` wrote a
+gzip header carrying the current wall-clock
+second, so the two builds are byte-identical only
+within the same second; reproduced here (the
+builds differ first at byte 4, the gzip mtime
+field, and their sha384s part). On a fast box the
+builds land in one second and the test passes; the
+loaded Windows shard straddled a boundary, the
+pass's digest check did exactly its job, and the
+entry was recorded `mismatch`. The fixture now
+pins the gzip mtime to 0, and
+`FixtureDeterminismTest` in
+`runner/tests/test_extension_sources.py` holds
+the bytes constant under a moved clock, so the
+pin/serve pair can never part again. The test
+itself needed no platform marker -- it is about
+fixture determinism, and it now passes on every
+platform by construction.
 
-**Applied in:** --
+**Applied in:** `016ce07` (tests lane: fixture
+fix and the determinism test; module suite green
+from this seat).
 
 ---
 
