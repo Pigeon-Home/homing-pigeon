@@ -294,6 +294,28 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- R — roster R1.two_jobs, R2.audit_rollover,
+  R3.seen_set, R4.config_write — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  runner/tests/test_enforce_races.py, every race
+  driven with real threads and a barrier and
+  asserting the security outcome: two jobs on one
+  barrier each keep their own chowned workdir and
+  its files (root leg), and two sandboxes share no
+  /work with both decisions whole in the audit log
+  (bwrap leg); a rollover raced by two writers
+  loses and splits no entry over 25 rounds (the
+  live and rolled files together hold every id
+  exactly once, every line parsing); a replayed id
+  is rejected on both orderings around a fresh job
+  while two copies of a fresh job run it once; a
+  config write plus the real hot reload landing
+  provably mid-job moves the hot key only -- the
+  security block is the identical object afterwards
+  and the next job's gate still denies by the mode
+  in force. The roster entries list them. Done
+  when the switch-proofs workflow is green with
+  all four proven on their legs.
 - S — roster ORACLE.no_widening — taken
   2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
   NoWideningTest in

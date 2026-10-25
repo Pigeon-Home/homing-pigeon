@@ -230,21 +230,21 @@ ROSTER = [
         "promise": "workers: 2 under enforce: each workdir is chowned to its "
                    "own job, never the other's; two sandboxes do not share "
                    "/work; the audit log holds both decisions, each whole.",
-        "tests": [],
+        "tests": ["runner.tests.test_enforce_races.TwoJobsRaceTest"],
         "needs": ["linux", "bwrap", "root"],
     },
     {
         "id": "R2.audit_rollover",
         "promise": "a rollover of security-audit.jsonl (_enforce_bound) while "
                    "a decision is being written loses no entry and splits none.",
-        "tests": [],
+        "tests": ["runner.tests.test_enforce_races.AuditRolloverRaceTest"],
         "needs": [],
     },
     {
         "id": "R3.seen_set",
         "promise": "a replayed job id and a fresh job hitting the seen set "
                    "together: the replay is rejected on both orderings.",
-        "tests": [],
+        "tests": ["runner.tests.test_enforce_races.SeenSetRaceTest"],
         "needs": [],
     },
     {
@@ -252,7 +252,7 @@ ROSTER = [
         "promise": "a config.json write during a job, driven with a real "
                    "second thread: the security block of the running job "
                    "does not change; a bad live value keeps the old binding.",
-        "tests": [],
+        "tests": ["runner.tests.test_enforce_races.ConfigWriteRaceTest"],
         "needs": [],
     },
 ]
