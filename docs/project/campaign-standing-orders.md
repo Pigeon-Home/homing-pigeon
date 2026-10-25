@@ -198,7 +198,17 @@ when done, the proving commit or run. Newest first.
   Linux branch of `total_memory_bytes` (5, Windows) are
   platform-inapplicable on Windows (POSIX readers behind
   their platform guards), covered on Linux; the Windows
-  memory branch's failure leg is taken with the item.
+  memory branch's failure leg is taken with the item. —
+  coverage run 40186330078 (main at 5c724d9) shows no
+  never-executed lines on Linux; the Windows residues
+  are the second safe-id gate's return (unreachable by
+  construction: load_marker only loads under an
+  already-safe id) and the platform-inapplicable POSIX
+  lines recorded above. The write-failure except pair
+  was still unrun on Windows in that run (the only
+  other selective-write leg lives inside an AV test
+  that skips on Windows), so one more leg is added
+  with this ledger commit and awaits its verifying run.
 - A — `runner/extensions/training-watch/`
   `training_watch.py::main` (10 lines never run on
   Linux, coverage run 40183585961) — taken 2026-10-25,
@@ -209,7 +219,9 @@ when done, the proving commit or run. Newest first.
   unrelated failure, test_extension_sources'
   archive-retry expecting "fetched" and getting
   "mismatch", seen once; watched for a repeat in the
-  next run before anything is filed.)
+  next run before anything is filed. The watched
+  failure did not repeat in run 40186330078; watch
+  closed, treated as a one-off.)
 - A — `runner/extensions/job-watcher/job_watcher.py::`
   `main` (10 lines never run on either platform,
   coverage run 40183585961) — taken 2026-10-25,

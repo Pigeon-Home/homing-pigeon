@@ -993,6 +993,27 @@ class FixMarkerDigestWriteTest(unittest.TestCase):
             marker = rem.load_marker(base, "job-1")
             self.assertEqual(marker["received_digest"], "abc")
 
+    def test_a_write_failure_after_a_good_read_is_swallowed(self):
+        # The except pair itself (coverage run 40186330078:
+        # still unrun on Windows, because the only other
+        # selective-write leg lives inside an AV test that
+        # skips on Windows). Reads pass, the rewrite's open
+        # raises: the function swallows it and the marker
+        # keeps the digest it had.
+        with tempfile.TemporaryDirectory() as base:
+            self._quarantine(base)
+            real_open = open
+
+            def guarded(path, mode="r", *a, **k):
+                if "w" in str(mode):
+                    raise OSError("read-only")
+                return real_open(path, mode, *a, **k)
+
+            with mock.patch("builtins.open", guarded):
+                rem.fix_marker_digest(base, "job-1", "def")
+            marker = rem.load_marker(base, "job-1")
+            self.assertEqual(marker["received_digest"], "abc")
+
 
 class TotalMemoryWindowsBranchTest(unittest.TestCase):
     """Queue A: total_memory_bytes' Windows branch --
