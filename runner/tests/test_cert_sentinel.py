@@ -258,5 +258,26 @@ class ReadCertFileNoDecoderLegTest(unittest.TestCase):
                 CS._read_cert_file("/nonexistent.pem"))
 
 
+class ReadLiveTlsTargetLegTest(unittest.TestCase):
+    """Queue A refill: read_live's TLS target
+    append (coverage run 40189711740: line
+    191). A configured TLS target that answers
+    contributes its record to the readings --
+    the file certs and the live targets land
+    in the one list the decider judges.
+    """
+
+    def test_a_answering_target_is_in_the_readings(self):
+        from unittest import mock as _mock
+        record = {"source": "example.test:8443",
+                  "days_left": 30}
+        manifest = {"tunables": {"tls_targets": [
+            {"host": "example.test", "port": 8443}]}}
+        with _mock.patch.object(
+                CS, "_read_tls_target", return_value=record):
+            readings = CS.read_live(manifest)
+        self.assertIn(record, readings["certs"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -400,5 +400,56 @@ class SupervisorStartFailureTest(unittest.TestCase):
         sup.stop()
 
 
+class FileMainLoopLegTest(unittest.TestCase):
+    """Queue A refill: the file transport's
+    main loop pass (coverage run 40189711740:
+    __main__.py line 213). One pass scans jobs
+    AND results before it naps -- a results
+    scan that never ran would strand finished
+    work in the channel. The nap is cut short
+    by an interrupt, which is how the loop is
+    stopped here.
+    """
+
+    def test_one_pass_scans_jobs_and_results(self):
+        from runner.transport_extensions.file import (
+            __main__ as file_main)
+        with tempfile.TemporaryDirectory() as d:
+            channel_dir = os.path.join(d, "channel")
+            os.makedirs(channel_dir)
+            cfg = {"base_dir": d}
+            with mock.patch.object(
+                    ch, "load_runtime_config",
+                    return_value=(channel_dir, cfg)), \
+                    mock.patch.object(
+                        ch, "nap",
+                        side_effect=KeyboardInterrupt):
+                with self.assertRaises(KeyboardInterrupt):
+                    file_main.main([])
+            self.assertTrue(os.path.isdir(
+                os.path.join(d, "transport-file", "inbox")))
+            self.assertTrue(os.path.isdir(
+                os.path.join(d, "transport-file", "outbox")))
+
+    def test_a_failed_pass_is_logged_not_fatal(self):
+        from runner.transport_extensions.file import (
+            __main__ as file_main)
+        with tempfile.TemporaryDirectory() as d:
+            channel_dir = os.path.join(d, "channel")
+            os.makedirs(channel_dir)
+            cfg = {"base_dir": d}
+            with mock.patch.object(
+                    ch, "load_runtime_config",
+                    return_value=(channel_dir, cfg)), \
+                    mock.patch.object(
+                        file_main.FilePipe, "scan_jobs",
+                        side_effect=RuntimeError("wedged")), \
+                    mock.patch.object(
+                        ch, "nap",
+                        side_effect=KeyboardInterrupt):
+                with self.assertRaises(KeyboardInterrupt):
+                    file_main.main([])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -175,5 +175,28 @@ class MainLiveAndDeliveryTest(unittest.TestCase):
             self.assertFalse(os.path.exists(state))
 
 
+class EmptyRunsJobLegTest(unittest.TestCase):
+    """Queue A refill: decide's empty-history
+    skip (coverage run 40189711740: line 513).
+    A job the state knows but that has no runs
+    yet is passed over in silence -- there is
+    nothing to judge, and no signal may file
+    on an empty history.
+    """
+
+    def test_a_job_with_no_runs_files_nothing(self):
+        state = {"seen": {},
+                 "jobs": {"backup": {"kind": "exec",
+                                     "label": "backup",
+                                     "runs": [],
+                                     "fired": {}}},
+                 "cluster_fired": None}
+        alerts, new_state = JW.decide(
+            {"now": NOW, "records": []}, _manifest(), state)
+        self.assertEqual(alerts, [])
+        self.assertEqual(
+            new_state["jobs"]["backup"]["runs"], [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -323,6 +323,36 @@ when done, the proving commit or run. Newest first.
   lines are still blank although the deletion
   landed in f4e2378 -- the answerer's
   bookkeeping, noted here.)
+- A (refill) — watcher, decoder, pipe and
+  baseline legs (coverage run 40189711740):
+  job-watcher's empty-history skip, softflowd's
+  zero-length template and short IPFIX answers,
+  the file transport's main loop pass (jobs and
+  results scans, plus a failed pass logged not
+  fatal), cert-sentinel's answering TLS target
+  — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  EmptyRunsJobLegTest
+  (test_job_watcher_main.py),
+  DecodeEmptyLegsTest (test_softflowd_feed.py),
+  FileMainLoopLegTest
+  (test_transport_shells.py),
+  ReadLiveTlsTargetLegTest
+  (test_cert_sentinel.py). Recorded without a
+  take: detection update_baseline line 160
+  cannot fire -- the loader assigns the loaded
+  value only when it is a dict and the starting
+  value is a dict, so the baseline is a dict at
+  that line on every path (probed with list,
+  string, number and null baseline files under
+  the full detection suite; the line stays
+  missing while all around it runs); and its
+  O_NOFOLLOW / O_BINARY flag bodies (198 / 200)
+  are a platform-mirror pair -- each runs only
+  where the attribute exists, and each map
+  shows the other platform's line covered.
+  Done when a coverage run shows the taken
+  legs clean.
 - A (refill) — feed and watch main legs
   (coverage run 40189711740): zeek-feed's and
   osquery-feed's tunables guards and

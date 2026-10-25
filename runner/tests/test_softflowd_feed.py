@@ -626,5 +626,29 @@ class SoftflowdMainDeliveryTest(unittest.TestCase):
             self.assertFalse(os.path.exists(state))
 
 
+class DecodeEmptyLegsTest(unittest.TestCase):
+    """Queue A refill: the decoders' empty
+    answers (coverage run 40189711740:
+    _decode_records line 216, _decode_templated
+    line 336). A template whose fields total
+    zero bytes decodes no records, and an
+    IPFIX datagram shorter than its own header
+    decodes no flows -- both are empty answers,
+    not errors.
+    """
+
+    def test_a_zero_length_template_decodes_nothing(self):
+        self.assertEqual(
+            SF._decode_records(b"\x00" * 8, [], 5, 0.0,
+                               None, 0, {}),
+            [])
+
+    def test_a_short_ipfix_datagram_decodes_nothing(self):
+        self.assertEqual(
+            SF._decode_templated(b"\x00\x0a\x00\x04", 10,
+                                 {}, 0.0, {}),
+            [])
+
+
 if __name__ == "__main__":
     unittest.main()
