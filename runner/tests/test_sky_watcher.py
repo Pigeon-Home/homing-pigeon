@@ -186,6 +186,39 @@ class FeedSampleTest(unittest.TestCase):
         self.assertIs(s["sunlit"], True)
         self.assertEqual(s["ts"], 1792375113.0)
 
+    def test_fetch_position_reads_the_feed(self):
+        # Queue A refill: fetch_position's body (coverage
+        # run 40189711740: 4 lines) -- the one live seam,
+        # driven here with the transport faked: the
+        # request carries the watcher's user agent, the
+        # body parses as a feed payload, and the sample
+        # is sample_from_feed's.
+        import io
+        import json as _json
+        from unittest import mock
+        raw = {"name": "iss", "id": 25544, "latitude": -9.65,
+               "longitude": 177.47, "altitude": 422.3,
+               "velocity": 27570.9, "visibility": "daylight",
+               "footprint": 4519.2, "timestamp": 1792375113,
+               "units": "kilometers"}
+        seen = {}
+
+        def fake_urlopen(req, timeout=None):
+            seen["url"] = req.full_url
+            seen["ua"] = req.headers.get("User-agent")
+            seen["timeout"] = timeout
+            return io.BytesIO(_json.dumps(raw).encode("utf-8"))
+
+        with mock.patch.object(SW.urllib.request, "urlopen",
+                               fake_urlopen):
+            sample = SW.fetch_position("http://feed.invalid/iss")
+        self.assertEqual(sample["lat"], -9.65)
+        self.assertEqual(sample["alt_km"], 422.3)
+        self.assertEqual(seen["url"], "http://feed.invalid/iss")
+        self.assertIn("homing-pigeon-sky-watcher",
+                      seen["ua"])
+        self.assertEqual(seen["timeout"], 10)
+
     def test_eclipsed_and_missing_visibility(self):
         base = {"latitude": 0.0, "longitude": 0.0, "altitude": 420.0,
                 "timestamp": 1000}

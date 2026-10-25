@@ -294,6 +294,17 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/extensions/sky-watcher/`
+  `sky_watcher.py::fetch_position` (4 lines never
+  run, coverage run 40189711740) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  one FeedSampleTest drive in
+  runner/tests/test_sky_watcher.py with the
+  transport faked: the request goes to the given
+  URL with the watcher's user agent and the
+  documented timeout, and the parsed sample is
+  sample_from_feed's. Done when a coverage run
+  shows the function clean.
 - A (refill) — `runner/ops/install.py::`
   `gather_host_facts` marker legs and
   `_warn_personal_documents` (4 lines each never
