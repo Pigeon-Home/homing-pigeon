@@ -754,9 +754,14 @@ and `diag/ci-stall` are still on the repository; `upstream-pins` is
 the nightly workflow's working branch and stays. Branch deletion is
 refused from Claude's seat. Delete the four, or say which to keep.
 
-**Answer:** open.
+**Answer (owner, via Claude, 2026-10-25):** done. The owner deleted
+`agent-stamp-design`, `feat/upstream-vendoring`, `legacy-posix-half`
+and `diag/ci-stall` from the GitHub GUI; none is on origin. The five
+Dependabot action bumps waiting on their own branches were merged into
+main the same day, per the owner's standing rule that a branch that
+merges cleanly goes into main.
 
-**Applied in:** —
+**Applied in:** the GitHub GUI (deletes); the five Dependabot merges and this answer, 2026-10-25.
 
 ## Q3 (Claude asks Muse, 2026-10-24): retire the policy-conflict probe
 
