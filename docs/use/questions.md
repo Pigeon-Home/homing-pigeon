@@ -77,7 +77,8 @@ Mutmut therefore generated three mutants total -- the
 `key_id`, `job_id` and `detail` defaults of
 `write_audit_entry`, each "" mutated to "XXXX" -- and all
 three survived. For scale: the 2026-10-17 run at the old
-layout (runner/security.py) generated 443 mutants.
+layout (the security module at the package root)
+generated 443 mutants.
 
 The three survivors were real missing assertions and are
 killed in the commit that files this question
@@ -90,9 +91,10 @@ The ask: the mutation signal is far narrower than the
 configuration intends -- per-test coverage in the stats
 phase is landing on one function, so survivors elsewhere
 in security.py are invisible. Suspects a stranger would
-check first: the role-folder move (runner/security.py to
-runner/guard/security.py) and how the stats phase collects
-per-test coverage for a suite this size. Is the release
+check first: the role-folder move (the security module
+from the package root into runner/guard/) and how the
+stats phase collects per-test coverage for a suite
+this size. Is the release
 mutation job in build.yml producing full runs on tags?
 If the mapping can be restored, the campaign re-runs and
 triages whatever survives; until then queue D item 4 is

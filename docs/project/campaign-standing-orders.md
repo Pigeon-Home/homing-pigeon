@@ -413,7 +413,7 @@ when done, the proving commit or run. Newest first.
   runs when no readings file is given; local delivery
   success writes the state; not set up is exit 2; a
   short delivery is exit 2 with the state unwritten.
-  Done when a coverage run shows the function clean.
+  Done when a coverage run shows the function clean. — done: coverage run 40189608702 (main at eef3af8) shows no never-executed lines on either platform.
 - A (refill) — `runner/ops/install.py::`
   `install_project_snapshot` (7 lines never run on
   either platform, coverage run 40187685363) — taken
@@ -425,7 +425,7 @@ when done, the proving commit or run. Newest first.
   the current snapshot is retired restores it and
   reports False. The function is fully run under
   that class locally. Done when a coverage run
-  shows it clean.
+  shows it clean. — done: coverage run 40189608702 (main at eef3af8) shows no never-executed lines on either platform.
 - A (refill) — `runner/transport_extensions/nats/`
   `__main__.py::NatsPipe.run` (7 lines never run on
   Linux, 5 on Windows, coverage run 40187685363) —
@@ -437,7 +437,7 @@ when done, the proving commit or run. Newest first.
   are logged and dropped, nothing delivered; a dead
   connection is closed and the loop reconnects with
   backoff. Done when a coverage run shows the
-  function clean.
+  function clean. — done: coverage run 40189608702 (main at eef3af8) shows no never-executed lines on either platform.
 - A (refill) — `_is_number` in aide-feed, usb-arrivals
   and wire-arrivals (the whole body, 7 lines each,
   never run on either platform, coverage run
@@ -462,7 +462,7 @@ when done, the proving commit or run. Newest first.
   not a list or listed twice, project paths not a
   list or listed twice -- each refused with a
   ValueError naming the field. Done when a coverage
-  run shows the function clean.
+  run shows the function clean. — done: coverage run 40189608702 (main at eef3af8) shows no never-executed lines on either platform.
 - A (refill) — `runner/transport_extensions/dtls/`
   `__main__.py::DtlsPipe._on_job` (7 lines never run
   on either platform, coverage run 40187685363) —
@@ -473,7 +473,7 @@ when done, the proving commit or run. Newest first.
   an envelope with no job id in its subject is
   dropped and delivers nothing; a real envelope is
   delivered and its session recorded (control). Done
-  when a coverage run shows the function clean.
+  when a coverage run shows the function clean. — done: coverage run 40189608702 (main at eef3af8) shows no never-executed lines on either platform.
 - A (refill) — `runner/runner.py::_local_signal_server`
   (8 lines never run on Windows, 2 on Linux, coverage
   run 40187685363) — taken 2026-10-25,
@@ -487,7 +487,7 @@ when done, the proving commit or run. Newest first.
   every platform: the refusal returns None, the
   half-made socket is closed, and a failing close is
   swallowed. Done when a coverage run shows the
-  function clean.
+  function clean. — done: coverage run 40189608702 (main at eef3af8) shows no never-executed lines on either platform.
 - A (refill) — `runner/oracle/resources.py::`
   `_save_state` (8 lines never run on Windows, 7 on
   Linux, coverage run 40187685363) — taken 2026-10-25,
@@ -501,7 +501,7 @@ when done, the proving commit or run. Newest first.
   cleanup is swallowed. The residue's flag lines
   are the platform pair (O_NOFOLLOW inapplicable on
   Windows, O_BINARY on Linux). Done when a coverage
-  run shows only those left.
+  run shows only those left. — done: coverage run 40189608702 (main at eef3af8) leaves only each platform's foreign flag line (187 on Linux, 185 on Windows).
 - A (refill) — `runner/guard/security.py::_bump_counts`
   (8 lines never run on Windows, 5 on Linux, coverage
   run 40187685363) — taken 2026-10-25,
@@ -515,7 +515,7 @@ when done, the proving commit or run. Newest first.
   are the platform pair (O_NOFOLLOW inapplicable on
   Windows, O_BINARY on Linux), each covered where it
   applies. Done when a coverage run shows only those
-  left.
+  left. — done: coverage run 40189608702 (main at eef3af8) leaves only each platform's foreign flag line (339 on Linux, 337 on Windows).
 - A (refill) — `runner/extensions/training-watch/`
   `training_watch.py::_scan_checkpoints` (8 lines
   never run on either platform, coverage run
@@ -529,7 +529,7 @@ when done, the proving commit or run. Newest first.
   fails after its isfile check is skipped), each
   driven by the real tree plus one wrapped os call
   raising for exactly one path. Done when a coverage
-  run shows the function clean.
+  run shows the function clean. — coverage run 40189608702 (main at eef3af8) shows the function clean on Linux; on Windows the stat-guard test failed and the map leaves exactly the guard pair unrun, because its drive counted os.stat calls and the platform's isfile does not stat the way the count assumed. The test is re-driven in the commit carrying this note (the probe stubbed for the target, the scan's own stat raising), and the Windows close awaits its verifying run.
 - A (refill) — `runner/extensions/sysmon-feed/`
   `sysmon_feed.py::main` (8 lines never run on either
   platform, coverage run 40187685363) — taken
@@ -541,7 +541,7 @@ when done, the proving commit or run. Newest first.
   exit 2 with the state unwritten, so the next pass
   re-reads; a manifest without tunables runs the live
   defaults. Done when a coverage run shows the
-  function clean.
+  function clean. — done: coverage run 40189608702 (main at eef3af8) shows no never-executed lines on either platform.
 - A (refill) — `runner/runner.py::`
   `_extension_sources_pass` (the whole body, 8 lines,
   never run on either platform, coverage run
@@ -553,7 +553,7 @@ when done, the proving commit or run. Newest first.
   runner/tests/test_extension_sources.py: a real pass
   provisions and returns the report; a failing pass
   returns None and never raises; no sources module is
-  None. Done when a coverage run shows it clean.
+  None. Done when a coverage run shows it clean. — done: coverage run 40189608702 (main at eef3af8) shows no never-executed lines on either platform.
 - A (refill) — `runner/transport_extensions/nats/`
   `__main__.py::NatsClient.connect` (9 lines never run
   on either platform, coverage run 40187685363) —
@@ -571,7 +571,7 @@ when done, the proving commit or run. Newest first.
   `_install_osquery_linux` (11 lines, Windows only in
   the same run) is platform-inapplicable on Windows
   (a Linux-only installer path), covered on Linux;
-  closed under the queue-A skip rule.
+  closed under the queue-A skip rule. — done: coverage run 40189608702 (main at eef3af8) shows the function clean on Linux; the Windows map leaves the refused-connection except/raise pair (184-185) unrun while the test that can only pass through that raise (test_a_refused_connection_is_named, asserting "cannot connect to") passes on Windows in the same run — a line-attribution residue, recorded as such.
 - A (refill) — `runner/transport_extensions/dtls/`
   `__main__.py::main` (9 lines never run on either
   platform, coverage run 40187685363) — taken
@@ -582,7 +582,7 @@ when done, the proving commit or run. Newest first.
   and a named reason (the real port validation and a
   real bind failure drive two of them); a failed pass
   is logged and the loop goes on. Done when a coverage
-  run shows the function clean.
+  run shows the function clean. — done: coverage run 40189608702 (main at eef3af8) shows no never-executed lines on either platform.
 - A (refill) — `runner/extensions/job-fuzz/job_fuzz.py::`
   `_mut_quote_break` (9 lines never run on either
   platform, coverage run 40187685363) — taken
@@ -592,7 +592,7 @@ when done, the proving commit or run. Newest first.
   quote flips and nothing else moves; a quoteless
   script gains the unterminated echo line. The function
   is fully run under that class locally. Done when a
-  coverage run shows it clean.
+  coverage run shows it clean. — done: coverage run 40189608702 (main at eef3af8) shows no never-executed lines on either platform.
 - A (refill) — `runner/runner.py::execute_job` (9 lines
   never run on Windows, 8 on Linux, coverage run
   40187685363) — taken 2026-10-25,
@@ -608,7 +608,7 @@ when done, the proving commit or run. Newest first.
   construction -- the input validation above it
   rejects a non-string script first -- and the
   contract is pinned at that live guard. Done when a
-  coverage run shows only that line left.
+  coverage run shows only that line left. — done: coverage run 40189608702 (main at eef3af8) shows only line 3510 left on either platform, the unreachable line recorded above.
 - A (refill) — `_deliver_local` in the nine senses the
   Q14 roster never included (airwaves, crash-watch,
   falco-feed, service-watch at 9 lines; osquery-feed
@@ -621,7 +621,7 @@ when done, the proving commit or run. Newest first.
   runner/tests/test_sense_delivery.py now names all
   twenty-eight senses, and under that module alone
   every copy's _deliver_local is fully run locally.
-  Done when a coverage run shows the nine clean.
+  Done when a coverage run shows the nine clean. — done: coverage run 40189608702 (main at eef3af8) shows no never-executed lines for the nine on either platform.
 - D — the mutation workflow's surviving mutants as
   missing assertions — taken and done 2026-10-25,
   58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the seeded

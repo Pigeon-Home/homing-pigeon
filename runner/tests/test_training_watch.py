@@ -656,25 +656,33 @@ class ScanCheckpointsRacesTest(unittest.TestCase):
                              ["checkpoint-1"])
 
     def test_a_file_that_raises_on_stat_is_skipped(self):
-        # The race the guard exists for: isfile's own stat
-        # succeeds, the scan's stat a moment later fails
-        # (the file vanished between the two). The wrapper
-        # therefore lets the first stat of the target
-        # through and raises on the second.
+        # The race the guard exists for: the probe says
+        # the file is there, the scan's stat a moment
+        # later fails (the file vanished between the
+        # two). The probe is stubbed for the target
+        # (whether isfile stats through os.stat at all
+        # differs by platform and Python version, so
+        # counting stat calls is not portable); the
+        # scan's own stat raises for it by construction.
         with tempfile.TemporaryDirectory() as d:
             run = self._tree(d)
             bad = os.path.abspath(os.path.join(run, "sub", "b.pt"))
             real_stat = os.stat
-            seen = []
+            real_isfile = os.path.isfile
 
             def flaky(path, *a, **kw):
                 if os.path.abspath(os.fspath(path)) == bad:
-                    seen.append(1)
-                    if len(seen) > 1:
-                        raise OSError("gone mid-scan")
+                    raise OSError("gone mid-scan")
                 return real_stat(path, *a, **kw)
 
-            with unittest.mock.patch.object(os, "stat", flaky):
+            def probe(path, *a, **kw):
+                if os.path.abspath(os.fspath(path)) == bad:
+                    return True
+                return real_isfile(path, *a, **kw)
+
+            with unittest.mock.patch.object(os, "stat", flaky), \
+                    unittest.mock.patch.object(
+                        os.path, "isfile", probe):
                 found = TW._scan_checkpoints(run, self.GLOBS)
             self.assertEqual(
                 sorted(f["name"] for f in found),
