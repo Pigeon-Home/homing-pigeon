@@ -590,5 +590,96 @@ class TrainingWatchEndToEndTest(unittest.TestCase):
         self.assertEqual(brief["status"], "no_inference")
 
 
+class ScanCheckpointsRacesTest(unittest.TestCase):
+    """Queue A refill: _scan_checkpoints' OSError guards
+    (coverage run 40187685363: 8 lines on both platforms).
+    The scan runs against a live training directory, so
+    its contract is race-shaped: an entry that vanishes
+    or turns unreadable mid-scan is skipped, a folder
+    that cannot be listed is skipped, and a run dir that
+    cannot be listed at all scans as empty -- never an
+    exception into the watcher. Each guard is driven by
+    the real filesystem plus one wrapped os call that
+    raises for exactly one path.
+    """
+
+    GLOBS = ["checkpoint-*", "*.pt"]
+
+    def _tree(self, d):
+        run = os.path.join(d, "run")
+        os.makedirs(os.path.join(run, "sub"))
+        for rel in ("checkpoint-1", os.path.join("sub", "a.pt"),
+                    os.path.join("sub", "b.pt")):
+            with open(os.path.join(run, rel), "w") as fh:
+                fh.write("x")
+        return run
+
+    def _guarded(self, fn, target):
+        real = fn
+
+        def wrapped(path, *a, **kw):
+            if os.path.abspath(os.fspath(path)) == \
+                    os.path.abspath(target):
+                raise OSError("gone mid-scan")
+            return real(path, *a, **kw)
+        return wrapped
+
+    def test_an_unlistable_run_dir_scans_as_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            run = self._tree(d)
+            with unittest.mock.patch.object(
+                    os, "listdir",
+                    self._guarded(os.listdir, run)):
+                self.assertEqual(
+                    TW._scan_checkpoints(run, self.GLOBS), [])
+
+    def test_an_unlistable_subdir_is_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            run = self._tree(d)
+            sub = os.path.join(run, "sub")
+            with unittest.mock.patch.object(
+                    os, "listdir",
+                    self._guarded(os.listdir, sub)):
+                found = TW._scan_checkpoints(run, self.GLOBS)
+            self.assertEqual([f["name"] for f in found],
+                             ["checkpoint-1"])
+
+    def test_an_entry_that_raises_on_probe_is_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            run = self._tree(d)
+            sub = os.path.join(run, "sub")
+            with unittest.mock.patch.object(
+                    os.path, "isdir",
+                    self._guarded(os.path.isdir, sub)):
+                found = TW._scan_checkpoints(run, self.GLOBS)
+            self.assertEqual([f["name"] for f in found],
+                             ["checkpoint-1"])
+
+    def test_a_file_that_raises_on_stat_is_skipped(self):
+        # The race the guard exists for: isfile's own stat
+        # succeeds, the scan's stat a moment later fails
+        # (the file vanished between the two). The wrapper
+        # therefore lets the first stat of the target
+        # through and raises on the second.
+        with tempfile.TemporaryDirectory() as d:
+            run = self._tree(d)
+            bad = os.path.abspath(os.path.join(run, "sub", "b.pt"))
+            real_stat = os.stat
+            seen = []
+
+            def flaky(path, *a, **kw):
+                if os.path.abspath(os.fspath(path)) == bad:
+                    seen.append(1)
+                    if len(seen) > 1:
+                        raise OSError("gone mid-scan")
+                return real_stat(path, *a, **kw)
+
+            with unittest.mock.patch.object(os, "stat", flaky):
+                found = TW._scan_checkpoints(run, self.GLOBS)
+            self.assertEqual(
+                sorted(f["name"] for f in found),
+                ["checkpoint-1", os.path.join("sub", "a.pt")])
+
+
 if __name__ == "__main__":
     unittest.main()

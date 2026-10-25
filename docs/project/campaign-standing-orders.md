@@ -156,6 +156,20 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/extensions/training-watch/`
+  `training_watch.py::_scan_checkpoints` (8 lines
+  never run on either platform, coverage run
+  40187685363) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ScanCheckpointsRacesTest in
+  runner/tests/test_training_watch.py: the scan's
+  three OSError guards (an unlistable run dir scans
+  as empty; an unlistable subdir and an entry that
+  raises on probe are skipped; a file whose stat
+  fails after its isfile check is skipped), each
+  driven by the real tree plus one wrapped os call
+  raising for exactly one path. Done when a coverage
+  run shows the function clean.
 - A (refill) — `runner/extensions/sysmon-feed/`
   `sysmon_feed.py::main` (8 lines never run on either
   platform, coverage run 40187685363) — taken
