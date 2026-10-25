@@ -156,6 +156,19 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/cloud/send_dtls.py::`
+  `_plain_result` and `_load_ticket` (6 lines each
+  never run on either platform, coverage run
+  40187685363) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  PlainResultAndTicketTest in
+  runner/tests/test_send_dtls_main.py: a non-envelope
+  result is refused as such; an encrypted result is
+  decrypted and its inner signature verified; one
+  bound to another job does not decrypt; a saved
+  session ticket loads back byte for byte and
+  unreadable ones load as none. Done when a coverage
+  run shows both clean.
 - A (refill) — `runner/ops/posture.py::`
   `_looks_like_placeholder` (7 fallback lines never
   run on Windows, coverage run 40187685363) — taken

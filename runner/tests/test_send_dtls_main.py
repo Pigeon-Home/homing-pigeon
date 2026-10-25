@@ -30,7 +30,8 @@ sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 
 import send_dtls  # noqa: E402
-from runner.wire import dtlsproto  # noqa: E402
+from send_job import sign_payload  # noqa: E402
+from runner.wire import dtlsproto, jobcrypto  # noqa: E402
 
 SECRET = "2d2d42b99b668d4bcc0120c172c09e1059cdf4dd94d3422524519e3708937be4"
 
@@ -170,6 +171,79 @@ class SendDtlsMainFailuresTest(unittest.TestCase):
             core=Core)
         self.assertEqual(rc, 4)
         self.assertIn("DTLS session failed", err)
+
+
+class PlainResultAndTicketTest(unittest.TestCase):
+    """Queue A refill: _plain_result's envelope and
+    decryption legs and _load_ticket's whole body
+    (coverage run 40187685363: 6 lines each, both
+    platforms). The sender-side contract: a result that
+    is not an envelope is refused as such; a result
+    mirroring an encrypted job is decrypted and its
+    inner signature verified before anything in it is
+    trusted, and one bound to a different job does not
+    decrypt. A session ticket on disk loads back byte
+    for byte; anything unreadable or malformed loads
+    as no ticket, so the handshake starts fresh.
+    """
+
+    JOB = "job-1"
+
+    def _result(self, **kw):
+        obj = {"v": 1, "type": "result", "job_id": self.JOB,
+               "status": "ok", "exit_code": 0, "stdout": "pong",
+               "stderr": "", "truncated": False}
+        obj.update(kw)
+        return obj
+
+    def test_a_non_envelope_result_is_refused_as_such(self):
+        got, err = send_dtls._plain_result(
+            "just text, no envelope", SECRET, self.JOB, "")
+        self.assertIsNone(got)
+        self.assertIn("not an envelope", err)
+
+    def test_an_encrypted_result_is_decrypted_and_verified(self):
+        inner = sign_payload(self._result(), SECRET)
+        body = jobcrypto.encrypt_body(
+            inner, SECRET, self.JOB, "", sign_payload)
+        got, err = send_dtls._plain_result(
+            "[HOMING-PIGEON] result job-1\n\n" + body,
+            SECRET, self.JOB, "")
+        self.assertIsNone(err)
+        head, payload = got
+        self.assertEqual(head, "[HOMING-PIGEON] result job-1")
+        self.assertEqual(payload["stdout"], "pong")
+
+    def test_a_result_bound_to_another_job_does_not_decrypt(self):
+        inner = sign_payload(self._result(), SECRET)
+        body = jobcrypto.encrypt_body(
+            inner, SECRET, "other-job", "", sign_payload)
+        got, err = send_dtls._plain_result(
+            "subject\n\n" + body, SECRET, self.JOB, "")
+        self.assertIsNone(got)
+        self.assertIn("does not decrypt", err)
+
+    def test_a_saved_ticket_loads_back(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "ticket.json")
+            send_dtls._save_ticket(path, (b"ticket-bytes",
+                                          b"psk-bytes"))
+            self.assertEqual(send_dtls._load_ticket(path),
+                             (b"ticket-bytes", b"psk-bytes"))
+
+    def test_unreadable_tickets_load_as_none(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            self.assertIsNone(send_dtls._load_ticket(
+                os.path.join(d, "missing.json")))
+            bad = os.path.join(d, "bad.json")
+            with open(bad, "w", encoding="utf-8") as fh:
+                fh.write("not json")
+            self.assertIsNone(send_dtls._load_ticket(bad))
+            with open(bad, "w", encoding="utf-8") as fh:
+                fh.write('{"ticket": 5}')
+            self.assertIsNone(send_dtls._load_ticket(bad))
 
 
 if __name__ == "__main__":
