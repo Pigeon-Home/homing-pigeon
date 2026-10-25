@@ -489,6 +489,9 @@ design notes say where to start.
     stick (the Glide-era lesson: the API and the
     hardware travel together).
 
+  - ChatGPT implements/runs self-improvement watching
+    protocol and software, in motion.
+
   Nothing to build yet. Record the direction so later
   work can pick it up without rediscovering the
   external-GPU analogy or the existing Coral/Hailo/
