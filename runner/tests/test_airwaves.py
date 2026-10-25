@@ -26,7 +26,7 @@ import threading
 import time
 import unittest
 import unittest.mock
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -685,6 +685,48 @@ class RunToolTest(unittest.TestCase):
         with unittest.mock.patch.object(
                 sp, "run", side_effect=OSError("cannot fork")):
             self.assertIsNone(AW._run([sys.executable, "-c", "pass"]))
+
+
+class MainPartialDeliveryLegTest(unittest.TestCase):
+    """Queue A refill: main's partial delivery
+    (coverage run 40189711740: lines 798-804)
+    and _clean_readings_link's non-object link
+    (493-494). A delivery that lands none of
+    the alerts is rc 2 with the state
+    unwritten; a readings dict whose link is
+    not an object has no link to clean.
+    """
+
+    def test_a_partial_delivery_is_rc2(self):
+        _alerts, learned = AW.decide(
+            _readings([HOME]), _manifest(), {})
+        with tempfile.TemporaryDirectory() as d:
+            manifest_path = os.path.join(d, "extension.json")
+            with open(manifest_path, "w", encoding="utf-8") as fh:
+                json.dump(_manifest(), fh)
+            readings_path = os.path.join(d, "readings.json")
+            with open(readings_path, "w", encoding="utf-8") as fh:
+                json.dump(_readings([HOME, CAFE]), fh)
+            state_path = os.path.join(d, "state.json")
+            with open(state_path, "w", encoding="utf-8") as fh:
+                json.dump(learned, fh)
+            err = io.StringIO()
+            with unittest.mock.patch.object(
+                    AW, "_deliver_local", return_value=0), \
+                    redirect_stderr(err):
+                rc = AW.main(["--manifest", manifest_path,
+                              "--readings", readings_path,
+                              "--local-dir", d,
+                              "--state", state_path])
+            self.assertEqual(rc, 2)
+            self.assertIn("not delivered", err.getvalue())
+            with open(state_path, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh), learned)
+
+    def test_a_non_object_link_cleans_to_none(self):
+        self.assertIsNone(
+            AW._clean_readings_link({"link": "not-a-dict"}))
+        self.assertIsNone(AW._clean_readings_link("nope"))
 
 
 if __name__ == "__main__":

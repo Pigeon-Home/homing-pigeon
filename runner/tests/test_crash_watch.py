@@ -26,7 +26,7 @@ import threading
 import time
 import unittest
 import unittest.mock
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -492,6 +492,37 @@ class EndToEndTest(CrashFixture):
         rc = self.run_producer(readings)
         self.assertEqual(rc, 0)
         self.assertEqual(len(self.inbox_names()), 1)
+
+
+class MainPartialDeliveryLegTest(unittest.TestCase):
+    """Queue A refill: main's partial delivery
+    (coverage run 40189711740: lines 395-398).
+    A delivery that lands none of the alerts
+    is rc 2 with the reason on stderr, and the
+    state stays unwritten so the next pass
+    reports the dump again.
+    """
+
+    def test_a_partial_delivery_is_rc2(self):
+        with tempfile.TemporaryDirectory() as d:
+            manifest_path = os.path.join(d, "extension.json")
+            with open(manifest_path, "w", encoding="utf-8") as fh:
+                json.dump(_manifest(), fh)
+            readings_path = os.path.join(d, "readings.json")
+            with open(readings_path, "w", encoding="utf-8") as fh:
+                json.dump(_readings([_file()]), fh)
+            state_path = os.path.join(d, "state.json")
+            err = io.StringIO()
+            with unittest.mock.patch.object(
+                    CW, "_deliver_local", return_value=0), \
+                    redirect_stderr(err):
+                rc = CW.main(["--manifest", manifest_path,
+                              "--readings", readings_path,
+                              "--local-dir", d,
+                              "--state", state_path])
+            self.assertEqual(rc, 2)
+            self.assertIn("not delivered", err.getvalue())
+            self.assertFalse(os.path.exists(state_path))
 
 
 if __name__ == "__main__":

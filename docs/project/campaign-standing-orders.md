@@ -294,6 +294,28 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- rules refreshed 2026-10-25 06:37 PDT
+  resources 2026-10-25T13:37:09Z: cores 2 | box cpu 65% | wall 0s | cmd cpu 0s = 0.7 cores busy | peak rss 29 MB | mem used 97% | disk free 166.4 GB | exit 0 | under-driven
+  (scoped verification runs are short by
+  construction; the rig idles between takes,
+  not inside them. Q23's Answer/Applied-in
+  lines are still blank although the deletion
+  landed in f4e2378 -- the answerer's
+  bookkeeping, noted here.)
+- A (refill) — feed and watch main legs
+  (coverage run 40189711740): zeek-feed's and
+  osquery-feed's tunables guards and
+  undeliverable answers, crash-watch's and
+  airwaves' partial deliveries, airwaves'
+  non-object link clean — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  MainDeliveryRefusalLegTest
+  (test_zeek_feed.py and
+  test_osquery_feed.py),
+  MainPartialDeliveryLegTest
+  (test_crash_watch.py and test_airwaves.py).
+  Done when a coverage run shows the taken
+  legs clean.
 - A (refill) — sense legs (coverage run
   40189711740): service-watch's flap reset and
   partial delivery, sky-watcher's dead-rate

@@ -519,5 +519,32 @@ class MainTest(unittest.TestCase):
             self.assertEqual(out.getvalue(), "")
 
 
+class MainDeliveryRefusalLegTest(unittest.TestCase):
+    """Queue A refill: main's tunables guard
+    (coverage run 40189711740: line 541) and
+    its undeliverable answer (585). A manifest
+    whose tunables are not an object reads as
+    no tunables, and a local delivery that
+    cannot run at all is rc 2 -- the offsets
+    stay where they were for the next pass.
+    """
+
+    def test_undeliverable_is_rc2(self):
+        with tempfile.TemporaryDirectory() as d:
+            manifest = _manifest()
+            manifest["tunables"] = 42
+            manifest_path = os.path.join(d, "extension.json")
+            with open(manifest_path, "w", encoding="utf-8") as fh:
+                json.dump(manifest, fh)
+            state_path = os.path.join(d, "state.json")
+            with unittest.mock.patch.object(
+                    OF, "_deliver_local", return_value=None), \
+                    redirect_stderr(io.StringIO()):
+                rc = OF.main(["--manifest", manifest_path,
+                              "--state", state_path,
+                              "--local-dir", d])
+            self.assertEqual(rc, 2)
+
+
 if __name__ == "__main__":
     unittest.main()
