@@ -4,10 +4,10 @@
 The campaign hunted each extension's decide() through fifteen
 shapes, but the step that hands the finished alert to the
 runner -- sign it, then drop it in the local inbox or push it
-to the local signal socket -- never ran in any of the thirteen
+to the local signal socket -- never ran in any of the
 extensions the coverage map names. The copies are one shape by
 design (the Lab Results shape), so this is one parameterized
-test over all thirteen, per docs/extend/senses.md:
+test over all eighteen, per docs/extend/senses.md:
 
   - the alert the runner files is the alert the extension
     decided (same sensor, title, signal), and its signature
@@ -43,9 +43,14 @@ from runner.runner import (  # noqa: E402
 
 EXTENSIONS = [
     ("aide-feed", "aide_feed.py"),
+    ("backup-freshness", "backup_freshness.py"),
+    ("cert-sentinel", "cert_sentinel.py"),
+    ("failed-login-watch", "failed_login_watch.py"),
     ("job-fuzz", "job_fuzz.py"),
     ("job-watcher", "job_watcher.py"),
     ("latency-post", "latency_post.py"),
+    ("log-sentinel", "log_sentinel.py"),
+    ("port-watch", "port_watch.py"),
     ("release-drop", "release_drop.py"),
     ("resource-sentinel", "resource_sentinel.py"),
     ("sky-watcher", "sky_watcher.py"),
@@ -207,6 +212,47 @@ class SenseDelivery(unittest.TestCase):
                 [alert], _args(local_dir=base, local_port=1))
         self.assertEqual(n, 0)
         self.assertIn("delivery failed", err.getvalue())
+
+
+class OutsideTheCloneTest(unittest.TestCase):
+    """Queue A residue in every copy of _deliver_local: the
+    branch that refuses when the homing-pigeon repo is not
+    importable. It runs only when an extension finds itself
+    outside a clone, so the test copies one extension out
+    and drives it in a subprocess with nothing on the path:
+    delivery is None, the reason names the sense and the
+    clone, and nothing is delivered.
+    """
+
+    def test_delivery_outside_a_clone_refuses_by_name(self):
+        import shutil
+        import subprocess
+        import tempfile
+        src = os.path.join(REPO, "runner", "extensions",
+                           "port-watch", "port_watch.py")
+        with tempfile.TemporaryDirectory() as d:
+            copy = os.path.join(d, "port_watch.py")
+            shutil.copy2(src, copy)
+            code = (
+                "import importlib.util, types\n"
+                "spec = importlib.util.spec_from_file_location("
+                "'pw', %r)\n"
+                "m = importlib.util.module_from_spec(spec)\n"
+                "spec.loader.exec_module(m)\n"
+                "args = types.SimpleNamespace("
+                "secret_env='NOPE', key_id='', local_port=None, "
+                "local_dir=%r)\n"
+                "print('DELIVERED', m._deliver_local([], args))\n"
+                % (copy, d))
+            env = dict(os.environ)
+            env.pop("PYTHONPATH", None)
+            proc = subprocess.run(
+                [sys.executable, "-c", code], cwd=d, env=env,
+                capture_output=True, text=True, timeout=60)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("DELIVERED None", proc.stdout)
+        self.assertIn("port-watch: local delivery needs the "
+                      "homing-pigeon repo importable", proc.stderr)
 
 
 if __name__ == "__main__":
