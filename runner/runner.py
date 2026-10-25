@@ -471,7 +471,14 @@ def judge_job(cfg, job):
     verdict = "fail" if reasons else "pass"
     return verdict, reasons
 
-from runner.ops.helpers import snapshot_outside, append_bounded_log  # noqa: E402
+# runner/ops/helpers.py: loaded the way every sibling is (the package
+# name first, the local name when `runner` is this file, not the
+# package: an install's `python3 runner.py`, the one-file binaries).
+_helpers = _load_mod("runner.ops.helpers", "ops.helpers")
+if _helpers is None:
+    raise ImportError("runner/ops/helpers.py is missing")
+snapshot_outside = _helpers.snapshot_outside
+append_bounded_log = _helpers.append_bounded_log
 
 
 def check_protected_paths(before, after, protected):
@@ -527,12 +534,17 @@ def query_budget(cfg, job):
     max_b = _confval.integer(cfg.get("max_query_budget"), 8)
     return max(0, min(job_b, max_b))
 
-from runner.ops.oracle_tools import (  # noqa: E402
-    ASK_SYSTEM, ASK_AGENT_SYSTEM, _ORACLE_TOOLS,
-    _ORACLE_AGENT_MAX_ROUNDS, _ORACLE_AGENT_WALL_CLOCK_SEC,
-    _ORACLE_AGENT_MAX_TOOLS_PER_ROUND, _ORACLE_AGENT_CONTEXT_CHARS,
-    _ORACLE_TOOL_NAMES,
-)
+_oracle_tools = _load_mod("runner.ops.oracle_tools", "ops.oracle_tools")
+if _oracle_tools is None:
+    raise ImportError("runner/ops/oracle_tools.py is missing")
+ASK_SYSTEM = _oracle_tools.ASK_SYSTEM
+ASK_AGENT_SYSTEM = _oracle_tools.ASK_AGENT_SYSTEM
+_ORACLE_TOOLS = _oracle_tools._ORACLE_TOOLS
+_ORACLE_AGENT_MAX_ROUNDS = _oracle_tools._ORACLE_AGENT_MAX_ROUNDS
+_ORACLE_AGENT_WALL_CLOCK_SEC = _oracle_tools._ORACLE_AGENT_WALL_CLOCK_SEC
+_ORACLE_AGENT_MAX_TOOLS_PER_ROUND = _oracle_tools._ORACLE_AGENT_MAX_TOOLS_PER_ROUND
+_ORACLE_AGENT_CONTEXT_CHARS = _oracle_tools._ORACLE_AGENT_CONTEXT_CHARS
+_ORACLE_TOOL_NAMES = _oracle_tools._ORACLE_TOOL_NAMES
 
 
 class _InferenceRedirectRefused(HTTPRedirectHandler):
@@ -3938,7 +3950,11 @@ def _worker_count(cfg, opts) -> int:
 # polling and timeouts, freshness and retention, query budgets,
 # modes, local signals, and the log bounds.
 
-from runner.ops.tables import _CLI_OVERRIDES, _YARA_RULES  # noqa: E402
+_tables = _load_mod("runner.ops.tables", "ops.tables")
+if _tables is None:
+    raise ImportError("runner/ops/tables.py is missing")
+_CLI_OVERRIDES = _tables._CLI_OVERRIDES
+_YARA_RULES = _tables._YARA_RULES
 
 
 # Dests whose value must be a non-negative whole number. The

@@ -18,6 +18,23 @@ replaces a repeated or oversized block. Tests must stay green.
   runner.tests.test_audience runner.tests.test_enforce_races
   runner.tests.test_confinement` after each commit.
 - Stop when `wc -l runner/runner.py` is under 10000.
+- **A module moved out of runner.py is loaded the way every
+  sibling is**, never with `from runner.ops.x import y` at module
+  level: `_x = _load_mod("runner.ops.x", "ops.x")`, then bind the
+  names, and add `--hidden-import runner.ops.x` to every
+  `pyinstaller` line in `.github/workflows/build.yml` (seven of
+  them). The suite imports `runner` as a package, but an install
+  runs `python3 ~/.homing-pigeon/runner.py` and the binaries run it
+  frozen: there `runner` is the file itself and the package import
+  raises "'runner' is not a package". Two extractions on
+  2026-10-25 landed that way and took the installed runner and the
+  `--help` tests down; `runner/tests/test_script_context.py` now
+  fails any extraction that repeats it, and
+  `python3 runner/runner.py --version` from inside `runner/` is
+  the one-line check before the push. The extracted module's own
+  sibling imports fall back the same way (`try: from runner.wire
+  import x / except ImportError: from wire import x`), as
+  `runner/wire/oauth.py` does.
 
 ## Already done
 
