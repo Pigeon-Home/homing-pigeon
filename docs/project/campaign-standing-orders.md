@@ -31,8 +31,39 @@ or context reset, re-read before taking the next item: this file,
 AGENTS.md (rules 7, 8 and 9 above all), the open entries in
 `docs/use/questions.md`, and `docs/project/campaign-playbook.md`'s
 hard rules. Note the refresh in the ledger as one line
-("rules refreshed <time>"). A ledger with no refresh line in the last
-hour of activity means this step was skipped.
+("rules refreshed <time>"), followed by the hour's resource line
+(below). A ledger with no refresh line in the last hour of activity
+means this step was skipped.
+
+## Throughput: the rig stays busy, and says what it used
+
+The owner's order (2026-10-25): while a campaign runs, the rig's
+CPU is kept at about 90%, and every piece of testing comes with a
+resource report. A rig that sits at 10% is waiting on something, and
+waiting is not testing.
+
+- Run the suite and the hunts through `runner/tools/rig_resources.py`:
+  `python runner/tools/rig_resources.py -- <the command>`. It prints
+  one `resources` line from the kernel's counters (the box's CPU
+  share over the run, the command's own CPU time and the cores it
+  kept busy, peak memory, memory and disk at the end, the exit code,
+  and a verdict: `on target`, `under-driven`, `over`). Paste that
+  line into the ledger under the item it measured, and the hour's
+  line under each "rules refreshed" line.
+- To reach the target: run the suite sharded
+  (`runner/tools/run_tests_parallel.py --jobs <cores>`), run the
+  previous item's verification while writing the next item's test,
+  and never wait on a CI run with the rig idle: take the next item
+  and come back to the run when it finishes. Hypothesis budgets go up
+  when the box is under-driven, not the sleep.
+- Two `under-driven` hourly lines in a row is a finding about the
+  loop: write in the ledger what the rig was waiting on, then fix
+  that. `over` for an hour (the box swapping or the suite timing out)
+  means one fewer shard, not a slower loop.
+- A test that fails only under load is a finding about the test
+  (make it load-tolerant: barriers and outcomes, not sleeps and
+  clocks) unless it guards a promise about time; then it is filed
+  as a question with the measurement attached.
 
 ## The loop
 
