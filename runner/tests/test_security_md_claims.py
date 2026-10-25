@@ -9,11 +9,33 @@ Mapped (proven in the named module):
   carry decision/mode and no secret material: test_linux_audit.
 - Audit log rolls to one .1 file at audit_max_lines:
   test_security_config, test_mutated_guards.
+- Audit mode proceeds and logs "would_deny"; enforce denies and
+  logs "denied"; audit entries carry identifiers only; a malformed
+  security block is refused naming the key: test_security_config.
 - Confinement enforce refuses to start when the sandbox cannot
   engage, and a mid-run bwrap failure falls back loudly with a
   "fallback" audit decision: test_confinement (Q9 probes).
 - job_user identity drop, canary unreadable to the job user, groups
   cleared on initgroups failure: test_secret_files_job_user (Q12/Q18).
+- Secret files: inline-plus-file is a startup error, missing or
+  empty file is a startup error, same entropy gate:
+  test_secret_files_job_user, test_runner_more_edges.
+- Unknown key IDs are rejected before any MAC is computed and never
+  fall back to the default secret; a key with no policy entry is
+  unrestricted unless key_policies_default_deny is set:
+  test_multi_secret.
+- --dry-run verifies signatures and changes nothing:
+  test_protocol_and_edges.
+- A same-box producer can still deliver signed sensor_alert
+  envelopes through the local inbox with the mailbox gone:
+  test_local_signals, test_sense_delivery.
+- Threat model: the opinion is advisory (tier-1 findings, the
+  model joins only on the oracle_opinion_model opt-in) and the
+  judge gates only in enforce: test_oracle_opinion, test_oracle.
+
+The rest of both documents is policy and process (how to report,
+what is in scope, the dual-use framing, the appendix's outside
+take) -- statements a test cannot falsify, so no test is owed.
 
 Gap proven here first: SECURITY.md says changing a security mode
 requires a restart -- "Poll interval, workers, timeouts, output
