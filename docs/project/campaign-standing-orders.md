@@ -2744,9 +2744,30 @@ when done, the proving commit or run. Newest first.
   _secret_pattern_reason mutmut_34 (the repetition
   multiplier +1 -> +2: both products exceed n, so
   the [:n] prefix is identical for every input).
-  Kill verification: a full mutmut re-run with the
-  new tests in the scratch tree is in flight; its
-  verdicts land here when it completes.
+  Kill verification DONE — a full mutmut re-run
+  with the new tests in the scratch tree (after
+  /tmp, a 512 MB tmpfs found 100% full of leaked
+  suite tempdirs, was cleaned and TMPDIR moved to
+  disk; the failures that had dogged the local
+  runs were that tmpfs, not the code): verdicts
+  for 565 of 566 mutants, 561 killed, 4 survived.
+  Every one of the 61 targeted mutants is dead.
+  The 4 survivors are the 2 equivalents recorded
+  above plus 2 more of the same kind the first
+  run's weather had spuriously "killed":
+  sec_mode mutmut_19 and _21 (the modes.get
+  default mutated to None / removed — the
+  `mode in MODES` guard reads any non-mode as
+  "off", so the default's value is unobservable).
+  A fifth, sec_mode mutmut_23 (default "OFF"),
+  is equivalent by the same argument; the run
+  was killed by a runtime restart at 563/566
+  with its verdict unwritten, and it is recorded
+  equivalent on the argument, not on a verdict.
+  D4 is complete: the mutation signal now stands
+  at 561 killed / 5 provably equivalent survivors
+  in security.py, and the next dispatched CI run
+  carries the survivor list itself (Q34).
 - D4 reproduction, first local attempt: the stats
   pass died on this box's own memory pressure —
   test_name_oracle_resources_tolerate_poison
