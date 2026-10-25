@@ -415,6 +415,13 @@ and NoWideningCageTest (ORACLE.no_widening.cage). The roster
 on that branch points at them. For Claude/Muse to take or
 reject. No action asked.
 
+Progress, 2026-10-25 07:03 PDT. Another finished green.
+40200214631 (d3d9a37) finished all three legs success.
+The green verdict stands. Newest run 40200341761
+(382eb3a) is in progress (Linux success; root and
+Windows open). The draft branch is still unmerged.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40200214631
+
 **Applied in:** this commit.
 
 ---
