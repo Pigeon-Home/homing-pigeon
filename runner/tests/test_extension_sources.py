@@ -2486,6 +2486,84 @@ class DocsTest(unittest.TestCase):
         self.assertIn("unpinned", cfg["_extension_sources"])
 
 
+class LocalFilesEdgesTest(unittest.TestCase):
+    """Queue A refill: _local_files' and _tree_bytes'
+    remaining legs (coverage run 40189711740: 4 lines
+    each). The local-copy walker never follows a link,
+    stops at its visit budget however much tree is
+    left, and skips a file it cannot size; the byte
+    counter answers 0 for an unsizable non-directory
+    and skips an unsizable member mid-walk -- a
+    misplaced or racing tree costs entries, never the
+    pass.
+    """
+
+    def test_a_symlink_source_yields_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            real = os.path.join(d, "real")
+            os.makedirs(real)
+            with open(os.path.join(real, "a.txt"), "w") as fh:
+                fh.write("x")
+            link = os.path.join(d, "link")
+            try:
+                os.symlink(real, link)
+            except OSError:
+                self.skipTest("symlinks unavailable")
+            self.assertEqual(list(X._local_files(link)), [])
+
+    def test_the_visit_budget_stops_the_walk(self):
+        with tempfile.TemporaryDirectory() as d:
+            for name in ("a.txt", "b.txt"):
+                with open(os.path.join(d, name), "w") as fh:
+                    fh.write("x")
+            sub = os.path.join(d, "sub")
+            os.makedirs(sub)
+            for name in ("c.txt", "e.txt"):
+                with open(os.path.join(sub, name), "w") as fh:
+                    fh.write("x")
+            with mock.patch.object(X, "LOCAL_MAX_VISITS", 2):
+                got = [rel for _full, rel in X._local_files(d)]
+            self.assertEqual(got, ["a.txt", "b.txt"])
+
+    def test_a_file_that_cannot_be_sized_is_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            for name in ("a.txt", "b.txt"):
+                with open(os.path.join(d, name), "w") as fh:
+                    fh.write("x")
+            real = os.path.getsize
+
+            def flaky(path, *a, **kw):
+                if str(path).endswith("b.txt"):
+                    raise OSError("gone")
+                return real(path, *a, **kw)
+
+            with mock.patch.object(os.path, "getsize", flaky):
+                got = [rel for _full, rel in X._local_files(d)]
+            self.assertEqual(got, ["a.txt"])
+
+    def test_tree_bytes_unsizable_answers_zero_and_skips(self):
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "a.txt"), "w") as fh:
+                fh.write("12345")
+            with open(os.path.join(d, "b.txt"), "w") as fh:
+                fh.write("123")
+            real = os.path.getsize
+
+            def flaky(path, *a, **kw):
+                if str(path).endswith("b.txt"):
+                    raise OSError("gone")
+                return real(path, *a, **kw)
+
+            with mock.patch.object(os.path, "getsize", flaky):
+                self.assertEqual(X._tree_bytes(d), 5)
+            with mock.patch.object(os.path, "isfile",
+                                   return_value=True), \
+                    mock.patch.object(os.path, "getsize",
+                                      side_effect=OSError("gone")):
+                self.assertEqual(
+                    X._tree_bytes(os.path.join(d, "nope")), 0)
+
+
 class OracleNoteEdgesTest(unittest.TestCase):
     """Queue A refill: oracle_note's two remaining legs
     (coverage run 40189711740: 4 lines). The function's

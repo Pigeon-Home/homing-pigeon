@@ -295,6 +295,17 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - A (refill) — `runner/ops/extsources.py::`
+  `_local_files` and `_tree_bytes` (4 lines each
+  never run, coverage run 40189711740) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  LocalFilesEdgesTest in
+  runner/tests/test_extension_sources.py: a symlink
+  source yields nothing, the visit budget stops the
+  walk mid-tree, an unsizable file is skipped, and
+  the byte counter answers 0 for an unsizable
+  non-directory and skips an unsizable member.
+  Done when a coverage run shows both clean.
+- A (refill) — `runner/ops/extsources.py::`
   `extract_archive`'s write() legs (4 lines never
   run, coverage run 40189711740) — taken
   2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
