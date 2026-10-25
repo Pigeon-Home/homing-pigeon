@@ -34,6 +34,18 @@ where the Windows CI shards do run it. The first `coverage-Windows`
 artifact is the other half; until it is read, treat a Windows-only
 row below as unknown, not as untested.
 
+**First CI run (coverage run 40164003041, `6ded4b7`).** CI measures
+more than the local snapshot below: 93.2% on Linux (1,727 statements
+never executed) and 91.4% on Windows (2,195), against 83.6% locally.
+CI has bwrap working and every optional tool installed, so paths the
+local box skipped do run there. Both CI maps still carry the same
+largest gaps (every extension's `_deliver_local`, service-watch's
+`read_live`, `send_job.py cmd_new`), and Windows adds the Linux-only
+installer paths (`_install_collector_linux`, `_install_falco_linux`),
+which are expected there. The ranked list below is from the local map;
+check each item against the `coverage-Linux` artifact before treating
+it as untested, since a gap the local box shows may close in CI.
+
 ## Where it matters, ranked by what a user loses if it is wrong
 
 The table further down is ordered by how many lines never ran. This
