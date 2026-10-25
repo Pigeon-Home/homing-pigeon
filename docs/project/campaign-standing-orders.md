@@ -2700,6 +2700,15 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: extsources.status (2 missed, Linux
+  map) -- turned up a finding instead: status()
+  documents "never raises" but raises AttributeError
+  on a recorded state whose entries or installed
+  member is a list (load_states checks neither, and
+  the report loop sits outside its try). Filed as
+  Q44 with StatusShapeTest probes under
+  expectedFailure (control green) in
+  test_extension_sources.py.
 - Queue A taken: security._enforce_bound's failed-
   roll arm (2 missed): pinned in AuditWriterTest --
   with the rolled name occupied by a directory, the

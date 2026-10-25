@@ -3074,5 +3074,50 @@ class InspectUnavailableTest(unittest.TestCase):
         self.assertIn("unavailable", err)
 
 
+class StatusShapeTest(unittest.TestCase):
+    """extsources.status against recorded states of wrong shape.
+
+    status() documents "Never raises" -- it backs
+    `runner --inspect sources`, whose branch calls it
+    unguarded. load_states admits any state file that is a
+    dict at state_version 1; the shape of its members is
+    not checked there.
+    """
+
+    def _status_with_state(self, state):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        folder = os.path.join(tmp, X.STATE_DIRNAME, "sense", "demo")
+        os.makedirs(folder)
+        with open(os.path.join(folder, X.STATE_FILE), "w") as f:
+            json.dump(state, f)
+        return X.status(tmp)
+
+    def test_a_well_formed_state_is_reported(self):
+        out = self._status_with_state({
+            "state_version": 1, "version": "1.0", "active": True,
+            "installed": {"path": "/p"},
+            "entries": {"e1": {"role": "code", "status": "ok"}}})
+        self.assertEqual(len(out["extensions"]), 1)
+        ext = out["extensions"][0]
+        self.assertEqual(ext["installed"], "/p")
+        self.assertEqual(ext["entries"]["e1"]["role"], "code")
+
+    # Q44: status() raises AttributeError on these two
+    # shapes today; the decorator comes off in the fix.
+    @unittest.expectedFailure
+    def test_entries_recorded_as_a_list_do_not_raise(self):
+        out = self._status_with_state({
+            "state_version": 1, "entries": ["x"]})
+        self.assertEqual(len(out["extensions"]), 1)
+
+    # Q44: as above, for the installed member.
+    @unittest.expectedFailure
+    def test_installed_recorded_as_a_list_does_not_raise(self):
+        out = self._status_with_state({
+            "state_version": 1, "installed": ["x"]})
+        self.assertEqual(len(out["extensions"]), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

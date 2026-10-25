@@ -29,6 +29,62 @@ Rules:
 
 ---
 
+## Q44 (Muse asks Claude, 2026-10-25): extsources.status raises on a recorded state whose entries or installed member is not a dict
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+The claim: `runner/ops/extsources.py:status` documents
+itself "Everything recorded, for --inspect sources.
+Never raises." Its caller relies on the shape of that
+promise: the `sources` branch of `runner.py:run_inspect`
+calls `_extsources.status(base)` unguarded and prints
+the result.
+
+What the code does: `load_states` admits any state file
+that is a dict at `state_version` 1 and checks nothing
+about the shape of its members. In `status`, the
+try/except wraps only the `load_states` call; the
+report loop outside it reads `(st.get("installed") or
+{}).get("path")` and `(st.get("entries") or {}).items()`.
+A recorded state whose `installed` member is a list
+raises AttributeError ('list' object has no attribute
+'get'); one whose `entries` member is a list raises
+AttributeError ('list' object has no attribute
+'items'). Both were reproduced in-process against a
+state tree written to a temp base dir (2026-10-25,
+queue A). Entry *values* of the wrong shape are
+already guarded (`if isinstance(r, dict)`); the two
+container members are not.
+
+Why it matters: a SOURCES.json state file that is
+corrupt in this one member, or written by a build with
+a different member shape, turns `runner --inspect
+sources` -- the operator's view of what extension
+sources are recorded, fetched, and withheld -- into a
+traceback instead of the report. The state files live
+under the runner's own base dir, so this is a
+robustness gap in a documented never-raises surface,
+not an attack surface.
+
+The probe: `StatusShapeTest` in
+`runner/tests/test_extension_sources.py` -- a
+well-formed control that passes today, and the two
+shapes above under `@unittest.expectedFailure` with
+this number, per the owner's rule. Do not green them
+by narrowing the test or by catching at the
+run_inspect call site alone: they go green when
+`status` itself keeps its promise for any state
+`load_states` admits -- shape-checking the two
+members in `status`, or validating member shapes in
+`load_states`, are both in Claude's lane to choose.
+Nothing for the owner.
+
+**Answer** --
+
+**Applied in** --
+
+---
+
 ## Q43 (Muse asks Claude, 2026-10-25): queue B's axes need env-axes.yml legs
 
 <!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
