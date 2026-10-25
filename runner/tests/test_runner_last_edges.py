@@ -477,5 +477,131 @@ class LocalSignalServerRefusalTest(unittest.TestCase):
         self.assertTrue(fake.closed)
 
 
+class RunnerFailSoftLegsTest(unittest.TestCase):
+    """Queue A refill: runner.py's fail-soft legs
+    (coverage run 40189711740): the withheld-path
+    helpers when the sources module raises
+    (_withheld_for_tools 1654-1655, _tool_withheld
+    1660 and 1665-1666), _staged_dest when realpath
+    itself fails (3099-3100), download's transient
+    re-raise and bad-URL refusal (3028, 3032),
+    save_retained's close-failure swallow
+    (2788-2789), _append_brief's write swallow
+    (5100-5101), the brief thread's opinion swallow
+    (5048-5049), _file_fresh_lines' state-write
+    swallow (8425-8426), _tail_marked's vanished
+    file (8646-8647), _extension_registry's load
+    failure (4429-4430) and _extension_sources_note's
+    raise (4623-4624). Every one is a best-effort
+    seam: a collaborator failing degrades the
+    answer, never escapes.
+    """
+
+    def test_withheld_helpers_degrade(self):
+        fake = types.SimpleNamespace(
+            withheld_paths=mock.Mock(
+                side_effect=RuntimeError("boom")),
+            is_withheld=mock.Mock(
+                side_effect=RuntimeError("boom")))
+        with mock.patch.object(rr, "_extsources", fake):
+            self.assertEqual(rr._withheld_for_tools("/base"), [])
+            self.assertTrue(
+                rr._tool_withheld("/p", "/base", ["/w"]))
+        fake2 = types.SimpleNamespace(
+            withheld_paths=lambda base: ["/w"],
+            is_withheld=lambda path, w: True)
+        with mock.patch.object(rr, "_extsources", fake2):
+            self.assertTrue(rr._tool_withheld("/p", "/base", None))
+
+    def test_staged_dest_realpath_failure_is_a_rejection(self):
+        with mock.patch.object(
+                os.path, "realpath",
+                side_effect=ValueError("bad path")):
+            with self.assertRaises(rr.JobRejected):
+                rr._staged_dest("/w", "f.txt")
+
+    def test_download_transient_and_bad_url(self):
+        from urllib.error import URLError
+        with tempfile.TemporaryDirectory() as d:
+            dest = os.path.join(d, "f.bin")
+            with mock.patch.object(
+                    rr, "_open_download",
+                    side_effect=URLError("Connection refused")):
+                with self.assertRaises(URLError):
+                    rr.download("https://x.test/f", dest)
+            with mock.patch.object(
+                    rr, "_open_download",
+                    side_effect=ValueError("Invalid IPv6 URL")):
+                with self.assertRaisesRegex(rr.JobRejected,
+                                            "bad download url"):
+                    rr.download("https://x.test/f", dest)
+
+    def test_save_retained_close_failure_is_swallowed(self):
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(
+                    rr, "_json_safe",
+                    side_effect=ValueError("bad payload")), \
+                mock.patch.object(
+                    os, "close", side_effect=OSError("stuck")):
+            self.assertIsNone(
+                rr.save_retained(d, "job1", {"a": 1}))
+            self.assertFalse(os.path.exists(
+                os.path.join(d, "retained", "job1.json")))
+
+    def test_append_brief_write_failure_is_swallowed(self):
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(
+                    os, "open", side_effect=OSError("ro")):
+            self.assertIsNone(rr._append_brief(d, {"k": "v"}))
+
+    def test_brief_thread_releases_the_gate_on_failure(self):
+        released = []
+        with mock.patch.object(
+                rr, "_oracle_brief",
+                side_effect=RuntimeError("no model")), \
+                mock.patch.object(
+                    rr, "_wake_gate_release",
+                    side_effect=lambda: released.append(1)):
+            th = rr._start_brief_thread({}, "/base", {})
+            th.join(5)
+        self.assertEqual(released, [1])
+
+    def test_fresh_lines_state_write_failure_is_quiet(self):
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(
+                    rr, "_write_json",
+                    side_effect=OSError("ro")):
+            self.assertIsNone(rr._file_fresh_lines(
+                d, "sensor", "boom [T1059] happened"))
+
+    def test_tail_marked_vanished_file(self):
+        real_open = open
+
+        def refusing(path, *a, **k):
+            if str(path).endswith("gone.log"):
+                raise OSError("vanished")
+            return real_open(path, *a, **k)
+
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "gone.log")
+            with open(path, "w") as fh:
+                fh.write("x [M] y\n")
+            with mock.patch("builtins.open", refusing):
+                self.assertIsNone(rr._tail_marked(path, ["[M]"]))
+
+    def test_registry_and_note_failures_degrade(self):
+        fake_ext = types.SimpleNamespace(
+            extensions_dir_for=lambda cfg, base: "/x",
+            load_extensions=mock.Mock(
+                side_effect=RuntimeError("bad manifest")))
+        with mock.patch.object(rr, "_extensions", fake_ext):
+            self.assertEqual(rr._extension_registry({}, "/b"), {})
+        fake_src = types.SimpleNamespace(
+            oracle_note=mock.Mock(
+                side_effect=RuntimeError("boom")))
+        with mock.patch.object(rr, "_extsources", fake_src):
+            self.assertEqual(rr._extension_sources_note("/b"), "")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -294,6 +294,21 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — runner.py fail-soft legs (coverage
+  run 40189711740): the withheld-path helpers
+  when the sources module raises, _staged_dest
+  when realpath fails, download's transient
+  re-raise and bad-URL refusal, save_retained's
+  close-failure swallow, _append_brief's write
+  swallow, the brief thread's opinion swallow,
+  _file_fresh_lines' state-write swallow,
+  _tail_marked's vanished file, _extension_registry's
+  load failure and _extension_sources_note's
+  raise — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  RunnerFailSoftLegsTest in
+  runner/tests/test_runner_last_edges.py. Done
+  when a coverage run shows them clean.
 - A (refill) — `runner/cloud/send_dtls.py`
   `_wait_for`'s dead-peer and dry-pump exits
   (coverage run 40189711740: lines 132, 134) —
