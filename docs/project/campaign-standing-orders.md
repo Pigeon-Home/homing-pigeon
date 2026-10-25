@@ -2552,3 +2552,14 @@ when done, the proving commit or run. Newest first.
   platform mirror covered on the Windows map. Done when
   a coverage run shows the taken legs clean and the
   build's Windows shards are green.
+- A (refill) — `runner/extensions/cert-sentinel/cert_sentinel.py`
+  legs: `_read_tls_target`'s answering endpoint (157-158,
+  161) and `main`'s partial local delivery (471, 474-477),
+  local full-suite map at 93998ca — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ReadTlsTargetSuccessLegTest and MainPartialDeliveryLegTest
+  in runner/tests/test_cert_sentinel.py (the earlier
+  read_live leg mocked the probe itself, so its success
+  lines never ran). Locally coverage-clean on the taken
+  lines. Done when a coverage run shows them clean and
+  the build's Windows shards are green.

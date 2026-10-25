@@ -279,5 +279,98 @@ class ReadLiveTlsTargetLegTest(unittest.TestCase):
         self.assertIn(record, readings["certs"])
 
 
+class ReadTlsTargetSuccessLegTest(unittest.TestCase):
+    """Queue A refill: _read_tls_target's answering
+    endpoint (local full-suite map at 93998ca: lines
+    157-158, 161). The earlier leg mocked the probe
+    itself; this one drives it: a connection that
+    completes the handshake and hands over a decoded
+    certificate yields its record."""
+
+    def test_an_answering_endpoint_yields_its_record(self):
+        import socket as socket_mod
+        from unittest import mock as _mock
+
+        class FakeConn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def getpeercert(self):
+                return {
+                    "notAfter": "Mar  1 12:00:00 2027 GMT",
+                    "serialNumber": "0ABC",
+                    "subject": ((("commonName",
+                                  "example.test"),),),
+                    "issuer": ((("commonName",
+                                 "Test CA"),),),
+                }
+
+        class FakeContext:
+            def wrap_socket(self, raw, server_hostname=None):
+                assert server_hostname == "example.test"
+                return FakeConn()
+
+        class FakeRaw:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        with _mock.patch.object(
+                socket_mod, "create_connection",
+                return_value=FakeRaw()), \
+                _mock.patch.object(
+                    ssl, "create_default_context",
+                    return_value=FakeContext()):
+            record = CS._read_tls_target("example.test", 8443)
+        self.assertEqual(record["source"], "example.test:8443")
+        self.assertEqual(record["serial"], "0ABC")
+        self.assertIn("example.test", record["subject"])
+        self.assertGreater(record["not_after"], 0)
+
+
+class MainPartialDeliveryLegTest(unittest.TestCase):
+    """Queue A refill: main's partial local delivery
+    (local full-suite map at 93998ca: lines 471,
+    474-477). Fewer delivered than handed over is
+    rc 2, the shortfall is named, and the state is
+    left unwritten so the certificates report again
+    next pass."""
+
+    def test_partial_delivery_is_rc2_and_saves_nothing(self):
+        import io
+        from contextlib import redirect_stderr
+        manifest = {"tunables": {}}
+        readings = {"now": 1_700_000_000.0, "certs": []}
+        with tempfile.TemporaryDirectory() as d:
+            manifest_path = os.path.join(d, "extension.json")
+            with open(manifest_path, "w", encoding="utf-8") as fh:
+                json.dump(manifest, fh)
+            readings_path = os.path.join(d, "readings.json")
+            with open(readings_path, "w", encoding="utf-8") as fh:
+                json.dump(readings, fh)
+            state_path = os.path.join(d, "state.json")
+            err = io.StringIO()
+            with unittest.mock.patch.object(
+                    CS, "decide",
+                    return_value=([{"signal": "cert_expiring"}],
+                                  {})), \
+                    unittest.mock.patch.object(
+                        CS, "_deliver_local", return_value=0), \
+                    redirect_stderr(err):
+                rc = CS.main(["--manifest", manifest_path,
+                              "--readings", readings_path,
+                              "--state", state_path,
+                              "--local-dir", d])
+            self.assertEqual(rc, 2)
+            self.assertIn("1 of 1 alert(s) not delivered",
+                          err.getvalue())
+            self.assertFalse(os.path.exists(state_path))
+
+
 if __name__ == "__main__":
     unittest.main()
