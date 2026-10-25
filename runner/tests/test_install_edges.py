@@ -1084,9 +1084,14 @@ class InstallSmallLegsTest(unittest.TestCase):
     """
 
     def test_no_getuid_reads_as_uid_zero(self):
-        with mock.patch.object(os, "getuid", None):
+        # create=True: Windows has no os.getuid to patch over, and
+        # it is the platform the "no getuid" leg exists for.
+        with mock.patch.object(os, "getuid", None, create=True):
             self.assertEqual(inst._posix_uid(), 0)
-        self.assertEqual(inst._posix_uid(), os.getuid())
+        if hasattr(os, "getuid"):
+            self.assertEqual(inst._posix_uid(), os.getuid())
+        else:
+            self.assertEqual(inst._posix_uid(), 0)
 
     def test_a_raising_path_check_reads_as_absent(self):
         self.assertFalse(inst._path_exists(None))

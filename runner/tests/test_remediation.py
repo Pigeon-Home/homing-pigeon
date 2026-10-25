@@ -918,8 +918,11 @@ class ConfinementFollowupTest(unittest.TestCase):
             with open(os.path.join(work, "loot.txt"), "w",
                       encoding="utf-8") as fh:
                 fh.write("x")
-            os.symlink(os.path.join(base, "gone-target"),
-                       os.path.join(work, "ghost.txt"))
+            try:
+                os.symlink(os.path.join(base, "gone-target"),
+                           os.path.join(work, "ghost.txt"))
+            except (OSError, NotImplementedError):
+                self.skipTest("needs symlink")
             job = {"job_id": "esc-3", "kind": "exec",
                    "script": "echo x"}
             member = runner._remediation_confinement_followup(

@@ -105,6 +105,12 @@ order, 2026-10-25, after a release was blocked twice in one hour):
   which is red: the fix commit removes the decorator. A red probe
   in the live suite blocks every release behind it; an expected
   failure blocks nothing and is just as much a proof.
+- A release window: when the head of main is a commit whose message
+  starts with `release:`, hold every push until that commit's build
+  has completed (the `build` run on it; about twelve minutes), then
+  resume. Three cuts of 3.12.67 were lost to tests that landed in
+  that window and went red on Windows. Keep working; stack the
+  commits locally and push them together when the window closes.
 - A test is not done until the build's Windows shards are green
   for it (the shard annotations name a red test). The fixtures
   that broke there this morning are the same three shapes each
