@@ -156,6 +156,17 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/runner.py::handle_v2_mail`
+  (6 lines never run on either platform, coverage
+  run 40187685363) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  Version2IngestRejectionsTest in
+  runner/tests/test_cli_options.py: with the v2
+  module unavailable the message is not taken; a
+  sealed body that disagrees with its subject is
+  rejected and taken; a question the answer builder
+  refuses is rejected the same way. Done when a
+  coverage run shows the function clean.
 - A (refill) — `runner/runner.py::run_fetch_sources`
   (6 lines never run on either platform, coverage
   run 40187685363) — taken 2026-10-25,

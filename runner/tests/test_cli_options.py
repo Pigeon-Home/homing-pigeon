@@ -705,6 +705,77 @@ class Version2IngestTest(_VerbosityGuard):
         self.assertIn("fail", out)
 
 
+class Version2IngestRejectionsTest(unittest.TestCase):
+    """Queue A refill: handle_v2_mail's remaining
+    rejection legs (coverage run 40187685363: 6 lines
+    on both platforms). The v2 intake contract: with
+    the v2 module unavailable the message is not this
+    function's at all (False, the caller treats it as
+    a job); a sealed message whose body disagrees
+    with its subject -- type or msg_id -- is rejected
+    and taken, never acted on; and a question the
+    answer builder itself refuses (its ids are not
+    safe ids) is rejected the same way.
+    """
+
+    def _cfg(self, **extra):
+        cfg = {"mailbox_user": "t@example.com",
+               "shared_secret": SECRET,
+               "protocol_v2": True}
+        cfg.update(extra)
+        return cfg
+
+    def _question(self):
+        from runner.wire import protocol_v2 as v2
+        return v2.question_for(
+            {"protocol_v2": True},
+            {"job_id": "j1", "kind": "exec"})
+
+    def _take(self, cfg, subject, body):
+        imap = _IMAP()
+        with tempfile.TemporaryDirectory() as d:
+            with _captured_log() as buf:
+                taken = handle_v2_mail(
+                    cfg, imap, _SMTP(), 9,
+                    _mail(subject, body), subject,
+                    runner.build_secrets(cfg), _Opts(), d)
+        return taken, buf.getvalue()
+
+    def test_no_v2_module_is_not_taken(self):
+        q = self._question()
+        with mock.patch.object(runner, "_protocol_v2", None):
+            taken, _out = self._take(
+                self._cfg(),
+                "[HOMING-PIGEON] question " + q["msg_id"],
+                _seal_v2(q))
+        self.assertFalse(taken)
+
+    def test_a_subject_body_mismatch_is_rejected(self):
+        from runner.wire import protocol_v2 as v2
+        det = v2.determination_for(
+            {"job_id": "j1"},
+            {"findings": [{"detail": "rm"}]})
+        taken, out = self._take(
+            self._cfg(),
+            "[HOMING-PIGEON] question " + det["msg_id"],
+            _seal_v2(det))
+        self.assertTrue(taken)
+        self.assertIn("subject does not match the body", out)
+
+    def test_an_unanswerable_question_is_rejected(self):
+        q = self._question()
+        with mock.patch.object(
+                runner._protocol_v2, "answer_for",
+                side_effect=ValueError(
+                    "question msg_id is not a safe id")):
+            taken, out = self._take(
+                self._cfg(answer_only=True),
+                "[HOMING-PIGEON] question " + q["msg_id"],
+                _seal_v2(q))
+        self.assertTrue(taken)
+        self.assertIn("not a safe id", out)
+
+
 class Version2IngestPumpTest(unittest.TestCase):
     def _cfg(self):
         return {"mailbox_user": "t@example.com",
