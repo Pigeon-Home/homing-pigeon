@@ -2496,3 +2496,8 @@ when done, the proving commit or run. Newest first.
 - rules refreshed 2026-10-25 ~08:00 PDT (standing orders,
   AGENTS.md rules 7-9, open questions: Q33 new, Q32 answered,
   Q30 closed in practice; playbook hard rules unchanged).
+  resources 2026-10-25T14:26:35Z: cores 2 | box cpu 50% |
+  wall 0s | peak rss 12 MB | mem used 97% | disk free
+  166.4 GB | under-driven (between scoped takes; the local
+  full-suite coverage run finished this hour).
+  resources-top: hatch 198 MB, python 12 MB.
