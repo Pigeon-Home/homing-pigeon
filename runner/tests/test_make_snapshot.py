@@ -293,6 +293,51 @@ class InstallAndOracleTest(unittest.TestCase):
             self.assertEqual(fh.read(), "x = 2\n")
         self.assertEqual(sorted(os.listdir(self.base)), ["project"])
 
+    def test_stale_staging_and_retired_dirs_are_cleared(self):
+        # Queue A refill: install_project_snapshot's
+        # leftover sweep (coverage run 40187685363). A
+        # crashed earlier install leaves project.new and
+        # project.old behind; the next install removes
+        # both before it starts.
+        from runner.ops import install
+        for name in ("project.new", "project.old"):
+            junk = os.path.join(self.base, name)
+            os.makedirs(junk)
+            with open(os.path.join(junk, "junk.txt"), "w") as fh:
+                fh.write("crashed install")
+        self.assertTrue(install.install_project_snapshot(
+            self.src, self.base))
+        self.assertEqual(sorted(os.listdir(self.base)),
+                         ["project"])
+
+    def test_a_failed_swap_restores_the_previous_snapshot(self):
+        # Queue A refill: the same function's recovery
+        # block. The swap retires the current snapshot
+        # before moving the new one in; if that second
+        # move fails, the retired snapshot is put back
+        # and the install reports False -- an upgrade
+        # that fails midway never leaves the state dir
+        # without the snapshot it had.
+        from runner.ops import install
+        from unittest import mock
+        self.assertTrue(install.install_project_snapshot(
+            self.src, self.base))
+        dst = os.path.join(self.base, "project")
+        real_replace = os.replace
+
+        def flaky_replace(src, dst_):
+            if str(src).endswith(".new"):
+                raise OSError("swap failed")
+            return real_replace(src, dst_)
+
+        with mock.patch.object(os, "replace", flaky_replace):
+            self.assertFalse(install.install_project_snapshot(
+                self.src, self.base))
+        with open(os.path.join(dst, "runner", "runner.py")) as fh:
+            self.assertEqual(fh.read(), "x = 2\n")
+        self.assertEqual(sorted(os.listdir(self.base)),
+                         ["project"])
+
     def test_no_snapshot_in_the_archive_is_not_an_error(self):
         from runner.ops import install
         self.assertFalse(install.install_project_snapshot(

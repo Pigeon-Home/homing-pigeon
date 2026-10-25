@@ -156,6 +156,18 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/ops/install.py::`
+  `install_project_snapshot` (7 lines never run on
+  either platform, coverage run 40187685363) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  two tests in InstallAndOracleTest
+  (runner/tests/test_make_snapshot.py): stale
+  staging/retired dirs from a crashed install are
+  swept before the next one; a swap that fails after
+  the current snapshot is retired restores it and
+  reports False. The function is fully run under
+  that class locally. Done when a coverage run
+  shows it clean.
 - A (refill) — `runner/transport_extensions/nats/`
   `__main__.py::NatsPipe.run` (7 lines never run on
   Linux, 5 on Windows, coverage run 40187685363) —
