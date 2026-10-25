@@ -33,6 +33,7 @@ def _rows(n, **grow):
     rows = []
     for i in range(n):
         row = {"cycle": i + 1, "jobs": 3 * (i + 1), "sent": 3,
+               "py_heap_mb": 1.5,
                "rss_mb": 30.0, "fds": 4, "threads": 1, "children": 0,
                "state_bytes": 1000 * i, "state_files": i,
                "log_bytes": 1000}
@@ -53,7 +54,8 @@ class JudgeTest(unittest.TestCase):
     def test_each_kind_of_growth_is_named(self):
         cases = {"rss_mb": (0.5, "resident memory"),
                  "fds": (1, "file descriptors"),
-                 "threads": (1, "threads")}
+                 "threads": (1, "threads"),
+                 "py_heap_mb": (0.2, "Python allocations")}
         for key, (per_cycle, words) in cases.items():
             with self.subTest(key=key):
                 failures = SOAK.judge(_rows(100, **{key: per_cycle}),
@@ -73,6 +75,12 @@ class JudgeTest(unittest.TestCase):
         rows[20]["log_bytes"] = SOAK.LOG_CAP * (SOAK.LOG_BACKUPS + 2)
         self.assertTrue(any("runner.log" in f
                             for f in SOAK.judge(rows, jobs_per_cycle=3)))
+
+    def test_an_unmeasured_heap_is_not_judged(self):
+        rows = _rows(100)
+        for r in rows:
+            r["py_heap_mb"] = None
+        self.assertEqual(SOAK.judge(rows, jobs_per_cycle=3), [])
 
     def test_too_short_to_judge(self):
         self.assertTrue(SOAK.judge(_rows(3), jobs_per_cycle=3))

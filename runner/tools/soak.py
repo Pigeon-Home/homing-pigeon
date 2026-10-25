@@ -19,6 +19,7 @@ compared with the median of the first window, and the run fails
 when any of these rises past its limit:
 
     memory    --rss-mb (default 24)
+    heap      4 MB of live Python allocations (with --trace-heap)
     fds       2
     threads   1
     children  0 (every job's process is reaped)
@@ -41,6 +42,7 @@ import sys
 import tempfile
 import threading
 import time
+import tracemalloc
 from datetime import datetime, timezone
 from email.message import EmailMessage
 
@@ -201,7 +203,10 @@ def _log_bytes(base):
 
 def sample(base, cycle, jobs_done, t0, sent=0):
     size, files = _tree(base)
+    heap = (round(tracemalloc.get_traced_memory()[0] / 1048576.0, 3)
+            if tracemalloc.is_tracing() else None)
     return {"cycle": cycle, "jobs": jobs_done, "sent": sent,
+            "py_heap_mb": heap,
             "elapsed_sec": round(time.monotonic() - t0, 1),
             "rss_mb": round(_rss_mb(), 2), "fds": _fds(),
             "threads": threading.active_count(), "children": _children(),
@@ -222,9 +227,12 @@ def judge(samples, rss_mb=24.0, warmup=0.2, window=0.15, jobs_per_cycle=1):
 
     failures = []
     limits = (("rss_mb", rss_mb, "MB of resident memory"),
+              ("py_heap_mb", 4.0, "MB of live Python allocations"),
               ("fds", 2, "open file descriptors"),
               ("threads", 1, "live threads"))
     for key, limit, label in limits:
+        if any(r.get(key) is None for r in first + last):
+            continue  # not measured on this run
         grew = med(last, key) - med(first, key)
         if grew > limit:
             failures.append("%s grew by %s (%s -> %s; limit %s)"
@@ -245,8 +253,16 @@ def judge(samples, rss_mb=24.0, warmup=0.2, window=0.15, jobs_per_cycle=1):
     return failures
 
 
-def run(minutes=None, cycles=None, jobs_per_cycle=3, base=None):
-    """Soak; returns (samples, per-job state growth in bytes)."""
+def run(minutes=None, cycles=None, jobs_per_cycle=3, base=None,
+        trace_heap=False):
+    """Soak; returns (samples, per-job state growth in bytes).
+
+    trace_heap measures live Python allocations (tracemalloc, one
+    frame). Resident memory can rise from the C allocator while the
+    Python heap is flat; the two together say which layer grew.
+    """
+    if trace_heap and not tracemalloc.is_tracing():
+        tracemalloc.start(1)
     base = base or tempfile.mkdtemp(prefix="hp-soak-")
     cfg = {"mailbox_user": SENDER, "mailbox_password": PASSWORD,
            "shared_secret": SECRET, "imap_host": "soak", "imap_port": 993,
@@ -293,10 +309,14 @@ def main(argv=None):
     ap.add_argument("--jobs-per-cycle", type=int, default=3)
     ap.add_argument("--rss-mb", type=float, default=24.0)
     ap.add_argument("--json", metavar="FILE")
+    ap.add_argument("--trace-heap", action="store_true",
+                    help="also measure live Python allocations "
+                         "(tracemalloc; slower)")
     a = ap.parse_args(argv)
     if a.minutes is None and a.cycles is None:
         a.cycles = 200
-    samples, growth = run(a.minutes, a.cycles, a.jobs_per_cycle)
+    samples, growth = run(a.minutes, a.cycles, a.jobs_per_cycle,
+                          trace_heap=a.trace_heap)
     if a.json:
         with open(a.json, "w", encoding="utf-8") as fh:
             json.dump({"samples": samples, "state_bytes_per_job": growth},
@@ -306,7 +326,8 @@ def main(argv=None):
                                                last["elapsed_sec"]))
     print("  results sent per cycle: %s" % sorted(
         set(r["sent"] for r in samples)))
-    for key in ("rss_mb", "fds", "threads", "children", "state_files",
+    for key in ("rss_mb", "py_heap_mb", "fds", "threads", "children",
+                "state_files",
                 "log_bytes"):
         print("  %-12s %s -> %s" % (key, first[key], last[key]))
     print("  state grows %.0f bytes per job (retained results; reported, "
