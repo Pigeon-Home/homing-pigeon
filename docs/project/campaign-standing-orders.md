@@ -170,6 +170,11 @@ when done, the proving commit or run. Newest first.
   the interpreter and runs the job (PROTOCOL.md
   section 3.2); the rejection holds at advise latitude
   and is pinned there. Item done when Q21 is decided.
+  — done: Q21 decided in 68c69bb (the row and the
+  Windows note amended to state the repair; the probe
+  replaced by MissingBinaryRowAsAmended in the same
+  commit); runner.tests.test_protocol_examples runs
+  15 of 15 green.
 - D — SECURITY.md and docs/security/threat-model.md,
   one test per claim plus its negative control — taken
   2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
@@ -182,6 +187,14 @@ when done, the proving commit or run. Newest first.
   the same write does reload; the same file read at
   startup enables the mode). The rest of both documents
   is policy and process a test cannot falsify.
+- B — the four environment axes of queue B (Q20,
+  applied in 68c69bb: env-axes.yml gains the sysctl
+  job -- ptrace_scope 0-3, protected_symlinks and
+  protected_regular off/on, hidepid 0/2, each crossed
+  with job_user off/on) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — first run
+  40187426146 queued at 68c69bb. Done per axis when
+  both values are green, or the difference is filed.
 - D — documented-default hunt re-run against every key
   added since the defaults registry was last complete
   (8748b44, Release 3.12.62): no new config keys in
