@@ -276,7 +276,7 @@ ROSTER = [
                    "pinned keys decided together: each denial names its "
                    "own key and job id, no decision crosses over, and the "
                    "same for two audiences (Q26 review, 2026-10-25).",
-        "tests": [],
+        "tests": ["runner.tests.test_enforce_races_gaps.PoliciesConcurrentRaceTest"],
         "needs": [],
     },
     {
@@ -285,8 +285,8 @@ ROSTER = [
                    "the job user with its own workdir; the runner itself "
                    "never drops; a drop that fails for one job falls back "
                    "for that job only (Q26 review, 2026-10-25).",
-        "tests": [],
-        "needs": ["posix", "root"],
+        "tests": ["runner.tests.test_enforce_races_gaps.DropConcurrentRaceTest"],
+        "needs": ["linux", "root"],
     },
     {
         "id": "ORACLE.no_widening.cage",
@@ -294,7 +294,7 @@ ROSTER = [
                    "as root, or outside /work changes neither the "
                    "confinement nor the job_user decision (Q26 review, "
                    "2026-10-25).",
-        "tests": [],
+        "tests": ["runner.tests.test_enforce_races_gaps.NoWideningCageTest"],
         "needs": [],
     },
     {
