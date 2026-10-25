@@ -234,6 +234,25 @@ class LinuxPackageEnvTest(unittest.TestCase):
             self.assertEqual(inst._osquery_binary(),
                              "/opt/osquery/bin/osqueryd")
 
+
+class CollectorDispatchEnvTest(unittest.TestCase):
+    """The Linux collector dispatcher, on every platform.
+
+    Queue A, item 2: the coverage map (run 40180268696)
+    showed `_install_collector_linux` with 31 lines never
+    run on Windows -- every per-collector branch -- because
+    its tests sat in the Windows-skipped
+    LinuxPackageEnvTest. Like the Falco tests, they fake
+    the install module's whole helper seam (apt, repos,
+    downloads, the command runner, the filesystem), so
+    nothing here needs a POSIX host. The assertions are
+    the documented outcomes: each collector gets its
+    package and its channel, aide's database lands where
+    the feed reads it, sysmon and wazuh come from their
+    vendor repos, and an unknown name is named, not
+    installed.
+    """
+
     def test_the_apt_collectors_each_get_their_package(self):
         pkg = _Pkg()
         seen = {}
