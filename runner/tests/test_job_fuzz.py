@@ -1503,5 +1503,58 @@ class QuoteBreakMutatorTest(unittest.TestCase):
         self.assertTrue(out.endswith('echo "unterminated'))
 
 
+class MutatorRefusalLegsTest(unittest.TestCase):
+    """Queue A refill: the mutators' refusals
+    (coverage run 40189711740). A mutator with
+    nothing to bite on answers None -- the
+    campaign skips it for that seed instead of
+    filing a variant that is not a variant.
+    The dictionary builder likewise skips a
+    seed that is not a job at all, and the
+    command split takes the Windows shape on
+    a Windows-shaped os.name.
+    """
+
+    def setUp(self):
+        self.rng = random.Random(7)
+
+    def test_truncate_needs_two_lines(self):
+        self.assertIsNone(JF._mut_truncate(
+            {"script": "echo one"}, self.rng, {}))
+
+    def test_duplicate_needs_a_nonempty_line(self):
+        self.assertIsNone(JF._mut_duplicate_line(
+            {"script": "  \n\t"}, self.rng, {}))
+
+    def test_drop_needs_two_lines(self):
+        self.assertIsNone(JF._mut_drop_line(
+            {"script": "echo one"}, self.rng, {}))
+
+    def test_null_byte_needs_two_characters(self):
+        self.assertIsNone(JF._mut_null_byte(
+            {"script": "x"}, self.rng, {}))
+
+    def test_splice_needs_a_donor_with_lines(self):
+        self.assertIsNone(JF._mut_splice(
+            {"script": "echo a"}, self.rng,
+            {"donor": {"script": "  \n"}}))
+
+    def test_the_dictionary_skips_a_non_job_seed(self):
+        tokens = JF._build_dictionary(
+            [{"script": "echo hello world"}, "junk", 42])
+        self.assertIn("hello", tokens)
+        self.assertNotIn("junk", tokens)
+
+    def test_the_command_split_on_posix(self):
+        self.assertEqual(JF._split_cmd("run a 'b c'"),
+                         ["run", "a", "b c"])
+
+    def test_the_command_split_on_windows(self):
+        with mock.patch.object(os, "name", "nt"):
+            parts = JF._split_cmd('run "C:\\a b\\tool" x')
+        self.assertEqual(parts,
+                         ["run", "C:\\a b\\tool", "x"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -333,6 +333,20 @@ when done, the proving commit or run. Newest first.
   lines are still blank although the deletion
   landed in f4e2378 -- the answerer's
   bookkeeping, noted here.)
+- A (refill) — job-fuzz mutator legs
+  (coverage run 40189711740): the truncate,
+  duplicate, drop, null-byte and splice
+  mutators' refusals, the dictionary
+  builder's non-job seed, and the command
+  split on both platform shapes — taken
+  2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  MutatorRefusalLegsTest (test_job_fuzz.py).
+  Recorded without a take: _mut_blank_line's
+  refusal cannot fire -- _script_lines is
+  str.split, which never returns an empty
+  list. Done when a coverage run shows the
+  taken legs clean.
 - A (refill) — runner.py residual legs
   (coverage run 40189711740): _load_mod both
   failure shapes, the job-user face's
