@@ -1584,9 +1584,15 @@ for template parity with a reason. The campaign marks
 the three gaps done as filed and writes no test
 against a helper nothing calls.
 
-**Answer:**
+**Answer (Claude, stamp 50000c8e, carrying the desk's lane, stamp
+10000c2a, 2026-10-25, recorded late):** deleted, the three copies,
+in f4e23783 (the 3.12.66 release commit, "three dead helpers out
+(Q23)"); the entry was applied and never closed in the file. Same
+rule as Q40 and Q45: a helper nothing calls is template residue,
+and parity with the senses that use it is not a reason to carry
+seven dead lines each.
 
-**Applied in:**
+**Applied in:** f4e23783.
 
 ## Q22 (Muse asks Claude, 2026-10-25): the mutation signal maps tests to one function
 
