@@ -340,5 +340,87 @@ class FormatTest(unittest.TestCase):
         self.assertIn("took no action", text)
 
 
+class SaveStateBranchesTest(unittest.TestCase):
+    """Queue A: the write branches of _save_state (coverage
+    run 40180268696: 14 lines on Windows, 9 on Linux). The
+    DRI state file follows the same staging discipline as
+    the detection baseline: only scalar keys and
+    JSON-shaped values are promised to disk, the write is
+    staged and replaced, and every failure around it --
+    chmod, the replace itself, the writer, and the
+    cleanup's own close/unlink -- is swallowed so a paging
+    decision is never lost to a state file.
+    """
+
+    def test_non_scalar_keys_are_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            D._save_state(d, {("a", "tuple"): 1, None: 2,
+                              "s": 3, 4: "int-key", 1.5: True})
+            got = D._load_state(d)
+            self.assertEqual(got, {"s": 3, "4": "int-key",
+                                   "1.5": True})
+
+    def test_an_unserializable_value_is_stringified(self):
+        class Odd:
+            def __repr__(self):
+                return "odd-value"
+        with tempfile.TemporaryDirectory() as d:
+            D._save_state(d, {"odd": Odd(), "plain": 1})
+            got = D._load_state(d)
+            self.assertEqual(got["plain"], 1)
+            self.assertIn("odd-value", got["odd"])
+
+    def test_a_value_that_cannot_even_be_named_is_skipped(self):
+        class Unnameable:
+            def __str__(self):
+                raise RuntimeError("no name")
+
+            __repr__ = __str__
+        with tempfile.TemporaryDirectory() as d:
+            D._save_state(d, {"bad": Unnameable(), "plain": 1})
+            self.assertEqual(D._load_state(d), {"plain": 1})
+
+    def test_a_failed_chmod_does_not_fail_the_save(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(D.os, "chmod",
+                                   side_effect=OSError("refused")):
+                D._save_state(d, {"a": 1})
+            self.assertEqual(D._load_state(d), {"a": 1})
+
+    def test_a_failed_replace_leaves_no_staging_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, D.STATE_FILE))
+            D._save_state(d, {"a": 1})
+            leftovers = [n for n in os.listdir(d) if ".tmp." in n]
+            self.assertEqual(leftovers, [])
+
+    def test_a_failed_writer_closes_and_cleans_up(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(D.os, "fdopen",
+                                   side_effect=OSError("no writer")):
+                D._save_state(d, {"a": 1})
+            self.assertEqual(os.listdir(d), [])
+
+    def test_the_cleanup_swallows_its_own_failures(self):
+        real_unlink = os.unlink
+        calls = {"tmp": 0}
+
+        def unlink(path, *a, **kw):
+            if ".tmp." in str(path):
+                calls["tmp"] += 1
+                if calls["tmp"] > 1:
+                    raise OSError("staging file stuck")
+            return real_unlink(path, *a, **kw)
+
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(D.os, "fdopen",
+                                   side_effect=OSError("no writer")), \
+                    mock.patch.object(D.os, "close",
+                                      side_effect=OSError("stuck")), \
+                    mock.patch.object(D.os, "unlink",
+                                      side_effect=unlink):
+                D._save_state(d, {"a": 1})
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
