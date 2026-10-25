@@ -437,7 +437,9 @@ The object protocol uses three cryptographic primitives:
   before decrypting. A receiver MUST accept the encrypted form, and MUST NOT execute a job received in cleartext unless the operator has explicitly enabled cleartext acceptance; in the reference software that enable is the `--allow-cleartext` command-line parameter, deliberately not a configuration setting. The reference receiver applies that same refusal to a query and to a board message, and an encrypted query or board message is answered in the same form.
   A result mirrors the form of the job it answers unless
   `job_encryption` says otherwise: an explicit true encrypts
-  every result, and the literal false encrypts none.
+  every result, and the literal false encrypts none. A real
+  job/result pair in this form, as it sat in a transport, is
+  quoted in `docs/use/live-examples.md`.
 
 The DTLS binding adds one more construction, and only there:
 ephemeral X25519 inside `psk_dhe_ke`. It is not part of the

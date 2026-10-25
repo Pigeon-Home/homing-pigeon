@@ -149,6 +149,16 @@ middle editing someone else's message.
 
 ## Self-learning: the loop closes (2026-10-19)
 
+*Measured (2026-10-25): on the campaign rig's deterministic Oracle,
+2,247 predictions were all `likely_success`, 87.5% right (the run's
+success rate), and the ledger selected 0 lessons. Every miss was a
+plain `exit 3`, which carries none of the features a verified fact
+is derived from, and the model-candidate channel was off. The
+numbers and the ledger are in `docs/use/live-examples.md`. The gap
+this shows, a repeating failure with no environmental cause, is
+exactly the candidate channel's job, and stays unmeasured until a
+rig with a model runs the same loop.*
+
 DRU's direction, built in `runner/oracle/learning.py`: the Oracle
 compares what it said about a job with what the job actually
 did, saves the comparison immediately, and reads it fresh when

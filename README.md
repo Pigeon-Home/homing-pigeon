@@ -314,7 +314,10 @@ them. A lesson never authorizes anything by itself: a repair still
 requires the repair latitude, the mismatch re-verified on the
 current job, and the repaired job judged again before it runs.
 Set `oracle_learning` to false to turn the loop off. Design:
-`docs/design/oracle-opinion-design.md`.
+`docs/design/oracle-opinion-design.md`. Measured on a real rig in
+deterministic mode: 87.5% of 2,247 calls right, 0 lessons, every
+miss a job that simply ran `exit 3`, which leaves no fact for a
+model-less Oracle to learn ([live examples](docs/use/live-examples.md)).
 
 Full spec in PROTOCOL.md (sections 9–12). Oracle fields are optional
 members of a `"v": 1` message. They are not a separate message version.

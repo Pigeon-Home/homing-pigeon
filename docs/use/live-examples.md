@@ -145,6 +145,22 @@ A prediction and the reconciliation that graded one, from
 {"type": "reconciliation", "at": "2026-10-24T23:18:11Z", "job_id": "668cb0ea-1944-470f-8dd9-c9c136280863", "host": "c93749a2f819640ed7c2f43546ef810e", "classification": "incorrect", "predicted_verdict": "likely_success", "outcome": {"exit_code": 3, "timed_out": false, "rejected": false, "repair_applied": false, "repair_succeeded": null}, "lesson_selected": null}
 ```
 
+### Why 281 misses taught it nothing
+
+Every reconciliation above ends `"lesson_selected": null`, and the
+whole ledger selected 0 lessons. That is the learning design working
+as written, not a stall. A verified fact is derived from a cause the
+code can check again later: an interpreter that was absent, a tool
+not on PATH, a path that did not exist. The `exit3` script runs
+`exit 3` with every interpreter, tool and path present, so its
+failure carries none of those features and there is nothing to
+record. The other kind of lesson, a model candidate ("this job exits
+3"), needs the model channel, which deterministic mode does not
+have. A Pi Light Oracle is right about the environment and silent
+about the script; an `llm` Oracle on the same loop would have
+distilled the candidate on the first miss and corroborated it on
+the next ([oracle-opinion-design.md](../design/oracle-opinion-design.md)).
+
 ## Security events
 
 Resource pressure, as the log says it and as the event records it:
