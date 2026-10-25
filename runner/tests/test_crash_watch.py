@@ -231,6 +231,40 @@ class DecideTest(unittest.TestCase):
         self.assertEqual(alerts[0]["detail"]["binary"], "tool")
 
 
+class MidScanVanishTest(unittest.TestCase):
+    """Queue A refill: read_live's mid-scan race
+    (coverage run 40189711740: lines 157-158). A
+    dump that vanishes between the listing and the
+    stat is passed over; the pass still answers
+    with the dump that stayed.
+    """
+
+    def test_a_vanished_dump_is_passed_over(self):
+        from unittest import mock as _mock
+        with tempfile.TemporaryDirectory() as d:
+            for name in ("gone.dmp", "stays.dmp"):
+                with open(os.path.join(d, name), "wb") as fh:
+                    fh.write(b"dump")
+            target = os.path.join(d, "gone.dmp")
+            real_stat = os.stat
+            calls = {"n": 0}
+
+            def flaky(path, *a, **k):
+                if os.fspath(path) == target:
+                    calls["n"] += 1
+                    if calls["n"] > 1:
+                        raise OSError("vanished")
+                return real_stat(path, *a, **k)
+
+            manifest = _manifest()
+            manifest["tunables"] = dict(manifest["tunables"],
+                                        watch_dirs=[d])
+            with _mock.patch.object(os, "stat", flaky):
+                readings = CW.read_live(manifest)
+        self.assertEqual([f["name"] for f in readings["files"]],
+                         ["stays.dmp"])
+
+
 class ReadLiveTest(unittest.TestCase):
     def _manifest_with(self, watch_dir, **tunables):
         manifest = _manifest()

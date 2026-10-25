@@ -294,6 +294,30 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `log_sentinel._prev_inode` and
+  `_compiled_groups`, `training_watch._read_gpu`,
+  and the `backup_freshness` / `crash_watch`
+  `read_live` mid-scan races (2 lines each never
+  run, coverage run 40189711740) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  PrevInodeAndGroupsLegsTest in
+  runner/tests/test_log_sentinel.py (a corrupt
+  stored inode reads as unknown; an un-compilable
+  group is left out), GpuReadLegsTest in
+  runner/tests/test_training_watch.py (an
+  unparsable nvidia-smi line yields to the next),
+  and MidScanVanishTest in
+  runner/tests/test_backup_freshness.py and
+  runner/tests/test_crash_watch.py (a file gone
+  before its stat is passed over). Recorded
+  without a take: senses.load_alerts' per-record
+  scoring guard (426-427) and pi_health
+  _read_throttled's int guard (203-204) are
+  unreachable by construction -- the first sits
+  behind isinstance checks on plain JSON dicts,
+  the second behind a hex-only pattern (base 16
+  is exempt from the conversion cap). Done when
+  a coverage run shows the taken legs clean.
 - Q29 FILED by Muse 2026-10-25 — the Q28 defect
   survives in airwaves' other two signal
   conversions (parse_iw_link ~327, parse_nmcli

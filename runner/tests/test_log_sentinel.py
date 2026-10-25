@@ -154,6 +154,35 @@ class ClassifyTest(unittest.TestCase):
         self.assertEqual([e["pattern"] for e in events], ["fine"])
 
 
+class PrevInodeAndGroupsLegsTest(unittest.TestCase):
+    """Queue A refill: _prev_inode's corrupt-state
+    leg and _compiled_groups' un-compilable leg
+    (coverage run 40189711740: lines 87-88 and
+    220-221). Reader state comes back from a JSON
+    file on disk, so a hand-edited inode reads as
+    "no known inode" rather than raising; a group
+    whose pattern cannot compile is left out rather
+    than taking classification down with it.
+    """
+
+    def test_a_corrupt_inode_reads_as_unknown(self):
+        self.assertEqual(LS._prev_inode({"inode": "abc"}), -1)
+        self.assertEqual(LS._prev_inode({"inode": None}), -1)
+        self.assertEqual(LS._prev_inode({"inode": 424242}),
+                         424242)
+
+    def test_an_uncompilable_group_is_left_out(self):
+        from unittest import mock as _mock
+        builtin = dict(LS.BUILTIN_GROUPS)
+        first = sorted(builtin)[0]
+        with _mock.patch.dict(LS.BUILTIN_GROUPS,
+                              {"broken": "(", first: builtin[first]},
+                              clear=True):
+            groups = LS._compiled_groups(
+                {"groups": ["broken", first]})
+        self.assertEqual([name for name, _rx in groups], [first])
+
+
 class ReaderGuardsTest(unittest.TestCase):
     """Queue A refill: read_new_lines' guard legs
     (coverage run 40187685363: 7 lines on Windows,

@@ -209,6 +209,36 @@ class GpuTest(unittest.TestCase):
         self.assertEqual(alerts, [])
 
 
+class GpuReadLegsTest(unittest.TestCase):
+    """Queue A refill: _read_gpu's unparsable-line
+    leg (coverage run 40189711740: lines 241-242).
+    An nvidia-smi line whose fields are not numbers
+    ("N/A" is what the tool prints for unsupported
+    readings) is skipped for the next line; with no
+    parsable line the source reads as no GPU.
+    """
+
+    def _run_gpu(self, stdout):
+        from unittest import mock as _mock
+        out = type("Out", (), {"stdout": stdout})()
+        with _mock.patch.object(TW.shutil, "which",
+                                return_value="/fake/nvidia-smi"), \
+                _mock.patch.object(TW.subprocess, "run",
+                                   return_value=out):
+            return TW._read_gpu()
+
+    def test_an_unparsable_line_yields_to_the_next(self):
+        got = self._run_gpu("N/A, N/A, N/A, N/A\n"
+                            "55, 100, 1000, 20\n")
+        self.assertEqual(got, {"temp_c": 55.0,
+                               "mem_used_mb": 100.0,
+                               "mem_total_mb": 1000.0,
+                               "util_pct": 20.0})
+
+    def test_no_parsable_line_is_no_gpu(self):
+        self.assertIsNone(self._run_gpu("N/A, N/A, N/A, N/A\n"))
+
+
 class CrashTest(unittest.TestCase):
     def test_traceback_fires_high_with_marker_and_last_line(self):
         alerts, _state = _run([_readings(T0, lines=[

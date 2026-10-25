@@ -91,6 +91,36 @@ class ManifestTest(unittest.TestCase):
             ["backup_arrived", "backup_critical", "backup_stale"])
 
 
+class MidScanVanishTest(unittest.TestCase):
+    """Queue A refill: read_live's mid-scan race
+    (coverage run 40189711740: lines 117-118). A
+    file that vanishes between the listing and the
+    stat is passed over; the snapshot still answers
+    with the file that stayed.
+    """
+
+    def test_a_vanished_file_is_passed_over(self):
+        from unittest import mock as _mock
+        with tempfile.TemporaryDirectory() as d:
+            for name in ("gone.tar", "stays.tar"):
+                with open(os.path.join(d, name), "wb") as fh:
+                    fh.write(b"backup")
+            target = os.path.join(d, "gone.tar")
+            real_stat = os.stat
+            calls = {"n": 0}
+
+            def flaky(path, *a, **k):
+                if os.fspath(path) == target:
+                    calls["n"] += 1
+                    if calls["n"] > 1:
+                        raise OSError("vanished")
+                return real_stat(path, *a, **k)
+
+            with _mock.patch.object(os, "stat", flaky):
+                readings = BF.read_live(_manifest(watch_dir=d))
+        self.assertEqual(readings["newest"]["name"], "stays.tar")
+
+
 class DecideTest(unittest.TestCase):
     def setUp(self):
         self.manifest = _manifest()
