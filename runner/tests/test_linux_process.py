@@ -50,6 +50,27 @@ class KillSignalTest(unittest.TestCase):
             kill_tree(proc)
         proc.kill.assert_called_once()
 
+    def test_an_extra_pid_that_cannot_be_killed_is_swallowed(self):
+        # Queue A refill: kill_tree's extra_pids tail
+        # (coverage run 40187685363: the swallow lines on
+        # Linux). The monitor hands over pids it sampled
+        # earlier; by kill time one may already be gone.
+        # That kill failing is best effort, swallowed --
+        # and the job's own pid and empty entries are
+        # never signalled through this tail.
+        proc = _proc(42)
+        killed = []
+
+        def fake_kill(pid, sig):
+            killed.append(pid)
+            raise ProcessLookupError("already gone")
+
+        with mock.patch("runner.runner.os.name", "posix"), \
+             mock.patch("runner.runner.os.killpg"), \
+             mock.patch("runner.runner.os.kill", fake_kill):
+            kill_tree(proc, extra_pids=[999, 42, 0])
+        self.assertEqual(killed, [999])
+
     def test_both_kills_failing_does_not_raise(self):
         proc = _proc(7)
         proc.kill.side_effect = OSError("gone")

@@ -156,6 +156,19 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/runner.py::kill_tree` (7 lines
+  never run on Windows, 2 on Linux, coverage run
+  40187685363) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the Windows
+  residue is the POSIX branch and the POSIX-only
+  extra-pids block (platform-inapplicable there,
+  covered on Linux); the Linux residue was the
+  extra-pids swallow, now pinned in
+  runner/tests/test_linux_process.py: an extra pid
+  that is already gone is swallowed, and the job's
+  own pid and empty entries are never signalled
+  through the tail. Done when a coverage run shows
+  only the platform pair left.
 - A (refill) — `runner/extensions/aide-feed/`
   `aide_feed.py::read_report_file` (7 lines never run
   on Windows, 4 on Linux, coverage run 40187685363)
