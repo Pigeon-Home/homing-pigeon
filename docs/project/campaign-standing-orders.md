@@ -156,6 +156,17 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
+- A (refill) — `runner/transport_extensions/dtls/`
+  `__main__.py::DtlsPipe.run_once` (5 lines never
+  run on either platform, coverage run 40189608702)
+  — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  DtlsRunOnceLegsTest in runner/tests/test_dtls.py:
+  a dead socket still completes the pass; a receive
+  that fails after a ready select drops the
+  datagram and sends nothing; the core's tick
+  output goes out on the socket. Done when a
+  coverage run shows the function clean.
 - A (refill) — `runner/runner.py::reload_hot_config`
   (5 lines never run on either platform, coverage
   run 40189608702) — taken 2026-10-25,

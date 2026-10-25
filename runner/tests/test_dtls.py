@@ -1759,3 +1759,63 @@ class DtlsOnJobDropsTest(unittest.TestCase):
         self.assertEqual(pipe.job_session, {"probe-1": "s1"})
         self.assertEqual(self._delivered(channel),
                          ["probe-1.job.txt"])
+
+
+class DtlsRunOnceLegsTest(unittest.TestCase):
+    """Queue A refill: DtlsPipe.run_once's socket legs
+    (coverage run 40189608702: 5 lines on both
+    platforms). One pass of the pipe is total over a
+    misbehaving socket, by the shape of the code: a
+    select that fails means no datagram this pass,
+    a receive that fails after a ready select means
+    the datagram is gone, and neither stops the
+    pass -- the core's tick output still goes out
+    and the events and results still pump.
+    """
+
+    def _pipe(self):
+        tmp = tempfile.mkdtemp(prefix="hp-dtls-once-")
+        channel = os.path.join(tmp, "channel")
+        cfg = {"shared_secret": SECRET, "port": 0,
+               "bind": "127.0.0.1"}
+        return dtls_ext.DtlsPipe(cfg, channel)
+
+    def test_a_dead_socket_still_completes_the_pass(self):
+        pipe = self._pipe()
+        pipe.sock.close()
+        pipe.run_once(now=1000.0)
+
+    def test_a_failed_receive_drops_the_datagram(self):
+        pipe = self._pipe()
+        real_sock, pipe.sock = pipe.sock, mock.Mock()
+        pipe.sock.recvfrom.side_effect = OSError("gone")
+        sent = []
+        pipe.sock.sendto.side_effect = \
+            lambda dg, addr: sent.append((dg, addr))
+        try:
+            with mock.patch.object(
+                    dtls_ext.select, "select",
+                    return_value=([pipe.sock], [], [])):
+                pipe.run_once(now=1000.0)
+        finally:
+            real_sock.close()
+        self.assertEqual(sent, [])
+
+    def test_tick_output_goes_out_on_the_socket(self):
+        pipe = self._pipe()
+        real_sock, pipe.sock = pipe.sock, mock.Mock()
+        sent = []
+        pipe.sock.sendto.side_effect = \
+            lambda dg, addr: sent.append((dg, addr))
+        addr = ("127.0.0.1", 9999)
+        try:
+            with mock.patch.object(
+                    dtls_ext.select, "select",
+                    return_value=([], [], [])), \
+                    mock.patch.object(
+                        pipe.core, "tick",
+                        return_value=[(addr, b"dg-bytes")]):
+                pipe.run_once(now=1000.0)
+        finally:
+            real_sock.close()
+        self.assertEqual(sent, [(b"dg-bytes", addr)])
