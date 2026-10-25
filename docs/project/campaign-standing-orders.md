@@ -2700,6 +2700,37 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Q53 filed: the extraction series left the
+  suite wholesale red (full suite at 3fd1ac88:
+  shard 0 failures=65 errors=467 skipped=11;
+  shard 1 failures=161 errors=682 skipped=25).
+  Two root causes isolated: the _close_quiet /
+  _unlink_quiet shims in runner.py call
+  themselves (83367061), and script-mode
+  runner.py tracebacks on the unfell-backed
+  absolute runner.ops imports (8278c7e7; the
+  help-document test runs the script). Q52 is
+  the third cause. Fixes are the production
+  lane's; the campaign re-runs the suite when
+  they land.
+- rules refreshed 2026-10-25 15:28 PDT
+  resources 2026-10-25T22:28:01Z: cores 2 | box cpu 53% | wall 8m21s | cmd cpu 6m18s = 0.8 cores busy | peak rss 429 MB | mem used 88% | disk free 166.4 GB | exit 1 | under-driven
+  resources-top: hatch 258 MB, python 10 MB, systemd 5 MB, hatch-execd 5 MB, systemd-journal 2 MB
+  (the hour's suite is the Q53 run above:
+  wholesale red from the extraction series,
+  not green; the rig idled only while the
+  causes were isolated by hand. Standing
+  orders, AGENTS.md rules 7-9, the open
+  questions (Q49, Q51, Q52, Q53) and the
+  playbook hard rules re-read. Also
+  dispositioned: default_interpreter is
+  list-typed with an or-platform-default
+  reader (verify.py, runner.py, platformcard)
+  -- no single defaulted read for the
+  registry, like v2_answerers; its semantics
+  are pinned by the platform-card and
+  interpreter tests. The queue D documented-
+  key sweep is thereby exhausted.)
 - Q52 filed: live config reload has silently
   no-opped since Grok's extraction of
   reload_hot_config into runner/ops/attest.py
