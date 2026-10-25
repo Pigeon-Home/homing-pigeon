@@ -2606,3 +2606,21 @@ when done, the proving commit or run. Newest first.
   mem used 97% | disk free 166.4 GB | under-driven
   (scoped takes all hour). resources-top: hatch
   199 MB, python 12 MB.
+- A (refill) — runner.py residual on the local map at
+  93998ca is fully accounted: handle_board_mail's four
+  lines are its recorded residue; the rest is ones and
+  twos (answer_queries' non-dict exec_result reset and
+  non-dict signal pass-over, the chat handler's
+  unserializable-payload fallback at 10141-10142) --
+  all under the queue's stop-for-the-day threshold.
+  A fresh local full-suite map at the current head is
+  building (cov-local-30be512) to re-rank from; A
+  resumes there if anything stands at ten lines or
+  more. — 58316a92-3c4a-41cb-8a16-8c0c5a871e90,
+  2026-10-25.
+- Correction — the two refresh lines above labelled
+  ~08:00 and ~09:05 PDT were written ahead of the
+  clock (the rig's own resource stamps read 07:2x and
+  07:34 PDT); the refreshes happened, the labels
+  were wrong. Refresh cadence is hourly from the
+  07:02 PDT line.
