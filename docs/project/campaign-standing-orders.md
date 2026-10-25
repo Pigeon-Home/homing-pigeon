@@ -2700,6 +2700,12 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: runner.run_inspect (5 missed, Linux
+  map). Its two unavailable branches -- the sources or
+  review module failed to import -- are pinned by
+  InspectUnavailableTest in test_extension_sources.py
+  (stderr line, exit 1, no crash); local coverage of
+  the function shows both branches running.
 - Queue A taken: transports.discover_transport_
   extensions (5 missed, Linux map). The review-failure
   catch is covered (ReviewFailureTest: a raising review

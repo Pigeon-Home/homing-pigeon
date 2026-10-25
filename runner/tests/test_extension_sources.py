@@ -2998,5 +2998,33 @@ class InstalledRecordLegsTest(unittest.TestCase):
             self.assertFalse(os.path.exists(copy_dir))
 
 
+class InspectUnavailableTest(unittest.TestCase):
+    """Queue A (coverage map, run_inspect): when the sources
+    or review module failed to import, --inspect says so on
+    stderr and exits 1 instead of crashing -- the defensive
+    import's whole point."""
+
+    def _inspect(self, which, global_name):
+        args = mock.Mock(inspect=which, config=None)
+        err = io.StringIO()
+        with mock.patch.object(R, global_name, None), \
+                redirect_stderr(err):
+            code = R.run_inspect({"base_dir": tempfile.mkdtemp()},
+                                 args)
+        return code, err.getvalue()
+
+    def test_inspect_sources_without_the_module(self):
+        code, err = self._inspect("sources", "_extsources")
+        self.assertEqual(code, 1)
+        self.assertIn("extension sources", err)
+        self.assertIn("unavailable", err)
+
+    def test_inspect_review_without_the_module(self):
+        code, err = self._inspect("review", "_extreview")
+        self.assertEqual(code, 1)
+        self.assertIn("extension review", err)
+        self.assertIn("unavailable", err)
+
+
 if __name__ == "__main__":
     unittest.main()
