@@ -142,7 +142,11 @@ class WithSeenFileTest(unittest.TestCase):
                 raise OSError("close refused")
             return real_close(fd)
 
-        with tempfile.TemporaryDirectory() as d:
+        # ignore_cleanup_errors: the scripted close failure
+        # leaks the lock fd on purpose, and Windows will
+        # not unlink a file this process still holds open.
+        with tempfile.TemporaryDirectory(
+                ignore_cleanup_errors=True) as d:
             path = os.path.join(d, "seen.json")
             with mock.patch.object(os, "close", side_effect=close):
                 got = _with_seen_file(path, _add("closed-anyway"))

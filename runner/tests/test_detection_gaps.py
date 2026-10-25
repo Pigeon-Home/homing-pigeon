@@ -226,7 +226,11 @@ class UpdateBaselineBranchesTest(unittest.TestCase):
                     raise OSError("staging file stuck")
             return real_unlink(path, *a, **kw)
 
-        with tempfile.TemporaryDirectory() as d:
+        # ignore_cleanup_errors: the scripted close failure
+        # leaks the staging fd on purpose, and Windows will
+        # not unlink a file this process still holds open.
+        with tempfile.TemporaryDirectory(
+                ignore_cleanup_errors=True) as d:
             with mock.patch.object(detection.os, "fdopen",
                                    side_effect=OSError("no writer")), \
                     mock.patch.object(detection.os, "close",

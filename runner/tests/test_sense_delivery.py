@@ -256,32 +256,36 @@ class UnimportableRepoTest(unittest.TestCase):
                 ops_pkg.extensions = saved
 
 
-class LabResultsRepoPathTest(unittest.TestCase):
-    """Queue A residue in the template sense itself: the
-    sys.path insert at the top of _deliver_local never
-    fired anywhere (coverage run 40183585961), because in
-    every suite process the repo root is already on the
-    path by the time any delivery runs. Scrubbed of it,
-    the delivery must put it back before it imports --
-    the standalone-run promise the insert exists for.
+class RepoPathInsertTest(unittest.TestCase):
+    """Queue A residue in every copy of _deliver_local:
+    the sys.path insert at its top never fired in the
+    full suite (coverage run 40185441322 left exactly
+    that one line per copy), because in every suite
+    process the repo root is already on the path by the
+    time any delivery runs. Scrubbed of it, each sense's
+    delivery must put it back before it imports -- the
+    standalone-run promise the insert exists for.
     """
 
-    def test_delivery_reinserts_the_repo_root(self):
-        mod = _load("lab-results", "lab_results.py")
+    def test_every_sense_reinserts_the_repo_root(self):
         root = os.path.normpath(REPO)
-        saved = list(sys.path)
-        sys.path[:] = [
-            p for p in sys.path
-            if os.path.realpath(p or os.getcwd())
-            != os.path.realpath(REPO)]
-        try:
-            with redirect_stderr(StringIO()):
-                got = mod._deliver_local(
-                    [], _args(secret_env="HP_Q14_UNSET"))
-            self.assertIsNone(got)
-            self.assertIn(root, sys.path)
-        finally:
-            sys.path[:] = saved
+        for dirname, filename in EXTENSIONS:
+            with self.subTest(sense=dirname):
+                mod = _load(dirname, filename)
+                saved = list(sys.path)
+                sys.path[:] = [
+                    p for p in sys.path
+                    if os.path.realpath(p or os.getcwd())
+                    != os.path.realpath(REPO)]
+                try:
+                    with redirect_stderr(StringIO()):
+                        got = mod._deliver_local(
+                            [], _args(
+                                secret_env="HP_Q14_UNSET"))
+                    self.assertIsNone(got)
+                    self.assertIn(root, sys.path)
+                finally:
+                    sys.path[:] = saved
 
 
 class OutsideTheCloneTest(unittest.TestCase):

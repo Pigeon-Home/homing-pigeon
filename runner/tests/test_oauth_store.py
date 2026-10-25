@@ -110,7 +110,15 @@ class StoreWriteTest(unittest.TestCase):
             self.assertEqual(os.listdir(d), [])
 
     def test_a_failed_close_does_not_mask_the_write_error(self):
-        with tempfile.TemporaryDirectory() as d:
+        # No staging-file assertion here: a close that
+        # refuses leaves the fd open, and Windows will not
+        # unlink a file this process still holds -- the
+        # no-debris promise is the sibling test's, where
+        # the cleanup close works. What this leg pins is
+        # the error identity: the write's "disk", never
+        # the close's refusal.
+        with tempfile.TemporaryDirectory(
+                ignore_cleanup_errors=True) as d:
             path = os.path.join(d, "config.json")
             with mock.patch.object(
                     os, "fdopen",
@@ -121,7 +129,6 @@ class StoreWriteTest(unittest.TestCase):
                 with self.assertRaises(OSError) as cm:
                     store_refresh_token(path, dict(CFG), "tok")
             self.assertEqual(str(cm.exception), "disk")
-            self.assertEqual(os.listdir(d), [])
 
     def test_a_failed_cleanup_unlink_does_not_mask_the_write_error(self):
         real_unlink = os.unlink
