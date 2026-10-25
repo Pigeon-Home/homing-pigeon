@@ -61,6 +61,25 @@ jobs:
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "cutting v$ver at $(git rev-parse --short HEAD)"
 
+      - name: the commit carries main's workflow files
+        env:
+          SHA: ${{ steps.ver.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # GITHUB_TOKEN has no `workflows` scope, so GitHub refuses
+          # a new ref whose .github/workflows differ from the default
+          # branch's -- the 3.12.67 cut of an older commit died with
+          # "refusing to allow a GitHub App to create or update
+          # workflow" once main had moved a workflow past it. Say so
+          # here, before the build check, instead of at the push.
+          git fetch -q origin main
+          here=$(git rev-parse "$SHA:.github/workflows")
+          main=$(git rev-parse "origin/main:.github/workflows")
+          if [ "$here" != "$main" ]; then
+            echo "::error::$SHA does not carry main's .github/workflows (tree $here vs $main); a tag on it cannot be pushed with GITHUB_TOKEN. Cut the head of main, or a commit whose workflows match it."
+            exit 1
+          fi
+
       - name: the tag does not exist yet
         env:
           TAG: ${{ steps.ver.outputs.tag }}
