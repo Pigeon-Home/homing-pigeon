@@ -671,6 +671,119 @@ class ReadLiveTest(unittest.TestCase):
         self.assertIn("timed out", errors[0]["reason"])
 
 
+class ReadLiveCampaignLegsTest(unittest.TestCase):
+    """Queue A refill: read_live's campaign legs
+    (coverage run 40187685363: 7 lines on both
+    platforms). The campaign contract (read_live's own
+    docstring): the pass is bounded by its tunables and
+    re-earns idleness before every variant; a fresh job
+    landing mid-campaign stops it where it stands.
+    Pinned here on the ReadLiveTest rig: an unusable
+    records cap reads as the default; a reader state
+    without a numeric campaign seed is seeded from the
+    clock; an empty seed pool ends the pass before any
+    variant; the variant budget breaks both loops; a
+    mutator with nothing to mutate is skipped, not
+    run; and a box that stops being idle mid-pass ends
+    the campaign with the outcomes it already has.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-jf-legs-")
+        self.base = os.path.join(self.tmp, "state")
+        self.retained = os.path.join(self.base, "retained")
+        os.makedirs(self.retained)
+        self.fake = os.path.join(self.tmp, "fake.py")
+        with open(self.fake, "w", encoding="utf-8") as fh:
+            fh.write(FAKE_RUNNER)
+
+    def _retain(self, record, age_sec=3600):
+        path = os.path.join(
+            self.retained, record["job_id"] + ".json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(record, fh)
+        old = time.time() - age_sec
+        os.utime(path, (old, old))
+        return path
+
+    def _manifest_with(self, **tunables):
+        m = _manifest()
+        m["tunables"]["idle_load_max"] = 1e9
+        m["tunables"].update(tunables)
+        m["tunables"]["runner_base_dir"] = self.base
+        m["tunables"]["work_dir"] = os.path.join(self.tmp, "work")
+        return m
+
+    def _cmd(self):
+        return f"{sys.executable} {self.fake} {{variant}}"
+
+    def test_an_unusable_records_cap_reads_as_the_default(self):
+        self._retain(_seed(saved_at=time.time() - 3600))
+        m = self._manifest_with(max_records_per_pass=0)
+        readings = JF.read_live(m, {"campaign_seed": 0})
+        self.assertEqual(len(readings["seeds"]), 1)
+
+    def test_no_numeric_campaign_seed_is_seeded_from_the_clock(self):
+        self._retain(_seed(saved_at=time.time() - 3600))
+        m = self._manifest_with(runner_cmd=self._cmd())
+        readings = JF.read_live(m, {})
+        self.assertIsInstance(readings["campaign_seed"], int)
+        self.assertLess(
+            abs(readings["campaign_seed"] - time.time()), 120)
+
+    def test_an_empty_pool_ends_the_pass(self):
+        m = self._manifest_with(runner_cmd=self._cmd())
+        readings = JF.read_live(m, {"campaign_seed": 0})
+        self.assertTrue(readings["idle"])
+        self.assertEqual(readings["seeds"], [])
+        self.assertEqual(readings["outcomes"], [])
+
+    def test_the_variant_budget_breaks_both_loops(self):
+        self._retain(_seed(saved_at=time.time() - 3600))
+        self._retain(_seed(job_id="job-b",
+                           saved_at=time.time() - 3600))
+        m = self._manifest_with(
+            runner_cmd=self._cmd(), max_variants_per_pass=1,
+            variants_per_seed=2)
+        readings = JF.read_live(m, {"campaign_seed": 0})
+        self.assertEqual(len(readings["outcomes"]), 1)
+
+    def test_a_mutator_with_nothing_to_mutate_is_skipped(self):
+        # campaign_seed 3 rotates the picks onto
+        # drop_line first; on a one-line script it has
+        # nothing to drop and returns None, and the pass
+        # moves on to duplicate_line instead of running
+        # a non-variant.
+        self._retain(_seed(script="echo hello",
+                           saved_at=time.time() - 3600))
+        m = self._manifest_with(runner_cmd=self._cmd(),
+                                variants_per_seed=2)
+        readings = JF.read_live(m, {"campaign_seed": 3})
+        self.assertEqual(
+            [o["mutator"] for o in readings["outcomes"]],
+            ["duplicate_line"])
+
+    def test_a_box_that_stops_being_idle_ends_the_campaign(self):
+        self._retain(_seed(saved_at=time.time() - 3600))
+        real_scan = JF._scan_retained
+        rechecks = []
+
+        def flipping_scan(base, cap):
+            if cap == 1:
+                rechecks.append(1)
+                if len(rechecks) > 1:
+                    # A fresh job just landed.
+                    return [], time.time()
+            return real_scan(base, cap)
+
+        m = self._manifest_with(runner_cmd=self._cmd(),
+                                variants_per_seed=2)
+        with mock.patch.object(JF, "_scan_retained",
+                               flipping_scan):
+            readings = JF.read_live(m, {"campaign_seed": 0})
+        self.assertEqual(len(readings["outcomes"]), 1)
+
+
 class IdleVoteTest(unittest.TestCase):
     def test_fresh_job_is_never_idle(self):
         self.assertFalse(JF._box_idle(1000.0, 999.0, 600.0))

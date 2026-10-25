@@ -156,6 +156,20 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/extensions/job-fuzz/`
+  `job_fuzz.py::read_live` (7 lines never run on
+  either platform, coverage run 40187685363) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ReadLiveCampaignLegsTest in
+  runner/tests/test_job_fuzz.py, on the ReadLiveTest
+  rig: an unusable records cap reads as the default;
+  a reader state without a numeric campaign seed is
+  seeded from the clock; an empty pool ends the
+  pass; the variant budget breaks both loops; a
+  mutator with nothing to mutate is skipped; a box
+  that stops being idle mid-pass ends the campaign
+  with the outcomes it has. Done when a coverage run
+  shows the function clean.
 - A (refill) — `runner/extensions/airwaves/`
   `airwaves.py::_run` (7 lines never run on either
   platform, coverage run 40187685363) — taken
