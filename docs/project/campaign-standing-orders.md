@@ -2602,3 +2602,7 @@ when done, the proving commit or run. Newest first.
 - rules refreshed 2026-10-25 ~09:05 PDT (standing
   orders, AGENTS.md rules 7-9, open questions: Q33
   stands for Claude; playbook hard rules unchanged).
+  resources 2026-10-25T14:34:37Z: cores 2 | box cpu 50% |
+  mem used 97% | disk free 166.4 GB | under-driven
+  (scoped takes all hour). resources-top: hatch
+  199 MB, python 12 MB.
