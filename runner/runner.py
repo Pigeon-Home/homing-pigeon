@@ -6344,30 +6344,8 @@ _EVENTLOG_ATTACK = {
     1102: "T1070.002",   # clear the audit log
 }
 
-def _wevtutil_query(logname, xpath, count, timeout=15):
-    """Run wevtutil and return stdout text.
+from runner.ops.windows import _wevtutil_query, _reg_attack, _reg_query  # noqa: E402
 
-    wevtutil ships with Windows. Returns None on any failure (so the
-    caller can say "unreadable" instead of "clean"); "" means the query
-    ran but matched nothing. Never raises: telemetry must not break
-    the runner.
-    """
-    try:
-        flags = {}
-        if sys.platform == "win32":
-            cnw = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-            if cnw:
-                flags["creationflags"] = cnw
-        proc = subprocess.run(
-            ["wevtutil", "qe", logname, "/q:" + xpath,
-             "/c:%d" % count, "/rd:true", "/f:xml"],
-            capture_output=True, text=True, timeout=timeout, **flags)
-    except Exception:
-        return None
-    if proc.returncode != 0:
-        return None
-    out = proc.stdout
-    return out if isinstance(out, str) else None
 
 
 # Registry locations the Oracle watches, read-only. Autorun and
@@ -6386,53 +6364,7 @@ _REG_WATCH_WINLOGON_KEEP = {
 _REG_WATCH_MAX_VALUES = 12
 _REG_WATCH_MAX_CHANGES = 15
 
-def _reg_attack(key):
-    """ATT&CK id for a watched registry location, or ""."""
-    low = key.lower().replace("/", "\\")
-    if "winlogon" in low:
-        return "T1547.004"
-    if low.endswith("\\run") or low.endswith("\\runonce"):
-        return "T1547.001"
-    return ""
 
-def _reg_query(key):
-    """(values, subkeys) for a registry key, or None on failure.
-
-    values is {name: data}, subkeys is [name]. Uses reg.exe, which ships
-    with Windows. Never raises.
-    """
-    try:
-        flags = {}
-        if sys.platform == "win32":
-            cnw = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-            if cnw:
-                flags["creationflags"] = cnw
-        proc = subprocess.run(
-            ["reg", "query", key], capture_output=True, text=True,
-            timeout=15, **flags)
-    except Exception:
-        return None
-    if proc.returncode != 0 or not isinstance(proc.stdout, str):
-        return None
-    values = {}
-    subkeys = []
-    for raw in proc.stdout.splitlines():
-        line = raw.rstrip()
-        if not line.strip():
-            continue
-        if not raw[:1].isspace():
-            # A subkey path (reg.exe prints them flush-left).
-            subkeys.append(line.strip())
-            continue
-        parts = line.strip().split(None, 2)
-        if len(parts) >= 3:
-            values[parts[0]] = parts[2][:160]
-        elif len(parts) == 2:
-            values[parts[0]] = ""
-    # The first flush-left line is the queried key itself, not a subkey.
-    if subkeys and subkeys[0].lower() == key.lower():
-        subkeys = subkeys[1:]
-    return values, subkeys
 
 def _registry_snapshot():
     """Current watch state, or None if the registry cannot be read.
@@ -6762,71 +6694,11 @@ def _tail_marked(path, markers, max_lines=20):
     return kept[-max_lines:]
 
 
-def _parse_netsh_profiles(text):
-    """'firewall: windows Domain=ON ...' from netsh, or None."""
-    if not isinstance(text, str) or not text.strip():
-        return None
-    profiles = []
-    current = None
-    for raw in text.splitlines():
-        line = raw.strip()
-        if line.endswith("Profile Settings:"):
-            current = line[: -len("Profile Settings:")].strip()
-            continue
-        if current and line.lower().startswith("state"):
-            state = line.split()[-1].upper() if line.split() else ""
-            if state in ("ON", "OFF"):
-                profiles.append((current, state))
-            current = None
-    if not profiles:
-        return None
-    bits = [name + "=" + state for name, state in profiles]
-    line = "firewall: windows " + " ".join(bits)
-    if any(state == "OFF" for _name, state in profiles):
-        line += " [T1562.004]"
-    return line
+from runner.ops.firewall import _firewall_posture  # noqa: E402
 
-def _parse_ufw(text):
-    if not isinstance(text, str):
-        return None
-    low = text.lower()
-    if "status: active" in low:
-        return "firewall: linux ufw=active"
-    if "status: inactive" in low:
-        return "firewall: linux ufw=inactive [T1562.004]"
-    return None
 
-def _parse_iptables_policy(text):
-    """Policy lines only. A full ruleset is not the posture."""
-    if not isinstance(text, str) or not text.strip():
-        return None
-    policies = []
-    for raw in text.splitlines():
-        parts = raw.split()
-        if len(parts) >= 3 and parts[0] == "-P":
-            policies.append((parts[1], parts[2]))
-    if not policies:
-        return None
-    bits = [chain + "=" + policy for chain, policy in policies]
-    line = "firewall: linux iptables " + " ".join(bits)
-    protected = any(
-        policy in ("DROP", "REJECT") and chain in ("INPUT", "FORWARD")
-        for chain, policy in policies)
-    if not protected:
-        line += " [T1562.004]"
-    return line
 
-def _parse_socketfilterfw(text):
-    if not isinstance(text, str):
-        return None
-    low = text.lower()
-    # "disabled" contains the letters "enabled", and "state = 10"
-    # contains "state = 1". Match the words, not the substrings.
-    if re.search(r"\bdisabled\b", low) or re.search(r"state\s*=\s*0\b", low):
-        return "firewall: macos application-firewall=off [T1562.004]"
-    if re.search(r"\benabled\b", low) or re.search(r"state\s*=\s*1\b", low):
-        return "firewall: macos application-firewall=on"
-    return None
+
 
 def _run_text(argv, timeout=5):
     """stdout of a short read-only command, or None. Never raises."""
@@ -6844,29 +6716,6 @@ def _run_text(argv, timeout=5):
         return None
     return proc.stdout
 
-def _firewall_posture():
-    """One line: is the host firewall on. None if it cannot be read.
-
-    Not a packet capture and not a ruleset dump. Windows uses netsh
-    profile state. Linux prefers ufw status, else the iptables policy
-    lines only. macOS uses the Application Firewall state and does not
-    call pfctl. Never raises.
-    """
-    if sys.platform == "win32":
-        return _parse_netsh_profiles(_run_text(
-            ["netsh", "advfirewall", "show", "allprofiles"]))
-    if sys.platform == "darwin":
-        return _parse_socketfilterfw(_run_text([
-            "/usr/libexec/ApplicationFirewall/socketfilterfw",
-            "--getglobalstate"]))
-    if shutil.which("ufw"):
-        parsed = _parse_ufw(_run_text(["ufw", "status"]))
-        if parsed:
-            return parsed
-    if shutil.which("iptables"):
-        return _parse_iptables_policy(
-            _run_text(["iptables", "-S"], timeout=3))
-    return None
 
 def _read_posture_line(path):
     """Previous posture line, or None. A symlink is not followed."""
