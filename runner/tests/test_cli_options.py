@@ -1727,5 +1727,58 @@ class Version2IngestBranchesTest(_VerbosityGuard):
         self.assertTrue(bad_ack.acked)
 
 
+class Version2HandOffFallbacksTest(unittest.TestCase):
+    """Queue A refill: _v2_hand_off's failure legs
+    (coverage run 40189608702: 5 lines on both
+    platforms). The hand-off's docstring fixes the
+    contract: a captured send is written to the
+    channel now, per enabled transport; a transport
+    list that cannot be read, and a channel write
+    that fails, each degrade to the ordinary send --
+    the message still goes out, the failure is
+    logged, and nothing is written twice.
+    """
+
+    SUBJECT = "[HOMING-PIGEON] determination d-1"
+
+    def _hand_off(self, enabled, write):
+        sent = []
+        with mock.patch.object(
+                runner, "_enabled_transports", enabled), \
+                mock.patch.object(
+                    runner._transports,
+                    "write_channel_result", write), \
+                mock.patch.object(
+                    runner, "send_mail",
+                    lambda *a, **kw: sent.append((a, kw))), \
+                mock.patch.object(runner, "log",
+                                  lambda *a, **kw: None):
+            out = runner._v2_hand_off(
+                {}, runner._CaptureSMTP(), "/base",
+                self.SUBJECT, "BODY", "target@example.org")
+        return out, sent
+
+    def test_an_unreadable_transport_list_falls_back_to_send(self):
+        out, sent = self._hand_off(
+            mock.Mock(side_effect=RuntimeError("cfg gone")),
+            mock.Mock())
+        self.assertEqual(out, [])
+        self.assertEqual(len(sent), 1)
+
+    def test_a_failing_channel_write_falls_back_to_send(self):
+        out, sent = self._hand_off(
+            lambda cfg: ["file"],
+            mock.Mock(side_effect=RuntimeError("disk")))
+        self.assertEqual(out, [])
+        self.assertEqual(len(sent), 1)
+
+    def test_a_written_channel_is_not_sent_again(self):
+        out, sent = self._hand_off(
+            lambda cfg: ["file"],
+            mock.Mock(return_value="/chan/out.eml"))
+        self.assertEqual(out, ["/chan/out.eml"])
+        self.assertEqual(sent, [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

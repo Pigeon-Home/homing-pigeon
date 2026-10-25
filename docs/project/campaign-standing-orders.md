@@ -156,6 +156,17 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
+- A (refill) — `runner/runner.py::_v2_hand_off` (5
+  lines never run on either platform, coverage run
+  40189608702) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  Version2HandOffFallbacksTest in
+  runner/tests/test_cli_options.py: a transport
+  list that cannot be read and a channel write
+  that fails each degrade to the ordinary send,
+  exactly once; a written channel is not sent
+  again (control). Done when a coverage run shows
+  the function clean.
 - A (refill) — `runner/runner.py::_start_job_monitor`
   (5 lines never run on either platform, coverage
   run 40189608702) — taken 2026-10-25,
