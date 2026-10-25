@@ -1,0 +1,81 @@
+# Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab
+name: hardware
+
+# Everything else proves ARM under QEMU or on GitHub's arm64 VMs.
+# This proves it on a physical board: the owner's own Raspberry Pi
+# (or any box) registered as a self-hosted runner, with the labels
+# below. On it: the whole suite, the portable platform proof, the
+# upgrade proof and a short soak, under the board's own Python, its
+# own kernel and its own SD card.
+#
+# Dispatch only. A schedule aimed at a runner that is not online
+# just queues; the owner starts this when the board is on.
+#
+# Register the board once (Settings > Actions > Runners > New
+# self-hosted runner), give it the label in the `runner` input, and
+# install python3, python3-venv, git and bubblewrap on it.
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: "self-hosted runner label of the board"
+        default: "pi"
+      soak_minutes:
+        description: "how long to soak on the board"
+        default: "20"
+
+permissions: {}
+
+concurrency:
+  group: hardware-${{ github.event.inputs.runner }}
+  cancel-in-progress: false
+
+jobs:
+  on-the-board:
+    runs-on: [self-hosted, "${{ github.event.inputs.runner }}"]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: the board
+        run: |
+          uname -a
+          python3 --version
+          cat /proc/device-tree/model 2>/dev/null || true
+          df -h . | tail -1
+      - name: a venv with the pinned test tools
+        run: |
+          python3 -m venv "$RUNNER_TEMP/hp-venv"
+          "$RUNNER_TEMP/hp-venv/bin/pip" install -c .github/requirements-ci.txt hypothesis
+          echo "$RUNNER_TEMP/hp-venv/bin" >> "$GITHUB_PATH"
+      - name: run the suite
+        run: |
+          set -o pipefail
+          python runner/tools/suite_wall_clock.py --minutes 90 -- discover -s runner/tests -t . -v 2>&1 | tee test-output.log
+      - name: a full OK
+        if: always()
+        run: python runner/tools/skip_guard.py test-output.log --require-ok --annotate
+      - name: the portable platform proof, no skips
+        if: always()
+        env:
+          HP_PLATFORM_PROOF: "1"
+        run: |
+          python -m unittest runner.tests.test_platform_proof -v 2>&1 | tee proof-output.log || true
+          python runner/tools/skip_guard.py proof-output.log --no-skips --require-ok --annotate
+          grep PLATFORM-REPORT proof-output.log | tail -1 >> "$GITHUB_STEP_SUMMARY"
+      - name: upgrade over itself on the board
+        if: always()
+        run: python runner/tools/upgrade_proof.py . .
+      - name: soak on the board
+        if: always()
+        env:
+          MINUTES: ${{ github.event.inputs.soak_minutes || '20' }}
+        run: python runner/tools/soak.py --minutes "$MINUTES" --json soak-samples.json
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: hardware-${{ github.event.inputs.runner }}
+          path: |
+            test-output.log
+            proof-output.log
+            soak-samples.json
