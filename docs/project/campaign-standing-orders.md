@@ -155,6 +155,12 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A — `runner/extensions/lab-results/lab_results.py::`
+  `_deliver_local` (11 lines never run on either
+  platform, coverage run 40183585961) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the template
+  sense itself was missing from the delivery roster its
+  copies are tested by.
 - A — `runner/extensions/job-fuzz/job_fuzz.py::`
   `_run_one_variant` (11 lines never run on either
   platform, coverage run 40183585961) — taken 2026-10-25,

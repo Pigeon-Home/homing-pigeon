@@ -7,7 +7,7 @@ runner -- sign it, then drop it in the local inbox or push it
 to the local signal socket -- never ran in any of the
 extensions the coverage map names. The copies are one shape by
 design (the Lab Results shape), so this is one parameterized
-test over all eighteen, per docs/extend/senses.md:
+test over all nineteen, per docs/extend/senses.md:
 
   - the alert the runner files is the alert the extension
     decided (same sensor, title, signal), and its signature
@@ -49,6 +49,7 @@ EXTENSIONS = [
     ("failed-login-watch", "failed_login_watch.py"),
     ("job-fuzz", "job_fuzz.py"),
     ("job-watcher", "job_watcher.py"),
+    ("lab-results", "lab_results.py"),
     ("latency-post", "latency_post.py"),
     ("log-sentinel", "log_sentinel.py"),
     ("port-watch", "port_watch.py"),
@@ -219,7 +220,7 @@ class UnimportableRepoTest(unittest.TestCase):
     """The same refusal as OutsideTheCloneTest, in-process
     for every sense on the roster: coverage run
     40183585961 still showed the refusal lines unrun in
-    all eighteen copies, because the subprocess proof
+    all nineteen copies, because the subprocess proof
     measures its lines in a child whose coverage data
     never reaches the map. Here the runner's producer
     module is made unimportable through the module
@@ -253,6 +254,34 @@ class UnimportableRepoTest(unittest.TestCase):
         finally:
             if had_attr:
                 ops_pkg.extensions = saved
+
+
+class LabResultsRepoPathTest(unittest.TestCase):
+    """Queue A residue in the template sense itself: the
+    sys.path insert at the top of _deliver_local never
+    fired anywhere (coverage run 40183585961), because in
+    every suite process the repo root is already on the
+    path by the time any delivery runs. Scrubbed of it,
+    the delivery must put it back before it imports --
+    the standalone-run promise the insert exists for.
+    """
+
+    def test_delivery_reinserts_the_repo_root(self):
+        mod = _load("lab-results", "lab_results.py")
+        root = os.path.normpath(REPO)
+        saved = list(sys.path)
+        sys.path[:] = [
+            p for p in sys.path
+            if os.path.realpath(p or os.getcwd())
+            != os.path.realpath(REPO)]
+        try:
+            with redirect_stderr(StringIO()):
+                got = mod._deliver_local(
+                    [], _args(secret_env="HP_Q14_UNSET"))
+            self.assertIsNone(got)
+            self.assertIn(root, sys.path)
+        finally:
+            sys.path[:] = saved
 
 
 class OutsideTheCloneTest(unittest.TestCase):
