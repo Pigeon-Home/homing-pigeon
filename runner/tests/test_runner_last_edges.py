@@ -20,6 +20,13 @@ if _REPO not in sys.path:
     sys.path.insert(0, _REPO)
 
 import runner.runner as rr
+from runner.wire import jobcrypto  # noqa: E402
+
+sys.path.insert(0, os.path.join(_REPO, "runner", "cloud"))
+from send_job import sign_payload  # noqa: E402
+
+KEY_A = "alpha-" + "a1" * 28
+KEY_B = "bravo-" + "b2" * 28
 
 
 class _Binary:
@@ -692,6 +699,119 @@ class RunnerFailSoftLegs2Test(unittest.TestCase):
                     side_effect=OSError("no ollama")):
             self.assertIsNone(rr.update_llama_from_config(
                 {"m": "new"}, previous={"m": "old"}))
+
+
+class RunnerFailSoftLegs3Test(unittest.TestCase):
+    """Queue A refill, third batch (coverage run
+    40189711740): _admit_object's non-string id,
+    malformed envelope and envelope/body key
+    mismatch (3866, 3873, 3878),
+    _learning_reconcile's two disabled gates
+    (5537, 5539), _learning_model_candidate's
+    unparseable reply and failed candidate write
+    (5613-5614, 5623-5624), _wake_gate_decide's
+    non-record and unconvertible clock (4984,
+    4997-4998), and _write_seen_unlocked's
+    cleanup swallow (6737-6738).
+    """
+
+    @staticmethod
+    def _payload(job_id, **kw):
+        from datetime import datetime, timezone
+        p = {"v": 1, "type": "job", "job_id": job_id,
+             "issued_at": datetime.now(timezone.utc).strftime(
+                 "%Y-%m-%dT%H:%M:%SZ"),
+             "kind": "ping"}
+        p.update(kw)
+        return p
+
+    def test_admit_object_legs(self):
+        body = sign_payload(self._payload("j1"), KEY_A)
+        payload, key_id, secret, encrypted = rr._admit_object(
+            body, {"": KEY_A}, 12345)
+        self.assertEqual(payload["job_id"], "j1")
+        self.assertFalse(encrypted)
+        bogus = sign_payload(
+            self._payload("j1", hp_enc={"bogus": 1}), KEY_A)
+        with self.assertRaisesRegex(ValueError,
+                                    "malformed encryption"):
+            rr._admit_object(bogus, {"": KEY_A}, "j1")
+        inner = sign_payload(
+            self._payload("j2", key_id="B"), KEY_B)
+        envelope = jobcrypto.encrypt_body(
+            inner, KEY_A, job_id="j2", key_id="A",
+            sign=sign_payload)
+        with self.assertRaisesRegex(ValueError,
+                                    "does not match"):
+            rr._admit_object(
+                envelope, {"A": KEY_A, "B": KEY_B}, "j2")
+
+    def test_learning_reconcile_gates(self):
+        off = types.SimpleNamespace(
+            learning_enabled=lambda cfg: False)
+        with mock.patch.object(rr, "_learning", off):
+            self.assertIsNone(rr._learning_reconcile(
+                {}, "/b", {"features": []}, "j", {}, {}, None))
+        on = types.SimpleNamespace(
+            learning_enabled=lambda cfg: True)
+        with mock.patch.object(rr, "_learning", on):
+            self.assertIsNone(rr._learning_reconcile(
+                {}, "/b", None, "j", {}, {}, None))
+
+    def test_learning_model_candidate_legs(self):
+        learning = types.SimpleNamespace(
+            learning_model_enabled=lambda cfg: True,
+            validate_candidate=lambda obj: {"claim": "c"},
+            candidate_record=lambda cand, jid, fp: {"r": 1},
+            append_candidate=lambda base, rec: False,
+            host_fingerprint=lambda *a: "fp")
+        opinion = types.SimpleNamespace(
+            model_enabled=lambda cfg: True)
+        job = {"job_id": "j"}
+        outcome = {"exit_code": 0, "timed_out": False,
+                   "rejected": False}
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(rr, "_learning", learning), \
+                mock.patch.object(rr, "_opinion", opinion), \
+                mock.patch.object(rr, "inference_config",
+                                  lambda cfg: {"model": "m"}), \
+                mock.patch.object(
+                    rr, "ask_model",
+                    return_value={"answer": "{not json}"}):
+            self.assertIsNone(rr._learning_model_candidate(
+                {}, d, "j", job, outcome, "", ""))
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(rr, "_learning", learning), \
+                mock.patch.object(rr, "_opinion", opinion), \
+                mock.patch.object(rr, "inference_config",
+                                  lambda cfg: {"model": "m"}), \
+                mock.patch.object(
+                    rr, "ask_model",
+                    return_value={"answer": '{"claim": "c"}'}):
+            self.assertIsNone(rr._learning_model_candidate(
+                {}, d, "j", job, outcome, "", ""))
+
+    def test_wake_gate_decide_legs(self):
+        self.assertFalse(rr._wake_gate_decide({}, "not-a-record"))
+        try:
+            decided = rr._wake_gate_decide(
+                {}, {"severity": "high", "sensor": "s",
+                     "signal": "sig"}, now=object())
+            self.assertTrue(decided)
+        finally:
+            rr._wake_gate_release()
+
+    def test_write_seen_cleanup_swallow(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "seen.json")
+            with mock.patch.object(
+                    os, "replace",
+                    side_effect=OSError("busy")), \
+                    mock.patch.object(
+                        os, "unlink",
+                        side_effect=OSError("stuck")):
+                self.assertIsNone(
+                    rr._write_seen_unlocked(path, {"a": True}))
 
 
 if __name__ == "__main__":

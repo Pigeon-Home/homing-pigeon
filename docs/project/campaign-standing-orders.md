@@ -294,6 +294,20 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — runner.py legs, third batch
+  (coverage run 40189711740): _admit_object's
+  non-string id, malformed envelope and
+  envelope/body key mismatch (real signed
+  bodies throughout), _learning_reconcile's
+  disabled gates, _learning_model_candidate's
+  unparseable reply and failed candidate write,
+  _wake_gate_decide's non-record and
+  unconvertible clock, _write_seen_unlocked's
+  cleanup swallow — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  RunnerFailSoftLegs3Test in
+  runner/tests/test_runner_last_edges.py. Done
+  when a coverage run shows them clean.
 - A (refill) — runner.py fail-soft legs, second
   batch (coverage run 40189711740):
   _extension_source_targets when transport
