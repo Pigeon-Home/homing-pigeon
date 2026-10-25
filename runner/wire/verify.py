@@ -113,17 +113,31 @@ def _object_start(norm: str, sig_at: int) -> int:
     preamble property under Hypothesis). A wrong candidate here fails
     the parse before any HMAC is computed; the HMAC still decides.
     """
+    first_walk = None
     for start in range(sig_at - 1, -1, -1):
         if norm[start] != "{":
             continue
         if not _in_root_object_at(norm, start, sig_at):
             continue
-        try:
-            candidate = json.loads(norm[start:sig_at] + "}")
-        except ValueError:
-            continue
-        if isinstance(candidate, dict):
-            return start
+        if first_walk is None:
+            first_walk = start
+        text = norm[start:sig_at] + "}"
+        # A transport may have inserted raw control characters; the
+        # verifier below checks the cleaned form too, so the opener
+        # search accepts what parses once they are stripped.
+        for form in (text, _strip_controls(text)):
+            try:
+                candidate = json.loads(form)
+            except (ValueError, RecursionError):
+                continue
+            if isinstance(candidate, dict):
+                return start
+            break
+    if first_walk is not None:
+        # Nothing parses: hand the newest whole-object candidate on,
+        # so the verifier names the real fault (invalid JSON, a
+        # signature mismatch) as it always did.
+        return first_walk
     raise ValueError("no JSON object before signature")
 
 
