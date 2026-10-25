@@ -1971,8 +1971,9 @@ def load_sent_result(base_dir, skey, job):
         return None
     return rec
 
-def prune_sent(base_dir, days):
-    """Delete recorded results older than output_retention_days."""
+
+def _prune_dir(base_dir, subdir, days):
+    """Delete files in base_dir/subdir older than days."""
     if not _valid_base(base_dir):
         return 0
     try:
@@ -1981,7 +1982,7 @@ def prune_sent(base_dir, days):
         return 0
     if days <= 0:
         return 0
-    d = os.path.join(base_dir, SENT_DIRNAME)
+    d = os.path.join(base_dir, subdir)
     if not os.path.isdir(d):
         return 0
     cutoff = time.time() - days * 86400
@@ -1996,30 +1997,14 @@ def prune_sent(base_dir, days):
             pass
     return removed
 
+
+def prune_sent(base_dir, days):
+    """Delete recorded results older than output_retention_days."""
+    return _prune_dir(base_dir, SENT_DIRNAME, days)
+
 def prune_retained(base_dir, days):
     """Delete retained outputs older than output_retention_days."""
-    if not _valid_base(base_dir):
-        return 0
-    try:
-        days = int(days)
-    except (TypeError, ValueError, OverflowError):
-        return 0
-    if days <= 0:
-        return 0
-    d = os.path.join(base_dir, "retained")
-    if not os.path.isdir(d):
-        return 0
-    cutoff = time.time() - days * 86400
-    removed = 0
-    for name in os.listdir(d):
-        path = os.path.join(d, name)
-        try:
-            if os.path.getmtime(path) < cutoff:
-                os.remove(path)
-                removed += 1
-        except Exception:
-            pass
-    return removed
+    return _prune_dir(base_dir, "retained", days)
 
 _RETAINED_LOCK = threading.RLock()
 
@@ -6169,22 +6154,23 @@ def _local_watch(cfg, base_dir):
 from runner.ops.sensors import _canary_watch, _yara_hits, recent_chat  # noqa: E402
 
 
-def _oracle_watch_enabled(cfg) -> bool:
-    """The Oracle's system watch (Event Log + registry + canaries)
-    defaults on.
 
-    inference.watch_system=false opts out. He said: by default, no
-    matter what, the Oracle is always watching.
-    """
-    inf = cfg.get("inference") if isinstance(cfg, dict) else None
-    if not isinstance(inf, dict):
-        return True
-    v = inf.get("watch_system", True)
+def _cfg_flag(cfg, section, key, default=True) -> bool:
+    """Read a boolean flag from cfg[section][key], defaulting to default."""
+    sec = cfg.get(section) if isinstance(cfg, dict) else None
+    if not isinstance(sec, dict):
+        return default
+    v = sec.get(key, default)
     if v is False or v == 0:
         return False
     if isinstance(v, str) and v.strip().lower() in ("false", "no", "off", "0"):
         return False
-    return True
+    return bool(v) if not default else (v is not False and v != 0)
+
+
+def _oracle_watch_enabled(cfg) -> bool:
+    """The Oracle's system watch defaults on."""
+    return _cfg_flag(cfg, "inference", "watch_system", True)
 
 _AUTH_LOG_PATHS = ("/var/log/auth.log", "/var/log/secure")
 _SYS_LOG_PATHS = ("/var/log/syslog", "/var/log/messages", "/var/log/system.log")
@@ -6345,20 +6331,8 @@ _YARA_ATTACK = {
 }
 
 def _artifact_scan_enabled(cfg) -> bool:
-    """On unless inference.artifact_scan is explicitly false.
-
-    The scan still does nothing when neither YARA nor clamdscan is
-    installed, and nothing when the job wrote no files.
-    """
-    inf = cfg.get("inference") if isinstance(cfg, dict) else None
-    if not isinstance(inf, dict):
-        return True
-    v = inf.get("artifact_scan", True)
-    if v is False or v == 0:
-        return False
-    if isinstance(v, str) and v.strip().lower() in ("false", "no", "off", "0"):
-        return False
-    return True
+    """On unless inference.artifact_scan is explicitly false."""
+    return _cfg_flag(cfg, "inference", "artifact_scan", True)
 
 def _work_files(work):
     """path -> (size, mtime_ns) for regular files under work."""
