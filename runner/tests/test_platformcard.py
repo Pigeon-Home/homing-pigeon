@@ -25,6 +25,24 @@ import runner.tests.test_runner as TR  # noqa: E402  (not `from`: the harness
 #                                       class must not be re-collected here)
 
 
+class OsFamilyLegsTest(unittest.TestCase):
+    """Queue A refill: os_family's non-host legs
+    (coverage run 40189711740: lines 47, 49, 52).
+    The card names the family from sys.platform:
+    win* is windows, darwin is macos, and anything
+    unrecognized is other -- the three answers a
+    Linux or Windows CI host never gives for itself.
+    """
+
+    def test_the_other_platform_names(self):
+        for given, want in (("win32", "windows"),
+                            ("darwin", "macos"),
+                            ("freebsd13", "other"),
+                            ("linux", "linux")):
+            with mock.patch.object(sys, "platform", given):
+                self.assertEqual(PC.os_family(), want)
+
+
 class CardTest(unittest.TestCase):
     def test_none_is_no_card(self):
         self.assertIsNone(PC.build_card("none"))

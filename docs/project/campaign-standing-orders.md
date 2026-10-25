@@ -294,6 +294,20 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/wire/platformcard.py::`
+  `os_family` non-host legs and
+  `runner/ops/extsources.py::load_declaration`
+  quiet legs (3 lines each never run, coverage run
+  40189711740) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  OsFamilyLegsTest in
+  runner/tests/test_platformcard.py (win*/darwin/
+  unrecognized platform names under a patched
+  sys.platform) and LoadDeclarationLegsTest in
+  runner/tests/test_extension_sources.py (a
+  non-path declares nothing; an unreadable
+  declaration file returns its problem). Done when
+  a coverage run shows both clean.
 - A (refill) — `runner/runner.py::`
   `handle_query_mail` bad-envelope leg (3 lines
   never run, coverage run 40189711740) — taken

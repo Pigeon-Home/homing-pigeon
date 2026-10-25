@@ -2564,6 +2564,35 @@ class LocalFilesEdgesTest(unittest.TestCase):
                     X._tree_bytes(os.path.join(d, "nope")), 0)
 
 
+class LoadDeclarationLegsTest(unittest.TestCase):
+    """Queue A refill: load_declaration's quiet legs
+    (coverage run 40189711740: lines 504, 513-514).
+    The reader never raises: a non-path names no
+    declaration, and a declaration file that exists
+    but cannot be read comes back as a problem
+    naming the failure, not a traceback.
+    """
+
+    def test_a_non_path_and_an_unreadable_file(self):
+        self.assertEqual(X.load_declaration(None), (None, None))
+        self.assertEqual(X.load_declaration(""), (None, None))
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, X.SOURCES_FILE)
+            with open(path, "w") as fh:
+                fh.write("{}")
+            real_open = open
+
+            def refusing(p, *a, **k):
+                if str(p) == path:
+                    raise OSError("gone")
+                return real_open(p, *a, **k)
+
+            with mock.patch("builtins.open", refusing):
+                decl, problem = X.load_declaration(td)
+        self.assertIsNone(decl)
+        self.assertIn("cannot read", problem)
+
+
 class ExtensionSourcesPolicyTest(unittest.TestCase):
     """Queue A refill: _extension_sources_policy's own
     legs (coverage run 40189711740: lines 4524,
