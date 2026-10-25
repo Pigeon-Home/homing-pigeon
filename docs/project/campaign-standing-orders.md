@@ -155,6 +155,14 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A — `runner/runner.py::_pid_alive` (11 lines never run
+  on Windows, 10 on Linux, coverage run 40183585961) —
+  taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  each platform's branch is inapplicable on the other
+  (the ctypes branch on Linux, the kill tail on
+  Windows), covered where it applies; the one line
+  missing on both, the Windows branch's failure
+  fallback, is taken with it.
 - A — `runner/runner.py::_append_security_event` (11
   lines never run on Windows, 3 on Linux, coverage run
   40183585961) — taken 2026-10-25,

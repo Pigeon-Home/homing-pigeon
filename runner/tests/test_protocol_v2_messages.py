@@ -15,6 +15,7 @@ import sys
 import tempfile
 import threading
 import time
+import types
 import unittest
 from datetime import datetime, timezone
 from email.message import EmailMessage
@@ -690,39 +691,6 @@ class SeenClaimTest(unittest.TestCase):
         with mock.patch("os.kill", side_effect=OSError("errno")):
             self.assertFalse(_pid_alive(4242))
 
-    def _claim(self, tmp, skey):
-        folder = os.path.join(tmp, "inflight")
-        name = os.listdir(folder)[0]
-        return os.path.join(folder, name)
-
-    def test_our_own_claim_is_not_taken_twice(self):
-        tmp = tempfile.mkdtemp(prefix="hp-claim-self-")
-        seen = {}
-        self.assertTrue(_disk_owns(tmp, "job-1", seen))
-        seen["job-1"] = True
-        self.assertFalse(_disk_owns(tmp, "job-1", seen))
-
-    def test_a_claim_we_cannot_read_and_cannot_age_is_kept(self):
-        tmp = tempfile.mkdtemp(prefix="hp-claim-age-")
-        self.assertTrue(_disk_owns(tmp, "job-1", {}))
-        claim = self._claim(tmp, "job-1")
-        real_open = open
-        real_mtime = os.path.getmtime
-
-        def bad_open(path, *args, **kwargs):
-            if path == claim:
-                raise OSError("unreadable")
-            return real_open(path, *args, **kwargs)
-
-        def bad_mtime(path):
-            if path == claim:
-                raise OSError("no mtime")
-            return real_mtime(path)
-
-        with mock.patch("builtins.open", bad_open), \
-                mock.patch("os.path.getmtime", bad_mtime):
-            self.assertFalse(_disk_owns(tmp, "job-1", {}))
-        self.assertTrue(os.path.exists(claim))
 
     def test_a_dead_claim_that_cannot_be_removed_stays(self):
         tmp = tempfile.mkdtemp(prefix="hp-claim-dead-")
@@ -784,6 +752,90 @@ class SeenClaimTest(unittest.TestCase):
         save_seen(path, other)
         self.assertEqual(set(load_seen(path)), {"a", "b"})
         self.assertIn("a", other)
+
+
+    def _claim(self, tmp, skey):
+        folder = os.path.join(tmp, "inflight")
+        name = os.listdir(folder)[0]
+        return os.path.join(folder, name)
+
+    def test_our_own_claim_is_not_taken_twice(self):
+        tmp = tempfile.mkdtemp(prefix="hp-claim-self-")
+        seen = {}
+        self.assertTrue(_disk_owns(tmp, "job-1", seen))
+        seen["job-1"] = True
+        self.assertFalse(_disk_owns(tmp, "job-1", seen))
+
+    def test_a_claim_we_cannot_read_and_cannot_age_is_kept(self):
+        tmp = tempfile.mkdtemp(prefix="hp-claim-age-")
+        self.assertTrue(_disk_owns(tmp, "job-1", {}))
+        claim = self._claim(tmp, "job-1")
+        real_open = open
+        real_mtime = os.path.getmtime
+
+        def bad_open(path, *args, **kwargs):
+            if path == claim:
+                raise OSError("unreadable")
+            return real_open(path, *args, **kwargs)
+
+        def bad_mtime(path):
+            if path == claim:
+                raise OSError("no mtime")
+            return real_mtime(path)
+
+        with mock.patch("builtins.open", bad_open), \
+                mock.patch("os.path.getmtime", bad_mtime):
+            self.assertFalse(_disk_owns(tmp, "job-1", {}))
+        self.assertTrue(os.path.exists(claim))
+
+
+class PidAliveWindowsBranchTest(unittest.TestCase):
+    """Queue A: _pid_alive's Windows branch (coverage run
+    40183585961) -- on Linux the whole ctypes branch is
+    platform-inapplicable, and on Windows only its
+    failure fallback never ran. The branch is scripted
+    here through a stand-in ctypes, so the semantics are
+    pinned on every platform: a handle means alive,
+    access denied means alive (the process is there),
+    any other error means gone, and a probe that cannot
+    even run answers alive -- a claim whose owner might
+    be alive is never treated as dead.
+    """
+
+    def _probe(self, kernel32):
+        fake = types.ModuleType("ctypes")
+        if kernel32 is not None:
+            fake.windll = types.SimpleNamespace(
+                kernel32=kernel32)
+        with mock.patch.object(os, "name", "nt"), \
+                mock.patch.dict(sys.modules,
+                                {"ctypes": fake}):
+            return _pid_alive(4242)
+
+    def test_a_handle_means_alive(self):
+        closed = []
+        kernel32 = types.SimpleNamespace(
+            OpenProcess=lambda *a: 99,
+            CloseHandle=lambda h: closed.append(h),
+            GetLastError=lambda: 0)
+        self.assertTrue(self._probe(kernel32))
+        self.assertEqual(closed, [99])
+
+    def test_access_denied_means_alive_and_other_errors_gone(self):
+        kernel32 = types.SimpleNamespace(
+            OpenProcess=lambda *a: 0,
+            CloseHandle=lambda h: None,
+            GetLastError=lambda: 5)
+        self.assertTrue(self._probe(kernel32))
+        kernel32.GetLastError = lambda: 87
+        self.assertFalse(self._probe(kernel32))
+
+    def test_a_probe_that_cannot_run_answers_alive(self):
+        # No windll at all (what a non-Windows ctypes
+        # looks like): the AttributeError lands in the
+        # branch's except, which answers alive.
+        self.assertTrue(self._probe(None))
+
 
 
 class Version2EdgesTest(unittest.TestCase):
