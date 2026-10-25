@@ -2243,5 +2243,67 @@ class NatsConnectFailuresTest(unittest.TestCase):
         self.assertIn("expected PONG, got", msg)
 
 
+class NatsPipeRunDropsTest(unittest.TestCase):
+    """Queue A refill: NatsPipe.run's drop and cleanup
+    legs (coverage run 40187685363: 7 lines on Linux, 5
+    on Windows). The pipe's contract for broker traffic:
+    a message that is not UTF-8 and a message that is
+    not an envelope are each logged and dropped, never
+    delivered; a dead connection is closed, logged, and
+    re-established with backoff -- the loop takes
+    nothing down with it.
+    """
+
+    def test_bad_messages_drop_and_a_dead_link_closes(self):
+        logs = []
+        script = [("homing-pigeon.jobs", b"\xff\xfe binary"),
+                  ("homing-pigeon.jobs", b"no blank line here")]
+
+        class FakeClient:
+            def __init__(self):
+                self.closed = False
+
+            def next_message(self, deadline):
+                if script:
+                    return script.pop(0)
+                raise nats_ext.TransportError("link down")
+
+            def close(self):
+                self.closed = True
+
+        client = FakeClient()
+        with tempfile.TemporaryDirectory() as d:
+            channel = os.path.join(d, "channel")
+            pipe = nats_ext.NatsPipe(
+                {"url": "nats://127.0.0.1:4222",
+                 "allow_unauthenticated": True},
+                channel,
+                log=lambda m, level="INFO": logs.append(m))
+            connects = []
+
+            def fake_connect():
+                connects.append(1)
+                if len(connects) == 1:
+                    pipe.client = client
+                else:
+                    pipe.stop()
+                    raise nats_ext.TransportError("still down")
+
+            pipe._connect = fake_connect
+            with mock.patch.object(nats_ext.ch, "nap",
+                                   lambda s: None):
+                pipe.run()
+            delivered = []
+            for root, _dirs, files in os.walk(channel):
+                delivered += [f for f in files
+                              if f.endswith(".job.txt")]
+        self.assertEqual(delivered, [])
+        self.assertTrue(client.closed)
+        text = "\n".join(logs)
+        self.assertIn("non-UTF-8", text)
+        self.assertIn("malformed envelope", text)
+        self.assertIn("reconnecting", text)
+
+
 if __name__ == "__main__":
     unittest.main()

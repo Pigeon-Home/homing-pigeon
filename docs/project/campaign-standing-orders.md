@@ -156,6 +156,18 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/transport_extensions/nats/`
+  `__main__.py::NatsPipe.run` (7 lines never run on
+  Linux, 5 on Windows, coverage run 40187685363) —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  NatsPipeRunDropsTest in
+  runner/tests/test_transports.py: a non-UTF-8
+  message and a malformed envelope from the broker
+  are logged and dropped, nothing delivered; a dead
+  connection is closed and the loop reconnects with
+  backoff. Done when a coverage run shows the
+  function clean.
 - A (refill) — `_is_number` in aide-feed, usb-arrivals
   and wire-arrivals (the whole body, 7 lines each,
   never run on either platform, coverage run
