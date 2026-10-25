@@ -1390,6 +1390,57 @@ class RunnerResidualLegsTest(unittest.TestCase):
             httpd.shutdown()
             httpd.server_close()
 
+    def test_eventlog_tail_guards_and_format(self):
+        # _eventlog_tail's guards and format:
+        # an ElementTree that will not import
+        # reads as "unreadable" (None), every
+        # query failing reads the same, and a
+        # real XML answer formats its events --
+        # the audit failure carrying its ATT&CK
+        # tag. Driven as on Windows (the
+        # platform gate and the wevtutil seam
+        # are the only things standing between
+        # Linux and this code).
+        with mock.patch.object(sys, "platform",
+                               "win32"), \
+                mock.patch.dict(
+                    sys.modules,
+                    {"xml.etree.ElementTree": None}):
+            self.assertIsNone(rr._eventlog_tail())
+        xml = (
+            '<Events xmlns="http://schemas.microsoft.com/'
+            'win/2004/08/events/event">'
+            "<Event><System>"
+            '<TimeCreated SystemTime="2026-10-25T01:02:03Z"/>'
+            "<Level>2</Level><EventID>4625</EventID>"
+            '<Provider Name="Security-Auditing"/>'
+            "</System><EventData>"
+            "<Data>user bob</Data>"
+            "</EventData></Event></Events>")
+        answers = {"System": xml, "Application": None,
+                   "Security": None}
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(sys, "platform",
+                                   "win32"), \
+                    mock.patch.object(
+                        rr, "_wevtutil_query",
+                        side_effect=lambda ch, xp, n:
+                        answers[ch]):
+                blob = rr._eventlog_tail(base_dir=d)
+                self.assertIn("T1110", blob)
+                self.assertIn("Security-Auditing", blob)
+                self.assertIn("user bob", blob)
+                short = rr._eventlog_tail(
+                    max_chars=10, base_dir=d)
+                self.assertEqual(len(short), 10)
+            with mock.patch.object(sys, "platform",
+                                   "win32"), \
+                    mock.patch.object(
+                        rr, "_wevtutil_query",
+                        return_value=None):
+                self.assertIsNone(
+                    rr._eventlog_tail(base_dir=d))
+
     def test_registry_watch_snapshot_write_swallowed(self):
         # _registry_watch's snapshot-write
         # swallow: an unwritable snapshot path

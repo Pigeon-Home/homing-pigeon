@@ -339,6 +339,19 @@ when done, the proving commit or run. Newest first.
   lines are still blank although the deletion
   landed in f4e2378 -- the answerer's
   bookkeeping, noted here.)
+- A (refill) — event-log tail legs (coverage
+  run 40189711740): the Windows event log
+  reader's broken-ElementTree return, its
+  all-queries-failed return, its event
+  formatting with the ATT&CK tag, and its
+  character bound — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  RunnerResidualLegsTest
+  (test_runner_last_edges.py), driven as on
+  Windows with the wevtutil seam faked, the
+  same pattern as the registry watch. Done
+  when a coverage run shows the taken legs
+  clean.
 - A (refill) — wire and chat-server legs
   (coverage run 40189711740): protocol_v2's
   non-string answer riding empty, the
