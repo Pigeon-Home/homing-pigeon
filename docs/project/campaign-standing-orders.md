@@ -2700,6 +2700,26 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- FULL STAMP, v3.12.70 (tag object 97ae14b6 ->
+  commit 72c86458; GitHub release published
+  2026-10-25T20:26:19Z): GitHub release carries
+  all 8 platform archives + pi-light + project
+  tarball + wheel + sdist + SHA384SUMS (12
+  entries) + SBOM + BUILD-PROVENANCE; wheel and
+  sdist SHA-384 verified against the sums file
+  and SHA-256 against PyPI (PyPI latest is
+  3.12.70; downloads in ~/workspace/
+  stamp-3.12.70/); GHCR carries v3.12.70 and
+  latest; SourceForge v3.12.70 folder holds all
+  13 files; GitLab release v3.12.70 carries 13
+  asset links; the tag build's release, pypi,
+  sourceforge and gitlab jobs succeeded on
+  attempt 2. Caveat on the record: that run's
+  test-macos failed on the upgrade-proof shape
+  (Q39's territory, green by the .71 build) and
+  the flag321 wrong-case shape plus an
+  import-order error in the same module (both
+  fixed in c6cf32b, Q51). Nothing owed on .70.
 - Q51 filed (for Claude): test-macos failed in
   both attempts of the 3.12.71 build on
   flag321-indirect's wrong-case shape -- the Q35
