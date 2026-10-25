@@ -156,6 +156,18 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
+- A (refill) — `runner/oracle/senses.py::`
+  `_store_alert_report` (3 lines never run on
+  Linux, 6 on Windows, coverage run 40187685363) —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  StoreAlertReportEdgesTest in
+  runner/tests/test_senses.py: with the runner
+  module unimportable the script-mode fallback
+  stores the record as given; past the stored cap
+  the file is rewritten keeping the newest alerts.
+  Done when a coverage run shows the function
+  clean.
 - A (refill) — `runner/ops/install.py::`
   `_usb_accelerators` (6 lines never run on either
   platform, coverage run 40187685363; CI machines

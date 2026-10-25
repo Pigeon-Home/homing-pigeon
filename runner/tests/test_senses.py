@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -239,6 +240,42 @@ class FakeIMAP:
     def store(self, seq, _op, _flags):
         self.flagged.append(seq)
         return ("OK", [])
+
+
+class StoreAlertReportEdgesTest(unittest.TestCase):
+    """Queue A refill: _store_alert_report's fallback
+    and trim legs (coverage run 40187685363: 3 lines
+    on Linux, 6 on Windows). The store's body carries
+    a script-mode fallback for the JSON-safety helper
+    (when the runner cannot be imported as a package
+    module the record is stored as given), and a cap:
+    past MAX_STORED lines the file is rewritten with
+    only the newest ones, so the store stays bounded
+    and the newest alerts survive.
+    """
+
+    def test_the_import_fallback_stores_the_record_as_given(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.dict(sys.modules,
+                                 {"runner.runner": None}):
+                err = S._store_alert_report(
+                    d, {"sensor": "host_ids", "title": "t"})
+            self.assertIsNone(err)
+            recs = S.load_alerts(d)
+            self.assertEqual(len(recs), 1)
+            self.assertEqual(recs[0]["title"], "t")
+
+    def test_the_store_trims_to_the_cap_keeping_the_newest(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(S, "MAX_STORED", 3):
+                for i in range(5):
+                    err = S._store_alert_report(
+                        d, {"sensor": "host_ids",
+                            "title": "t%d" % i})
+                    self.assertIsNone(err)
+            recs = S.load_alerts(d, limit=10)
+            self.assertEqual([r["title"] for r in recs],
+                             ["t2", "t3", "t4"])
 
 
 class IngestTest(unittest.TestCase):
