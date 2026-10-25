@@ -294,6 +294,20 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/ops/extsources.py` small
+  legs (2 lines each never run, coverage run
+  40189711740): Fetcher.get_json's not-JSON
+  refusal, resolve_github's unresolvable named
+  ref and missing default branch, remote_urls'
+  archive and unsafe-name shapes, owner_policy's
+  bad per-extension overrides,
+  manifest_upstream_of's non-path and invalid
+  block, _clean_targets' unusable entries —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ExtsourcesSmallLegsTest in
+  runner/tests/test_extension_sources.py. Done
+  when a coverage run shows them clean.
 - A (refill) — four more two-line legs (coverage
   run 40189711740): `sysmon_feed._parse_xml_event`
   broken-inside, `softflowd_feed`

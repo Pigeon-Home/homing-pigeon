@@ -2564,6 +2564,106 @@ class LocalFilesEdgesTest(unittest.TestCase):
                     X._tree_bytes(os.path.join(d, "nope")), 0)
 
 
+class ExtsourcesSmallLegsTest(unittest.TestCase):
+    """Queue A refill: extsources' small conversion
+    and refusal legs (coverage run 40189711740:
+    Fetcher.get_json 828-829, resolve_github 935
+    and 998, remote_urls 1008 and 1012,
+    owner_policy 674 and 683, manifest_upstream_of
+    537 and 550, _clean_targets 1363 and 1368).
+    Each is a fail-closed shape: a response that is
+    not JSON, a ref that resolves nowhere, a URL
+    whose name is not a safe segment, a policy
+    override that is not an object or names an
+    unknown disclosure, a manifest whose upstream
+    block does not validate, and target entries
+    that are not usable targets -- all refused or
+    degraded, none fatal.
+    """
+
+    def test_get_json_refuses_a_non_json_response(self):
+        url = "https://api.github.com/repos/o/r"
+        fetcher = X.Fetcher(opener=FakeOpener({url: b"not json"}))
+        with self.assertRaisesRegex(X.SourceError, "not JSON"):
+            fetcher.get_json(url)
+
+    def test_a_named_ref_that_resolves_nowhere_reraises(self):
+        class Dead:
+            def get_text(self, *a):
+                raise X.SourceError("no such ref")
+
+            def get_json(self, *a):
+                return []
+        with self.assertRaises(X.SourceError):
+            X.resolve_github(Dead(), "o/r", ref="some-branch")
+
+    def test_latest_without_a_default_branch_is_refused(self):
+        class Empty:
+            def get_json(self, url):
+                return {} if url.endswith("/repos/o/r") else []
+
+            def get_text(self, *a):
+                raise X.SourceError("unused")
+        with self.assertRaisesRegex(X.SourceError,
+                                    "no default branch"):
+            X.resolve_github(Empty(), "o/r", ref="latest")
+
+    def test_remote_urls_shapes(self):
+        files, archive = X.remote_urls(
+            {"location": "url", "archive": True,
+             "url": "https://x.test/a.zip"})
+        self.assertEqual((files, archive),
+                         ({}, "https://x.test/a.zip"))
+        files, archive = X.remote_urls(
+            {"location": "url",
+             "url": "https://x.test/trailing."})
+        self.assertEqual(files,
+                         {"document": "https://x.test/trailing."})
+        self.assertIsNone(archive)
+        files, _a = X.remote_urls(
+            {"location": "url", "url": "https://x.test/notes.txt"})
+        self.assertEqual(files,
+                         {"notes.txt": "https://x.test/notes.txt"})
+
+    def test_owner_policy_refuses_bad_overrides(self):
+        pol = X.owner_policy({"extension_sources": {
+            "extensions": {"feed": "not-an-object"}}})
+        self.assertFalse(pol["valid"])
+        pol = X.owner_policy({"extension_sources": {
+            "extensions": {"feed": {"oracle": "bogus"}}}})
+        self.assertFalse(pol["valid"])
+
+    def test_manifest_upstream_shapes(self):
+        self.assertIsNone(X.manifest_upstream_of(None))
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "extension.json")
+            with open(path, "w") as fh:
+                json.dump({"upstream": {"repo": "not a repo",
+                                        "ref": "main",
+                                        "pin": "a" * 40,
+                                        "paths": ["x.py"]}}, fh)
+            self.assertIsNone(X.manifest_upstream_of(d))
+            with open(path, "w") as fh:
+                json.dump({"upstream": {
+                    "repo": "https://github.com/o/r",
+                    "ref": "main", "pin": "a" * 40,
+                    "paths": ["x.py"]}}, fh)
+            got = X.manifest_upstream_of(d)
+        self.assertEqual(got["github"], "o/r")
+
+    def test_clean_targets_skips_the_unusable(self):
+        good = {"kind": "sense", "name": "feed", "dir": "/x"}
+        out = X._clean_targets([
+            "not-a-dict",
+            {"kind": "bogus", "name": "feed", "dir": "/x"},
+            {"kind": "sense", "name": "bad name!", "dir": "/x"},
+            good, dict(good)])
+        self.assertEqual(len(out), 1)
+        self.assertEqual(
+            (out[0]["kind"], out[0]["name"], out[0]["dir"]),
+            ("sense", "feed", "/x"))
+
+
 class LoadDeclarationLegsTest(unittest.TestCase):
     """Queue A refill: load_declaration's quiet legs
     (coverage run 40189711740: lines 504, 513-514).
