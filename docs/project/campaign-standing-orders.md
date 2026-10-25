@@ -2538,3 +2538,17 @@ when done, the proving commit or run. Newest first.
   OversizedLineMutatorTest (test_job_fuzz.py). Done when a
   coverage run shows them clean and the build's Windows
   shards are green.
+- A (refill) — sender legs: `runner/cloud/send_dtls.py`
+  `::_build_body` script-file and timeout members (93-94,
+  98) and `runner/cloud/send_job.py::main`'s ValueError
+  answer (527-529) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  BuildBodyScriptFileTest (test_send_dtls_main.py) and
+  MainValueErrorLegTest (test_send_job_verify.py).
+  Recorded without takes on the same map:
+  dtlsproto.x25519's final swap (186-187, unreachable by
+  construction, already recorded) and
+  resources._save_state's O_BINARY flag line (187), a
+  platform mirror covered on the Windows map. Done when
+  a coverage run shows the taken legs clean and the
+  build's Windows shards are green.

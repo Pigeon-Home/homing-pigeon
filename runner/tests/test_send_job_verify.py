@@ -198,5 +198,30 @@ class SendJobGuardLegsTest(unittest.TestCase):
         self.assertIn('"reply_to":"me@x.test"', out.getvalue())
 
 
+class MainValueErrorLegTest(unittest.TestCase):
+    """Queue A refill: send_job main's ValueError leg
+    (local full-suite map at 93998ca: lines 527-529). A
+    command that refuses with a ValueError is answered
+    with the error on stderr and rc 2 -- stdout stays
+    clean, because stdout is the email-body contract."""
+
+    def test_a_value_error_is_rc2_and_stays_off_stdout(self):
+        err = io.StringIO()
+        out = io.StringIO()
+        with mock.patch.object(
+                send_job, "cmd_new",
+                side_effect=ValueError(
+                    "a shared secret is required")), \
+                mock.patch.object(
+                    sys, "argv",
+                    ["send_job.py", "new", "--secret", "x"]), \
+                redirect_stderr(err), redirect_stdout(out):
+            rc = send_job.main()
+        self.assertEqual(rc, 2)
+        self.assertIn("error: a shared secret is required",
+                      err.getvalue())
+        self.assertEqual(out.getvalue(), "")
+
+
 if __name__ == "__main__":
     unittest.main()

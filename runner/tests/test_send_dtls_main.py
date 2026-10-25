@@ -300,5 +300,34 @@ class PlainResultAndTicketTest(unittest.TestCase):
             self.assertIsNone(send_dtls._load_ticket(bad))
 
 
+class BuildBodyScriptFileTest(unittest.TestCase):
+    """Queue A refill: _build_body's script-file leg
+    (local full-suite map at 93998ca: lines 93-94, 98).
+    An exec job naming a script file signs the file's
+    contents and the caller's timeout, not a placeholder.
+    """
+
+    def test_an_exec_job_signs_the_script_file(self):
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            script = os.path.join(d, "job.sh")
+            with open(script, "w", encoding="utf-8") as fh:
+                fh.write("echo from-file\n")
+            args = mock.Mock()
+            args.job_id = "j-file"
+            args.kind = "exec"
+            args.key_id = ""
+            args.script_file = script
+            args.timeout = 45
+            args.cleartext = True
+            args.secret = SECRET
+            job_id, envelope = send_dtls._build_body(args)
+        self.assertEqual(job_id, "j-file")
+        body = envelope.decode("utf-8")
+        self.assertIn("echo from-file", body)
+        self.assertIn('"timeout_sec":45', body.replace(" ", ""))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
