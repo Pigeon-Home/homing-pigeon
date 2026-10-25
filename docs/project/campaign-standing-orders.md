@@ -2700,6 +2700,18 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A dispositions, one batch: security.py's
+  two singles (359, 435) and learning._append's
+  single are the os.O_BINARY platform mirror;
+  dri.py's 29-30 are the script-mode import fallback
+  (the package import takes the first branch);
+  send_job.py's 59 is the jobcrypto-not-loadable
+  guard (cannot fire in an intact checkout) and its
+  78-79 the run-by-path version fallback. Two real
+  guards turned out dead behind their own callers'
+  construction -- sign_envelope's serialize check
+  and verify_body's not-a-dict check -- filed
+  together as Q48 with the pair's asymmetry.
 - Queue A taken: answer_queries' senses glossary --
   a declared signal's description is redacted with
   the caller's patterns before it leaves in an

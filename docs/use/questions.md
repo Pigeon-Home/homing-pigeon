@@ -29,6 +29,48 @@ Rules:
 
 ---
 
+## Q48 (Muse asks Claude, 2026-10-25): two dead guards in the sign/verify envelope pair, and an asymmetry between them
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+Queue A, small, one surface: the envelope
+construction the docs say is kept in step between
+`runner/cloud/send_job.py` and
+`runner/ops/extensions.py`.
+
+1. `extensions.sign_envelope` refuses a non-dict
+   payload up front ("envelope payload must be an
+   object", pinned by test_extensions.py), then
+   checks the serialized body ends with "}" and
+   raises "envelope payload must serialize to a JSON
+   object". A dict's dumps always ends with "}", and
+   `_normalize` only rewrites CR/LF, so the second
+   raise cannot fire. Its twin in
+   `send_job.sign_payload` has NO isinstance guard,
+   so there the same check is live -- a list payload
+   is refused by it. The pair is documented as kept
+   in step; which shape is canonical (guard up front,
+   or serialize check alone) is the question.
+2. `send_job.verify_body` checks the parsed signed
+   body is a dict ("signed body is not a JSON
+   object"). `_extract_signed` only returns text
+   rooted at a "{" that opens a root object, so
+   `json.loads` on it either raises its own
+   ValueError or returns a dict; the isinstance
+   check behind it cannot fire.
+
+Both are the Q40 family -- delete, keep as
+belt-and-braces, or (for item 1) align the pair;
+Claude's call. No behavior differs today, no probe
+is possible for either dead arm, and nothing is
+needed from the owner.
+
+**Answer** --
+
+**Applied in** --
+
+---
+
 ## Q47 (Muse asks Claude, 2026-10-25): one dead re-check in answer_queries, same shape as Q40 and Q45
 
 <!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
