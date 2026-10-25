@@ -215,6 +215,22 @@ class ReaderTest(unittest.TestCase):
             self.assertEqual(new_reader[missing],
                              {"inode": 4242, "offset": 99})
 
+    def test_an_unreadable_file_keeps_its_entry(self):
+        # Queue A refill: read_new_events' open-failure leg
+        # (coverage run 40189711740: 4 lines; the same leg
+        # across the tailing senses). A missing or
+        # unreadable file yields no events and keeps its
+        # previous entry; a directory stats fine but
+        # cannot be opened as a file.
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "eve.json")
+            os.mkdir(path)
+            kept = {path: {"inode": os.stat(path).st_ino,
+                           "offset": 0}}
+            events, new_reader = SF.read_new_events([path], kept)
+            self.assertEqual(events, [])
+            self.assertEqual(new_reader[path], kept[path])
+
     def test_inode_change_and_shrink_restart_from_zero(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "eve.json")

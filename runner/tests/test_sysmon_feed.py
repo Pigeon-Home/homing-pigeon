@@ -259,6 +259,23 @@ class ReaderTest(unittest.TestCase):
             events, _reader = SM.read_new_events([path], reader)
             self.assertEqual(len(events), 1)
 
+    def test_an_unreadable_file_keeps_its_entry(self):
+        # Queue A refill: read_new_events' open-failure leg
+        # (coverage run 40189711740: 4 lines; the same leg
+        # across the tailing senses). A missing or
+        # unreadable file yields no events and keeps its
+        # previous entry -- partial line included; a
+        # directory stats fine but cannot be opened as a
+        # file.
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "sysmon.log")
+            os.mkdir(path)
+            kept = {path: {"inode": os.stat(path).st_ino,
+                           "offset": 0, "partial": "<Event>"}}
+            events, new_reader = SM.read_new_events([path], kept)
+            self.assertEqual(events, [])
+            self.assertEqual(new_reader[path], kept[path])
+
     def test_shrunk_file_restarts_from_zero(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "sysmon.log")

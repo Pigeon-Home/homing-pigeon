@@ -218,6 +218,23 @@ class ReaderTest(unittest.TestCase):
                 new_reader[missing], {"inode": 4242, "offset": 99, "fields": ["ts"]}
             )
 
+    def test_an_unreadable_file_keeps_its_entry(self):
+        # Queue A refill: read_new_events' open-failure leg
+        # (coverage run 40189711740: 4 lines; the same leg
+        # is open in six sibling senses). The docstring: a
+        # missing OR UNREADABLE file yields no events and
+        # keeps its previous entry. A directory stats fine
+        # but cannot be opened as a file -- the
+        # stat-then-open race's deterministic stand-in.
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "conn.log")
+            os.mkdir(path)
+            kept = {path: {"inode": os.stat(path).st_ino,
+                           "offset": 0, "fields": ["ts"]}}
+            events, new_reader = ZF.read_new_events([path], kept)
+            self.assertEqual(events, [])
+            self.assertEqual(new_reader[path], kept[path])
+
     def test_shrunk_file_restarts_from_zero_and_rereads_headers(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "conn.log")

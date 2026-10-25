@@ -167,6 +167,23 @@ class ReaderTest(unittest.TestCase):
             self.assertEqual([e["level"] for e in events], [7])
 
 
+    def test_an_unreadable_file_keeps_its_entry(self):
+        # Queue A refill: read_new_events' open-failure leg
+        # (coverage run 40189711740: 4 lines; the same leg
+        # across the tailing senses). A missing or
+        # unreadable file yields no events and keeps its
+        # previous entry; a directory stats fine but
+        # cannot be opened as a file.
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "alerts.json")
+            os.mkdir(path)
+            kept = {path: {"inode": os.stat(path).st_ino,
+                           "offset": 0}}
+            events, new_reader = WZ.read_new_events([path], kept)
+            self.assertEqual(events, [])
+            self.assertEqual(new_reader[path], kept[path])
+
+
 class DecideTest(unittest.TestCase):
     def decide(self, readings, state=None, manifest=None):
         return WZ.decide(readings, manifest or _manifest(),

@@ -163,6 +163,23 @@ class ReaderTest(unittest.TestCase):
             self.assertEqual(new_reader[missing],
                              {"inode": 4242, "offset": 99})
 
+    def test_an_unreadable_file_keeps_its_entry(self):
+        # Queue A refill: read_new_events' open-failure leg
+        # (coverage run 40189711740: 4 lines). The
+        # docstring: a missing or unreadable file yields
+        # no events and keeps its previous entry. A
+        # directory stats fine but cannot be opened as a
+        # file -- the stat-then-open race's deterministic
+        # stand-in.
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "auth.log")
+            os.mkdir(path)
+            kept = {path: {"inode": os.stat(path).st_ino,
+                           "offset": 0}}
+            events, new_reader = FL.read_new_events([path], kept)
+            self.assertEqual(events, [])
+            self.assertEqual(new_reader[path], kept[path])
+
     def test_shrunk_file_restarts_from_zero(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "auth.log")

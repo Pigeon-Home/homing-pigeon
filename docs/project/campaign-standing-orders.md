@@ -294,6 +294,22 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — the tailing senses' `read_new_events`
+  open-failure leg, one 4-line gap in each of seven
+  senses (coverage run 40189711740, both
+  platforms): zeek-feed, failed-login-watch,
+  falco-feed, osquery-feed, suricata-feed,
+  sysmon-feed, wazuh-feed — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — one
+  test_an_unreadable_file_keeps_its_entry per
+  sense's ReaderTest: a path that stats fine but
+  cannot be opened (a directory is the
+  deterministic stand-in for the stat-then-open
+  race) yields no events and keeps its previous
+  reader entry, sysmon's partial line included —
+  the docstrings' "missing or unreadable" clause,
+  whose missing half was already pinned. Done
+  when a coverage run shows all seven legs run.
 - A (refill) — `runner/wire/transports.py::`
   `service_channel` (4 lines never run, both
   platforms, coverage run 40189711740) — taken
