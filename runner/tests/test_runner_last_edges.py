@@ -814,5 +814,74 @@ class RunnerFailSoftLegs3Test(unittest.TestCase):
                     rr._write_seen_unlocked(path, {"a": True}))
 
 
+class RunnerFailSoftLegs4Test(unittest.TestCase):
+    """Queue A refill, fourth batch (coverage run
+    40189711740): _ingest_local_envelope's
+    catch-all (4886-4888), _local_watch's base
+    guard and per-watch swallow (8442, 8454-8455),
+    _transports_arg's two empty refusals (7078-7079,
+    7083), and _append_security_event's rollover
+    open under the Windows flag line (197, 220).
+    """
+
+    def test_ingest_wrapper_swallows_inner_failure(self):
+        with mock.patch.object(
+                rr, "_ingest_local_envelope_inner",
+                side_effect=RuntimeError("bad envelope")):
+            self.assertIsNone(rr._ingest_local_envelope(
+                {}, "/b", "text", "file"))
+
+    def test_local_watch_legs(self):
+        self.assertIsNone(rr._local_watch({}, 123))
+        ran = []
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(
+                    rr, "_canary_watch",
+                    side_effect=RuntimeError("canary down")), \
+                mock.patch.object(
+                    rr, "_host_log_tail",
+                    side_effect=lambda **kw: ran.append(1)), \
+                mock.patch.object(rr, "_firewall_watch",
+                                  lambda base: None), \
+                mock.patch.object(rr, "_av_watch",
+                                  lambda base: None):
+            self.assertIsNone(rr._local_watch({}, d))
+        self.assertEqual(ran, [1])
+
+    def test_transports_arg_empty_refusals(self):
+        import argparse
+        with mock.patch.object(rr, "_transports", None):
+            with self.assertRaises(
+                    argparse.ArgumentTypeError):
+                rr._transports_arg("")
+        fake = types.SimpleNamespace(
+            enabled_transports=lambda probe: [])
+        with mock.patch.object(rr, "_transports", fake):
+            with self.assertRaises(
+                    argparse.ArgumentTypeError):
+                rr._transports_arg("")
+            self.assertEqual(rr._transports_arg("file"),
+                             ["file"])
+
+    def test_security_event_rollover(self):
+        had = hasattr(os, "O_BINARY")
+        os.O_BINARY = 0
+        try:
+            with tempfile.TemporaryDirectory() as d, \
+                    mock.patch.object(
+                        rr, "_SECURITY_EVENTS_MAX", 2):
+                for i in range(3):
+                    rr._append_security_event(
+                        d, {"kind": "k%d" % i})
+                path = os.path.join(d, "security-events.jsonl")
+                with open(path) as fh:
+                    lines = fh.read().splitlines()
+            self.assertEqual(len(lines), 2)
+            self.assertIn('"k2"', lines[-1])
+        finally:
+            if not had and hasattr(os, "O_BINARY"):
+                del os.O_BINARY
+
+
 if __name__ == "__main__":
     unittest.main()

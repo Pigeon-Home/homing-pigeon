@@ -294,6 +294,17 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — runner.py legs, fourth batch
+  (coverage run 40189711740):
+  _ingest_local_envelope's catch-all,
+  _local_watch's guard and per-watch swallow,
+  _transports_arg's empty refusals, and
+  _append_security_event's rollover open under
+  the Windows flag line — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  RunnerFailSoftLegs4Test in
+  runner/tests/test_runner_last_edges.py. Done
+  when a coverage run shows them clean.
 - A (refill) — runner.py legs, third batch
   (coverage run 40189711740): _admit_object's
   non-string id, malformed envelope and
