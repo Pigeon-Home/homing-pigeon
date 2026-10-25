@@ -156,6 +156,18 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
+- A (refill) — `runner/ops/extsources.py::`
+  `Fetcher._read_capped` and `Fetcher.download`
+  (5 lines each never run on either platform,
+  coverage run 40189608702) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  FetcherStreamEdgesTest in
+  runner/tests/test_extension_sources.py: a body
+  past the cap is refused naming the cap; a read
+  failing mid-stream is a SourceError naming the
+  read, and a download removes its partial file; a
+  close that fails is swallowed by both readers.
+  Done when a coverage run shows both clean.
 - A (refill) — `runner/transport_extensions/dtls/`
   `__main__.py::DtlsPipe.run_once` (5 lines never
   run on either platform, coverage run 40189608702)

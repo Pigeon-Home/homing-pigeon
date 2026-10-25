@@ -770,6 +770,83 @@ class FetcherOpenEdgesTest(unittest.TestCase):
             f._open("https://e.org/x", "*/*")
 
 
+class _StubResp:
+    def __init__(self, chunks, read_error=None, close_error=None):
+        self._chunks = list(chunks)
+        self._read_error = read_error
+        self._close_error = close_error
+
+    def read(self, _n):
+        if self._read_error is not None:
+            raise self._read_error
+        return self._chunks.pop(0) if self._chunks else b""
+
+    def close(self):
+        if self._close_error is not None:
+            raise self._close_error
+
+
+class _StubOpener:
+    def __init__(self, resp):
+        self._resp = resp
+
+    def open(self, _req, timeout=None):
+        return self._resp
+
+
+class FetcherStreamEdgesTest(unittest.TestCase):
+    """Queue A refill: the fetcher's streaming legs --
+    _read_capped and download (coverage run
+    40189608702: 5 lines each on both platforms).
+    The streaming contract: a body past the cap is a
+    SourceError naming the cap; a read that fails
+    mid-stream is a SourceError naming the read (and
+    a download removes its partial file); a close
+    that fails is swallowed in both readers, because
+    the bytes, not the close, are the result.
+    """
+
+    def test_a_body_past_the_cap_is_refused(self):
+        f = X.Fetcher(opener=FakeOpener({}))
+        with self.assertRaisesRegex(X.SourceError,
+                                    "larger than 10 bytes"):
+            f._read_capped(_StubResp([b"x" * 100]),
+                           10, "https://e.org/x")
+
+    def test_a_failed_read_is_a_source_error(self):
+        f = X.Fetcher(opener=FakeOpener({}))
+        with self.assertRaisesRegex(X.SourceError,
+                                    "read from .* failed"):
+            f._read_capped(
+                _StubResp([], read_error=OSError("cut")),
+                10, "https://e.org/x")
+
+    def test_a_failed_close_is_swallowed_by_both_readers(self):
+        f = X.Fetcher(opener=_StubOpener(_StubResp(
+            [b"abc"], close_error=OSError("stuck"))))
+        self.assertEqual(
+            f._read_capped(f._opener.open(None), 10,
+                           "https://e.org/x"), b"abc")
+        with tempfile.TemporaryDirectory() as d:
+            dest = os.path.join(d, "out")
+            f2 = X.Fetcher(opener=_StubOpener(_StubResp(
+                [b"abc"], close_error=OSError("stuck"))))
+            sha, n = f2.download("https://e.org/x", dest, 10)
+            self.assertEqual(n, 3)
+            self.assertEqual(
+                sha, hashlib.sha384(b"abc").hexdigest())
+
+    def test_a_failed_download_read_removes_the_partial_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            dest = os.path.join(d, "out")
+            f = X.Fetcher(opener=_StubOpener(_StubResp(
+                [], read_error=OSError("cut"))))
+            with self.assertRaisesRegex(
+                    X.SourceError, "download of .* failed"):
+                f.download("https://e.org/x", dest, 10)
+            self.assertFalse(os.path.exists(dest))
+
+
 class ExtractTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
