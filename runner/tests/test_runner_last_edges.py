@@ -547,12 +547,20 @@ class RunnerFailSoftLegsTest(unittest.TestCase):
                     rr.download("https://x.test/f", dest)
 
     def test_save_retained_close_failure_is_swallowed(self):
+        real_close = os.close
+
+        def stuck_close(fd):
+            # close() releases the descriptor even when it reports
+            # a failure; so does this fake, or the tmp stays open and
+            # Windows cannot remove the directory afterwards.
+            real_close(fd)
+            raise OSError("stuck")
+
         with tempfile.TemporaryDirectory() as d, \
                 mock.patch.object(
                     rr, "_json_safe",
                     side_effect=ValueError("bad payload")), \
-                mock.patch.object(
-                    os, "close", side_effect=OSError("stuck")):
+                mock.patch.object(os, "close", stuck_close):
             self.assertIsNone(
                 rr.save_retained(d, "job1", {"a": 1}))
             self.assertFalse(os.path.exists(
@@ -836,13 +844,18 @@ class RunnerFailSoftLegs4Test(unittest.TestCase):
     def test_local_watch_legs(self):
         self.assertIsNone(rr._local_watch({}, 123))
         ran = []
+        # The log tail is the platform's: the event log on Windows,
+        # the host log elsewhere; the registry diff exists only there.
+        tail = "_eventlog_tail" if sys.platform == "win32" else "_host_log_tail"
         with tempfile.TemporaryDirectory() as d, \
                 mock.patch.object(
                     rr, "_canary_watch",
                     side_effect=RuntimeError("canary down")), \
                 mock.patch.object(
-                    rr, "_host_log_tail",
+                    rr, tail,
                     side_effect=lambda **kw: ran.append(1)), \
+                mock.patch.object(rr, "_registry_watch",
+                                  lambda base: None, create=True), \
                 mock.patch.object(rr, "_firewall_watch",
                                   lambda base: None), \
                 mock.patch.object(rr, "_av_watch",

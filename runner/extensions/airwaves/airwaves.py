@@ -227,7 +227,8 @@ def parse_nmcli(text):
             signal_dbm = pct / 2.0 - 100.0
             if signal_dbm == int(signal_dbm):
                 signal_dbm = int(signal_dbm)
-        except ValueError:
+        except (OverflowError, ValueError):
+            # inf from a huge digit string; int(inf) overflows (Q28).
             signal_dbm = None
         scan.append({
             "bssid": bssid,
@@ -324,7 +325,8 @@ def parse_iw_link(text):
         try:
             value = float(mg.group(1))
             signal_dbm = int(value) if value == int(value) else value
-        except ValueError:
+        except (OverflowError, ValueError):
+            # inf from a huge digit string; int(inf) overflows (Q28).
             signal_dbm = None
     return {"bssid": bssid, "ssid": ssid, "signal_dbm": signal_dbm}
 

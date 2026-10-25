@@ -43,7 +43,14 @@ def _evergreen_docs():
         for name in filenames:
             if name.endswith(".md") and name != "CHANGELOG.md":
                 found.append(os.path.join(dirpath, name))
-    return found
+    # The two logs cite releases by number the way the CHANGELOG
+    # does: the questions file records which release applied an
+    # answer, the standing orders' ledger which release proved an
+    # item. Records, not evergreen prose.
+    logs = {os.path.join(root, "docs", "use", "questions.md"),
+            os.path.join(root, "docs", "project",
+                         "campaign-standing-orders.md")}
+    return [p for p in found if p not in logs]
 
 
 class NoVersionRotTest(unittest.TestCase):

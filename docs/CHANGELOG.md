@@ -24,7 +24,8 @@ facts a reader may need to cite. Git history carries the rest.
   absolute the same way, instead of a drive-qualified real path
   against a bare one.
 - airwaves: a signal line too long for `int()` degrades that reading
-  to None instead of ending the sense's cycle (Q28).
+  to None instead of ending the sense's cycle, in all three parsers
+  (Q28).
 - (3.12.66 was built but not tagged: its Windows build caught the
   audit race above; everything below shipped in this release.)
 - **The mutation signal, un-blinded.** A collection failure in the

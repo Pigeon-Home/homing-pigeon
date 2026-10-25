@@ -99,6 +99,7 @@ class UsernsRestrictedLegsTest(unittest.TestCase):
                                      want)
 
 
+@unittest.skipUnless(os.name != "nt", "POSIX only")
 class StartupProblemScriptsTest(unittest.TestCase):
     """Queue A: the trial-run half of startup_problem --
     the half behind the platform guard, so the Windows

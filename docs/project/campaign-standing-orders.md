@@ -86,6 +86,27 @@ Claude, in the four-part format, with a failing-by-design test. The
 campaign does not wait for the fix: it moves to the next item and
 re-verifies when the question is answered.
 
+Two rules keep main green while that happens (owner's standing
+order, 2026-10-25, after a release was blocked twice in one hour):
+
+- A failing-by-design probe lands under `@unittest.expectedFailure`
+  with the question number in a comment above it. It then fails
+  quietly until the fix lands and flips to "unexpected success",
+  which is red: the fix commit removes the decorator. A red probe
+  in the live suite blocks every release behind it; an expected
+  failure blocks nothing and is just as much a proof.
+- A test is not done until the build's Windows shards are green
+  for it (the shard annotations name a red test). The fixtures
+  that broke there this morning are the same three shapes each
+  time: counting `os.stat` calls to catch a path probe (Python
+  3.12+ answers `os.path.isfile`/`isdir` in C on Windows, so the
+  probe never shows; stub the probe directly), a fake `os.close`
+  that does not release the descriptor (Windows then cannot remove
+  the file), and a directory or `chmod 000` standing in for an
+  unreadable file (neither is unreadable there; a refusing `open`
+  is). A scripted binary on PATH needs a POSIX shell: skip the
+  class on `nt` with a registered reason.
+
 ## When to stop and ask the owner
 
 Only these stop the loop, and only for the item they block. Write
