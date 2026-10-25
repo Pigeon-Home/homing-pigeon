@@ -10,6 +10,7 @@ import io
 import os
 import sys
 import unittest
+import unittest.mock
 from contextlib import redirect_stdout
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -184,6 +185,41 @@ class GatherAndGateTests(unittest.TestCase):
             code = I.host_install_gate(facts())
         self.assertIsNone(code)
         self.assertEqual(buf.getvalue(), "")
+
+
+class UsbAcceleratorsTest(unittest.TestCase):
+    """Queue A refill: _usb_accelerators' probe legs
+    (coverage run 40187685363: 6 lines on both
+    platforms -- CI machines have no accelerator
+    plugged in, so the scan never looped). The scan
+    is total: an unlistable sysfs answers none, a
+    known vendor id names its kind once, an unknown
+    id is not an accelerator.
+    """
+
+    def test_an_unlistable_sysfs_answers_none(self):
+        with unittest.mock.patch.object(
+                os, "listdir", side_effect=OSError("no sysfs")):
+            self.assertEqual(I._usb_accelerators(), [])
+
+    def test_known_vendors_name_their_kind_once(self):
+        vendors = {"usb1": "18d1\n", "1-2": "03e7",
+                   "3-1": "1a6e", "4-1": "ffff"}
+
+        def fake_listdir(path):
+            self.assertEqual(path, "/sys/bus/usb/devices")
+            return sorted(vendors)
+
+        def fake_read(path):
+            name = path.split(os.sep)[-2]
+            return vendors[name]
+
+        with unittest.mock.patch.object(
+                os, "listdir", fake_listdir), \
+                unittest.mock.patch.object(
+                I, "_read_text", fake_read):
+            self.assertEqual(I._usb_accelerators(),
+                             ["ncs", "coral"])
 
 
 if __name__ == "__main__":
