@@ -156,6 +156,16 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 03:54 PDT
+- D — SECURITY.md and docs/security/threat-model.md,
+  one test per claim plus its negative control — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  claims already proven are mapped in
+  runner/tests/test_security_md_claims.py; first gap
+  pinned there: the security block does not hot-reload
+  (a mode change in the file leaves the running cfg at
+  its startup mode while a hot key in the same write
+  does reload; the same file read at startup enables
+  the mode).
 - D — documented-default hunt re-run against every key
   added since the defaults registry was last complete
   (8748b44, Release 3.12.62): no new config keys in
