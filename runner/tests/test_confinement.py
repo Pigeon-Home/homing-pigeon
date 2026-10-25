@@ -11,6 +11,7 @@ the passing side of EnforceNegativeControl below.
 """
 import json
 import os
+import shutil
 import socket
 import sys
 import tempfile
@@ -24,7 +25,7 @@ sys.path.insert(0, REPO)
 
 from runner.guard import sandbox as SB  # noqa: E402
 from runner.guard import security as S  # noqa: E402
-from runner.runner import execute_job  # noqa: E402
+from runner.runner import execute_job, snapshot_outside  # noqa: E402
 
 BWRAP_HERE = SB.sandbox_available()
 
@@ -639,6 +640,59 @@ class WallWorkTest(unittest.TestCase):
         with open(on_landed, encoding="utf-8") as fh:
             self.assertEqual(fh.read(), "via-work")
         self.assertEqual(audit[-1]["decision"], "sandboxed")
+
+
+class SnapshotRealpathFallbackTest(unittest.TestCase):
+    """Queue A refill: snapshot_outside's realpath fallbacks
+    (coverage run 40189711740: 4 lines, both platforms).
+    The snapshot is best-effort by its docstring: when
+    os.path.realpath raises OSError -- for the workspace
+    itself, or for one directory mid-walk -- the walk
+    falls back to the absolute path and carries on, so an
+    odd filesystem costs precision, never the snapshot.
+    """
+
+    def _tree(self):
+        parent = tempfile.mkdtemp(prefix="hp-snap-")
+        self.addCleanup(shutil.rmtree, parent, True)
+        ws = os.path.join(parent, "ws")
+        sib = os.path.join(parent, "sib")
+        os.makedirs(ws)
+        os.makedirs(sib)
+        with open(os.path.join(ws, "own.txt"), "w") as fh:
+            fh.write("own")
+        marker = os.path.join(sib, "outside.txt")
+        with open(marker, "w") as fh:
+            fh.write("outside")
+        return ws, sib, marker
+
+    def test_a_workspace_realpath_failure_falls_back(self):
+        ws, _sib, marker = self._tree()
+        real = os.path.realpath
+
+        def flaky(path, *a, **kw):
+            if path == ws:
+                raise OSError("no resolution")
+            return real(path, *a, **kw)
+
+        with mock.patch.object(os.path, "realpath", flaky):
+            snap = snapshot_outside(ws)
+        self.assertIn(marker, snap)
+        self.assertFalse(any(p.startswith(ws) for p in snap))
+
+    def test_a_walk_root_realpath_failure_falls_back(self):
+        ws, sib, marker = self._tree()
+        real = os.path.realpath
+
+        def flaky(path, *a, **kw):
+            if path == sib:
+                raise OSError("no resolution")
+            return real(path, *a, **kw)
+
+        with mock.patch.object(os.path, "realpath", flaky):
+            snap = snapshot_outside(ws)
+        self.assertIn(marker, snap)
+        self.assertFalse(any(p.startswith(ws) for p in snap))
 
 
 if __name__ == "__main__":

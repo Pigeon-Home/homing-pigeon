@@ -294,6 +294,17 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/runner.py::snapshot_outside`
+  realpath fallbacks (4 lines never run, both
+  platforms, coverage run 40189711740) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  SnapshotRealpathFallbackTest in
+  runner/tests/test_confinement.py: a realpath
+  failure on the workspace, and one on a directory
+  mid-walk, each fall back to the absolute path and
+  the snapshot still lands (the outside file in,
+  the workspace's own files out). Done when a
+  coverage run shows the four lines run.
 - A (refill) — `runner/ops/auditreport.py` import
   seam (the fallback block, 5 lines never run on
   either platform, coverage run 40189711740) —
