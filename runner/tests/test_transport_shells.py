@@ -478,5 +478,45 @@ class MailboxDefaultLogLegTest(unittest.TestCase):
             mailbox.log = saved
 
 
+class NatsMainLegsTest(unittest.TestCase):
+    # Queue A refill: nats/__main__.py::main's three exits -- no
+    # channel directory, a pipe that refuses to start, and the
+    # happy path that runs the pipe and answers 0.
+    def test_main_refuses_without_a_channel_directory(self):
+        from runner.transport_extensions.nats import __main__ as nats
+        self.assertEqual(nats.main(["nats-transport"]), 2)
+
+    def test_main_refuses_when_the_pipe_cannot_start(self):
+        from runner.transport_extensions.nats import __main__ as nats
+
+        def refuse(_cfg, _channel_dir):
+            raise nats.TransportError("no credentials configured")
+
+        with mock.patch.object(
+                ch, "load_runtime_config",
+                return_value=("/chan", {})), \
+                mock.patch.object(nats, "NatsPipe", refuse):
+            self.assertEqual(nats.main(["nats-transport"]), 2)
+
+    def test_main_runs_the_pipe_and_answers_zero(self):
+        from runner.transport_extensions.nats import __main__ as nats
+        ran = []
+
+        class FakePipe:
+            def __init__(self, cfg, channel_dir):
+                ran.append((cfg, channel_dir))
+
+            def run(self):
+                ran.append("ran")
+
+        with mock.patch.object(
+                ch, "load_runtime_config",
+                return_value=("/chan", {"transport_nats": {}})), \
+                mock.patch.object(nats, "NatsPipe", FakePipe):
+            self.assertEqual(nats.main(["nats-transport"]), 0)
+        self.assertEqual(
+            ran, [({"transport_nats": {}}, "/chan"), "ran"])
+
+
 if __name__ == "__main__":
     unittest.main()

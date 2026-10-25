@@ -2443,3 +2443,12 @@ when done, the proving commit or run. Newest first.
   58316a92-3c4a-41cb-8a16-8c0c5a871e90, 2026-10-25. The same run's
   one failure was the unregistered kill_tree skip reason from the
   c7a7d18 take; registered in d6f822d.
+- A (refill) — `runner/transport_extensions/nats/__main__.py::main`
+  (12 lines never run on the local full-suite map at 93998ca) —
+  taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  NatsMainLegsTest in runner/tests/test_transport_shells.py: no
+  channel directory answers 2, a pipe whose constructor raises
+  TransportError answers 2, and the happy path runs the pipe and
+  answers 0. Locally coverage-clean on main's lines. Done when a
+  coverage run shows main clean and the build's Windows shards
+  are green for it.
