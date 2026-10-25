@@ -156,6 +156,15 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
+- A (refill) — `runner/wire/mailbox.py::_load_oauth`
+  (5 of its 6 lines never run on either platform,
+  coverage run 40189608702) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  LoadOauthSeamTest in runner/tests/test_oauth.py:
+  the package import answers first; with it blocked,
+  the script-mode fallback module is the one
+  returned. Done when a coverage run shows the
+  function clean.
 - A (refill) — `runner/runner.py::run_variant` (8
   lines never run on either platform, coverage run
   40189608702) — taken 2026-10-25,

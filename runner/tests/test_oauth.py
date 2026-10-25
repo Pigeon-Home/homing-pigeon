@@ -354,5 +354,34 @@ class BrowserConsentLoopTests(unittest.TestCase):
             stalled.close()
 
 
+class LoadOauthSeamTest(unittest.TestCase):
+    """Queue A refill: mailbox._load_oauth's two import
+    shapes (coverage run 40189608702: 5 of its 6 lines
+    never ran on either platform -- the suite fakes
+    OAuth above this seam). The loader is the wire
+    module's dual-layout contract, the same one every
+    role module carries: the package import first
+    (runner.wire.oauth), and the script-mode fallback
+    (wire.oauth, when runner/ itself is on sys.path)
+    only when the package import fails.
+    """
+
+    def test_the_package_import_is_the_first_choice(self):
+        from runner.wire import mailbox
+        self.assertIs(mailbox._load_oauth(), oauth)
+
+    def test_the_script_mode_fallback_answers_when_it_must(self):
+        import types
+        from runner.wire import mailbox
+        fake = types.ModuleType("wire.oauth")
+        fake.marker = "script-mode"
+        with mock.patch.dict(sys.modules, {
+                "runner.wire.oauth": None,
+                "wire": types.ModuleType("wire"),
+                "wire.oauth": fake}):
+            loaded = mailbox._load_oauth()
+        self.assertIs(loaded, fake)
+
+
 if __name__ == "__main__":
     unittest.main()
