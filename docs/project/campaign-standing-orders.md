@@ -156,6 +156,18 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
+- A (refill) — `runner/extensions/release-drop/`
+  `release_drop.py::main` (6 lines never run on
+  either platform, coverage run 40187685363) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  MainDeliveryTest in
+  runner/tests/test_release_drop.py: a full local
+  delivery writes the state and files one envelope;
+  delivery not set up is exit 2; a short delivery is
+  exit 2 with the state unwritten; an unwritable
+  state file is exit 2 with the reason printed.
+  Done when a coverage run shows the function
+  clean.
 - A (refill) — `runner/ops/extsources.py::`
   `_fetch_archive` (6 lines never run on either
   platform, coverage run 40187685363) — taken

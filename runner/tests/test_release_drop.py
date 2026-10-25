@@ -317,5 +317,79 @@ class HashingPathTest(unittest.TestCase):
                          "--state", state]), 2)
 
 
+class MainDeliveryTest(unittest.TestCase):
+    """Queue A refill: release-drop main's local-delivery
+    legs (coverage run 40187685363: 6 lines on both
+    platforms). The contract main's own comments state:
+    local delivery that is not set up is exit 2; a
+    delivery short of the alert count leaves the state
+    unwritten, so the next pass reports the artifacts
+    again; a full delivery writes the state and files
+    one envelope per alert.
+    """
+
+    ENV = "HP_RELEASE_DROP_SECRET"
+
+    def _drive(self, d, extra):
+        readings = os.path.join(d, "readings.json")
+        with open(readings, "w", encoding="utf-8") as fh:
+            json.dump(_readings([_file()]), fh)
+        state = os.path.join(d, "state.json")
+        argv = ["--readings", readings, "--state", state,
+                "--secret-env", self.ENV] + extra
+        err = io.StringIO()
+        with redirect_stderr(err):
+            rc = RD.main(argv)
+        return rc, state, err.getvalue()
+
+    def test_local_delivery_success_writes_state(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.environ[self.ENV] = "ab" * 32
+            try:
+                rc, state, _err = self._drive(
+                    d, ["--local-dir", d])
+            finally:
+                os.environ.pop(self.ENV, None)
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.exists(state))
+            inbox = os.path.join(d, "local-inbox")
+            self.assertEqual(len(os.listdir(inbox)), 1)
+
+    def test_an_unwritable_state_is_exit_2(self):
+        with tempfile.TemporaryDirectory() as d:
+            readings = os.path.join(d, "readings.json")
+            with open(readings, "w", encoding="utf-8") as fh:
+                json.dump(_readings([_file()]), fh)
+            state = os.path.join(d, "gone", "state.json")
+            err = io.StringIO()
+            with redirect_stderr(err):
+                rc = RD.main(["--readings", readings,
+                              "--state", state])
+            self.assertEqual(rc, 2)
+            self.assertIn("cannot write state", err.getvalue())
+
+    def test_local_delivery_not_set_up_is_exit_2(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.environ.pop(self.ENV, None)
+            rc, state, _err = self._drive(d, ["--local-dir", d])
+            self.assertEqual(rc, 2)
+            self.assertFalse(os.path.exists(state))
+
+    def test_short_delivery_is_exit_2_and_saves_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            blocker = os.path.join(d, "blocker")
+            with open(blocker, "w", encoding="utf-8") as fh:
+                fh.write("not a directory")
+            os.environ[self.ENV] = "ab" * 32
+            try:
+                rc, state, err = self._drive(
+                    d, ["--local-dir", blocker])
+            finally:
+                os.environ.pop(self.ENV, None)
+            self.assertEqual(rc, 2)
+            self.assertIn("state not saved", err)
+            self.assertFalse(os.path.exists(state))
+
+
 if __name__ == "__main__":
     unittest.main()
