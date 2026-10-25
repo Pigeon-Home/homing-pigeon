@@ -151,11 +151,15 @@ jobs:
     continue-on-error: true
     # Off the release critical path (owner's call, 2026-10-22): a
     # non-gating signal was the whole difference between a ~7-minute
-    # release and a ~40-minute one (ci-failures.md, finding 4). It
-    # now runs only on manual dispatch (and the scheduled
-    # mutation-seeded.yml), never on a tag or branch push, so no
-    # publish ever waits on it.
-    if: github.event_name == 'workflow_dispatch'
+    # release and a ~40-minute one (ci-failures.md, finding 4).
+    # cut-release starts the release with `gh workflow run build.yml
+    # --ref <tag>`, which is a workflow_dispatch on a tag ref, so
+    # matching workflow_dispatch alone put mutation back on the
+    # release (v3.12.68 ran it, 16.6 min). Gate on dispatch AND a
+    # non-tag ref: a manual run on a branch gets mutation, the
+    # cut-release dispatch on refs/tags/v* does not, and the
+    # scheduled mutation-seeded.yml is unaffected. No publish waits.
+    if: github.event_name == 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/v')
     needs: test
     runs-on: ubuntu-latest
     permissions:

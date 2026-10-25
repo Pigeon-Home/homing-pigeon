@@ -117,15 +117,20 @@ class MutationGateTest(unittest.TestCase):
     docs/reports/v3.12.56/ci-failures.md.
     """
 
-    def test_mutation_runs_only_on_manual_dispatch(self):
-        # Off the release critical path (2026-10-22): mutation is a
-        # non-gating signal, so it runs only on manual dispatch (and
-        # the scheduled mutation-seeded.yml), never on a tag or push.
-        # That is the whole difference between a ~7-min and a ~40-min
-        # release. docs/reports/v3.12.56/ci-failures.md, finding 4.
+    def test_mutation_runs_only_on_non_tag_dispatch(self):
+        # cut-release starts the release with `gh workflow run
+        # build.yml --ref <tag>`, a workflow_dispatch on a tag ref, so
+        # gating on workflow_dispatch alone put mutation back on the
+        # release (v3.12.68 ran it). It must gate on dispatch AND a
+        # non-tag ref, so the release dispatch skips it.
         block = _job_block(_workflow(), "mutation")
-        self.assertIn("if: github.event_name == 'workflow_dispatch'", block)
-        self.assertNotIn("refs/tags", block)
+        self.assertIn(
+            "if: github.event_name == 'workflow_dispatch' "
+            "&& !startsWith(github.ref, 'refs/tags/v')", block)
+        # The tag reference it names is the one it excludes, so the
+        # release dispatch (on refs/tags/v*) skips mutation while a
+        # manual branch dispatch still runs it.
+        self.assertIn("!startsWith(github.ref, 'refs/tags/v')", block)
 
     def test_the_gate_jobs_stay_ungated(self):
         # The jobs that gate everything else must run on every push;
