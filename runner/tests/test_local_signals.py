@@ -360,6 +360,45 @@ class SocketTransportTest(LocalFixture):
         self.assertEqual(self.alerts(), [])
 
 
+class ServeLoopIsolationTest(unittest.TestCase):
+    """Queue A refill: _serve_local_signals' isolation
+    legs (coverage run 40189711740: lines 5365-5366
+    and 5370-5371). The accept loop is failure-
+    isolated by its docstring: a connection whose
+    handling raises is dropped, a close that fails is
+    ignored, and the loop keeps accepting.
+    """
+
+    def test_a_bad_connection_never_stops_the_loop(self):
+        handled = []
+
+        class Conn:
+            def close(self):
+                raise OSError("already gone")
+
+        class Srv:
+            def __init__(self):
+                self.calls = 0
+
+            def accept(self):
+                self.calls += 1
+                if self.calls == 1:
+                    return Conn(), ("127.0.0.1", 1)
+                raise KeyboardInterrupt
+
+        def boom(_cfg, _base, conn):
+            handled.append(conn)
+            raise RuntimeError("handler broke")
+
+        srv = Srv()
+        with unittest.mock.patch.object(
+                R, "_handle_local_signal_conn", boom):
+            with self.assertRaises(KeyboardInterrupt):
+                R._serve_local_signals({}, "/base", srv)
+        self.assertEqual(len(handled), 1)
+        self.assertEqual(srv.calls, 2)
+
+
 class LocalConfigTest(unittest.TestCase):
     def test_enabled_by_default(self):
         self.assertTrue(R._local_signals_enabled({}))

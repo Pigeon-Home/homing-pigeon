@@ -2564,6 +2564,51 @@ class LocalFilesEdgesTest(unittest.TestCase):
                     X._tree_bytes(os.path.join(d, "nope")), 0)
 
 
+class ReportExtensionSourcesTest(unittest.TestCase):
+    """Queue A refill: _report_extension_sources' four
+    outcomes (coverage run 40189711740: lines 4598,
+    4601, 4605, 4614). The startup line has exactly
+    four shapes: the sources module missing (silence),
+    no valid policy (silence), sources on (the fetch
+    line, naming the budget and the index), and
+    sources off (the off line).
+    """
+
+    def _report(self, policy, extsources="present"):
+        lines = []
+        with mock.patch.object(R, "_extsources",
+                               None if extsources is None
+                               else X), \
+                mock.patch.object(R, "_extension_sources_policy",
+                                  return_value=policy), \
+                mock.patch.object(
+                    R, "log",
+                    lambda m, level="INFO": lines.append(m)):
+            R._report_extension_sources({}, "/base")
+        return lines
+
+    def test_no_module_and_no_policy_are_silent(self):
+        self.assertEqual(self._report(None, extsources=None),
+                         [])
+        self.assertEqual(self._report(None), [])
+        self.assertEqual(self._report({"valid": False}), [])
+
+    def test_on_and_off_each_say_their_line(self):
+        on = self._report({"valid": True, "enabled": True,
+                           "extensions": {}, "fetch": True,
+                           "max_bytes": 3 << 20})
+        self.assertEqual(len(on), 1)
+        self.assertIn("extension sources: on its first run",
+                      on[0])
+        self.assertIn("budget 3 MB", on[0])
+        off = self._report({"valid": True, "enabled": False,
+                            "extensions": {}, "fetch": False,
+                            "max_bytes": 0})
+        self.assertEqual(
+            off, ["extension sources: off "
+                  "(extension_sources is false)"])
+
+
 class OracleNoteEdgesTest(unittest.TestCase):
     """Queue A refill: oracle_note's two remaining legs
     (coverage run 40189711740: 4 lines). The function's

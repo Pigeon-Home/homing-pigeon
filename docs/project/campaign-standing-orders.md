@@ -295,6 +295,21 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - A (refill) — `runner/runner.py::`
+  `_serve_local_signals` isolation legs and
+  `_report_extension_sources` outcomes (4 lines
+  each never run, coverage run 40189711740) —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ServeLoopIsolationTest in
+  runner/tests/test_local_signals.py (a raising
+  handler and a failing close are both swallowed
+  and the loop accepts again) and
+  ReportExtensionSourcesTest in
+  runner/tests/test_extension_sources.py (missing
+  module and invalid policy are silent; on and off
+  each say their one line). Done when a coverage
+  run shows both clean.
+- A (refill) — `runner/runner.py::`
   `_release_saved_claims` failure legs (4 lines
   never run, coverage run 40189711740) — taken
   2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
