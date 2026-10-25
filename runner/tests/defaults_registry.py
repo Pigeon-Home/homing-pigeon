@@ -1962,7 +1962,120 @@ ROWS = [{'key': 'severity',
            'an explicit true encrypts every result, '
            'and only the literal boolean false '
            'encrypts none -- a present-but-invalid '
-           'value reads as encrypt-all.'}]
+           'value reads as encrypt-all.'},
+ {'key': 'remediation_mode',
+  'scope': 'core',
+  'kind': 'enum',
+  'default': 'deterministic',
+  'doc_file': 'docs/design/remediation-design.md',
+  'doc_line': 126,
+  'doc_token': 'deterministic',
+  'doc_status': 'verified',
+  'reader': 'runner/oracle/remediation.py:mode_of',
+  'reader_sites': ['runner/oracle/remediation.py:mode_of',
+                   'runner/oracle/remediation.py:settings'],
+  'policy': 'default',
+  'lo': None,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestRemediationModeInvalidReadsAsDeterministic',
+  'notes': 'Queue D refill (2026-10-25): whether the '
+           'remediation reflexes are armed, and whether '
+           'the Oracle layer may order acts. The '
+           'reader\'s contract: anything unrecognized '
+           'is the default deterministic, never a '
+           'silent off.'},
+ {'key': 'remediation_storm_ceiling',
+  'scope': 'core',
+  'kind': 'integer',
+  'default': 64,
+  'doc_file': 'docs/design/remediation-design.md',
+  'doc_line': 319,
+  'doc_token': 'default 64',
+  'doc_status': 'verified',
+  'reader': 'runner/oracle/remediation.py:settings',
+  'reader_sites': ['runner/oracle/remediation.py:settings'],
+  'policy': 'default',
+  'lo': 1,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestRemediationSettingsInvalidReadAsDefaults',
+  'notes': 'Queue D refill (2026-10-25): the process-'
+           'storm tripwire, read through settings\' '
+           '_pos_int (bools and sub-minimum values read '
+           'as the default).'},
+ {'key': 'remediation_sample_sec',
+  'scope': 'core',
+  'kind': 'number',
+  'default': 1.0,
+  'doc_file': 'docs/design/remediation-design.md',
+  'doc_line': 279,
+  'doc_token': 'default 1s',
+  'doc_status': 'verified',
+  'reader': 'runner/oracle/remediation.py:settings',
+  'reader_sites': ['runner/oracle/remediation.py:settings'],
+  'policy': 'default',
+  'lo': 0.05,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestRemediationSettingsInvalidReadAsDefaults',
+  'notes': 'Queue D refill (2026-10-25): the monitor '
+           'sampling interval, read through _pos_float '
+           '(non-finite and sub-minimum values read as '
+           'the default).'},
+ {'key': 'remediation_oracle_timeout_sec',
+  'scope': 'core',
+  'kind': 'integer',
+  'default': 20,
+  'doc_file': 'docs/design/remediation-design.md',
+  'doc_line': 346,
+  'doc_token': 'default 20s',
+  'doc_status': 'verified',
+  'reader': 'runner/oracle/remediation.py:settings',
+  'reader_sites': ['runner/oracle/remediation.py:settings'],
+  'policy': 'default',
+  'lo': 1,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestRemediationSettingsInvalidReadAsDefaults',
+  'notes': 'Queue D refill (2026-10-25): the bound on '
+           'the Oracle\'s synchronous call at '
+           'divergence time.'},
+ {'key': 'remediation_quarantine_max_jobs',
+  'scope': 'core',
+  'kind': 'integer',
+  'default': 50,
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 89,
+  'doc_token': 'default 50',
+  'doc_status': 'verified',
+  'reader': 'runner/oracle/remediation.py:settings',
+  'reader_sites': ['runner/oracle/remediation.py:settings'],
+  'policy': 'default',
+  'lo': 1,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestRemediationSettingsInvalidReadAsDefaults',
+  'notes': 'Queue D refill (2026-10-25): the '
+           'quarantine area\'s job-count bound; older '
+           'seizures are archived, never deleted.'},
+ {'key': 'remediation_quarantine_max_bytes',
+  'scope': 'core',
+  'kind': 'integer',
+  'default': 536870912,
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 89,
+  'doc_token': '536870912',
+  'doc_status': 'verified',
+  'reader': 'runner/oracle/remediation.py:settings',
+  'reader_sites': ['runner/oracle/remediation.py:settings'],
+  'policy': 'default',
+  'lo': 1,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestRemediationSettingsInvalidReadAsDefaults',
+  'notes': 'Queue D refill (2026-10-25): the '
+           'quarantine area\'s byte bound (512 MiB).'}]
 
 
 # The generic confval helpers: their defaults are caller-supplied,
@@ -2014,9 +2127,10 @@ class RegistryShapeTests(unittest.TestCase):
         # then +4 more the same day (protocol_v2 and the
         # oracle_opinion_model / oracle_learning booleans),
         # then +3 more (answer_only, mail_tls_required,
-        # job_encryption).
-        self.assertEqual(111, len(ROWS))
-        self.assertEqual(60, sum(1 for r in ROWS if r["scope"] == "core"))
+        # job_encryption), then +6 more (the remediation
+        # family: mode plus its five numeric settings).
+        self.assertEqual(117, len(ROWS))
+        self.assertEqual(66, sum(1 for r in ROWS if r["scope"] == "core"))
         self.assertEqual(51, sum(1 for r in ROWS if r["scope"] == "extension"))
 
 

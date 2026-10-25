@@ -47085,6 +47085,78 @@ class TestJobEncryptionInvalidReadsAsEncryptAll(unittest.TestCase):
                     {"job_encryption": bad}), True)
 
 
+class TestRemediationModeInvalidReadsAsDeterministic(unittest.TestCase):
+    """Queue D refill: `remediation_mode` gains a
+    registry row. The design doc states the default
+    is `deterministic` -- the reflexes armed -- and
+    the reader's own contract is that anything
+    unrecognized is the default, never a silent
+    `off`: a typo cannot disarm the box."""
+
+    def test_invalid_mode_reads_as_deterministic(self):
+        from runner.oracle import remediation as rm
+        self.assertEqual(rm.mode_of({}), "deterministic")
+        self.assertEqual(rm.mode_of(None), "deterministic")
+        for bad in ("bogus", "OFF", "off ", "", 3, None, True):
+            with self.subTest(bad=bad):
+                self.assertEqual(
+                    rm.mode_of({"remediation_mode": bad}),
+                    "deterministic")
+        for good in ("off", "deterministic", "oracle"):
+            with self.subTest(good=good):
+                self.assertEqual(
+                    rm.mode_of({"remediation_mode": good}), good)
+
+
+class TestRemediationSettingsInvalidReadAsDefaults(unittest.TestCase):
+    """Queue D refill: the remediation numeric
+    family gains registry rows -- storm ceiling 64,
+    sample 1.0s, Oracle timeout 20s, quarantine
+    bounds 50 jobs and 512 MiB. Each reads a
+    present-but-invalid value as its documented
+    default through the settings seam."""
+
+    DEFAULTS = {"mode": "deterministic", "storm_ceiling": 64,
+                "sample_sec": 1.0, "oracle_timeout_sec": 20,
+                "quarantine_max_jobs": 50,
+                "quarantine_max_bytes": 536870912}
+
+    def test_absent_and_invalid_read_as_defaults(self):
+        from runner.oracle import remediation as rm
+        self.assertEqual(rm.settings({}), self.DEFAULTS)
+        self.assertEqual(rm.settings(None), self.DEFAULTS)
+        keys = ("remediation_storm_ceiling",
+                "remediation_oracle_timeout_sec",
+                "remediation_quarantine_max_jobs",
+                "remediation_quarantine_max_bytes")
+        for key in keys:
+            for bad in ("x", -5, 0, True, None):
+                with self.subTest(key=key, bad=bad):
+                    self.assertEqual(
+                        rm.settings({key: bad}), self.DEFAULTS)
+        for bad in ("x", -1.0, 0.01, True, None,
+                    float("inf"), float("nan")):
+            with self.subTest(key="remediation_sample_sec",
+                              bad=bad):
+                self.assertEqual(
+                    rm.settings({"remediation_sample_sec": bad}),
+                    self.DEFAULTS)
+
+    def test_valid_values_pass_through(self):
+        from runner.oracle import remediation as rm
+        got = rm.settings({
+            "remediation_storm_ceiling": 128,
+            "remediation_sample_sec": 2.5,
+            "remediation_oracle_timeout_sec": 60,
+            "remediation_quarantine_max_jobs": 5,
+            "remediation_quarantine_max_bytes": 1024})
+        self.assertEqual(got, {
+            "mode": "deterministic", "storm_ceiling": 128,
+            "sample_sec": 2.5, "oracle_timeout_sec": 60,
+            "quarantine_max_jobs": 5,
+            "quarantine_max_bytes": 1024})
+
+
 class TestOracleModeInvalidReadsAsLlm(unittest.TestCase):
     """Queue D refill: `oracle_mode` gains a
     registry row. The doc states `llm` is the

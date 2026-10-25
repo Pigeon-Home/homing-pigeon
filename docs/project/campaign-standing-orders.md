@@ -2700,6 +2700,15 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue D refill taken: the remediation family
+  gains its six rows -- remediation_mode
+  (deterministic; an unrecognized value is the
+  default, never a silent off) and its five
+  numeric settings (storm ceiling 64, sample
+  1.0s, Oracle timeout 20s, quarantine bounds
+  50 jobs / 512 MiB), each doc-verified and
+  pinned through the settings seam. Registry
+  count 111 -> 117 (60 -> 66 core).
 - Queue D refill taken: three more documented
   keys gain rows -- answer_only (off; strict
   reader, only the exact True takes the role),
