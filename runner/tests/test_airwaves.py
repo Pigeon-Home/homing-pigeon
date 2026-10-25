@@ -566,5 +566,38 @@ class EndToEndTest(AirFixture):
         self.assertEqual(brief["status"], "no_inference")
 
 
+class RunToolTest(unittest.TestCase):
+    """Queue A refill: _run's execution legs (coverage
+    run 40187685363: 7 lines on both platforms; only the
+    missing-binary return had ever run). The helper's
+    contract is its docstring: a scan tool's stdout on
+    success, and None for every failure shape -- a
+    nonzero exit, a timeout, an OSError from the run
+    itself -- because each means this source has
+    nothing to say, never an exception into the sense.
+    The interpreter stands in for the scan tools.
+    """
+
+    def test_a_successful_run_returns_its_stdout(self):
+        self.assertEqual(
+            AW._run([sys.executable, "-c", "print('scan-ok')"]),
+            "scan-ok\n")
+
+    def test_a_nonzero_exit_is_none(self):
+        self.assertIsNone(AW._run(
+            [sys.executable, "-c", "import sys; sys.exit(3)"]))
+
+    def test_a_timeout_is_none(self):
+        self.assertIsNone(AW._run(
+            [sys.executable, "-c", "import time; time.sleep(5)"],
+            timeout=0.2))
+
+    def test_an_oserror_from_the_run_is_none(self):
+        import subprocess as sp
+        with unittest.mock.patch.object(
+                sp, "run", side_effect=OSError("cannot fork")):
+            self.assertIsNone(AW._run([sys.executable, "-c", "pass"]))
+
+
 if __name__ == "__main__":
     unittest.main()
