@@ -2501,3 +2501,16 @@ when done, the proving commit or run. Newest first.
   166.4 GB | under-driven (between scoped takes; the local
   full-suite coverage run finished this hour).
   resources-top: hatch 198 MB, python 12 MB.
+- A (refill) — chmod-failure swallows in
+  `runner/oracle/senses.py::_write_private` (lines 336-337)
+  and `runner/oracle/learning.py::_append` (lines 259-260),
+  local full-suite map at 93998ca — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  WritePrivateChmodSwallowTest (test_senses.py) and
+  AppendChmodSwallowTest (test_oracle_learning.py): with
+  os.chmod refusing, the write and the ledger append still
+  land and nothing raises. The O_BINARY flag lines beside
+  them (328 / 251) are platform mirrors, covered on the
+  Windows map. Locally coverage-clean on the swallows. Done
+  when a coverage run shows them clean and the build's
+  Windows shards are green.

@@ -424,5 +424,28 @@ class SensesQueryOpTest(unittest.TestCase):
             self.assertNotIn("SECRET-123", alert["detail"]["cmd"])
 
 
+class WritePrivateChmodSwallowTest(unittest.TestCase):
+    # Queue A refill: _write_private's chmod-failure swallow
+    # (local full-suite map at 93998ca: lines 336-337). The
+    # write itself has already landed when the chmod runs; a
+    # filesystem that refuses it must not turn a stored alert
+    # into a raised error. (Line 328, the O_BINARY flag leg,
+    # is a platform mirror: it runs on the Windows map.)
+    def test_a_refused_chmod_does_not_lose_the_write(self):
+        import os
+        import tempfile
+        from unittest import mock
+        from runner.oracle import senses
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "alerts.jsonl")
+            with mock.patch.object(
+                    os, "chmod",
+                    side_effect=OSError("read-only filesystem")):
+                senses._write_private(path, b"one\n", False)
+                senses._write_private(path, b"two\n", True)
+            with open(path, "rb") as fh:
+                self.assertEqual(fh.read(), b"one\ntwo\n")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

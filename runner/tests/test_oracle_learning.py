@@ -896,5 +896,29 @@ class LearningSmallLegsTest(unittest.TestCase):
                 del os.O_BINARY
 
 
+class AppendChmodSwallowTest(unittest.TestCase):
+    # Queue A refill: _append's chmod-failure swallow (local
+    # full-suite map at 93998ca: lines 259-260). The ledger
+    # line has landed when the chmod runs; a refusal is
+    # swallowed and the append still reports success. (Line
+    # 251, the O_BINARY flag leg, is a platform mirror: it
+    # runs on the Windows map.)
+    def test_a_refused_chmod_still_appends(self):
+        import os
+        import tempfile
+        from unittest import mock
+        from runner.oracle import learning
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(
+                    os, "chmod",
+                    side_effect=OSError("read-only filesystem")):
+                ok = learning._append(d, {"kind": "verdict",
+                                          "score": 1})
+            self.assertTrue(ok)
+            with open(learning.ledger_path(d),
+                      encoding="utf-8") as fh:
+                self.assertIn('"verdict"', fh.read())
+
+
 if __name__ == "__main__":
     unittest.main()
