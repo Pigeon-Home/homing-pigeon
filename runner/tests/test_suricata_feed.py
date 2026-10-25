@@ -24,7 +24,8 @@ import shutil
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from unittest import mock
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime, timezone
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -392,6 +393,55 @@ class MainTest(unittest.TestCase):
                 os.environ.clear()
                 os.environ.update(old)
             self.assertEqual(rc, 2)
+            self.assertFalse(os.path.exists(state_path))
+
+
+class MainDeliveryLegsTest(unittest.TestCase):
+    """Queue A refill: main's tunables guard and its two
+    local-delivery refusals (local full-suite map at 93998ca:
+    lines 509, 555, 559-562). A manifest whose tunables are not
+    an object reads as no tunables; a delivery that cannot run
+    at all, and one that delivers fewer alerts than it was
+    handed, are both rc 2 with the state left unwritten so the
+    offsets do not advance."""
+
+    def _manifest_path(self, d, tunables):
+        manifest = _manifest()
+        manifest["tunables"] = tunables
+        path = os.path.join(d, "extension.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(manifest, fh)
+        return path
+
+    def test_non_dict_tunables_and_undeliverable_is_rc2(self):
+        with tempfile.TemporaryDirectory() as d:
+            state_path = os.path.join(d, "state.json")
+            with mock.patch.object(
+                    SF, "_deliver_local", return_value=None), \
+                    redirect_stderr(io.StringIO()):
+                rc = SF.main([
+                    "--manifest", self._manifest_path(d, 42),
+                    "--state", state_path,
+                    "--log-file", FIXTURE,
+                    "--local-dir", d])
+            self.assertEqual(rc, 2)
+            self.assertFalse(os.path.exists(state_path))
+
+    def test_partial_delivery_is_rc2_and_saves_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            state_path = os.path.join(d, "state.json")
+            err = io.StringIO()
+            with mock.patch.object(
+                    SF, "_deliver_local", return_value=0), \
+                    redirect_stderr(err):
+                rc = SF.main([
+                    "--manifest", self._manifest_path(d, {}),
+                    "--state", state_path,
+                    "--log-file", FIXTURE,
+                    "--local-dir", d])
+            self.assertEqual(rc, 2)
+            self.assertIn("1 of 1 alert(s) not delivered",
+                          err.getvalue())
             self.assertFalse(os.path.exists(state_path))
 
 

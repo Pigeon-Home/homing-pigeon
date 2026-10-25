@@ -2476,3 +2476,13 @@ when done, the proving commit or run. Newest first.
   tag and latest at 382eb3a. Tag build's test, typecheck and
   platform builds green; its mutation job still running (the
   D4 triage input).
+- A (refill) — `runner/extensions/suricata-feed/suricata_feed.py`
+  `::main` tunables guard and local-delivery refusals (lines
+  509, 555, 559-562 on the local full-suite map at 93998ca) —
+  taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  MainDeliveryLegsTest in runner/tests/test_suricata_feed.py:
+  non-dict tunables read as none, an undeliverable pass is
+  rc 2, and a partial delivery is rc 2 naming the shortfall,
+  both with the state left unwritten. Locally coverage-clean.
+  Done when a coverage run shows them clean and the build's
+  Windows shards are green.
