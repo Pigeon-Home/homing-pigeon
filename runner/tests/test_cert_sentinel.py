@@ -240,5 +240,23 @@ class ReadLiveFileTest(unittest.TestCase):
         self.assertEqual(readings["certs"], [])
 
 
+class ReadCertFileNoDecoderLegTest(unittest.TestCase):
+    """Queue A refill: _read_cert_file without
+    the ssl decoder (coverage run 40189711740:
+    lines 133-134). The decoder is a private
+    ssl helper; where the platform's ssl does
+    not offer it, a cert file simply does not
+    decode -- None, not an error.
+    """
+
+    def test_no_decoder_no_record(self):
+        import ssl
+        from unittest import mock as _mock
+        with _mock.patch.object(
+                ssl._ssl, "_test_decode_cert", None):
+            self.assertIsNone(
+                CS._read_cert_file("/nonexistent.pem"))
+
+
 if __name__ == "__main__":
     unittest.main()

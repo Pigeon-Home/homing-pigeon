@@ -572,5 +572,22 @@ class EndToEndTest(SkyFixture):
         self.assertEqual(len(self.brief_lines()), 1)
 
 
+class TimeToVisibleOmegaLegTest(unittest.TestCase):
+    """Queue A refill: _time_to_visible_sec's
+    dead-rate answer (coverage run 40189711740:
+    lines 375-376). A sample whose angular rate
+    is not positive never arrives: the answer
+    is None, not a division by a dead rate.
+    """
+
+    def test_a_non_positive_rate_never_arrives(self):
+        sample = {"alt_km": 420.0, "velocity_kmh": -12.0}
+        self.assertIsNone(
+            SW._time_to_visible_sec(sample, 0.5, 0.1, 10.0))
+        sample = {"alt_km": 420.0, "velocity_kmh": 0.0}
+        self.assertIsNone(
+            SW._time_to_visible_sec(sample, 0.5, 0.1, 10.0))
+
+
 if __name__ == "__main__":
     unittest.main()

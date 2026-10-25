@@ -251,5 +251,41 @@ class ProducerTest(unittest.TestCase):
         self.assertEqual(rc, 2)
 
 
+class TwinDevicesLegTest(unittest.TestCase):
+    """Queue A refill: _read_usb_devices' twin
+    collapse (coverage run 40189711740: lines
+    120-123). Two physical devices with the
+    same vendor and product are one entry at
+    this level -- the sense says so in its
+    docstring, and the second sighting is
+    passed over, not appended.
+    """
+
+    def test_identical_twins_are_one_entry(self):
+        import glob as glob_mod
+        import os
+        import tempfile
+        from unittest import mock as _mock
+        with tempfile.TemporaryDirectory() as d:
+            dirs = []
+            for name in ("1-1", "1-2"):
+                dev = os.path.join(d, name)
+                os.makedirs(dev)
+                for fname, value in (
+                        ("idVendor", "046d"),
+                        ("idProduct", "c52b"),
+                        ("product", "Receiver"),
+                        ("manufacturer", "Logitech")):
+                    with open(os.path.join(dev, fname),
+                              "w") as fh:
+                        fh.write(value + "\n")
+                dirs.append(dev + "/")
+            with _mock.patch.object(
+                    glob_mod, "glob", return_value=dirs):
+                devices = UA._read_usb_devices()
+        self.assertEqual(len(devices), 1)
+        self.assertEqual(devices[0]["id"], "046d:c52b")
+
+
 if __name__ == "__main__":
     unittest.main()

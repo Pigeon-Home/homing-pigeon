@@ -12,6 +12,7 @@ No live network and no live hardware anywhere: every process
 table is a fixture readings dict, except one shape-only smoke
 read of the host's own /proc in ReadLiveTest.
 """
+import contextlib
 import importlib.util
 import io
 import json
@@ -250,6 +251,74 @@ class DecideTest(unittest.TestCase):
         for alerts, signal, severity in cases:
             self.assertEqual(alerts[0]["signal"], signal)
             self.assertEqual(alerts[0]["severity"], severity)
+
+
+class FlapResetAndPartialDeliveryTest(unittest.TestCase):
+    """Queue A refill: decide's flap reset
+    (coverage run 40189711740: line 300) and
+    main's partial delivery (431-434). A
+    service that flapped and then stayed quiet
+    past the window earns its flap flag back --
+    the next flap is news again. And a local
+    delivery that lands only some alerts
+    leaves the state unwritten, so the next
+    pass reports the changes again instead of
+    losing them.
+    """
+
+    def test_a_quiet_service_gets_its_flap_flag_back(self):
+        manifest = _manifest(
+            services=[{"name": "oracle-helper",
+                       "match": "exact"}],
+            flap_window_sec=600, flap_count=3)
+        readings = _readings(10000.0, ["oracle-helper"])
+        state = {"learned": True,
+                 "services": {"oracle-helper": {
+                     "up": True, "transitions": [100.0, 200.0],
+                     "flap_fired": True, "down_filed": False}}}
+        _alerts, new_state = SW.decide(readings, manifest, state)
+        entry = new_state["services"]["oracle-helper"]
+        self.assertFalse(entry["flap_fired"])
+        self.assertEqual(entry["transitions"], [])
+        state2 = {"learned": True,
+                  "services": {"oracle-helper": {
+                      "up": True, "transitions": [],
+                      "flap_fired": True, "down_filed": False}}}
+        _a, new_state2 = SW.decide(readings, manifest, state2)
+        self.assertFalse(
+            new_state2["services"]["oracle-helper"]["flap_fired"])
+
+    def test_a_partial_delivery_keeps_the_state(self):
+        tmp = tempfile.mkdtemp(prefix="hp-svc-")
+        manifest_path = os.path.join(tmp, "manifest.json")
+        with open(manifest_path, "w", encoding="utf-8") as fh:
+            json.dump(_manifest(
+                services=[{"name": "oracle-helper",
+                           "match": "exact"}]), fh)
+        readings_path = os.path.join(tmp, "readings.json")
+        with open(readings_path, "w", encoding="utf-8") as fh:
+            json.dump(_readings(1000.0, []), fh)
+        state_path = os.path.join(tmp, "state.json")
+        seeded = {"learned": True,
+                  "services": {"oracle-helper": {
+                      "up": True, "transitions": [],
+                      "flap_fired": False,
+                      "down_filed": False}}}
+        with open(state_path, "w", encoding="utf-8") as fh:
+            json.dump(seeded, fh)
+        err = io.StringIO()
+        with unittest.mock.patch.object(
+                SW, "_deliver_local",
+                return_value=0), \
+                contextlib.redirect_stderr(err):
+            rc = SW.main(["--manifest", manifest_path,
+                          "--readings", readings_path,
+                          "--local-dir", tmp,
+                          "--state", state_path])
+        self.assertEqual(rc, 2)
+        self.assertIn("not delivered", err.getvalue())
+        with open(state_path, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh), seeded)
 
 
 class SvcFixture(unittest.TestCase):

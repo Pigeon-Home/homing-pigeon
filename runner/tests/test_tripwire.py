@@ -486,5 +486,21 @@ class EndToEndTest(TripwireFixture):
         self.assertEqual(brief["status"], "no_inference")
 
 
+class ExcludedPartMatchLegTest(unittest.TestCase):
+    """Queue A refill: _excluded's path-part
+    match (coverage run 40189711740: line 109).
+    A pattern that names one part of the path
+    excludes the file under it: cache
+    directories are excluded by name wherever
+    they sit in the tree.
+    """
+
+    def test_a_pattern_can_match_one_part(self):
+        self.assertTrue(
+            TW._excluded("a/cache/deep/file.txt", ["cache"]))
+        self.assertFalse(
+            TW._excluded("a/keep/file.txt", ["cache"]))
+
+
 if __name__ == "__main__":
     unittest.main()

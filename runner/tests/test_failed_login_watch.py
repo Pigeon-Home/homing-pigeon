@@ -326,5 +326,21 @@ class MainTest(unittest.TestCase):
                          "--state", state_path]), 2)
 
 
+class ParseEventBadIsoLegTest(unittest.TestCase):
+    """Queue A refill: parse_event's impossible
+    ISO date (coverage run 40189711740: lines
+    134-135). A line whose timestamp has the
+    ISO shape but no such date exists is not
+    an event at all -- the parse refuses it
+    whole, rather than filing a failure at a
+    guessed time.
+    """
+
+    def test_an_impossible_date_is_not_an_event(self):
+        line = ("2026-13-40T25:61:61 host sshd[1]: "
+                "Failed password for u from 1.2.3.4")
+        self.assertIsNone(FL.parse_event(line, now=1000.0))
+
+
 if __name__ == "__main__":
     unittest.main()

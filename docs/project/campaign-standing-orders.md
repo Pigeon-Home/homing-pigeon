@@ -294,6 +294,32 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — sense legs (coverage run
+  40189711740): service-watch's flap reset and
+  partial delivery, sky-watcher's dead-rate
+  answer, tripwire's path-part exclusion,
+  usb-arrivals' twin collapse, cert-sentinel's
+  missing decoder, failed-login's impossible
+  ISO date, latency-post's tunables guard —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  FlapResetAndPartialDeliveryTest
+  (test_service_watch.py),
+  TimeToVisibleOmegaLegTest
+  (test_sky_watcher.py),
+  ExcludedPartMatchLegTest (test_tripwire.py),
+  TwinDevicesLegTest (test_usb_arrivals.py),
+  ReadCertFileNoDecoderLegTest
+  (test_cert_sentinel.py),
+  ParseEventBadIsoLegTest
+  (test_failed_login_watch.py),
+  ReadLiveTunablesLegTest (test_latency_post.py).
+  Recorded without a take: sky-watcher
+  sun_elevation_deg's hour-angle wrap (231)
+  cannot fire -- the true solar time is taken
+  mod 1440, so the angle is never below -180.
+  Done when a coverage run shows the taken
+  legs clean.
 - A (refill) — DTLS, OAuth and NATS small legs
   (coverage run 40189711740): the server
   core's by-address tick sweep, the pipe's

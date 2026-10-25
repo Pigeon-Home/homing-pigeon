@@ -482,5 +482,20 @@ class LatencyMainDeliveryTest(unittest.TestCase):
             self.assertFalse(os.path.exists(state))
 
 
+class ReadLiveTunablesLegTest(unittest.TestCase):
+    """Queue A refill: read_live's tunables
+    guard (coverage run 40189711740: line 157).
+    A manifest whose tunables are not an
+    object reads as no tunables: the probe
+    runs at its defaults and still answers a
+    readings dict.
+    """
+
+    def test_a_non_object_tunables_reads_as_none(self):
+        readings = LP.read_live({"tunables": 42})
+        self.assertIn("now", readings)
+        self.assertIn("probes", readings)
+
+
 if __name__ == "__main__":
     unittest.main()
