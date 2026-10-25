@@ -198,6 +198,49 @@ class ParserTest(unittest.TestCase):
         self.assertIsNone(scan[0]["channel"])
         self.assertEqual(scan[0]["signal_dbm"], -55)
 
+    def test_parse_iw_link_a_huge_signal_must_be_none_probe(self):
+        # FAILING BY DESIGN -- Q29 in docs/use/questions.md.
+        #
+        # (1) The claim, from parse_iw_link's shape in
+        # runner/extensions/airwaves/airwaves.py: a signal
+        # value that cannot be converted degrades to None
+        # (the except ValueError arm at ~327), exactly the
+        # contract Q28 established for parse_iw_scan's
+        # signal in the same file.
+        # (2) Where stated: that guard, and Q28's answer,
+        # which widened the scan guard to (OverflowError,
+        # ValueError).
+        # (3) What the code does instead: the signal regex
+        # admits only digits, float() of a 5000-digit string
+        # returns inf, and int(inf) raises OverflowError,
+        # which escapes the parser, read_live, and main's
+        # (OSError, ValueError) handlers -- one pathological
+        # iw link line kills the sense's cycle.
+        # (4) This probe asserts the Q28 contract for the
+        # link parser. It goes green when the fix lands in
+        # Claude's lane; do not edit it to match the escape.
+        text = ("Connected to aa:bb:cc:dd:ee:01 (on wlan0)\n"
+                "\tSSID: HomeNet\n"
+                "\tsignal: " + "9" * 5000 + ".0 dBm\n")
+        got = AW.parse_iw_link(text)
+        self.assertEqual(got["ssid"], "HomeNet")
+        self.assertIsNone(got["signal_dbm"])
+
+    def test_parse_nmcli_a_huge_signal_must_be_none_probe(self):
+        # FAILING BY DESIGN -- Q29 in docs/use/questions.md.
+        # The same defect at parse_nmcli's signal conversion
+        # (~226-231): float() of a huge digit string is inf,
+        # int(inf) raises OverflowError past the ValueError
+        # guard, and the whole scan is lost instead of the
+        # one reading degrading to None. All other parts of
+        # the four-part note live on the iw_link probe above
+        # and in Q29.
+        line = ("AA\\:BB\\:CC\\:DD\\:EE\\:01:HomeNet:6:"
+                + "9" * 5000 + ":WPA2")
+        scan = AW.parse_nmcli(line)
+        self.assertEqual(len(scan), 1)
+        self.assertIsNone(scan[0]["signal_dbm"])
+
     def test_parse_iw_scan_a_huge_signal_must_be_none_probe(self):
         # FAILING BY DESIGN -- Q28 in docs/use/questions.md.
         #

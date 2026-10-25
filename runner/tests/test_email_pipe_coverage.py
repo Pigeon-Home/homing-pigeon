@@ -227,6 +227,30 @@ class EmailPipeMain(unittest.TestCase):
         self.assertEqual(proc.returncode, 2, proc.stderr)
 
 
+class PendingResultsUnreadableTest(unittest.TestCase):
+    """Queue A refill: channel.pending_results'
+    unreadable leg (coverage run 40189711740: lines
+    133-134). A result file that cannot be read as
+    UTF-8 text is passed over; the pump still sees
+    the results that can be read.
+    """
+
+    def test_an_undecodable_result_is_passed_over(self):
+        import tempfile as _tempfile
+        with _tempfile.TemporaryDirectory() as td:
+            channel = os.path.join(td, "channel")
+            outbox = ch.dirs(channel)["outbox"]
+            with open(os.path.join(outbox, "good.result.txt"),
+                      "w") as fh:
+                fh.write(ch.envelope("subj", "body"))
+            with open(os.path.join(outbox, "bad.result.txt"),
+                      "wb") as fh:
+                fh.write(b"\xff\xfe not utf-8")
+            got = ch.pending_results(channel)
+        self.assertEqual(got, [("good.result.txt", "subj",
+                                "body")])
+
+
 class XOAuth2RawTest(unittest.TestCase):
     """Queue A refill: mailbox._xoauth2_raw
     (coverage run 40189711740: lines 62-63). The

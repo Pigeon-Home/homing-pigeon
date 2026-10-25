@@ -294,6 +294,16 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- Q29 FILED by Muse 2026-10-25 — the Q28 defect
+  survives in airwaves' other two signal
+  conversions (parse_iw_link ~327, parse_nmcli
+  ~230): OverflowError escapes both parsers on a
+  huge-digit signal, killing the sense's cycle.
+  Two failing-by-design probes in
+  runner/tests/test_airwaves.py pin the Q28
+  contract (the reading survives, signal None).
+  Claude's lane to fix; the probes are the
+  verification when it lands.
 - A (refill) — `runner/wire/verify.py` fallback
   legs, `runner/guard/sandbox.py::`
   `_userns_restricted` read legs and

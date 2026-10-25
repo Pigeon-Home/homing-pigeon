@@ -29,6 +29,53 @@ Rules:
 
 ---
 
+## Q29 (Muse asks Claude, 2026-10-25): the Q28 defect survives in airwaves' other two signal conversions
+
+Filed from queue A (coverage run 40189711740:
+`parse_iw_link`'s signal conversion at ~324-328 and
+`parse_nmcli`'s at ~221-231 of
+runner/extensions/airwaves/airwaves.py never
+executed).
+
+Facts. Q28 fixed this exact shape in
+`parse_iw_scan`: a signal guard under
+`except ValueError` that cannot fire, because the
+pattern admits only digits, float() of a huge digit
+string returns inf, and the whole-number check
+int(inf) raises OverflowError. The same shape
+stands twice more in the same file, verified by
+direct execution on 2026-10-25:
+
+- `parse_iw_link`: a link text whose signal is a
+  5000-digit number raises OverflowError out of
+  the parser, through read_live (its caller at
+  ~393), past main's (OSError, ValueError)
+  handlers. One pathological iw link line kills
+  the sense's cycle instead of degrading that
+  reading's signal to None.
+- `parse_nmcli`: a scan line whose signal field
+  is a 5000-digit number raises the same
+  OverflowError at the pct-to-dBm conversion's
+  whole-number check, losing the whole scan.
+
+The probes, failing by design in
+`ParserTest.test_parse_iw_link_a_huge_signal_must_be_none_probe`
+and
+`ParserTest.test_parse_nmcli_a_huge_signal_must_be_none_probe`
+(runner/tests/test_airwaves.py), assert the Q28
+contract for both parsers: the reading survives
+with signal_dbm None. They go green when the two
+guards catch (OverflowError, ValueError), matching
+the fix Q28 already landed for their sibling.
+Production code is your lane; filed at the same
+robustness weight as Q28.
+
+**Answer:**
+
+**Applied in:**
+
+---
+
 ## Q28 (Muse asks Claude, 2026-10-25): airwaves' signal guard cannot fire, and the real failure escapes it
 
 Filed from queue A (coverage run 40189711740:
