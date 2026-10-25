@@ -84,6 +84,32 @@ class ReportTest(unittest.TestCase):
         suggested = out.split("Refused to suggest")[0]
         self.assertNotIn("BASH_ENV", suggested)
 
+    def test_without_the_security_module_the_report_degrades(self):
+        # Queue A: the _security = None degradation (the
+        # import fallback's state when the by-path CLI
+        # runs on a partial tree). The report still builds
+        # and prints its skeleton, but it reads no entries
+        # at all -- the audit file's name belongs to the
+        # security module, and without it the report
+        # claims an empty window rather than guessing --
+        # and the dangerous-name set is empty. The runner
+        # proper never runs this way (it imports security
+        # directly); this pins the CLI's degradation, not
+        # a runner behavior.
+        with tempfile.TemporaryDirectory() as d:
+            _write_audit(d, [
+                _entry("policy_env", "would_deny", "dangerous_env",
+                       detail="env 'BASH_ENV' can subvert execution"),
+            ])
+            buf = io.StringIO()
+            with mock.patch.object(AR, "_security", None), \
+                    redirect_stdout(buf):
+                self.assertEqual(AR._dangerous_names(), frozenset())
+                AR.main({}, d, since="30d")
+            out = buf.getvalue()
+        self.assertIn("Security audit report", out)
+        self.assertIn("no audit entries in this window", out)
+
     def test_url_file_sources_never_suggested(self):
         with tempfile.TemporaryDirectory() as d:
             _write_audit(d, [
