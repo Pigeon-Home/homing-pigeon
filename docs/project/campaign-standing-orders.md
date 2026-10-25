@@ -2700,6 +2700,15 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Registry reader paths repaired: Claude's
+  extraction of apply_result_policy to
+  runner/ops/policy.py left the view and
+  max_result_view rows pointing at runner.py;
+  both rows now cite the new home, and
+  RegistryShapeTests gains a guard that every
+  reader site resolves to a function in its
+  named file, so the next extraction is caught
+  at the door.
 - Queue D refill taken: the M1b size caps gain
   refuse-class rows -- max_job_bytes (4194304,
   README-verified) and max_script_bytes

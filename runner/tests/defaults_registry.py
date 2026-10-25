@@ -115,8 +115,8 @@ ROWS = [{'key': 'severity',
   'doc_line': 533,
   'doc_token': 'full',
   'doc_status': 'verified',
-  'reader': 'runner/runner.py:apply_result_policy',
-  'reader_sites': ['runner/runner.py:apply_result_policy'],
+  'reader': 'runner/ops/policy.py:apply_result_policy',
+  'reader_sites': ['runner/ops/policy.py:apply_result_policy'],
   'policy': 'default',
   'lo': None,
   'hi': None,
@@ -133,8 +133,8 @@ ROWS = [{'key': 'severity',
   'doc_line': 549,
   'doc_token': 'full',
   'doc_status': 'verified',
-  'reader': 'runner/runner.py:apply_result_policy',
-  'reader_sites': ['runner/runner.py:apply_result_policy'],
+  'reader': 'runner/ops/policy.py:apply_result_policy',
+  'reader_sites': ['runner/ops/policy.py:apply_result_policy'],
   'policy': 'default',
   'lo': None,
   'hi': None,
@@ -2318,6 +2318,34 @@ class RegistryShapeTests(unittest.TestCase):
             self.assertTrue(r["reader"], r["key"])
             if r["policy"] == "refuse":
                 self.assertNotEqual(r["probe"], "confval", r["key"])
+
+    def test_reader_sites_resolve(self):
+        # Every reader site names a function that exists in
+        # the named file. An extraction that moves a reader
+        # (apply_result_policy to runner/ops/policy.py,
+        # 2026-10-25) must move its rows in the same
+        # commit; before this guard, two rows pointed at
+        # a function runner.py no longer held and nothing
+        # noticed.
+        cache = {}
+
+        def funcs(path):
+            if path not in cache:
+                with open(os.path.join(_root(), path),
+                          encoding="utf-8") as fh:
+                    tree = ast.parse(fh.read())
+                cache[path] = {
+                    n.name for n in ast.walk(tree)
+                    if isinstance(n, (ast.FunctionDef,
+                                      ast.AsyncFunctionDef))}
+            return cache[path]
+
+        for r in ROWS:
+            sites = {r["reader"]} | set(r["reader_sites"])
+            for site in sites:
+                path, _, fn = site.rpartition(":")
+                with self.subTest(key=r["key"], site=site):
+                    self.assertIn(fn, funcs(path))
 
     def test_row_count_matches_the_documented_keys(self):
         # 49 core keys + 51 extension tunables, as extracted and
