@@ -90,7 +90,7 @@ written, the same poisoned tail re-read every pass) ends because
 the inf never enters the state. The probe is green with its
 decorator off.
 
-**Applied in:** the commit carrying this answer.
+**Applied in:** 46244aea.
 
 ---
 
