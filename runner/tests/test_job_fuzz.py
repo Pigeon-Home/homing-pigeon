@@ -399,6 +399,78 @@ class DecideGuardBranchesTest(unittest.TestCase):
             k.startswith("dv|new-job|") for k in state["filed"]))
 
 
+class RunOneVariantBranchesTest(unittest.TestCase):
+    """Queue A: the _run_one_variant failure shapes the
+    campaign tests never produced (coverage run
+    40183585961: 11 lines on both platforms). The
+    docstring's contract: never raises -- every failure
+    shape is itself an outcome, stage "error", with the
+    reason and the variant file named.
+    """
+
+    def _script(self, d, name, body):
+        path = os.path.join(d, name)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(body)
+        return path
+
+    def test_a_variant_that_cannot_be_archived_is_an_outcome(self):
+        with tempfile.TemporaryDirectory() as d:
+            got = JF._run_one_variant(
+                "whatever {variant}",
+                {"job_id": "a/b"}, d, 5)
+        self.assertEqual(got["stage"], "error")
+        self.assertIn("cannot archive variant", got["reason"])
+        self.assertEqual(got["variant_file"], "a/b.json")
+
+    def test_a_bad_runner_command_is_an_outcome(self):
+        with tempfile.TemporaryDirectory() as d:
+            got = JF._run_one_variant(
+                'run "unbalanced {variant}',
+                {"job_id": "v1"}, d, 5)
+        self.assertEqual(got["stage"], "error")
+        self.assertIn("bad runner_cmd", got["reason"])
+        self.assertEqual(got["variant_file"], "v1.json")
+
+    def test_a_command_without_a_placeholder_gets_the_path_appended(self):
+        with tempfile.TemporaryDirectory() as d:
+            script = self._script(d, "echo_argv.py", (
+                "import json, sys\n"
+                "print(json.dumps({'stage': 'ran',\n"
+                "                  'seen': sys.argv[-1]}))\n"))
+            got = JF._run_one_variant(
+                "%s %s" % (sys.executable, script),
+                {"job_id": "v2"}, d, 10)
+            self.assertEqual(got["stage"], "ran")
+            self.assertEqual(
+                got["seen"], os.path.join(d, "v2.json"))
+            self.assertEqual(got["variant_file"], "v2.json")
+
+    def test_a_missing_runner_is_an_outcome(self):
+        with tempfile.TemporaryDirectory() as d:
+            got = JF._run_one_variant(
+                "/nonexistent/hp-runner {variant}",
+                {"job_id": "v3"}, d, 5)
+        self.assertEqual(got["stage"], "error")
+        self.assertIn("cannot run runner_cmd", got["reason"])
+
+    def test_a_runner_that_prints_no_outcome_is_an_outcome(self):
+        with tempfile.TemporaryDirectory() as d:
+            script = self._script(d, "junk.py", (
+                "import sys\n"
+                "print('noise, not an outcome')\n"
+                "print('{not json')\n"
+                "print('{}')\n"
+                "sys.exit(3)\n"))
+            got = JF._run_one_variant(
+                "%s %s {variant}" % (sys.executable, script),
+                {"job_id": "v4"}, d, 10)
+        self.assertEqual(got["stage"], "error")
+        self.assertIn("no outcome", got["reason"])
+        self.assertIn("exit 3", got["reason"])
+        self.assertEqual(got["variant_file"], "v4.json")
+
+
 FAKE_RUNNER = """\
 import json, sys
 v = json.load(open(sys.argv[-1]))
