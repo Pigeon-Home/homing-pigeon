@@ -160,7 +160,7 @@ class StoreWriteTest(unittest.TestCase):
                     os, "fdopen",
                     side_effect=OSError("disk")), \
                     mock.patch.object(
-                        os, "close",
+                        os, "close",  # portable: ignore_cleanup_errors above
                         side_effect=OSError("close refused")):
                 with self.assertRaises(OSError) as cm:
                     store_refresh_token(path, dict(CFG), "tok")

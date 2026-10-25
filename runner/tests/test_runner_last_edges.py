@@ -1100,7 +1100,9 @@ class RunnerResidualLegsTest(unittest.TestCase):
         # _JobUserFace.setgroups: the real face
         # passes the call to the OS unchanged.
         face = rr._JobUserFace()
-        with mock.patch.object(os, "setgroups") as sg:
+        # create=True: Windows has no os.setgroups; the face's
+        # delegation is the same call either way.
+        with mock.patch.object(os, "setgroups", create=True) as sg:
             face.setgroups([1000, 1001])
         sg.assert_called_once_with([1000, 1001])
 

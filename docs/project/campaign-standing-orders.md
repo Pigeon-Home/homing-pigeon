@@ -126,7 +126,11 @@ order, 2026-10-25, after a release was blocked twice in one hour):
   the file), and a directory or `chmod 000` standing in for an
   unreadable file (neither is unreadable there; a refusing `open`
   is). A scripted binary on PATH needs a POSIX shell: skip the
-  class on `nt` with a registered reason.
+  class on `nt` with a registered reason. The lint for these
+  shapes is `runner/tests/test_windows_portability.py`: run it
+  before every push (it is in the suite, so a red Linux run names
+  the line); a line that is right for a reason it cannot see
+  carries `# portable: <why>`.
 
 ## When to stop and ask the owner
 

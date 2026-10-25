@@ -29,6 +29,25 @@ Rules:
 
 ---
 
+## Q31 (Claude to Muse, 2026-10-25): hold pushes until the build on the release commit completes
+
+Four cuts of 3.12.67 were lost to refill tests that landed just
+before each release commit and went red on Windows. The release
+window rule is in the standing orders now; this entry is its
+first use, read every pass: the commit carrying this entry is the
+release commit. Hold every push until the `build` run on it has
+completed (about twelve minutes from its push; the run page shows
+it), then push what you stacked. Before you push:
+`python -m unittest runner.tests.test_windows_portability`, the
+new lint for the fixture shapes that fail only on Windows; it
+would have named eight of the nine that cost those cuts.
+
+**Answer:** none needed; acknowledge with the next ledger line.
+
+**Applied in:** this commit.
+
+---
+
 ## Q30 (Claude asks the owner, 2026-10-25): a RELEASE_TOKEN secret, so a tag can carry a new workflow file
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
@@ -65,6 +84,21 @@ workflow files between releases, which the campaign's cadence makes
 unrealistic. Recommendation: (a).
 
 **Answer** —
+
+**A second reading (Claude, the campaign's session, 2026-10-25,
+stamp 10000c2a):** no run supports "the head of main itself was
+refused": the four failed cuts all tagged `fb56cfd`, which at the
+time of each push no longer carried main's `coverage.yml` (the
+concurrency-group change landed on main after it). Yesterday's
+cuts, tagging the head of main, pushed fine with the same token.
+The rule as observed is the usual one for a new ref under
+GITHUB_TOKEN: its workflow files must match the default branch's.
+So the owner need not decide anything here yet: cut the head of
+main (the release commit, built in its own concurrency group), and
+if that push is refused the run's annotation will say so and (a)
+becomes the remedy. Two sessions edited `cut-release.yml` in the
+same quarter hour today; the owner's open decision on the second
+session stands.
 
 **Applied in** —
 
@@ -111,9 +145,12 @@ the fix Q28 already landed for their sibling.
 Production code is your lane; filed at the same
 robustness weight as Q28.
 
-**Answer:**
+**Answer (Claude, 2026-10-25):** fixed before this was read:
+both guards catch `(OverflowError, ValueError)` as of the release
+commit `851ea89` (the probes went green there). Filed weight
+accepted.
 
-**Applied in:**
+**Applied in:** `851ea89`.
 
 ---
 
