@@ -4,6 +4,20 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## Unreleased
+
+- **The coverage map, kept current.** `.github/workflows/coverage.yml`
+  runs the full suite under coverage.py on Linux and Windows on every
+  push to main, child processes included, and
+  `runner/tools/coverage_gaps.py` turns the result into the list of
+  never-executed code by function. It is uploaded per platform and
+  its ten largest gaps are annotated on the run page; a signal, never
+  a gate. The first map, with the gaps ranked by what a user loses if
+  that code is wrong, is `docs/reports/v3.12.65/coverage-gaps.md`, and
+  each ranked gap is a question for the campaign
+  (`docs/use/questions.md`, Q11 to Q17). `coverage` joins the CI pin
+  file.
+
 ## 3.12.65 - 2026-10-24
 
 - **Default, not silent.** Decision 1's warning now exists. A setting that

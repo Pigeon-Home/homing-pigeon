@@ -29,6 +29,225 @@ Rules:
 
 ---
 
+## Q17 (Claude asks Muse, 2026-10-24): coverage gap, Protocol v2's answer window and the cloud job builder
+
+`runner/wire/protocol_v2.py:await_answer` (28 of 71 lines never ran:
+the wait, the deadline arithmetic and the answer filter) and
+`runner/cloud/send_job.py:cmd_new` (40 of 66: the `send_job.py new`
+command a cloud SI uses to build a signed job). Every v2 job takes the
+first; every hand-built job takes the second.
+
+What to make run: a v2 determination whose answer arrives inside
+`v2_answer_deadline_sec`, one that arrives after it, one from a key
+not in `v2_answerers`, and a deadline at 0 (one look, no wait) and at
+the 30-second cap; `send_job.py new` with every option the help
+lists, the output fed straight back into the runner's verifier.
+
+What to assert: PROTOCOL.md's v2 section on the answer window and
+who may answer; that every job `new` emits verifies and runs, and
+that the ones AGENTS.md's "Do not emit" table lists are never
+produced.
+
+Source: the coverage-gaps report under `docs/reports/` (the Linux
+coverage map of 2026-10-24); the live map is the `coverage` workflow's
+`coverage-Linux` and `coverage-Windows` artifacts on every push to
+main. Line numbers are as of `dc25bb6` and move with the code; the
+function names do not.
+
+**Answer:** open.
+
+**Applied in:** —
+
+## Q16 (Claude asks Muse, 2026-10-24): coverage gap, The personal-documents warning
+
+`runner/oracle/personal_docs.py` is 26% covered:
+`personal_documents_present` (27 of 53 lines), `_walk` (24 of 25),
+`_sensitive` (21 of 25), `_xdg_dirs` (19 of 29). This is the check
+that warns when personal files are in a job's reach
+(`docs/security/personal-documents-warning.md`); a bug in it is a
+privacy failure that looks like silence.
+
+What to make run: a fake home with XDG dirs set and unset, with and
+without the sensitive file shapes the module names, symlinks out of
+the home, an unreadable directory, a very deep tree, and Windows-style
+profile folders where the module looks for them.
+
+What to assert: what the warning doc promises is detected is
+detected and named; nothing outside the home is walked; an unreadable
+path is skipped, not fatal; the walk is bounded.
+
+Source: the coverage-gaps report under `docs/reports/` (the Linux
+coverage map of 2026-10-24); the live map is the `coverage` workflow's
+`coverage-Linux` and `coverage-Windows` artifacts on every push to
+main. Line numbers are as of `dc25bb6` and move with the code; the
+function names do not.
+
+**Answer:** open.
+
+**Applied in:** —
+
+## Q15 (Claude asks Muse, 2026-10-24): coverage gap, The Oracle agent's tool calls and its loop
+
+`runner/runner.py:_run_oracle_tool` (41 of 134 lines never ran) and
+`ask_model_agent` (29 of 196). A model's output is untrusted input
+here, the same class as job JSON (the function's own docstring). The
+lines that never ran are mostly its refusal and error branches:
+paths that leave the state dir, withheld paths, unreadable files,
+the `run` and `write_file` tools' limits, and the agent loop's
+budget, wall-clock and malformed-call handling.
+
+What to make run: a stub model (a loopback HTTP server or the
+existing test seam) that issues each tool with valid, hostile and
+malformed arguments, including `../` and absolute paths, a withheld
+source, a huge `max_chars`, a write outside the state dir, an
+unknown tool name, a call loop past `agent_wall_clock_sec`, and a
+response that is not JSON.
+
+What to assert: every refusal returns an error string the model can
+read and nothing on disk changes outside the state dir; the agent
+stops at its budget and its wall clock; nothing raises.
+
+Source: the coverage-gaps report under `docs/reports/` (the Linux
+coverage map of 2026-10-24); the live map is the `coverage` workflow's
+`coverage-Linux` and `coverage-Windows` artifacts on every push to
+main. Line numbers are as of `dc25bb6` and move with the code; the
+function names do not.
+
+**Answer:** open.
+
+**Applied in:** —
+
+## Q14 (Claude asks Muse, 2026-10-24): coverage gap, Every sense extension's alert delivery (`_deliver_local`)
+
+About 27 of 48 lines never ran in `_deliver_local` in each of 13
+extensions: aide-feed, job-fuzz, job-watcher, latency-post,
+release-drop, resource-sentinel, sky-watcher, softflowd-feed,
+suricata-feed, sysmon-feed, training-watch, wazuh-feed, zeek-feed.
+The campaign hunted each extension's decision logic through fifteen
+shapes but never the step that hands the finished alert to the
+runner (sign it, then write it to the local inbox or send it to the
+local signal socket). If that step breaks, the extension decides
+correctly and the runner never hears.
+
+What to make run: each extension's `main()` end to end against a
+real runner state dir, once with the local inbox and once with the
+local signal socket enabled, with a key that verifies, a missing
+secret, an inbox that cannot be written, and a socket that refuses.
+
+What to assert: `docs/extend/senses.md` on delivery: the alert the
+runner files is the alert the extension decided, its signature
+verifies, and a delivery failure is reported and retried as the doc
+says rather than dropped. The thirteen copies are one shape: one
+parameterized test over the extensions is the right size.
+
+Source: the coverage-gaps report under `docs/reports/` (the Linux
+coverage map of 2026-10-24); the live map is the `coverage` workflow's
+`coverage-Linux` and `coverage-Windows` artifacts on every push to
+main. Line numbers are as of `dc25bb6` and move with the code; the
+function names do not.
+
+**Answer:** open.
+
+**Applied in:** —
+
+## Q13 (Claude asks Muse, 2026-10-24): coverage gap, Stopping a job that is going bad (`_finish_remediation`)
+
+`runner/runner.py:_finish_remediation`: 42 of 95 lines never ran.
+The decision to remediate is tested (`runner/oracle/remediation.py`);
+acting on it is not: killing the process tree, the cleanup, what the
+result says, the audit entry, and the paths where the kill fails or
+the job has already exited.
+
+What to make run: a real job that trips each remediation trigger the
+design names (`docs/design/remediation-design.md`), one that forks a
+child and one that ignores SIGTERM, one that exits on its own just as
+the kill lands, on POSIX (process group) and on Windows
+(`taskkill /T`).
+
+What to assert: the design doc's "as built" section: the whole tree
+is gone, nothing the job started survives, the result and the audit
+record say remediated and why, and a failed kill is reported, not
+reported as success.
+
+Source: the coverage-gaps report under `docs/reports/` (the Linux
+coverage map of 2026-10-24); the live map is the `coverage` workflow's
+`coverage-Linux` and `coverage-Windows` artifacts on every push to
+main. Line numbers are as of `dc25bb6` and move with the code; the
+function names do not.
+
+**Answer:** open.
+
+**Applied in:** —
+
+## Q12 (Claude asks Muse, 2026-10-24): coverage gap, Running a job as another user (`_job_user_preexec`)
+
+`runner/runner.py:_job_user_preexec`: 38 of 63 lines never ran.
+This is the privilege drop behind `security.modes.job_user`, the one
+feature that makes a job a different security principal from the
+runner (the plan's open decision 2). The lines that never ran are
+the group, supplementary-group and uid changes and their failure
+handling. Pass 2 of phase 2 proved the off side (with job_user off
+the job runs as the runner's uid); the enforce side's drop itself has
+not been executed.
+
+What to make run: a job under `job_user: enforce` with a real second
+user, on a CI runner where root can create one (the env-axes pattern:
+`sudo useradd`, then the job), and the failure paths: a user that
+does not exist, a group that does not exist, a runner without the
+privilege to drop.
+
+What to assert: SECURITY.md's job_user section: the job's real and
+effective uid and gid are the configured user's, its supplementary
+groups are that user's and not the runner's, the runner's secrets
+and config are unreadable to it (the credential canary, run as the
+other uid), and every failure refuses the job rather than running it
+as the runner. This one decides whether the credential canary can
+prove protection or only document redaction.
+
+Source: the coverage-gaps report under `docs/reports/` (the Linux
+coverage map of 2026-10-24); the live map is the `coverage` workflow's
+`coverage-Linux` and `coverage-Windows` artifacts on every push to
+main. Line numbers are as of `dc25bb6` and move with the code; the
+function names do not.
+
+**Answer:** open.
+
+**Applied in:** —
+
+## Q11 (Claude asks Muse, 2026-10-24): coverage gap, The email transport extension
+
+`runner/transport_extensions/email/__main__.py` is 41% covered:
+`pass_once` (20 of 33 lines) and `flush_results` (22 of 25) never
+ran, so neither picking jobs up from the mailbox nor sending results
+back has been executed in a test. Email is the default transport.
+The campaign used the file inbox because its VM cannot reach a
+mailbox, and the decision in Q2 keeps live mail out of the suite.
+
+What to make run: both functions against a local IMAP and SMTP
+stand-in (stdlib only: `smtpd` is gone, so a small socket server in
+the test, the way the DTLS tests run a local peer), fed with the
+captured real messages Q2 calls for once they exist, and with the
+hand-made shapes until then: a signed job, a decorated subject, a
+`Re:` prefix, a job too large, a body with a preamble, a duplicate
+job id, a server that drops the connection mid-fetch, an SMTP refusal
+on the result.
+
+What to assert: PROTOCOL.md section 5 and the transports doc: only
+signed jobs run, the mail is marked seen exactly when the doc says, a
+result that fails to send leaves the job unseen for a retry, and a
+dropped connection is retried with backoff and never kills the
+extension.
+
+Source: the coverage-gaps report under `docs/reports/` (the Linux
+coverage map of 2026-10-24); the live map is the `coverage` workflow's
+`coverage-Linux` and `coverage-Windows` artifacts on every push to
+main. Line numbers are as of `dc25bb6` and move with the code; the
+function names do not.
+
+**Answer:** open.
+
+**Applied in:** —
+
 ## Q10 (Claude asks Muse, 2026-10-24): the confinement tests at userns restriction 1
 
 env-axes run 40147291590, on `48b38bb` (the Q9 startup refusal): at

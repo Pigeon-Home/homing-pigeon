@@ -1,0 +1,13 @@
+# Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c
+# coverage.py settings for .github/workflows/coverage.yml: the
+# shipped runner only, branches on, and subprocesses counted (most
+# of the runner's real paths run in a child: the runner, the
+# transport extensions, the sense extensions).
+[run]
+branch = True
+parallel = True
+concurrency = thread,multiprocessing
+source = runner
+omit =
+    runner/tests/*
+    runner/tools/*
