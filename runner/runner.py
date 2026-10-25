@@ -4409,8 +4409,7 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
     kind, ident = m.group(1).lower(), m.group(2)
     def reject(why):
         log(f"board reject seq {seq}: {why}", "WARN")
-        if opts is None or not opts.dry_run:
-            mark_seen(imap, seq)
+        _mark(imap, seq, opts)
     try:
         body = get_text_body(email.message_from_bytes(raw))
         payload, key_id, secret, encrypted = _admit_object(
@@ -4478,8 +4477,7 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
         send_mail(smtp, cfg, reply_subj, _seal_reply(
             reply_body, secret, reply_subj.rsplit(" ", 1)[-1],
             key_id, encrypted), to=_valid_reply_to(payload))
-    if opts is None or not opts.dry_run:
-        mark_seen(imap, seq)
+    _mark(imap, seq, opts)
     return True
 
 
@@ -5755,14 +5753,12 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
     def reject(why):
         vlog(f"ingest: seq {seq}: rejected: {why}")
         log(f"rejecting seq {seq}: {why}", "WARN")
-        if opts is None or not opts.dry_run:
-            mark_seen(imap, seq)
+        _mark(imap, seq, opts)
 
     if not _protocol_v2.receiving(cfg):
         vlog(f"ingest: seq {seq}: version 2 message ignored; "
              f"protocol_v2 is off")
-        if opts is None or not opts.dry_run:
-            mark_seen(imap, seq)
+        _mark(imap, seq, opts)
         return True
     try:
         body = get_text_body(email.message_from_bytes(raw))
@@ -6054,6 +6050,44 @@ def _verify_and_decrypt(msg, secrets, job_id):
     return job, key_id, secret, was_encrypted
 
 
+
+def _early_dispatch(cfg, imap, smtp, seq, raw, subject, secrets, opts,
+                    base_dir, seen):
+    """Handle non-job mail and already-seen jobs.
+
+    Returns (job_id, skey) when the message is a new job to
+    execute, or None when the message was handled and the
+    caller should return.
+    """
+    if handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets,
+                         opts, base_dir, seen):
+        return None
+    if "board" in cfg and cfg["board"] is not None:
+        if handle_board_mail(cfg, imap, smtp, seq, raw, subject,
+                             cfg["board"], secrets, opts, base_dir):
+            return None
+    if handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
+                      base_dir):
+        return None
+    m = re.search(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)",
+                  subject, re.I)
+    if not m:
+        vlog(f"ingest: seq {seq}: skipped; not a job message")
+        _mark(imap, seq, opts)
+        return None
+    if _protocol_v2 is not None and _protocol_v2.answer_only(cfg):
+        log(f"answer-only: not executing job {m.group(1)}")
+        _mark(imap, seq, opts)
+        return None
+    job_id = m.group(1)
+    skey = _seen_key(cfg, job_id)
+    if skey in seen:
+        vlog(f"ingest: seq {seq} job {job_id}: skipped; already seen")
+        _mark(imap, seq, opts)
+        return None
+    return job_id, skey
+
+
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 seen: dict, secrets: dict, opts=None, key_policies=None):
     msg = email.message_from_bytes(raw)
@@ -6063,44 +6097,13 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         vlog(f"ingest: seq {seq}: rejected: {why}")
         log(f"rejecting seq {seq}: {why}", "WARN")
         # Dry-run is fully non-mutating: observe, change nothing.
-        if opts is None or not opts.dry_run:
-            mark_seen(imap, seq)
+        _mark(imap, seq, opts)
 
-    # Query follow-ups
-    if handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_dir, seen):
+    dispatched = _early_dispatch(
+        cfg, imap, smtp, seq, raw, subject, secrets, opts, base_dir, seen)
+    if dispatched is None:
         return
-    # Board messages take precedence when oracle is enabled.
-    if "board" in cfg and cfg["board"] is not None:
-        if handle_board_mail(cfg, imap, smtp, seq, raw, subject, cfg["board"], secrets, opts, base_dir):
-            return
-    if handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
-                      base_dir):
-        return
-    m = re.search(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)", subject, re.I)
-    if not m:
-        # Result messages and other non-job traffic share the [HOMING-PIGEON]
-        # prefix. Mark them seen quietly so the console is not spammed
-        # with "subject does not match job pattern" on every poll.
-        vlog(f"ingest: seq {seq}: skipped; not a job message")
-        if opts is None or not opts.dry_run:
-            mark_seen(imap, seq)
-        return
-    if _protocol_v2 is not None and _protocol_v2.answer_only(cfg):
-        log(f"answer-only: not executing job {m.group(1)}")
-        if opts is None or not opts.dry_run:
-            mark_seen(imap, seq)
-        return
-    job_id = m.group(1)
-    # Hardening M5: the replay-cache key is namespaced by runner_id
-    # when one is configured.
-    skey = _seen_key(cfg, job_id)
-
-    if skey in seen:
-        vlog(f"ingest: seq {seq} job {job_id}: skipped; "
-             f"already seen")
-        if opts is None or not opts.dry_run:
-            mark_seen(imap, seq)
-        return
+    job_id, skey = dispatched
 
     # The HMAC signature is the sole authentication gate. Any sender
     # may submit jobs; only a valid signature authorizes execution.
