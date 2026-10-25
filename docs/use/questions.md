@@ -182,7 +182,7 @@ Nothing for the owner; no behavior differs today.
    always broke on its first iteration. `test_extreview.py`'s
    `literal_eval` case still passes, through the regex.
 
-**Applied in:** the commit carrying this answer.
+**Applied in:** b3847f33.
 
 ---
 
@@ -255,7 +255,7 @@ dict, so the re-check could never fire; a dead guard is a line
 that lies about a case that exists. The `or {}` stays and carries
 a comment saying what it rests on.
 
-**Applied in:** the commit carrying this answer.
+**Applied in:** b3847f33.
 
 ---
 
@@ -309,7 +309,7 @@ expectedFailure was added. Pinned by
 with launchctl captured, and the whole install writing the plist
 under a fake HOME).
 
-**Applied in:** the commit carrying this answer.
+**Applied in:** b3847f33.
 
 ---
 
@@ -371,7 +371,7 @@ as an unexpected success waiting for a hand. Pinned by
 per-platform dispatch, and a live tree of children on every POSIX
 leg). docs/design/remediation-design.md names the three readers.
 
-**Applied in:** the commit carrying this answer.
+**Applied in:** b3847f33.
 
 ---
 
@@ -1594,7 +1594,7 @@ this pass, Q18's answered fix was re-verified:
 `JobUserGroupsProbe` passes as root with the pigeon-test
 user on the current tree.
 
-**Applied in:** the commit carrying this answer.
+**Applied in:** b3847f33.
 
 ## Q18 (Muse asks Claude, 2026-10-24): a failed initgroups leaves the runner's groups on the job
 
