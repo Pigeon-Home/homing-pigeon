@@ -1,0 +1,53 @@
+# Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab
+name: upgrade-proof
+
+# An owner upgrades by running the new installer over the old
+# install. This proves that path from the last published release to
+# this commit: the old release's installer installs, the owner's
+# config edits and the runner's state are seeded, this tree's
+# installer runs over them, and every key, every state file and a
+# working runner are still there afterwards
+# (runner/tools/upgrade_proof.py). The suite runs the same proof
+# tree-to-itself (runner/tests/test_upgrade_proof.py); only here is
+# the old side a real release.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: upgrade-proof-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  from-last-release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python: "3.12"
+            os: ubuntu-latest
+          - python: "3.9"
+            os: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: check out the last release before this tree
+        run: |
+          set -euo pipefail
+          prev=$(git ls-remote --tags --refs origin 'v*' \
+            | sed 's#.*refs/tags/##' \
+            | python3 runner/tools/upgrade_proof.py --previous-of runner/_version.py)
+          echo "last release: $prev"
+          git fetch --depth 1 origin tag "$prev"
+          git worktree add ../last-release "$prev"
+      - name: upgrade from it, and lose nothing
+        run: python runner/tools/upgrade_proof.py ../last-release .

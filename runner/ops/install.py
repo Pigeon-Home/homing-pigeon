@@ -41,6 +41,36 @@ SERVICE_NAME = "homing-pigeon"
 FILES = ["runner.py", "wire/__init__.py", "wire/oauth.py",
          "ops/__init__.py", "ops/winlog.py"]
 
+# A source install copies the runtime the way the wheel ships it:
+# runner.py, its version, and every role folder it imports from
+# (AGENTS.md, "Where things live"). The suite, the build tools and
+# the shipped extensions stay behind. FILES alone was the layout
+# before the role folders; an install from it could not start
+# ("runner/guard/textutil.py is missing").
+# (Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab)
+_RUNTIME_TOP = ("_version.py",)
+_RUNTIME_DIRS = ("guard", "oracle", "wire", "ops", "transport_extensions")
+_RUNTIME_SUFFIXES = (".py", ".json")
+
+
+def _runtime_files(src_dir: str) -> list:
+    """FILES, plus the role folders and version file src_dir carries."""
+    names = list(FILES)
+    for name in _RUNTIME_TOP:
+        if os.path.isfile(os.path.join(src_dir, name)):
+            names.append(name)
+    for top in _RUNTIME_DIRS:
+        base = os.path.join(src_dir, top)
+        for dirpath, dirnames, filenames in os.walk(base):
+            dirnames[:] = sorted(d for d in dirnames if d != "__pycache__")
+            for fname in sorted(filenames):
+                if fname.endswith(_RUNTIME_SUFFIXES):
+                    rel = os.path.relpath(os.path.join(dirpath, fname),
+                                          src_dir)
+                    names.append(rel.replace(os.sep, "/"))
+    seen = set()
+    return [n for n in names if not (n in seen or seen.add(n))]
+
 # When frozen with PyInstaller (the release binaries), there is no Python
 # on the target machine: the runner ships as a sibling binary
 # (homing-pigeon / homing-pigeon.exe) and services point at it directly.
@@ -272,7 +302,7 @@ def install_files(src_dir: str, bin_dir: str,
             if os.name != "nt":
                 os.chmod(dst, 0o755)
     else:
-        for name in FILES:
+        for name in _runtime_files(src_dir):
             dst = os.path.join(bin_dir, *name.split("/"))
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             shutil.copy2(os.path.join(src_dir, *name.split("/")), dst)
