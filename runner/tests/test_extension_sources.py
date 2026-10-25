@@ -1825,6 +1825,76 @@ class ExtensionSourcesPassTest(_Base):
                 R._extension_sources_pass(self.cfg, self.base))
 
 
+class FetchArchiveFailuresTest(_Base):
+    """Queue A refill: _fetch_archive's budget and
+    re-raise legs (coverage run 40187685363: 6 lines
+    on both platforms). The archive phase's contract:
+    a spent budget refuses before any download, as a
+    budget failure; a download failure that is not
+    the budget's doing passes through as itself; an
+    archive that unpacks past the extraction cap
+    passes through too -- unless what is left of the
+    budget is what cut it short, in which case the
+    failure is named as the budget's.
+    """
+
+    def setUp(self):
+        super().setUp()
+        write_ext(self.ext, upstream_decl())
+
+    @staticmethod
+    def _tgz(members):
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as tf:
+            for name, data in members:
+                info = tarfile.TarInfo(name)
+                info.size = len(data)
+                tf.addfile(info, io.BytesIO(data))
+        return buf.getvalue()
+
+    def test_a_spent_budget_refuses_before_downloading(self):
+        self.run_pass(policy=self.policy(
+            {"extension_sources": {"fetch": True,
+                                   "unpinned": True,
+                                   "max_mb": 1}}))
+        entry = self.state()["entries"]["up"]
+        self.assertEqual(entry["status"], "skipped")
+        self.assertIn("the disk budget is spent",
+                      entry["detail"])
+        self.assertNotIn(ASSET, self.opener.urls())
+
+    def test_a_download_failure_passes_through_as_itself(self):
+        self.opener.routes[ASSET] = X.SourceError("weird fetch")
+        self.run_pass()
+        entry = self.state()["entries"]["up"]
+        self.assertEqual(entry["status"], "partial")
+        self.assertEqual(entry["detail"], "archive: weird fetch")
+
+    def test_an_over_expanding_archive_passes_through(self):
+        self.opener.routes[ASSET] = self._tgz(
+            [("big.bin", b"\0" * (3 << 20))])
+        self.run_pass()
+        entry = self.state()["entries"]["up"]
+        self.assertEqual(entry["status"], "partial")
+        self.assertIn("unpacks past", entry["detail"])
+        self.assertNotIn("what is left", entry["detail"])
+
+    def test_an_over_expansion_the_budget_cut_short_is_budget(self):
+        import random
+        noise = random.Random(20261025).randbytes(150_000)
+        self.opener.routes[ASSET] = self._tgz(
+            [("zeros.bin", b"\0" * (2900 << 10)),
+             ("noise.bin", noise)])
+        self.run_pass(policy=self.policy(
+            {"extension_sources": {"fetch": True,
+                                   "unpinned": True,
+                                   "max_mb": 2}}))
+        entry = self.state()["entries"]["up"]
+        self.assertEqual(entry["status"], "skipped")
+        self.assertIn("unpacks past what is left",
+                      entry["detail"])
+
+
 class ProvisionFailureTest(_Base):
     """Queue A refill: provision's and _run_pass's
     failure legs (coverage run 40187685363: 6 lines

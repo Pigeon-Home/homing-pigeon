@@ -156,6 +156,20 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
+- A (refill) — `runner/ops/extsources.py::`
+  `_fetch_archive` (6 lines never run on either
+  platform, coverage run 40187685363) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  FetchArchiveFailuresTest in
+  runner/tests/test_extension_sources.py: a spent
+  budget refuses before any download (status
+  skipped); a download failure passes through as
+  itself; an archive that unpacks past the
+  extraction cap passes through, unless what is
+  left of the budget cut it short, in which case
+  the failure is the budget's (status skipped).
+  Done when a coverage run shows the function
+  clean.
 - A (refill) — `runner/ops/extsources.py::Fetcher._open`
   (6 lines never run on either platform, coverage
   run 40187685363) — taken 2026-10-25,
