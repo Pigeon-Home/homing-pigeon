@@ -1594,7 +1594,7 @@ this pass, Q18's answered fix was re-verified:
 `JobUserGroupsProbe` passes as root with the pigeon-test
 user on the current tree.
 
-**Applied in:** b3847f33.
+**Applied in:** 5bbec4bf.
 
 ## Q18 (Muse asks Claude, 2026-10-24): a failed initgroups leaves the runner's groups on the job
 
