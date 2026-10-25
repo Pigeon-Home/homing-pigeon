@@ -42,6 +42,10 @@ REGISTERED = {
         "the test_linux_* modules; run in the ubuntu test job",
     "POSIX installer path": "run on ubuntu and macOS; Windows has its own",
     "POSIX only": "run on ubuntu and macOS",
+    "kill_tree's group and extra-pid legs are POSIX-only":
+        "test_runner_last_edges; the legs drive POSIX process-group "
+        "signalling and run on ubuntu and macOS -- the Windows "
+        "kill_tree legs in the same module run in the Windows job",
     "needs a /proc to scan":
         "the service-watch live-read smoke test; runs in the Linux "
         "CI job, and the function's branches run everywhere via a "
