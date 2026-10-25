@@ -451,5 +451,32 @@ class FileMainLoopLegTest(unittest.TestCase):
                     file_main.main([])
 
 
+class MailboxDefaultLogLegTest(unittest.TestCase):
+    """Queue A refill: the mailbox module's
+    own log line (coverage run 40189711740:
+    mailbox.py line 41). Before any transport
+    installs its logger, the default writes
+    the level and the message to stderr --
+    the relay every later logger replaces.
+    """
+
+    def test_the_default_log_writes_to_stderr(self):
+        import importlib
+        import io
+        from contextlib import redirect_stderr
+        from runner.wire import mailbox
+        saved = mailbox.log
+        importlib.reload(mailbox)
+        try:
+            err = io.StringIO()
+            with redirect_stderr(err):
+                mailbox.log("hello")
+                mailbox.log("careful", "WARN")
+            self.assertIn("INFO: hello", err.getvalue())
+            self.assertIn("WARN: careful", err.getvalue())
+        finally:
+            mailbox.log = saved
+
+
 if __name__ == "__main__":
     unittest.main()

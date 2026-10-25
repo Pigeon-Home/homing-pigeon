@@ -1232,5 +1232,30 @@ class Version2EdgesTest(unittest.TestCase):
         self.assertEqual(got[0]["kind"], "local_default")
 
 
+class AwaitAnswerNonStringLegTest(unittest.TestCase):
+    """Queue A refill: await_answer's
+    classification of a non-string answer
+    (coverage run 40189711740:
+    protocol_v2.py line 514). An answer whose
+    text member is not a string rides as an
+    empty answer -- the segment shape holds;
+    the nonsense does not reach the result.
+    """
+
+    def test_a_non_string_answer_rides_empty(self):
+        tmp = tempfile.mkdtemp(prefix="hp-v2-nonstr-")
+        folder = os.path.join(tmp, "v2", "answers")
+        os.makedirs(folder)
+        with open(os.path.join(folder, "q.j1.json"),
+                  "w", encoding="utf-8") as fh:
+            json.dump({"received_at": time.time() - 5,
+                       "answer": {"answer": 42}}, fh)
+        q = {"msg_id": "q.j1", "deadline_sec": 0,
+             "local_default": "proceed"}
+        got = v2.await_answer(tmp, q, time.time())
+        self.assertEqual(got[0]["kind"], "answer")
+        self.assertEqual(got[0]["text"], "")
+
+
 if __name__ == "__main__":
     unittest.main()

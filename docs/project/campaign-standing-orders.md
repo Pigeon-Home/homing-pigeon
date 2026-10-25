@@ -339,6 +339,32 @@ when done, the proving commit or run. Newest first.
   lines are still blank although the deletion
   landed in f4e2378 -- the answerer's
   bookkeeping, noted here.)
+- A (refill) — wire and chat-server legs
+  (coverage run 40189711740): protocol_v2's
+  non-string answer riding empty, the
+  oracle token check's non-string refusal,
+  the chat server's deterministic page over
+  the real loopback server, and the mailbox
+  module's default log line — taken
+  2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  AwaitAnswerNonStringLegTest
+  (test_protocol_v2_messages.py),
+  RunnerResidualLegsTest
+  (test_runner_last_edges.py),
+  MailboxDefaultLogLegTest
+  (test_transport_shells.py). Recorded
+  without a take: _oracle_instruction_kind's
+  post-prefix empty-words return cannot
+  fire (the lead is a single-space join of
+  nonempty tokens, so a matched polite
+  prefix always leaves a word behind); and
+  ask_model's answerless-retry return
+  cannot fire (a guard-tripping reply
+  carries its "answer" key, and an absent
+  key reads as None, which the format guard
+  passes). Done when a coverage run shows
+  the taken legs clean.
 - A (refill) — dri, audit-report and
   remediation legs (coverage run
   40189711740): the retained scan's non-JSON

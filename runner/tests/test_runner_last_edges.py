@@ -1356,6 +1356,40 @@ class RunnerResidualLegsTest(unittest.TestCase):
                 proc.kill()
                 proc.wait()
 
+    def test_oracle_token_ok_rejects_non_strings(self):
+        # _oracle_token_ok's type guard: a
+        # presented token that is not a string
+        # never matches, and never reaches the
+        # digest comparison.
+        self.assertFalse(rr._oracle_token_ok(123, "tok"))
+        self.assertFalse(rr._oracle_token_ok("tok", None))
+        self.assertTrue(rr._oracle_token_ok("tok", "tok"))
+        self.assertFalse(rr._oracle_token_ok("tok", "other"))
+
+    def test_do_get_deterministic_page(self):
+        # do_GET's deterministic branch: the
+        # chat page on a Pi Light box says so,
+        # over the real loopback server.
+        import http.client
+        cfg = {"oracle_mode": "deterministic"}
+        httpd = rr.make_oracle_server(cfg, "127.0.0.1", 0,
+                                      base_dir=None)
+        port = httpd.server_address[1]
+        th = threading.Thread(target=httpd.serve_forever,
+                              daemon=True)
+        th.start()
+        try:
+            conn = http.client.HTTPConnection(
+                "127.0.0.1", port, timeout=10)
+            conn.request("GET", "/")
+            resp = conn.getresponse()
+            body = resp.read().decode("utf-8", "replace")
+            self.assertEqual(resp.status, 200)
+            self.assertIn("deterministic", body)
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+
     def test_registry_watch_snapshot_write_swallowed(self):
         # _registry_watch's snapshot-write
         # swallow: an unwritable snapshot path
