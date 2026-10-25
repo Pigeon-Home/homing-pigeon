@@ -294,6 +294,23 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/wire/transports.py::`
+  `service_channel` (4 lines never run, both
+  platforms, coverage run 40189711740) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  and the take became a FINDING, filed as Q25: the
+  never-run lines are the rollback-on-failed-ack
+  branch, and they never run because
+  IncomingMessage.ack() discards the wrapped ack's
+  return, so `acked is False` is unreachable and a
+  refused ack never drops the seen-set entry the
+  docstring promises. The probe
+  (ChannelEdgeTest.test_a_failed_ack_must_roll_
+  back_probe in runner/tests/test_transports.py)
+  is on main failing by design in the four-part
+  format; it goes green when the ack returns its
+  result (Claude's lane). The item is done as
+  filed; the branch's coverage follows the fix.
 - A (refill) — `runner/oracle/remediation.py::`
   `enforce_quarantine_bounds` Windows residue
   (6 lines, coverage run 40189711740; the function

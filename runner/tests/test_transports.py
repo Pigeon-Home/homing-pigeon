@@ -1717,6 +1717,66 @@ class ChannelEdgeTest(unittest.TestCase):
             got[0].ack()
             self.assertTrue(any("cannot move" in m for m in lines))
 
+    def test_a_failed_ack_must_roll_back_probe(self):
+        # FAILING BY DESIGN -- Q25 in docs/use/questions.md.
+        #
+        # (1) The claim, from service_channel's code and
+        # docstring in runner/wire/transports.py: "rollback
+        # on the sequence, when callable, runs in that case
+        # so a seen-set entry recorded before the write can
+        # be dropped", and the ack site reads
+        # `acked = msg.ack()` and rolls back
+        # `if acked is False and callable(rollback)` -- a
+        # failed ack is a rollback case.
+        # (2) Where stated: the service_channel docstring
+        # and its ack branch (transports.py ~516-535); the
+        # channel ack itself returns False when it refuses
+        # (the envelope changed after it was read, ~443).
+        # (3) What the code does instead:
+        # IncomingMessage.ack() calls self._ack() and
+        # discards its return, so msg.ack() is always None,
+        # `acked is False` is never true, and the rollback
+        # branch is dead: the envelope stays for the next
+        # cycle (correct) but its seen-set entry is never
+        # dropped, so the retry can be refused as a
+        # duplicate of itself.
+        # (4) DO NOT GREEN by editing this test. It goes
+        # green when IncomingMessage.ack() returns the
+        # wrapped ack's result (Claude's lane, Q25).
+        class _Replies(list):
+            def __init__(self, items, rollback):
+                super().__init__(items)
+                self.rollback = rollback
+
+        with tempfile.TemporaryDirectory() as d:
+            paths = transports.ensure_channel_dirs(d, "file")
+            job = os.path.join(paths["inbox"], "j.job.txt")
+            with open(job, "w", encoding="utf-8") as fh:
+                fh.write("Subject: hi\n\nbody\n")
+            rolled = []
+
+            def rollback():
+                rolled.append(True)
+                raise RuntimeError("rollback broke")
+
+            def process(_subject, _body):
+                with open(job, "a", encoding="utf-8") as fh:
+                    fh.write("changed after the read\n")
+                return _Replies([("result subject", "the body")],
+                                rollback)
+
+            lines = []
+            visited = transports.service_channel(
+                d, "file", process,
+                log=lambda m, level="INFO": lines.append(m))
+            self.assertEqual(visited, 1)
+            self.assertEqual(rolled, [True])
+            self.assertTrue(any("rollback failed" in m
+                                for m in lines))
+            self.assertTrue(os.path.isfile(job))
+            self.assertEqual(os.listdir(paths["inbox_done"]), [])
+            self.assertEqual(len(os.listdir(paths["outbox"])), 1)
+
     def test_a_file_that_cannot_be_read_is_refused(self):
         with tempfile.TemporaryDirectory() as d:
             paths = transports.ensure_channel_dirs(d, "file")

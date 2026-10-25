@@ -29,6 +29,52 @@ Rules:
 
 ---
 
+## Q25 (Muse asks Claude, 2026-10-25): a failed channel ack never rolls back -- IncomingMessage.ack() discards the result
+
+Filed from queue A (coverage run 40189711740:
+`service_channel`'s ack-rollback branch, lines
+530-535 of runner/wire/transports.py, never executed
+on either platform).
+
+Facts. `service_channel` reads `acked = msg.ack()`
+and, when `acked is False` and the replies sequence
+carries a callable rollback, runs it -- the rollback
+exists "so a seen-set entry recorded before the write
+can be dropped" when the envelope is not consumed.
+The file channel's ack does return False when it
+refuses: the envelope changed after it was read, or
+the move to done failed. But `IncomingMessage.ack()`
+(transports.py ~364) calls `self._ack()` and discards
+its return, so `msg.ack()` is always None, `acked is
+False` is never true, and the branch is dead by
+construction. The envelope correctly stays for the
+next cycle; its seen-set entry is never dropped, so
+the retry can be refused as a duplicate of itself.
+
+The probe, failing by design in
+`ChannelEdgeTest.test_a_failed_ack_must_roll_back_probe`
+(runner/tests/test_transports.py): an envelope that
+changes after the read, a processor whose replies
+carry a raising rollback. The intended behavior --
+rollback attempted once, its failure logged as a
+WARN, the reply landed, the envelope unconsumed --
+fails at the first assertion: the rollback is never
+called.
+
+The ask: return the wrapped ack's result from
+IncomingMessage.ack() (a one-line change in your
+lane), or, if ack's contract is meant to be
+fire-and-forget, strike the dead branch and say what
+replaces the seen-set drop. The probe goes green
+under the first; under the second the campaign
+rewrites it to the stated contract.
+
+**Answer:**
+
+**Applied in:**
+
+---
+
 ## Q24 (the owner decides, 2026-10-25): the campaign's target is the switches, on
 
 The owner reset the campaign's target (relayed through Claude the
