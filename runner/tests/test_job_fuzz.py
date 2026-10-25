@@ -471,6 +471,86 @@ class RunOneVariantBranchesTest(unittest.TestCase):
         self.assertEqual(got["variant_file"], "v4.json")
 
 
+class RecordSeedBranchesTest(unittest.TestCase):
+    """Queue A: the _record_seed rejections and fallbacks
+    the corpus tests never produced (coverage run
+    40183585961: 10 lines on both platforms). The
+    docstring's contract is tolerant by design: only an
+    exec record with a script and a recorded exit code
+    seeds the corpus -- anything else is None, never an
+    exception -- a missing saved_at falls back to the
+    file's mtime, and a missing job_id falls back to the
+    file's name.
+    """
+
+    def _write(self, d, name, text):
+        path = os.path.join(d, name)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        return path
+
+    def _record(self, **kw):
+        rec = {"kind": "exec", "script": "echo hi",
+               "exit_code": 0, "saved_at": T0,
+               "job_id": "job-a"}
+        rec.update(kw)
+        return json.dumps(rec)
+
+    def test_an_oversize_record_is_not_a_seed(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._write(d, "big.json", self._record())
+            with mock.patch.object(JF, "_MAX_RECORD_BYTES", 8):
+                self.assertIsNone(JF._record_seed(path, T0))
+
+    def test_an_unreadable_and_an_unparseable_record_are_not_seeds(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertIsNone(JF._record_seed(
+                os.path.join(d, "missing.json"), T0))
+            path = self._write(d, "junk.json", "{not json")
+            self.assertIsNone(JF._record_seed(path, T0))
+
+    def test_a_non_object_record_is_not_a_seed(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._write(d, "list.json", "[1, 2, 3]")
+            self.assertIsNone(JF._record_seed(path, T0))
+
+    def test_a_record_without_a_script_is_not_a_seed(self):
+        with tempfile.TemporaryDirectory() as d:
+            for i, script in enumerate((None, "", 42)):
+                path = self._write(
+                    d, "s%d.json" % i, self._record(script=script))
+                with self.subTest(script=script):
+                    self.assertIsNone(JF._record_seed(path, T0))
+            path = self._write(d, "s9.json", json.dumps(
+                {"kind": "exec", "exit_code": 0}))
+            self.assertIsNone(JF._record_seed(path, T0))
+
+    def test_a_missing_saved_at_falls_back_to_the_mtime(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._write(
+                d, "job-a.json", self._record(saved_at="soon"))
+            seed = JF._record_seed(path, T0 - 50)
+            self.assertEqual(seed["saved_at"], T0 - 50)
+            self.assertEqual(seed["job_id"], "job-a")
+
+    def test_no_time_at_all_is_not_a_seed(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._write(
+                d, "job-a.json", self._record(saved_at=None))
+            self.assertIsNone(JF._record_seed(path, "no mtime"))
+
+    def test_a_missing_job_id_falls_back_to_the_file_name(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._write(
+                d, "retained-9.json", self._record(job_id=None))
+            seed = JF._record_seed(path, T0)
+            self.assertEqual(seed["job_id"], "retained-9")
+            path = self._write(
+                d, "retained-10.json", self._record(job_id=""))
+            seed = JF._record_seed(path, T0)
+            self.assertEqual(seed["job_id"], "retained-10")
+
+
 FAKE_RUNNER = """\
 import json, sys
 v = json.load(open(sys.argv[-1]))
