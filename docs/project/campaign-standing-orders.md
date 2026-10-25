@@ -156,6 +156,22 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/runner.py::execute_job` (9 lines
+  never run on Windows, 8 on Linux, coverage run
+  40187685363) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ExecuteJobFallbacksTest in
+  runner/tests/test_remediation_e2e.py: a monitor that
+  fails to start, a monitor whose stop fails, and a
+  remediation close-out that raises each leave the
+  job's result untouched; a close-out member is
+  attached (that line had never run on Windows). The
+  set's last line, the script-write branch's own
+  "script must be a string" raise, is unreachable by
+  construction -- the input validation above it
+  rejects a non-string script first -- and the
+  contract is pinned at that live guard. Done when a
+  coverage run shows only that line left.
 - A (refill) — `_deliver_local` in the nine senses the
   Q14 roster never included (airwaves, crash-watch,
   falco-feed, service-watch at 9 lines; osquery-feed

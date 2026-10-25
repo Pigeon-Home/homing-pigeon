@@ -27,13 +27,16 @@ import os
 import sys
 import tempfile
 import time
+import types
 import unittest
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-from runner.runner import execute_job  # noqa: E402
+from runner import runner as _runner  # noqa: E402
+from runner.runner import JobRejected, execute_job  # noqa: E402
 
 POSIX = os.name != "nt"
 
@@ -198,6 +201,85 @@ class RemediationEndToEnd(unittest.TestCase):
                     if e.get("feature") == "remediation"
                     and e.get("decision") == "observed"]
         self.assertEqual(len(observed), 1, self._audit())
+
+
+class ExecuteJobFallbacksTest(unittest.TestCase):
+    """Queue A refill, runner.execute_job's fallback lines
+    (coverage run 40187685363): the remediation watch is an
+    observer, never a dependency -- a monitor that fails to
+    start, a monitor whose stop fails, and a close-out that
+    raises must each leave the job's own result untouched,
+    and a close-out that returns a member gets it attached
+    (the attach line had never run on Windows). One line in
+    the set is not a fallback: the script-write branch's
+    own "script must be a string" raise is unreachable by
+    construction, because the input validation above it
+    rejects a non-string script first; the contract is
+    pinned at that live guard instead.
+    """
+
+    def setUp(self):
+        self.base = tempfile.mkdtemp(prefix="hp-exec-fallback-")
+        self.cfg = {"base_dir": self.base}
+        self.job = _job("exec-fallback", "print('job ran')")
+
+    def test_a_non_string_script_is_rejected(self):
+        job = dict(self.job, script=12345)
+        with self.assertRaises(JobRejected) as cm:
+            execute_job(self.cfg, job, self.base)
+        self.assertEqual(str(cm.exception),
+                         "script must be a string")
+
+    def test_a_monitor_that_fails_to_start_changes_nothing(self):
+        with mock.patch.object(
+                _runner, "_start_job_monitor",
+                side_effect=RuntimeError("monitor down")):
+            result = execute_job(self.cfg, self.job, self.base)
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("job ran", result["stdout"])
+        self.assertNotIn("remediation", result)
+
+    def test_a_monitor_whose_stop_fails_changes_nothing(self):
+        def bad_stop():
+            raise RuntimeError("stop failed")
+
+        monitor = types.SimpleNamespace(stop=bad_stop)
+        with mock.patch.object(
+                _runner, "_start_job_monitor",
+                return_value=monitor), \
+                mock.patch.object(
+                _runner, "_finish_remediation",
+                return_value=None):
+            result = execute_job(self.cfg, self.job, self.base)
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("job ran", result["stdout"])
+        self.assertNotIn("remediation", result)
+
+    def test_a_close_out_that_raises_attaches_nothing(self):
+        monitor = types.SimpleNamespace(stop=lambda: None)
+        with mock.patch.object(
+                _runner, "_start_job_monitor",
+                return_value=monitor), \
+                mock.patch.object(
+                _runner, "_finish_remediation",
+                side_effect=RuntimeError("close-out down")):
+            result = execute_job(self.cfg, self.job, self.base)
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("job ran", result["stdout"])
+        self.assertNotIn("remediation", result)
+
+    def test_a_close_out_member_is_attached(self):
+        monitor = types.SimpleNamespace(stop=lambda: None)
+        member = {"outcome": "held_for_review"}
+        with mock.patch.object(
+                _runner, "_start_job_monitor",
+                return_value=monitor), \
+                mock.patch.object(
+                _runner, "_finish_remediation",
+                return_value=member):
+            result = execute_job(self.cfg, self.job, self.base)
+        self.assertEqual(result["exit_code"], 0)
+        self.assertEqual(result["remediation"], member)
 
 
 if __name__ == "__main__":
