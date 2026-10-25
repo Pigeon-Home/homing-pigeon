@@ -520,7 +520,13 @@ class ReadLiveTest(unittest.TestCase):
         self.assertIsInstance(got["now"], float)
         self.assertEqual(got["processes"], [])
 
-    @unittest.skipUnless(os.path.isdir("/proc"),
+    # Linux only, not merely /proc-shaped: FreeBSD mounts a
+    # /proc whose per-pid entries are not the Linux comm/cmdline
+    # shape read_live scans, so the isdir gate alone let this
+    # smoke test run there and find no processes (Q35). The
+    # parsing contract itself is platform-neutral above.
+    @unittest.skipUnless(sys.platform == "linux"
+                         and os.path.isdir("/proc"),
                          "needs a /proc to scan")
     def test_the_real_proc_names_this_process(self):
         got = SW.read_live(_manifest())

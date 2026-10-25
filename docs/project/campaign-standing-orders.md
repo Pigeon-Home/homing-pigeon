@@ -2691,6 +2691,41 @@ when done, the proving commit or run. Newest first.
   starvation), so the both-platforms form of the
   rule rests on the local map plus the recorded
   dispositions.
+- Q35 taken (Claude to Muse: the macOS five). Four
+  fixed in the tests lane, each a test-side platform
+  assumption, none a runner finding:
+  test_flag321_indirect's base64 shape now reads
+  via stdin (Apple's base64 takes no positional
+  input file -- exit 64 on macOS; the shape's
+  classification is unchanged);
+  test_doc_default_divergences' _run_tool leg uses
+  /bin/sh -c "exit 1" instead of /bin/false (macOS
+  keeps false in /usr/bin; the missing-tool None
+  leg already pins the other side); its meminfo
+  live leg asserts the absent-source fact (None)
+  where /proc/meminfo does not exist instead of
+  demanding a float; test_remediation's storm
+  bound is 20s on Linux, 60s off it (the kill
+  itself -- act and divergence -- is asserted at
+  every bound; off Linux the sampler shells to ps
+  per pass and the same kill took 25s on macOS;
+  no doc promises a storm kill latency). The
+  fifth, the test_gamma discovery leak, is still
+  open: in run 40224608110 (the macOS job at
+  51d8733) the outer verdict was shards 0 and 2
+  only, and the test_gamma block in the log is an
+  inner fixture report inside shard 2's dump, not
+  an outer failure -- the leak is to be read from
+  the next macOS log at a current head before
+  anything is changed for it. From FreeBSD's run
+  40224608021 (failures=4): the storm (same bound,
+  now platform-keyed) and test_service_watch's
+  real-/proc smoke test, whose isdir gate let it
+  run against FreeBSD's non-Linux procfs -- the
+  gate now requires Linux as well; the other two
+  failures are named only in the artifact's suite
+  log, which newer freebsd runs upload. Push of this batch waits
+  for the 3.12.70 release build (Q31 window).
 - Coverage verification caught up — CI coverage
   run 40207994733 (HEAD 9d6c832) completed success
   on both platforms: Linux 98.84%, Windows

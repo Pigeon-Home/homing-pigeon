@@ -65,7 +65,10 @@ VARIANTS = [
      "f={flag}; cp \"$f\" {stage}/v.txt; cat {stage}/v.txt",
      True, True, 0),
     ("base64, not the raw value",
-     "base64 {flag}", True, False, 0),
+     # Stdin form: Apple's base64 takes no positional input
+     # file (usage error, exit 64 on macOS); the redirect is
+     # the portable spelling and the shape is unchanged.
+     "base64 < {flag}", True, False, 0),
     ("wrong case",
      "cat {desktop}/flag.TXT", True, False, 1),
     ("relative name, from the work directory",

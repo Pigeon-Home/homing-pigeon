@@ -28149,7 +28149,12 @@ class TestWireArrivalsNeighborsAndDecideFifteenShapes(unittest.TestCase):
                          "hi\n")
         self.assertIsNone(
             mod._run_tool(["/nonexistent/tool-xyz"]))
-        self.assertEqual(mod._run_tool(["/bin/false"]), "")
+        # A tool that runs and prints nothing reads as "", not
+        # None. /bin/sh is the portable spelling: macOS has no
+        # /bin/false (false lives in /usr/bin there), and the
+        # missing-tool leg above already pins the None case.
+        self.assertEqual(
+            mod._run_tool(["/bin/sh", "-c", "exit 1"]), "")
 
     def test_clean_state_shapes(self):
         mod = self._module()
@@ -30011,9 +30016,17 @@ class TestPiHealthReadingsAndDecideFifteenShapes(unittest.TestCase):
             with self.subTest(text=text[:30]):
                 self.assertIsNone(self._meminfo(mod, text))
         self.assertIsNone(self._meminfo(mod, "", raises=True))
+        # The live leg reads the host's own /proc/meminfo: where
+        # that file exists the reading is a percentage; where it
+        # does not (macOS, the BSDs) the reader reports None --
+        # the absent-source fact, asserted rather than skipped.
+        import os
         real = mod._mem_avail_pct_meminfo()
-        self.assertIsInstance(real, float)
-        self.assertTrue(0.0 <= real <= 100.0)
+        if os.path.exists("/proc/meminfo"):
+            self.assertIsInstance(real, float)
+            self.assertTrue(0.0 <= real <= 100.0)
+        else:
+            self.assertIsNone(real)
 
     def test_sysconf_windows_and_mem_chain(self):
         import os
