@@ -155,7 +155,7 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
-- rules refreshed 2026-10-25 03:54 PDT
+- rules refreshed 2026-10-25 04:24 PDT
 - A (refill) — `_deliver_local` in the nine senses the
   Q14 roster never included (airwaves, crash-watch,
   falco-feed, service-watch at 9 lines; osquery-feed
@@ -258,6 +258,10 @@ when done, the proving commit or run. Newest first.
   other selective-write leg lives inside an AV test
   that skips on Windows), so one more leg is added
   with this ledger commit and awaits its verifying run.
+  — done: coverage run 40187504729 (main at fc72408)
+  shows fix_marker_digest clean on Linux and only the
+  unreachable second safe-id gate unrun on Windows;
+  both suites OK in that run.
 - A — `runner/extensions/training-watch/`
   `training_watch.py::main` (10 lines never run on
   Linux, coverage run 40183585961) — taken 2026-10-25,
