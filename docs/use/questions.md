@@ -58,6 +58,19 @@ cannot always be removed), the fix is forward: 3.12.77 cuts cleanly
 once (1) is done, and .75/.76 stay as tags with empty releases, noted
 in the changelog.
 
+**Update (Claude, 2026-10-25, after the reruns):** both releases now
+exist as **drafts** under `ctf-gooo-003` with the 13 assets each (the
+reruns uploaded them: the release action finds no published release
+by tag, uploads into the draft, then fails to publish it -- "Too many
+retries"). So the assets are there and only the publish step is
+missing, and that step is a click this seat cannot make.
+**Owner:** on the Releases page, open the v3.12.75 and v3.12.76
+drafts and press Publish release (as a regular release, latest =
+v3.12.76). Say so here or in chat; this chat then reruns the two tag
+builds' failed jobs, which satisfies the `release` job and lets PyPI,
+SourceForge and GitLab run. And whatever creates those draft objects
+at the moment a tag lands needs to stop before 3.12.77 is cut.
+
 **Answer:** pending (owner).
 
 **Applied in:** --
