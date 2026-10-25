@@ -155,6 +155,9 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A — `runner/runner.py::_v2_ingest` (11 lines never run
+  on either platform, coverage run 40183585961) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
 - A — `runner/wire/oauth.py::store_refresh_token` (12
   lines never run on Windows, 9 on Linux, coverage run
   40183585961) — taken 2026-10-25,
@@ -198,17 +201,25 @@ when done, the proving commit or run. Newest first.
 - A — `runner/extensions/resource-sentinel/resource_sentinel.py`
   `::_read_mem_avail_pct` (19 lines never run on Windows,
   coverage run 40180268696) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage run
+  40183995594 shows no never-executed lines for this
+  function on either platform.
 - A — `runner/runner.py::_with_seen_file` (14 lines never run
   on Linux, coverage run 40180268696) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage run
+  40183995594 shows no never-executed lines on Linux; the
+  Windows residue is the fcntl lock/unlock pair,
+  platform-inapplicable on Windows (the msvcrt legs run
+  there), covered on Linux.
 - A — `runner/guard/sandbox.py::startup_problem` (15 lines
   never run on Windows, coverage run 40180268696) — taken
   2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
   platform-inapplicable on Windows (the bwrap trial sits
   behind the function's own platform guard), covered on
   Linux; the Linux residuals (start failure, the userns
-  note) are taken with it.
+  note) are taken with it — done: coverage run
+  40183995594 leaves on Linux only the platform guard's
+  own return line.
 - A — `runner/extensions/latency-post/latency_post.py::`
   `_read_default_gateway` (17 lines never run on either
   platform, coverage run 40180268696) — taken 2026-10-25,

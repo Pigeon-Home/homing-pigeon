@@ -1397,5 +1397,126 @@ class HandleMailFailureBranchesTest(_VerbosityGuard):
         self.assertNotIn("oracle_opinion", result)
 
 
+class Version2IngestBranchesTest(_VerbosityGuard):
+    """Queue A: the _v2_ingest branches the pump tests
+    never reached (coverage run 40183585961: 11 lines on
+    both platforms) -- the two absent-module returns, an
+    unparseable mail in the IMAP fetch, the IMAP hand-off
+    itself, and the transport path's ack discipline. The
+    docstring's contract: jobs stay where they are, a
+    message this process does not consume is never acked
+    (acking would mark it seen), and one bad message or
+    channel never stops the rest.
+    """
+
+    def _cfg(self):
+        return {"mailbox_user": "t@example.com",
+                "shared_secret": SECRET, "protocol_v2": True}
+
+    def _ingest(self, cfg, imap, d):
+        runner._v2_ingest(cfg, imap, d, {},
+                           runner.build_secrets(cfg), _Opts())
+
+    def test_no_v2_module_and_no_fetch_both_return_quietly(self):
+        cfg = self._cfg()
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(runner, "_protocol_v2", None):
+                self._ingest(cfg, _IMAP(), d)
+            saved = runner.fetch_job_mails
+            del runner.fetch_job_mails
+            try:
+                self._ingest(cfg, _IMAP(), d)
+            finally:
+                runner.fetch_job_mails = saved
+
+    def test_the_imap_path_skips_bad_mail_and_hands_off_v2(self):
+        cfg = self._cfg()
+        plain = _mail("[HOMING-PIGEON] job plain-1",
+                      sign_payload(
+                          {"v": 1, "type": "job",
+                           "job_id": "plain-1",
+                           "issued_at": _now(), "kind": "ping"},
+                          SECRET))
+        v2_raw = _mail(
+            "[HOMING-PIGEON] determination det-1", "sealed")
+        handed = []
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(
+                    runner, "fetch_job_mails",
+                    return_value=[(1, None), (2, plain),
+                                  (3, v2_raw)]), \
+                    mock.patch.object(
+                        runner, "handle_v2_mail",
+                        lambda *a, **kw: handed.append(a)):
+                self._ingest(cfg, _IMAP(), d)
+        self.assertEqual(len(handed), 1)
+        self.assertEqual(handed[0][3], 3)  # the v2 mail's seq
+        self.assertIn("determination", handed[0][5])
+
+    class _Msg:
+        def __init__(self, subject, ack_error=None):
+            self.subject = subject
+            self.body = "sealed"
+            self.acked = False
+            self._ack_error = ack_error
+
+        def ack(self):
+            self.acked = True
+            if self._ack_error is not None:
+                raise self._ack_error
+
+    def _transport_ingest(self, cfg, d, msgs, handler):
+        with mock.patch.object(
+                runner, "_enabled_transports",
+                return_value=["file"]), \
+                mock.patch.object(
+                    runner._transports,
+                    "fetch_channel_messages",
+                    return_value=msgs), \
+                mock.patch.object(
+                    runner, "handle_v2_mail", handler):
+            self._ingest(cfg, None, d)
+
+    def test_the_transport_path_acks_only_what_it_consumed(self):
+        cfg = self._cfg()
+        consumed = self._Msg("[HOMING-PIGEON] answer a-1")
+        left = self._Msg("[HOMING-PIGEON] answer a-2")
+        plain = self._Msg("just a note")
+
+        def handler(cfg_, box, smtp, seq, raw, subject,
+                    secrets, opts, base_dir):
+            if subject == consumed.subject:
+                box.store()  # consumed: the core marks it seen
+
+        with tempfile.TemporaryDirectory() as d:
+            self._transport_ingest(
+                cfg, d, [consumed, left, plain], handler)
+        self.assertTrue(consumed.acked)
+        self.assertFalse(left.acked)
+        self.assertFalse(plain.acked)
+
+    def test_a_handler_failure_and_a_failed_ack_are_only_logged(self):
+        cfg = self._cfg()
+        boom = self._Msg("[HOMING-PIGEON] answer b-1")
+        bad_ack = self._Msg("[HOMING-PIGEON] answer b-2",
+                            ack_error=OSError("gone"))
+
+        def handler(cfg_, box, smtp, seq, raw, subject,
+                    secrets, opts, base_dir):
+            if subject == boom.subject:
+                raise RuntimeError("handler down")
+            box.store()
+
+        with tempfile.TemporaryDirectory() as d:
+            with _captured_log() as buf:
+                self._transport_ingest(cfg, d, [boom, bad_ack],
+                                       handler)
+        logs = buf.getvalue()
+        self.assertIn("version 2 ingest message failed", logs)
+        self.assertIn("version 2 ingest ack failed", logs)
+        self.assertFalse(boom.acked)
+        self.assertTrue(bad_ack.acked)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
