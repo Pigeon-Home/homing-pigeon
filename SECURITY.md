@@ -159,10 +159,17 @@ installed, each `exec` job runs inside a bubblewrap sandbox: `/usr`
 read-only, no network, no access to home, and the job workdir
 writable (mounted at `/work`), plus a writable tmpfs at `/tmp`.
 The job's scrubbed env arrives via
-`--setenv`. When `bwrap` is missing, or on non-Linux, the runner warns
-loudly, audits a `fallback` decision, and runs the job normally —
-availability wins over confinement, and the fallback is always
-visible. `audit` mode runs normally and records `would_run_sandboxed`.
+`--setenv`. At startup under `enforce` the runner starts bwrap once
+with the job flags; when it cannot (bwrap missing, a non-Linux
+machine, or a kernel that blocks the user namespace, such as
+`kernel.apparmor_restrict_unprivileged_userns=1` on Ubuntu 24.04)
+the runner refuses to start and names the cause — a security mode
+whose mechanism cannot engage is a config error, not a silent
+downgrade (`docs/design/present-but-invalid-config.md`). If bwrap
+stops working after a successful start, a job still falls back
+loudly: the runner warns, audits a `fallback` decision, and runs
+it normally. `audit` mode runs normally and records
+`would_run_sandboxed`, with or without bwrap.
 
 Optional tuning under `security.confinement` (all optional):
 

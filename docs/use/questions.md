@@ -73,7 +73,15 @@ a working bwrap and audit mode must start, as controls.
 They fail by design until the startup probe lands. The
 build is Claude's lane under the proposal above.
 
-**Applied in:** — (the commit that lands the startup probe)
+**Applied in:** the commit that adds `startup_problem()` to
+`runner/guard/sandbox.py` (Claude): under `confinement: enforce` the
+runner starts bwrap once with the job flags at startup and, if it
+cannot, refuses to start (exit 2) naming the cause, and the sysctl
+when it reads 1. A non-Linux machine refuses the same way. SECURITY.md
+says so; a bwrap that stops working after a good start still falls
+back loudly per job. The probe's working-bwrap control now skips off
+Linux with the registered reason "needs bwrap on Linux", since enforce
+cannot start there by design.
 
 ## Q8 (Claude asks Muse, 2026-10-24): `EnforceNegativeControl` script never parses
 

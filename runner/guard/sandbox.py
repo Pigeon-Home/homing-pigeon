@@ -46,6 +46,55 @@ def sandbox_available():
     return shutil.which(BWRAP_BIN) is not None
 
 
+_USERNS_SYSCTL = "/proc/sys/kernel/apparmor_restrict_unprivileged_userns"
+
+
+def _userns_restricted():
+    try:
+        with open(_USERNS_SYSCTL, encoding="ascii") as fh:
+            return fh.read().strip() == "1"
+    except OSError:
+        return False
+
+
+def startup_problem(timeout=15):
+    """None when bwrap can confine a job here, else why not.
+
+    Run once at startup under confinement: enforce (Decision 1's
+    refuse class: a security mode whose mechanism cannot engage
+    changes what the box protects, docs/use/questions.md Q9). It
+    checks the platform, finds bwrap on PATH, and starts it once
+    with the same namespace flags a job gets, running `true`. The
+    first env-axes pair showed why a trial run and not a PATH
+    lookup: with apparmor_restrict_unprivileged_userns=1, Ubuntu
+    24.04's default, bwrap is installed and every start fails.
+    """
+    if os.name == "nt" or not sys.platform.startswith("linux"):
+        return ("confinement (bwrap) is Linux-only; this machine is "
+                "%s" % sys.platform)
+    path = shutil.which(BWRAP_BIN)
+    if path is None:
+        return "bwrap is not installed (not found on PATH)"
+    import subprocess
+    try:
+        proc = subprocess.run(
+            [path, *DEFAULT_FLAGS, "/usr/bin/true"],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE, timeout=timeout)
+    except (OSError, subprocess.SubprocessError) as e:
+        return "bwrap could not be started: %s" % e
+    if proc.returncode == 0:
+        return None
+    detail = (proc.stderr or b"").decode("utf-8", "replace").strip()
+    reason = "bwrap cannot start a sandbox (exit %d%s)" % (
+        proc.returncode, ": " + detail[:200] if detail else "")
+    if _userns_restricted():
+        reason += ("; kernel.apparmor_restrict_unprivileged_userns is 1, "
+                   "which blocks the user namespace bwrap needs (set it "
+                   "to 0, or give bwrap an AppArmor profile)")
+    return reason
+
+
 def _confinement_cfg(cfg):
     sec = cfg.get("security")
     sec = sec if isinstance(sec, dict) else {}

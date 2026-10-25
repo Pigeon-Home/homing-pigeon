@@ -10715,6 +10715,20 @@ def main() -> int:
         # Hardening M5: audience binding with no runner_id configured
         # has nothing to bind to. Warn instead of silently doing
         # nothing; the setup wizard generates one for fresh configs.
+        # Q9 (Decision 1's refuse class): confinement on enforce
+        # whose mechanism cannot engage changes what the box
+        # protects, so the runner refuses to start and says why,
+        # instead of every job finding out one at a time.
+        if _sandbox is not None \
+                and _security.sec_mode(cfg, "confinement") == "enforce":
+            problem = _sandbox.startup_problem()
+            if problem:
+                print("config error: security.modes.confinement is "
+                      "enforce but the sandbox cannot engage: "
+                      + problem + ". Refusing to start; fix the "
+                      "sandbox, or set confinement to audit or off.",
+                      file=sys.stderr)
+                return 2
         if _security.sec_mode(cfg, "audience") != "off" \
                 and not cfg.get("runner_id"):
             log("WARN: security.modes.audience is not off but "

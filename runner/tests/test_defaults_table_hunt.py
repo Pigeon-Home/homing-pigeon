@@ -714,6 +714,8 @@ class SandboxStartupRefusalProbes(unittest.TestCase):
         rc, text = self._boot("enforce", self._fake_bwrap_dir(1))
         self._assert_refusal(rc, text)
 
+    @unittest.skipUnless(sys.platform.startswith("linux"),
+                         "needs bwrap on Linux")
     def test_control_starts_when_bwrap_can_start(self):
         rc, _text = self._boot("enforce", self._fake_bwrap_dir(0))
         self.assertEqual(rc, 0)
