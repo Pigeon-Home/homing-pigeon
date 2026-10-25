@@ -141,8 +141,16 @@ jobs:
           set -euo pipefail
           git config user.name "cut-release"
           git config user.email "cut-release@users.noreply.github.com"
-          git tag -a "$TAG" "$SHA" -m "Version ${TAG#v}"
-          git push origin "refs/tags/$TAG"
+          # The job log is not readable from every seat; a failure
+          # here rides as an annotation with git's own words.
+          if ! out=$(git tag -a "$TAG" "$SHA" -m "Version ${TAG#v}" 2>&1); then
+            echo "::error title=tag::git tag failed: ${out:0:600}"
+            exit 1
+          fi
+          if ! out=$(git push origin "refs/tags/$TAG" 2>&1); then
+            echo "::error title=tag push::git push failed: ${out:0:600}"
+            exit 1
+          fi
           echo "pushed $TAG -> $SHA"
 
       - name: start the release pipeline on the tag
