@@ -583,3 +583,94 @@ class SecurityEventTrimTest(unittest.TestCase):
                     rec = json.loads(line)
                     self.assertEqual(rec["type"], "test")
                 self.assertEqual(_SECURITY_EVENTS_MAX, 5000)
+
+
+class SecurityEventBranchesTest(unittest.TestCase):
+    """Queue A: the _append_security_event branches the
+    trim test never produced (coverage run 40183585961:
+    11 lines on Windows, 3 on Linux). The docstring's
+    contract is best effort: the audit append must never
+    fail the work it records -- a chmod that refuses, a
+    trim whose replace fails, even a cleanup that fails
+    are all swallowed -- and a file that turns out to be
+    a link is appended to but never rewritten by the
+    trim's replace.
+    """
+
+    def _path(self, d):
+        return os.path.join(d, "security-events.jsonl")
+
+    def _lines(self, d):
+        with open(self._path(d), encoding="utf-8") as fh:
+            return fh.readlines()
+
+    def _seed(self, d, count):
+        with open(self._path(d), "w", encoding="utf-8") as fh:
+            for i in range(count):
+                fh.write(json.dumps({"n": i}) + "\n")
+
+    def test_a_chmod_failure_never_blocks_the_append(self):
+        from runner.runner import _append_security_event
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(
+                    os, "chmod",
+                    side_effect=OSError("mode refused")):
+                _append_security_event(d, {"type": "a"})
+                _append_security_event(d, {"type": "b"})
+            lines = self._lines(d)
+            self.assertEqual(len(lines), 2)
+            self.assertEqual(json.loads(lines[1])["type"], "b")
+
+    def test_a_linked_file_is_appended_but_never_trimmed(self):
+        from runner.runner import _append_security_event
+        with tempfile.TemporaryDirectory() as d:
+            self._seed(d, 3)
+            with mock.patch(
+                    "runner.runner._SECURITY_EVENTS_MAX", 2), \
+                    mock.patch.object(
+                        os.path, "islink", lambda p: True):
+                _append_security_event(d, {"type": "new"})
+            self.assertEqual(len(self._lines(d)), 4)
+
+    def test_a_failed_trim_replace_cleans_its_staging_file(self):
+        from runner.runner import _append_security_event
+        with tempfile.TemporaryDirectory() as d:
+            self._seed(d, 3)
+            with mock.patch(
+                    "runner.runner._SECURITY_EVENTS_MAX", 2), \
+                    mock.patch.object(
+                        os, "replace",
+                        side_effect=OSError("cannot replace")):
+                _append_security_event(d, {"type": "new"})
+            self.assertEqual(len(self._lines(d)), 4)
+            self.assertEqual(os.listdir(d),
+                             ["security-events.jsonl"])
+
+    def test_a_failed_cleanup_unlink_is_swallowed_too(self):
+        from runner.runner import _append_security_event
+        with tempfile.TemporaryDirectory() as d:
+            self._seed(d, 3)
+            with mock.patch(
+                    "runner.runner._SECURITY_EVENTS_MAX", 2), \
+                    mock.patch.object(
+                        os, "replace",
+                        side_effect=OSError("cannot replace")), \
+                    mock.patch.object(
+                        os, "unlink",
+                        side_effect=OSError("cannot unlink")):
+                _append_security_event(d, {"type": "new"})
+            self.assertEqual(len(self._lines(d)), 4)
+
+    def test_the_post_trim_chmod_failure_is_swallowed(self):
+        from runner.runner import _append_security_event
+        with tempfile.TemporaryDirectory() as d:
+            self._seed(d, 3)
+            with mock.patch(
+                    "runner.runner._SECURITY_EVENTS_MAX", 2), \
+                    mock.patch.object(
+                        os, "chmod",
+                        side_effect=OSError("mode refused")):
+                _append_security_event(d, {"type": "new"})
+            lines = self._lines(d)
+            self.assertEqual(len(lines), 2)
+            self.assertEqual(json.loads(lines[-1])["type"], "new")

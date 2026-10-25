@@ -155,6 +155,13 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A — `runner/runner.py::_append_security_event` (11
+  lines never run on Windows, 3 on Linux, coverage run
+  40183585961) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the flag lines
+  are platform pairs (O_NOFOLLOW inapplicable on
+  Windows, O_BINARY on Linux, each covered on the other
+  platform); the rest is taken with it.
 - A — `runner/extensions/lab-results/lab_results.py::`
   `_deliver_local` (11 lines never run on either
   platform, coverage run 40183585961) — taken 2026-10-25,
