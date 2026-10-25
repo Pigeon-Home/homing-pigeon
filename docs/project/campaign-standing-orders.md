@@ -156,6 +156,18 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/extensions/sysmon-feed/`
+  `sysmon_feed.py::main` (8 lines never run on either
+  platform, coverage run 40187685363) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  SysmonMainDeliveryTest in
+  runner/tests/test_sysmon_feed.py: local delivery
+  success writes the state and files one envelope;
+  delivery not set up is exit 2; a short delivery is
+  exit 2 with the state unwritten, so the next pass
+  re-reads; a manifest without tunables runs the live
+  defaults. Done when a coverage run shows the
+  function clean.
 - A (refill) — `runner/runner.py::`
   `_extension_sources_pass` (the whole body, 8 lines,
   never run on either platform, coverage run

@@ -24,7 +24,7 @@ import shutil
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -391,6 +391,89 @@ class MainTest(unittest.TestCase):
             self.assertEqual(
                 SM.main(["--log-file", os.path.join(d, "missing.log"),
                          "--state", state_path]), 2)
+
+
+class SysmonMainDeliveryTest(unittest.TestCase):
+    """Queue A refill: sysmon-feed main's local-delivery
+    legs and live defaults (coverage run 40187685363: 8
+    lines on both platforms). The contract main's own
+    comments state: local delivery that is not set up is
+    exit 2; a delivery short of the alert count leaves
+    the state unwritten, so the offsets do not advance
+    and the next pass re-reads the events; a manifest
+    whose tunables are absent or not an object reads as
+    the defaults, log paths included.
+    """
+
+    ENV = "HP_SYSMAIN_SECRET"
+
+    def _drive(self, d, extra, manifest=None):
+        readings = os.path.join(d, "readings.json")
+        with open(readings, "w", encoding="utf-8") as fh:
+            json.dump(_readings([_event(
+                image="/tmp/.cache/update")]), fh)
+        state = os.path.join(d, "state.json")
+        argv = ["--readings", readings, "--state", state,
+                "--secret-env", self.ENV] + extra
+        if manifest is not None:
+            mpath = os.path.join(d, "extension.json")
+            with open(mpath, "w", encoding="utf-8") as fh:
+                json.dump(manifest, fh)
+            argv += ["--manifest", mpath]
+        err = io.StringIO()
+        with redirect_stderr(err):
+            rc = SM.main(argv)
+        return rc, state, err.getvalue()
+
+    def test_local_delivery_success_writes_state(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.environ[self.ENV] = "ab" * 32
+            try:
+                rc, state, _err = self._drive(
+                    d, ["--local-dir", d])
+            finally:
+                os.environ.pop(self.ENV, None)
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.exists(state))
+            inbox = os.path.join(d, "local-inbox")
+            self.assertEqual(len(os.listdir(inbox)), 1)
+
+    def test_local_delivery_not_set_up_is_exit_2(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.environ.pop(self.ENV, None)
+            rc, state, _err = self._drive(d, ["--local-dir", d])
+            self.assertEqual(rc, 2)
+            self.assertFalse(os.path.exists(state))
+
+    def test_short_delivery_is_exit_2_and_saves_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            blocker = os.path.join(d, "blocker")
+            with open(blocker, "w", encoding="utf-8") as fh:
+                fh.write("not a directory")
+            os.environ[self.ENV] = "ab" * 32
+            try:
+                rc, state, err = self._drive(
+                    d, ["--local-dir", blocker])
+            finally:
+                os.environ.pop(self.ENV, None)
+            self.assertEqual(rc, 2)
+            self.assertIn("state not saved", err)
+            self.assertFalse(os.path.exists(state))
+
+    def test_a_manifest_without_tunables_uses_live_defaults(self):
+        manifest = _manifest()
+        manifest.pop("tunables", None)
+        with tempfile.TemporaryDirectory() as d:
+            state = os.path.join(d, "state.json")
+            mpath = os.path.join(d, "extension.json")
+            with open(mpath, "w", encoding="utf-8") as fh:
+                json.dump(manifest, fh)
+            err = io.StringIO()
+            with redirect_stderr(err):
+                rc = SM.main(["--manifest", mpath,
+                              "--state", state])
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.exists(state))
 
 
 if __name__ == "__main__":
