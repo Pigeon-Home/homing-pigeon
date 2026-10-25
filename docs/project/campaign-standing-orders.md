@@ -2691,6 +2691,21 @@ when done, the proving commit or run. Newest first.
   starvation), so the both-platforms form of the
   rule rests on the local map plus the recorded
   dispositions.
+- Q35 answered in the questions file (four fixed in
+  1cfa5bb; the wrong-case shape probed; the
+  test_gamma item answered by evidence -- an inner
+  fixture report in both macOS logs, never an outer
+  failure). Two findings outgrew it: Q38 (remediation
+  tree sampler is a stub on Darwin; the storm test
+  rides under expectedFailure there) and Q39
+  (install_macos aborts when launchctl bootstrap
+  fails GUI-less; the upgrade proof is the probe).
+  Q37 answered for its R5 half: Grok's drafts
+  rewritten onto one poll_once under workers 2 with
+  signed payloads, both proven here, decorators off;
+  the cage pair's cfg gained the inference block the
+  draft lacked and keeps its decorators until a CI
+  leg shows the unexpected success.
 - Q35 taken (Claude to Muse: the macOS five). Four
   fixed in the tests lane, each a test-side platform
   assumption, none a runner finding:

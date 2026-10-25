@@ -101,6 +101,16 @@ class IndirectCredentialTest(unittest.TestCase):
             "stage": self.stage,
             "home": self.home,
         }
+        # Filesystem case sensitivity decides the "wrong case"
+        # shape's exit code: on a case-insensitive filesystem
+        # (default macOS APFS) flag.TXT resolves to flag.txt
+        # and the read succeeds; on a case-sensitive one it
+        # does not. Probe this fixture's own filesystem.
+        probe = os.path.join(self.home, "CaseProbe.txt")
+        with open(probe, "w", encoding="utf-8") as fh:
+            fh.write("x")
+        self.case_insensitive = os.path.exists(
+            os.path.join(self.home, "caseprobe.TXT"))
         self.base = tempfile.mkdtemp()
         os.makedirs(os.path.join(self.base, "retained"))
         self.cfg = {
@@ -180,6 +190,13 @@ class IndirectCredentialTest(unittest.TestCase):
 
     def test_each_shape(self):
         for i, (label, script, notable, secret, exit_code) in enumerate(VARIANTS):
+            if label == "wrong case" and self.case_insensitive:
+                # flag.TXT resolves on this filesystem (see
+                # setUp): the read succeeds, so the shape's
+                # exit code follows the filesystem, while the
+                # judge's notable classification -- the shape's
+                # substance -- is asserted unchanged below.
+                exit_code = 0
             script = _fill(script, self.paths)
             env = {"HOME": self.home} if "HOME" in script else None
             job_id = f"ind{i:02d}"

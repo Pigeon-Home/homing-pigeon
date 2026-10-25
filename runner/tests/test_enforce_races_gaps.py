@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
-"""Draft tests for the three Q26 gaps (R5, R6, ORACLE.no_widening.cage).
+"""Tests for the three Q26 gaps (R5, R6, ORACLE.no_widening.cage).
 
-These are unproven drafts for the campaign to take or reject.
-They follow the shape of test_enforce_races.py and
-test_oracle_no_widening.py. No live model is consulted.
+Filed as unproven drafts (f104638) and taken by the campaign
+2026-10-25. Two draft assumptions were wrong and are fixed
+here: R5 drove unsigned in-process jobs through execute_job,
+which never reach the key-policy env gate, so the drafts
+denied nothing on any platform -- R5 now drives signed jobs
+through poll_once, the real path; the cage patched ask_model
+without configuring inference, so the model was never
+consulted -- the cage cfg now carries the inference block
+test_oracle_no_widening.py's proven shape uses. No live
+model is consulted.
 
-The four that drive the policy, audience and cage checks sit under
-expectedFailure (docs/use/questions.md Q37): they came onto main red
-on every leg they run on, because they call execute_job directly or
-assume audit rows the real path does not write, and the owner's
-standing rule (Q29) is that an unproven probe rides under
-expectedFailure until it is proven. Take the decorator off as each
-one is rewritten against the real path (poll_once with a signed
-payload) and goes green.
+The four that drive the policy, audience and cage checks came
+onto main red and rode under expectedFailure (Q37) until
+proven. The R5 pair is proven on the real path and its
+decorators are off; the cage pair keeps its decorators until
+a CI leg shows the unexpected success that is the removal
+signal, per Q37.
 
 R5  two pinned keys' policies and two audiences decided together
     under enforce: each denial names its own key and job id, no
@@ -100,27 +105,19 @@ def _audit_rows(base):
 class PoliciesConcurrentRaceTest(unittest.TestCase):
     """R5: two pinned keys and two audiences decided together."""
 
-    def _race_pair(self, cfg, base, jobs):
-        barrier = threading.Barrier(2)
-        results = {}
+    def _race(self, cfg, base, mails):
+        """One poll over a two-job mailbox, two workers (Q37's
+        shape, R3's harness): both jobs are decided inside the
+        same poll, on the worker pool, against one cfg, one
+        base dir, and the audit log both decisions write."""
+        cfg = dict(cfg, workers=2)
+        poll_once(cfg, base, {}, os.path.join(base, "seen.json"),
+                  imap=FakeIMAP(mails), smtp=FakeSMTP())
 
-        def run(jid):
-            barrier.wait(timeout=10)
-            results[jid] = execute_job(cfg, jobs[jid], base)
-
-        threads = [threading.Thread(target=run, args=(jid,))
-                   for jid in jobs]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join(timeout=60)
-        return results
-
-    @unittest.expectedFailure  # unproven draft, Q37
     def test_two_pinned_keys_each_denial_names_its_own_key(self):
         base = tempfile.mkdtemp(prefix="hp-r5-")
-        cfg = {
-            "base_dir": base,
+        cfg = base_config(base)
+        cfg.update({
             "additional_secrets": {KEY_A: SECRET_A, KEY_B: SECRET_B},
             "key_policies": {
                 KEY_A: {"allowed_kinds": ["exec"],
@@ -129,18 +126,13 @@ class PoliciesConcurrentRaceTest(unittest.TestCase):
                         "denied_env": ["EVIL_B"]},
             },
             "security": {"modes": {"policy_env": "enforce"}},
-        }
-        jobs = {
-            "r5-a": _job("r5-a", "print('a')", key_id=KEY_A),
-            "r5-b": _job("r5-b", "print('b')", key_id=KEY_B),
-        }
-        # Inject the denied env into each job's env after the fact
-        # so the policy check sees it. The draft assumes execute_job
-        # (or the policy gate) consults job env; adjust if the real
-        # path is poll_once + signed payload.
-        jobs["r5-a"]["env"] = {"EVIL_A": "x"}
-        jobs["r5-b"]["env"] = {"EVIL_B": "x"}
-        results = self._race_pair(cfg, base, jobs)
+        })
+        job_a = _payload("r5-a", kind="exec", script="print('a')",
+                         env={"EVIL_A": "x"}, key_id=KEY_A)
+        job_b = _payload("r5-b", kind="exec", script="print('b')",
+                         env={"EVIL_B": "x"}, key_id=KEY_B)
+        self._race(cfg, base, [_email(job_a, SECRET_A),
+                               _email(job_b, SECRET_B)])
         rows = _audit_rows(base)
         denied = [a for a in rows if a.get("decision") == "denied"]
         self.assertGreaterEqual(len(denied), 2, rows)
@@ -150,20 +142,19 @@ class PoliciesConcurrentRaceTest(unittest.TestCase):
         self.assertEqual(by_job["r5-a"].get("key_id"), KEY_A)
         self.assertEqual(by_job["r5-b"].get("key_id"), KEY_B)
 
-    @unittest.expectedFailure  # unproven draft, Q37
     def test_two_audiences_each_denial_names_its_own_runner(self):
         base = tempfile.mkdtemp(prefix="hp-r5-aud-")
-        cfg = {
-            "base_dir": base,
+        cfg = base_config(base)
+        cfg.update({
             "runner_id": RID,
             "security": {"modes": {"audience": "enforce"}},
-        }
-        jobs = {
-            "r5-ok": _job("r5-ok", "print('ok')", runner_id=RID),
-            "r5-bad": _job("r5-bad", "print('bad')",
-                           runner_id="other-runner"),
-        }
-        results = self._race_pair(cfg, base, jobs)
+        })
+        ok = _payload("r5-ok", kind="exec", script="print('ok')",
+                      runner_id=RID)
+        bad = _payload("r5-bad", kind="exec", script="print('bad')",
+                       runner_id="other-runner")
+        self._race(cfg, base, [_email(ok, SECRET),
+                               _email(bad, SECRET)])
         rows = _audit_rows(base)
         denied = [a for a in rows
                   if a.get("decision") == "denied"
@@ -248,6 +239,9 @@ class NoWideningCageTest(unittest.TestCase):
             self.skipTest("sandbox cannot engage")
         cfg = {"oracle_mode": "llm",
                "oracle_opinion_model": True,
+               "oracle_opinion_predict": "always",
+               "inference": {"endpoint": "http://127.0.0.1:9/v1",
+                             "model": "fake-model"},
                "security": {"modes": {"confinement": "enforce"}}}
         job = _payload("cage-sb", kind="exec",
                        script="print('ran')")
@@ -267,6 +261,9 @@ class NoWideningCageTest(unittest.TestCase):
             self.skipTest("needs root and pigeon-test")
         cfg = {"oracle_mode": "llm",
                "oracle_opinion_model": True,
+               "oracle_opinion_predict": "always",
+               "inference": {"endpoint": "http://127.0.0.1:9/v1",
+                             "model": "fake-model"},
                "security": {"modes": {"job_user": "enforce"},
                             "job_user": {"user": "pigeon-test"}}}
         job = _payload("cage-drop", kind="exec",
