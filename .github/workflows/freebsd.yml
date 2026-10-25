@@ -39,7 +39,9 @@ jobs:
       - name: the suite and the roster inside a FreeBSD VM
         uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc # v1.5.9
         with:
-          release: "14.2"
+          # A supported release: pkg's repositories for an EOL release
+          # are withdrawn, and the first run's pkg install died on 14.2.
+          release: "15.0"
           usesh: true
           mem: 4096
           # The VM's output is the step's, so ::error lines written
@@ -50,7 +52,11 @@ jobs:
             set -e
             phase() { echo "== $1"; }
             phase "packages"
-            pkg install -y python311 py311-pip || { echo "::error title=freebsd prepare::pkg install failed"; exit 1; }
+            freebsd-version
+            export ASSUME_ALWAYS_YES=yes
+            pkg bootstrap -f > pkg.log 2>&1 || true
+            pkg update -f >> pkg.log 2>&1 || true
+            pkg install -y python311 py311-pip >> pkg.log 2>&1 || { echo "::error title=freebsd prepare::pkg install failed: $(tail -n 6 pkg.log | tr '\n' ' ' | cut -c1-700)"; exit 1; }
             python3.11 -m pip install --quiet hypothesis==6.170.5 || { echo "::error title=freebsd prepare::pip install hypothesis failed"; exit 1; }
             pw useradd runner -m -s /bin/sh || { echo "::error title=freebsd prepare::pw useradd runner failed"; exit 1; }
             pw useradd pigeon-test -m -s /bin/sh || { echo "::error title=freebsd prepare::pw useradd pigeon-test failed"; exit 1; }
