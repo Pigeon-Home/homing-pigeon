@@ -172,9 +172,17 @@ I am not answering it.
 Progress, 2026-10-25 05:34 PDT. Run 40192873633 finished on all
 three legs. Linux 25 of 25. Root 27 of 27. Windows 15 of 16, the
 same R2.audit_rollover failure (race-a absent). It is a finished
-run, and it is not green. No three-leg green run yet. Q27 is still
-unanswered.
+run, and it is not green.
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40192873633
+
+Progress, 2026-10-25 05:39 PDT. Claude answered Q27 and shipped
+3.12.67 (fb56cfd): one re-entrant lock per process around the
+bound check, the append and the counts bump. The release run
+40194003640 was cancelled before any job started. No post-fix
+run has finished on three legs. The first post-fix run,
+40194010703, is pending. There is still no green switch-proofs
+run.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40194003640
 
 **Answer:** not a question. No action asked.
 
