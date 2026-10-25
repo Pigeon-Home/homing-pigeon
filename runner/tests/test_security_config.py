@@ -466,5 +466,282 @@ class BumpCountsFallbacksTest(unittest.TestCase):
                 os.path.join(d, S.COUNTS_FILE)))
 
 
+class ValidateMessageTextTest(unittest.TestCase):
+    """D4 mutation triage (run 40205330969; local reproduction
+    in hp-mut-d4): the validate_* survivors were almost all
+    string mutations inside the RuntimeError messages -- the
+    older tests match the messages loosely (assertRaisesRegex
+    with a word or two), so a wrapped or upper-cased message
+    still matched. These tests pin the whole message, including
+    the interpolated type name and value, which is also the
+    startup contract: Decision 1 names the bad value in the
+    refusal. Each test names the mutants it kills."""
+
+    def _message(self, cfg):
+        with self.assertRaises(RuntimeError) as cm:
+            S.validate_security_config(cfg)
+        return str(cm.exception)
+
+    def test_security_not_an_object_names_its_type(self):
+        # kills validate_security_config mutmut_10, _12
+        self.assertEqual(
+            self._message({"security": "off"}),
+            "config error: security must be an object, got str")
+
+    def test_modes_not_an_object_names_its_type(self):
+        # kills validate_security_config mutmut_23, _25
+        self.assertEqual(
+            self._message({"security": {"modes": "off"}}),
+            "config error: security.modes must be an object, got str")
+
+    def test_unknown_feature_message_is_exact(self):
+        # kills validate_security_config mutmut_29
+        self.assertEqual(
+            self._message({"security": {"modes": {"nope": "off"}}}),
+            "config error: security.modes.nope is not a known feature")
+
+    def test_bad_mode_message_is_exact(self):
+        # kills validate_security_config mutmut_36, _38
+        self.assertEqual(
+            self._message({"security": {"modes": {"policy_env": "maybe"}}}),
+            "config error: security.modes.policy_env must be one of "
+            "off, audit, enforce (got 'maybe')")
+
+    def test_non_integer_max_lines_message_is_exact(self):
+        # kills validate_security_config mutmut_51, _53
+        self.assertEqual(
+            self._message({"security": {"audit_max_lines": "many"}}),
+            "config error: security.audit_max_lines must be an "
+            "integer (got 'many')")
+
+    def test_zero_max_lines_message_is_exact(self):
+        # kills validate_security_config mutmut_59, _61
+        self.assertEqual(
+            self._message({"security": {"audit_max_lines": 0}}),
+            "config error: security.audit_max_lines must be at "
+            "least 1 (got 0)")
+
+    def test_one_max_line_is_accepted(self):
+        # kills validate_security_config mutmut_55 (<= 1), _56 (< 2):
+        # the bound is "at least 1", so 1 itself validates.
+        S.validate_security_config({"security": {"audit_max_lines": 1}})
+
+    def test_job_user_not_an_object_message_is_exact(self):
+        # kills validate_security_config mutmut_86, _88
+        self.assertEqual(
+            self._message({"security": {"job_user": []}}),
+            "config error: security.job_user must be an object with "
+            "a non-empty string 'user' (got [])")
+
+    def test_job_user_bad_character_message_is_exact(self):
+        # kills validate_security_config mutmut_98, _100, _101
+        self.assertEqual(
+            self._message({"security": {"job_user": {"user": "a/b"}}}),
+            "config error: security.job_user.user 'a/b' is not a "
+            "username")
+
+    def test_job_user_nonexistent_message_is_exact(self):
+        # kills validate_security_config mutmut_110, _112, _113
+        if os.name == "nt":
+            self.skipTest("POSIX only")
+        self.assertEqual(
+            self._message({"security": {"job_user":
+                                         {"user": "hp-no-such-user-zz9"}}}),
+            "config error: security.job_user.user "
+            "'hp-no-such-user-zz9' does not exist")
+
+    def test_job_user_with_an_x_is_not_a_bad_character(self):
+        # kills validate_security_config mutmut_95: its forbidden
+        # set gains the letter X, so a name containing one is
+        # refused as "not a username" where the real code passes
+        # the character check and (POSIX) reports the name as
+        # nonexistent instead; on Windows it validates outright.
+        cfg = {"security": {"job_user": {"user": "Xhp-no-such-user"}}}
+        if os.name == "nt":
+            S.validate_security_config(cfg)
+        else:
+            self.assertEqual(
+                self._message(cfg),
+                "config error: security.job_user.user "
+                "'Xhp-no-such-user' does not exist")
+
+    def test_windows_skips_the_existence_check(self):
+        # kills validate_security_config mutmut_103, _104 on POSIX
+        # hosts (on Windows the mutant's pwd import fails and it
+        # cannot be told apart there): with os.name reading "nt"
+        # a nonexistent user validates, because the existence
+        # check is POSIX-only behind that gate.
+        with mock.patch.object(os, "name", "nt"):
+            S.validate_security_config(
+                {"security": {"job_user":
+                              {"user": "hp-no-such-user-zz9"}}})
+
+
+class SharedSecretBoundaryTest(unittest.TestCase):
+    """D4 triage, the validate_shared_secret family: the hint
+    text and the 128-bit floor had no exact pins."""
+
+    def test_missing_secret_message_carries_the_hint_verbatim(self):
+        # kills validate_shared_secret mutmut_1 (hint None), _2, _3
+        # (hint text), _6 (the required text): the refusal must
+        # tell the operator how to generate a secret, word for word.
+        for missing in ("", None):
+            with self.subTest(missing=missing):
+                with self.assertRaises(RuntimeError) as cm:
+                    S.validate_shared_secret(missing)
+                self.assertEqual(
+                    str(cm.exception),
+                    "config error: shared_secret is required (a "
+                    "dedicated high-entropy secret, separate from "
+                    "the mailbox password). generate one with: "
+                    "openssl rand -hex 32  or: python3 -c \"import "
+                    "secrets; print(secrets.token_hex(32))\"")
+
+    def test_non_string_secret_reason_is_exact(self):
+        # kills _secret_pattern_reason mutmut_2, _3
+        self.assertEqual(S._secret_pattern_reason(123),
+                         "secret must be a string")
+
+    def test_every_placeholder_word_is_flagged(self):
+        # kills _secret_pattern_reason mutmut_9.._14 (the changeme,
+        # example and placeholder literals, wrapped and upper-case
+        # forms); the other words are pinned beside them so the
+        # whole tuple is covered by one test each.
+        for word in ("generate", "changeme", "example", "placeholder",
+                     "your-secret", "your_secret", "todo", "xxx"):
+            with self.subTest(word=word):
+                self.assertEqual(
+                    S._secret_pattern_reason("Zq9" + word + "Wk7Pm"),
+                    "it looks like an example placeholder value")
+
+    def test_exactly_128_bits_is_accepted(self):
+        # kills validate_shared_secret mutmut_14 (<= 128), _15
+        # (< 129): 32 characters over a 16-symbol alphabet
+        # estimates at exactly 32 * log2(16) = 128 bits, and the
+        # floor is "at least 128".
+        secret = "0123456789abcdef" + "fedcba9876543210"
+        self.assertEqual(S._estimate_secret_entropy(secret), 128.0)
+        self.assertIsNone(S._secret_pattern_reason(secret))
+        S.validate_shared_secret(secret)
+
+    def test_single_character_alphabet_estimates_zero(self):
+        # _estimate_secret_entropy mutmut_6 (alphabet < 1) is
+        # provably equivalent -- log2(1) is 0, so the early return
+        # and the fallthrough both give 0.0 -- and is recorded as
+        # such in the ledger, not chased. This pins the value.
+        self.assertEqual(S._estimate_secret_entropy("aaaaaaaa"), 0.0)
+
+
+class _MappingOnly:
+    """A mapping that is not a dict: it has .get but fails
+    sec_decide's isinstance(ctx, dict) gate."""
+
+    def __init__(self, values):
+        self._values = values
+
+    def get(self, key, default=None):
+        return self._values.get(key, default)
+
+
+class _HostileStr:
+    def __str__(self):
+        raise ValueError("hostile __str__")
+
+
+class SecDecideAuditFieldTest(unittest.TestCase):
+    """D4 triage, the sec_decide family: the decision was pinned
+    everywhere, the audit entry's identifier VALUES were not --
+    so mutants that dropped, nulled or misread key_id, job_id,
+    detail and cfg on either write path survived. These tests
+    read the entry back and pin every field, per path."""
+
+    CTX = {"key_id": "k1", "job_id": "j1", "detail": "d1"}
+
+    def _entry(self, cfg, ctx, mode_feature="policy_env"):
+        with tempfile.TemporaryDirectory() as d:
+            allowed = S.sec_decide(cfg, d, mode_feature, "bad_env", ctx)
+            lines = open(os.path.join(d, S.AUDIT_FILE)).readlines()
+            self.assertEqual(len(lines), 1)
+            return allowed, json.loads(lines[0])
+
+    def test_audit_path_entry_carries_the_ctx_values(self):
+        # kills sec_decide mutmut_52 (job_id None), _60 (key_id
+        # dropped), _61 (job_id dropped), and the shared coercion
+        # mutants _15, _19, _20 (wrong key name).
+        cfg = {"security": {"modes": {"policy_env": "audit"}}}
+        allowed, entry = self._entry(cfg, dict(self.CTX))
+        self.assertTrue(allowed)
+        self.assertEqual(entry["key_id"], "k1")
+        self.assertEqual(entry["job_id"], "j1")
+        self.assertEqual(entry["detail"], "d1")
+        self.assertEqual(entry["mode"], "audit")
+
+    def test_enforce_path_entry_carries_the_ctx_values(self):
+        # kills sec_decide mutmut_72 (key_id None), _74 (detail
+        # None), _81 (key_id dropped), _83 (detail dropped),
+        # _84 (mode dropped, in part).
+        cfg = {"security": {"modes": {"policy_env": "enforce"}}}
+        allowed, entry = self._entry(cfg, dict(self.CTX))
+        self.assertFalse(allowed)
+        self.assertEqual(entry["key_id"], "k1")
+        self.assertEqual(entry["job_id"], "j1")
+        self.assertEqual(entry["detail"], "d1")
+        self.assertEqual(entry["mode"], "enforce")
+
+    def test_absent_keys_write_empty_strings_and_no_detail(self):
+        # kills sec_decide mutmut_16, _18, _21 (key_id defaults),
+        # _25, _27, _30 (job_id), _34, _36, _39 (detail): an
+        # absent key must read as "", never "None" or "XXXX",
+        # and an empty detail stays out of the entry entirely.
+        for mode in ("audit", "enforce"):
+            with self.subTest(mode=mode):
+                cfg = {"security": {"modes": {"policy_env": mode}}}
+                _, entry = self._entry(cfg, {})
+                self.assertEqual(entry["key_id"], "")
+                self.assertEqual(entry["job_id"], "")
+                self.assertNotIn("detail", entry)
+
+    def test_a_non_dict_mapping_ctx_reads_as_empty(self):
+        # kills sec_decide mutmut_12 (the isinstance gate OR'd
+        # away): a mapping that is not a dict is replaced by {}
+        # before any key is read, so its values never land.
+        cfg = {"security": {"modes": {"policy_env": "audit"}}}
+        _, entry = self._entry(cfg, _MappingOnly(dict(self.CTX)))
+        self.assertEqual(entry["key_id"], "")
+        self.assertEqual(entry["job_id"], "")
+        self.assertNotIn("detail", entry)
+
+    def test_a_hostile_str_resets_all_three_identifiers(self):
+        # kills sec_decide mutmut_42 (the except path's job_id
+        # reset mutated): when one coercion raises, all three
+        # identifiers fall back to "" together.
+        cfg = {"security": {"modes": {"policy_env": "audit"}}}
+        ctx = {"key_id": _HostileStr(), "job_id": "j1", "detail": "d1"}
+        _, entry = self._entry(cfg, ctx)
+        self.assertEqual(entry["key_id"], "")
+        self.assertEqual(entry["job_id"], "")
+        self.assertNotIn("detail", entry)
+
+    def test_enforce_path_rolls_the_audit_log_at_the_cfg_bound(self):
+        # kills sec_decide mutmut_75 and the cfg leg of _84 (cfg
+        # dropped at the enforce write): the writer must see the
+        # caller's cfg, whose audit_max_lines of 1 rolls the
+        # one-line log before the denied entry is written.
+        cfg = {"security": {"modes": {"policy_env": "enforce"},
+                            "audit_max_lines": 1}}
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, S.AUDIT_FILE)
+            with open(path, "w") as fh:
+                fh.write('{"old": true}\n')
+            self.assertFalse(
+                S.sec_decide(cfg, d, "policy_env", "bad_env",
+                             dict(self.CTX)))
+            self.assertTrue(os.path.exists(
+                os.path.join(d, S.AUDIT_ROLLED_FILE)))
+            lines = open(path).readlines()
+            self.assertEqual(len(lines), 1)
+            self.assertEqual(json.loads(lines[0])["decision"], "denied")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -2715,6 +2715,38 @@ when done, the proving commit or run. Newest first.
   refill verification backlog is discharged at
   this run. Artifacts held in
   ~/workspace/cov-40207994733/.
+- D4 triage landed (tests in
+  runner/tests/test_security_config.py:
+  ValidateMessageTextTest, SharedSecretBoundaryTest,
+  SecDecideAuditFieldTest — 23 tests, green on
+  clean code). The CI run's survivors could not be
+  named from its artifact (Q34), so the triage ran
+  on the local reproduction (566 mutants, 503
+  killed, 63 survived, against CI's 500/66 — the
+  delta sits in the scratch deselect and this box's
+  memory weather). Of the 63: 61 are real missing
+  assertions and are killed by construction —
+  exact RuntimeError message text for every
+  validate raise (the older tests matched loosely),
+  the hint verbatim in the missing-secret refusal,
+  a secret at exactly 128 estimated bits accepted,
+  audit_max_lines of 1 accepted, every placeholder
+  word flagged, a job_user name containing X told
+  apart from a bad character, the POSIX existence
+  check skipped under an nt os.name, and the audit
+  entry's key_id/job_id/detail values pinned on
+  both sec_decide write paths (absent keys, a
+  non-dict mapping ctx, a hostile __str__, and the
+  cfg-bound rollover). Two are provably equivalent
+  and are recorded, not chased:
+  _estimate_secret_entropy mutmut_6 (alphabet < 1:
+  log2(1) is 0, both paths give 0.0) and
+  _secret_pattern_reason mutmut_34 (the repetition
+  multiplier +1 -> +2: both products exceed n, so
+  the [:n] prefix is identical for every input).
+  Kill verification: a full mutmut re-run with the
+  new tests in the scratch tree is in flight; its
+  verdicts land here when it completes.
 - D4 reproduction, first local attempt: the stats
   pass died on this box's own memory pressure —
   test_name_oracle_resources_tolerate_poison
