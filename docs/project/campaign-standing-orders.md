@@ -2700,6 +2700,17 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue B filed as Q43: the axes (ptrace_scope,
+  protected_symlinks/regular, hidepid, the job_user
+  cross) need env-axes.yml legs -- this rig's
+  /proc/sys is read-only, so the corpus-per-value
+  runs are Claude's workflow to add. Queue D1's
+  refill: extension_sources reached the docs after
+  the defaults registry; its runner-seam naming is
+  pinned (SourcesPolicyNamingTest: a malformed value
+  is named once per distinct problem, with the
+  fail-closed sentence; owner_policy's own shapes
+  were already pinned by PolicyTest).
 - Q37 closed out: the cage pair is proven and both
   decorators are off. The unsandbox test flipped to
   unexpected success on the switch-proofs Linux and

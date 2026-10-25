@@ -2998,6 +2998,54 @@ class InstalledRecordLegsTest(unittest.TestCase):
             self.assertFalse(os.path.exists(copy_dir))
 
 
+class SourcesPolicyNamingTest(unittest.TestCase):
+    """Queue D1 (the documented-default hunt, refilled):
+    extension_sources reached the docs after the defaults
+    registry was built, so its Decision 1 behavior is
+    pinned here instead. A malformed value fails closed in
+    owner_policy (PolicyTest); at the runner seam it is
+    also NAMED -- one WARN per distinct problem, never a
+    repeat while the problem is unchanged, and named again
+    after a fix lets it change."""
+
+    def setUp(self):
+        self._saved = R._EXTSOURCES_PASS.get("problem")
+        R._EXTSOURCES_PASS["problem"] = None
+
+    def tearDown(self):
+        R._EXTSOURCES_PASS["problem"] = self._saved
+
+    def test_a_malformed_setting_is_named_once_per_problem(self):
+        lines = []
+
+        def log(msg, level="INFO"):
+            lines.append((level, msg))
+
+        bad1 = {"extension_sources": "yes"}
+        bad2 = {"extension_sources": {"oracle": "share"}}
+        with mock.patch.object(R, "log", log):
+            pol = R._extension_sources_policy(bad1)
+            self.assertFalse(pol["valid"])
+            self.assertEqual(len(lines), 1)
+            self.assertEqual(lines[0][0], "WARN")
+            self.assertIn("extension_sources", lines[0][1])
+            self.assertIn("nothing is fetched", lines[0][1])
+            # The same problem again is not re-named.
+            R._extension_sources_policy(bad1)
+            self.assertEqual(len(lines), 1)
+            # A different problem is a new naming.
+            pol = R._extension_sources_policy(bad2)
+            self.assertFalse(pol["valid"])
+            self.assertEqual(len(lines), 2)
+            # A fixed setting names nothing, and returning
+            # to the first problem names it again.
+            pol = R._extension_sources_policy({})
+            self.assertTrue(pol["valid"])
+            self.assertEqual(len(lines), 2)
+            R._extension_sources_policy(bad1)
+            self.assertEqual(len(lines), 3)
+
+
 class InspectUnavailableTest(unittest.TestCase):
     """Queue A (coverage map, run_inspect): when the sources
     or review module failed to import, --inspect says so on
