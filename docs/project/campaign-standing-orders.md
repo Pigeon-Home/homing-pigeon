@@ -2700,6 +2700,12 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: send_dtls._pump's failed-recv arm
+  (the map's single) -- a recv that raises
+  mid-handshake is shrugged off and the pump keeps
+  driving the client core; a socket that stays dead
+  runs to the deadline and reports False. Pinned in
+  PumpLegsTest with a stub core and socket.
 - Queue A taken: extreview's review cache -- the
   cap eviction (oldest first) and forget's two
   scopes (one folder, all folders) pinned as

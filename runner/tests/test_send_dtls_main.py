@@ -204,6 +204,66 @@ class WaitForLegsTest(unittest.TestCase):
                 None, client, predicate, deadline=0.0))
 
 
+class PumpLegsTest(unittest.TestCase):
+    """Queue A: _pump's shrug -- a recv that fails
+    mid-handshake (a refused or reset datagram socket)
+    is not the pump's end; it keeps driving the client
+    core until the deadline, and only the deadline
+    makes it report False."""
+
+    class _Core:
+        def __init__(self):
+            self.fed = []
+
+        def tick(self, now):
+            return []
+
+        def feed(self, data, now):
+            self.fed.append(data)
+            return [b"reply"]
+
+    class _Sock:
+        def __init__(self, recv_side_effects):
+            self.recv_side_effects = list(recv_side_effects)
+            self.sent = []
+
+        def send(self, dg):
+            self.sent.append(dg)
+
+        def recv(self, n):
+            # The last effect repeats: a dead socket stays dead
+            # for as many polls as the deadline allows.
+            if len(self.recv_side_effects) > 1:
+                effect = self.recv_side_effects.pop(0)
+            else:
+                effect = self.recv_side_effects[0]
+            if isinstance(effect, BaseException):
+                raise effect
+            return effect
+
+    def _pump(self, sock, core, deadline):
+        ready = lambda r, w, x, t: ([sock], [], [])
+        with mock.patch.object(send_dtls.select, "select", ready):
+            return send_dtls._pump(sock, core, deadline)
+
+    def test_a_failed_recv_is_shrugged_off(self):
+        import time as _time
+        core = self._Core()
+        sock = self._Sock([OSError("connection refused"), b"datagram"])
+        got = self._pump(sock, core, _time.monotonic() + 5)
+        self.assertTrue(got)
+        self.assertEqual(core.fed, [b"datagram"])
+        self.assertEqual(sock.sent, [b"reply"])
+
+    def test_a_dead_socket_runs_to_the_deadline(self):
+        import time as _time
+        core = self._Core()
+        sock = self._Sock([OSError("reset")] * 100)
+        got = self._pump(sock, core, _time.monotonic() + 0.3)
+        self.assertFalse(got)
+        self.assertEqual(core.fed, [])
+
+
 class BuildBodyKeyIdTest(unittest.TestCase):
     """Queue A refill: _build_body's key_id member
     (coverage run 40189711740: line 90). Naming a
