@@ -287,6 +287,28 @@ class FrozenEnvTest(unittest.TestCase):
                     src, dst, os.path.join(dst, "config.json")))
             self.assertIn("cannot seed config", out.getvalue())
 
+    def test_a_chmod_that_fails_does_not_fail_the_seed(self):
+        # Coverage run 40183585961 left exactly these lines
+        # unrun on Windows: the seeded config's chmod is
+        # best-effort (the file is already written; a
+        # filesystem that refuses the mode must not turn a
+        # good install into a failure).
+        real_chmod = os.chmod
+
+        def chmod(path, mode, *a, **kw):
+            if mode == 0o600:
+                raise OSError("mode refused")
+            return real_chmod(path, mode, *a, **kw)
+
+        with tempfile.TemporaryDirectory() as src, \
+                tempfile.TemporaryDirectory() as dst:
+            self._tree(src)
+            cfg = os.path.join(dst, "config.json")
+            with mock.patch.object(inst, "FROZEN", True), \
+                    mock.patch.object(inst.os, "chmod", chmod):
+                self.assertTrue(inst.install_files(src, dst, cfg))
+            self.assertTrue(os.path.isfile(cfg))
+
 
 @unittest.skipIf(sys.platform == "win32", "POSIX installer path")
 class LinuxPackageEnvTest(unittest.TestCase):
