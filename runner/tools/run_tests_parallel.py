@@ -272,6 +272,10 @@ def failed_tests(output):
     seen = []
     for m in _FAILED_TEST_RE.finditer(output):
         test_id = m.group(3)
+        # 3.11+ prints "test_bad (mod.T.test_bad)"; 3.9 and 3.10
+        # print "test_bad (mod.T)". Same id either way.
+        if not test_id.endswith("." + m.group(2)):
+            test_id += "." + m.group(2)
         if test_id not in seen:
             seen.append(test_id)
     return seen

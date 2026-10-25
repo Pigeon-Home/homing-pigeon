@@ -12,8 +12,9 @@ to carry the versions they describe.
 """
 
 import os
-import tomllib
 import unittest
+
+from runner.tests._compat import project_version
 
 
 def _root():
@@ -22,8 +23,7 @@ def _root():
 
 
 def _current_version():
-    with open(os.path.join(_root(), "pyproject.toml"), "rb") as fh:
-        return tomllib.load(fh)["project"]["version"]
+    return project_version()
 
 
 def _evergreen_docs():

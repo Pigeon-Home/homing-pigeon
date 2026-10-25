@@ -7,6 +7,8 @@ Stdlib only, no runner imports: runner.py and runner/wire/board.py both
 import from here, and neither may import the other.
 """
 import math
+import re
+from datetime import datetime
 
 
 def _json_safe(value, _seen=None):
@@ -57,3 +59,23 @@ def _as_str(value) -> str:
         return str(value)
     except Exception:
         return ""
+
+
+# fromisoformat before 3.11 takes a fraction of exactly 3 or 6
+# digits and an offset only with its colon; 3.11 and later take any
+# fraction length and "+0000". These two rewrites make the floor
+# Python read issued_at the way the newest one does, so one job is
+# not fresh on one box and unparseable on the next.
+# (Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab)
+_ISO_FRACTION_RE = re.compile(r"(:\d{2})\.(\d+)")
+_ISO_OFFSET_RE = re.compile(r"([+-]\d{2})(\d{2})$")
+
+
+def _fromiso(value):
+    """str(value) with "Z" read as UTC -> datetime; ValueError if not ISO."""
+    text = str(value).replace("Z", "+00:00")
+    text = _ISO_FRACTION_RE.sub(
+        lambda m: m.group(1) + "." + (m.group(2) + "000000")[:6],
+        text, count=1)
+    text = _ISO_OFFSET_RE.sub(r"\1:\2", text)
+    return datetime.fromisoformat(text)

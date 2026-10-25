@@ -27,6 +27,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(
 sys.path.insert(0, REPO)
 
 from runner.runner import _with_seen_file, load_seen  # noqa: E402
+from runner.tests._compat import lenient_tempdir  # noqa: E402
 
 
 def _add(key):
@@ -145,8 +146,7 @@ class WithSeenFileTest(unittest.TestCase):
         # ignore_cleanup_errors: the scripted close failure
         # leaks the lock fd on purpose, and Windows will
         # not unlink a file this process still holds open.
-        with tempfile.TemporaryDirectory(
-                ignore_cleanup_errors=True) as d:
+        with lenient_tempdir() as d:
             path = os.path.join(d, "seen.json")
             with mock.patch.object(os, "close", side_effect=close):
                 got = _with_seen_file(path, _add("closed-anyway"))

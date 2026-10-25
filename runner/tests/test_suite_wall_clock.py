@@ -74,8 +74,9 @@ class DeadlineTest(_Module):
         self.assertIn("time.sleep(600)", proc.stderr)
         self.assertIn("main thread, most recent call first", proc.stderr)
         # The test before it finished normally.
-        self.assertIn("test_fast (test_wc_hang.T.test_fast) ... ok",
-                      proc.stderr)
+        # 3.11+ names the method in the parenthesis; 3.9 and 3.10 do not.
+        self.assertRegex(proc.stderr,
+                         r"test_fast \(test_wc_hang\.T(\.test_fast)?\) \.\.\. ok")
         # Outside Actions nothing is annotated.
         self.assertNotIn("::error", proc.stdout + proc.stderr)
 

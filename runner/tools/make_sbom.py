@@ -58,7 +58,9 @@ def _ci_pin(root, package):
         for line in fh:
             line = line.split("#", 1)[0].strip()
             if line.lower().startswith(package.lower() + "=="):
-                return line.split("==", 1)[1].strip()
+                # The first pin is the build Python's; an environment
+                # marker ("; python_version ...") is not the version.
+                return line.split("==", 1)[1].split(";", 1)[0].strip()
     raise SystemExit("no pin for %s in .github/requirements-ci.txt" % package)
 
 

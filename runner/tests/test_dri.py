@@ -12,6 +12,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, REPO)
 
 from runner.oracle import dri as D  # noqa: E402
+from runner.tests._compat import lenient_tempdir  # noqa: E402
 
 
 def _cfg(**kw):
@@ -415,8 +416,7 @@ class SaveStateBranchesTest(unittest.TestCase):
         # ignore_cleanup_errors: the scripted close failure
         # leaks the staging fd on purpose, and Windows will
         # not unlink a file this process still holds open.
-        with tempfile.TemporaryDirectory(
-                ignore_cleanup_errors=True) as d:
+        with lenient_tempdir() as d:
             with mock.patch.object(D.os, "fdopen",
                                    side_effect=OSError("no writer")), \
                     mock.patch.object(D.os, "close",

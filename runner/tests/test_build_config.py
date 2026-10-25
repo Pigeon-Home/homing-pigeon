@@ -14,6 +14,7 @@ and macOS jobs smoke the built binaries' --version like Windows does.
 
 import os
 import re
+import sys
 import unittest
 
 
@@ -403,7 +404,7 @@ class PipelineLiftsTest(unittest.TestCase):
     WORKFLOWS = ("build.yml", "docker.yml", "security.yml",
                  "minimal-userland.yml", "platform-matrix.yml",
                  "env-axes.yml", "coverage.yml", "switch-proofs.yml",
-                 "freebsd.yml")
+                 "freebsd.yml", "python-range.yml", "upgrade-proof.yml")
 
     def _wf(self, name):
         with open(os.path.join(_root(), ".github", "workflows", name),
@@ -531,10 +532,8 @@ class PipelineLiftsTest(unittest.TestCase):
         self.assertEqual(got["run_id"], "42/1")
         self.assertEqual(got["product"], "probe")
         self.assertEqual(got["built_at"], "2026-01-02T03:04:05Z")
-        import tomllib
-        with open(os.path.join(_root(), "pyproject.toml"), "rb") as fh:
-            self.assertEqual(got["version"],
-                             tomllib.load(fh)["project"]["version"])
+        from runner.tests._compat import project_version
+        self.assertEqual(got["version"], project_version())
 
     # Lift 2: the SBOM is generated into the artifact set before
     # the sums, so the sums cover it and the attestation covers
@@ -554,6 +553,10 @@ class PipelineLiftsTest(unittest.TestCase):
         block = _job_block(_workflow(), "pypi-publish")
         self.assertIn("rm -f dist/BUILD-PROVENANCE.json", block)
 
+    # make_sbom is a release tool and reads pyproject with tomllib;
+    # it runs on the build Python, never on a runner box.
+    @unittest.skipIf(sys.version_info < (3, 11),
+                     "make_sbom runs on the build Python (tomllib, 3.11+)")
     def test_the_sbom_describes_the_tree(self):
         import datetime
         import hashlib
@@ -682,7 +685,7 @@ class PipelineLessonsTest(unittest.TestCase):
 
     ALL = ("build.yml", "docker.yml", "security.yml",
            "minimal-userland.yml", "platform-matrix.yml",
-           "mutation-seeded.yml")
+           "mutation-seeded.yml", "python-range.yml", "upgrade-proof.yml")
 
     def test_unittest_output_piped_to_tee_captures_stderr(self):
         # unittest writes its report to stderr. 8dc7ac7 piped
@@ -849,7 +852,8 @@ class PipelineLessonsTest(unittest.TestCase):
     def test_verdict_steps_use_the_guard(self):
         # Wherever a workflow tees a test run into a file, the file is
         # read by the guard, not by ad-hoc greps.
-        for name in ("minimal-userland.yml", "platform-matrix.yml", "build.yml"):
+        for name in ("minimal-userland.yml", "platform-matrix.yml", "build.yml",
+                     "python-range.yml"):
             wf = _workflow_text(name)
             if "| tee" in wf:
                 self.assertIn("runner/tools/skip_guard.py", wf, name)

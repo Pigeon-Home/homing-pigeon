@@ -16,6 +16,7 @@ from unittest import mock
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
+from runner.tests._compat import lenient_tempdir  # noqa: E402
 from runner.runner import (  # noqa: E402
     make_oracle_server,
     oracle_context,
@@ -349,7 +350,7 @@ class OracleWindowDiagnosticsTest(unittest.TestCase):
         # The Oracle warms the model on a daemon thread that can still
         # hold the log file when this returns. Windows refuses to delete
         # a directory in that state.
-        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+        with lenient_tempdir() as d:
             cfg = dict(cfg, base_dir=d)
             with mock.patch("runner.runner.make_oracle_server", return_value=FakeServer()), \
                  redirect_stdout(buf):

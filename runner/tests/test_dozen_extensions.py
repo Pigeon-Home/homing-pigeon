@@ -189,6 +189,10 @@ class CatalogProducerTest(unittest.TestCase):
                         callable(getattr(mod, "read_live", None)),
                         f"{folder}: missing read_live")
 
+    # The check is a static read of the source, so one Python
+    # proves it for all; sys.stdlib_module_names is 3.10+.
+    @unittest.skipIf(sys.version_info < (3, 10),
+                     "sys.stdlib_module_names is 3.10+; static check")
     def test_producers_import_stdlib_only(self):
         stdlib = getattr(sys, "stdlib_module_names", None)
         self.assertIsNotNone(stdlib)

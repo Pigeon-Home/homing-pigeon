@@ -10,7 +10,9 @@ import tempfile
 import threading
 import types
 import unittest
-from contextlib import chdir, redirect_stderr, redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
+
+from runner.tests._compat import chdir
 from pathlib import Path
 from unittest import mock
 

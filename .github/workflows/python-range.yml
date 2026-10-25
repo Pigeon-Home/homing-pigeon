@@ -1,0 +1,58 @@
+# Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab
+name: python-range
+
+# The whole suite on the oldest Python the runner promises
+# (pyproject requires-python) and the newest one released. build.yml
+# runs it on 3.12 only, and the platform matrix runs one portable
+# proof on the 3.9 floor, so before this a 3.9-only break shipped
+# green. The first run here found two: job issued_at with a "+0000"
+# offset was fresh on 3.12 and unparseable on 3.9, and three feed
+# senses silently dropped timestamps with short fractions.
+#
+# Same box as build.yml's test job (a normal user, git, bubblewrap),
+# so a red leg is the Python and nothing else.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: python-range-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  suite:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 3.9 builds stop at 22.04 in setup-python's manifest.
+          - python: "3.9"
+            os: ubuntu-22.04
+          - python: "3.14"
+            os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -c .github/requirements-ci.txt hypothesis
+      - name: install bubblewrap (the Linux sandbox)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --version
+      - name: run the suite
+        run: |
+          set -o pipefail
+          python runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v 2>&1 | tee test-output.log
+      - name: a full OK, and the sandbox proofs ran
+        if: always()
+        run: python runner/tools/skip_guard.py test-output.log --require-ok --forbid "bwrap not available" --annotate

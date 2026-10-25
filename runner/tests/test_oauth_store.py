@@ -25,6 +25,7 @@ from unittest import mock
 
 from runner.wire import oauth
 from runner.wire.oauth import store_refresh_token
+from runner.tests._compat import lenient_tempdir  # noqa: E402
 
 CFG = {"oauth_client_id": "cid", "mailbox_user": "a@b.c"}
 
@@ -153,8 +154,7 @@ class StoreWriteTest(unittest.TestCase):
         # the cleanup close works. What this leg pins is
         # the error identity: the write's "disk", never
         # the close's refusal.
-        with tempfile.TemporaryDirectory(
-                ignore_cleanup_errors=True) as d:
+        with lenient_tempdir() as d:
             path = os.path.join(d, "config.json")
             with mock.patch.object(
                     os, "fdopen",

@@ -8,7 +8,10 @@
 # Each pin below is what the previously floating install
 # resolved to on the day it was pinned; Dependabot's pip
 # ecosystem watches this file and proposes the bumps.
-hypothesis==6.170.5
+hypothesis==6.170.5; python_version >= "3.10"
+# The 3.9 floor leg (python-range.yml): 6.142.0 dropped 3.9, so the
+# floor keeps the last release that ran there.
+hypothesis==6.141.1; python_version < "3.10"
 pytest==9.1.1
 build==1.6.1
 mutmut==3.8.0

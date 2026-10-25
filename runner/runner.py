@@ -146,6 +146,7 @@ if _textutil is None:
     raise ImportError("runner/guard/textutil.py is missing")
 _as_str = _textutil._as_str
 _json_safe = _textutil._json_safe
+_fromiso = _textutil._fromiso
 _mailbox_lib = _load_mod("runner.wire.mailbox", "wire.mailbox")
 if _mailbox_lib is not None:
     # The mailbox client library lives in runner/wire/mailbox.py; the
@@ -4239,7 +4240,7 @@ def _describe_job(job: dict) -> str:
 def _issued_at_ok(value, cfg):
     """Return (ok, reason) for a protocol issued_at string."""
     try:
-        issued = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        issued = _fromiso(value)
     except Exception:
         return False, "unparseable issued_at"
     if issued.tzinfo is None or issued.tzinfo.utcoffset(issued) is None:
@@ -5033,8 +5034,7 @@ def _ingest_local_envelope_inner(cfg, base_dir, text, source):
     if not _version_ok(job.get("v")) or job.get("type") != "job":
         return reject("unsupported version/type")
     try:
-        issued = datetime.fromisoformat(
-            job["issued_at"].replace("Z", "+00:00"))
+        issued = _fromiso(job["issued_at"])
     except Exception:
         return reject("unparseable issued_at")
     if issued.tzinfo is None or issued.tzinfo.utcoffset(issued) is None:
@@ -6175,7 +6175,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject("job_id mismatch between subject and body")
         return
     try:
-        issued = datetime.fromisoformat(job["issued_at"].replace("Z", "+00:00"))
+        issued = _fromiso(job["issued_at"])
     except Exception:
         reject("unparseable issued_at")
         return
