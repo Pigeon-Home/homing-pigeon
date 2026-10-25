@@ -294,6 +294,20 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/ops/install.py::`
+  `gather_host_facts` marker legs and
+  `_warn_personal_documents` (4 lines each never
+  run, coverage run 40189711740) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  GatherAndGateTests drives in
+  runner/tests/test_hostclass.py through the
+  function's own probe seams: a marker file and an
+  os-release id each name webOS, an Android
+  environment names android, and a Pi identified
+  by cpuinfo alone still decides as a Pi; and the
+  personal-documents warning swallows a missing
+  module whole. Done when a coverage run shows
+  both clean.
 - A (refill) — `runner/ops/install.py::host_decision`
   (4 lines never run, coverage run 40189711740) —
   taken 2026-10-25,

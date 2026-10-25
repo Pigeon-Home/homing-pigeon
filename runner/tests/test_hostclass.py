@@ -216,6 +216,50 @@ class GatherAndGateTests(unittest.TestCase):
         decision = I.host_decision(facts)
         self.assertEqual(decision["action"], "refuse")
 
+    def _gather(self, files, **kw):
+        kw.setdefault("read_text",
+                      lambda path: files.get(path, ""))
+        kw.setdefault("exists",
+                      lambda path: path in files
+                      and bool(files[path]))
+        kw.setdefault("platform_name", "linux")
+        kw.setdefault("machine", "armv7l")
+        kw.setdefault("environ", {})
+        kw.setdefault("usb_ids", [])
+        return I.gather_host_facts(**kw)
+
+    def test_a_marker_file_names_the_platform(self):
+        # Queue A refill: gather_host_facts' marker leg
+        # (coverage run 40189711740: line 1841) -- a
+        # /etc/webos-release file names the platform even
+        # when os-release says nothing.
+        facts = self._gather({"/etc/webos-release": "x"})
+        self.assertEqual(facts["platform"], "webos")
+
+    def test_an_os_release_webos_id_names_the_platform(self):
+        # Queue A refill: the identity correction leg
+        # (line 1845).
+        facts = self._gather(
+            {"/etc/os-release": 'NAME="webOS"\nID=webos\n'})
+        self.assertEqual(facts["platform"], "webos")
+
+    def test_an_android_environment_names_the_platform(self):
+        # Queue A refill: the Android environment leg
+        # (line 1848).
+        facts = self._gather({}, environ={"ANDROID_ROOT": "/system"})
+        self.assertEqual(facts["platform"], "android")
+
+    def test_a_pi_identified_by_cpuinfo_only(self):
+        # Queue A refill: the cpuinfo model leg (line
+        # 1853) -- no device-tree model, but cpuinfo
+        # names the Pi, and the decision follows.
+        facts = self._gather({
+            "/proc/device-tree/model": "",
+            "/proc/cpuinfo": "Model: Raspberry Pi 4 Model B\n",
+        })
+        self.assertIn("Raspberry Pi", facts["device_model"])
+        self.assertEqual(I.host_decision(facts)["case"], "pi")
+
     def test_gate_stops_a_television_and_stays_quiet_on_linux(self):
         buf = io.StringIO()
         with redirect_stdout(buf):
@@ -227,6 +271,29 @@ class GatherAndGateTests(unittest.TestCase):
             code = I.host_install_gate(facts())
         self.assertIsNone(code)
         self.assertEqual(buf.getvalue(), "")
+
+
+class WarnPersonalDocumentsTest(unittest.TestCase):
+    """Queue A refill: _warn_personal_documents'
+    fallback (coverage run 40189711740: lines
+    2929-2933). The function's own docstring: best
+    effort, a missing module must not stop an install.
+    When the package import fails it tries the bare
+    sibling import, and when that fails too it
+    swallows everything and returns.
+    """
+
+    def test_a_missing_module_is_swallowed(self):
+        import builtins
+        real = builtins.__import__
+
+        def guarded(name, g=None, loc=None, fromlist=(), level=0):
+            if "personal_docs" in name:
+                raise ImportError("no personal_docs here")
+            return real(name, g, loc, fromlist, level)
+
+        with unittest.mock.patch("builtins.__import__", guarded):
+            self.assertIsNone(I._warn_personal_documents())
 
 
 class UsbAcceleratorsTest(unittest.TestCase):
